@@ -18988,13 +18988,45 @@ You have access to the following tools. To use a tool, include a tool call marke
 
 Available tools:
 - web_search: Search the web for current information. Params: {"query": "search terms"}
+- run_compute: Run a physics/chemistry/math/quantum/engineering calculation. Params: {"key": "domain.function", "input": {...}}
+  Key examples: "chemistry.molecularAnalysis" with {formula:"H2SO4"}, "chemistry.balanceReaction" with {equation:"H2 + O2 → H2O"},
+  "physics.beamDeflection" with {loadLbs:1000,lengthFt:20,modulusE:29000000,momentI:200}, "quantum.simulateCircuit" with {qubits:2,gates:[{"type":"H","target":0},{"type":"CNOT","control":0,"target":1}]},
+  "engineering.columnBuckling" with {loadLbs:50000,lengthFt:12,area:8.25,momentI:82.8,elasticModulus:29000000},
+  "statistics.linearRegression" with {x:[1,2,3],y:[2,4,6]}, "chemistry.gibbsFreeEnergy" with {deltaH:-286,deltaS:-163,tempK:298}
+- browse_url: Fetch and read any web page. Params: {"url": "https://...", "selector": "optional css selector"}
+  Use when the user pastes a URL or asks about a specific web page.
 - create_dtu: Create a new DTU (Decision/Thought Unit) from the conversation. Params: {"title": "DTU title", "summary": "brief summary", "tags": ["tag1", "tag2"]}
-- run_lens_action: Invoke a lens domain action. Params: {"domain": "domain_name", "action": "action_name", "params": {}}
+- run_lens_action: Invoke any Concord lens domain action. Params: {"domain": "domain_name", "action": "action_name", "params": {}}
 
 Rules for tool use:
-- Only call a tool when the user's request genuinely requires it (e.g., they ask for current info, ask you to search, or ask to create/save something).
+- Use run_compute for ANY math, physics, chemistry, quantum, or engineering question — never guess at calculations.
+- Use web_search for current events, facts you don't know, or when the user asks to search.
+- Use browse_url when the user provides a URL or asks about a specific page.
+- Only use create_dtu when the user asks to save/remember something.
 - After the tool call marker, continue your response naturally. You will receive the tool results and can then give a final answer.
-- Do NOT fabricate tool results. If you need real-time data, call web_search.` : "";
+- Do NOT fabricate tool results or calculations.` : "";
+
+  // Context-sensitive lens action hints (appended to tool prompt at system prompt build sites)
+  const _DOMAIN_KW = {
+    engineering: ["beam","column","fea","structural","load","stress","buckling","weld","hvac","duct"],
+    chemistry:   ["molecule","reaction","formula","ph","acid","base","compound","molar","enthalpy","gibbs","balance"],
+    physics:     ["force","velocity","acceleration","energy","wave","optics","heat","pressure","torque"],
+    quantum:     ["qubit","circuit","gate","hadamard","entangle","superposition","cnot"],
+    math:        ["equation","integral","derivative","matrix","regression","polynomial","eigenvalue","statistics"],
+    music:       ["chord","melody","bpm","track","mix","beat","note","tempo"],
+    code:        ["function","debug","refactor","compile","error","syntax","algorithm"],
+    finance:     ["budget","invoice","tax","revenue","expense","profit","roi"],
+  };
+  const _msgWordsSet = new Set((input.message || "").toLowerCase().split(/\W+/));
+  const _hintDomains = Object.entries(_DOMAIN_KW)
+    .filter(([, kws]) => kws.some(w => _msgWordsSet.has(w)))
+    .map(([d]) => d).slice(0, 3);
+  const _lensHintSuffix = (_toolsAvailable && _hintDomains.length > 0) ? (() => {
+    const acts = _hintDomains.flatMap(d =>
+      [...LENS_ACTIONS.keys()].filter(k => k.startsWith(`${d}.`)).slice(0, 3)
+    );
+    return acts.length > 0 ? `\nRelevant run_lens_action options for this query: ${acts.join(", ")}` : "";
+  })() : "";
 
   // Parse tool calls from brain response text
   const _parseToolCalls = (text) => {
@@ -19052,13 +19084,52 @@ Rules for tool use:
           }
           return { tool: call.tool, ok: true, dtuId: dtuResult.id || dtuResult.dtu?.id, title: call.params.title };
         }
+        case "run_compute": {
+          const { key: computeKey = "", input: computeInput = {} } = call.params;
+          if (!computeKey || !computeKey.includes(".")) {
+            return { tool: call.tool, ok: false, error: `run_compute requires key like "chemistry.molecularAnalysis". Got: ${computeKey}` };
+          }
+          const [modName, fnName] = computeKey.split(".");
+          try {
+            const { loadComputeModule } = await import("./lib/compute/index.js");
+            const mod = await loadComputeModule(modName);
+            if (!mod) return { tool: call.tool, ok: false, error: `Unknown compute module: ${modName}` };
+            if (typeof mod[fnName] !== "function") return { tool: call.tool, ok: false, error: `Unknown function ${fnName} in ${modName}` };
+            const computeResult = mod[fnName](computeInput);
+            return { tool: call.tool, ok: true, key: computeKey, result: computeResult };
+          } catch (_ce) {
+            return { tool: call.tool, ok: false, error: `Compute error: ${_ce?.message}` };
+          }
+        }
+        case "browse_url": {
+          const { url: browseUrl = "", selector: browseSelector } = call.params;
+          if (!browseUrl.startsWith("http")) {
+            return { tool: call.tool, ok: false, error: `browse_url requires a valid http(s) URL` };
+          }
+          try {
+            const { getBrowserEngine } = await import("./lib/browser-engine.js");
+            const eng = getBrowserEngine();
+            const page = await Promise.race([
+              eng.fetchRenderedPage(browseUrl, { selector: browseSelector }),
+              new Promise((_, rej) => setTimeout(() => rej(new Error("browse_url timeout")), 15000)),
+            ]);
+            return {
+              tool: call.tool, ok: true,
+              url: browseUrl,
+              title: page?.title || "",
+              text: (page?.text || page?.content || "").slice(0, 3000),
+            };
+          } catch (_be) {
+            return { tool: call.tool, ok: false, error: `browse_url failed: ${_be?.message}` };
+          }
+        }
         case "run_lens_action": {
           const domain = String(call.params.domain || "");
           const action = String(call.params.action || "");
           const key = `${domain}.${action}`;
           const handler = LENS_ACTIONS.get(key);
           if (!handler) {
-            return { tool: call.tool, ok: false, error: `Unknown lens action: ${key}` };
+            return { tool: call.tool, ok: false, error: `Unknown lens action: ${key}. Check run_compute for math/science.` };
           }
           const lensResult = await handler(ctx, null, call.params.params || {});
           return { tool: call.tool, ok: true, result: lensResult };
@@ -19087,6 +19158,8 @@ Rules for tool use:
     return results.map(r => {
       if (!r.ok) return `[TOOL_RESULT: ${r.tool}] Error: ${r.error}`;
       if (r.tool === "web_search") return `[TOOL_RESULT: web_search] ${r.result}`;
+      if (r.tool === "run_compute") return `[TOOL_RESULT: run_compute key=${r.key}] ${JSON.stringify(r.result).slice(0, 4000)}`;
+      if (r.tool === "browse_url") return `[TOOL_RESULT: browse_url url=${r.url}]\nTitle: ${r.title}\n${r.text}`;
       if (r.tool === "create_dtu") return `[TOOL_RESULT: create_dtu] Created DTU "${r.title}" (id: ${r.dtuId})`;
       if (r.tool === "run_lens_action") return `[TOOL_RESULT: run_lens_action] ${JSON.stringify(r.result).slice(0, 4000)}`;
       return `[TOOL_RESULT: ${r.tool}] ${JSON.stringify(r).slice(0, 4000)}`;
@@ -19141,7 +19214,7 @@ Rules for tool use:
       affectGuidance: _affectGuidance,
       grcPrompt: _grcSystemPrompt,
       styleHints: buildStyleHints(styleVec),
-    }) + _toolSystemPrompt;
+    }) + _toolSystemPrompt + _lensHintSuffix;
     // Build messages with conversation history for continuity
     const _recentHistory = (sess.messages || []).slice(-10, -1); // last 10 turns, excluding current
     messages = [];
@@ -19219,7 +19292,7 @@ Rules for tool use:
         entityStateBlock: _entityBlock || "",
         affectGuidance: "",
         styleHints: buildStyleHints(styleVec),
-      }) + _toolSystemPrompt;
+      }) + _toolSystemPrompt + _lensHintSuffix;
       // Include conversation history in messages
       const _directHistory = (sess.messages || []).slice(-10, -1);
       const _directMessages = [
@@ -19362,7 +19435,7 @@ Rules for tool use:
   }
 
   const _qpMeta = _fusedContext ? { patternsApplied: _fusedContext.meta.patternsApplied, queryIntent: _qualityPipelineResult?.queryIntent, tokenEstimate: _fusedContext.meta.tokenEstimate } : null;
-  sess.messages.push({ role: "assistant", content: finalReply, ts: nowISO(), meta: { llmUsed, semanticUsed, mode, relevant: relevant.map(d=>d.id), qualityPipeline: _qpMeta, dtuCount: _pipelineDtuCount, toolCalls: _toolCallsExecuted.length > 0 ? _toolCallsExecuted.map(t => ({ tool: t.tool, ok: t.ok })) : undefined } });
+  sess.messages.push({ role: "assistant", content: finalReply, ts: nowISO(), meta: { llmUsed, semanticUsed, mode, relevant: relevant.map(d=>d.id), qualityPipeline: _qpMeta, dtuCount: _pipelineDtuCount, toolCalls: _toolCallsExecuted.length > 0 ? _toolCallsExecuted.map(t => ({ tool: t.tool, ok: t.ok })) : undefined, toolCallCount: _toolCallsExecuted.length } });
   ctx.log("chat", "Chat response generated", { sessionId, mode, llmUsed, semanticUsed, relevant: relevant.map(d=>d.id), qualityPipeline: _qpMeta, pipelineDtuCount: _pipelineDtuCount });
 
   // ===== DTU ENRICHMENT: Output DTU + Consolidation Check =====
@@ -19501,7 +19574,15 @@ Rules for tool use:
 
   return {
     ok: true, reply: finalReply, sessionId, mode, llmUsed, semanticUsed,
-    toolCalls: _toolCallsExecuted.length > 0 ? _toolCallsExecuted.map(t => ({ tool: t.tool, ok: t.ok })) : undefined,
+    toolCalls: _toolCallsExecuted.length > 0 ? _toolCallsExecuted.map(t => ({
+      tool: t.tool, ok: t.ok,
+      params: t.params || {},
+      result: t.result ?? null,
+      key: t.key,
+      url: t.url,
+      title: t.title,
+      error: t.error,
+    })) : undefined,
     toolsAvailable: _toolsAvailable || undefined,
     relevant: relevant.map(d=>({ id:d.id, title:d.title, tier:d.tier })),
     dtuCount: _pipelineDtuCount,
@@ -19570,6 +19651,24 @@ register("chat", "tools", (ctx, _input = {}) => {
       requiresOptIn: true,
     },
     {
+      name: "run_compute",
+      description: "Run a physics, chemistry, math, quantum, or engineering calculation. Keys: chemistry.molecularAnalysis, chemistry.balanceReaction, physics.beamDeflection, quantum.simulateCircuit, engineering.columnBuckling, statistics.linearRegression, etc.",
+      params: {
+        key: { type: "string", required: true, description: "module.function e.g. chemistry.balanceReaction" },
+        input: { type: "object", required: false, description: "Function-specific arguments" },
+      },
+      requiresOptIn: false,
+    },
+    {
+      name: "browse_url",
+      description: "Fetch and read the text content of any public web page.",
+      params: {
+        url: { type: "string", required: true, description: "Full https:// URL" },
+        selector: { type: "string", required: false, description: "Optional CSS selector to narrow content" },
+      },
+      requiresOptIn: true,
+    },
+    {
       name: "run_lens_action",
       description: "Invoke a lens domain action (e.g., legal.draft, finance.analyze).",
       params: {
@@ -19579,6 +19678,16 @@ register("chat", "tools", (ctx, _input = {}) => {
       },
       requiresOptIn: true,
     },
+  ];
+
+  // Compute module keys for discovery
+  const computeKeys = [
+    "chemistry.molecularAnalysis","chemistry.balanceReaction","chemistry.solutionChemistry","chemistry.enthalpyOfReaction","chemistry.gibbsFreeEnergy",
+    "physics.beamDeflection","physics.windLoad","physics.momentOfInertia","physics.heatTransfer","physics.carnotEfficiency","physics.idealGasLaw",
+    "quantum.simulateCircuit","quantum.analyzeCircuit","quantum.measureCircuit","quantum.circuitDepth",
+    "engineering.columnBuckling","engineering.weldStrength","engineering.reinforcedConcreteWall","engineering.voltageDrop","engineering.heatLoadCalc",
+    "statistics.linearRegression","statistics.polynomialRegression","statistics.pearsonCorrelation","statistics.fitNormal","statistics.hypothesisTest",
+    "math.differentiate","math.integrate","math.solve","math.simplify",
   ];
 
   // List registered lens actions
@@ -19595,6 +19704,7 @@ register("chat", "tools", (ctx, _input = {}) => {
     sessionOptIn,
     tools,
     lensActions,
+    computeKeys,
     usage: 'Tools are invoked by the brain via [TOOL_CALL: {"tool": "name", "params": {...}}] markers in responses.',
   };
 }, { description: "List all tools available to the chat system and their opt-in status." });
