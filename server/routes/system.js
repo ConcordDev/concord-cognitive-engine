@@ -67,11 +67,35 @@ export default function registerSystemRoutes(app, {
   // ---- Root ----
   app.get("/", (req, res) => res.json({ ok:true, name:"Concord v2 Macro\u2011Max", version: VERSION }));
 
-  // ---- robots.txt \u2014 disallow API scraping ----
+  // ---- robots.txt ----
+  // Public knowledge (DTUs, lenses, search) is open \u2014 let AI crawlers index it.
+  // Personal user data paths are blocked for all bots.
   app.get("/robots.txt", (_req, res) => {
-    res.type("text/plain").send(
-      "User-agent: *\nDisallow: /api/\nCrawl-delay: 10\n\nUser-agent: GPTBot\nDisallow: /\n\nUser-agent: CCBot\nDisallow: /\n"
-    );
+    res.type("text/plain").send([
+      "User-agent: *",
+      "Crawl-delay: 5",
+      "# Personal data \u2014 never crawl",
+      "Disallow: /api/auth/",
+      "Disallow: /api/admin/",
+      "Disallow: /api/personal-locker/",
+      "Disallow: /api/initiative/settings",
+      "Disallow: /api/initiative/history",
+      "Disallow: /api/initiative/pending",
+      "Disallow: /api/learning/earnings/",
+      "Disallow: /api/learning/submissions/",
+      "Disallow: /api/learning/cohort/mine",
+      "Disallow: /api/learning/credential/me/",
+      "Disallow: /api/economy/wallet/",
+      "Disallow: /api/wagers/",
+      "Disallow: /api/channels/settings",
+      "# Public knowledge is welcome",
+      "Allow: /api/dtus",
+      "Allow: /api/search",
+      "Allow: /api/lenses",
+      "Allow: /api/knowledge",
+      "Allow: /api/learning/",
+      "",
+    ].join("\n"));
   });
 
   // ---- Health & Readiness ----
