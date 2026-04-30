@@ -2,7 +2,7 @@
 // Elo rating table — tracks each player's matchmaking rating, win/loss record.
 // Default rating 1200 (standard Elo starting point).
 
-export default function migrate(db) {
+export function up(db) {
   db.exec(`
     CREATE TABLE IF NOT EXISTS player_ratings (
       user_id     TEXT PRIMARY KEY,

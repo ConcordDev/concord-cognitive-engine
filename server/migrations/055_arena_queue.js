@@ -2,7 +2,7 @@
 // Persistent arena matchmaking queue — survives server restarts.
 // One row per queued player; cleared when match is found or player leaves.
 
-export default function migrate(db) {
+export function up(db) {
   db.exec(`
     CREATE TABLE IF NOT EXISTS arena_queue (
       user_id    TEXT PRIMARY KEY,
