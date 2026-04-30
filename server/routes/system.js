@@ -67,6 +67,13 @@ export default function registerSystemRoutes(app, {
   // ---- Root ----
   app.get("/", (req, res) => res.json({ ok:true, name:"Concord v2 Macro\u2011Max", version: VERSION }));
 
+  // ---- robots.txt \u2014 disallow API scraping ----
+  app.get("/robots.txt", (_req, res) => {
+    res.type("text/plain").send(
+      "User-agent: *\nDisallow: /api/\nCrawl-delay: 10\n\nUser-agent: GPTBot\nDisallow: /\n\nUser-agent: CCBot\nDisallow: /\n"
+    );
+  });
+
   // ---- Health & Readiness ----
   app.get("/health", (req, res) => {
     const checks = { server: true };

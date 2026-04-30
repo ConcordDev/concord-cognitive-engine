@@ -4818,7 +4818,7 @@ function authMiddleware(req, res, next) {
     "/api/swarm", "/api/utility",
     // Extended domains (three-gate audit)
     "/api/ai", "/api/federation", "/api/quests", "/api/physics",
-    "/api/admin", "/api/heartbeat", "/api/entity-economy",
+    "/api/heartbeat", "/api/entity-economy",
     "/api/culture", "/api/research", "/api/quest",
     "/api/reproduction", "/api/lineage", "/api/teaching",
     "/api/trust", "/api/creative", "/api/rights",
@@ -5627,6 +5627,41 @@ if (rateLimit) {
     legacyHeaders: false,
     keyGenerator: (req) => req.user?.id || req.user?.username || req.ip
   });
+}
+
+// ---- Unauthenticated Request Throttle ----------------------------------------
+// Authenticated users get RATE_LIMIT_MAX (300) RPM.
+// Unauthenticated requests are capped at 30 RPM per IP to deter scraping.
+// Applied AFTER authMiddleware so req.user is already populated.
+let unauthRateLimiter = null;
+if (rateLimit) {
+  unauthRateLimiter = rateLimit({
+    windowMs: 60000,
+    max: 30,
+    skip: (req) => !!req.user?.id,
+    keyGenerator: (req) => req.ip,
+    message: { ok: false, error: "Rate limit exceeded. Authenticate for higher limits.", code: "ANON_RATE_LIMIT" },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+}
+
+// ---- Bot / Scraper Detection --------------------------------------------------
+// Known automated UA patterns are blocked on /api/ paths when not authenticated.
+// Authenticated bots (API keys, Bearer tokens) are exempt — they accepted ToS.
+const _BOT_UA_RE = /\b(bot|crawler|spider|scraper|python-requests|aiohttp|httpx|go-http-client|java\/|libwww|wget|curl\/)\b/i;
+function botGuardMiddleware(req, res, next) {
+  if (req.user?.id) return next(); // authenticated — pass
+  if (!req.path.startsWith("/api/")) return next(); // non-API — pass
+  const ua = req.headers["user-agent"] || "";
+  if (!ua || _BOT_UA_RE.test(ua)) {
+    return res.status(403).json({
+      ok: false,
+      error: "bot_access_denied",
+      hint: "Automated access requires authentication. See /api/docs for API key setup.",
+    });
+  }
+  next();
 }
 
 // ---- Global Concurrency Limiter for Expensive Operations (Tier 2: Rate Limit Hardening) ----
@@ -8026,7 +8061,7 @@ async function runMacro(domain, name, input, ctx) {
     "/api/intelligence", "/api/stripe",
     // Extended paths (three-gate audit)
     "/api/ai", "/api/federation", "/api/quests", "/api/physics",
-    "/api/admin", "/api/heartbeat", "/api/entity-economy",
+    "/api/heartbeat", "/api/entity-economy",
     "/api/culture", "/api/research", "/api/quest",
     "/api/reproduction", "/api/lineage", "/api/teaching",
     "/api/trust", "/api/creative", "/api/rights",
@@ -24367,6 +24402,10 @@ app.use((req, res, next) => {
   });
   next();
 });
+
+// ---- Privacy: unauthenticated throttle + bot guard (runs after authMiddleware) ----
+if (unauthRateLimiter) app.use(unauthRateLimiter);
+app.use(botGuardMiddleware);
 
 // ---- Global Async Safety Net ----
 // Wraps all async route handlers to catch unhandled promise rejections.
