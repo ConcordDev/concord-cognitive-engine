@@ -26315,7 +26315,7 @@ if (db) {
   app.use("/api/disputes", createDisputeRouter({ db, requireAuth, adminOnly: economyAdminOnly }));
   registerLegalRoutes(app, { db, requireAuth, requireRole, structuredLog, auditLog });
   registerRepairEnhancedRoutes(app, { db, requireRole, log: structuredLog });
-  registerInitiativeRoutes(app, { db, realtimeEmit });
+  registerInitiativeRoutes(app, { db, realtimeEmit, requireAuth });
 
   // ── Initiative Engine Proactive Tick ────────────────────────────────
   // Concord doesn't wait. It can send the first message, double-text if
