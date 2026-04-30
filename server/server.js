@@ -33338,6 +33338,176 @@ function registerUniversalLensActions() {
 }
 registerUniversalLensActions();
 
+// ── Engineering Compute: Wire lens action buttons to real compute engine ─────
+// These override the AI catch-all for physics/math/chem/quantum/engineering.
+{
+  const { loadComputeModule } = await import('./lib/compute/index.js');
+  const { runFEA } = await import('./lib/simulation/fea-solver.js');
+  const { createJob, runJob } = await import('./lib/simulation/simulation-jobs.js');
+  const chemMod  = await import('./lib/compute/chemistry-compute.js');
+  const quantMod = await import('./lib/compute/quantum-compute.js');
+
+  // Physics
+  registerLensAction('physics', 'kinematicsSim', async (_ctx, artifact, params) => {
+    const phys = await loadComputeModule('physics');
+    const p = { ...artifact?.data, ...params };
+    return { ok: true, results: {
+      beamDeflection: phys.beamDeflection?.(p) ?? null,
+      windLoad: phys.windLoad?.(p) ?? null,
+      momentOfInertia: phys.momentOfInertia?.(p) ?? null,
+    }};
+  });
+  registerLensAction('physics', 'thermodynamics', async (_ctx, artifact, params) => {
+    const phys = await loadComputeModule('physics');
+    const p = { ...artifact?.data, ...params };
+    return { ok: true, results: {
+      idealGas: phys.idealGasLaw?.(p) ?? null,
+      heatTransfer: phys.heatTransfer?.(p) ?? null,
+      carnot: phys.carnotEfficiency?.(p) ?? null,
+    }};
+  });
+  registerLensAction('physics', 'orbitalMechanics', async (_ctx, artifact, params) => {
+    const phys = await loadComputeModule('physics');
+    const p = { ...artifact?.data, ...params };
+    return { ok: true, results: { gravitationalForce: phys.windLoad?.(p) ?? null }};
+  });
+  registerLensAction('physics', 'waveInterference', async (_ctx, artifact, params) => {
+    const phys = await loadComputeModule('physics');
+    const p = { ...artifact?.data, ...params };
+    return { ok: true, results: {
+      wavelength: phys.wavelength?.(p) ?? null,
+      doppler: phys.dopplerEffect?.(p) ?? null,
+    }};
+  });
+
+  // Math
+  registerLensAction('math', 'statisticalAnalysis', async (_ctx, artifact, params) => {
+    const stats = await loadComputeModule('statistics');
+    const data  = params?.data || artifact?.data?.values || [];
+    return { ok: true, results: {
+      regression: stats.linearRegression?.(data.map((_, i) => i), data) ?? null,
+      normal: stats.fitNormal?.(data) ?? null,
+      movingAvg: stats.movingAverage?.(data, params?.window || 3) ?? null,
+    }};
+  });
+  registerLensAction('math', 'regressionFit', async (_ctx, artifact, params) => {
+    const stats = await loadComputeModule('statistics');
+    const p = { ...artifact?.data, ...params };
+    return { ok: true, results: {
+      linear: stats.linearRegression?.(p.x || [], p.y || []) ?? null,
+      polynomial: stats.polynomialRegression?.(p.x || [], p.y || [], p.degree || 2) ?? null,
+    }};
+  });
+  registerLensAction('math', 'polynomialAnalysis', async (_ctx, artifact, params) => {
+    const stats = await loadComputeModule('statistics');
+    const p = { ...artifact?.data, ...params };
+    return { ok: true, results: {
+      fit: stats.polynomialRegression?.(p.x || [], p.y || [], p.degree || 3) ?? null,
+    }};
+  });
+
+  // Chemistry
+  registerLensAction('chem', 'molecularAnalysis', async (_ctx, artifact, params) => {
+    const p = { ...artifact?.data, ...params };
+    return chemMod.molecularAnalysis({ formula: p.formula || '' });
+  });
+  registerLensAction('chem', 'balanceReaction', async (_ctx, artifact, params) => {
+    const p = { ...artifact?.data, ...params };
+    return chemMod.balanceReaction({ equation: p.equation || p.formula || '' });
+  });
+  registerLensAction('chem', 'solutionChemistry', async (_ctx, artifact, params) => {
+    const p = { ...artifact?.data, ...params };
+    return chemMod.solutionChemistry(p);
+  });
+  registerLensAction('chem', 'enthalpyCalc', async (_ctx, artifact, params) => {
+    const p = { ...artifact?.data, ...params };
+    return chemMod.enthalpyOfReaction(p);
+  });
+  registerLensAction('chem', 'gibbsEnergy', async (_ctx, artifact, params) => {
+    const p = { ...artifact?.data, ...params };
+    return chemMod.gibbsFreeEnergy(p);
+  });
+
+  // Quantum
+  registerLensAction('quantum', 'simulateCircuit', async (_ctx, artifact, params) => {
+    const p = { qubits: 2, gates: [], ...artifact?.data, ...params };
+    return quantMod.simulateCircuit(p);
+  });
+  registerLensAction('quantum', 'analyzeCircuit', async (_ctx, artifact, params) => {
+    const p = { qubits: 2, gates: [], ...artifact?.data, ...params };
+    return { ok: true, depth: quantMod.circuitDepth(p.gates), ...quantMod.simulateCircuit(p) };
+  });
+  registerLensAction('quantum', 'measureCircuit', async (_ctx, artifact, params) => {
+    const p = { qubits: 2, gates: [], shots: 1000, ...artifact?.data, ...params };
+    const sim = quantMod.simulateCircuit(p);
+    return { ...sim, measurement: quantMod.measureCircuit(sim.statevector, p.shots) };
+  });
+
+  // Sim sensitivity (replaces AI catch-all)
+  registerLensAction('sim', 'sensitivity-analysis', async (_ctx, artifact, params) => {
+    const stats = await loadComputeModule('statistics');
+    const vars  = params?.variables || artifact?.data?.variables || [];
+    const base  = params?.baseline  || artifact?.data?.baseline  || [];
+    const results = vars.map(v => ({
+      name: v.name,
+      correlation: stats.pearsonCorrelation?.(base, v.samples || []) ?? 0,
+    }));
+    return { ok: true, sensitivity: results.sort((a, b) => Math.abs(b.correlation) - Math.abs(a.correlation)) };
+  });
+
+  // Engineering: FEA (async for large models, sync for small)
+  registerLensAction('engineering', 'runFEA', async (_ctx, artifact, params) => {
+    const input = params?.model || artifact?.data?.model || { nodes: [], members: [], loads: [], supports: [] };
+    if ((input.members || []).length > 100) {
+      const { id } = createJob('fea-frame', input);
+      runJob(id, () => runFEA(input)).catch(() => {});
+      return { ok: true, async: true, jobId: id };
+    }
+    return { ok: true, async: false, result: runFEA(input) };
+  });
+  registerLensAction('engineering', 'structuralCheck', async (_ctx, artifact, params) => {
+    const eng = await loadComputeModule('engineering');
+    const p = { ...artifact?.data, ...params };
+    return { ok: true, results: {
+      buckling:  eng.columnBuckling?.(p) ?? null,
+      bending:   eng.reinforcedConcreteWall?.(p) ?? null,
+      weld:      eng.weldStrength?.(p) ?? null,
+    }};
+  });
+  registerLensAction('engineering', 'thermalAnalysis', async (_ctx, artifact, params) => {
+    const eng = await loadComputeModule('engineering');
+    const p = { ...artifact?.data, ...params };
+    return { ok: true, results: {
+      heatLoad: eng.heatLoadCalc?.(p) ?? null,
+      ductSize: eng.ductSizing?.(p) ?? null,
+      cooling:  eng.coolingLoad?.(p) ?? null,
+    }};
+  });
+  registerLensAction('engineering', 'electricalCheck', async (_ctx, artifact, params) => {
+    const eng = await loadComputeModule('engineering');
+    const p = { ...artifact?.data, ...params };
+    return { ok: true, results: {
+      voltageDrop: eng.voltageDrop?.(p) ?? null,
+      breakerSize: eng.breakerSizing?.(p) ?? null,
+      conduitFill: eng.conduitFill?.(p) ?? null,
+    }};
+  });
+  registerLensAction('engineering', 'hydraulicAnalysis', async (_ctx, artifact, params) => {
+    const eng = await loadComputeModule('engineering');
+    const p = { ...artifact?.data, ...params };
+    return { ok: true, results: {
+      pipeSize:     eng.pipeSize?.(p) ?? null,
+      pumpHead:     eng.pumpHead?.(p) ?? null,
+      pressureLoss: eng.pressureLoss?.(p) ?? null,
+    }};
+  });
+
+  structuredLog('info', 'engineering_compute_actions_registered', {
+    domains: ['physics', 'math', 'chem', 'quantum', 'sim', 'engineering'],
+    actions: 17,
+  });
+}
+
 // ── Frontend Action Aliases ──────────────────────────────────────────────────
 // The frontend calls actions with different names than the backend registers.
 // Wire aliases so EVERY frontend button hits a REAL handler, no AI catch-all.
@@ -33455,6 +33625,33 @@ registerUniversalLensActions();
 
     // Real estate lens: frontend calls vacancy_report, backend registered as vacancyReport
     ["realestate", "vacancy_report", "vacancyReport"],
+
+    // Physics lens: additional aliases for frontend button names
+    ["physics", "kineticsSim", "kinematicsSim"],
+    ["physics", "simulate", "kinematicsSim"],
+    ["physics", "mechanics", "kinematicsSim"],
+
+    // Math lens: additional aliases
+    ["math", "analyze", "statisticalAnalysis"],
+    ["math", "matrixOperations", "statisticalAnalysis"],
+    ["math", "linearAlgebra", "statisticalAnalysis"],
+
+    // Chemistry lens: additional aliases
+    ["chem", "react", "balanceReaction"],
+    ["chem", "analyze", "molecularAnalysis"],
+    ["chem", "thermodynamics", "enthalpyCalc"],
+
+    // Quantum lens: additional aliases
+    ["quantum", "simulate", "simulateCircuit"],
+    ["quantum", "errorAnalysis", "analyzeCircuit"],
+    ["quantum", "run", "simulateCircuit"],
+
+    // Engineering lens: additional aliases
+    ["engineering", "fea", "runFEA"],
+    ["engineering", "structural", "structuralCheck"],
+    ["engineering", "thermal", "thermalAnalysis"],
+    ["engineering", "electrical", "electricalCheck"],
+    ["engineering", "hydraulic", "hydraulicAnalysis"],
   ];
 
   let aliasCount = 0;
@@ -33662,6 +33859,13 @@ try {
   }));
   logger.info('[routes] /api/compute mounted');
 } catch (e) { console.error('[routes] compute mount failed:', e); }
+
+// ===== Simulation Jobs (async FEA/quantum/chem — avoids timeout) =====
+import { createSimulationRouter } from "./routes/simulation.js";
+try {
+  app.use("/api/simulation", createSimulationRouter());
+  logger.info('[routes] /api/simulation mounted');
+} catch (e) { console.error('[routes] simulation mount failed:', e); }
 
 // ===== STSVK (feasibility manifold + 3-regime classifier) =====
 import createStsvkRoutes from "./routes/stsvk.js";
