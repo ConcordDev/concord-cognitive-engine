@@ -67,7 +67,9 @@ async function dispatchTool(call, dispatchCtx) {
  * @param {import('./types.js').StopCondition} [opts.stopWhen]
  * @param {AbortSignal} [opts.signal]
  * @param {object} [opts.dispatchCtx]
- * @returns {Promise<{steps: import('./types.js').InferStep[], finalText: string, toolCalls: import('./types.js').ToolCall[], tokensIn: number, tokensOut: number, terminated?: string}>}
+ * @param {object} [opts.budgetTracker] - ContextBudgetTracker instance (optional)
+ * @param {Function} [opts.onCrystallize] - async ({steps, workingMessages}) => {continuationMessages} | null
+ * @returns {Promise<{steps: import('./types.js').InferStep[], finalText: string, toolCalls: import('./types.js').ToolCall[], tokensIn: number, tokensOut: number, terminated?: string, crystallizations?: number}>}
  */
 export async function runAgentLoop(brain, messages, tools, opts = {}) {
   const maxSteps = opts.maxSteps ?? DEFAULT_MAX_STEPS;
@@ -76,6 +78,7 @@ export async function runAgentLoop(brain, messages, tools, opts = {}) {
   let totalTokensIn = 0;
   let totalTokensOut = 0;
   let workingMessages = [...messages];
+  let crystallizationCount = 0;
 
   // A3: Per-emergent worktree — created once per agent task execution.
   // Skipped silently when no emergentId is present.
@@ -89,7 +92,7 @@ export async function runAgentLoop(brain, messages, tools, opts = {}) {
 
   for (let step = 0; step < maxSteps; step++) {
     if (opts.signal?.aborted) {
-      return { steps, finalText: "", toolCalls: allToolCalls, tokensIn: totalTokensIn, tokensOut: totalTokensOut, terminated: "aborted" };
+      return { steps, finalText: "", toolCalls: allToolCalls, tokensIn: totalTokensIn, tokensOut: totalTokensOut, terminated: "aborted", crystallizations: crystallizationCount };
     }
 
     const stepStart = Date.now();
@@ -98,6 +101,30 @@ export async function runAgentLoop(brain, messages, tools, opts = {}) {
 
     totalTokensIn += response.tokensIn || 0;
     totalTokensOut += response.tokensOut || 0;
+
+    // Context budget tracking: crystallize when approaching capacity limit
+    if (opts.budgetTracker && opts.onCrystallize && !opts.skipBudgetTracking) {
+      try {
+        const budget = opts.budgetTracker.trackStep({
+          tokensIn: response.tokensIn || 0,
+          tokensOut: response.tokensOut || 0,
+        });
+        if (budget.shouldCrystallize) {
+          const crystal = await opts.onCrystallize({ steps: steps.slice(), workingMessages });
+          if (crystal && crystal.continuationMessages) {
+            // Reset working messages to continuation context
+            const systemMsgs = workingMessages.filter(m => m.role === 'system');
+            workingMessages = [...systemMsgs, ...crystal.continuationMessages];
+            steps.push({ type: 'crystallization', generation: crystal.generation, shadowId: crystal.shadowId });
+            crystallizationCount++;
+            opts.budgetTracker.reset();
+          }
+          // null return = max generations hit, stop crystallizing
+        }
+      } catch (_crystalErr) {
+        logger.debug('inference:agent-loop', 'Budget crystallization skipped', { error: _crystalErr?.message });
+      }
+    }
 
     const inferStep = {
       type: "inference",
@@ -108,16 +135,16 @@ export async function runAgentLoop(brain, messages, tools, opts = {}) {
     steps.push(inferStep);
 
     if (!response.ok) {
-      return { steps, finalText: response.error || "", toolCalls: allToolCalls, tokensIn: totalTokensIn, tokensOut: totalTokensOut, terminated: "brain_error" };
+      return { steps, finalText: response.error || "", toolCalls: allToolCalls, tokensIn: totalTokensIn, tokensOut: totalTokensOut, terminated: "brain_error", crystallizations: crystallizationCount };
     }
 
     // No tool calls — done
     if (!response.toolCalls?.length) {
       const finalText = response.text || "";
       if (opts.stopWhen && evaluateStopCondition(opts.stopWhen, steps, finalText)) {
-        return { steps, finalText, toolCalls: allToolCalls, tokensIn: totalTokensIn, tokensOut: totalTokensOut };
+        return { steps, finalText, toolCalls: allToolCalls, tokensIn: totalTokensIn, tokensOut: totalTokensOut, crystallizations: crystallizationCount };
       }
-      return { steps, finalText, toolCalls: allToolCalls, tokensIn: totalTokensIn, tokensOut: totalTokensOut };
+      return { steps, finalText, toolCalls: allToolCalls, tokensIn: totalTokensIn, tokensOut: totalTokensOut, crystallizations: crystallizationCount };
     }
 
     // Dispatch each tool call and reinject results
@@ -154,9 +181,9 @@ export async function runAgentLoop(brain, messages, tools, opts = {}) {
     }
 
     if (opts.stopWhen && evaluateStopCondition(opts.stopWhen, steps, response.text || "")) {
-      return { steps, finalText: response.text || "", toolCalls: allToolCalls, tokensIn: totalTokensIn, tokensOut: totalTokensOut };
+      return { steps, finalText: response.text || "", toolCalls: allToolCalls, tokensIn: totalTokensIn, tokensOut: totalTokensOut, crystallizations: crystallizationCount };
     }
   }
 
-  return { steps, finalText: "", toolCalls: allToolCalls, tokensIn: totalTokensIn, tokensOut: totalTokensOut, terminated: "max_steps" };
+  return { steps, finalText: "", toolCalls: allToolCalls, tokensIn: totalTokensIn, tokensOut: totalTokensOut, terminated: "max_steps", crystallizations: crystallizationCount };
 }

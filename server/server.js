@@ -33977,6 +33977,12 @@ try {
   logger.info('[routes] /api/simulation mounted');
 } catch (e) { console.error('[routes] simulation mount failed:', e); }
 
+import { createReasoningRouter } from "./routes/reasoning.js";
+try {
+  app.use("/api/reasoning", createReasoningRouter({ STATE }));
+  logger.info('[routes] /api/reasoning mounted');
+} catch (e) { console.error('[routes] reasoning mount failed:', e); }
+
 // ===== STSVK (feasibility manifold + 3-regime classifier) =====
 import createStsvkRoutes from "./routes/stsvk.js";
 try {

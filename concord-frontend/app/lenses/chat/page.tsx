@@ -71,6 +71,8 @@ import { useLensData } from '@/lib/hooks/use-lens-data';
 import MessageRenderer from '@/components/chat/MessageRenderer';
 import OracleResponse from '@/components/chat/OracleResponse';
 import { ToolCallCard } from '@/components/chat/ToolCallCard';
+import { ReasoningIndicator } from '@/components/chat/ReasoningIndicator';
+import { MessageContinuationMarker } from '@/components/chat/MessageContinuationMarker';
 import { useOracleSolve, type OracleResponseData } from '@/hooks/useOracleSolve';
 import AtlasOverlay from '@/components/chat/AtlasOverlay';
 import AtlasViewer from '@/components/chat/AtlasViewer';
@@ -152,6 +154,9 @@ interface Message {
     url?: string;
     title?: string;
   }>;
+  reasoningSessionId?: string;
+  wasSynthesized?: boolean;
+  shadowsUsed?: number;
 }
 
 interface Conversation {
@@ -842,8 +847,8 @@ export default function ChatLensPage() {
       setInput('');
       setShowSlashMenu(false);
       setSlashFilter('');
-      // eslint-disable-next-line react-hooks/exhaustive-deps
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [messages, domainContext, runOracleQuery]
   );
 
@@ -1069,6 +1074,10 @@ export default function ChatLensPage() {
         toolCalls: Array.isArray(data.toolCalls)
           ? (data.toolCalls as Message['toolCalls'])
           : undefined,
+        reasoningSessionId:
+          typeof data.reasoningSessionId === 'string' ? data.reasoningSessionId : undefined,
+        wasSynthesized: !!data.wasSynthesized,
+        shadowsUsed: typeof data.shadowsUsed === 'number' ? data.shadowsUsed : undefined,
       };
 
       setLocalMessages((prev) => [...prev, assistantMsg]);
@@ -1663,6 +1672,20 @@ export default function ChatLensPage() {
                   </div>
                 )}
 
+                {/* Reasoning depth indicator (active sessions) */}
+                {message.role === 'assistant' && message.reasoningSessionId && (
+                  <ReasoningIndicator sessionId={message.reasoningSessionId} />
+                )}
+
+                {/* Reasoning synthesis marker */}
+                {message.role === 'assistant' &&
+                  (message.wasSynthesized || (message.shadowsUsed && message.shadowsUsed > 0)) && (
+                    <MessageContinuationMarker
+                      wasSynthesized={message.wasSynthesized}
+                      shadowsUsed={message.shadowsUsed}
+                    />
+                  )}
+
                 {/* Tool call results */}
                 {message.toolCalls && message.toolCalls.length > 0 && (
                   <div className="mt-3 pt-3 border-t border-lattice-border/50 space-y-1.5">
@@ -1960,12 +1983,10 @@ export default function ChatLensPage() {
                 className="p-2 hover:bg-lattice-bg rounded-lg transition-colors"
                 aria-label="Chat settings"
                 onClick={() =>
-                  useUIStore
-                    .getState()
-                    .addToast({
-                      type: 'info',
-                      message: 'Use the mode selector in the chat rail to configure chat behavior',
-                    })
+                  useUIStore.getState().addToast({
+                    type: 'info',
+                    message: 'Use the mode selector in the chat rail to configure chat behavior',
+                  })
                 }
               >
                 <Settings className="w-5 h-5 text-gray-400" />
