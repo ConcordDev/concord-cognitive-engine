@@ -1193,7 +1193,8 @@ export default function EventsLensPage() {
               <div>
                 <h2 className={ds.heading2}>{item.title}</h2>
                 <p className={ds.textMuted}>
-                  {evtType?.label || 'Event'} -- {String(d.venue || 'TBD')}
+                  {evtType?.label || 'Event'}
+                  {d.venue ? ` — ${String(d.venue)}` : ''}
                 </p>
               </div>
             </div>
@@ -1209,7 +1210,11 @@ export default function EventsLensPage() {
             <div>
               <p className={ds.textMuted}>Date</p>
               <p className="font-medium">
-                {String(d.date || 'TBD')}
+                {d.date ? (
+                  String(d.date)
+                ) : (
+                  <span className="text-gray-500 text-sm">Not scheduled</span>
+                )}
                 {Boolean(d.endDate) && d.endDate !== d.date ? ` to ${String(d.endDate)}` : ''}
               </p>
             </div>
