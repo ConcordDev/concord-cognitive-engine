@@ -50,7 +50,7 @@ export default function createLDKRouter(deps = {}) {
 
       res.json(result);
     } catch (err) {
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -103,7 +103,7 @@ export default function createLDKRouter(deps = {}) {
       const result = validateLens(handler);
       res.json(result);
     } catch (err) {
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -118,7 +118,7 @@ export default function createLDKRouter(deps = {}) {
       const result = lintLens(code);
       res.json(result);
     } catch (err) {
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -173,7 +173,7 @@ export default function createLDKRouter(deps = {}) {
           : `Lens "${result.domain}" published. Restart the server to activate domain actions.`,
       });
     } catch (err) {
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -198,7 +198,7 @@ export default function createLDKRouter(deps = {}) {
         count: list.length,
       });
     } catch (err) {
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 

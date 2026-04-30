@@ -40,7 +40,7 @@ export default function createAttributionRoutes({ requireAuth } = {}) {
       res.json({ ok: true, ...stats });
     } catch (err) {
       logger.warn?.("[attribution-route] stats error:", err.message);
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -86,7 +86,7 @@ export default function createAttributionRoutes({ requireAuth } = {}) {
       res.json({ ok: true, record });
     } catch (err) {
       logger.warn?.("[attribution-route] dmca error:", err.message);
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -98,7 +98,7 @@ export default function createAttributionRoutes({ requireAuth } = {}) {
       );
       res.json({ ok: true, count: records.length, records });
     } catch (err) {
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -114,7 +114,7 @@ export default function createAttributionRoutes({ requireAuth } = {}) {
       const result = validateAttribution(dtu);
       res.json({ ok: true, dtuId: req.params.dtuId, ...result });
     } catch (err) {
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -130,7 +130,7 @@ export default function createAttributionRoutes({ requireAuth } = {}) {
       const result = canListOnMarketplace(dtu);
       res.json({ ok: true, dtuId: req.params.dtuId, ...result });
     } catch (err) {
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 

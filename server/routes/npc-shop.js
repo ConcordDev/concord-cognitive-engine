@@ -66,7 +66,7 @@ export default function createNPCShopRouter({ requireAuth, db }) {
       const { sparks } = getBalances(db, _userId(req));
       res.json({ ok: true, shop: { ...shop, id: req.params.npcId }, sparks });
     } catch (err) {
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -105,7 +105,7 @@ export default function createNPCShopRouter({ requireAuth, db }) {
       if (err.message === "insufficient_sparks") {
         return res.status(402).json({ ok: false, error: "insufficient_sparks" });
       }
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 

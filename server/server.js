@@ -36058,7 +36058,7 @@ app.post("/api/pipeline/execute", requireAuth(), validate("pipelineExecute"), as
     });
     res.json({ ok: true, execution });
   } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
+    res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
   }
 });
 
@@ -37084,7 +37084,7 @@ app.post("/api/research/conduct", requireAuth(), validate("researchConduct"), as
 
     res.json({ ok: true, research: result });
   } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
+    res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
   }
 });
 
@@ -37429,7 +37429,7 @@ app.post("/api/shared-session/:id/chat", requireAuth(), validate("sharedSessionC
 
     res.json({ ok: true, response: aiText, contextSources: contextParts.map(p => p.source) });
   } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
+    res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
   }
 });
 
@@ -38589,7 +38589,7 @@ app.post("/api/metrics/vitals", (req, res) => {
     }
     res.json({ ok: true });
   } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
+    res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
   }
 });
 app.get("/api/metrics/vitals", requireAuth(), (req, res) => {
@@ -60329,7 +60329,7 @@ app.post('/api/artistry/marketplace/beats', (req, res) => {
     res.json({ ok: true, listing });
   } catch (err) {
     console.error('[Artistry] Beat listing error:', err.message);
-    res.status(500).json({ error: 'listing_failed', detail: err.message });
+    res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
   }
 });
 
@@ -60366,7 +60366,7 @@ app.post('/api/artistry/marketplace/stems', (req, res) => {
     res.json({ ok: true, listing: art.stemStore.get(listingId) });
   } catch (err) {
     console.error('[Artistry] Stem listing error:', err.message);
-    res.status(500).json({ error: 'listing_failed', detail: err.message });
+    res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
   }
 });
 
@@ -60392,7 +60392,7 @@ app.post('/api/artistry/marketplace/samples', (req, res) => {
     res.json({ ok: true, listing: art.sampleStore.get(listingId) });
   } catch (err) {
     console.error('[Artistry] Sample listing error:', err.message);
-    res.status(500).json({ error: 'listing_failed', detail: err.message });
+    res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
   }
 });
 
@@ -60419,7 +60419,7 @@ app.post('/api/artistry/marketplace/art', (req, res) => {
     res.json({ ok: true, listing: art.artStore.get(listingId) });
   } catch (err) {
     console.error('[Artistry] Art listing error:', err.message);
-    res.status(500).json({ error: 'listing_failed', detail: err.message });
+    res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
   }
 });
 
@@ -60819,7 +60819,7 @@ app.post('/api/artistry/marketplace/purchase', (req, res) => {
         }
         console.error('[Artistry] Settlement failed:', err.message);
         try { transitionPurchase(db, purchaseId, 'FAILED', { reason: 'settlement_error', actor: 'system', errorMessage: err.message }); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
-        return res.status(500).json({ error: 'settlement_failed', detail: err.message });
+        return res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
       }
 
       // Update citation usage counts (after successful settlement)
@@ -60903,7 +60903,7 @@ app.post('/api/artistry/marketplace/purchase', (req, res) => {
     res.json(_artistryPurchaseResult);
   } catch (err) {
     console.error('[Artistry] Purchase error:', err.message);
-    res.status(500).json({ error: 'purchase_failed', detail: err.message });
+    res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
   }
 });
 

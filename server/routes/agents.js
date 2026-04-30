@@ -156,7 +156,7 @@ export default function createAgentsRouter({ db, requireAuth, STATE }) {
       res.json({ ok: true, agents, count: agents.length });
     } catch (err) {
       console.error("[agents] GET / error:", err);
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -189,7 +189,7 @@ export default function createAgentsRouter({ db, requireAuth, STATE }) {
       res.json({ ok: true, agentId, status: "idle" });
     } catch (err) {
       console.error("[agents] POST / error:", err);
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -202,7 +202,7 @@ export default function createAgentsRouter({ db, requireAuth, STATE }) {
       res.json({ ok: true, agent: addTaskStats(parseAgent(row)) });
     } catch (err) {
       console.error("[agents] GET /:agentId error:", err);
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -230,7 +230,7 @@ export default function createAgentsRouter({ db, requireAuth, STATE }) {
       res.json({ ok: true, taskId, agentId: req.params.agentId });
     } catch (err) {
       console.error("[agents] POST /:agentId/task error:", err);
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -245,7 +245,7 @@ export default function createAgentsRouter({ db, requireAuth, STATE }) {
       res.json({ ok: true, agentId: req.params.agentId, status: "stopped" });
     } catch (err) {
       console.error("[agents] POST /:agentId/stop error:", err);
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -260,7 +260,7 @@ export default function createAgentsRouter({ db, requireAuth, STATE }) {
       res.json({ ok: true, agentId: req.params.agentId, terminated: true });
     } catch (err) {
       console.error("[agents] DELETE /:agentId error:", err);
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -281,7 +281,7 @@ export default function createAgentsRouter({ db, requireAuth, STATE }) {
       res.json({ ok: true, emergentId: req.params.agentId, worktrees: summary, count: summary.length });
     } catch (err) {
       console.error("[agents] GET /:agentId/worktrees error:", err);
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -301,7 +301,7 @@ export default function createAgentsRouter({ db, requireAuth, STATE }) {
       res.json({ ok: true, agentId: req.params.agentId, logs, count: logs.length });
     } catch (err) {
       console.error("[agents] GET /:agentId/log error:", err);
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 

@@ -25,7 +25,7 @@ export default function createWagersRouter({ requireAuth, db, realtimeEmit }) {
       `).all(userId, userId);
       res.json({ ok: true, wagers });
     } catch (err) {
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -76,7 +76,7 @@ export default function createWagersRouter({ requireAuth, db, realtimeEmit }) {
 
       res.status(201).json({ ok: true, wagerId: id });
     } catch (err) {
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -109,7 +109,7 @@ export default function createWagersRouter({ requireAuth, db, realtimeEmit }) {
       realtimeEmit?.("wager:accepted", { wagerId: wager.id }, wager.proposer_id);
       res.json({ ok: true, wagerId: wager.id });
     } catch (err) {
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -126,7 +126,7 @@ export default function createWagersRouter({ requireAuth, db, realtimeEmit }) {
       realtimeEmit?.("wager:declined", { wagerId: wager.id }, wager.proposer_id);
       res.json({ ok: true });
     } catch (err) {
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -155,7 +155,7 @@ export default function createWagersRouter({ requireAuth, db, realtimeEmit }) {
       realtimeEmit?.("wager:resolved", { wagerId: wager.id, winnerId, payout, currency: wager.currency });
       res.json({ ok: true, winnerId, payout, currency: wager.currency });
     } catch (err) {
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 

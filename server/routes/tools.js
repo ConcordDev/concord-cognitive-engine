@@ -23,7 +23,7 @@ export default function createToolsRouter({ requireAuth, db }) {
       const tier = getPlayerToolTier(db, userId);
       res.json({ ok: true, tools, tier });
     } catch (err) {
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -36,7 +36,7 @@ export default function createToolsRouter({ requireAuth, db }) {
       const result = craftTool(db, userId, recipeId);
       res.status(result.ok ? 201 : 400).json(result);
     } catch (err) {
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 

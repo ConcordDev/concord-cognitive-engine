@@ -63,7 +63,7 @@ export default function createCityRoutes({ requireAuth } = {}) {
       return res.json({ ok: true, ...result });
     } catch (err) {
       logger.warn?.("[city-route] list error:", err.message);
-      return res.status(500).json({ ok: false, error: err.message });
+      return res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -79,7 +79,7 @@ export default function createCityRoutes({ requireAuth } = {}) {
       return res.json({ ok: true, city });
     } catch (err) {
       logger.warn?.("[city-route] get home error:", err.message);
-      return res.status(500).json({ ok: false, error: err.message });
+      return res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -111,7 +111,7 @@ export default function createCityRoutes({ requireAuth } = {}) {
       return res.json({ ok: true, city });
     } catch (err) {
       logger.warn?.("[city-route] get error:", err.message);
-      return res.status(500).json({ ok: false, error: err.message });
+      return res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 

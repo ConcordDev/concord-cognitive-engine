@@ -157,7 +157,7 @@ export default function createSocialGroupRoutes({ db, requireAuth }) {
       res.json({ ok: true, groups });
     } catch (err) {
       console.error("[social-groups] GET /groups error:", err);
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -195,7 +195,7 @@ export default function createSocialGroupRoutes({ db, requireAuth }) {
       res.json({ ok: true, groupId });
     } catch (err) {
       console.error("[social-groups] POST /group error:", err);
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -211,7 +211,7 @@ export default function createSocialGroupRoutes({ db, requireAuth }) {
       res.json(enrichGroup(row, userId));
     } catch (err) {
       console.error("[social-groups] GET /group/:groupId error:", err);
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -229,7 +229,7 @@ export default function createSocialGroupRoutes({ db, requireAuth }) {
       res.json({ ok: true });
     } catch (err) {
       console.error("[social-groups] POST /group/:groupId/join error:", err);
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -247,7 +247,7 @@ export default function createSocialGroupRoutes({ db, requireAuth }) {
       res.json({ ok: true });
     } catch (err) {
       console.error("[social-groups] POST /group/:groupId/leave error:", err);
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -274,7 +274,7 @@ export default function createSocialGroupRoutes({ db, requireAuth }) {
       res.json({ ok: true, members });
     } catch (err) {
       console.error("[social-groups] GET /group/:groupId/members error:", err);
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -306,7 +306,7 @@ export default function createSocialGroupRoutes({ db, requireAuth }) {
       res.json({ ok: true, posts });
     } catch (err) {
       console.error("[social-groups] GET /group/:groupId/feed error:", err);
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -341,7 +341,7 @@ export default function createSocialGroupRoutes({ db, requireAuth }) {
       res.json({ ok: true, postId });
     } catch (err) {
       console.error("[social-groups] POST /group/:groupId/post error:", err);
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -381,7 +381,7 @@ export default function createSocialGroupRoutes({ db, requireAuth }) {
       res.json({ ok: true, postId });
     } catch (err) {
       console.error("[social-groups] POST /post error:", err);
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -417,7 +417,7 @@ export default function createSocialGroupRoutes({ db, requireAuth }) {
       res.json({ ok: true, scheduled: rows, count: rows.length });
     } catch (err) {
       console.error("[social-groups] GET /scheduled error:", err);
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -446,7 +446,7 @@ export default function createSocialGroupRoutes({ db, requireAuth }) {
       res.json({ ok: true, id, scheduledAt: when.toISOString() });
     } catch (err) {
       console.error("[social-groups] POST /schedule error:", err);
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -459,7 +459,7 @@ export default function createSocialGroupRoutes({ db, requireAuth }) {
       res.json({ ok: true, deleted: result.changes });
     } catch (err) {
       console.error("[social-groups] DELETE /scheduled/:id error:", err);
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -485,7 +485,7 @@ export default function createSocialGroupRoutes({ db, requireAuth }) {
       res.json({ ok: true, users, total: users.length });
     } catch (err) {
       console.error("[social-groups] GET /users/search error:", err);
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -528,7 +528,7 @@ export default function createSocialGroupRoutes({ db, requireAuth }) {
       res.json({ ok: true, id });
     } catch (err) {
       console.error("[social-groups] POST /newsletter-subscribe error:", err);
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 

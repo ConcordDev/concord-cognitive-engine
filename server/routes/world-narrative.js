@@ -64,7 +64,7 @@ export default function createWorldNarrativeRoutes({ requireAuth, requireAdmin }
       await fn(req, res);
     } catch (err) {
       logger.warn({ err: err.message }, "world_narrative_route_error");
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   };
 

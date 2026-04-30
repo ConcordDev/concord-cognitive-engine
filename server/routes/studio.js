@@ -202,7 +202,7 @@ export default function createStudioRouter({ db, requireAuth }) {
       res.json({ ok: true, projects, count: projects.length });
     } catch (err) {
       console.error("[studio] GET /projects error:", err);
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -229,7 +229,7 @@ export default function createStudioRouter({ db, requireAuth }) {
       res.json({ ok: true, projectId, name: name.trim(), type: safeType });
     } catch (err) {
       console.error("[studio] POST /projects error:", err);
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -243,7 +243,7 @@ export default function createStudioRouter({ db, requireAuth }) {
       res.json({ ok: true, project: parseProject(row), recentRenders: renders });
     } catch (err) {
       console.error("[studio] GET /projects/:projectId error:", err);
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -265,7 +265,7 @@ export default function createStudioRouter({ db, requireAuth }) {
       res.json({ ok: true, project: parseProject(updated) });
     } catch (err) {
       console.error("[studio] PUT /projects/:projectId error:", err);
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -279,7 +279,7 @@ export default function createStudioRouter({ db, requireAuth }) {
       res.json({ ok: true, projectId: req.params.projectId, deleted: true });
     } catch (err) {
       console.error("[studio] DELETE /projects/:projectId error:", err);
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -294,7 +294,7 @@ export default function createStudioRouter({ db, requireAuth }) {
       res.json({ ok: true, assets, count: assets.length });
     } catch (err) {
       console.error("[studio] GET /projects/:projectId/assets error:", err);
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -326,7 +326,7 @@ export default function createStudioRouter({ db, requireAuth }) {
       res.json({ ok: true, assetId, projectId: req.params.projectId });
     } catch (err) {
       console.error("[studio] POST /projects/:projectId/assets error:", err);
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -339,7 +339,7 @@ export default function createStudioRouter({ db, requireAuth }) {
       res.json({ ok: true, assetId: req.params.assetId, deleted: true });
     } catch (err) {
       console.error("[studio] DELETE /projects/:projectId/assets/:assetId error:", err);
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -364,7 +364,7 @@ export default function createStudioRouter({ db, requireAuth }) {
       res.json({ ok: true, renderId, status: "complete", format: safeFormat, quality: safeQuality });
     } catch (err) {
       console.error("[studio] POST /:projectId/render error:", err);
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -378,7 +378,7 @@ export default function createStudioRouter({ db, requireAuth }) {
       res.json({ ok: true, renders: rows, count: rows.length });
     } catch (err) {
       console.error("[studio] GET /renders error:", err);
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -391,7 +391,7 @@ export default function createStudioRouter({ db, requireAuth }) {
       res.json({ ok: true, render: row });
     } catch (err) {
       console.error("[studio] GET /renders/:renderId error:", err);
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
