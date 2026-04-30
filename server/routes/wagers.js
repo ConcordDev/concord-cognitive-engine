@@ -7,6 +7,7 @@ import crypto from "crypto";
 
 const ACCEPT_WINDOW_S = 60; // opponent has 60 seconds to accept
 const MAX_ACTIVE_PROPOSALS = 3;
+const BALANCE_COLS = { sparks: "sparks", cc: "concordia_credits" };
 
 export default function createWagersRouter({ requireAuth, db, realtimeEmit }) {
   const router = Router();
@@ -51,7 +52,7 @@ export default function createWagersRouter({ requireAuth, db, realtimeEmit }) {
       }
 
       // Check proposer balance
-      const balanceCol = currency === "cc" ? "concordia_credits" : "sparks";
+      const balanceCol = BALANCE_COLS[currency] ?? "sparks";
       const proposer = db.prepare(`SELECT ${balanceCol} AS bal FROM users WHERE id = ?`).get(proposerId);
       if (!proposer || proposer.bal < amount) {
         return res.status(400).json({ ok: false, error: "insufficient_balance" });
@@ -96,7 +97,7 @@ export default function createWagersRouter({ requireAuth, db, realtimeEmit }) {
       }
 
       // Check opponent balance and escrow
-      const balanceCol = wager.currency === "cc" ? "concordia_credits" : "sparks";
+      const balanceCol = BALANCE_COLS[wager.currency] ?? "sparks";
       const opponent = db.prepare(`SELECT ${balanceCol} AS bal FROM users WHERE id = ?`).get(userId);
       if (!opponent || opponent.bal < wager.amount) {
         return res.status(400).json({ ok: false, error: "insufficient_balance" });
@@ -144,7 +145,7 @@ export default function createWagersRouter({ requireAuth, db, realtimeEmit }) {
       const fee = Math.ceil(pot * 0.02); // 2% platform fee
       const payout = pot - fee;
 
-      const balanceCol = wager.currency === "cc" ? "concordia_credits" : "sparks";
+      const balanceCol = BALANCE_COLS[wager.currency] ?? "sparks";
       db.prepare(`UPDATE users SET ${balanceCol} = ${balanceCol} + ? WHERE id = ?`).run(payout, winnerId);
 
       const now = Math.floor(Date.now() / 1000);
@@ -162,7 +163,7 @@ export default function createWagersRouter({ requireAuth, db, realtimeEmit }) {
 }
 
 function _cancelAndRefund(db, wager) {
-  const balanceCol = wager.currency === "cc" ? "concordia_credits" : "sparks";
+  const balanceCol = BALANCE_COLS[wager.currency] ?? "sparks";
   db.prepare(`UPDATE users SET ${balanceCol} = ${balanceCol} + ? WHERE id = ?`).run(wager.amount, wager.proposer_id);
   db.prepare(`UPDATE wagers SET status = 'cancelled' WHERE id = ?`).run(wager.id);
 }

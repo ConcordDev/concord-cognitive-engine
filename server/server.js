@@ -19106,6 +19106,10 @@ Rules for tool use:
           if (!browseUrl.startsWith("http")) {
             return { tool: call.tool, ok: false, error: `browse_url requires a valid http(s) URL` };
           }
+          const _browseSSRF = await _ssrfValidate(browseUrl);
+          if (!_browseSSRF.ok) {
+            return { tool: call.tool, ok: false, error: `browse_url blocked: ${_browseSSRF.error}` };
+          }
           try {
             const { getBrowserEngine } = await import("./lib/browser-engine.js");
             const eng = getBrowserEngine();
