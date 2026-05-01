@@ -540,6 +540,174 @@ export default function createWorldsRouter({ requireAuth, db }) {
     }
   });
 
+  // ── NPC Routes ────────────────────────────────────────────────────────────
+
+  // GET /api/worlds/:worldId/npcs — list live NPCs with positions (for frontend rendering)
+  router.get("/:worldId/npcs", requireAuth, (req, res) => {
+    try {
+      const { worldId } = req.params;
+      const rows = db.prepare(`
+        SELECT id, npc_type, archetype, body_type, faction, is_conscious, is_immortal,
+               quest_giver, level, current_location, state, universe_type
+        FROM world_npcs
+        WHERE world_id = ? AND is_dead = 0
+        ORDER BY created_at ASC
+        LIMIT 200
+      `).all(worldId);
+
+      const npcs = rows.map(r => {
+        const state    = _tryParseJSON(r.state, {});
+        const location = _tryParseJSON(r.current_location, { x: 0, y: 0, z: 0 });
+        return {
+          id:           r.id,
+          name:         state.name || r.archetype || `${r.npc_type}-${r.id.slice(0, 4)}`,
+          archetype:    r.archetype,
+          npcType:      r.npc_type,
+          bodyType:     r.body_type,
+          faction:      r.faction,
+          isConscious:  !!r.is_conscious,
+          isImmortal:   !!r.is_immortal,
+          isQuestGiver: !!r.quest_giver,
+          level:        r.level || 1,
+          position:     location,
+          rotation:     state.rotation || 0,
+          occupation:   state.occupation || r.archetype,
+          currentActivity: state.currentActivity || null,
+          factionTactic:   state.factionTactic || null,
+        };
+      });
+
+      res.json({ ok: true, npcs, total: npcs.length });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // GET /api/worlds/:worldId/emergents — list conscious emergents (Jarls/Bosses/Governors)
+  router.get("/:worldId/emergents", requireAuth, (req, res) => {
+    try {
+      const { worldId } = req.params;
+      const worldEmergents = getWorldEmergents(worldId, db);
+
+      // Also get conscious NPCs that are world bosses
+      const consciousNPCs = db.prepare(`
+        SELECT id, archetype, state, level, current_location
+        FROM world_npcs
+        WHERE world_id = ? AND is_conscious = 1 AND is_dead = 0
+      `).all(worldId);
+
+      const bosses = consciousNPCs.map(n => {
+        const state = _tryParseJSON(n.state, {});
+        return {
+          id:        n.id,
+          name:      state.name || n.archetype,
+          archetype: n.archetype,
+          level:     n.level,
+          role:      'world_boss',
+          position:  _tryParseJSON(n.current_location, { x: 0, y: 0, z: 0 }),
+        };
+      });
+
+      res.json({ ok: true, emergents: worldEmergents, bosses, total: worldEmergents.length + bosses.length });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // POST /api/worlds/:worldId/npcs/:npcId/kill — handle NPC death (from combat)
+  router.post("/:worldId/npcs/:npcId/kill", requireAuth, async (req, res) => {
+    try {
+      const { worldId, npcId } = req.params;
+      const killerId = req.user?.id || req.body?.killerId;
+      const combatLog = req.body?.combatLog || null;
+
+      // Import consequence handler lazily
+      const { triggerNPCDeath } = await import("../lib/npc-consequences.js");
+      const { onNPCKilledPlayer, onPlayerKilledNemesis, recordCombatMemory } = await import("../lib/nemesis.js");
+
+      const result = await triggerNPCDeath(db, npcId, killerId, (event, data) => {
+        req.app.locals.io?.emit(event, data);
+      });
+
+      if (!result.died && result.reason === 'immortal') {
+        return res.status(403).json({ ok: false, error: 'immortal_npc', message: 'This being cannot be harmed.' });
+      }
+
+      // Record combat memory in nemesis if applicable
+      if (result.died && combatLog && killerId) {
+        recordCombatMemory(db, npcId, killerId, combatLog);
+
+        // Check if player killed their nemesis
+        const nemesisKilled = await onPlayerKilledNemesis(db, killerId, npcId, (event, data) => {
+          req.app.locals.io?.emit(event, data);
+        });
+        result.nemesisDefeated = !!nemesisKilled;
+      }
+
+      // Award sparks for the kill
+      if (result.died && killerId) {
+        try {
+          const { awardSparks } = await import("../lib/currency.js");
+          const npc = db.prepare("SELECT level FROM world_npcs WHERE id = ?").get(npcId);
+          const sparks = (npc?.level || 1) * 5;
+          awardSparks(db, killerId, sparks, 'npc_kill', worldId);
+          result.sparksAwarded = sparks;
+        } catch { /* non-fatal */ }
+      }
+
+      res.json({ ok: true, ...result });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // POST /api/worlds/:worldId/npcs/:npcId/interact — player interacts with an NPC
+  router.post("/:worldId/npcs/:npcId/interact", requireAuth, async (req, res) => {
+    try {
+      const { worldId, npcId } = req.params;
+      const playerId = req.user?.id;
+      const { message } = req.body;
+
+      const npc = db.prepare("SELECT * FROM world_npcs WHERE id = ? AND world_id = ?").get(npcId, worldId);
+      if (!npc || npc.is_dead) return res.status(404).json({ ok: false, error: 'npc_not_found' });
+
+      const state   = _tryParseJSON(npc.state, {});
+      const npcName = state.name || npc.archetype || 'NPC';
+
+      // Use subconscious brain for NPC response
+      const { selectBrain } = await import("../lib/brain-config.js").catch(() => ({ selectBrain: null }));
+      if (!selectBrain) return res.json({ ok: true, response: `${npcName} looks at you.` });
+
+      const { handle } = await selectBrain("subconscious", { callerId: "world:npc:interact" });
+      const context = [
+        `You are ${npcName}, a ${npc.archetype} NPC in world ${worldId}.`,
+        `Faction: ${npc.faction}. Level: ${npc.level}.`,
+        npc.is_conscious ? 'You are a world leader and conscious being. Speak with authority and wisdom.' : '',
+        `Your current goals: ${JSON.stringify(state.goals || []).slice(0, 200)}`,
+        `A player says: "${message || 'Hello'}"`,
+        `Reply in character in 1-2 sentences. Stay true to your archetype.`,
+      ].filter(Boolean).join('\n');
+
+      const response = await handle.generate(context);
+
+      // Track dialogue for quest triggers
+      try {
+        await import("../lib/npc-behaviors.js").then(m =>
+          m.npcObserveSkillUse?.({ id: npcId, worldId }, { type: 'player_dialogue', message }, db)
+        );
+      } catch { /* non-fatal */ }
+
+      // Advance quest if this NPC is a quest giver
+      if (npc.quest_giver) {
+        growAffinity(npcId, worldId, 0.1, db);
+      }
+
+      res.json({ ok: true, npcId, npcName, response: response?.slice(0, 500) || `${npcName} nods.` });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
   return router;
 }
 

@@ -1252,6 +1252,11 @@ export default function WorldLensPage() {
   });
   const [showFeatures, setShowFeatures] = useState(false);
 
+  // Live NPC state — populated from API, refreshed every 10s
+  const [worldNPCs, setWorldNPCs] = useState<
+    import('@/components/world-lens/AvatarSystem3D').NPCData[]
+  >([]);
+
   // Selection state
   const [selectedBuilding, setSelectedBuilding] = useState<PlacedBuildingDTU | null>(null);
   const [selectedInfra, setSelectedInfra] = useState<InfrastructureDTU | null>(null);
@@ -1276,6 +1281,21 @@ export default function WorldLensPage() {
       })
       .catch(() => {});
   }, []);
+
+  // Load NPCs from API and keep positions fresh every 10s
+  useEffect(() => {
+    const loadNPCs = () => {
+      fetch(`/api/worlds/${activeDistrict.id}/npcs`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => {
+          if (d?.npcs) setWorldNPCs(d.npcs.map(_mapNPCToAvatarData));
+        })
+        .catch(() => {});
+    };
+    loadNPCs();
+    const interval = setInterval(loadNPCs, 10_000);
+    return () => clearInterval(interval);
+  }, [activeDistrict.id]);
 
   // Proximity check: update nearPortalId whenever the player moves
   useEffect(() => {
@@ -2168,7 +2188,7 @@ export default function WorldLensPage() {
             <AvatarSystem3D
               playerAvatar={playerAvatar}
               otherPlayers={otherPlayers}
-              npcs={[]}
+              npcs={worldNPCs}
               weatherModifiers={weatherModifiers ?? undefined}
               quality="medium"
               onMove={(pos, rotation) => {
@@ -2518,7 +2538,12 @@ export default function WorldLensPage() {
                 playerPosition={{ x: 0, y: 0 }}
                 district={activeDistrict.name}
                 buildings={[]}
-                npcs={[]}
+                npcs={worldNPCs.map((n) => ({
+                  id: n.id,
+                  position: n.position,
+                  name: n.name,
+                  occupation: n.occupation,
+                }))}
                 players={[]}
                 waypoints={[]}
                 onWaypointPlace={() => {}}
@@ -3124,4 +3149,81 @@ export default function WorldLensPage() {
       )}
     </div>
   );
+}
+
+// ── NPC → AvatarSystem3D mapping ─────────────────────────────────────────────
+
+const FACTION_SKIN: Record<string, string> = {
+  villain: '#8b3a3a',
+  invader: '#5c3080',
+  rogue: '#7a5c00',
+  monster: '#2d5a27',
+  undead: '#4a5568',
+  outlaw: '#6b4c2a',
+  cult: '#4a1a6a',
+  corp: '#1a3a6a',
+  gang: '#7a2a1a',
+  crime: '#6a1a1a',
+  demon: '#8b1a1a',
+  hero: '#1a3a8b',
+  neutral: '#6b7280',
+};
+
+function _mapNPCToAvatarData(npc: {
+  id: string;
+  name?: string;
+  position: { x: number; y: number; z?: number };
+  rotation?: number;
+  occupation?: string;
+  archetype?: string;
+  bodyType?: string;
+  faction?: string;
+  isConscious?: boolean;
+}): import('@/components/world-lens/AvatarSystem3D').NPCData {
+  const skinColor = FACTION_SKIN[npc.faction ?? ''] ?? '#6b7280';
+  const occupationAnimation: Record<
+    string,
+    import('@/components/world-lens/AvatarSystem3D').NPCOccupationAnimation
+  > = {
+    blacksmith: 'hammer',
+    scientist: 'read',
+    farmer: 'tend-crops',
+    guard: 'patrol',
+    trader: 'count-coins',
+    engineer: 'construct',
+    medic: 'read',
+    journalist: 'read',
+  };
+  const bodyTypeMap: Record<string, 'slim' | 'average' | 'stocky' | 'tall'> = {
+    large: 'stocky',
+    small: 'slim',
+    giant: 'stocky',
+    mech: 'stocky',
+    alien: 'tall',
+    undead: 'slim',
+    cyborg: 'average',
+    demon: 'stocky',
+    dragon: 'stocky',
+  };
+  const occ = npc.occupation ?? npc.archetype ?? 'guard';
+  return {
+    id: npc.id,
+    name: npc.isConscious ? `⚡ ${npc.name ?? 'Unknown'}` : (npc.name ?? 'Unknown'),
+    position: { x: npc.position.x, y: npc.position.y, z: npc.position.z ?? 0 },
+    rotation: npc.rotation ?? 0,
+    occupation: occ,
+    occupationAnimation: occupationAnimation[occ] ?? 'patrol',
+    timestamp: Date.now(),
+    appearance: {
+      skinColor,
+      hairColor: npc.isConscious ? '#ffd700' : '#333333',
+      hairStyle: npc.isConscious ? 'long' : 'short',
+      bodyType: bodyTypeMap[npc.bodyType ?? ''] ?? 'average',
+      clothing: {
+        top: { color: skinColor, type: npc.isConscious ? 'robe' : 'vest' },
+        bottom: { color: '#374151', type: 'pants' },
+        ...(npc.isConscious ? { hat: { color: '#ffd700', type: 'tophat' } } : {}),
+      },
+    },
+  };
 }

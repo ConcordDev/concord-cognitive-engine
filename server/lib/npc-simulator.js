@@ -1,5 +1,9 @@
 // server/lib/npc-simulator.js
 // Per-world NPC simulation. One NPCSimulator instance per active world.
+// Two NPC types:
+//   - Autonomous NPCs (is_conscious=0): needs-based AI, can be killed, world-native archetypes
+//   - Conscious Emergents (is_conscious=1, is_immortal=1): emergent-AI-backed, untouchable,
+//     serve as world Jarls/Bosses/Governors, generate main quests
 
 import crypto from "crypto";
 import logger from "../logger.js";
@@ -11,6 +15,7 @@ import {
   npcObserveSkillUse,
 } from "./npc-behaviors.js";
 import { NavGrid } from "./nav-grid.js";
+import { getSpawnConfig, pickEnemyArchetype } from "./npc-archetypes.js";
 
 // ── Heightmap generation (mirrors TerrainRenderer.tsx deterministic algo) ──
 // Resolution kept low (128) for server — A* is the bottleneck, not sample count.
@@ -65,6 +70,11 @@ export class NPCAgent {
     this.id          = row.id;
     this.worldId     = worldId;
     this.npcType     = row.npc_type;
+    this.archetype   = row.archetype || 'generic';
+    this.faction     = row.faction || 'neutral';
+    this.level       = row.level || 1;
+    this.isConscious = !!row.is_conscious;
+    this.isImmortal  = !!row.is_immortal;
     this.location    = _parseJSON(row.current_location, { x: 0, y: 0, z: 0 });
     this.spawnLoc    = _parseJSON(row.spawn_location,   { x: 0, y: 0, z: 0 });
     this.state       = _parseJSON(row.state, {});
@@ -73,6 +83,87 @@ export class NPCAgent {
     this.currentActivity = this.state.currentActivity || null;
     this._db         = db;
     this._selectBrain = selectBrain;
+  }
+
+  /** Tick for conscious emergents — lighter, just updates goals from emergent AI */
+  async tickConscious() {
+    try {
+      const { handle } = await this._selectBrain("subconscious", {
+        brainOverride: "subconscious", callerId: "world:emergent-npc:tick",
+      });
+      const raw = await handle.generate(
+        `You are ${this.state.name || this.archetype} in world ${this.worldId}. ` +
+        `Your current goals: ${JSON.stringify(this.goals)}. ` +
+        `What is your primary directive right now? Reply in one sentence.`
+      );
+      if (raw) {
+        this.goals = [{ directive: raw.slice(0, 200), updatedAt: Date.now() }];
+        this._persistState();
+      }
+    } catch { /* non-fatal */ }
+  }
+
+  /** Faction leader coordinates tactics with other members */
+  async _coordinateFaction(members) {
+    if (members.length < 2) return;
+    const memberSummary = members.map(m => `${m.archetype}(lvl${m.level})`).join(', ');
+    try {
+      const { handle } = await this._selectBrain("subconscious", {
+        brainOverride: "subconscious", callerId: "world:faction:coordinate",
+      });
+      const raw = await handle.generate(
+        `You are ${this.archetype}, faction leader of "${this.faction}" in world ${this.worldId}. ` +
+        `Your group: ${memberSummary}. ` +
+        `Devise a brief tactical instruction for your group in one sentence. ` +
+        `Consider flanking, ambush, or coordinated assault. Return JSON: ` +
+        `{"tactic":"<name>","instruction":"<one sentence for the group>"}`
+      );
+      const match = raw?.match(/\{[\s\S]*?\}/);
+      if (match) {
+        const tactic = JSON.parse(match[0]);
+        // Distribute tactic to all faction members
+        for (const member of members) {
+          member.state.factionTactic = tactic;
+        }
+      }
+    } catch { /* non-fatal */ }
+  }
+
+  /** NPC speaks to another NPC or conscious emergent */
+  async _speakTo(partner) {
+    const myName      = this.state.name || this.archetype;
+    const partnerName = partner.state?.name || partner.archetype || 'stranger';
+    const topic       = this.state.factionTactic?.tactic || this.goals[0]?.directive || 'the world around us';
+
+    try {
+      const { handle } = await this._selectBrain("subconscious", {
+        brainOverride: "subconscious", callerId: "world:npc:conversation",
+      });
+      const raw = await handle.generate(
+        `You are ${myName} (${this.archetype}, ${this.faction} faction). ` +
+        `You are speaking to ${partnerName} (${partner.archetype || 'entity'}) ` +
+        `about: ${topic}. World: ${this.worldId}. ` +
+        `Write one line of natural dialogue from ${myName} to ${partnerName}. No quotes around it.`
+      );
+
+      if (!raw) return;
+
+      // Partner hears and may update their goals based on what was said
+      if (partner.goals !== undefined) {
+        partner.goals = partner.goals || [];
+        partner.goals.push({ heardFrom: myName, said: raw.slice(0, 200), at: Date.now() });
+        if (partner.goals.length > 10) partner.goals = partner.goals.slice(-10);
+        partner._persistState?.();
+      }
+
+      // Log the conversation as a world event (lightweight, no DB write — SSE only)
+      this._db.prepare(
+        "INSERT OR IGNORE INTO world_events (id, world_id, type, actor_id, data, created_at) VALUES (?,?,?,?,?,unixepoch())"
+      ).run(
+        crypto.randomUUID(), this.worldId, 'npc_conversation', this.id,
+        JSON.stringify({ speaker: myName, listener: partnerName, line: raw.slice(0, 200) })
+      ).valueOf?.(); // safe no-op if table missing
+    } catch { /* non-fatal */ }
   }
 
   async tick(dtMs = 3000) {
@@ -259,31 +350,131 @@ export class NPCSimulator {
 
   async initialize() {
     const rows = this._db.prepare(
-      "SELECT * FROM world_npcs WHERE world_id = ?"
+      "SELECT * FROM world_npcs WHERE world_id = ? AND is_dead = 0"
     ).all(this.worldId);
 
     this._agents = rows.map(r => new NPCAgent(r, this.worldId, this._db, this._selectBrain));
 
-    // Ensure at least one seed NPC per world
+    // Seed NPCs from world archetypes if empty
     if (this._agents.length === 0) {
-      this._spawnSeedNpc();
+      await this._seedWorldNPCs();
     }
   }
 
-  _spawnSeedNpc() {
+  async _seedWorldNPCs() {
+    const world = this._db.prepare("SELECT * FROM worlds WHERE id = ?").get(this.worldId);
+    const universeType = world?.universe_type || 'generic';
+    const config = getSpawnConfig(universeType);
+
+    // Spawn bosses (conscious, immortal — backed by emergent AI)
+    for (const boss of config.bosses) {
+      this._spawnNpc({ ...boss, npc_type: boss.archetype, universe_type: universeType });
+    }
+    // Spawn civilians
+    for (const civ of config.civilians) {
+      for (let i = 0; i < (civ.count || 2); i++) {
+        this._spawnNpc({ ...civ, npc_type: civ.archetype, universe_type: universeType });
+      }
+    }
+    // Spawn enemies
+    for (const enemy of config.enemies) {
+      const count = enemy.count || 3;
+      for (let i = 0; i < count; i++) {
+        this._spawnNpc({ ...enemy, npc_type: enemy.archetype, universe_type: universeType });
+      }
+    }
+  }
+
+  _spawnNpc(opts = {}) {
     const id = crypto.randomUUID();
+    const spawnX = (Math.random() - 0.5) * 400;
+    const spawnZ = (Math.random() - 0.5) * 400;
+    const spawnLoc = JSON.stringify({ x: spawnX, y: 0, z: spawnZ });
+
     this._db.prepare(`
-      INSERT INTO world_npcs (id, world_id, npc_type, spawn_location, current_location, state)
-      VALUES (?, ?, 'generic', '{}', '{}', '{}')
-    `).run(id, this.worldId);
+      INSERT INTO world_npcs
+        (id, world_id, npc_type, archetype, body_type, universe_type, faction,
+         is_conscious, is_immortal, quest_giver, level, spawn_location, current_location, state)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    `).run(
+      id, this.worldId,
+      opts.npc_type || 'generic',
+      opts.archetype || 'generic',
+      opts.body_type || 'humanoid',
+      opts.universe_type || '',
+      opts.faction || 'neutral',
+      opts.is_conscious ? 1 : 0,
+      opts.is_immortal ? 1 : 0,
+      opts.quest_giver ? 1 : 0,
+      opts.level || (opts.level_range ? opts.level_range[0] : 1),
+      spawnLoc,
+      spawnLoc,
+      JSON.stringify({ name: opts.archetype }),
+    );
 
     const row = this._db.prepare("SELECT * FROM world_npcs WHERE id = ?").get(id);
-    this._agents.push(new NPCAgent(row, this.worldId, this._db, this._selectBrain));
+    if (row) this._agents.push(new NPCAgent(row, this.worldId, this._db, this._selectBrain));
+  }
+
+  /** Spawn a new enemy at a target level — called when player enters an area */
+  spawnEnemy(targetLevel = 1) {
+    const world = this._db.prepare("SELECT universe_type FROM worlds WHERE id = ?").get(this.worldId);
+    const archetype = pickEnemyArchetype(world?.universe_type || 'generic', targetLevel);
+    this._spawnNpc({ ...archetype, npc_type: archetype.archetype, level: targetLevel });
   }
 
   async tick() {
-    await Promise.allSettled(this._agents.map(a => a.tick()));
-    await Promise.allSettled(this._agents.map(a => a._maybeGenerateQuests()));
+    // Separate conscious (emergent-backed) from autonomous agents
+    const autonomousAgents = this._agents.filter(a => !a.isConscious);
+    const consciousAgents  = this._agents.filter(a =>  a.isConscious);
+
+    // Autonomous NPCs: needs-based tick + faction coordination
+    await Promise.allSettled(autonomousAgents.map(a => a.tick()));
+    await Promise.allSettled(autonomousAgents.map(a => a._maybeGenerateQuests()));
+
+    // Faction coordination: enemy NPCs strategize together
+    await this._tickFactionCoordination(autonomousAgents);
+
+    // Conscious emergents: emergent-AI tick (lighter — just goal updates)
+    await Promise.allSettled(consciousAgents.map(a => a.tickConscious()));
+
+    // NPC ↔ NPC / NPC ↔ Emergent conversations (5% chance per tick group)
+    if (Math.random() < 0.05) {
+      await this._tickNPCConversations(autonomousAgents, consciousAgents);
+    }
+  }
+
+  /** Faction coordination: pick a leader, generate shared tactics */
+  async _tickFactionCoordination(agents) {
+    const byFaction = new Map();
+    for (const agent of agents) {
+      const faction = agent.faction || 'neutral';
+      if (faction === 'neutral') continue;
+      if (!byFaction.has(faction)) byFaction.set(faction, []);
+      byFaction.get(faction).push(agent);
+    }
+
+    for (const [faction, members] of byFaction) {
+      if (members.length < 2) continue;
+      // Leader = highest level in faction
+      const leader = members.sort((a, b) => (b.level || 1) - (a.level || 1))[0];
+      try {
+        await leader._coordinateFaction(members);
+      } catch { /* non-fatal */ }
+    }
+  }
+
+  /** NPC ↔ NPC and NPC ↔ Emergent conversations */
+  async _tickNPCConversations(autonomousAgents, consciousAgents) {
+    if (!autonomousAgents.length) return;
+
+    const speaker = autonomousAgents[Math.floor(Math.random() * autonomousAgents.length)];
+    // Pick a conversation partner: another NPC or a conscious emergent
+    const partners = [...autonomousAgents.filter(a => a.id !== speaker.id), ...consciousAgents];
+    if (!partners.length) return;
+
+    const partner = partners[Math.floor(Math.random() * partners.length)];
+    await speaker._speakTo(partner).catch(() => {});
   }
 
   start() {

@@ -26259,6 +26259,7 @@ import { selectBrain as _selectBrainForNpc } from "./lib/inference/router.js";
 import { startPatternDetection } from "./lib/substrate-diffusion.js";
 import { startAtrophyCycle } from "./lib/skill-atrophy.js";
 import { startCrisisWatch } from "./lib/world-crisis.js";
+import { processDisrepairTick, DISREPAIR_TICK_INTERVAL } from "./lib/npc-consequences.js";
 app.use("/api/worlds", createWorldsRouter({ requireAuth, db }));
 
 import createCityAssetsRouter from "./routes/city-assets.js";
@@ -26282,6 +26283,8 @@ if (db) {
     startAtrophyCycle(db);
     // Start hourly crisis watch (auto-expires + auto-triggers knowledge_extinction)
     startCrisisWatch(db, realtimeEmit);
+    // Start daily NPC property disrepair clock (dead NPC homes decay over time)
+    setInterval(() => { try { processDisrepairTick(db); } catch (_e) {} }, DISREPAIR_TICK_INTERVAL);
   } catch (e) { console.warn("[worlds] startup failed:", e.message); }
 }
 
