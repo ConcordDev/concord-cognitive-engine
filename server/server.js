@@ -8759,10 +8759,11 @@ register("multimodal","vision_analyze", (ctx, input={}) => {
   // Governed execution: all external/tool-like calls route through governedCall.
   return governedCall(ctx, "multimodal.vision_analyze", async () => {
 
-  // Local-first: Ollama (llava) if configured
-  const OLLAMA_URL = process.env.OLLAMA_URL || process.env.OLLAMA_HOST || "";
+  // Local-first: use multimodal brain config (respects BRAIN_MULTIMODAL_URL + OLLAMA_VISION_MODEL)
+  const _mmBrain = BRAIN_CONFIG.multimodal;
+  const OLLAMA_URL = _mmBrain.url || process.env.OLLAMA_URL || process.env.OLLAMA_HOST || "";
   if (OLLAMA_URL) {
-    const model = String(process.env.OLLAMA_VISION_MODEL || "llava");
+    const model = String(_mmBrain.model || process.env.OLLAMA_VISION_MODEL || "llava");
     const payload = {
       model,
       messages: [{ role:"user", content: prompt, images: [imageB64] }]
@@ -40290,21 +40291,23 @@ function processVoiceNote(audioBuffer, options = {}) {
 
 // ---- Image Analysis ----
 async function analyzeImage(imageBuffer, prompt = "Describe this image in detail.") {
-  // Use local LLaVA via Ollama if available
-  const OLLAMA_URL = process.env.OLLAMA_URL || process.env.OLLAMA_HOST || "http://ollama-conscious:11434";
-  const VISION_MODEL = process.env.VISION_MODEL || "llava";
+  // Use multimodal brain config — respects BRAIN_MULTIMODAL_URL + OLLAMA_VISION_MODEL
+  const brain = BRAIN_CONFIG.multimodal;
+  const OLLAMA_URL = brain.url || process.env.OLLAMA_HOST || "";
+  const VISION_MODEL = brain.model || "llava";
 
   try {
     const base64 = imageBuffer.toString("base64");
 
-    const response = await fetch(`${OLLAMA_URL}/api/generate`, {
+    // Use /api/chat (not deprecated /api/generate) with images array
+    const response = await fetch(`${OLLAMA_URL}/api/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         model: VISION_MODEL,
-        prompt,
-        images: [base64],
-        stream: false
+        messages: [{ role: "user", content: prompt, images: [base64] }],
+        stream: false,
+        options: { temperature: brain.temperature ?? 0.1 },
       })
     });
 
@@ -40313,7 +40316,8 @@ async function analyzeImage(imageBuffer, prompt = "Describe this image in detail
     }
 
     const data = await response.json();
-    return { ok: true, description: data.response, model: VISION_MODEL };
+    const content = data.message?.content || data.response || "";
+    return { ok: true, description: content, model: VISION_MODEL };
   } catch (e) {
     return { ok: false, error: String(e.message || e) };
   }

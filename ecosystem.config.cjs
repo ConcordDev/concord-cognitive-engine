@@ -60,6 +60,7 @@ module.exports = {
         BRAIN_SUBCONSCIOUS_MODEL: 'qwen2.5:14b-instruct-q4_K_M',
         BRAIN_UTILITY_MODEL: 'qwen2.5:7b-instruct-q4_K_M',
         BRAIN_REPAIR_MODEL: 'qwen2.5:7b-instruct-q4_K_M',
+        OLLAMA_VISION_MODEL: 'llava:13b',
         // ALLOWED_ORIGINS and COOKIE_DOMAIN loaded from .env file
       },
       env_development: {
