@@ -489,7 +489,41 @@ export default function SoundscapeEngine({
       else if (action === 'playSpatialSFX' && sfxId && position) playSpatialSFX(sfxId, position);
     };
     window.addEventListener('concordia:soundscape-command', handler);
-    return () => window.removeEventListener('concordia:soundscape-command', handler);
+
+    // Phase 15: dynamic ambient ducking on combat events. The ambient
+    // drone fades to ~30% during sustained combat and back up after a
+    // 3s quiet period. Re-firing extends the duck window — no thrash.
+    let duckExpireTimer: ReturnType<typeof setTimeout> | null = null;
+    const baseGain = 1.0;
+    const duckGain = 0.30;
+    const ramp = 0.25; // seconds
+
+    const fadeDroneTo = (target: number, rampSec: number) => {
+      const ctx = audioCtxRef.current;
+      const drone = droneGainRef.current;
+      if (!ctx || !drone) return;
+      const now = ctx.currentTime;
+      drone.gain.cancelScheduledValues(now);
+      drone.gain.setTargetAtTime(target, now, rampSec / 3); // setTargetAtTime time-constant ≈ 63% in tau
+    };
+
+    const combatHandler = () => {
+      fadeDroneTo(duckGain, ramp);
+      if (duckExpireTimer) clearTimeout(duckExpireTimer);
+      duckExpireTimer = setTimeout(() => {
+        fadeDroneTo(baseGain, ramp * 2);
+        duckExpireTimer = null;
+      }, 3000);
+    };
+    window.addEventListener('concordia:hit-reaction', combatHandler);
+    window.addEventListener('concordia:death-collapse', combatHandler);
+
+    return () => {
+      window.removeEventListener('concordia:soundscape-command', handler);
+      window.removeEventListener('concordia:hit-reaction', combatHandler);
+      window.removeEventListener('concordia:death-collapse', combatHandler);
+      if (duckExpireTimer) clearTimeout(duckExpireTimer);
+    };
   }, [setDistrict, setTimeOfDay, setInterior, setWeather, triggerSFX, playSpatialSFX]);
 
   return (
