@@ -138,6 +138,12 @@ if $IS_RUNPOD || [ "${1:-}" = "--runpod" ]; then
 
   [ $RETRIES -eq 0 ] && log "WARNING: Backend did not become healthy — check: pm2 logs concord-backend"
 
+  # Pin processes to dedicated CPU cores (non-fatal if taskset unavailable)
+  if command -v taskset &>/dev/null; then
+    log "Applying CPU pinning..."
+    bash scripts/pin-processes.sh || log "CPU pinning skipped (non-fatal)"
+  fi
+
   log ""
   log "=== Concord is running ==="
   log "  Backend:  http://localhost:5050"

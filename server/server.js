@@ -12905,8 +12905,8 @@ globalThis._concordMACROS = MACROS;
 globalThis._concordBRAIN = BRAIN;
 globalThis._concordSTATE = STATE;
 globalThis._repairObserve = observe;
-// Stagger: repair loop at T+180s (4th autonomous task, 45s after global tick)
-setTimeout(() => startRepairLoop(), 180_000);
+// Stagger: repair loop at T+180s ±30s jitter (avoids deterministic alignment with other 900s tasks)
+setTimeout(() => startRepairLoop(), 180_000 + Math.floor(Math.random() * 60_000) - 30_000);
 
 // ── Ghost Fleet: Wire 18 Dormant Emergent Modules ─────────────────────────
 // Every module lazy-loaded, macros registered, ticks wired. Silent failure everywhere.
@@ -25581,7 +25581,7 @@ function startHeartbeat() {
   // HTTP requests are zero LLM compute. Only synthesis afterwards needs the subconscious brain.
   // Heartbeat windows: :00-:09 autogen, :10-:19 dream, :20-:29 evolution,
   //   :30-:39 synthesis, :40-:49 birth, :50-:59 exploration
-  const explorationMs = 900_000; // 15 min — exploration is long-haul, no need to rush
+  const explorationMs = 1_200_000; // 20 min — avoids 900s collision cluster (repair+chicken3+initiative)
   let explorationTimer = null;
   // Stagger: exploration starts 45s after heartbeat so brain has time to process
   setTimeout(() => {

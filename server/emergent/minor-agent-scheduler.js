@@ -11,12 +11,13 @@ export class MinorAgentScheduler {
    * @param {Function} [realtimeEmit]
    * @param {number} [tickIntervalMs]
    */
-  constructor(db, realtimeEmit, tickIntervalMs = 30000) {
+  constructor(db, realtimeEmit, tickIntervalMs = 60000) {
     this.db = db;
     this.realtimeEmit = realtimeEmit;
     this.tickIntervalMs = tickIntervalMs;
     this.agents = new Map(); // emergentId → EmergentMinorAgent
     this._timer = null;
+    this._maxConcurrent = 3; // never more than 3 agents ticking simultaneously
   }
 
   /**
@@ -46,17 +47,19 @@ export class MinorAgentScheduler {
     this.agents.delete(emergentId);
   }
 
-  /** Tick all agents concurrently; isolate individual failures. */
+  /** Tick all agents in batches to avoid GPU/CPU pile-up. */
   async tickAll() {
-    const ticks = [];
-    for (const [id, agent] of this.agents) {
-      ticks.push(
-        agent.tick().catch(err =>
-          console.error(`[scheduler] agent ${id} tick threw:`, err?.message)
+    const entries = [...this.agents.entries()];
+    for (let i = 0; i < entries.length; i += this._maxConcurrent) {
+      const batch = entries.slice(i, i + this._maxConcurrent);
+      await Promise.allSettled(
+        batch.map(([id, agent]) =>
+          agent.tick().catch(err =>
+            console.error(`[scheduler] agent ${id} tick threw:`, err?.message)
+          )
         )
       );
     }
-    await Promise.allSettled(ticks);
   }
 
   /** Start the periodic tick loop. Timer is unreferenced to allow process exit in tests. */
