@@ -17,6 +17,12 @@ type CharCtrl    = ReturnType<WorldType['createCharacterController']>;
 type RigidBody   = ReturnType<WorldType['createRigidBody']>;
 type Collider    = ReturnType<WorldType['createCollider']>;
 
+type ThreeType = typeof import('three');
+type Object3DLike = {
+  userData?: Record<string, unknown>;
+  traverse?: (cb: (child: Object3DLike) => void) => void;
+};
+
 export interface CharacterMoveResult {
   x: number;
   y: number;
@@ -25,10 +31,10 @@ export interface CharacterMoveResult {
 
 class PhysicsWorld {
   private RAPIER: RapierType | null         = null;
+  private THREE:  ThreeType | null          = null;
   private world:  WorldType | null          = null;
   private controllers: Map<string, CharCtrl>  = new Map();
   private bodies:      Map<string, RigidBody>  = new Map();
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private colliders:   Map<string, Collider>   = new Map();
 
   /** Load Rapier WASM and create the physics world. Call once at scene startup. */
@@ -38,6 +44,8 @@ class PhysicsWorld {
     await RAPIER.init();
     this.RAPIER = RAPIER;
     this.world  = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
+    // Pre-load THREE so building registration can compute bounding boxes synchronously.
+    this.THREE = await import('three');
   }
 
   /** Advance physics simulation by dt seconds. Call every game-loop frame. */
@@ -79,6 +87,7 @@ class PhysicsWorld {
   createBuildingCollider(
     position: { x: number; y: number; z: number },
     halfExtents: { x: number; y: number; z: number },
+    entityId?: string,
   ): string {
     if (!this.RAPIER || !this.world) return '';
 
@@ -88,10 +97,76 @@ class PhysicsWorld {
     const collDesc = RAPIER.ColliderDesc.cuboid(halfExtents.x, halfExtents.y, halfExtents.z);
     const coll     = this.world.createCollider(collDesc, body);
 
-    const key = `building_${Date.now()}_${Math.random()}`;
+    const key = entityId ? `building:${entityId}` : `building_${Date.now()}_${Math.random()}`;
     this.bodies.set(key, body);
     this.colliders.set(key, coll);
     return key;
+  }
+
+  /**
+   * Register a building collider derived from a Three.js Object3D's bounding box.
+   * Idempotent: if `entityId` is already registered, returns existing key.
+   * Stamps `userData.physicsKey` on the object so removeBuilding can find it later.
+   */
+  registerBuildingFromObject(
+    obj: Object3DLike,
+    entityId: string,
+  ): string | null {
+    if (!this.RAPIER || !this.world || !this.THREE) return null;
+    const userData = obj.userData ?? (obj as Record<string, unknown>);
+    const existing = (userData as Record<string, unknown>).physicsKey as string | undefined;
+    if (existing && this.colliders.has(existing)) return existing;
+
+    const box = new this.THREE.Box3();
+    box.setFromObject(obj as unknown as InstanceType<ThreeType['Object3D']>);
+    if (box.isEmpty()) return null;
+    const center = new this.THREE.Vector3();
+    const size   = new this.THREE.Vector3();
+    box.getCenter(center);
+    box.getSize(size);
+
+    // Tiny / degenerate bounding boxes are likely placeholders or empties; skip.
+    if (size.x < 0.05 || size.y < 0.05 || size.z < 0.05) return null;
+
+    const key = this.createBuildingCollider(
+      { x: center.x, y: center.y, z: center.z },
+      { x: size.x / 2, y: size.y / 2, z: size.z / 2 },
+      entityId,
+    );
+    if (key) {
+      (userData as Record<string, unknown>).physicsKey = key;
+      (userData as Record<string, unknown>).isBuilding = true;
+    }
+    return key || null;
+  }
+
+  /** Remove a previously-registered building collider by its key. */
+  removeBuildingCollider(key: string): void {
+    if (!this.world || !key) return;
+    const body = this.bodies.get(key);
+    if (body) this.world.removeRigidBody(body);
+    this.bodies.delete(key);
+    this.colliders.delete(key);
+  }
+
+  /**
+   * Walk a Three.js scene (or subtree) and register colliders for any
+   * `userData.isBuilding === true` object that has not yet been registered.
+   * Idempotent — call freely after scene-ready or async building loads.
+   * Returns the number of colliders newly registered.
+   */
+  syncFromScene(root: Object3DLike): number {
+    if (!this.RAPIER || !this.world || !this.THREE || !root.traverse) return 0;
+    let registered = 0;
+    root.traverse((child) => {
+      const ud = child.userData ?? {};
+      if (!ud.isBuilding) return;
+      if (ud.physicsKey && this.colliders.has(ud.physicsKey as string)) return;
+      const entityId = (ud.buildingId as string) ?? `auto_${registered}_${Date.now()}`;
+      const key = this.registerBuildingFromObject(child, entityId);
+      if (key) registered += 1;
+    });
+    return registered;
   }
 
   /**
@@ -171,6 +246,7 @@ class PhysicsWorld {
     this.world?.free();
     this.world  = null;
     this.RAPIER = null;
+    this.THREE  = null;
     this.controllers.clear();
     this.bodies.clear();
     this.colliders.clear();

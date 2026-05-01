@@ -189,7 +189,13 @@ export default function ConcordiaScene({
   height = '100%',
 }: ConcordiaSceneProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const physicsRef = useRef<{ step: (dt: number) => void; destroy: () => void } | null>(null);
+  const physicsRef = useRef<{
+    step: (dt: number) => void;
+    destroy: () => void;
+    registerBuildingFromObject?: (obj: unknown, id: string) => string | null;
+    removeBuildingCollider?: (key: string) => void;
+    syncFromScene?: (root: unknown) => number;
+  } | null>(null);
   const rendererRef = useRef<unknown>(null);
   const sceneRef = useRef<unknown>(null);
   const cameraRef = useRef<unknown>(null);
@@ -505,6 +511,16 @@ export default function ConcordiaScene({
       });
       weatherSysRef.current = weatherSys;
 
+      // Retroactively register colliders for any building meshes that the
+      // scene loader placed before our addBuilding API was wired (e.g.
+      // pre-existing buildings loaded async from DB after physics init).
+      // syncFromScene is idempotent — buildings already registered are skipped.
+      try {
+        physicsRef.current?.syncFromScene?.(scene);
+      } catch {
+        // never block scene-ready on physics sync errors
+      }
+
       // Notify QuestMarker3D and other overlays that scene + camera are ready
       window.dispatchEvent(
         new CustomEvent('concordia:scene-ready', {
@@ -739,10 +755,20 @@ export default function ConcordiaScene({
         userData?: Record<string, unknown>;
       };
       group.position.set(position.x, position.y, position.z);
-      const id = (group.userData?.buildingId as string) ?? `building_${Date.now()}`;
+      if (!group.userData) (group as { userData: Record<string, unknown> }).userData = {};
+      const userData = group.userData as Record<string, unknown>;
+      const id = (userData.buildingId as string) ?? `building_${Date.now()}`;
+      userData.buildingId = id;
+      userData.isBuilding = true;
       buildingMapRef.current.set(id, buildingGroup);
       const layer = layersRef.current['buildings'] as { add: (child: unknown) => void } | undefined;
       layer?.add(buildingGroup);
+
+      // Register a Rapier collider so the player and NPCs collide with this building.
+      const physics = physicsRef.current as
+        | { registerBuildingFromObject?: (obj: unknown, id: string) => string | null }
+        | null;
+      physics?.registerBuildingFromObject?.(group, id);
     },
     []
   );
@@ -751,10 +777,18 @@ export default function ConcordiaScene({
     const group = buildingMapRef.current.get(id) as
       | {
           parent?: { remove: (child: unknown) => void };
+          userData?: Record<string, unknown>;
         }
       | undefined;
     if (group?.parent) {
       group.parent.remove(group);
+    }
+    const physicsKey = group?.userData?.physicsKey as string | undefined;
+    if (physicsKey) {
+      const physics = physicsRef.current as
+        | { removeBuildingCollider?: (key: string) => void }
+        | null;
+      physics?.removeBuildingCollider?.(physicsKey);
     }
     buildingMapRef.current.delete(id);
   }, []);
