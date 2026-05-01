@@ -455,7 +455,8 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '@/lib/api/client';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { emitHitNumber, emitScreenShake } from '@/components/world/ImpactFeedback';
+import { emitHitNumber, emitScreenShake, emitHitStop } from '@/components/world/ImpactFeedback';
+import type { LimbState, LimbArmorState } from '@/components/concordia/hud/CombatHUD';
 
 // ── City Streaming Types ───────────────────────────────────────
 
@@ -1192,7 +1193,20 @@ export default function WorldLensPage() {
   const combatLogIdRef = useRef(0);
   const dmgNumIdRef = useRef(0);
 
-  // AAA systems: deformation store, combat music, delta compression, weather modifiers
+  // ── Combat feel: combo counter, stagger, limb damage ─────────────────────
+  const [comboCount, setComboCount] = useState(0);
+  const [staggered, setStaggered] = useState(false);
+  const [limbState, setLimbState] = useState<LimbState>({
+    head: 100, torso: 100, left_arm: 100, right_arm: 100, left_leg: 100, right_leg: 100,
+  });
+  const [limbArmorState, setLimbArmorState] = useState<LimbArmorState>({
+    head: 100, torso: 100, left_arm: 100, right_arm: 100, left_leg: 100, right_leg: 100,
+  });
+  const comboTargetRef = useRef<string | null>(null);
+  const comboTimerRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const staggerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ── AAA systems: deformation store, combat music, delta compression, weather modifiers
   const deformStoreRef = useRef(new DeformationStore());
   const deformLookupRef = useRef<
     ((id: string) => { visible: boolean; userData: Record<string, unknown> } | undefined) | null
@@ -1836,19 +1850,52 @@ export default function WorldLensPage() {
       );
       combatMusicRef.current?.onCombatEvent(1.0);
 
-      // Physics impact feedback — floating damage numbers + screen shake
+      // Physics impact feedback — hit-stop + floating numbers + screen shake + audio
       if (typeof data.damage === 'number' && data.damage > 0) {
         const element =
           (data.element as 'fire' | 'ice' | 'lightning' | 'poison' | 'physical') ?? 'physical';
         emitHitNumber(data.damage, element, !!data.isCrit);
         emitScreenShake(data.isCrit ? 5 : Math.min(4, Math.ceil(data.damage / 20)));
+        emitHitStop(data.isCrit ? 140 : 70);
+        window.dispatchEvent(new CustomEvent('concordia:game-juice', {
+          detail: { trigger: data.isCrit ? 'combat-crit' : 'combat-hit' },
+        }));
+        // Combo counter — consecutive hits on same target within 4 seconds
+        const tid = combatStateRef.current.target?.id ?? null;
+        if (tid && tid === comboTargetRef.current) {
+          setComboCount(c => c + 1);
+        } else {
+          setComboCount(1);
+          comboTargetRef.current = tid;
+        }
+        if (comboTimerRef.current) clearTimeout(comboTimerRef.current);
+        comboTimerRef.current = setTimeout(() => {
+          setComboCount(0);
+          comboTargetRef.current = null;
+        }, 4000);
       }
 
       if (data.targetKilled) {
         pushCombatLog(`${targetName} defeated!`, 'death');
         emitScreenShake(6);
+        emitHitStop(200);
+        window.dispatchEvent(new CustomEvent('concordia:game-juice', {
+          detail: { trigger: 'combat-kill' },
+        }));
+        setComboCount(0);
+        comboTargetRef.current = null;
         // Clear the killed target; the server will despawn it.
         setCombatState((prev) => ({ ...prev, target: null }));
+      }
+
+      // Apply limb damage if server sent it
+      if ((data as Record<string, unknown>).limbDamage) {
+        const ld = (data as Record<string, unknown>).limbDamage as Partial<LimbState>;
+        setLimbState(prev => ({ ...prev, ...ld }));
+      }
+      if ((data as Record<string, unknown>).limbArmor) {
+        const la = (data as Record<string, unknown>).limbArmor as Partial<LimbArmorState>;
+        setLimbArmorState(prev => ({ ...prev, ...la }));
       }
     };
 
@@ -1874,6 +1921,25 @@ export default function WorldLensPage() {
       }));
       pushCombatLog(`Took ${data.damage} damage${data.isCrit ? ' (crit)' : ''}.`, 'damage-taken');
       emitScreenShake(data.isCrit ? 7 : Math.min(5, Math.ceil(data.damage / 15)));
+      emitHitStop(data.isCrit ? 120 : 60);
+      window.dispatchEvent(new CustomEvent('concordia:game-juice', {
+        detail: { trigger: 'combat-hit' },
+      }));
+      // Heavy hit (> 25 dmg) or crit triggers stagger — slows movement briefly
+      if (data.isCrit || data.damage > 25) {
+        setStaggered(true);
+        if (staggerTimerRef.current) clearTimeout(staggerTimerRef.current);
+        staggerTimerRef.current = setTimeout(() => setStaggered(false), data.isCrit ? 1200 : 700);
+      }
+      // Apply incoming limb damage + armor if server sent it
+      if ((data as Record<string, unknown>).limbDamage) {
+        const ld = (data as Record<string, unknown>).limbDamage as Partial<LimbState>;
+        setLimbState(prev => ({ ...prev, ...ld }));
+      }
+      if ((data as Record<string, unknown>).limbArmor) {
+        const la = (data as Record<string, unknown>).limbArmor as Partial<LimbArmorState>;
+        setLimbArmorState(prev => ({ ...prev, ...la }));
+      }
       // Clear the flash after 300ms so pulsing red overlay fades
       setTimeout(() => {
         setCombatState((prev) => ({ ...prev, damageFlash: false }));
@@ -2693,9 +2759,25 @@ export default function WorldLensPage() {
           {inputMode === 'combat' && (
             <CombatHUD
               state={combatCtx.state}
+              comboCount={comboCount}
+              staggered={staggered}
+              limbState={limbState}
+              limbArmorState={limbArmorState}
               onActivateSkill={combatCtx.activateSkill}
-              onDodge={combatCtx.dodge}
-              onBlock={combatCtx.setBlock}
+              onDodge={() => {
+                combatCtx.dodge();
+                window.dispatchEvent(new CustomEvent('concordia:game-juice', {
+                  detail: { trigger: 'combat-dodge' },
+                }));
+              }}
+              onBlock={(held) => {
+                combatCtx.setBlock(held);
+                if (held) {
+                  window.dispatchEvent(new CustomEvent('concordia:game-juice', {
+                    detail: { trigger: 'combat-block' },
+                  }));
+                }
+              }}
               onToggleVATS={combatCtx.toggleVATS}
               onQueueShot={combatCtx.queueShot}
             />

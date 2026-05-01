@@ -14,7 +14,14 @@ type JuiceTrigger =
   | 'milestone'
   | 'disaster'
   | 'construction-complete'
-  | 'competition-win';
+  | 'competition-win'
+  // combat
+  | 'combat-hit'
+  | 'combat-crit'
+  | 'combat-kill'
+  | 'combat-dodge'
+  | 'combat-block'
+  | 'quest-complete';
 
 interface JuiceFeedback {
   sound: string;
@@ -60,6 +67,13 @@ const FEEDBACK_MAP: Record<JuiceTrigger, JuiceFeedback> = {
   disaster: { sound: 'rumble', visual: 'shake', camera: 'shake', duration: 1500 },
   'construction-complete': { sound: 'build-finish', visual: 'particle-burst', camera: 'settle', duration: 600 },
   'competition-win': { sound: 'victory-sting', visual: 'cinematic', camera: 'cinematic-pan', duration: 2500 },
+  // combat feel
+  'combat-hit':   { sound: 'hit-light',    visual: 'pulse-red',   camera: 'shake', duration: 180 },
+  'combat-crit':  { sound: 'hit-crit',     visual: 'shake',       camera: 'shake', duration: 300 },
+  'combat-kill':  { sound: 'kill-blow',    visual: 'cinematic',   camera: 'shake', duration: 700 },
+  'combat-dodge': { sound: 'dodge-whoosh', visual: 'pulse-green', camera: 'none',  duration: 180 },
+  'combat-block': { sound: 'block-clang',  visual: 'glow',        camera: 'none',  duration: 220 },
+  'quest-complete': { sound: 'gather-success', visual: 'pulse-green', camera: 'none', duration: 600 },
 };
 
 /* ── Component ─────────────────────────────────────────────────── */
@@ -81,6 +95,12 @@ const TRIGGER_SFX: Record<JuiceTrigger, string> = {
   'disaster':              'rumble',
   'construction-complete': 'build-finish',
   'competition-win':       'victory-sting',
+  'combat-hit':            'hit-light',
+  'combat-crit':           'hit-crit',
+  'combat-kill':           'kill-blow',
+  'combat-dodge':          'dodge-whoosh',
+  'combat-block':          'block-clang',
+  'quest-complete':        'gather-success',
 };
 
 export default function GameJuice({ children, enabled = true, intensity: initialIntensity = 0.8 }: GameJuiceProps) {

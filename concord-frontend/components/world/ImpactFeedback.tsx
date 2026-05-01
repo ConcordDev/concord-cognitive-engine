@@ -45,6 +45,7 @@ let _emitHit: ((value: number, element: HitNumber['element'], critical?: boolean
   null;
 let _emitShake: ((intensity: number) => void) | null = null;
 let _emitHeal: ((value: number) => void) | null = null;
+let _emitStop: ((durationMs: number) => void) | null = null;
 
 export function emitHitNumber(
   value: number,
@@ -58,6 +59,14 @@ export function emitScreenShake(intensity: number) {
   _emitShake?.(intensity);
 }
 
+/**
+ * Brief brightness + contrast flash that makes hits feel physically weighty.
+ * durationMs: 60–80ms for normal hits, 120–160ms for crits/kills.
+ */
+export function emitHitStop(durationMs = 80): void {
+  _emitStop?.(durationMs);
+}
+
 export function emitHealNumber(value: number) {
   _emitHit?.(value, 'heal', false);
 }
@@ -67,8 +76,10 @@ export function emitHealNumber(value: number) {
 export function ImpactFeedback() {
   const [hitNumbers, setHitNumbers] = useState<HitNumber[]>([]);
   const [shake, setShake] = useState<ShakeState>({ active: false, intensity: 0 });
+  const [hitStopActive, setHitStopActive] = useState(false);
   const counterRef = useRef(0);
   const shakeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hitStopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const addHit = useCallback((value: number, element: HitNumber['element'], critical = false) => {
     const id = ++counterRef.current;
@@ -89,16 +100,24 @@ export function ImpactFeedback() {
     shakeTimerRef.current = setTimeout(() => setShake({ active: false, intensity: 0 }), dur);
   }, []);
 
+  const triggerHitStop = useCallback((durationMs: number) => {
+    setHitStopActive(true);
+    if (hitStopTimerRef.current) clearTimeout(hitStopTimerRef.current);
+    hitStopTimerRef.current = setTimeout(() => setHitStopActive(false), Math.max(40, durationMs));
+  }, []);
+
   // Register global emitters
   useEffect(() => {
     _emitHit = addHit;
     _emitShake = triggerShake;
+    _emitStop = triggerHitStop;
     return () => {
       _emitHit = null;
       _emitShake = null;
       _emitHeal = null;
+      _emitStop = null;
     };
-  }, [addHit, triggerShake]);
+  }, [addHit, triggerShake, triggerHitStop]);
 
   // CSS shake style
   const shakeStyle = shake.active
@@ -110,6 +129,17 @@ export function ImpactFeedback() {
 
   return (
     <>
+      {/* Hit-stop: brief brightness + saturation spike on impact — creates physical weight */}
+      {hitStopActive && (
+        <div
+          className="fixed inset-0 z-[7] pointer-events-none"
+          style={{
+            backdropFilter: 'brightness(1.45) saturate(1.3) contrast(1.08)',
+            background: 'radial-gradient(circle at 50% 50%, rgba(255,255,255,0.06) 0%, transparent 70%)',
+          }}
+        />
+      )}
+
       {/* Screen shake wrapper — wraps the world view content via this overlay */}
       {shake.active && (
         <div className="fixed inset-0 z-[5] pointer-events-none" style={shakeStyle} />

@@ -784,8 +784,10 @@ function getPlayerCountInCity(cityId) {
  * or NPCs — they're resolved by id against `_userPositions` and
  * `_npcState` respectively.
  *
- * Damage model: baseDamage - (armor / 2), clamped to at least 1.
+ * Damage model: baseDamage ±20% variance, mitigated by zone armor, clamped to at least 1.
  * Critical hits (roll > 0.85) deal 2x damage.
+ * Hit zone is randomly selected weighted toward torso; zone armor degrades each hit.
+ * Armor thresholds: 67% = damaged (−15% mitigation), 33% = cracked (−40%), 0% = destroyed (no mitigation).
  * Range check: target must be within `range` metres.
  * Stamina cost: each attack costs 8 stamina; fails if attacker has < 8.
  *
@@ -797,11 +799,60 @@ function getPlayerCountInCity(cityId) {
  * @param {number} [opts.armorPierce=0] - flat armor reduction
  * @returns {{
  *   ok: boolean, error?: string,
- *   damage?: number, isCrit?: boolean,
+ *   damage?: number, isCrit?: boolean, hitZone?: string,
  *   targetHealth?: number, targetKilled?: boolean,
- *   attackerStamina?: number
+ *   attackerStamina?: number,
+ *   limbDamage?: object, limbArmor?: object
  * }}
  */
+
+// Hit zone weights: torso 35%, arms 15% each, legs 15% each, head 5%
+const HIT_ZONE_TABLE = [
+  { zone: 'torso',     weight: 35 },
+  { zone: 'left_arm',  weight: 15 },
+  { zone: 'right_arm', weight: 15 },
+  { zone: 'left_leg',  weight: 15 },
+  { zone: 'right_leg', weight: 15 },
+  { zone: 'head',      weight: 5  },
+];
+const HIT_ZONE_TOTAL = HIT_ZONE_TABLE.reduce((s, z) => s + z.weight, 0);
+
+function _pickHitZone() {
+  let roll = Math.random() * HIT_ZONE_TOTAL;
+  for (const entry of HIT_ZONE_TABLE) {
+    roll -= entry.weight;
+    if (roll <= 0) return entry.zone;
+  }
+  return 'torso';
+}
+
+// Returns mitigation multiplier (0–1) based on armor integrity for a zone
+function _armorMitigation(armorPct) {
+  if (armorPct <= 0)  return 0;    // destroyed — no mitigation
+  if (armorPct <= 33) return 0.20; // cracked — 20% mitigation remaining
+  if (armorPct <= 67) return 0.45; // damaged — 45% remaining
+  return 0.70;                     // intact — full 70% mitigation
+}
+
+// Debuff names by zone and threshold
+const ZONE_DEBUFFS = {
+  head:       { 67: 'perception_impaired', 33: 'vision_blurred',   0: 'concussed'       },
+  torso:      { 67: 'armor_damaged',       33: 'ribs_cracked',     0: 'chest_exposed'   },
+  left_arm:   { 67: 'arm_weakened',        33: 'arm_damaged',      0: 'arm_broken'      },
+  right_arm:  { 67: 'arm_weakened',        33: 'arm_damaged',      0: 'arm_broken'      },
+  left_leg:   { 67: 'leg_slowed',          33: 'leg_damaged',      0: 'leg_broken'      },
+  right_leg:  { 67: 'leg_slowed',          33: 'leg_damaged',      0: 'leg_broken'      },
+};
+
+function _getZoneDebuff(zone, armorPct) {
+  const thresholds = ZONE_DEBUFFS[zone];
+  if (!thresholds) return null;
+  if (armorPct <= 0)  return thresholds[0];
+  if (armorPct <= 33) return thresholds[33];
+  if (armorPct <= 67) return thresholds[67];
+  return null;
+}
+
 export function applyAttack({ attackerId, targetId, baseDamage = 10, range = 3, armorPierce = 0 }) {
   if (!attackerId || !targetId) return { ok: false, error: "missing_ids" };
   if (attackerId === targetId) return { ok: false, error: "cannot_attack_self" };
@@ -832,15 +883,54 @@ export function applyAttack({ attackerId, targetId, baseDamage = 10, range = 3, 
     return { ok: false, error: "insufficient_stamina", stamina: attacker.stamina };
   }
 
-  // Damage calculation
+  // Damage variance ±20%
+  const variance = 0.8 + Math.random() * 0.4;
+  const variedBase = Math.round(baseDamage * variance);
+
+  // Hit zone selection
+  const hitZone = _pickHitZone();
+
+  // Per-zone armor — initialize if first hit
+  if (!target.limbArmor) {
+    target.limbArmor = { head: 100, torso: 100, left_arm: 100, right_arm: 100, left_leg: 100, right_leg: 100 };
+  }
+  const zoneArmorBefore = target.limbArmor[hitZone] ?? 100;
+
+  // Armor pierce reduces zone armor directly (per-hit, clamped 0–100)
+  const effectivePierce = Math.min(armorPierce, zoneArmorBefore);
+  const armorForCalc = Math.max(0, zoneArmorBefore - effectivePierce);
+
+  // Mitigation: zone armor gives up to 70% damage reduction at full integrity
+  const mitFactor = _armorMitigation(armorForCalc);
+  const mitigated = Math.max(1, Math.floor(variedBase * (1 - mitFactor)));
+
   const isCrit = Math.random() > 0.85;
-  const targetArmor = Math.max(0, (target.armor || 0) - armorPierce);
-  const mitigated = Math.max(1, Math.floor(baseDamage - targetArmor / 2));
   const damage = isCrit ? mitigated * 2 : mitigated;
 
-  // Apply to target
+  // Degrade zone armor — each hit reduces it; heavier hits + crits degrade more
+  const armorDeg = Math.min(zoneArmorBefore, Math.ceil((damage / 3) + (isCrit ? 5 : 0)));
+  target.limbArmor[hitZone] = Math.max(0, zoneArmorBefore - armorDeg);
+  const zoneArmorAfter = target.limbArmor[hitZone];
+
+  // Track zone-specific HP (tissue damage) — separate from global health
+  if (!target.limbHealth) {
+    target.limbHealth = { head: 100, torso: 100, left_arm: 100, right_arm: 100, left_leg: 100, right_leg: 100 };
+  }
+  // Zone takes proportional tissue damage (head/limbs are more fragile than torso)
+  const zoneFragility = hitZone === 'head' ? 1.5 : (hitZone === 'torso' ? 0.6 : 1.0);
+  const zoneDmg = Math.min(target.limbHealth[hitZone], Math.ceil(damage * zoneFragility * 0.3));
+  target.limbHealth[hitZone] = Math.max(0, target.limbHealth[hitZone] - zoneDmg);
+
+  // Apply to global health
   target.health = Math.max(0, (target.health || 100) - damage);
   const targetKilled = target.health === 0;
+
+  // Zone debuffs — check new threshold crossing
+  const newDebuff = _getZoneDebuff(hitZone, zoneArmorAfter);
+  if (newDebuff) {
+    if (!target.activeDebuffs) target.activeDebuffs = new Set();
+    target.activeDebuffs.add(newDebuff);
+  }
 
   // Attacker spends stamina + gets marked dirty for save
   attacker.stamina = Math.max(0, (attacker.stamina || 0) - STAMINA_COST);
@@ -877,10 +967,14 @@ export function applyAttack({ attackerId, targetId, baseDamage = 10, range = 3, 
     ok: true,
     damage,
     isCrit,
+    hitZone,
     targetHealth: target.health,
     targetMaxHealth: target.maxHealth || 100,
     targetKilled,
     attackerStamina: attacker.stamina,
+    limbDamage: { ...target.limbHealth },
+    limbArmor:  { ...target.limbArmor  },
+    newDebuff,
   };
 }
 

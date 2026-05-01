@@ -91,6 +91,13 @@ const SFX_MAP: Record<string, SFXDef> = {
   // level up / xp
   'xp-tick':           { freq: 1320, type: 'sine',     duration: 0.15, attack: 0.001, decay: 0.14 },
   'level-up':          { freq: 523,  type: 'triangle', duration: 1.2,  attack: 0.01, decay: 0.9,  semitones: [0, 4, 7, 12, 19] },
+  // combat impacts — layered tones for percussive weight
+  'hit-light':         { freq: 140,  type: 'triangle', duration: 0.18, attack: 0.001, decay: 0.16 },
+  'hit-heavy':         { freq: 70,   type: 'sawtooth', duration: 0.28, attack: 0.001, decay: 0.26, semitones: [0, -5] },
+  'hit-crit':          { freq: 260,  type: 'square',   duration: 0.32, attack: 0.001, decay: 0.28, semitones: [0, -7, 12] },
+  'dodge-whoosh':      { freq: 700,  type: 'sine',     duration: 0.14, attack: 0.001, decay: 0.12 },
+  'block-clang':       { freq: 110,  type: 'square',   duration: 0.22, attack: 0.001, decay: 0.20, semitones: [0, 7] },
+  'kill-blow':         { freq: 55,   type: 'sawtooth', duration: 0.55, attack: 0.001, decay: 0.50, semitones: [0, -12] },
 };
 
 const DISTRICT_ALIAS: Record<string, DistrictName> = {
