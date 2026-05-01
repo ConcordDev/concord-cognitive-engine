@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { resumeAudioContext } from '../../lib/audio/unlock';
 
 /* ── Types ─────────────────────────────────────────────────────── */
 
@@ -180,13 +181,18 @@ export function useSoundscape(): SoundscapeAPI {
 
 /* ── Web Audio helpers ──────────────────────────────────────────── */
 
-function getOrCreateAudioContext(ref: React.MutableRefObject<AudioContext | null>): AudioContext | null {
+function getOrCreateAudioContext(
+  ref: React.MutableRefObject<AudioContext | null>,
+  onCreate?: (ctx: AudioContext) => void,
+): AudioContext | null {
   if (typeof window === 'undefined') return null;
-  if (!ref.current || ref.current.state === 'closed') {
+  const wasNew = !ref.current || ref.current.state === 'closed';
+  if (wasNew) {
     try { ref.current = new AudioContext(); } catch { return null; }
+    if (ref.current && onCreate) onCreate(ref.current);
   }
-  if (ref.current.state === 'suspended') {
-    ref.current.resume().catch(() => {});
+  if (ref.current && ref.current.state === 'suspended') {
+    void resumeAudioContext(ref.current);
   }
   return ref.current;
 }
@@ -260,9 +266,36 @@ export default function SoundscapeEngine({
   const noiseGainRef    = useRef<GainNode | null>(null);
   const musicElRef      = useRef<HTMLAudioElement | null>(null);
 
+  // SFX queued before AudioContext is unlocked. Flushed on statechange.
+  // 2s TTL, 32-entry cap to prevent unbounded growth.
+  const pendingSfxRef = useRef<Array<{
+    sfxId: string;
+    queuedAt: number;
+    spatial?: { x: number; y: number; z: number };
+  }>>([]);
+
+  const flushPendingSfx = useCallback(() => {
+    const ctx = audioCtxRef.current;
+    if (!ctx || ctx.state !== 'running' || !masterGainRef.current) return;
+    const now = Date.now();
+    const queue = pendingSfxRef.current;
+    pendingSfxRef.current = [];
+    for (const entry of queue) {
+      if (now - entry.queuedAt > 2000) continue;
+      const def = SFX_MAP[entry.sfxId];
+      if (!def) continue;
+      if (entry.spatial) playToneSpatial(ctx, def, masterGainRef.current, entry.spatial);
+      else playToneSequence(ctx, def, masterGainRef.current);
+    }
+  }, []);
+
   // Lazy-init audio on first user gesture
   const initAudio = useCallback(() => {
-    const ctx = getOrCreateAudioContext(audioCtxRef);
+    const ctx = getOrCreateAudioContext(audioCtxRef, (newCtx) => {
+      newCtx.addEventListener('statechange', () => {
+        if (newCtx.state === 'running') flushPendingSfx();
+      });
+    });
     if (!ctx) return null;
     if (!masterGainRef.current) {
       masterGainRef.current = ctx.createGain();
@@ -270,7 +303,7 @@ export default function SoundscapeEngine({
       masterGainRef.current.connect(ctx.destination);
     }
     return ctx;
-  }, []);
+  }, [flushPendingSfx]);
 
   // Build district ambient drone whenever district changes
   useEffect(() => {
@@ -394,21 +427,32 @@ export default function SoundscapeEngine({
     setState(prev => ({ ...prev, weather, weatherIntensity: intensity ?? 0.5 }));
   }, []);
 
+  const enqueueSfx = useCallback((sfxId: string, spatial?: { x: number; y: number; z: number }) => {
+    pendingSfxRef.current.push({ sfxId, queuedAt: Date.now(), spatial });
+    if (pendingSfxRef.current.length > 32) pendingSfxRef.current.shift();
+  }, []);
+
   const triggerSFX = useCallback((sfxId: string) => {
     const def = SFX_MAP[sfxId];
     if (!def) return;
     const ctx = initAudio();
-    if (!ctx || !masterGainRef.current) return;
+    if (!ctx || !masterGainRef.current || ctx.state !== 'running') {
+      enqueueSfx(sfxId);
+      return;
+    }
     playToneSequence(ctx, def, masterGainRef.current);
-  }, [initAudio]);
+  }, [initAudio, enqueueSfx]);
 
   const playSpatialSFX = useCallback((sfxId: string, worldPos: { x: number; y: number; z: number }) => {
     const def = SFX_MAP[sfxId];
     if (!def) return;
     const ctx = initAudio();
-    if (!ctx || !masterGainRef.current) return;
+    if (!ctx || !masterGainRef.current || ctx.state !== 'running') {
+      enqueueSfx(sfxId, worldPos);
+      return;
+    }
     playToneSpatial(ctx, def, masterGainRef.current, worldPos);
-  }, [initAudio]);
+  }, [initAudio, enqueueSfx]);
 
   const playMusicTrack = useCallback((url: string) => {
     musicElRef.current?.pause();
