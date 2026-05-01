@@ -302,19 +302,47 @@ export function useOnboarding() {
   const [isOpen, setIsOpen] = useState(false);
   const [hasCompleted, setHasCompleted] = useState(false);
 
+  // Phase 17 polish-to-ten: server-confirmed wizard completion.
+  // localStorage is checked first for snappy hydration, then the server
+  // is consulted; if the server says completed but localStorage says not,
+  // we sync localStorage and skip the wizard. This handles login on a
+  // new device or after a cache wipe.
   useEffect(() => {
-    const completed = localStorage.getItem('concord-onboarding-completed');
-    if (!completed) {
-      setIsOpen(true);
-    } else {
+    let cancelled = false;
+    const localFlag = localStorage.getItem('concord-onboarding-completed');
+    if (localFlag) {
       setHasCompleted(true);
+    } else {
+      // Optimistically open while we wait on the server.
+      setIsOpen(true);
     }
+
+    (async () => {
+      try {
+        const res = await fetch('/api/onboarding/wizard-status', { credentials: 'same-origin' });
+        if (!res.ok) return;
+        const json = await res.json();
+        if (cancelled) return;
+        if (json?.completed) {
+          localStorage.setItem('concord-onboarding-completed', 'true');
+          setHasCompleted(true);
+          setIsOpen(false);
+        }
+      } catch { /* offline / unauthenticated — fall back to local flag */ }
+    })();
+
+    return () => { cancelled = true; };
   }, []);
 
   const complete = () => {
     localStorage.setItem('concord-onboarding-completed', 'true');
     setHasCompleted(true);
     setIsOpen(false);
+    // Best-effort server sync — survives logout/login/cache-clear.
+    fetch('/api/onboarding/wizard-complete', {
+      method: 'POST',
+      credentials: 'same-origin',
+    }).catch(() => { /* server sync is best-effort */ });
   };
 
   const reset = () => {

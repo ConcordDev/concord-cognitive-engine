@@ -39950,6 +39950,36 @@ app.post("/api/onboarding/complete", (req, res) => {
   }
 });
 
+// Phase 17 polish-to-ten: server-confirmed first-visit completion.
+// localStorage flags don't survive logout/login or new devices, so
+// the OnboardingWizard now also reads + writes this column.
+app.get("/api/onboarding/wizard-status", requireAuth(), (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
+    const row = db.prepare(`SELECT first_visit_completed_at FROM users WHERE id = ?`).get(userId);
+    res.json({
+      ok: true,
+      completed: !!row?.first_visit_completed_at,
+      completedAt: row?.first_visit_completed_at ?? null,
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.post("/api/onboarding/wizard-complete", requireAuth(), (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
+    const now = Math.floor(Date.now() / 1000);
+    db.prepare(`UPDATE users SET first_visit_completed_at = ? WHERE id = ? AND first_visit_completed_at IS NULL`).run(now, userId);
+    res.json({ ok: true, completedAt: now });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
 // ---- Wave 6: Developer Endpoints ----
 // Swagger UI HTML
 const swaggerUIHtml = `<!DOCTYPE html>
