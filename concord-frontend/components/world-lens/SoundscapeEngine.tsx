@@ -518,10 +518,33 @@ export default function SoundscapeEngine({
     window.addEventListener('concordia:hit-reaction', combatHandler);
     window.addEventListener('concordia:death-collapse', combatHandler);
 
+    // Phase 16 → Phase 15 follow-up: duck the master mix during NPC dialogue
+    // so SFX don't drown out the speech. Drops master to ~50% on
+    // dialogue-active, restores on dialogue-ended.
+    const dialogueDuckGain = 0.50;
+    const dialogueOnHandler = () => {
+      const ctx = audioCtxRef.current;
+      const master = masterGainRef.current;
+      if (!ctx || !master) return;
+      master.gain.cancelScheduledValues(ctx.currentTime);
+      master.gain.setTargetAtTime(dialogueDuckGain, ctx.currentTime, 0.08);
+    };
+    const dialogueOffHandler = () => {
+      const ctx = audioCtxRef.current;
+      const master = masterGainRef.current;
+      if (!ctx || !master) return;
+      master.gain.cancelScheduledValues(ctx.currentTime);
+      master.gain.setTargetAtTime(0.6, ctx.currentTime, 0.20); // 0.6 = the master init value at line 275
+    };
+    window.addEventListener('concordia:dialogue-active', dialogueOnHandler);
+    window.addEventListener('concordia:dialogue-ended', dialogueOffHandler);
+
     return () => {
       window.removeEventListener('concordia:soundscape-command', handler);
       window.removeEventListener('concordia:hit-reaction', combatHandler);
       window.removeEventListener('concordia:death-collapse', combatHandler);
+      window.removeEventListener('concordia:dialogue-active', dialogueOnHandler);
+      window.removeEventListener('concordia:dialogue-ended', dialogueOffHandler);
       if (duckExpireTimer) clearTimeout(duckExpireTimer);
     };
   }, [setDistrict, setTimeOfDay, setInterior, setWeather, triggerSFX, playSpatialSFX]);

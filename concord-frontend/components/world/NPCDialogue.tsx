@@ -379,6 +379,9 @@ export function NPCDialogue({ npc, worldId, onClose, onQuestAccepted }: NPCDialo
       utterance.onstart = () => {
         setIsTalking(true);
         startTalkingPoll();
+        // Phase 16: emit dialogue-active so Phase 15's mixer ducks SFX.
+        try { window.dispatchEvent(new CustomEvent('concordia:dialogue-active', { detail: { npcId: npc.id } })); }
+        catch { /* event dispatch is best-effort */ }
       };
       utterance.onend = () => {
         setIsTalking(false);
@@ -386,15 +389,19 @@ export function NPCDialogue({ npc, worldId, onClose, onQuestAccepted }: NPCDialo
           cancelAnimationFrame(talkCheckRafRef.current);
           talkCheckRafRef.current = null;
         }
+        try { window.dispatchEvent(new CustomEvent('concordia:dialogue-ended', { detail: { npcId: npc.id } })); }
+        catch { /* event dispatch is best-effort */ }
       };
       utterance.onerror = () => {
         setIsTalking(false);
+        try { window.dispatchEvent(new CustomEvent('concordia:dialogue-ended', { detail: { npcId: npc.id } })); }
+        catch { /* event dispatch is best-effort */ }
       };
 
       utteranceRef.current = utterance;
       window.speechSynthesis.speak(utterance);
     },
-    [muted, npc.archetype, cancelSpeech, startTalkingPoll]
+    [muted, npc.archetype, npc.id, cancelSpeech, startTalkingPoll]
   );
 
   // Toggle mute
@@ -426,6 +433,16 @@ export function NPCDialogue({ npc, worldId, onClose, onQuestAccepted }: NPCDialo
     return () => {
       cancelSpeech();
     };
+  }, [cancelSpeech]);
+
+  // Phase 16: external barge-in. Anything firing
+  // `concordia:dialogue-barge-in` cancels the active utterance — VAD on
+  // player mic input (future), or a UI button, or the player initiating
+  // a new combat action.
+  useEffect(() => {
+    const handler = () => cancelSpeech();
+    window.addEventListener('concordia:dialogue-barge-in', handler);
+    return () => window.removeEventListener('concordia:dialogue-barge-in', handler);
   }, [cancelSpeech]);
 
   // ── Open dialogue ────────────────────────────────────────────────────────────
