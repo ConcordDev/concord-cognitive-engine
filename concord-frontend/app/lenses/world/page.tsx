@@ -1431,6 +1431,14 @@ export default function WorldLensPage() {
           .join(', ');
         setGatherResult(`Gathered: ${summary}`);
         setTimeout(() => setGatherResult(null), 3500);
+        // If this gather triggered a level-up, show upgrade prompt
+        const cl = data.skillProgress?.characterLevelResult;
+        if (cl?.pendingUpgrades > 0) {
+          setUpgradePrompt({
+            characterLevel: cl.characterLevel,
+            pendingUpgrades: cl.pendingUpgrades,
+          });
+        }
         // Refresh nearby nodes to show depleted state
         setNearbyNodes((prev) =>
           prev.map((n) =>
@@ -1973,6 +1981,10 @@ export default function WorldLensPage() {
     type: 'new' | 'completed' | 'failed';
   } | null>(null);
   const [showDesignHUD, setShowDesignHUD] = useState(false);
+  const [upgradePrompt, setUpgradePrompt] = useState<{
+    characterLevel: number;
+    pendingUpgrades: number;
+  } | null>(null);
 
   // Expose world event triggers to other components via window so any world sub-component can activate them
   useEffect(() => {
@@ -3112,6 +3124,98 @@ export default function WorldLensPage() {
               onClose={() => setShowDesignHUD(false)}
             />
           )}
+
+          {/* Bar Upgrade Panel — appears on level-up, one choice per upgrade point */}
+          {upgradePrompt && upgradePrompt.pendingUpgrades > 0 && (
+            <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-auto">
+              <div className="bg-black/90 border border-purple-500/40 rounded-2xl p-6 w-80 shadow-2xl shadow-purple-500/10">
+                <div className="text-center mb-4">
+                  <div className="text-purple-400 text-xs uppercase tracking-widest mb-1">
+                    Level Up
+                  </div>
+                  <div className="text-white font-bold text-lg">
+                    Character Level {upgradePrompt.characterLevel}
+                  </div>
+                  <div className="text-white/40 text-xs mt-1">
+                    {upgradePrompt.pendingUpgrades} upgrade{' '}
+                    {upgradePrompt.pendingUpgrades === 1 ? 'point' : 'points'} remaining
+                  </div>
+                </div>
+                <p className="text-white/50 text-xs text-center mb-4">
+                  Choose a bar to permanently increase by +10
+                </p>
+                <div className="grid grid-cols-1 gap-2">
+                  {(
+                    [
+                      {
+                        key: 'hp',
+                        label: 'Max HP',
+                        color: 'border-red-500/40 hover:bg-red-900/20 text-red-400',
+                        icon: '❤',
+                      },
+                      {
+                        key: 'mana',
+                        label: 'Max Mana',
+                        color: 'border-indigo-500/40 hover:bg-indigo-900/20 text-indigo-400',
+                        icon: '✦',
+                      },
+                      {
+                        key: 'stamina',
+                        label: 'Max Stamina',
+                        color: 'border-amber-500/40 hover:bg-amber-900/20 text-amber-400',
+                        icon: '⚡',
+                      },
+                      {
+                        key: 'bio_power',
+                        label: 'Max Bio Power',
+                        color: 'border-emerald-500/40 hover:bg-emerald-900/20 text-emerald-400',
+                        icon: '☿',
+                      },
+                      {
+                        key: 'perception',
+                        label: 'Max Perception',
+                        color: 'border-cyan-500/40 hover:bg-cyan-900/20 text-cyan-400',
+                        icon: '◎',
+                      },
+                    ] as const
+                  ).map(({ key, label, color, icon }) => (
+                    <button
+                      key={key}
+                      onClick={async () => {
+                        try {
+                          const r = await fetch('/api/crafting/upgrade-bar', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ worldId: activeDistrict.id, barType: key }),
+                          });
+                          const d = await r.json();
+                          if (d.ok) {
+                            const remaining = d.pendingUpgrades ?? 0;
+                            if (remaining > 0) {
+                              setUpgradePrompt({
+                                characterLevel: d.characterLevel,
+                                pendingUpgrades: remaining,
+                              });
+                            } else {
+                              setUpgradePrompt(null);
+                            }
+                          }
+                        } catch {
+                          setUpgradePrompt(null);
+                        }
+                      }}
+                      className={`flex items-center gap-3 px-4 py-2.5 rounded-lg border text-sm transition-colors ${color}`}
+                    >
+                      <span className="text-base">{icon}</span>
+                      <span className="flex-1 text-left">{label}</span>
+                      <span className="text-white/30 text-xs">+10</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           <CrisisBanner />
           <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
             <SeasonBanner onOpenPassPanel={() => setShowPanel('season')} />

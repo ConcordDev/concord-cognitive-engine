@@ -27,6 +27,10 @@ import {
   consumeResourceBar,
   regenerateResourceBars,
 } from "../lib/combat/damage-calculator.js";
+import {
+  spendUpgradePoint,
+  getCharacterProgress,
+} from "../lib/skills/character-level.js";
 
 // ── Helper: parse rule_modulators from a world row ───────────────────────────
 function _parseRules(world) {
@@ -287,6 +291,38 @@ export function createCraftingRouter({ db, requireAuth }) {
     }
   });
 
+  // ── GET /api/crafting/character/:worldId — full character progress ─────────
+  router.get("/character/:worldId", requireAuth, (req, res) => {
+    try {
+      const userId = req.user.id;
+      const { worldId } = req.params;
+      const progress = getCharacterProgress(db, userId, worldId);
+      res.json({ ok: true, ...progress });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // ── POST /api/crafting/upgrade-bar — spend one upgrade point on a bar ──────
+  // body: { worldId, barType: 'hp'|'mana'|'stamina'|'bio_power'|'perception' }
+  router.post("/upgrade-bar", requireAuth, (req, res) => {
+    try {
+      const userId = req.user.id;
+      const { worldId, barType } = req.body;
+
+      if (!worldId)  return res.status(400).json({ ok: false, error: "worldId required" });
+      if (!barType)  return res.status(400).json({ ok: false, error: "barType required" });
+
+      const result = spendUpgradePoint(db, userId, worldId, barType);
+      if (!result.ok) {
+        return res.status(422).json(result);
+      }
+      res.json(result);
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
   // ── POST /api/crafting/skills/train — manually add XP to a skill ─────────
   router.post("/skills/train", requireAuth, (req, res) => {
     try {
@@ -301,7 +337,7 @@ export function createCraftingRouter({ db, requireAuth }) {
         : null;
       const worldType = world?.world_type || 'standard';
 
-      const result = gainSkillXP(db, userId, skill_type, worldType, xp);
+      const result = gainSkillXP(db, userId, skill_type, worldType, xp, { worldId });
       res.json({ ok: true, ...result, skill_type, worldType });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });

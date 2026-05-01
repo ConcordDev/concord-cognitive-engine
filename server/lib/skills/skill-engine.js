@@ -2,6 +2,7 @@
 // World-physics-aware skill resolution and progression.
 
 import crypto from 'node:crypto';
+import { awardCharacterLevel } from './character-level.js';
 
 // ── Skill → native world type mapping ─────────────────────────────────────────
 
@@ -159,7 +160,7 @@ export function getPlayerSkillLevel(db, userId, skillType) {
  * @param {number} xpGain
  * @returns {{ leveled: boolean, newLevel: number, newXp: number }}
  */
-export function gainSkillXP(db, userId, skillType, worldType, xpGain) {
+export function gainSkillXP(db, userId, skillType, worldType, xpGain, opts = {}) {
   const MAX_LEVEL = 100;
 
   // Upsert the row
@@ -185,12 +186,14 @@ export function gainSkillXP(db, userId, skillType, worldType, xpGain) {
 
   xp += xpGain;
   let leveled = false;
+  let levelsGained = 0;
 
   while (xp >= xp_to_next && level < MAX_LEVEL) {
     xp -= xp_to_next;
     level += 1;
-    xp_to_next = 100 * level; // next threshold
+    xp_to_next = 100 * level; // next threshold scales with level — stacks matter
     leveled = true;
+    levelsGained++;
   }
 
   db.prepare(`
@@ -199,7 +202,17 @@ export function gainSkillXP(db, userId, skillType, worldType, xpGain) {
     WHERE user_id = ? AND skill_type = ? AND native_world_type = ?
   `).run(level, xp, xp_to_next, userId, skillType, worldType);
 
-  return { leveled, newLevel: level, newXp: xp };
+  // Award character levels for every skill level gained — upgrade points follow
+  let characterLevelResult = null;
+  if (leveled && levelsGained > 0 && opts.worldId) {
+    try {
+      for (let i = 0; i < levelsGained; i++) {
+        characterLevelResult = awardCharacterLevel(db, userId, opts.worldId);
+      }
+    } catch { /* non-fatal */ }
+  }
+
+  return { leveled, newLevel: level, newXp: xp, levelsGained, characterLevelResult };
 }
 
 /**

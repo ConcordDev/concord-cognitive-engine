@@ -14,6 +14,7 @@ import { issueDirective, voteOnDirective, getActiveDirectives, getDirectiveHisto
 import { getRoomsForBuilding, addRoom, updateRoomFurniture, seedRoomsForBuilding } from "../lib/building-interiors.js";
 import { checkRoomAccess, attemptLockpick, forceEntry, recordTheft, getOpenCrimes, getActiveWarrants } from "../lib/world-crime.js";
 import { broadcastOpinionEvent, getWorldReputation, willNPCInteract } from "../lib/npc-relations.js";
+import { gainSkillXP } from "../lib/skills/skill-engine.js";
 
 export default function createWorldsRouter({ requireAuth, db }) {
   const router = express.Router();
@@ -901,7 +902,19 @@ export default function createWorldsRouter({ requireAuth, db }) {
         });
       } catch { /* non-fatal */ }
 
-      res.json({ ok: true, gathered: result.gathered, node: result.nodeState });
+      // Award gathering/survival XP — every gather is practice
+      let skillProgress = null;
+      try {
+        const world = db.prepare('SELECT world_type FROM worlds WHERE id = ?').get(worldId);
+        const worldType = world?.world_type || 'standard';
+        // Survival for ore/stone, crafting for wood/plant resources
+        const node = db.prepare('SELECT node_type FROM world_resource_nodes WHERE id = ?').get(nodeId);
+        const skillType = ['ore', 'cave', 'underground'].includes(node?.node_type) ? 'survival' : 'crafting';
+        const xpGain = result.gathered.reduce((sum, i) => sum + i.quantity * 5, 0);
+        skillProgress = gainSkillXP(db, req.user.id, skillType, worldType, xpGain, { worldId });
+      } catch { /* non-fatal */ }
+
+      res.json({ ok: true, gathered: result.gathered, node: result.nodeState, skillProgress });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }
