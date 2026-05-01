@@ -412,6 +412,58 @@ export default function ConcordiaScene({
           };
           composer.addPass(new ShaderPass(colorGradeShader));
 
+          // Wave 1 deferral 1: depth-of-field pass for cinematic dialogue.
+          // Cheap radial blur centered on screen — not true depth-aware DoF
+          // (which needs a separate depth render-target setup), but visually
+          // close enough for dialogue framing where the player's focus is
+          // the NPC at center. Off by default; activates when the
+          // `concordia:cinematic-mode` window event flips it on.
+          const dofShader = {
+            uniforms: {
+              tDiffuse:    { value: null },
+              dofStrength: { value: 0.0 },
+              dofRadius:   { value: 0.20 },
+            },
+            vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+            fragmentShader: `
+              uniform sampler2D tDiffuse;
+              uniform float dofStrength;
+              uniform float dofRadius;
+              varying vec2 vUv;
+              void main() {
+                vec4 c = texture2D(tDiffuse, vUv);
+                if (dofStrength < 0.001) { gl_FragColor = c; return; }
+                vec2 center = vec2(0.5, 0.5);
+                float d = distance(vUv, center) / 0.7071;
+                float blurAmt = smoothstep(dofRadius, 1.0, d) * dofStrength;
+                vec2 px = vec2(1.0 / 1920.0, 1.0 / 1080.0) * blurAmt * 4.0;
+                vec3 acc = c.rgb;
+                acc += texture2D(tDiffuse, vUv + vec2( px.x,  0.0)).rgb;
+                acc += texture2D(tDiffuse, vUv + vec2(-px.x,  0.0)).rgb;
+                acc += texture2D(tDiffuse, vUv + vec2( 0.0,  px.y)).rgb;
+                acc += texture2D(tDiffuse, vUv + vec2( 0.0, -px.y)).rgb;
+                acc += texture2D(tDiffuse, vUv + vec2( px.x,  px.y)).rgb;
+                acc += texture2D(tDiffuse, vUv + vec2(-px.x, -px.y)).rgb;
+                acc += texture2D(tDiffuse, vUv + vec2( px.x, -px.y)).rgb;
+                acc += texture2D(tDiffuse, vUv + vec2(-px.x,  px.y)).rgb;
+                gl_FragColor = vec4(acc / 9.0, c.a);
+              }`,
+          };
+          const dofPass = new ShaderPass(dofShader);
+          composer.addPass(dofPass);
+
+          // Bind dofPass.uniforms.dofStrength to a window event so any
+          // component can toggle cinematic mode without a prop chain.
+          const dofHandler = (e: Event) => {
+            const detail = (e as CustomEvent).detail as { active?: boolean; strength?: number } | undefined;
+            const target = detail?.active ? (detail.strength ?? 0.6) : 0;
+            try { dofPass.uniforms.dofStrength.value = target; } catch { /* noop */ }
+          };
+          window.addEventListener('concordia:cinematic-mode', dofHandler);
+          // Stash a cleanup hook so the existing dispose flow can detach.
+          (composer as unknown as { _dofCleanup?: () => void })._dofCleanup = () =>
+            window.removeEventListener('concordia:cinematic-mode', dofHandler);
+
           composerRef.current = composer;
         } catch (ppErr) {
           console.warn('[ConcordiaScene] Post-processing unavailable:', ppErr);
