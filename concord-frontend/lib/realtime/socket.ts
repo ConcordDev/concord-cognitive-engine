@@ -261,7 +261,9 @@ export type SocketEvent =
   | 'party:kicked'
   | 'party:chat'
   // Phase 19: retention hooks
-  | 'daily:login_recorded';
+  | 'daily:login_recorded'
+  // Wave 1 deferral 3: level-up rank crossing
+  | 'level:up';
 
 // ---- Enriched Event Payload (Category 2+5: Concurrency + Observability) ----
 interface EnrichedPayload {

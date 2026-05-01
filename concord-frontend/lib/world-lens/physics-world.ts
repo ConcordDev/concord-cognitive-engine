@@ -184,8 +184,14 @@ class PhysicsWorld {
       let key: string | null = null;
       if (profile === 'capsule') {
         key = this._registerCapsuleFromObject(child, entityId);
+      } else if (profile === 'mesh') {
+        // Rapier trimesh — exact mesh-shape collision. Falls back to
+        // AABB box if the mesh has no extractable geometry or exceeds
+        // the perf cap.
+        key = this._registerTrimeshFromObject(child, entityId);
+        if (!key) key = this.registerBuildingFromObject(child, entityId);
       } else {
-        // 'box' or 'mesh' (mesh falls back to AABB box for now)
+        // 'box' (or any unknown profile)
         key = this.registerBuildingFromObject(child, entityId);
       }
       if (key) {
@@ -195,6 +201,99 @@ class PhysicsWorld {
       }
     });
     return registered;
+  }
+
+  /**
+   * Rapier trimesh collider built from a Three.js Object3D's geometry.
+   * Walks the subtree, finds the first child with a BufferGeometry, extracts
+   * positions + indices, and creates a Rapier `ColliderDesc.trimesh`.
+   *
+   * Capped at 5000 triangles per collider to bound the perf cost — meshes
+   * larger than that fall back to the cheaper AABB box collider via the
+   * caller. Trimesh colliders are the heaviest shape Rapier supports;
+   * registering many of them or any single huge one tanks step time.
+   *
+   * Static-only — trimesh on a dynamic body is not supported by Rapier.
+   */
+  private _registerTrimeshFromObject(obj: Object3DLike, entityId: string): string | null {
+    if (!this.RAPIER || !this.world || !this.THREE) return null;
+    const ud = obj.userData ?? (obj as Record<string, unknown>);
+    const existing = (ud as Record<string, unknown>).physicsKey as string | undefined;
+    if (existing && this.colliders.has(existing)) return existing;
+
+    type GeometryLike = {
+      attributes?: { position?: { array: ArrayLike<number>; itemSize: number } };
+      index?: { array: ArrayLike<number> } | null;
+    };
+    type Object3DTraversable = {
+      traverse?: (cb: (child: { geometry?: GeometryLike; matrixWorld?: { elements: number[] }; updateMatrixWorld?: () => void }) => void) => void;
+    };
+
+    let positions: Float32Array | null = null;
+    let indices: Uint32Array | null = null;
+
+    (obj as unknown as Object3DTraversable).traverse?.((child) => {
+      if (positions || !child.geometry) return;
+      const geom = child.geometry;
+      const posAttr = geom.attributes?.position;
+      if (!posAttr || posAttr.itemSize !== 3) return;
+
+      // Bake to world space so the trimesh is positioned correctly.
+      // We pass position { 0, 0, 0 } to the rigidbody and rely on baked
+      // vertex positions, since the parent group's transform may differ
+      // per child.
+      child.updateMatrixWorld?.();
+      const mat = child.matrixWorld?.elements;
+      const src = posAttr.array;
+      const out = new Float32Array(src.length);
+      if (mat) {
+        for (let i = 0; i < src.length; i += 3) {
+          const x = src[i] as number, y = src[i + 1] as number, z = src[i + 2] as number;
+          out[i]     = mat[0] * x + mat[4] * y + mat[8]  * z + mat[12];
+          out[i + 1] = mat[1] * x + mat[5] * y + mat[9]  * z + mat[13];
+          out[i + 2] = mat[2] * x + mat[6] * y + mat[10] * z + mat[14];
+        }
+      } else {
+        for (let i = 0; i < src.length; i++) out[i] = src[i] as number;
+      }
+      positions = out;
+
+      if (geom.index) {
+        const ia = geom.index.array;
+        const ib = new Uint32Array(ia.length);
+        for (let i = 0; i < ia.length; i++) ib[i] = ia[i] as number;
+        indices = ib;
+      } else {
+        // Non-indexed geometry — fabricate sequential indices.
+        const n = src.length / 3;
+        const ib = new Uint32Array(n);
+        for (let i = 0; i < n; i++) ib[i] = i;
+        indices = ib;
+      }
+    });
+
+    if (!positions || !indices) return null;
+
+    // Perf cap: 5000 triangles per collider.
+    const triCount = (indices as Uint32Array).length / 3;
+    if (triCount > 5000) {
+      console.warn(
+        `[physicsWorld] trimesh ${entityId} has ${triCount} triangles (>5000 cap) — falling back to AABB box`,
+      );
+      return null;
+    }
+
+    const RAPIER = this.RAPIER;
+    const bodyDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(0, 0, 0);
+    const body     = this.world.createRigidBody(bodyDesc);
+    const collDesc = RAPIER.ColliderDesc.trimesh(positions, indices);
+    const coll     = this.world.createCollider(collDesc, body);
+
+    const key = `trimesh:${entityId}`;
+    this.bodies.set(key, body);
+    this.colliders.set(key, coll);
+    (ud as Record<string, unknown>).physicsKey = key;
+    return key;
   }
 
   /**

@@ -139,6 +139,10 @@ const AnimationManager = dynamic(() => import('@/components/world-lens/Animation
   ssr: false,
 });
 const GameJuice = dynamic(() => import('@/components/world-lens/GameJuice'), { ssr: false });
+const LevelUpJuiceBridge = dynamic(
+  () => import('@/components/world-lens/LevelUpJuiceBridge').then((m) => ({ default: m.LevelUpJuiceBridge })),
+  { ssr: false },
+);
 const LoadingTransitions = dynamic(() => import('@/components/world-lens/LoadingTransitions'), {
   ssr: false,
 });
@@ -2739,6 +2743,7 @@ export default function WorldLensPage() {
           <GameJuice>
             <></>
           </GameJuice>
+          <LevelUpJuiceBridge />
           <LoadingTransitions
             transition="district"
             destination={{ name: 'Loading...' }}

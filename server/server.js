@@ -26341,6 +26341,13 @@ app.use("/api/player-trade", createPlayerTradeRouter({ requireAuth, db, emitToUs
 import createPartiesRouter from "./routes/parties.js";
 app.use("/api/parties", createPartiesRouter({ requireAuth, db, emitToUser }));
 
+// Wave 1 deferral 3: attach realtime XP emitter so rank-ups fire `level:up`
+// to the user room. Best-effort — never blocks XP writes.
+try {
+  const { attachXPEmitter } = await import("./lib/world-progression.js");
+  attachXPEmitter?.(emitToUser);
+} catch { /* world-progression import is best-effort */ }
+
 // ===== CONCORDIA LIVING WORLD (portals, player inventory, arena, leaderboards, crafting) =====
 import createLensPortalsRouter from "./routes/lens-portals.js";
 import createPlayerInventoryRouter from "./routes/player-inventory.js";
