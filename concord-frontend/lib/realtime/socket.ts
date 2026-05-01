@@ -259,7 +259,9 @@ export type SocketEvent =
   | 'party:member_left'
   | 'party:leader_changed'
   | 'party:kicked'
-  | 'party:chat';
+  | 'party:chat'
+  // Phase 19: retention hooks
+  | 'daily:login_recorded';
 
 // ---- Enriched Event Payload (Category 2+5: Concurrency + Observability) ----
 interface EnrichedPayload {

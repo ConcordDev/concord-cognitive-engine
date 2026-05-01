@@ -26241,7 +26241,7 @@ app.use("/api/lens-features", createLensFeatureRouter(db, LENS_FEATURES));
 
 // ===== WORLD ENGINE (districts, jobs, businesses, events, progression) =====
 import createWorldRoutes from "./routes/world.js";
-app.use("/api/world", createWorldRoutes({ requireAuth, db }));
+app.use("/api/world", createWorldRoutes({ requireAuth, db, emitToUser }));
 
 // ── Competitive Parity: External Messaging ──────────────────────────────────
 import { createMessagingRouter } from "./routes/messaging.js";

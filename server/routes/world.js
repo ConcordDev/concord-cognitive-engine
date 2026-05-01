@@ -191,7 +191,7 @@ import { handlePlayerDeath, claimLootBag, handleRobbery, reclaimExpiredBags } fr
  * @param {Function} [opts.requireAuth] - Auth middleware
  * @returns {Router}
  */
-export default function createWorldRoutes({ requireAuth, db = null } = {}) {
+export default function createWorldRoutes({ requireAuth, db = null, emitToUser = null } = {}) {
   const router = Router();
 
   function _userId(req) {
@@ -472,10 +472,23 @@ export default function createWorldRoutes({ requireAuth, db = null } = {}) {
   }));
 
   router.post("/daily-login", auth, wrap((req, res) => {
-    const result = recordDailyLogin(_userId(req));
-    // Award login Sparks
     const userId = _userId(req);
+    const result = recordDailyLogin(userId);
+    // Award login Sparks
     try { awardSparks(db, userId, 2, "daily_login"); } catch (_) {}
+    // Phase 19 polish-to-ten: realtime push so the frontend can show a
+    // streak banner / fanfare when the daily login records a streak day.
+    // Anonymous / re-login on same day cases skip the emit (alreadyLoggedIn).
+    if (!result.alreadyLoggedIn && emitToUser) {
+      try {
+        emitToUser(userId, "daily:login_recorded", {
+          streakDays: result.streakDays,
+          weeklyBonus: !!result.weeklyBonus,
+          xpAwarded: result.xpResult?.xpAwarded ?? 0,
+          rankUp: result.xpResult?.rankUp ?? false,
+        });
+      } catch (_) { /* realtime is best-effort */ }
+    }
     res.json({ ok: true, ...result });
   }));
 
