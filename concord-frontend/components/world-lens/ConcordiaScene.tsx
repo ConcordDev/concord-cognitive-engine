@@ -374,6 +374,44 @@ export default function ConcordiaScene({
               }`,
           };
           composer.addPass(new ShaderPass(vignetteShader));
+
+          // Phase 13 polish-to-ten: color grading pass.
+          // Cheap shader that lifts blacks slightly, warms highlights, and
+          // crushes saturation in shadows. Composes after vignette so the
+          // grade applies to the already-darkened edges.
+          const colorGradeShader = {
+            uniforms: {
+              tDiffuse:    { value: null },
+              gradeWarm:   { value: quality === 'ultra' ? 0.06 : 0.04 },
+              gradeLift:   { value: 0.02 },
+              gradeShadowDesat: { value: 0.85 },
+            },
+            vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+            fragmentShader: `
+              uniform sampler2D tDiffuse;
+              uniform float gradeWarm;
+              uniform float gradeLift;
+              uniform float gradeShadowDesat;
+              varying vec2 vUv;
+              void main() {
+                vec4 c = texture2D(tDiffuse, vUv);
+                vec3 col = c.rgb;
+                // Lift blacks
+                col = col + vec3(gradeLift);
+                // Luminance-based shadow desat
+                float lum = dot(col, vec3(0.299, 0.587, 0.114));
+                float shadowMix = smoothstep(0.0, 0.4, 1.0 - lum);
+                vec3 gray = vec3(lum);
+                col = mix(col, mix(col, gray, shadowMix * (1.0 - gradeShadowDesat)), 1.0);
+                // Warm highlights — push R+G in bright regions
+                float hi = smoothstep(0.5, 1.0, lum);
+                col.r += gradeWarm * hi;
+                col.g += gradeWarm * 0.5 * hi;
+                gl_FragColor = vec4(clamp(col, 0.0, 1.0), c.a);
+              }`,
+          };
+          composer.addPass(new ShaderPass(colorGradeShader));
+
           composerRef.current = composer;
         } catch (ppErr) {
           console.warn('[ConcordiaScene] Post-processing unavailable:', ppErr);
