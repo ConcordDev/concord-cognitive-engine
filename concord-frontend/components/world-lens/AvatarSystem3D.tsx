@@ -1011,6 +1011,21 @@ export default function AvatarSystem3D({
         // pose so the body stays prone after the 1.5s collapse.
         playClip(mixer, 'death_collapse', 80);
 
+        // Phase 14: spatial death audio at the NPC's world position so the
+        // kill-blow comes from the right direction (HRTF + reverb).
+        try {
+          const meshForAudio =
+            (id === playerAvatar.id && playerMeshRef.current)
+              ? playerMeshRef.current as InstanceType<typeof import('three').Group>
+              : (npcMeshes.get(id) as { mesh: InstanceType<typeof import('three').Group> } | undefined)?.mesh;
+          if (meshForAudio) {
+            const p = meshForAudio.position;
+            window.dispatchEvent(new CustomEvent('concordia:soundscape-command', {
+              detail: { action: 'playSpatialSFX', sfxId: 'kill-blow', position: { x: p.x, y: p.y, z: p.z } },
+            }));
+          }
+        } catch { /* spatial audio is best-effort */ }
+
         // Apply optional hit-direction impulse offset over the first 600ms
         // by translating the mesh's parent group slightly. The clip itself
         // moves the avatar group on its local axes; this offsets in world.

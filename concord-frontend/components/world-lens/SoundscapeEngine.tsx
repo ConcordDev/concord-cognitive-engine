@@ -477,17 +477,20 @@ export default function SoundscapeEngine({
   // window events — avoids requiring everything to live inside this provider.
   useEffect(() => {
     const handler = (e: Event) => {
-      const { action, district, time, interior, weather, intensity, sfxId } =
+      const { action, district, time, interior, weather, intensity, sfxId, position } =
         (e as CustomEvent).detail ?? {};
       if (action === 'setDistrict' && district) setDistrict(district);
       else if (action === 'setTimeOfDay' && time) setTimeOfDay(time);
       else if (action === 'setInterior' && typeof interior === 'boolean') setInterior(interior);
       else if (action === 'setWeather' && weather) setWeather(weather, intensity);
       else if (action === 'triggerSFX' && sfxId) triggerSFX(sfxId);
+      // Phase 14: spatial SFX dispatch from anywhere in the app via the same
+      // window event channel. Position is { x, y, z } in world space.
+      else if (action === 'playSpatialSFX' && sfxId && position) playSpatialSFX(sfxId, position);
     };
     window.addEventListener('concordia:soundscape-command', handler);
     return () => window.removeEventListener('concordia:soundscape-command', handler);
-  }, [setDistrict, setTimeOfDay, setInterior, setWeather, triggerSFX]);
+  }, [setDistrict, setTimeOfDay, setInterior, setWeather, triggerSFX, playSpatialSFX]);
 
   return (
     <SoundscapeContext.Provider value={api}>

@@ -114,15 +114,21 @@ export default function GameJuice({ children, enabled = true, intensity: initial
   }, []);
 
   const triggerJuice = useCallback(
-    (trigger: JuiceTrigger, opts?: { magnitude?: number; value?: string; targetId?: string }) => {
+    (trigger: JuiceTrigger, opts?: { magnitude?: number; value?: string; targetId?: string; position?: { x: number; y: number; z: number } }) => {
       if (!enabled) return;
 
       const feedback = FEEDBACK_MAP[trigger];
       if (!feedback) return;
 
-      // Play audio SFX
+      // Play audio SFX. Phase 14 polish-to-ten: route through spatial audio
+      // when a world position is supplied so the SFX comes from the right
+      // direction relative to the listener (HRTF + reverb + occlusion via
+      // SoundscapeEngine.playSpatialSFX).
       const sfxId = TRIGGER_SFX[trigger];
-      if (sfxId) soundscape.triggerSFX(sfxId);
+      if (sfxId) {
+        if (opts?.position) soundscape.playSpatialSFX(sfxId, opts.position);
+        else soundscape.triggerSFX(sfxId);
+      }
 
       const scaledDuration = feedback.duration * intensityValue;
       const id = `juice-${overlayCounter.current++}`;
