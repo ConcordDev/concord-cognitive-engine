@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useCallback, useContext, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { useSoundscape } from './SoundscapeEngine';
 
 /* ── Types ─────────────────────────────────────────────────────── */
@@ -144,6 +144,17 @@ export default function GameJuice({ children, enabled = true, intensity: initial
     setIntensity,
     isEnabled: enabled,
   };
+
+  // Allow sibling components to trigger juice via window event — avoids
+  // requiring all consumers to live inside this provider.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { trigger, opts } = (e as CustomEvent).detail ?? {};
+      if (trigger) triggerJuice(trigger as JuiceTrigger, opts);
+    };
+    window.addEventListener('concordia:game-juice', handler);
+    return () => window.removeEventListener('concordia:game-juice', handler);
+  }, [triggerJuice]);
 
   return (
     <GameJuiceContext.Provider value={contextValue}>

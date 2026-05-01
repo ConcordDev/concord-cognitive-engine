@@ -422,6 +422,22 @@ export default function SoundscapeEngine({
     triggerSFX, playSpatialSFX, playMusicTrack, stopMusicTrack,
   };
 
+  // Allow any sibling or parent component to call SoundscapeEngine APIs via
+  // window events — avoids requiring everything to live inside this provider.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { action, district, time, interior, weather, intensity, sfxId } =
+        (e as CustomEvent).detail ?? {};
+      if (action === 'setDistrict' && district) setDistrict(district);
+      else if (action === 'setTimeOfDay' && time) setTimeOfDay(time);
+      else if (action === 'setInterior' && typeof interior === 'boolean') setInterior(interior);
+      else if (action === 'setWeather' && weather) setWeather(weather, intensity);
+      else if (action === 'triggerSFX' && sfxId) triggerSFX(sfxId);
+    };
+    window.addEventListener('concordia:soundscape-command', handler);
+    return () => window.removeEventListener('concordia:soundscape-command', handler);
+  }, [setDistrict, setTimeOfDay, setInterior, setWeather, triggerSFX]);
+
   return (
     <SoundscapeContext.Provider value={api}>
       {children}

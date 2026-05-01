@@ -1444,6 +1444,13 @@ export default function WorldLensPage() {
       .catch(() => {});
   }, [activeDistrict.id]);
 
+  // Sync active district to SoundscapeEngine ambient audio via window event
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('concordia:soundscape-command', {
+      detail: { action: 'setDistrict', district: activeDistrict.id },
+    }));
+  }, [activeDistrict.id]);
+
   // Poll for nearby nodes every 5s based on player position
   useEffect(() => {
     const poll = () => {
@@ -1880,6 +1887,13 @@ export default function WorldLensPage() {
       if (data.targetId === playerAvatar.id) {
         setCombatState((prev) => ({ ...prev, isDead: true, health: 0 }));
         pushCombatLog('You have fallen. Respawn to continue.', 'death');
+        window.dispatchEvent(new CustomEvent('concordia:game-juice', {
+          detail: { trigger: 'combat-hit', opts: { magnitude: 10 } },
+        }));
+      } else if (data.attackerId === playerAvatar.id) {
+        window.dispatchEvent(new CustomEvent('concordia:game-juice', {
+          detail: { trigger: 'milestone' },
+        }));
       }
     };
 
@@ -1928,6 +1942,9 @@ export default function WorldLensPage() {
       if (data.userId && data.userId !== playerAvatar.id) return;
       if (data.action === 'award_xp') {
         pushCombatLog(`Awarded XP: +${data.params?.amount ?? 0}`, 'info');
+        window.dispatchEvent(new CustomEvent('concordia:game-juice', {
+          detail: { trigger: 'milestone', opts: { value: `+${data.params?.amount ?? 0} XP` } },
+        }));
       } else if (data.action === 'give_item') {
         pushCombatLog(`Received item: ${data.params?.itemId ?? 'unknown'}`, 'info');
       } else if (data.action === 'teleport_player' && data.params) {
@@ -2809,7 +2826,7 @@ export default function WorldLensPage() {
             {(
               [
                 { key: 'inventory', label: 'Inventory', icon: Layers },
-                { key: 'quests', label: 'Quests', icon: Zap },
+                { key: 'questlog', label: 'Quests', icon: Zap },
                 { key: 'chat', label: 'Chat', icon: MessageSquare },
                 { key: 'map', label: 'Map', icon: MapIcon },
                 { key: 'crafting', label: 'Craft', icon: Layers },
@@ -3308,6 +3325,12 @@ export default function WorldLensPage() {
                   } as never,
                   type: 'new',
                 });
+                window.dispatchEvent(new CustomEvent('concordia:game-juice', {
+                  detail: { trigger: 'quest-complete' },
+                }));
+                window.dispatchEvent(new CustomEvent('concordia:tutorial-action', {
+                  detail: { action: 'accepted-quest' },
+                }));
               }}
             />
           )}
