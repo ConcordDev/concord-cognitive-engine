@@ -20,6 +20,9 @@ import { accumulateWealth, evaluateGearUpgrade, seedStarterGear, leaderEnsuresFa
 import { decayGrief, attemptCrossbreed } from "./npc-family.js";
 import { tickRecruitment } from "./npc-spawning.js";
 import { npcGatherFromNode, respawnExpiredNodes } from "./world-gathering.js";
+import { detectiveTick, guardTick } from "./world-crime.js";
+import { executeScheduledTask, assignJob, seedJobsForWorld, getCurrentPhase } from "./npc-jobs.js";
+import { broadcastOpinionEvent } from "./npc-relations.js";
 
 // ── Heightmap generation (mirrors TerrainRenderer.tsx deterministic algo) ──
 // Resolution kept low (128) for server — A* is the bottleneck, not sample count.
@@ -513,6 +516,47 @@ export class NPCSimulator {
     // Periodic: respawn depleted resource nodes (runs every ~1% of ticks ≈ once per minute at 1Hz)
     if (Math.random() < 0.01) {
       try { respawnExpiredNodes(this._db); } catch { /* non-fatal */ }
+    }
+
+    // Periodic: NPC job schedule execution (time-of-day tasks)
+    if (Math.random() < 0.1) {
+      try {
+        const phase = getCurrentPhase(this._tickCount || 0);
+        for (const agent of autonomousAgents.slice(0, 10)) {
+          const jobType = agent.state?.job_type || 'generic';
+          await executeScheduledTask(agent, jobType, phase, this._db, this.worldId)
+            .catch(() => {});
+        }
+        this._tickCount = (this._tickCount || 0) + 1;
+      } catch { /* non-fatal */ }
+    }
+
+    // Periodic: detective/guard crime tick (2% of ticks)
+    if (Math.random() < 0.02) {
+      try {
+        for (const agent of autonomousAgents) {
+          const archetype = agent.archetype || '';
+          const jobType = agent.state?.job_type || '';
+          if (archetype === 'guard' || archetype === 'detective' || jobType === 'detective') {
+            detectiveTick(this._db, agent.id, this.worldId);
+          } else if (archetype === 'guard' || jobType === 'guard') {
+            guardTick(this._db, agent.id, this.worldId, agent.location);
+          }
+        }
+      } catch { /* non-fatal */ }
+    }
+
+    // Very rare: directive voting tick (0.5% of ticks)
+    if (Math.random() < 0.005) {
+      try {
+        const { tickDirectiveVoting } = await import('./world-governance.js');
+        tickDirectiveVoting(this._db, this.worldId);
+      } catch { /* non-fatal */ }
+    }
+
+    // Very rare: seed jobs for NPCs without assignments (0.2% of ticks)
+    if (Math.random() < 0.002) {
+      try { seedJobsForWorld(this._db, this.worldId); } catch { /* non-fatal */ }
     }
   }
 

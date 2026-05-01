@@ -26298,15 +26298,17 @@ app.use("/api/blueprints", createBlueprintsRouter({ requireAuth, db }));
 app.use("/api/wagers", createWagersRouter({ requireAuth, db, realtimeEmit }));
 app.use("/api/npc-shop", createNPCShopRouter({ requireAuth, db }));
 
-// ===== CONCORDIA LIVING WORLD (portals, player inventory, arena, leaderboards) =====
+// ===== CONCORDIA LIVING WORLD (portals, player inventory, arena, leaderboards, crafting) =====
 import createLensPortalsRouter from "./routes/lens-portals.js";
 import createPlayerInventoryRouter from "./routes/player-inventory.js";
 import createArenaRouter from "./routes/arena.js";
 import createLeaderboardsRouter from "./routes/leaderboards.js";
+import { createCraftingRouter } from "./routes/crafting.js";
 app.use("/api/lens-portals",      createLensPortalsRouter({ requireAuth, db }));
 app.use("/api/player-inventory",  createPlayerInventoryRouter({ requireAuth, db }));
 app.use("/api/arena",             createArenaRouter({ requireAuth, db, realtimeEmit }));
 app.use("/api/leaderboards",      createLeaderboardsRouter({ db }));
+app.use("/api/crafting",          createCraftingRouter({ requireAuth, db }));
 
 // ===== WORLD NARRATIVE (Oracle brain: lore synthesis, quest chains, dialogue) =====
 import createWorldNarrativeRouter, { buildLore } from "./routes/world-narrative.js";

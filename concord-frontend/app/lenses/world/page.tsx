@@ -304,6 +304,10 @@ const _GatheringMinigame = dynamic(
     })),
   { ssr: false }
 );
+const DesignHUD = dynamic(
+  () => import('@/components/world/DesignHUD').then((m) => ({ default: m.DesignHUD })),
+  { ssr: false }
+);
 const CraftingBench = dynamic(
   () =>
     import('@/components/concordia/crafting/CraftingBench').then((m) => ({
@@ -1968,6 +1972,7 @@ export default function WorldLensPage() {
     quest: import('@/lib/concordia/quest-system').Quest;
     type: 'new' | 'completed' | 'failed';
   } | null>(null);
+  const [showDesignHUD, setShowDesignHUD] = useState(false);
 
   // Expose world event triggers to other components via window so any world sub-component can activate them
   useEffect(() => {
@@ -2674,6 +2679,14 @@ export default function WorldLensPage() {
                 {label}
               </button>
             ))}
+            {/* Design HUD button — always visible */}
+            <button
+              onClick={() => setShowDesignHUD(true)}
+              className="flex flex-col items-center gap-0.5 px-2.5 py-1 rounded-lg text-[10px] transition-colors text-purple-400 hover:text-purple-300 hover:bg-purple-500/10"
+            >
+              <Cpu className="w-4 h-4" />
+              Design
+            </button>
           </div>
           {/* Side panels */}
           {showPanel === 'inventory' && (
@@ -2948,6 +2961,45 @@ export default function WorldLensPage() {
             </div>
           )}
 
+          {/* Resource Bars HUD (top-left, below minimap) */}
+          <div className="absolute top-4 left-4 z-20 pointer-events-none flex flex-col gap-1 min-w-[160px]">
+            {(
+              [
+                { key: 'hp', label: 'HP', color: '#ef4444', icon: '❤' },
+                { key: 'mana', label: 'Mana', color: '#818cf8', icon: '✦' },
+                { key: 'stamina', label: 'Stamina', color: '#f59e0b', icon: '⚡' },
+                { key: 'bio_power', label: 'Bio Power', color: '#10b981', icon: '☿' },
+                { key: 'perception', label: 'Perception', color: '#06b6d4', icon: '◎' },
+              ] as const
+            ).map(({ key, color, icon }) => {
+              const val =
+                key === 'hp' ? combatState.health : key === 'stamina' ? combatState.stamina : 100;
+              const maxVal =
+                key === 'hp'
+                  ? combatState.maxHealth
+                  : key === 'stamina'
+                    ? combatState.maxStamina
+                    : 100;
+              const pct = Math.max(0, Math.min(100, (val / maxVal) * 100));
+              return (
+                <div key={key} className="flex items-center gap-1.5">
+                  <span className="text-[9px] w-2.5 flex-shrink-0" style={{ color }}>
+                    {icon}
+                  </span>
+                  <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-300"
+                      style={{ width: `${pct}%`, backgroundColor: color }}
+                    />
+                  </div>
+                  <span className="text-[9px] text-white/40 w-8 text-right flex-shrink-0">
+                    {Math.round(val)}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
           {/* Swimming indicator */}
           {isSwimming && (
             <div className="absolute top-20 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
@@ -3050,6 +3102,14 @@ export default function WorldLensPage() {
                   worldSocket.emit('world:gather-complete', { resource, score });
               }}
               onCancel={() => setGatheringState(null)}
+            />
+          )}
+          {/* Design HUD — full-screen skill/recipe design studio */}
+          {showDesignHUD && (
+            <DesignHUD
+              worldId={activeDistrict.id}
+              worldType="standard"
+              onClose={() => setShowDesignHUD(false)}
             />
           )}
           <CrisisBanner />

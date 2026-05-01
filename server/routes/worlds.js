@@ -9,6 +9,11 @@ import { travelToWorld, applyWorldRulesToPlayer } from "../lib/transit.js";
 import { spawnWorldNativeEmergent, getWorldEmergents, getCrossWorldEmergents, growAffinity } from "../lib/world-emergents.js";
 import { seedWorldContent } from "../lib/world-seeder.js";
 import { getNearbyNodes, getUndergroundNodes, gatherFromNode, updateSwimState, checkSwimState, respawnExpiredNodes } from "../lib/world-gathering.js";
+import { getWorldMarket, getResourcePrice, recordTransaction } from "../lib/world-economy.js";
+import { issueDirective, voteOnDirective, getActiveDirectives, getDirectiveHistory } from "../lib/world-governance.js";
+import { getRoomsForBuilding, addRoom, updateRoomFurniture, seedRoomsForBuilding } from "../lib/building-interiors.js";
+import { checkRoomAccess, attemptLockpick, forceEntry, recordTheft, getOpenCrimes, getActiveWarrants } from "../lib/world-crime.js";
+import { broadcastOpinionEvent, getWorldReputation, willNPCInteract } from "../lib/npc-relations.js";
 
 export default function createWorldsRouter({ requireAuth, db }) {
   const router = express.Router();
@@ -881,6 +886,21 @@ export default function createWorldsRouter({ requireAuth, db }) {
         isDepleted: result.nodeState.isDepleted,
       });
 
+      // Update supply side of market (gathering increases supply)
+      try {
+        for (const item of result.gathered) {
+          recordTransaction(db, worldId, item.item, item.quantity, 'gather');
+        }
+      } catch { /* non-fatal */ }
+
+      // NPCs nearby see the player working — slight positive opinion shift
+      try {
+        const pos = x != null ? { x: parseFloat(x), z: parseFloat(z) } : { x: 1000, z: 1000 };
+        broadcastOpinionEvent(db, worldId, req.user.id, 'player', 'helped_npc', pos, {
+          radius: 20, context: 'gathering resources',
+        });
+      } catch { /* non-fatal */ }
+
       res.json({ ok: true, gathered: result.gathered, node: result.nodeState });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
@@ -985,6 +1005,187 @@ export default function createWorldsRouter({ requireAuth, db }) {
     }
   });
 
+  // ── Economy / Market ──────────────────────────────────────────────────────
+
+  // GET /api/worlds/:worldId/market — get current market prices
+  router.get("/:worldId/market", (req, res) => {
+    try {
+      const market = getWorldMarket(db, req.params.worldId);
+      res.json({ ok: true, market });
+    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  });
+
+  // POST /api/worlds/:worldId/market/trade — execute a trade (buy/sell resource)
+  // Body: { resource_id, quantity, type: 'buy'|'sell' }
+  router.post("/:worldId/market/trade", requireAuth, (req, res) => {
+    try {
+      const { worldId }    = req.params;
+      const { resource_id, quantity: rawQty, type } = req.body;
+
+      if (!resource_id || !rawQty || !type) {
+        return res.status(400).json({ ok: false, error: 'resource_id, quantity, and type required' });
+      }
+      if (!['buy', 'sell'].includes(type)) {
+        return res.status(400).json({ ok: false, error: 'type must be buy or sell' });
+      }
+
+      const quantity = Math.max(1, parseInt(rawQty));
+      const price    = getResourcePrice(db, worldId, resource_id);
+      const totalCost = price * quantity;
+
+      if (type === 'sell') {
+        // Check player inventory
+        const inv = db.prepare(
+          'SELECT SUM(quantity) as total FROM player_inventory WHERE user_id = ? AND item_id = ?'
+        ).get(req.user.id, resource_id);
+        const have = inv?.total ?? 0;
+        if (have < quantity) {
+          return res.status(400).json({ ok: false, error: 'insufficient_inventory', have, needed: quantity });
+        }
+
+        // Deduct from inventory (newest slots first)
+        let toConsume = quantity;
+        const slots = db.prepare(
+          'SELECT id, quantity FROM player_inventory WHERE user_id = ? AND item_id = ? ORDER BY acquired_at DESC'
+        ).all(req.user.id, resource_id);
+        for (const slot of slots) {
+          if (toConsume <= 0) break;
+          if (slot.quantity <= toConsume) {
+            db.prepare('DELETE FROM player_inventory WHERE id = ?').run(slot.id);
+            toConsume -= slot.quantity;
+          } else {
+            db.prepare('UPDATE player_inventory SET quantity = quantity - ? WHERE id = ?').run(toConsume, slot.id);
+            toConsume = 0;
+          }
+        }
+
+        // Credit player with concordia credits
+        db.prepare('UPDATE users SET concordia_credits = concordia_credits + ? WHERE id = ?')
+          .run(totalCost, req.user.id);
+
+        recordTransaction(db, worldId, resource_id, quantity, 'trade');
+
+        const balRow = db.prepare('SELECT concordia_credits FROM users WHERE id = ?').get(req.user.id);
+        return res.json({ ok: true, price, total_cost: totalCost, new_balance: balRow?.concordia_credits ?? 0 });
+      }
+
+      // type === 'buy'
+      const balRow = db.prepare('SELECT concordia_credits FROM users WHERE id = ?').get(req.user.id);
+      const balance = balRow?.concordia_credits ?? 0;
+      if (balance < totalCost) {
+        return res.status(400).json({ ok: false, error: 'insufficient_credits', have: balance, needed: totalCost });
+      }
+
+      // Deduct credits
+      db.prepare('UPDATE users SET concordia_credits = concordia_credits - ? WHERE id = ?')
+        .run(totalCost, req.user.id);
+
+      // Add item to inventory
+      const existing = db.prepare(
+        'SELECT id FROM player_inventory WHERE user_id = ? AND item_id = ?'
+      ).get(req.user.id, resource_id);
+      if (existing) {
+        db.prepare('UPDATE player_inventory SET quantity = quantity + ? WHERE id = ?')
+          .run(quantity, existing.id);
+      } else {
+        db.prepare(`
+          INSERT INTO player_inventory (id, user_id, item_type, item_id, item_name, quantity, quality)
+          VALUES (?, ?, 'material', ?, ?, ?, 1)
+        `).run(crypto.randomUUID(), req.user.id, resource_id, resource_id, quantity);
+      }
+
+      recordTransaction(db, worldId, resource_id, quantity, 'trade');
+
+      const updatedBal = db.prepare('SELECT concordia_credits FROM users WHERE id = ?').get(req.user.id);
+      return res.json({ ok: true, price, total_cost: totalCost, new_balance: updatedBal?.concordia_credits ?? 0 });
+    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  });
+
+  // ── Governance / Directives ───────────────────────────────────────────────
+
+  // GET /api/worlds/:worldId/directives — list active directives
+  router.get("/:worldId/directives", (req, res) => {
+    try {
+      const directives = getActiveDirectives(db, req.params.worldId);
+      res.json({ ok: true, directives });
+    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  });
+
+  // POST /api/worlds/:worldId/directives — issue a directive
+  // Body: { directive, directive_type, faction, expires_hours }
+  router.post("/:worldId/directives", requireAuth, (req, res) => {
+    try {
+      const { directive, directive_type, faction, expires_hours } = req.body;
+      if (!directive) return res.status(400).json({ ok: false, error: 'directive text required' });
+
+      const result = issueDirective(
+        db,
+        req.user.id,
+        'player',
+        req.params.worldId,
+        directive,
+        { directive_type, faction, expires_hours },
+      );
+      res.status(201).json({ ok: true, directive: result });
+    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  });
+
+  // POST /api/worlds/:worldId/directives/:directiveId/vote — manual player vote
+  // Body: { vote: 'for'|'against'|'abstain', reason }
+  router.post("/:worldId/directives/:directiveId/vote", requireAuth, (req, res) => {
+    try {
+      const { vote, reason } = req.body;
+      if (!['for', 'against', 'abstain'].includes(vote)) {
+        return res.status(400).json({ ok: false, error: "vote must be 'for', 'against', or 'abstain'" });
+      }
+
+      const result = voteOnDirective(
+        db,
+        req.params.directiveId,
+        req.user.id,
+        'player',
+        vote,
+        reason ?? null,
+      );
+      res.json({ ok: true, ...result });
+    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  });
+
+  // ── Building interiors / Rooms ─────────────────────────────────────────────
+
+  // GET /api/worlds/:worldId/buildings/:buildingId/rooms — get rooms for a building
+  router.get("/:worldId/buildings/:buildingId/rooms", (req, res) => {
+    try {
+      const { buildingId } = req.params;
+      const rooms = getRoomsForBuilding(db, buildingId);
+      res.json({ ok: true, rooms });
+    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  });
+
+  // POST /api/worlds/:worldId/buildings/:buildingId/rooms — add a room
+  router.post("/:worldId/buildings/:buildingId/rooms", requireAuth, (req, res) => {
+    try {
+      const { worldId, buildingId } = req.params;
+      const room = addRoom(db, buildingId, worldId, req.body);
+      res.status(201).json({ ok: true, room });
+    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  });
+
+  // PATCH /api/worlds/:worldId/buildings/:buildingId/rooms/:roomId/furniture — update furniture
+  // Body: { furniture: [...] }
+  router.patch("/:worldId/buildings/:buildingId/rooms/:roomId/furniture", requireAuth, (req, res) => {
+    try {
+      const { roomId }  = req.params;
+      const { furniture } = req.body;
+      if (!Array.isArray(furniture)) {
+        return res.status(400).json({ ok: false, error: 'furniture must be an array' });
+      }
+      const updated = updateRoomFurniture(db, roomId, furniture);
+      if (!updated) return res.status(404).json({ ok: false, error: 'room_not_found' });
+      res.json({ ok: true });
+    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  });
+
   // ── Player movement / swimming ────────────────────────────────────────────
 
   // POST /api/worlds/:worldId/move — update player position and swim state
@@ -1007,6 +1208,242 @@ export default function createWorldsRouter({ requireAuth, db }) {
     if (isNaN(x) || isNaN(z)) return res.status(400).json({ ok: false, error: 'x and z required' });
     const result = checkSwimState({ x, z, y: parseFloat(req.query.y) || undefined });
     res.json({ ok: true, ...result });
+  });
+
+  // ── Crime & Access ────────────────────────────────────────────────────────
+
+  // GET /:worldId/crimes — list open crimes (public: wanted boards etc.)
+  router.get("/:worldId/crimes", (req, res) => {
+    try {
+      const crimes = getOpenCrimes(db, req.params.worldId);
+      const warrants = getActiveWarrants(db, req.params.worldId);
+      res.json({ ok: true, crimes, warrants });
+    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  });
+
+  // POST /:worldId/rooms/:roomId/enter — attempt to enter a locked room
+  router.post("/:worldId/rooms/:roomId/enter", requireAuth, (req, res) => {
+    try {
+      const { roomId, worldId } = req.params;
+      const { method = 'walk', lockpick_skill = 0 } = req.body;
+      const access = checkRoomAccess(db, roomId, req.user.id, 'player');
+
+      if (access.allowed) return res.json({ ok: true, entered: true });
+
+      if (access.requiresLockpick && method === 'lockpick') {
+        const result = attemptLockpick(db, roomId, req.user.id, 'player', parseInt(lockpick_skill));
+        if (result.success) {
+          broadcastOpinionEvent(db, worldId, req.user.id, 'player', 'broke_into_building',
+            {}, { radius: 25, context: 'lockpicking a room' });
+        }
+        return res.json({ ok: result.success, entered: result.success, crimeEventId: result.crimeEventId, noisy: result.noisy });
+      }
+
+      if (method === 'force') {
+        const result = forceEntry(db, roomId, req.user.id, 'player');
+        broadcastOpinionEvent(db, worldId, req.user.id, 'player', 'destroyed_property',
+          {}, { radius: 40, context: 'forcing entry to a room' });
+        return res.json({ ok: result.ok, entered: result.ok, crimeEventId: result.crimeEventId });
+      }
+
+      res.status(403).json({ ok: false, reason: access.reason, requiresLockpick: access.requiresLockpick, lockTier: access.lockTier });
+    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  });
+
+  // POST /:worldId/rooms/:roomId/steal — record theft from a room
+  router.post("/:worldId/rooms/:roomId/steal", requireAuth, (req, res) => {
+    try {
+      const { roomId, worldId } = req.params;
+      const { items = [] } = req.body;
+      const crimeEventId = recordTheft(db, roomId, req.user.id, 'player', items);
+      broadcastOpinionEvent(db, worldId, req.user.id, 'player', 'stole_from_npc',
+        {}, { radius: 15, context: 'theft' });
+      res.json({ ok: true, crimeEventId });
+    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  });
+
+  // GET /:worldId/reputation — how NPCs in this world feel about the requesting player
+  router.get("/:worldId/reputation", requireAuth, (req, res) => {
+    try {
+      const rep = getWorldReputation(db, req.params.worldId, req.user.id);
+      res.json({ ok: true, ...rep });
+    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  });
+
+  // GET /:worldId/npcs/:npcId/mood — will this NPC interact with the player + their mood
+  router.get("/:worldId/npcs/:npcId/mood", requireAuth, (req, res) => {
+    try {
+      const result = willNPCInteract(db, req.params.npcId, req.user.id, req.query.type || 'talk');
+      res.json({ ok: true, ...result });
+    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  });
+
+  // ── Combat / Damage ────────────────────────────────────────────────────────
+
+  // POST /api/worlds/:worldId/combat/attack — player attacks an NPC
+  // body: { npcId, skillDtuId?, itemDtuId? }
+  router.post("/:worldId/combat/attack", requireAuth, async (req, res) => {
+    try {
+      const { worldId } = req.params;
+      const userId = req.user.id;
+      const { npcId, skillDtuId, itemDtuId } = req.body;
+
+      if (!npcId) return res.status(400).json({ ok: false, error: "npcId required" });
+
+      const {
+        computeDamage,
+        applyDamageToNPC,
+        getOrCreateNPCResistances,
+        getOrInitPlayerBars,
+        consumeResourceBar,
+      } = await import("../lib/combat/damage-calculator.js");
+
+      // ── Resolve skill DTU for attack parameters ────────────────────────────
+      let skillData = {};
+      if (skillDtuId) {
+        const dtu = db.prepare("SELECT data FROM dtus WHERE id = ?").get(skillDtuId);
+        if (dtu) {
+          try { skillData = typeof dtu.data === 'string' ? JSON.parse(dtu.data) : dtu.data; }
+          catch { /* keep empty */ }
+        }
+      }
+
+      // ── Consume resource bar ───────────────────────────────────────────────
+      const barType = skillData.resource_bar || 'stamina';
+      const barCost = skillData.bar_cost || 10;
+      if (barType !== 'multi') {
+        const consumeResult = consumeResourceBar(db, userId, worldId, barType, barCost);
+        if (!consumeResult.ok) {
+          return res.status(422).json({ ok: false, error: consumeResult.reason, bars: consumeResult.bars });
+        }
+      } else {
+        // Multi-bar: consume both
+        const primary = consumeResourceBar(db, userId, worldId, skillData.secondary_bar || 'stamina', skillData.secondary_bar_cost || 6);
+        const secondary = primary.ok
+          ? consumeResourceBar(db, userId, worldId, 'mana', barCost)
+          : { ok: false, reason: primary.reason };
+        if (!secondary.ok) {
+          return res.status(422).json({ ok: false, error: secondary.reason });
+        }
+      }
+
+      // ── Skill level lookup ─────────────────────────────────────────────────
+      const skillTypeForLookup = skillData.skill_type || 'combat';
+      const skillRow = db.prepare(`
+        SELECT MAX(level) as level FROM player_skill_levels WHERE user_id = ? AND skill_type = ?
+      `).get(userId, skillTypeForLookup);
+
+      // ── World multiplier ───────────────────────────────────────────────────
+      const { computeSkillEffectiveness } = await import("../lib/skills/skill-engine.js");
+      const world = db.prepare("SELECT rule_modulators FROM worlds WHERE id = ?").get(worldId);
+      const rules = world?.rule_modulators
+        ? (typeof world.rule_modulators === 'string' ? JSON.parse(world.rule_modulators) : world.rule_modulators)
+        : {};
+      const eff = computeSkillEffectiveness(skillTypeForLookup, skillRow?.level || 1, rules);
+
+      const attackerStats = {
+        skillLevel: eff.effectiveLevel,
+        element: skillData.element || 'none',
+        basePower: skillData.base_power || 5,
+        enchantmentBonus: skillData.enchantment_power || 0,
+        worldMultiplier: eff.multiplier || 1.0,
+      };
+
+      // ── Defender resistances ───────────────────────────────────────────────
+      const defenderStats = getOrCreateNPCResistances(db, npcId);
+      if (!defenderStats) return res.status(404).json({ ok: false, error: "NPC not found" });
+
+      const damageResult = computeDamage(attackerStats, defenderStats, skillData);
+      const { eventId, kill } = applyDamageToNPC(db, worldId, userId, 'player', npcId, damageResult, {
+        skill_dtu_id: skillDtuId, item_dtu_id: itemDtuId,
+        element: skillData.element || 'none',
+        bar_used: barType === 'multi' ? 'mana' : barType,
+        bar_cost: barCost,
+      });
+
+      // Broadcast opinion event — violence witnessed nearby
+      try {
+        const npc = db.prepare("SELECT x, z FROM world_npcs WHERE id = ?").get(npcId);
+        if (npc) {
+          broadcastOpinionEvent(db, worldId, userId, 'player', 'attacked_bystander',
+            { x: npc.x || 0, z: npc.z || 0 }, { witnessRadius: 20 });
+        }
+      } catch { /* non-critical */ }
+
+      res.json({ ok: true, damageResult, eventId, kill, npcId });
+    } catch (e) {
+      logger.error('worlds', 'combat-attack', { error: e.message });
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // POST /api/worlds/:worldId/combat/npc-attack — NPC attacks a player
+  // body: { npcId }
+  router.post("/:worldId/combat/npc-attack", requireAuth, async (req, res) => {
+    try {
+      const { worldId } = req.params;
+      const userId = req.user.id;
+      const { npcId } = req.body;
+
+      if (!npcId) return res.status(400).json({ ok: false, error: "npcId required" });
+
+      const {
+        computeDamage,
+        applyDamageToPlayer,
+        getOrCreateNPCResistances,
+      } = await import("../lib/combat/damage-calculator.js");
+
+      const npc = db.prepare(`
+        SELECT archetype, criminal_rep, fire_resistance, ice_resistance,
+               physical_resistance, current_hp, max_hp
+        FROM world_npcs WHERE id = ?
+      `).get(npcId);
+      if (!npc) return res.status(404).json({ ok: false, error: "NPC not found" });
+
+      // NPC attack power scales with criminal_rep and archetype
+      const npcPower = 5 + (npc.criminal_rep || 0) * 10;
+      const element = npc.archetype === 'mage' ? 'energy' : 'physical';
+
+      const attackerStats = { skillLevel: 5, element, basePower: npcPower, enchantmentBonus: 0, worldMultiplier: 1 };
+
+      // Fetch player resistances from equipped armor DTUs
+      const armorDtu = db.prepare(`
+        SELECT data FROM dtus WHERE creator_id = ? AND type = 'item'
+        ORDER BY created_at DESC LIMIT 1
+      `).get(userId);
+      let armorData = {};
+      if (armorDtu) {
+        try { armorData = JSON.parse(armorDtu.data); } catch { /* ignore */ }
+      }
+      const defenderStats = {
+        physical_resistance: armorData.defense ? Math.min(0.5, armorData.defense / 200) : 0,
+        fire_resistance: armorData.fire_resistance || 0,
+        ice_resistance: armorData.ice_resistance || 0,
+        status_effects: '[]',
+      };
+
+      const damageResult = computeDamage(attackerStats, defenderStats, {});
+      const { eventId, kill } = applyDamageToPlayer(db, worldId, npcId, 'npc', userId, damageResult, {
+        element, bar_used: 'hp', bar_cost: damageResult.finalDamage,
+      });
+
+      res.json({ ok: true, damageResult, eventId, kill, message: kill ? 'You have been defeated' : undefined });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // GET /api/worlds/:worldId/resource-bars — player resource bars (with regen)
+  router.get("/:worldId/resource-bars", requireAuth, async (req, res) => {
+    try {
+      const { worldId } = req.params;
+      const userId = req.user.id;
+      const { regenerateResourceBars } = await import("../lib/combat/damage-calculator.js");
+      const bars = regenerateResourceBars(db, userId, worldId);
+      res.json({ ok: true, bars });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
   });
 
   return router;
