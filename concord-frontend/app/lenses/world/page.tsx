@@ -1984,13 +1984,17 @@ export default function WorldLensPage() {
         // Phase 4 hit reaction: make the target NPC visibly flinch/stagger.
         // AvatarSystem3D listens for `concordia:hit-reaction` and crossfades
         // a short reaction clip onto the target's mixer.
+        // Phase 6: include hit direction so heavy/crit hits actually push
+        // the target backward in world space (proxied from player yaw).
         const targetIdForReaction = combatStateRef.current.target?.id;
         if (targetIdForReaction) {
           const severity: 'light' | 'heavy' | 'crit' =
             data.isCrit ? 'crit' : data.damage > 25 ? 'heavy' : 'light';
+          const yaw = playerAvatar.rotation;
+          const hitDirection = { x: -Math.sin(yaw), z: -Math.cos(yaw) };
           window.dispatchEvent(
             new CustomEvent('concordia:hit-reaction', {
-              detail: { targetId: targetIdForReaction, severity },
+              detail: { targetId: targetIdForReaction, severity, hitDirection },
             })
           );
         }
@@ -2078,15 +2082,23 @@ export default function WorldLensPage() {
           detail: { trigger: 'combat-hit' },
         })
       );
-      // Phase 4 hit reaction on the player avatar itself
-      window.dispatchEvent(
-        new CustomEvent('concordia:hit-reaction', {
-          detail: {
-            targetId: playerAvatar.id,
-            severity: data.isCrit ? 'crit' : data.damage > 25 ? 'heavy' : 'light',
-          },
-        })
-      );
+      // Phase 4/6 hit reaction on the player avatar itself, with knockback
+      // direction = away from the attacker. Server doesn't send attacker
+      // position, so use the inverse of the player's facing as a proxy
+      // (player tends to face the attacker during combat).
+      {
+        const yaw = playerAvatar.rotation;
+        const hitDirection = { x: Math.sin(yaw), z: Math.cos(yaw) };
+        window.dispatchEvent(
+          new CustomEvent('concordia:hit-reaction', {
+            detail: {
+              targetId: playerAvatar.id,
+              severity: data.isCrit ? 'crit' : data.damage > 25 ? 'heavy' : 'light',
+              hitDirection,
+            },
+          })
+        );
+      }
       // Heavy hit (> 25 dmg) or crit triggers stagger — slows movement briefly
       if (data.isCrit || data.damage > 25) {
         setStaggered(true);

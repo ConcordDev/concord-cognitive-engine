@@ -895,9 +895,21 @@ export default function AvatarSystem3D({
         crit_recoil:  850,
       };
       const hitReactionTimers = new Map<string, ReturnType<typeof setTimeout>>();
+      // Phase 6: knockback offsets on heavy/crit reactions. Tweens the
+      // mesh's world position by ~0.4m for heavy and ~0.7m for crit over
+      // 300ms in the supplied direction. Re-enters the same step pattern
+      // as the death-collapse impulse but smaller magnitude and shorter.
+      const knockbackTimers = new Map<string, ReturnType<typeof setTimeout>[]>();
+
       function handleHitReaction(e: Event) {
         const detail = (e as CustomEvent).detail as
-          | { targetId?: string; severity?: 'light' | 'heavy' | 'crit'; location?: string; clipName?: string }
+          | {
+              targetId?: string;
+              severity?: 'light' | 'heavy' | 'crit';
+              location?: string;
+              clipName?: string;
+              hitDirection?: { x: number; z: number };
+            }
           | undefined;
         if (!detail?.targetId) return;
         const mixer = mixersRef.current.get(detail.targetId) as MixerType | undefined;
@@ -926,6 +938,46 @@ export default function AvatarSystem3D({
           hitReactionTimers.delete(detail.targetId!);
         }, dur);
         hitReactionTimers.set(detail.targetId, t);
+
+        // Knockback offset for heavy/crit hits if direction supplied.
+        if (detail.hitDirection && (detail.severity === 'heavy' || detail.severity === 'crit')) {
+          const id = detail.targetId;
+          const meshEntry =
+            (id === playerAvatar.id && playerMeshRef.current)
+              ? { mesh: playerMeshRef.current as InstanceType<typeof import('three').Group> }
+              : (npcMeshes.get(id) as { mesh: InstanceType<typeof import('three').Group>; targetPos?: InstanceType<typeof import('three').Vector3> } | undefined);
+          const mesh = meshEntry?.mesh;
+          if (mesh) {
+            const dir = detail.hitDirection;
+            const len = Math.hypot(dir.x, dir.z) || 1;
+            const magnitude = detail.severity === 'crit' ? 0.7 : 0.4;
+            const dx = (dir.x / len) * magnitude;
+            const dz = (dir.z / len) * magnitude;
+            const steps = 6;
+            const stepMs = 50;
+            // Cancel any in-flight knockback for this target.
+            const prev = knockbackTimers.get(id);
+            if (prev) for (const tt of prev) clearTimeout(tt);
+            const arr: ReturnType<typeof setTimeout>[] = [];
+            for (let i = 1; i <= steps; i++) {
+              const tt = setTimeout(() => {
+                if (mesh) {
+                  mesh.position.x += dx / steps;
+                  mesh.position.z += dz / steps;
+                }
+                // Also nudge targetPos for NPCs so their lerp doesn't yank
+                // them straight back the next 2Hz update.
+                const npcEntry = npcMeshes.get(id) as { targetPos?: InstanceType<typeof import('three').Vector3> } | undefined;
+                if (npcEntry?.targetPos) {
+                  npcEntry.targetPos.x += dx / steps;
+                  npcEntry.targetPos.z += dz / steps;
+                }
+              }, i * stepMs);
+              arr.push(tt);
+            }
+            knockbackTimers.set(id, arr);
+          }
+        }
       }
       window.addEventListener('concordia:hit-reaction', handleHitReaction);
 
@@ -1655,6 +1707,8 @@ export default function AvatarSystem3D({
         for (const arr of dyingTimers.values()) for (const t of arr) clearTimeout(t);
         dyingTimers.clear();
         fadingMeshes.clear();
+        for (const arr of knockbackTimers.values()) for (const t of arr) clearTimeout(t);
+        knockbackTimers.clear();
         physicsWorld.removeCharacter('player');
       };
     }
