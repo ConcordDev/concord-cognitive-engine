@@ -251,7 +251,15 @@ export type SocketEvent =
   | 'trade:offer_updated'
   | 'trade:other_ready'
   | 'trade:complete'
-  | 'trade:cancelled';
+  | 'trade:cancelled'
+  // Phase 9: party / group system
+  | 'party:invite'
+  | 'party:invite_declined'
+  | 'party:member_joined'
+  | 'party:member_left'
+  | 'party:leader_changed'
+  | 'party:kicked'
+  | 'party:chat';
 
 // ---- Enriched Event Payload (Category 2+5: Concurrency + Observability) ----
 interface EnrichedPayload {

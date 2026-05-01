@@ -26337,6 +26337,10 @@ app.use("/api/npc-shop", createNPCShopRouter({ requireAuth, db }));
 import createPlayerTradeRouter from "./routes/player-trade.js";
 app.use("/api/player-trade", createPlayerTradeRouter({ requireAuth, db, emitToUser }));
 
+// Phase 9 polish-to-ten: party / group system with invite / leader / chat
+import createPartiesRouter from "./routes/parties.js";
+app.use("/api/parties", createPartiesRouter({ requireAuth, db, emitToUser }));
+
 // ===== CONCORDIA LIVING WORLD (portals, player inventory, arena, leaderboards, crafting) =====
 import createLensPortalsRouter from "./routes/lens-portals.js";
 import createPlayerInventoryRouter from "./routes/player-inventory.js";
