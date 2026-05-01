@@ -2,9 +2,10 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
-  Heart, Shield, Zap, Swords, Target, Skull,
-  ShieldAlert, ScrollText, Eye, RefreshCw,
+  Heart, Shield, Zap, Swords, Target,
+  ShieldAlert, ScrollText, Eye,
 } from 'lucide-react';
+import { PlayerDeathSequence } from '@/components/world/PlayerDeathSequence';
 
 /* ── Types ─────────────────────────────────────────────────────── */
 
@@ -182,26 +183,9 @@ export default function CombatSystem({
     ? 'text-yellow-400'
     : 'text-red-400';
 
-  // Death overlay
+  // Death overlay — cinematic fade-to-black sequence (Phase 7).
   if (state.isDead) {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90">
-        <div className={`${panel} p-8 text-center max-w-sm`}>
-          <Skull className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <h2 className="text-lg font-bold text-red-400 mb-2">You have fallen</h2>
-          <p className="text-xs text-gray-400 mb-4">
-            Your structures remain intact. Respawn at the nearest district hub.
-          </p>
-          <button
-            onClick={onRespawn}
-            className="flex items-center gap-2 mx-auto px-4 py-2 rounded bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 hover:bg-cyan-500/30 text-xs font-semibold transition-colors"
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-            Respawn
-          </button>
-        </div>
-      </div>
-    );
+    return <PlayerDeathSequence onRespawn={onRespawn ?? (() => {})} />;
   }
 
   return (
