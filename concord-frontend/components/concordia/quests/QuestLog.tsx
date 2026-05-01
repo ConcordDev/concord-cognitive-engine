@@ -154,7 +154,22 @@ export function QuestLog({ quests: propQuests, worldId, onClose }: QuestLogProps
       const res = await fetch(`/api/worlds/${worldId}/quests?status=all`);
       if (!res.ok) return;
       const data = await res.json();
-      setServerQuests((data.quests || []).map(normaliseServerQuest));
+      const next = (data.quests || []).map(normaliseServerQuest);
+      // Phase 18 polish-to-ten: fire quest-complete fanfare when a quest
+      // transitions from non-completed to completed in this fetch. Compares
+      // against the previous serverQuests state, so only fresh transitions
+      // trigger the juice (re-mounts don't re-fire).
+      setServerQuests((prev) => {
+        const prevById = new Map(prev.map((q) => [q.id, q.status]));
+        for (const q of next) {
+          if (q.status === 'completed' && prevById.has(q.id) && prevById.get(q.id) !== 'completed') {
+            try {
+              window.dispatchEvent(new CustomEvent('concordia:game-juice', { detail: { trigger: 'quest-complete' } }));
+            } catch { /* juice is best-effort */ }
+          }
+        }
+        return next;
+      });
     } finally {
       setLoading(false);
     }

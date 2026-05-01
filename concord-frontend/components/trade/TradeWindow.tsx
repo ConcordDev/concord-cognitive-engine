@@ -75,6 +75,12 @@ export function TradeWindow({ tradeId, myUserId, initiatorId, recipientId, onClo
         message: `Trade complete — received ${msg.received.items.length} item(s) and ${msg.received.cc} CC`,
         duration: 6000,
       });
+      // Phase 18 polish-to-ten: loop-closure fanfare. The 'milestone'
+      // GameJuice trigger maps to fanfare-short SFX + visual; signals
+      // "an exchange of value just happened" without being noisy.
+      try {
+        window.dispatchEvent(new CustomEvent('concordia:game-juice', { detail: { trigger: 'milestone' } }));
+      } catch { /* juice is best-effort */ }
     });
 
     const offCancel = subscribe<{ tradeId: string; by: string }>('trade:cancelled', (msg) => {
