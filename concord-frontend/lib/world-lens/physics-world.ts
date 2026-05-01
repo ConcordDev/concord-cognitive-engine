@@ -151,22 +151,86 @@ class PhysicsWorld {
 
   /**
    * Walk a Three.js scene (or subtree) and register colliders for any
-   * `userData.isBuilding === true` object that has not yet been registered.
-   * Idempotent — call freely after scene-ready or async building loads.
+   * `userData.isBuilding === true` object OR any object with
+   * `userData.colliderProfile` set to a registered shape kind.
+   * Idempotent — call freely after scene-ready or async loads.
    * Returns the number of colliders newly registered.
+   *
+   * Phase 11 of polish-to-ten: extended past buildings to vegetation,
+   * props, vehicles, npcs.
+   *
+   * Supported profiles:
+   *   'box'     — AABB-derived box collider (same as buildings)
+   *   'capsule' — vertical capsule sized to mesh height/half-extent.x
+   *   'mesh'    — TODO; fall back to box for now (mesh colliders are heavy)
+   *   'none' / undefined — skipped
    */
   syncFromScene(root: Object3DLike): number {
     if (!this.RAPIER || !this.world || !this.THREE || !root.traverse) return 0;
     let registered = 0;
     root.traverse((child) => {
-      const ud = child.userData ?? {};
-      if (!ud.isBuilding) return;
+      const ud = (child.userData ?? {}) as Record<string, unknown>;
+      const profile = (ud.colliderProfile as string | undefined)
+        ?? (ud.isBuilding ? 'box' : undefined);
+      if (!profile || profile === 'none') return;
       if (ud.physicsKey && this.colliders.has(ud.physicsKey as string)) return;
-      const entityId = (ud.buildingId as string) ?? `auto_${registered}_${Date.now()}`;
-      const key = this.registerBuildingFromObject(child, entityId);
-      if (key) registered += 1;
+
+      const baseId = (ud.buildingId as string)
+        ?? (ud.entityId as string)
+        ?? (ud.id as string)
+        ?? `auto_${registered}_${Date.now()}`;
+      const entityId = `${profile}:${baseId}`;
+
+      let key: string | null = null;
+      if (profile === 'capsule') {
+        key = this._registerCapsuleFromObject(child, entityId);
+      } else {
+        // 'box' or 'mesh' (mesh falls back to AABB box for now)
+        key = this.registerBuildingFromObject(child, entityId);
+      }
+      if (key) {
+        ud.isBuilding = true;
+        ud.physicsKey = key;
+        registered += 1;
+      }
     });
     return registered;
+  }
+
+  /**
+   * Capsule collider derived from a Three.js Object3D's bounding box.
+   * Used for vegetation trunks, NPCs, characters that live in the scene
+   * outside the kinematic-controller path.
+   */
+  private _registerCapsuleFromObject(obj: Object3DLike, entityId: string): string | null {
+    if (!this.RAPIER || !this.world || !this.THREE) return null;
+    const ud = obj.userData ?? (obj as Record<string, unknown>);
+    const existing = (ud as Record<string, unknown>).physicsKey as string | undefined;
+    if (existing && this.colliders.has(existing)) return existing;
+
+    const box = new this.THREE.Box3();
+    box.setFromObject(obj as unknown as InstanceType<ThreeType['Object3D']>);
+    if (box.isEmpty()) return null;
+    const center = new this.THREE.Vector3();
+    const size   = new this.THREE.Vector3();
+    box.getCenter(center);
+    box.getSize(size);
+    if (size.x < 0.05 || size.y < 0.05 || size.z < 0.05) return null;
+
+    const RAPIER = this.RAPIER;
+    const halfHeight = Math.max(0.05, size.y / 2 - Math.min(size.x, size.z) / 2);
+    const radius     = Math.max(0.05, Math.min(size.x, size.z) / 2);
+
+    const bodyDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(center.x, center.y, center.z);
+    const body     = this.world.createRigidBody(bodyDesc);
+    const collDesc = RAPIER.ColliderDesc.capsule(halfHeight, radius);
+    const coll     = this.world.createCollider(collDesc, body);
+
+    const key = `capsule:${entityId}`;
+    this.bodies.set(key, body);
+    this.colliders.set(key, coll);
+    (ud as Record<string, unknown>).physicsKey = key;
+    return key;
   }
 
   /**
