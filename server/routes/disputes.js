@@ -121,7 +121,7 @@ export default function createDisputeRouter({ db, requireAuth, adminOnly }) {
         reviewTime: result.reviewTime,
       });
     } catch (err) {
-      return res.status(500).json({ ok: false, error: "create_dispute_failed"};
+      return res.status(500).json({ ok: false, error: "create_dispute_failed" });
     }
   });
 
@@ -147,7 +147,7 @@ export default function createDisputeRouter({ db, requireAuth, adminOnly }) {
 
       return res.json({ ok: true, disputes: enriched, total: enriched.length });
     } catch (err) {
-      return res.status(500).json({ ok: false, error: "fetch_disputes_failed"};
+      return res.status(500).json({ ok: false, error: "fetch_disputes_failed" });
     }
   });
 
@@ -176,7 +176,7 @@ export default function createDisputeRouter({ db, requireAuth, adminOnly }) {
 
       return res.json({ ok: true, queue, total: queue.length });
     } catch (err) {
-      return res.status(500).json({ ok: false, error: "fetch_queue_failed"};
+      return res.status(500).json({ ok: false, error: "fetch_queue_failed" });
     }
   });
 
@@ -274,7 +274,7 @@ export default function createDisputeRouter({ db, requireAuth, adminOnly }) {
         ...updateResult,
       });
     } catch (err) {
-      return res.status(500).json({ ok: false, error: "seller_respond_failed"};
+      return res.status(500).json({ ok: false, error: "seller_respond_failed" });
     }
   });
 
@@ -362,7 +362,7 @@ export default function createDisputeRouter({ db, requireAuth, adminOnly }) {
         ...updateResult,
       });
     } catch (err) {
-      return res.status(500).json({ ok: false, error: "resolve_failed"};
+      return res.status(500).json({ ok: false, error: "resolve_failed" });
     }
   });
 
@@ -402,7 +402,7 @@ export default function createDisputeRouter({ db, requireAuth, adminOnly }) {
         },
       });
     } catch (err) {
-      return res.status(500).json({ ok: false, error: "fetch_dispute_failed"};
+      return res.status(500).json({ ok: false, error: "fetch_dispute_failed" });
     }
   });
 

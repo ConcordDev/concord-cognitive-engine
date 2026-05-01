@@ -2,11 +2,20 @@
 // Ongoing shadow reasoning: session tracking and shadow DTU indexing.
 
 export function up(db) {
-  db.exec(`
-    ALTER TABLE dtus ADD COLUMN ongoing_reasoning_session TEXT;
-    ALTER TABLE dtus ADD COLUMN shadow_generation INTEGER;
-    ALTER TABLE dtus ADD COLUMN reasoning_continues INTEGER DEFAULT 0;
+  // ALTER TABLE statements must run individually in SQLite
+  const columns = db.prepare("PRAGMA table_info(dtus)").all().map(c => c.name);
 
+  if (!columns.includes('ongoing_reasoning_session')) {
+    db.exec(`ALTER TABLE dtus ADD COLUMN ongoing_reasoning_session TEXT`);
+  }
+  if (!columns.includes('shadow_generation')) {
+    db.exec(`ALTER TABLE dtus ADD COLUMN shadow_generation INTEGER`);
+  }
+  if (!columns.includes('reasoning_continues')) {
+    db.exec(`ALTER TABLE dtus ADD COLUMN reasoning_continues INTEGER DEFAULT 0`);
+  }
+
+  db.exec(`
     CREATE INDEX IF NOT EXISTS idx_dtus_ongoing_reasoning
       ON dtus(ongoing_reasoning_session, shadow_generation)
       WHERE ongoing_reasoning_session IS NOT NULL;
@@ -43,6 +52,4 @@ export function down(db) {
     DROP TABLE IF EXISTS reasoning_sessions;
     DROP INDEX IF EXISTS idx_dtus_ongoing_reasoning;
   `);
-  // Note: SQLite doesn't support DROP COLUMN in older versions.
-  // The added DTU columns remain but are harmless.
 }

@@ -57,7 +57,7 @@ export default function createStorageRouter({ db, requireAuth }) {
       const result = storeInVault(db, { fileBuffer, mimeType });
       res.status(result.ok ? 201 : 400).json(result);
     } catch (err) {
-      res.status(500).json({ ok: false, error: "vault_store_failed"};
+      res.status(500).json({ ok: false, error: "vault_store_failed" });
     }
   });
 
@@ -71,7 +71,7 @@ export default function createStorageRouter({ db, requireAuth }) {
       if (!entry) return res.status(404).json({ ok: false, error: "not_found" });
       res.json({ ok: true, entry });
     } catch (err) {
-      res.status(500).json({ ok: false, error: "vault_get_failed"};
+      res.status(500).json({ ok: false, error: "vault_get_failed" });
     }
   });
 
@@ -85,7 +85,7 @@ export default function createStorageRouter({ db, requireAuth }) {
       if (result && !result.ok) return res.status(400).json(result);
       res.json({ ok: true });
     } catch (err) {
-      res.status(500).json({ ok: false, error: "ref_increment_failed"};
+      res.status(500).json({ ok: false, error: "ref_increment_failed" });
     }
   });
 
@@ -99,7 +99,7 @@ export default function createStorageRouter({ db, requireAuth }) {
       if (result && !result.ok) return res.status(400).json(result);
       res.json({ ok: true });
     } catch (err) {
-      res.status(500).json({ ok: false, error: "ref_decrement_failed"};
+      res.status(500).json({ ok: false, error: "ref_decrement_failed" });
     }
   });
 
@@ -111,7 +111,7 @@ export default function createStorageRouter({ db, requireAuth }) {
       }
       res.json(result);
     } catch (err) {
-      res.status(500).json({ ok: false, error: "cleanup_failed"};
+      res.status(500).json({ ok: false, error: "cleanup_failed" });
     }
   });
 
@@ -120,7 +120,7 @@ export default function createStorageRouter({ db, requireAuth }) {
       const stats = getVaultStats(db);
       res.json(stats);
     } catch (err) {
-      res.status(500).json({ ok: false, error: "vault_stats_failed"};
+      res.status(500).json({ ok: false, error: "vault_stats_failed" });
     }
   });
 
