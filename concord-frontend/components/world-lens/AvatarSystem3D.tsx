@@ -77,6 +77,9 @@ export type AnimationClip =
   | 'stagger_right'
   | 'block_impact'
   | 'crit_recoil'
+  // Death (Phase 5) — 1.5s buckle + fall-forward, then settle prone.
+  // Followed externally by 6.5s opacity fade and mesh disposal.
+  | 'death_collapse'
   | 'point'
   | 'celebrate'
   | 'craft';
@@ -253,6 +256,9 @@ export default function AvatarSystem3D({
   const avatarGroupRef = useRef<unknown>(null);
   const playerMeshRef = useRef<unknown>(null);
   const mixersRef = useRef<Map<string, unknown>>(new Map());
+  // Phase 5: tick fn for the per-frame opacity fade on dying meshes;
+  // hoisted to a ref so the existing game-loop block can invoke it.
+  const deathFadeTickRef = useRef<(() => void) | null>(null);
   const keysRef = useRef<Set<string>>(new Set());
   const playerPositionRef = useRef({ ...playerAvatar.position });
   const playerRotationRef = useRef(playerAvatar.rotation);
@@ -792,6 +798,36 @@ export default function AvatarSystem3D({
         ])
       );
 
+      // Death collapse — knees buckle (slight Y dip), forward face-plant
+      // pitch over 1.0s, settle prone for the remaining 0.5s. Holds the
+      // pose at the end (no return to baseline) so the mesh stays down
+      // until the externally-driven opacity fade runs to completion.
+      clips.set(
+        'death_collapse',
+        new THREE.AnimationClip('death_collapse', 1.5, [
+          new THREE.NumberKeyframeTrack(
+            '.position[y]',
+            [0, 0.30, 0.80, 1.10, 1.50],
+            [0, -0.20, -0.50, -0.85, -0.85],
+          ),
+          new THREE.NumberKeyframeTrack(
+            '.rotation[x]',
+            [0, 0.30, 0.80, 1.10, 1.50],
+            [0, 0.30, 1.20, 1.55, 1.55],
+          ),
+          new THREE.NumberKeyframeTrack(
+            '.position[z]',
+            [0, 0.50, 1.10, 1.50],
+            [0, -0.10, -0.30, -0.30],
+          ),
+          new THREE.NumberKeyframeTrack(
+            '.scale[y]',
+            [0, 0.30, 1.10, 1.50],
+            [1, 0.95, 0.92, 0.92],
+          ),
+        ])
+      );
+
       return clips;
     },
     []
@@ -892,6 +928,126 @@ export default function AvatarSystem3D({
         hitReactionTimers.set(detail.targetId, t);
       }
       window.addEventListener('concordia:hit-reaction', handleHitReaction);
+
+      // ── Death collapse (Phase 5) ─────────────────────────────
+      // Detail: { targetId: string, hitDirection?: { x: number; z: number } }
+      // Procedural collapse + opacity fade. Avoids the 16-bone Rapier
+      // ragdoll because the visual win is ~80% achievable with this
+      // simpler approach and the Rapier-bone version is a much larger
+      // body of work for marginal gameplay benefit.
+      const dyingTimers = new Map<string, ReturnType<typeof setTimeout>[]>();
+      const fadingMeshes = new Map<string, { mesh: InstanceType<typeof import('three').Group>; startedAt: number; durationMs: number }>();
+
+      function handleDeathCollapse(e: Event) {
+        const detail = (e as CustomEvent).detail as
+          | { targetId?: string; hitDirection?: { x: number; z: number } }
+          | undefined;
+        if (!detail?.targetId) return;
+        const id = detail.targetId;
+        const mixer = mixersRef.current.get(id) as MixerType | undefined;
+        if (!mixer) return;
+
+        // Cancel any in-flight reaction return so it doesn't clobber the
+        // collapse 200ms after the kill landed.
+        const reactionTimer = hitReactionTimers.get(id);
+        if (reactionTimer) {
+          clearTimeout(reactionTimer);
+          hitReactionTimers.delete(id);
+        }
+
+        // Crossfade into the collapse animation. The clip holds its final
+        // pose so the body stays prone after the 1.5s collapse.
+        playClip(mixer, 'death_collapse', 80);
+
+        // Apply optional hit-direction impulse offset over the first 600ms
+        // by translating the mesh's parent group slightly. The clip itself
+        // moves the avatar group on its local axes; this offsets in world.
+        const meshEntry =
+          (id === playerAvatar.id && playerMeshRef.current)
+            ? { mesh: playerMeshRef.current as InstanceType<typeof import('three').Group> }
+            : (npcMeshes.get(id) as { mesh: InstanceType<typeof import('three').Group> } | undefined);
+        const mesh = meshEntry?.mesh;
+        if (!mesh) return;
+
+        if (detail.hitDirection) {
+          const dir = detail.hitDirection;
+          const len = Math.hypot(dir.x, dir.z) || 1;
+          const dx = (dir.x / len) * 0.6;
+          const dz = (dir.z / len) * 0.6;
+          // Tween over 600ms by stepping mesh.position via setTimeout chain.
+          // Using small steps to avoid coupling to the game-loop tick rate.
+          const steps = 12;
+          const stepMs = 50;
+          for (let i = 1; i <= steps; i++) {
+            const t = setTimeout(() => {
+              if (mesh) {
+                mesh.position.x += dx / steps;
+                mesh.position.z += dz / steps;
+              }
+            }, i * stepMs);
+            const arr = dyingTimers.get(id) ?? [];
+            arr.push(t);
+            dyingTimers.set(id, arr);
+          }
+        }
+
+        // Schedule opacity fade-out after the collapse settles.
+        const fadeStart = setTimeout(() => {
+          fadingMeshes.set(id, { mesh, startedAt: Date.now(), durationMs: 6500 });
+        }, 1500);
+
+        // Schedule mesh disposal at 8s total.
+        const cleanup = setTimeout(() => {
+          try {
+            mesh.parent?.remove(mesh);
+            mesh.traverse((child) => {
+              const c = child as { geometry?: { dispose?: () => void }; material?: { dispose?: () => void } | { dispose?: () => void }[] };
+              c.geometry?.dispose?.();
+              const m = c.material;
+              if (Array.isArray(m)) m.forEach((mat) => mat?.dispose?.());
+              else m?.dispose?.();
+            });
+          } catch {
+            /* defensive cleanup */
+          }
+          mixersRef.current.delete(id);
+          npcMeshes.delete(id);
+          fadingMeshes.delete(id);
+          dyingTimers.delete(id);
+        }, 8000);
+
+        const arr = dyingTimers.get(id) ?? [];
+        arr.push(fadeStart, cleanup);
+        dyingTimers.set(id, arr);
+      }
+      window.addEventListener('concordia:death-collapse', handleDeathCollapse);
+
+      // ── Opacity tween for fading-out dead bodies ─────────────
+      // Wired into the existing game loop tick further down via this ref.
+      function tickDeathFades() {
+        if (fadingMeshes.size === 0) return;
+        const now = Date.now();
+        for (const [id, entry] of fadingMeshes) {
+          const elapsed = now - entry.startedAt;
+          const t = Math.min(1, elapsed / entry.durationMs);
+          const opacity = 1 - t;
+          entry.mesh.traverse((child) => {
+            const m = (child as { material?: unknown }).material;
+            const apply = (mat: { transparent?: boolean; opacity?: number; needsUpdate?: boolean } | undefined) => {
+              if (!mat) return;
+              mat.transparent = true;
+              mat.opacity = opacity;
+              mat.needsUpdate = true;
+            };
+            if (Array.isArray(m)) (m as unknown[]).forEach((mat) => apply(mat as { transparent?: boolean; opacity?: number; needsUpdate?: boolean }));
+            else apply(m as { transparent?: boolean; opacity?: number; needsUpdate?: boolean } | undefined);
+          });
+          if (t >= 1) fadingMeshes.delete(id);
+        }
+      }
+      // Hoist tickDeathFades onto a ref so the existing game loop can call
+      // it without us re-finding the existing requestAnimationFrame block.
+      deathFadeTickRef.current = tickDeathFades;
 
       // ── Create name tag sprite using canvas texture ────────
       function createNameTag(
@@ -1123,6 +1279,9 @@ export default function AvatarSystem3D({
         for (const mixer of mixersRef.current.values()) {
           (mixer as { update: (d: number) => void }).update(delta);
         }
+
+        // Phase 5: per-frame opacity fade on dying meshes
+        deathFadeTickRef.current?.();
 
         // ── Movement style blend (0.4s transition) ─────────
         const sb = styleBlendRef.current;
@@ -1490,8 +1649,12 @@ export default function AvatarSystem3D({
         window.removeEventListener('keydown', handleKeyDown);
         window.removeEventListener('keyup', handleKeyUp);
         window.removeEventListener('concordia:hit-reaction', handleHitReaction);
+        window.removeEventListener('concordia:death-collapse', handleDeathCollapse);
         for (const t of hitReactionTimers.values()) clearTimeout(t);
         hitReactionTimers.clear();
+        for (const arr of dyingTimers.values()) for (const t of arr) clearTimeout(t);
+        dyingTimers.clear();
+        fadingMeshes.clear();
         physicsWorld.removeCharacter('player');
       };
     }

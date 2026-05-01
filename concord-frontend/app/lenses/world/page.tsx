@@ -2018,6 +2018,21 @@ export default function WorldLensPage() {
             detail: { trigger: 'combat-kill' },
           })
         );
+        // Phase 5 death collapse: visible buckle + face-plant + 6.5s
+        // opacity fade. Hit direction = attacker → target horizontal vector
+        // so the body falls roughly in the direction of the killing blow.
+        const killedTargetId = combatStateRef.current.target?.id;
+        if (killedTargetId) {
+          // Use the player's facing as a proxy for the killing-blow direction
+          // (target's world position isn't tracked in CombatTargetInfo).
+          const yaw = playerAvatar.rotation;
+          const hitDirection = { x: -Math.sin(yaw), z: -Math.cos(yaw) };
+          window.dispatchEvent(
+            new CustomEvent('concordia:death-collapse', {
+              detail: { targetId: killedTargetId, hitDirection },
+            })
+          );
+        }
         setComboCount(0);
         comboTargetRef.current = null;
         // Clear the killed target; the server will despawn it.
