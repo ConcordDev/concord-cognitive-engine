@@ -245,7 +245,13 @@ export type SocketEvent =
   // Platform presence
   | 'platform:activity'
   // Quest realtime push (emergent quests)
-  | 'quest:new';
+  | 'quest:new'
+  // Phase 8: player-to-player trade
+  | 'trade:request'
+  | 'trade:offer_updated'
+  | 'trade:other_ready'
+  | 'trade:complete'
+  | 'trade:cancelled';
 
 // ---- Enriched Event Payload (Category 2+5: Concurrency + Observability) ----
 interface EnrichedPayload {

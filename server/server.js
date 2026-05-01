@@ -5967,6 +5967,26 @@ const REALTIME = {
   clients: new Map(), // socketId -> { socket, sessionId, orgId, userId, createdAt }
 };
 
+// Per-user emit helper — uses the user:${userId} room joined on socket auth
+// (see io.on("connection") handler). Established in Phase 3 of polish-to-ten;
+// reused by trade, party, and any emergent system that needs to push to one
+// authenticated user without exposing data to other rooms.
+function emitToUser(userId, event, payload) {
+  if (!userId || !REALTIME?.io) return { ok: false, reason: "no_target_or_realtime" };
+  try {
+    const enriched = {
+      ...payload,
+      ts: nowISO(),
+      _seq: ++_eventSeqCounter,
+      _evt: event,
+    };
+    REALTIME.io.to(`user:${userId}`).emit(event, enriched);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, reason: String(e?.message || e) };
+  }
+}
+
 function realtimeEmit(event, payload, { sessionId = "", orgId = "", requestId = "" } = {}) {
   // ---- Event Ordering & Correlation (Category 2+5: Concurrency + Observability) ----
   const enrichedPayload = {
@@ -26312,6 +26332,10 @@ app.use("/api/tools", createToolsRouter({ requireAuth, db }));
 app.use("/api/blueprints", createBlueprintsRouter({ requireAuth, db }));
 app.use("/api/wagers", createWagersRouter({ requireAuth, db, realtimeEmit }));
 app.use("/api/npc-shop", createNPCShopRouter({ requireAuth, db }));
+
+// Phase 8 polish-to-ten: player-to-player trade with both-sides-confirm escrow
+import createPlayerTradeRouter from "./routes/player-trade.js";
+app.use("/api/player-trade", createPlayerTradeRouter({ requireAuth, db, emitToUser }));
 
 // ===== CONCORDIA LIVING WORLD (portals, player inventory, arena, leaderboards, crafting) =====
 import createLensPortalsRouter from "./routes/lens-portals.js";
