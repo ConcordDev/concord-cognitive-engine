@@ -7,6 +7,12 @@
 //   Docker:              Use docker-compose.yml instead
 //   Local dev:           pm2 start ecosystem.config.cjs --env development
 
+// Ensure logs directory exists before pm2 tries to write to it
+const fs = require('fs');
+const path = require('path');
+const logsDir = path.join(__dirname, 'logs');
+if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir, { recursive: true });
+
 module.exports = {
   apps: [
     {
@@ -87,6 +93,8 @@ module.exports = {
         NODE_ENV: 'production',
         PORT: 3000,
         HOSTNAME: '0.0.0.0',
+        // Rewrites proxy /api/* and /socket.io/* to this URL at runtime (no rebuild needed)
+        BACKEND_URL: 'http://127.0.0.1:5050',
       },
       error_file: '../logs/frontend-error.log',
       out_file: '../logs/frontend-out.log',
