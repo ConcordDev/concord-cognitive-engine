@@ -15,6 +15,7 @@
 
 import { Router } from "express";
 import crypto from "crypto";
+import { logInventoryTransfer } from "../lib/inventory-audit.js";
 
 const ACCEPT_WINDOW_S = 5 * 60; // 5 minute trade lifetime
 const MAX_ACTIVE_TRADES_PER_USER = 3;
@@ -294,8 +295,8 @@ function _executeTrade(db, trade) {
     const v2 = _verifyOfferOwnership(db, trade.recipient_id, recipientOffer);
     if (!v2.ok) throw new Error(`recipient_verify_failed:${v2.error}`);
 
-    _transferItems(db, trade.initiator_id, trade.recipient_id, initiatorOffer.items);
-    _transferItems(db, trade.recipient_id, trade.initiator_id, recipientOffer.items);
+    _transferItems(db, trade.initiator_id, trade.recipient_id, initiatorOffer.items, trade.id);
+    _transferItems(db, trade.recipient_id, trade.initiator_id, recipientOffer.items, trade.id);
 
     if (initiatorOffer.sparks > 0) _transferCoins(db, "sparks", trade.initiator_id, trade.recipient_id, initiatorOffer.sparks);
     if (recipientOffer.sparks > 0) _transferCoins(db, "sparks", trade.recipient_id, trade.initiator_id, recipientOffer.sparks);
@@ -321,7 +322,7 @@ function _executeTrade(db, trade) {
   }
 }
 
-function _transferItems(db, fromUserId, toUserId, items) {
+function _transferItems(db, fromUserId, toUserId, items, refTradeId) {
   for (const it of items) {
     const src = db.prepare(`SELECT * FROM player_inventory WHERE id = ?`).get(it.inventoryId);
     if (!src || src.user_id !== fromUserId || src.quantity < it.quantity) {
@@ -344,6 +345,22 @@ function _transferItems(db, fromUserId, toUserId, items) {
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
       `).run(newId, toUserId, src.item_type, src.item_id, src.item_name, it.quantity, src.quality, src.soulbound ?? 0);
     }
+
+    // Phase 10: append-only audit log entry for every item movement.
+    try {
+      logInventoryTransfer(db, {
+        actorUserId: fromUserId,
+        fromUserId,
+        toUserId,
+        itemId: src.item_id,
+        itemName: src.item_name,
+        delta: it.quantity,
+        category: "trade",
+        refId: refTradeId,
+        beforeQty: src.quantity,
+        afterQty: src.quantity - it.quantity,
+      });
+    } catch { /* audit failure must never block a successful transfer */ }
   }
 }
 

@@ -27647,6 +27647,21 @@ async function governorTick(reason="heartbeat") {
 
     // Record tick result for heartbeat history API
     try {
+      // Phase 10 polish-to-ten: anti-duplication anomaly scan (every 100 ticks).
+      // Cheap aggregate queries — flags negative quantities, orphan reservations,
+      // and rapid-duplication bursts. Findings land in inventory_anomaly_queue
+      // for human review. Auto-clears stale orphan reservations as it goes.
+      if ((STATE.__bgTickCounter || 0) % 100 === 0) {
+        try {
+          const audit = await import("./lib/inventory-audit.js").catch(() => null);
+          if (audit?.scanForAnomalies) {
+            const flagged = audit.scanForAnomalies(db);
+            const total = (flagged.negative_quantity ?? 0) + (flagged.orphan_reservation ?? 0) + (flagged.rapid_duplication ?? 0);
+            if (total > 0) structuredLog("warn", "inventory_anomalies_flagged", flagged);
+          }
+        } catch (_e) { /* non-fatal — heartbeat must never crash */ }
+      }
+
       // Quest emergence: scan active NPCs for quest opportunities (every 20 ticks)
       if ((STATE.__bgTickCounter || 0) % 20 === 0) {
         const questEmergence = await import("./lib/quest-emergence.js").catch(() => null);
