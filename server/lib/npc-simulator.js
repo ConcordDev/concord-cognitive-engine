@@ -23,6 +23,363 @@ import { npcGatherFromNode, respawnExpiredNodes } from "./world-gathering.js";
 import { detectiveTick, guardTick } from "./world-crime.js";
 import { executeScheduledTask, assignJob, seedJobsForWorld, getCurrentPhase } from "./npc-jobs.js";
 import { broadcastOpinionEvent } from "./npc-relations.js";
+import { applyDamageToPlayer, computeDamage } from "./combat/damage-calculator.js";
+
+// ──────────────────────────────────────────────────────────────────────────────
+// NPC Combat AI — state machine for alert/pursue/attack/retreat behavior
+// ──────────────────────────────────────────────────────────────────────────────
+
+// Module-level map: npcId → combat state object
+// { state, target, startPosition, helpCalled, alertedAt, _lastAttack }
+const _npcCombatState = new Map();
+
+// Aggression profiles per archetype
+const AGGRO_PROFILE = {
+  guard:     { alertRadius: 15, pursuitRadius: 25, melee: 2, aggro: 0.8, canCallHelp: true },
+  soldier:   { alertRadius: 12, pursuitRadius: 20, melee: 2, aggro: 0.9, canCallHelp: true },
+  bandit:    { alertRadius: 10, pursuitRadius: 18, melee: 2, aggro: 0.7, canCallHelp: false },
+  criminal:  { alertRadius: 8,  pursuitRadius: 15, melee: 2, aggro: 0.6, canCallHelp: false },
+  farmer:    { alertRadius: 6,  pursuitRadius: 0,  melee: 0, aggro: 0.0, canCallHelp: false },
+  merchant:  { alertRadius: 6,  pursuitRadius: 0,  melee: 0, aggro: 0.0, canCallHelp: false },
+  default:   { alertRadius: 8,  pursuitRadius: 12, melee: 2, aggro: 0.3, canCallHelp: false },
+};
+
+// Base NPC attack damage by archetype (added on top of 8-15 base roll)
+const ARCHETYPE_DAMAGE_BONUS = {
+  guard: 5, soldier: 8, bandit: 4,
+};
+
+// Rate-limit: minimum ms between NPC attacks on same target
+const NPC_ATTACK_COOLDOWN_MS = 1500;
+
+/**
+ * Fetch active player positions from the database for a given world.
+ * Returns array of { userId, x, z }.
+ */
+function _getPlayerPositions(db, worldId) {
+  try {
+    // world_visits stores last_position as JSON; fall back to player_world_state
+    const visits = db.prepare(`
+      SELECT wv.user_id, wv.last_position, pws.x as sx, pws.z as sz
+      FROM world_visits wv
+      LEFT JOIN player_world_state pws ON pws.user_id = wv.user_id
+      WHERE wv.world_id = ? AND wv.departed_at IS NULL
+    `).all(worldId);
+
+    return visits.map(v => {
+      const pos = _parseJSON(v.last_position, null);
+      const x = pos?.x ?? v.sx ?? null;
+      const z = pos?.z ?? v.sz ?? null;
+      if (x === null || z === null) return null;
+      return { userId: v.user_id, x, z };
+    }).filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Euclidean distance between two {x,z} points.
+ */
+function _dist2d(a, b) {
+  const dx = a.x - b.x;
+  const dz = a.z - b.z;
+  return Math.sqrt(dx * dx + dz * dz);
+}
+
+/**
+ * Core combat AI function — runs once per NPC per tick.
+ * Accesses io lazily via globalThis._concordREALTIME.
+ */
+function updateNPCCombatAI(npc, worldId, db) {
+  // Graceful skip if NPC has no position
+  if (!npc || !npc.location) return;
+
+  const archetype = npc.archetype || 'default';
+  const profile   = AGGRO_PROFILE[archetype] || AGGRO_PROFILE.default;
+
+  // Fetch NPC DB row for HP / is_wanted / criminal_rep
+  let npcRow;
+  try {
+    npcRow = db.prepare(
+      'SELECT current_hp, max_hp, is_wanted, criminal_rep FROM world_npcs WHERE id = ?'
+    ).get(npc.id);
+  } catch { return; }
+
+  if (!npcRow) return;
+
+  const hpRatio    = (npcRow.current_hp ?? 100) / Math.max(1, npcRow.max_hp ?? 100);
+  const isWanted   = !!npcRow.is_wanted;
+
+  // Wanted NPCs are always maximally aggressive
+  const effectiveAggro = isWanted ? 0.9 : profile.aggro;
+
+  // Non-aggro NPCs (farmer, merchant) — never attack, may flee (handled separately)
+  if (effectiveAggro === 0.0 && !isWanted) {
+    // Non-aggro flee logic: if a player is very close, path away
+    const players = _getPlayerPositions(db, worldId);
+    for (const player of players) {
+      const d = _dist2d(npc.location, player);
+      if (d < profile.alertRadius) {
+        // Flee: move opposite direction from the player
+        _fleeFromPoint(npc, player);
+        break;
+      }
+    }
+    return;
+  }
+
+  // Ensure combat state entry
+  if (!_npcCombatState.has(npc.id)) {
+    _npcCombatState.set(npc.id, {
+      state: 'idle',
+      target: null,
+      startPosition: { x: npc.location.x, z: npc.location.z },
+      helpCalled: false,
+      alertedAt: 0,
+      _lastAttack: 0,
+    });
+  }
+
+  const cs = _npcCombatState.get(npc.id);
+
+  // Get player positions for this world
+  const players = _getPlayerPositions(db, worldId);
+
+  // Find nearest player
+  let nearestPlayer = null;
+  let nearestDist   = Infinity;
+  for (const p of players) {
+    const d = _dist2d(npc.location, p);
+    if (d < nearestDist) {
+      nearestDist   = d;
+      nearestPlayer = p;
+    }
+  }
+
+  const now = Date.now();
+
+  // ── State machine transitions ──────────────────────────────────────────────
+
+  if (cs.state === 'idle') {
+    // idle → alerted: player within alert radius AND conditions met
+    if (nearestPlayer && nearestDist <= profile.alertRadius && effectiveAggro > 0) {
+      cs.state     = 'alerted';
+      cs.target    = nearestPlayer;
+      cs.alertedAt = now;
+      cs.startPosition = { x: npc.location.x, z: npc.location.z };
+    }
+
+  } else if (cs.state === 'alerted') {
+    // alerted → pursuing: target confirmed within pursuit radius
+    if (nearestPlayer && nearestDist <= profile.pursuitRadius) {
+      cs.target = nearestPlayer;
+      if (profile.pursuitRadius > 0) {
+        cs.state = 'pursuing';
+        // Emit calling_help once when first entering combat
+        if (!cs.helpCalled && profile.canCallHelp) {
+          cs.helpCalled = true;
+          _callForHelp(npc, worldId, db);
+        }
+      }
+    } else if (now - cs.alertedAt > 10000) {
+      // Timed out — go back to idle
+      cs.state  = 'idle';
+      cs.target = null;
+    }
+
+  } else if (cs.state === 'pursuing') {
+    if (!nearestPlayer || nearestDist > profile.pursuitRadius + 5) {
+      // Lost target — return to idle
+      cs.state  = 'idle';
+      cs.target = null;
+    } else {
+      cs.target = nearestPlayer;
+
+      // HP retreat check
+      if (hpRatio < 0.25) {
+        cs.state = 'retreating';
+      } else if (nearestDist <= profile.melee) {
+        // In melee range — attack
+        cs.state = 'attacking';
+        if (!cs.helpCalled && profile.canCallHelp) {
+          cs.helpCalled = true;
+          _callForHelp(npc, worldId, db);
+        }
+      } else {
+        // Move toward target
+        _moveToward(npc, nearestPlayer, db, worldId);
+      }
+    }
+
+  } else if (cs.state === 'attacking') {
+    if (!nearestPlayer) {
+      cs.state = 'idle';
+    } else if (hpRatio < 0.25) {
+      cs.state = 'retreating';
+    } else if (nearestDist > profile.melee + 1) {
+      // Target moved out of range — pursue again
+      cs.state = 'pursuing';
+    } else {
+      // Attack! Rate-limited to once per NPC_ATTACK_COOLDOWN_MS
+      if (now - cs._lastAttack >= NPC_ATTACK_COOLDOWN_MS) {
+        cs._lastAttack = now;
+        _performNPCAttack(npc, nearestPlayer, worldId, db, archetype);
+      }
+    }
+
+  } else if (cs.state === 'retreating') {
+    const distFromStart = _dist2d(npc.location, cs.startPosition);
+    if (distFromStart > 30) {
+      // Gave up — too far from start
+      cs.state  = 'idle';
+      cs.target = null;
+      cs.helpCalled = false;
+    } else if (hpRatio >= 0.5) {
+      // Recovered enough — go back to idle
+      cs.state  = 'idle';
+      cs.target = null;
+    } else {
+      // Pathfind back toward start position
+      _moveToward(npc, cs.startPosition, db, worldId);
+    }
+  }
+}
+
+/**
+ * Emit world:npc-alert socket event and mark nearby NPCs as alerted.
+ */
+function _callForHelp(npc, worldId, db) {
+  const HELP_RADIUS = 15;
+  try {
+    const io = globalThis._concordREALTIME?.io;
+    io?.to(`world:${worldId}`).emit('world:npc-alert', {
+      worldId,
+      npcId:    npc.id,
+      position: npc.location,
+      radius:   HELP_RADIUS,
+    });
+
+    // Alert nearby NPCs by setting their combat state to alerted
+    const nearbyNpcs = db.prepare(`
+      SELECT id FROM world_npcs
+      WHERE world_id = ? AND is_dead = 0 AND id != ?
+      LIMIT 20
+    `).all(worldId, npc.id);
+
+    for (const nearby of nearbyNpcs) {
+      const nearbyLoc = _parseNPCLocation(db, nearby.id);
+      if (!nearbyLoc) continue;
+      const d = _dist2d(npc.location, nearbyLoc);
+      if (d <= HELP_RADIUS) {
+        // If this nearby NPC doesn't have combat state yet, set it to alerted
+        if (!_npcCombatState.has(nearby.id)) {
+          _npcCombatState.set(nearby.id, {
+            state: 'alerted',
+            target: null,
+            startPosition: { x: nearbyLoc.x, z: nearbyLoc.z },
+            helpCalled: false,
+            alertedAt: Date.now(),
+            _lastAttack: 0,
+          });
+        } else {
+          const nearbyCs = _npcCombatState.get(nearby.id);
+          if (nearbyCs.state === 'idle') {
+            nearbyCs.state     = 'alerted';
+            nearbyCs.alertedAt = Date.now();
+          }
+        }
+      }
+    }
+  } catch { /* non-fatal */ }
+}
+
+/**
+ * Get location of an NPC from DB (lightweight read).
+ */
+function _parseNPCLocation(db, npcId) {
+  try {
+    const row = db.prepare('SELECT current_location FROM world_npcs WHERE id = ?').get(npcId);
+    return row ? _parseJSON(row.current_location, null) : null;
+  } catch { return null; }
+}
+
+/**
+ * Set NPC path toward a target point using NavGrid A*.
+ */
+function _moveToward(npc, target, db, worldId) {
+  try {
+    const navGrid = getNavGrid();
+    const path    = navGrid.findPath(npc.location.x, npc.location.z, target.x, target.z);
+    if (path && path.length > 0) {
+      npc.state.currentPath = path;
+      npc.state.pathIndex   = 0;
+    }
+  } catch { /* non-fatal */ }
+}
+
+/**
+ * Move NPC away from a point (flee behavior).
+ */
+function _fleeFromPoint(npc, from) {
+  try {
+    const dx    = npc.location.x - from.x;
+    const dz    = npc.location.z - from.z;
+    const len   = Math.sqrt(dx * dx + dz * dz) || 1;
+    const fleeX = npc.location.x + (dx / len) * 20;
+    const fleeZ = npc.location.z + (dz / len) * 20;
+
+    const navGrid = getNavGrid();
+    const path    = navGrid.findPath(npc.location.x, npc.location.z, fleeX, fleeZ);
+    if (path && path.length > 0) {
+      npc.state.currentPath = path;
+      npc.state.pathIndex   = 0;
+    }
+  } catch { /* non-fatal */ }
+}
+
+/**
+ * Perform one NPC melee attack on a player.
+ */
+function _performNPCAttack(npc, target, worldId, db, archetype) {
+  try {
+    const baseDamage  = 8 + Math.floor(Math.random() * 8); // 8-15
+    const bonus       = ARCHETYPE_DAMAGE_BONUS[archetype] || 0;
+    const totalDamage = baseDamage + bonus;
+
+    const attackerStats = {
+      skillLevel: 1,
+      element: 'none',
+      basePower: totalDamage,
+      enchantmentBonus: 0,
+      worldMultiplier: 1.0,
+    };
+
+    // Minimal defender stats (no armor lookup to keep tick fast)
+    const defenderStats = {
+      physical_resistance: 0,
+      current_hp: 100,
+      max_hp: 100,
+      status_effects: '[]',
+    };
+
+    const damageResult = computeDamage(attackerStats, defenderStats, {});
+    applyDamageToPlayer(db, worldId, npc.id, 'npc', target.userId, damageResult, {
+      element: 'none', bar_used: 'hp', bar_cost: damageResult.finalDamage,
+    });
+
+    // Emit real-time attack notification to the target player's session
+    const io = globalThis._concordREALTIME?.io;
+    io?.to(`world:${worldId}`).emit('world:npc-attack', {
+      worldId,
+      npcId:      npc.id,
+      targetId:   target.userId,
+      damage:     damageResult.finalDamage,
+      archetype,
+      kill:       damageResult.kill,
+    });
+  } catch { /* non-fatal */ }
+}
 
 // ── Heightmap generation (mirrors TerrainRenderer.tsx deterministic algo) ──
 // Resolution kept low (128) for server — A* is the bottleneck, not sample count.
@@ -177,8 +534,16 @@ export class NPCAgent {
     this._updateNeeds();
     // Advance along active path first (position update each tick)
     this._tickPath(dtMs / 1000);
-    // Only choose a new action if not currently walking
-    if (!this.state.currentPath || this.state.pathIndex >= (this.state.currentPath?.length ?? 0)) {
+
+    // ── Combat AI (runs before action selection so combat can override movement) ──
+    if (!this.isConscious && !this.isImmortal) {
+      try { updateNPCCombatAI(this, this.worldId, this._db); } catch { /* non-fatal */ }
+    }
+
+    // Only choose a new action if not currently walking AND not in active combat
+    const combatState = _npcCombatState.get(this.id);
+    const inCombat    = combatState && combatState.state !== 'idle';
+    if (!inCombat && (!this.state.currentPath || this.state.pathIndex >= (this.state.currentPath?.length ?? 0))) {
       const action = await this._chooseAction();
       await this._executeAction(action);
     }

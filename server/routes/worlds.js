@@ -15,6 +15,13 @@ import { getRoomsForBuilding, addRoom, updateRoomFurniture, seedRoomsForBuilding
 import { checkRoomAccess, attemptLockpick, forceEntry, recordTheft, getOpenCrimes, getActiveWarrants } from "../lib/world-crime.js";
 import { broadcastOpinionEvent, getWorldReputation, willNPCInteract } from "../lib/npc-relations.js";
 import { gainSkillXP } from "../lib/skills/skill-engine.js";
+import {
+  getActiveQuests,
+  getQuestProgress,
+  claimQuestRewards,
+  recordObjectiveProgress,
+  checkQuestCompletion,
+} from "../lib/quests/quest-engine.js";
 
 export default function createWorldsRouter({ requireAuth, db }) {
   const router = express.Router();
@@ -190,6 +197,51 @@ export default function createWorldsRouter({ requireAuth, db }) {
       res.json({ ok: true, questId: req.params.questId, event: req.body });
     } catch (e) {
       res.status(500).json({ error: e.message });
+    }
+  });
+
+  // GET /api/worlds/:worldId/quests/active — player's active quests with objective progress
+  router.get("/:worldId/quests/active", requireAuth, (req, res) => {
+    try {
+      const userId = req.user.id;
+      const { worldId } = req.params;
+      const quests = getActiveQuests(db, userId, worldId);
+      const withProgress = quests.map(q => ({
+        ...q,
+        progress: getQuestProgress(db, userId, worldId, q.id),
+      }));
+      res.json({ ok: true, quests: withProgress });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // POST /api/worlds/:worldId/quests/:questId/complete — check completion + claim rewards
+  router.post("/:worldId/quests/:questId/complete", requireAuth, (req, res) => {
+    try {
+      const userId = req.user.id;
+      const { worldId, questId } = req.params;
+      const isComplete = checkQuestCompletion(db, userId, worldId, questId);
+      if (!isComplete) {
+        return res.status(422).json({ ok: false, error: 'Quest objectives not all complete' });
+      }
+      const result = claimQuestRewards(db, userId, worldId, questId);
+      res.json(result);
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // POST /api/worlds/:worldId/quests/:questId/claim-reward — explicit reward claim
+  router.post("/:worldId/quests/:questId/claim-reward", requireAuth, (req, res) => {
+    try {
+      const userId = req.user.id;
+      const { worldId, questId } = req.params;
+      const result = claimQuestRewards(db, userId, worldId, questId);
+      if (!result.ok) return res.status(422).json(result);
+      res.json(result);
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
     }
   });
 
@@ -934,6 +986,11 @@ export default function createWorldsRouter({ requireAuth, db }) {
       const response = await handle.generate(promptLines);
       const safeResponse = response?.slice(0, 800) || `${npcName} nods and moves on.`;
 
+      // Track talk_to quest objectives whenever a player responds to an NPC
+      try {
+        recordObjectiveProgress(db, req.user.id, worldId, null, 'talk_to', npcId, 1);
+      } catch { /* non-fatal */ }
+
       // If quest choice and quests exist, include quest data
       if (choice === 'quest' && quests.length > 0) {
         const q = quests[0];
@@ -1135,6 +1192,15 @@ export default function createWorldsRouter({ requireAuth, db }) {
         const skillType = ['ore', 'cave', 'underground'].includes(node?.node_type) ? 'survival' : 'crafting';
         const xpGain = result.gathered.reduce((sum, i) => sum + i.quantity * 5, 0);
         skillProgress = gainSkillXP(db, req.user.id, skillType, worldType, xpGain, { worldId });
+      } catch { /* non-fatal */ }
+
+      // Track gather quest objectives
+      try {
+        const gNode = db.prepare('SELECT resource_id FROM world_resource_nodes WHERE id = ?').get(nodeId);
+        if (gNode?.resource_id) {
+          const totalQty = result.gathered.reduce((s, i) => s + (i.quantity ?? 1), 0);
+          recordObjectiveProgress(db, req.user.id, worldId, null, 'gather', gNode.resource_id, totalQty);
+        }
       } catch { /* non-fatal */ }
 
       res.json({ ok: true, gathered: result.gathered, node: result.nodeState, skillProgress });
@@ -1632,6 +1698,15 @@ export default function createWorldsRouter({ requireAuth, db }) {
             { x: npc.x || 0, z: npc.z || 0 }, { witnessRadius: 20 });
         }
       } catch { /* non-critical */ }
+
+      // Track kill quest objectives when NPC dies
+      if (kill) {
+        try {
+          const killedNpc = db.prepare("SELECT archetype FROM world_npcs WHERE id = ?").get(npcId);
+          const archetype = killedNpc?.archetype || 'enemy';
+          recordObjectiveProgress(db, userId, worldId, null, 'kill', archetype, 1);
+        } catch { /* non-fatal */ }
+      }
 
       res.json({ ok: true, damageResult, eventId, kill, npcId });
     } catch (e) {

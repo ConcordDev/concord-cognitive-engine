@@ -52,6 +52,14 @@ const InventoryPanel = dynamic(() => import('@/components/world-lens/InventoryPa
   ssr: false,
 });
 const QuestPanel = dynamic(() => import('@/components/world-lens/QuestPanel'), { ssr: false });
+const QuestTracker = dynamic(
+  () => import('@/components/world/QuestTracker').then((m) => ({ default: m.QuestTracker })),
+  { ssr: false }
+);
+const ImpactFeedback = dynamic(
+  () => import('@/components/world/ImpactFeedback').then((m) => ({ default: m.ImpactFeedback })),
+  { ssr: false }
+);
 const PlayerPresence = dynamic(() => import('@/components/world-lens/PlayerPresence'), {
   ssr: false,
 });
@@ -447,6 +455,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '@/lib/api/client';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
+import { emitHitNumber, emitScreenShake } from '@/components/world/ImpactFeedback';
 
 // ── City Streaming Types ───────────────────────────────────────
 
@@ -1769,6 +1778,7 @@ export default function WorldLensPage() {
         error?: string;
         damage?: number;
         isCrit?: boolean;
+        element?: string;
         targetHealth?: number;
         targetMaxHealth?: number;
         targetKilled?: boolean;
@@ -1819,8 +1829,17 @@ export default function WorldLensPage() {
       );
       combatMusicRef.current?.onCombatEvent(1.0);
 
+      // Physics impact feedback — floating damage numbers + screen shake
+      if (typeof data.damage === 'number' && data.damage > 0) {
+        const element =
+          (data.element as 'fire' | 'ice' | 'lightning' | 'poison' | 'physical') ?? 'physical';
+        emitHitNumber(data.damage, element, !!data.isCrit);
+        emitScreenShake(data.isCrit ? 5 : Math.min(4, Math.ceil(data.damage / 20)));
+      }
+
       if (data.targetKilled) {
         pushCombatLog(`${targetName} defeated!`, 'death');
+        emitScreenShake(6);
         // Clear the killed target; the server will despawn it.
         setCombatState((prev) => ({ ...prev, target: null }));
       }
@@ -1847,6 +1866,7 @@ export default function WorldLensPage() {
         damageFlash: true,
       }));
       pushCombatLog(`Took ${data.damage} damage${data.isCrit ? ' (crit)' : ''}.`, 'damage-taken');
+      emitScreenShake(data.isCrit ? 7 : Math.min(5, Math.ceil(data.damage / 15)));
       // Clear the flash after 300ms so pulsing red overlay fades
       setTimeout(() => {
         setCombatState((prev) => ({ ...prev, damageFlash: false }));
@@ -3228,6 +3248,17 @@ export default function WorldLensPage() {
             </div>
           )}
 
+          {/* Quest tracker HUD — bottom right, above HUD bar */}
+          <div className="absolute bottom-24 right-4 z-25 flex flex-col gap-2 pointer-events-auto">
+            <QuestTracker
+              worldId={activeDistrict.id}
+              onClaimReward={(_questId, _rewards) => {
+                setGatherResult('Quest complete! Rewards granted.');
+                setTimeout(() => setGatherResult(null), 3500);
+              }}
+            />
+          </div>
+
           {/* QuestNotification — toast overlay for quest state changes (new/complete/failed).
               Renders top-right; fires when questNotification state is set. */}
           <div className="absolute top-16 right-4 z-30 flex flex-col gap-2 pointer-events-none">
@@ -3416,6 +3447,8 @@ export default function WorldLensPage() {
               onRespawn={handleRespawn}
             />
           )}
+          {/* Impact feedback — floating damage numbers + screen shake */}
+          <ImpactFeedback />
         </div>
       ) : viewMode === 'streams' ? (
         <CityStreamingSection />

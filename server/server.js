@@ -3555,10 +3555,14 @@ function initDatabase() {
     // Ensure the DB parent directory exists (handles both /data/concord.db and /data/db/concord.db)
     fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
     db = new Database(DB_PATH);
-    db.pragma("journal_mode = WAL"); // Better performance
+    db.pragma("journal_mode = WAL");        // Concurrent readers + writer
+    db.pragma("synchronous = NORMAL");      // Safe with WAL, 3-5× faster than FULL
     db.pragma("foreign_keys = ON");
-    db.pragma("mmap_size = 67108864");   // Cap mmap at 64MB to prevent RSS bloat
-    db.pragma("cache_size = -8000");     // 8MB page cache (negative = KB)
+    db.pragma("mmap_size = 268435456");     // 256MB mmap — reduces syscall overhead on large worlds
+    db.pragma("cache_size = -32000");       // 32MB page cache
+    db.pragma("temp_store = MEMORY");       // Temp tables in RAM
+    db.pragma("busy_timeout = 5000");       // Wait up to 5s before SQLITE_BUSY error
+    db.pragma("wal_autocheckpoint = 1000"); // Checkpoint every 1000 pages (~4MB)
 
     // Create tables
     db.exec(`
