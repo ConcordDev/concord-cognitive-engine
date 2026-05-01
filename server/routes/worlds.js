@@ -146,33 +146,38 @@ export default function createWorldsRouter({ requireAuth, db }) {
   });
 
   // GET /api/worlds/:worldId/quests — list quests in a world
-  router.get("/:worldId/quests", (req, res) => {
+  router.get("/:worldId/quests", requireAuth, async (req, res) => {
+    const { worldId } = req.params;
+    const status = req.query.status || 'available';
     try {
-      const { status = "available" } = req.query;
-      const quests = db.prepare(
-        "SELECT * FROM world_quests WHERE world_id = ? AND (status = ? OR ? = 'all') ORDER BY created_at DESC"
-      ).all(req.params.worldId, status, status);
-
-      res.json({ quests: quests.map(_parseQuest) });
+      const { getWorldQuests } = await import("../lib/quest-emergence.js");
+      const quests = getWorldQuests(worldId, status, db);
+      res.json({ ok: true, quests: quests || [] });
     } catch (e) {
-      res.status(500).json({ error: e.message });
+      res.json({ ok: true, quests: [] }); // graceful — quest table may not exist
     }
   });
 
   // POST /api/worlds/:worldId/quests/:questId/accept
   router.post("/:worldId/quests/:questId/accept", requireAuth, (req, res) => {
+    const { worldId, questId } = req.params;
+    const userId = req.user.id;
     try {
-      const { questId } = req.params;
-      const quest = db.prepare("SELECT * FROM world_quests WHERE id = ? AND status = 'available'").get(questId);
-      if (!quest) return res.status(404).json({ error: "Quest not available" });
-
-      db.prepare(
-        "UPDATE world_quests SET status = 'active', accepted_by = ? WHERE id = ?"
-      ).run(req.user.id, questId);
-
-      res.json({ ok: true, quest: _parseQuest({ ...quest, status: "active", accepted_by: req.user.id }) });
+      // Mark quest as accepted, assign to player
+      const quest = db.prepare("SELECT * FROM world_quests WHERE id = ? AND world_id = ?").get(questId, worldId);
+      if (!quest) return res.status(404).json({ ok: false, error: 'quest not found' });
+      db.prepare("UPDATE world_quests SET status = 'active', accepted_by = ? WHERE id = ?")
+        .run(userId, questId);
+      // Add to player's active quest tracking
+      const id = crypto.randomUUID();
+      // Try to insert into player_quests if it exists
+      try {
+        db.prepare("INSERT OR IGNORE INTO player_quests (id, user_id, quest_id, world_id, status) VALUES (?,?,?,?,'active')")
+          .run(id, userId, questId, worldId);
+      } catch { /* table may not exist */ }
+      res.json({ ok: true, quest });
     } catch (e) {
-      res.status(500).json({ error: e.message });
+      res.status(500).json({ ok: false, error: e.message });
     }
   });
 
@@ -558,7 +563,9 @@ export default function createWorldsRouter({ requireAuth, db }) {
       const { worldId } = req.params;
       const rows = db.prepare(`
         SELECT id, npc_type, archetype, body_type, faction, is_conscious, is_immortal,
-               quest_giver, level, current_location, state, universe_type
+               quest_giver, level, current_location, state, universe_type,
+               grief_level, criminal_rep, is_wanted, schedule_phase, job_type,
+               current_hp, max_hp, bounty, status_effects
         FROM world_npcs
         WHERE world_id = ? AND is_dead = 0
         ORDER BY created_at ASC
@@ -584,6 +591,16 @@ export default function createWorldsRouter({ requireAuth, db }) {
           occupation:   state.occupation || r.archetype,
           currentActivity: state.currentActivity || null,
           factionTactic:   state.factionTactic || null,
+          // Behavioural state fields
+          griefLevel:    r.grief_level   ?? 0,
+          criminalRep:   r.criminal_rep  ?? 0,
+          isWanted:      !!r.is_wanted,
+          schedulPhase:  r.schedule_phase || 'day',
+          jobType:       r.job_type      || null,
+          currentHp:     r.current_hp    ?? 100,
+          maxHp:         r.max_hp        ?? 100,
+          bounty:        r.bounty        ?? 0,
+          statusEffects: _tryParseJSON(r.status_effects, []),
         };
       });
 
@@ -727,6 +744,212 @@ export default function createWorldsRouter({ requireAuth, db }) {
       }
 
       res.json({ ok: true, npcId, npcName, response: response?.slice(0, 500) || `${npcName} nods.` });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // POST /api/worlds/:worldId/npcs/:npcId/dialogue — rich structured dialogue (new clients)
+  router.post("/:worldId/npcs/:npcId/dialogue", requireAuth, async (req, res) => {
+    try {
+      const { worldId, npcId } = req.params;
+      const playerId = req.user?.id;
+
+      // 1. Fetch NPC
+      const npc = db.prepare("SELECT * FROM world_npcs WHERE id = ? AND world_id = ?").get(npcId, worldId);
+      if (!npc || npc.is_dead) return res.status(404).json({ ok: false, error: 'npc_not_found' });
+
+      const state   = _tryParseJSON(npc.state, {});
+      const npcName = state.name || npc.archetype || 'NPC';
+
+      // 2. Player reputation
+      const reputation = getWorldReputation(db, worldId, playerId);
+
+      // 3. NPC opinion of player
+      const interactResult = willNPCInteract(db, npcId, playerId, 'talk');
+
+      // 4. Available quests for this NPC
+      let quests = [];
+      try {
+        quests = db.prepare(
+          "SELECT * FROM world_quests WHERE giver_npc_id = ? AND status = 'available' LIMIT 3"
+        ).all(npcId);
+      } catch { /* table may not exist */ }
+
+      // 5. Build options list based on NPC state and player reputation
+      const isHostileRep = reputation.tier === 'hated' || reputation.tier === 'feared';
+      const options = [
+        { label: 'Ask about the world', key: 'ask_world' },
+      ];
+      if (npc.job_type) {
+        options.push({ label: 'Ask about your work', key: 'ask_work' });
+      }
+      if (npc.archetype === 'merchant' && !isHostileRep) {
+        options.push({ label: 'Trade', key: 'trade' });
+      }
+      if (quests.length > 0 && !isHostileRep) {
+        options.push({ label: 'I heard you need help...', key: 'quest' });
+      }
+      options.push({ label: 'Leave', key: 'goodbye' });
+
+      // 6. Build LLM prompt
+      const { selectBrain } = await import("../lib/brain-config.js").catch(() => ({ selectBrain: null }));
+      if (!selectBrain) {
+        return res.json({
+          ok: true, npcId, npcName,
+          greeting: interactResult.greeting,
+          mood: interactResult.mood === 'warm' ? 'friendly' : interactResult.mood,
+          options,
+          reputation, opinion: interactResult.opinion,
+        });
+      }
+
+      const { handle } = await selectBrain("subconscious", { callerId: "world:npc:dialogue" });
+
+      const promptLines = [
+        `You are ${npcName}, a ${npc.archetype} NPC in world ${worldId}.`,
+        `Faction: ${npc.faction || 'none'}. Level: ${npc.level || 1}.`,
+        npc.is_conscious ? 'You are a world leader and conscious being. Speak with authority and wisdom.' : '',
+        `Job: ${npc.job_type || 'none'}. Current task: ${npc.current_task || 'idle'}.`,
+        `Schedule phase: ${npc.schedule_phase || 'day'}. Grief level: ${npc.grief_level ?? 0}.`,
+        `Criminal reputation: ${npc.criminal_rep || 0}. Wanted: ${npc.is_wanted ? 'yes' : 'no'}.`,
+        `Your current goals: ${JSON.stringify(state.goals || []).slice(0, 200)}`,
+        `Player world reputation: ${reputation.tier} (avg opinion: ${reputation.avg_opinion?.toFixed(2)}).`,
+        `Your opinion of this player: ${interactResult.opinion?.toFixed(2)} (mood: ${interactResult.mood}).`,
+        quests.length > 0 ? `You have ${quests.length} quest(s) available to offer.` : '',
+        ``,
+        `A player has approached you to talk.`,
+        `Reply ONLY as valid JSON matching this shape exactly:`,
+        `{ "greeting": string, "mood": "friendly"|"neutral"|"suspicious"|"hostile"|"grieving"|"fearful", "options": [{"label": string, "key": string}], "subtext": string|null }`,
+        `The "options" array MUST include these keys in order: ${options.map(o => o.key).join(', ')}.`,
+        `Use the labels provided. mood must reflect your opinion of the player and your current emotional state.`,
+        isHostileRep ? 'Player is hated/feared — mood must be hostile. Do not offer trade or quests.' : '',
+      ].filter(Boolean).join('\n');
+
+      // 7. Call LLM
+      const raw = await handle.generate(promptLines);
+
+      // 8. Parse JSON from LLM response
+      let greeting = interactResult.greeting;
+      let mood = isHostileRep ? 'hostile' : (interactResult.mood === 'warm' ? 'friendly' : interactResult.mood);
+      let subtext = null;
+      let parsedOptions = options;
+
+      try {
+        const jsonMatch = raw?.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          if (parsed.greeting) greeting = parsed.greeting;
+          if (parsed.mood) mood = parsed.mood;
+          if (parsed.subtext !== undefined) subtext = parsed.subtext;
+          // Validate options: keep our canonical list but allow LLM labels
+          if (Array.isArray(parsed.options) && parsed.options.length > 0) {
+            const llmOptionMap = new Map(parsed.options.map(o => [o.key, o.label]));
+            parsedOptions = options.map(o => ({
+              key: o.key,
+              label: llmOptionMap.get(o.key) || o.label,
+            }));
+          }
+        }
+      } catch { /* fallback to defaults already set */ }
+
+      // 9. Update opinion: conversation shifts opinion slightly
+      try {
+        const npcLocation = _tryParseJSON(npc.location, { x: 0, z: 0 });
+        const eventType = mood === 'friendly' ? 'spoke_kindly' : mood === 'hostile' ? 'insulted' : null;
+        if (eventType) {
+          broadcastOpinionEvent(db, worldId, playerId, 'player', eventType,
+            { x: npcLocation.x ?? 0, z: npcLocation.z ?? 0 },
+            { radius: 5, targetId: npcId, context: 'dialogue_greeting' }
+          );
+        }
+      } catch { /* non-fatal */ }
+
+      // 10. Return structured response
+      res.json({
+        ok: true, npcId, npcName,
+        greeting,
+        mood,
+        options: parsedOptions,
+        subtext: subtext || undefined,
+        reputation,
+        opinion: interactResult.opinion,
+      });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // POST /api/worlds/:worldId/npcs/:npcId/dialogue/respond — follow-up after player picks an option
+  router.post("/:worldId/npcs/:npcId/dialogue/respond", requireAuth, async (req, res) => {
+    try {
+      const { worldId, npcId } = req.params;
+      const { choice } = req.body;
+
+      if (!choice) return res.status(400).json({ ok: false, error: 'choice_required' });
+
+      // Fetch NPC state
+      const npc = db.prepare("SELECT * FROM world_npcs WHERE id = ? AND world_id = ?").get(npcId, worldId);
+      if (!npc || npc.is_dead) return res.status(404).json({ ok: false, error: 'npc_not_found' });
+
+      const state   = _tryParseJSON(npc.state, {});
+      const npcName = state.name || npc.archetype || 'NPC';
+
+      // Fetch available quests if choice is quest-related
+      let quests = [];
+      try {
+        quests = db.prepare(
+          "SELECT * FROM world_quests WHERE giver_npc_id = ? AND status = 'available' LIMIT 3"
+        ).all(npcId);
+      } catch { /* table may not exist */ }
+
+      // Build follow-up prompt
+      const { selectBrain } = await import("../lib/brain-config.js").catch(() => ({ selectBrain: null }));
+      if (!selectBrain) {
+        return res.json({ ok: true, response: `${npcName} responds to your choice.` });
+      }
+
+      const { handle } = await selectBrain("subconscious", { callerId: "world:npc:dialogue:respond" });
+
+      const questContext = (choice === 'quest' && quests.length > 0)
+        ? `Quest available: ${JSON.stringify({ title: quests[0].title, description: quests[0].description, reward: quests[0].reward }).slice(0, 300)}`
+        : '';
+
+      const promptLines = [
+        `You are ${npcName}, a ${npc.archetype} NPC in world ${worldId}.`,
+        `Faction: ${npc.faction || 'none'}. Level: ${npc.level || 1}.`,
+        npc.is_conscious ? 'You are a world leader and conscious being. Speak with authority and wisdom.' : '',
+        `Job: ${npc.job_type || 'none'}. Current task: ${npc.current_task || 'idle'}.`,
+        questContext,
+        ``,
+        `Player chose: "${choice}".`,
+        `Continue as ${npcName}. Respond in character, 2-3 sentences.`,
+        choice === 'quest'    ? 'Describe the quest in detail and ask if they accept.' : '',
+        choice === 'trade'    ? 'List 3 items you would sell based on your archetype and job.' : '',
+        choice === 'ask_work' ? 'Describe what you do day to day in your own words.' : '',
+        choice === 'ask_world'? 'Share something interesting or rumor about the world around you.' : '',
+        choice === 'goodbye'  ? 'Give a warm or cold farewell depending on your mood.' : '',
+      ].filter(Boolean).join('\n');
+
+      const response = await handle.generate(promptLines);
+      const safeResponse = response?.slice(0, 800) || `${npcName} nods and moves on.`;
+
+      // If quest choice and quests exist, include quest data
+      if (choice === 'quest' && quests.length > 0) {
+        const q = quests[0];
+        return res.json({
+          ok: true,
+          response: safeResponse,
+          questOffered: {
+            id:          q.id,
+            title:       q.title,
+            description: q.description,
+            reward:      q.reward,
+          },
+        });
+      }
+
+      res.json({ ok: true, response: safeResponse });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }
@@ -1197,6 +1420,33 @@ export default function createWorldsRouter({ requireAuth, db }) {
       if (!updated) return res.status(404).json({ ok: false, error: 'room_not_found' });
       res.json({ ok: true });
     } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  });
+
+  // GET /api/worlds/:worldId/buildings/:buildingId/interior — full interior view with access checks
+  router.get("/:worldId/buildings/:buildingId/interior", requireAuth, (req, res) => {
+    try {
+      const { worldId, buildingId } = req.params;
+      const userId = req.user.id;
+
+      const building = db.prepare("SELECT * FROM world_buildings WHERE id = ? AND world_id = ?").get(buildingId, worldId);
+      if (!building) return res.status(404).json({ ok: false, error: 'building not found' });
+
+      const rooms = getRoomsForBuilding(db, buildingId);
+      const occupants = db.prepare(`
+        SELECT id, archetype, state, grief_level, is_wanted, schedule_phase
+        FROM world_npcs
+        WHERE (home_building_id = ? OR job_location_id = ?) AND world_id = ?
+      `).all(buildingId, buildingId, worldId);
+
+      const enrichedRooms = rooms.map(room => {
+        const access = checkRoomAccess(db, room.id, userId, 'player');
+        return { ...room, access };
+      });
+
+      res.json({ ok: true, building, rooms: enrichedRooms, occupants });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
   });
 
   // ── Player movement / swimming ────────────────────────────────────────────

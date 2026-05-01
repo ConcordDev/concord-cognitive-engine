@@ -558,6 +558,14 @@ export class NPCSimulator {
     if (Math.random() < 0.002) {
       try { seedJobsForWorld(this._db, this.worldId); } catch { /* non-fatal */ }
     }
+
+    // Very rare: seed NPC-to-NPC archetype opinions (0.1% of ticks)
+    if (Math.random() < 0.001) {
+      try {
+        const { seedNPCOpinions } = await import('./npc-relations.js');
+        seedNPCOpinions(this._db, this.worldId);
+      } catch { /* non-fatal */ }
+    }
   }
 
   _tickCrossbreeding() {
@@ -611,6 +619,12 @@ export class NPCSimulator {
 
     const partner = partners[Math.floor(Math.random() * partners.length)];
     await speaker._speakTo(partner).catch(() => {});
+
+    // Update mutual opinion from conversation (slight warmth from interaction)
+    try {
+      const { recordNPCToNPCInteraction } = await import('./npc-relations.js');
+      recordNPCToNPCInteraction(this._db, speaker.id, partner.id, 0.01, 'conversation');
+    } catch { /* non-fatal */ }
   }
 
   start() {

@@ -308,6 +308,15 @@ const DesignHUD = dynamic(
   () => import('@/components/world/DesignHUD').then((m) => ({ default: m.DesignHUD })),
   { ssr: false }
 );
+const NPCDialogue = dynamic(
+  () => import('@/components/world/NPCDialogue').then((m) => ({ default: m.NPCDialogue })),
+  { ssr: false }
+);
+const BuildingInterior = dynamic(
+  () =>
+    import('@/components/world/BuildingInterior').then((m) => ({ default: m.BuildingInterior })),
+  { ssr: false }
+);
 const CraftingBench = dynamic(
   () =>
     import('@/components/concordia/crafting/CraftingBench').then((m) => ({
@@ -1261,6 +1270,44 @@ export default function WorldLensPage() {
     import('@/components/world-lens/AvatarSystem3D').NPCData[]
   >([]);
 
+  // Raw NPC data (full API response) for dialogue and behavioral visual cues
+  const [rawWorldNPCs, setRawWorldNPCs] = useState<
+    Array<{
+      id: string;
+      name: string;
+      archetype: string;
+      faction?: string;
+      isConscious?: boolean;
+      griefLevel?: number;
+      criminalRep?: number;
+      isWanted?: boolean;
+      jobType?: string;
+      currentHp?: number;
+      maxHp?: number;
+      position: { x: number; y: number; z?: number };
+    }>
+  >([]);
+
+  // NPC dialogue overlay
+  const [dialogueNPC, setDialogueNPC] = useState<{
+    id: string;
+    name: string;
+    archetype: string;
+    faction?: string;
+    isConscious?: boolean;
+    griefLevel?: number;
+    criminalRep?: number;
+    isWanted?: boolean;
+    jobType?: string;
+    currentHp?: number;
+    maxHp?: number;
+  } | null>(null);
+
+  // Building interior overlay
+  const [interiorBuilding, setInteriorBuilding] = useState<{ id: string; name: string } | null>(
+    null
+  );
+
   // Selection state
   const [selectedBuilding, setSelectedBuilding] = useState<PlacedBuildingDTU | null>(null);
   const [selectedInfra, setSelectedInfra] = useState<InfrastructureDTU | null>(null);
@@ -1465,7 +1512,25 @@ export default function WorldLensPage() {
       fetch(`/api/worlds/${activeDistrict.id}/npcs`)
         .then((r) => (r.ok ? r.json() : null))
         .then((d) => {
-          if (d?.npcs) setWorldNPCs(d.npcs.map(_mapNPCToAvatarData));
+          if (!d?.npcs) return;
+          // Store both avatar-mapped and raw NPC data
+          setWorldNPCs(d.npcs.map(_mapNPCToAvatarData));
+          setRawWorldNPCs(
+            d.npcs.map((n: Record<string, unknown>) => ({
+              id: n.id as string,
+              name: (n.name as string) ?? 'Unknown',
+              archetype: (n.archetype as string) ?? 'guard',
+              faction: n.faction as string | undefined,
+              isConscious: n.isConscious as boolean | undefined,
+              griefLevel: n.griefLevel as number | undefined,
+              criminalRep: n.criminalRep as number | undefined,
+              isWanted: n.isWanted as boolean | undefined,
+              jobType: n.jobType as string | undefined,
+              currentHp: n.currentHp as number | undefined,
+              maxHp: n.maxHp as number | undefined,
+              position: { x: (n.x as number) ?? 0, y: (n.y as number) ?? 0 },
+            }))
+          );
         })
         .catch(() => {});
     };
@@ -2480,6 +2545,77 @@ export default function WorldLensPage() {
               </div>
             );
           })}
+          {/* NPC interaction overlays — clickable name tags near each NPC */}
+          {rawWorldNPCs.map((npc) => {
+            const dx = npc.position.x - playerAvatar.position.x;
+            const dy = npc.position.y - playerAvatar.position.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist > 20) return null; // only show nearby NPCs
+            const isNearby = dist < 4;
+            return (
+              <div
+                key={npc.id}
+                className="absolute pointer-events-auto"
+                style={{
+                  left: `calc(50% + ${dx * 32}px)`,
+                  top: `calc(50% + ${dy * 32 - 36}px)`,
+                  transform: 'translate(-50%, -100%)',
+                  zIndex: 16,
+                }}
+              >
+                <button
+                  onClick={() => setDialogueNPC(npc)}
+                  title={`Talk to ${npc.name}`}
+                  className={`flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border backdrop-blur-sm transition-all ${
+                    npc.isWanted
+                      ? 'bg-red-900/70 border-red-500/50 text-red-300'
+                      : npc.isConscious
+                        ? 'bg-yellow-900/70 border-yellow-500/50 text-yellow-300'
+                        : (npc.griefLevel ?? 0) > 0.5
+                          ? 'bg-blue-900/70 border-blue-500/40 text-blue-300'
+                          : isNearby
+                            ? 'bg-black/80 border-white/30 text-white'
+                            : 'bg-black/60 border-white/10 text-white/60'
+                  }`}
+                >
+                  {npc.isWanted && <span>⚠</span>}
+                  {npc.isConscious && <span>⚡</span>}
+                  <span>{npc.name}</span>
+                  {isNearby && <span className="text-white/40">· talk</span>}
+                </button>
+              </div>
+            );
+          })}
+
+          {/* Building "Enter" overlays — shown when player is near a building */}
+          {worldBuildings.map((b) => {
+            const dx = b.x - playerAvatar.position.x;
+            const dy = b.z - playerAvatar.position.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist > 8) return null; // only show when nearby
+            return (
+              <div
+                key={b.id}
+                className="absolute pointer-events-auto"
+                style={{
+                  left: `calc(50% + ${dx * 32}px)`,
+                  top: `calc(50% + ${dy * 32 - 50}px)`,
+                  transform: 'translate(-50%, -100%)',
+                  zIndex: 16,
+                }}
+              >
+                <button
+                  onClick={() => setInteriorBuilding({ id: b.id, name: b.name || b.building_type })}
+                  className="flex items-center gap-1.5 text-[10px] px-2.5 py-1 rounded-full bg-amber-900/80 border border-amber-500/50 text-amber-300 backdrop-blur-sm hover:bg-amber-800/80 transition-colors"
+                >
+                  <span>🚪</span>
+                  <span>{b.name || b.building_type}</span>
+                  <span className="text-amber-400/60">· enter</span>
+                </button>
+              </div>
+            );
+          })}
+
           {/* Camera mode controls */}
           <div className="absolute top-4 right-4 z-20">
             <CameraControls
@@ -3125,6 +3261,46 @@ export default function WorldLensPage() {
             />
           )}
 
+          {/* NPC Dialogue overlay */}
+          {dialogueNPC && (
+            <NPCDialogue
+              npc={dialogueNPC}
+              worldId={activeDistrict.id}
+              onClose={() => setDialogueNPC(null)}
+              onQuestAccepted={(questId) => {
+                setDialogueNPC(null);
+                setQuestNotification({
+                  quest: {
+                    id: questId,
+                    title: 'New Quest',
+                    description: 'Quest accepted!',
+                  } as never,
+                  type: 'new',
+                });
+              }}
+            />
+          )}
+
+          {/* Building Interior overlay */}
+          {interiorBuilding && (
+            <BuildingInterior
+              buildingId={interiorBuilding.id}
+              buildingName={interiorBuilding.name}
+              worldId={activeDistrict.id}
+              onClose={() => setInteriorBuilding(null)}
+              onNPCClick={(npc) => {
+                setInteriorBuilding(null);
+                const fullNpc = rawWorldNPCs.find((n) => n.id === npc.id) ?? {
+                  id: npc.id,
+                  name: npc.name,
+                  archetype: npc.archetype,
+                  jobType: npc.jobType,
+                };
+                setDialogueNPC(fullNpc);
+              }}
+            />
+          )}
+
           {/* Bar Upgrade Panel — appears on level-up, one choice per upgrade point */}
           {upgradePrompt && upgradePrompt.pendingUpgrades > 0 && (
             <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-auto">
@@ -3628,15 +3804,37 @@ const FACTION_SKIN: Record<string, string> = {
 function _mapNPCToAvatarData(npc: {
   id: string;
   name?: string;
-  position: { x: number; y: number; z?: number };
+  // API may return x/y at top level (from world_npcs table) OR nested position
+  x?: number;
+  y?: number;
+  position?: { x: number; y: number; z?: number };
   rotation?: number;
   occupation?: string;
   archetype?: string;
   bodyType?: string;
   faction?: string;
   isConscious?: boolean;
+  // Behavioral state fields from updated worlds.js API
+  griefLevel?: number;
+  criminalRep?: number;
+  isWanted?: boolean;
+  jobType?: string;
+  currentHp?: number;
+  maxHp?: number;
 }): import('@/components/world-lens/AvatarSystem3D').NPCData {
-  const skinColor = FACTION_SKIN[npc.faction ?? ''] ?? '#6b7280';
+  const pos = npc.position ?? { x: npc.x ?? 0, y: npc.y ?? 0 };
+  const isGrieving = (npc.griefLevel ?? 0) > 0.5;
+  const isCriminal = (npc.criminalRep ?? 0) > 0.5;
+  const isLowHp =
+    npc.currentHp !== undefined && npc.maxHp ? npc.currentHp / npc.maxHp < 0.3 : false;
+
+  // Skin color: faction base, overridden by behavioral state
+  let skinColor = FACTION_SKIN[npc.faction ?? ''] ?? '#6b7280';
+  if (npc.isWanted) skinColor = '#8b2222';
+  else if (isCriminal) skinColor = '#6b3a1a';
+  else if (isGrieving) skinColor = '#2d3a5a';
+  else if (isLowHp) skinColor = '#5a4a2d';
+
   const occupationAnimation: Record<
     string,
     import('@/components/world-lens/AvatarSystem3D').NPCOccupationAnimation
@@ -3661,22 +3859,35 @@ function _mapNPCToAvatarData(npc: {
     demon: 'stocky',
     dragon: 'stocky',
   };
-  const occ = npc.occupation ?? npc.archetype ?? 'guard';
+  const occ = npc.occupation ?? npc.archetype ?? npc.jobType ?? 'guard';
+
+  // Hair color reflects behavioral state
+  let hairColor = '#333333';
+  if (npc.isConscious) hairColor = '#ffd700';
+  else if (isGrieving) hairColor = '#2a3a6a';
+  else if (npc.isWanted) hairColor = '#cc2222';
+
+  const clothingTop = npc.isConscious ? 'robe' : npc.isWanted ? 'vest' : 'vest';
+
   return {
     id: npc.id,
-    name: npc.isConscious ? `⚡ ${npc.name ?? 'Unknown'}` : (npc.name ?? 'Unknown'),
-    position: { x: npc.position.x, y: npc.position.y, z: npc.position.z ?? 0 },
+    name: npc.isConscious
+      ? `⚡ ${npc.name ?? 'Unknown'}`
+      : npc.isWanted
+        ? `⚠ ${npc.name ?? 'Unknown'}`
+        : (npc.name ?? 'Unknown'),
+    position: { x: pos.x, y: pos.y, z: pos.z ?? 0 },
     rotation: npc.rotation ?? 0,
     occupation: occ,
     occupationAnimation: occupationAnimation[occ] ?? 'patrol',
     timestamp: Date.now(),
     appearance: {
       skinColor,
-      hairColor: npc.isConscious ? '#ffd700' : '#333333',
+      hairColor,
       hairStyle: npc.isConscious ? 'long' : 'short',
       bodyType: bodyTypeMap[npc.bodyType ?? ''] ?? 'average',
       clothing: {
-        top: { color: skinColor, type: npc.isConscious ? 'robe' : 'vest' },
+        top: { color: skinColor, type: clothingTop },
         bottom: { color: '#374151', type: 'pants' },
         ...(npc.isConscious ? { hat: { color: '#ffd700', type: 'tophat' } } : {}),
       },

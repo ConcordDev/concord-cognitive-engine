@@ -279,6 +279,84 @@ export function willNPCInteract(db, npcId, actorId, interactionType = 'talk') {
   return { willing, mood, greeting, opinion: op, fear };
 }
 
+// ── NPC-to-NPC opinions ───────────────────────────────────────────────────────
+
+/**
+ * Archetype affinity seeds — defines initial opinion bias between archetype pairs.
+ * Values from -1 (strong dislike) to +1 (strong affinity).
+ */
+export const ARCHETYPE_AFFINITIES = {
+  guard:      { bandit: -0.8, criminal: -0.7, merchant: 0.3, soldier: 0.5 },
+  merchant:   { guard: 0.3, bandit: -0.5, customer: 0.4 },
+  bandit:     { guard: -0.8, merchant: -0.3, criminal: 0.6 },
+  criminal:   { guard: -0.7, detective: -0.9, bandit: 0.5 },
+  detective:  { criminal: -0.7, guard: 0.4, bandit: -0.5 },
+  soldier:    { guard: 0.5, bandit: -0.6 },
+  mage:       { priest: 0.3 },
+  blacksmith: { merchant: 0.4 },
+};
+
+/**
+ * Seed initial NPC-to-NPC opinions based on archetype affinities.
+ * Reads all NPCs in the world and inserts opinion rows for archetype pairs
+ * that have a defined affinity. Capped at 200 pairs per world to avoid O(n²).
+ */
+export function seedNPCOpinions(db, worldId) {
+  const npcs = db.prepare('SELECT id, archetype FROM world_npcs WHERE world_id = ? AND is_dead = 0').all(worldId);
+  const now = Math.floor(Date.now() / 1000);
+  const insert = db.prepare(`
+    INSERT OR IGNORE INTO npc_opinions
+      (id, subject_id, subject_type, target_id, target_type, opinion, trust, fear, last_event, last_updated)
+    VALUES (?, ?, 'npc', ?, 'npc', ?, ?, ?, 'archetype_affinity_seed', ?)
+  `);
+
+  let count = 0;
+  outer: for (const npcA of npcs) {
+    const affinities = ARCHETYPE_AFFINITIES[npcA.archetype];
+    if (!affinities) continue;
+    for (const npcB of npcs) {
+      if (npcA.id === npcB.id) continue;
+      const affinity = affinities[npcB.archetype];
+      if (affinity === undefined) continue;
+      const trust = Math.max(0, affinity * 0.5);
+      const fear  = Math.max(0, -affinity * 0.3);
+      insert.run(crypto.randomUUID(), npcA.id, npcB.id, affinity, trust, fear, now);
+      if (++count >= 200) break outer;
+    }
+  }
+}
+
+/**
+ * UPSERT an NPC-to-NPC opinion following a direct interaction.
+ * sentimentDelta is added to the existing opinion, clamped to [-1, 1].
+ */
+export function recordNPCToNPCInteraction(db, subjectNpcId, targetNpcId, sentimentDelta, context) {
+  const now = Math.floor(Date.now() / 1000);
+  db.prepare(`
+    INSERT INTO npc_opinions
+      (id, subject_id, subject_type, target_id, target_type, opinion, last_event, last_updated)
+    VALUES (?, ?, 'npc', ?, 'npc', ?, ?, ?)
+    ON CONFLICT(subject_id, target_id) DO UPDATE SET
+      opinion      = MAX(-1.0, MIN(1.0, opinion + ?)),
+      last_event   = ?,
+      last_updated = ?
+  `).run(
+    crypto.randomUUID(), subjectNpcId, targetNpcId,
+    Math.max(-1, Math.min(1, sentimentDelta)), context, now,
+    sentimentDelta, context, now,
+  );
+}
+
+/**
+ * Get an NPC's opinion of another NPC.
+ * Returns the npc_opinions row or null if none exists.
+ */
+export function getNPCOpinionOfNPC(db, subjectNpcId, targetNpcId) {
+  return db.prepare(
+    'SELECT * FROM npc_opinions WHERE subject_id = ? AND target_id = ? AND subject_type = ?'
+  ).get(subjectNpcId, targetNpcId, 'npc') ?? null;
+}
+
 /**
  * Get the top-N most/least liked actors from an NPC's perspective.
  */
