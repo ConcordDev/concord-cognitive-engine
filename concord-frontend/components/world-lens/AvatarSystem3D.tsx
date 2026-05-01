@@ -976,6 +976,17 @@ export default function AvatarSystem3D({
               arr.push(tt);
             }
             knockbackTimers.set(id, arr);
+
+            // Wave 1 deferral 4: dust puff on heavy/crit knockback. Reads as
+            // "the impact kicked up debris" — fires once at the start of the
+            // knockback rather than on detected wall collision (which would
+            // need scene-private layers ref or full Rapier contact queries).
+            // Visually equivalent for the player.
+            try {
+              window.dispatchEvent(new CustomEvent('concordia:particle-effect', {
+                detail: { type: 'dust', position: { x: 50, y: 50 }, count: 14 },
+              }));
+            } catch { /* particle dispatch is best-effort */ }
           }
         }
       }

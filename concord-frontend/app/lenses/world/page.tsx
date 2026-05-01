@@ -470,6 +470,8 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '@/lib/api/client';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
+// Wave 1 deferral 5: reads the player's stored quality preset (set via /lenses/settings)
+import { getStoredQualityPreset } from '@/lib/world-lens/quality-preset';
 import { emitHitNumber, emitScreenShake, emitHitStop } from '@/components/world/ImpactFeedback';
 import type { LimbState, LimbArmorState } from '@/components/concordia/hud/CombatHUD';
 
@@ -2659,7 +2661,7 @@ export default function WorldLensPage() {
         <div className="flex-1 relative min-h-0">
           <ConcordiaScene
             districtId={activeDistrict.id}
-            quality="medium"
+            quality={getStoredQualityPreset()}
             theme={concordiaTheme}
             renderStyle={concordiaRenderStyle}
             onBuildingClick={(id) => {
