@@ -27612,6 +27612,20 @@ async function governorTick(reason="heartbeat") {
 
     // Record tick result for heartbeat history API
     try {
+      // Quest emergence: scan active NPCs for quest opportunities (every 20 ticks)
+      if ((STATE.__bgTickCounter || 0) % 20 === 0) {
+        const questEmergence = await import("./lib/quest-emergence.js").catch(() => null);
+        if (questEmergence?.detectQuestOpportunities) {
+          try {
+            const cityPresence = await import("./lib/city-presence.js").catch(() => null);
+            const npcList = cityPresence?.getAllNPCsForEmergence?.() ?? [];
+            for (const npc of npcList.slice(0, 5)) {
+              await questEmergence.detectQuestOpportunities(npc, db, _selectBrain).catch(() => {});
+            }
+          } catch (_e) { /* non-fatal */ }
+        }
+      }
+
       if (typeof _tickHistory !== "undefined") {
         _tickHistory.push({
           tick: STATE.__bgTickCounter || 0,

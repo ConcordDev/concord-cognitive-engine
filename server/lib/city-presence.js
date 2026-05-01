@@ -998,6 +998,19 @@ export function respawnPlayer(userId, { cityId, x = 0, y = 0, z = 0 } = {}) {
 }
 
 /**
+ * Return a sample of active NPCs for quest-emergence scanning.
+ * Capped at 20 to avoid saturating the governor tick.
+ */
+export function getAllNPCsForEmergence() {
+  const result = [];
+  for (const [id, npc] of _npcState) {
+    result.push({ id, worldId: npc.cityId, npcType: npc.occupation, needs: npc.needs ?? {} });
+    if (result.length >= 20) break;
+  }
+  return result;
+}
+
+/**
  * Regenerate a player's stamina over time. Called from the broadcast
  * loop — adds 1 stamina per tick up to the max.
  */

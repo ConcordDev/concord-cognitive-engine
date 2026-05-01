@@ -60,6 +60,17 @@ const ImpactFeedback = dynamic(
   () => import('@/components/world/ImpactFeedback').then((m) => ({ default: m.ImpactFeedback })),
   { ssr: false }
 );
+const DistrictActivityFeed = dynamic(
+  () =>
+    import('@/components/world/DistrictActivityFeed').then((m) => ({
+      default: m.DistrictActivityFeed,
+    })),
+  { ssr: false }
+);
+const EmoteWheel = dynamic(
+  () => import('@/components/world/EmoteWheel').then((m) => ({ default: m.EmoteWheel })),
+  { ssr: false }
+);
 const PlayerPresence = dynamic(() => import('@/components/world-lens/PlayerPresence'), {
   ssr: false,
 });
@@ -1197,13 +1208,23 @@ export default function WorldLensPage() {
   const [comboCount, setComboCount] = useState(0);
   const [staggered, setStaggered] = useState(false);
   const [limbState, setLimbState] = useState<LimbState>({
-    head: 100, torso: 100, left_arm: 100, right_arm: 100, left_leg: 100, right_leg: 100,
+    head: 100,
+    torso: 100,
+    left_arm: 100,
+    right_arm: 100,
+    left_leg: 100,
+    right_leg: 100,
   });
   const [limbArmorState, setLimbArmorState] = useState<LimbArmorState>({
-    head: 100, torso: 100, left_arm: 100, right_arm: 100, left_leg: 100, right_leg: 100,
+    head: 100,
+    torso: 100,
+    left_arm: 100,
+    right_arm: 100,
+    left_leg: 100,
+    right_leg: 100,
   });
   const comboTargetRef = useRef<string | null>(null);
-  const comboTimerRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const comboTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const staggerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── AAA systems: deformation store, combat music, delta compression, weather modifiers
@@ -1325,6 +1346,23 @@ export default function WorldLensPage() {
     currentHp?: number;
     maxHp?: number;
   } | null>(null);
+
+  // Emote wheel toggle
+  const [showEmoteWheel, setShowEmoteWheel] = useState(false);
+
+  // World quests — loaded from server for QuestLog panel
+  const [worldQuests, setWorldQuests] = useState<
+    Array<{
+      id: string;
+      title: string;
+      description: string;
+      status: string;
+      giver_npc_id?: string;
+    }>
+  >([]);
+
+  // Nearest NPC within interaction range (≤3 units)
+  const [nearbyNPC, setNearbyNPC] = useState<(typeof rawWorldNPCs)[number] | null>(null);
 
   // Building interior overlay
   const [interiorBuilding, setInteriorBuilding] = useState<{ id: string; name: string } | null>(
@@ -1460,9 +1498,11 @@ export default function WorldLensPage() {
 
   // Sync active district to SoundscapeEngine ambient audio via window event
   useEffect(() => {
-    window.dispatchEvent(new CustomEvent('concordia:soundscape-command', {
-      detail: { action: 'setDistrict', district: activeDistrict.id },
-    }));
+    window.dispatchEvent(
+      new CustomEvent('concordia:soundscape-command', {
+        detail: { action: 'setDistrict', district: activeDistrict.id },
+      })
+    );
   }, [activeDistrict.id]);
 
   // Poll for nearby nodes every 5s based on player position
@@ -1569,7 +1609,7 @@ export default function WorldLensPage() {
     return () => clearInterval(interval);
   }, [activeDistrict.id]);
 
-  // Proximity check: update nearPortalId whenever the player moves
+  // Proximity check: update nearPortalId and nearbyNPC whenever the player moves
   useEffect(() => {
     const near = portals.find(
       (p) => Math.hypot(p.x - playerAvatar.position.x, p.y - playerAvatar.position.y) < 3
@@ -1577,26 +1617,82 @@ export default function WorldLensPage() {
     setNearPortalId(near?.id ?? null);
   }, [playerAvatar.position, portals]);
 
-  // E key: enter a nearby accessible portal
+  // NPC proximity: track nearest NPC within 3 units + dispatch tutorial action
+  const _prevNearNPCIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    const pos = playerAvatar.position;
+    const nearest = rawWorldNPCs.reduce<(typeof rawWorldNPCs)[number] | null>((best, npc) => {
+      const d = Math.hypot(npc.position.x - pos.x, npc.position.y - pos.y);
+      if (d > 3) return best;
+      const bd = best ? Math.hypot(best.position.x - pos.x, best.position.y - pos.y) : Infinity;
+      return d < bd ? npc : best;
+    }, null);
+    setNearbyNPC(nearest);
+    // Dispatch tutorial action only once per NPC approach
+    if (nearest && nearest.id !== _prevNearNPCIdRef.current) {
+      _prevNearNPCIdRef.current = nearest.id;
+      window.dispatchEvent(
+        new CustomEvent('concordia:tutorial-action', {
+          detail: { action: 'near-npc' },
+        })
+      );
+    } else if (!nearest) {
+      _prevNearNPCIdRef.current = null;
+    }
+  }, [playerAvatar.position, rawWorldNPCs]);
+
+  // E key: portal entry OR nearest NPC dialogue (portal takes priority)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'e' && e.key !== 'E') return;
-      const near = portals.find(
+      // Portal first
+      const nearPortal = portals.find(
         (p) => Math.hypot(p.x - playerAvatar.position.x, p.y - playerAvatar.position.y) < 3
       );
-      if (near?.accessible) {
-        setActiveLensOverride(near.lens_id);
+      if (nearPortal?.accessible) {
+        setActiveLensOverride(nearPortal.lens_id);
         modeManager.switchTo('lens_work', { push: true });
         window.dispatchEvent(
           new CustomEvent('concordia:tutorial-action', {
             detail: { action: 'entered-lens-portal' },
           })
         );
+        return;
+      }
+      // Nearest NPC dialogue
+      if (nearbyNPC && !dialogueNPC) {
+        openNPCDialogue(nearbyNPC);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [portals, playerAvatar.position]);
+  }, [portals, playerAvatar.position, nearbyNPC, dialogueNPC, openNPCDialogue]);
+
+  // G key: toggle emote wheel in explore mode
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== 'g' && e.key !== 'G') return;
+      if (inputMode !== 'exploration' && inputMode !== 'social') return;
+      setShowEmoteWheel((v) => !v);
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [inputMode]);
+
+  // World quests — fetch for QuestLog panel, refresh every 45s
+  useEffect(() => {
+    const load = () => {
+      fetch(`/api/worlds/${activeDistrict.id}/quests?limit=30`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => {
+          if (d?.quests) setWorldQuests(d.quests);
+        })
+        .catch(() => {});
+    };
+    load();
+    const iv = setInterval(load, 45_000);
+    return () => clearInterval(iv);
+  }, [activeDistrict.id]);
 
   // ── MMO multiplayer wiring ──────────────────────────────────────────
   // On mount: ask the server for our last-saved position, subscribe
@@ -1608,6 +1704,28 @@ export default function WorldLensPage() {
 
     // Request saved state on first connect
     worldSocket.emit('player:load');
+
+    // Seed starter world event if district has none (fire-and-forget)
+    fetch(`/api/worlds/${activeDistrict.id}/events?status=active&limit=1`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!d?.events?.length) {
+          // No active events — create a starter gathering event
+          fetch(`/api/worlds/${activeDistrict.id}/events`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'meetup',
+              name: 'Community Gathering',
+              description:
+                'Citizens are gathering at the town square. Come explore and meet others.',
+              maxParticipants: 50,
+              duration: 3600,
+            }),
+          }).catch(() => {});
+        }
+      })
+      .catch(() => {});
 
     const handleLoadAck = (msg: unknown) => {
       const data = msg as {
@@ -1857,13 +1975,15 @@ export default function WorldLensPage() {
         emitHitNumber(data.damage, element, !!data.isCrit);
         emitScreenShake(data.isCrit ? 5 : Math.min(4, Math.ceil(data.damage / 20)));
         emitHitStop(data.isCrit ? 140 : 70);
-        window.dispatchEvent(new CustomEvent('concordia:game-juice', {
-          detail: { trigger: data.isCrit ? 'combat-crit' : 'combat-hit' },
-        }));
+        window.dispatchEvent(
+          new CustomEvent('concordia:game-juice', {
+            detail: { trigger: data.isCrit ? 'combat-crit' : 'combat-hit' },
+          })
+        );
         // Combo counter — consecutive hits on same target within 4 seconds
         const tid = combatStateRef.current.target?.id ?? null;
         if (tid && tid === comboTargetRef.current) {
-          setComboCount(c => c + 1);
+          setComboCount((c) => c + 1);
         } else {
           setComboCount(1);
           comboTargetRef.current = tid;
@@ -1879,9 +1999,11 @@ export default function WorldLensPage() {
         pushCombatLog(`${targetName} defeated!`, 'death');
         emitScreenShake(6);
         emitHitStop(200);
-        window.dispatchEvent(new CustomEvent('concordia:game-juice', {
-          detail: { trigger: 'combat-kill' },
-        }));
+        window.dispatchEvent(
+          new CustomEvent('concordia:game-juice', {
+            detail: { trigger: 'combat-kill' },
+          })
+        );
         setComboCount(0);
         comboTargetRef.current = null;
         // Clear the killed target; the server will despawn it.
@@ -1891,11 +2013,11 @@ export default function WorldLensPage() {
       // Apply limb damage if server sent it
       if ((data as Record<string, unknown>).limbDamage) {
         const ld = (data as Record<string, unknown>).limbDamage as Partial<LimbState>;
-        setLimbState(prev => ({ ...prev, ...ld }));
+        setLimbState((prev) => ({ ...prev, ...ld }));
       }
       if ((data as Record<string, unknown>).limbArmor) {
         const la = (data as Record<string, unknown>).limbArmor as Partial<LimbArmorState>;
-        setLimbArmorState(prev => ({ ...prev, ...la }));
+        setLimbArmorState((prev) => ({ ...prev, ...la }));
       }
     };
 
@@ -1922,9 +2044,11 @@ export default function WorldLensPage() {
       pushCombatLog(`Took ${data.damage} damage${data.isCrit ? ' (crit)' : ''}.`, 'damage-taken');
       emitScreenShake(data.isCrit ? 7 : Math.min(5, Math.ceil(data.damage / 15)));
       emitHitStop(data.isCrit ? 120 : 60);
-      window.dispatchEvent(new CustomEvent('concordia:game-juice', {
-        detail: { trigger: 'combat-hit' },
-      }));
+      window.dispatchEvent(
+        new CustomEvent('concordia:game-juice', {
+          detail: { trigger: 'combat-hit' },
+        })
+      );
       // Heavy hit (> 25 dmg) or crit triggers stagger — slows movement briefly
       if (data.isCrit || data.damage > 25) {
         setStaggered(true);
@@ -1934,11 +2058,11 @@ export default function WorldLensPage() {
       // Apply incoming limb damage + armor if server sent it
       if ((data as Record<string, unknown>).limbDamage) {
         const ld = (data as Record<string, unknown>).limbDamage as Partial<LimbState>;
-        setLimbState(prev => ({ ...prev, ...ld }));
+        setLimbState((prev) => ({ ...prev, ...ld }));
       }
       if ((data as Record<string, unknown>).limbArmor) {
         const la = (data as Record<string, unknown>).limbArmor as Partial<LimbArmorState>;
-        setLimbArmorState(prev => ({ ...prev, ...la }));
+        setLimbArmorState((prev) => ({ ...prev, ...la }));
       }
       // Clear the flash after 300ms so pulsing red overlay fades
       setTimeout(() => {
@@ -1953,13 +2077,17 @@ export default function WorldLensPage() {
       if (data.targetId === playerAvatar.id) {
         setCombatState((prev) => ({ ...prev, isDead: true, health: 0 }));
         pushCombatLog('You have fallen. Respawn to continue.', 'death');
-        window.dispatchEvent(new CustomEvent('concordia:game-juice', {
-          detail: { trigger: 'combat-hit', opts: { magnitude: 10 } },
-        }));
+        window.dispatchEvent(
+          new CustomEvent('concordia:game-juice', {
+            detail: { trigger: 'combat-hit', opts: { magnitude: 10 } },
+          })
+        );
       } else if (data.attackerId === playerAvatar.id) {
-        window.dispatchEvent(new CustomEvent('concordia:game-juice', {
-          detail: { trigger: 'milestone' },
-        }));
+        window.dispatchEvent(
+          new CustomEvent('concordia:game-juice', {
+            detail: { trigger: 'milestone' },
+          })
+        );
       }
     };
 
@@ -2008,9 +2136,11 @@ export default function WorldLensPage() {
       if (data.userId && data.userId !== playerAvatar.id) return;
       if (data.action === 'award_xp') {
         pushCombatLog(`Awarded XP: +${data.params?.amount ?? 0}`, 'info');
-        window.dispatchEvent(new CustomEvent('concordia:game-juice', {
-          detail: { trigger: 'milestone', opts: { value: `+${data.params?.amount ?? 0} XP` } },
-        }));
+        window.dispatchEvent(
+          new CustomEvent('concordia:game-juice', {
+            detail: { trigger: 'milestone', opts: { value: `+${data.params?.amount ?? 0} XP` } },
+          })
+        );
       } else if (data.action === 'give_item') {
         pushCombatLog(`Received item: ${data.params?.itemId ?? 'unknown'}`, 'info');
       } else if (data.action === 'teleport_player' && data.params) {
@@ -2188,6 +2318,37 @@ export default function WorldLensPage() {
   // ── Handlers ──────────────────────────────────────────────────
 
   // ── Combat handlers ───────────────────────────────────────────
+  // Open NPC dialogue — conscious NPCs get the full LLM-backed useDialogue flow;
+  // others open the simpler NPCDialogue overlay.
+  const openNPCDialogue = useCallback(
+    (npc: (typeof rawWorldNPCs)[number]) => {
+      if (npc.isConscious) {
+        // Route through narrative bridge → enriched LLM dialogue
+        dialogueCtx.startDialogue(
+          npc.id,
+          npc.name,
+          {
+            archetype: npc.archetype ?? 'guard',
+            faction: npc.faction ?? '',
+            speechStyle: 'formal',
+            traits: [],
+          },
+          50,
+          []
+        );
+        modeManager.switchTo('conversation', { push: true });
+        window.dispatchEvent(
+          new CustomEvent('concordia:tutorial-action', {
+            detail: { action: 'completed-dialogue' },
+          })
+        );
+      } else {
+        setDialogueNPC(npc);
+      }
+    },
+    [dialogueCtx]
+  );
+
   const handleSelectCombatTarget = useCallback(
     (p: { id: string; name: string; type: 'enemy' | 'player' }) => {
       setCombatState((prev) => ({
@@ -2667,8 +2828,8 @@ export default function WorldLensPage() {
                 }}
               >
                 <button
-                  onClick={() => setDialogueNPC(npc)}
-                  title={`Talk to ${npc.name}`}
+                  onClick={() => openNPCDialogue(npc)}
+                  title={`Talk to ${npc.name}${npc.isConscious ? ' (conscious — full dialogue)' : ''}`}
                   className={`flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border backdrop-blur-sm transition-all ${
                     npc.isWanted
                       ? 'bg-red-900/70 border-red-500/50 text-red-300'
@@ -2684,7 +2845,7 @@ export default function WorldLensPage() {
                   {npc.isWanted && <span>⚠</span>}
                   {npc.isConscious && <span>⚡</span>}
                   <span>{npc.name}</span>
-                  {isNearby && <span className="text-white/40">· talk</span>}
+                  {isNearby && <span className="text-cyan-400/80 font-bold">[E]</span>}
                 </button>
               </div>
             );
@@ -2766,16 +2927,20 @@ export default function WorldLensPage() {
               onActivateSkill={combatCtx.activateSkill}
               onDodge={() => {
                 combatCtx.dodge();
-                window.dispatchEvent(new CustomEvent('concordia:game-juice', {
-                  detail: { trigger: 'combat-dodge' },
-                }));
+                window.dispatchEvent(
+                  new CustomEvent('concordia:game-juice', {
+                    detail: { trigger: 'combat-dodge' },
+                  })
+                );
               }}
               onBlock={(held) => {
                 combatCtx.setBlock(held);
                 if (held) {
-                  window.dispatchEvent(new CustomEvent('concordia:game-juice', {
-                    detail: { trigger: 'combat-block' },
-                  }));
+                  window.dispatchEvent(
+                    new CustomEvent('concordia:game-juice', {
+                      detail: { trigger: 'combat-block' },
+                    })
+                  );
                 }
               }}
               onToggleVATS={combatCtx.toggleVATS}
@@ -2903,6 +3068,57 @@ export default function WorldLensPage() {
           {/* Tutorial overlay — always present, shows ? button */}
           <TutorialOverlay />
 
+          {/* District activity feed — live quests/events/NPC discovery */}
+          <DistrictActivityFeed
+            worldId={activeDistrict.id}
+            npcs={rawWorldNPCs.map((n) => ({
+              id: n.id,
+              name: n.name,
+              isConscious: n.isConscious,
+              questAvailable: false,
+              faction: n.faction,
+              position: { x: n.position.x, y: n.position.y },
+            }))}
+            playerPosition={{ x: playerAvatar.position.x, y: playerAvatar.position.y }}
+            onTalkToNpc={(npcId) => {
+              const npc = rawWorldNPCs.find((n) => n.id === npcId);
+              if (npc) openNPCDialogue(npc);
+            }}
+            onOpenWorldEvents={() => setShowPanel('worldevents')}
+            onOpenQuestLog={() => setShowPanel('questlog')}
+          />
+
+          {/* Emote wheel — G key in exploration/social mode */}
+          {showEmoteWheel && (
+            <EmoteWheel
+              onEmote={(emoteId) => {
+                setPlayerAvatar((prev) => ({
+                  ...prev,
+                  currentAnimation: emoteId as typeof playerAvatar.currentAnimation,
+                }));
+                if (worldSocket.isConnected) {
+                  worldSocket.emit('player:move', {
+                    cityId: activeDistrict.id,
+                    districtId: activeDistrict.id,
+                    x: playerAvatar.position.x,
+                    y: playerAvatar.position.y,
+                    z: playerAvatar.position.z,
+                    rotation: playerAvatar.rotation,
+                    direction: playerAvatar.rotation,
+                    action: emoteId,
+                    currentAnimation: emoteId,
+                  });
+                }
+                window.dispatchEvent(
+                  new CustomEvent('concordia:tutorial-action', {
+                    detail: { action: 'sent-quick-message' },
+                  })
+                );
+              }}
+              onClose={() => setShowEmoteWheel(false)}
+            />
+          )}
+
           {/* Gameplay toolbar */}
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 bg-black/70 border border-white/10 rounded-xl px-2 py-1.5 pointer-events-auto">
             {(
@@ -2969,7 +3185,11 @@ export default function WorldLensPage() {
           {showPanel === 'questlog' && (
             <div className="absolute top-4 left-4 z-20 w-80 max-h-[70vh] overflow-auto pointer-events-auto">
               {/* QuestLog — detailed quest journal with active/available/completed tabs */}
-              <QuestLog quests={[]} worldId="concordia-hub" onClose={() => setShowPanel('none')} />
+              <QuestLog
+                quests={worldQuests}
+                worldId={activeDistrict.id}
+                onClose={() => setShowPanel('none')}
+              />
             </div>
           )}
           {showPanel === 'chat' && (
@@ -3065,6 +3285,36 @@ export default function WorldLensPage() {
                 onTargetPlayer={(t) =>
                   handleSelectCombatTarget({ id: t.id, name: t.name, type: 'player' })
                 }
+                onMessage={(playerId) => {
+                  // Open chat focused on this player
+                  setShowPanel('chat');
+                  window.dispatchEvent(
+                    new CustomEvent('concordia:tutorial-action', {
+                      detail: { action: 'sent-quick-message' },
+                    })
+                  );
+                  window.dispatchEvent(
+                    new CustomEvent('concordia:chat-focus-player', {
+                      detail: { playerId },
+                    })
+                  );
+                }}
+                onViewProfile={(playerId) => {
+                  // Profile panel — show that player's info
+                  setShowPanel('profile');
+                  window.dispatchEvent(
+                    new CustomEvent('concordia:view-player-profile', {
+                      detail: { playerId },
+                    })
+                  );
+                }}
+                onAddFriend={(playerId) => {
+                  fetch('/api/social/follow', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ targetId: playerId }),
+                  }).catch(() => {});
+                }}
               />
             </div>
           )}
@@ -3407,12 +3657,16 @@ export default function WorldLensPage() {
                   } as never,
                   type: 'new',
                 });
-                window.dispatchEvent(new CustomEvent('concordia:game-juice', {
-                  detail: { trigger: 'quest-complete' },
-                }));
-                window.dispatchEvent(new CustomEvent('concordia:tutorial-action', {
-                  detail: { action: 'accepted-quest' },
-                }));
+                window.dispatchEvent(
+                  new CustomEvent('concordia:game-juice', {
+                    detail: { trigger: 'quest-complete' },
+                  })
+                );
+                window.dispatchEvent(
+                  new CustomEvent('concordia:tutorial-action', {
+                    detail: { action: 'accepted-quest' },
+                  })
+                );
               }}
             />
           )}
