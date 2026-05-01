@@ -69,6 +69,14 @@ export type AnimationClip =
   | 'inspect'
   | 'wave'
   | 'clap'
+  // Hit-reaction clips (Phase 4) — short, crossfade in over 80ms,
+  // crossfade back to prior clip after their fixed duration.
+  | 'flinch_chest'
+  | 'flinch_head'
+  | 'stagger_left'
+  | 'stagger_right'
+  | 'block_impact'
+  | 'crit_recoil'
   | 'point'
   | 'celebrate'
   | 'craft';
@@ -731,6 +739,59 @@ export default function AvatarSystem3D({
         ])
       );
 
+      // Hit-reaction clips (Phase 4). Procedural keyframes on the avatar root
+      // group — affect position/rotation, not individual bones, so they
+      // compose with whatever occupation/walk animation was previously
+      // playing once the reaction fades out.
+      clips.set(
+        'flinch_chest',
+        new THREE.AnimationClip('flinch_chest', 0.35, [
+          new THREE.NumberKeyframeTrack('.rotation[x]', [0, 0.1, 0.35], [0, 0.25, 0]),
+          new THREE.NumberKeyframeTrack('.position[z]', [0, 0.1, 0.35], [0, -0.08, 0]),
+        ])
+      );
+
+      clips.set(
+        'flinch_head',
+        new THREE.AnimationClip('flinch_head', 0.40, [
+          new THREE.NumberKeyframeTrack('.rotation[x]', [0, 0.08, 0.40], [0, -0.30, 0]),
+          new THREE.NumberKeyframeTrack('.rotation[y]', [0, 0.08, 0.40], [0, 0.10, 0]),
+        ])
+      );
+
+      clips.set(
+        'stagger_left',
+        new THREE.AnimationClip('stagger_left', 0.55, [
+          new THREE.NumberKeyframeTrack('.rotation[z]', [0, 0.15, 0.55], [0, 0.30, 0]),
+          new THREE.NumberKeyframeTrack('.position[x]', [0, 0.20, 0.55], [0, -0.15, 0]),
+        ])
+      );
+
+      clips.set(
+        'stagger_right',
+        new THREE.AnimationClip('stagger_right', 0.55, [
+          new THREE.NumberKeyframeTrack('.rotation[z]', [0, 0.15, 0.55], [0, -0.30, 0]),
+          new THREE.NumberKeyframeTrack('.position[x]', [0, 0.20, 0.55], [0, 0.15, 0]),
+        ])
+      );
+
+      clips.set(
+        'block_impact',
+        new THREE.AnimationClip('block_impact', 0.25, [
+          new THREE.NumberKeyframeTrack('.position[z]', [0, 0.10, 0.25], [0, -0.05, 0]),
+          new THREE.NumberKeyframeTrack('.scale[y]', [0, 0.05, 0.25], [1, 0.97, 1]),
+        ])
+      );
+
+      clips.set(
+        'crit_recoil',
+        new THREE.AnimationClip('crit_recoil', 0.85, [
+          new THREE.NumberKeyframeTrack('.rotation[x]', [0, 0.10, 0.40, 0.85], [0, 0.45, 0.20, 0]),
+          new THREE.NumberKeyframeTrack('.position[y]', [0, 0.20, 0.50, 0.85], [0, 0.05, -0.05, 0]),
+          new THREE.NumberKeyframeTrack('.position[z]', [0, 0.15, 0.85], [0, -0.20, 0]),
+        ])
+      );
+
       return clips;
     },
     []
@@ -751,18 +812,86 @@ export default function AvatarSystem3D({
       const animClips = createAnimationClips(THREE);
 
       // ── Helper: set up animation mixer for a mesh ─────────
+      // Crossfade-aware: keeps a per-mixer reference to the active action so
+      // playClipOnAvatar(id, name, fadeMs) can blend between clips without
+      // popping. Used by the window-event hit-reaction listener below.
+      type MixerType = InstanceType<typeof import('three').AnimationMixer>;
+      type ActionType = ReturnType<MixerType['clipAction']>;
+      const currentActions = new Map<MixerType, ActionType>();
+      const baselineClips = new Map<MixerType, string>();
+
+      function playClip(mixer: MixerType, clipName: string, fadeMs: number): void {
+        const clip = animClips.get(clipName);
+        if (!clip) return;
+        const next = mixer.clipAction(clip);
+        const prev = currentActions.get(mixer);
+        const fadeSec = Math.max(0.01, fadeMs / 1000);
+        if (prev && prev !== next) {
+          next.reset();
+          next.setEffectiveWeight(1);
+          next.crossFadeFrom(prev, fadeSec, false);
+          next.play();
+        } else {
+          next.reset();
+          next.play();
+        }
+        currentActions.set(mixer, next);
+      }
+
       function setupMixer(
         mesh: InstanceType<typeof import('three').Group>,
         clipName: string
-      ): InstanceType<typeof import('three').AnimationMixer> {
+      ): MixerType {
         const mixer = new THREE.AnimationMixer(mesh);
-        const clip = animClips.get(clipName);
-        if (clip) {
-          const action = mixer.clipAction(clip);
-          action.play();
-        }
+        baselineClips.set(mixer, clipName);
+        playClip(mixer, clipName, 0);
         return mixer;
       }
+
+      // Hit-reaction window event handler — installed once.
+      // Detail: { targetId: string, severity: 'light' | 'heavy' | 'crit', location?: 'chest' | 'head' }
+      const reactionDurationMs: Record<string, number> = {
+        flinch_chest: 350,
+        flinch_head:  400,
+        stagger_left: 550,
+        stagger_right: 550,
+        block_impact: 250,
+        crit_recoil:  850,
+      };
+      const hitReactionTimers = new Map<string, ReturnType<typeof setTimeout>>();
+      function handleHitReaction(e: Event) {
+        const detail = (e as CustomEvent).detail as
+          | { targetId?: string; severity?: 'light' | 'heavy' | 'crit'; location?: string; clipName?: string }
+          | undefined;
+        if (!detail?.targetId) return;
+        const mixer = mixersRef.current.get(detail.targetId) as MixerType | undefined;
+        if (!mixer) return;
+
+        let clipName = detail.clipName;
+        if (!clipName) {
+          if (detail.severity === 'crit') clipName = 'crit_recoil';
+          else if (detail.severity === 'heavy') clipName = detail.location === 'head' ? 'flinch_head' : 'stagger_left';
+          else clipName = 'flinch_chest';
+        }
+
+        playClip(mixer, clipName, 80);
+        const dur = reactionDurationMs[clipName] ?? 400;
+        const prevTimer = hitReactionTimers.get(detail.targetId);
+        if (prevTimer) clearTimeout(prevTimer);
+        const t = setTimeout(() => {
+          const baseline = baselineClips.get(mixer) ?? 'idle';
+          // Only revert if hit-reaction clip is still active (avoid clobbering
+          // a clip change from elsewhere, e.g. NPC switched to walking).
+          const cur = currentActions.get(mixer);
+          const curName = (cur as unknown as { getClip?: () => { name: string } } | undefined)?.getClip?.().name;
+          if (curName === clipName) {
+            playClip(mixer, baseline, 200);
+          }
+          hitReactionTimers.delete(detail.targetId!);
+        }, dur);
+        hitReactionTimers.set(detail.targetId, t);
+      }
+      window.addEventListener('concordia:hit-reaction', handleHitReaction);
 
       // ── Create name tag sprite using canvas texture ────────
       function createNameTag(
@@ -1360,6 +1489,9 @@ export default function AvatarSystem3D({
       return () => {
         window.removeEventListener('keydown', handleKeyDown);
         window.removeEventListener('keyup', handleKeyUp);
+        window.removeEventListener('concordia:hit-reaction', handleHitReaction);
+        for (const t of hitReactionTimers.values()) clearTimeout(t);
+        hitReactionTimers.clear();
         physicsWorld.removeCharacter('player');
       };
     }

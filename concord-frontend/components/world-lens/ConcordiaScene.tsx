@@ -271,7 +271,10 @@ export default function ConcordiaScene({
       // Physics world — init Rapier WASM, terrain collider registered via event
       const { physicsWorld } = await import('@/lib/world-lens/physics-world');
       await physicsWorld.init();
-      physicsRef.current = physicsWorld;
+      // Cast: PhysicsWorld instance has narrower argument types (Object3DLike)
+      // than the union we accept here (unknown). Structurally compatible at
+      // call sites; the cast just bridges contravariance.
+      physicsRef.current = physicsWorld as unknown as typeof physicsRef.current;
       if (disposed) {
         physicsWorld.destroy();
         physicsRef.current = null;

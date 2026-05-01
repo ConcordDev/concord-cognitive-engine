@@ -1980,6 +1980,20 @@ export default function WorldLensPage() {
             detail: { trigger: data.isCrit ? 'combat-crit' : 'combat-hit' },
           })
         );
+
+        // Phase 4 hit reaction: make the target NPC visibly flinch/stagger.
+        // AvatarSystem3D listens for `concordia:hit-reaction` and crossfades
+        // a short reaction clip onto the target's mixer.
+        const targetIdForReaction = combatStateRef.current.target?.id;
+        if (targetIdForReaction) {
+          const severity: 'light' | 'heavy' | 'crit' =
+            data.isCrit ? 'crit' : data.damage > 25 ? 'heavy' : 'light';
+          window.dispatchEvent(
+            new CustomEvent('concordia:hit-reaction', {
+              detail: { targetId: targetIdForReaction, severity },
+            })
+          );
+        }
         // Combo counter — consecutive hits on same target within 4 seconds
         const tid = combatStateRef.current.target?.id ?? null;
         if (tid && tid === comboTargetRef.current) {
@@ -2047,6 +2061,15 @@ export default function WorldLensPage() {
       window.dispatchEvent(
         new CustomEvent('concordia:game-juice', {
           detail: { trigger: 'combat-hit' },
+        })
+      );
+      // Phase 4 hit reaction on the player avatar itself
+      window.dispatchEvent(
+        new CustomEvent('concordia:hit-reaction', {
+          detail: {
+            targetId: playerAvatar.id,
+            severity: data.isCrit ? 'crit' : data.damage > 25 ? 'heavy' : 'light',
+          },
         })
       );
       // Heavy hit (> 25 dmg) or crit triggers stagger — slows movement briefly
