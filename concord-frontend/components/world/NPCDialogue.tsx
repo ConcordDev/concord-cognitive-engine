@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { X, Loader2, ChevronRight, Skull, Heart, AlertTriangle, Briefcase } from 'lucide-react';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -51,24 +51,258 @@ const MOOD_CONFIG = {
 
 type Mood = keyof typeof MOOD_CONFIG;
 
-// ── Archetype avatar emoji ─────────────────────────────────────────────────────
-const ARCHETYPE_EMOJI: Record<string, string> = {
-  guard: '🛡',
-  soldier: '⚔',
-  merchant: '🛒',
-  blacksmith: '🔨',
-  mage: '🔮',
-  priest: '✨',
-  detective: '🔍',
-  criminal: '🗡',
-  bandit: '💀',
-  farmer: '🌾',
-  innkeeper: '🍺',
-  scholar: '📚',
-  hunter: '🏹',
-  alchemist: '⚗',
-  default: '👤',
+// ── Voice profiles per archetype ───────────────────────────────────────────────
+
+interface VoiceProfile {
+  pitch: number;
+  rate: number;
+  preferFemale?: boolean;
+}
+
+const VOICE_PROFILES: Record<string, VoiceProfile> = {
+  guard: { pitch: 0.8, rate: 0.9, preferFemale: false },
+  mage: { pitch: 1.4, rate: 1.0 },
+  merchant: { pitch: 1.1, rate: 1.2, preferFemale: true },
+  blacksmith: { pitch: 0.7, rate: 0.85, preferFemale: false },
+  bandit: { pitch: 0.85, rate: 1.1, preferFemale: false },
+  innkeeper: { pitch: 1.0, rate: 1.15, preferFemale: true },
+  scholar: { pitch: 1.2, rate: 0.95 },
+  priest: { pitch: 1.1, rate: 0.95, preferFemale: true },
+  default: { pitch: 1.0, rate: 1.0 },
 };
+
+const TTS_SUPPORTED = typeof window !== 'undefined' && 'speechSynthesis' in window;
+
+function pickVoice(profile: VoiceProfile): SpeechSynthesisVoice | null {
+  if (!TTS_SUPPORTED) return null;
+  const voices = window.speechSynthesis.getVoices();
+  const enVoices = voices.filter((v) => v.lang.startsWith('en'));
+  if (enVoices.length === 0) return null;
+
+  if (profile.preferFemale === true) {
+    const female = enVoices.find(
+      (v) =>
+        /female|woman|girl/i.test(v.name) ||
+        /zira|samantha|victoria|karen|moira|fiona|tessa|veena|ava/i.test(v.name)
+    );
+    if (female) return female;
+  }
+  if (profile.preferFemale === false) {
+    const male = enVoices.find(
+      (v) =>
+        /male|man|guy/i.test(v.name) || /david|mark|daniel|alex|fred|tom|rishi|james/i.test(v.name)
+    );
+    if (male) return male;
+  }
+  return enVoices[0] ?? null;
+}
+
+// ── SVG Face ───────────────────────────────────────────────────────────────────
+
+interface FaceExpressionConfig {
+  // Eye: ry shrinks to 1 on blink
+  eyeRx: number;
+  eyeRy: number;
+  // Eyebrow: path d
+  browPath: string;
+  // Mouth path d (rest position)
+  mouthPath: string;
+  // Tear element for grieving
+  tear?: boolean;
+}
+
+const FACE_EXPRESSIONS: Record<Mood, FaceExpressionConfig> = {
+  friendly: {
+    eyeRx: 4,
+    eyeRy: 3.5,
+    browPath: 'M 10 12 Q 14 10 18 12',
+    mouthPath: 'M 10 26 Q 14 31 18 26',
+  },
+  neutral: {
+    eyeRx: 3.5,
+    eyeRy: 3,
+    browPath: 'M 10 12 Q 14 11 18 12',
+    mouthPath: 'M 10 27 Q 14 27 18 27',
+  },
+  suspicious: {
+    eyeRx: 4,
+    eyeRy: 1.8,
+    browPath: 'M 10 11 Q 14 13 18 11',
+    mouthPath: 'M 10 27 Q 14 26 18 27',
+  },
+  grieving: {
+    eyeRx: 3.5,
+    eyeRy: 3,
+    browPath: 'M 10 13 Q 14 11 18 13',
+    mouthPath: 'M 10 29 Q 14 25 18 29',
+    tear: true,
+  },
+  fearful: {
+    eyeRx: 5,
+    eyeRy: 5,
+    browPath: 'M 10 10 Q 14 8 18 10',
+    mouthPath: 'M 10 28 Q 14 26 18 28',
+  },
+  hostile: {
+    eyeRx: 4,
+    eyeRy: 2,
+    browPath: 'M 10 13 Q 14 14 18 13',
+    mouthPath: 'M 10 28 Q 14 24 18 28',
+  },
+};
+
+// Open mouth path for talking animation
+const MOUTH_OPEN = 'M 10 25 Q 14 32 18 25';
+
+interface NPCFaceProps {
+  mood: Mood;
+  isTalking: boolean;
+  moodRing: string;
+}
+
+function NPCFace({ mood, isTalking, moodRing }: NPCFaceProps) {
+  const expr = FACE_EXPRESSIONS[mood] ?? FACE_EXPRESSIONS.neutral;
+
+  // Blink state: eyeRy becomes 1 briefly
+  const [blinkRy, setBlinkRy] = useState(expr.eyeRy);
+  const blinkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const blinkOpenTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Talking mouth oscillation
+  const [mouthOpen, setMouthOpen] = useState(false);
+  const talkRafRef = useRef<number | null>(null);
+  const talkLastRef = useRef<number>(0);
+
+  // Update eye size when mood changes
+  useEffect(() => {
+    setBlinkRy(expr.eyeRy);
+  }, [expr.eyeRy]);
+
+  // Blink loop
+  useEffect(() => {
+    let alive = true;
+
+    function scheduleBlink() {
+      if (!alive) return;
+      // Random interval 3000–5000ms
+      const delay = 3000 + Math.random() * 2000;
+      blinkTimerRef.current = setTimeout(() => {
+        if (!alive) return;
+        setBlinkRy(1); // close eyes
+        blinkOpenTimerRef.current = setTimeout(() => {
+          if (!alive) return;
+          setBlinkRy(expr.eyeRy); // open eyes
+          scheduleBlink();
+        }, 120);
+      }, delay);
+    }
+
+    scheduleBlink();
+    return () => {
+      alive = false;
+      if (blinkTimerRef.current) clearTimeout(blinkTimerRef.current);
+      if (blinkOpenTimerRef.current) clearTimeout(blinkOpenTimerRef.current);
+    };
+  }, [expr.eyeRy]);
+
+  // Talking oscillation at ~4Hz
+  useEffect(() => {
+    if (!isTalking) {
+      setMouthOpen(false);
+      if (talkRafRef.current !== null) {
+        cancelAnimationFrame(talkRafRef.current);
+        talkRafRef.current = null;
+      }
+      return;
+    }
+
+    talkLastRef.current = 0;
+
+    function frame(ts: number) {
+      if (talkLastRef.current === 0) talkLastRef.current = ts;
+      const elapsed = ts - talkLastRef.current;
+      // 4Hz → toggle every 125ms
+      if (elapsed >= 125) {
+        setMouthOpen((prev) => !prev);
+        talkLastRef.current = ts;
+      }
+      talkRafRef.current = requestAnimationFrame(frame);
+    }
+
+    talkRafRef.current = requestAnimationFrame(frame);
+    return () => {
+      if (talkRafRef.current !== null) cancelAnimationFrame(talkRafRef.current);
+    };
+  }, [isTalking]);
+
+  const mouthD = isTalking && mouthOpen ? MOUTH_OPEN : expr.mouthPath;
+
+  return (
+    <div className="relative flex-shrink-0">
+      <div
+        className={`w-12 h-12 rounded-full bg-white/10 flex items-center justify-center border ${moodRing}`}
+      >
+        <svg
+          width="28"
+          height="36"
+          viewBox="0 0 28 36"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          aria-hidden="true"
+        >
+          {/* Head circle */}
+          <ellipse cx="14" cy="16" rx="12" ry="14" fill="#C8A97E" />
+
+          {/* Left eye */}
+          <ellipse
+            cx="10"
+            cy="15"
+            rx={expr.eyeRx}
+            ry={blinkRy}
+            fill="#2C1A0E"
+            style={{ transition: 'ry 80ms ease-in-out' }}
+          />
+          {/* Right eye */}
+          <ellipse
+            cx="18"
+            cy="15"
+            rx={expr.eyeRx}
+            ry={blinkRy}
+            fill="#2C1A0E"
+            style={{ transition: 'ry 80ms ease-in-out' }}
+          />
+
+          {/* Eyebrows */}
+          <path
+            d={expr.browPath}
+            stroke="#5C3D1E"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            fill="none"
+            style={{ transition: 'd 300ms ease' }}
+          />
+
+          {/* Mouth */}
+          <path
+            d={mouthD}
+            stroke="#5C3D1E"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            fill="none"
+            style={{ transition: 'd 80ms ease' }}
+          />
+
+          {/* Tear for grieving mood */}
+          {expr.tear && <ellipse cx="18" cy="19" rx="1" ry="2" fill="#60A5FA" opacity="0.8" />}
+        </svg>
+      </div>
+      {/* Mood dot */}
+      <div
+        className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border border-black ${MOOD_CONFIG[mood]?.dot ?? 'bg-gray-400'}`}
+      />
+    </div>
+  );
+}
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -82,6 +316,117 @@ export function NPCDialogue({ npc, worldId, onClose, onQuestAccepted }: NPCDialo
   const [questOffered, setQuestOffered] = useState<QuestOffered | null>(null);
   const [acceptingQuest, setAcceptingQuest] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // TTS state
+  const [muted, setMuted] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return sessionStorage.getItem('npc-tts-muted') === 'true';
+  });
+  const [isTalking, setIsTalking] = useState(false);
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const talkCheckRafRef = useRef<number | null>(null);
+
+  // Cancel TTS and clean up
+  const cancelSpeech = useCallback(() => {
+    if (!TTS_SUPPORTED) return;
+    window.speechSynthesis.cancel();
+    utteranceRef.current = null;
+    setIsTalking(false);
+    if (talkCheckRafRef.current !== null) {
+      cancelAnimationFrame(talkCheckRafRef.current);
+      talkCheckRafRef.current = null;
+    }
+  }, []);
+
+  // Poll speechSynthesis.speaking to keep isTalking in sync
+  const startTalkingPoll = useCallback(() => {
+    if (!TTS_SUPPORTED) return;
+
+    function poll() {
+      if (window.speechSynthesis.speaking) {
+        setIsTalking(true);
+        talkCheckRafRef.current = requestAnimationFrame(poll);
+      } else {
+        setIsTalking(false);
+        talkCheckRafRef.current = null;
+      }
+    }
+
+    talkCheckRafRef.current = requestAnimationFrame(poll);
+  }, []);
+
+  // Speak text
+  const speak = useCallback(
+    (text: string) => {
+      if (!TTS_SUPPORTED || muted) return;
+      cancelSpeech();
+
+      const profile = VOICE_PROFILES[npc.archetype] ?? VOICE_PROFILES.default;
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.pitch = profile.pitch;
+      utterance.rate = profile.rate;
+
+      // Voice selection — voices may not be loaded yet; try both sync and after voiceschanged
+      const tryAssignVoice = () => {
+        const voice = pickVoice(profile);
+        if (voice) utterance.voice = voice;
+      };
+      tryAssignVoice();
+      if (!utterance.voice) {
+        window.speechSynthesis.addEventListener('voiceschanged', tryAssignVoice, { once: true });
+      }
+
+      utterance.onstart = () => {
+        setIsTalking(true);
+        startTalkingPoll();
+      };
+      utterance.onend = () => {
+        setIsTalking(false);
+        if (talkCheckRafRef.current !== null) {
+          cancelAnimationFrame(talkCheckRafRef.current);
+          talkCheckRafRef.current = null;
+        }
+      };
+      utterance.onerror = () => {
+        setIsTalking(false);
+      };
+
+      utteranceRef.current = utterance;
+      window.speechSynthesis.speak(utterance);
+    },
+    [muted, npc.archetype, cancelSpeech, startTalkingPoll]
+  );
+
+  // Toggle mute
+  const toggleMute = useCallback(() => {
+    setMuted((prev) => {
+      const next = !prev;
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('npc-tts-muted', String(next));
+      }
+      if (next) cancelSpeech();
+      return next;
+    });
+  }, [cancelSpeech]);
+
+  // Speak greeting when it arrives
+  useEffect(() => {
+    if (greeting) speak(greeting);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [greeting]);
+
+  // Speak response when it updates
+  useEffect(() => {
+    if (response) speak(response);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [response]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      cancelSpeech();
+    };
+  }, [cancelSpeech]);
 
   // ── Open dialogue ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -170,7 +515,6 @@ export function NPCDialogue({ npc, worldId, onClose, onQuestAccepted }: NPCDialo
   const hpPct = npc.maxHp
     ? Math.max(0, Math.min(100, ((npc.currentHp ?? npc.maxHp) / npc.maxHp) * 100))
     : 100;
-  const emoji = ARCHETYPE_EMOJI[npc.archetype] ?? ARCHETYPE_EMOJI.default;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center pb-24 px-4 pointer-events-none">
@@ -179,17 +523,8 @@ export function NPCDialogue({ npc, worldId, onClose, onQuestAccepted }: NPCDialo
       >
         {/* NPC header */}
         <div className="flex items-center gap-3 px-4 py-3 border-b border-white/10">
-          <div className="relative flex-shrink-0">
-            <div
-              className={`w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-xl border ${moodCfg.ring}`}
-            >
-              {emoji}
-            </div>
-            {/* Mood dot */}
-            <div
-              className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border border-black ${moodCfg.dot}`}
-            />
-          </div>
+          {/* Animated face avatar */}
+          <NPCFace mood={mood} isTalking={isTalking} moodRing={moodCfg.ring} />
 
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
@@ -224,6 +559,18 @@ export function NPCDialogue({ npc, worldId, onClose, onQuestAccepted }: NPCDialo
             </div>
             <span className="text-[9px] text-white/30">{Math.round(npc.currentHp ?? 100)} HP</span>
           </div>
+
+          {/* Mute button */}
+          {TTS_SUPPORTED && (
+            <button
+              onClick={toggleMute}
+              className="text-white/30 hover:text-white transition-colors ml-1"
+              aria-label={muted ? 'Unmute NPC voice' : 'Mute NPC voice'}
+              title={muted ? 'Unmute NPC voice' : 'Mute NPC voice'}
+            >
+              {muted ? '🔇' : '🔊'}
+            </button>
+          )}
 
           <button
             onClick={onClose}
