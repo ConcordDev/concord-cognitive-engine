@@ -26258,6 +26258,7 @@ import createWorldsRouter from "./routes/worlds.js";
 import { seedWorlds } from "./lib/world-seed.js";
 import { seedToolRecipes } from "./lib/tool-tree.js";
 import { seedLensPortals } from "./lib/lens-portal-registry.js";
+import { seedContent } from "./lib/content-seeder.js";
 import { simulators as npcSimulators, NPCSimulator } from "./lib/npc-simulator.js";
 import { selectBrain as _selectBrainForNpc } from "./lib/inference/router.js";
 import { startPatternDetection } from "./lib/substrate-diffusion.js";
@@ -26274,6 +26275,9 @@ if (db) {
     seedWorlds(db);
     seedToolRecipes(db);
     seedLensPortals(db, "concordia-hub");
+    // Seed authored world content (factions, NPCs, lore, quest chains) into
+    // in-memory systems. Must run after world seed so history engine is ready.
+    try { seedContent(); } catch (e) { console.warn("[content-seeder]", e.message); }
     // Start an NPC simulator for each seeded world
     const worldRows = db.prepare("SELECT id FROM worlds WHERE status = 'active'").all();
     for (const { id } of worldRows) {

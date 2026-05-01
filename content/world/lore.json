@@ -1,0 +1,62 @@
+{
+  "world_name": "Concordia",
+  "world_description": "A walled city-state built on the principle that all knowledge is sovereign. Founded by four factions who once agreed, through the Founding Compact, that no single power would control what Concordia knows or forgets.",
+  "history": [
+    {
+      "id": "lore_founding_compact",
+      "title": "The Founding Compact",
+      "type": "founding",
+      "era": "Year 0",
+      "description": "Four factions — the Scholars, the Merchants, the Wardens, and the first brokers of the Shadow Network — signed the Compact that created Concordia. The city would be governed by shared stewardship: Wardens kept the peace, Merchants kept the economy, Scholars kept the knowledge, and the Network kept everyone honest. The Compact held for sixty years.",
+      "significance": "major",
+      "factions_involved": ["scholars_guild", "merchant_collective", "iron_wardens", "shadow_network"]
+    },
+    {
+      "id": "lore_great_purge",
+      "title": "The Great Purge",
+      "type": "catastrophe",
+      "era": "Year 61",
+      "description": "In a single night, seventeen vaults of the Scholars' archive were burned. The official account blamed a rogue arsonist. The Wardens investigated, found nothing, and closed the case in four days. Thirty years of irreplaceable scholarship — oral histories, lost languages, dissident theory — turned to ash. Archivist Maren Ashveil was among those who witnessed the fires. She was the first to notice that the locks on the vaults had been opened from the outside.",
+      "significance": "major",
+      "factions_involved": ["scholars_guild", "iron_wardens"],
+      "known_by": ["scholars_guild", "shadow_network"],
+      "hidden_truth": "Warden Commander Voss authorized the Purge on behalf of a faction of merchants who feared certain historical documents would expose price-fixing collusion dating back to Year 40."
+    },
+    {
+      "id": "lore_trade_wars",
+      "title": "The Trade Wars",
+      "type": "conflict",
+      "era": "Year 45 to Year 52",
+      "description": "Seven years of economic sabotage, blocked caravans, and warehouse fires between the Merchant Collective's northern and southern trade houses. The conflict was settled by the Wardens, who imposed a cartel structure that benefited both — at the cost of locking out independent traders permanently. Some historians believe this consolidation, and the documents proving it, directly motivated the Purge sixteen years later.",
+      "significance": "moderate",
+      "factions_involved": ["merchant_collective", "iron_wardens"]
+    },
+    {
+      "id": "lore_night_of_whispers",
+      "title": "The Night of Whispers",
+      "type": "revelation",
+      "era": "Year 68",
+      "description": "A Shadow Network operative known only as Cipher leaked a partial manifest of what the burned vaults had contained. The leak was deliberate — not enough to prove the Purge was authorized, but enough to keep the wound open. The Scholars intensified their private investigation. The Wardens began monitoring Guild correspondence. The Network, for the first time, had leverage over all three factions simultaneously.",
+      "significance": "major",
+      "factions_involved": ["shadow_network", "scholars_guild", "iron_wardens"]
+    },
+    {
+      "id": "lore_gate_crisis",
+      "title": "The Gate Crisis",
+      "type": "power_shift",
+      "era": "Year 74",
+      "description": "Without warning, the Iron Wardens sealed all four city gates and declared a security emergency, citing 'intelligence of external threat.' No external threat materialized. The gates remained closed for eleven days. Trade ground to a halt. The Merchant Collective, furious, demanded explanations. None came. When the gates reopened, new Warden inspection protocols were in place — including the authority to confiscate 'seditious materials,' a category left deliberately undefined.",
+      "significance": "major",
+      "factions_involved": ["iron_wardens", "merchant_collective", "scholars_guild"]
+    },
+    {
+      "id": "lore_present_tension",
+      "title": "The Present Tension",
+      "type": "current_state",
+      "era": "Year 91 (Present)",
+      "description": "Concordia exists in a cold equilibrium. The Wardens control the gates and carry confiscation authority. The Merchants profit from stability and ask no questions. The Shadow Network holds proof of the Purge's true origins and waits. The Scholars' Guild, led by Maren Ashveil's shadow archive, has spent thirty years quietly reconstructing what was burned — and building a case. Into this fragile balance, a stranger arrives.",
+      "significance": "major",
+      "factions_involved": ["scholars_guild", "merchant_collective", "iron_wardens", "shadow_network"]
+    }
+  ]
+}
