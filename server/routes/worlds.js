@@ -7,6 +7,8 @@ import logger from "../logger.js";
 import { loadWorld, listWorlds, getActiveWorldForPlayer } from "../lib/world-loader.js";
 import { travelToWorld, applyWorldRulesToPlayer } from "../lib/transit.js";
 import { spawnWorldNativeEmergent, getWorldEmergents, getCrossWorldEmergents, growAffinity } from "../lib/world-emergents.js";
+import { seedWorldContent } from "../lib/world-seeder.js";
+import { getNearbyNodes, getUndergroundNodes, gatherFromNode, updateSwimState, checkSwimState, respawnExpiredNodes } from "../lib/world-gathering.js";
 
 export default function createWorldsRouter({ requireAuth, db }) {
   const router = express.Router();
@@ -96,6 +98,8 @@ export default function createWorldsRouter({ requireAuth, db }) {
       );
 
       const world = loadWorld(db, id);
+      // Seed world with resource nodes + seed city (non-blocking)
+      try { seedWorldContent(db, id, universe_type); } catch (_se) { /* non-fatal */ }
       // Spawn a native emergent for the new world (non-blocking)
       spawnWorldNativeEmergent(id, db, () => "default").catch(err =>
         logger?.debug?.("[worlds] native emergent spawn failed", { worldId: id, err: err?.message })
@@ -803,6 +807,206 @@ export default function createWorldsRouter({ requireAuth, db }) {
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }
+  });
+
+  // ── Resource nodes ────────────────────────────────────────────────────────
+
+  // GET /api/worlds/:worldId/nodes — list surface resource nodes
+  // Query: x, z, radius (optional — filter to nearby), underground=1 for underground nodes
+  router.get("/:worldId/nodes", (req, res) => {
+    try {
+      const { worldId } = req.params;
+      const x      = parseFloat(req.query.x)      || null;
+      const z      = parseFloat(req.query.z)      || null;
+      const radius = parseFloat(req.query.radius) || 200;
+      const underground = req.query.underground === '1';
+
+      // Seed world on first access (idempotent)
+      const world = loadWorld(db, worldId);
+      if (world) {
+        try { seedWorldContent(db, worldId, world.universe_type || 'standard'); } catch (_) {}
+      }
+
+      let nodes;
+      if (x !== null && z !== null) {
+        nodes = underground
+          ? getUndergroundNodes(db, worldId, x, z)
+          : getNearbyNodes(db, worldId, x, z, radius);
+      } else {
+        // Return all surface nodes (for map rendering)
+        nodes = db.prepare(
+          'SELECT * FROM world_resource_nodes WHERE world_id = ? AND is_depleted = 0 AND depth = 0 LIMIT 500'
+        ).all(worldId);
+      }
+
+      res.json({ ok: true, nodes, count: nodes.length });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // POST /api/worlds/:worldId/nodes/:nodeId/gather — player gathers from a resource node
+  router.post("/:worldId/nodes/:nodeId/gather", requireAuth, (req, res) => {
+    try {
+      const { worldId, nodeId } = req.params;
+      const { toolType = 'hands', toolTier = 1, skillLevel = 1, x, z } = req.body;
+
+      const result = gatherFromNode(db, nodeId, req.user.id, {
+        toolType, toolTier: parseInt(toolTier), skillLevel: parseInt(skillLevel),
+        playerPos: (x != null && z != null) ? { x: parseFloat(x), z: parseFloat(z) } : null,
+      });
+
+      if (!result.ok) return res.status(400).json(result);
+
+      // Add gathered items to player inventory
+      for (const item of result.gathered) {
+        const existing = db.prepare(
+          'SELECT id, quantity FROM player_inventory WHERE user_id = ? AND item_id = ?'
+        ).get(req.user.id, item.item);
+        if (existing) {
+          db.prepare('UPDATE player_inventory SET quantity = quantity + ? WHERE id = ?')
+            .run(item.quantity, existing.id);
+        } else {
+          db.prepare(`
+            INSERT INTO player_inventory (id, user_id, item_type, item_id, item_name, quantity, quality)
+            VALUES (?, ?, 'material', ?, ?, ?, ?)
+          `).run(crypto.randomUUID(), req.user.id, item.item, item.name, item.quantity, item.quality);
+        }
+      }
+
+      // Emit real-time update to other players in the same world
+      req.app.locals.io?.to(`world:${worldId}`).emit('world:node-update', {
+        nodeId, worldId,
+        quantityRemaining: result.nodeState.quantityRemaining,
+        isDepleted: result.nodeState.isDepleted,
+      });
+
+      res.json({ ok: true, gathered: result.gathered, node: result.nodeState });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // ── Buildings ─────────────────────────────────────────────────────────────
+
+  // GET /api/worlds/:worldId/buildings — list all buildings in world
+  router.get("/:worldId/buildings", (req, res) => {
+    try {
+      const { worldId } = req.params;
+      // Seed world on first access (idempotent)
+      const world = loadWorld(db, worldId);
+      if (world) {
+        try { seedWorldContent(db, worldId, world.universe_type || 'standard'); } catch (_) {}
+      }
+      const buildings = db.prepare(
+        'SELECT * FROM world_buildings WHERE world_id = ? AND state != ? ORDER BY created_at ASC'
+      ).all(worldId, 'collapsed');
+      res.json({ ok: true, buildings, count: buildings.length });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // POST /api/worlds/:worldId/buildings — player places a building
+  // Requires matching resources in player_inventory based on material + floor count
+  router.post("/:worldId/buildings", requireAuth, (req, res) => {
+    try {
+      const { worldId } = req.params;
+      const { building_type, name, x, y, z, rotation = 0, width = 10, depth = 10, height = 8, material = 'wood', floors = 1, skip_cost = false } = req.body;
+      if (!building_type || x == null || z == null) {
+        return res.status(400).json({ ok: false, error: 'building_type, x, z required' });
+      }
+
+      // Material cost: resource_id → quantity needed per floor
+      const MATERIAL_COSTS = {
+        wood:       { resource_id: 'wood',        qty_per_floor: 20 },
+        stone:      { resource_id: 'stone',        qty_per_floor: 30 },
+        iron:       { resource_id: 'iron',         qty_per_floor: 15 },
+        steel:      { resource_id: 'steel',        qty_per_floor: 10 },
+        crystal:    { resource_id: 'crystal',      qty_per_floor: 8  },
+        brick:      { resource_id: 'stone',        qty_per_floor: 25 },
+        timber:     { resource_id: 'wood',         qty_per_floor: 18 },
+        thatch:     { resource_id: 'grass',        qty_per_floor: 12 },
+        bone:       { resource_id: 'bone',         qty_per_floor: 20 },
+        arcane:     { resource_id: 'arcane-dust',  qty_per_floor: 5  },
+        scrap:      { resource_id: 'scrap-metal',  qty_per_floor: 20 },
+        concrete:   { resource_id: 'stone',        qty_per_floor: 35 },
+      };
+
+      const cost = MATERIAL_COSTS[material];
+      if (cost && !skip_cost) {
+        const needed = cost.qty_per_floor * parseInt(floors);
+        const inv = db.prepare(
+          'SELECT SUM(quantity) as total FROM player_inventory WHERE user_id = ? AND item_id = ?'
+        ).get(req.user.id, cost.resource_id);
+        const have = inv?.total ?? 0;
+        if (have < needed) {
+          return res.status(400).json({
+            ok: false, error: 'insufficient_materials',
+            required: { resource_id: cost.resource_id, quantity: needed },
+            have,
+          });
+        }
+        // Deduct materials (remove from newest slots first)
+        let toConsume = needed;
+        const slots = db.prepare(
+          'SELECT id, quantity FROM player_inventory WHERE user_id = ? AND item_id = ? ORDER BY acquired_at DESC'
+        ).all(req.user.id, cost.resource_id);
+        for (const slot of slots) {
+          if (toConsume <= 0) break;
+          if (slot.quantity <= toConsume) {
+            db.prepare('DELETE FROM player_inventory WHERE id = ?').run(slot.id);
+            toConsume -= slot.quantity;
+          } else {
+            db.prepare('UPDATE player_inventory SET quantity = quantity - ? WHERE id = ?').run(toConsume, slot.id);
+            toConsume = 0;
+          }
+        }
+      }
+
+      const id = crypto.randomUUID();
+      const by = y ?? db.prepare( // auto-elevate to terrain if y not supplied
+        'SELECT y FROM world_resource_nodes WHERE world_id = ? ORDER BY ABS(x - ?) + ABS(z - ?) LIMIT 1'
+      ).get(worldId, parseFloat(x), parseFloat(z))?.y ?? 40;
+
+      db.prepare(`
+        INSERT INTO world_buildings
+          (id, world_id, building_type, name, x, y, z, rotation, width, depth, height, material, floors, owner_type, owner_id)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,'player',?)
+      `).run(id, worldId, building_type, name || building_type, parseFloat(x), parseFloat(by), parseFloat(z),
+        parseFloat(rotation), parseFloat(width), parseFloat(depth), parseFloat(height), material, parseInt(floors), req.user.id);
+
+      const building = db.prepare('SELECT * FROM world_buildings WHERE id = ?').get(id);
+
+      req.app.locals.io?.to(`world:${worldId}`).emit('world:building-placed', { worldId, building });
+      res.status(201).json({ ok: true, building, materialCost: cost ? { resource_id: cost.resource_id, consumed: cost.qty_per_floor * parseInt(floors) } : null });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // ── Player movement / swimming ────────────────────────────────────────────
+
+  // POST /api/worlds/:worldId/move — update player position and swim state
+  router.post("/:worldId/move", requireAuth, (req, res) => {
+    try {
+      const { worldId } = req.params;
+      const { x, y, z } = req.body;
+      if (x == null || z == null) return res.status(400).json({ ok: false, error: 'x and z required' });
+      const pos = { x: parseFloat(x), y: y != null ? parseFloat(y) : undefined, z: parseFloat(z) };
+      const swimState = updateSwimState(db, worldId, req.user.id, pos);
+      res.json({ ok: true, ...swimState, position: pos });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // GET /api/worlds/:worldId/swim-check — check if position is in water (no auth needed for minimap)
+  router.get("/:worldId/swim-check", (req, res) => {
+    const x = parseFloat(req.query.x), z = parseFloat(req.query.z);
+    if (isNaN(x) || isNaN(z)) return res.status(400).json({ ok: false, error: 'x and z required' });
+    const result = checkSwimState({ x, z, y: parseFloat(req.query.y) || undefined });
+    res.json({ ok: true, ...result });
   });
 
   return router;

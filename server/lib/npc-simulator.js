@@ -19,6 +19,7 @@ import { getSpawnConfig, pickEnemyArchetype } from "./npc-archetypes.js";
 import { accumulateWealth, evaluateGearUpgrade, seedStarterGear, leaderEnsuresFactionGear, updateUserGearCeiling, enforceGearCeiling } from "./npc-gear.js";
 import { decayGrief, attemptCrossbreed } from "./npc-family.js";
 import { tickRecruitment } from "./npc-spawning.js";
+import { npcGatherFromNode, respawnExpiredNodes } from "./world-gathering.js";
 
 // ── Heightmap generation (mirrors TerrainRenderer.tsx deterministic algo) ──
 // Resolution kept low (128) for server — A* is the bottleneck, not sample count.
@@ -282,12 +283,20 @@ Choose one action for this NPC. Return JSON only:
         break;
       case "gather_resource": {
         this.needs.purpose = Math.min(1, this.needs.purpose + 0.15);
-        // Accumulate gathered resources into activity_resources
-        const resourceId = _archetypeResource(this.archetype);
+        // Attempt to gather from a real nearby resource node first
         try {
-          const npcRow = this._db.prepare('SELECT activity_resources FROM world_npcs WHERE id = ?').get(this.id);
+          const npcRow  = this._db.prepare('SELECT activity_resources, level FROM world_npcs WHERE id = ?').get(this.id);
+          const posRow  = _parseJSON(this.location, {});
+          const npcX    = posRow.x ?? 1000, npcZ = posRow.z ?? 1000;
+          const npcLvl  = npcRow?.level || 1;
+          const preferred = [_archetypeResource(this.archetype)];
+
+          const gathered = npcGatherFromNode(this._db, this.worldId, npcX, npcZ, npcLvl, preferred);
+          const resourceId = gathered?.resourceId ?? _archetypeResource(this.archetype);
+          const amount     = gathered?.amount ?? (1 + Math.floor(Math.random() * 2));
+
           const resources = _parseJSON(npcRow?.activity_resources, {});
-          resources[resourceId] = Math.min(20, (resources[resourceId] || 0) + 1 + Math.floor(Math.random() * 2));
+          resources[resourceId] = Math.min(50, (resources[resourceId] || 0) + amount);
           this._db.prepare('UPDATE world_npcs SET activity_resources = ? WHERE id = ?')
             .run(JSON.stringify(resources), this.id);
         } catch { /* non-fatal */ }
@@ -499,6 +508,11 @@ export class NPCSimulator {
     // Rare: crossbreeding check for spouse pairs
     if (Math.random() < 0.01) {
       try { this._tickCrossbreeding(); } catch { /* non-fatal */ }
+    }
+
+    // Periodic: respawn depleted resource nodes (runs every ~1% of ticks ≈ once per minute at 1Hz)
+    if (Math.random() < 0.01) {
+      try { respawnExpiredNodes(this._db); } catch { /* non-fatal */ }
     }
   }
 

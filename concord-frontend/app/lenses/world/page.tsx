@@ -1325,6 +1325,128 @@ export default function WorldLensPage() {
     [activeDistrict.id]
   );
 
+  // ── Resource nodes + gathering ────────────────────────────────────────────
+  type ResourceNode = {
+    id: string;
+    node_type: string;
+    resource_id: string;
+    resource_name: string;
+    x: number;
+    y: number;
+    z: number;
+    depth: number;
+    quantity_remaining: number;
+    max_quantity: number;
+    quality: string;
+    difficulty: number;
+    biome: string;
+    is_depleted: number;
+  };
+  const [_resourceNodes, setResourceNodes] = useState<ResourceNode[]>([]);
+  const [nearbyNodes, setNearbyNodes] = useState<ResourceNode[]>([]);
+  const [gatheringNode, setGatheringNode] = useState<string | null>(null);
+  const [gatherResult, setGatherResult] = useState<string | null>(null);
+  const [isSwimming, _setIsSwimming] = useState(false);
+  const [worldBuildings, setWorldBuildings] = useState<
+    {
+      id: string;
+      building_type: string;
+      name: string;
+      x: number;
+      y: number;
+      z: number;
+      width: number;
+      depth: number;
+      height: number;
+      material: string;
+      is_seed: number;
+    }[]
+  >([]);
+  const playerPos = useRef({ x: 1000, z: 1000 }); // updated on movement
+
+  // Load all surface nodes for map dots (once per world)
+  useEffect(() => {
+    fetch(`/api/worlds/${activeDistrict.id}/nodes`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.nodes) setResourceNodes(d.nodes);
+      })
+      .catch(() => {});
+  }, [activeDistrict.id]);
+
+  // Load buildings (seed city + player-placed)
+  useEffect(() => {
+    fetch(`/api/worlds/${activeDistrict.id}/buildings`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.buildings) setWorldBuildings(d.buildings);
+      })
+      .catch(() => {});
+  }, [activeDistrict.id]);
+
+  // Poll for nearby nodes every 5s based on player position
+  useEffect(() => {
+    const poll = () => {
+      const { x, z } = playerPos.current;
+      fetch(`/api/worlds/${activeDistrict.id}/nodes?x=${x}&z=${z}&radius=15`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => {
+          if (d?.nodes) setNearbyNodes(d.nodes);
+        })
+        .catch(() => {});
+    };
+    poll();
+    const interval = setInterval(poll, 5_000);
+    return () => clearInterval(interval);
+  }, [activeDistrict.id]);
+
+  const gatherFromNode = async (nodeId: string) => {
+    setGatheringNode(nodeId);
+    try {
+      const node = nearbyNodes.find((n) => n.id === nodeId);
+      const res = await fetch(`/api/worlds/${activeDistrict.id}/nodes/${nodeId}/gather`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          toolType:
+            node?.node_type === 'tree'
+              ? 'axe'
+              : ['ore_vein', 'stone', 'crystal', 'fuel'].includes(node?.node_type ?? '')
+                ? 'pickaxe'
+                : 'hands',
+          toolTier: 1,
+          skillLevel: 10,
+          x: playerPos.current.x,
+          z: playerPos.current.z,
+        }),
+      });
+      const data = await res.json();
+      if (data.ok && data.gathered?.length) {
+        const summary = data.gathered
+          .map((g: { quantity: number; name: string }) => `${g.quantity}× ${g.name}`)
+          .join(', ');
+        setGatherResult(`Gathered: ${summary}`);
+        setTimeout(() => setGatherResult(null), 3500);
+        // Refresh nearby nodes to show depleted state
+        setNearbyNodes((prev) =>
+          prev.map((n) =>
+            n.id === nodeId
+              ? {
+                  ...n,
+                  quantity_remaining: data.node?.quantityRemaining ?? 0,
+                  is_depleted: data.node?.isDepleted ? 1 : 0,
+                }
+              : n
+          )
+        );
+      }
+    } catch {
+      /* non-fatal */
+    } finally {
+      setGatheringNode(null);
+    }
+  };
+
   // Load NPCs from API and keep positions fresh every 10s
   useEffect(() => {
     const loadNPCs = () => {
@@ -2580,7 +2702,12 @@ export default function WorldLensPage() {
               <MapNavigation
                 playerPosition={{ x: 0, y: 0 }}
                 district={activeDistrict.name}
-                buildings={[]}
+                buildings={worldBuildings.map((b) => ({
+                  id: b.id,
+                  label: b.name || b.building_type,
+                  position: { x: b.x, y: b.z },
+                  type: b.building_type,
+                }))}
                 npcs={worldNPCs.map((n) => ({
                   id: n.id,
                   position: n.position,
@@ -2817,6 +2944,77 @@ export default function WorldLensPage() {
                     </div>
                   ))}
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Swimming indicator */}
+          {isSwimming && (
+            <div className="absolute top-20 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
+              <div className="flex items-center gap-2 bg-blue-900/70 border border-blue-400/50 text-blue-200 text-xs px-4 py-2 rounded-full backdrop-blur-sm">
+                <span className="text-base">🌊</span> Swimming — stamina draining
+              </div>
+            </div>
+          )}
+
+          {/* Nearby resource nodes — gather HUD (bottom-left) */}
+          {nearbyNodes.filter((n) => !n.is_depleted).length > 0 && (
+            <div className="absolute bottom-28 left-4 z-30 flex flex-col gap-1 max-w-[220px]">
+              <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">
+                Nearby resources
+              </p>
+              {nearbyNodes
+                .filter((n) => !n.is_depleted)
+                .slice(0, 4)
+                .map((node) => {
+                  const icon =
+                    node.node_type === 'tree'
+                      ? '🌲'
+                      : node.node_type === 'ore_vein'
+                        ? '⛏'
+                        : node.node_type === 'herb'
+                          ? '🌿'
+                          : node.node_type === 'crystal'
+                            ? '💎'
+                            : node.node_type === 'fuel'
+                              ? '🪨'
+                              : node.node_type === 'stone'
+                                ? '🪨'
+                                : '📦';
+                  const qualColor =
+                    node.quality === 'legendary'
+                      ? 'text-orange-300 border-orange-500/50'
+                      : node.quality === 'rare'
+                        ? 'text-purple-300 border-purple-500/50'
+                        : node.quality === 'uncommon'
+                          ? 'text-blue-300 border-blue-500/50'
+                          : 'text-gray-300 border-gray-600/50';
+                  return (
+                    <div
+                      key={node.id}
+                      className={`flex items-center justify-between bg-black/60 border ${qualColor} rounded-lg px-2 py-1.5 text-xs backdrop-blur-sm`}
+                    >
+                      <span>
+                        {icon} {node.resource_name}
+                      </span>
+                      <button
+                        onClick={() => gatherFromNode(node.id)}
+                        disabled={gatheringNode === node.id}
+                        className="ml-2 px-2 py-0.5 bg-emerald-600/70 hover:bg-emerald-500/80 text-emerald-100 rounded text-[10px] disabled:opacity-50 transition-colors"
+                      >
+                        {gatheringNode === node.id ? '…' : 'Gather'}
+                      </button>
+                    </div>
+                  );
+                })}
+            </div>
+          )}
+
+          {/* Gather result toast */}
+          {gatherResult && (
+            <div className="absolute bottom-20 left-4 z-30 pointer-events-none">
+              <div className="bg-emerald-900/70 border border-emerald-500/50 text-emerald-200 text-xs px-3 py-2 rounded-lg backdrop-blur-sm">
+                ✦ {gatherResult}
               </div>
             </div>
           )}
