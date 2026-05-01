@@ -1246,7 +1246,10 @@ export default function WorldLensPage() {
   );
   const [showValidation, setShowValidation] = useState(false);
   const [showWeather, setShowWeather] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return !localStorage.getItem('world_lens_visited');
+  });
   const [showFeatures, setShowFeatures] = useState(false);
 
   // Selection state
@@ -1292,6 +1295,11 @@ export default function WorldLensPage() {
       if (near?.accessible) {
         setActiveLensOverride(near.lens_id);
         modeManager.switchTo('lens_work', { push: true });
+        window.dispatchEvent(
+          new CustomEvent('concordia:tutorial-action', {
+            detail: { action: 'entered-lens-portal' },
+          })
+        );
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -2167,6 +2175,12 @@ export default function WorldLensPage() {
                 // Update local avatar immediately for snappy response,
                 // then emit to the server so other players see us move.
                 setPlayerAvatar((prev) => ({ ...prev, position: pos, rotation }));
+                // Advance tutorial on first significant movement
+                window.dispatchEvent(
+                  new CustomEvent('concordia:tutorial-action', {
+                    detail: { action: 'moved-significant-distance' },
+                  })
+                );
                 if (worldSocket.isConnected) {
                   worldSocket.emit('player:move', {
                     cityId: activeDistrict.id,
@@ -2327,7 +2341,14 @@ export default function WorldLensPage() {
             <DialoguePanel
               state={dialogueCtx.state}
               special={DEFAULT_SPECIAL}
-              onSend={dialogueCtx.send}
+              onSend={(msg, skillCheck) => {
+                dialogueCtx.send(msg, skillCheck);
+                window.dispatchEvent(
+                  new CustomEvent('concordia:tutorial-action', {
+                    detail: { action: 'completed-dialogue' },
+                  })
+                );
+              }}
               onClose={() => {
                 dialogueCtx.endDialogue();
                 modeManager.pop();
