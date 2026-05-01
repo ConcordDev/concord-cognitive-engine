@@ -22,8 +22,8 @@ module.exports = {
       instances: 1,
       exec_mode: 'fork',
       watch: false,
-      max_memory_restart: '4G',
-      node_args: '--max-old-space-size=3584 --expose-gc',
+      max_memory_restart: '8G',                                   // 62GB RAM — generous headroom
+      node_args: '--max-old-space-size=6144 --expose-gc',         // 6GB heap limit
       env: {
         // Default (Docker / docker-compose)
         NODE_ENV: 'production',
@@ -39,7 +39,7 @@ module.exports = {
         OLLAMA_HOST: 'http://ollama:11434',
       },
       env_runpod: {
-        // RunPod: Ollama runs locally, ports exposed via RunPod proxy
+        // RunPod RTX Pro 4500 — 32GB VRAM, 62GB RAM, 28 vCPU
         NODE_ENV: 'production',
         PORT: 5050,
         TRUST_PROXY: '1',
@@ -50,13 +50,17 @@ module.exports = {
         BRAIN_REPAIR_URL: 'http://localhost:11434',
         BRAIN_MULTIMODAL_URL: 'http://localhost:11434',
         OLLAMA_HOST: 'http://localhost:11434',
-        // Models — adjust to what you've pulled in Ollama
-        BRAIN_CONSCIOUS_MODEL: 'qwen2.5:14b',
-        BRAIN_SUBCONSCIOUS_MODEL: 'qwen2.5:7b',
-        BRAIN_UTILITY_MODEL: 'qwen2.5:7b',
-        BRAIN_REPAIR_MODEL: 'qwen2.5:7b',
+        // RTX Pro 4500 model selection (32GB VRAM):
+        //   qwen2.5:32b-instruct-q4_K_M  ≈ 20GB — best reasoning for chat
+        //   qwen2.5:14b-instruct-q4_K_M  ≈  8GB — background synthesis
+        //   qwen2.5:7b-instruct-q4_K_M   ≈  4GB — fast repair/utility
+        //   nomic-embed-text              ≈ 0.3GB — semantic cache
+        //   Total loaded (conscious+sub): ≈ 28GB — fits with 4GB headroom
+        BRAIN_CONSCIOUS_MODEL: 'qwen2.5:32b-instruct-q4_K_M',
+        BRAIN_SUBCONSCIOUS_MODEL: 'qwen2.5:14b-instruct-q4_K_M',
+        BRAIN_UTILITY_MODEL: 'qwen2.5:7b-instruct-q4_K_M',
+        BRAIN_REPAIR_MODEL: 'qwen2.5:7b-instruct-q4_K_M',
         // ALLOWED_ORIGINS and COOKIE_DOMAIN loaded from .env file
-        // (RunPod pod URL changes per pod — set these in .env, not here)
       },
       env_development: {
         NODE_ENV: 'development',
@@ -113,9 +117,11 @@ module.exports = {
       autorestart: true,
       env: {
         OLLAMA_HOST: '0.0.0.0:11434',
-        // On RunPod with an RTX, increase parallelism:
-        OLLAMA_NUM_PARALLEL: '4',
-        OLLAMA_MAX_LOADED_MODELS: '2',
+        // RTX Pro 4500 (32GB VRAM, 28 vCPU): high parallelism, keep 2 models hot
+        // conscious (32b, ~20GB) + subconscious (14b, ~8GB) = 28GB loaded simultaneously
+        OLLAMA_NUM_PARALLEL: '8',        // 8 concurrent inference streams
+        OLLAMA_MAX_LOADED_MODELS: '2',   // keep conscious+subconscious in VRAM
+        OLLAMA_NUM_THREAD: '14',         // half of 28 vCPU for Ollama CPU work
       },
       error_file: 'logs/ollama-error.log',
       out_file: 'logs/ollama-out.log',

@@ -17,7 +17,7 @@ export class MinorAgentScheduler {
     this.tickIntervalMs = tickIntervalMs;
     this.agents = new Map(); // emergentId → EmergentMinorAgent
     this._timer = null;
-    this._maxConcurrent = 3; // never more than 3 agents ticking simultaneously
+    this._maxConcurrent = 5; // 28 vCPU — 5 concurrent agent ticks is safe
   }
 
   /**

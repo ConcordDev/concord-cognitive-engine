@@ -29,23 +29,29 @@ if ! command -v taskset &>/dev/null; then
 fi
 
 # ── Core allocation ───────────────────────────────────────────────────────────
-# Ollama gets the first half — GPU dispatch threads need the most cores
-# Backend gets the middle slice — Node.js event loop is single-threaded but
-#   worker threads (cognitive worker) need extra cores
-# Frontend gets the last 1-2 cores — lightweight Next.js serving
+# Layout (scales with core count):
+#   Ollama:   first 50% — GPU dispatch threads saturate these
+#   Backend:  next 39%  — Node event loop + cognitive worker threads
+#   Frontend: last 11%  — lightweight Next.js (min 1 core)
+#
+# RTX Pro 4500 example (28 vCPU):
+#   Ollama:   0-13  (14 cores)
+#   Backend:  14-24 (11 cores)
+#   Frontend: 25-27  (3 cores)
 
 HALF=$((TOTAL / 2))
-BACKEND_END=$((TOTAL - 2))
-FRONTEND_START=$((TOTAL - 2))
-FRONTEND_END=$((TOTAL - 1))
+FRONTEND_COUNT=$((TOTAL / 9))
+[ "$FRONTEND_COUNT" -lt 1 ] && FRONTEND_COUNT=1
+FRONTEND_START=$((TOTAL - FRONTEND_COUNT))
+BACKEND_END=$((FRONTEND_START - 1))
 
 OLLAMA_CORES="0-$((HALF - 1))"
 BACKEND_CORES="${HALF}-${BACKEND_END}"
-FRONTEND_CORES="${FRONTEND_START}-${FRONTEND_END}"
+FRONTEND_CORES="${FRONTEND_START}-$((TOTAL - 1))"
 
-# Single-core edge case
-[ "$BACKEND_CORES" = "$OLLAMA_CORES" ] && BACKEND_CORES="$HALF"
-[ "$FRONTEND_CORES" = "$BACKEND_CORES" ] && FRONTEND_CORES="$((TOTAL - 1))"
+# Edge case guards
+[ "$HALF" -ge "$BACKEND_END" ] && BACKEND_CORES="$HALF"
+[ "$FRONTEND_START" -gt "$((TOTAL - 1))" ] && FRONTEND_CORES="$((TOTAL - 1))"
 
 log "Core allocation:"
 log "  Ollama:   cores $OLLAMA_CORES"
