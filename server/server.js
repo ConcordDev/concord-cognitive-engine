@@ -6151,6 +6151,13 @@ async function tryInitWebSockets(server) {
       createdAt: nowISO()
     });
 
+    // Auto-join the per-user room so emergent systems can push events
+    // (quest:new, trade:request, party:invite, etc.) directly to a single
+    // authenticated user without the client needing to subscribe explicitly.
+    if (socket.data.userId) {
+      socket.join(`user:${socket.data.userId}`);
+    }
+
     // Send hello
     socket.emit("hello", { clientId, version: VERSION, ts: nowISO(), authenticated: socket.data.authenticated });
 
@@ -27620,7 +27627,29 @@ async function governorTick(reason="heartbeat") {
             const cityPresence = await import("./lib/city-presence.js").catch(() => null);
             const npcList = cityPresence?.getAllNPCsForEmergence?.() ?? [];
             for (const npc of npcList.slice(0, 5)) {
-              await questEmergence.detectQuestOpportunities(npc, db, _selectBrain).catch(() => {});
+              const newQuests = await questEmergence.detectQuestOpportunities(npc, db, _selectBrain).catch(() => []);
+              // Realtime-push each new quest to every player currently present
+              // in the NPC's world. The quest log already fetches via HTTP on
+              // mount; this emit replaces the gap where quests would otherwise
+              // only surface on next page navigation.
+              if (Array.isArray(newQuests) && newQuests.length > 0 && REALTIME?.io && cityPresence?.getUserIdsInCity) {
+                const recipients = cityPresence.getUserIdsInCity(npc.worldId) || [];
+                for (const quest of newQuests) {
+                  const payload = {
+                    questId:    quest.id,
+                    worldId:    quest.world_id,
+                    title:      quest.title,
+                    description: quest.description,
+                    giverNpcId: quest.giver_npc_id,
+                    rewardJson: quest.reward_json,
+                    ts:         nowISO(),
+                  };
+                  for (const userId of recipients) {
+                    try { REALTIME.io.to(`user:${userId}`).emit('quest:new', payload); }
+                    catch (_e) { /* non-fatal */ }
+                  }
+                }
+              }
             }
           } catch (_e) { /* non-fatal */ }
         }

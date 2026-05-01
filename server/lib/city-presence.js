@@ -424,6 +424,21 @@ export function getCityUserCount(cityId) {
 }
 
 /**
+ * Return the userIds of every player currently present in the given city.
+ * Used by emergent systems (quest push, world events, NPC announcements)
+ * to deliver realtime notifications only to players who are actually there.
+ * @param {string} cityId
+ * @returns {string[]}
+ */
+export function getUserIdsInCity(cityId) {
+  const ids = [];
+  for (const [userId, pos] of _userPositions) {
+    if (pos.cityId === cityId) ids.push(userId);
+  }
+  return ids;
+}
+
+/**
  * Remove a user from the presence system (on disconnect / leave).
  * Persists their final position to SQLite before dropping them from
  * the in-memory map, so they land back in the same spot next login.

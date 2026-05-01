@@ -243,7 +243,9 @@ export type SocketEvent =
   // Server health checks
   | 'health:pulse'
   // Platform presence
-  | 'platform:activity';
+  | 'platform:activity'
+  // Quest realtime push (emergent quests)
+  | 'quest:new';
 
 // ---- Enriched Event Payload (Category 2+5: Concurrency + Observability) ----
 interface EnrichedPayload {
