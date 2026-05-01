@@ -13,7 +13,7 @@ export function up(db) {
   addNpcCol('parent_ids',      'TEXT    DEFAULT "[]"');         // JSON [id, id] — two parents
   addNpcCol('inherited_traits','TEXT    DEFAULT "{}"');         // JSON: blended traits from parents
   addNpcCol('generation',      'INTEGER DEFAULT 0');            // 0 = spawned, 1+ = born in-world
-  addNpcCol('spawn_method',    'TEXT    DEFAULT "world_seed"'); -- world_seed|crossbreed|quest|recruited|cross_world
+  addNpcCol('spawn_method',    'TEXT    DEFAULT "world_seed"'); // world_seed|crossbreed|quest|recruited|cross_world
 
   // ── Family relationships ──────────────────────────────────────────────────
   db.prepare(`
@@ -32,17 +32,17 @@ export function up(db) {
   db.prepare(`CREATE INDEX IF NOT EXISTS idx_npc_rel_related ON npc_relationships(related_id)`).run();
 
   // ── Grief / radicalization state ──────────────────────────────────────────
-  addNpcCol('grief_level',        'REAL    DEFAULT 0');   -- 0→1; >0.7 = radicalization risk
-  addNpcCol('radicalized',        'INTEGER DEFAULT 0');   -- 1 = switched faction after grief
-  addNpcCol('radicalized_reason', 'TEXT');                -- e.g. "family_killed_by_player:userId"
-  addNpcCol('original_faction',   'TEXT');                -- faction before radicalization
+  addNpcCol('grief_level',        'REAL    DEFAULT 0');   // 0→1; >0.7 = radicalization risk
+  addNpcCol('radicalized',        'INTEGER DEFAULT 0');   // 1 = switched faction after grief
+  addNpcCol('radicalized_reason', 'TEXT');                // e.g. "family_killed_by_player:userId"
+  addNpcCol('original_faction',   'TEXT');                // faction before radicalization
 
   // ── Recruitment tracking ──────────────────────────────────────────────────
-  addNpcCol('recruited_by',   'TEXT');   -- npc_id or player_id who recruited this NPC
-  addNpcCol('recruited_from', 'TEXT');   -- world_id they came from (cross-world recruits)
+  addNpcCol('recruited_by',   'TEXT');   // npc_id or player_id who recruited this NPC
+  addNpcCol('recruited_from', 'TEXT');   // world_id they came from (cross-world recruits)
 
   // ── Quest spawn tracking ──────────────────────────────────────────────────
-  addNpcCol('spawned_by_quest', 'TEXT');  -- quest_id that triggered this NPC's spawn
+  addNpcCol('spawned_by_quest', 'TEXT');  // quest_id that triggered this NPC's spawn
 
   // ── NPC death events (extend for family grief tracking) ───────────────────
   const deathCols = db.prepare("PRAGMA table_info(npc_deaths)").all().map(c => c.name);
