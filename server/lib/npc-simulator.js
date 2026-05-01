@@ -16,6 +16,9 @@ import {
 } from "./npc-behaviors.js";
 import { NavGrid } from "./nav-grid.js";
 import { getSpawnConfig, pickEnemyArchetype } from "./npc-archetypes.js";
+import { accumulateWealth, evaluateGearUpgrade, seedStarterGear, leaderEnsuresFactionGear, updateUserGearCeiling, enforceGearCeiling } from "./npc-gear.js";
+import { decayGrief, attemptCrossbreed } from "./npc-family.js";
+import { tickRecruitment } from "./npc-spawning.js";
 
 // ── Heightmap generation (mirrors TerrainRenderer.tsx deterministic algo) ──
 // Resolution kept low (128) for server — A* is the bottleneck, not sample count.
@@ -176,6 +179,15 @@ export class NPCAgent {
       await this._executeAction(action);
     }
     await this._maybeEvaluateCreations();
+
+    // Wealth accumulation — earn income based on occupation each tick
+    try { accumulateWealth(this._db, this.id, this.archetype); } catch { /* non-fatal */ }
+
+    // Gear upgrade evaluation — every ~20 ticks (random to stagger NPC upgrades)
+    if (Math.random() < 0.05) {
+      try { evaluateGearUpgrade(this._db, this.id); } catch { /* non-fatal */ }
+    }
+
     this._persistState();
   }
 
@@ -253,13 +265,34 @@ Choose one action for this NPC. Return JSON only:
   async _executeAction({ action, target }) {
     this.currentActivity = action;
 
+    // Map action → DB activity string for loot generator
+    const activityMap = {
+      gather_resource: 'gathering', build_structure: 'crafting', practice_skill: 'crafting',
+      trade: 'trading', rest: 'resting', socialize: 'resting', travel: 'patrolling',
+      create: 'crafting', default: 'idle',
+    };
+    const dbActivity = activityMap[action] || 'idle';
+    try {
+      this._db.prepare('UPDATE world_npcs SET current_activity = ? WHERE id = ?').run(dbActivity, this.id);
+    } catch { /* column may not exist yet pre-migration */ }
+
     switch (action) {
       case "rest":
         this.needs.rest = Math.min(1, this.needs.rest + 0.3);
         break;
-      case "gather_resource":
+      case "gather_resource": {
         this.needs.purpose = Math.min(1, this.needs.purpose + 0.15);
+        // Accumulate gathered resources into activity_resources
+        const resourceId = _archetypeResource(this.archetype);
+        try {
+          const npcRow = this._db.prepare('SELECT activity_resources FROM world_npcs WHERE id = ?').get(this.id);
+          const resources = _parseJSON(npcRow?.activity_resources, {});
+          resources[resourceId] = Math.min(20, (resources[resourceId] || 0) + 1 + Math.floor(Math.random() * 2));
+          this._db.prepare('UPDATE world_npcs SET activity_resources = ? WHERE id = ?')
+            .run(JSON.stringify(resources), this.id);
+        } catch { /* non-fatal */ }
         break;
+      }
       case "socialize":
         this.needs.social = Math.min(1, this.needs.social + 0.25);
         break;
@@ -413,7 +446,11 @@ export class NPCSimulator {
     );
 
     const row = this._db.prepare("SELECT * FROM world_npcs WHERE id = ?").get(id);
-    if (row) this._agents.push(new NPCAgent(row, this.worldId, this._db, this._selectBrain));
+    if (row) {
+      // Seed starter gear for this NPC
+      try { seedStarterGear(this._db, id, opts.archetype || 'generic', opts.level || 1); } catch { /* non-fatal */ }
+      this._agents.push(new NPCAgent(row, this.worldId, this._db, this._selectBrain));
+    }
   }
 
   /** Spawn a new enemy at a target level — called when player enters an area */
@@ -432,7 +469,7 @@ export class NPCSimulator {
     await Promise.allSettled(autonomousAgents.map(a => a.tick()));
     await Promise.allSettled(autonomousAgents.map(a => a._maybeGenerateQuests()));
 
-    // Faction coordination: enemy NPCs strategize together
+    // Faction coordination: enemy NPCs strategize together + leader gear enforcement
     await this._tickFactionCoordination(autonomousAgents);
 
     // Conscious emergents: emergent-AI tick (lighter — just goal updates)
@@ -441,6 +478,44 @@ export class NPCSimulator {
     // NPC ↔ NPC / NPC ↔ Emergent conversations (5% chance per tick group)
     if (Math.random() < 0.05) {
       await this._tickNPCConversations(autonomousAgents, consciousAgents);
+    }
+
+    // Grief decay — slow healing over time
+    try { decayGrief(this._db, this.id); } catch { /* non-fatal */ }
+
+    // Every ~50 ticks: update user gear ceiling + enforce caps
+    if (Math.random() < 0.02) {
+      try {
+        updateUserGearCeiling(this._db);
+        enforceGearCeiling(this._db);
+      } catch { /* non-fatal */ }
+    }
+
+    // Rare: civilian recruitment tick across world
+    if (Math.random() < 0.005) {
+      try { tickRecruitment(this._db, this.worldId); } catch { /* non-fatal */ }
+    }
+
+    // Rare: crossbreeding check for spouse pairs
+    if (Math.random() < 0.01) {
+      try { this._tickCrossbreeding(); } catch { /* non-fatal */ }
+    }
+  }
+
+  _tickCrossbreeding() {
+    const spousePairs = this._db.prepare(`
+      SELECT r.npc_id, r.related_id FROM npc_relationships r
+      WHERE r.rel_type = 'spouse'
+        AND r.npc_id IN (SELECT id FROM world_npcs WHERE world_id = ? AND is_dead = 0)
+      LIMIT 10
+    `).all(this.worldId);
+    for (const pair of spousePairs) {
+      const offspring = attemptCrossbreed(this._db, pair.npc_id, pair.related_id, this.worldId);
+      if (offspring) {
+        const row = this._db.prepare('SELECT * FROM world_npcs WHERE id = ?').get(offspring.id);
+        if (row) this._agents.push(new NPCAgent(row, this.worldId, this._db, this._selectBrain));
+        logger.info('npc-simulator', 'crossbreed_born', { id: offspring.id, species: offspring.species });
+      }
     }
   }
 
@@ -460,6 +535,9 @@ export class NPCSimulator {
       const leader = members.sort((a, b) => (b.level || 1) - (a.level || 1))[0];
       try {
         await leader._coordinateFaction(members);
+        // Leader ensures undergeared members receive wealth transfers
+        const memberIds = members.filter(m => m.id !== leader.id).map(m => m.id);
+        leaderEnsuresFactionGear(this._db, leader.id, memberIds);
       } catch { /* non-fatal */ }
     }
   }
@@ -520,4 +598,13 @@ function _parseJSON(val, fallback) {
   if (!val) return fallback;
   if (typeof val === "object") return val;
   try { return JSON.parse(val); } catch { return fallback; }
+}
+
+function _archetypeResource(archetype) {
+  const map = {
+    blacksmith: 'iron-ore', engineer: 'circuit-board', farmer: 'herb-bundle',
+    hunter: 'leather-strip', scientist: 'data-chip', medic: 'herb-bundle',
+    trader: 'gold-coin', guard: 'stone-block', default: 'wood-planks',
+  };
+  return map[archetype] || map.default;
 }

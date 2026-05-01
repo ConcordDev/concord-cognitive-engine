@@ -648,10 +648,24 @@ export default function createWorldsRouter({ requireAuth, db }) {
       if (result.died && killerId) {
         try {
           const { awardSparks } = await import("../lib/currency.js");
-          const npc = db.prepare("SELECT level FROM world_npcs WHERE id = ?").get(npcId);
+          const npc = db.prepare("SELECT * FROM world_npcs WHERE id = ?").get(npcId);
           const sparks = (npc?.level || 1) * 5;
           awardSparks(db, killerId, sparks, 'npc_kill', worldId);
           result.sparksAwarded = sparks;
+
+          // Generate a loot bag at NPC's last position
+          try {
+            const { generateNPCLoot, createLootBag } = await import("../lib/loot-generator.js");
+            const { getNPCGear } = await import("../lib/npc-gear.js");
+            const gear  = getNPCGear(db, npcId);
+            const items = generateNPCLoot(npc, gear);
+            const pos   = _tryParseJSON(npc.current_location, { x: 0, y: 0, z: 0 });
+            const bagId = createLootBag(db, worldId, pos, 'npc', npcId, 'player', killerId, items);
+            result.lootBagId = bagId;
+            result.lootItems = items;
+          } catch (lootErr) {
+            logger.debug('worlds', 'loot_bag_skip', { reason: lootErr?.message });
+          }
         } catch { /* non-fatal */ }
       }
 
@@ -703,6 +717,89 @@ export default function createWorldsRouter({ requireAuth, db }) {
       }
 
       res.json({ ok: true, npcId, npcName, response: response?.slice(0, 500) || `${npcName} nods.` });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // ── Loot bags ───────────────────────────────────────────────────────────────
+
+  // GET /api/worlds/:worldId/loot-bags — list unclaimed bags visible to this player
+  router.get("/:worldId/loot-bags", requireAuth, (req, res) => {
+    try {
+      const { worldId } = req.params;
+      const now = Math.floor(Date.now() / 1000);
+      const bags = db.prepare(`
+        SELECT id, position, owner_type, items, expires_at, killer_id
+        FROM loot_bags
+        WHERE world_id = ? AND claimed_by IS NULL AND expires_at > ?
+        ORDER BY created_at DESC LIMIT 50
+      `).all(worldId, now);
+      res.json({ ok: true, bags: bags.map(b => ({
+        id: b.id,
+        position: _tryParseJSON(b.position, {}),
+        itemCount: _tryParseJSON(b.items, []).length,
+        killerPriority: b.killer_id === req.user.id,
+        expiresAt: b.expires_at,
+      }))});
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // POST /api/worlds/:worldId/loot-bags/:bagId/claim — player claims a loot bag
+  router.post("/:worldId/loot-bags/:bagId/claim", requireAuth, async (req, res) => {
+    try {
+      const { bagId } = req.params;
+      const playerId  = req.user.id;
+
+      const { claimLootBag } = await import("../lib/loot-generator.js");
+      const items = claimLootBag(db, bagId, playerId, 'player');
+      if (!items) return res.status(409).json({ ok: false, error: 'bag_unavailable' });
+
+      // Add items to player inventory
+      for (const item of items) {
+        if (item.type === 'currency' && item.id === 'sparks') {
+          try {
+            const { awardSparks } = await import("../lib/currency.js");
+            awardSparks(db, playerId, item.quantity, 'loot_claim', req.params.worldId);
+          } catch { /* non-fatal */ }
+          continue;
+        }
+        try {
+          const existing = db.prepare(
+            'SELECT id FROM player_inventory WHERE user_id = ? AND item_id = ?'
+          ).get(playerId, item.id);
+          if (existing) {
+            db.prepare('UPDATE player_inventory SET quantity = quantity + ? WHERE id = ?')
+              .run(item.quantity ?? 1, existing.id);
+          } else {
+            db.prepare(`
+              INSERT INTO player_inventory (id, user_id, item_type, item_id, item_name, quantity, quality, schema_id, gear_level)
+              VALUES (?,?,?,?,?,?,1,?,?)
+            `).run(
+              crypto.randomUUID(), playerId, item.type, item.id, item.name,
+              item.quantity ?? 1, item.schemaId ?? null, item.gearLevel ?? null,
+            );
+          }
+
+          // Auto-learn schematic if item is a schematic type
+          if (item.type === 'schematic' && item.schemaId) {
+            try {
+              const { tryLearnFromLoot } = await import("../lib/item-knowledge.js");
+              tryLearnFromLoot(db, playerId, item);
+            } catch { /* non-fatal */ }
+          }
+        } catch { /* non-fatal */ }
+      }
+
+      req.app.locals.io?.emit('world:notification', {
+        userId: playerId,
+        message: `Loot claimed! ${items.length} item(s) added to inventory.`,
+        type: 'loot',
+      });
+
+      res.json({ ok: true, items, count: items.length });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }

@@ -65,6 +65,14 @@ export async function triggerNPCDeath(db, npcId, killerId, realtimeEmit) {
   // Quest impact — mark quests from this NPC as needing alternative path
   _impactQuests(db, npcId);
 
+  // Family grief cascade — surviving family members grieve and may radicalize
+  try {
+    const { onFamilyMemberKilled } = await import("./npc-family.js");
+    const killerType = killerId?.startsWith?.('npc:') ? 'npc' : 'player';
+    const { radicalized } = onFamilyMemberKilled(db, npcId, killerId, killerType, realtimeEmit);
+    if (radicalized.length) consequence.radicalizations = radicalized.length;
+  } catch { /* non-fatal — family system may not be migrated yet */ }
+
   // Emit world event
   realtimeEmit?.('world:npc-event', {
     worldId:     npc.world_id,
