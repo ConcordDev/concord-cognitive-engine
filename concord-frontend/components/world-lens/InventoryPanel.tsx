@@ -2,8 +2,18 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import {
-  X, Package, Hammer, Gem, Cpu, ScrollText, FlaskConical,
-  Trophy, ArrowUpDown, Search, ChevronDown, Info,
+  X,
+  Package,
+  Hammer,
+  Gem,
+  Cpu,
+  ScrollText,
+  FlaskConical,
+  Trophy,
+  ArrowUpDown,
+  Search,
+  ChevronDown,
+  Info,
 } from 'lucide-react';
 
 /* ── Types ─────────────────────────────────────────────────────── */
@@ -33,6 +43,9 @@ interface InventoryItem {
   dtuRef?: string;
   dateAcquired: string;
   equipSlot?: EquipSlot;
+  effectiveness?: number;
+  effectivenessLabel?: string;
+  hasKnowledge?: boolean;
 }
 
 interface EquippedItems {
@@ -57,33 +70,105 @@ interface InventoryPanelProps {
 
 const panel = 'bg-black/80 backdrop-blur-sm border border-white/10 rounded-lg';
 
-const CATEGORY_META: Record<ItemCategory, { label: string; icon: React.ComponentType<{ className?: string }> }> = {
-  tools:        { label: 'Tools',       icon: Hammer },
-  materials:    { label: 'Materials',   icon: Gem },
-  components:   { label: 'Components',  icon: Cpu },
-  blueprints:   { label: 'Blueprints',  icon: ScrollText },
-  consumables:  { label: 'Consumables', icon: FlaskConical },
-  equipment:    { label: 'Equipment',   icon: Package },
-  trophies:     { label: 'Trophies',    icon: Trophy },
+const CATEGORY_META: Record<
+  ItemCategory,
+  { label: string; icon: React.ComponentType<{ className?: string }> }
+> = {
+  tools: { label: 'Tools', icon: Hammer },
+  materials: { label: 'Materials', icon: Gem },
+  components: { label: 'Components', icon: Cpu },
+  blueprints: { label: 'Blueprints', icon: ScrollText },
+  consumables: { label: 'Consumables', icon: FlaskConical },
+  equipment: { label: 'Equipment', icon: Package },
+  trophies: { label: 'Trophies', icon: Trophy },
 };
 
 const EQUIP_SLOTS: { slot: EquipSlot; label: string }[] = [
-  { slot: 'head',      label: 'Head' },
-  { slot: 'body',      label: 'Body' },
-  { slot: 'hands',     label: 'Hands' },
-  { slot: 'tool',      label: 'Tool' },
+  { slot: 'head', label: 'Head' },
+  { slot: 'body', label: 'Body' },
+  { slot: 'hands', label: 'Hands' },
+  { slot: 'tool', label: 'Tool' },
   { slot: 'accessory', label: 'Accessory' },
 ];
 
 const DEMO_ITEMS: InventoryItem[] = [
-  { id: '1', name: 'Steel Hammer',       category: 'tools',      description: 'A sturdy hammer for construction.',           quantity: 1,  stats: { durability: 85, damage: 12 }, creator: 'ForgeM4ster', dtuRef: 'DTU-7291', dateAcquired: '2026-04-01', equipSlot: 'tool' },
-  { id: '2', name: 'Iron Ingot',         category: 'materials',  description: 'Refined iron, ready for crafting.',           quantity: 24, creator: 'MineCo',      dtuRef: 'DTU-1100', dateAcquired: '2026-04-02' },
-  { id: '3', name: 'Copper Wire',        category: 'components', description: 'Conductive copper wire bundle.',              quantity: 16, dateAcquired: '2026-04-02' },
-  { id: '4', name: 'Foundation Blueprint',category: 'blueprints', description: 'Large reinforced foundation plan.',          quantity: 1,  stats: { tier: 'Journeyman' }, creator: 'ArchDev', dtuRef: 'DTU-4420', dateAcquired: '2026-03-28' },
-  { id: '5', name: 'Healing Salve',      category: 'consumables',description: 'Restores 50 HP over 10 seconds.',             quantity: 5,  stats: { heal: 50 }, dateAcquired: '2026-04-03' },
-  { id: '6', name: 'Hard Hat',           category: 'equipment',  description: '+10 structural protection.',                   quantity: 1,  stats: { armor: 10 }, dateAcquired: '2026-03-30', equipSlot: 'head' },
-  { id: '7', name: 'Golden Wrench',      category: 'trophies',   description: 'Awarded for 1,000 successful validations.',   quantity: 1,  creator: 'System', dateAcquired: '2026-04-04' },
-  { id: '8', name: 'Glass Pane',         category: 'materials',  description: 'Transparent glass sheet for windows.',         quantity: 40, dateAcquired: '2026-04-04' },
+  {
+    id: '1',
+    name: 'Steel Hammer',
+    category: 'tools',
+    description: 'A sturdy hammer for construction.',
+    quantity: 1,
+    stats: { durability: 85, damage: 12 },
+    creator: 'ForgeM4ster',
+    dtuRef: 'DTU-7291',
+    dateAcquired: '2026-04-01',
+    equipSlot: 'tool',
+  },
+  {
+    id: '2',
+    name: 'Iron Ingot',
+    category: 'materials',
+    description: 'Refined iron, ready for crafting.',
+    quantity: 24,
+    creator: 'MineCo',
+    dtuRef: 'DTU-1100',
+    dateAcquired: '2026-04-02',
+  },
+  {
+    id: '3',
+    name: 'Copper Wire',
+    category: 'components',
+    description: 'Conductive copper wire bundle.',
+    quantity: 16,
+    dateAcquired: '2026-04-02',
+  },
+  {
+    id: '4',
+    name: 'Foundation Blueprint',
+    category: 'blueprints',
+    description: 'Large reinforced foundation plan.',
+    quantity: 1,
+    stats: { tier: 'Journeyman' },
+    creator: 'ArchDev',
+    dtuRef: 'DTU-4420',
+    dateAcquired: '2026-03-28',
+  },
+  {
+    id: '5',
+    name: 'Healing Salve',
+    category: 'consumables',
+    description: 'Restores 50 HP over 10 seconds.',
+    quantity: 5,
+    stats: { heal: 50 },
+    dateAcquired: '2026-04-03',
+  },
+  {
+    id: '6',
+    name: 'Hard Hat',
+    category: 'equipment',
+    description: '+10 structural protection.',
+    quantity: 1,
+    stats: { armor: 10 },
+    dateAcquired: '2026-03-30',
+    equipSlot: 'head',
+  },
+  {
+    id: '7',
+    name: 'Golden Wrench',
+    category: 'trophies',
+    description: 'Awarded for 1,000 successful validations.',
+    quantity: 1,
+    creator: 'System',
+    dateAcquired: '2026-04-04',
+  },
+  {
+    id: '8',
+    name: 'Glass Pane',
+    category: 'materials',
+    description: 'Transparent glass sheet for windows.',
+    quantity: 40,
+    dateAcquired: '2026-04-04',
+  },
 ];
 
 const DEMO_EQUIPPED: EquippedItems = {
@@ -117,16 +202,20 @@ export default function InventoryPanel({
   // Fetch real inventory on mount; fall back to prop/demo if unavailable
   useEffect(() => {
     fetch('/api/player-inventory')
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
         if (!data?.items) return;
         const mapped: InventoryItem[] = data.items.map((row: Record<string, unknown>) => ({
-          id:           String(row.id ?? ''),
-          name:         String(row.item_name ?? row.name ?? 'Unknown'),
-          category:     (row.item_type as ItemCategory) ?? 'materials',
-          description:  String(row.description ?? ''),
-          quantity:     Number(row.quantity ?? 1),
-          stats:        row.quality ? { quality: Number(row.quality) } : undefined,
+          id: String(row.id ?? ''),
+          name: String(row.item_name ?? row.name ?? 'Unknown'),
+          category: (row.item_type as ItemCategory) ?? 'materials',
+          description: String(row.description ?? ''),
+          quantity: Number(row.quantity ?? 1),
+          stats: row.quality ? { quality: Number(row.quality) } : undefined,
+          effectiveness: typeof row.effectiveness === 'number' ? row.effectiveness : undefined,
+          effectivenessLabel:
+            typeof row.effectivenessLabel === 'string' ? row.effectivenessLabel : undefined,
+          hasKnowledge: !!row.hasKnowledge,
           dateAcquired: row.acquired_at
             ? new Date(Number(row.acquired_at) * 1000).toISOString().slice(0, 10)
             : new Date().toISOString().slice(0, 10),
@@ -149,10 +238,7 @@ export default function InventoryPanel({
       return b.dateAcquired.localeCompare(a.dateAcquired);
     });
 
-  const handleEquip = useCallback(
-    (item: InventoryItem) => onEquip?.(item),
-    [onEquip],
-  );
+  const handleEquip = useCallback((item: InventoryItem) => onEquip?.(item), [onEquip]);
 
   const categoryIcon = (cat: ItemCategory) => {
     const Icon = CATEGORY_META[cat].icon;
@@ -166,7 +252,9 @@ export default function InventoryPanel({
         <div className="flex items-center gap-2">
           <Package className="w-4 h-4 text-cyan-400" />
           <h2 className="text-sm font-semibold">Inventory</h2>
-          <span className="text-[10px] text-gray-500">{items.length}/{TOTAL_SLOTS}</span>
+          <span className="text-[10px] text-gray-500">
+            {items.length}/{TOTAL_SLOTS}
+          </span>
         </div>
         {onClose && (
           <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors">
@@ -267,9 +355,7 @@ export default function InventoryPanel({
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <Package className="w-8 h-8 text-gray-700 mb-2" />
             <p className="text-xs text-gray-500">Your inventory is empty.</p>
-            <p className="text-[10px] text-gray-600 mt-1">
-              Visit The Exchange to get started.
-            </p>
+            <p className="text-[10px] text-gray-600 mt-1">Visit The Exchange to get started.</p>
           </div>
         ) : (
           <div className="grid grid-cols-6 gap-1">
@@ -297,7 +383,9 @@ export default function InventoryPanel({
 
                 {/* Tooltip */}
                 {hoveredItem?.id === item.id && (
-                  <div className={`absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 ${panel} p-2 pointer-events-none`}>
+                  <div
+                    className={`absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 ${panel} p-2 pointer-events-none`}
+                  >
                     <p className="text-xs font-semibold text-white">{item.name}</p>
                     <p className="text-[10px] text-gray-400 mt-0.5">{item.description}</p>
                     {item.stats && (
@@ -310,20 +398,36 @@ export default function InventoryPanel({
                       </div>
                     )}
                     {item.creator && (
-                      <p className="text-[9px] text-gray-600 mt-1">
-                        Creator: {item.creator}
-                      </p>
+                      <p className="text-[9px] text-gray-600 mt-1">Creator: {item.creator}</p>
                     )}
-                    {item.dtuRef && (
-                      <p className="text-[9px] text-gray-600">
-                        DTU: {item.dtuRef}
-                      </p>
+                    {item.dtuRef && <p className="text-[9px] text-gray-600">DTU: {item.dtuRef}</p>}
+                    {item.effectivenessLabel && (
+                      <div className="mt-1.5 border-t border-white/5 pt-1">
+                        <span
+                          className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${
+                            item.hasKnowledge
+                              ? 'bg-emerald-500/20 text-emerald-400'
+                              : 'bg-amber-500/20 text-amber-400'
+                          }`}
+                        >
+                          {item.effectivenessLabel}
+                        </span>
+                        {!item.hasKnowledge && (
+                          <p className="text-[8px] text-gray-500 mt-0.5">
+                            Find the schematic to unlock full potential
+                          </p>
+                        )}
+                      </div>
                     )}
                     <div className="flex gap-1 mt-1.5">
                       {item.equipSlot && (
-                        <span className="text-[8px] bg-cyan-500/20 text-cyan-400 px-1 rounded">Equip</span>
+                        <span className="text-[8px] bg-cyan-500/20 text-cyan-400 px-1 rounded">
+                          Equip
+                        </span>
                       )}
-                      <span className="text-[8px] bg-red-500/20 text-red-400 px-1 rounded">Drop</span>
+                      <span className="text-[8px] bg-red-500/20 text-red-400 px-1 rounded">
+                        Drop
+                      </span>
                     </div>
                   </div>
                 )}
@@ -347,7 +451,9 @@ export default function InventoryPanel({
           onClick={() => setShowStorage(!showStorage)}
           className="flex items-center gap-1 text-[10px] text-gray-500 hover:text-cyan-400 transition-colors"
         >
-          <ChevronDown className={`w-3 h-3 transition-transform ${showStorage ? 'rotate-180' : ''}`} />
+          <ChevronDown
+            className={`w-3 h-3 transition-transform ${showStorage ? 'rotate-180' : ''}`}
+          />
           Firm / Residence Storage
         </button>
         {showStorage && (

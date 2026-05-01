@@ -1,7 +1,9 @@
 // server/lib/quest-emergence.js
 // Detect NPC needs that can only be met by players and generate quests from them.
+// 20% of quests spawn a dedicated target NPC (e.g. "find the lost engineer" spawns an engineer).
 
 import crypto from "crypto";
+import { spawnQuestNPC } from "./npc-spawning.js";
 
 const URGENCY_THRESHOLD = 0.5;
 
@@ -93,7 +95,36 @@ Generate a quest this NPC would give to a player. Return JSON only:
     JSON.stringify(questData.reward),
   );
 
-  return db.prepare("SELECT * FROM world_quests WHERE id = ?").get(id);
+  const questRow = db.prepare("SELECT * FROM world_quests WHERE id = ?").get(id);
+
+  // 20% chance: spawn a dedicated target NPC for this quest
+  // (gives players something to find, rescue, or protect — not just an abstract objective)
+  if (Math.random() < 0.20) {
+    try {
+      const needArchetypeMap = {
+        purpose: 'engineer', social: 'trader', safety: 'guard',
+        hunger: 'farmer', rest: 'medic',
+      };
+      const targetArchetype = needArchetypeMap[need] || npc.archetype || 'traveler';
+      const targetNPCId = spawnQuestNPC(db, id, npc.worldId, {
+        archetype:    targetArchetype,
+        faction:      'neutral',
+        level:        Math.max(1, (npc.level || 1) - 1),
+        name:         questData.title?.split(' ').slice(-1)[0] || targetArchetype,
+        is_conscious: false,
+        is_immortal:  false,
+      });
+      // Patch the quest objectives to reference the target NPC
+      const objectives = JSON.parse(questData.objectives ? JSON.stringify(questData.objectives) : '[]');
+      if (objectives.length > 0) {
+        objectives[0].target_npc_id = targetNPCId;
+        db.prepare('UPDATE world_quests SET objectives_json = ? WHERE id = ?')
+          .run(JSON.stringify(objectives), id);
+      }
+    } catch { /* non-fatal — spawning is best-effort */ }
+  }
+
+  return questRow;
 }
 
 /**

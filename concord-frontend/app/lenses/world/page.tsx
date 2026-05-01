@@ -1282,6 +1282,49 @@ export default function WorldLensPage() {
       .catch(() => {});
   }, []);
 
+  // ── Loot bags ─────────────────────────────────────────────────────────────
+  const [lootBags, setLootBags] = useState<
+    { id: string; itemCount: number; killerPriority: boolean; expiresAt: number }[]
+  >([]);
+  const [claimingBag, setClaimingBag] = useState<string | null>(null);
+  const [lootNotification, setLootNotification] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadBags = () => {
+      fetch(`/api/worlds/${activeDistrict.id}/loot-bags`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => {
+          if (d?.bags) setLootBags(d.bags);
+        })
+        .catch(() => {});
+    };
+    loadBags();
+    const interval = setInterval(loadBags, 8_000);
+    return () => clearInterval(interval);
+  }, [activeDistrict.id]);
+
+  const claimLootBag = useCallback(
+    async (bagId: string) => {
+      setClaimingBag(bagId);
+      try {
+        const res = await fetch(`/api/worlds/${activeDistrict.id}/loot-bags/${bagId}/claim`, {
+          method: 'POST',
+        });
+        const data = await res.json();
+        if (data.ok) {
+          setLootBags((prev) => prev.filter((b) => b.id !== bagId));
+          setLootNotification(`Claimed ${data.count} item${data.count !== 1 ? 's' : ''}!`);
+          setTimeout(() => setLootNotification(null), 3000);
+        }
+      } catch {
+        /* non-fatal */
+      } finally {
+        setClaimingBag(null);
+      }
+    },
+    [activeDistrict.id]
+  );
+
   // Load NPCs from API and keep positions fresh every 10s
   useEffect(() => {
     const loadNPCs = () => {
@@ -2736,6 +2779,57 @@ export default function WorldLensPage() {
           <NemesisAlert />
           <LegendaryAnnouncement />
           <HybridReveal />
+
+          {/* ── Loot bag HUD ──────────────────────────────────────────────── */}
+          {lootBags.length > 0 && (
+            <div className="absolute bottom-28 right-4 z-30 pointer-events-auto w-64">
+              <div className="bg-black/80 backdrop-blur-sm border border-yellow-500/40 rounded-xl p-3 shadow-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-yellow-400 text-sm">⚔</span>
+                  <span className="text-xs font-semibold text-yellow-300">Nearby Loot</span>
+                  <span className="ml-auto text-[10px] text-gray-500">
+                    {lootBags.length} bag{lootBags.length !== 1 ? 's' : ''}
+                  </span>
+                </div>
+                <div className="flex flex-col gap-1.5 max-h-40 overflow-y-auto">
+                  {lootBags.map((bag) => (
+                    <div
+                      key={bag.id}
+                      className="flex items-center justify-between bg-white/5 rounded-lg px-2 py-1.5"
+                    >
+                      <div>
+                        <span className="text-[11px] text-white font-medium">
+                          {bag.itemCount} item{bag.itemCount !== 1 ? 's' : ''}
+                        </span>
+                        {bag.killerPriority && (
+                          <span className="ml-1.5 text-[9px] text-yellow-400 bg-yellow-400/10 px-1 rounded">
+                            Your kill
+                          </span>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => claimLootBag(bag.id)}
+                        disabled={claimingBag === bag.id}
+                        className="text-[10px] px-2 py-0.5 bg-yellow-500/20 hover:bg-yellow-500/40 text-yellow-300 rounded transition-colors disabled:opacity-50"
+                      >
+                        {claimingBag === bag.id ? '…' : 'Claim'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Loot claim notification */}
+          {lootNotification && (
+            <div className="absolute bottom-20 right-4 z-30 pointer-events-none">
+              <div className="bg-yellow-500/20 border border-yellow-500/50 text-yellow-300 text-xs px-3 py-2 rounded-lg backdrop-blur-sm animate-pulse">
+                ✦ {lootNotification}
+              </div>
+            </div>
+          )}
+
           {/* QuestNotification — toast overlay for quest state changes (new/complete/failed).
               Renders top-right; fires when questNotification state is set. */}
           <div className="absolute top-16 right-4 z-30 flex flex-col gap-2 pointer-events-none">
