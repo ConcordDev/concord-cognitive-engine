@@ -26503,12 +26503,17 @@ import {
 
 try { ensureCrossbreedingTables(db); } catch { /* idempotent */ }
 
+import * as _gameplayBridge from "./lib/gameplay-asset-bridge.js";
+
 app.post("/api/creature/spawn", requireAuth, (req, res) => {
   try {
     const { description, topology, massKg, heightM, traits = [], origin = "user", worldId = "concordia" } = req.body || {};
     if (!description) return res.status(400).json({ ok: false, error: "description_required" });
     const bp = generateCreature({ description, topology, massKg, heightM, traits, origin, worldId });
     bp.skillIds = attachSkills(bp);
+    // Asset emergence: register this creature spawn so the evo-asset
+    // pipeline can promote frequently-spawned variants into refined assets.
+    try { _gameplayBridge.onCreatureSpawned(db, bp); } catch { /* non-fatal */ }
     res.json({ ok: true, blueprint: bp });
   } catch (err) {
     res.status(500).json({ ok: false, error: err?.message || "spawn_failed" });
@@ -26544,6 +26549,17 @@ app.post("/api/creature/crossbreed", requireAuth, (req, res) => {
     if (!a || !b) return res.status(400).json({ ok: false, error: "both_parents_required" });
     const r = maybeCrossbreed(db, { a, b, environment, sameEnvironmentBonus: !!req.body?.sameEnvironmentBonus, sharedThreatBonus: !!req.body?.sharedThreatBonus });
     if (!r.ok) return res.status(400).json(r);
+    // Asset emergence: a successful hybrid is registered as either a CREATURE
+    // (unstable) or a SPECIES (stable + multi-generation) asset.
+    try {
+      _gameplayBridge.onHybridBirth(db, {
+        hybrid:     r.hybrid,
+        stability:  r.stability,
+        generation: r.generation,
+        crossWorld: r.crossWorld,
+        parents:    r.parents,
+      });
+    } catch { /* non-fatal */ }
     res.status(201).json(r);
   } catch (err) { res.status(500).json({ ok: false, error: err?.message }); }
 });
@@ -26567,15 +26583,20 @@ app.post("/api/skills/create", requireAuth, (req, res) => {
     const userId = req.user?.id || req.headers["x-user-id"];
     const r = createEmergentSkill(db, { ...(req.body || {}), origin: req.body?.origin ?? userId ?? "user" });
     if (!r.ok) return res.status(400).json(r);
+    // Asset emergence: skill becomes an evo-asset whose interaction weight
+    // grows whenever it's used (see onSkillUsed in the gameplay bridge).
+    try { _gameplayBridge.onSkillAuthored(db, { skill: r.skill, origin: userId ?? "user" }); } catch { /* non-fatal */ }
     res.status(201).json(r);
   } catch { res.status(500).json({ ok: false, error: "create_failed" }); }
 });
 app.post("/api/skills/evolve", requireAuth, (req, res) => {
   try {
+    const userId = req.user?.id || req.headers["x-user-id"];
     const { parentId, mutation = {} } = req.body || {};
     if (!parentId) return res.status(400).json({ ok: false, error: "parentId required" });
     const r = evolveSkill(db, parentId, (skill) => ({ ...skill, ...mutation }));
     if (!r.ok) return res.status(400).json(r);
+    try { _gameplayBridge.onSkillAuthored(db, { skill: r.skill, origin: userId ?? "user" }); } catch { /* non-fatal */ }
     res.status(201).json(r);
   } catch { res.status(500).json({ ok: false, error: "evolve_failed" }); }
 });
