@@ -39984,6 +39984,108 @@ app.get("/api/marketplace/listings", asyncHandler(async (req, res) => {
   }, makeCtx(req)));
 }));
 
+// Federation: peer list, trust graph visualization, cross-instance search.
+// All read-only for now — peering itself goes through the existing
+// /api/federation/register endpoints in cnet-federation.
+app.get("/api/federation/instances", asyncHandler(async (_req, res) => {
+  const fed = await import("./emergent/cnet-federation.js").catch(() => null);
+  if (!fed?.getPeers) return res.json({ ok: true, peers: [] });
+  res.json(fed.getPeers());
+}));
+
+// Trust graph: returns a node + edge list suitable for d3 / cytoscape.
+// Self-node included so the UI can render the local instance.
+app.get("/api/federation/trust-graph", asyncHandler(async (_req, res) => {
+  const fed = await import("./emergent/cnet-federation.js").catch(() => null);
+  if (!fed?.getPeers || !fed?.getFederationStatus) {
+    return res.json({ ok: true, nodes: [], edges: [] });
+  }
+  const status = fed.getFederationStatus();
+  const peersResult = fed.getPeers();
+  const peers = peersResult?.peers ?? [];
+  const selfId = status?.instanceId ?? "self";
+  const nodes = [
+    {
+      id: selfId,
+      name: status?.name ?? "this instance",
+      kind: "self",
+      dtuCount: STATE.dtus?.size ?? 0,
+    },
+    ...peers.map(p => ({
+      id: p.instanceId,
+      name: p.name,
+      kind: "peer",
+      trust: p.trustScore,
+      status: p.status,
+      lastSeen: p.lastSeen,
+    })),
+  ];
+  const edges = peers.map(p => ({
+    source: selfId,
+    target: p.instanceId,
+    weight: p.trustScore ?? 0.5,
+    dtusSharedWith: p.dtusSharedWith,
+    dtusReceivedFrom: p.dtusReceivedFrom,
+  }));
+  res.json({ ok: true, nodes, edges });
+}));
+
+// Cross-instance semantic search. Fans out the query across known peers
+// in parallel, merges results by score, deduplicates by DTU id.
+app.get("/api/federation/search", asyncHandler(async (req, res) => {
+  const q = String(req.query.q || "").slice(0, 500);
+  const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 20));
+  if (!q) return res.status(400).json({ ok: false, error: "q_required" });
+
+  const fed = await import("./emergent/cnet-federation.js").catch(() => null);
+  const peers = fed?.getPeers ? (fed.getPeers().peers ?? []) : [];
+
+  // Local search first.
+  const localResults = await runMacro("search", "semantic", { q, limit }, makeCtx(req)).catch(() => null);
+  const local = (localResults?.results || []).map(r => ({ ...r, source: "self" }));
+
+  // Fan out to peers (with timeout). Failed peers don't sink the result.
+  const remote = await Promise.all(
+    peers
+      .filter(p => p.status === "connected" && p.registryUrl)
+      .slice(0, 8) // cap fanout
+      .map(async (p) => {
+        try {
+          const url = `${p.registryUrl}/api/search?q=${encodeURIComponent(q)}&limit=${limit}`;
+          const r = await fetch(url, {
+            headers: { "User-Agent": "concord-federation/1.0" },
+            signal: AbortSignal.timeout(5_000),
+          });
+          if (!r.ok) return [];
+          const data = await r.json();
+          return (data.results || []).map(rr => ({ ...rr, source: p.instanceId, peerName: p.name }));
+        } catch {
+          return [];
+        }
+      }),
+  );
+
+  // Merge + dedupe by DTU id, sort by score desc.
+  const seen = new Set();
+  const merged = [];
+  for (const list of [local, ...remote]) {
+    for (const r of list) {
+      const key = r.dtuId || r.id;
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      merged.push(r);
+    }
+  }
+  merged.sort((a, b) => (b.score || 0) - (a.score || 0));
+  res.json({
+    ok: true,
+    q,
+    total: merged.length,
+    results: merged.slice(0, limit),
+    fanout: peers.length,
+  });
+}));
+
 // Knowledge Weather + Drift Radar + Continuity Diary surfaces.
 // Read-only views derived from the live STATE — cheap to recompute on demand.
 app.get("/api/intelligence/knowledge-weather", asyncHandler(async (_req, res) => {

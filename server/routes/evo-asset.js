@@ -49,11 +49,11 @@ export default function createEvoAssetRouter({ requireAuth, db }) {
   // GET /api/evo-asset/file/:id — serves the canonical file content. Public
   // because asset binaries aren't user-private. Streams from disk; no
   // path-traversal possible since we look the path up from the registry.
-  router.get("/file/:id", (req, res) => {
+  router.get("/file/:id", async (req, res) => {
     try {
       const id = req.params.id;
       const row = db.prepare(`
-        SELECT a.local_path, v.local_path AS version_path
+        SELECT a.id, a.local_path, a.cdn_url, v.local_path AS version_path, v.cdn_url AS version_cdn_url
           FROM evo_assets a
      LEFT JOIN evo_asset_versions v
             ON v.asset_id = a.id AND v.promoted = 1
@@ -62,6 +62,25 @@ export default function createEvoAssetRouter({ requireAuth, db }) {
          LIMIT 1
       `).get(id);
       if (!row) return res.status(404).json({ ok: false, error: "not_found" });
+
+      // CDN redirect path: when CONCORD_CDN_BASE_URL is configured and we
+      // have a stored cdn_url for this asset (or version), 302 to it. Saves
+      // the origin from streaming GLB bytes for every request.
+      const cdnBaseConfigured = !!process.env.CONCORD_CDN_BASE_URL;
+      const cdnUrl = row.version_cdn_url ?? row.cdn_url;
+      if (cdnBaseConfigured && cdnUrl) {
+        // Optionally sign the URL so CDN can verify expiry.
+        try {
+          const signer = await import("../lib/cdn-url-signer.js").catch(() => null);
+          const signed = signer?.signUrl ? signer.signUrl(cdnUrl, { ttl: 3600 }) : cdnUrl;
+          res.setHeader("Cache-Control", "public, max-age=86400");
+          return res.redirect(302, signed);
+        } catch {
+          res.setHeader("Cache-Control", "public, max-age=86400");
+          return res.redirect(302, cdnUrl);
+        }
+      }
+
       const filePath = row.version_path ?? row.local_path;
       if (!filePath || !fs.existsSync(filePath)) {
         return res.status(404).json({ ok: false, error: "file_missing" });
