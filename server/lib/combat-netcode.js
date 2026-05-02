@@ -32,6 +32,7 @@
  */
 
 import logger from "../logger.js";
+import { applyHitToState } from "./combat-state.js";
 
 const MAX_BROADCAST_RADIUS_M = 1500;     // bigger than VIEW_DISTANCE
 const MIN_ATTACK_COOLDOWN_MS = 200;       // hard floor; weapons may set higher
@@ -127,15 +128,38 @@ export function broadcastHit(REALTIME, getNearbyUserIds, args) {
   }
 
   try {
+    // Consult the victim's combat state — i-frames may zero damage, block
+    // halves it, repeated hits exhaust poise and trigger stagger.
+    const stateMod = applyHitToState(args.victim.id, {
+      damage:    args.damage,
+      isCrit:    !!args.isCrit,
+      knockback: args.hitDirection
+        ? { x: args.hitDirection.x * args.damage * 0.4, y: 0, z: args.hitDirection.z * args.damage * 0.4 }
+        : null,
+    });
+    const finalDamage = Math.round(args.damage * stateMod.damageMul);
+
+    if (stateMod.iframed) {
+      // Hit whiffs: deliver a "hit:miss" event for FX without applying damage.
+      const targets = (getNearbyUserIds?.(args.attacker.cityId, args.victim.position, MAX_BROADCAST_RADIUS_M) ?? []);
+      const payload = { attackerId: args.attacker.id, victimId: args.victim.id, missed: true, ts: new Date().toISOString() };
+      for (const uid of new Set([args.attacker.id, args.victim.id, ...targets])) {
+        REALTIME.io.to(`user:${uid}`).emit("combat:miss", payload);
+      }
+      return { delivered: targets.length, iframed: true };
+    }
+
     const targets = (getNearbyUserIds?.(args.attacker.cityId, args.victim.position, MAX_BROADCAST_RADIUS_M) ?? [])
       .filter(id => id !== args.attacker.id);
     const payload = {
       attackerId:    args.attacker.id,
       victimId:      args.victim.id,
-      damage:        args.damage,
+      damage:        finalDamage,
       isCrit:        !!args.isCrit,
+      blocked:       !!stateMod.blocked,
+      staggered:     !!stateMod.staggered,
       hitDirection:  args.hitDirection ?? null,
-      magnitude:     args.damage,
+      magnitude:     finalDamage,
       position:      args.victim.position,
       weapon:        args.weapon?.name ?? null,
       ts:            new Date().toISOString(),

@@ -4835,9 +4835,10 @@ function authMiddleware(req, res, next) {
     "/api/export",
     // Repair cortex v3.1 (frontend error reporting must work without auth)
     "/api/repair",
-    // World clock — public read of the current day/night phase. Mutators
-    // (npc-schedule overrides) require auth.
+    // World clock + weather + combat state — public reads.
     "/api/world/clock", "/api/world/npc-behavior", "/api/world/npc-archetypes",
+    "/api/world/weather",
+    "/api/combat/state",
     // Concord Link — public reads for anchors, cost preview, walker bazaar.
     // Auth is still enforced on /send, /inbox, /:id/read, /walkers/hire by
     // the route handlers themselves.
@@ -26448,6 +26449,27 @@ try {
 // World clock — server-authoritative day/night phase, broadcast every 30s.
 import { startWorldClockBroadcast, getWorldPhase, getDayPhase, WORLD_CLOCK_CONSTANTS } from "./lib/world-clock.js";
 import { getCurrentBehavior as getNPCCurrentBehavior, setNPCSchedule, NPC_SCHEDULE_ARCHETYPES, batchCurrentBehaviors } from "./lib/npc-schedules.js";
+import { advanceWeather as advanceWorldWeather, getWeather as getWorldWeather, WEATHER_CONSTANTS } from "./lib/weather.js";
+import { applyHitToState, tickCombatState, getCombatState, grantIFrames as _grantIFrames, setBlock as _setBlock, resetCombatState } from "./lib/combat-state.js";
+
+app.get("/api/world/weather/:worldId", (req, res) => {
+  res.json({ ok: true, weather: getWorldWeather(req.params.worldId) });
+});
+app.get("/api/combat/state/:actorId", (req, res) => {
+  res.json({ ok: true, state: getCombatState(req.params.actorId) });
+});
+app.post("/api/combat/iframes", requireAuth, (req, res) => {
+  const userId = req.user?.id || req.headers["x-user-id"];
+  if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
+  _grantIFrames(userId, Math.min(800, Math.max(50, Number(req.body?.durationMs) || 350)));
+  res.json({ ok: true });
+});
+app.post("/api/combat/block", requireAuth, (req, res) => {
+  const userId = req.user?.id || req.headers["x-user-id"];
+  if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
+  _setBlock(userId, Math.min(2000, Math.max(100, Number(req.body?.durationMs) || 600)));
+  res.json({ ok: true });
+});
 
 // Start the world-clock broadcast loop once REALTIME is ready. We poll briefly
 // for it because REALTIME may finish initializing after this import runs.
@@ -27953,6 +27975,16 @@ async function governorTick(reason="heartbeat") {
           const cb = await import("./lib/creature-crossbreeding.js");
           cb.decayBonds(db);
         } catch (_e) { /* heartbeat invariant */ }
+      }
+
+      // Combat state tick — regen poise, decay knockback. Cheap.
+      try { tickCombatState(); } catch (_e) { /* heartbeat invariant */ }
+
+      // Weather rolls — every 40 ticks (~10 min). Each world advances its
+      // own Markov chain over (clear, overcast, rain, storm, snow, fog,
+      // wind) with stickiness so the weather doesn't churn every minute.
+      if ((_tick % 40) === 0 && _tick > 0) {
+        try { advanceWorldWeather(REALTIME); } catch (_e) { /* non-fatal */ }
       }
 
       // NPC schedule re-plan — every 4 ticks (~60s) check whether the day
