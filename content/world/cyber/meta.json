@@ -30,5 +30,15 @@
     "archery": 0.2,
     "alchemy": 0.15,
     "magic": 0.1
+  },
+  "concord_link": {
+    "primary_access": "neural_jack",
+    "secondary_access": ["dark_web_nodes", "rogue_ai_couriers", "glitch_networks"],
+    "veil_stability": 0.75,
+    "anchors": [
+      { "id": "anchor_cyber_mainframe_root", "name": "Mainframe Root Node", "access_method": "neural_jack", "description": "Kael's primary node. Highest bandwidth on the Grid; he can read every message that passes through. Free for him, expensive for everyone else, occasionally rerouted to him 'for diagnostic purposes.'", "location": "mainframe_district", "controlled_by_faction": "zero_collective", "stability": 1.0 },
+      { "id": "anchor_cyber_blackout_dead_drop", "name": "The Blackout Dead-Drop", "access_method": "dark_web_nodes", "description": "An offline-first node that rides on burst-transmission radios in the under-district. Nyx's resistance built it specifically because Kael can't see it.", "location": "under_district", "controlled_by_faction": "blackout_resistance", "stability": 0.9 },
+      { "id": "anchor_cyber_glitch_chapel", "name": "The Glitch Chapel", "access_method": "glitch_networks", "description": "An abandoned religious building whose AR overlay glitched permanently into a Veil resonator. Anyone can use it but the messages emerge garbled half the time. Underground favorite.", "location": "neon_arc", "controlled_by_faction": null, "stability": 0.55 }
+    ]
   }
 }

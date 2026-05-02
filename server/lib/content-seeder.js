@@ -17,6 +17,7 @@ import logger from "../logger.js";
 import { createQuest } from "../emergent/quest-engine.js";
 import { recordEvent, EVENT_TYPES } from "../emergent/history-engine.js";
 import { registerWorldMeta } from "./cross-world-effectiveness.js";
+import { seedAnchorsFromWorldMeta } from "./concord-link.js";
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const CONTENT_ROOT = join(__dir, "../../content");
@@ -212,7 +213,7 @@ function seedQuestFile(quests) {
  *
  * @returns {{ ok: boolean, counts?: object, error?: string }}
  */
-export function seedContent() {
+export function seedContent({ db = null } = {}) {
   if (_seeded) {
     return { ok: true, counts: null, cached: true };
   }
@@ -243,6 +244,8 @@ export function seedContent() {
   if (concordiaMeta?.world_id) {
     registerWorldMeta(concordiaMeta);
     results.worlds = (results.worlds || 0) + 1;
+    try { if (db) results.anchors = (results.anchors || 0) + seedAnchorsFromWorldMeta(db, concordiaMeta); }
+    catch { /* anchor seeding best-effort */ }
   }
 
   // Sub-worlds — each subdirectory under content/world/ may carry its own
@@ -253,6 +256,8 @@ export function seedContent() {
     if (meta?.world_id) {
       registerWorldMeta(meta);
       results.worlds = (results.worlds || 0) + 1;
+      try { if (db) results.anchors = (results.anchors || 0) + seedAnchorsFromWorldMeta(db, meta); }
+      catch { /* anchor seeding best-effort */ }
     }
     const subFactions = readJSON(`${sub.path}/factions.json`);
     if (Array.isArray(subFactions)) results.factions += seedFactions(subFactions);

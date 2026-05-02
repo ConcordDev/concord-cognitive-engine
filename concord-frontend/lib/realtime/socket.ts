@@ -266,7 +266,9 @@ export type SocketEvent =
   | 'level:up'
   // Tier 3 deferral 12: faction event scheduler
   | 'faction:event_started'
-  | 'faction:event_ended';
+  | 'faction:event_ended'
+  // The Concord Link cross-world messaging
+  | 'concord-link:message';
 
 // ---- Enriched Event Payload (Category 2+5: Concurrency + Observability) ----
 interface EnrichedPayload {

@@ -26304,7 +26304,7 @@ if (db) {
     seedLensPortals(db, "concordia-hub");
     // Seed authored world content (factions, NPCs, lore, quest chains) into
     // in-memory systems. Must run after world seed so history engine is ready.
-    try { seedContent(); } catch (e) { console.warn("[content-seeder]", e.message); }
+    try { seedContent({ db }); } catch (e) { console.warn("[content-seeder]", e.message); }
     // Start an NPC simulator for each seeded world
     const worldRows = db.prepare("SELECT id FROM worlds WHERE status = 'active'").all();
     for (const { id } of worldRows) {
@@ -26358,6 +26358,10 @@ app.use("/api/evo-asset", createEvoAssetRouter({ requireAuth, db }));
 // rule-governed via the heartbeat scan + a public transparency log.
 import createAnomaliesRouter from "./routes/anomalies.js";
 app.use("/api/anomalies", createAnomaliesRouter({ requireAuth, db }));
+
+// The Concord Link — cross-world communication substrate.
+import createConcordLinkRouter from "./routes/concord-link.js";
+app.use("/api/concord-link", createConcordLinkRouter({ requireAuth, db, emitToUser }));
 
 // Bootstrap CC0 asset sources at startup. Best-effort — if network is
 // unavailable, the registry stays at whatever's already there.
