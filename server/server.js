@@ -26348,6 +26348,31 @@ try {
   attachXPEmitter?.(emitToUser);
 } catch { /* world-progression import is best-effort */ }
 
+// EvoAsset Engine — assets that improve the longer the world runs.
+// Mounts the route + bootstraps CC0 sources (best-effort; offline = empty).
+import createEvoAssetRouter from "./routes/evo-asset.js";
+app.use("/api/evo-asset", createEvoAssetRouter({ requireAuth, db }));
+
+// Bootstrap CC0 asset sources at startup. Best-effort — if network is
+// unavailable, the registry stays at whatever's already there.
+setTimeout(() => {
+  (async () => {
+    try {
+      const { bootstrapAllSources } = await import("./lib/evo-asset/source-loaders.js");
+      const result = await bootstrapAllSources(db, {
+        polyhaven: { limit: 30 },
+        ambientcg: { limit: 30 },
+        os3a:      { limit: 50 },
+        kenneyDir: process.env.KENNEY_BUNDLE_DIR,
+        kenney:    { limit: 200 },
+      });
+      structuredLog("info", "evo_asset_bootstrap", result);
+    } catch (e) {
+      structuredLog("warn", "evo_asset_bootstrap_failed", { error: String(e?.message || e) });
+    }
+  })();
+}, 30_000); // wait 30s after boot so the rest of the platform has settled
+
 // ===== CONCORDIA LIVING WORLD (portals, player inventory, arena, leaderboards, crafting) =====
 import createLensPortalsRouter from "./routes/lens-portals.js";
 import createPlayerInventoryRouter from "./routes/player-inventory.js";
@@ -27667,6 +27692,37 @@ async function governorTick(reason="heartbeat") {
             if (total > 0) structuredLog("warn", "inventory_anomalies_flagged", flagged);
           }
         } catch (_e) { /* non-fatal — heartbeat must never crash */ }
+      }
+
+      // EvoAsset Engine: evolution scheduler runs every 100th tick. Refines
+      // top-scored candidates, gates each through the Atlas 5-stage pipeline,
+      // promotes verified versions. Best-effort — heartbeat must never crash.
+      if ((STATE.__bgTickCounter || 0) % 100 === 0) {
+        try {
+          const evoSched = await import("./lib/evo-asset/scheduler.js").catch(() => null);
+          if (evoSched?.runEvolutionTick) {
+            // Wire deps: vision + image-gen + the atlas gate functions.
+            const visionMod = await import("./lib/vision-inference.js").catch(() => null);
+            const atlasMod  = await import("./emergent/atlas-store.js").catch(() => null);
+            const guardMod  = await import("./emergent/atlas-write-guard.js").catch(() => null);
+            const callImageGen = async (opts) => {
+              if (typeof _callMultimodalBrain === "function") {
+                return _callMultimodalBrain({ kind: "image", ...opts });
+              }
+              return null;
+            };
+            const stats = await evoSched.runEvolutionTick(STATE, db, {
+              callVision:        visionMod?.callVision,
+              callImageGen,
+              createAtlasDtu:    atlasMod?.createAtlasDtu,
+              promoteAtlasDtu:   atlasMod?.promoteAtlasDtu,
+              runAutoPromoteGate: guardMod?.runAutoPromoteGate,
+            });
+            if (stats.evolved > 0 || stats.errors > 0) {
+              structuredLog("info", "evo_asset_tick", stats);
+            }
+          }
+        } catch (_e) { /* non-fatal */ }
       }
 
       // Quest emergence: scan active NPCs for quest opportunities (every 20 ticks)
