@@ -175,8 +175,7 @@ export function sendMessage(db, opts, deps = {}) {
     return { ok: false, reason: "shadow_burn_cooldown", cooldownRemaining: burn.cooldownRemaining };
   }
 
-  // Cost calculation (caller is responsible for checking the sender's
-  // wallet / debiting; this function just records cost_paid).
+  // Cost calculation
   const { cost } = computeMessageCost({ messageType, sourceWorld, destWorld, encryption });
 
   // Corruption roll
@@ -187,19 +186,44 @@ export function sendMessage(db, opts, deps = {}) {
   const messageId = crypto.randomUUID();
   const now = Math.floor(Date.now() / 1000);
 
-  db.prepare(`
-    INSERT INTO concord_link_messages (
-      id, sender_id, sender_kind, receiver_id, receiver_kind,
-      source_world, dest_world, message_type, payload,
-      encryption_level, cost_paid, emotional_weight,
-      status, corruption_note, sent_at, delivered_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    messageId, senderId, senderKind, receiverId ?? null, receiverKind ?? null,
-    sourceWorld, destWorld, messageType, String(payload ?? ""),
-    encryption, cost, emotionalWeight,
-    status, corruptionNote, now, status === "delivered" ? now : null,
-  );
+  // Atomic debit + insert. The sparks check + debit + message insert run
+  // inside a single SQLite transaction so a sender can never spend sparks
+  // they don't have, and the message row only persists if the debit
+  // succeeded. NPCs and system senders skip the wallet check (they don't
+  // have a sparks balance — the cost is recorded for accounting but not
+  // charged anywhere).
+  const isWalletSender = senderKind === "user" && cost > 0;
+  let debitFailedReason = null;
+  const tx = db.transaction(() => {
+    if (isWalletSender) {
+      const u = db.prepare(`SELECT sparks FROM users WHERE id = ?`).get(senderId);
+      if (!u) { debitFailedReason = "sender_unknown"; throw new Error("sender_unknown"); }
+      const have = u.sparks ?? 0;
+      if (have < cost) {
+        debitFailedReason = `insufficient_sparks:have_${have}_need_${cost}`;
+        throw new Error("insufficient_sparks");
+      }
+      db.prepare(`UPDATE users SET sparks = sparks - ? WHERE id = ?`).run(cost, senderId);
+    }
+    db.prepare(`
+      INSERT INTO concord_link_messages (
+        id, sender_id, sender_kind, receiver_id, receiver_kind,
+        source_world, dest_world, message_type, payload,
+        encryption_level, cost_paid, cost_currency, emotional_weight,
+        status, corruption_note, sent_at, delivered_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      messageId, senderId, senderKind, receiverId ?? null, receiverKind ?? null,
+      sourceWorld, destWorld, messageType, String(payload ?? ""),
+      encryption, cost, "sparks", emotionalWeight,
+      status, corruptionNote, now, status === "delivered" ? now : null,
+    );
+  });
+  try {
+    tx();
+  } catch (_e) {
+    return { ok: false, reason: debitFailedReason || "send_failed", cost };
+  }
 
   // Realtime push to recipient if player + online
   if (status === "delivered" && receiverKind === "user" && deps.emitToUser) {
