@@ -640,6 +640,23 @@ export default function ConcordiaScene({
         })
       );
 
+      // Expose a worldToScreen projector for HTML overlay layers (BazaarLayer,
+      // marker variants). Lives off-thread of the main render loop.
+      const _projectVec = new THREE.Vector3();
+      const projectFn = (world: { x: number; y: number; z: number }) => {
+        _projectVec.set(world.x, world.y, world.z);
+        _projectVec.project(camera);
+        const visible = _projectVec.z > -1 && _projectVec.z < 1;
+        const x = (_projectVec.x * 0.5 + 0.5) * window.innerWidth;
+        const y = (-_projectVec.y * 0.5 + 0.5) * window.innerHeight;
+        return { x, y, visible };
+      };
+      window.dispatchEvent(
+        new CustomEvent('concordia:projector-ready', {
+          detail: { project: projectFn },
+        })
+      );
+
       // Expose building lookup for deformation replay
       onSceneReadyRef.current?.((entityId: string) => {
         const obj = buildingMapRef.current.get(entityId);

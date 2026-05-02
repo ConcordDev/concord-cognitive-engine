@@ -143,6 +143,10 @@ const PerformanceOverlay = dynamic(
   () => import('@/components/world-lens/PerformanceOverlay'),
   { ssr: false },
 );
+const BazaarLayer = dynamic(
+  () => import('@/components/world-lens/BazaarLayer'),
+  { ssr: false },
+);
 const LevelUpJuiceBridge = dynamic(
   () => import('@/components/world-lens/LevelUpJuiceBridge').then((m) => ({ default: m.LevelUpJuiceBridge })),
   { ssr: false },
@@ -2872,6 +2876,7 @@ export default function WorldLensPage() {
           </GameJuice>
           <LevelUpJuiceBridge />
           <PerformanceOverlay />
+          <BazaarLayer worldId="concordia" />
           <SocialOverlay
             myUserId={playerAvatar.id}
             nearbyPlayers={otherPlayers.map((p) => ({ id: p.id, name: p.name }))}

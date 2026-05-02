@@ -28310,6 +28310,24 @@ async function governorTick(reason="heartbeat") {
         }
       }
 
+      // Council Live Theater: every tick, advance the streaming session if
+      // one is in progress (fires voice events ~every 4s) or schedule the
+      // next deliberation. Cheap — it's a state machine, not an LLM call.
+      await runHeartbeatModule("council_theater_tick", async () => {
+        const ct = await import("./lib/council-theater.js").catch(() => null);
+        if (ct?.tick) {
+          ct.tick((event, payload) => {
+            try { REALTIME?.io?.emit?.(event, payload); } catch { /* realtime best-effort */ }
+            // Diary append on major events.
+            if (event === "council:theater:complete") {
+              import("./lib/knowledge-weather.js").then(m =>
+                m.diaryAppend("council_verdict", payload)
+              ).catch(() => {});
+            }
+          });
+        }
+      });
+
       // Citation chain → quest chain conversion. Run every 60 ticks (~15 min)
       // so it never thrashes the main loop. Materializes 0..N "verify lineage"
       // quests from deep DTU citation chains.
@@ -39965,6 +39983,86 @@ app.get("/api/marketplace/listings", asyncHandler(async (req, res) => {
     pageSize: req.query.pageSize
   }, makeCtx(req)));
 }));
+
+// Knowledge Weather + Drift Radar + Continuity Diary surfaces.
+// Read-only views derived from the live STATE — cheap to recompute on demand.
+app.get("/api/intelligence/knowledge-weather", asyncHandler(async (_req, res) => {
+  const m = await import("./lib/knowledge-weather.js");
+  res.json(m.computeKnowledgeWeather(STATE));
+}));
+app.get("/api/intelligence/drift-radar", asyncHandler(async (_req, res) => {
+  const m = await import("./lib/knowledge-weather.js");
+  res.json(m.computeDriftRadar(STATE));
+}));
+app.get("/api/intelligence/continuity-diary", asyncHandler(async (req, res) => {
+  const m = await import("./lib/knowledge-weather.js");
+  const limit = Math.min(60, Math.max(1, Number(req.query.limit) || 30));
+  const kind = req.query.kind ? String(req.query.kind) : undefined;
+  res.json(m.getContinuityDiary({ kind, limit }));
+}));
+
+// Council Live Theater: HTTP fallback for clients without socket.io.
+// Returns the in-progress session, the next scheduled session, and a
+// short history of recent verdicts.
+app.get("/api/council/theater", asyncHandler(async (_req, res) => {
+  const ct = await import("./lib/council-theater.js");
+  res.json({ ok: true, ...ct.getCouncilTheaterState() });
+}));
+
+// In-world bazaar: top marketplace listings projected onto Concordia's
+// Exchange district as vendor stalls. Each stall carries position +
+// listing summary so the frontend can place a 3D marker the player can
+// approach and inspect.
+app.get("/api/world/bazaar", (req, res) => {
+  const worldId = String(req.query.worldId || "concordia");
+  const limit   = Math.min(36, Math.max(1, Number(req.query.limit) || 24));
+
+  if (worldId !== "concordia") {
+    return res.json({ ok: true, worldId, stalls: [] });
+  }
+
+  const all = STATE.marketplaceListings ? [...STATE.marketplaceListings.values()] : [];
+  const active = all.filter(l => l.status === "active");
+  // Sort: dream-promoted first by promotionScore, then user listings by downloads.
+  active.sort((a, b) => {
+    const aDream = a.promotionSource === "dream_cycle" ? 1 : 0;
+    const bDream = b.promotionSource === "dream_cycle" ? 1 : 0;
+    if (aDream !== bDream) return bDream - aDream;
+    return (b.downloads || 0) - (a.downloads || 0);
+  });
+  const top = active.slice(0, limit);
+
+  // Place stalls in a grid inside the Exchange district.
+  // Exchange position (frontend coords): x1:300, y1:500 → x2:900, y2:900.
+  // We map to world meters with a 12m grid cell so stalls don't overlap.
+  const cellW = 12, cellH = 12;
+  const cols = 6;
+  const baseX = 360, baseZ = 540;
+  const stalls = top.map((l, i) => {
+    const r = Math.floor(i / cols);
+    const c = i % cols;
+    return {
+      id: `stall_${l.id}`,
+      listingId: l.id,
+      sourceDtuId: l.sourceDtuId,
+      title: l.title,
+      domain: l.domain,
+      description: (l.description || "").slice(0, 200),
+      price: l.price,
+      currency: l.currency,
+      sellerId: l.sellerId,
+      promotionSource: l.promotionSource || null,
+      promotionScore: l.promotionScore ?? null,
+      position: {
+        x: baseX + c * cellW,
+        y: 22, // exchange district elevationRange.min ≈ 20 + small lift
+        z: baseZ + r * cellH,
+      },
+      district: "district-exchange",
+    };
+  });
+  res.json({ ok: true, worldId, stalls, total: active.length });
+});
 
 // Citation-chain quest scanning + materialization endpoints. Public read so
 // the lens explorer can show "deep chains in your library"; admin-only
