@@ -26445,11 +26445,23 @@ try {
 // Procedural creature spawn — POST a description, get a physics-validated
 // blueprint with attached skills. Caller renders the blueprint via the
 // frontend creature loader.
+import { listBaselines } from "./lib/procedural-creature.js";
+import {
+  ensureCrossbreedingTables,
+  recordEncounter,
+  decayBonds as _decayCreatureBonds,
+  generateHybrid,
+  maybeCrossbreed,
+  getLineage as getCreatureLineage,
+} from "./lib/creature-crossbreeding.js";
+
+try { ensureCrossbreedingTables(db); } catch { /* idempotent */ }
+
 app.post("/api/creature/spawn", requireAuth, (req, res) => {
   try {
-    const { description, topology, massKg, heightM, traits = [], origin = "user" } = req.body || {};
+    const { description, topology, massKg, heightM, traits = [], origin = "user", worldId = "concordia" } = req.body || {};
     if (!description) return res.status(400).json({ ok: false, error: "description_required" });
-    const bp = generateCreature({ description, topology, massKg, heightM, traits, origin });
+    const bp = generateCreature({ description, topology, massKg, heightM, traits, origin, worldId });
     bp.skillIds = attachSkills(bp);
     res.json({ ok: true, blueprint: bp });
   } catch (err) {
@@ -26457,11 +26469,50 @@ app.post("/api/creature/spawn", requireAuth, (req, res) => {
   }
 });
 app.get("/api/creature/topologies", (_req, res) => res.json({ ok: true, topologies: CREATURE_TOPOLOGIES }));
+app.get("/api/creature/baselines/:worldId", (req, res) => {
+  try { res.json({ ok: true, baselines: listBaselines(req.params.worldId) }); }
+  catch { res.status(404).json({ ok: false, error: "world_not_found" }); }
+});
 app.post("/api/creature/validate", (req, res) => {
   try {
     const v = validateCreaturePhysics(req.body || {});
     res.json({ ok: v.ok, ...v });
   } catch { res.status(400).json({ ok: false, error: "invalid_blueprint" }); }
+});
+
+// ── Crossbreeding ─────────────────────────────────────────────────────
+//
+// Two creatures bond when they share environment + threats; when bond
+// crosses threshold they're eligible to produce a hybrid. Cross-world
+// hybrids (only via Concord Link) are rarer + less stable but legendary.
+
+app.post("/api/creature/encounter", requireAuth, (req, res) => {
+  try {
+    const r = recordEncounter(db, req.body || {});
+    res.json({ ok: r.ok, ...r });
+  } catch (err) { res.status(500).json({ ok: false, error: err?.message }); }
+});
+app.post("/api/creature/crossbreed", requireAuth, (req, res) => {
+  try {
+    const { a, b, environment } = req.body || {};
+    if (!a || !b) return res.status(400).json({ ok: false, error: "both_parents_required" });
+    const r = maybeCrossbreed(db, { a, b, environment, sameEnvironmentBonus: !!req.body?.sameEnvironmentBonus, sharedThreatBonus: !!req.body?.sharedThreatBonus });
+    if (!r.ok) return res.status(400).json(r);
+    res.status(201).json(r);
+  } catch (err) { res.status(500).json({ ok: false, error: err?.message }); }
+});
+app.post("/api/creature/hybrid", requireAuth, (req, res) => {
+  try {
+    const { a, b, environment, generation = 1 } = req.body || {};
+    const r = generateHybrid(db, { a, b, environment, generation });
+    if (!r.ok) return res.status(400).json(r);
+    res.status(201).json(r);
+  } catch (err) { res.status(500).json({ ok: false, error: err?.message }); }
+});
+app.get("/api/creature/lineage/:id", (req, res) => {
+  const ln = getCreatureLineage(db, req.params.id);
+  if (!ln) return res.status(404).json({ ok: false, error: "no_lineage" });
+  res.json({ ok: true, ...ln });
 });
 
 // Emergent skills — author / evolve / list / get
@@ -27826,6 +27877,15 @@ async function governorTick(reason="heartbeat") {
             try { await runLensLearningCycle(STATE, domain, realtimeEmit, callBrain); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
           }
         } catch (e) { structuredLog("warn", "governor_lens_learning", { error: String(e?.message || e) }); }
+      }
+
+      // Creature bond decay — every 8 ticks (~2 min). Bonds without recent
+      // encounters drift down so transient pairings don't crossbreed at scale.
+      if ((_tick % 8) === 0 && _tick > 0) {
+        try {
+          const cb = await import("./lib/creature-crossbreeding.js");
+          cb.decayBonds(db);
+        } catch (_e) { /* heartbeat invariant */ }
       }
 
       // News auto-pull — every 4 ticks (~60s), drain new world_events_log

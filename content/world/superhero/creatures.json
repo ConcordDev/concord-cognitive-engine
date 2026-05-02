@@ -1,0 +1,72 @@
+[
+  {
+    "id": "street_mutant",
+    "name": "Street Mutant",
+    "world_id": "superhero",
+    "description": "Human mutated by chemical spills, alley experiments, or industrial accidents. Body warped by exposure into something stronger but unstable.",
+    "topology_hint": "humanoid",
+    "size_band": "medium",
+    "starting_behavior": "Enhanced strength, durability, aggressive in groups",
+    "emergent_ability_seeds": [
+      { "name": "rage_surge", "verb": "rage_surge", "effects": [{ "kind": "buff", "params": { "stat": "damage", "delta": 0.6, "durationMs": 6000 } }, { "kind": "debuff", "params": { "stat": "defense", "delta": -0.2, "durationMs": 6000 } }], "trigger": "low_health" },
+      { "name": "toxin_breath", "verb": "toxin_breath", "effects": [{ "kind": "damage", "params": { "amount": 12, "kind": "poison", "radius": 4 } }], "trigger": "exposed_to_chemicals" },
+      { "name": "bone_spikes", "verb": "bone_spikes", "effects": [{ "kind": "damage", "params": { "amount": 8, "kind": "physical" } }, { "kind": "buff", "params": { "stat": "defense", "delta": 0.3, "durationMs": 4000 } }], "trigger": "took_heavy_hit" }
+    ]
+  },
+  {
+    "id": "energy_wraith",
+    "name": "Energy Wraith",
+    "world_id": "superhero",
+    "description": "Being made of unstable plasma or runaway electricity. Intangible, drains current from grids and devices.",
+    "topology_hint": "amorphous",
+    "size_band": "medium",
+    "starting_behavior": "Intangible, drain power from tech/electronics, flicker between solid and discharge",
+    "emergent_ability_seeds": [
+      { "name": "power_siphon", "verb": "power_siphon", "effects": [{ "kind": "debuff", "params": { "stat": "speed", "delta": -0.5, "durationMs": 3000 } }, { "kind": "heal", "params": { "amount": 8, "target": "self" } }], "trigger": "near_powered_device" },
+      { "name": "emp_pulse", "verb": "emp_pulse", "effects": [{ "kind": "stun", "params": { "durationMs": 1800 } }, { "kind": "terrain", "params": { "kind": "fire", "radius": 3, "durationMs": 1500 } }], "trigger": "killed_in_radius" },
+      { "name": "lightning_form", "verb": "lightning_form", "effects": [{ "kind": "transform", "params": { "topology": "amorphous" } }, { "kind": "buff", "params": { "stat": "speed", "delta": 1.0, "durationMs": 4000 } }], "trigger": "low_health" }
+    ]
+  },
+  {
+    "id": "mech_hound",
+    "name": "Mech Hound",
+    "world_id": "superhero",
+    "description": "Robotic guard dog gone rogue. Reinforced chassis, predator AI, hunts in pairs.",
+    "topology_hint": "quadruped",
+    "size_band": "medium",
+    "starting_behavior": "Heavy, fast, armored, pack hunters with target lock",
+    "emergent_ability_seeds": [
+      { "name": "self_repair", "verb": "self_repair", "effects": [{ "kind": "heal", "params": { "amount": 20, "target": "self" } }], "trigger": "below_30_health" },
+      { "name": "explosive_charge", "verb": "explosive_charge", "effects": [{ "kind": "displace", "params": { "force": 280, "direction": "forward", "distance": 6 } }, { "kind": "damage", "params": { "amount": 22, "kind": "physical", "radius": 2 } }], "trigger": "target_acquired" },
+      { "name": "laser_sight", "verb": "laser_sight", "effects": [{ "kind": "buff", "params": { "stat": "damage", "delta": 0.5, "durationMs": 2500 } }], "trigger": "fixed_on_target" }
+    ]
+  },
+  {
+    "id": "shadow_stalker",
+    "name": "Shadow Stalker",
+    "world_id": "superhero",
+    "description": "Person who acquired shadow-based powers via dark exposure or accident. Walks the line between predator and ghost.",
+    "topology_hint": "humanoid",
+    "size_band": "medium",
+    "starting_behavior": "Blends into darkness, enhanced stealth, strikes from cover",
+    "emergent_ability_seeds": [
+      { "name": "fear_aura", "verb": "fear_aura", "effects": [{ "kind": "debuff", "params": { "stat": "damage", "delta": -0.3, "durationMs": 4000 } }], "trigger": "in_dim_light" },
+      { "name": "shadow_step", "verb": "shadow_step", "effects": [{ "kind": "displace", "params": { "force": 150, "direction": "forward", "distance": 12 } }], "trigger": "lost_line_of_sight" },
+      { "name": "nightmare_touch", "verb": "nightmare_touch", "effects": [{ "kind": "damage", "params": { "amount": 14, "kind": "soul" } }, { "kind": "stun", "params": { "durationMs": 1200 } }], "trigger": "behind_target" }
+    ]
+  },
+  {
+    "id": "riot_elemental",
+    "name": "Riot Elemental",
+    "world_id": "superhero",
+    "description": "Manifestation of civil unrest and collective anger. Fire, smoke, debris that grows when crowds gather.",
+    "topology_hint": "amorphous",
+    "size_band": "large",
+    "starting_behavior": "Fire / smoke / debris manipulation, scales with nearby unrest",
+    "emergent_ability_seeds": [
+      { "name": "molotov_rain", "verb": "molotov_rain", "effects": [{ "kind": "terrain", "params": { "kind": "fire", "radius": 6, "durationMs": 5000 } }], "trigger": "crowd_present" },
+      { "name": "barricade_smash", "verb": "barricade_smash", "effects": [{ "kind": "damage", "params": { "amount": 18, "kind": "physical" } }, { "kind": "displace", "params": { "force": 200, "direction": "away", "distance": 4 } }], "trigger": "near_obstacle" },
+      { "name": "mob_link", "verb": "mob_link", "effects": [{ "kind": "buff", "params": { "stat": "damage", "delta": 0.4, "durationMs": 8000 } }, { "kind": "summon", "params": { "creatureSeed": { "description": "minor riot fragment", "topology": "amorphous", "size_band": "small" } } }], "trigger": "rage_threshold" }
+    ]
+  }
+]

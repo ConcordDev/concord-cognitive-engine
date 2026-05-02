@@ -31,9 +31,91 @@
  */
 
 import crypto from "crypto";
+import { readFileSync, readdirSync, statSync } from "fs";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
 
 const G = 9.81; // gravity
 const AIR_DENSITY = 1.225;
+
+// ── World-flavor modifiers ────────────────────────────────────────────────
+//
+// Each world (superhero / fantasy / crime / cyber) applies a different
+// physics + flavor profile to procedural creatures. Heavier-than-life
+// fantasy creatures get a strength bonus; cyber creatures get a glitch
+// (phase) capability; crime creatures get pain immunity; superhero
+// creatures get power-tier scaling.
+
+export const WORLD_MODIFIERS = Object.freeze({
+  superhero: {
+    massScale:     1.0,
+    strengthScale: 1.5,           // super-physics
+    abilityFlavors: ["energy", "mutation", "tech"],
+    description: "modern city + super-powered physics",
+  },
+  fantasy: {
+    massScale:     1.1,           // mythic creatures slightly heavier
+    strengthScale: 1.3,
+    abilityFlavors: ["magic", "curse", "nature"],
+    description: "magic overrides some rules but still has limits",
+  },
+  crime: {
+    massScale:     1.0,
+    strengthScale: 1.2,
+    abilityFlavors: ["drugs", "cybernetics", "trauma"],
+    description: "real-world physics, exaggerated brutality",
+  },
+  cyber: {
+    massScale:     0.95,          // hard-light projections weigh less
+    strengthScale: 1.1,
+    abilityFlavors: ["glitch", "data", "neural"],
+    description: "real + digital physics; data corruption permitted",
+  },
+  concordia: {
+    massScale: 1.0, strengthScale: 1.0,
+    abilityFlavors: ["balanced"],
+    description: "the hub world; default physics",
+  },
+});
+
+// ── Baseline creature loader ──────────────────────────────────────────────
+
+const __dir = dirname(fileURLToPath(import.meta.url));
+const CONTENT_ROOT = join(__dir, "../../content");
+const _baselineCache = new Map(); // worldId -> creatures[]
+
+function loadBaselineCreatures(worldId) {
+  if (_baselineCache.has(worldId)) return _baselineCache.get(worldId);
+  let creatures = [];
+  try {
+    const p = join(CONTENT_ROOT, "world", worldId, "creatures.json");
+    creatures = JSON.parse(readFileSync(p, "utf8"));
+  } catch { /* world has no baselines yet */ }
+  _baselineCache.set(worldId, creatures);
+  return creatures;
+}
+
+/** Find a baseline creature in a world matching the description text. */
+export function matchBaseline(worldId, description) {
+  const baselines = loadBaselineCreatures(worldId);
+  const text = String(description || "").toLowerCase();
+  let best = null;
+  let bestScore = 0;
+  for (const c of baselines) {
+    let score = 0;
+    if (text.includes(c.name.toLowerCase())) score += 3;
+    for (const word of (c.name + " " + c.description).toLowerCase().split(/\W+/)) {
+      if (word.length > 4 && text.includes(word)) score += 1;
+    }
+    if (score > bestScore) { bestScore = score; best = c; }
+  }
+  return bestScore >= 2 ? best : null;
+}
+
+/** List the baseline creatures registered for a world. */
+export function listBaselines(worldId) {
+  return loadBaselineCreatures(worldId);
+}
 
 export const TOPOLOGIES = Object.freeze([
   "humanoid",        // 2 legs, 2 arms, 1 head
@@ -352,17 +434,28 @@ function buildGait(topology, massKg, heightM, rng) {
  */
 export function generateCreature(seed) {
   const description = seed?.description ?? "creature";
+  const worldId     = seed?.worldId ?? "concordia";
+  const worldMod    = WORLD_MODIFIERS[worldId] ?? WORLD_MODIFIERS.concordia;
+
   const id = `crt_${seedHash(description + Date.now())}`;
   const hash = seedHash(description);
   const rng  = _seededRng(hash);
 
+  // Try matching against authored baselines first. A close match seeds
+  // the topology + ability hints from the curated content rather than
+  // re-inferring them from raw text.
+  const baseline = matchBaseline(worldId, description);
+
   const topology = seed?.topology && TOPOLOGIES.includes(seed.topology)
     ? seed.topology
-    : inferTopology(description);
+    : (baseline?.topology_hint ?? inferTopology(description));
 
   let { massKg, heightM } = (seed?.massKg && seed?.heightM)
     ? { massKg: seed.massKg, heightM: seed.heightM }
-    : inferMassAndHeight(description, topology, rng);
+    : inferMassAndHeight(baseline?.description ? `${baseline.description} ${description}` : description, topology, rng);
+
+  // World massScale: fantasy creatures are slightly heavier, cyber lighter.
+  massKg *= worldMod.massScale;
 
   let parts = _partsFor(topology, massKg, heightM, rng);
   let validation = validateCreaturePhysics({ topology, massKg, parts });
@@ -381,18 +474,24 @@ export function generateCreature(seed) {
 
   return {
     id,
+    worldId,
     topology,
     massKg,
     heightM,
+    strengthMultiplier: worldMod.strengthScale,
     parts,
     gait,
-    skillIds: [], // populated separately by attachSkills()
+    skillIds:   [], // populated separately by attachSkills()
+    abilitySeeds: baseline?.emergent_ability_seeds ?? [],
+    abilityFlavors: worldMod.abilityFlavors,
     validation,
     provenance: {
       description,
-      origin: seed?.origin ?? "emergent",
-      seedHash: hash,
+      origin:     seed?.origin ?? "emergent",
+      seedHash:   hash,
       rescaled,
+      worldId,
+      baselineId: baseline?.id ?? null,
     },
   };
 }
