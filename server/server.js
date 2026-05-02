@@ -39987,6 +39987,28 @@ app.get("/api/marketplace/listings", asyncHandler(async (req, res) => {
   }, makeCtx(req)));
 }));
 
+// Lens backend completeness summary — runs the audit script and returns the
+// summary JSON. Admin-only because the script reads the entire domain dir.
+app.get("/api/admin/lens-audit", requireAuth(), asyncHandler(async (req, res) => {
+  if (req.user?.role !== "admin" && req.user?.role !== "sovereign") {
+    return res.status(403).json({ ok: false, error: "admin_only" });
+  }
+  const { spawn } = await import("node:child_process");
+  const path = await import("node:path");
+  const url = await import("node:url");
+  const here = path.dirname(url.fileURLToPath(import.meta.url));
+  const script = path.join(here, "scripts", "audit-lens-backends.js");
+  const child = spawn("node", [script, "--json"], { stdio: ["ignore", "pipe", "pipe"] });
+  let out = "", err = "";
+  child.stdout.on("data", (d) => out += d);
+  child.stderr.on("data", (d) => err += d);
+  child.on("close", (code) => {
+    if (code !== 0) return res.status(500).json({ ok: false, error: err.slice(0, 1000) });
+    try { res.json(JSON.parse(out)); }
+    catch { res.status(500).json({ ok: false, error: "audit_parse_failed" }); }
+  });
+}));
+
 // Lineage-aware search wrapper. Calls the existing semantic search and
 // re-ranks with citation depth, recency, scope filter, domain match boost.
 app.get("/api/search/ranked", asyncHandler(async (req, res) => {
