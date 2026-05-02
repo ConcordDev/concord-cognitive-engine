@@ -27702,6 +27702,22 @@ async function governorTick(reason="heartbeat") {
         } catch (e) { structuredLog("warn", "governor_lens_learning", { error: String(e?.message || e) }); }
       }
 
+      // News auto-pull — every 4 ticks (~60s), drain new world_events_log
+      // rows into STATE.dtus as regular event DTUs. The existing
+      // NEWS_COMPRESSION cycle then rolls them into Mega/Hyper as they age.
+      // Best-effort: missing table or db error never throws.
+      if ((_tick % 4) === 0 && _tick > 0) {
+        try {
+          const { pullWorldEventsIntoNews } = await import("./emergent/news-lens-hub.js");
+          const since = STATE._lastNewsLogPoll || 0;
+          const r = pullWorldEventsIntoNews(STATE, db, since, { limit: 50 });
+          if (r.ok) {
+            STATE._lastNewsLogPoll = r.highWaterMark;
+            if (r.ingested > 0) structuredLog("info", "news_log_ingest", { ingested: r.ingested, highWaterMark: r.highWaterMark });
+          }
+        } catch (_e) { /* heartbeat invariant — never throw */ }
+      }
+
       // News event compression — every NEWS_COMPRESSION ticks (~50 min)
       // Compresses old event DTUs into daily Megas, weekly Megas, monthly Hypers
       // Keeps the News lens clean and current while preserving depth
