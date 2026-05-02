@@ -195,6 +195,29 @@ export function endEvent(eventId, userId = null) {
   };
 }
 
+/**
+ * Tick — sweep all events and auto-end any whose start+duration has elapsed.
+ * Called from governorTick at low frequency. Without this, scheduler-created
+ * events sit at status="active" forever and never distribute rewards.
+ */
+export function tick() {
+  const now = Date.now();
+  let ended = 0;
+  for (const event of events.values()) {
+    if (event.status !== "active") continue;
+    const startMs = new Date(event.startTime || event.startedAt || event.createdAt || 0).getTime();
+    const durationMs = (event.duration ?? 60) * 60 * 1000; // duration is minutes
+    if (!Number.isFinite(startMs) || !Number.isFinite(durationMs)) continue;
+    if (now - startMs >= durationMs) {
+      try {
+        endEvent(event.id);
+        ended++;
+      } catch { /* end best-effort */ }
+    }
+  }
+  return { ok: true, ended };
+}
+
 // ── RSVP / Attendance ────────────────────────────────────────────────────────
 
 /**

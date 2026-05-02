@@ -320,7 +320,7 @@ export class SnapshotInterpolator {
 }
 
 function _lerpAngle(a: number, b: number, t: number): number {
-  let diff = ((b - a + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+  const diff = ((b - a + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
   return a + diff * t;
 }
 

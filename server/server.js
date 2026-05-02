@@ -28511,6 +28511,19 @@ async function governorTick(reason="heartbeat") {
         });
       }
 
+      // World event auto-end sweep. Every 4 ticks (~1 min) we check whether
+      // any active event has hit its duration and finalize it (which fires
+      // event:reward + skill:xp-awarded to attendees).
+      if ((STATE.__bgTickCounter || 0) % 4 === 0) {
+        await runHeartbeatModule("world_event_finalize_tick", async () => {
+          const we = await import("./lib/world-events.js").catch(() => null);
+          if (we?.tick) {
+            const r = we.tick();
+            if (r?.ended > 0) structuredLog("info", "world_event_finalize_tick", { ended: r.ended });
+          }
+        });
+      }
+
       // Citation chain → quest chain conversion. Run every 60 ticks (~15 min)
       // so it never thrashes the main loop. Materializes 0..N "verify lineage"
       // quests from deep DTU citation chains.
@@ -40249,6 +40262,47 @@ app.post("/api/world/gather", requireAuth(), async (req, res) => {
     yield: { type: chosen.type, name: chosen.name, quantity },
     inventoryDtuIds: inserted,
   });
+});
+
+// ── Starter crafting (workbench-free, simple recipe shape) ───────────────
+// Brand-new players use these endpoints. Once they craft a Workbench DTU
+// they can graduate to /api/crafting/* with full skill-level + station gating.
+app.get("/api/starter/recipes", requireAuth(), async (req, res) => {
+  const sc = await import("./lib/starter-content.js");
+  res.json({ ok: true, recipes: sc.listStarterRecipesForPlayer(db, req.user?.id) });
+});
+app.post("/api/starter/craft", requireAuth(), async (req, res) => {
+  const sc = await import("./lib/starter-content.js");
+  const { recipeId } = req.body || {};
+  if (!recipeId) return res.status(400).json({ ok: false, error: "recipeId_required" });
+  const r = sc.executeStarterCraft(db, req.user?.id, recipeId);
+  if (r.ok) {
+    // Award craft XP.
+    try {
+      const sp = await import("./lib/skill-progression.js");
+      sp.recordGameplayXP?.(db, req.user?.id, "craft", { recipeId, starter: true });
+    } catch { /* xp best-effort */ }
+  }
+  res.json(r);
+});
+// Inventory listing — simple count of material / item / weapon / armor DTUs
+// owned by the user so the crafting panel can show what they have.
+app.get("/api/starter/inventory", requireAuth(), (req, res) => {
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ ok: false, error: "unauthorized" });
+  try {
+    const rows = db.prepare(`
+      SELECT type, title, COUNT(*) as quantity
+      FROM dtus
+      WHERE creator_id = ?
+        AND type IN ('material', 'item', 'weapon', 'armor', 'consumable', 'tool', 'structure')
+      GROUP BY type, title
+      ORDER BY type, title
+    `).all(userId);
+    res.json({ ok: true, items: rows });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e.message || e), items: [] });
+  }
 });
 
 // Lens backend completeness summary — runs the audit script and returns the

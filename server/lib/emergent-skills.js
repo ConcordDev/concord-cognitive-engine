@@ -167,10 +167,10 @@ export function createSkill(db, seed) {
     costs:    seed?.costs ?? {},
     effects:  Array.isArray(seed?.effects) ? seed.effects : [],
     provenance: {
-      origin:        seed?.origin ?? "emergent",
-      parentId:      seed?.parentId ?? null,
+      origin:        seed?.origin ?? seed?.provenance?.origin ?? "emergent",
+      parentId:      seed?.parentId ?? seed?.provenance?.parentId ?? null,
       createdAt:     new Date().toISOString(),
-      gameplayEvent: seed?.gameplayEvent ?? "",
+      gameplayEvent: seed?.gameplayEvent ?? seed?.provenance?.gameplayEvent ?? "",
     },
     version: 1,
   };

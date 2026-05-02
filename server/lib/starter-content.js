@@ -171,7 +171,6 @@ const STARTER_HOSTILES = [
 const _seeded = { recipes: false, hostiles: false };
 
 export function seedStarterRecipes(db, { systemUserId = "system_starter" } = {}) {
-  if (_seeded.recipes) return { ok: true, count: 0, alreadySeeded: true };
   let count = 0;
   for (const r of STARTER_RECIPES) {
     try {
@@ -203,13 +202,22 @@ export function seedStarterRecipes(db, { systemUserId = "system_starter" } = {})
  * @returns {{ ok, count, total }}
  */
 export function seedStarterHostiles(db, worldId = "concordia-hub") {
-  if (_seeded.hostiles) return { ok: true, count: 0, alreadySeeded: true };
   if (!db) return { ok: false, error: "db_required", count: 0 };
   let count = 0;
   for (const h of STARTER_HOSTILES) {
     try {
-      const exists = db.prepare("SELECT id FROM world_npcs WHERE id = ?").get(h.id);
-      if (exists) continue;
+      const existing = db.prepare("SELECT id, current_hp FROM world_npcs WHERE id = ?").get(h.id);
+      if (existing) {
+        // Resurrect dead spawns (current_hp = 0 means killed by player). The
+        // simulator removes dead NPCs from active rotation but the row may
+        // persist; bringing them back keeps the frontier always populated.
+        if ((existing.current_hp ?? 0) <= 0) {
+          db.prepare(`UPDATE world_npcs SET current_hp = ?, current_location = ? WHERE id = ?`)
+            .run(h.hp, JSON.stringify(h.position), h.id);
+          count++;
+        }
+        continue;
+      }
       db.prepare(`INSERT INTO world_npcs
                   (id, world_id, npc_type, archetype, body_type, universe_type, faction,
                    is_conscious, is_immortal, quest_giver, level, current_hp, max_hp,
@@ -227,6 +235,7 @@ export function seedStarterHostiles(db, worldId = "concordia-hub") {
       count++;
     } catch { /* row insert silent */ }
   }
+  // Mark seeded for telemetry only — the DB rows are the actual source of truth.
   _seeded.hostiles = true;
   return { ok: true, count, total: STARTER_HOSTILES.length };
 }
@@ -241,6 +250,96 @@ export function getStarterRecipes() {
 
 export function getStarterHostiles() {
   return STARTER_HOSTILES.slice();
+}
+
+/**
+ * Execute a starter-recipe craft. Bypasses the regular crafting engine
+ * (which requires workbench, skill_requirements, etc.) so brand-new players
+ * can immediately turn their starter materials into a weapon/tool.
+ *
+ * Inventory model: counts material DTUs of the matching `data.type` field
+ * via the dtus table (the same place grantStarterInventoryToUser writes to),
+ * deletes the consumed ones, mints the output DTU.
+ */
+export function executeStarterCraft(db, userId, recipeId) {
+  if (!db || !userId || !recipeId) return { ok: false, error: "missing_inputs" };
+  const recipe = STARTER_RECIPES.find(r => r.id === recipeId);
+  if (!recipe) return { ok: false, error: "recipe_not_found" };
+
+  // Count available materials per type.
+  const have = {};
+  const allMaterials = db.prepare(`
+    SELECT id, data FROM dtus
+    WHERE creator_id = ? AND type = 'material'
+  `).all(userId);
+  const byType = new Map(); // type -> [{ id }]
+  for (const row of allMaterials) {
+    let parsed; try { parsed = JSON.parse(row.data); } catch { continue; }
+    const t = parsed.type;
+    if (!t) continue;
+    if (!byType.has(t)) byType.set(t, []);
+    byType.get(t).push({ id: row.id });
+    have[t] = (have[t] || 0) + 1;
+  }
+
+  // Verify all ingredients are available.
+  const missing = [];
+  for (const ing of recipe.ingredients) {
+    if ((have[ing.type] || 0) < ing.quantity) {
+      missing.push({ type: ing.type, name: ing.name, required: ing.quantity, have: have[ing.type] || 0 });
+    }
+  }
+  if (missing.length > 0) {
+    return { ok: false, error: "insufficient_resources", missing };
+  }
+
+  // Transactional consume + mint.
+  let outputId = null;
+  try {
+    db.transaction(() => {
+      for (const ing of recipe.ingredients) {
+        const list = byType.get(ing.type) || [];
+        const consume = list.slice(0, ing.quantity);
+        const stmt = db.prepare("DELETE FROM dtus WHERE id = ?");
+        for (const item of consume) stmt.run(item.id);
+      }
+      outputId = `craft_${userId.slice(0, 8)}_${recipe.output.type}_${Date.now()}`;
+      const outputType = recipe.output.type === "material" ? "material"
+        : recipe.output.type === "consumable" ? "consumable"
+        : recipe.output.type === "armor" ? "armor"
+        : recipe.output.type === "weapon" ? "weapon"
+        : "item";
+      db.prepare(`INSERT INTO dtus (id, type, title, creator_id, data, created_at)
+                  VALUES (?, ?, ?, ?, ?, ?)`)
+        .run(outputId, outputType, recipe.output.name, userId,
+             JSON.stringify({ ...recipe.output, craftedFrom: recipeId }),
+             Math.floor(Date.now() / 1000));
+    })();
+  } catch (e) {
+    return { ok: false, error: String(e.message || e) };
+  }
+  return { ok: true, recipeId, outputId, output: recipe.output };
+}
+
+/**
+ * List starter recipes the player can attempt + which ones they currently
+ * have all materials for.
+ */
+export function listStarterRecipesForPlayer(db, userId) {
+  const have = {};
+  if (db && userId) {
+    const allMaterials = db.prepare(`
+      SELECT data FROM dtus WHERE creator_id = ? AND type = 'material'
+    `).all(userId);
+    for (const row of allMaterials) {
+      let parsed; try { parsed = JSON.parse(row.data); } catch { continue; }
+      if (parsed.type) have[parsed.type] = (have[parsed.type] || 0) + 1;
+    }
+  }
+  return STARTER_RECIPES.map(r => {
+    const missing = r.ingredients.filter(ing => (have[ing.type] || 0) < ing.quantity);
+    return { ...r, craftable: missing.length === 0, missing };
+  });
 }
 
 /**

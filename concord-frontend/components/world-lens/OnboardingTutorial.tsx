@@ -63,10 +63,28 @@ interface OnboardingTutorialProps {
   onDismiss: () => void;
 }
 
+const STEP_STORAGE_KEY = 'concordia:tutorial:step';
+
 export default function OnboardingTutorial({ onComplete, onDismiss }: OnboardingTutorialProps) {
-  const [currentStep, setCurrentStep] = useState(0);
-  const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
+  const [currentStep, setCurrentStep] = useState<number>(() => {
+    if (typeof window === 'undefined') return 0;
+    const saved = Number(localStorage.getItem(STEP_STORAGE_KEY) ?? 0);
+    return Number.isFinite(saved) && saved >= 0 && saved < TUTORIALS.length ? saved : 0;
+  });
+  const [completedSteps, setCompletedSteps] = useState<Set<number>>(() => {
+    if (typeof window === 'undefined') return new Set();
+    const saved = Number(localStorage.getItem(STEP_STORAGE_KEY) ?? 0);
+    const set = new Set<number>();
+    for (let i = 0; i < saved; i++) set.add(i);
+    return set;
+  });
   const [dropHints, setDropHints] = useState(false);
+
+  // Persist progress so a refresh mid-tutorial picks up where the player left off.
+  useEffect(() => {
+    try { localStorage.setItem(STEP_STORAGE_KEY, String(currentStep)); }
+    catch { /* persistence best-effort */ }
+  }, [currentStep]);
 
   const completeStep = useCallback(() => {
     setCompletedSteps((prev) => new Set([...prev, currentStep]));
@@ -74,6 +92,7 @@ export default function OnboardingTutorial({ onComplete, onDismiss }: Onboarding
       setCurrentStep(currentStep + 1);
     } else {
       if (dropHints) tutorialManager.enableHints();
+      try { localStorage.removeItem(STEP_STORAGE_KEY); } catch { /* best-effort */ }
       onComplete();
     }
   }, [currentStep, dropHints, onComplete]);

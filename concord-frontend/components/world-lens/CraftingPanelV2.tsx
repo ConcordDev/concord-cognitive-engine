@@ -15,17 +15,20 @@ import { useEffect, useState, useCallback } from 'react';
 
 interface Recipe {
   id: string;
-  name: string;
+  title?: string;
+  name?: string;
   category?: string;
   ingredients: { dtuId?: string; type?: string; quantity: number; name?: string }[];
   output: { name: string; type: string; quality?: string };
   durationMs?: number;
+  craftable?: boolean;
+  missing?: { type: string; name: string; required: number; have: number }[];
 }
 
-interface ResourceBar {
+interface InventoryRow {
   type: string;
-  current: number;
-  max: number;
+  title: string;
+  quantity: number;
 }
 
 interface CraftingPanelProps {
@@ -37,19 +40,21 @@ const PANEL = 'rounded-lg border border-amber-500/30 bg-black/85 backdrop-blur-s
 
 export default function CraftingPanelV2({ worldId, onClose }: CraftingPanelProps) {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
-  const [resources, setResources] = useState<ResourceBar[]>([]);
+  const [inventory, setInventory] = useState<InventoryRow[]>([]);
   const [crafting, setCrafting] = useState<string | null>(null);
   const [toast, setToast] = useState<{ kind: 'ok' | 'err'; msg: string } | null>(null);
 
-  useEffect(() => {
+  const refresh = useCallback(() => {
     Promise.all([
-      fetch('/api/crafting/recipes', { credentials: 'include' }).then((r) => r.json()).catch(() => null),
-      fetch(`/api/crafting/resource-bars/${encodeURIComponent(worldId)}`, { credentials: 'include' }).then((r) => r.json()).catch(() => null),
-    ]).then(([rec, bars]) => {
+      fetch('/api/starter/recipes', { credentials: 'include' }).then((r) => r.json()).catch(() => null),
+      fetch('/api/starter/inventory', { credentials: 'include' }).then((r) => r.json()).catch(() => null),
+    ]).then(([rec, inv]) => {
       setRecipes((rec?.recipes ?? []) as Recipe[]);
-      setResources((bars?.bars ?? bars?.resources ?? []) as ResourceBar[]);
+      setInventory((inv?.items ?? []) as InventoryRow[]);
     });
-  }, [worldId]);
+  }, []);
+
+  useEffect(() => { refresh(); }, [refresh]);
 
   const showToast = useCallback((kind: 'ok' | 'err', msg: string) => {
     setToast({ kind, msg });
@@ -59,26 +64,28 @@ export default function CraftingPanelV2({ worldId, onClose }: CraftingPanelProps
   const handleCraft = useCallback(async (recipe: Recipe) => {
     setCrafting(recipe.id);
     try {
-      const r = await fetch('/api/crafting/execute', {
+      const r = await fetch('/api/starter/craft', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ worldId, recipeId: recipe.id }),
+        body: JSON.stringify({ recipeId: recipe.id }),
       });
       const data = await r.json();
       if (data?.ok) {
         showToast('ok', `Crafted ${recipe.output.name}.`);
-        // Re-fetch resources.
-        fetch(`/api/crafting/resource-bars/${encodeURIComponent(worldId)}`, { credentials: 'include' })
-          .then((rr) => rr.json())
-          .then((bars) => setResources((bars?.bars ?? bars?.resources ?? []) as ResourceBar[]))
-          .catch(() => { /* ignore */ });
-        // GameJuice on craft.
+        refresh();
         try {
           window.dispatchEvent(new CustomEvent('concordia:game-juice', {
             detail: { trigger: 'craft-complete', opts: { value: recipe.output.name } },
           }));
+          window.dispatchEvent(new CustomEvent('concordia:tutorial-action', {
+            detail: { action: 'crafted' },
+          }));
         } catch { /* ok */ }
+      } else if (data?.error === 'insufficient_resources') {
+        const missing = (data.missing ?? []).map((m: { name: string; required: number; have: number }) =>
+          `${m.required - m.have}× ${m.name}`).join(', ');
+        showToast('err', `Need: ${missing}`);
       } else {
         showToast('err', data?.error ?? 'Craft failed');
       }
@@ -87,7 +94,9 @@ export default function CraftingPanelV2({ worldId, onClose }: CraftingPanelProps
     } finally {
       setCrafting(null);
     }
-  }, [worldId, showToast]);
+  // worldId no longer used — starter crafting is global, not world-scoped.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showToast, refresh]);
 
   return (
     <div className={`${PANEL} p-4 max-w-2xl w-full`}>
@@ -98,27 +107,16 @@ export default function CraftingPanelV2({ worldId, onClose }: CraftingPanelProps
         )}
       </div>
 
-      {/* Resource bars */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
-        {resources.map((r) => {
-          const pct = r.max > 0 ? Math.min(100, Math.round((r.current / r.max) * 100)) : 0;
-          return (
-            <div key={r.type} className="text-xs">
-              <div className="flex justify-between text-gray-400 mb-1">
-                <span>{r.type}</span>
-                <span className="font-mono">{r.current} / {r.max}</span>
-              </div>
-              <div className="h-1.5 bg-stone-800 rounded overflow-hidden">
-                <div
-                  className="h-full bg-amber-500"
-                  style={{ width: `${pct}%` }}
-                />
-              </div>
-            </div>
-          );
-        })}
-        {resources.length === 0 && (
-          <div className="col-span-full text-gray-500 italic text-xs">No resources gathered yet.</div>
+      {/* Inventory grid */}
+      <div className="grid grid-cols-3 md:grid-cols-4 gap-2 mb-4 text-xs">
+        {inventory.map((row) => (
+          <div key={`${row.type}_${row.title}`} className="flex justify-between items-center bg-black/40 border border-white/5 rounded px-2 py-1">
+            <span className="truncate text-gray-200">{row.title}</span>
+            <span className="font-mono text-amber-300">{row.quantity}</span>
+          </div>
+        ))}
+        {inventory.length === 0 && (
+          <div className="col-span-full text-gray-500 italic">Empty inventory. Right-click terrain to gather.</div>
         )}
       </div>
 
@@ -127,34 +125,38 @@ export default function CraftingPanelV2({ worldId, onClose }: CraftingPanelProps
         {recipes.length === 0 ? (
           <div className="text-gray-500 italic">No recipes available.</div>
         ) : (
-          recipes.map((recipe) => (
-            <div key={recipe.id} className="border border-white/10 rounded p-3 hover:border-amber-500/40">
-              <div className="flex items-center justify-between mb-2">
-                <div>
-                  <div className="text-amber-200 font-medium">{recipe.output.name}</div>
-                  <div className="text-[10px] text-gray-500 uppercase tracking-wider">
-                    {recipe.category ?? recipe.output.type}
+          recipes.map((recipe) => {
+            const canCraft = recipe.craftable !== false;
+            return (
+              <div key={recipe.id} className={`border rounded p-3 transition-colors ${canCraft ? 'border-white/10 hover:border-amber-500/40' : 'border-white/5 opacity-60'}`}>
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <div className="text-amber-200 font-medium">{recipe.output.name}</div>
+                    <div className="text-[10px] text-gray-500 uppercase tracking-wider">
+                      {recipe.category ?? recipe.output.type}
+                    </div>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => handleCraft(recipe)}
+                    disabled={crafting === recipe.id || !canCraft}
+                    className="px-3 py-1 bg-amber-600 hover:bg-amber-500 disabled:opacity-40 disabled:cursor-not-allowed rounded text-white text-xs"
+                    title={!canCraft ? `Missing: ${(recipe.missing ?? []).map(m => `${m.required - m.have}× ${m.name}`).join(', ')}` : undefined}
+                  >
+                    {crafting === recipe.id ? 'Crafting...' : canCraft ? 'Craft' : 'Need more'}
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleCraft(recipe)}
-                  disabled={crafting === recipe.id}
-                  className="px-3 py-1 bg-amber-600 hover:bg-amber-500 disabled:opacity-40 rounded text-white text-xs"
-                >
-                  {crafting === recipe.id ? 'Crafting...' : 'Craft'}
-                </button>
+                <div className="text-xs text-gray-400">
+                  Requires:&nbsp;
+                  {recipe.ingredients.map((ing, i) => (
+                    <span key={i} className="mr-2">
+                      {ing.quantity}x {ing.name ?? ing.type ?? ing.dtuId}
+                    </span>
+                  ))}
+                </div>
               </div>
-              <div className="text-xs text-gray-400">
-                Requires:&nbsp;
-                {recipe.ingredients.map((ing, i) => (
-                  <span key={i} className="mr-2">
-                    {ing.quantity}x {ing.name ?? ing.type ?? ing.dtuId}
-                  </span>
-                ))}
-              </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 

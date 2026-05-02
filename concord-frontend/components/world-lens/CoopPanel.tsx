@@ -22,6 +22,7 @@ interface CoopPanelProps {
   userId: string;
   isLeader?: boolean;
   onClose?: () => void;
+  onPartyCreated?: (partyId: string) => void;
 }
 
 const TAB = (active: boolean) =>
@@ -29,7 +30,45 @@ const TAB = (active: boolean) =>
 
 const PANEL = 'rounded-lg border border-violet-500/30 bg-black/85 backdrop-blur-sm';
 
-export default function CoopPanel({ partyId, userId, isLeader = false, onClose }: CoopPanelProps) {
+export default function CoopPanel({ partyId: partyIdProp, userId, isLeader = false, onClose, onPartyCreated }: CoopPanelProps) {
+  const [resolvedPartyId, setResolvedPartyId] = useState<string | undefined>(partyIdProp);
+  const [creating, setCreating] = useState(false);
+  const [partyName, setPartyName] = useState('');
+  const partyId = resolvedPartyId;
+
+  // If no partyId was provided, ask the server if the user is already in a
+  // party — they might have rejoined after a logout.
+  useEffect(() => {
+    if (resolvedPartyId) return;
+    fetch('/api/parties/me', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((d) => {
+        const id = d?.party?.id ?? d?.id;
+        if (id) setResolvedPartyId(id);
+      })
+      .catch(() => { /* silent */ });
+  }, [resolvedPartyId]);
+
+  const createParty = useCallback(async () => {
+    setCreating(true);
+    try {
+      const r = await fetch('/api/parties/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ name: partyName || 'My Party' }),
+      });
+      const data = await r.json();
+      const id = data?.party?.id ?? data?.id;
+      if (id) {
+        setResolvedPartyId(id);
+        onPartyCreated?.(id);
+      }
+    } finally {
+      setCreating(false);
+    }
+  }, [partyName, onPartyCreated]);
+
   const [tab, setTab] = useState<'party' | 'stash' | 'raid'>('party');
   const [members, setMembers] = useState<PartyMember[]>([]);
   const [stash, setStash] = useState<StashItem[]>([]);
@@ -149,8 +188,24 @@ export default function CoopPanel({ partyId, userId, isLeader = false, onClose }
           <h3 className="text-violet-300 font-semibold">Cooperative</h3>
           {onClose && <button onClick={onClose} className="text-gray-400 text-sm">close</button>}
         </div>
-        <div className="text-gray-500 italic text-sm">
-          You're not in a party yet. Create one or accept a party invite to unlock coop build, shared stash, and raids.
+        <p className="text-gray-400 text-sm mb-3">
+          Form a party to unlock coop build sites, a shared stash, and cross-world raids.
+        </p>
+        <div className="flex gap-2">
+          <input
+            value={partyName}
+            onChange={(e) => setPartyName(e.target.value)}
+            placeholder="Party name"
+            className="flex-1 bg-black/60 border border-white/10 rounded px-3 py-1.5 text-sm text-gray-200"
+          />
+          <button
+            type="button"
+            onClick={createParty}
+            disabled={creating}
+            className="px-4 py-1.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 rounded text-white text-sm"
+          >
+            {creating ? 'Creating…' : 'Create Party'}
+          </button>
         </div>
       </div>
     );

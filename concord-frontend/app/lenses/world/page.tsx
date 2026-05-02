@@ -163,6 +163,10 @@ const CurrencyHUD = dynamic(
   () => import('@/components/world-lens/CurrencyHUD'),
   { ssr: false },
 );
+const PostTutorialHints = dynamic(
+  () => import('@/components/world-lens/PostTutorialHints'),
+  { ssr: false },
+);
 const LevelUpJuiceBridge = dynamic(
   () => import('@/components/world-lens/LevelUpJuiceBridge').then((m) => ({ default: m.LevelUpJuiceBridge })),
   { ssr: false },
@@ -2499,12 +2503,21 @@ export default function WorldLensPage() {
 
   // Right-click gather: ConcordiaScene dispatches concordia:gather-request
   // with a world position. POST to /api/world/gather and surface a toast
-  // with the yielded resource. Tutorial advances on `gathered` action.
+  // with the yielded resource + visual feedback (avatar swing animation +
+  // particle burst at the gather point + floating yield text).
   useEffect(() => {
     const handler = async (e: Event) => {
       const detail = (e as CustomEvent).detail as { x: number; y: number; z: number } | undefined;
       if (!detail) return;
-      // Pick biome by district zone or fall back to forest.
+
+      // Immediate visual feedback before the network round-trip.
+      window.dispatchEvent(new CustomEvent('concordia:combat-anim', {
+        detail: { entityId: playerAvatar.id, animation: 'attack-light' },
+      }));
+      window.dispatchEvent(new CustomEvent('concordia:particle-effect', {
+        detail: { type: 'dust', position: detail, count: 16 },
+      }));
+
       const biome = activeDistrict.id?.includes('frontier') ? 'frontier'
         : activeDistrict.id?.includes('exchange') ? 'grassland'
         : activeDistrict.id?.includes('docks') ? 'water'
@@ -2524,10 +2537,14 @@ export default function WorldLensPage() {
             detail: { action: 'gathered' },
           }));
           window.dispatchEvent(new CustomEvent('concordia:game-juice', {
-            detail: { trigger: 'snap-click' },
+            detail: { trigger: 'coin-clink', opts: { value: `+${data.yield.quantity} ${data.yield.name}` } },
+          }));
+          // Floating yield text via the existing hit-number renderer.
+          window.dispatchEvent(new CustomEvent('concordia:floating-text', {
+            detail: { text: `+${data.yield.quantity} ${data.yield.name}`, position: detail, color: '#fbbf24' },
           }));
         } else if (data?.error === 'gather_cooldown') {
-          // silent — too fast
+          // Quiet — player is mashing.
         } else {
           pushCombatLog(`Gather failed: ${data?.error ?? 'unknown'}`, 'info');
         }
@@ -2535,7 +2552,7 @@ export default function WorldLensPage() {
     };
     window.addEventListener('concordia:gather-request', handler);
     return () => window.removeEventListener('concordia:gather-request', handler);
-  }, [activeDistrict.id, pushCombatLog]);
+  }, [activeDistrict.id, pushCombatLog, playerAvatar.id]);
 
   // Phase F fix 2: ConcordiaScene's canvas raycaster dispatches
   // `concordia:open-dialogue` when the player clicks an NPC mesh. Look up
@@ -3451,8 +3468,19 @@ export default function WorldLensPage() {
             <div className="absolute top-4 left-4 z-20 w-80 max-h-[70vh] overflow-auto pointer-events-auto">
               {/* QuestLog — detailed quest journal with active/available/completed tabs */}
               <QuestLog
-                /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-                quests={worldQuests as any}
+                quests={worldQuests.map((q) => ({
+                  id: q.id,
+                  title: q.title,
+                  description: q.description,
+                  status: (q.status === 'available' || q.status === 'active' || q.status === 'completed' || q.status === 'failed')
+                    ? q.status
+                    : 'available',
+                  domain: 'mainland',
+                  giverId: q.giver_npc_id ?? 'world',
+                  giverName: q.giver_npc_id ?? 'World',
+                  objectives: [],
+                  reward: { cc: 0, xp: 0, karmaBonus: 0 },
+                }))}
                 worldId={activeDistrict.id}
                 onClose={() => setShowPanel('none')}
               />
@@ -4450,6 +4478,9 @@ export default function WorldLensPage() {
           onDismiss={handleOnboardingComplete}
         />
       )}
+
+      {/* Post-tutorial hints — rotates contextual tips after first visit */}
+      {!showOnboarding && <PostTutorialHints />}
     </div>
   );
 }
