@@ -2762,6 +2762,7 @@ export default function WorldLensPage() {
             active={false}
           />
           <SoundscapeEngine
+            initialDistrict={activeDistrict.id}
             playerPosition={{
               x: playerAvatar.position.x,
               y: playerAvatar.position.y,
