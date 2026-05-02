@@ -26388,6 +26388,12 @@ app.use("/api/concord-link/walkers", createConcordLinkWalkersRouter({ requireAut
 import createBlackMarketRouter from "./routes/black-market.js";
 app.use("/api/black-market", createBlackMarketRouter({ requireAuth, db }));
 
+// Vehicles — cars, gliders, planes for big-world traversal. Mount/dismount
+// is server-authoritative; speed clamp in city-presence.js reads vehicleType
+// from the presence entry only.
+import createVehiclesRouter from "./routes/vehicles.js";
+app.use("/api/vehicles", createVehiclesRouter({ requireAuth, db }));
+
 // World travel — moves users between Concordia + sub-worlds, source of
 // truth for users.current_world (read by /api/concord-link/send).
 import createWorldTravelRouter from "./routes/world-travel.js";

@@ -21,13 +21,22 @@ import {
 import * as THREE from "three";
 
 // ── Constants ────────────────────────────────────────────────────────────────
+//
+// Phase D scale-up: world bounds expanded from 4km to 20km. Existing chunk
+// bookkeeping survives the change because chunks are computed from world
+// position; we simply have more chunks now. Frustum culling + the existing
+// LOD bands (kept unchanged) keep the render cost bounded. Vehicles can
+// reach 150 m/s (planes) so VIEW_DISTANCE is bumped to keep approach
+// detection viable; on weak machines this can be lowered without breaking
+// gameplay because anti-cheat is server-side.
 
-const WORLD_SIZE = 4000;
-const CHUNK_SIZE = 200;
-const VIEW_DISTANCE = 1200;
+const WORLD_SIZE = 20000;
+const CHUNK_SIZE = 1000;        // 1km terrain chunks → 20×20 grid
+const VIEW_DISTANCE = 5000;     // 5km — enough to see an approaching plane in time
 const PLAYER_SPEED = 50;
 const PLAYER_SPRINT_SPEED = 100;
 const PLAYER_HEIGHT = 1.8;
+const ACTIVE_CHUNK_RADIUS = 1;  // 3×3 grid of chunks loaded around the camera
 
 const DISTRICT_COLORS: Record<string, string> = {
   CREATIVE_QUARTER: "#e74c3c",
