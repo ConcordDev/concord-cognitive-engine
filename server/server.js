@@ -26353,6 +26353,12 @@ try {
 import createEvoAssetRouter from "./routes/evo-asset.js";
 app.use("/api/evo-asset", createEvoAssetRouter({ requireAuth, db }));
 
+// Wave 1 deferral 8: anomaly transparency. No admin role — world
+// creators have full control over their own world; everything else is
+// rule-governed via the heartbeat scan + a public transparency log.
+import createAnomaliesRouter from "./routes/anomalies.js";
+app.use("/api/anomalies", createAnomaliesRouter({ requireAuth, db }));
+
 // Bootstrap CC0 asset sources at startup. Best-effort — if network is
 // unavailable, the registry stays at whatever's already there.
 setTimeout(() => {
@@ -27740,6 +27746,9 @@ async function governorTick(reason="heartbeat") {
               // only surface on next page navigation.
               if (Array.isArray(newQuests) && newQuests.length > 0 && REALTIME?.io && cityPresence?.getUserIdsInCity) {
                 const recipients = cityPresence.getUserIdsInCity(npc.worldId) || [];
+                // Wave 1 deferral 9: record per-user archetype seen-count
+                // so future quest generation biases toward variety.
+                const archetypeBias = await import("./lib/quest-archetype-bias.js").catch(() => null);
                 for (const quest of newQuests) {
                   const payload = {
                     questId:    quest.id,
@@ -27750,8 +27759,11 @@ async function governorTick(reason="heartbeat") {
                     rewardJson: quest.reward_json,
                     ts:         nowISO(),
                   };
+                  const archetype = archetypeBias?.archetypeFor?.(npc, quest.need || null) || `npc:${npc.archetype || 'default'}`;
                   for (const userId of recipients) {
                     try { REALTIME.io.to(`user:${userId}`).emit('quest:new', payload); }
+                    catch (_e) { /* non-fatal */ }
+                    try { archetypeBias?.recordArchetypeSeen?.(db, userId, archetype); }
                     catch (_e) { /* non-fatal */ }
                   }
                 }

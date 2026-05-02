@@ -445,6 +445,34 @@ export function NPCDialogue({ npc, worldId, onClose, onQuestAccepted }: NPCDialo
     return () => window.removeEventListener('concordia:dialogue-barge-in', handler);
   }, [cancelSpeech]);
 
+  // Wave 1 deferral 6: voice activity detection during NPC speech.
+  // While isTalking, the VAD samples the player's mic and dispatches
+  // `concordia:dialogue-barge-in` when sustained speech is detected.
+  // The VAD only listens during NPC speech (no always-on mic), and the
+  // user must accept the browser's getUserMedia permission. Stops the
+  // moment isTalking flips to false.
+  useEffect(() => {
+    if (!isTalking || muted) return;
+    let cancelled = false;
+    let vadHandle: { stop: () => void } | null = null;
+    (async () => {
+      try {
+        const { createDialogueBargeInVAD } = await import('@/lib/voice/vad');
+        const vad = createDialogueBargeInVAD();
+        const ok = await vad.start();
+        if (cancelled) {
+          vad.stop();
+          return;
+        }
+        if (ok) vadHandle = vad;
+      } catch { /* VAD is best-effort */ }
+    })();
+    return () => {
+      cancelled = true;
+      vadHandle?.stop();
+    };
+  }, [isTalking, muted]);
+
   // ── Open dialogue ────────────────────────────────────────────────────────────
   useEffect(() => {
     let cancelled = false;

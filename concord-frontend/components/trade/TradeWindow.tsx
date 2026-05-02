@@ -13,6 +13,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { subscribe } from '@/lib/realtime/socket';
 import { useUIStore } from '@/store/ui';
+import { TradeInventorySidebar, readDraggedTradeItem } from './TradeInventorySidebar';
 
 interface OfferItem {
   inventoryId: string;
@@ -160,7 +161,8 @@ export function TradeWindow({ tradeId, myUserId, initiatorId, recipientId, onClo
           <span className="text-xs text-gray-500">{tradeId.slice(0, 8)}</span>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-[auto_1fr_1fr] gap-4 mb-4">
+          {!myReady && !isComplete && <TradeInventorySidebar />}
           <OfferPane
             title="Your offer"
             offer={myOffer}
@@ -214,8 +216,56 @@ function OfferPane({
   ready?: boolean;
   onChange?: (next: Offer) => void;
 }) {
+  const [dragOver, setDragOver] = useState(false);
+
+  const handleDragOver = (e: React.DragEvent) => {
+    if (!editable || !onChange) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (!dragOver) setDragOver(true);
+  };
+
+  const handleDragLeave = () => {
+    if (dragOver) setDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    if (!editable || !onChange) return;
+    e.preventDefault();
+    setDragOver(false);
+    const item = readDraggedTradeItem(e);
+    if (!item) return;
+    // Append (or merge with existing entry of same inventoryId).
+    const existing = offer.items.find((it) => it.inventoryId === item.inventoryId);
+    let nextItems: OfferItem[];
+    if (existing) {
+      nextItems = offer.items.map((it) =>
+        it.inventoryId === item.inventoryId
+          ? { ...it, quantity: Math.min(item.maxQuantity, it.quantity + 1) }
+          : it,
+      );
+    } else {
+      nextItems = [...offer.items, { inventoryId: item.inventoryId, quantity: 1, itemName: item.itemName }];
+    }
+    onChange({ ...offer, items: nextItems });
+  };
+
+  const removeItem = (inventoryId: string) => {
+    if (!editable || !onChange) return;
+    onChange({ ...offer, items: offer.items.filter((it) => it.inventoryId !== inventoryId) });
+  };
+
   return (
-    <div className="bg-gray-800/60 border border-gray-700 rounded p-3">
+    <div
+      className={
+        dragOver
+          ? 'bg-cyan-500/10 border-2 border-cyan-400 rounded p-3 transition-colors'
+          : 'bg-gray-800/60 border border-gray-700 rounded p-3'
+      }
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-sm font-semibold text-gray-300">{title}</h3>
         {ready !== undefined && (
@@ -226,23 +276,28 @@ function OfferPane({
       </div>
       <div className="space-y-1 text-xs text-gray-300 min-h-[60px]">
         {offer.items.length === 0 && offer.cc === 0 && offer.sparks === 0 && (
-          <div className="text-gray-500 italic">Nothing offered</div>
+          <div className="text-gray-500 italic">
+            {editable ? 'Drag items from your inventory →' : 'Nothing offered'}
+          </div>
         )}
         {offer.items.map((it) => (
-          <div key={it.inventoryId} className="flex justify-between">
+          <div key={it.inventoryId} className="flex justify-between items-center group">
             <span>{it.itemName || it.inventoryId.slice(0, 8)}</span>
-            <span className="text-gray-400">×{it.quantity}</span>
+            <span className="text-gray-400 ml-2">×{it.quantity}</span>
+            {editable && (
+              <button
+                onClick={() => removeItem(it.inventoryId)}
+                className="ml-1 text-red-400/0 group-hover:text-red-400 text-[10px] px-1"
+                title="Remove from offer"
+              >
+                ×
+              </button>
+            )}
           </div>
         ))}
         {offer.cc > 0 && <div className="text-yellow-400">{offer.cc} CC</div>}
         {offer.sparks > 0 && <div className="text-amber-300">{offer.sparks} sparks</div>}
       </div>
-      {editable && onChange && (
-        <div className="mt-2 pt-2 border-t border-gray-700 text-[10px] text-gray-500">
-          Drag inventory items here (TODO: inventory picker integration). Edit
-          coin amounts via the inventory lens.
-        </div>
-      )}
     </div>
   );
 }
