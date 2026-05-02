@@ -817,6 +817,19 @@ export default function ConcordiaScene({
           frameTime: Math.round(frameTime * 10) / 10,
         });
 
+        // Telemetry feed for the PerformanceOverlay + server aggregator.
+        try {
+          window.dispatchEvent(new CustomEvent('concordia:perf-budget', {
+            detail: {
+              fps: avgFps,
+              frameTime,
+              drawCalls: info.render.calls,
+              triangles: info.render.triangles,
+              textureMemory: (info.memory?.textures ?? 0) * 4,
+            },
+          }));
+        } catch { /* event dispatch silent */ }
+
         frameIdRef.current = requestAnimationFrame(gameLoop);
       }
 

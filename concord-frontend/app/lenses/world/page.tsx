@@ -139,6 +139,10 @@ const AnimationManager = dynamic(() => import('@/components/world-lens/Animation
   ssr: false,
 });
 const GameJuice = dynamic(() => import('@/components/world-lens/GameJuice'), { ssr: false });
+const PerformanceOverlay = dynamic(
+  () => import('@/components/world-lens/PerformanceOverlay'),
+  { ssr: false },
+);
 const LevelUpJuiceBridge = dynamic(
   () => import('@/components/world-lens/LevelUpJuiceBridge').then((m) => ({ default: m.LevelUpJuiceBridge })),
   { ssr: false },
@@ -2270,8 +2274,25 @@ export default function WorldLensPage() {
     worldSocket.on('city:positions', handleCityPositions);
     worldSocket.on('player:move:ack', handleMoveAck);
     worldSocket.on('player:move:nack', handleMoveNack);
+    const handleCombatDodgeAck = (msg: unknown) => {
+      const data = msg as { userId?: string; direction?: 'left' | 'right' | 'back' };
+      if (!data?.userId) return;
+      const dir = data.direction === 'left' ? 'dodge-left' : data.direction === 'right' ? 'dodge-right' : 'dodge-back';
+      window.dispatchEvent(new CustomEvent('concordia:combat-anim', {
+        detail: { entityId: data.userId, animation: dir },
+      }));
+    };
+    const handleCombatBlockAck = (msg: unknown) => {
+      const data = msg as { userId?: string; active?: boolean };
+      if (!data?.userId) return;
+      window.dispatchEvent(new CustomEvent('concordia:combat-anim', {
+        detail: { entityId: data.userId, animation: data.active ? 'block' : 'idle' },
+      }));
+    };
     worldSocket.on('combat:attack:ack', handleCombatAck);
     worldSocket.on('combat:hit', handleCombatHit);
+    worldSocket.on('combat:dodge:ack', handleCombatDodgeAck);
+    worldSocket.on('combat:block:ack', handleCombatBlockAck);
     worldSocket.on('combat:kill', handleCombatKill);
     worldSocket.on('player:respawn:ack', handleRespawnAck);
     worldSocket.on('world:notification', handleWorldNotification);
@@ -2286,6 +2307,8 @@ export default function WorldLensPage() {
       worldSocket.off('player:move:nack', handleMoveNack);
       worldSocket.off('combat:attack:ack', handleCombatAck);
       worldSocket.off('combat:hit', handleCombatHit);
+      worldSocket.off('combat:dodge:ack', handleCombatDodgeAck);
+      worldSocket.off('combat:block:ack', handleCombatBlockAck);
       worldSocket.off('combat:kill', handleCombatKill);
       worldSocket.off('player:respawn:ack', handleRespawnAck);
       worldSocket.off('world:notification', handleWorldNotification);
@@ -2487,23 +2510,45 @@ export default function WorldLensPage() {
       return;
     }
     if (!worldSocket.isConnected) return;
+    const heavy = (combatStateRef.current.weapon?.damage ?? 10) > 18;
+    window.dispatchEvent(new CustomEvent('concordia:combat-anim', {
+      detail: { entityId: playerAvatar.id, animation: heavy ? 'attack-heavy' : 'attack-light' },
+    }));
     worldSocket.emit('combat:attack', {
       targetId: target.id,
       baseDamage: combatStateRef.current.weapon?.damage ?? 10,
       range: 3,
       armorPierce: 0,
     });
-  }, [worldSocket, pushCombatLog]);
+  }, [worldSocket, pushCombatLog, playerAvatar.id]);
 
   const handleBlock = useCallback(() => {
     // Block raises cover bonus briefly; reflects client-side until
     // the server-side block action is wired.
     setCombatState((prev) => ({ ...prev, coverBonus: Math.max(prev.coverBonus, 20) }));
     pushCombatLog('Blocking — damage reduced while holding.', 'block');
+    window.dispatchEvent(new CustomEvent('concordia:combat-anim', {
+      detail: { entityId: playerAvatar.id, animation: 'block' },
+    }));
     setTimeout(() => {
       setCombatState((prev) => ({ ...prev, coverBonus: 0 }));
     }, 2000);
-  }, [pushCombatLog]);
+  }, [pushCombatLog, playerAvatar.id]);
+
+  const handleDodge = useCallback((direction: 'left' | 'right' | 'back' = 'back') => {
+    if (combatStateRef.current.stamina < 15) {
+      pushCombatLog('Too tired to dodge.', 'info');
+      return;
+    }
+    setCombatState((prev) => ({ ...prev, stamina: Math.max(0, prev.stamina - 15) }));
+    const anim = direction === 'left' ? 'dodge-left' : direction === 'right' ? 'dodge-right' : 'dodge-back';
+    window.dispatchEvent(new CustomEvent('concordia:combat-anim', {
+      detail: { entityId: playerAvatar.id, animation: anim },
+    }));
+    if (worldSocket.isConnected) {
+      worldSocket.emit('combat:dodge', { direction });
+    }
+  }, [worldSocket, pushCombatLog, playerAvatar.id]);
 
   const handleRespawn = useCallback(() => {
     if (!worldSocket.isConnected) return;
@@ -2782,9 +2827,16 @@ export default function WorldLensPage() {
           <BuildingRenderer3D buildings={[]} viewMode="normal" />
           <SkyWeatherRenderer
             timeOfDay={12}
-            weather="clear"
+            weather={(() => {
+              const t = weatherData?.type ?? 'clear';
+              if (t === 'clear' || t === 'rain' || t === 'snow' || t === 'fog' || t === 'overcast' || t === 'storm') return t;
+              if (t === 'heavy_rain') return 'rain';
+              if (t === 'blizzard') return 'snow';
+              if (t === 'sandstorm') return 'fog';
+              return 'clear';
+            })()}
             windDirection={0}
-            windSpeed={2}
+            windSpeed={2 + (weatherData?.intensity ?? 0) * 6}
             season="summer"
             quality="medium"
           />
@@ -2819,6 +2871,7 @@ export default function WorldLensPage() {
             <></>
           </GameJuice>
           <LevelUpJuiceBridge />
+          <PerformanceOverlay />
           <SocialOverlay
             myUserId={playerAvatar.id}
             nearbyPlayers={otherPlayers.map((p) => ({ id: p.id, name: p.name }))}

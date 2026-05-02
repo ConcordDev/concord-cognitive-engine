@@ -265,6 +265,11 @@ export default function SoundscapeEngine({
   const droneGainRef    = useRef<GainNode | null>(null);
   const noiseGainRef    = useRef<GainNode | null>(null);
   const musicElRef      = useRef<HTMLAudioElement | null>(null);
+  const weatherSrcRef   = useRef<AudioBufferSourceNode | null>(null);
+  const weatherGainRef  = useRef<GainNode | null>(null);
+  const weatherFilterRef = useRef<BiquadFilterNode | null>(null);
+  const weatherRumbleRef = useRef<OscillatorNode | null>(null);
+  const weatherRumbleGainRef = useRef<GainNode | null>(null);
 
   // SFX queued before AudioContext is unlocked. Flushed on statechange.
   // 2s TTL, 32-entry cap to prevent unbounded growth.
@@ -393,10 +398,81 @@ export default function SoundscapeEngine({
     } catch { /* older Safari may not support AudioParam on listener */ }
   }, [playerPosition]);
 
+  // Weather audio bridge: rain hiss + storm rumble + ducks district drone & music.
+  // Storm/rain partially drown the district ambience; clear/wind reset to baseline.
+  useEffect(() => {
+    const ctx = audioCtxRef.current;
+    if (!ctx || ctx.state === 'closed' || !masterGainRef.current) return;
+
+    const now = ctx.currentTime;
+    const intensity = Math.max(0, Math.min(1, state.weatherIntensity || 0));
+    const w = state.weather;
+
+    // Master ducking: storm hard-ducks (~50%), rain mid-ducks, snow soft-ducks.
+    const duckMap: Record<WeatherType, number> = {
+      clear: 1.0, wind: 0.92, snow: 0.85, rain: 0.7, storm: 0.5,
+    };
+    const targetMaster = 0.6 * (1 - (1 - duckMap[w]) * intensity);
+    try { masterGainRef.current.gain.linearRampToValueAtTime(targetMaster, now + 0.8); } catch { /* ok */ }
+
+    // Music element ducking (HTMLAudioElement bypasses Web Audio gain unless routed).
+    if (musicElRef.current) {
+      const target = (w === 'storm' ? 0.35 : w === 'rain' ? 0.6 : 1.0);
+      musicElRef.current.volume = Math.max(0, Math.min(1, 0.7 * (1 - (1 - target) * intensity)));
+    }
+
+    // Rain / snow noise layer.
+    const wantsHiss = (w === 'rain' || w === 'storm' || w === 'snow' || w === 'wind') && intensity > 0.05;
+    if (wantsHiss && !weatherSrcRef.current) {
+      const bufSize = ctx.sampleRate * 2;
+      const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
+      const src = ctx.createBufferSource();
+      src.buffer = buf; src.loop = true;
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'highpass';
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0, now);
+      src.connect(filter); filter.connect(gain); gain.connect(masterGainRef.current);
+      try { src.start(); } catch { /* ok */ }
+      weatherSrcRef.current = src;
+      weatherFilterRef.current = filter;
+      weatherGainRef.current = gain;
+    }
+    if (weatherFilterRef.current && weatherGainRef.current) {
+      const cutoff = w === 'snow' ? 6000 : w === 'wind' ? 800 : w === 'storm' ? 1200 : 2200;
+      const vol = (w === 'storm' ? 0.18 : w === 'rain' ? 0.12 : w === 'snow' ? 0.05 : w === 'wind' ? 0.09 : 0) * intensity;
+      try {
+        weatherFilterRef.current.frequency.linearRampToValueAtTime(cutoff, now + 0.8);
+        weatherGainRef.current.gain.linearRampToValueAtTime(vol, now + 0.8);
+      } catch { /* ok */ }
+    }
+
+    // Storm rumble: low sub bass that pulses.
+    const wantsRumble = w === 'storm' && intensity > 0.1;
+    if (wantsRumble && !weatherRumbleRef.current) {
+      const osc = ctx.createOscillator();
+      osc.type = 'sine'; osc.frequency.setValueAtTime(40, now);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0, now);
+      osc.connect(g); g.connect(masterGainRef.current);
+      try { osc.start(); } catch { /* ok */ }
+      weatherRumbleRef.current = osc;
+      weatherRumbleGainRef.current = g;
+    }
+    if (weatherRumbleGainRef.current) {
+      const vol = wantsRumble ? 0.08 * intensity : 0;
+      try { weatherRumbleGainRef.current.gain.linearRampToValueAtTime(vol, now + 0.8); } catch { /* ok */ }
+    }
+  }, [state.weather, state.weatherIntensity]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       try { droneOscRef.current?.stop(); } catch { /* ok */ }
+      try { weatherSrcRef.current?.stop(); } catch { /* ok */ }
+      try { weatherRumbleRef.current?.stop(); } catch { /* ok */ }
       musicElRef.current?.pause();
     };
   }, []);

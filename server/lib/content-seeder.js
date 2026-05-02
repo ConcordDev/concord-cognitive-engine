@@ -86,6 +86,14 @@ function seedNPCs(npcs) {
   let count = 0;
   for (const npc of npcs) {
     _authoredNPCs.set(npc.id, npc);
+    // Apply authored per-NPC schedule overrides via npc-schedules.
+    if (npc.schedule && typeof npc.schedule === "object") {
+      try {
+        // Lazy import — npc-schedules is ESM, top-level import would fight
+        // content-seeder's mixed cjs/esm context.
+        import("./npc-schedules.js").then(m => m.setNPCSchedule(npc.id, npc.schedule)).catch(() => {});
+      } catch { /* schedule application is best-effort */ }
+    }
     count++;
   }
   return count;

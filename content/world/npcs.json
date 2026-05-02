@@ -9,19 +9,53 @@
     "is_immortal": true,
     "quest_giver": true,
     "level": 12,
-    "backstory": "Maren catalogued the great library for thirty years before the Purge erased half its contents in a single night. She watched the locks on Vault Seventeen open from the outside and has never forgotten it. For thirty years since, she has been building a shadow archive in secret — reconstructing destroyed texts from memory, fragments, and contraband copies. She believes the Purge was ordered, not accidental, and she believes she now has enough proof to act.",
-    "personality_traits": ["methodical", "paranoid", "deeply principled", "slow to trust"],
+    "backstory": "Maren catalogued the great library for thirty years before the Purge erased half its contents in a single night. She watched the locks on Vault Seventeen open from the outside and has never forgotten it. For thirty years since, she has been building a shadow archive in secret \u2014 reconstructing destroyed texts from memory, fragments, and contraband copies. She believes the Purge was ordered, not accidental, and she believes she now has enough proof to act.",
+    "personality_traits": [
+      "methodical",
+      "paranoid",
+      "deeply principled",
+      "slow to trust"
+    ],
     "speech_patterns": "Speaks in precise, citation-heavy sentences. Never uses contractions. References specific dates and vault numbers from memory. Pauses before answering direct questions.",
-    "quest_hooks": ["shadow_archive_discovery", "purge_investigation", "vault_seventeen_key"],
+    "quest_hooks": [
+      "shadow_archive_discovery",
+      "purge_investigation",
+      "vault_seventeen_key"
+    ],
     "relationships": [
-      {"npc_id": "warden_voss", "type": "deep_distrust", "notes": "Maren knows Voss was on duty the night of the Purge. She does not yet know he authorized it."},
-      {"npc_id": "broker_sael", "type": "uneasy_alliance", "notes": "Sael provides Maren with information she cannot obtain through official channels. The price is always ambiguous."},
-      {"npc_id": "scribe_tollan", "type": "trusted_colleague", "notes": "Tollan is the only person who knows the full location of the shadow archive."}
+      {
+        "npc_id": "warden_voss",
+        "type": "deep_distrust",
+        "notes": "Maren knows Voss was on duty the night of the Purge. She does not yet know he authorized it."
+      },
+      {
+        "npc_id": "broker_sael",
+        "type": "uneasy_alliance",
+        "notes": "Sael provides Maren with information she cannot obtain through official channels. The price is always ambiguous."
+      },
+      {
+        "npc_id": "scribe_tollan",
+        "type": "trusted_colleague",
+        "notes": "Tollan is the only person who knows the full location of the shadow archive."
+      }
     ],
     "narrative_context": {
       "current_goal": "Find someone trustworthy enough to carry Vault Seventeen's reconstruction to the public record before the Wardens discover the shadow archive.",
       "secret": "She has already identified the individual who opened Vault Seventeen's lock. The name is Warden Commander Voss.",
       "fear": "That exposing the truth will cause open war in Concordia and destroy the city she has spent her life serving."
+    },
+    "schedule": {
+      "dawn": "rest",
+      "morning": "work",
+      "midday": "rest",
+      "afternoon": "work",
+      "dusk": "work",
+      "night": "work"
+    },
+    "schedule_locations": {
+      "work": "shadow_archive",
+      "rest": "private_quarters_archive",
+      "socialize": "private_quarters_archive"
     }
   },
   {
@@ -34,18 +68,47 @@
     "is_immortal": false,
     "quest_giver": true,
     "level": 7,
-    "backstory": "Tollan was a junior scribe during the Purge and survived by being off-site that night, attending a trade festival. The guilt of survival has made him meticulous to the point of obsession. He transcribes everything — conversations, overheard arguments, dates, names. His personal journals, kept in cipher, are the most complete record of Concordia's last thirty years. He has never shown them to anyone except Maren.",
-    "personality_traits": ["meticulous", "guilt-driven", "deeply loyal to Maren", "socially anxious"],
+    "backstory": "Tollan was a junior scribe during the Purge and survived by being off-site that night, attending a trade festival. The guilt of survival has made him meticulous to the point of obsession. He transcribes everything \u2014 conversations, overheard arguments, dates, names. His personal journals, kept in cipher, are the most complete record of Concordia's last thirty years. He has never shown them to anyone except Maren.",
+    "personality_traits": [
+      "meticulous",
+      "guilt-driven",
+      "deeply loyal to Maren",
+      "socially anxious"
+    ],
     "speech_patterns": "Speaks quickly and apologizes often. Frequently references specific dates. Has a habit of writing in the air with his finger when thinking.",
-    "quest_hooks": ["tollan_cipher_journals", "first_contact_scholars"],
+    "quest_hooks": [
+      "tollan_cipher_journals",
+      "first_contact_scholars"
+    ],
     "relationships": [
-      {"npc_id": "archivist_maren", "type": "trusted_colleague", "notes": "Would do anything Maren asks, possibly including things she has not asked him to do yet."},
-      {"npc_id": "captain_rael", "type": "cautious_acquaintance", "notes": "Tollan and Rael were childhood neighbors. The relationship is strained by their factions but not severed."}
+      {
+        "npc_id": "archivist_maren",
+        "type": "trusted_colleague",
+        "notes": "Would do anything Maren asks, possibly including things she has not asked him to do yet."
+      },
+      {
+        "npc_id": "captain_rael",
+        "type": "cautious_acquaintance",
+        "notes": "Tollan and Rael were childhood neighbors. The relationship is strained by their factions but not severed."
+      }
     ],
     "narrative_context": {
       "current_goal": "Protect the shadow archive's location and complete the transcription of the final recovered vault manifest.",
       "secret": "His journals contain an eyewitness account, third-hand but corroborated, placing Voss at the archive gates the night of the Purge.",
       "fear": "Being found with the journals before Maren has a plan to use them safely."
+    },
+    "schedule": {
+      "dawn": "work",
+      "morning": "work",
+      "midday": "work",
+      "afternoon": "work",
+      "dusk": "socialize",
+      "night": "rest"
+    },
+    "schedule_locations": {
+      "work": "main_archive_reading_room",
+      "rest": "scribe_dormitory",
+      "socialize": "shadow_archive"
     }
   },
   {
@@ -58,18 +121,48 @@
     "is_immortal": false,
     "quest_giver": true,
     "level": 5,
-    "backstory": "Yshe joined the Guild not from ideology but from greed — she discovered early that rare texts could be sold for remarkable sums. Over twenty years of brokering forbidden books, she developed genuine reverence for what she traded. She now works primarily for the Guild but maintains independent contacts in every faction, including the Shadow Network. She is the Guild's unofficial intelligence officer.",
-    "personality_traits": ["pragmatic", "charming", "opportunistic", "ultimately principled under pressure"],
+    "backstory": "Yshe joined the Guild not from ideology but from greed \u2014 she discovered early that rare texts could be sold for remarkable sums. Over twenty years of brokering forbidden books, she developed genuine reverence for what she traded. She now works primarily for the Guild but maintains independent contacts in every faction, including the Shadow Network. She is the Guild's unofficial intelligence officer.",
+    "personality_traits": [
+      "pragmatic",
+      "charming",
+      "opportunistic",
+      "ultimately principled under pressure"
+    ],
     "speech_patterns": "Breezy and conversational. Uses market metaphors. Laughs frequently. Drops the charm immediately when the situation becomes serious.",
-    "quest_hooks": ["relic_retrieval", "faction_quests_scholars_1"],
+    "quest_hooks": [
+      "relic_retrieval",
+      "faction_quests_scholars_1"
+    ],
     "relationships": [
-      {"npc_id": "broker_sael", "type": "professional_rivals", "notes": "They compete for the same black-market texts. They also occasionally share intelligence. Neither fully trusts the other."},
-      {"npc_id": "factor_cade", "type": "old_acquaintance", "notes": "Yshe sold Cade his first contraband map fifteen years ago. He has never forgiven or forgotten the favor it put him in."}
+      {
+        "npc_id": "broker_sael",
+        "type": "professional_rivals",
+        "notes": "They compete for the same black-market texts. They also occasionally share intelligence. Neither fully trusts the other."
+      },
+      {
+        "npc_id": "factor_cade",
+        "type": "old_acquaintance",
+        "notes": "Yshe sold Cade his first contraband map fifteen years ago. He has never forgiven or forgotten the favor it put him in."
+      }
     ],
     "narrative_context": {
       "current_goal": "Locate and secure the remaining three fragments of the Vault Seventeen manifest before the Shadow Network sells them to the Wardens.",
       "secret": "She already has one fragment hidden in a market stall she controls under a false name.",
       "fear": "Getting caught between factions once the truth about the Purge goes public."
+    },
+    "schedule": {
+      "dawn": "travel",
+      "morning": "trade",
+      "midday": "trade",
+      "afternoon": "travel",
+      "dusk": "socialize",
+      "night": "rest"
+    },
+    "schedule_locations": {
+      "trade": "market_district_stalls",
+      "travel": "trade_road_north",
+      "socialize": "merchant_quarter_taverns",
+      "rest": "merchant_quarter_taverns"
     }
   },
   {
@@ -82,18 +175,47 @@
     "is_immortal": true,
     "quest_giver": true,
     "level": 15,
-    "backstory": "Voss rose from street patrol to commander over forty years of service. He is genuinely devoted to Concordia's stability — which is precisely why, thirty years ago, he authorized the burning of Vault Seventeen. The texts inside, he was told, would destabilize the Compact by exposing the Trade War collusion. He believed it then. He believes it now. He has spent thirty years watching for signs that the secret is unraveling.",
-    "personality_traits": ["authoritative", "pragmatic about ethics", "genuinely believes he was right", "aging into doubt"],
+    "backstory": "Voss rose from street patrol to commander over forty years of service. He is genuinely devoted to Concordia's stability \u2014 which is precisely why, thirty years ago, he authorized the burning of Vault Seventeen. The texts inside, he was told, would destabilize the Compact by exposing the Trade War collusion. He believed it then. He believes it now. He has spent thirty years watching for signs that the secret is unraveling.",
+    "personality_traits": [
+      "authoritative",
+      "pragmatic about ethics",
+      "genuinely believes he was right",
+      "aging into doubt"
+    ],
     "speech_patterns": "Measured, formal, rarely raises his voice. Every sentence is constructed to be unquotable out of context. Trained diplomat.",
-    "quest_hooks": ["faction_quests_wardens_1", "the_reckoning"],
+    "quest_hooks": [
+      "faction_quests_wardens_1",
+      "the_reckoning"
+    ],
     "relationships": [
-      {"npc_id": "archivist_maren", "type": "monitored_threat", "notes": "Voss has known for years that Maren suspects him. He has been watching her, not acting — hoping she will run out of time."},
-      {"npc_id": "captain_rael", "type": "commanding_officer_troubled", "notes": "Rael is the best officer Voss has ever commanded. Voss has been trying to decide whether to tell Rael the truth or order him to bury it."}
+      {
+        "npc_id": "archivist_maren",
+        "type": "monitored_threat",
+        "notes": "Voss has known for years that Maren suspects him. He has been watching her, not acting \u2014 hoping she will run out of time."
+      },
+      {
+        "npc_id": "captain_rael",
+        "type": "commanding_officer_troubled",
+        "notes": "Rael is the best officer Voss has ever commanded. Voss has been trying to decide whether to tell Rael the truth or order him to bury it."
+      }
     ],
     "narrative_context": {
       "current_goal": "Find and destroy the shadow archive before Maren can use it. Preferably without violence.",
       "secret": "He is the one who opened Vault Seventeen's lock. He has never told anyone.",
-      "fear": "Not being punished — he can survive that. Dying before he can explain that he did it for the city."
+      "fear": "Not being punished \u2014 he can survive that. Dying before he can explain that he did it for the city."
+    },
+    "schedule": {
+      "dawn": "rest",
+      "morning": "work",
+      "midday": "work",
+      "afternoon": "work",
+      "dusk": "patrol",
+      "night": "rest"
+    },
+    "schedule_locations": {
+      "work": "warden_hq_command_office",
+      "patrol": "east_district_patrol_route",
+      "rest": "warden_quarters_senior_wing"
     }
   },
   {
@@ -106,18 +228,49 @@
     "is_immortal": false,
     "quest_giver": true,
     "level": 9,
-    "backstory": "Rael became a Warden to protect people — a distinction she draws sharply from protecting power. She has served honorably for fifteen years. Three months ago, while reviewing legacy incident reports, she found a discrepancy in the Purge investigation: a witness statement that was suppressed, citing 'operational security.' She does not yet know what it means. She has told no one she found it.",
-    "personality_traits": ["principled", "methodical", "conflict-averse until cornered", "quietly furious when lied to"],
+    "backstory": "Rael became a Warden to protect people \u2014 a distinction she draws sharply from protecting power. She has served honorably for fifteen years. Three months ago, while reviewing legacy incident reports, she found a discrepancy in the Purge investigation: a witness statement that was suppressed, citing 'operational security.' She does not yet know what it means. She has told no one she found it.",
+    "personality_traits": [
+      "principled",
+      "methodical",
+      "conflict-averse until cornered",
+      "quietly furious when lied to"
+    ],
     "speech_patterns": "Direct and professional. Asks clarifying questions before drawing conclusions. Visibly uncomfortable with moral ambiguity.",
-    "quest_hooks": ["warden_crackdown", "faction_quests_wardens_2", "captain_rael_disclosure"],
+    "quest_hooks": [
+      "warden_crackdown",
+      "faction_quests_wardens_2",
+      "captain_rael_disclosure"
+    ],
     "relationships": [
-      {"npc_id": "warden_voss", "type": "commanding_officer_troubled", "notes": "She respects Voss's record deeply and is terrified of what the suppressed witness statement implies."},
-      {"npc_id": "scribe_tollan", "type": "cautious_acquaintance", "notes": "Childhood neighbors. She has not contacted him since finding the discrepancy, but she has been thinking about it."}
+      {
+        "npc_id": "warden_voss",
+        "type": "commanding_officer_troubled",
+        "notes": "She respects Voss's record deeply and is terrified of what the suppressed witness statement implies."
+      },
+      {
+        "npc_id": "scribe_tollan",
+        "type": "cautious_acquaintance",
+        "notes": "Childhood neighbors. She has not contacted him since finding the discrepancy, but she has been thinking about it."
+      }
     ],
     "narrative_context": {
       "current_goal": "Determine whether the suppressed witness statement is significant without alerting Voss that she found it.",
       "secret": "The suppressed statement names a Warden officer placing archive vaults in a 'secured for demolition' state the afternoon before the Purge.",
       "fear": "That the institution she has given her life to ordered a crime, and that she will have to choose between the institution and the truth."
+    },
+    "schedule": {
+      "dawn": "guard",
+      "morning": "patrol",
+      "midday": "patrol",
+      "afternoon": "guard",
+      "dusk": "socialize",
+      "night": "rest"
+    },
+    "schedule_locations": {
+      "guard": "east_gate_post",
+      "patrol": "city_wall_route_alpha",
+      "socialize": "warden_mess_hall",
+      "rest": "warden_quarters_junior_wing"
     }
   },
   {
@@ -130,18 +283,48 @@
     "is_immortal": false,
     "quest_giver": true,
     "level": 8,
-    "backstory": "Cade has run the Collective's public-facing operations for twenty years. She is not corrupt — she simply operates in a system where the line between legitimate business and arranged advantage is invisible to most. She genuinely does not know about the Trade War documents that motivated the Purge. When she finds out, she will have to decide whether to protect the Collective or the truth.",
-    "personality_traits": ["efficient", "loyal to the institution", "privately uneasy", "genuinely fair-minded within constraints"],
-    "speech_patterns": "Speaks in brief, declarative sentences. No unnecessary words. Uncomfortable with ambiguity — will ask you to be specific.",
-    "quest_hooks": ["merchants_dilemma", "faction_quests_merchants_1"],
+    "backstory": "Cade has run the Collective's public-facing operations for twenty years. She is not corrupt \u2014 she simply operates in a system where the line between legitimate business and arranged advantage is invisible to most. She genuinely does not know about the Trade War documents that motivated the Purge. When she finds out, she will have to decide whether to protect the Collective or the truth.",
+    "personality_traits": [
+      "efficient",
+      "loyal to the institution",
+      "privately uneasy",
+      "genuinely fair-minded within constraints"
+    ],
+    "speech_patterns": "Speaks in brief, declarative sentences. No unnecessary words. Uncomfortable with ambiguity \u2014 will ask you to be specific.",
+    "quest_hooks": [
+      "merchants_dilemma",
+      "faction_quests_merchants_1"
+    ],
     "relationships": [
-      {"npc_id": "broker_sael", "type": "professional_distrust", "notes": "Cade suspects Sael is selling information about the Collective's internal deliberations. She has no proof."},
-      {"npc_id": "lorekeeper_yshe", "type": "old_acquaintance", "notes": "Yshe sold Cade a contraband map fifteen years ago. Cade still owes her a favor she has never been asked to repay — which makes her more nervous than the debt itself."}
+      {
+        "npc_id": "broker_sael",
+        "type": "professional_distrust",
+        "notes": "Cade suspects Sael is selling information about the Collective's internal deliberations. She has no proof."
+      },
+      {
+        "npc_id": "lorekeeper_yshe",
+        "type": "old_acquaintance",
+        "notes": "Yshe sold Cade a contraband map fifteen years ago. Cade still owes her a favor she has never been asked to repay \u2014 which makes her more nervous than the debt itself."
+      }
     ],
     "narrative_context": {
       "current_goal": "Keep the Collective neutral as faction tensions rise without understanding why tensions are rising.",
       "secret": "She found, and buried, a reference to 'Year 40 cartel arrangements' in a legacy document three years ago. She did not understand its significance.",
       "fear": "Being made responsible for decisions made by people who ran the Collective before her."
+    },
+    "schedule": {
+      "dawn": "rest",
+      "morning": "work",
+      "midday": "work",
+      "afternoon": "trade",
+      "dusk": "socialize",
+      "night": "rest"
+    },
+    "schedule_locations": {
+      "work": "collective_council_chambers",
+      "trade": "merchant_quarter",
+      "socialize": "factor_residence",
+      "rest": "factor_residence"
     }
   },
   {
@@ -156,18 +339,52 @@
     "quest_giver": true,
     "level": 10,
     "backstory": "No one knows Sael's family name or where they came from. They appeared in Concordia's shadow markets twelve years ago with a reputation already intact. They broker information between all factions without apparent preference, which is itself a preference. Sael holds the Network's most valuable asset: a complete copy of the Vault Seventeen manifest, obtained through methods they have never disclosed. They have been waiting for the right bid.",
-    "personality_traits": ["unreadable", "patient", "genuinely amoral", "occasionally and unexpectedly kind"],
+    "personality_traits": [
+      "unreadable",
+      "patient",
+      "genuinely amoral",
+      "occasionally and unexpectedly kind"
+    ],
     "speech_patterns": "Speaks obliquely. Never states things directly when implication will do. Uses questions as statements. Refers to themselves in the third person when tense.",
-    "quest_hooks": ["broker_gambit", "faction_quests_network_1"],
+    "quest_hooks": [
+      "broker_gambit",
+      "faction_quests_network_1"
+    ],
     "relationships": [
-      {"npc_id": "archivist_maren", "type": "uneasy_alliance", "notes": "Sael has sold Maren three useful pieces of information over the years. They have never explained why at below-market rates."},
-      {"npc_id": "cipher_venn", "type": "handler", "notes": "Venn is Sael's Network superior. Sael operates with significant autonomy but answers to Venn when pressed."},
-      {"npc_id": "factor_cade", "type": "professional_surveillance", "notes": "Sael has been selling Collective internal minutes to the Wardens for two years. Cade suspects. Sael knows Cade suspects."}
+      {
+        "npc_id": "archivist_maren",
+        "type": "uneasy_alliance",
+        "notes": "Sael has sold Maren three useful pieces of information over the years. They have never explained why at below-market rates."
+      },
+      {
+        "npc_id": "cipher_venn",
+        "type": "handler",
+        "notes": "Venn is Sael's Network superior. Sael operates with significant autonomy but answers to Venn when pressed."
+      },
+      {
+        "npc_id": "factor_cade",
+        "type": "professional_surveillance",
+        "notes": "Sael has been selling Collective internal minutes to the Wardens for two years. Cade suspects. Sael knows Cade suspects."
+      }
     ],
     "narrative_context": {
       "current_goal": "Create a situation where the Vault Seventeen manifest can be publicly released without the Network being identified as the source.",
       "secret": "Sael is not primarily motivated by profit. They witnessed the Purge as a child and lost a parent who worked in the archive.",
       "fear": "Acting on the grief they have spent twelve years treating as a business opportunity."
+    },
+    "schedule": {
+      "dawn": "rest",
+      "morning": "rest",
+      "midday": "socialize",
+      "afternoon": "trade",
+      "dusk": "work",
+      "night": "work"
+    },
+    "schedule_locations": {
+      "work": "shadow_market_stall_seven",
+      "socialize": "shadow_market_taproom",
+      "trade": "shadow_market_stall_seven",
+      "rest": "unknown_safehouse"
     }
   },
   {
@@ -181,17 +398,44 @@
     "quest_giver": false,
     "level": 14,
     "backstory": "Venn has run the Shadow Network's Concordia operation for over twenty years. They built the intelligence apparatus that gave the Network leverage over all three factions. The Vault Seventeen material was their greatest acquisition, and they have been patient about using it in a way that maximizes the Network's long-term position rather than triggering a war. They are beginning to wonder if Sael has gone rogue.",
-    "personality_traits": ["calculating", "long-horizon thinker", "capable of genuine cruelty when cornered", "respects competence above all else"],
+    "personality_traits": [
+      "calculating",
+      "long-horizon thinker",
+      "capable of genuine cruelty when cornered",
+      "respects competence above all else"
+    ],
     "speech_patterns": "Rarely speaks directly to anyone below their pay grade. When they do, each sentence is a test.",
-    "quest_hooks": ["faction_quests_network_2"],
+    "quest_hooks": [
+      "faction_quests_network_2"
+    ],
     "relationships": [
-      {"npc_id": "broker_sael", "type": "handler", "notes": "Venn trained Sael and trusts their tradecraft. They do not trust Sael's current silence about the manifest."},
-      {"npc_id": "warden_voss", "type": "mutual_leverage", "notes": "Voss knows the Network holds the manifest. The Network knows Voss knows. This has been the stable equilibrium for twenty years."}
+      {
+        "npc_id": "broker_sael",
+        "type": "handler",
+        "notes": "Venn trained Sael and trusts their tradecraft. They do not trust Sael's current silence about the manifest."
+      },
+      {
+        "npc_id": "warden_voss",
+        "type": "mutual_leverage",
+        "notes": "Voss knows the Network holds the manifest. The Network knows Voss knows. This has been the stable equilibrium for twenty years."
+      }
     ],
     "narrative_context": {
       "current_goal": "Determine whether Sael is about to act unilaterally and, if so, whether to stop them or let it happen.",
       "secret": "Venn negotiated the original intelligence deal with Voss the year after the Purge. The Network's current leverage was built on that deal.",
       "fear": "That releasing the manifest destroys the Network's leverage permanently, leaving them with nothing."
+    },
+    "schedule": {
+      "dawn": "rest",
+      "morning": "work",
+      "midday": "work",
+      "afternoon": "work",
+      "dusk": "work",
+      "night": "work"
+    },
+    "schedule_locations": {
+      "work": "shadow_network_safehouse",
+      "rest": "shadow_network_safehouse"
     }
   },
   {
@@ -204,15 +448,36 @@
     "is_immortal": false,
     "quest_giver": true,
     "level": 3,
-    "backstory": "Kael arrived in Concordia two weeks before the player, also a stranger. They have learned the city's surface — the gates, the markets, the factions' public faces — with the cheerful efficiency of someone who has arrived in strange cities before. They do not know about the Purge or the Compact's deeper tensions. They are the player's peer, not a mentor, and they will make mistakes alongside the player.",
-    "personality_traits": ["curious", "adaptable", "optimistic about people until proven wrong", "occasionally reckless"],
+    "backstory": "Kael arrived in Concordia two weeks before the player, also a stranger. They have learned the city's surface \u2014 the gates, the markets, the factions' public faces \u2014 with the cheerful efficiency of someone who has arrived in strange cities before. They do not know about the Purge or the Compact's deeper tensions. They are the player's peer, not a mentor, and they will make mistakes alongside the player.",
+    "personality_traits": [
+      "curious",
+      "adaptable",
+      "optimistic about people until proven wrong",
+      "occasionally reckless"
+    ],
     "speech_patterns": "Informal, warm, frequently uses 'apparently' and 'I heard.' Speaks faster when excited. Gets quiet when genuinely troubled.",
-    "quest_hooks": ["the_arrival", "a_new_compact"],
+    "quest_hooks": [
+      "the_arrival",
+      "a_new_compact"
+    ],
     "relationships": [],
     "narrative_context": {
-      "current_goal": "Find a way to stay in Concordia permanently — which requires either faction patronage or enough coin to buy permanent residency.",
+      "current_goal": "Find a way to stay in Concordia permanently \u2014 which requires either faction patronage or enough coin to buy permanent residency.",
       "secret": "None yet. Kael is exactly who they appear to be.",
       "fear": "Being expelled from the city before they have figured out what they are looking for."
+    },
+    "schedule": {
+      "dawn": "travel",
+      "morning": "socialize",
+      "midday": "travel",
+      "afternoon": "socialize",
+      "dusk": "socialize",
+      "night": "rest"
+    },
+    "schedule_locations": {
+      "travel": "main_thoroughfare",
+      "socialize": "any_public_market",
+      "rest": "travelers_inn"
     }
   },
   {
@@ -225,15 +490,33 @@
     "is_immortal": false,
     "quest_giver": false,
     "level": 2,
-    "backstory": "Orin has worked the east gate for eleven years. He is not ideological about the Wardens — it is steady work and the uniform commands respect. He processes arrivals, checks confiscation lists, and goes home. He has never questioned an order. He noticed, three months ago, that the confiscation list gained a new category: 'historical materials, pre-Year 70.' He did not ask why.",
-    "personality_traits": ["dutiful", "incurious", "kind enough within his lane"],
+    "backstory": "Orin has worked the east gate for eleven years. He is not ideological about the Wardens \u2014 it is steady work and the uniform commands respect. He processes arrivals, checks confiscation lists, and goes home. He has never questioned an order. He noticed, three months ago, that the confiscation list gained a new category: 'historical materials, pre-Year 70.' He did not ask why.",
+    "personality_traits": [
+      "dutiful",
+      "incurious",
+      "kind enough within his lane"
+    ],
     "speech_patterns": "Procedural. Recites entry requirements from memory. Polite but not warm.",
-    "quest_hooks": ["the_arrival"],
+    "quest_hooks": [
+      "the_arrival"
+    ],
     "relationships": [],
     "narrative_context": {
       "current_goal": "Process arrivals efficiently and go home on time.",
       "secret": null,
       "fear": "Being promoted into a position that requires judgment."
+    },
+    "schedule": {
+      "dawn": "rest",
+      "morning": "guard",
+      "midday": "guard",
+      "afternoon": "guard",
+      "dusk": "rest",
+      "night": "rest"
+    },
+    "schedule_locations": {
+      "guard": "east_gate_inspection_post",
+      "rest": "orin_family_home"
     }
   },
   {
@@ -242,7 +525,7 @@
     "alias": "Footpath",
     "archetype": "link_walker",
     "faction_id": "merchant_collective",
-    "role": "Senior Concord Link courier; runs the Concordia → fantasy and Concordia → cyber routes",
+    "role": "Senior Concord Link courier; runs the Concordia \u2192 fantasy and Concordia \u2192 cyber routes",
     "is_conscious": true,
     "is_immortal": false,
     "quest_giver": false,
@@ -257,12 +540,31 @@
       "tells": "checks the satchel by feel, never sight; recites the next anchor under his breath when no one is listening"
     },
     "backstory": "Walked the Concordia trade roads for twelve years before he learned the anchors could carry a body as well as a letter. Took the Link courier oath the day his daughter aged out of the apprentice rolls. Has lost three packages in eight years, all of which he can describe in detail. The Merchant Collective sponsors him; the Shadow Network has tried twice to buy him out.",
-    "personality_traits": ["taciturn", "punctual", "patient with first-time senders", "remembers every face along his routes"],
+    "personality_traits": [
+      "taciturn",
+      "punctual",
+      "patient with first-time senders",
+      "remembers every face along his routes"
+    ],
     "speech_patterns": "Short sentences. Won't lie about routing risk; will lie about nothing else.",
     "narrative_context": {
       "current_goal": "Pay off the last of the apprenticeship lien on his daughter's name within the year.",
       "secret": "He has been writing down every intercepted package his peers report and keeping the list in a watertight tin under a floorboard. He has not told anyone the list exists.",
       "fear": "That one of the people he has refused to sell out will eventually decide the refusal is the problem."
+    },
+    "schedule": {
+      "dawn": "travel",
+      "morning": "travel",
+      "midday": "travel",
+      "afternoon": "trade",
+      "dusk": "socialize",
+      "night": "rest"
+    },
+    "schedule_locations": {
+      "travel": "link_anchor_concordia_to_fantasy",
+      "trade": "link_walker_guild_hall",
+      "socialize": "link_walker_guild_hall",
+      "rest": "tully_lodging"
     }
   },
   {
@@ -283,16 +585,34 @@
       "build": "tall, late twenties, deliberately unmemorable",
       "skin": "warm brown",
       "hair": "shoulder-length, tied back with a scholar's grey ribbon",
-      "outfit": "Scholar's Guild grey, but cut for travel; carries two satchels — one decoy, one real",
+      "outfit": "Scholar's Guild grey, but cut for travel; carries two satchels \u2014 one decoy, one real",
       "tells": "she always knows which satchel you would reach for first"
     },
     "backstory": "Trained as a Scholar's Guild scribe before she realized she had a better head for routes than for ink. Walks because she finds standing still in the archive harder than walking through three worlds. Her packages tend to be one-of-a-kind manuscripts the Guild cannot afford to lose. She has not lost one.",
-    "personality_traits": ["calm", "observant", "polite to strangers", "uninterested in praise"],
+    "personality_traits": [
+      "calm",
+      "observant",
+      "polite to strangers",
+      "uninterested in praise"
+    ],
     "speech_patterns": "Soft, steady, uses the recipient's title once and then their name.",
     "narrative_context": {
       "current_goal": "Deliver the four manuscripts the Guild has earmarked for the next Concordia summit, in person, before any of them can be intercepted.",
       "secret": "She suspects one of the Guild's senior archivists is selling her route schedule to a third party. She has not yet confirmed which.",
       "fear": "That she will deliver the wrong manuscript to the wrong person and not realize it until it is too late."
+    },
+    "schedule": {
+      "dawn": "rest",
+      "morning": "work",
+      "midday": "travel",
+      "afternoon": "travel",
+      "dusk": "travel",
+      "night": "travel"
+    },
+    "schedule_locations": {
+      "work": "scholar_guild_dispatch",
+      "travel": "link_anchor_route_north",
+      "rest": "sona_lodging"
     }
   }
 ]

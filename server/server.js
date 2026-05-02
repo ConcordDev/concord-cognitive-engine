@@ -4875,6 +4875,9 @@ function authMiddleware(req, res, next) {
   if (req.method === "POST" && req.path.startsWith("/api/repair")) return next();
   // Gate 1 POST bypass: allow creative registry POST without auth (public discovery)
   if (req.method === "POST" && req.path.startsWith("/api/creative/registry")) return next();
+  // Gate 1 POST bypass: anonymous client telemetry pings (perf, error reports).
+  if (req.method === "POST" && req.path === "/api/world/perf-telemetry") return next();
+  if (req.method === "POST" && req.path === "/api/client-error") return next();
 
   // Check Authorization header
   const authHeader = req.headers.authorization || "";
@@ -6477,6 +6480,36 @@ async function tryInitWebSockets(server) {
           }).catch(() => {});
         }
       }
+    });
+
+    // ── Combat: dodge/block/parry intent (animation + i-frame window) ──
+    // Fire-and-forget: server records the dodge intent for telemetry +
+    // anti-cheat (rate limit, stamina) and broadcasts so nearby clients
+    // can play the dodge animation on this player's avatar.
+    let _lastDodgeAt = 0;
+    socket.on("combat:dodge", (data) => {
+      const userId = socket.data?.userId;
+      if (!userId) return;
+      const now = Date.now();
+      if (now - _lastDodgeAt < 400) return; // 2.5 dodges/sec cap
+      _lastDodgeAt = now;
+      const direction = ["left","right","back"].includes(data?.direction) ? data.direction : "back";
+      try {
+        realtimeEmit("combat:dodge:ack", { userId, direction, t: now });
+      } catch (e) { /* socket emit silent */ }
+    });
+
+    let _lastBlockAt = 0;
+    socket.on("combat:block", (data) => {
+      const userId = socket.data?.userId;
+      if (!userId) return;
+      const now = Date.now();
+      if (now - _lastBlockAt < 200) return;
+      _lastBlockAt = now;
+      const active = !!data?.active;
+      try {
+        realtimeEmit("combat:block:ack", { userId, active, t: now });
+      } catch (e) { /* socket emit silent */ }
     });
 
     // ── Skill use → XP award + mastery milestone notifications ──────
@@ -26527,6 +26560,50 @@ app.post("/api/world/npc-schedule", requireAuth, (req, res) => {
 });
 app.get("/api/world/npc-archetypes", (_req, res) => {
   res.json({ ok: true, archetypes: NPC_SCHEDULE_ARCHETYPES });
+});
+
+// ── Performance telemetry: aggregate FPS / frame budget breaches ──────────
+// Frontend posts a rolling sample every 30s. We keep an in-memory ring
+// (no persistence) so the admin UI can spot regressions without wiring a
+// timeseries DB. Anonymous: no userId tied to the sample beyond the
+// authenticated session.
+const _perfTelemetry = { samples: [], maxSamples: 500 };
+app.post("/api/world/perf-telemetry", express.json({ limit: "8kb" }), (req, res) => {
+  try {
+    const b = req.body || {};
+    const sample = {
+      t: Date.now(),
+      avgFps: Math.max(0, Math.min(240, Number(b.avgFps) || 0)),
+      avgFrameTime: Math.max(0, Math.min(1000, Number(b.avgFrameTime) || 0)),
+      breaches: Math.max(0, Math.min(100000, Number(b.breaches) || 0)),
+      samples: Math.max(0, Math.min(100000, Number(b.samples) || 0)),
+      budget: Math.max(1, Math.min(100, Number(b.budget) || 16.67)),
+      ua: String(b.ua || "").slice(0, 200),
+    };
+    _perfTelemetry.samples.push(sample);
+    if (_perfTelemetry.samples.length > _perfTelemetry.maxSamples) {
+      _perfTelemetry.samples.shift();
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(400).json({ ok: false, error: "invalid_payload" });
+  }
+});
+app.get("/api/world/perf-telemetry", (_req, res) => {
+  const s = _perfTelemetry.samples;
+  if (!s.length) return res.json({ ok: true, samples: 0, breachRate: 0, p50Fps: 0, p10Fps: 0 });
+  const fps = s.map(x => x.avgFps).sort((a,b) => a-b);
+  const breaches = s.reduce((a,x) => a + x.breaches, 0);
+  const total = s.reduce((a,x) => a + x.samples, 0) || 1;
+  res.json({
+    ok: true,
+    samples: s.length,
+    breachRate: Math.round((breaches / total) * 10000) / 100,
+    p50Fps: fps[Math.floor(fps.length * 0.5)],
+    p10Fps: fps[Math.floor(fps.length * 0.1)],
+    p90Fps: fps[Math.floor(fps.length * 0.9)],
+    recent: s.slice(-30),
+  });
 });
 
 // Procedural creature spawn — POST a description, get a physics-validated
