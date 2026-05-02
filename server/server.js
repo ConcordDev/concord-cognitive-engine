@@ -26433,7 +26433,7 @@ app.use("/api/crafting",          createCraftingRouter({ requireAuth, db }));
 
 // ===== WORLD NARRATIVE (Oracle brain: lore synthesis, quest chains, dialogue) =====
 import createWorldNarrativeRouter, { buildLore } from "./routes/world-narrative.js";
-app.use("/api/world/narrative", createWorldNarrativeRouter({ requireAuth, requireRole }));
+app.use("/api/world/narrative", createWorldNarrativeRouter({ requireAuth, requireRole, db }));
 // Synthesize lore every 10 minutes in the background
 setInterval(() => {
   buildLore("concordia-hub").catch(e => logger.warn({ err: e.message }, "lore_interval_failed"));

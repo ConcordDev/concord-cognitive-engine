@@ -52,7 +52,7 @@ async function buildLore(worldId) {
  * @param {Function} [opts.requireAdmin]
  * @returns {Router}
  */
-export default function createWorldNarrativeRoutes({ requireAuth, requireAdmin } = {}) {
+export default function createWorldNarrativeRoutes({ requireAuth, requireAdmin, db = null } = {}) {
   const router = Router();
 
   const auth = (req, res, next) => {
@@ -123,7 +123,7 @@ export default function createWorldNarrativeRoutes({ requireAuth, requireAdmin }
 
     let result;
     if (isAuthored) {
-      result = await generateArcQuestChain(npcId, playerLevel);
+      result = await generateArcQuestChain(npcId, playerLevel, db);
     } else {
       const factionState = {
         factionName: req.query.faction || "Independent",
@@ -149,7 +149,7 @@ export default function createWorldNarrativeRoutes({ requireAuth, requireAdmin }
 
     let result;
     if (isAuthored) {
-      result = await generateAuthoredDialogue(npcId, questId, playerRelationship);
+      result = await generateAuthoredDialogue(npcId, questId, playerRelationship, db);
     } else {
       const npcTraits = {
         id:          npcId,
