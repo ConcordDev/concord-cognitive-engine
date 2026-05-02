@@ -26424,6 +26424,29 @@ app.use("/api/combat", createCombatRouter({
   db,
 }));
 
+// Social pings — wave / loot here / danger / meet here / inspect / needs help.
+// Spatial broadcast (800m), per-user rate limited (12/min, 4s same-type cooldown).
+import { broadcastSocialPing } from "./lib/social-pings.js";
+app.post("/api/social/ping", requireAuth, (req, res) => {
+  try {
+    const userId = req.user?.id || req.headers["x-user-id"];
+    if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
+    const pos = _presenceGetUserPosition(userId);
+    if (!pos) return res.status(400).json({ ok: false, error: "no_presence" });
+    const { type, target = null, text = "" } = req.body || {};
+    const r = broadcastSocialPing(REALTIME, _combatGetNearbyUserIds, {
+      userId,
+      cityId:   pos.cityId,
+      position: { x: pos.x, y: pos.y, z: pos.z },
+      type, target, text,
+    });
+    if (r.delivered === 0 && r.reason) return res.status(429).json(r);
+    res.json({ ok: true, delivered: r.delivered });
+  } catch {
+    res.status(500).json({ ok: false, error: "An unexpected error occurred" });
+  }
+});
+
 // World travel — moves users between Concordia + sub-worlds, source of
 // truth for users.current_world (read by /api/concord-link/send).
 import createWorldTravelRouter from "./routes/world-travel.js";
