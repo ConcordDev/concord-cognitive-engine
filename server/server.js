@@ -4841,6 +4841,10 @@ function authMiddleware(req, res, next) {
     "/api/concord-link",
     // Black market — public browse of redacted listings; purchase requires auth.
     "/api/black-market",
+    // Procedural creatures + emergent skills — public reads of taxonomy
+    // and skill lists. Spawn / create / evolve still require auth.
+    "/api/creature",
+    "/api/skills",
     // Dual Global & Creative Registry (public discovery)
     "/api/scope", "/api/creative",
     // Missing frontend routes (three-gate audit scan)
@@ -26423,6 +26427,75 @@ app.use("/api/combat", createCombatRouter({
   getNearbyUserIds: _combatGetNearbyUserIds,
   db,
 }));
+
+// Procedural creatures + emergent skills. Creatures are physics-validated
+// procedural spawns from in-fiction descriptions (a dragon described in
+// dialogue can be physically generated and spawned). Skills are NOT static —
+// they're authored at runtime by NPCs / users / emergents / enemies and
+// can evolve into derivative skills.
+import { generateCreature, validateCreaturePhysics, TOPOLOGIES as CREATURE_TOPOLOGIES } from "./lib/procedural-creature.js";
+import { bootEmergentSkills, createSkill as createEmergentSkill, evolveSkill, getSkill, listSkills, attachSkills } from "./lib/emergent-skills.js";
+try {
+  bootEmergentSkills(db);
+  structuredLog("info", "emergent_skills_boot", { ok: true });
+} catch (err) {
+  structuredLog("warn", "emergent_skills_boot_failed", { error: err?.message });
+}
+
+// Procedural creature spawn — POST a description, get a physics-validated
+// blueprint with attached skills. Caller renders the blueprint via the
+// frontend creature loader.
+app.post("/api/creature/spawn", requireAuth, (req, res) => {
+  try {
+    const { description, topology, massKg, heightM, traits = [], origin = "user" } = req.body || {};
+    if (!description) return res.status(400).json({ ok: false, error: "description_required" });
+    const bp = generateCreature({ description, topology, massKg, heightM, traits, origin });
+    bp.skillIds = attachSkills(bp);
+    res.json({ ok: true, blueprint: bp });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err?.message || "spawn_failed" });
+  }
+});
+app.get("/api/creature/topologies", (_req, res) => res.json({ ok: true, topologies: CREATURE_TOPOLOGIES }));
+app.post("/api/creature/validate", (req, res) => {
+  try {
+    const v = validateCreaturePhysics(req.body || {});
+    res.json({ ok: v.ok, ...v });
+  } catch { res.status(400).json({ ok: false, error: "invalid_blueprint" }); }
+});
+
+// Emergent skills — author / evolve / list / get
+app.post("/api/skills/create", requireAuth, (req, res) => {
+  try {
+    const userId = req.user?.id || req.headers["x-user-id"];
+    const r = createEmergentSkill(db, { ...(req.body || {}), origin: req.body?.origin ?? userId ?? "user" });
+    if (!r.ok) return res.status(400).json(r);
+    res.status(201).json(r);
+  } catch { res.status(500).json({ ok: false, error: "create_failed" }); }
+});
+app.post("/api/skills/evolve", requireAuth, (req, res) => {
+  try {
+    const { parentId, mutation = {} } = req.body || {};
+    if (!parentId) return res.status(400).json({ ok: false, error: "parentId required" });
+    const r = evolveSkill(db, parentId, (skill) => ({ ...skill, ...mutation }));
+    if (!r.ok) return res.status(400).json(r);
+    res.status(201).json(r);
+  } catch { res.status(500).json({ ok: false, error: "evolve_failed" }); }
+});
+app.get("/api/skills/list", (req, res) => {
+  try {
+    const filter = {
+      origin:   req.query.origin   ? String(req.query.origin)   : undefined,
+      parentId: req.query.parentId ? String(req.query.parentId) : undefined,
+    };
+    res.json({ ok: true, skills: listSkills(filter) });
+  } catch { res.status(500).json({ ok: false, error: "list_failed" }); }
+});
+app.get("/api/skills/:id", (req, res) => {
+  const s = getSkill(req.params.id);
+  if (!s) return res.status(404).json({ ok: false, error: "not_found" });
+  res.json({ ok: true, skill: s });
+});
 
 // Social pings — wave / loot here / danger / meet here / inspect / needs help.
 // Spatial broadcast (800m), per-user rate limited (12/min, 4s same-type cooldown).
