@@ -13346,7 +13346,15 @@ async function initGhostFleet() {
   // 15. CRI System
   try {
     const cri = await import("./emergent/cri-system.js");
+    const councilBridge = await import("./lib/council-world-bridge.js").catch(() => null);
+    const worldEvents   = await import("./lib/world-events.js").catch(() => null);
     GHOST_FLEET_STATUS.modules["cri-system"] = { loaded: true, loadedAt: new Date().toISOString() };
+
+    // Inject the world bridge so summit outcomes surface as referendum world
+    // events and faction policy state. Bridge failures are silent (see bridge impl).
+    const _summitBridge = (councilBridge && worldEvents)
+      ? { db, bridgeSummitToWorld: councilBridge.bridgeSummitToWorld, createEvent: worldEvents.createEvent }
+      : null;
 
     register("cri", "create", (_ctx, input = {}) => cri.createCRI(input.name, input.domain));
     register("cri", "get", (_ctx, input = {}) => cri.getCRI(input.id));
@@ -13356,7 +13364,7 @@ async function initGhostFleet() {
     register("cri", "create_program", (_ctx, input = {}) => cri.createProgram(input.criId, input.title, input.lead));
     register("cri", "schedule_summit", (_ctx, input = {}) => cri.scheduleSummit(input.criId, input.title, input.participants, input.agenda));
     register("cri", "run_summit", (_ctx, input = {}) => cri.runSummit(input.criId, input.summitId));
-    register("cri", "complete_summit", (_ctx, input = {}) => cri.completeSummit(input.criId, input.summitId, input.outcomes));
+    register("cri", "complete_summit", (_ctx, input = {}) => cri.completeSummit(input.criId, input.summitId, input.outcomes, _summitBridge));
     register("cri", "status", (_ctx, input = {}) => cri.getCRIStatus(input.id));
     register("cri", "metrics", () => cri.getCRIMetrics());
 

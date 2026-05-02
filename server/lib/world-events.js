@@ -25,6 +25,7 @@ const EVENT_TYPES = {
   ceremony:     { id: "ceremony",     name: "Awards Ceremony",          category: "recognition",  lens: "general",     minPlayers: 5,  maxPlayers: 200, defaultDuration: 60 },
   raid:         { id: "raid",         name: "World Raid / Boss Event",  category: "cooperative",  lens: "gaming",      minPlayers: 10, maxPlayers: 100, defaultDuration: 120 },
   festival:     { id: "festival",     name: "Multi-Day Festival",       category: "celebration",  lens: "general",     minPlayers: 20, maxPlayers: 500, defaultDuration: 1440 },
+  referendum:   { id: "referendum",   name: "Council Referendum Resolved", category: "civic",      lens: "government",  minPlayers: 1,  maxPlayers: 500, defaultDuration: 60 },
 };
 
 // ── Event Storage ────────────────────────────────────────────────────────────
