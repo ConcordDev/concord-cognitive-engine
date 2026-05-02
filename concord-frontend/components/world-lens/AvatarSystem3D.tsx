@@ -43,6 +43,7 @@ import {
   applyBalanceAdjustment,
 } from '@/lib/concordia/com-balance';
 import { SecondaryPhysicsManager, buildHairChain } from '@/lib/concordia/secondary-physics';
+import { cameraLookState } from '@/lib/world-lens/camera-look-state';
 import { FacialController, resolveNPCEmotion } from '@/lib/concordia/facial-blend-shapes';
 import { physicsWorld } from '@/lib/world-lens/physics-world';
 
@@ -1492,13 +1493,21 @@ export default function AvatarSystem3D({
           const elevation = elevationRef.current?.(pos.x, pos.z) ?? pos.y;
           pos.y = elevation;
 
-          // Auto-face movement direction with smooth rotation
-          const targetRot = Math.atan2(moveX, -moveZ);
-          let rotDiff = targetRot - playerRotationRef.current;
-          while (rotDiff > Math.PI) rotDiff -= Math.PI * 2;
-          while (rotDiff < -Math.PI) rotDiff += Math.PI * 2;
-          const turnSpeed = ROTATION_SPEED * (0.5 + styleCfg.turnAnimationBlend * 0.5);
-          playerRotationRef.current += rotDiff * Math.min(1, turnSpeed * delta);
+          // Auto-face movement direction with smooth rotation.
+          // In first-person, the player faces wherever the camera looks
+          // (cameraLookState.yaw is driven by mouse) so WASD moves where
+          // you're looking — otherwise WASD movement direction would
+          // detach from the camera and the player would walk sideways.
+          if (cameraMode === 'first-person') {
+            playerRotationRef.current = cameraLookState.yaw;
+          } else {
+            const targetRot = Math.atan2(moveX, -moveZ);
+            let rotDiff = targetRot - playerRotationRef.current;
+            while (rotDiff > Math.PI) rotDiff -= Math.PI * 2;
+            while (rotDiff < -Math.PI) rotDiff += Math.PI * 2;
+            const turnSpeed = ROTATION_SPEED * (0.5 + styleCfg.turnAnimationBlend * 0.5);
+            playerRotationRef.current += rotDiff * Math.min(1, turnSpeed * delta);
+          }
 
           const pm = playerMeshRef.current as InstanceType<typeof import('three').Group>;
           if (pm) {

@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useRef, useCallback, useContext, createContext } from 'react';
 import { Activity, Monitor, Settings } from 'lucide-react';
+import { cameraLookState } from '@/lib/world-lens/camera-look-state';
+import { getStoredSensitivity } from '@/lib/world-lens/quality-preset';
 
 // ── Device capability detection ────────────────────────────────────
 function detectInitialQuality(): QualityPreset {
@@ -205,8 +207,6 @@ export default function ConcordiaScene({
   const getPlayerPoseRef = useRef(getPlayerPose);
   useEffect(() => { cameraModeRef.current = cameraMode; }, [cameraMode]);
   useEffect(() => { getPlayerPoseRef.current = getPlayerPose; }, [getPlayerPose]);
-  // Pointer-lock yaw + pitch driven by mouse movement when locked.
-  const lookRef = useRef({ yaw: 0, pitch: 0 });
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const physicsRef = useRef<{
     step: (dt: number) => void;
@@ -648,6 +648,11 @@ export default function ConcordiaScene({
 
       setIsReady(true);
 
+      // Camera follow / collision support refs (reused across frames)
+      const cameraLookStateRef = cameraLookState;
+      cameraLookStateRef.sensitivity = getStoredSensitivity();
+      const cameraRaycaster = new THREE.Raycaster();
+
       // ── Game loop ───────────────────────────────────────────────
       function gameLoop() {
         if (disposed) return;
@@ -659,19 +664,24 @@ export default function ConcordiaScene({
         physicsRef.current?.step(delta);
 
         // ── Camera follow / first-person ──────────────────────────
-        // Drive the camera transform from the player's pose every frame
-        // so 'follow' mode actually follows and 'first-person' puts the
-        // camera at the player's head height. Mouse-look (pointer lock)
-        // additively rotates yaw/pitch in both modes.
+        // Drive the camera transform from the player's pose every frame.
+        // In first-person, mouse yaw drives the player's facing too (via
+        // the shared cameraLookState module that AvatarSystem3D reads).
+        // In follow, a raycast against the buildings layer pulls the camera
+        // forward when it would clip into a wall.
         const mode = cameraModeRef.current;
         const getPose = getPlayerPoseRef.current;
         if (mode !== 'isometric' && mode !== 'cinematic' && getPose) {
           const pose = getPose();
           if (pose) {
-            const yaw = pose.yaw + lookRef.current.yaw;
-            const pitch = lookRef.current.pitch;
+            // In first-person, the camera yaw IS the player yaw — we don't
+            // add to it. In follow, the player's body rotates with WASD
+            // independently and the camera orbits via mouse-look.
+            const yaw = mode === 'first-person'
+              ? cameraLookStateRef.yaw
+              : pose.yaw + cameraLookStateRef.yaw;
+            const pitch = cameraLookStateRef.pitch;
             if (mode === 'first-person') {
-              // Camera at player head height (~1.6m), looking forward.
               const eyeY = pose.y + 1.6;
               camera.position.set(pose.x, eyeY, pose.z);
               const lookX = pose.x + Math.sin(yaw) * Math.cos(pitch);
@@ -679,13 +689,43 @@ export default function ConcordiaScene({
               const lookZ = pose.z + Math.cos(yaw) * Math.cos(pitch);
               camera.lookAt(lookX, lookY, lookZ);
             } else if (mode === 'follow' || mode === 'interior') {
-              // Behind + above the player. 'interior' is closer / lower.
               const dist = mode === 'interior' ? 3 : 6;
               const height = mode === 'interior' ? 1.6 : 3.2;
-              const cx = pose.x - Math.sin(yaw) * dist * Math.cos(pitch);
-              const cy = pose.y + height + Math.sin(-pitch) * dist;
-              const cz = pose.z - Math.cos(yaw) * dist * Math.cos(pitch);
-              // Lerp toward target for a smooth follow rather than snap.
+              let cx = pose.x - Math.sin(yaw) * dist * Math.cos(pitch);
+              let cy = pose.y + height + Math.sin(-pitch) * dist;
+              let cz = pose.z - Math.cos(yaw) * dist * Math.cos(pitch);
+
+              // Camera collision: raycast from chest to desired camera
+              // position. If a building is in the way, pull the camera
+              // forward to the hit point minus a small offset so we don't
+              // see through walls.
+              const eyeX = pose.x;
+              const eyeY2 = pose.y + 1.4;
+              const eyeZ = pose.z;
+              const dx = cx - eyeX;
+              const dy = cy - eyeY2;
+              const dz = cz - eyeZ;
+              const desired = Math.hypot(dx, dy, dz);
+              if (desired > 0.01) {
+                const dirN = { x: dx / desired, y: dy / desired, z: dz / desired };
+                cameraRaycaster.set(
+                  new THREE.Vector3(eyeX, eyeY2, eyeZ),
+                  new THREE.Vector3(dirN.x, dirN.y, dirN.z),
+                );
+                cameraRaycaster.far = desired;
+                const buildingsLayer = layers.buildings;
+                if (buildingsLayer) {
+                  const hits = cameraRaycaster.intersectObject(buildingsLayer, true);
+                  if (hits.length > 0 && hits[0].distance < desired) {
+                    const safe = Math.max(0.5, hits[0].distance - 0.3);
+                    cx = eyeX + dirN.x * safe;
+                    cy = eyeY2 + dirN.y * safe;
+                    cz = eyeZ + dirN.z * safe;
+                  }
+                }
+              }
+
+              // Lerp toward target for smooth follow.
               const lerp = Math.min(1, delta * 8);
               camera.position.x += (cx - camera.position.x) * lerp;
               camera.position.y += (cy - camera.position.y) * lerp;
@@ -850,7 +890,6 @@ export default function ConcordiaScene({
     // Click the canvas to enter pointer lock when in a player-tracking
     // mode; mousemove drives yaw + pitch additive offsets that the game
     // loop applies to the camera. Esc / outside-click releases.
-    const SENSITIVITY = 0.0025;
     function maybeRequestPointerLock() {
       const mode = cameraModeRef.current;
       if (mode !== 'follow' && mode !== 'first-person' && mode !== 'interior') return;
@@ -860,10 +899,11 @@ export default function ConcordiaScene({
     }
     function handleMouseMove(e: MouseEvent) {
       if (document.pointerLockElement !== canvas) return;
-      const yawDelta = -(e.movementX || 0) * SENSITIVITY;
-      const pitchDelta = -(e.movementY || 0) * SENSITIVITY;
-      lookRef.current.yaw = (lookRef.current.yaw + yawDelta) % (Math.PI * 2);
-      lookRef.current.pitch = Math.max(-1.2, Math.min(1.2, lookRef.current.pitch + pitchDelta));
+      const sens = cameraLookState.sensitivity;
+      const yawDelta = -(e.movementX || 0) * sens;
+      const pitchDelta = -(e.movementY || 0) * sens;
+      cameraLookState.yaw = (cameraLookState.yaw + yawDelta) % (Math.PI * 2);
+      cameraLookState.pitch = Math.max(-1.2, Math.min(1.2, cameraLookState.pitch + pitchDelta));
     }
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
     canvas.addEventListener('mousedown', maybeRequestPointerLock);

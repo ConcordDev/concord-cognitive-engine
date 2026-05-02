@@ -41,3 +41,27 @@ export const QUALITY_PRESET_DESCRIPTIONS: Record<QualityPreset, string> = {
   high:   'Higher shadow + bloom intensity. Modern desktop GPUs.',
   ultra:  'Maximum detail with PCSS shadows + SSGI. Demanding.',
 };
+
+// ── Mouse sensitivity ──────────────────────────────────────────────
+
+const SENSITIVITY_KEY = 'concord-mouse-sensitivity';
+const DEFAULT_SENSITIVITY = 0.0025; // radians per pixel
+
+export function getStoredSensitivity(): number {
+  if (typeof window === 'undefined') return DEFAULT_SENSITIVITY;
+  try {
+    const raw = localStorage.getItem(SENSITIVITY_KEY);
+    if (!raw) return DEFAULT_SENSITIVITY;
+    const n = Number(raw);
+    if (!Number.isFinite(n) || n <= 0 || n > 0.05) return DEFAULT_SENSITIVITY;
+    return n;
+  } catch {
+    return DEFAULT_SENSITIVITY;
+  }
+}
+
+export function setStoredSensitivity(value: number): void {
+  if (typeof window === 'undefined') return;
+  const clamped = Math.max(0.0005, Math.min(0.02, value));
+  try { localStorage.setItem(SENSITIVITY_KEY, String(clamped)); } catch { /* persist best-effort */ }
+}
