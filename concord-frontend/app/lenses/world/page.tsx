@@ -1985,9 +1985,22 @@ export default function WorldLensPage() {
         emitHitNumber(data.damage, element, !!data.isCrit);
         emitScreenShake(data.isCrit ? 5 : Math.min(4, Math.ceil(data.damage / 20)));
         emitHitStop(data.isCrit ? 140 : 70);
+        // Phase F fix 3: pass damage magnitude + target world position so
+        // GameJuice can route through spatial audio (HRTF + occlusion) and
+        // scale visual feedback intensity by hit weight.
+        const targetPos = combatStateRef.current.target?.position;
         window.dispatchEvent(
           new CustomEvent('concordia:game-juice', {
-            detail: { trigger: data.isCrit ? 'combat-crit' : 'combat-hit' },
+            detail: {
+              trigger: data.isCrit ? 'combat-crit' : 'combat-hit',
+              opts: {
+                magnitude: data.damage,
+                targetId: combatStateRef.current.target?.id,
+                position: targetPos
+                  ? { x: targetPos.x, y: targetPos.y, z: targetPos.z }
+                  : undefined,
+              },
+            },
           })
         );
 
@@ -2040,9 +2053,20 @@ export default function WorldLensPage() {
         pushCombatLog(`${targetName} defeated!`, 'death');
         emitScreenShake(6);
         emitHitStop(200);
+        // Phase F fix 3: spatial-position the kill SFX so it plays from where
+        // the kill happened rather than as a flat 2D blast.
+        const killPos = combatStateRef.current.target?.position;
         window.dispatchEvent(
           new CustomEvent('concordia:game-juice', {
-            detail: { trigger: 'combat-kill' },
+            detail: {
+              trigger: 'combat-kill',
+              opts: {
+                targetId: combatStateRef.current.target?.id,
+                position: killPos
+                  ? { x: killPos.x, y: killPos.y, z: killPos.z }
+                  : undefined,
+              },
+            },
           })
         );
         // Phase 5 death collapse: visible buckle + face-plant + 6.5s
