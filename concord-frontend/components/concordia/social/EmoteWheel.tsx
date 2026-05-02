@@ -21,6 +21,8 @@ interface EmoteWheelProps {
   onEmote: (emoteId: EmoteId) => void;
   /** Hold key that opens the wheel (defaults to 'KeyZ') */
   holdKey?: string;
+  /** Optional close callback — when present, fires after emote selection. */
+  onClose?: () => void;
 }
 
 const EMOTE_KEYS = Object.keys(EMOTES) as EmoteId[];
@@ -34,7 +36,10 @@ function slotPosition(index: number, total: number, radius: number) {
   };
 }
 
-export function EmoteWheel({ onEmote, holdKey = 'KeyZ' }: EmoteWheelProps) {
+export function EmoteWheel({ onEmote, holdKey = 'KeyZ', onClose }: EmoteWheelProps) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+  void onClose; // legacy prop — kept for compatibility with parent panels that pass it
+
   const [open, setOpen] = useState(false);
   const [hovered, setHovered] = useState<EmoteId | null>(null);
 

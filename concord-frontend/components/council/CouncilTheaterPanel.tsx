@@ -68,12 +68,17 @@ export default function CouncilTheaterPanel() {
   // Realtime: subscribe to socket.io events for low-latency voice updates.
   useEffect(() => {
     let mounted = true;
-    let socket: { on: (e: string, h: (p: unknown) => void) => void; off: (e: string, h: (p: unknown) => void) => void; disconnect?: () => void } | null = null;
+    type SocketLike = {
+      on: (e: string, h: (p: unknown) => void) => void;
+      off: (e: string, h: (p: unknown) => void) => void;
+      disconnect?: () => void;
+    };
+    let socket: SocketLike | null = null;
     (async () => {
       try {
         const { io } = await import('socket.io-client');
         if (!mounted) return;
-        socket = io('/', { withCredentials: true, transports: ['websocket', 'polling'] }) as unknown as typeof socket;
+        socket = io('/', { withCredentials: true, transports: ['websocket', 'polling'] }) as unknown as SocketLike;
 
         const onVoice = (payload: unknown) => {
           const v = payload as VoiceEntry & { eventId: string };

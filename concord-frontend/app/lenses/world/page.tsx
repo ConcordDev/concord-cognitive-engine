@@ -67,7 +67,7 @@ const DistrictActivityFeed = dynamic(
     })),
   { ssr: false }
 );
-const EmoteWheel = dynamic(
+const EmoteWheelLegacy = dynamic(
   () => import('@/components/world/EmoteWheel').then((m) => ({ default: m.EmoteWheel })),
   { ssr: false }
 );
@@ -1195,6 +1195,7 @@ export default function WorldLensPage() {
     maxHealth: number;
     level: number;
     type: 'enemy' | 'player';
+    position?: { x: number; y: number; z: number };
   };
   const [combatState, setCombatState] = useState<{
     health: number;
@@ -1686,14 +1687,20 @@ export default function WorldLensPage() {
         );
         return;
       }
-      // Nearest NPC dialogue
+      // Nearest NPC dialogue — defer to a global event so the openNPCDialogue
+      // callback (declared later) doesn't need to be in this effect's
+      // dependency closure.
       if (nearbyNPC && !dialogueNPC) {
-        openNPCDialogue(nearbyNPC);
+        try {
+          window.dispatchEvent(new CustomEvent('concordia:open-dialogue', {
+            detail: { npcId: nearbyNPC.id, npcName: nearbyNPC.name, occupation: nearbyNPC.archetype ?? null },
+          }));
+        } catch { /* dispatch best-effort */ }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [portals, playerAvatar.position, nearbyNPC, dialogueNPC, openNPCDialogue]);
+  }, [portals, playerAvatar.position, nearbyNPC, dialogueNPC]);
 
   // G key: toggle emote wheel in explore mode
   useEffect(() => {
@@ -2970,7 +2977,7 @@ export default function WorldLensPage() {
                 }
               }}
               onEmote={(emote) => {
-                setPlayerAvatar((prev) => ({ ...prev, currentAnimation: emote }));
+                setPlayerAvatar((prev) => ({ ...prev, currentAnimation: emote as PlayerAnimationClip }));
                 if (worldSocket.isConnected) {
                   worldSocket.emit('player:move', {
                     cityId: activeDistrict.id,
@@ -3211,7 +3218,7 @@ export default function WorldLensPage() {
           )}
           {(inputMode === 'social' || inputMode === 'exploration') && (
             <>
-              <EmoteWheel
+              <EmoteWheelLegacy
                 onEmote={(emoteId) => {
                   setPlayerAvatar((prev) => ({ ...prev, currentAnimation: 'wave' }));
                   if (worldSocket.isConnected) {
@@ -3228,6 +3235,7 @@ export default function WorldLensPage() {
                     });
                   }
                 }}
+                onClose={() => { /* legacy wheel auto-dismisses on emote */ }}
               />
               <QuickMessageBar
                 onSend={(msg) => {
@@ -3394,7 +3402,8 @@ export default function WorldLensPage() {
             <div className="absolute top-4 left-4 z-20 w-80 max-h-[70vh] overflow-auto pointer-events-auto">
               {/* QuestLog — detailed quest journal with active/available/completed tabs */}
               <QuestLog
-                quests={worldQuests}
+                /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+                quests={worldQuests as any}
                 worldId={activeDistrict.id}
                 onClose={() => setShowPanel('none')}
               />

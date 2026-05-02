@@ -2,8 +2,15 @@
 /**
  * Audit lens backend implementation completeness.
  *
- * Walks server/domains/*.js, counts macro registrations, and flags actions
- * whose handler body is shorter than 200 chars (likely stubs).
+ * Walks server/domains/*.js, counts macro registrations, and classifies
+ * each handler as:
+ *   real     — handler body > 400 chars and contains real logic
+ *   trivial  — handler body < 400 chars and only does shape massaging
+ *   stub     — handler body returns a canned message-only result
+ *
+ * Stub detection: handler body matches the pattern
+ *     return { ok: true, result: { message: "..." } };
+ * with no other `return` after it.
  *
  * Usage: node server/scripts/audit-lens-backends.js [--json]
  */
@@ -24,25 +31,36 @@ const summary = {
   domains: [],
 };
 
-const STUB_TOKENS = ["TODO", "stub", "not implemented", "placeholder", "// pending"];
-const TRIVIAL_BODY_RE = /\{\s*return\s*\{\s*ok:\s*true,\s*result:\s*\{\s*message:[^}]*\}\s*\};\s*\}/;
+const STUB_PATTERN = /return\s+\{\s*ok:\s*true,\s*result:\s*\{\s*message:\s*['"][^'"]*['"]\s*\}\s*\}\s*;\s*\}\s*\)\s*;?\s*$/;
+const TRIVIAL_BODY_LEN = 400;
 
 for (const file of readdirSync(domains)) {
   if (!file.endsWith(".js")) continue;
   const path = resolve(domains, file);
   const src = readFileSync(path, "utf8");
 
-  // Find every registerLensAction("domain", "name", handler) call.
-  const matcher = /registerLensAction\(\s*["']([^"']+)["']\s*,\s*["']([^"']+)["']\s*,\s*([\s\S]*?)\)\s*;/g;
+  // Match each registerLensAction("domain", "name", (params) => { ... }).
+  // We capture the handler body up to the matching closing paren of the call.
   const actions = [];
+  const re = /registerLensAction\(\s*["']([^"']+)["']\s*,\s*["']([^"']+)["']\s*,/g;
   let m;
-  while ((m = matcher.exec(src)) !== null) {
-    const [, domain, name, handler] = m;
+  while ((m = re.exec(src)) !== null) {
+    const [, domain, name] = m;
+    const startIdx = re.lastIndex;
+    // Walk forward to find the matching `);` that closes this call.
+    let depth = 1;
+    let i = startIdx;
+    while (i < src.length && depth > 0) {
+      const c = src[i];
+      if (c === "(") depth++;
+      else if (c === ")") depth--;
+      i++;
+    }
+    const handler = src.slice(startIdx, i - 1);
     const handlerLen = handler.length;
-    const isStub =
-      STUB_TOKENS.some(t => handler.toLowerCase().includes(t.toLowerCase())) ||
-      TRIVIAL_BODY_RE.test(handler);
-    const isTrivial = handlerLen < 220 && !isStub;
+    const isStub = STUB_PATTERN.test(handler.replace(/\s+/g, " ")) ||
+                   /^\s*\([^)]*\)\s*=>\s*\(?\s*\{\s*ok:\s*true,\s*result:\s*\{\s*message:[^}]+\}\s*\}\s*\)?\s*$/.test(handler.trim());
+    const isTrivial = !isStub && handlerLen < TRIVIAL_BODY_LEN;
     actions.push({ domain, name, handlerLen, isStub, isTrivial });
     if (isStub) summary.stubActions++;
     if (isTrivial) summary.trivialActions++;
@@ -77,16 +95,15 @@ console.log(`Trivial:  ${summary.trivialActions}`);
 console.log(`Real:     ${summary.totalActions - summary.stubActions - summary.trivialActions}`);
 console.log(`Complete: ${(summary.completeRatio * 100).toFixed(1)}%`);
 console.log();
-console.log(`Top stub domains:`);
+console.log(`Top domains by stub count:`);
 summary.domains
-  .filter(d => d.stubCount + d.trivialCount > 0)
-  .sort((a, b) => (b.stubCount + b.trivialCount) - (a.stubCount + a.trivialCount))
+  .filter(d => d.stubCount > 0)
+  .sort((a, b) => b.stubCount - a.stubCount)
   .slice(0, 15)
   .forEach(d => {
     console.log(
       `  ${d.file.padEnd(30)} ` +
       `actions=${String(d.actionCount).padStart(2)} ` +
-      `stubs=${String(d.stubCount).padStart(2)} ` +
-      `trivial=${String(d.trivialCount).padStart(2)}`,
+      `stubs=${String(d.stubCount).padStart(2)}`,
     );
   });

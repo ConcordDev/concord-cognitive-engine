@@ -18,6 +18,8 @@ export interface CombatEntity {
   maxHealth: number;
   distance: number;
   isHostile: boolean;
+  type?: 'enemy' | 'player' | 'npc';
+  level?: number;
 }
 
 export interface CombatLogEntry {

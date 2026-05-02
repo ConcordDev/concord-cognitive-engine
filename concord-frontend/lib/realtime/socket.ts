@@ -264,6 +264,27 @@ export type SocketEvent =
   | 'daily:login_recorded'
   // Wave 1 deferral 3: level-up rank crossing
   | 'level:up'
+  // GameJuice event mesh — fanfare/coin-clink/badge triggers from server
+  | 'quest:completed'
+  | 'quest:lineage-quest'
+  | 'marketplace:purchase'
+  | 'marketplace:sale'
+  | 'skill:xp-awarded'
+  | 'coop:raid:progress'
+  | 'coop:raid:completed'
+  | 'coop:build:edit'
+  | 'coop:stash:withdraw'
+  | 'reputation:badge-earned'
+  // Council Live Theater stream
+  | 'council:theater:scheduled'
+  | 'council:theater:started'
+  | 'council:theater:voice'
+  | 'council:theater:complete'
+  // Combat netcode
+  | 'combat:dodge:ack'
+  | 'combat:block:ack'
+  // World scheduler
+  | 'world:event:scheduled'
   // Tier 3 deferral 12: faction event scheduler
   | 'faction:event_started'
   | 'faction:event_ended'

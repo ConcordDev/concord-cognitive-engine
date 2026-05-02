@@ -467,7 +467,7 @@ export default function StudioLensPage() {
     const unsubMusic = transportRef.current.on('playStateChange', (data: { playing?: boolean }) => {
       try {
         window.dispatchEvent(new CustomEvent('concordia:daw-playback', {
-          detail: { playing: !!data.playing, projectName: project?.name ?? 'studio_session' },
+          detail: { playing: !!data.playing, projectName: project?.title ?? 'studio_session' },
         }));
       } catch { /* dispatch best-effort */ }
     });

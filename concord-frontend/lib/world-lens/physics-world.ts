@@ -510,7 +510,8 @@ class PhysicsWorld {
         }
       });
       if (hit) {
-        try { p.onHit?.(hit.entityId); } catch { /* listener best-effort */ }
+        const hitInfo = hit as { entityId: string };
+        try { p.onHit?.(hitInfo.entityId); } catch { /* listener best-effort */ }
         this.world.removeRigidBody(p.body);
         this.projectiles.delete(id);
         this.bodies.delete(id);
