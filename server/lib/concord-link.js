@@ -72,6 +72,9 @@ export function computeMessageCost({ messageType, sourceWorld, destWorld, encryp
   const cost = Math.ceil(base * distance * encMult);
   return {
     cost,
+    base,
+    sameWorldDiscount: sameWorld,
+    encryptionMultiplier: encMult,
     breakdown: { base, distance_factor: distance, encryption_factor: encMult },
   };
 }
