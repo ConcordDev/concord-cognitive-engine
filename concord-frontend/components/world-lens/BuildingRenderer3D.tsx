@@ -244,15 +244,40 @@ export default function BuildingRenderer3D({
     group.add(foundation);
 
     // ── Walls (one box per floor for LOD-friendliness) ──────────
+    // EvoAsset hook: resolve the canonical texture for this DTU. When the
+    // server has promoted a higher-quality version through the Atlas
+    // pipeline, the resolved URL points to that version's diffuse map;
+    // otherwise resolveAssetUrl returns null and the wall keeps its
+    // procedural texture pair.
+    let evoTexture: import('three').Texture | null = null;
+    try {
+      const m = await import('@/lib/evo-asset/loader');
+      const url = await m.resolveAssetUrl({ source: 'authored', sourceId: dtu.id });
+      if (url) {
+        evoTexture = await new Promise<import('three').Texture | null>((resolve) => {
+          const loader = new THREE.TextureLoader();
+          loader.load(url, (tex) => {
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            resolve(tex);
+          }, undefined, () => resolve(null));
+        });
+      }
+    } catch { /* fall through to procedural */ }
+
     const floorHeight = height / dtu.floors;
     for (let f = 0; f < dtu.floors; f++) {
       const wallGeom = new THREE.BoxGeometry(width, floorHeight, depth);
       const wallMat = createMaterial();
+      if (evoTexture && 'map' in wallMat) {
+        (wallMat as InstanceType<typeof THREE.MeshStandardMaterial>).map = evoTexture;
+        (wallMat as InstanceType<typeof THREE.MeshStandardMaterial>).needsUpdate = true;
+      }
       const wall = new THREE.Mesh(wallGeom, wallMat);
       wall.position.y = foundationHeight + f * floorHeight + floorHeight / 2;
       wall.castShadow = true;
       wall.receiveShadow = true;
-      wall.userData = { elementType: 'wall', floor: f };
+      wall.userData = { elementType: 'wall', floor: f, evoTextureApplied: !!evoTexture };
       group.add(wall);
     }
 
