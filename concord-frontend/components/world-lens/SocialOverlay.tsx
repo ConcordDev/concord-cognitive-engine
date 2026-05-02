@@ -28,6 +28,10 @@ const TradeWindow = dynamic(
   () => import('@/components/trade/TradeWindow').then((m) => ({ default: m.TradeWindow })),
   { ssr: false },
 );
+const SocialActionPanel = dynamic(
+  () => import('@/components/world-lens/SocialActionPanel').then((m) => ({ default: m.SocialActionPanel })),
+  { ssr: false },
+);
 
 interface FactionEventPayload {
   eventId: string;
@@ -44,7 +48,9 @@ interface ActiveTrade {
   recipientId: string;
 }
 
-export function SocialOverlay({ myUserId }: { myUserId: string }) {
+interface NearbyPlayer { id: string; name: string }
+
+export function SocialOverlay({ myUserId, nearbyPlayers = [] }: { myUserId: string; nearbyPlayers?: NearbyPlayer[] }) {
   const [activeTrade, setActiveTrade] = useState<ActiveTrade | null>(null);
   const [activeFactionEvent, setActiveFactionEvent] = useState<FactionEventPayload | null>(null);
   const [streakInfo, setStreakInfo] = useState<{ days: number; weeklyBonus: boolean } | null>(null);
@@ -239,6 +245,9 @@ export function SocialOverlay({ myUserId }: { myUserId: string }) {
           onClose={() => setActiveTrade(null)}
         />
       )}
+
+      {/* Social action panel — sender side for trade requests + party invites */}
+      <SocialActionPanel myUserId={myUserId} nearbyPlayers={nearbyPlayers} />
     </>
   );
 }

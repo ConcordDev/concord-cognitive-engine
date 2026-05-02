@@ -412,6 +412,18 @@ export const LENS_REGISTRY: LensEntry[] = [
     tabLabel: 'Governance',
   },
   {
+    id: 'world-creator/anomalies',
+    name: 'Anomaly Review',
+    icon: AlertTriangle,
+    description: 'Inventory anomaly transparency log + per-world creator review',
+    category: 'governance',
+    showInSidebar: false,
+    showInCommandPalette: true,
+    path: '/lenses/world-creator/anomalies',
+    order: 13.5,
+    keywords: ['anomaly', 'audit', 'transparency', 'world creator', 'inventory'],
+  },
+  {
     id: 'anon',
     name: 'Anon',
     icon: User,

@@ -541,6 +541,20 @@ export default function BuildingRenderer3D({
   useEffect(() => {
     let disposed = false;
 
+    // EvoAsset: passive presence interaction. Each building rendered into
+    // the scene gets a low-weight (0.1) interaction signal so the registry
+    // accumulates a baseline of which buildings exist + are visible. Active
+    // engagements (click, combat near, NPC interaction) layer on top with
+    // higher weights elsewhere.
+    void (async () => {
+      try {
+        const m = await import('@/lib/evo-asset/loader');
+        for (const b of (buildings || [])) {
+          if (b?.id) m.recordAssetInteraction('authored', b.id, 'render', 0.1);
+        }
+      } catch { /* best-effort */ }
+    })();
+
     async function buildAllBuildings() {
       const THREE = await import('three');
       if (disposed) return;

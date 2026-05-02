@@ -2771,7 +2771,10 @@ export default function WorldLensPage() {
             <></>
           </GameJuice>
           <LevelUpJuiceBridge />
-          <SocialOverlay myUserId={playerAvatar.id} />
+          <SocialOverlay
+            myUserId={playerAvatar.id}
+            nearbyPlayers={otherPlayers.map((p) => ({ id: p.id, name: p.name }))}
+          />
           <LoadingTransitions
             transition="district"
             destination={{ name: 'Loading...' }}
