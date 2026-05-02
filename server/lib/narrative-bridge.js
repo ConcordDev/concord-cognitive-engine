@@ -179,6 +179,33 @@ export async function generateAuthoredDialogue(npcId, questId = null, playerRela
   const questContext = buildQuestContext(npcId, questId);
   const authored     = getAuthoredNPC(npcId) !== null;
 
+  // Repair-brain pre-flight on the seed text we're about to feed the LLM.
+  // We check the backstory + speech_patterns since those are the strings most
+  // likely to have been authored or user-supplied. NPC `secret` is intentionally
+  // excluded from the prompt entirely; we only vet what we send.
+  try {
+    const rb = await import("./repair-brain.js");
+    const seedText = [
+      npcTraits?.role,
+      npcTraits?.backstory,
+      npcTraits?.personality_traits?.join?.(", "),
+      npcTraits?.speech_patterns,
+    ].filter(Boolean).join(" \n ").slice(0, 3000);
+    if (seedText) {
+      const vet = await rb.vetNPCDialogue(seedText, npcTraits);
+      if (vet?.score !== null && vet?.score < rb.REPAIR_DEFAULT_FLOOR.dialogue) {
+        logger.warn({ npcId, score: vet.score, flags: vet.flags },
+                    "narrative_bridge_dialogue_blocked_by_repair");
+        return {
+          ok: false,
+          error: "repair_brain_blocked",
+          repair: vet,
+          authored,
+        };
+      }
+    }
+  } catch { /* repair brain unavailable — fail open */ }
+
   const result = await writeDialogueTree(npcTraits, questContext, playerRelationship);
 
   if (result.ok) {

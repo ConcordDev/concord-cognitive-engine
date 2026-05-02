@@ -378,6 +378,19 @@ export async function runDreamCycle(STATE) {
     cycle.morningBrief = cycle.phases.compose?.result || null;
     cycle.completedAt = new Date().toISOString();
 
+    // Dream → marketplace bridge: promote high-quality cycle output as free
+    // marketplace listings so that nightly dream output is discoverable.
+    try {
+      const { runPromotionPass } = await import("../lib/dream-marketplace-bridge.js");
+      const promo = await runPromotionPass(STATE, cycle);
+      cycle.marketplacePromotion = promo;
+      logger.info("dream-cycle",
+        `Marketplace promotion: ${promo.promoted}/${promo.candidates} candidates listed`);
+    } catch (err) {
+      logger.warn("dream-cycle", `Marketplace promotion skipped: ${err.message}`);
+      cycle.marketplacePromotion = { ok: false, error: err.message };
+    }
+
     _cycleState.state = CYCLE_STATES.COMPLETED;
     _cycleState.lastCycleAt = cycle.completedAt;
     _cycleState.currentPhase = null;

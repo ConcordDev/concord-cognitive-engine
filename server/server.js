@@ -26699,13 +26699,36 @@ app.get("/api/creature/lineage/:id", (req, res) => {
 // Emergent skills — author / evolve / list / get. Namespaced under
 // /api/emergent-skills/* to avoid colliding with the existing /api/skills
 // routes (skills/import, skills/export, skills/import-dir).
-app.post("/api/emergent-skills/create", requireAuth, (req, res) => {
+app.post("/api/emergent-skills/create", requireAuth, async (req, res) => {
   try {
     const userId = req.user?.id || req.headers["x-user-id"];
-    const r = createEmergentSkill(db, { ...(req.body || {}), origin: req.body?.origin ?? userId ?? "user" });
+    const body = req.body || {};
+
+    // Repair-brain pre-flight on user-authored skill content.
+    let repair = null;
+    try {
+      const rb = await import("./lib/repair-brain.js");
+      repair = await rb.vetUserSkill({
+        title: body.title || body.name,
+        body: body.description || body.body,
+        content: body.content,
+      });
+      const floor = rb.REPAIR_DEFAULT_FLOOR.skill;
+      if (repair?.score !== null && typeof repair?.score === "number" && repair.score < floor) {
+        return res.status(422).json({
+          ok: false,
+          error: "repair_brain_blocked",
+          reason: repair.reason,
+          flags: repair.flags,
+          score: repair.score,
+        });
+      }
+    } catch { /* repair brain unavailable — fail open */ }
+
+    const r = createEmergentSkill(db, { ...body, origin: body.origin ?? userId ?? "user" });
     if (!r.ok) return res.status(400).json(r);
     try { _gameplayBridge.onSkillAuthored(db, { skill: r.skill, origin: userId ?? "user" }); } catch { /* non-fatal */ }
-    res.status(201).json(r);
+    res.status(201).json({ ...r, repair });
   } catch { res.status(500).json({ ok: false, error: "create_failed" }); }
 });
 app.post("/api/emergent-skills/evolve", requireAuth, (req, res) => {
@@ -28287,6 +28310,29 @@ async function governorTick(reason="heartbeat") {
         }
       }
 
+      // Citation chain → quest chain conversion. Run every 60 ticks (~15 min)
+      // so it never thrashes the main loop. Materializes 0..N "verify lineage"
+      // quests from deep DTU citation chains.
+      if ((STATE.__bgTickCounter || 0) % 60 === 0) {
+        await runHeartbeatModule("citation_quest_bridge_tick", async () => {
+          const bridge = await import("./lib/citation-quest-bridge.js").catch(() => null);
+          if (bridge?.scanForChainQuests) {
+            const r = bridge.scanForChainQuests(STATE, { maxScan: 100 });
+            if (r?.materialized > 0) {
+              structuredLog("info", "citation_quest_bridge_tick", {
+                scanned: r.scanned,
+                materialized: r.materialized,
+              });
+              // Realtime push the new chain quests to all currently-connected players.
+              for (const c of r.created || []) {
+                try { REALTIME?.io?.emit?.("quest:lineage-quest", { questId: c.questId, depth: c.depth, ts: nowISO() }); }
+                catch { /* realtime best-effort */ }
+              }
+            }
+          }
+        });
+      }
+
       // Concord Link Walker journeys — advance every in_transit walker one
       // anchor closer to its destination per tick. Final hop rolls intercept
       // and updates the message + contract state.
@@ -29585,7 +29631,7 @@ app.get("/api/marketplace/browse", asyncHandler(async (req, res) => res.json(awa
 // Legacy alias — some frontend code still calls /api/marketplace/dtu_browse.
 // Route it to the same macro so both URLs work during deprecation.
 app.get("/api/marketplace/dtu_browse", asyncHandler(async (req, res) => res.json(await runMacro("marketplace", "browse", { category: req.query.category, search: req.query.search, sort: req.query.sort, page: req.query.page, pageSize: req.query.pageSize }, makeCtx(req)))));
-app.post("/api/marketplace/submit", requireAuth(), (req, res) => {
+app.post("/api/marketplace/submit", requireAuth(), async (req, res) => {
   try {
     const userId = req.user?.id;
     const { dtuId, price } = req.body;
@@ -29593,6 +29639,29 @@ app.post("/api/marketplace/submit", requireAuth(), (req, res) => {
     if (!dtu) return res.status(404).json({ ok: false, error: "DTU not found" });
     if (dtu.ownerId !== userId) return res.status(403).json({ ok: false, error: "Not your DTU" });
     if (dtu.scope !== "personal") return res.status(400).json({ ok: false, error: "Can only list personal DTUs" });
+
+    // Repair-brain pre-flight: catch obvious prompt-injection / harmful /
+    // low-quality content before it hits the marketplace surface.
+    let repair = null;
+    try {
+      const rb = await import("./lib/repair-brain.js");
+      repair = await rb.vetDTUForPublish({
+        title: dtu.title,
+        body: dtu.human?.summary || dtu.body || "",
+        tags: dtu.meta?.tags || [],
+        content: dtu.content,
+      });
+      const floor = (await import("./lib/repair-brain.js")).REPAIR_DEFAULT_FLOOR.publish;
+      if (repair?.score !== null && typeof repair?.score === "number" && repair.score < floor) {
+        return res.status(422).json({
+          ok: false,
+          error: "repair_brain_blocked",
+          reason: repair.reason,
+          flags: repair.flags,
+          score: repair.score,
+        });
+      }
+    } catch (e) { /* repair brain unavailable — fail open */ }
 
     const listing = {
       id: uid("listing"),
@@ -29611,12 +29680,14 @@ app.post("/api/marketplace/submit", requireAuth(), (req, res) => {
       downloads: 0,
       ratings: [],
       status: "active",
+      repairScore: repair?.score ?? null,
+      repairFlags: repair?.flags ?? [],
     };
 
     if (!STATE.marketplaceListings) STATE.marketplaceListings = new Map();
     STATE.marketplaceListings.set(listing.id, listing);
     saveStateDebounced();
-    res.json({ ok: true, listing });
+    res.json({ ok: true, listing, repair });
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
@@ -39893,6 +39964,74 @@ app.get("/api/marketplace/listings", asyncHandler(async (req, res) => {
     page: req.query.page,
     pageSize: req.query.pageSize
   }, makeCtx(req)));
+}));
+
+// Citation-chain quest scanning + materialization endpoints. Public read so
+// the lens explorer can show "deep chains in your library"; admin-only
+// trigger for manual materialization.
+app.get("/api/quests/citation-chains", asyncHandler(async (_req, res) => {
+  const bridge = await import("./lib/citation-quest-bridge.js");
+  // Walk a sampled set of root candidates; report depth + domain breadth so
+  // the UI can preview which chains are quest-worthy.
+  const out = [];
+  let scanned = 0;
+  for (const [id, dtu] of (STATE.dtus?.entries?.() ?? [])) {
+    if (scanned++ > 200) break;
+    if (dtu.lineage?.parents?.length) continue;
+    const walk = bridge.walkCitationChain(STATE, id, 8);
+    if (walk.depth >= 4) out.push({ rootId: id, ...walk });
+  }
+  out.sort((a, b) => b.depth - a.depth);
+  res.json({ ok: true, chains: out.slice(0, 50) });
+}));
+app.post("/api/quests/materialize-chain", requireAuth(), asyncHandler(async (req, res) => {
+  const bridge = await import("./lib/citation-quest-bridge.js");
+  const { rootDtuId } = req.body || {};
+  if (!rootDtuId) return res.status(400).json({ ok: false, error: "rootDtuId_required" });
+  const r = bridge.materializeChainQuest(STATE, String(rootDtuId));
+  res.json(r);
+}));
+
+// Surface dream-promoted listings separately so the creator dashboard +
+// "what's new tonight" panel can query them without filtering the full
+// marketplace.
+app.get("/api/marketplace/dream-promoted", (req, res) => {
+  const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 20));
+  const out = [];
+  if (!STATE.marketplaceListings) return res.json({ ok: true, listings: [] });
+  for (const l of STATE.marketplaceListings.values()) {
+    if (l.promotionSource === "dream_cycle" && l.status === "active") {
+      out.push({
+        id: l.id,
+        sourceDtuId: l.sourceDtuId,
+        title: l.title,
+        domain: l.domain,
+        description: l.description,
+        promotionScore: l.promotionScore,
+        repairScore: l.repairScore,
+        consolidatedFrom: l.consolidatedFrom,
+        listedAt: l.listedAt,
+      });
+    }
+  }
+  out.sort((a, b) => (b.promotionScore || 0) - (a.promotionScore || 0));
+  res.json({ ok: true, listings: out.slice(0, limit) });
+});
+
+// Manual trigger: run the promotion pass against the latest cycle. Useful for
+// admin / testing without waiting for the next dream tick.
+app.post("/api/marketplace/dream-promote", requireAuth(), asyncHandler(async (req, res) => {
+  if (req.user?.role !== "admin" && req.user?.role !== "sovereign") {
+    return res.status(403).json({ ok: false, error: "admin_only" });
+  }
+  const dreamMod = await import("./emergent/dream-cycle.js");
+  const lastBrief = dreamMod.getLatestMorningBrief?.();
+  if (!lastBrief) return res.json({ ok: false, error: "no_recent_dream_cycle" });
+  const bridge = await import("./lib/dream-marketplace-bridge.js");
+  const cycle = { phases: { consolidate: { result: lastBrief?.sections?.memory ?? {} },
+                            connect:     { result: lastBrief?.sections?.discoveries ?? {} } } };
+  const r = await bridge.runPromotionPass(STATE, cycle);
+  res.json({ ok: true, ...r });
 }));
 
 structuredLog("info", "module_loaded", { module: "Wave 8: Integrations Ecosystem" });
