@@ -9,6 +9,7 @@
 // Three-gate note: /api/voice is already in all three gates in server.js (lines 4775, 7931, 7972)
 
 import { Router } from "express";
+import { asyncHandler } from "../lib/async-handler.js";
 import {
   createSession,
   getSession,
@@ -33,7 +34,7 @@ export function createVoiceAgentRouter({ runMacro, infer, makeCtx }) {
   // POST /api/voice/session/turn
   // Accepts raw audio bytes (Content-Type: application/octet-stream) or
   // JSON body { audio: "<base64>", format: "webm|ogg|wav", sessionId: "..." }
-  router.post("/turn", async (req, res) => {
+  router.post("/turn", asyncHandler(async (req, res) => {
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ ok: false, error: "unauthenticated" });
 
@@ -68,7 +69,7 @@ export function createVoiceAgentRouter({ runMacro, infer, makeCtx }) {
     });
 
     res.json(result);
-  });
+  }));
 
   // POST /api/voice/session/barge-in
   router.post("/barge-in", (req, res) => {

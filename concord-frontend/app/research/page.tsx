@@ -6,12 +6,29 @@ import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ds } from '@/lib/design-system';
 import {
-  Search, Plus, Play, Square, Clock, CheckCircle2,
-  AlertTriangle, Loader2,
-  BookOpen, Microscope, Brain, Beaker, Lightbulb,
-  FileText, Link2, Tag, ArrowRight, RefreshCw,
-  Eye, XCircle, Layers,
-  Zap, Globe,
+  Search,
+  Plus,
+  Play,
+  Square,
+  Clock,
+  CheckCircle2,
+  AlertTriangle,
+  Loader2,
+  BookOpen,
+  Microscope,
+  Brain,
+  Beaker,
+  Lightbulb,
+  FileText,
+  Link2,
+  Tag,
+  ArrowRight,
+  RefreshCw,
+  Eye,
+  XCircle,
+  Layers,
+  Zap,
+  Globe,
 } from 'lucide-react';
 
 /* ------------------------------------------------------------------ */
@@ -113,7 +130,7 @@ const DEPTH_OPTIONS = [
 /* ------------------------------------------------------------------ */
 
 function decree<T = Record<string, unknown>>(body: Record<string, unknown>): Promise<T> {
-  return api.post('/api/sovereign/decree', body).then((r) => r.data);
+  return api.post('/api/run', body).then((r) => r.data);
 }
 
 function getStepIndex(step?: ResearchStep): number {
@@ -163,8 +180,20 @@ function formatTime(iso?: string): string {
 function StatusBadge({ status }: { status: JobStatus }) {
   const colors = STATUS_COLORS[status] || STATUS_COLORS.queued;
   return (
-    <span className={cn('inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium', colors.bg, colors.text)}>
-      <span className={cn('w-1.5 h-1.5 rounded-full', colors.dot, status === 'running' && 'animate-pulse')} />
+    <span
+      className={cn(
+        'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium',
+        colors.bg,
+        colors.text
+      )}
+    >
+      <span
+        className={cn(
+          'w-1.5 h-1.5 rounded-full',
+          colors.dot,
+          status === 'running' && 'animate-pulse'
+        )}
+      />
       {status.charAt(0).toUpperCase() + status.slice(1)}
     </span>
   );
@@ -183,10 +212,13 @@ function ProgressSteps({ job }: { job: ResearchJob }) {
           <div
             className={cn(
               'h-full rounded-full transition-all duration-500',
-              isFailed ? 'bg-red-500' :
-              isComplete ? 'bg-green-500' :
-              job.status === 'synthesizing' ? 'bg-purple-500' :
-              'bg-blue-500'
+              isFailed
+                ? 'bg-red-500'
+                : isComplete
+                  ? 'bg-green-500'
+                  : job.status === 'synthesizing'
+                    ? 'bg-purple-500'
+                    : 'bg-blue-500'
             )}
             style={{ width: `${computeProgress(job)}%` }}
           />
@@ -200,7 +232,11 @@ function ProgressSteps({ job }: { job: ResearchJob }) {
       <div className="flex items-center gap-1">
         {RESEARCH_STEPS.map((step, idx) => {
           const stepData = job.steps?.[step];
-          const isDone = stepData?.status === 'complete' || stepData?.completedAt || (isComplete) || (idx < currentIdx);
+          const isDone =
+            stepData?.status === 'complete' ||
+            stepData?.completedAt ||
+            isComplete ||
+            idx < currentIdx;
           const isCurrent = idx === currentIdx && !isComplete && !isFailed;
           const isPending = !isDone && !isCurrent;
 
@@ -212,17 +248,19 @@ function ProgressSteps({ job }: { job: ResearchJob }) {
                   isDone && 'bg-green-500/20 text-green-400',
                   isCurrent && 'bg-blue-500/20 text-blue-400 ring-2 ring-blue-500/40',
                   isPending && 'bg-lattice-elevated text-gray-600',
-                  isFailed && isCurrent && 'bg-red-500/20 text-red-400 ring-2 ring-red-500/40',
+                  isFailed && isCurrent && 'bg-red-500/20 text-red-400 ring-2 ring-red-500/40'
                 )}
                 title={STEP_LABELS[step]}
               >
                 {STEP_ICONS[step]}
               </div>
               {idx < RESEARCH_STEPS.length - 1 && (
-                <div className={cn(
-                  'flex-1 h-px mx-1',
-                  isDone ? 'bg-green-500/40' : 'bg-lattice-border',
-                )} />
+                <div
+                  className={cn(
+                    'flex-1 h-px mx-1',
+                    isDone ? 'bg-green-500/40' : 'bg-lattice-border'
+                  )}
+                />
               )}
             </div>
           );
@@ -235,7 +273,9 @@ function ProgressSteps({ job }: { job: ResearchJob }) {
           {isFailed ? (
             <span className="text-red-400">Failed at: {STEP_LABELS[job.currentStep]}</span>
           ) : (
-            <>Currently: <span className="text-white">{STEP_LABELS[job.currentStep]}</span></>
+            <>
+              Currently: <span className="text-white">{STEP_LABELS[job.currentStep]}</span>
+            </>
           )}
         </p>
       )}
@@ -262,9 +302,7 @@ function JobCard({
       className={cn(
         ds.panel,
         'cursor-pointer transition-all',
-        isSelected
-          ? 'border-neon-cyan/60 ring-1 ring-neon-cyan/20'
-          : 'hover:border-neon-cyan/30',
+        isSelected ? 'border-neon-cyan/60 ring-1 ring-neon-cyan/20' : 'hover:border-neon-cyan/30'
       )}
     >
       <div className="flex items-start justify-between gap-3 mb-3">
@@ -273,14 +311,10 @@ function JobCard({
           <div className="flex items-center gap-2 mt-1 flex-wrap">
             <StatusBadge status={job.status} />
             {job.depth && (
-              <span className={cn(ds.badge('gray-400'), 'text-[10px]')}>
-                {job.depth}
-              </span>
+              <span className={cn(ds.badge('gray-400'), 'text-[10px]')}>{job.depth}</span>
             )}
             {job.priority != null && job.priority > 0 && (
-              <span className={cn(ds.badge('yellow-400'), 'text-[10px]')}>
-                P{job.priority}
-              </span>
+              <span className={cn(ds.badge('yellow-400'), 'text-[10px]')}>P{job.priority}</span>
             )}
           </div>
         </div>
@@ -383,11 +417,7 @@ function NewJobForm({
       {/* Depth */}
       <div>
         <label className={ds.label}>Research Depth</label>
-        <select
-          value={depth}
-          onChange={(e) => setDepth(e.target.value)}
-          className={ds.select}
-        >
+        <select value={depth} onChange={(e) => setDepth(e.target.value)} className={ds.select}>
           {DEPTH_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
               {opt.label} -- {opt.description}
@@ -430,10 +460,7 @@ function NewJobForm({
                 className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/20"
               >
                 {d}
-                <button
-                  onClick={() => removeDomain(d)}
-                  className="hover:text-white"
-                >
+                <button onClick={() => removeDomain(d)} className="hover:text-white">
                   <XCircle className="w-3 h-3" />
                 </button>
               </span>
@@ -449,11 +476,7 @@ function NewJobForm({
           disabled={!topic.trim() || isPending}
           className={cn(ds.btnPrimary, 'flex-1')}
         >
-          {isPending ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <Play className="w-4 h-4" />
-          )}
+          {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
           {isPending ? 'Submitting...' : 'Launch Research'}
         </button>
         <button
@@ -470,7 +493,14 @@ function NewJobForm({
   );
 }
 
-function JobResultsView({ results, onClose }: { results: JobResults | null; isLoading: boolean; onClose: () => void }) {
+function JobResultsView({
+  results,
+  onClose,
+}: {
+  results: JobResults | null;
+  isLoading: boolean;
+  onClose: () => void;
+}) {
   if (!results) {
     return (
       <div className="flex items-center justify-center py-16">
@@ -487,14 +517,10 @@ function JobResultsView({ results, onClose }: { results: JobResults | null; isLo
           <h2 className={ds.heading2}>{results.topic}</h2>
           <div className="flex items-center gap-3 mt-1">
             {results.duration != null && (
-              <span className={ds.textMuted}>
-                Completed in {formatDuration(results.duration)}
-              </span>
+              <span className={ds.textMuted}>Completed in {formatDuration(results.duration)}</span>
             )}
             {results.dtusCreated != null && (
-              <span className={cn(ds.badge('neon-cyan'))}>
-                {results.dtusCreated} DTUs created
-              </span>
+              <span className={cn(ds.badge('neon-cyan'))}>{results.dtusCreated} DTUs created</span>
             )}
           </div>
         </div>
@@ -596,15 +622,14 @@ function JobResultsView({ results, onClose }: { results: JobResults | null; isLo
           </h3>
           <div className="space-y-1.5 max-h-60 overflow-y-auto">
             {results.sources.map((src, i) => (
-              <div key={i} className="flex items-center gap-2 p-1.5 rounded bg-lattice-elevated text-xs group">
+              <div
+                key={i}
+                className="flex items-center gap-2 p-1.5 rounded bg-lattice-elevated text-xs group"
+              >
                 <Globe className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-gray-300 truncate">
-                    {src.title || src.url}
-                  </p>
-                  {src.title && (
-                    <p className="text-gray-500 truncate">{src.url}</p>
-                  )}
+                  <p className="text-gray-300 truncate">{src.title || src.url}</p>
+                  {src.title && <p className="text-gray-500 truncate">{src.url}</p>}
                 </div>
                 {src.relevance != null && (
                   <span className="text-[10px] font-mono text-gray-500 flex-shrink-0">
@@ -643,9 +668,10 @@ export default function ResearchDashboardPage() {
     refetch: refetchJobs,
   } = useQuery({
     queryKey: ['research-jobs'],
-    queryFn: () => decree<{ ok: boolean; jobs?: ResearchJob[]; queue?: ResearchJob[] }>({
-      action: 'research-queue',
-    }),
+    queryFn: () =>
+      decree<{ ok: boolean; jobs?: ResearchJob[]; queue?: ResearchJob[] }>({
+        action: 'research-queue',
+      }),
     refetchInterval: 4000,
   });
 
@@ -655,25 +681,22 @@ export default function ResearchDashboardPage() {
     return allJobs.find((j) => j.id === selectedJobId) || null;
   })();
 
-  const {
-    data: statusData,
-  } = useQuery({
+  const { data: statusData } = useQuery({
     queryKey: ['research-status', selectedJobId],
     queryFn: () =>
       decree<{ ok: boolean; job?: ResearchJob }>({
         action: 'research-status',
         target: selectedJobId!,
       }),
-    enabled: !!selectedJobId && (selectedJob?.status === 'running' || selectedJob?.status === 'synthesizing'),
+    enabled:
+      !!selectedJobId &&
+      (selectedJob?.status === 'running' || selectedJob?.status === 'synthesizing'),
     refetchInterval: 2000,
   });
 
   const detailedJob = statusData?.job || selectedJob;
 
-  const {
-    data: resultsData,
-    isLoading: resultsLoading,
-  } = useQuery({
+  const { data: resultsData, isLoading: resultsLoading } = useQuery({
     queryKey: ['research-results', selectedJobId],
     queryFn: () =>
       decree<{ ok: boolean; results?: JobResults }>({
@@ -711,8 +734,7 @@ export default function ResearchDashboardPage() {
   });
 
   const cancelJob = useMutation({
-    mutationFn: (id: string) =>
-      decree({ action: 'research-cancel', target: id }),
+    mutationFn: (id: string) => decree({ action: 'research-cancel', target: id }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['research-jobs'] });
     },
@@ -730,15 +752,17 @@ export default function ResearchDashboardPage() {
 
   const filteredJobs = (() => {
     switch (activeTab) {
-      case 'active': return activeJobs;
-      case 'queue': return queuedJobs;
-      case 'completed': return completedJobs;
+      case 'active':
+        return activeJobs;
+      case 'queue':
+        return queuedJobs;
+      case 'completed':
+        return completedJobs;
     }
   })();
 
-  const displayJobs = statusFilter === 'all'
-    ? filteredJobs
-    : filteredJobs.filter((j) => j.status === statusFilter);
+  const displayJobs =
+    statusFilter === 'all' ? filteredJobs : filteredJobs.filter((j) => j.status === statusFilter);
 
   /* ---- Auto-select first active job ---- */
 
@@ -751,9 +775,24 @@ export default function ResearchDashboardPage() {
   /* ---- Render ---- */
 
   const tabs: { key: ViewTab; label: string; count: number; icon: React.ReactNode }[] = [
-    { key: 'active', label: 'Active', count: activeJobs.length, icon: <Play className="w-3.5 h-3.5" /> },
-    { key: 'queue', label: 'Queue', count: queuedJobs.length, icon: <Clock className="w-3.5 h-3.5" /> },
-    { key: 'completed', label: 'Completed', count: completedJobs.length, icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
+    {
+      key: 'active',
+      label: 'Active',
+      count: activeJobs.length,
+      icon: <Play className="w-3.5 h-3.5" />,
+    },
+    {
+      key: 'queue',
+      label: 'Queue',
+      count: queuedJobs.length,
+      icon: <Clock className="w-3.5 h-3.5" />,
+    },
+    {
+      key: 'completed',
+      label: 'Completed',
+      count: completedJobs.length,
+      icon: <CheckCircle2 className="w-3.5 h-3.5" />,
+    },
   ];
 
   return (
@@ -771,11 +810,7 @@ export default function ResearchDashboardPage() {
             </p>
           </div>
         </div>
-        <button
-          onClick={() => refetchJobs()}
-          className={ds.btnGhost}
-          title="Refresh"
-        >
+        <button onClick={() => refetchJobs()} className={ds.btnGhost} title="Refresh">
           <RefreshCw className={cn('w-4 h-4', jobsLoading && 'animate-spin')} />
         </button>
       </header>
@@ -852,7 +887,7 @@ export default function ResearchDashboardPage() {
                     'flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg transition-colors',
                     activeTab === tab.key
                       ? 'bg-neon-blue/15 text-neon-blue'
-                      : 'text-gray-400 hover:text-white hover:bg-lattice-elevated',
+                      : 'text-gray-400 hover:text-white hover:bg-lattice-elevated'
                   )}
                 >
                   {tab.icon}
@@ -934,10 +969,7 @@ export default function ResearchDashboardPage() {
                   <Eye className="w-4 h-4 text-neon-cyan" />
                   Job Detail
                 </h3>
-                <button
-                  onClick={() => setSelectedJobId(null)}
-                  className={cn(ds.btnGhost, 'p-1')}
-                >
+                <button onClick={() => setSelectedJobId(null)} className={cn(ds.btnGhost, 'p-1')}>
                   <XCircle className="w-4 h-4" />
                 </button>
               </div>
@@ -945,7 +977,9 @@ export default function ResearchDashboardPage() {
               <div className="space-y-2 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-gray-400">Topic</span>
-                  <span className="text-white text-right max-w-[200px] truncate">{detailedJob.topic}</span>
+                  <span className="text-white text-right max-w-[200px] truncate">
+                    {detailedJob.topic}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-gray-400">Status</span>

@@ -71,11 +71,14 @@ interface NotificationCenterProps {
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-const NOTIFICATION_CONFIG: Record<NotificationType, {
-  icon: typeof Bell;
-  color: string;
-  bgColor: string;
-}> = {
+const NOTIFICATION_CONFIG: Record<
+  NotificationType,
+  {
+    icon: typeof Bell;
+    color: string;
+    bgColor: string;
+  }
+> = {
   follow: {
     icon: UserPlus,
     color: 'text-neon-cyan',
@@ -176,9 +179,7 @@ function groupNotifications(notifications: Notification[]): GroupedNotification[
         .map((n) => ({ id: n.actorId!, name: n.actorName! }));
 
       // Deduplicate actors
-      const uniqueActors = Array.from(
-        new Map(actors.map((a) => [a.id, a])).values()
-      );
+      const uniqueActors = Array.from(new Map(actors.map((a) => [a.id, a])).values());
 
       const othersCount = uniqueActors.length - 1;
       let groupMessage = base.message;
@@ -209,9 +210,7 @@ function groupNotifications(notifications: Notification[]): GroupedNotification[
   result.push(...ungroupable);
 
   // Sort all by date descending
-  result.sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
+  result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   return result;
 }
@@ -289,31 +288,31 @@ function NotificationItem({
             </p>
 
             {/* Grouped actors preview */}
-            {notification.groupCount && notification.groupCount > 1 && notification.groupedActors && (
-              <div className="flex items-center gap-1 mt-1">
-                {notification.groupedActors.slice(0, 4).map((actor, i) => (
-                  <div
-                    key={actor.id}
-                    className="w-5 h-5 rounded-full bg-gradient-to-br from-neon-purple to-neon-blue flex items-center justify-center text-[8px] text-white font-bold"
-                    style={{ marginLeft: i > 0 ? '-4px' : 0, zIndex: 4 - i }}
-                    title={actor.name}
-                  >
-                    {actor.name.charAt(0).toUpperCase()}
-                  </div>
-                ))}
-                {notification.groupCount > 4 && (
-                  <span className="text-xs text-gray-500 ml-1">
-                    +{notification.groupCount - 4}
-                  </span>
-                )}
-              </div>
-            )}
+            {notification.groupCount &&
+              notification.groupCount > 1 &&
+              notification.groupedActors && (
+                <div className="flex items-center gap-1 mt-1">
+                  {notification.groupedActors.slice(0, 4).map((actor, i) => (
+                    <div
+                      key={actor.id}
+                      className="w-5 h-5 rounded-full bg-gradient-to-br from-neon-purple to-neon-blue flex items-center justify-center text-[8px] text-white font-bold"
+                      style={{ marginLeft: i > 0 ? '-4px' : 0, zIndex: 4 - i }}
+                      title={actor.name}
+                    >
+                      {actor.name.charAt(0).toUpperCase()}
+                    </div>
+                  ))}
+                  {notification.groupCount > 4 && (
+                    <span className="text-xs text-gray-500 ml-1">
+                      +{notification.groupCount - 4}
+                    </span>
+                  )}
+                </div>
+              )}
 
             {/* Target */}
             {notification.targetTitle && (
-              <p className="text-xs text-gray-500 mt-0.5 truncate">
-                {notification.targetTitle}
-              </p>
+              <p className="text-xs text-gray-500 mt-0.5 truncate">{notification.targetTitle}</p>
             )}
 
             {/* Tip amount */}
@@ -345,16 +344,12 @@ function NotificationItem({
                 <Trash2 className="w-3 h-3" />
               </button>
             )}
-            {!notification.read && (
-              <div className="w-2 h-2 rounded-full bg-neon-cyan mt-0.5" />
-            )}
+            {!notification.read && <div className="w-2 h-2 rounded-full bg-neon-cyan mt-0.5" />}
           </div>
         </div>
 
         {/* Timestamp */}
-        <p className="text-xs text-gray-600 mt-1">
-          {formatRelativeTime(notification.createdAt)}
-        </p>
+        <p className="text-xs text-gray-600 mt-1">{formatRelativeTime(notification.createdAt)}</p>
       </div>
     </motion.div>
   );
@@ -362,7 +357,7 @@ function NotificationItem({
 
 // ── Main Component ───────────────────────────────────────────────────────────
 
-export function NotificationCenter({
+function NotificationCenter({
   userId,
   isOpen = true,
   onClose,
@@ -390,10 +385,7 @@ export function NotificationCenter({
     refetchInterval: 30000,
   });
 
-  const notifications = useMemo(
-    () => notificationsQuery.data || [],
-    [notificationsQuery.data]
-  );
+  const notifications = useMemo(() => notificationsQuery.data || [], [notificationsQuery.data]);
 
   // ── Real-time socket subscription ───────────────────────────────────
 
@@ -425,10 +417,7 @@ export function NotificationCenter({
     return groupNotifications(filtered);
   }, [notifications, filter]);
 
-  const unreadCount = useMemo(
-    () => notifications.filter((n) => !n.read).length,
-    [notifications]
-  );
+  const unreadCount = useMemo(() => notifications.filter((n) => !n.read).length, [notifications]);
 
   // ── Mutations ────────────────────────────────────────────────────────
 
@@ -438,15 +427,10 @@ export function NotificationCenter({
     },
     onMutate: async (notificationId: string) => {
       await queryClient.cancelQueries({ queryKey: ['notifications', userId] });
-      queryClient.setQueryData(
-        ['notifications', userId],
-        (old: Notification[] | undefined) => {
-          if (!old) return [];
-          return old.map((n) =>
-            n.id === notificationId ? { ...n, read: true } : n
-          );
-        }
-      );
+      queryClient.setQueryData(['notifications', userId], (old: Notification[] | undefined) => {
+        if (!old) return [];
+        return old.map((n) => (n.id === notificationId ? { ...n, read: true } : n));
+      });
       // Also update count cache
       queryClient.setQueryData(
         ['notification-count', userId],
@@ -466,13 +450,10 @@ export function NotificationCenter({
     },
     onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: ['notifications', userId] });
-      queryClient.setQueryData(
-        ['notifications', userId],
-        (old: Notification[] | undefined) => {
-          if (!old) return [];
-          return old.map((n) => ({ ...n, read: true }));
-        }
-      );
+      queryClient.setQueryData(['notifications', userId], (old: Notification[] | undefined) => {
+        if (!old) return [];
+        return old.map((n) => ({ ...n, read: true }));
+      });
       queryClient.setQueryData(['notification-count', userId], { count: 0 });
     },
     onError: () => {
@@ -486,17 +467,11 @@ export function NotificationCenter({
     },
     onMutate: async (notificationId: string) => {
       await queryClient.cancelQueries({ queryKey: ['notifications', userId] });
-      const previous = queryClient.getQueryData<Notification[]>([
-        'notifications',
-        userId,
-      ]);
-      queryClient.setQueryData(
-        ['notifications', userId],
-        (old: Notification[] | undefined) => {
-          if (!old) return [];
-          return old.filter((n) => n.id !== notificationId);
-        }
-      );
+      const previous = queryClient.getQueryData<Notification[]>(['notifications', userId]);
+      queryClient.setQueryData(['notifications', userId], (old: Notification[] | undefined) => {
+        if (!old) return [];
+        return old.filter((n) => n.id !== notificationId);
+      });
       return { previous };
     },
     onError: (_err, _id, context) => {
@@ -537,11 +512,7 @@ export function NotificationCenter({
 
   const content = (
     <div
-      className={cn(
-        'flex flex-col',
-        mode === 'dropdown' ? 'max-h-[480px]' : 'h-full',
-        className
-      )}
+      className={cn('flex flex-col', mode === 'dropdown' ? 'max-h-[480px]' : 'h-full', className)}
     >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-lattice-border flex-shrink-0">
@@ -568,9 +539,7 @@ export function NotificationCenter({
             onClick={() => setShowFilters((prev) => !prev)}
             className={cn(
               'p-1.5 rounded-lg transition-colors',
-              showFilters
-                ? 'text-neon-cyan bg-neon-cyan/10'
-                : 'text-gray-400 hover:text-white'
+              showFilters ? 'text-neon-cyan bg-neon-cyan/10' : 'text-gray-400 hover:text-white'
             )}
             title="Filter notifications"
           >
@@ -706,4 +675,7 @@ export function NotificationCenter({
   );
 }
 
-export default NotificationCenter;
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedNotificationCenter = withErrorBoundary(NotificationCenter);
+export { _WrappedNotificationCenter as NotificationCenter };
+export default _WrappedNotificationCenter;

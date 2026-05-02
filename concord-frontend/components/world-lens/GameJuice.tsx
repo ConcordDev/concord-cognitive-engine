@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useCallback, useContext, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { useSoundscape } from './SoundscapeEngine';
 
 /* ── Types ─────────────────────────────────────────────────────── */
@@ -14,7 +14,14 @@ type JuiceTrigger =
   | 'milestone'
   | 'disaster'
   | 'construction-complete'
-  | 'competition-win';
+  | 'competition-win'
+  // combat
+  | 'combat-hit'
+  | 'combat-crit'
+  | 'combat-kill'
+  | 'combat-dodge'
+  | 'combat-block'
+  | 'quest-complete';
 
 interface JuiceFeedback {
   sound: string;
@@ -60,6 +67,13 @@ const FEEDBACK_MAP: Record<JuiceTrigger, JuiceFeedback> = {
   disaster: { sound: 'rumble', visual: 'shake', camera: 'shake', duration: 1500 },
   'construction-complete': { sound: 'build-finish', visual: 'particle-burst', camera: 'settle', duration: 600 },
   'competition-win': { sound: 'victory-sting', visual: 'cinematic', camera: 'cinematic-pan', duration: 2500 },
+  // combat feel
+  'combat-hit':   { sound: 'hit-light',    visual: 'pulse-red',   camera: 'shake', duration: 180 },
+  'combat-crit':  { sound: 'hit-crit',     visual: 'shake',       camera: 'shake', duration: 300 },
+  'combat-kill':  { sound: 'kill-blow',    visual: 'cinematic',   camera: 'shake', duration: 700 },
+  'combat-dodge': { sound: 'dodge-whoosh', visual: 'pulse-green', camera: 'none',  duration: 180 },
+  'combat-block': { sound: 'block-clang',  visual: 'glow',        camera: 'none',  duration: 220 },
+  'quest-complete': { sound: 'gather-success', visual: 'pulse-green', camera: 'none', duration: 600 },
 };
 
 /* ── Component ─────────────────────────────────────────────────── */
@@ -81,6 +95,12 @@ const TRIGGER_SFX: Record<JuiceTrigger, string> = {
   'disaster':              'rumble',
   'construction-complete': 'build-finish',
   'competition-win':       'victory-sting',
+  'combat-hit':            'hit-light',
+  'combat-crit':           'hit-crit',
+  'combat-kill':           'kill-blow',
+  'combat-dodge':          'dodge-whoosh',
+  'combat-block':          'block-clang',
+  'quest-complete':        'gather-success',
 };
 
 export default function GameJuice({ children, enabled = true, intensity: initialIntensity = 0.8 }: GameJuiceProps) {
@@ -94,15 +114,21 @@ export default function GameJuice({ children, enabled = true, intensity: initial
   }, []);
 
   const triggerJuice = useCallback(
-    (trigger: JuiceTrigger, opts?: { magnitude?: number; value?: string; targetId?: string }) => {
+    (trigger: JuiceTrigger, opts?: { magnitude?: number; value?: string; targetId?: string; position?: { x: number; y: number; z: number } }) => {
       if (!enabled) return;
 
       const feedback = FEEDBACK_MAP[trigger];
       if (!feedback) return;
 
-      // Play audio SFX
+      // Play audio SFX. Phase 14 polish-to-ten: route through spatial audio
+      // when a world position is supplied so the SFX comes from the right
+      // direction relative to the listener (HRTF + reverb + occlusion via
+      // SoundscapeEngine.playSpatialSFX).
       const sfxId = TRIGGER_SFX[trigger];
-      if (sfxId) soundscape.triggerSFX(sfxId);
+      if (sfxId) {
+        if (opts?.position) soundscape.playSpatialSFX(sfxId, opts.position);
+        else soundscape.triggerSFX(sfxId);
+      }
 
       const scaledDuration = feedback.duration * intensityValue;
       const id = `juice-${overlayCounter.current++}`;
@@ -144,6 +170,17 @@ export default function GameJuice({ children, enabled = true, intensity: initial
     setIntensity,
     isEnabled: enabled,
   };
+
+  // Allow sibling components to trigger juice via window event — avoids
+  // requiring all consumers to live inside this provider.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { trigger, opts } = (e as CustomEvent).detail ?? {};
+      if (trigger) triggerJuice(trigger as JuiceTrigger, opts);
+    };
+    window.addEventListener('concordia:game-juice', handler);
+    return () => window.removeEventListener('concordia:game-juice', handler);
+  }, [triggerJuice]);
 
   return (
     <GameJuiceContext.Provider value={contextValue}>

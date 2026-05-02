@@ -3,6 +3,7 @@
 // Detect cross-world patterns via Cipher-tier emergent brain calls.
 
 import crypto from "crypto";
+import logger from "../logger.js";
 
 const VALID_EVENTS = ["used_in_new_world", "taught_to_player", "adopted_by_npc", "evolved_further"];
 
@@ -173,9 +174,9 @@ let _patternTimer = null;
 export function startPatternDetection(db, selectBrain) {
   if (_patternTimer) return;
   // Run immediately on start, then daily
-  detectSubstratePatterns(db, selectBrain).catch(() => {});
+  detectSubstratePatterns(db, selectBrain).catch(err => logger?.debug?.('[substrate-diffusion] background op failed', { err: err?.message }));
   _patternTimer = setInterval(() => {
-    detectSubstratePatterns(db, selectBrain).catch(() => {});
+    detectSubstratePatterns(db, selectBrain).catch(err => logger?.debug?.('[substrate-diffusion] background op failed', { err: err?.message }));
   }, DAILY_MS);
 }
 

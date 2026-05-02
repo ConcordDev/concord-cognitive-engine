@@ -3,14 +3,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  UserPlus,
-  X,
-  Users,
-  Sparkles,
-  Loader2,
-  Star,
-} from 'lucide-react';
+import { UserPlus, X, Users, Sparkles, Loader2, Star } from 'lucide-react';
 import Image from 'next/image';
 import { cn, formatNumber } from '@/lib/utils';
 import { api } from '@/lib/api/client';
@@ -55,11 +48,7 @@ function pickGradient(str: string): string {
 
 // ── Main Component ───────────────────────────────────────────────────────────
 
-export function SuggestedFollows({
-  currentUserId,
-  onNavigateToUser,
-  className,
-}: SuggestedFollowsProps) {
+function SuggestedFollows({ currentUserId, onNavigateToUser, className }: SuggestedFollowsProps) {
   const queryClient = useQueryClient();
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const [followed, setFollowed] = useState<Set<string>>(new Set());
@@ -69,15 +58,17 @@ export function SuggestedFollows({
     queryFn: async () => {
       const res = await api.get(`/api/social/discover/${currentUserId}`);
       const raw: Record<string, unknown>[] = res.data?.suggestions || [];
-      return raw.map((s): SuggestedCreator => ({
-        userId: (s.userId as string) || '',
-        displayName: (s.displayName as string) || 'User',
-        avatarUrl: s.avatarUrl as string | undefined,
-        bio: (s.bio as string) || undefined,
-        followerCount: (s.followerCount as number) || 0,
-        sharedInterests: Array.isArray(s.sharedInterests) ? s.sharedInterests as string[] : [],
-        matchScore: (s.matchScore as number) || 0,
-      }));
+      return raw.map(
+        (s): SuggestedCreator => ({
+          userId: (s.userId as string) || '',
+          displayName: (s.displayName as string) || 'User',
+          avatarUrl: s.avatarUrl as string | undefined,
+          bio: (s.bio as string) || undefined,
+          followerCount: (s.followerCount as number) || 0,
+          sharedInterests: Array.isArray(s.sharedInterests) ? (s.sharedInterests as string[]) : [],
+          matchScore: (s.matchScore as number) || 0,
+        })
+      );
     },
     enabled: !!currentUserId,
   });
@@ -119,9 +110,7 @@ export function SuggestedFollows({
     }
   };
 
-  const visible = (suggestions || [])
-    .filter((s) => !dismissed.has(s.userId))
-    .slice(0, 5);
+  const visible = (suggestions || []).filter((s) => !dismissed.has(s.userId)).slice(0, 5);
 
   if (isLoading) {
     return (
@@ -263,4 +252,7 @@ export function SuggestedFollows({
   );
 }
 
-export default SuggestedFollows;
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedSuggestedFollows = withErrorBoundary(SuggestedFollows);
+export { _WrappedSuggestedFollows as SuggestedFollows };
+export default _WrappedSuggestedFollows;

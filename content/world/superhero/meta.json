@@ -1,0 +1,44 @@
+{
+  "world_id": "superhero",
+  "world_name": "The Superhero City",
+  "theme": "modern",
+  "tech_level": "modern_high_tech",
+  "magic_level": "none",
+  "is_hub": false,
+  "description": "Modern metropolis (Manhattan + outer boroughs) where Concord's emergent layer has begun to rewrite individuals at the biological level. Bio powers — purple shadow-reasoning energy, red-gold plasma manipulation, and other emergent-substrate abilities — are the dominant exotic capability. Tech and weapons are present but secondary. Magic doesn't work here at all (no metaphysical substrate to channel).",
+  "skill_affinity": {
+    "default": 0.7,
+    "bio_powers": 1.0,
+    "athletics": 1.0,
+    "martial_arts": 1.0,
+    "swordsmanship": 0.6,
+    "archery": 0.5,
+    "gun": 0.7,
+    "weapons_modern": 0.7,
+    "weapon_attachments": 0.6,
+    "stealth": 0.7,
+    "lockpicking": 0.7,
+    "infiltration": 0.7,
+    "hacking": 0.85,
+    "tech": 0.85,
+    "engineering": 0.85,
+    "diplomacy": 0.8,
+    "deception": 0.8,
+    "leadership": 0.85,
+    "crafting": 0.6,
+    "alchemy": 0.3,
+    "magic": 0.05,
+    "driving": 0.85,
+    "piloting": 0.7
+  },
+  "concord_link": {
+    "primary_access": "communicator_watch",
+    "secondary_access": ["neural_implants", "holographic_drone_relays"],
+    "veil_stability": 0.95,
+    "anchors": [
+      { "id": "anchor_superhero_kane_tower", "name": "Kane Tower Comm Array", "access_method": "holographic_drone_relays", "description": "Luminary Industries' public comm tower. High bandwidth, high cost, all messages logged by Vesper.", "location": "kane_tower_complex", "controlled_by_faction": "luminary_empire", "stability": 1.0 },
+      { "id": "anchor_superhero_phantom_node", "name": "The Phantom Node", "access_method": "shadow_reasoning_resonance", "description": "An anchor Elias unconsciously seeded during the 72-hour awakening. Free to use if you can find it. Resonance signature must be flagged sympathetic to the Enforcers' Movement.", "location": "bronx_arterials", "controlled_by_faction": "enforcers_movement", "stability": 0.9 },
+      { "id": "anchor_superhero_neural_clinic", "name": "Public Neural Clinic Implant", "access_method": "neural_implants", "description": "Subsidized neural-implant access points in public clinics. Lower cost, monitored by Luminary's regulatory front company.", "location": "low_rent_grid", "controlled_by_faction": "luminary_empire", "stability": 0.8 }
+    ]
+  }
+}

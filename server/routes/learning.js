@@ -86,7 +86,6 @@ function getCallerId(req) {
   if (!req) return "anonymous";
   return (
     (req.user && (req.user.id || req.user.userId)) ||
-    req.headers["x-user-id"] ||
     req.query.studentId ||
     (req.body && req.body.studentId) ||
     "anonymous"
@@ -136,7 +135,6 @@ export default function createLearningRouter(opts = {}) {
     if (!req) return "anonymous";
     return String(
       (req.user && (req.user.id || req.user.userId)) ||
-        req.headers["x-user-id"] ||
         (req.body && req.body.studentId) ||
         req.query.studentId ||
         "anonymous",

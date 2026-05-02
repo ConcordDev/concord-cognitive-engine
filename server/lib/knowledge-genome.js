@@ -244,7 +244,7 @@ export class KnowledgeGenome {
       await this.recalculateGaps();
 
       // Persist lazily (fire and forget).
-      this.persist().catch(() => {});
+      this.persist().catch(err => logger?.debug?.('[knowledge-genome] background op failed', { err: err?.message }));
 
       return { dtuId, mastery: after, delta };
     } catch (e) {

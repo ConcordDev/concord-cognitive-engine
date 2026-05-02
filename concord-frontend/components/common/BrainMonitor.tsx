@@ -16,7 +16,17 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
-import { Brain, Activity, Zap, Moon, Wrench, ShieldAlert, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
+import {
+  Brain,
+  Activity,
+  Zap,
+  Moon,
+  Wrench,
+  ShieldAlert,
+  ChevronDown,
+  ChevronUp,
+  RefreshCw,
+} from 'lucide-react';
 
 interface BrainStats {
   requests: number;
@@ -108,15 +118,29 @@ function BrainCard({ name, brain }: { name: keyof typeof BRAIN_CONFIG; brain: Br
   const Icon = config.icon;
 
   return (
-    <div className={cn('rounded-lg border p-3 transition-all', config.bgClass, !brain.enabled && 'opacity-50')}>
+    <div
+      className={cn(
+        'rounded-lg border p-3 transition-all',
+        config.bgClass,
+        !brain.enabled && 'opacity-50'
+      )}
+    >
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <Icon className={cn('w-4 h-4', config.textClass)} />
           <span className={cn('text-sm font-medium', config.textClass)}>{config.label}</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <div className={cn('w-2 h-2 rounded-full', brain.enabled ? config.dotClass : 'bg-red-500', brain.enabled && 'animate-pulse')} />
-          <span className="text-xs text-lattice-text-secondary">{brain.enabled ? 'Online' : 'Offline'}</span>
+          <div
+            className={cn(
+              'w-2 h-2 rounded-full',
+              brain.enabled ? config.dotClass : 'bg-red-500',
+              brain.enabled && 'animate-pulse'
+            )}
+          />
+          <span className="text-xs text-lattice-text-secondary">
+            {brain.enabled ? 'Online' : 'Offline'}
+          </span>
         </div>
       </div>
 
@@ -138,7 +162,12 @@ function BrainCard({ name, brain }: { name: keyof typeof BRAIN_CONFIG; brain: Br
           </div>
           <div className="flex justify-between">
             <span className="text-lattice-text-secondary">Errors</span>
-            <span className={cn('font-mono', brain.stats.errors > 0 ? 'text-red-400' : 'text-lattice-text-primary')}>
+            <span
+              className={cn(
+                'font-mono',
+                brain.stats.errors > 0 ? 'text-red-400' : 'text-lattice-text-primary'
+              )}
+            >
               {brain.stats.errors}
             </span>
           </div>
@@ -148,7 +177,7 @@ function BrainCard({ name, brain }: { name: keyof typeof BRAIN_CONFIG; brain: Br
   );
 }
 
-export function BrainMonitor() {
+function BrainMonitor() {
   const [expanded, setExpanded] = useState(false);
 
   const { data, isLoading, refetch } = useQuery<BrainStatusResponse>({
@@ -182,8 +211,20 @@ export function BrainMonitor() {
     );
   }
 
-  const modeLabel = data.mode === 'four_brain' ? 'Four-Brain' : data.mode === 'three_brain' ? 'Three-Brain' : data.mode === 'partial' ? 'Partial' : 'Fallback';
-  const modeColor = (data.mode === 'four_brain' || data.mode === 'three_brain') ? 'text-neon-green' : data.mode === 'partial' ? 'text-amber-400' : 'text-red-400';
+  const modeLabel =
+    data.mode === 'four_brain'
+      ? 'Four-Brain'
+      : data.mode === 'three_brain'
+        ? 'Three-Brain'
+        : data.mode === 'partial'
+          ? 'Partial'
+          : 'Fallback';
+  const modeColor =
+    data.mode === 'four_brain' || data.mode === 'three_brain'
+      ? 'text-neon-green'
+      : data.mode === 'partial'
+        ? 'text-amber-400'
+        : 'text-red-400';
   const totalBrains = data.brains.repair ? 4 : 3;
 
   if (!expanded) {
@@ -194,7 +235,9 @@ export function BrainMonitor() {
       >
         <Activity className={cn('w-3 h-3', modeColor)} />
         <span className={modeColor}>{modeLabel}</span>
-        <span className="text-lattice-text-secondary">{data.onlineCount}/{totalBrains}</span>
+        <span className="text-lattice-text-secondary">
+          {data.onlineCount}/{totalBrains}
+        </span>
         <ChevronDown className="w-3 h-3 text-lattice-text-secondary" />
       </button>
     );
@@ -205,7 +248,9 @@ export function BrainMonitor() {
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Zap className={cn('w-4 h-4', modeColor)} />
-          <span className="text-sm font-semibold text-lattice-text-primary">Cognitive Architecture</span>
+          <span className="text-sm font-semibold text-lattice-text-primary">
+            Cognitive Architecture
+          </span>
         </div>
         <div className="flex items-center gap-1">
           <button
@@ -228,7 +273,9 @@ export function BrainMonitor() {
       <div className="flex items-center gap-2 mb-3 text-xs">
         <span className="text-lattice-text-secondary">Mode:</span>
         <span className={cn('font-medium', modeColor)}>{modeLabel}</span>
-        <span className="text-lattice-text-secondary">({data.onlineCount}/{totalBrains} online)</span>
+        <span className="text-lattice-text-secondary">
+          ({data.onlineCount}/{totalBrains} online)
+        </span>
       </div>
 
       <div className="space-y-2">
@@ -248,7 +295,12 @@ export function BrainMonitor() {
               <span className="text-sm font-medium text-amber-400">Embeddings</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className={cn('w-2 h-2 rounded-full', data.embeddings.available ? 'bg-amber-400 animate-pulse' : 'bg-red-500')} />
+              <div
+                className={cn(
+                  'w-2 h-2 rounded-full',
+                  data.embeddings.available ? 'bg-amber-400 animate-pulse' : 'bg-red-500'
+                )}
+              />
               <span className="text-xs text-lattice-text-secondary">
                 {data.embeddings.available ? data.embeddings.model || 'Active' : 'Offline'}
               </span>
@@ -259,19 +311,32 @@ export function BrainMonitor() {
             <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
               <div className="flex justify-between">
                 <span className="text-lattice-text-secondary">Coverage</span>
-                <span className="text-lattice-text-primary font-mono">{data.embeddings.coverage}%</span>
+                <span className="text-lattice-text-primary font-mono">
+                  {data.embeddings.coverage}%
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-lattice-text-secondary">Cached</span>
-                <span className="text-lattice-text-primary font-mono">{data.embeddings.cached}</span>
+                <span className="text-lattice-text-primary font-mono">
+                  {data.embeddings.cached}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-lattice-text-secondary">Avg ms</span>
-                <span className="text-lattice-text-primary font-mono">{data.embeddings.stats.avgEmbedMs}</span>
+                <span className="text-lattice-text-primary font-mono">
+                  {data.embeddings.stats.avgEmbedMs}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-lattice-text-secondary">Errors</span>
-                <span className={cn('font-mono', data.embeddings.stats.totalErrors > 0 ? 'text-red-400' : 'text-lattice-text-primary')}>
+                <span
+                  className={cn(
+                    'font-mono',
+                    data.embeddings.stats.totalErrors > 0
+                      ? 'text-red-400'
+                      : 'text-lattice-text-primary'
+                  )}
+                >
                   {data.embeddings.stats.totalErrors}
                 </span>
               </div>
@@ -279,12 +344,16 @@ export function BrainMonitor() {
                 <div className="col-span-2 mt-1">
                   <div className="flex justify-between text-lattice-text-secondary mb-1">
                     <span>Backfill</span>
-                    <span className="font-mono">{data.embeddings.backfill.progress}/{data.embeddings.backfill.total}</span>
+                    <span className="font-mono">
+                      {data.embeddings.backfill.progress}/{data.embeddings.backfill.total}
+                    </span>
                   </div>
                   <div className="w-full h-1 bg-black/30 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-amber-400 rounded-full transition-all"
-                      style={{ width: `${data.embeddings.backfill.total > 0 ? (data.embeddings.backfill.progress / data.embeddings.backfill.total) * 100 : 0}%` }}
+                      style={{
+                        width: `${data.embeddings.backfill.total > 0 ? (data.embeddings.backfill.progress / data.embeddings.backfill.total) * 100 : 0}%`,
+                      }}
                     />
                   </div>
                 </div>
@@ -297,4 +366,7 @@ export function BrainMonitor() {
   );
 }
 
-export default BrainMonitor;
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedBrainMonitor = withErrorBoundary(BrainMonitor);
+export { _WrappedBrainMonitor as BrainMonitor };
+export default _WrappedBrainMonitor;

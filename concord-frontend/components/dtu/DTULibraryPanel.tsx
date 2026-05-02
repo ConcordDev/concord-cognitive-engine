@@ -15,7 +15,7 @@ interface DTULibraryPanelProps {
   startOpen?: boolean;
 }
 
-export function DTULibraryPanel({
+function DTULibraryPanel({
   lens = 'studio',
   className,
   onInsert,
@@ -122,3 +122,8 @@ export function DTULibraryPanel({
     </div>
   );
 }
+
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _DTULibraryPanel = withErrorBoundary(DTULibraryPanel);
+export { _DTULibraryPanel as DTULibraryPanel };

@@ -1,10 +1,7 @@
 'use client';
 
 import React from 'react';
-import {
-  Radio, Cloud, Mountain, Zap, Volume2,
-  Users, Waves, Clock, Brain,
-} from 'lucide-react';
+import { Radio, Cloud, Mountain, Zap, Volume2, Users, Waves, Clock, Brain } from 'lucide-react';
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -23,12 +20,15 @@ interface QualiaSensoryFeedProps {
 
 // ── Channel Metadata ────────────────────────────────────────────────────────
 
-const CHANNEL_META: Record<string, {
-  icon: typeof Radio;
-  label: string;
-  color: string;
-  description: string;
-}> = {
+const CHANNEL_META: Record<
+  string,
+  {
+    icon: typeof Radio;
+    label: string;
+    color: string;
+    description: string;
+  }
+> = {
   proprioception: {
     icon: Radio,
     label: 'Proprioception',
@@ -105,20 +105,18 @@ function valenceColor(v: number): string {
 
 // ── Component ───────────────────────────────────────────────────────────────
 
-export default function QualiaSensoryFeed({
-  entityId,
-  channels,
-  overloadActive = false,
-}: QualiaSensoryFeedProps) {
+function QualiaSensoryFeed({ entityId, channels, overloadActive = false }: QualiaSensoryFeedProps) {
   const channelEntries = Object.entries(channels);
 
   // Compute overall sensation
-  const avgIntensity = channelEntries.length > 0
-    ? channelEntries.reduce((sum, [, ch]) => sum + ch.intensity, 0) / channelEntries.length
-    : 0;
-  const avgValence = channelEntries.length > 0
-    ? channelEntries.reduce((sum, [, ch]) => sum + ch.valence, 0) / channelEntries.length
-    : 0.5;
+  const avgIntensity =
+    channelEntries.length > 0
+      ? channelEntries.reduce((sum, [, ch]) => sum + ch.intensity, 0) / channelEntries.length
+      : 0;
+  const avgValence =
+    channelEntries.length > 0
+      ? channelEntries.reduce((sum, [, ch]) => sum + ch.valence, 0) / channelEntries.length
+      : 0.5;
 
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 space-y-4">
@@ -127,7 +125,9 @@ export default function QualiaSensoryFeed({
         <div className="flex items-center gap-2">
           <Radio className="w-4 h-4 text-neon-cyan" />
           <h3 className="text-sm font-semibold text-zinc-200">Sensory Feed</h3>
-          <span className="text-xs text-zinc-500 font-mono" title={`Entity: ${entityId}`}>{entityId.slice(0, 8)}</span>
+          <span className="text-xs text-zinc-500 font-mono" title={`Entity: ${entityId}`}>
+            {entityId.slice(0, 8)}
+          </span>
           <span className="text-xs text-zinc-600">{channelEntries.length} channels</span>
         </div>
         <div className="flex items-center gap-2 text-xs">
@@ -146,7 +146,10 @@ export default function QualiaSensoryFeed({
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
         {channelEntries.map(([name, ch]) => {
           const meta = CHANNEL_META[name] || {
-            icon: Radio, label: name, color: 'zinc-400', description: '',
+            icon: Radio,
+            label: name,
+            color: 'zinc-400',
+            description: '',
           };
           const Icon = meta.icon;
           const pct = Math.round(ch.intensity * 100);
@@ -158,9 +161,7 @@ export default function QualiaSensoryFeed({
             <div
               key={name}
               className={`bg-zinc-800/60 rounded-lg p-3 border transition-colors ${
-                ch.intensity > 0.5
-                  ? 'border-zinc-700'
-                  : 'border-zinc-800/50'
+                ch.intensity > 0.5 ? 'border-zinc-700' : 'border-zinc-800/50'
               }`}
             >
               <div className="flex items-center gap-2 mb-2">
@@ -179,17 +180,13 @@ export default function QualiaSensoryFeed({
               </div>
 
               <div className="flex items-center justify-between text-[10px]">
-                <span className={valenceColor(ch.valence)}>
-                  {valenceLabel(ch.valence)}
-                </span>
+                <span className={valenceColor(ch.valence)}>{valenceLabel(ch.valence)}</span>
                 <span className="text-zinc-600 font-mono">{pct}%</span>
               </div>
 
               <div className="text-[9px] text-zinc-600 mt-1">
                 {meta.description}
-                {age !== null && age < 60 && (
-                  <span className="ml-1 text-zinc-500">{age}s ago</span>
-                )}
+                {age !== null && age < 60 && <span className="ml-1 text-zinc-500">{age}s ago</span>}
               </div>
             </div>
           );
@@ -198,3 +195,8 @@ export default function QualiaSensoryFeed({
     </div>
   );
 }
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedQualiaSensoryFeed = withErrorBoundary(QualiaSensoryFeed);
+export { _WrappedQualiaSensoryFeed as QualiaSensoryFeed };
+export default _WrappedQualiaSensoryFeed;

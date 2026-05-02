@@ -4,11 +4,17 @@ import React, { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import {
-  Calculator, Ruler, Atom, FlaskConical, CheckCircle,
-  XCircle, ArrowRight, Info
+  Calculator,
+  Ruler,
+  Atom,
+  FlaskConical,
+  CheckCircle,
+  XCircle,
+  ArrowRight,
+  Info,
 } from 'lucide-react';
 
-export default function EmpiricalGatesPanel() {
+function EmpiricalGatesPanel() {
   const [mathInput, setMathInput] = useState('');
   const [convertFrom, setConvertFrom] = useState('');
   const [convertTo, setConvertTo] = useState('');
@@ -84,7 +90,9 @@ export default function EmpiricalGatesPanel() {
               <div className="flex items-center gap-2">
                 <CheckCircle className="w-4 h-4 text-neon-green" />
                 <span className="text-sm text-gray-300">Result:</span>
-                <span className="text-lg font-mono text-neon-cyan">{mathMutation.data.data.result}</span>
+                <span className="text-lg font-mono text-neon-cyan">
+                  {mathMutation.data.data.result}
+                </span>
               </div>
             ) : (
               <div className="flex items-center gap-2">
@@ -156,7 +164,8 @@ export default function EmpiricalGatesPanel() {
                   {convertValue} {convertFrom} =
                 </span>
                 <span className="text-lg font-mono text-neon-cyan">
-                  {convertMutation.data.data.result?.toFixed?.(6) ?? convertMutation.data.data.result}
+                  {convertMutation.data.data.result?.toFixed?.(6) ??
+                    convertMutation.data.data.result}
                 </span>
                 <span className="text-sm text-gray-300">{convertTo}</span>
               </div>
@@ -196,13 +205,18 @@ export default function EmpiricalGatesPanel() {
             {scanMutation.data.data.numericClaims?.length > 0 && (
               <div>
                 <p className="text-xs font-medium text-gray-400 mb-1">Numeric Claims Found:</p>
-                {scanMutation.data.data.numericClaims.map((c: { value: number; unit?: string; context?: string }, i: number) => (
-                  <div key={i} className="text-xs bg-lattice-deep rounded px-3 py-1.5 mb-1 flex items-center gap-2">
-                    <span className="text-neon-cyan font-mono">{c.value}</span>
-                    {c.unit && <span className="text-neon-purple">{c.unit}</span>}
-                    {c.context && <span className="text-gray-500 truncate">{c.context}</span>}
-                  </div>
-                ))}
+                {scanMutation.data.data.numericClaims.map(
+                  (c: { value: number; unit?: string; context?: string }, i: number) => (
+                    <div
+                      key={i}
+                      className="text-xs bg-lattice-deep rounded px-3 py-1.5 mb-1 flex items-center gap-2"
+                    >
+                      <span className="text-neon-cyan font-mono">{c.value}</span>
+                      {c.unit && <span className="text-neon-purple">{c.unit}</span>}
+                      {c.context && <span className="text-gray-500 truncate">{c.context}</span>}
+                    </div>
+                  )
+                )}
               </div>
             )}
 
@@ -210,44 +224,67 @@ export default function EmpiricalGatesPanel() {
             {scanMutation.data.data.mathExpressions?.length > 0 && (
               <div>
                 <p className="text-xs font-medium text-gray-400 mb-1">Math Expressions:</p>
-                {scanMutation.data.data.mathExpressions.map((e: { expression: string; result?: number }, i: number) => (
-                  <div key={i} className="text-xs bg-lattice-deep rounded px-3 py-1.5 mb-1 flex items-center gap-2">
-                    <span className="font-mono text-gray-300">{e.expression}</span>
-                    {e.result !== undefined && (
-                      <>
-                        <span className="text-gray-500">=</span>
-                        <span className="text-neon-green font-mono">{e.result}</span>
-                      </>
-                    )}
-                  </div>
-                ))}
+                {scanMutation.data.data.mathExpressions.map(
+                  (e: { expression: string; result?: number }, i: number) => (
+                    <div
+                      key={i}
+                      className="text-xs bg-lattice-deep rounded px-3 py-1.5 mb-1 flex items-center gap-2"
+                    >
+                      <span className="font-mono text-gray-300">{e.expression}</span>
+                      {e.result !== undefined && (
+                        <>
+                          <span className="text-gray-500">=</span>
+                          <span className="text-neon-green font-mono">{e.result}</span>
+                        </>
+                      )}
+                    </div>
+                  )
+                )}
               </div>
             )}
 
             {/* Constant References */}
             {scanMutation.data.data.constantReferences?.length > 0 && (
               <div>
-                <p className="text-xs font-medium text-gray-400 mb-1">Physical Constant References:</p>
-                {scanMutation.data.data.constantReferences.map((c: { key: string; citedValue?: number; constant?: { value: number; unit: string } }, i: number) => (
-                  <div key={i} className="text-xs bg-lattice-deep rounded px-3 py-1.5 mb-1 flex items-center gap-2">
-                    <Atom className="w-3 h-3 text-neon-yellow" />
-                    <span className="text-gray-300">{c.key}</span>
-                    {c.citedValue !== undefined && (
-                      <span className="text-neon-orange font-mono">cited: {c.citedValue}</span>
-                    )}
-                    {c.constant && (
-                      <span className="text-neon-green font-mono">actual: {c.constant.value} {c.constant.unit}</span>
-                    )}
-                  </div>
-                ))}
+                <p className="text-xs font-medium text-gray-400 mb-1">
+                  Physical Constant References:
+                </p>
+                {scanMutation.data.data.constantReferences.map(
+                  (
+                    c: {
+                      key: string;
+                      citedValue?: number;
+                      constant?: { value: number; unit: string };
+                    },
+                    i: number
+                  ) => (
+                    <div
+                      key={i}
+                      className="text-xs bg-lattice-deep rounded px-3 py-1.5 mb-1 flex items-center gap-2"
+                    >
+                      <Atom className="w-3 h-3 text-neon-yellow" />
+                      <span className="text-gray-300">{c.key}</span>
+                      {c.citedValue !== undefined && (
+                        <span className="text-neon-orange font-mono">cited: {c.citedValue}</span>
+                      )}
+                      {c.constant && (
+                        <span className="text-neon-green font-mono">
+                          actual: {c.constant.value} {c.constant.unit}
+                        </span>
+                      )}
+                    </div>
+                  )
+                )}
               </div>
             )}
 
             {scanMutation.data.data.numericClaims?.length === 0 &&
-             scanMutation.data.data.mathExpressions?.length === 0 &&
-             scanMutation.data.data.constantReferences?.length === 0 && (
-              <p className="text-xs text-gray-500 italic">No empirical content detected in this text.</p>
-            )}
+              scanMutation.data.data.mathExpressions?.length === 0 &&
+              scanMutation.data.data.constantReferences?.length === 0 && (
+                <p className="text-xs text-gray-500 italic">
+                  No empirical content detected in this text.
+                </p>
+              )}
           </div>
         )}
       </div>
@@ -265,7 +302,9 @@ export default function EmpiricalGatesPanel() {
               return (
                 <div key={key} className="px-3 py-2 rounded bg-lattice-deep">
                   <p className="text-xs font-medium text-neon-cyan">{c.name || key}</p>
-                  <p className="text-xs font-mono text-gray-300">{c.value} {c.unit}</p>
+                  <p className="text-xs font-mono text-gray-300">
+                    {c.value} {c.unit}
+                  </p>
                 </div>
               );
             })}
@@ -275,3 +314,8 @@ export default function EmpiricalGatesPanel() {
     </div>
   );
 }
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedEmpiricalGatesPanel = withErrorBoundary(EmpiricalGatesPanel);
+export { _WrappedEmpiricalGatesPanel as EmpiricalGatesPanel };
+export default _WrappedEmpiricalGatesPanel;

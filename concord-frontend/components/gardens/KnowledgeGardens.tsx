@@ -31,7 +31,7 @@ interface Garden {
   createdAt: string;
 }
 
-export function KnowledgeGardens({ className }: { className?: string }) {
+function KnowledgeGardens({ className }: { className?: string }) {
   const [expanded, setExpanded] = useState(false);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
@@ -198,3 +198,8 @@ export function KnowledgeGardens({ className }: { className?: string }) {
     </div>
   );
 }
+
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _KnowledgeGardens = withErrorBoundary(KnowledgeGardens);
+export { _KnowledgeGardens as KnowledgeGardens };

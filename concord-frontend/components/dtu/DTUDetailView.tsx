@@ -20,9 +20,25 @@ import { useOfflineFirstDTU } from '@/hooks/useOfflineFirst';
 import { DTUIntegrityBadge } from './DTUIntegrityBadge';
 import { ProvenanceBadge } from './ProvenanceBadge';
 import {
-  X, Clock, GitBranch, Tag, FileText, Zap, Crown, Ghost,
-  Copy, ChevronRight, Download, DollarSign, Share2,
-  Music, Image as ImageIcon, Video, Code, FileType, ArrowUpCircle,
+  X,
+  Clock,
+  GitBranch,
+  Tag,
+  FileText,
+  Zap,
+  Crown,
+  Ghost,
+  Copy,
+  ChevronRight,
+  Download,
+  DollarSign,
+  Share2,
+  Music,
+  Image as ImageIcon,
+  Video,
+  Code,
+  FileType,
+  ArrowUpCircle,
 } from 'lucide-react';
 import { ArtifactRenderer } from '@/components/artifact/ArtifactRenderer';
 import { TierBadge, TierBadgeDetail, TierPromotionTimeline } from './TierBadge';
@@ -102,7 +118,7 @@ const DTU_SOURCE_STYLES: Record<string, { bg: string }> = {
   federation: { bg: 'bg-cyan-500/10 text-cyan-400' },
 };
 
-export function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps) {
+function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps) {
   const [activeTab, setActiveTab] = useState<'content' | 'lineage' | 'metadata'>('content');
   const [showPromote, setShowPromote] = useState(false);
 
@@ -115,7 +131,11 @@ export function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps
   } = useOfflineFirstDTU(dtuId);
 
   // Fetch DTU details from server (authoritative source)
-  const { data: serverDtu, isLoading: serverLoading, isError } = useQuery({
+  const {
+    data: serverDtu,
+    isLoading: serverLoading,
+    isError,
+  } = useQuery({
     queryKey: ['dtu-detail', dtuId],
     queryFn: async () => {
       const res = await apiHelpers.dtus.get(dtuId);
@@ -136,14 +156,52 @@ export function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps
       const res = await apiHelpers.dtus.lineage(dtuId);
       return res.data as {
         ok: boolean;
-        current?: { id: string; title?: string; tier?: string; type?: string; ownerId?: string; domain?: string };
-        parents?: Array<{ id: string; title?: string; summary?: string; tier?: string; ownerId?: string }>;
-        children?: Array<{ id: string; title?: string; summary?: string; tier?: string; ownerId?: string }>;
-        forks?: Array<{ id: string; title?: string; summary?: string; tier?: string; ownerId?: string }>;
+        current?: {
+          id: string;
+          title?: string;
+          tier?: string;
+          type?: string;
+          ownerId?: string;
+          domain?: string;
+        };
+        parents?: Array<{
+          id: string;
+          title?: string;
+          summary?: string;
+          tier?: string;
+          ownerId?: string;
+        }>;
+        children?: Array<{
+          id: string;
+          title?: string;
+          summary?: string;
+          tier?: string;
+          ownerId?: string;
+        }>;
+        forks?: Array<{
+          id: string;
+          title?: string;
+          summary?: string;
+          tier?: string;
+          ownerId?: string;
+        }>;
         citations?: Array<{ id: string; title?: string; summary?: string; tier?: string }>;
-        citedBy?: Array<{ id: string; title?: string; summary?: string; tier?: string; ownerId?: string }>;
+        citedBy?: Array<{
+          id: string;
+          title?: string;
+          summary?: string;
+          tier?: string;
+          ownerId?: string;
+        }>;
         relatedIds?: string[];
-        royaltyCascade?: Array<{ id: string; title?: string; ownerId?: string; generation: number; royaltyRate: number; royaltyPercent: string }>;
+        royaltyCascade?: Array<{
+          id: string;
+          title?: string;
+          ownerId?: string;
+          generation: number;
+          royaltyRate: number;
+          royaltyPercent: string;
+        }>;
         // Backward compat
         ancestors?: Array<{ id: string; title?: string; summary?: string; tier?: string }>;
         descendants?: Array<{ id: string; title?: string; summary?: string; tier?: string }>;
@@ -230,7 +288,8 @@ export function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps
   };
 
   // Determine primaryType for artifact rendering
-  const primaryType = (dtu?.meta?.primaryType || (dtu as unknown as Record<string, unknown>)?.primaryType) as string | undefined;
+  const primaryType = (dtu?.meta?.primaryType ||
+    (dtu as unknown as Record<string, unknown>)?.primaryType) as string | undefined;
   const artifactRef = (dtu?.artifact || dtu?.meta?.artifactId) as string | undefined;
 
   const primaryTypeIcon: Record<string, typeof Music> = {
@@ -244,10 +303,7 @@ export function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
 
       {/* Modal */}
       <div className="relative w-full max-w-2xl max-h-[85vh] bg-lattice-surface border border-lattice-border rounded-xl shadow-2xl overflow-hidden flex flex-col">
@@ -266,7 +322,13 @@ export function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps
               <div className="min-w-0">
                 <h2 className="font-semibold truncate flex items-center gap-2">
                   {dtu?.title || dtu?.summary || config.label}
-                  {dtu && <ProvenanceBadge source={dtu.source} model={dtu.meta?.model as string} authority={dtu.meta?.authority as string} />}
+                  {dtu && (
+                    <ProvenanceBadge
+                      source={dtu.source}
+                      model={dtu.meta?.model as string}
+                      authority={dtu.meta?.authority as string}
+                    />
+                  )}
                 </h2>
                 <div className="flex items-center gap-2 text-xs text-gray-500">
                   <span className="font-mono truncate">{dtuId.slice(0, 20)}...</span>
@@ -275,14 +337,16 @@ export function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps
                   </button>
                   <TierBadge tier={dtu?.tier || 'regular'} showRegular size="sm" />
                   <ScopeBadge scope={(dtu?.meta?.scope as string) || 'local'} />
-                  {dtu?.domain && (
-                    <span className="text-gray-600">{dtu.domain}</span>
-                  )}
+                  {dtu?.domain && <span className="text-gray-600">{dtu.domain}</span>}
                   {offlineStale && !serverDtu && (
-                    <span className="text-amber-400/70" title="Showing cached data, refreshing...">cached</span>
+                    <span className="text-amber-400/70" title="Showing cached data, refreshing...">
+                      cached
+                    </span>
                   )}
                   {offlineSource === 'offline' && !serverDtu && (
-                    <span className="text-gray-500" title="Loaded from offline cache">offline</span>
+                    <span className="text-gray-500" title="Loaded from offline cache">
+                      offline
+                    </span>
                   )}
                 </div>
               </div>
@@ -304,7 +368,9 @@ export function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps
               title="Download as .dtu file"
             >
               <Download className="w-3.5 h-3.5" />
-              {downloading ? 'Exporting...' : `.${dtu?.tier === 'mega' ? 'mega.' : dtu?.tier === 'hyper' ? 'hyper.' : ''}dtu`}
+              {downloading
+                ? 'Exporting...'
+                : `.${dtu?.tier === 'mega' ? 'mega.' : dtu?.tier === 'hyper' ? 'hyper.' : ''}dtu`}
             </button>
             <button
               onClick={onClose}
@@ -343,7 +409,9 @@ export function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps
           ) : isError || !dtu ? (
             <div className="text-center py-8">
               <p className="text-red-400 text-sm">Failed to load DTU details</p>
-              <p className="text-xs text-gray-500 mt-1">The DTU may have been deleted or you may not have access.</p>
+              <p className="text-xs text-gray-500 mt-1">
+                The DTU may have been deleted or you may not have access.
+              </p>
             </div>
           ) : (
             <>
@@ -366,94 +434,160 @@ export function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps
                   )}
 
                   {/* Human-readable summary from human layer */}
-                  {!!(dtu as unknown as Record<string, unknown>).human && typeof (dtu as unknown as Record<string, unknown>).human === 'object' && (
-                    <div>
-                      {!!((dtu as unknown as Record<string, Record<string, unknown>>).human?.summary) && (
-                        <div className="mb-3">
-                          <h3 className="text-sm font-medium text-gray-400 mb-1">Human Summary</h3>
-                          <p className="text-gray-200">{String((dtu as unknown as Record<string, Record<string, unknown>>).human.summary)}</p>
-                        </div>
-                      )}
-                      {Array.isArray((dtu as unknown as Record<string, Record<string, unknown[]>>).human?.bullets) && ((dtu as unknown as Record<string, Record<string, string[]>>).human.bullets).length > 0 && (
-                        <div>
-                          <h3 className="text-sm font-medium text-gray-400 mb-1">Key Points</h3>
-                          <ul className="list-disc list-inside space-y-1 text-gray-200 text-sm">
-                            {((dtu as unknown as Record<string, Record<string, string[]>>).human.bullets).map((b: string, i: number) => (
-                              <li key={i}>{b}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  {!!(dtu as unknown as Record<string, unknown>).human &&
+                    typeof (dtu as unknown as Record<string, unknown>).human === 'object' && (
+                      <div>
+                        {!!(dtu as unknown as Record<string, Record<string, unknown>>).human
+                          ?.summary && (
+                          <div className="mb-3">
+                            <h3 className="text-sm font-medium text-gray-400 mb-1">
+                              Human Summary
+                            </h3>
+                            <p className="text-gray-200">
+                              {String(
+                                (dtu as unknown as Record<string, Record<string, unknown>>).human
+                                  .summary
+                              )}
+                            </p>
+                          </div>
+                        )}
+                        {Array.isArray(
+                          (dtu as unknown as Record<string, Record<string, unknown[]>>).human
+                            ?.bullets
+                        ) &&
+                          (dtu as unknown as Record<string, Record<string, string[]>>).human.bullets
+                            .length > 0 && (
+                            <div>
+                              <h3 className="text-sm font-medium text-gray-400 mb-1">Key Points</h3>
+                              <ul className="list-disc list-inside space-y-1 text-gray-200 text-sm">
+                                {(
+                                  dtu as unknown as Record<string, Record<string, string[]>>
+                                ).human.bullets.map((b: string, i: number) => (
+                                  <li key={i}>{b}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                      </div>
+                    )}
 
                   {/* CRETI content (the main knowledge text) */}
-                  {!!((dtu as unknown as Record<string, unknown>).creti || (dtu as unknown as Record<string, unknown>).cretiHuman) && (
+                  {!!(
+                    (dtu as unknown as Record<string, unknown>).creti ||
+                    (dtu as unknown as Record<string, unknown>).cretiHuman
+                  ) && (
                     <div>
                       <h3 className="text-sm font-medium text-gray-400 mb-2">CRETI Content</h3>
                       <div className="bg-lattice-deep p-4 rounded-lg">
-                        {typeof (dtu as unknown as Record<string, unknown>).cretiHuman === 'string' && (
+                        {typeof (dtu as unknown as Record<string, unknown>).cretiHuman ===
+                          'string' && (
                           <p className="text-gray-200 whitespace-pre-wrap text-sm mb-2">
                             {String((dtu as unknown as Record<string, unknown>).cretiHuman)}
                           </p>
                         )}
-                        {typeof (dtu as unknown as Record<string, unknown>).creti === 'object' && !Array.isArray((dtu as unknown as Record<string, unknown>).creti) && (dtu as unknown as Record<string, unknown>).creti !== null && (
-                          <div className="space-y-2">
-                            {Object.entries((dtu as unknown as Record<string, Record<string, number>>).creti).map(([key, val]) => (
-                              <div key={key} className="flex items-center gap-3">
-                                <span className="text-xs text-gray-400 uppercase w-24 flex-shrink-0">{key}</span>
-                                <div className="flex-1 h-2 bg-lattice-border rounded-full overflow-hidden">
-                                  <div
-                                    className="h-full rounded-full bg-neon-cyan"
-                                    style={{ width: `${Math.min(typeof val === 'number' ? val * 100 : 0, 100)}%` }}
-                                  />
+                        {typeof (dtu as unknown as Record<string, unknown>).creti === 'object' &&
+                          !Array.isArray((dtu as unknown as Record<string, unknown>).creti) &&
+                          (dtu as unknown as Record<string, unknown>).creti !== null && (
+                            <div className="space-y-2">
+                              {Object.entries(
+                                (dtu as unknown as Record<string, Record<string, number>>).creti
+                              ).map(([key, val]) => (
+                                <div key={key} className="flex items-center gap-3">
+                                  <span className="text-xs text-gray-400 uppercase w-24 flex-shrink-0">
+                                    {key}
+                                  </span>
+                                  <div className="flex-1 h-2 bg-lattice-border rounded-full overflow-hidden">
+                                    <div
+                                      className="h-full rounded-full bg-neon-cyan"
+                                      style={{
+                                        width: `${Math.min(typeof val === 'number' ? val * 100 : 0, 100)}%`,
+                                      }}
+                                    />
+                                  </div>
+                                  <span className="text-xs text-gray-300 w-10 text-right font-mono">
+                                    {typeof val === 'number' ? val.toFixed(2) : String(val)}
+                                  </span>
                                 </div>
-                                <span className="text-xs text-gray-300 w-10 text-right font-mono">
-                                  {typeof val === 'number' ? val.toFixed(2) : String(val)}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                              ))}
+                            </div>
+                          )}
                       </div>
                     </div>
                   )}
 
                   {/* Core structured data (definitions, claims, examples) */}
-                  {!!(dtu as unknown as Record<string, unknown>).core && typeof (dtu as unknown as Record<string, unknown>).core === 'object' && (
-                    <div className="space-y-3">
-                      {Array.isArray((dtu as unknown as Record<string, Record<string, unknown[]>>).core?.definitions) && ((dtu as unknown as Record<string, Record<string, string[]>>).core.definitions).length > 0 && (
-                        <div>
-                          <h3 className="text-sm font-medium text-gray-400 mb-1">Definitions</h3>
-                          <ul className="space-y-1">
-                            {((dtu as unknown as Record<string, Record<string, string[]>>).core.definitions).map((def: string, i: number) => (
-                              <li key={i} className="text-sm text-gray-200 pl-3 border-l-2 border-neon-blue/40">{typeof def === 'string' ? def : JSON.stringify(def)}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                      {Array.isArray((dtu as unknown as Record<string, Record<string, unknown[]>>).core?.claims) && ((dtu as unknown as Record<string, Record<string, string[]>>).core.claims).length > 0 && (
-                        <div>
-                          <h3 className="text-sm font-medium text-gray-400 mb-1">Claims</h3>
-                          <ul className="space-y-1">
-                            {((dtu as unknown as Record<string, Record<string, string[]>>).core.claims).map((claim: string, i: number) => (
-                              <li key={i} className="text-sm text-gray-200 pl-3 border-l-2 border-neon-purple/40">{typeof claim === 'string' ? claim : JSON.stringify(claim)}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                      {Array.isArray((dtu as unknown as Record<string, Record<string, unknown[]>>).core?.examples) && ((dtu as unknown as Record<string, Record<string, string[]>>).core.examples).length > 0 && (
-                        <div>
-                          <h3 className="text-sm font-medium text-gray-400 mb-1">Examples</h3>
-                          <ul className="space-y-1">
-                            {((dtu as unknown as Record<string, Record<string, string[]>>).core.examples).map((ex: string, i: number) => (
-                              <li key={i} className="text-sm text-gray-200 pl-3 border-l-2 border-neon-cyan/40">{typeof ex === 'string' ? ex : JSON.stringify(ex)}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  {!!(dtu as unknown as Record<string, unknown>).core &&
+                    typeof (dtu as unknown as Record<string, unknown>).core === 'object' && (
+                      <div className="space-y-3">
+                        {Array.isArray(
+                          (dtu as unknown as Record<string, Record<string, unknown[]>>).core
+                            ?.definitions
+                        ) &&
+                          (dtu as unknown as Record<string, Record<string, string[]>>).core
+                            .definitions.length > 0 && (
+                            <div>
+                              <h3 className="text-sm font-medium text-gray-400 mb-1">
+                                Definitions
+                              </h3>
+                              <ul className="space-y-1">
+                                {(
+                                  dtu as unknown as Record<string, Record<string, string[]>>
+                                ).core.definitions.map((def: string, i: number) => (
+                                  <li
+                                    key={i}
+                                    className="text-sm text-gray-200 pl-3 border-l-2 border-neon-blue/40"
+                                  >
+                                    {typeof def === 'string' ? def : JSON.stringify(def)}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        {Array.isArray(
+                          (dtu as unknown as Record<string, Record<string, unknown[]>>).core?.claims
+                        ) &&
+                          (dtu as unknown as Record<string, Record<string, string[]>>).core.claims
+                            .length > 0 && (
+                            <div>
+                              <h3 className="text-sm font-medium text-gray-400 mb-1">Claims</h3>
+                              <ul className="space-y-1">
+                                {(
+                                  dtu as unknown as Record<string, Record<string, string[]>>
+                                ).core.claims.map((claim: string, i: number) => (
+                                  <li
+                                    key={i}
+                                    className="text-sm text-gray-200 pl-3 border-l-2 border-neon-purple/40"
+                                  >
+                                    {typeof claim === 'string' ? claim : JSON.stringify(claim)}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        {Array.isArray(
+                          (dtu as unknown as Record<string, Record<string, unknown[]>>).core
+                            ?.examples
+                        ) &&
+                          (dtu as unknown as Record<string, Record<string, string[]>>).core.examples
+                            .length > 0 && (
+                            <div>
+                              <h3 className="text-sm font-medium text-gray-400 mb-1">Examples</h3>
+                              <ul className="space-y-1">
+                                {(
+                                  dtu as unknown as Record<string, Record<string, string[]>>
+                                ).core.examples.map((ex: string, i: number) => (
+                                  <li
+                                    key={i}
+                                    className="text-sm text-gray-200 pl-3 border-l-2 border-neon-cyan/40"
+                                  >
+                                    {typeof ex === 'string' ? ex : JSON.stringify(ex)}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                      </div>
+                    )}
 
                   {/* Full content */}
                   <div>
@@ -469,10 +603,14 @@ export function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps
                   {primaryType && (
                     <div>
                       <h3 className="text-sm font-medium text-gray-400 mb-2 flex items-center gap-2">
-                        {primaryTypeIcon[primaryType] ? (() => {
-                          const Icon = primaryTypeIcon[primaryType];
-                          return <Icon className="w-4 h-4" />;
-                        })() : <FileType className="w-4 h-4" />}
+                        {primaryTypeIcon[primaryType] ? (
+                          (() => {
+                            const Icon = primaryTypeIcon[primaryType];
+                            return <Icon className="w-4 h-4" />;
+                          })()
+                        ) : (
+                          <FileType className="w-4 h-4" />
+                        )}
                         Artifact Preview
                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-neon-purple/10 text-neon-purple uppercase">
                           {primaryType.replace(/_/g, ' ')}
@@ -482,12 +620,18 @@ export function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps
                         <ArtifactRenderer
                           dtuId={artifactRef}
                           artifact={{
-                            type: primaryType === 'play_audio' ? 'audio/mpeg'
-                              : primaryType === 'display_image' ? 'image/png'
-                              : primaryType === 'play_video' ? 'video/mp4'
-                              : primaryType === 'render_code' ? 'text/plain'
-                              : primaryType === 'render_document' ? 'text/markdown'
-                              : 'application/octet-stream',
+                            type:
+                              primaryType === 'play_audio'
+                                ? 'audio/mpeg'
+                                : primaryType === 'display_image'
+                                  ? 'image/png'
+                                  : primaryType === 'play_video'
+                                    ? 'video/mp4'
+                                    : primaryType === 'render_code'
+                                      ? 'text/plain'
+                                      : primaryType === 'render_document'
+                                        ? 'text/markdown'
+                                        : 'application/octet-stream',
                             filename: dtu.title || dtu.id,
                             sizeBytes: (dtu.meta?.artifactSize as number) || 0,
                             multipart: false,
@@ -497,7 +641,8 @@ export function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps
                       ) : (
                         <div className="bg-lattice-deep p-4 rounded-lg text-center">
                           <p className="text-gray-500 text-sm">
-                            This DTU has type "{primaryType.replace(/_/g, ' ')}" but no artifact is attached.
+                            This DTU has type "{primaryType.replace(/_/g, ' ')}" but no artifact is
+                            attached.
                           </p>
                         </div>
                       )}
@@ -538,7 +683,9 @@ export function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps
                   {dtu.source && (
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-gray-500">Created via:</span>
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${DTU_SOURCE_STYLES[dtu.source]?.bg || 'bg-gray-500/10 text-gray-400'}`}>
+                      <span
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${DTU_SOURCE_STYLES[dtu.source]?.bg || 'bg-gray-500/10 text-gray-400'}`}
+                      >
                         {DTU_SOURCE_LABELS[dtu.source] || dtu.source}
                       </span>
                     </div>
@@ -550,9 +697,7 @@ export function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps
                       <Clock className="w-4 h-4" />
                       {new Date(dtu.timestamp).toLocaleString()}
                     </span>
-                    {dtu.ownerId && (
-                      <span className="text-gray-500">Creator: {dtu.ownerId}</span>
-                    )}
+                    {dtu.ownerId && <span className="text-gray-500">Creator: {dtu.ownerId}</span>}
                     {dtu.resonance !== undefined && (
                       <span>Resonance: {(dtu.resonance * 100).toFixed(1)}%</span>
                     )}
@@ -565,12 +710,15 @@ export function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps
                   {(dtu.children?.length || 0) > 0 && (
                     <div className="flex items-center gap-2 text-sm text-gray-400">
                       <GitBranch className="w-4 h-4" />
-                      <span>{dtu.children.length} citation{dtu.children.length !== 1 ? 's' : ''} (child DTUs)</span>
+                      <span>
+                        {dtu.children.length} citation{dtu.children.length !== 1 ? 's' : ''} (child
+                        DTUs)
+                      </span>
                     </div>
                   )}
 
                   {/* Scope promotion — Push to Marketplace for local DTUs */}
-                  {(!(dtu.meta?.scope) || dtu.meta?.scope === 'local') && !showPromote && (
+                  {(!dtu.meta?.scope || dtu.meta?.scope === 'local') && !showPromote && (
                     <button
                       onClick={() => setShowPromote(true)}
                       className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-neon-purple/10 text-neon-purple border border-neon-purple/30 hover:bg-neon-purple/20 transition-colors"
@@ -590,47 +738,55 @@ export function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps
                   {/* Integrity badge */}
                   <DTUIntegrityBadge
                     dtuId={dtu.id}
-                    status={dtu.meta?.integrityStatus as 'verified' | 'unverified' | 'tampered' || 'unverified'}
+                    status={
+                      (dtu.meta?.integrityStatus as 'verified' | 'unverified' | 'tampered') ||
+                      'unverified'
+                    }
                     contentHash={dtu.meta?.contentHash as string}
                   />
 
                   {/* Royalty Earnings Summary */}
-                  {cascadeData?.ok && (cascadeData.totalEarned > 0 || cascadeData.totalTransactions > 0) && (
-                    <div className="p-3 rounded-lg bg-neon-green/5 border border-neon-green/20">
-                      <h3 className="text-sm font-medium text-gray-300 mb-2 flex items-center gap-2">
-                        <DollarSign className="w-4 h-4 text-neon-green" />
-                        Royalties
-                      </h3>
-                      <div className="flex items-center gap-4 text-sm">
-                        <span className="text-gray-400">
-                          This DTU has earned{' '}
-                          <span className="text-neon-green font-mono font-bold">
-                            {cascadeData.totalEarned.toFixed(2)} CC
+                  {cascadeData?.ok &&
+                    (cascadeData.totalEarned > 0 || cascadeData.totalTransactions > 0) && (
+                      <div className="p-3 rounded-lg bg-neon-green/5 border border-neon-green/20">
+                        <h3 className="text-sm font-medium text-gray-300 mb-2 flex items-center gap-2">
+                          <DollarSign className="w-4 h-4 text-neon-green" />
+                          Royalties
+                        </h3>
+                        <div className="flex items-center gap-4 text-sm">
+                          <span className="text-gray-400">
+                            This DTU has earned{' '}
+                            <span className="text-neon-green font-mono font-bold">
+                              {cascadeData.totalEarned.toFixed(2)} CC
+                            </span>{' '}
+                            in royalties across{' '}
+                            <span className="text-white font-medium">
+                              {cascadeData.totalTransactions}
+                            </span>{' '}
+                            transaction{cascadeData.totalTransactions !== 1 ? 's' : ''}
                           </span>
-                          {' '}in royalties across{' '}
-                          <span className="text-white font-medium">{cascadeData.totalTransactions}</span>
-                          {' '}transaction{cascadeData.totalTransactions !== 1 ? 's' : ''}
-                        </span>
-                      </div>
-                      {cascadeData.ancestors.length > 0 && (
-                        <div className="mt-2 space-y-1">
-                          {cascadeData.ancestors.slice(0, 5).map((a, i) => (
-                            <div key={i} className="flex items-center justify-between text-xs">
-                              <span className="text-gray-400 truncate max-w-[160px]">
-                                Gen {a.generation}: {a.creatorId}
-                              </span>
-                              <div className="flex items-center gap-2">
-                                <span className="text-neon-pink font-mono">{a.ratePercent}</span>
-                                {a.totalEarned > 0 && (
-                                  <span className="text-neon-green font-mono">{a.totalEarned.toFixed(2)} CC</span>
-                                )}
-                              </div>
-                            </div>
-                          ))}
                         </div>
-                      )}
-                    </div>
-                  )}
+                        {cascadeData.ancestors.length > 0 && (
+                          <div className="mt-2 space-y-1">
+                            {cascadeData.ancestors.slice(0, 5).map((a, i) => (
+                              <div key={i} className="flex items-center justify-between text-xs">
+                                <span className="text-gray-400 truncate max-w-[160px]">
+                                  Gen {a.generation}: {a.creatorId}
+                                </span>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-neon-pink font-mono">{a.ratePercent}</span>
+                                  {a.totalEarned > 0 && (
+                                    <span className="text-neon-green font-mono">
+                                      {a.totalEarned.toFixed(2)} CC
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                   {/* Tier consolidation details */}
                   {(dtu.tier === 'mega' || dtu.tier === 'hyper' || !!dtu.meta?.consolidated) && (
@@ -639,12 +795,18 @@ export function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps
                         tier={dtu.tier}
                         showRegular
                         sourceCount={dtu.meta?.sourceCount as number | undefined}
-                        sourceDtus={(dtu.meta?.sourceDtus as Array<{ id: string; title?: string }>) || (dtu.parents || []).map((id: string) => ({ id }))}
+                        sourceDtus={
+                          (dtu.meta?.sourceDtus as Array<{ id: string; title?: string }>) ||
+                          (dtu.parents || []).map((id: string) => ({ id }))
+                        }
                         megaCount={dtu.meta?.megaCount as number | undefined}
                         totalDtuCount={dtu.meta?.totalDtuCount as number | undefined}
                         consolidatedInto={
                           dtu.meta?.consolidatedInto
-                            ? { id: dtu.meta.consolidatedInto as string, title: dtu.meta.consolidatedIntoTitle as string | undefined }
+                            ? {
+                                id: dtu.meta.consolidatedInto as string,
+                                title: dtu.meta.consolidatedIntoTitle as string | undefined,
+                              }
                             : null
                         }
                         onNavigateToParent={onNavigate}
@@ -653,11 +815,18 @@ export function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps
                   )}
 
                   {/* Tier promotion timeline */}
-                  {Array.isArray(dtu.meta?.tierHistory) && (dtu.meta.tierHistory as Array<{ tier: string; at: string }>).length > 0 && (
-                    <TierPromotionTimeline
-                      history={dtu.meta.tierHistory as Array<{ tier: 'regular' | 'mega' | 'hyper' | 'shadow'; at: string; reason?: string }>}
-                    />
-                  )}
+                  {Array.isArray(dtu.meta?.tierHistory) &&
+                    (dtu.meta.tierHistory as Array<{ tier: string; at: string }>).length > 0 && (
+                      <TierPromotionTimeline
+                        history={
+                          dtu.meta.tierHistory as Array<{
+                            tier: 'regular' | 'mega' | 'hyper' | 'shadow';
+                            at: string;
+                            reason?: string;
+                          }>
+                        }
+                      />
+                    )}
                 </div>
               )}
 
@@ -669,7 +838,11 @@ export function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps
                   <LineageSection
                     title="Parents"
                     icon={<GitBranch className="w-4 h-4 text-neon-blue" />}
-                    items={parentDtus.length > 0 ? parentDtus : (dtu.parents || []).map((id: string) => ({ id }))}
+                    items={
+                      parentDtus.length > 0
+                        ? parentDtus
+                        : (dtu.parents || []).map((id: string) => ({ id }))
+                    }
                     emptyText="No parent DTUs (this is a root thought)"
                     onNavigate={onNavigate}
                     color="border-neon-blue/30"
@@ -692,7 +865,11 @@ export function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps
                   <LineageSection
                     title="Children"
                     icon={<GitBranch className="w-4 h-4 text-neon-green rotate-180" />}
-                    items={childDtus.length > 0 ? childDtus : (dtu.children || []).map((id: string) => ({ id }))}
+                    items={
+                      childDtus.length > 0
+                        ? childDtus
+                        : (dtu.children || []).map((id: string) => ({ id }))
+                    }
                     emptyText="No children DTUs yet"
                     onNavigate={onNavigate}
                     color="border-neon-green/30"
@@ -755,9 +932,13 @@ export function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps
                             </button>
                             <div className="flex items-center gap-2 text-gray-400 flex-shrink-0">
                               <span>Gen {entry.generation}</span>
-                              <span className="text-neon-pink font-mono font-medium">{entry.royaltyPercent}</span>
+                              <span className="text-neon-pink font-mono font-medium">
+                                {entry.royaltyPercent}
+                              </span>
                               {entry.ownerId && (
-                                <span className="text-gray-500 truncate max-w-[80px]">{entry.ownerId}</span>
+                                <span className="text-gray-500 truncate max-w-[80px]">
+                                  {entry.ownerId}
+                                </span>
                               )}
                             </div>
                           </div>
@@ -773,15 +954,17 @@ export function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps
                         Related ({(lineageData?.relatedIds || dtu.relatedIds || []).length})
                       </h3>
                       <div className="space-y-1">
-                        {((lineageData?.relatedIds || dtu.relatedIds || []) as string[]).slice(0, 10).map((relId: string) => (
-                          <button
-                            key={relId}
-                            onClick={() => onNavigate?.(relId)}
-                            className="text-xs text-neon-cyan hover:underline font-mono block"
-                          >
-                            {relId.slice(0, 24)}...
-                          </button>
-                        ))}
+                        {((lineageData?.relatedIds || dtu.relatedIds || []) as string[])
+                          .slice(0, 10)
+                          .map((relId: string) => (
+                            <button
+                              key={relId}
+                              onClick={() => onNavigate?.(relId)}
+                              className="text-xs text-neon-cyan hover:underline font-mono block"
+                            >
+                              {relId.slice(0, 24)}...
+                            </button>
+                          ))}
                       </div>
                     </div>
                   )}
@@ -800,7 +983,10 @@ export function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps
                         ['ID', dtu.id],
                         ['Tier', dtu.tier],
                         ['Source', dtu.source],
-                        ['Created Via', dtu.source ? (DTU_SOURCE_LABELS[dtu.source] || dtu.source) : undefined],
+                        [
+                          'Created Via',
+                          dtu.source ? DTU_SOURCE_LABELS[dtu.source] || dtu.source : undefined,
+                        ],
                         ['Primary Type', primaryType],
                         ['Artifact', artifactRef],
                         ['Domain', dtu.domain],
@@ -813,12 +999,16 @@ export function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps
                         ['Stability', dtu.stability?.toFixed(3)],
                         ['Parents', dtu.parents?.length || 0],
                         ['Children', dtu.children?.length || 0],
-                      ].filter(([, v]) => v !== undefined && v !== null && v !== '').map(([key, val]) => (
-                        <div key={key} className="flex items-start justify-between">
-                          <span className="text-gray-500">{key}:</span>
-                          <span className="text-gray-300 text-right font-mono max-w-[250px] truncate">{String(val)}</span>
-                        </div>
-                      ))}
+                      ]
+                        .filter(([, v]) => v !== undefined && v !== null && v !== '')
+                        .map(([key, val]) => (
+                          <div key={key} className="flex items-start justify-between">
+                            <span className="text-gray-500">{key}:</span>
+                            <span className="text-gray-300 text-right font-mono max-w-[250px] truncate">
+                              {String(val)}
+                            </span>
+                          </div>
+                        ))}
                     </div>
                   </div>
 
@@ -864,7 +1054,7 @@ function LineageSection({
   color: string;
 }) {
   const resolved = items.map((item) =>
-    typeof item === 'string' ? { id: item } as LineageNode : item
+    typeof item === 'string' ? ({ id: item } as LineageNode) : item
   );
 
   return (
@@ -890,7 +1080,9 @@ function LineageSection({
                     <span className="text-[10px] text-gray-500 uppercase">{node.tier}</span>
                   )}
                   {node.ownerId && (
-                    <span className="text-[10px] text-gray-600 truncate max-w-[120px]">{node.ownerId}</span>
+                    <span className="text-[10px] text-gray-600 truncate max-w-[120px]">
+                      {node.ownerId}
+                    </span>
                   )}
                 </div>
               </div>
@@ -904,3 +1096,7 @@ function LineageSection({
     </div>
   );
 }
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedDTUDetailView = withErrorBoundary(DTUDetailView);
+export { _WrappedDTUDetailView as DTUDetailView };

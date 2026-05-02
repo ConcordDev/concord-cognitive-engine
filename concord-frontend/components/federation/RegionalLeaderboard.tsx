@@ -62,10 +62,15 @@ interface Props {
 const SCOPE_CONFIG: Record<Scope, { label: string; icon: React.ElementType; color: string }> = {
   regional: { label: 'Regional', icon: MapPin, color: 'text-neon-cyan' },
   national: { label: 'National', icon: Flag, color: 'text-neon-purple' },
-  global:   { label: 'Global', icon: Globe, color: 'text-neon-blue' },
+  global: { label: 'Global', icon: Globe, color: 'text-neon-blue' },
 };
 
-export function RegionalLeaderboard({ defaultScope = 'regional', limit = 10, compact = false, className }: Props) {
+function RegionalLeaderboard({
+  defaultScope = 'regional',
+  limit = 10,
+  compact = false,
+  className,
+}: Props) {
   const [scope, setScope] = useState<Scope>(defaultScope);
 
   const { data, isLoading, error } = useQuery<LeaderboardResponse>({
@@ -83,17 +88,18 @@ export function RegionalLeaderboard({ defaultScope = 'regional', limit = 10, com
   const top = data?.top || [];
   const viewerRank = data?.viewerRank || null;
   const locationLabel =
-    scope === 'regional'
-      ? data?.region
-      : scope === 'national'
-        ? data?.nation
-        : 'Worldwide';
+    scope === 'regional' ? data?.region : scope === 'national' ? data?.nation : 'Worldwide';
   const needsLocation =
     !isLoading &&
     ((scope === 'regional' && !data?.region) || (scope === 'national' && !data?.nation));
 
   return (
-    <section className={cn('rounded-xl border border-lattice-border bg-lattice-surface/60 overflow-hidden', className)}>
+    <section
+      className={cn(
+        'rounded-xl border border-lattice-border bg-lattice-surface/60 overflow-hidden',
+        className
+      )}
+    >
       {/* Header */}
       <header className="flex items-center justify-between gap-3 px-4 py-3 border-b border-lattice-border">
         <div className="flex items-center gap-2 min-w-0">
@@ -117,7 +123,7 @@ export function RegionalLeaderboard({ defaultScope = 'regional', limit = 10, com
                   'inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-colors',
                   isActive
                     ? `${cfg.color} bg-lattice-deep border border-current/30`
-                    : 'text-gray-500 hover:text-gray-300',
+                    : 'text-gray-500 hover:text-gray-300'
                 )}
                 title={cfg.label}
               >
@@ -138,8 +144,7 @@ export function RegionalLeaderboard({ defaultScope = 'regional', limit = 10, com
         ) : needsLocation ? (
           <div className="text-center py-6 text-sm text-gray-500">
             <p className="mb-2">
-              You haven&apos;t declared your{' '}
-              {scope === 'regional' ? 'region' : 'country'} yet.
+              You haven&apos;t declared your {scope === 'regional' ? 'region' : 'country'} yet.
             </p>
             <Link href="/onboarding/location" className="text-neon-cyan hover:underline text-xs">
               Set your location →
@@ -166,7 +171,7 @@ export function RegionalLeaderboard({ defaultScope = 'regional', limit = 10, com
                           ? 'bg-gray-300/10 text-gray-300 border border-gray-400/30'
                           : idx === 2
                             ? 'bg-amber-600/20 text-amber-500 border border-amber-600/30'
-                            : 'bg-lattice-border/30 text-gray-500',
+                            : 'bg-lattice-border/30 text-gray-500'
                     )}
                   >
                     {idx === 0 ? <Trophy className="w-3.5 h-3.5" /> : idx + 1}
@@ -188,9 +193,7 @@ export function RegionalLeaderboard({ defaultScope = 'regional', limit = 10, com
                           {entry.views}
                         </span>
                       )}
-                      {!compact && (
-                        <span className="uppercase tracking-wide">{entry.domain}</span>
-                      )}
+                      {!compact && <span className="uppercase tracking-wide">{entry.domain}</span>}
                     </div>
                   </div>
                   <span className="text-[10px] text-gray-600 font-mono flex-shrink-0">
@@ -216,4 +219,7 @@ export function RegionalLeaderboard({ defaultScope = 'regional', limit = 10, com
   );
 }
 
-export default RegionalLeaderboard;
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedRegionalLeaderboard = withErrorBoundary(RegionalLeaderboard);
+export { _WrappedRegionalLeaderboard as RegionalLeaderboard };
+export default _WrappedRegionalLeaderboard;

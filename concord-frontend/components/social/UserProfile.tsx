@@ -109,7 +109,15 @@ const MEDIA_TYPE_ICONS: Record<string, typeof Music> = {
 
 // ── Stat Card ────────────────────────────────────────────────────────────────
 
-function StatCard({ label, value, icon: Icon }: { label: string; value: number; icon: typeof Users }) {
+function StatCard({
+  label,
+  value,
+  icon: Icon,
+}: {
+  label: string;
+  value: number;
+  icon: typeof Users;
+}) {
   return (
     <div className="text-center">
       <div className="flex items-center justify-center gap-1 mb-0.5">
@@ -156,8 +164,11 @@ function ContentItem({ item }: { item: FeedItem }) {
           </div>
           {item.tags && item.tags.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-2">
-              {item.tags.slice(0, 4).map(tag => (
-                <span key={tag} className="text-xs text-neon-cyan/70 bg-neon-cyan/5 px-1.5 py-0.5 rounded-full">
+              {item.tags.slice(0, 4).map((tag) => (
+                <span
+                  key={tag}
+                  className="text-xs text-neon-cyan/70 bg-neon-cyan/5 px-1.5 py-0.5 rounded-full"
+                >
                   #{tag}
                 </span>
               ))}
@@ -209,7 +220,7 @@ function FollowList({
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
         className="bg-lattice-surface border border-lattice-border rounded-xl w-full max-w-md max-h-[60vh] overflow-hidden"
-        onClick={e => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-lattice-border">
           <h3 className="text-white font-medium">{title}</h3>
@@ -221,7 +232,7 @@ function FollowList({
           {users.length === 0 ? (
             <div className="p-8 text-center text-gray-500">No users yet</div>
           ) : (
-            users.map(user => (
+            users.map((user) => (
               <button
                 key={user.userId}
                 onClick={() => onNavigate?.(user.userId)}
@@ -250,12 +261,7 @@ function FollowList({
 
 // ── Main Component ───────────────────────────────────────────────────────────
 
-export function UserProfile({
-  userId,
-  currentUserId,
-  onNavigateToUser,
-  className,
-}: UserProfileProps) {
+function UserProfile({ userId, currentUserId, onNavigateToUser, className }: UserProfileProps) {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<ContentTab>('posts');
   const [showFollowers, setShowFollowers] = useState(false);
@@ -299,7 +305,9 @@ export function UserProfile({
     queryKey: ['user-content', userId, activeTab],
     queryFn: async () => {
       if (activeTab === 'media') {
-        const res = await api.get(`/api/media/author/${userId}`, { params: { limit: 20, viewerId: currentUserId } });
+        const res = await api.get(`/api/media/author/${userId}`, {
+          params: { limit: 20, viewerId: currentUserId },
+        });
         return (res.data.media || []) as FeedItem[];
       }
       // For posts/dtus/liked, use the user's posts endpoint
@@ -338,7 +346,10 @@ export function UserProfile({
       await navigator.clipboard.writeText(`${window.location.origin}/profile/${userId}`);
       setLinkCopied(true);
       setTimeout(() => setLinkCopied(false), 2000);
-    } catch (e) { console.error('[UserProfile] Failed to copy link:', e); useUIStore.getState().addToast({ type: 'error', message: 'Failed to copy profile link' }); }
+    } catch (e) {
+      console.error('[UserProfile] Failed to copy link:', e);
+      useUIStore.getState().addToast({ type: 'error', message: 'Failed to copy profile link' });
+    }
   }, [userId]);
 
   // ── Content tabs ─────────────────────────────────────────────────────
@@ -367,7 +378,9 @@ export function UserProfile({
       <div className={cn('text-center py-16', className)}>
         <Users className="w-12 h-12 text-gray-600 mx-auto mb-4" />
         <h3 className="text-white font-medium mb-2">Profile Not Found</h3>
-        <p className="text-sm text-gray-400">This user does not exist or their profile is private.</p>
+        <p className="text-sm text-gray-400">
+          This user does not exist or their profile is private.
+        </p>
       </div>
     );
   }
@@ -389,7 +402,7 @@ export function UserProfile({
           </button>
           <div className="relative">
             <button
-              onClick={() => setShowOptions(prev => !prev)}
+              onClick={() => setShowOptions((prev) => !prev)}
               className="p-2 rounded-lg bg-black/30 backdrop-blur-sm text-white/80 hover:text-white transition-colors"
             >
               <MoreHorizontal className="w-4 h-4" />
@@ -438,7 +451,13 @@ export function UserProfile({
             )}
           >
             {profile.avatar ? (
-              <Image src={profile.avatar} alt={profile.displayName} fill className="rounded-full object-cover" unoptimized />
+              <Image
+                src={profile.avatar}
+                alt={profile.displayName}
+                fill
+                className="rounded-full object-cover"
+                unoptimized
+              />
             ) : (
               profile.displayName.charAt(0).toUpperCase()
             )}
@@ -480,9 +499,7 @@ export function UserProfile({
         </div>
 
         {/* Bio */}
-        {profile.bio && (
-          <p className="text-gray-300 text-sm leading-relaxed mb-3">{profile.bio}</p>
-        )}
+        {profile.bio && <p className="text-gray-300 text-sm leading-relaxed mb-3">{profile.bio}</p>}
 
         {/* Meta info */}
         <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500 mb-4">
@@ -499,14 +516,18 @@ export function UserProfile({
           )}
           <span className="flex items-center gap-1">
             <Calendar className="w-3 h-3" />
-            Joined {new Date(profile.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+            Joined{' '}
+            {new Date(profile.createdAt).toLocaleDateString('en-US', {
+              month: 'short',
+              year: 'numeric',
+            })}
           </span>
         </div>
 
         {/* Specializations */}
         {profile.specialization && profile.specialization.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mb-4">
-            {profile.specialization.map(spec => (
+            {profile.specialization.map((spec) => (
               <span
                 key={spec}
                 className="px-2 py-0.5 rounded-full bg-neon-purple/10 text-neon-purple text-xs"
@@ -540,7 +561,7 @@ export function UserProfile({
       {/* Content tabs */}
       <div className="mt-4">
         <div className="flex border-b border-lattice-border">
-          {tabs.map(tab => (
+          {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
@@ -564,9 +585,7 @@ export function UserProfile({
               <Loader2 className="w-6 h-6 text-neon-cyan animate-spin" />
             </div>
           ) : contentQuery.data && contentQuery.data.length > 0 ? (
-            contentQuery.data.map((item) => (
-              <ContentItem key={item.dtuId} item={item} />
-            ))
+            contentQuery.data.map((item) => <ContentItem key={item.dtuId} item={item} />)
           ) : (
             <div className="text-center py-12">
               <BookOpen className="w-10 h-10 text-gray-600 mx-auto mb-3" />
@@ -599,4 +618,7 @@ export function UserProfile({
   );
 }
 
-export default UserProfile;
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedUserProfile = withErrorBoundary(UserProfile);
+export { _WrappedUserProfile as UserProfile };
+export default _WrappedUserProfile;

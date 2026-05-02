@@ -29,13 +29,17 @@ interface StatusResponse {
   version?: string;
 }
 
-export function SystemStatus() {
+function SystemStatus() {
   const requestErrors = useUIStore((s) => s.requestErrors);
   const clearRequestErrors = useUIStore((s) => s.clearRequestErrors);
   const authPosture = useUIStore((s) => s.authPosture);
   const [expanded, setExpanded] = useState(false);
 
-  const { data: status, isError: isBackendDown, error: backendError } = useQuery<StatusResponse>({
+  const {
+    data: status,
+    isError: isBackendDown,
+    error: backendError,
+  } = useQuery<StatusResponse>({
     queryKey: ['system-status'],
     queryFn: async () => {
       const res = await api.get('/api/status');
@@ -77,10 +81,12 @@ export function SystemStatus() {
   }
 
   return (
-    <div className={cn(
-      'fixed bottom-4 left-4 z-40 rounded-lg border shadow-lg text-sm max-w-sm',
-      isHealthy ? 'bg-lattice-surface border-lattice-border' : 'bg-red-950/90 border-red-500/40'
-    )}>
+    <div
+      className={cn(
+        'fixed bottom-4 left-4 z-40 rounded-lg border shadow-lg text-sm max-w-sm',
+        isHealthy ? 'bg-lattice-surface border-lattice-border' : 'bg-red-950/90 border-red-500/40'
+      )}
+    >
       {/* Header */}
       <button
         onClick={() => setExpanded(!expanded)}
@@ -99,7 +105,11 @@ export function SystemStatus() {
             {recentErrors.length}
           </span>
         )}
-        {expanded ? <ChevronDown className="w-4 h-4 ml-auto text-gray-400" /> : <ChevronUp className="w-4 h-4 ml-auto text-gray-400" />}
+        {expanded ? (
+          <ChevronDown className="w-4 h-4 ml-auto text-gray-400" />
+        ) : (
+          <ChevronUp className="w-4 h-4 ml-auto text-gray-400" />
+        )}
       </button>
 
       {/* Expanded content */}
@@ -139,17 +149,25 @@ export function SystemStatus() {
                   Recent Errors
                 </span>
                 <button
-                  onClick={(e) => { e.stopPropagation(); clearRequestErrors(); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    clearRequestErrors();
+                  }}
                   className="text-xs text-gray-500 hover:text-white"
                 >
                   Clear
                 </button>
               </div>
               {recentErrors.map((err) => (
-                <div key={err.id} className="text-xs p-1.5 rounded bg-red-500/10 border border-red-500/20">
+                <div
+                  key={err.id}
+                  className="text-xs p-1.5 rounded bg-red-500/10 border border-red-500/20"
+                >
                   <div className="flex items-center gap-1">
                     <span className="text-red-400 font-mono">{err.status || '???'}</span>
-                    <span className="text-gray-400 truncate">{err.method} {err.path}</span>
+                    <span className="text-gray-400 truncate">
+                      {err.method} {err.path}
+                    </span>
                   </div>
                   <p className="text-red-300 truncate mt-0.5">{err.reason || err.message}</p>
                 </div>
@@ -169,3 +187,7 @@ export function SystemStatus() {
     </div>
   );
 }
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedSystemStatus = withErrorBoundary(SystemStatus);
+export { _WrappedSystemStatus as SystemStatus };

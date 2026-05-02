@@ -6,8 +6,13 @@
 //   - Sparks: up to 30% on death, up to 20% on robbery
 //   - Items: 1–3 random on death, 1 on robbery
 //   - Only triggers in crime_world or combat game modes
+//
+// NPC-loots-player path added here:
+//   When an NPC kills a player, the NPC (or nearby faction member) can claim the
+//   loot bag — items enter the NPC's activity_resources / wealth pool.
 
 import crypto from "crypto";
+import logger from "../logger.js";
 
 const DEATH_SPARKS_PCT = 0.30;
 const ROBBERY_SPARKS_PCT = 0.20;
@@ -158,6 +163,86 @@ export function handleRobbery(db, { robberId, victimId, gameMode, worldId }) {
   return { ok: true, sparksStolen, stolenItem };
 }
 
+// ── NPC-loots-player ──────────────────────────────────────────────────────────
+
+/**
+ * Called immediately after an NPC kills a player.
+ * Creates a loot bag (same as handlePlayerDeath) and then has the killer NPC
+ * immediately claim it — adding sparks to NPC wealth and items to activity_resources.
+ *
+ * If the NPC is mid-faction (has allies nearby) a faction member can claim instead.
+ * Returns the loot result so the world route can emit realtime events.
+ */
+export function handleNPCKilledPlayer(db, { npcId, playerId, worldId, x = 0, y = 0, z = 0 }) {
+  const victim = db.prepare('SELECT sparks FROM users WHERE id = ?').get(playerId);
+  if (!victim) return null;
+
+  const sparksDropped = Math.floor(victim.sparks * DEATH_SPARKS_PCT);
+
+  // Pick 1–3 random items from victim inventory
+  const invItems = db.prepare(`
+    SELECT id, item_id, item_name, quantity, quality, item_type FROM player_inventory
+    WHERE user_id = ? ORDER BY RANDOM() LIMIT 3
+  `).all(playerId);
+  const itemsToDrop = invItems.slice(0, Math.max(1, Math.min(3, invItems.length)));
+
+  // Deduct from victim
+  if (sparksDropped > 0) {
+    db.prepare('UPDATE users SET sparks = sparks - ? WHERE id = ?').run(sparksDropped, playerId);
+    db.prepare('INSERT INTO sparks_ledger (id, user_id, delta, reason, world_id) VALUES (?,?,?,?,?)')
+      .run(crypto.randomUUID(), playerId, -sparksDropped, `npc_kill:${npcId}`, worldId);
+  }
+  for (const item of itemsToDrop) {
+    db.prepare('DELETE FROM player_inventory WHERE id = ?').run(item.id);
+  }
+
+  // Bag in the loot_bags table (bidirectional schema from migration 061)
+  const bagId = crypto.randomUUID();
+  const expiresAt = Math.floor((Date.now() + LOOT_BAG_TTL_MS) / 1000);
+  const allItems = [
+    ...(sparksDropped > 0 ? [{ id: 'sparks', name: 'Sparks', type: 'currency', quantity: sparksDropped }] : []),
+    ...itemsToDrop.map(i => ({ id: i.item_id, name: i.item_name, type: i.item_type, quantity: i.quantity })),
+  ];
+
+  try {
+    db.prepare(`
+      INSERT INTO loot_bags (id, world_id, position, owner_type, owner_id, killer_type, killer_id, items, expires_at)
+      VALUES (?, ?, ?, 'player', ?, 'npc', ?, ?, ?)
+    `).run(bagId, worldId, JSON.stringify({ x, y, z }), playerId, npcId, JSON.stringify(allItems), expiresAt);
+  } catch {
+    // loot_bags table not yet migrated — fall back silently
+    logger.debug('pvp-loot', 'npc_kill_bag_skipped', { bagId });
+  }
+
+  // NPC immediately claims — sparks go into wealth, items into activity_resources
+  try {
+    const npc = db.prepare('SELECT wealth_sparks, activity_resources FROM world_npcs WHERE id = ?').get(npcId);
+    if (npc) {
+      if (sparksDropped > 0) {
+        db.prepare('UPDATE world_npcs SET wealth_sparks = wealth_sparks + ? WHERE id = ?')
+          .run(sparksDropped, npcId);
+      }
+      const resources = _parseJSON(npc.activity_resources, {});
+      for (const item of itemsToDrop) {
+        const key = item.item_id;
+        resources[key] = (resources[key] ?? 0) + (item.quantity ?? 1);
+      }
+      db.prepare('UPDATE world_npcs SET activity_resources = ? WHERE id = ?')
+        .run(JSON.stringify(resources), npcId);
+
+      // Mark bag claimed
+      db.prepare('UPDATE loot_bags SET claimed_by = ?, claimed_at = unixepoch() WHERE id = ?')
+        .run(npcId, bagId);
+    }
+  } catch { /* non-fatal */ }
+
+  logger.info('pvp-loot', 'npc_looted_player', {
+    npcId, playerId, worldId, sparksDropped, itemCount: itemsToDrop.length,
+  });
+
+  return { bagId, sparksDropped, items: itemsToDrop, killerPriorityMs: KILLER_PRIORITY_MS };
+}
+
 /**
  * Clean up expired unclaimed loot bags — return contents to original owner.
  */
@@ -189,4 +274,12 @@ export function reclaimExpiredBags(db) {
   }
 
   return expired.length;
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function _parseJSON(val, fallback) {
+  if (!val) return fallback;
+  if (typeof val === 'object') return val;
+  try { return JSON.parse(val); } catch { return fallback; }
 }

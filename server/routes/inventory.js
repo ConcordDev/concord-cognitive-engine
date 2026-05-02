@@ -38,7 +38,7 @@ export default function createInventoryRouter() {
       const summary = getInventorySummary();
       res.json({ ok: true, ...summary });
     } catch (err) {
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -56,7 +56,7 @@ export default function createInventoryRouter() {
 
       res.json({ ok: true, count: enriched.length, components: enriched });
     } catch (err) {
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -74,7 +74,7 @@ export default function createInventoryRouter() {
 
       res.json({ ok: true, count: enriched.length, lenses: enriched });
     } catch (err) {
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -84,7 +84,7 @@ export default function createInventoryRouter() {
       const orphans = findOrphans();
       res.json({ ok: true, count: orphans.length, orphans });
     } catch (err) {
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -94,7 +94,7 @@ export default function createInventoryRouter() {
       const wiring = buildWiringMap();
       res.json({ ok: true, ...wiring });
     } catch (err) {
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -108,7 +108,7 @@ export default function createInventoryRouter() {
       const results = searchInventory(q);
       res.json({ ok: true, query: q, count: results.length, results });
     } catch (err) {
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -119,7 +119,7 @@ export default function createInventoryRouter() {
       const summary = getInventorySummary();
       res.json({ ok: true, message: "Cache cleared, inventory re-scanned.", ...summary });
     } catch (err) {
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 

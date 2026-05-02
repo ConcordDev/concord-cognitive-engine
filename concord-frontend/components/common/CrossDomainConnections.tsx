@@ -5,14 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
-import {
-  Network,
-  X,
-  ChevronRight,
-  Loader2,
-  RefreshCw,
-  AlertCircle,
-} from 'lucide-react';
+import { Network, X, ChevronRight, Loader2, RefreshCw, AlertCircle } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
 // ---------------------------------------------------------------------------
@@ -64,10 +57,7 @@ interface GraphForceResponse {
  * Normalise raw graph nodes into a list of ConnectionItems, filtering out
  * nodes that belong to the current domain so we only show cross-domain hits.
  */
-function normaliseGraphNodes(
-  nodes: GraphNode[],
-  currentDomain: string,
-): ConnectionItem[] {
+function normaliseGraphNodes(nodes: GraphNode[], currentDomain: string): ConnectionItem[] {
   return nodes
     .filter((n) => {
       const nd = n.domain || n.group || n.scope || '';
@@ -115,10 +105,7 @@ function formatScore(score: number): string {
 // Component
 // ---------------------------------------------------------------------------
 
-export function CrossDomainConnections({
-  domain,
-  domainLabel,
-}: CrossDomainConnectionsProps) {
+function CrossDomainConnections({ domain, domainLabel }: CrossDomainConnectionsProps) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
 
@@ -153,13 +140,21 @@ export function CrossDomainConnections({
               const primaryTag = r.tags?.[0]?.toLowerCase() || '';
               return primaryTag !== '' && primaryTag !== domain.toLowerCase();
             })
-            .map((r: { id: string; title?: string; tags?: string[]; score?: number; summary?: string }) => ({
-              id: r.id,
-              title: r.title || 'Untitled',
-              sourceDomain: r.tags?.[0] || 'unknown',
-              similarity: r.score ?? 0,
-              excerpt: r.summary,
-            }));
+            .map(
+              (r: {
+                id: string;
+                title?: string;
+                tags?: string[];
+                score?: number;
+                summary?: string;
+              }) => ({
+                id: r.id,
+                title: r.title || 'Untitled',
+                sourceDomain: r.tags?.[0] || 'unknown',
+                similarity: r.score ?? 0,
+                excerpt: r.summary,
+              })
+            );
           return { items, source: 'semantic' as const };
         }
       } catch {
@@ -173,7 +168,10 @@ export function CrossDomainConnections({
         maxNodes: 60,
       });
       const graphRes = res.data as GraphForceResponse;
-      return { items: normaliseGraphNodes(graphRes?.nodes || [], domain), source: 'graph' as const };
+      return {
+        items: normaliseGraphNodes(graphRes?.nodes || [], domain),
+        source: 'graph' as const,
+      };
     },
     staleTime: 60_000,
     enabled: open,
@@ -196,11 +194,8 @@ export function CrossDomainConnections({
   }, [connections]);
 
   const domainKeys = useMemo(
-    () =>
-      Object.keys(grouped).sort(
-        (a, b) => grouped[b].length - grouped[a].length,
-      ),
-    [grouped],
+    () => Object.keys(grouped).sort((a, b) => grouped[b].length - grouped[a].length),
+    [grouped]
   );
 
   // ---- Navigate to a result ----
@@ -209,14 +204,12 @@ export function CrossDomainConnections({
       router.push(`/lenses/${item.sourceDomain}?highlight=${item.id}`);
       setOpen(false);
     },
-    [router],
+    [router]
   );
 
   // ---- Platform modifier key label ----
   const modKey =
-    typeof navigator !== 'undefined' && navigator.platform.includes('Mac')
-      ? '\u2318'
-      : 'Ctrl';
+    typeof navigator !== 'undefined' && navigator.platform.includes('Mac') ? '\u2318' : 'Ctrl';
 
   const isLoading = graphLoading;
   const hasError = !!graphError;
@@ -274,9 +267,7 @@ export function CrossDomainConnections({
                     <h2 className="text-sm font-semibold text-white truncate">
                       Cross-Domain Connections
                     </h2>
-                    <p className="text-xs text-gray-400 truncate">
-                      Related to {domainLabel}
-                    </p>
+                    <p className="text-xs text-gray-400 truncate">Related to {domainLabel}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
@@ -286,9 +277,7 @@ export function CrossDomainConnections({
                     className="p-2 rounded-lg hover:bg-lattice-bg text-gray-400 hover:text-white transition-colors disabled:opacity-40"
                     aria-label="Refresh connections"
                   >
-                    <RefreshCw
-                      className={cn('w-4 h-4', isLoading && 'animate-spin')}
-                    />
+                    <RefreshCw className={cn('w-4 h-4', isLoading && 'animate-spin')} />
                   </button>
                   <button
                     onClick={() => setOpen(false)}
@@ -306,9 +295,7 @@ export function CrossDomainConnections({
                 {isLoading && (
                   <div className="flex flex-col items-center justify-center h-full gap-3">
                     <Loader2 className="w-8 h-8 text-neon-purple animate-spin" />
-                    <p className="text-sm text-gray-400">
-                      Discovering connections...
-                    </p>
+                    <p className="text-sm text-gray-400">Discovering connections...</p>
                   </div>
                 )}
 
@@ -318,9 +305,7 @@ export function CrossDomainConnections({
                     <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center">
                       <AlertCircle className="w-6 h-6 text-red-400" />
                     </div>
-                    <p className="text-sm text-gray-300">
-                      Unable to load connections
-                    </p>
+                    <p className="text-sm text-gray-300">Unable to load connections</p>
                     <p className="text-xs text-gray-500 max-w-xs">
                       The graph service may be unavailable. Try refreshing.
                     </p>
@@ -343,9 +328,8 @@ export function CrossDomainConnections({
                       No cross-domain connections yet
                     </p>
                     <p className="text-xs text-gray-500 max-w-xs">
-                      As you add content to {domainLabel.toLowerCase()} and
-                      other domains, cross-domain connections will appear here
-                      automatically.
+                      As you add content to {domainLabel.toLowerCase()} and other domains,
+                      cross-domain connections will appear here automatically.
                     </p>
                   </div>
                 )}
@@ -356,8 +340,7 @@ export function CrossDomainConnections({
                     {/* Summary */}
                     <p className="text-xs text-gray-500">
                       {connections.length} connection
-                      {connections.length !== 1 ? 's' : ''} across{' '}
-                      {domainKeys.length} domain
+                      {connections.length !== 1 ? 's' : ''} across {domainKeys.length} domain
                       {domainKeys.length !== 1 ? 's' : ''}
                     </p>
 
@@ -368,7 +351,7 @@ export function CrossDomainConnections({
                           <span
                             className={cn(
                               'inline-flex items-center px-2 py-0.5 text-[11px] font-semibold rounded-full',
-                              domainColor(domKey),
+                              domainColor(domKey)
                             )}
                           >
                             {domKey.charAt(0).toUpperCase() + domKey.slice(1)}
@@ -426,4 +409,7 @@ export function CrossDomainConnections({
   );
 }
 
-export default CrossDomainConnections;
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedCrossDomainConnections = withErrorBoundary(CrossDomainConnections);
+export { _WrappedCrossDomainConnections as CrossDomainConnections };
+export default _WrappedCrossDomainConnections;

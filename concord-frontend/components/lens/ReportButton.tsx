@@ -33,7 +33,7 @@ interface ReportButtonProps {
   className?: string;
 }
 
-export function ReportButton({
+function ReportButton({
   contentId,
   contentType = 'content',
   creatorId,
@@ -47,13 +47,15 @@ export function ReportButton({
 
   const mutation = useMutation({
     mutationFn: (data: { contentId: string; reason: string; details?: string }) =>
-      api.post('/api/moderation/report', {
-        contentId: data.contentId,
-        contentType,
-        creatorId,
-        reason: data.reason,
-        description: data.details || '',
-      }).then(r => r.data),
+      api
+        .post('/api/moderation/report', {
+          contentId: data.contentId,
+          contentType,
+          creatorId,
+          reason: data.reason,
+          description: data.details || '',
+        })
+        .then((r) => r.data),
     onSuccess: () => {
       setSubmitted(true);
       setTimeout(() => {
@@ -79,7 +81,7 @@ export function ReportButton({
           compact
             ? 'p-2 text-gray-500 hover:text-red-400'
             : 'px-3 py-2 text-sm text-gray-500 hover:text-red-400 rounded-lg hover:bg-red-400/10',
-          className,
+          className
         )}
         aria-label="Report content"
         title="Report"
@@ -101,7 +103,7 @@ export function ReportButton({
               initial={{ y: 100, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 100, opacity: 0 }}
-              onClick={e => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
               className="bg-[var(--bg-surface,#141416)] border border-[var(--border-default,rgba(240,237,232,0.10))] rounded-t-2xl sm:rounded-2xl p-6 w-full max-w-md sm:mx-4"
             >
               {submitted ? (
@@ -127,7 +129,7 @@ export function ReportButton({
                   </div>
 
                   <div className="space-y-3 mb-4">
-                    {REPORT_REASONS.map(r => (
+                    {REPORT_REASONS.map((r) => (
                       <button
                         key={r.value}
                         onClick={() => setReason(r.value)}
@@ -135,7 +137,7 @@ export function ReportButton({
                           'w-full text-left px-4 py-3 rounded-xl text-sm transition-colors min-h-[44px]',
                           reason === r.value
                             ? 'bg-red-500/20 text-red-400 border border-red-500/30'
-                            : 'bg-[var(--bg-raised,#1C1C20)] text-[var(--text-secondary,#9B978F)] hover:text-[var(--text-primary,#F0EDE8)] border border-transparent',
+                            : 'bg-[var(--bg-raised,#1C1C20)] text-[var(--text-secondary,#9B978F)] hover:text-[var(--text-primary,#F0EDE8)] border border-transparent'
                         )}
                       >
                         {r.label}
@@ -146,7 +148,7 @@ export function ReportButton({
                   {reason === 'other' && (
                     <textarea
                       value={details}
-                      onChange={e => setDetails(e.target.value)}
+                      onChange={(e) => setDetails(e.target.value)}
                       placeholder="Describe the issue..."
                       rows={3}
                       className="w-full px-4 py-3 bg-[var(--bg-raised,#1C1C20)] border border-[var(--border-default)] rounded-xl text-[var(--text-primary)] placeholder:text-[var(--text-tertiary,#5C584F)] text-sm resize-none mb-4 focus:outline-none focus:border-red-400"
@@ -174,3 +176,7 @@ export function ReportButton({
     </>
   );
 }
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedReportButton = withErrorBoundary(ReportButton);
+export { _WrappedReportButton as ReportButton };

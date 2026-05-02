@@ -61,10 +61,30 @@ interface Finding {
 const AGENT_TYPES = [
   { value: 'patrol', label: 'Patrol', icon: Shield, description: 'Territory patrol agent' },
   { value: 'integrity', label: 'Integrity', icon: Eye, description: 'Data integrity checker' },
-  { value: 'hypothesis_tester', label: 'Hypothesis Tester', icon: FlaskConical, description: 'Tests hypotheses against data' },
-  { value: 'debate_simulator', label: 'Debate Simulator', icon: Swords, description: 'Simulates multi-perspective debates' },
-  { value: 'freshness', label: 'Freshness', icon: RefreshCw, description: 'Monitors data staleness' },
-  { value: 'synthesis', label: 'Synthesis', icon: Layers, description: 'Synthesizes cross-domain insights' },
+  {
+    value: 'hypothesis_tester',
+    label: 'Hypothesis Tester',
+    icon: FlaskConical,
+    description: 'Tests hypotheses against data',
+  },
+  {
+    value: 'debate_simulator',
+    label: 'Debate Simulator',
+    icon: Swords,
+    description: 'Simulates multi-perspective debates',
+  },
+  {
+    value: 'freshness',
+    label: 'Freshness',
+    icon: RefreshCw,
+    description: 'Monitors data staleness',
+  },
+  {
+    value: 'synthesis',
+    label: 'Synthesis',
+    icon: Layers,
+    description: 'Synthesizes cross-domain insights',
+  },
 ] as const;
 
 const SEVERITY_BADGE_CLASSES: Record<string, string> = {
@@ -115,7 +135,7 @@ function relativeTime(ts: string | undefined): string {
 // ---------------------------------------------------------------------------
 
 function decree<T = unknown>(body: Record<string, unknown>): Promise<T> {
-  return api.post('/api/sovereign/decree', body).then((r) => r.data as T);
+  return api.post('/api/run', body).then((r) => r.data as T);
 }
 
 // ---------------------------------------------------------------------------
@@ -203,13 +223,15 @@ export default function AgentMonitorPage() {
   const findings: Finding[] = findingsQuery.data?.findings ?? [];
 
   const sortedFindings = [...findings].sort(
-    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
   );
 
   const activeCount = agents.filter((a) => a.status === 'active').length;
   const pausedCount = agents.filter((a) => a.status === 'paused').length;
 
-  const criticalCount = findings.filter((f) => f.severity === 'critical' || f.severity === 'high').length;
+  const criticalCount = findings.filter(
+    (f) => f.severity === 'critical' || f.severity === 'high'
+  ).length;
 
   // ---- Agent detail query (lazy per expanded agent) ----
   const agentStatusQuery = useQuery<{ agent: Agent & { findings?: Finding[] } }>({
@@ -363,7 +385,7 @@ export default function AgentMonitorPage() {
                     className={cn(
                       ds.panel,
                       'transition-all duration-200',
-                      isExpanded && 'ring-1 ring-neon-cyan/40',
+                      isExpanded && 'ring-1 ring-neon-cyan/40'
                     )}
                   >
                     {/* Card header */}
@@ -378,7 +400,7 @@ export default function AgentMonitorPage() {
                             'absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-lattice-surface',
                             isActive && 'bg-green-400',
                             isPaused && 'bg-yellow-400',
-                            !isActive && !isPaused && 'bg-gray-500',
+                            !isActive && !isPaused && 'bg-gray-500'
                           )}
                         />
                       </div>
@@ -394,7 +416,7 @@ export default function AgentMonitorPage() {
                               'text-xs px-2 py-0.5 rounded-full font-medium',
                               isActive && 'bg-green-400/20 text-green-400',
                               isPaused && 'bg-yellow-400/20 text-yellow-400',
-                              !isActive && !isPaused && 'bg-gray-500/20 text-gray-400',
+                              !isActive && !isPaused && 'bg-gray-500/20 text-gray-400'
                             )}
                           >
                             {agent.status}
@@ -414,7 +436,8 @@ export default function AgentMonitorPage() {
                           </span>
                           {agentFindings.length > 0 && (
                             <span className="flex items-center gap-1">
-                              <Zap className="w-3 h-3" /> {agentFindings.length} finding{agentFindings.length !== 1 ? 's' : ''}
+                              <Zap className="w-3 h-3" /> {agentFindings.length} finding
+                              {agentFindings.length !== 1 ? 's' : ''}
                             </span>
                           )}
                         </div>
@@ -450,16 +473,14 @@ export default function AgentMonitorPage() {
                           <Trash2 className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() =>
-                            setExpandedAgent(isExpanded ? null : agent.id)
-                          }
+                          onClick={() => setExpandedAgent(isExpanded ? null : agent.id)}
                           className={cn(ds.btnGhost)}
                           title="Toggle details"
                         >
                           <ChevronDown
                             className={cn(
                               'w-4 h-4 transition-transform',
-                              isExpanded && 'rotate-180',
+                              isExpanded && 'rotate-180'
                             )}
                           />
                         </button>
@@ -500,7 +521,7 @@ export default function AgentMonitorPage() {
                                   <span
                                     className={cn(
                                       'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0',
-                                      severityBadgeClass(f.severity),
+                                      severityBadgeClass(f.severity)
                                     )}
                                   >
                                     {f.severity}
@@ -582,7 +603,7 @@ export default function AgentMonitorPage() {
                       <span
                         className={cn(
                           'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium',
-                          severityBadgeClass(finding.severity),
+                          severityBadgeClass(finding.severity)
                         )}
                       >
                         {finding.severity}
@@ -620,20 +641,14 @@ export default function AgentMonitorPage() {
       {showCreateModal && (
         <div className={ds.modalBackdrop} onClick={() => setShowCreateModal(false)}>
           <div className={ds.modalContainer}>
-            <div
-              className={cn(ds.modalPanel, 'max-w-lg')}
-              onClick={(e) => e.stopPropagation()}
-            >
+            <div className={cn(ds.modalPanel, 'max-w-lg')} onClick={(e) => e.stopPropagation()}>
               {/* Modal header */}
               <div className="flex items-center justify-between px-6 py-4 border-b border-lattice-border">
                 <h2 className={cn(ds.heading3, 'flex items-center gap-2')}>
                   <Plus className="w-5 h-5 text-neon-cyan" />
                   Create Agent
                 </h2>
-                <button
-                  onClick={() => setShowCreateModal(false)}
-                  className={ds.btnGhost}
-                >
+                <button onClick={() => setShowCreateModal(false)} className={ds.btnGhost}>
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -655,7 +670,7 @@ export default function AgentMonitorPage() {
                             'flex items-center gap-2 px-3 py-2.5 rounded-lg border text-left transition-all text-sm',
                             isSelected
                               ? 'border-neon-cyan bg-neon-cyan/10 text-neon-cyan'
-                              : 'border-lattice-border bg-lattice-void text-gray-400 hover:border-gray-500 hover:text-gray-200',
+                              : 'border-lattice-border bg-lattice-void text-gray-400 hover:border-gray-500 hover:text-gray-200'
                           )}
                         >
                           <Icon className="w-4 h-4 flex-shrink-0" />
@@ -677,10 +692,7 @@ export default function AgentMonitorPage() {
                     onChange={(e) => setCreateConfig(e.target.value)}
                     rows={4}
                     spellCheck={false}
-                    className={cn(
-                      ds.input,
-                      'font-mono text-sm resize-none',
-                    )}
+                    className={cn(ds.input, 'font-mono text-sm resize-none')}
                     placeholder='{ "territory": "science", "depth": 3 }'
                   />
                 </div>
@@ -688,10 +700,7 @@ export default function AgentMonitorPage() {
 
               {/* Modal footer */}
               <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-lattice-border">
-                <button
-                  onClick={() => setShowCreateModal(false)}
-                  className={ds.btnSecondary}
-                >
+                <button onClick={() => setShowCreateModal(false)} className={ds.btnSecondary}>
                   Cancel
                 </button>
                 <button

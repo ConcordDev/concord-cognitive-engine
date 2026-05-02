@@ -5,8 +5,18 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Brain, Sparkles, Wrench, Shield, Users,
-  Loader2, ChevronDown, ChevronUp, Send, CheckCircle, XCircle, MinusCircle,
+  Brain,
+  Sparkles,
+  Wrench,
+  Shield,
+  Users,
+  Loader2,
+  ChevronDown,
+  ChevronUp,
+  Send,
+  CheckCircle,
+  XCircle,
+  MinusCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -30,14 +40,14 @@ const CONSENSUS_COLORS: Record<string, string> = {
   split: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/30',
 };
 
-export function BrainCouncil({ className }: { className?: string }) {
+function BrainCouncil({ className }: { className?: string }) {
   const [expanded, setExpanded] = useState(false);
   const [question, setQuestion] = useState('');
   const queryClient = useQueryClient();
 
   const { data: sessionsData, isLoading } = useQuery({
     queryKey: ['council-sessions'],
-    queryFn: () => api.get('/api/council/sessions?limit=10').then(r => r.data),
+    queryFn: () => api.get('/api/council/sessions?limit=10').then((r) => r.data),
     refetchInterval: 30000,
   });
 
@@ -51,7 +61,12 @@ export function BrainCouncil({ className }: { className?: string }) {
 
   if (isLoading) {
     return (
-      <div className={cn('p-4 bg-lattice-surface border border-lattice-border rounded-xl animate-pulse', className)}>
+      <div
+        className={cn(
+          'p-4 bg-lattice-surface border border-lattice-border rounded-xl animate-pulse',
+          className
+        )}
+      >
         <div className="h-6 bg-lattice-deep rounded w-40" />
       </div>
     );
@@ -61,7 +76,12 @@ export function BrainCouncil({ className }: { className?: string }) {
   const latestSession = sessions[0];
 
   return (
-    <div className={cn('bg-lattice-surface border border-lattice-border rounded-xl overflow-hidden', className)}>
+    <div
+      className={cn(
+        'bg-lattice-surface border border-lattice-border rounded-xl overflow-hidden',
+        className
+      )}
+    >
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-lattice-border">
         <div className="flex items-center gap-3">
@@ -73,8 +93,7 @@ export function BrainCouncil({ className }: { className?: string }) {
             <p className="text-xs text-gray-500">
               {sessions.length > 0
                 ? `${sessions.length} deliberations held`
-                : '4-brain deliberation system'
-              }
+                : '4-brain deliberation system'}
             </p>
           </div>
         </div>
@@ -92,8 +111,8 @@ export function BrainCouncil({ className }: { className?: string }) {
           <input
             type="text"
             value={question}
-            onChange={e => setQuestion(e.target.value)}
-            onKeyDown={e => {
+            onChange={(e) => setQuestion(e.target.value)}
+            onKeyDown={(e) => {
               if (e.key === 'Enter' && question.trim() && !deliberate.isPending) {
                 deliberate.mutate(question.trim());
               }
@@ -170,20 +189,20 @@ function CouncilSessionCard({ session, compact }: { session: CouncilSession; com
 
   return (
     <div className="bg-lattice-deep rounded-lg overflow-hidden">
-      <button
-        onClick={() => setShowDetails(!showDetails)}
-        className="w-full p-3 text-left"
-      >
+      <button onClick={() => setShowDetails(!showDetails)} className="w-full p-3 text-left">
         <div className="flex items-center justify-between">
           <p className="text-sm text-white truncate pr-2">{session.question}</p>
-          <span className={cn('px-2 py-0.5 text-xs rounded-full border capitalize', consensusStyle)}>
+          <span
+            className={cn('px-2 py-0.5 text-xs rounded-full border capitalize', consensusStyle)}
+          >
             {session.consensus}
           </span>
         </div>
         {compact && (
           <p className="text-xs text-gray-500 mt-1">
             {session.completedAt ? new Date(session.completedAt).toLocaleString() : 'In progress'}
-            {' · '}{Math.round(session.confidence * 100)}% confidence
+            {' · '}
+            {Math.round(session.confidence * 100)}% confidence
           </p>
         )}
       </button>
@@ -220,7 +239,12 @@ function CouncilSessionCard({ session, compact }: { session: CouncilSession; com
           {/* Consensus summary */}
           <div className={cn('p-2 rounded-lg border text-center', consensusStyle)}>
             <p className="text-xs font-medium capitalize">
-              Council {session.consensus === 'split' ? 'Split' : session.consensus === 'approve' ? 'Approved' : 'Rejected'}
+              Council{' '}
+              {session.consensus === 'split'
+                ? 'Split'
+                : session.consensus === 'approve'
+                  ? 'Approved'
+                  : 'Rejected'}
             </p>
             <p className="text-[10px] opacity-70">
               {Math.round(session.confidence * 100)}% confidence
@@ -231,3 +255,7 @@ function CouncilSessionCard({ session, compact }: { session: CouncilSession; com
     </div>
   );
 }
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedBrainCouncil = withErrorBoundary(BrainCouncil);
+export { _WrappedBrainCouncil as BrainCouncil };

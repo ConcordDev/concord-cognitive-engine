@@ -3,7 +3,17 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
-import { MessageSquare, Phone, Hash, Shield, Radio, Apple, Slack, Trash2, CheckCircle, AlertCircle, Plus, Settings, Eye, EyeOff } from 'lucide-react';
+import {
+  MessageSquare,
+  Phone,
+  Hash,
+  Shield,
+  Apple,
+  Slack,
+  Trash2,
+  CheckCircle,
+  AlertCircle,
+} from 'lucide-react';
 
 interface MessagingBinding {
   id: string;
@@ -16,27 +26,74 @@ interface MessagingBinding {
   created_at: string;
 }
 
-const PLATFORM_META: Record<string, { label: string; icon: React.ComponentType<{ className?: string }>; color: string; placeholder: string }> = {
-  whatsapp:  { label: 'WhatsApp',  icon: Phone,          color: 'text-green-400',  placeholder: 'Phone number (e.g. +1234567890)' },
-  telegram:  { label: 'Telegram',  icon: MessageSquare,  color: 'text-sky-400',    placeholder: 'Telegram user ID or @username' },
-  discord:   { label: 'Discord',   icon: Hash,           color: 'text-indigo-400', placeholder: 'Discord user ID' },
-  signal:    { label: 'Signal',    icon: Shield,         color: 'text-blue-400',   placeholder: 'Phone number (e.g. +1234567890)' },
-  imessage:  { label: 'iMessage',  icon: Apple,          color: 'text-gray-300',   placeholder: 'Email or phone handle' },
-  slack:     { label: 'Slack',     icon: Slack,          color: 'text-yellow-400', placeholder: 'Slack user ID or channel' },
+const PLATFORM_META: Record<
+  string,
+  {
+    label: string;
+    icon: React.ComponentType<{ className?: string }>;
+    color: string;
+    placeholder: string;
+  }
+> = {
+  whatsapp: {
+    label: 'WhatsApp',
+    icon: Phone,
+    color: 'text-green-400',
+    placeholder: 'Phone number (e.g. +1234567890)',
+  },
+  telegram: {
+    label: 'Telegram',
+    icon: MessageSquare,
+    color: 'text-sky-400',
+    placeholder: 'Telegram user ID or @username',
+  },
+  discord: {
+    label: 'Discord',
+    icon: Hash,
+    color: 'text-indigo-400',
+    placeholder: 'Discord user ID',
+  },
+  signal: {
+    label: 'Signal',
+    icon: Shield,
+    color: 'text-blue-400',
+    placeholder: 'Phone number (e.g. +1234567890)',
+  },
+  imessage: {
+    label: 'iMessage',
+    icon: Apple,
+    color: 'text-gray-300',
+    placeholder: 'Email or phone handle',
+  },
+  slack: {
+    label: 'Slack',
+    icon: Slack,
+    color: 'text-yellow-400',
+    placeholder: 'Slack user ID or channel',
+  },
 };
 
 const PERMISSION_LABELS = {
   restricted: 'Restricted (read-only)',
-  standard:   'Standard (create, no transactions)',
-  elevated:   'Elevated (full access)',
+  standard: 'Standard (create, no transactions)',
+  elevated: 'Elevated (full access)',
 };
 
-function BindingCard({ binding, onDelete, onUpdate }: {
+function BindingCard({
+  binding,
+  onDelete,
+  onUpdate,
+}: {
   binding: MessagingBinding;
   onDelete: (id: string) => void;
   onUpdate: (id: string, data: Partial<MessagingBinding>) => void;
 }) {
-  const meta = PLATFORM_META[binding.platform] || { label: binding.platform, icon: MessageSquare, color: 'text-gray-400', placeholder: '' };
+  const meta = PLATFORM_META[binding.platform] || {
+    label: binding.platform,
+    icon: MessageSquare,
+    color: 'text-gray-400',
+    placeholder: '',
+  };
   const Icon = meta.icon;
 
   return (
@@ -46,16 +103,24 @@ function BindingCard({ binding, onDelete, onUpdate }: {
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium text-white">{meta.label}</span>
           {binding.preferred === 1 && (
-            <span className="text-xs px-1.5 py-0.5 bg-amber-500/20 text-amber-300 rounded">preferred</span>
+            <span className="text-xs px-1.5 py-0.5 bg-amber-500/20 text-amber-300 rounded">
+              preferred
+            </span>
           )}
         </div>
-        <p className="text-xs text-white/50 truncate">{binding.display_name || binding.external_id}</p>
+        <p className="text-xs text-white/50 truncate">
+          {binding.display_name || binding.external_id}
+        </p>
         <p className="text-xs text-white/30">{PERMISSION_LABELS[binding.permission_level]}</p>
       </div>
       <div className="flex items-center gap-2">
         <select
           value={binding.permission_level}
-          onChange={(e) => onUpdate(binding.id, { permission_level: e.target.value as MessagingBinding['permission_level'] })}
+          onChange={(e) =>
+            onUpdate(binding.id, {
+              permission_level: e.target.value as MessagingBinding['permission_level'],
+            })
+          }
           className="text-xs bg-white/10 border border-white/20 rounded px-2 py-1 text-white/70"
         >
           <option value="restricted">Restricted</option>
@@ -80,7 +145,7 @@ function ConnectPlatformForm({ platform, onClose }: { platform: string; onClose:
   const [step, setStep] = useState<'input' | 'verify'>('input');
   const [token, setToken] = useState('');
   const [verifyToken, setVerifyToken] = useState('');
-  const [bindingId, setBindingId] = useState('');
+  const [_bindingId, setBindingId] = useState('');
   const queryClient = useQueryClient();
   const meta = PLATFORM_META[platform];
 
@@ -113,9 +178,12 @@ function ConnectPlatformForm({ platform, onClose }: { platform: string; onClose:
     return (
       <div className="space-y-3">
         <p className="text-sm text-white/70">
-          Send this token to your Concord bot on <strong className="text-white">{meta?.label}</strong>:
+          Send this token to your Concord bot on{' '}
+          <strong className="text-white">{meta?.label}</strong>:
         </p>
-        <code className="block p-2 bg-white/5 rounded font-mono text-sm text-amber-300 select-all">{token}</code>
+        <code className="block p-2 bg-white/5 rounded font-mono text-sm text-amber-300 select-all">
+          {token}
+        </code>
         <p className="text-xs text-white/50">Then paste the confirmation token below:</p>
         <input
           type="text"
@@ -132,10 +200,14 @@ function ConnectPlatformForm({ platform, onClose }: { platform: string; onClose:
           >
             {verifyMutation.isPending ? 'Verifying...' : 'Verify Connection'}
           </button>
-          <button onClick={onClose} className="px-3 py-2 text-sm text-white/50 hover:text-white">Cancel</button>
+          <button onClick={onClose} className="px-3 py-2 text-sm text-white/50 hover:text-white">
+            Cancel
+          </button>
         </div>
         {verifyMutation.data?.ok === false && (
-          <p className="text-xs text-red-400">Verification failed. Check the token and try again.</p>
+          <p className="text-xs text-red-400">
+            Verification failed. Check the token and try again.
+          </p>
         )}
       </div>
     );
@@ -165,24 +237,30 @@ function ConnectPlatformForm({ platform, onClose }: { platform: string; onClose:
         >
           {connectMutation.isPending ? 'Connecting...' : `Connect ${meta?.label}`}
         </button>
-        <button onClick={onClose} className="px-3 py-2 text-sm text-white/50 hover:text-white">Cancel</button>
+        <button onClick={onClose} className="px-3 py-2 text-sm text-white/50 hover:text-white">
+          Cancel
+        </button>
       </div>
     </div>
   );
 }
 
-export function MessagingChannelsPanel() {
+function MessagingChannelsPanel() {
   const [connectingPlatform, setConnectingPlatform] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  const { data: bindingsData, isLoading } = useQuery({
+  const {
+    data: bindingsData,
+    isLoading,
+    isError: bindingsError,
+  } = useQuery({
     queryKey: ['messaging-bindings'],
-    queryFn: () => api.get('/api/messaging/bindings').then(r => r.data),
+    queryFn: () => api.get('/api/messaging/bindings').then((r) => r.data),
   });
 
   const { data: statusData } = useQuery({
     queryKey: ['messaging-status'],
-    queryFn: () => api.get('/api/messaging/status').then(r => r.data),
+    queryFn: () => api.get('/api/messaging/status').then((r) => r.data),
     staleTime: 60000,
   });
 
@@ -192,33 +270,39 @@ export function MessagingChannelsPanel() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: object }) => api.patch(`/api/messaging/bindings/${id}`, data),
+    mutationFn: ({ id, data }: { id: string; data: object }) =>
+      api.patch(`/api/messaging/bindings/${id}`, data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['messaging-bindings'] }),
   });
 
   const bindings: MessagingBinding[] = bindingsData?.bindings || [];
-  const connectedPlatforms = new Set(bindings.map(b => b.platform));
+  const connectedPlatforms = new Set(bindings.map((b) => b.platform));
 
   return (
     <div className="space-y-6">
       <div>
         <h3 className="text-sm font-semibold text-white mb-1">External Messaging</h3>
         <p className="text-xs text-white/50">
-          Connect your messaging platforms to interact with Concord from anywhere.
-          Messages route through your agent with the configured permission level.
+          Connect your messaging platforms to interact with Concord from anywhere. Messages route
+          through your agent with the configured permission level.
         </p>
       </div>
 
       {/* Connected platforms */}
       {isLoading ? (
         <div className="text-xs text-white/40">Loading connections...</div>
+      ) : bindingsError ? (
+        <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/30 rounded text-xs text-red-400">
+          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          Failed to load messaging connections. Check server status.
+        </div>
       ) : bindings.length === 0 ? (
         <div className="p-4 bg-white/5 rounded-lg text-center text-sm text-white/40">
           No platforms connected yet. Add one below.
         </div>
       ) : (
         <div className="space-y-2">
-          {bindings.map(binding => (
+          {bindings.map((binding) => (
             <BindingCard
               key={binding.id}
               binding={binding}
@@ -233,10 +317,18 @@ export function MessagingChannelsPanel() {
       {connectingPlatform ? (
         <div className="p-4 bg-white/5 rounded-lg border border-white/10">
           <div className="flex items-center gap-2 mb-3">
-            {(() => { const Icon = PLATFORM_META[connectingPlatform]?.icon || MessageSquare; return <Icon className={`w-4 h-4 ${PLATFORM_META[connectingPlatform]?.color}`} />; })()}
-            <span className="text-sm font-medium text-white">Connect {PLATFORM_META[connectingPlatform]?.label}</span>
+            {(() => {
+              const Icon = PLATFORM_META[connectingPlatform]?.icon || MessageSquare;
+              return <Icon className={`w-4 h-4 ${PLATFORM_META[connectingPlatform]?.color}`} />;
+            })()}
+            <span className="text-sm font-medium text-white">
+              Connect {PLATFORM_META[connectingPlatform]?.label}
+            </span>
           </div>
-          <ConnectPlatformForm platform={connectingPlatform} onClose={() => setConnectingPlatform(null)} />
+          <ConnectPlatformForm
+            platform={connectingPlatform}
+            onClose={() => setConnectingPlatform(null)}
+          />
         </div>
       ) : (
         <div>
@@ -252,15 +344,20 @@ export function MessagingChannelsPanel() {
                   onClick={() => !isConnected && setConnectingPlatform(key)}
                   disabled={isConnected}
                   className={`flex items-center gap-2 p-2 rounded-lg border text-left transition-colors
-                    ${isConnected
-                      ? 'border-green-500/30 bg-green-500/10 cursor-default'
-                      : 'border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10 cursor-pointer'
+                    ${
+                      isConnected
+                        ? 'border-green-500/30 bg-green-500/10 cursor-default'
+                        : 'border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10 cursor-pointer'
                     }`}
                 >
                   <Icon className={`w-4 h-4 flex-shrink-0 ${meta.color}`} />
                   <span className="text-xs text-white/70 truncate">{meta.label}</span>
                   {isConnected && <CheckCircle className="w-3 h-3 text-green-400 ml-auto" />}
-                  {!isAvailable && !isConnected && <AlertCircle className="w-3 h-3 text-yellow-400/50 ml-auto" title="Not configured on server" />}
+                  {!isAvailable && !isConnected && (
+                    <span className="ml-auto" title="Not configured on server">
+                      <AlertCircle className="w-3 h-3 text-yellow-400/50" />
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -270,3 +367,7 @@ export function MessagingChannelsPanel() {
     </div>
   );
 }
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedMessagingChannelsPanel = withErrorBoundary(MessagingChannelsPanel);
+export { _WrappedMessagingChannelsPanel as MessagingChannelsPanel };

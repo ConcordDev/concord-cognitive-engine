@@ -2,6 +2,7 @@
 // Civilization-level crises: visible to all worlds, last 72h, resolve into chronicle.
 
 import crypto from "crypto";
+import logger from "../logger.js";
 
 const CRISIS_DURATION_MS = 72 * 60 * 60 * 1000; // 72 hours
 
@@ -55,7 +56,9 @@ export async function resolveCrisis(db, crisisId, resolution, realtimeEmit) {
       for (const uid of resolution.contributorIds) {
         awardSparks(db, uid, 25, `crisis_resolved:${crisis.type}`, crisis.origin_world_id);
       }
-    } catch (_) {}
+    } catch (err) {
+      logger?.debug?.('[world-crisis] optional step skipped', { reason: err?.message });
+    }
   }
 
   try {
@@ -65,7 +68,9 @@ export async function resolveCrisis(db, crisisId, resolution, realtimeEmit) {
       actorId: resolution.resolvedBy,
       significance: "crisis_resolution",
     });
-  } catch (_) {}
+  } catch (err) {
+    logger?.debug?.('[world-crisis] optional step skipped', { reason: err?.message });
+  }
 
   realtimeEmit("world:crisis-resolved", { id: crisisId, type: crisis.type, outcome: resolution.outcome });
   return { ok: true };
@@ -84,7 +89,7 @@ export async function expireOldCrises(db, realtimeEmit) {
 export function startCrisisWatch(db, realtimeEmit) {
   const CHECK_INTERVAL_MS = 60 * 60 * 1000;
   const run = async () => {
-    await expireOldCrises(db, realtimeEmit).catch(() => {});
+    await expireOldCrises(db, realtimeEmit).catch(err => logger?.debug?.('[world-crisis] background op failed', { err: err?.message }));
 
     // Auto-trigger knowledge_extinction if a pattern has been declining
     const decliningPatterns = db.prepare(`
@@ -98,6 +103,6 @@ export function startCrisisWatch(db, realtimeEmit) {
     }
   };
 
-  run().catch(() => {});
+  run().catch(err => logger?.debug?.('[world-crisis] background op failed', { err: err?.message }));
   return setInterval(run, CHECK_INTERVAL_MS);
 }

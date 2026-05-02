@@ -10,6 +10,7 @@ import type {
   EffectInstance,
   SynthPreset,
 } from './types';
+import { resumeAudioContext as resumeCtx } from '../audio/unlock';
 
 // ============================================================================
 // Audio Context Singleton
@@ -25,10 +26,7 @@ export function getAudioContext(): AudioContext {
 }
 
 export async function resumeAudioContext(): Promise<void> {
-  const ctx = getAudioContext();
-  if (ctx.state === 'suspended') {
-    await ctx.resume();
-  }
+  await resumeCtx(getAudioContext());
 }
 
 // ============================================================================

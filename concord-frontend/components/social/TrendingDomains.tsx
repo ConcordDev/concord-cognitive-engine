@@ -29,7 +29,7 @@ interface TrendingDomain {
 
 // ── Main Component ───────────────────────────────────────────────────────────
 
-export function TrendingDomains({ className }: { className?: string }) {
+function TrendingDomains({ className }: { className?: string }) {
   const { data, isLoading } = useQuery({
     queryKey: ['trending-domains'],
     queryFn: async () => {
@@ -42,7 +42,12 @@ export function TrendingDomains({ className }: { className?: string }) {
 
   if (isLoading) {
     return (
-      <div className={cn('rounded-xl border border-lattice-border bg-lattice-surface/50 p-4', className)}>
+      <div
+        className={cn(
+          'rounded-xl border border-lattice-border bg-lattice-surface/50 p-4',
+          className
+        )}
+      >
         <div className="flex items-center justify-center py-6">
           <Loader2 className="w-5 h-5 text-neon-cyan animate-spin" />
         </div>
@@ -55,7 +60,12 @@ export function TrendingDomains({ className }: { className?: string }) {
   }
 
   return (
-    <div className={cn('rounded-xl border border-lattice-border bg-lattice-surface/50 overflow-hidden', className)}>
+    <div
+      className={cn(
+        'rounded-xl border border-lattice-border bg-lattice-surface/50 overflow-hidden',
+        className
+      )}
+    >
       <div className="px-4 py-3 border-b border-lattice-border flex items-center gap-2">
         <Flame className="w-4 h-4 text-orange-400" />
         <h2 className="text-sm font-semibold text-white">Trending by Domain</h2>
@@ -88,13 +98,9 @@ export function TrendingDomains({ className }: { className?: string }) {
                   key={post.id}
                   className="flex items-start gap-2 p-2 rounded-lg bg-lattice-surface/50 border border-lattice-border/30"
                 >
-                  <span className="text-[10px] font-bold text-gray-500 mt-0.5">
-                    {postIdx + 1}
-                  </span>
+                  <span className="text-[10px] font-bold text-gray-500 mt-0.5">{postIdx + 1}</span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs text-gray-300 truncate">
-                      {post.title || 'Untitled'}
-                    </p>
+                    <p className="text-xs text-gray-300 truncate">{post.title || 'Untitled'}</p>
                     <div className="flex items-center gap-2 mt-0.5 text-[10px] text-gray-500">
                       {post.engagement && (
                         <>
@@ -123,4 +129,7 @@ export function TrendingDomains({ className }: { className?: string }) {
   );
 }
 
-export default TrendingDomains;
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedTrendingDomains = withErrorBoundary(TrendingDomains);
+export { _WrappedTrendingDomains as TrendingDomains };
+export default _WrappedTrendingDomains;

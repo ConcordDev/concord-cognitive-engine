@@ -15,7 +15,7 @@ interface RepairStatus {
   repairNetwork?: { enabled: boolean; lastPush: string | null; lastPull: string | null };
 }
 
-export function RepairPanel() {
+function RepairPanel() {
   const [status, setStatus] = useState<RepairStatus | null>(null);
   const [forcing, setForcing] = useState(false);
 
@@ -27,7 +27,9 @@ export function RepairPanel() {
     try {
       const resp = await apiHelpers.repairExtended.fullStatus();
       setStatus(resp.data);
-    } catch (e) { console.error('[RepairPanel] Failed to load status:', e); }
+    } catch (e) {
+      console.error('[RepairPanel] Failed to load status:', e);
+    }
   };
 
   const forceCycle = async () => {
@@ -35,7 +37,10 @@ export function RepairPanel() {
     try {
       await apiHelpers.repairExtended.forceCycle();
       await loadStatus();
-    } catch (e) { console.error('[RepairPanel] Failed to force repair cycle:', e); useUIStore.getState().addToast({ type: 'error', message: 'Failed to force repair cycle' }); }
+    } catch (e) {
+      console.error('[RepairPanel] Failed to force repair cycle:', e);
+      useUIStore.getState().addToast({ type: 'error', message: 'Failed to force repair cycle' });
+    }
     setForcing(false);
   };
 
@@ -55,23 +60,32 @@ export function RepairPanel() {
             </div>
             <div className="bg-lattice-deep rounded p-2 text-center">
               <p className="text-gray-400">Errors</p>
-              <p className="text-lg font-mono text-gray-200">{status.errorAccumulator?.size || 0}</p>
+              <p className="text-lg font-mono text-gray-200">
+                {status.errorAccumulator?.size || 0}
+              </p>
             </div>
             <div className="bg-lattice-deep rounded p-2 text-center">
               <p className="text-gray-400">Fixes</p>
-              <p className="text-lg font-mono text-gray-200">{status.lastCycleResult?.fixesApplied || 0}</p>
+              <p className="text-lg font-mono text-gray-200">
+                {status.lastCycleResult?.fixesApplied || 0}
+              </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2 text-xs">
-            <span className={`w-2 h-2 rounded-full ${status.loopRunning ? 'bg-green-400' : 'bg-red-400'}`} />
-            <span className="text-gray-400">{status.loopRunning ? 'Loop active (30s)' : 'Loop stopped'}</span>
+            <span
+              className={`w-2 h-2 rounded-full ${status.loopRunning ? 'bg-green-400' : 'bg-red-400'}`}
+            />
+            <span className="text-gray-400">
+              {status.loopRunning ? 'Loop active (30s)' : 'Loop stopped'}
+            </span>
           </div>
 
           {/* Executor Status */}
           {status.executors && (
             <div className="text-xs text-gray-500">
-              {Object.entries(status.executors).filter(([, v]) => v.canApply).length} executors ready
+              {Object.entries(status.executors).filter(([, v]) => v.canApply).length} executors
+              ready
             </div>
           )}
 
@@ -97,3 +111,7 @@ export function RepairPanel() {
     </div>
   );
 }
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedRepairPanel = withErrorBoundary(RepairPanel);
+export { _WrappedRepairPanel as RepairPanel };

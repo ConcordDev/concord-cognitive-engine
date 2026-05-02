@@ -133,4 +133,11 @@ export function seedWorlds(db) {
   });
 
   seedAll();
+
+  // Seed resource nodes + seed cities for each canonical world (idempotent, non-blocking).
+  import('./world-seeder.js').then(({ seedWorldContent }) => {
+    for (const world of SEED_WORLDS) {
+      seedWorldContent(db, world.id, world.universe_type);
+    }
+  }).catch(() => { /* non-fatal — runs on next world visit if tables aren't ready yet */ });
 }

@@ -161,7 +161,7 @@ function StatCard({
 
 // ── Main Component ───────────────────────────────────────────────────────────
 
-export function CreatorAnalytics({ userId, className }: CreatorAnalyticsProps) {
+function CreatorAnalytics({ userId, className }: CreatorAnalyticsProps) {
   const { data, isLoading, isError } = useQuery({
     queryKey: ['creator-analytics', userId],
     queryFn: async () => {
@@ -195,15 +195,9 @@ export function CreatorAnalytics({ userId, className }: CreatorAnalyticsProps) {
     1
   );
 
-  const maxHourScore = Math.max(
-    ...data.bestPostingHours.map((h) => h.score),
-    1
-  );
+  const maxHourScore = Math.max(...data.bestPostingHours.map((h) => h.score), 1);
 
-  const maxContentCount = Math.max(
-    ...data.contentBreakdown.map((c) => c.count),
-    1
-  );
+  const maxContentCount = Math.max(...data.contentBreakdown.map((c) => c.count), 1);
 
   return (
     <div className={cn('space-y-4', className)}>
@@ -249,7 +243,10 @@ export function CreatorAnalytics({ userId, className }: CreatorAnalyticsProps) {
             return (
               <div key={day.date} className="flex-1 flex flex-col items-center gap-1">
                 <div className="text-[10px] text-gray-500">{total}</div>
-                <div className="w-full flex flex-col-reverse rounded-t overflow-hidden" style={{ height: '120px' }}>
+                <div
+                  className="w-full flex flex-col-reverse rounded-t overflow-hidden"
+                  style={{ height: '120px' }}
+                >
                   <motion.div
                     initial={{ height: 0 }}
                     animate={{ height: `${reactPct}%` }}
@@ -299,10 +296,12 @@ export function CreatorAnalytics({ userId, className }: CreatorAnalyticsProps) {
               key={post.postId}
               className="flex items-center gap-3 p-3 rounded-lg bg-lattice-surface border border-lattice-border"
             >
-              <span className={cn(
-                'text-sm font-bold w-6 text-center',
-                idx < 3 ? 'text-neon-cyan' : 'text-gray-500'
-              )}>
+              <span
+                className={cn(
+                  'text-sm font-bold w-6 text-center',
+                  idx < 3 ? 'text-neon-cyan' : 'text-gray-500'
+                )}
+              >
                 {idx + 1}
               </span>
               <div className="flex-1 min-w-0">
@@ -320,9 +319,7 @@ export function CreatorAnalytics({ userId, className }: CreatorAnalyticsProps) {
                 </div>
               </div>
               <div className="text-right flex-shrink-0">
-                <div className="text-sm font-bold text-neon-cyan">
-                  {post.engagementScore}
-                </div>
+                <div className="text-sm font-bold text-neon-cyan">{post.engagementScore}</div>
                 <div className="text-[10px] text-gray-600">score</div>
               </div>
             </div>
@@ -338,7 +335,11 @@ export function CreatorAnalytics({ userId, className }: CreatorAnalyticsProps) {
             const isTop = hour.score === maxHourScore;
 
             return (
-              <div key={hour.hour} className="flex-1 flex flex-col items-center" title={`${hour.hour}:00 - Score: ${hour.score}`}>
+              <div
+                key={hour.hour}
+                className="flex-1 flex flex-col items-center"
+                title={`${hour.hour}:00 - Score: ${hour.score}`}
+              >
                 <motion.div
                   initial={{ height: 0 }}
                   animate={{ height: `${heightPct}%` }}
@@ -385,7 +386,18 @@ export function CreatorAnalytics({ userId, className }: CreatorAnalyticsProps) {
                       initial={{ width: 0 }}
                       animate={{ width: `${widthPct}%` }}
                       transition={{ duration: 0.6 }}
-                      className={cn('h-full rounded-full', colorClass.includes('blue') ? 'bg-blue-400/60' : colorClass.includes('green') ? 'bg-green-400/60' : colorClass.includes('purple') ? 'bg-purple-400/60' : colorClass.includes('orange') ? 'bg-orange-400/60' : 'bg-gray-400/60')}
+                      className={cn(
+                        'h-full rounded-full',
+                        colorClass.includes('blue')
+                          ? 'bg-blue-400/60'
+                          : colorClass.includes('green')
+                            ? 'bg-green-400/60'
+                            : colorClass.includes('purple')
+                              ? 'bg-purple-400/60'
+                              : colorClass.includes('orange')
+                                ? 'bg-orange-400/60'
+                                : 'bg-gray-400/60'
+                      )}
                     />
                   </div>
                 </div>
@@ -412,10 +424,12 @@ export function CreatorAnalytics({ userId, className }: CreatorAnalyticsProps) {
                 <div className="text-[10px] text-gray-500">Lost</div>
               </div>
               <div className="text-center">
-                <div className={cn(
-                  'text-lg font-bold',
-                  data.followerGrowth.net >= 0 ? 'text-neon-cyan' : 'text-red-400'
-                )}>
+                <div
+                  className={cn(
+                    'text-lg font-bold',
+                    data.followerGrowth.net >= 0 ? 'text-neon-cyan' : 'text-red-400'
+                  )}
+                >
                   {data.followerGrowth.net >= 0 ? '+' : ''}
                   {formatNumber(data.followerGrowth.net)}
                 </div>
@@ -454,4 +468,7 @@ export function CreatorAnalytics({ userId, className }: CreatorAnalyticsProps) {
   );
 }
 
-export default CreatorAnalytics;
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedCreatorAnalytics = withErrorBoundary(CreatorAnalytics);
+export { _WrappedCreatorAnalytics as CreatorAnalytics };
+export default _WrappedCreatorAnalytics;

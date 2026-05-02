@@ -80,12 +80,77 @@ function delay(ms) {
  * @param {string[]} queries - Search queries (max 3)
  * @returns {Promise<Array>} Web results with content
  */
+// ── DuckDuckGo Instant Answer (free, no key) ────────────────────────────────
+
+async function duckduckgoInstant(query) {
+  try {
+    const url = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_redirect=1&no_html=1&skip_disambig=1`;
+    const res = await fetch(url, {
+      headers: { "User-Agent": CHAT_USER_AGENT },
+      signal: AbortSignal.timeout(6000),
+    });
+    if (!res.ok) return null;
+    const d = await res.json();
+    const text = d.AbstractText || d.Answer || "";
+    if (!text) return null;
+    return {
+      title: d.Heading || query,
+      url: d.AbstractURL || d.Redirect || "",
+      snippet: text.slice(0, 300),
+      content: text.slice(0, 2000),
+      source: d.AbstractSource || "DuckDuckGo",
+      query,
+      fetchedAt: new Date().toISOString(),
+    };
+  } catch (_e) {
+    return null;
+  }
+}
+
+// ── Brave Search (optional, requires BRAVE_API_KEY env) ─────────────────────
+
+async function braveSearch(query) {
+  const apiKey = process.env.BRAVE_API_KEY;
+  if (!apiKey) return [];
+  try {
+    const url = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=5`;
+    const res = await fetch(url, {
+      headers: { Accept: "application/json", "X-Subscription-Token": apiKey },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data.web?.results || []).slice(0, 5).map(r => ({
+      title: r.title || "",
+      url: r.url || "",
+      snippet: (r.description || "").slice(0, 300),
+      content: (r.description || "").slice(0, 2000),
+      source: r.url ? new URL(r.url).hostname : "brave",
+      query,
+      fetchedAt: new Date().toISOString(),
+    }));
+  } catch (_e) {
+    return [];
+  }
+}
+
 export async function webSearchForChat(queries) {
   const allResults = [];
 
   for (const query of (queries || []).slice(0, 3)) {
+    // 1. Try DuckDuckGo instant answer first (fast, free, broad)
+    const ddgResult = await duckduckgoInstant(query);
+    if (ddgResult) allResults.push(ddgResult);
+
+    // 2. Try Brave Search if API key is configured
+    if (process.env.BRAVE_API_KEY) {
+      const braveResults = await braveSearch(query);
+      allResults.push(...braveResults);
+      if (allResults.length >= 5) break; // enough results
+    }
+
     try {
-      // Use Wikipedia API as primary search (freely available, no API key needed)
+      // 3. Wikipedia as supplementary source (especially good for factual/encyclopedic)
       const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&format=json&srlimit=3`;
       const searchRes = await fetch(searchUrl, {
         headers: { "User-Agent": CHAT_USER_AGENT },
@@ -154,7 +219,7 @@ export async function webSearchForChat(queries) {
       }
     } catch (err) {
       // Search is best-effort — continue with next query
-      continue;
+      logger.debug('emergent:conscious-web-search', 'Wikipedia search failed', { query, error: err?.message });
     }
   }
 

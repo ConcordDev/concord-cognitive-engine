@@ -11,10 +11,22 @@ import { useMutation } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import {
-  Shield, Lock, Layers, Globe,
-  ChefHat, Dumbbell, Heart, DollarSign,
-  Calculator, Scale, GraduationCap, Home,
-  Music, Pen, Code, TrendingUp,
+  Shield,
+  Lock,
+  Layers,
+  Globe,
+  ChefHat,
+  Dumbbell,
+  Heart,
+  DollarSign,
+  Calculator,
+  Scale,
+  GraduationCap,
+  Home,
+  Music,
+  Pen,
+  Code,
+  TrendingUp,
 } from 'lucide-react';
 
 interface SovereigntySetupProps {
@@ -38,13 +50,12 @@ const POPULAR_DOMAINS = [
 
 type SovereigntyMode = 'empty' | 'domain_focused' | 'full_sync';
 
-export function SovereigntySetup({ onComplete }: SovereigntySetupProps) {
+function SovereigntySetup({ onComplete }: SovereigntySetupProps) {
   const [mode, setMode] = useState<SovereigntyMode | null>(null);
   const [selectedDomains, setSelectedDomains] = useState<string[]>([]);
 
   const setup = useMutation({
-    mutationFn: () =>
-      api.post('/api/sovereignty/setup', { mode, selectedDomains }),
+    mutationFn: () => api.post('/api/sovereignty/setup', { mode, selectedDomains }),
     onSuccess: () => onComplete(),
   });
 
@@ -54,8 +65,7 @@ export function SovereigntySetup({ onComplete }: SovereigntySetupProps) {
         <Shield className="w-12 h-12 text-neon-cyan mx-auto mb-4" />
         <h1 className="text-2xl font-bold text-white">Your Concord, Your Rules</h1>
         <p className="text-zinc-400 mt-2">
-          Choose how much shared knowledge to start with.
-          You can always change this later.
+          Choose how much shared knowledge to start with. You can always change this later.
         </p>
       </div>
 
@@ -75,8 +85,8 @@ export function SovereigntySetup({ onComplete }: SovereigntySetupProps) {
             <div>
               <p className="font-medium text-white">Start Empty</p>
               <p className="text-sm text-zinc-400">
-                Maximum sovereignty. Your substrate grows only from your
-                interactions. Global knowledge available on request.
+                Maximum sovereignty. Your substrate grows only from your interactions. Global
+                knowledge available on request.
               </p>
             </div>
           </div>
@@ -97,8 +107,8 @@ export function SovereigntySetup({ onComplete }: SovereigntySetupProps) {
             <div>
               <p className="font-medium text-white">Pick Your Domains</p>
               <p className="text-sm text-zinc-400">
-                Selective sovereignty. Choose which domains to seed from
-                global. Everything else starts empty.
+                Selective sovereignty. Choose which domains to seed from global. Everything else
+                starts empty.
               </p>
             </div>
           </div>
@@ -107,12 +117,12 @@ export function SovereigntySetup({ onComplete }: SovereigntySetupProps) {
         {/* Domain picker */}
         {mode === 'domain_focused' && (
           <div className="grid grid-cols-2 gap-2 pl-8">
-            {POPULAR_DOMAINS.map(d => (
+            {POPULAR_DOMAINS.map((d) => (
               <button
                 key={d.id}
                 onClick={() =>
-                  setSelectedDomains(prev =>
-                    prev.includes(d.id) ? prev.filter(x => x !== d.id) : [...prev, d.id]
+                  setSelectedDomains((prev) =>
+                    prev.includes(d.id) ? prev.filter((x) => x !== d.id) : [...prev, d.id]
                   )
                 }
                 className={cn(
@@ -144,8 +154,8 @@ export function SovereigntySetup({ onComplete }: SovereigntySetupProps) {
             <div>
               <p className="font-medium text-white">Full Sync</p>
               <p className="text-sm text-zinc-400">
-                Start with everything. All public knowledge synced to your
-                substrate. Fastest start, most context.
+                Start with everything. All public knowledge synced to your substrate. Fastest start,
+                most context.
               </p>
             </div>
           </div>
@@ -154,7 +164,9 @@ export function SovereigntySetup({ onComplete }: SovereigntySetupProps) {
 
       <button
         onClick={() => setup.mutate()}
-        disabled={!mode || setup.isPending || (mode === 'domain_focused' && selectedDomains.length === 0)}
+        disabled={
+          !mode || setup.isPending || (mode === 'domain_focused' && selectedDomains.length === 0)
+        }
         className="w-full py-3 rounded-lg bg-neon-cyan/20 border border-neon-cyan/50
           text-neon-cyan font-medium hover:bg-neon-cyan/30 transition-all
           disabled:opacity-50 disabled:cursor-not-allowed"
@@ -164,3 +176,7 @@ export function SovereigntySetup({ onComplete }: SovereigntySetupProps) {
     </div>
   );
 }
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedSovereigntySetup = withErrorBoundary(SovereigntySetup);
+export { _WrappedSovereigntySetup as SovereigntySetup };

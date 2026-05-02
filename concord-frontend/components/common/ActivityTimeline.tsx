@@ -18,19 +18,23 @@ const sourceIcons: Record<string, typeof User> = {
   synthesis: Sparkles,
 };
 
-export function ActivityTimeline({ domain }: ActivityTimelineProps) {
+function ActivityTimeline({ domain }: ActivityTimelineProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [filter, setFilter] = useState<'all' | 'user' | 'system'>('all');
 
   const { data, isLoading } = useQuery({
     queryKey: ['activity-timeline', domain],
-    queryFn: () => apiHelpers.lens.list(domain, { limit: 20 }).then(r => r.data).catch(() => ({ items: [] })),
+    queryFn: () =>
+      apiHelpers.lens
+        .list(domain, { limit: 20 })
+        .then((r) => r.data)
+        .catch(() => ({ items: [] })),
     staleTime: 30000,
     enabled: isOpen,
   });
 
   const items = (data?.items || []) as Array<Record<string, unknown>>;
-  const filtered = items.filter(item => {
+  const filtered = items.filter((item) => {
     if (filter === 'all') return true;
     const source = (item.source as string) || 'user';
     return filter === 'user' ? source === 'user' || source === 'user.capture' : source !== 'user';
@@ -63,7 +67,7 @@ export function ActivityTimeline({ domain }: ActivityTimelineProps) {
             <div className="px-4 pb-3">
               {/* Filter tabs */}
               <div className="flex gap-1 mb-3">
-                {(['all', 'user', 'system'] as const).map(f => (
+                {(['all', 'user', 'system'] as const).map((f) => (
                   <button
                     key={f}
                     onClick={() => setFilter(f)}
@@ -91,15 +95,23 @@ export function ActivityTimeline({ domain }: ActivityTimelineProps) {
                     const isSystem = source !== 'user' && source !== 'user.capture';
                     return (
                       <div key={(item.id as string) || i} className="flex items-start gap-2.5">
-                        <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
-                          isSystem ? 'bg-neon-purple/20' : 'bg-neon-cyan/20'
-                        }`}>
-                          <Icon className={`w-3 h-3 ${isSystem ? 'text-neon-purple' : 'text-neon-cyan'}`} />
+                        <div
+                          className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
+                            isSystem ? 'bg-neon-purple/20' : 'bg-neon-cyan/20'
+                          }`}
+                        >
+                          <Icon
+                            className={`w-3 h-3 ${isSystem ? 'text-neon-purple' : 'text-neon-cyan'}`}
+                          />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs text-gray-300 truncate">{item.title as string || 'Activity'}</p>
+                          <p className="text-xs text-gray-300 truncate">
+                            {(item.title as string) || 'Activity'}
+                          </p>
                           <p className="text-xs text-gray-500">
-                            {item.updatedAt ? new Date(item.updatedAt as string).toLocaleString() : ''}
+                            {item.updatedAt
+                              ? new Date(item.updatedAt as string).toLocaleString()
+                              : ''}
                           </p>
                         </div>
                       </div>
@@ -114,3 +126,7 @@ export function ActivityTimeline({ domain }: ActivityTimelineProps) {
     </div>
   );
 }
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedActivityTimeline = withErrorBoundary(ActivityTimeline);
+export { _WrappedActivityTimeline as ActivityTimeline };

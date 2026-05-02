@@ -10,10 +10,14 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { DollarSign } from 'lucide-react';
 
-export function WalletBadge() {
+function WalletBadge() {
   const { data: balance } = useQuery({
     queryKey: ['wallet-balance'],
-    queryFn: () => api.get('/api/economy/balance').then(r => r.data).catch(() => null),
+    queryFn: () =>
+      api
+        .get('/api/economy/balance')
+        .then((r) => r.data)
+        .catch(() => null),
     refetchInterval: 30000,
     retry: false,
   });
@@ -33,4 +37,7 @@ export function WalletBadge() {
   );
 }
 
-export default WalletBadge;
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedWalletBadge = withErrorBoundary(WalletBadge);
+export { _WrappedWalletBadge as WalletBadge };
+export default _WrappedWalletBadge;

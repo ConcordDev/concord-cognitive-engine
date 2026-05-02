@@ -26,13 +26,13 @@ const EMOTION_COLORS: Record<string, string> = {
   pride: 'bg-purple-500/20 text-purple-400',
 };
 
-export function EpisodicMemory({ className }: { className?: string }) {
+function EpisodicMemory({ className }: { className?: string }) {
   const [expanded, setExpanded] = useState(false);
   const [filter, setFilter] = useState<string | null>(null);
 
   const { data: summaryData, isLoading } = useQuery({
     queryKey: ['episodes-summary'],
-    queryFn: () => api.get('/api/episodes/summary').then(r => r.data),
+    queryFn: () => api.get('/api/episodes/summary').then((r) => r.data),
     refetchInterval: 60000,
   });
 
@@ -41,14 +41,19 @@ export function EpisodicMemory({ className }: { className?: string }) {
     queryFn: () => {
       const params = new URLSearchParams({ limit: '20' });
       if (filter) params.set('type', filter);
-      return api.get(`/api/episodes?${params.toString()}`).then(r => r.data);
+      return api.get(`/api/episodes?${params.toString()}`).then((r) => r.data);
     },
     enabled: expanded,
   });
 
   if (isLoading) {
     return (
-      <div className={cn('p-4 bg-lattice-surface border border-lattice-border rounded-xl animate-pulse', className)}>
+      <div
+        className={cn(
+          'p-4 bg-lattice-surface border border-lattice-border rounded-xl animate-pulse',
+          className
+        )}
+      >
         <div className="h-6 bg-lattice-deep rounded w-40" />
       </div>
     );
@@ -58,7 +63,12 @@ export function EpisodicMemory({ className }: { className?: string }) {
   const episodes = episodesData?.episodes || [];
 
   return (
-    <div className={cn('bg-lattice-surface border border-lattice-border rounded-xl overflow-hidden', className)}>
+    <div
+      className={cn(
+        'bg-lattice-surface border border-lattice-border rounded-xl overflow-hidden',
+        className
+      )}
+    >
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-lattice-border">
         <div className="flex items-center gap-3">
@@ -67,9 +77,7 @@ export function EpisodicMemory({ className }: { className?: string }) {
           </div>
           <div>
             <h3 className="font-medium text-white">Episodic Memory</h3>
-            <p className="text-xs text-gray-500">
-              {summary.total || 0} experiences recorded
-            </p>
+            <p className="text-xs text-gray-500">{summary.total || 0} experiences recorded</p>
           </div>
         </div>
         <button
@@ -148,7 +156,9 @@ export function EpisodicMemory({ className }: { className?: string }) {
                     onClick={() => setFilter(type)}
                     className={cn(
                       'px-2 py-1 text-xs rounded-lg capitalize whitespace-nowrap transition-colors',
-                      filter === type ? 'bg-neon-cyan/20 text-neon-cyan' : 'text-gray-400 hover:text-white'
+                      filter === type
+                        ? 'bg-neon-cyan/20 text-neon-cyan'
+                        : 'text-gray-400 hover:text-white'
                     )}
                   >
                     {type} ({count})
@@ -164,53 +174,59 @@ export function EpisodicMemory({ className }: { className?: string }) {
                   No episodes recorded yet. Use Concord to create memories.
                 </p>
               ) : (
-                episodes.map((ep: {
-                  id: string;
-                  type: string;
-                  title: string;
-                  narrative: string;
-                  emotions: string[];
-                  intensity: number;
-                  timestamp: string;
-                  context: { domain?: string };
-                }) => {
-                  const typeConf = TYPE_CONFIG[ep.type] || TYPE_CONFIG.session;
-                  const Icon = typeConf.icon;
-                  return (
-                    <div key={ep.id} className="p-3 bg-lattice-deep rounded-lg">
-                      <div className="flex items-start gap-2">
-                        <Icon className={cn('w-4 h-4 mt-0.5', typeConf.color)} />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-white truncate">{ep.title}</span>
-                            <span className="text-xs text-gray-500">
-                              {new Date(ep.timestamp).toLocaleDateString()}
-                            </span>
-                          </div>
-                          {ep.narrative && (
-                            <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">{ep.narrative}</p>
-                          )}
-                          <div className="flex items-center gap-2 mt-1">
-                            {ep.emotions?.slice(0, 3).map(em => (
-                              <span
-                                key={em}
-                                className={cn(
-                                  'px-1.5 py-0.5 rounded text-[10px]',
-                                  EMOTION_COLORS[em] || 'bg-gray-500/20 text-gray-400'
-                                )}
-                              >
-                                {em}
+                episodes.map(
+                  (ep: {
+                    id: string;
+                    type: string;
+                    title: string;
+                    narrative: string;
+                    emotions: string[];
+                    intensity: number;
+                    timestamp: string;
+                    context: { domain?: string };
+                  }) => {
+                    const typeConf = TYPE_CONFIG[ep.type] || TYPE_CONFIG.session;
+                    const Icon = typeConf.icon;
+                    return (
+                      <div key={ep.id} className="p-3 bg-lattice-deep rounded-lg">
+                        <div className="flex items-start gap-2">
+                          <Icon className={cn('w-4 h-4 mt-0.5', typeConf.color)} />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium text-white truncate">
+                                {ep.title}
                               </span>
-                            ))}
-                            <span className="text-[10px] text-gray-600">
-                              {Math.round(ep.intensity * 100)}% intensity
-                            </span>
+                              <span className="text-xs text-gray-500">
+                                {new Date(ep.timestamp).toLocaleDateString()}
+                              </span>
+                            </div>
+                            {ep.narrative && (
+                              <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">
+                                {ep.narrative}
+                              </p>
+                            )}
+                            <div className="flex items-center gap-2 mt-1">
+                              {ep.emotions?.slice(0, 3).map((em) => (
+                                <span
+                                  key={em}
+                                  className={cn(
+                                    'px-1.5 py-0.5 rounded text-[10px]',
+                                    EMOTION_COLORS[em] || 'bg-gray-500/20 text-gray-400'
+                                  )}
+                                >
+                                  {em}
+                                </span>
+                              ))}
+                              <span className="text-[10px] text-gray-600">
+                                {Math.round(ep.intensity * 100)}% intensity
+                              </span>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })
+                    );
+                  }
+                )
               )}
             </div>
           </motion.div>
@@ -219,3 +235,7 @@ export function EpisodicMemory({ className }: { className?: string }) {
     </div>
   );
 }
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedEpisodicMemory = withErrorBoundary(EpisodicMemory);
+export { _WrappedEpisodicMemory as EpisodicMemory };

@@ -29,7 +29,7 @@ interface EventsResponse {
   total: number;
 }
 
-export function UndoTimeline() {
+function UndoTimeline() {
   const queryClient = useQueryClient();
   const addToast = useUIStore((s) => s.addToast);
 
@@ -88,27 +88,36 @@ export function UndoTimeline() {
               return (
                 <div key={item.id} className="relative flex items-start gap-3 py-2 pl-8">
                   {/* Timeline dot */}
-                  <div className={cn(
-                    'absolute left-[11px] w-2.5 h-2.5 rounded-full border-2',
-                    isUndo
-                      ? 'bg-gray-700 border-gray-500'
-                      : canUndo
-                        ? 'bg-neon-blue border-neon-blue'
-                        : 'bg-lattice-surface border-lattice-border'
-                  )} />
+                  <div
+                    className={cn(
+                      'absolute left-[11px] w-2.5 h-2.5 rounded-full border-2',
+                      isUndo
+                        ? 'bg-gray-700 border-gray-500'
+                        : canUndo
+                          ? 'bg-neon-blue border-neon-blue'
+                          : 'bg-lattice-surface border-lattice-border'
+                    )}
+                  />
 
                   {/* Content */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className={cn(
-                        'text-xs font-mono px-1 py-0.5 rounded',
-                        isUndo ? 'text-gray-500 bg-gray-500/10' : 'text-gray-400 bg-gray-400/10'
-                      )}>
+                      <span
+                        className={cn(
+                          'text-xs font-mono px-1 py-0.5 rounded',
+                          isUndo ? 'text-gray-500 bg-gray-500/10' : 'text-gray-400 bg-gray-400/10'
+                        )}
+                      >
                         {item.type}
                       </span>
                       <span className="text-xs text-gray-600">{formatTime(item.createdAt)}</span>
                     </div>
-                    <p className={cn('text-sm mt-0.5', isUndo ? 'text-gray-500 italic' : 'text-gray-300')}>
+                    <p
+                      className={cn(
+                        'text-sm mt-0.5',
+                        isUndo ? 'text-gray-500 italic' : 'text-gray-300'
+                      )}
+                    >
                       {item.summary || item.type}
                     </p>
                     {item.entityType && (
@@ -157,3 +166,7 @@ function formatTime(iso: string): string {
     return iso;
   }
 }
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedUndoTimeline = withErrorBoundary(UndoTimeline);
+export { _WrappedUndoTimeline as UndoTimeline };

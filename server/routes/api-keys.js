@@ -32,6 +32,8 @@ export default function createAPIKeysRouter({ requireAuth } = {}) {
   // ── Auth gate — all key management requires authentication ────────────
   if (typeof requireAuth === "function") {
     router.use(requireAuth());
+  } else {
+    router.use((_req, res, _next) => res.status(401).json({ ok: false, error: 'auth_not_configured' }));
   }
 
   // ── POST /api/keys — Generate a new API key ──────────────────────────

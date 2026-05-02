@@ -73,7 +73,7 @@ type FlowStep = 'check' | 'onboard' | 'input' | 'confirm' | 'loading' | 'success
 
 // ── Component ────────────────────────────────────────────────────────────────
 
-export function WithdrawFlow({
+function WithdrawFlow({
   mode = 'modal',
   onClose,
   onSuccess,
@@ -88,18 +88,14 @@ export function WithdrawFlow({
   // Fetch Connect status
   const { data: connectStatus, isLoading: connectLoading } = useQuery({
     queryKey: ['stripe-connect-status'],
-    queryFn: () =>
-      apiHelpers.economy.connectStatus().then((r) => r.data as ConnectStatus),
+    queryFn: () => apiHelpers.economy.connectStatus().then((r) => r.data as ConnectStatus),
     retry: false,
   });
 
   // Fetch balance if not provided
   const { data: balanceData } = useQuery({
     queryKey: ['wallet-balance'],
-    queryFn: () =>
-      api
-        .get('/api/economy/balance')
-        .then((r) => r.data as { balance: number }),
+    queryFn: () => api.get('/api/economy/balance').then((r) => r.data as { balance: number }),
     enabled: externalBalance === undefined,
     retry: false,
   });
@@ -108,21 +104,18 @@ export function WithdrawFlow({
   const { data: withdrawalsData } = useQuery({
     queryKey: ['wallet-withdrawals'],
     queryFn: () =>
-      api
-        .get('/api/economy/withdrawals')
-        .then(
-          (r) =>
-            r.data as {
-              withdrawals?: Withdrawal[];
-              items?: Withdrawal[];
-            }
-        ),
+      api.get('/api/economy/withdrawals').then(
+        (r) =>
+          r.data as {
+            withdrawals?: Withdrawal[];
+            items?: Withdrawal[];
+          }
+      ),
     retry: false,
   });
 
   const currentBalance = externalBalance ?? balanceData?.balance ?? 0;
-  const pendingWithdrawals =
-    withdrawalsData?.withdrawals || withdrawalsData?.items || [];
+  const pendingWithdrawals = withdrawalsData?.withdrawals || withdrawalsData?.items || [];
   const pendingAmount = pendingWithdrawals
     .filter((w) => ['pending', 'approved', 'processing'].includes(w.status))
     .reduce((sum, w) => sum + w.amount, 0);
@@ -161,9 +154,7 @@ export function WithdrawFlow({
       if (data.ok && data.onboardingUrl) {
         window.location.href = data.onboardingUrl;
       } else {
-        setErrorMessage(
-          data.error?.replace(/_/g, ' ') || 'Failed to start Connect onboarding'
-        );
+        setErrorMessage(data.error?.replace(/_/g, ' ') || 'Failed to start Connect onboarding');
         setStep('error');
       }
     } catch {
@@ -194,17 +185,15 @@ export function WithdrawFlow({
         queryClient.invalidateQueries({ queryKey: ['economy-balance'] });
         onSuccess?.();
       } else {
-        setErrorMessage(
-          data.error?.replace(/_/g, ' ') || 'Withdrawal request failed'
-        );
+        setErrorMessage(data.error?.replace(/_/g, ' ') || 'Withdrawal request failed');
         setStep('error');
       }
     } catch (err: unknown) {
       const message =
-        (
-          err as { response?: { data?: { error?: string } } }
-        )?.response?.data?.error?.replace(/_/g, ' ') ||
-        'Something went wrong. Please try again.';
+        (err as { response?: { data?: { error?: string } } })?.response?.data?.error?.replace(
+          /_/g,
+          ' '
+        ) || 'Something went wrong. Please try again.';
       setErrorMessage(message);
       setStep('error');
     }
@@ -223,9 +212,7 @@ export function WithdrawFlow({
 
   // Reset flow
   const handleReset = useCallback(() => {
-    setStep(
-      connectStatus?.onboardingComplete ? 'input' : 'onboard'
-    );
+    setStep(connectStatus?.onboardingComplete ? 'input' : 'onboard');
     setAmount('');
     setErrorMessage('');
   }, [connectStatus]);
@@ -246,20 +233,14 @@ export function WithdrawFlow({
       // Connect onboarding required
       case 'onboard':
         return (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="space-y-6"
-          >
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-neon-purple/20">
                 <Building2 className="w-5 h-5 text-neon-purple" />
               </div>
               <div>
                 <h3 className={ds.heading3}>Set Up Payouts</h3>
-                <p className={ds.textMuted}>
-                  Connect your bank account to withdraw
-                </p>
+                <p className={ds.textMuted}>Connect your bank account to withdraw</p>
               </div>
             </div>
 
@@ -267,24 +248,19 @@ export function WithdrawFlow({
               <div className="flex items-start gap-3">
                 <ShieldCheck className="w-5 h-5 text-neon-green mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="text-sm text-white font-medium">
-                    Secure & Verified
-                  </p>
+                  <p className="text-sm text-white font-medium">Secure & Verified</p>
                   <p className="text-xs text-gray-400">
-                    Stripe handles all payout processing. Your banking details
-                    are never stored on our servers.
+                    Stripe handles all payout processing. Your banking details are never stored on
+                    our servers.
                   </p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
                 <Clock className="w-5 h-5 text-neon-blue mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="text-sm text-white font-medium">
-                    Takes ~5 Minutes
-                  </p>
+                  <p className="text-sm text-white font-medium">Takes ~5 Minutes</p>
                   <p className="text-xs text-gray-400">
-                    You will need to verify your identity and connect a bank
-                    account through Stripe.
+                    You will need to verify your identity and connect a bank account through Stripe.
                   </p>
                 </div>
               </div>
@@ -306,11 +282,7 @@ export function WithdrawFlow({
       // Amount input
       case 'input':
         return (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="space-y-6"
-          >
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-neon-green/20">
                 <ArrowDownToLine className="w-5 h-5 text-neon-green" />
@@ -324,9 +296,7 @@ export function WithdrawFlow({
             {/* Available Balance */}
             <div className="bg-lattice-deep rounded-lg p-4 border border-lattice-border">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-400">
-                  Available for withdrawal
-                </span>
+                <span className="text-sm text-gray-400">Available for withdrawal</span>
                 <span className="font-mono text-lg font-bold text-neon-green">
                   {availableForWithdrawal.toLocaleString()} CC
                 </span>
@@ -363,8 +333,8 @@ export function WithdrawFlow({
                   {parsedAmount < MIN_WITHDRAWAL
                     ? `Minimum withdrawal is ${MIN_WITHDRAWAL} CC`
                     : parsedAmount > MAX_DAILY_WITHDRAWAL
-                    ? `Maximum daily withdrawal is ${MAX_DAILY_WITHDRAWAL.toLocaleString()} CC`
-                    : `Insufficient balance. Available: ${availableForWithdrawal.toLocaleString()} CC`}
+                      ? `Maximum daily withdrawal is ${MAX_DAILY_WITHDRAWAL.toLocaleString()} CC`
+                      : `Insufficient balance. Available: ${availableForWithdrawal.toLocaleString()} CC`}
                 </p>
               )}
             </div>
@@ -380,9 +350,7 @@ export function WithdrawFlow({
                 >
                   <div className="bg-lattice-deep rounded-lg p-4 border border-lattice-border space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-400">
-                        Withdrawal Amount
-                      </span>
+                      <span className="text-sm text-gray-400">Withdrawal Amount</span>
                       <span className="font-mono text-white">
                         {parsedAmount.toLocaleString()} CC
                       </span>
@@ -392,15 +360,11 @@ export function WithdrawFlow({
                         Platform Fee ({PLATFORM_FEE_PERCENT}%)
                         <Info className="w-3 h-3" />
                       </span>
-                      <span className="font-mono text-red-400">
-                        -{fee.toLocaleString()} CC
-                      </span>
+                      <span className="font-mono text-red-400">-{fee.toLocaleString()} CC</span>
                     </div>
                     <div className="border-t border-lattice-border pt-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-white">
-                          You Receive
-                        </span>
+                        <span className="text-sm font-medium text-white">You Receive</span>
                         <span className="font-mono text-lg font-bold text-neon-green">
                           ${netPayout.toLocaleString()}.00
                         </span>
@@ -434,17 +398,14 @@ export function WithdrawFlow({
               <Info className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
               <span>
                 Min: {MIN_WITHDRAWAL} CC | Max daily: {MAX_DAILY_WITHDRAWAL.toLocaleString()} CC |
-                Withdrawals are reviewed and typically processed within 1-3
-                business days.
+                Withdrawals are reviewed and typically processed within 1-3 business days.
               </span>
             </div>
 
             {/* Pending Withdrawals */}
             {pendingWithdrawals.length > 0 && (
               <div className="space-y-2">
-                <h4 className="text-sm font-medium text-gray-400">
-                  Recent Withdrawals
-                </h4>
+                <h4 className="text-sm font-medium text-gray-400">Recent Withdrawals</h4>
                 {pendingWithdrawals.slice(0, 3).map((w) => (
                   <div
                     key={w.id}
@@ -495,18 +456,12 @@ export function WithdrawFlow({
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-400">
-                  Fee ({PLATFORM_FEE_PERCENT}%)
-                </span>
-                <span className="font-mono text-red-400">
-                  -{fee.toLocaleString()} CC
-                </span>
+                <span className="text-sm text-gray-400">Fee ({PLATFORM_FEE_PERCENT}%)</span>
+                <span className="font-mono text-red-400">-{fee.toLocaleString()} CC</span>
               </div>
               <div className="border-t border-lattice-border pt-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-white">
-                    Payout Amount
-                  </span>
+                  <span className="text-sm font-semibold text-white">Payout Amount</span>
                   <span className="font-mono text-xl font-bold text-neon-green">
                     ${netPayout.toLocaleString()}.00
                   </span>
@@ -516,15 +471,12 @@ export function WithdrawFlow({
 
             <p className="text-xs text-gray-500 flex items-start gap-2">
               <Info className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
-              Withdrawals are typically processed within 1-3 business days.
-              Funds will be sent to your connected Stripe account.
+              Withdrawals are typically processed within 1-3 business days. Funds will be sent to
+              your connected Stripe account.
             </p>
 
             <div className="flex gap-3">
-              <button
-                onClick={() => setStep('input')}
-                className={cn(ds.btnSecondary, 'flex-1')}
-              >
+              <button onClick={() => setStep('input')} className={cn(ds.btnSecondary, 'flex-1')}>
                 Back
               </button>
               <button
@@ -571,12 +523,10 @@ export function WithdrawFlow({
               <span className="text-neon-green font-mono font-bold">
                 {parsedAmount.toLocaleString()} CC
               </span>{' '}
-              (${netPayout.toLocaleString()} after fees) has been submitted for
-              review.
+              (${netPayout.toLocaleString()} after fees) has been submitted for review.
             </p>
             <p className="text-xs text-gray-500">
-              You will receive ${netPayout.toLocaleString()}.00 within 1-3
-              business days.
+              You will receive ${netPayout.toLocaleString()}.00 within 1-3 business days.
             </p>
             <button
               onClick={() => {
@@ -601,10 +551,7 @@ export function WithdrawFlow({
             <XCircle className="w-16 h-16 mx-auto text-red-400" />
             <h3 className={ds.heading2}>Withdrawal Failed</h3>
             <p className="text-gray-400">{errorMessage}</p>
-            <button
-              onClick={handleReset}
-              className={cn(ds.btnSecondary, 'mt-4')}
-            >
+            <button onClick={handleReset} className={cn(ds.btnSecondary, 'mt-4')}>
               Try Again
             </button>
           </motion.div>
@@ -681,4 +628,7 @@ function WithdrawalStatusBadge({ status }: { status: string }) {
   );
 }
 
-export default WithdrawFlow;
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedWithdrawFlow = withErrorBoundary(WithdrawFlow);
+export { _WrappedWithdrawFlow as WithdrawFlow };
+export default _WrappedWithdrawFlow;

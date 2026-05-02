@@ -1,21 +1,53 @@
 'use client';
 
-import React, {
-  useState,
-  useEffect,
-  useRef,
-  useCallback,
-  useContext,
-  createContext,
-} from 'react';
+import React, { useState, useEffect, useRef, useCallback, useContext, createContext } from 'react';
 import { Activity, Monitor, Settings } from 'lucide-react';
+import { cameraLookState } from '@/lib/world-lens/camera-look-state';
+import { getStoredSensitivity } from '@/lib/world-lens/quality-preset';
+
+// ── Device capability detection ────────────────────────────────────
+function detectInitialQuality(): QualityPreset {
+  if (typeof window === 'undefined') return 'medium';
+  try {
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+    if (!gl) return 'low';
+
+    // GPU tier via renderer string
+    const dbgInfo = gl.getExtension('WEBGL_debug_renderer_info');
+    const renderer = dbgInfo
+      ? (gl.getParameter(dbgInfo.UNMASKED_RENDERER_WEBGL) as string).toLowerCase()
+      : '';
+
+    // Explicit low-end GPU patterns
+    if (/swiftshader|llvmpipe|software|microsoft basic/.test(renderer)) return 'low';
+    // Explicit high-end patterns
+    if (/rtx|radeon rx [56789]|apple m[234]|a1[5-9] gpu/.test(renderer)) return 'high';
+
+    // RAM-based fallback (deviceMemory API — Chrome/Android)
+    const mem = (navigator as Navigator & { deviceMemory?: number }).deviceMemory;
+    if (mem !== undefined) {
+      if (mem <= 2) return 'low';
+      if (mem >= 8) return 'high';
+    }
+
+    // Core count fallback
+    const cores = navigator.hardwareConcurrency ?? 4;
+    if (cores <= 4) return 'low';
+    if (cores >= 10) return 'high';
+
+    return 'medium';
+  } catch {
+    return 'medium';
+  }
+}
 
 // ── Types ──────────────────────────────────────────────────────────
 
 export type QualityPreset = 'low' | 'medium' | 'high' | 'ultra';
 
 export interface SceneLayer {
-  terrain: unknown;    // THREE.Group at runtime
+  terrain: unknown; // THREE.Group at runtime
   buildings: unknown;
   infrastructure: unknown;
   avatars: unknown;
@@ -37,8 +69,8 @@ export interface PerformanceBudget {
 }
 
 export interface ConcordiaSceneAPI {
-  scene: unknown;       // THREE.Scene
-  camera: unknown;      // THREE.PerspectiveCamera
+  scene: unknown; // THREE.Scene
+  camera: unknown; // THREE.PerspectiveCamera
   addBuilding: (buildingGroup: unknown, position: { x: number; y: number; z: number }) => void;
   removeBuilding: (id: string) => void;
   setWeather: (type: string, intensity: number) => void;
@@ -54,23 +86,40 @@ interface ConcordiaSceneProps {
   questObjectives?: import('@/components/world-lens/QuestMarker3D').QuestObjective[];
   onBuildingClick?: (buildingId: string, intersection: unknown) => void;
   onTerrainClick?: (position: { x: number; y: number; z: number }) => void;
-  onWeatherModifiers?: (modifiers: import('@/lib/world-lens/world-deformation').WeatherPhysicsModifiers) => void;
-  onSceneReady?: (lookup: (entityId: string) => { visible: boolean; userData: Record<string, unknown> } | undefined) => void;
+  onWeatherModifiers?: (
+    modifiers: import('@/lib/world-lens/world-deformation').WeatherPhysicsModifiers
+  ) => void;
+  onSceneReady?: (
+    lookup: (
+      entityId: string
+    ) => { visible: boolean; userData: Record<string, unknown> } | undefined
+  ) => void;
   width?: number | string;
   height?: number | string;
+  /**
+   * Camera mode (Skyrim-style follow, first-person, or fixed isometric).
+   * Drives the per-frame camera transform via getPlayerPose. Defaults to
+   * 'isometric' (the previous hardcoded behavior) when not supplied.
+   */
+  cameraMode?: 'isometric' | 'follow' | 'first-person' | 'free' | 'interior' | 'cinematic';
+  /** Per-frame player position + yaw, used for follow + first-person camera. */
+  getPlayerPose?: () => { x: number; y: number; z: number; yaw: number } | null;
 }
 
 // ── Quality Presets ──────────────────────────────────────────────
 
-const QUALITY_SETTINGS: Record<QualityPreset, {
-  shadowMapSize: number;
-  maxDrawCalls: number;
-  maxTriangles: number;
-  maxTextureMemory: number;
-  antialias: boolean;
-  pixelRatio: number;
-  particleDensity: number;
-}> = {
+const QUALITY_SETTINGS: Record<
+  QualityPreset,
+  {
+    shadowMapSize: number;
+    maxDrawCalls: number;
+    maxTriangles: number;
+    maxTextureMemory: number;
+    antialias: boolean;
+    pixelRatio: number;
+    particleDensity: number;
+  }
+> = {
   low: {
     shadowMapSize: 512,
     maxDrawCalls: 200,
@@ -110,8 +159,14 @@ const QUALITY_SETTINGS: Record<QualityPreset, {
 };
 
 const LAYER_NAMES = [
-  'terrain', 'buildings', 'infrastructure', 'avatars',
-  'weather', 'ui', 'water', 'particles',
+  'terrain',
+  'buildings',
+  'infrastructure',
+  'avatars',
+  'weather',
+  'ui',
+  'water',
+  'particles',
 ] as const;
 
 // ── Context ──────────────────────────────────────────────────────
@@ -142,27 +197,60 @@ export default function ConcordiaScene({
   onSceneReady,
   width = '100%',
   height = '100%',
+  cameraMode = 'isometric',
+  getPlayerPose,
 }: ConcordiaSceneProps) {
+  // Mirror cameraMode + getPlayerPose into refs so the game loop can read
+  // the latest values without re-running the heavy init effect on each
+  // mode change. Updated on every render via the small effect below.
+  const cameraModeRef = useRef(cameraMode);
+  const getPlayerPoseRef = useRef(getPlayerPose);
+  useEffect(() => { cameraModeRef.current = cameraMode; }, [cameraMode]);
+  useEffect(() => { getPlayerPoseRef.current = getPlayerPose; }, [getPlayerPose]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const physicsRef = useRef<{ step: (dt: number) => void; destroy: () => void } | null>(null);
+  const physicsRef = useRef<{
+    step: (dt: number) => void;
+    destroy: () => void;
+    registerBuildingFromObject?: (obj: unknown, id: string) => string | null;
+    removeBuildingCollider?: (key: string) => void;
+    syncFromScene?: (root: unknown) => number;
+  } | null>(null);
   const rendererRef = useRef<unknown>(null);
   const sceneRef = useRef<unknown>(null);
   const cameraRef = useRef<unknown>(null);
-  const composerRef = useRef<{ render: (delta: number) => void; setSize: (w: number, h: number) => void } | null>(null);
+  const composerRef = useRef<{
+    render: (delta: number) => void;
+    setSize: (w: number, h: number) => void;
+  } | null>(null);
   const layersRef = useRef<Record<string, unknown>>({});
   const frameIdRef = useRef<number>(0);
   const clockRef = useRef<unknown>(null);
   const raycasterRef = useRef<unknown>(null);
   const buildingMapRef = useRef<Map<string, unknown>>(new Map());
-  const weatherSysRef = useRef<import('@/lib/world-lens/world-deformation').WeatherTransitionSystem | null>(null);
-  const ssgiPassRef = useRef<{ dispose: () => void; setSize: (w: number, h: number) => void; render: (t: null) => void } | null>(null);
-  const probeManagerRef = useRef<import('@/lib/world-lens/reflection-probes').ReflectionProbeManager | null>(null);
+  const weatherSysRef = useRef<
+    import('@/lib/world-lens/world-deformation').WeatherTransitionSystem | null
+  >(null);
+  const ssgiPassRef = useRef<{
+    dispose: () => void;
+    setSize: (w: number, h: number) => void;
+    render: (t: null) => void;
+  } | null>(null);
+  const probeManagerRef = useRef<
+    import('@/lib/world-lens/reflection-probes').ReflectionProbeManager | null
+  >(null);
   const onWeatherModifiersRef = useRef(onWeatherModifiers);
   const onSceneReadyRef = useRef(onSceneReady);
-  useEffect(() => { onWeatherModifiersRef.current = onWeatherModifiers; }, [onWeatherModifiers]);
-  useEffect(() => { onSceneReadyRef.current = onSceneReady; }, [onSceneReady]);
+  useEffect(() => {
+    onWeatherModifiersRef.current = onWeatherModifiers;
+  }, [onWeatherModifiers]);
+  useEffect(() => {
+    onSceneReadyRef.current = onSceneReady;
+  }, [onSceneReady]);
 
-  const [quality, setQuality] = useState<QualityPreset>(initialQuality);
+  const [quality, setQuality] = useState<QualityPreset>(() =>
+    initialQuality === 'medium' ? detectInitialQuality() : initialQuality
+  );
+  const lowFpsCountRef = useRef(0); // consecutive low-FPS frames for auto-downgrade
   const [showFps, setShowFps] = useState(false);
   const [showQualitySelector, setShowQualitySelector] = useState(false);
   const [performance, setPerformance] = useState<PerformanceBudget>({
@@ -202,16 +290,23 @@ export default function ConcordiaScene({
       // Physics world — init Rapier WASM, terrain collider registered via event
       const { physicsWorld } = await import('@/lib/world-lens/physics-world');
       await physicsWorld.init();
-      physicsRef.current = physicsWorld;
-      if (disposed) { physicsWorld.destroy(); physicsRef.current = null; return; }
+      // Cast: PhysicsWorld instance has narrower argument types (Object3DLike)
+      // than the union we accept here (unknown). Structurally compatible at
+      // call sites; the cast just bridges contravariance.
+      physicsRef.current = physicsWorld as unknown as typeof physicsRef.current;
+      if (disposed) {
+        physicsWorld.destroy();
+        physicsRef.current = null;
+        return;
+      }
 
       // Listen for terrain-ready to register heightfield collider
       function onTerrainPhysics(e: Event) {
         const { hmData, hmWidth, hmHeight } = (e as CustomEvent).detail ?? {};
         if (hmData) {
           physicsWorld.createHeightfieldCollider(hmData, hmWidth, hmHeight, {
-            x: 2000,   // TERRAIN_SIZE
-            y: 80,     // maxElevation
+            x: 2000, // TERRAIN_SIZE
+            y: 80, // maxElevation
             z: 2000,
           });
         }
@@ -225,7 +320,9 @@ export default function ConcordiaScene({
       let useWebGPU = false;
       if (typeof navigator !== 'undefined' && 'gpu' in navigator) {
         try {
-          const adapter = await (navigator as unknown as { gpu: { requestAdapter: () => Promise<unknown | null> } }).gpu.requestAdapter();
+          const adapter = await (
+            navigator as unknown as { gpu: { requestAdapter: () => Promise<unknown | null> } }
+          ).gpu.requestAdapter();
           if (adapter) useWebGPU = true;
         } catch {
           // WebGPU not available, fall back
@@ -235,7 +332,9 @@ export default function ConcordiaScene({
       if (useWebGPU) {
         // WebGPU renderer can be loaded dynamically from three/addons when stable
         // For now we use WebGL2 as primary renderer with WebGPU readiness flag
-        console.info('[ConcordiaScene] WebGPU adapter found, but using WebGL2 renderer for stability');
+        console.info(
+          '[ConcordiaScene] WebGPU adapter found, but using WebGL2 renderer for stability'
+        );
       }
 
       renderer = new THREE.WebGLRenderer({
@@ -258,12 +357,13 @@ export default function ConcordiaScene({
       // Vignette always on for medium+.
       if (quality !== 'low') {
         try {
-          const [{ EffectComposer }, { RenderPass }, { UnrealBloomPass }, { ShaderPass }] = await Promise.all([
-            import('three/examples/jsm/postprocessing/EffectComposer.js'),
-            import('three/examples/jsm/postprocessing/RenderPass.js'),
-            import('three/examples/jsm/postprocessing/UnrealBloomPass.js'),
-            import('three/examples/jsm/postprocessing/ShaderPass.js'),
-          ]);
+          const [{ EffectComposer }, { RenderPass }, { UnrealBloomPass }, { ShaderPass }] =
+            await Promise.all([
+              import('three/examples/jsm/postprocessing/EffectComposer.js'),
+              import('three/examples/jsm/postprocessing/RenderPass.js'),
+              import('three/examples/jsm/postprocessing/UnrealBloomPass.js'),
+              import('three/examples/jsm/postprocessing/ShaderPass.js'),
+            ]);
           const composer = new EffectComposer(renderer);
           composer.addPass(new RenderPass(scene, camera));
           // Bloom: PBR only — toon shading looks wrong with bloom
@@ -272,13 +372,17 @@ export default function ConcordiaScene({
               new THREE.Vector2(canvas!.clientWidth, canvas!.clientHeight),
               quality === 'high' || quality === 'ultra' ? 1.2 : 0.7,
               0.4,
-              0.3,
+              0.3
             );
             composer.addPass(bloom);
           }
           // Vignette: always on for cinematic framing
           const vignetteShader = {
-            uniforms: { tDiffuse: { value: null }, darkness: { value: 0.55 }, offset: { value: 0.5 } },
+            uniforms: {
+              tDiffuse: { value: null },
+              darkness: { value: 0.55 },
+              offset: { value: 0.5 },
+            },
             vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
             fragmentShader: `uniform sampler2D tDiffuse; uniform float darkness; uniform float offset; varying vec2 vUv;
               void main() {
@@ -289,6 +393,96 @@ export default function ConcordiaScene({
               }`,
           };
           composer.addPass(new ShaderPass(vignetteShader));
+
+          // Phase 13 polish-to-ten: color grading pass.
+          // Cheap shader that lifts blacks slightly, warms highlights, and
+          // crushes saturation in shadows. Composes after vignette so the
+          // grade applies to the already-darkened edges.
+          const colorGradeShader = {
+            uniforms: {
+              tDiffuse:    { value: null },
+              gradeWarm:   { value: quality === 'ultra' ? 0.06 : 0.04 },
+              gradeLift:   { value: 0.02 },
+              gradeShadowDesat: { value: 0.85 },
+            },
+            vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+            fragmentShader: `
+              uniform sampler2D tDiffuse;
+              uniform float gradeWarm;
+              uniform float gradeLift;
+              uniform float gradeShadowDesat;
+              varying vec2 vUv;
+              void main() {
+                vec4 c = texture2D(tDiffuse, vUv);
+                vec3 col = c.rgb;
+                // Lift blacks
+                col = col + vec3(gradeLift);
+                // Luminance-based shadow desat
+                float lum = dot(col, vec3(0.299, 0.587, 0.114));
+                float shadowMix = smoothstep(0.0, 0.4, 1.0 - lum);
+                vec3 gray = vec3(lum);
+                col = mix(col, mix(col, gray, shadowMix * (1.0 - gradeShadowDesat)), 1.0);
+                // Warm highlights — push R+G in bright regions
+                float hi = smoothstep(0.5, 1.0, lum);
+                col.r += gradeWarm * hi;
+                col.g += gradeWarm * 0.5 * hi;
+                gl_FragColor = vec4(clamp(col, 0.0, 1.0), c.a);
+              }`,
+          };
+          composer.addPass(new ShaderPass(colorGradeShader));
+
+          // Wave 1 deferral 1: depth-of-field pass for cinematic dialogue.
+          // Cheap radial blur centered on screen — not true depth-aware DoF
+          // (which needs a separate depth render-target setup), but visually
+          // close enough for dialogue framing where the player's focus is
+          // the NPC at center. Off by default; activates when the
+          // `concordia:cinematic-mode` window event flips it on.
+          const dofShader = {
+            uniforms: {
+              tDiffuse:    { value: null },
+              dofStrength: { value: 0.0 },
+              dofRadius:   { value: 0.20 },
+            },
+            vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+            fragmentShader: `
+              uniform sampler2D tDiffuse;
+              uniform float dofStrength;
+              uniform float dofRadius;
+              varying vec2 vUv;
+              void main() {
+                vec4 c = texture2D(tDiffuse, vUv);
+                if (dofStrength < 0.001) { gl_FragColor = c; return; }
+                vec2 center = vec2(0.5, 0.5);
+                float d = distance(vUv, center) / 0.7071;
+                float blurAmt = smoothstep(dofRadius, 1.0, d) * dofStrength;
+                vec2 px = vec2(1.0 / 1920.0, 1.0 / 1080.0) * blurAmt * 4.0;
+                vec3 acc = c.rgb;
+                acc += texture2D(tDiffuse, vUv + vec2( px.x,  0.0)).rgb;
+                acc += texture2D(tDiffuse, vUv + vec2(-px.x,  0.0)).rgb;
+                acc += texture2D(tDiffuse, vUv + vec2( 0.0,  px.y)).rgb;
+                acc += texture2D(tDiffuse, vUv + vec2( 0.0, -px.y)).rgb;
+                acc += texture2D(tDiffuse, vUv + vec2( px.x,  px.y)).rgb;
+                acc += texture2D(tDiffuse, vUv + vec2(-px.x, -px.y)).rgb;
+                acc += texture2D(tDiffuse, vUv + vec2( px.x, -px.y)).rgb;
+                acc += texture2D(tDiffuse, vUv + vec2(-px.x,  px.y)).rgb;
+                gl_FragColor = vec4(acc / 9.0, c.a);
+              }`,
+          };
+          const dofPass = new ShaderPass(dofShader);
+          composer.addPass(dofPass);
+
+          // Bind dofPass.uniforms.dofStrength to a window event so any
+          // component can toggle cinematic mode without a prop chain.
+          const dofHandler = (e: Event) => {
+            const detail = (e as CustomEvent).detail as { active?: boolean; strength?: number } | undefined;
+            const target = detail?.active ? (detail.strength ?? 0.6) : 0;
+            try { dofPass.uniforms.dofStrength.value = target; } catch { /* noop */ }
+          };
+          window.addEventListener('concordia:cinematic-mode', dofHandler);
+          // Stash a cleanup hook so the existing dispose flow can detach.
+          (composer as unknown as { _dofCleanup?: () => void })._dofCleanup = () =>
+            window.removeEventListener('concordia:cinematic-mode', dofHandler);
+
           composerRef.current = composer;
         } catch (ppErr) {
           console.warn('[ConcordiaScene] Post-processing unavailable:', ppErr);
@@ -326,10 +520,16 @@ export default function ConcordiaScene({
       raycasterRef.current = raycaster;
 
       // ── Ambient + default directional light ─────────────────────
-      const ambient = new THREE.AmbientLight(activeTheme.ambientLight.color, activeTheme.ambientLight.intensity);
+      const ambient = new THREE.AmbientLight(
+        activeTheme.ambientLight.color,
+        activeTheme.ambientLight.intensity
+      );
       scene.add(ambient);
 
-      const sun = new THREE.DirectionalLight(activeTheme.sunLight.color, activeTheme.sunLight.intensity);
+      const sun = new THREE.DirectionalLight(
+        activeTheme.sunLight.color,
+        activeTheme.sunLight.intensity
+      );
       sun.position.set(100, 200, 80);
       sun.castShadow = true;
       sun.shadow.mapSize.width = settings.shadowMapSize;
@@ -344,14 +544,24 @@ export default function ConcordiaScene({
 
       // ── Portal glow lights — 5 retained (was 15); intensity +30% to compensate ──
       // Removed lights rely on building emissive (0.08) beyond 15m — imperceptible
-      const PORTAL_POSITIONS = [[8,4],[4,6],[12,3],[2,8],[16,7]];
+      const PORTAL_POSITIONS = [
+        [8, 4],
+        [4, 6],
+        [12, 3],
+        [2, 8],
+        [16, 7],
+      ];
       for (const [px, pz] of PORTAL_POSITIONS) {
         const pl = new THREE.PointLight(activeTheme.portalGlow, 2.6, 15);
         pl.position.set(px, 2, pz);
         scene.add(pl);
       }
       // ── Street lamp point lights — 3 retained (was 8); intensity +30% ──
-      const LAMP_POSITIONS = [[3,3],[7,7],[11,2]];
+      const LAMP_POSITIONS = [
+        [3, 3],
+        [7, 7],
+        [11, 2],
+      ];
       for (const [lx, lz] of LAMP_POSITIONS) {
         const lamp = new THREE.PointLight(activeTheme.streetLamp, 1.95, 20);
         lamp.position.set(lx, 4, lz);
@@ -366,7 +576,9 @@ export default function ConcordiaScene({
           upgradeShadowMap(renderer);
           configurePCSSLight(sun, settings.shadowMapSize, 200);
           if (!disposed) applyPCSSToScene(scene);
-        } catch { /* PCSS optional — silently skip if shader compile fails */ }
+        } catch {
+          /* PCSS optional — silently skip if shader compile fails */
+        }
       }
 
       // ── Reflection probes (quality ≥ high) ─────────────────────
@@ -377,7 +589,9 @@ export default function ConcordiaScene({
           const pm = new ReflectionProbeManager(renderer, scene);
           placeCityProbes(pm, new THREE.Vector3(0, 0, 0), 400, 3, 8);
           probeManagerRef.current = pm;
-        } catch { /* probes optional */ }
+        } catch {
+          /* probes optional */
+        }
       }
 
       // ── SSGI (quality = ultra) ──────────────────────────────────
@@ -385,24 +599,46 @@ export default function ConcordiaScene({
         try {
           const { SSGIPass } = await import('@/lib/world-lens/ssgi');
           ssgiPassRef.current = new SSGIPass(
-            renderer, scene, camera,
-            canvas!.clientWidth, canvas!.clientHeight,
-            { intensity: 0.4, numSamples: 8, temporalBlend: 0.1 },
+            renderer,
+            scene,
+            camera,
+            canvas!.clientWidth,
+            canvas!.clientHeight,
+            { intensity: 0.4, numSamples: 8, temporalBlend: 0.1 }
           );
-        } catch { /* SSGI optional */ }
+        } catch {
+          /* SSGI optional */
+        }
       }
 
       // ── WeatherTransitionSystem ─────────────────────────────────
       const { WeatherTransitionSystem } = await import('@/lib/world-lens/world-deformation');
       const weatherSys = new WeatherTransitionSystem({
-        type: 'clear', intensity: 0, windSpeed: 0, windDir: 0, temperature: 20, visibility: 500,
+        type: 'clear',
+        intensity: 0,
+        windSpeed: 0,
+        windDir: 0,
+        temperature: 20,
+        visibility: 500,
       });
       weatherSysRef.current = weatherSys;
 
+      // Retroactively register colliders for any building meshes that the
+      // scene loader placed before our addBuilding API was wired (e.g.
+      // pre-existing buildings loaded async from DB after physics init).
+      // syncFromScene is idempotent — buildings already registered are skipped.
+      try {
+        physicsRef.current?.syncFromScene?.(scene);
+      } catch {
+        // never block scene-ready on physics sync errors
+      }
+
       // Notify QuestMarker3D and other overlays that scene + camera are ready
-      window.dispatchEvent(new CustomEvent('concordia:scene-ready', {
-        detail: { scene, camera },
-      }));
+      window.dispatchEvent(
+        new CustomEvent('concordia:scene-ready', {
+          detail: { scene, camera },
+        })
+      );
 
       // Expose building lookup for deformation replay
       onSceneReadyRef.current?.((entityId: string) => {
@@ -411,6 +647,11 @@ export default function ConcordiaScene({
       });
 
       setIsReady(true);
+
+      // Camera follow / collision support refs (reused across frames)
+      const cameraLookStateRef = cameraLookState;
+      cameraLookStateRef.sensitivity = getStoredSensitivity();
+      const cameraRaycaster = new THREE.Raycaster();
 
       // ── Game loop ───────────────────────────────────────────────
       function gameLoop() {
@@ -421,6 +662,78 @@ export default function ConcordiaScene({
 
         // Step physics simulation
         physicsRef.current?.step(delta);
+
+        // ── Camera follow / first-person ──────────────────────────
+        // Drive the camera transform from the player's pose every frame.
+        // In first-person, mouse yaw drives the player's facing too (via
+        // the shared cameraLookState module that AvatarSystem3D reads).
+        // In follow, a raycast against the buildings layer pulls the camera
+        // forward when it would clip into a wall.
+        const mode = cameraModeRef.current;
+        const getPose = getPlayerPoseRef.current;
+        if (mode !== 'isometric' && mode !== 'cinematic' && getPose) {
+          const pose = getPose();
+          if (pose) {
+            // In first-person, the camera yaw IS the player yaw — we don't
+            // add to it. In follow, the player's body rotates with WASD
+            // independently and the camera orbits via mouse-look.
+            const yaw = mode === 'first-person'
+              ? cameraLookStateRef.yaw
+              : pose.yaw + cameraLookStateRef.yaw;
+            const pitch = cameraLookStateRef.pitch;
+            if (mode === 'first-person') {
+              const eyeY = pose.y + 1.6;
+              camera.position.set(pose.x, eyeY, pose.z);
+              const lookX = pose.x + Math.sin(yaw) * Math.cos(pitch);
+              const lookY = eyeY + Math.sin(pitch);
+              const lookZ = pose.z + Math.cos(yaw) * Math.cos(pitch);
+              camera.lookAt(lookX, lookY, lookZ);
+            } else if (mode === 'follow' || mode === 'interior') {
+              const dist = mode === 'interior' ? 3 : 6;
+              const height = mode === 'interior' ? 1.6 : 3.2;
+              let cx = pose.x - Math.sin(yaw) * dist * Math.cos(pitch);
+              let cy = pose.y + height + Math.sin(-pitch) * dist;
+              let cz = pose.z - Math.cos(yaw) * dist * Math.cos(pitch);
+
+              // Camera collision: raycast from chest to desired camera
+              // position. If a building is in the way, pull the camera
+              // forward to the hit point minus a small offset so we don't
+              // see through walls.
+              const eyeX = pose.x;
+              const eyeY2 = pose.y + 1.4;
+              const eyeZ = pose.z;
+              const dx = cx - eyeX;
+              const dy = cy - eyeY2;
+              const dz = cz - eyeZ;
+              const desired = Math.hypot(dx, dy, dz);
+              if (desired > 0.01) {
+                const dirN = { x: dx / desired, y: dy / desired, z: dz / desired };
+                cameraRaycaster.set(
+                  new THREE.Vector3(eyeX, eyeY2, eyeZ),
+                  new THREE.Vector3(dirN.x, dirN.y, dirN.z),
+                );
+                cameraRaycaster.far = desired;
+                const buildingsLayer = layers.buildings;
+                if (buildingsLayer) {
+                  const hits = cameraRaycaster.intersectObject(buildingsLayer, true);
+                  if (hits.length > 0 && hits[0].distance < desired) {
+                    const safe = Math.max(0.5, hits[0].distance - 0.3);
+                    cx = eyeX + dirN.x * safe;
+                    cy = eyeY2 + dirN.y * safe;
+                    cz = eyeZ + dirN.z * safe;
+                  }
+                }
+              }
+
+              // Lerp toward target for smooth follow.
+              const lerp = Math.min(1, delta * 8);
+              camera.position.x += (cx - camera.position.x) * lerp;
+              camera.position.y += (cy - camera.position.y) * lerp;
+              camera.position.z += (cz - camera.position.z) * lerp;
+              camera.lookAt(pose.x, pose.y + 1.4, pose.z);
+            }
+          }
+        }
 
         // Update weather transition + emit modifiers
         weatherSys.update(delta);
@@ -458,6 +771,41 @@ export default function ConcordiaScene({
         if (fpsBuffer.length > 60) fpsBuffer.shift();
 
         const avgFps = fpsBuffer.reduce((a, b) => a + b, 0) / fpsBuffer.length;
+
+        // ── Frustum culling — hide buildings outside camera view ────
+        if (THREE && cameraRef.current && layersRef.current?.buildings) {
+          const cam = cameraRef.current as InstanceType<typeof import('three').PerspectiveCamera>;
+          cam.updateMatrixWorld();
+          const frustum = new THREE.Frustum();
+          frustum.setFromProjectionMatrix(
+            new THREE.Matrix4().multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse)
+          );
+          const buildingsGroup = layersRef.current.buildings as InstanceType<
+            typeof import('three').Group
+          >;
+          const box = new THREE.Box3();
+          buildingsGroup.children.forEach((obj) => {
+            if (!obj) return;
+            box.setFromObject(obj);
+            obj.visible = frustum.intersectsBox(box);
+          });
+        }
+
+        // ── Auto-downgrade quality when FPS sustained below 50 ──────
+        if (fpsBuffer.length >= 60 && avgFps < 50) {
+          lowFpsCountRef.current += 1;
+          if (lowFpsCountRef.current >= 3) {
+            lowFpsCountRef.current = 0;
+            setQuality((prev) => {
+              const order: QualityPreset[] = ['low', 'medium', 'high', 'ultra'];
+              const idx = order.indexOf(prev);
+              return idx > 0 ? order[idx - 1] : prev;
+            });
+          }
+        } else {
+          lowFpsCountRef.current = 0;
+        }
+
         setPerformance({
           drawCalls: info.render.calls,
           maxDrawCalls: settings.maxDrawCalls,
@@ -500,14 +848,16 @@ export default function ConcordiaScene({
       const rect = canvas!.getBoundingClientRect();
       const mouse = new THREE.Vector2(
         ((e.clientX - rect.left) / rect.width) * 2 - 1,
-        -((e.clientY - rect.top) / rect.height) * 2 + 1,
+        -((e.clientY - rect.top) / rect.height) * 2 + 1
       );
       const rc = raycasterRef.current as InstanceType<typeof import('three').Raycaster>;
       const cam = cameraRef.current as InstanceType<typeof import('three').PerspectiveCamera>;
       rc.setFromCamera(mouse, cam);
 
       // Check buildings layer first
-      const buildingsGroup = layersRef.current['buildings'] as InstanceType<typeof import('three').Group>;
+      const buildingsGroup = layersRef.current['buildings'] as InstanceType<
+        typeof import('three').Group
+      >;
       if (buildingsGroup) {
         const hits = rc.intersectObjects(buildingsGroup.children, true);
         if (hits.length > 0) {
@@ -523,7 +873,9 @@ export default function ConcordiaScene({
       }
 
       // Check terrain layer
-      const terrainGroup = layersRef.current['terrain'] as InstanceType<typeof import('three').Group>;
+      const terrainGroup = layersRef.current['terrain'] as InstanceType<
+        typeof import('three').Group
+      >;
       if (terrainGroup) {
         const hits = rc.intersectObjects(terrainGroup.children, true);
         if (hits.length > 0 && onTerrainClick) {
@@ -534,12 +886,38 @@ export default function ConcordiaScene({
     }
     canvas.addEventListener('click', handleCanvasClick);
 
+    // ── Mouse-look (pointer lock) for follow + first-person ─────
+    // Click the canvas to enter pointer lock when in a player-tracking
+    // mode; mousemove drives yaw + pitch additive offsets that the game
+    // loop applies to the camera. Esc / outside-click releases.
+    function maybeRequestPointerLock() {
+      const mode = cameraModeRef.current;
+      if (mode !== 'follow' && mode !== 'first-person' && mode !== 'interior') return;
+      try {
+        (canvas as HTMLCanvasElement & { requestPointerLock?: () => void }).requestPointerLock?.();
+      } catch { /* pointer lock may be unsupported */ }
+    }
+    function handleMouseMove(e: MouseEvent) {
+      if (document.pointerLockElement !== canvas) return;
+      const sens = cameraLookState.sensitivity;
+      const yawDelta = -(e.movementX || 0) * sens;
+      const pitchDelta = -(e.movementY || 0) * sens;
+      cameraLookState.yaw = (cameraLookState.yaw + yawDelta) % (Math.PI * 2);
+      cameraLookState.pitch = Math.max(-1.2, Math.min(1.2, cameraLookState.pitch + pitchDelta));
+    }
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+    canvas.addEventListener('mousedown', maybeRequestPointerLock);
+    document.addEventListener('mousemove', handleMouseMove);
+
     // ── Cleanup ───────────────────────────────────────────────────
     return () => {
       disposed = true;
       cancelAnimationFrame(frameIdRef.current);
       window.removeEventListener('resize', handleResize);
       canvas.removeEventListener('click', handleCanvasClick);
+      canvas.removeEventListener('mousedown', maybeRequestPointerLock);
+      document.removeEventListener('mousemove', handleMouseMove);
+      try { document.exitPointerLock?.(); } catch { /* no-op */ }
 
       // Dispose all geometries, materials, and textures in scene
       if (sceneRef.current) {
@@ -547,8 +925,9 @@ export default function ConcordiaScene({
         sc.traverse((obj) => {
           const mesh = obj as unknown as {
             geometry?: { dispose: () => void };
-            material?: { dispose: () => void; map?: { dispose: () => void } } |
-                        { dispose: () => void; map?: { dispose: () => void } }[];
+            material?:
+              | { dispose: () => void; map?: { dispose: () => void } }
+              | { dispose: () => void; map?: { dispose: () => void } }[];
           };
           if (mesh.geometry) mesh.geometry.dispose();
           if (mesh.material) {
@@ -584,38 +963,69 @@ export default function ConcordiaScene({
 
   // ── Scene API ──────────────────────────────────────────────────
 
-  const addBuilding = useCallback((buildingGroup: unknown, position: { x: number; y: number; z: number }) => {
-    const group = buildingGroup as { position: { set: (x: number, y: number, z: number) => void }; userData?: Record<string, unknown> };
-    group.position.set(position.x, position.y, position.z);
-    const id = (group.userData?.buildingId as string) ?? `building_${Date.now()}`;
-    buildingMapRef.current.set(id, buildingGroup);
-    const layer = layersRef.current['buildings'] as { add: (child: unknown) => void } | undefined;
-    layer?.add(buildingGroup);
-  }, []);
+  const addBuilding = useCallback(
+    (buildingGroup: unknown, position: { x: number; y: number; z: number }) => {
+      const group = buildingGroup as {
+        position: { set: (x: number, y: number, z: number) => void };
+        userData?: Record<string, unknown>;
+      };
+      group.position.set(position.x, position.y, position.z);
+      if (!group.userData) (group as { userData: Record<string, unknown> }).userData = {};
+      const userData = group.userData as Record<string, unknown>;
+      const id = (userData.buildingId as string) ?? `building_${Date.now()}`;
+      userData.buildingId = id;
+      userData.isBuilding = true;
+      buildingMapRef.current.set(id, buildingGroup);
+      const layer = layersRef.current['buildings'] as { add: (child: unknown) => void } | undefined;
+      layer?.add(buildingGroup);
+
+      // Register a Rapier collider so the player and NPCs collide with this building.
+      const physics = physicsRef.current as
+        | { registerBuildingFromObject?: (obj: unknown, id: string) => string | null }
+        | null;
+      physics?.registerBuildingFromObject?.(group, id);
+    },
+    []
+  );
 
   const removeBuilding = useCallback((id: string) => {
-    const group = buildingMapRef.current.get(id) as {
-      parent?: { remove: (child: unknown) => void };
-    } | undefined;
+    const group = buildingMapRef.current.get(id) as
+      | {
+          parent?: { remove: (child: unknown) => void };
+          userData?: Record<string, unknown>;
+        }
+      | undefined;
     if (group?.parent) {
       group.parent.remove(group);
+    }
+    const physicsKey = group?.userData?.physicsKey as string | undefined;
+    if (physicsKey) {
+      const physics = physicsRef.current as
+        | { removeBuildingCollider?: (key: string) => void }
+        | null;
+      physics?.removeBuildingCollider?.(physicsKey);
     }
     buildingMapRef.current.delete(id);
   }, []);
 
   const setWeather = useCallback((type: string, intensity: number) => {
-    weatherSysRef.current?.transitionTo({
-      type: type as import('@/lib/world-lens/world-deformation').WeatherType,
-      intensity,
-      windSpeed: intensity * 8,
-      windDir: 0,
-      temperature: 15,
-      visibility: Math.max(10, 500 - intensity * 450),
-    }, 15);
+    weatherSysRef.current?.transitionTo(
+      {
+        type: type as import('@/lib/world-lens/world-deformation').WeatherType,
+        intensity,
+        windSpeed: intensity * 8,
+        windDir: 0,
+        temperature: 15,
+        visibility: Math.max(10, 500 - intensity * 450),
+      },
+      15
+    );
   }, []);
 
   const setTimeOfDay = useCallback((hour: number) => {
-    const weatherGroup = layersRef.current['weather'] as { userData: Record<string, unknown> } | undefined;
+    const weatherGroup = layersRef.current['weather'] as
+      | { userData: Record<string, unknown> }
+      | undefined;
     if (weatherGroup) {
       weatherGroup.userData.timeOfDay = hour;
     }
@@ -623,7 +1033,10 @@ export default function ConcordiaScene({
 
   const getIntersectedObject = useCallback((screenX: number, screenY: number): unknown | null => {
     if (!raycasterRef.current || !cameraRef.current || !sceneRef.current) return null;
-    const rc = raycasterRef.current as { setFromCamera: (v: unknown, c: unknown) => void; intersectObjects: (o: unknown[], r: boolean) => { object: unknown }[] };
+    const rc = raycasterRef.current as {
+      setFromCamera: (v: unknown, c: unknown) => void;
+      intersectObjects: (o: unknown[], r: boolean) => { object: unknown }[];
+    };
     const cam = cameraRef.current;
     const sc = sceneRef.current as { children: unknown[] };
     rc.setFromCamera({ x: screenX, y: screenY }, cam);
@@ -650,7 +1063,10 @@ export default function ConcordiaScene({
       <div key={label} className="flex items-center gap-2 text-[10px]">
         <span className="w-16 text-white/50">{label}</span>
         <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
-          <div className={`h-full ${color} rounded-full transition-all`} style={{ width: `${pct}%` }} />
+          <div
+            className={`h-full ${color} rounded-full transition-all`}
+            style={{ width: `${pct}%` }}
+          />
         </div>
         <span className="w-20 text-right text-white/40">
           {value.toLocaleString()} / {max.toLocaleString()}
@@ -669,7 +1085,7 @@ export default function ConcordiaScene({
     containerEl: HTMLElement | null;
   }> | null>(null);
   useEffect(() => {
-    import('@/components/world-lens/QuestMarker3D').then(m => {
+    import('@/components/world-lens/QuestMarker3D').then((m) => {
       setQuestMarker3DComp(() => m.default as typeof QuestMarker3DComp);
     });
   }, []);
@@ -677,17 +1093,10 @@ export default function ConcordiaScene({
   return (
     <ConcordiaSceneContext.Provider value={sceneAPI}>
       <div ref={containerRef} className="relative" style={{ width, height }}>
-        <canvas
-          ref={canvasRef}
-          className="w-full h-full block"
-          style={{ touchAction: 'none' }}
-        />
+        <canvas ref={canvasRef} className="w-full h-full block" style={{ touchAction: 'none' }} />
         {/* 3D quest objective markers — CSS2DRenderer overlay */}
         {QuestMarker3DComp && questObjectives.length > 0 && (
-          <QuestMarker3DComp
-            objectives={questObjectives}
-            containerEl={containerRef.current}
-          />
+          <QuestMarker3DComp objectives={questObjectives} containerEl={containerRef.current} />
         )}
 
         {/* Loading overlay */}
@@ -703,7 +1112,9 @@ export default function ConcordiaScene({
 
         {/* FPS counter */}
         {showFps && (
-          <div className={`absolute top-2 left-2 p-2 ${panel} text-[10px] font-mono space-y-1 min-w-[200px]`}>
+          <div
+            className={`absolute top-2 left-2 p-2 ${panel} text-[10px] font-mono space-y-1 min-w-[200px]`}
+          >
             <div className="flex items-center gap-1.5 text-green-400 text-xs font-bold">
               <Activity className="w-3 h-3" />
               {performance.fps} FPS
@@ -740,7 +1151,10 @@ export default function ConcordiaScene({
                 {(['low', 'medium', 'high', 'ultra'] as QualityPreset[]).map((q) => (
                   <button
                     key={q}
-                    onClick={() => { setQuality(q); setShowQualitySelector(false); }}
+                    onClick={() => {
+                      setQuality(q);
+                      setShowQualitySelector(false);
+                    }}
                     className={`block w-full text-left px-2 py-1 text-xs rounded transition-colors ${
                       q === quality
                         ? 'bg-blue-600/40 text-blue-300'

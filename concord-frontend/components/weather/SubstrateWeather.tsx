@@ -4,9 +4,17 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { motion } from 'framer-motion';
 import {
-  Sun, Wind, CloudFog, CloudLightning,
-  Brain, Sparkles, Wrench, Shield,
-  ChevronDown, ChevronUp, Thermometer,
+  Sun,
+  Wind,
+  CloudFog,
+  CloudLightning,
+  Brain,
+  Sparkles,
+  Wrench,
+  Shield,
+  ChevronDown,
+  ChevronUp,
+  Thermometer,
 } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -14,7 +22,11 @@ import { cn } from '@/lib/utils';
 const WEATHER_CONFIG: Record<string, { icon: React.ElementType; color: string; bg: string }> = {
   clear: { icon: Sun, color: 'text-yellow-400', bg: 'from-yellow-500/10 to-orange-500/10' },
   breezy: { icon: Wind, color: 'text-blue-400', bg: 'from-blue-500/10 to-cyan-500/10' },
-  stormy: { icon: CloudLightning, color: 'text-purple-400', bg: 'from-purple-500/10 to-pink-500/10' },
+  stormy: {
+    icon: CloudLightning,
+    color: 'text-purple-400',
+    bg: 'from-purple-500/10 to-pink-500/10',
+  },
   foggy: { icon: CloudFog, color: 'text-gray-400', bg: 'from-gray-500/10 to-gray-600/10' },
 };
 
@@ -25,18 +37,23 @@ const BRAIN_ICONS: Record<string, React.ElementType> = {
   repair: Shield,
 };
 
-export function SubstrateWeather({ className }: { className?: string }) {
+function SubstrateWeather({ className }: { className?: string }) {
   const [expanded, setExpanded] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ['substrate-weather'],
-    queryFn: () => api.get('/api/weather').then(r => r.data),
+    queryFn: () => api.get('/api/weather').then((r) => r.data),
     refetchInterval: 60000,
   });
 
   if (isLoading) {
     return (
-      <div className={cn('p-4 bg-lattice-surface border border-lattice-border rounded-xl animate-pulse', className)}>
+      <div
+        className={cn(
+          'p-4 bg-lattice-surface border border-lattice-border rounded-xl animate-pulse',
+          className
+        )}
+      >
         <div className="h-20 bg-lattice-deep rounded" />
       </div>
     );
@@ -50,7 +67,12 @@ export function SubstrateWeather({ className }: { className?: string }) {
   const freshness = stats.freshness || {};
 
   return (
-    <div className={cn('bg-lattice-surface border border-lattice-border rounded-xl overflow-hidden', className)}>
+    <div
+      className={cn(
+        'bg-lattice-surface border border-lattice-border rounded-xl overflow-hidden',
+        className
+      )}
+    >
       {/* Main weather display */}
       <div className={cn('bg-gradient-to-br p-5', weatherConf.bg)}>
         <div className="flex items-center justify-between">
@@ -101,16 +123,32 @@ export function SubstrateWeather({ className }: { className?: string }) {
         <span className="text-xs text-gray-500 w-16">Freshness</span>
         <div className="flex-1 flex h-3 rounded-full overflow-hidden bg-lattice-deep">
           {freshness.fresh > 0 && (
-            <div className="bg-green-500 h-full" style={{ width: `${(freshness.fresh / stats.totalDTUs) * 100}%` }} title={`Fresh: ${freshness.fresh}`} />
+            <div
+              className="bg-green-500 h-full"
+              style={{ width: `${(freshness.fresh / stats.totalDTUs) * 100}%` }}
+              title={`Fresh: ${freshness.fresh}`}
+            />
           )}
           {freshness.warm > 0 && (
-            <div className="bg-cyan-500 h-full" style={{ width: `${(freshness.warm / stats.totalDTUs) * 100}%` }} title={`Warm: ${freshness.warm}`} />
+            <div
+              className="bg-cyan-500 h-full"
+              style={{ width: `${(freshness.warm / stats.totalDTUs) * 100}%` }}
+              title={`Warm: ${freshness.warm}`}
+            />
           )}
           {freshness.cooling > 0 && (
-            <div className="bg-amber-500 h-full" style={{ width: `${(freshness.cooling / stats.totalDTUs) * 100}%` }} title={`Cooling: ${freshness.cooling}`} />
+            <div
+              className="bg-amber-500 h-full"
+              style={{ width: `${(freshness.cooling / stats.totalDTUs) * 100}%` }}
+              title={`Cooling: ${freshness.cooling}`}
+            />
           )}
           {freshness.stale > 0 && (
-            <div className="bg-red-500 h-full" style={{ width: `${(freshness.stale / stats.totalDTUs) * 100}%` }} title={`Stale: ${freshness.stale}`} />
+            <div
+              className="bg-red-500 h-full"
+              style={{ width: `${(freshness.stale / stats.totalDTUs) * 100}%` }}
+              title={`Stale: ${freshness.stale}`}
+            />
           )}
         </div>
       </div>
@@ -118,13 +156,29 @@ export function SubstrateWeather({ className }: { className?: string }) {
       {/* Brain health */}
       <div className="px-5 pb-3">
         <div className="flex items-center gap-3">
-          {(Object.entries(data.brainHealth || {}) as [string, { requests: number; errors: number; enabled: boolean }][]).map(([name, health]) => {
+          {(
+            Object.entries(data.brainHealth || {}) as [
+              string,
+              { requests: number; errors: number; enabled: boolean },
+            ][]
+          ).map(([name, health]) => {
             const BrainIcon = BRAIN_ICONS[name] || Brain;
             return (
-              <div key={name} className="flex items-center gap-1.5" title={`${name}: ${health.requests} requests, ${health.errors} errors`}>
-                <BrainIcon className={cn('w-3.5 h-3.5', health.enabled ? 'text-green-400' : 'text-gray-600')} />
+              <div
+                key={name}
+                className="flex items-center gap-1.5"
+                title={`${name}: ${health.requests} requests, ${health.errors} errors`}
+              >
+                <BrainIcon
+                  className={cn('w-3.5 h-3.5', health.enabled ? 'text-green-400' : 'text-gray-600')}
+                />
                 <span className="text-[10px] text-gray-500 capitalize">{name}</span>
-                <span className={cn('w-1.5 h-1.5 rounded-full', health.enabled ? 'bg-green-400' : 'bg-gray-600')} />
+                <span
+                  className={cn(
+                    'w-1.5 h-1.5 rounded-full',
+                    health.enabled ? 'bg-green-400' : 'bg-gray-600'
+                  )}
+                />
               </div>
             );
           })}
@@ -151,7 +205,10 @@ export function SubstrateWeather({ className }: { className?: string }) {
                   .sort(([, a], [, b]) => (b as number) - (a as number))
                   .slice(0, 10)
                   .map(([domain, count]) => (
-                    <span key={domain} className="px-2 py-0.5 bg-lattice-deep rounded text-[10px] text-gray-400">
+                    <span
+                      key={domain}
+                      className="px-2 py-0.5 bg-lattice-deep rounded text-[10px] text-gray-400"
+                    >
                       {domain}: {count as number}
                     </span>
                   ))}
@@ -163,11 +220,23 @@ export function SubstrateWeather({ className }: { className?: string }) {
           <div>
             <h4 className="text-xs font-medium text-gray-400 mb-1">Tier Distribution</h4>
             <div className="flex items-center gap-3">
-              {(Object.entries(stats.tierDistribution || {}) as [string, number][]).map(([tier, count]) => (
-                <span key={tier} className={cn('text-xs', tier === 'hyper' ? 'text-yellow-400' : tier === 'mega' ? 'text-purple-400' : 'text-gray-400')}>
-                  {tier}: {count}
-                </span>
-              ))}
+              {(Object.entries(stats.tierDistribution || {}) as [string, number][]).map(
+                ([tier, count]) => (
+                  <span
+                    key={tier}
+                    className={cn(
+                      'text-xs',
+                      tier === 'hyper'
+                        ? 'text-yellow-400'
+                        : tier === 'mega'
+                          ? 'text-purple-400'
+                          : 'text-gray-400'
+                    )}
+                  >
+                    {tier}: {count}
+                  </span>
+                )
+              )}
             </div>
           </div>
 
@@ -182,3 +251,7 @@ export function SubstrateWeather({ className }: { className?: string }) {
     </div>
   );
 }
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedSubstrateWeather = withErrorBoundary(SubstrateWeather);
+export { _WrappedSubstrateWeather as SubstrateWeather };

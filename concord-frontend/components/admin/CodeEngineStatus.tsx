@@ -2,8 +2,17 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Code2, GitBranch, Package, Layers, AlertTriangle,
-  RefreshCw, Play, Minimize2, CheckCircle, XCircle, Clock
+  Code2,
+  GitBranch,
+  Package,
+  Layers,
+  AlertTriangle,
+  RefreshCw,
+  Play,
+  Minimize2,
+  CheckCircle,
+  XCircle,
+  Clock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -76,7 +85,7 @@ function cretiBg(score: number): string {
 
 // ── Component ───────────────────────────────────────────────────────────
 
-export function CodeEngineStatus({ className, apiBase = '' }: CodeEngineStatusProps) {
+function CodeEngineStatus({ className, apiBase = '' }: CodeEngineStatusProps) {
   const [stats, setStats] = useState<CodeEngineStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -160,7 +169,9 @@ export function CodeEngineStatus({ className, apiBase = '' }: CodeEngineStatusPr
 
   if (loading && !stats) {
     return (
-      <div className={cn('bg-lattice-surface border border-lattice-border rounded-xl p-6', className)}>
+      <div
+        className={cn('bg-lattice-surface border border-lattice-border rounded-xl p-6', className)}
+      >
         <div className="flex items-center gap-3 animate-pulse">
           <Code2 className="w-5 h-5 text-gray-600" />
           <span className="text-gray-500">Loading Code Engine status...</span>
@@ -173,7 +184,9 @@ export function CodeEngineStatus({ className, apiBase = '' }: CodeEngineStatusPr
 
   if (error && !stats) {
     return (
-      <div className={cn('bg-lattice-surface border border-lattice-border rounded-xl p-6', className)}>
+      <div
+        className={cn('bg-lattice-surface border border-lattice-border rounded-xl p-6', className)}
+      >
         <div className="flex items-center gap-3">
           <XCircle className="w-5 h-5 text-red-400" />
           <span className="text-red-400">Failed to load Code Engine status</span>
@@ -247,12 +260,14 @@ export function CodeEngineStatus({ className, apiBase = '' }: CodeEngineStatusPr
 
         {/* Action result banner */}
         {actionResult && (
-          <div className={cn(
-            'mb-4 px-4 py-2 rounded-lg text-sm flex items-center gap-2',
-            actionResult.ok
-              ? 'bg-green-500/10 border border-green-500/30 text-green-400'
-              : 'bg-red-500/10 border border-red-500/30 text-red-400'
-          )}>
+          <div
+            className={cn(
+              'mb-4 px-4 py-2 rounded-lg text-sm flex items-center gap-2',
+              actionResult.ok
+                ? 'bg-green-500/10 border border-green-500/30 text-green-400'
+                : 'bg-red-500/10 border border-red-500/30 text-red-400'
+            )}
+          >
             {actionResult.ok ? (
               <CheckCircle className="w-4 h-4 flex-shrink-0" />
             ) : (
@@ -305,10 +320,16 @@ export function CodeEngineStatus({ className, apiBase = '' }: CodeEngineStatusPr
         {/* Timestamps */}
         <div className="flex items-center gap-6 mt-4 text-xs text-gray-500">
           <span>
-            Last ingestion: <span className="text-gray-400">{formatRelativeTime(stats?.lastIngestionAt ?? null)}</span>
+            Last ingestion:{' '}
+            <span className="text-gray-400">
+              {formatRelativeTime(stats?.lastIngestionAt ?? null)}
+            </span>
           </span>
           <span>
-            Last compression: <span className="text-gray-400">{formatRelativeTime(stats?.lastCompressionAt ?? null)}</span>
+            Last compression:{' '}
+            <span className="text-gray-400">
+              {formatRelativeTime(stats?.lastCompressionAt ?? null)}
+            </span>
           </span>
         </div>
       </div>
@@ -387,7 +408,12 @@ export function CodeEngineStatus({ className, apiBase = '' }: CodeEngineStatusPr
                         style={{ width: `${Math.min(pattern.cretiScore * 100, 100)}%` }}
                       />
                     </div>
-                    <span className={cn('text-sm font-mono font-medium', cretiColor(pattern.cretiScore))}>
+                    <span
+                      className={cn(
+                        'text-sm font-mono font-medium',
+                        cretiColor(pattern.cretiScore)
+                      )}
+                    >
                       {pattern.cretiScore.toFixed(2)}
                     </span>
                   </div>
@@ -434,9 +460,7 @@ function StatCard({
           <Icon className="w-3.5 h-3.5" />
         </div>
       </div>
-      <div className="text-xl font-bold text-white">
-        {value.toLocaleString()}
-      </div>
+      <div className="text-xl font-bold text-white">{value.toLocaleString()}</div>
     </div>
   );
 }
@@ -452,11 +476,19 @@ function IngestionStatusBadge({ status }: { status: IngestionEntry['status'] }) 
   const { icon: Icon, color, spin } = config[status];
 
   return (
-    <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium', color)}>
+    <span
+      className={cn(
+        'inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium',
+        color
+      )}
+    >
       <Icon className={cn('w-3 h-3', spin && 'animate-spin')} />
       {status}
     </span>
   );
 }
 
-export default CodeEngineStatus;
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedCodeEngineStatus = withErrorBoundary(CodeEngineStatus);
+export { _WrappedCodeEngineStatus as CodeEngineStatus };
+export default _WrappedCodeEngineStatus;

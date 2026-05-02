@@ -37,7 +37,7 @@ interface EventsResponse {
   offset: number;
 }
 
-export function ActivityFeed() {
+function ActivityFeed() {
   const queryClient = useQueryClient();
   const addToast = useUIStore((s) => s.addToast);
   const [offset, setOffset] = useState(0);
@@ -53,9 +53,17 @@ export function ActivityFeed() {
     const handler = () => {
       queryClient.invalidateQueries({ queryKey: ['activity-feed'] });
     };
-    const events = ['dtu:created', 'dtu:updated', 'dtu:deleted', 'system:alert', 'lens:dtu_generated'];
-    events.forEach(e => on(e, handler));
-    return () => { events.forEach(e => off(e, handler)); };
+    const events = [
+      'dtu:created',
+      'dtu:updated',
+      'dtu:deleted',
+      'system:alert',
+      'lens:dtu_generated',
+    ];
+    events.forEach((e) => on(e, handler));
+    return () => {
+      events.forEach((e) => off(e, handler));
+    };
   }, [isConnected, on, off, queryClient]);
 
   const { data, isLoading, refetch } = useQuery<EventsResponse>({
@@ -112,7 +120,10 @@ export function ActivityFeed() {
         <Filter className="w-4 h-4 text-gray-500" />
         <select
           value={typeFilter}
-          onChange={(e) => { setTypeFilter(e.target.value); setOffset(0); }}
+          onChange={(e) => {
+            setTypeFilter(e.target.value);
+            setOffset(0);
+          }}
           className="bg-lattice-surface border border-lattice-border rounded px-2 py-1 text-xs text-gray-300"
         >
           <option value="">All types</option>
@@ -125,7 +136,10 @@ export function ActivityFeed() {
         </select>
         <select
           value={scopeFilter}
-          onChange={(e) => { setScopeFilter(e.target.value); setOffset(0); }}
+          onChange={(e) => {
+            setScopeFilter(e.target.value);
+            setOffset(0);
+          }}
           className="bg-lattice-surface border border-lattice-border rounded px-2 py-1 text-xs text-gray-300"
         >
           <option value="">All scopes</option>
@@ -142,7 +156,10 @@ export function ActivityFeed() {
       ) : (
         <div className="space-y-2">
           {items.map((evt) => (
-            <div key={evt.id} className="p-3 rounded-lg bg-lattice-surface border border-lattice-border hover:border-lattice-border/80">
+            <div
+              key={evt.id}
+              className="p-3 rounded-lg bg-lattice-surface border border-lattice-border hover:border-lattice-border/80"
+            >
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
@@ -156,8 +173,14 @@ export function ActivityFeed() {
                   <p className="text-sm text-gray-300 mt-1">{evt.summary || evt.type}</p>
                   <div className="flex items-center gap-3 mt-1 text-xs text-gray-600">
                     <span>{formatTimestamp(evt.createdAt)}</span>
-                    {evt.entityType && <span>{evt.entityType}:{evt.entityId?.slice(0, 8)}</span>}
-                    {evt.requestId && <span className="font-mono">req:{evt.requestId.slice(0, 8)}</span>}
+                    {evt.entityType && (
+                      <span>
+                        {evt.entityType}:{evt.entityId?.slice(0, 8)}
+                      </span>
+                    )}
+                    {evt.requestId && (
+                      <span className="font-mono">req:{evt.requestId.slice(0, 8)}</span>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-1 ml-2">
@@ -221,11 +244,7 @@ const EventTypeBadge = React.memo(function EventTypeBadge({ type }: { type: stri
   };
   const color = colors[type] || 'text-gray-400 bg-gray-400/10';
 
-  return (
-    <span className={cn('text-[10px] px-1.5 py-0.5 rounded font-mono', color)}>
-      {type}
-    </span>
-  );
+  return <span className={cn('text-[10px] px-1.5 py-0.5 rounded font-mono', color)}>{type}</span>;
 });
 
 function formatTimestamp(iso: string): string {
@@ -242,3 +261,7 @@ function formatTimestamp(iso: string): string {
     return iso;
   }
 }
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedActivityFeed = withErrorBoundary(ActivityFeed);
+export { _WrappedActivityFeed as ActivityFeed };

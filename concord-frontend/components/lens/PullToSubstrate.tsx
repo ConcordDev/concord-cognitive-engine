@@ -21,13 +21,13 @@ interface PullToSubstrateProps {
  * Provides Pull (fork to substrate), Cite, and Fork actions.
  * Used across all lens pages to enable the feed → substrate flow.
  */
-export function PullToSubstrate({ domain, artifactId, dtuId, compact = false }: PullToSubstrateProps) {
+function PullToSubstrateBase({ domain, artifactId, dtuId, compact = false }: PullToSubstrateProps) {
   const addToast = useUIStore((s) => s.addToast);
   const queryClient = useQueryClient();
 
   const pullMutation = useMutation({
     mutationFn: () => api.post(`/api/lens/${domain}/${artifactId}/pull`),
-    onSuccess: (res) => {
+    onSuccess: (_res) => {
       addToast({ type: 'success', message: `Pulled to your substrate` });
       queryClient.invalidateQueries({ queryKey: ['dtus'] });
       queryClient.invalidateQueries({ queryKey: ['lens', domain] });
@@ -57,7 +57,10 @@ export function PullToSubstrate({ domain, artifactId, dtuId, compact = false }: 
     return (
       <div className="flex items-center gap-1">
         <button
-          onClick={(e) => { e.stopPropagation(); pullMutation.mutate(); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            pullMutation.mutate();
+          }}
           disabled={pullMutation.isPending}
           className="text-gray-400 hover:text-neon-green transition-colors disabled:opacity-50"
           title="Pull to substrate"
@@ -65,14 +68,20 @@ export function PullToSubstrate({ domain, artifactId, dtuId, compact = false }: 
           <Download className="w-4 h-4" />
         </button>
         <button
-          onClick={(e) => { e.stopPropagation(); citeMutation.mutate(); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            citeMutation.mutate();
+          }}
           className="text-gray-400 hover:text-neon-cyan transition-colors"
           title="Cite"
         >
           <Quote className="w-4 h-4" />
         </button>
         <button
-          onClick={(e) => { e.stopPropagation(); forkMutation.mutate(); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            forkMutation.mutate();
+          }}
           disabled={forkMutation.isPending}
           className="text-gray-400 hover:text-neon-purple transition-colors disabled:opacity-50"
           title="Fork / Remix"
@@ -111,3 +120,7 @@ export function PullToSubstrate({ domain, artifactId, dtuId, compact = false }: 
     </div>
   );
 }
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedPullToSubstrate = withErrorBoundary(PullToSubstrateBase);
+export { _WrappedPullToSubstrate as PullToSubstrate };

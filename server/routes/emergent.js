@@ -4,6 +4,9 @@
  */
 import express from "express";
 import { asyncHandler } from "../lib/async-handler.js";
+import { castVote, tallyVotes } from "../lib/governance/voting.js";
+import { processProposalConflicts, addRuleWithConflictCheck } from "../lib/governance/conflict-detector.js";
+import { evaluateRulesForAction } from "../lib/governance/rule-enforcement.js";
 
 export default function createEmergentRouter({ makeCtx, runMacro }) {
   const router = express.Router();
@@ -469,6 +472,44 @@ export default function createEmergentRouter({ makeCtx, runMacro }) {
   router.get("/scheduler/metrics", asyncHandler(async (req, res) => {
     const out = await runMacro("emergent", "scheduler.metrics", {}, makeCtx(req));
     return res.json(out);
+  }));
+
+  // ── Constitutional Governance ──────────────────────────────────────────────
+
+  router.post("/proposals/:id/vote", asyncHandler(async (req, res) => {
+    const { voteType } = req.body;
+    const userId = req.user?.id ?? req.body.userId;
+    const result = castVote(req.params.id, userId, voteType);
+    return res.json({ ok: true, ...result });
+  }));
+
+  router.get("/proposals/:id/tally", asyncHandler(async (req, res) => {
+    // Pull votes from STATE via macro; fall back to empty list if unavailable
+    let votes = [];
+    try {
+      const out = await runMacro("emergent", "lattice.readStaging", { proposalId: req.params.id }, makeCtx(req));
+      votes = out?.votes ?? out?.data?.votes ?? [];
+    } catch { /* tally on empty is still valid */ }
+    const tally = tallyVotes(votes, {});
+    return res.json({ ok: true, tally });
+  }));
+
+  router.post("/proposals/:id/conflicts", asyncHandler(async (req, res) => {
+    const ctx = makeCtx(req);
+    const result = processProposalConflicts(ctx.STATE, req.body);
+    return res.json({ ok: true, ...result });
+  }));
+
+  router.post("/rules/add", asyncHandler(async (req, res) => {
+    const ctx = makeCtx(req);
+    const result = await addRuleWithConflictCheck(ctx.STATE, req.body);
+    return res.json({ ok: true, ...result });
+  }));
+
+  router.post("/actions/evaluate", asyncHandler(async (req, res) => {
+    const ctx = makeCtx(req);
+    const result = evaluateRulesForAction(ctx.STATE, req.body.action);
+    return res.json({ ok: true, ...result });
   }));
 
   return router;

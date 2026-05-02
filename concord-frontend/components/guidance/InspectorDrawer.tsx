@@ -11,8 +11,17 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import {
-  X, FileText, Package, Store, Music, Cog,
-  History, Link2, ChevronDown, ChevronRight, Copy,
+  X,
+  FileText,
+  Package,
+  Store,
+  Music,
+  Cog,
+  History,
+  Link2,
+  ChevronDown,
+  ChevronRight,
+  Copy,
 } from 'lucide-react';
 import { useUIStore } from '@/store/ui';
 
@@ -27,8 +36,20 @@ interface InspectorData {
   entityType: string;
   entity: Record<string, unknown>;
   versions: Array<{ id: string; version: number; created_at: string }>;
-  links: Array<{ id: string; from_kind: string; from_id: string; to_artifact_id: string; rel: string }>;
-  recentEvents: Array<{ id: string; type: string; summary: string; createdAt: string; undoToken: string | null }>;
+  links: Array<{
+    id: string;
+    from_kind: string;
+    from_id: string;
+    to_artifact_id: string;
+    rel: string;
+  }>;
+  recentEvents: Array<{
+    id: string;
+    type: string;
+    summary: string;
+    createdAt: string;
+    undoToken: string | null;
+  }>;
   actions: string[];
 }
 
@@ -40,9 +61,11 @@ const ENTITY_ICONS: Record<string, typeof FileText> = {
   job: Cog,
 };
 
-export function InspectorDrawer({ entityType, entityId, onClose }: InspectorProps) {
+function InspectorDrawer({ entityType, entityId, onClose }: InspectorProps) {
   const addToast = useUIStore((s) => s.addToast);
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['details', 'actions']));
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(
+    new Set(['details', 'actions'])
+  );
 
   const { data, isLoading, isError } = useQuery<InspectorData>({
     queryKey: ['inspector', entityType, entityId],
@@ -101,7 +124,18 @@ export function InspectorDrawer({ entityType, entityId, onClose }: InspectorProp
           >
             <div className="space-y-1">
               {Object.entries(data.entity)
-                .filter(([k]) => !k.startsWith('_') && !['body_json', 'tags_json', 'metadata_json', 'input_json', 'output_json', 'error_json'].includes(k))
+                .filter(
+                  ([k]) =>
+                    !k.startsWith('_') &&
+                    ![
+                      'body_json',
+                      'tags_json',
+                      'metadata_json',
+                      'input_json',
+                      'output_json',
+                      'error_json',
+                    ].includes(k)
+                )
                 .map(([key, val]) => (
                   <div key={key} className="flex items-start justify-between text-xs">
                     <span className="text-gray-500 flex-shrink-0">{key}:</span>
@@ -146,8 +180,7 @@ export function InspectorDrawer({ entityType, entityId, onClose }: InspectorProp
                 {data.versions.map((v) => (
                   <div key={v.id} className="flex items-center justify-between text-xs">
                     <span className="text-gray-300 flex items-center gap-1">
-                      <History className="w-3 h-3 text-gray-600" />
-                      v{v.version}
+                      <History className="w-3 h-3 text-gray-600" />v{v.version}
                     </span>
                     <span className="text-gray-600 font-mono">{v.created_at?.slice(0, 16)}</span>
                   </div>
@@ -169,7 +202,9 @@ export function InspectorDrawer({ entityType, entityId, onClose }: InspectorProp
                   <div key={link.id} className="flex items-center gap-1 text-xs text-gray-400">
                     <Link2 className="w-3 h-3 text-gray-600" />
                     <span>{link.rel || 'linked'}</span>
-                    <span className="font-mono text-gray-600 truncate">{link.to_artifact_id?.slice(0, 12)}</span>
+                    <span className="font-mono text-gray-600 truncate">
+                      {link.to_artifact_id?.slice(0, 12)}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -189,9 +224,7 @@ export function InspectorDrawer({ entityType, entityId, onClose }: InspectorProp
                   <div key={evt.id} className="text-xs">
                     <div className="flex items-center justify-between">
                       <span className="text-gray-400">{evt.summary}</span>
-                      {evt.undoToken && (
-                        <span className="text-neon-blue text-[10px]">undo</span>
-                      )}
+                      {evt.undoToken && <span className="text-neon-blue text-[10px]">undo</span>}
                     </div>
                     <span className="text-gray-600 font-mono">{evt.createdAt?.slice(0, 16)}</span>
                   </div>
@@ -231,3 +264,7 @@ function CollapsibleSection({
     </div>
   );
 }
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedInspectorDrawer = withErrorBoundary(InspectorDrawer);
+export { _WrappedInspectorDrawer as InspectorDrawer };

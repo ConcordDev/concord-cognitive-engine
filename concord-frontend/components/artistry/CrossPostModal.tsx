@@ -2,10 +2,7 @@
 
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import {
-  X, ArrowRight,
-  Eye, Tag, Clock, Info, Loader2, Check, ShoppingBag,
-} from 'lucide-react';
+import { X, ArrowRight, Eye, Tag, Clock, Info, Loader2, Check, ShoppingBag } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/api/client';
 import type { ArtistryContentType } from '@/lib/artistry/types';
@@ -41,7 +38,7 @@ const TYPE_PREVIEW_LIMITS: Record<ArtistryContentType, { label: string; maxPrevi
   '3d': { label: 'Rotating thumbnail', maxPreview: 'Preview render only' },
 };
 
-export function CrossPostModal({
+function CrossPostModal({
   isOpen,
   onClose,
   onSubmit,
@@ -103,10 +100,13 @@ export function CrossPostModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      onClick={onClose}
+    >
       <div
         className="w-full max-w-lg bg-lattice-surface border border-white/10 rounded-2xl shadow-2xl overflow-hidden"
-        onClick={e => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
@@ -125,8 +125,12 @@ export function CrossPostModal({
           <div className="flex items-start gap-2 p-3 rounded-lg bg-neon-cyan/5 border border-neon-cyan/10 text-xs text-gray-300">
             <Info className="w-4 h-4 text-neon-cyan flex-shrink-0 mt-0.5" />
             <div>
-              <p>Artistry is free discovery. <strong>No citations, no downloads.</strong></p>
-              <p className="text-gray-500 mt-0.5">Viewers can only browse and click through to the {sourceLens} lens.</p>
+              <p>
+                Artistry is free discovery. <strong>No citations, no downloads.</strong>
+              </p>
+              <p className="text-gray-500 mt-0.5">
+                Viewers can only browse and click through to the {sourceLens} lens.
+              </p>
             </div>
           </div>
 
@@ -142,7 +146,7 @@ export function CrossPostModal({
             <label className="text-xs text-gray-400 mb-1 block">Title</label>
             <input
               value={title}
-              onChange={e => setTitle(e.target.value)}
+              onChange={(e) => setTitle(e.target.value)}
               className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none focus:border-neon-cyan/50"
               maxLength={100}
             />
@@ -150,10 +154,12 @@ export function CrossPostModal({
 
           {/* Description */}
           <div>
-            <label className="text-xs text-gray-400 mb-1 block">Description <span className="text-gray-600">(max 500 chars)</span></label>
+            <label className="text-xs text-gray-400 mb-1 block">
+              Description <span className="text-gray-600">(max 500 chars)</span>
+            </label>
             <textarea
               value={description}
-              onChange={e => setDescription(e.target.value.slice(0, 500))}
+              onChange={(e) => setDescription(e.target.value.slice(0, 500))}
               className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none focus:border-neon-cyan/50 resize-none"
               rows={3}
               maxLength={500}
@@ -165,10 +171,16 @@ export function CrossPostModal({
           <div>
             <label className="text-xs text-gray-400 mb-1 block">Discovery tags</label>
             <div className="flex flex-wrap gap-1 mb-2">
-              {tags.map(tag => (
-                <span key={tag} className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/5 text-[10px] text-gray-300">
+              {tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/5 text-[10px] text-gray-300"
+                >
                   <Tag className="w-2.5 h-2.5" /> {tag}
-                  <button onClick={() => setTags(tags.filter(t => t !== tag))} className="text-gray-500 hover:text-white ml-0.5">
+                  <button
+                    onClick={() => setTags(tags.filter((t) => t !== tag))}
+                    className="text-gray-500 hover:text-white ml-0.5"
+                  >
                     <X className="w-2 h-2" />
                   </button>
                 </span>
@@ -177,8 +189,8 @@ export function CrossPostModal({
             <div className="flex gap-2">
               <input
                 value={tagInput}
-                onChange={e => setTagInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addTag())}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
                 className="flex-1 px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs focus:outline-none"
                 placeholder="Add tag..."
               />
@@ -195,7 +207,7 @@ export function CrossPostModal({
                 <input
                   type="number"
                   value={previewStart}
-                  onChange={e => setPreviewStart(Math.max(0, Number(e.target.value)))}
+                  onChange={(e) => setPreviewStart(Math.max(0, Number(e.target.value)))}
                   min={0}
                   className="w-full px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs focus:outline-none"
                 />
@@ -207,7 +219,14 @@ export function CrossPostModal({
                 <input
                   type="number"
                   value={previewDuration}
-                  onChange={e => setPreviewDuration(Math.max(5, Math.min(contentType === 'video' ? 60 : 30, Number(e.target.value))))}
+                  onChange={(e) =>
+                    setPreviewDuration(
+                      Math.max(
+                        5,
+                        Math.min(contentType === 'video' ? 60 : 30, Number(e.target.value))
+                      )
+                    )
+                  }
                   min={5}
                   max={contentType === 'video' ? 60 : 30}
                   className="w-full px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs focus:outline-none"
@@ -228,7 +247,9 @@ export function CrossPostModal({
                 className="w-4 h-4 rounded border-white/20 bg-white/5 text-neon-cyan focus:ring-neon-cyan/50"
               />
               <ShoppingBag className="w-3.5 h-3.5 text-neon-green" />
-              <span className="text-xs text-gray-300">Tag marketplace listing for social commerce</span>
+              <span className="text-xs text-gray-300">
+                Tag marketplace listing for social commerce
+              </span>
             </label>
           </div>
         )}
@@ -237,7 +258,9 @@ export function CrossPostModal({
         <div className="flex items-center justify-between px-5 py-4 border-t border-white/5 bg-white/[0.02]">
           <span className="text-[10px] text-gray-500">Free to post · No cost to browse</span>
           <div className="flex items-center gap-2">
-            <button onClick={onClose} className="px-4 py-2 text-sm text-gray-400 hover:text-white">Cancel</button>
+            <button onClick={onClose} className="px-4 py-2 text-sm text-gray-400 hover:text-white">
+              Cancel
+            </button>
             {posted ? (
               <div className="flex items-center gap-2 px-5 py-2 rounded-lg bg-green-500/15 text-green-400 text-sm font-semibold">
                 <Check className="w-4 h-4" />
@@ -271,3 +294,7 @@ export function CrossPostModal({
     </div>
   );
 }
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedCrossPostModal = withErrorBoundary(CrossPostModal);
+export { _WrappedCrossPostModal as CrossPostModal };

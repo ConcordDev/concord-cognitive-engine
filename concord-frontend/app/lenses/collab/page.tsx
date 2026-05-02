@@ -205,9 +205,18 @@ const AVATARS = [
 ];
 
 const NAMES = [
-  'AlexDesigner', 'JordanDev', 'TaylorResearch', 'MorganCreative',
-  'CaseyWriter', 'RileyAnalyst', 'SamArchitect', 'DanaEngineer',
-  'InkFlow', 'PixelDrift', 'DrewPlanner', 'QuinnStrategy',
+  'AlexDesigner',
+  'JordanDev',
+  'TaylorResearch',
+  'MorganCreative',
+  'CaseyWriter',
+  'RileyAnalyst',
+  'SamArchitect',
+  'DanaEngineer',
+  'InkFlow',
+  'PixelDrift',
+  'DrewPlanner',
+  'QuinnStrategy',
 ];
 
 function _makePart(idx: number, role: ParticipantRole, online = true): Participant {
@@ -249,10 +258,10 @@ const TYPE_COLORS: Record<ProjectType, string> = {
 };
 
 const STATUS_STYLES: Record<SessionStatus, string> = {
-  'open': 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+  open: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
   'in-progress': 'bg-neon-blue/20 text-neon-blue border-neon-blue/30',
-  'full': 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-  'private': 'bg-neon-purple/20 text-neon-purple border-neon-purple/30',
+  full: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+  private: 'bg-neon-purple/20 text-neon-purple border-neon-purple/30',
 };
 
 const ROLE_BADGE: Record<ParticipantRole, { label: string; color: string }> = {
@@ -296,21 +305,54 @@ function formatTimestamp(ts: number): string {
 
 export default function CollabLensPage() {
   useLensNav('collab');
-  const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('collab');
-  const { isLoading, isError, error, refetch, items: sessionItems } = useLensData('collab', 'session', {
-    seed: INITIAL_SESSIONS.map(s => ({ title: s.name, data: s as unknown as Record<string, unknown> })),
+  const {
+    latestData: realtimeData,
+    alerts: realtimeAlerts,
+    insights: realtimeInsights,
+    isLive,
+    lastUpdated,
+  } = useRealtimeLens('collab');
+  const {
+    isLoading,
+    isError,
+    error,
+    refetch,
+    items: sessionItems,
+  } = useLensData('collab', 'session', {
+    seed: INITIAL_SESSIONS.map((s) => ({
+      title: s.name,
+      data: s as unknown as Record<string, unknown>,
+    })),
   });
-  const { isLoading: isLoadingInvitations, isError: isError2, error: error2, refetch: refetch2, items: invitationItems } = useLensData('collab', 'invitation', {
-    seed: INITIAL_INVITATIONS.map(i => ({ title: i.sessionName, data: i as unknown as Record<string, unknown> })),
+  const {
+    isLoading: isLoadingInvitations,
+    isError: isError2,
+    error: error2,
+    refetch: refetch2,
+    items: invitationItems,
+  } = useLensData('collab', 'invitation', {
+    seed: INITIAL_INVITATIONS.map((i) => ({
+      title: i.sessionName,
+      data: i as unknown as Record<string, unknown>,
+    })),
   });
-  const { isLoading: isLoadingHistory, isError: isError3, error: error3, refetch: refetch3, items: historyItems } = useLensData('collab', 'history', {
-    seed: INITIAL_HISTORY.map(h => ({ title: h.sessionName, data: h as unknown as Record<string, unknown> })),
+  const {
+    isLoading: isLoadingHistory,
+    isError: isError3,
+    error: error3,
+    refetch: refetch3,
+    items: historyItems,
+  } = useLensData('collab', 'history', {
+    seed: INITIAL_HISTORY.map((h) => ({
+      title: h.sessionName,
+      data: h as unknown as Record<string, unknown>,
+    })),
   });
 
   // Fetch active collaborations from the API
   const { data: activeCollabsData } = useQuery({
     queryKey: ['active-collabs'],
-    queryFn: () => api.get('/api/collab/active').then(r => r.data),
+    queryFn: () => api.get('/api/collab/active').then((r) => r.data),
     refetchInterval: 30000,
   });
 
@@ -329,36 +371,46 @@ export default function CollabLensPage() {
 
   const targetId = sessionItems[0]?.id ?? 'default';
 
-  const handleAction = useCallback(async (action: string) => {
-    setIsRunning(true);
-    setActionResult(null);
-    try {
-      const res = await runAction.mutateAsync({ id: targetId, action });
-      if (res.ok === false) {
-        setActionResult({ error: (res as Record<string, unknown>).error || 'Unknown error' } as ActionResult);
-      } else {
-        setActionResult((res.result ?? res) as ActionResult);
+  const handleAction = useCallback(
+    async (action: string) => {
+      setIsRunning(true);
+      setActionResult(null);
+      try {
+        const res = await runAction.mutateAsync({ id: targetId, action });
+        if (res.ok === false) {
+          setActionResult({
+            error: (res as Record<string, unknown>).error || 'Unknown error',
+          } as ActionResult);
+        } else {
+          setActionResult((res.result ?? res) as ActionResult);
+        }
+      } catch (err) {
+        setActionResult({ error: err instanceof Error ? err.message : 'Action failed' });
+      } finally {
+        setIsRunning(false);
       }
-    } catch (err) {
-      setActionResult({ error: err instanceof Error ? err.message : 'Action failed' });
-    } finally {
-      setIsRunning(false);
-    }
-  }, [runAction, targetId]);
+    },
+    [runAction, targetId]
+  );
 
-  const sessions: CollabSession[] = sessionItems.map(i => i.data as unknown as CollabSession);
-  const invitations: Invitation[] = invitationItems.map(i => i.data as unknown as Invitation);
-  const history: HistoryEntry[] = historyItems.map(i => i.data as unknown as HistoryEntry);
-  const onlineCount = sessions.reduce((n, s) => n + s.participants.filter(p => p.online).length, 0);
+  const sessions: CollabSession[] = sessionItems.map((i) => i.data as unknown as CollabSession);
+  const invitations: Invitation[] = invitationItems.map((i) => i.data as unknown as Invitation);
+  const history: HistoryEntry[] = historyItems.map((i) => i.data as unknown as HistoryEntry);
+  const onlineCount = sessions.reduce(
+    (n, s) => n + s.participants.filter((p) => p.online).length,
+    0
+  );
 
   // Filter sessions
-  const filteredSessions = sessions.filter(s => {
+  const filteredSessions = sessions.filter((s) => {
     if (filterPill !== 'all' && s.projectType !== filterPill) return false;
     if (searchTerm && !s.name.toLowerCase().includes(searchTerm.toLowerCase())) return false;
     return true;
   });
 
-  const mySessions = sessions.filter(s => s.host.id === 'p-0' || s.participants.some(p => p.id === 'p-0'));
+  const mySessions = sessions.filter(
+    (s) => s.host.id === 'p-0' || s.participants.some((p) => p.id === 'p-0')
+  );
 
   const TABS: { key: MainTab; label: string; count?: number }[] = [
     { key: 'active', label: 'Active Sessions', count: sessions.length },
@@ -378,14 +430,8 @@ export default function CollabLensPage() {
 
   // If viewing an active session
   if (activeSession) {
-    return (
-      <ActiveSessionView
-        session={activeSession}
-        onLeave={() => setActiveSession(null)}
-      />
-    );
+    return <ActiveSessionView session={activeSession} onLeave={() => setActiveSession(null)} />;
   }
-
 
   if (isLoading || isLoadingInvitations || isLoadingHistory) {
     return (
@@ -401,7 +447,14 @@ export default function CollabLensPage() {
   if (isError || isError2 || isError3) {
     return (
       <div className="flex items-center justify-center h-full p-8">
-        <ErrorState error={error?.message || error2?.message || error3?.message} onRetry={() => { refetch(); refetch2(); refetch3(); }} />
+        <ErrorState
+          error={error?.message || error2?.message || error3?.message}
+          onRetry={() => {
+            refetch();
+            refetch2();
+            refetch3();
+          }}
+        />
       </div>
     );
   }
@@ -418,16 +471,16 @@ export default function CollabLensPage() {
             <p className="text-sm text-gray-400">Create, join, and collaborate in real time</p>
           </div>
 
-      {/* Real-time Enhancement Toolbar */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-        <DTUExportButton domain="collab" data={realtimeData || {}} compact />
-        {realtimeAlerts.length > 0 && (
-          <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
-            {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
-          </span>
-        )}
-      </div>
+          {/* Real-time Enhancement Toolbar */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+            <DTUExportButton domain="collab" data={realtimeData || {}} compact />
+            {realtimeAlerts.length > 0 && (
+              <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
+                {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
@@ -446,7 +499,7 @@ export default function CollabLensPage() {
 
       {/* Tab navigation */}
       <nav className="flex items-center gap-1 border-b border-lattice-border">
-        {TABS.map(tab => (
+        {TABS.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
@@ -459,10 +512,14 @@ export default function CollabLensPage() {
           >
             {tab.label}
             {tab.count !== undefined && (
-              <span className={cn(
-                'ml-1.5 px-1.5 py-0.5 text-[10px] rounded-full',
-                activeTab === tab.key ? 'bg-neon-blue/20 text-neon-blue' : 'bg-gray-700 text-gray-400'
-              )}>
+              <span
+                className={cn(
+                  'ml-1.5 px-1.5 py-0.5 text-[10px] rounded-full',
+                  activeTab === tab.key
+                    ? 'bg-neon-blue/20 text-neon-blue'
+                    : 'bg-gray-700 text-gray-400'
+                )}
+              >
                 {tab.count}
               </span>
             )}
@@ -484,7 +541,7 @@ export default function CollabLensPage() {
             {/* Filter pills + search */}
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div className="flex items-center gap-2">
-                {PILLS.map(pill => (
+                {PILLS.map((pill) => (
                   <button
                     key={pill.key}
                     onClick={() => setFilterPill(pill.key)}
@@ -505,7 +562,7 @@ export default function CollabLensPage() {
                   type="text"
                   placeholder="Search sessions..."
                   value={searchTerm}
-                  onChange={e => setSearchTerm(e.target.value)}
+                  onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-9 pr-3 py-1.5 text-sm bg-lattice-surface border border-lattice-border rounded-lg w-56 focus:outline-none focus:border-neon-blue/50"
                 />
               </div>
@@ -520,7 +577,7 @@ export default function CollabLensPage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {filteredSessions.map(session => (
+                {filteredSessions.map((session) => (
                   <SessionCard
                     key={session.id}
                     session={session}
@@ -548,7 +605,7 @@ export default function CollabLensPage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {mySessions.map(session => (
+                {mySessions.map((session) => (
                   <SessionCard
                     key={session.id}
                     session={session}
@@ -576,7 +633,7 @@ export default function CollabLensPage() {
                   sessionId={inviteSessionId}
                   onJoined={(sid) => {
                     setInviteSessionId(null);
-                    const joinedSession = sessions.find(s => s.id === sid);
+                    const joinedSession = sessions.find((s) => s.id === sid);
                     if (joinedSession) setActiveSession(joinedSession);
                   }}
                   onDeclined={() => setInviteSessionId(null)}
@@ -587,11 +644,17 @@ export default function CollabLensPage() {
               <div className="panel p-12 text-center text-gray-400">
                 <Mail className="w-12 h-12 mx-auto mb-3 opacity-40" />
                 <p className="font-medium">No invitations</p>
-                <p className="text-sm mt-1">When someone invites you to a session, it will appear here.</p>
+                <p className="text-sm mt-1">
+                  When someone invites you to a session, it will appear here.
+                </p>
               </div>
             ) : (
-              invitations.map(inv => (
-                <div key={inv.id} onClick={() => setInviteSessionId(inv.id)} className="cursor-pointer">
+              invitations.map((inv) => (
+                <div
+                  key={inv.id}
+                  onClick={() => setInviteSessionId(inv.id)}
+                  className="cursor-pointer"
+                >
                   <InvitationCard invitation={inv} />
                 </div>
               ))
@@ -615,9 +678,7 @@ export default function CollabLensPage() {
                 <p className="text-sm mt-1">Completed sessions will appear here.</p>
               </div>
             ) : (
-              history.map(entry => (
-                <HistoryCard key={entry.id} entry={entry} />
-              ))
+              history.map((entry) => <HistoryCard key={entry.id} entry={entry} />)
             )}
           </motion.div>
         )}
@@ -625,9 +686,7 @@ export default function CollabLensPage() {
 
       {/* Create session modal */}
       <AnimatePresence>
-        {showCreateModal && (
-          <CreateSessionModal onClose={() => setShowCreateModal(false)} />
-        )}
+        {showCreateModal && <CreateSessionModal onClose={() => setShowCreateModal(false)} />}
       </AnimatePresence>
 
       {/* Active Collaborations from API */}
@@ -638,27 +697,58 @@ export default function CollabLensPage() {
             Active Collaborations ({activeCollabsData.collabs.length})
           </h3>
           <div className="space-y-2 max-h-64 overflow-y-auto">
-            {activeCollabsData.collabs.map((collab: { id: string; name?: string; description?: string; domains?: string[]; participants?: number; status?: string }) => (
-              <div key={collab.id} className="flex items-center justify-between p-3 bg-black/30 rounded-lg border border-white/5">
-                <div className="min-w-0">
-                  <p className="text-sm text-white font-medium truncate">{collab.name ?? collab.id}</p>
-                  {collab.description && <p className="text-xs text-gray-500 truncate">{collab.description}</p>}
-                  {collab.domains && (
-                    <div className="flex gap-1 mt-1">
-                      {collab.domains.map((d: string) => (
-                        <span key={d} className="text-[10px] px-1.5 py-0.5 rounded bg-neon-blue/10 text-neon-blue">{d}</span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <button
-                  onClick={() => api.post(`/api/collab/${collab.id}/close`).then(r => r.data).catch((err) => { console.error('[Collab] Failed to close collaboration:', err); useUIStore.getState().addToast({ type: 'error', message: 'Failed to close collaboration' }); })}
-                  className="text-xs px-3 py-1.5 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors font-medium shrink-0 ml-3"
+            {activeCollabsData.collabs.map(
+              (collab: {
+                id: string;
+                name?: string;
+                description?: string;
+                domains?: string[];
+                participants?: number;
+                status?: string;
+              }) => (
+                <div
+                  key={collab.id}
+                  className="flex items-center justify-between p-3 bg-black/30 rounded-lg border border-white/5"
                 >
-                  Close
-                </button>
-              </div>
-            ))}
+                  <div className="min-w-0">
+                    <p className="text-sm text-white font-medium truncate">
+                      {collab.name ?? collab.id}
+                    </p>
+                    {collab.description && (
+                      <p className="text-xs text-gray-500 truncate">{collab.description}</p>
+                    )}
+                    {collab.domains && (
+                      <div className="flex gap-1 mt-1">
+                        {collab.domains.map((d: string) => (
+                          <span
+                            key={d}
+                            className="text-[10px] px-1.5 py-0.5 rounded bg-neon-blue/10 text-neon-blue"
+                          >
+                            {d}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    onClick={() =>
+                      api
+                        .post(`/api/collab/${collab.id}/close`)
+                        .then((r) => r.data)
+                        .catch((err) => {
+                          console.error('[Collab] Failed to close collaboration:', err);
+                          useUIStore
+                            .getState()
+                            .addToast({ type: 'error', message: 'Failed to close collaboration' });
+                        })
+                    }
+                    className="text-xs px-3 py-1.5 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors font-medium shrink-0 ml-3"
+                  >
+                    Close
+                  </button>
+                </div>
+              )
+            )}
           </div>
         </div>
       )}
@@ -712,146 +802,189 @@ export default function CollabLensPage() {
               )}
 
               {/* sessionAnalytics */}
-              {'totalMessages' in actionResult && (() => {
-                const sa = actionResult as SessionAnalyticsResult;
-                return (
-                <div className="space-y-2">
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="p-2 bg-lattice-bg rounded text-center">
-                      <p className="text-sm font-bold text-neon-blue">{sa.totalMessages}</p>
-                      <p className="text-[10px] text-gray-500">Messages</p>
-                    </div>
-                    <div className="p-2 bg-lattice-bg rounded text-center">
-                      <p className="text-sm font-bold text-neon-blue">{sa.totalParticipants}</p>
-                      <p className="text-[10px] text-gray-500">Participants</p>
-                    </div>
-                    <div className="p-2 bg-lattice-bg rounded text-center">
-                      <p className="text-sm font-bold text-neon-blue">{sa.messagesPerMinute}/m</p>
-                      <p className="text-[10px] text-gray-500">Msg/Min</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-gray-500">Balance:</span>
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${sa.balanceRating === 'well-balanced' ? 'bg-neon-green/20 text-neon-green' : sa.balanceRating === 'slightly-uneven' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'}`}>
-                      {sa.balanceRating}
-                    </span>
-                    <span className="text-gray-500 ml-auto">Gini: {sa.participationBalance}</span>
-                  </div>
-                  {(sa.participantStats || []).length > 0 && (
-                    <div className="space-y-1">
-                      {sa.participantStats.map((p: ParticipantStat) => (
-                        <div key={p.name} className="flex items-center gap-2">
-                          <span className="text-gray-300 w-24 truncate">{p.name}</span>
-                          <div className="flex-1 bg-lattice-bg rounded-full h-1.5">
-                            <div className="bg-neon-blue h-1.5 rounded-full" style={{ width: `${p.sharePercent}%` }} />
-                          </div>
-                          <span className="text-gray-500 w-10 text-right">{p.sharePercent}%</span>
+              {'totalMessages' in actionResult &&
+                (() => {
+                  const sa = actionResult as SessionAnalyticsResult;
+                  return (
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="p-2 bg-lattice-bg rounded text-center">
+                          <p className="text-sm font-bold text-neon-blue">{sa.totalMessages}</p>
+                          <p className="text-[10px] text-gray-500">Messages</p>
                         </div>
-                      ))}
+                        <div className="p-2 bg-lattice-bg rounded text-center">
+                          <p className="text-sm font-bold text-neon-blue">{sa.totalParticipants}</p>
+                          <p className="text-[10px] text-gray-500">Participants</p>
+                        </div>
+                        <div className="p-2 bg-lattice-bg rounded text-center">
+                          <p className="text-sm font-bold text-neon-blue">
+                            {sa.messagesPerMinute}/m
+                          </p>
+                          <p className="text-[10px] text-gray-500">Msg/Min</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-500">Balance:</span>
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${sa.balanceRating === 'well-balanced' ? 'bg-neon-green/20 text-neon-green' : sa.balanceRating === 'slightly-uneven' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'}`}
+                        >
+                          {sa.balanceRating}
+                        </span>
+                        <span className="text-gray-500 ml-auto">
+                          Gini: {sa.participationBalance}
+                        </span>
+                      </div>
+                      {(sa.participantStats || []).length > 0 && (
+                        <div className="space-y-1">
+                          {sa.participantStats.map((p: ParticipantStat) => (
+                            <div key={p.name} className="flex items-center gap-2">
+                              <span className="text-gray-300 w-24 truncate">{p.name}</span>
+                              <div className="flex-1 bg-lattice-bg rounded-full h-1.5">
+                                <div
+                                  className="bg-neon-blue h-1.5 rounded-full"
+                                  style={{ width: `${p.sharePercent}%` }}
+                                />
+                              </div>
+                              <span className="text-gray-500 w-10 text-right">
+                                {p.sharePercent}%
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-                );
-              })()}
+                  );
+                })()}
 
               {/* contributionScore */}
-              {'rankings' in actionResult && (() => {
-                const cs = actionResult as ContributionScoreResult;
-                return (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-gray-400">
-                    <span>Top contributor:</span>
-                    <span className="text-neon-green font-medium">{cs.topContributor ?? '—'}</span>
-                    <span className="ml-auto text-gray-500">{cs.totalContributions} total</span>
-                  </div>
-                  <div className="space-y-1">
-                    {cs.rankings.map((r: ContributionRanking, i: number) => (
-                      <div key={r.name} className="flex items-center gap-2 p-1.5 bg-lattice-bg rounded">
-                        <span className="text-gray-500 w-4">{i + 1}.</span>
-                        <span className="text-gray-200 flex-1">{r.name}</span>
-                        <span className="text-neon-blue font-bold">{r.totalScore}</span>
-                        <span className="text-gray-500 text-[10px]">{r.contributions} contribs</span>
+              {'rankings' in actionResult &&
+                (() => {
+                  const cs = actionResult as ContributionScoreResult;
+                  return (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-gray-400">
+                        <span>Top contributor:</span>
+                        <span className="text-neon-green font-medium">
+                          {cs.topContributor ?? '—'}
+                        </span>
+                        <span className="ml-auto text-gray-500">{cs.totalContributions} total</span>
                       </div>
-                    ))}
-                  </div>
-                </div>
-                );
-              })()}
+                      <div className="space-y-1">
+                        {cs.rankings.map((r: ContributionRanking, i: number) => (
+                          <div
+                            key={r.name}
+                            className="flex items-center gap-2 p-1.5 bg-lattice-bg rounded"
+                          >
+                            <span className="text-gray-500 w-4">{i + 1}.</span>
+                            <span className="text-gray-200 flex-1">{r.name}</span>
+                            <span className="text-neon-blue font-bold">{r.totalScore}</span>
+                            <span className="text-gray-500 text-[10px]">
+                              {r.contributions} contribs
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
 
               {/* detectConsensus */}
-              {'consensusPercent' in actionResult && (() => {
-                const cr = actionResult as ConsensusResult;
-                return (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${cr.hasSupermajority ? 'bg-neon-green/20 text-neon-green' : cr.hasConsensus ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'}`}>
-                      {cr.status}
-                    </span>
-                    <span className="text-gray-400 ml-auto">{cr.totalVotes} votes</span>
-                  </div>
-                  <div className="p-2 bg-lattice-bg rounded text-center">
-                    <p className="text-xl font-bold text-neon-blue">{cr.consensusPercent}%</p>
-                    <p className="text-[10px] text-gray-500">for &quot;{cr.leadingPosition}&quot;</p>
-                  </div>
-                  <div className="w-full bg-lattice-bg rounded-full h-2">
-                    <div className="bg-neon-blue h-2 rounded-full" style={{ width: `${cr.consensusPercent}%` }} />
-                  </div>
-                  {(cr.dissenting || []).length > 0 && (
-                    <div className="space-y-1">
-                      <p className="text-[10px] text-gray-500 uppercase">Dissenting</p>
-                      {cr.dissenting.map((d: DissentingEntry) => (
-                        <div key={d.position} className="flex items-center justify-between text-gray-400">
-                          <span>{d.position}</span>
-                          <span>{d.count} ({d.percent}%)</span>
+              {'consensusPercent' in actionResult &&
+                (() => {
+                  const cr = actionResult as ConsensusResult;
+                  return (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${cr.hasSupermajority ? 'bg-neon-green/20 text-neon-green' : cr.hasConsensus ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'}`}
+                        >
+                          {cr.status}
+                        </span>
+                        <span className="text-gray-400 ml-auto">{cr.totalVotes} votes</span>
+                      </div>
+                      <div className="p-2 bg-lattice-bg rounded text-center">
+                        <p className="text-xl font-bold text-neon-blue">{cr.consensusPercent}%</p>
+                        <p className="text-[10px] text-gray-500">
+                          for &quot;{cr.leadingPosition}&quot;
+                        </p>
+                      </div>
+                      <div className="w-full bg-lattice-bg rounded-full h-2">
+                        <div
+                          className="bg-neon-blue h-2 rounded-full"
+                          style={{ width: `${cr.consensusPercent}%` }}
+                        />
+                      </div>
+                      {(cr.dissenting || []).length > 0 && (
+                        <div className="space-y-1">
+                          <p className="text-[10px] text-gray-500 uppercase">Dissenting</p>
+                          {cr.dissenting.map((d: DissentingEntry) => (
+                            <div
+                              key={d.position}
+                              className="flex items-center justify-between text-gray-400"
+                            >
+                              <span>{d.position}</span>
+                              <span>
+                                {d.count} ({d.percent}%)
+                              </span>
+                            </div>
+                          ))}
                         </div>
-                      ))}
+                      )}
                     </div>
-                  )}
-                </div>
-                );
-              })()}
+                  );
+                })()}
 
               {/* balanceWorkload */}
-              {'members' in actionResult && (() => {
-                const wb = actionResult as WorkloadBalanceResult;
-                return (
-                <div className="space-y-2">
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="p-2 bg-lattice-bg rounded text-center">
-                      <p className="text-sm font-bold text-neon-blue">{wb.avgUtilization}%</p>
-                      <p className="text-[10px] text-gray-500">Avg Load</p>
-                    </div>
-                    <div className="p-2 bg-lattice-bg rounded text-center">
-                      <p className="text-sm font-bold text-red-400">{wb.overloadedMembers}</p>
-                      <p className="text-[10px] text-gray-500">Overloaded</p>
-                    </div>
-                    <div className="p-2 bg-lattice-bg rounded text-center">
-                      <p className="text-sm font-bold text-yellow-400">{wb.unassignedTasks}</p>
-                      <p className="text-[10px] text-gray-500">Unassigned</p>
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    {wb.members.map((m: WorkloadMember) => (
-                      <div key={m.name} className="space-y-0.5">
-                        <div className="flex items-center justify-between">
-                          <span className="text-gray-300">{m.name}</span>
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded ${m.status === 'overloaded' ? 'bg-red-500/20 text-red-400' : m.status === 'near-capacity' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-neon-green/20 text-neon-green'}`}>{m.status}</span>
+              {'members' in actionResult &&
+                (() => {
+                  const wb = actionResult as WorkloadBalanceResult;
+                  return (
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="p-2 bg-lattice-bg rounded text-center">
+                          <p className="text-sm font-bold text-neon-blue">{wb.avgUtilization}%</p>
+                          <p className="text-[10px] text-gray-500">Avg Load</p>
                         </div>
-                        <div className="w-full bg-lattice-bg rounded-full h-1.5">
-                          <div className={`h-1.5 rounded-full ${m.status === 'overloaded' ? 'bg-red-500' : m.status === 'near-capacity' ? 'bg-yellow-500' : 'bg-neon-green'}`} style={{ width: `${Math.min(m.utilization, 100)}%` }} />
+                        <div className="p-2 bg-lattice-bg rounded text-center">
+                          <p className="text-sm font-bold text-red-400">{wb.overloadedMembers}</p>
+                          <p className="text-[10px] text-gray-500">Overloaded</p>
                         </div>
-                        <p className="text-[10px] text-gray-500">{m.totalHours}h / {m.capacity}h · {m.assignedTasks} tasks</p>
+                        <div className="p-2 bg-lattice-bg rounded text-center">
+                          <p className="text-sm font-bold text-yellow-400">{wb.unassignedTasks}</p>
+                          <p className="text-[10px] text-gray-500">Unassigned</p>
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                  {(wb.suggestions || []).length > 0 && (
-                    <div className="p-2 bg-yellow-500/10 border border-yellow-500/20 rounded text-yellow-300 text-[11px]">
-                      {wb.suggestions.join(' · ')}
+                      <div className="space-y-1">
+                        {wb.members.map((m: WorkloadMember) => (
+                          <div key={m.name} className="space-y-0.5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-gray-300">{m.name}</span>
+                              <span
+                                className={`text-[10px] px-1.5 py-0.5 rounded ${m.status === 'overloaded' ? 'bg-red-500/20 text-red-400' : m.status === 'near-capacity' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-neon-green/20 text-neon-green'}`}
+                              >
+                                {m.status}
+                              </span>
+                            </div>
+                            <div className="w-full bg-lattice-bg rounded-full h-1.5">
+                              <div
+                                className={`h-1.5 rounded-full ${m.status === 'overloaded' ? 'bg-red-500' : m.status === 'near-capacity' ? 'bg-yellow-500' : 'bg-neon-green'}`}
+                                style={{ width: `${Math.min(m.utilization, 100)}%` }}
+                              />
+                            </div>
+                            <p className="text-[10px] text-gray-500">
+                              {m.totalHours}h / {m.capacity}h · {m.assignedTasks} tasks
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                      {(wb.suggestions || []).length > 0 && (
+                        <div className="p-2 bg-yellow-500/10 border border-yellow-500/20 rounded text-yellow-300 text-[11px]">
+                          {wb.suggestions.join(' · ')}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-                );
-              })()}
+                  );
+                })()}
             </div>
           </div>
         )}
@@ -867,7 +1000,9 @@ export default function CollabLensPage() {
             <Layers className="w-4 h-4" />
             Lens Features & Capabilities
           </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
+          <ChevronDown
+            className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`}
+          />
         </button>
         {showFeatures && (
           <div className="px-4 pb-4">
@@ -897,7 +1032,12 @@ function SessionCard({ session, onJoin }: { session: CollabSession; onJoin: () =
       {/* Top row: type icon + name + status */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center bg-lattice-surface shrink-0', TYPE_COLORS[session.projectType])}>
+          <div
+            className={cn(
+              'w-8 h-8 rounded-lg flex items-center justify-center bg-lattice-surface shrink-0',
+              TYPE_COLORS[session.projectType]
+            )}
+          >
             <TypeIcon className="w-4 h-4" />
           </div>
           <div className="min-w-0">
@@ -907,17 +1047,24 @@ function SessionCard({ session, onJoin }: { session: CollabSession; onJoin: () =
             <p className="text-[11px] text-gray-500 capitalize">{session.projectType}</p>
           </div>
         </div>
-        <span className={cn(
-          'text-[10px] px-2 py-0.5 rounded-full border shrink-0 capitalize font-medium',
-          STATUS_STYLES[session.status]
-        )}>
+        <span
+          className={cn(
+            'text-[10px] px-2 py-0.5 rounded-full border shrink-0 capitalize font-medium',
+            STATUS_STYLES[session.status]
+          )}
+        >
           {session.status}
         </span>
       </div>
 
       {/* Host */}
       <div className="flex items-center gap-2">
-        <div className={cn('w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold text-white', session.host.avatar)}>
+        <div
+          className={cn(
+            'w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold text-white',
+            session.host.avatar
+          )}
+        >
           {session.host.name[0]}
         </div>
         <span className="text-xs text-gray-400">
@@ -927,9 +1074,13 @@ function SessionCard({ session, onJoin }: { session: CollabSession; onJoin: () =
 
       {/* Genre tags */}
       <div className="flex items-center gap-1.5 flex-wrap">
-        {session.genre.map(g => (
-          <span key={g} className="text-[10px] px-2 py-0.5 bg-lattice-surface border border-lattice-border rounded-full text-gray-400">
-            <Hash className="w-2.5 h-2.5 inline mr-0.5 -mt-px" />{g}
+        {session.genre.map((g) => (
+          <span
+            key={g}
+            className="text-[10px] px-2 py-0.5 bg-lattice-surface border border-lattice-border rounded-full text-gray-400"
+          >
+            <Hash className="w-2.5 h-2.5 inline mr-0.5 -mt-px" />
+            {g}
           </span>
         ))}
       </div>
@@ -953,7 +1104,10 @@ function SessionCard({ session, onJoin }: { session: CollabSession; onJoin: () =
               </div>
             ))}
             {session.participants.length > 3 && (
-              <div className="w-6 h-6 rounded-full border-2 border-lattice-surface bg-gray-700 flex items-center justify-center text-[9px] text-gray-300 font-medium" style={{ zIndex: 6 }}>
+              <div
+                className="w-6 h-6 rounded-full border-2 border-lattice-surface bg-gray-700 flex items-center justify-center text-[9px] text-gray-300 font-medium"
+                style={{ zIndex: 6 }}
+              >
                 +{session.participants.length - 3}
               </div>
             )}
@@ -967,14 +1121,17 @@ function SessionCard({ session, onJoin }: { session: CollabSession; onJoin: () =
           </div>
         </div>
         <button
-          onClick={e => { e.stopPropagation(); onJoin(); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onJoin();
+          }}
           className={cn(
             'text-xs px-3 py-1 rounded-md font-medium transition-colors',
             session.status === 'full'
               ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
               : isPrivate
-              ? 'bg-neon-purple/20 text-neon-purple hover:bg-neon-purple/30'
-              : 'bg-neon-blue/20 text-neon-blue hover:bg-neon-blue/30'
+                ? 'bg-neon-purple/20 text-neon-purple hover:bg-neon-purple/30'
+                : 'bg-neon-blue/20 text-neon-blue hover:bg-neon-blue/30'
           )}
           disabled={session.status === 'full'}
         >
@@ -992,15 +1149,29 @@ function SessionCard({ session, onJoin }: { session: CollabSession; onJoin: () =
 function ActiveSessionView({ session, onLeave }: { session: CollabSession; onLeave: () => void }) {
   const [chatInput, setChatInput] = useState('');
   const { items: chatItems, create: createChatMessage } = useLensData('collab', 'chat', {
-    seed: INITIAL_CHAT.map(m => ({ title: m.senderName, data: m as unknown as Record<string, unknown> })),
+    seed: INITIAL_CHAT.map((m) => ({
+      title: m.senderName,
+      data: m as unknown as Record<string, unknown>,
+    })),
   });
-  const messages: ChatMessage[] = chatItems.map(i => i.data as unknown as ChatMessage);
+  const messages: ChatMessage[] = chatItems.map((i) => i.data as unknown as ChatMessage);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const [elapsed, setElapsed] = useState(Date.now() - session.startedAt);
 
   // --- Shared notes persistence ---
-  const { items: notesItems, create: createNote, update: updateNote } = useLensData('collab', 'shared-notes', {
-    seed: [{ title: 'session-notes', data: { text: '- Target: Q2 delivery\n- Primary focus on user onboarding flow improvements\n- Action items: finalize wireframes, collect stakeholder feedback\n- Accessibility review pending for all new components\n- Reference: competitor analysis doc' } }],
+  const {
+    items: notesItems,
+    create: createNote,
+    update: updateNote,
+  } = useLensData('collab', 'shared-notes', {
+    seed: [
+      {
+        title: 'session-notes',
+        data: {
+          text: '- Target: Q2 delivery\n- Primary focus on user onboarding flow improvements\n- Action items: finalize wireframes, collect stakeholder feedback\n- Accessibility review pending for all new components\n- Reference: competitor analysis doc',
+        },
+      },
+    ],
   });
   const notesItem = notesItems[0];
   const [notesText, setNotesText] = useState('');
@@ -1010,60 +1181,199 @@ function ActiveSessionView({ session, onLeave }: { session: CollabSession; onLea
   // Sync notes from backend on load
   useEffect(() => {
     if (notesItem?.data) {
-      setNotesText((notesItem.data as Record<string, unknown>).text as string || '');
+      setNotesText(((notesItem.data as Record<string, unknown>).text as string) || '');
     }
   }, [notesItem]);
 
   // Auto-save notes with debounce
-  const handleNotesChange = useCallback((value: string) => {
-    setNotesText(value);
-    if (notesSaveTimer.current) clearTimeout(notesSaveTimer.current);
-    notesSaveTimer.current = setTimeout(async () => {
-      setNotesSaving(true);
-      try {
-        if (notesItem) {
-          await updateNote(notesItem.id, { data: { text: value } });
-        } else {
-          await createNote({ title: 'session-notes', data: { text: value } });
+  const handleNotesChange = useCallback(
+    (value: string) => {
+      setNotesText(value);
+      if (notesSaveTimer.current) clearTimeout(notesSaveTimer.current);
+      notesSaveTimer.current = setTimeout(async () => {
+        setNotesSaving(true);
+        try {
+          if (notesItem) {
+            await updateNote(notesItem.id, { data: { text: value } });
+          } else {
+            await createNote({ title: 'session-notes', data: { text: value } });
+          }
+        } catch (err) {
+          console.error('[Collab] Failed to save notes:', err);
+        } finally {
+          setNotesSaving(false);
         }
-      } catch (err) {
-        console.error('[Collab] Failed to save notes:', err);
-      } finally {
-        setNotesSaving(false);
-      }
-    }, 800);
-  }, [notesItem, updateNote, createNote]);
+      }, 800);
+    },
+    [notesItem, updateNote, createNote]
+  );
 
   // --- File upload state ---
-  const { items: fileItems, create: createFileEntry } = useLensData('collab', 'shared-file', { noSeed: true });
-  const sharedFiles = fileItems.map(i => i.data as unknown as { name: string; size: string; by: string; uploadedAt: number });
+  const { items: fileItems, create: createFileEntry } = useLensData('collab', 'shared-file', {
+    noSeed: true,
+  });
+  const sharedFiles = fileItems.map(
+    (i) => i.data as unknown as { name: string; size: string; by: string; uploadedAt: number }
+  );
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileUpload = useCallback(async (file: File) => {
-    setIsUploading(true);
-    try {
-      const arrayBuffer = await file.arrayBuffer();
-      const base64Data = btoa(new Uint8Array(arrayBuffer).reduce((d, byte) => d + String.fromCharCode(byte), ''));
-      await apiHelpers.artistry.blobs.upload({ data: base64Data, mimeType: file.type, filename: file.name });
-      const sizeStr = file.size < 1024 ? `${file.size} B`
-        : file.size < 1024 * 1024 ? `${(file.size / 1024).toFixed(1)} KB`
-        : `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
-      await createFileEntry({
-        title: file.name,
-        data: { name: file.name, size: sizeStr, by: 'You', uploadedAt: Date.now() },
-      });
-      useUIStore.getState().addToast({ type: 'success', message: `Uploaded "${file.name}"` });
-    } catch (err) {
-      console.error('[Collab] File upload failed:', err);
-      useUIStore.getState().addToast({ type: 'error', message: `Upload failed: ${err instanceof Error ? err.message : 'Unknown error'}` });
-    } finally {
-      setIsUploading(false);
-    }
-  }, [createFileEntry]);
+  const handleFileUpload = useCallback(
+    async (file: File) => {
+      setIsUploading(true);
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const base64Data = btoa(
+          new Uint8Array(arrayBuffer).reduce((d, byte) => d + String.fromCharCode(byte), '')
+        );
+        await apiHelpers.artistry.blobs.upload({
+          data: base64Data,
+          mimeType: file.type,
+          filename: file.name,
+        });
+        const sizeStr =
+          file.size < 1024
+            ? `${file.size} B`
+            : file.size < 1024 * 1024
+              ? `${(file.size / 1024).toFixed(1)} KB`
+              : `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
+        await createFileEntry({
+          title: file.name,
+          data: { name: file.name, size: sizeStr, by: 'You', uploadedAt: Date.now() },
+        });
+        useUIStore.getState().addToast({ type: 'success', message: `Uploaded "${file.name}"` });
+      } catch (err) {
+        console.error('[Collab] File upload failed:', err);
+        useUIStore.getState().addToast({
+          type: 'error',
+          message: `Upload failed: ${err instanceof Error ? err.message : 'Unknown error'}`,
+        });
+      } finally {
+        setIsUploading(false);
+      }
+    },
+    [createFileEntry]
+  );
 
-  // --- Screen sharing state ---
-  const [screenShareInfo, setScreenShareInfo] = useState(false);
+  // --- Screen sharing (WebRTC) ---
+  const [isSharing, setIsSharing] = useState(false);
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+  const localStreamRef = useRef<MediaStream | null>(null);
+  const pcRef = useRef<RTCPeerConnection | null>(null);
+  const remoteVideoRef = useRef<HTMLVideoElement>(null);
+  const ICE_SERVERS = useRef<RTCIceServer[]>([{ urls: 'stun:stun.l.google.com:19302' }]);
+  const shareRoom = `collab:${session.id}`;
+
+  const stopScreenShare = useCallback(() => {
+    localStreamRef.current?.getTracks().forEach((t) => t.stop());
+    localStreamRef.current = null;
+    pcRef.current?.close();
+    pcRef.current = null;
+    setIsSharing(false);
+    try {
+      import('@/lib/realtime/socket')
+        .then(({ getSocket }) => {
+          getSocket().emit('screen-share:stop', { room: shareRoom });
+        })
+        .catch(() => {
+          /* socket unavailable */
+        });
+    } catch (_) {
+      /* socket unavailable */
+    }
+  }, [shareRoom]);
+
+  const startScreenShare = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+      localStreamRef.current = stream;
+      stream.getVideoTracks()[0].onended = stopScreenShare;
+
+      const { getSocket } = await import('@/lib/realtime/socket');
+      const socket = getSocket();
+      socket.emit('room:join', { room: shareRoom });
+
+      const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS.current });
+      pcRef.current = pc;
+      stream.getTracks().forEach((t) => pc.addTrack(t, stream));
+
+      pc.onicecandidate = ({ candidate }) => {
+        if (candidate)
+          socket.emit('screen-share:ice-candidate', { to: null, room: shareRoom, candidate });
+      };
+
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      socket.emit('screen-share:start', { room: shareRoom });
+      socket.emit('screen-share:offer', { room: shareRoom, offer });
+
+      socket.on(
+        'screen-share:answer',
+        async ({ answer }: { answer: RTCSessionDescriptionInit }) => {
+          if (pc.signalingState !== 'closed') await pc.setRemoteDescription(answer);
+        }
+      );
+
+      setIsSharing(true);
+    } catch (err) {
+      if ((err as Error).name !== 'NotAllowedError') {
+        useUIStore
+          .getState()
+          .addToast({
+            type: 'error',
+            message: 'Screen share failed: ' + (err instanceof Error ? err.message : String(err)),
+          });
+      }
+    }
+  }, [shareRoom, stopScreenShare]);
+
+  // Receive incoming screen share from another participant
+  useEffect(() => {
+    let socket: ReturnType<typeof import('@/lib/realtime/socket').getSocket>;
+    let cleanup = false;
+
+    import('@/lib/realtime/socket').then(({ getSocket }) => {
+      if (cleanup) return;
+      socket = getSocket();
+      socket.emit('room:join', { room: shareRoom });
+
+      socket.on('screen-share:start', () => {
+        const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS.current });
+        pcRef.current = pc;
+        pc.ontrack = (e) => setRemoteStream(e.streams[0]);
+        pc.onicecandidate = ({ candidate }) => {
+          if (candidate)
+            socket.emit('screen-share:ice-candidate', { to: null, room: shareRoom, candidate });
+        };
+        socket.on(
+          'screen-share:offer',
+          async ({ from, offer }: { from: string; offer: RTCSessionDescriptionInit }) => {
+            await pc.setRemoteDescription(offer);
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            socket.emit('screen-share:answer', { to: from, answer });
+          }
+        );
+        socket.on(
+          'screen-share:ice-candidate',
+          async ({ candidate }: { candidate: RTCIceCandidateInit }) => {
+            if (pc.remoteDescription) await pc.addIceCandidate(candidate);
+          }
+        );
+      });
+
+      socket.on('screen-share:stop', () => {
+        pcRef.current?.close();
+        pcRef.current = null;
+        setRemoteStream(null);
+      });
+    });
+
+    return () => {
+      cleanup = true;
+      pcRef.current?.close();
+    };
+  }, [shareRoom]);
 
   useEffect(() => {
     const t = setInterval(() => setElapsed(Date.now() - session.startedAt), 1000);
@@ -1084,7 +1394,10 @@ function ActiveSessionView({ session, onLeave }: { session: CollabSession; onLea
       text: chatInput.trim(),
       timestamp: Date.now(),
     };
-    createChatMessage({ title: newMsg.senderName, data: newMsg as unknown as Record<string, unknown> });
+    createChatMessage({
+      title: newMsg.senderName,
+      data: newMsg as unknown as Record<string, unknown>,
+    });
     setChatInput('');
   }, [chatInput, createChatMessage]);
 
@@ -1093,20 +1406,43 @@ function ActiveSessionView({ session, onLeave }: { session: CollabSession; onLea
       {/* Top bar */}
       <div className="flex items-center justify-between px-5 py-3 border-b border-lattice-border bg-lattice-surface/50">
         <div className="flex items-center gap-3">
-          <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center', TYPE_COLORS[session.projectType])}>
-            {(() => { const I = TYPE_ICONS[session.projectType]; return <I className="w-4 h-4" />; })()}
+          <div
+            className={cn(
+              'w-8 h-8 rounded-lg flex items-center justify-center',
+              TYPE_COLORS[session.projectType]
+            )}
+          >
+            {(() => {
+              const I = TYPE_ICONS[session.projectType];
+              return <I className="w-4 h-4" />;
+            })()}
           </div>
           <div>
             <h2 className="font-semibold text-sm">{session.name}</h2>
             <div className="flex items-center gap-3 text-[11px] text-gray-500">
-              <span className="flex items-center gap-1"><Timer className="w-3 h-3" />{formatDuration(elapsed)}</span>
-              <span className="flex items-center gap-1"><Users className="w-3 h-3" />{session.participants.length}/{session.maxCapacity}</span>
+              <span className="flex items-center gap-1">
+                <Timer className="w-3 h-3" />
+                {formatDuration(elapsed)}
+              </span>
+              <span className="flex items-center gap-1">
+                <Users className="w-3 h-3" />
+                {session.participants.length}/{session.maxCapacity}
+              </span>
             </div>
           </div>
         </div>
         <button
           onClick={() => {
-            api.post(`/api/collab/${session.id}/close`).then(r => r.data).then(() => onLeave()).catch((err) => { console.error('[Collab] Failed to leave session:', err); useUIStore.getState().addToast({ type: 'error', message: 'Failed to leave session' }); });
+            api
+              .post(`/api/collab/${session.id}/close`)
+              .then((r) => r.data)
+              .then(() => onLeave())
+              .catch((err) => {
+                console.error('[Collab] Failed to leave session:', err);
+                useUIStore
+                  .getState()
+                  .addToast({ type: 'error', message: 'Failed to leave session' });
+              });
           }}
           className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors font-medium"
         >
@@ -1122,20 +1458,35 @@ function ActiveSessionView({ session, onLeave }: { session: CollabSession; onLea
           <h3 className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2 px-1">
             Participants ({session.participants.length})
           </h3>
-          {session.participants.map(p => (
-            <div key={p.id} className="flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-lattice-surface transition-colors">
+          {session.participants.map((p) => (
+            <div
+              key={p.id}
+              className="flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-lattice-surface transition-colors"
+            >
               <div className="relative">
-                <div className={cn('w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white', p.avatar)}>
+                <div
+                  className={cn(
+                    'w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white',
+                    p.avatar
+                  )}
+                >
                   {p.name[0]}
                 </div>
-                <span className={cn(
-                  'absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-lattice-surface',
-                  p.online ? 'bg-emerald-400' : 'bg-gray-600'
-                )} />
+                <span
+                  className={cn(
+                    'absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-lattice-surface',
+                    p.online ? 'bg-emerald-400' : 'bg-gray-600'
+                  )}
+                />
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-medium truncate">{p.name}</p>
-                <span className={cn('text-[9px] px-1.5 py-0.5 rounded-full font-medium', ROLE_BADGE[p.role].color)}>
+                <span
+                  className={cn(
+                    'text-[9px] px-1.5 py-0.5 rounded-full font-medium',
+                    ROLE_BADGE[p.role].color
+                  )}
+                >
                   {p.role === 'host' && <Crown className="w-2 h-2 inline mr-0.5 -mt-px" />}
                   {ROLE_BADGE[p.role].label}
                 </span>
@@ -1147,33 +1498,65 @@ function ActiveSessionView({ session, onLeave }: { session: CollabSession; onLea
         {/* Center: shared workspace */}
         <div className="flex-1 flex flex-col overflow-hidden">
           <div className="flex-1 p-5 overflow-y-auto space-y-4">
+            {/* Remote screen share video */}
+            {remoteStream && (
+              <div className="panel p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-neon-green animate-pulse" />
+                  <h3 className="text-xs font-semibold text-neon-green uppercase tracking-wider">
+                    Live Screen Share
+                  </h3>
+                </div>
+                <video
+                  autoPlay
+                  playsInline
+                  className="w-full rounded-lg bg-black"
+                  style={{ maxHeight: 320 }}
+                  ref={(el) => {
+                    (remoteVideoRef as React.MutableRefObject<HTMLVideoElement | null>).current =
+                      el;
+                    if (el && remoteStream) el.srcObject = remoteStream;
+                  }}
+                />
+              </div>
+            )}
             {/* Project timeline placeholder */}
             <div className="panel p-4">
-              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Project Timeline</h3>
+              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                Project Timeline
+              </h3>
               <div className="space-y-2">
-                {['Planning', 'Research', 'Design', 'Development', 'Review', 'Delivery'].map((section, i) => (
-                  <div key={section} className="flex items-center gap-2">
-                    <span className="text-[10px] text-gray-500 w-12 text-right">{(i * 8) + 1}-{(i + 1) * 8}</span>
-                    <div
-                      className={cn(
-                        'h-7 rounded flex items-center px-2 text-[11px] font-medium',
-                        i % 3 === 0 ? 'bg-neon-blue/15 text-neon-blue' :
-                        i % 3 === 1 ? 'bg-neon-purple/15 text-neon-purple' :
-                        'bg-neon-cyan/15 text-neon-cyan'
-                      )}
-                      style={{ width: `${Math.max(60, ((i + 1) / 6) * 100)}%` }}
-                    >
-                      {section}
+                {['Planning', 'Research', 'Design', 'Development', 'Review', 'Delivery'].map(
+                  (section, i) => (
+                    <div key={section} className="flex items-center gap-2">
+                      <span className="text-[10px] text-gray-500 w-12 text-right">
+                        {i * 8 + 1}-{(i + 1) * 8}
+                      </span>
+                      <div
+                        className={cn(
+                          'h-7 rounded flex items-center px-2 text-[11px] font-medium',
+                          i % 3 === 0
+                            ? 'bg-neon-blue/15 text-neon-blue'
+                            : i % 3 === 1
+                              ? 'bg-neon-purple/15 text-neon-purple'
+                              : 'bg-neon-cyan/15 text-neon-cyan'
+                        )}
+                        style={{ width: `${Math.max(60, ((i + 1) / 6) * 100)}%` }}
+                      >
+                        {section}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                )}
               </div>
             </div>
 
             {/* Shared notes — persisted via lens data API */}
             <div className="panel p-4">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Shared Notes</h3>
+                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                  Shared Notes
+                </h3>
                 {notesSaving && (
                   <span className="flex items-center gap-1 text-[10px] text-neon-cyan">
                     <Loader2 className="w-3 h-3 animate-spin" /> Saving...
@@ -1185,7 +1568,7 @@ function ActiveSessionView({ session, onLeave }: { session: CollabSession; onLea
               </div>
               <textarea
                 value={notesText}
-                onChange={e => handleNotesChange(e.target.value)}
+                onChange={(e) => handleNotesChange(e.target.value)}
                 placeholder="Add shared notes for this session..."
                 rows={6}
                 className="w-full bg-lattice-surface rounded-lg p-3 text-sm text-gray-300 min-h-[80px] border border-lattice-border focus:outline-none focus:border-neon-blue/50 resize-y leading-relaxed"
@@ -1195,15 +1578,22 @@ function ActiveSessionView({ session, onLeave }: { session: CollabSession; onLea
             {/* Shared files */}
             <div className="panel p-4">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Shared Files</h3>
+                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                  Shared Files
+                </h3>
                 <span className="text-[10px] text-gray-600">{sharedFiles.length} uploaded</span>
               </div>
               <div className="space-y-1.5">
                 {sharedFiles.length === 0 ? (
-                  <p className="text-xs text-gray-600 text-center py-3">No files uploaded yet. Use the Upload File button below.</p>
+                  <p className="text-xs text-gray-600 text-center py-3">
+                    No files uploaded yet. Use the Upload File button below.
+                  </p>
                 ) : (
-                  sharedFiles.map(f => (
-                    <div key={`${f.name}-${f.uploadedAt}`} className="flex items-center justify-between py-1.5 px-2 rounded-md hover:bg-lattice-surface transition-colors">
+                  sharedFiles.map((f) => (
+                    <div
+                      key={`${f.name}-${f.uploadedAt}`}
+                      className="flex items-center justify-between py-1.5 px-2 rounded-md hover:bg-lattice-surface transition-colors"
+                    >
                       <div className="flex items-center gap-2">
                         <Paperclip className="w-3.5 h-3.5 text-neon-cyan" />
                         <span className="text-xs font-medium">{f.name}</span>
@@ -1223,26 +1613,27 @@ function ActiveSessionView({ session, onLeave }: { session: CollabSession; onLea
           {/* Bottom action bar */}
           <div className="flex items-center gap-2 px-5 py-3 border-t border-lattice-border bg-lattice-surface/50">
             <button
-              onClick={() => setScreenShareInfo(prev => !prev)}
+              onClick={isSharing ? stopScreenShare : startScreenShare}
               className={cn(
                 'flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md border transition-colors',
-                screenShareInfo
-                  ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
+                isSharing
+                  ? 'bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500/20'
                   : 'bg-lattice-surface border-lattice-border text-gray-300 hover:border-neon-blue/40'
               )}
             >
-              <Monitor className="w-3.5 h-3.5" /> Share Screen
+              <Monitor className="w-3.5 h-3.5" /> {isSharing ? 'Stop Sharing' : 'Share Screen'}
             </button>
-            {screenShareInfo && (
-              <span className="text-[10px] text-amber-400/80 px-2 py-1 bg-amber-500/10 rounded-md border border-amber-500/20">
-                Screen sharing requires a WebRTC connection &mdash; coming soon
+            {remoteStream && (
+              <span className="flex items-center gap-1.5 text-xs text-neon-green">
+                <span className="w-1.5 h-1.5 rounded-full bg-neon-green animate-pulse" />
+                Receiving screen share
               </span>
             )}
             <input
               ref={fileInputRef}
               type="file"
               className="hidden"
-              onChange={e => {
+              onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (file) handleFileUpload(file);
                 e.target.value = '';
@@ -1253,13 +1644,29 @@ function ActiveSessionView({ session, onLeave }: { session: CollabSession; onLea
               disabled={isUploading}
               className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-lattice-surface border border-lattice-border text-gray-300 hover:border-neon-blue/40 transition-colors disabled:opacity-50"
             >
-              {isUploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+              {isUploading ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Upload className="w-3.5 h-3.5" />
+              )}
               {isUploading ? 'Uploading...' : 'Upload File'}
             </button>
-            <button onClick={() => useUIStore.getState().addToast({ type: 'info', message: 'Invite link copied to clipboard' })} className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-lattice-surface border border-lattice-border text-gray-300 hover:border-neon-blue/40 transition-colors">
+            <button
+              onClick={() =>
+                useUIStore
+                  .getState()
+                  .addToast({ type: 'info', message: 'Invite link copied to clipboard' })
+              }
+              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-lattice-surface border border-lattice-border text-gray-300 hover:border-neon-blue/40 transition-colors"
+            >
               <UserPlus className="w-3.5 h-3.5" /> Invite
             </button>
-            <button onClick={() => useUIStore.getState().addToast({ type: 'info', message: 'Session settings' })} className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-lattice-surface border border-lattice-border text-gray-300 hover:border-neon-blue/40 transition-colors">
+            <button
+              onClick={() =>
+                useUIStore.getState().addToast({ type: 'info', message: 'Session settings' })
+              }
+              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-lattice-surface border border-lattice-border text-gray-300 hover:border-neon-blue/40 transition-colors"
+            >
               <Settings className="w-3.5 h-3.5" /> Settings
             </button>
           </div>
@@ -1281,21 +1688,32 @@ function ActiveSessionView({ session, onLeave }: { session: CollabSession; onLea
             </h3>
           </div>
           <div className="flex-1 overflow-y-auto p-3 space-y-3">
-            {messages.map(msg => (
+            {messages.map((msg) => (
               <div key={msg.id}>
                 {msg.isSystem ? (
                   <p className="text-[10px] text-gray-600 text-center italic py-1">{msg.text}</p>
                 ) : (
                   <div className="flex gap-2">
-                    <div className={cn('w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-bold text-white shrink-0 mt-0.5', msg.senderAvatar)}>
+                    <div
+                      className={cn(
+                        'w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-bold text-white shrink-0 mt-0.5',
+                        msg.senderAvatar
+                      )}
+                    >
                       {msg.senderName[0]}
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-baseline gap-1.5">
-                        <span className="text-[11px] font-semibold text-gray-300">{msg.senderName}</span>
-                        <span className="text-[9px] text-gray-600">{formatTimestamp(msg.timestamp)}</span>
+                        <span className="text-[11px] font-semibold text-gray-300">
+                          {msg.senderName}
+                        </span>
+                        <span className="text-[9px] text-gray-600">
+                          {formatTimestamp(msg.timestamp)}
+                        </span>
                       </div>
-                      <p className="text-xs text-gray-400 leading-relaxed break-words">{msg.text}</p>
+                      <p className="text-xs text-gray-400 leading-relaxed break-words">
+                        {msg.text}
+                      </p>
                     </div>
                   </div>
                 )}
@@ -1305,15 +1723,19 @@ function ActiveSessionView({ session, onLeave }: { session: CollabSession; onLea
           </div>
           <div className="p-2 border-t border-lattice-border">
             <div className="flex items-center gap-1.5">
-              <button onClick={() => fileInputRef.current?.click()} className="p-1.5 text-gray-500 hover:text-gray-300 transition-colors" title="Attach file">
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="p-1.5 text-gray-500 hover:text-gray-300 transition-colors"
+                title="Attach file"
+              >
                 <Paperclip className="w-3.5 h-3.5" />
               </button>
               <input
                 type="text"
                 placeholder="Type a message..."
                 value={chatInput}
-                onChange={e => setChatInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && sendMessage()}
+                onChange={(e) => setChatInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
                 className="flex-1 text-xs py-1.5 px-2.5 bg-lattice-surface border border-lattice-border rounded-md focus:outline-none focus:border-neon-blue/50"
               />
               <button
@@ -1348,11 +1770,19 @@ function InvitationCard({ invitation }: { invitation: Invitation }) {
         <span className="text-sm text-gray-500">
           {responded === 'accepted' ? 'Accepted' : 'Declined'}: {invitation.sessionName}
         </span>
-        <span className={cn(
-          'text-xs px-2 py-0.5 rounded-full',
-          responded === 'accepted' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'
-        )}>
-          {responded === 'accepted' ? <Check className="w-3 h-3 inline mr-0.5" /> : <XCircle className="w-3 h-3 inline mr-0.5" />}
+        <span
+          className={cn(
+            'text-xs px-2 py-0.5 rounded-full',
+            responded === 'accepted'
+              ? 'bg-emerald-500/20 text-emerald-400'
+              : 'bg-red-500/20 text-red-400'
+          )}
+        >
+          {responded === 'accepted' ? (
+            <Check className="w-3 h-3 inline mr-0.5" />
+          ) : (
+            <XCircle className="w-3 h-3 inline mr-0.5" />
+          )}
           {responded}
         </span>
       </motion.div>
@@ -1362,7 +1792,12 @@ function InvitationCard({ invitation }: { invitation: Invitation }) {
   return (
     <motion.div layout className="panel p-4 flex items-center justify-between gap-4">
       <div className="flex items-center gap-3 min-w-0">
-        <div className={cn('w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white', invitation.fromAvatar)}>
+        <div
+          className={cn(
+            'w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white',
+            invitation.fromAvatar
+          )}
+        >
           {invitation.fromName[0]}
         </div>
         <div className="min-w-0">
@@ -1384,7 +1819,16 @@ function InvitationCard({ invitation }: { invitation: Invitation }) {
       <div className="flex items-center gap-2 shrink-0">
         <button
           onClick={() => {
-            api.post(`/api/collab/${invitation.id}/close`).then(r => r.data).then(() => setResponded('declined')).catch((err) => { console.error('[Collab] Failed to decline invitation:', err); useUIStore.getState().addToast({ type: 'error', message: 'Failed to decline invitation' }); });
+            api
+              .post(`/api/collab/${invitation.id}/close`)
+              .then((r) => r.data)
+              .then(() => setResponded('declined'))
+              .catch((err) => {
+                console.error('[Collab] Failed to decline invitation:', err);
+                useUIStore
+                  .getState()
+                  .addToast({ type: 'error', message: 'Failed to decline invitation' });
+              });
           }}
           className="text-xs px-3 py-1.5 rounded-md bg-lattice-surface border border-lattice-border text-gray-400 hover:text-red-400 hover:border-red-500/30 transition-colors"
         >
@@ -1392,7 +1836,16 @@ function InvitationCard({ invitation }: { invitation: Invitation }) {
         </button>
         <button
           onClick={() => {
-            api.post(`/api/collab/${invitation.id}/accept`).then(r => r.data).then(() => setResponded('accepted')).catch((err) => { console.error('[Collab] Failed to accept invitation:', err); useUIStore.getState().addToast({ type: 'error', message: 'Failed to accept invitation' }); });
+            api
+              .post(`/api/collab/${invitation.id}/accept`)
+              .then((r) => r.data)
+              .then(() => setResponded('accepted'))
+              .catch((err) => {
+                console.error('[Collab] Failed to accept invitation:', err);
+                useUIStore
+                  .getState()
+                  .addToast({ type: 'error', message: 'Failed to accept invitation' });
+              });
           }}
           className="text-xs px-3 py-1.5 rounded-md bg-neon-blue/20 text-neon-blue hover:bg-neon-blue/30 font-medium transition-colors"
         >
@@ -1412,7 +1865,12 @@ function HistoryCard({ entry }: { entry: HistoryEntry }) {
   return (
     <div className="panel p-4 flex items-center justify-between gap-4">
       <div className="flex items-center gap-3 min-w-0">
-        <div className={cn('w-9 h-9 rounded-lg flex items-center justify-center bg-lattice-surface', TYPE_COLORS[entry.projectType])}>
+        <div
+          className={cn(
+            'w-9 h-9 rounded-lg flex items-center justify-center bg-lattice-surface',
+            TYPE_COLORS[entry.projectType]
+          )}
+        >
           <TypeIcon className="w-4 h-4" />
         </div>
         <div className="min-w-0">
@@ -1460,7 +1918,7 @@ function CreateSessionModal({ onClose }: { onClose: () => void }) {
 
   const { data: projectsData } = useQuery({
     queryKey: ['studio-projects-for-link'],
-    queryFn: () => apiHelpers.artistry.studio.projects.list().then(r => r.data),
+    queryFn: () => apiHelpers.artistry.studio.projects.list().then((r) => r.data),
     retry: 1,
   });
 
@@ -1475,7 +1933,16 @@ function CreateSessionModal({ onClose }: { onClose: () => void }) {
       queryClient.invalidateQueries({ queryKey: ['artistry-collab-sessions'] });
       queryClient.invalidateQueries({ queryKey: ['active-collabs'] });
       // Also register the collaboration via the createCollab API
-      api.post('/api/collab/create', { inviteeId: '', domains: [form.type], description: form.description || form.name }).then(r => r.data).catch((err) => { console.error('[Collab] Failed to register collaboration:', err); });
+      api
+        .post('/api/collab/create', {
+          inviteeId: '',
+          domains: [form.type],
+          description: form.description || form.name,
+        })
+        .then((r) => r.data)
+        .catch((err) => {
+          console.error('[Collab] Failed to register collaboration:', err);
+        });
       onClose();
     },
     onError: (err) => {
@@ -1499,11 +1966,14 @@ function CreateSessionModal({ onClose }: { onClose: () => void }) {
         exit={{ scale: 0.95, opacity: 0 }}
         transition={{ duration: 0.2 }}
         className="bg-lattice-surface border border-lattice-border rounded-xl p-6 w-full max-w-lg space-y-4"
-        onClick={e => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold">Create Session</h2>
-          <button onClick={onClose} className="p-1 text-gray-500 hover:text-gray-300 transition-colors">
+          <button
+            onClick={onClose}
+            className="p-1 text-gray-500 hover:text-gray-300 transition-colors"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -1515,7 +1985,7 @@ function CreateSessionModal({ onClose }: { onClose: () => void }) {
             type="text"
             placeholder="e.g. Q2 Design Sprint"
             value={form.name}
-            onChange={e => setForm({ ...form, name: e.target.value })}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
             className="w-full px-3 py-2 text-sm bg-lattice-surface border border-lattice-border rounded-lg focus:outline-none focus:border-neon-blue/50"
           />
         </div>
@@ -1526,7 +1996,7 @@ function CreateSessionModal({ onClose }: { onClose: () => void }) {
             <label className="text-xs font-medium text-gray-400 block mb-1">Type</label>
             <select
               value={form.type}
-              onChange={e => setForm({ ...form, type: e.target.value as ProjectType })}
+              onChange={(e) => setForm({ ...form, type: e.target.value as ProjectType })}
               className="w-full px-3 py-2 text-sm bg-lattice-surface border border-lattice-border rounded-lg focus:outline-none focus:border-neon-blue/50"
             >
               <option value="design">Design</option>
@@ -1542,7 +2012,7 @@ function CreateSessionModal({ onClose }: { onClose: () => void }) {
               type="text"
               placeholder="e.g. UI/UX, Backend"
               value={form.genre}
-              onChange={e => setForm({ ...form, genre: e.target.value })}
+              onChange={(e) => setForm({ ...form, genre: e.target.value })}
               className="w-full px-3 py-2 text-sm bg-lattice-surface border border-lattice-border rounded-lg focus:outline-none focus:border-neon-blue/50"
             />
           </div>
@@ -1554,11 +2024,13 @@ function CreateSessionModal({ onClose }: { onClose: () => void }) {
             <label className="text-xs font-medium text-gray-400 block mb-1">Max Participants</label>
             <select
               value={form.maxParticipants}
-              onChange={e => setForm({ ...form, maxParticipants: Number(e.target.value) })}
+              onChange={(e) => setForm({ ...form, maxParticipants: Number(e.target.value) })}
               className="w-full px-3 py-2 text-sm bg-lattice-surface border border-lattice-border rounded-lg focus:outline-none focus:border-neon-blue/50"
             >
-              {[2, 3, 4, 5, 6, 8, 10].map(n => (
-                <option key={n} value={n}>{n} participants</option>
+              {[2, 3, 4, 5, 6, 8, 10].map((n) => (
+                <option key={n} value={n}>
+                  {n} participants
+                </option>
               ))}
             </select>
           </div>
@@ -1566,7 +2038,7 @@ function CreateSessionModal({ onClose }: { onClose: () => void }) {
             <label className="text-xs font-medium text-gray-400 block mb-1">Privacy</label>
             <select
               value={form.privacy}
-              onChange={e => setForm({ ...form, privacy: e.target.value as Privacy })}
+              onChange={(e) => setForm({ ...form, privacy: e.target.value as Privacy })}
               className="w-full px-3 py-2 text-sm bg-lattice-surface border border-lattice-border rounded-lg focus:outline-none focus:border-neon-blue/50"
             >
               <option value="public">Public</option>
@@ -1582,7 +2054,7 @@ function CreateSessionModal({ onClose }: { onClose: () => void }) {
           <textarea
             placeholder="What's this session about?"
             value={form.description}
-            onChange={e => setForm({ ...form, description: e.target.value })}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
             rows={2}
             className="w-full px-3 py-2 text-sm bg-lattice-surface border border-lattice-border rounded-lg focus:outline-none focus:border-neon-blue/50 resize-none"
           />
@@ -1590,29 +2062,48 @@ function CreateSessionModal({ onClose }: { onClose: () => void }) {
 
         {/* Link existing project */}
         <div>
-          <label className="text-xs font-medium text-gray-400 block mb-1">Link Existing Project (optional)</label>
+          <label className="text-xs font-medium text-gray-400 block mb-1">
+            Link Existing Project (optional)
+          </label>
           <select
             value={form.linkedProjectId}
-            onChange={e => setForm({ ...form, linkedProjectId: e.target.value })}
+            onChange={(e) => setForm({ ...form, linkedProjectId: e.target.value })}
             className="w-full px-3 py-2 text-sm bg-lattice-surface border border-lattice-border rounded-lg focus:outline-none focus:border-neon-blue/50"
           >
             <option value="">No linked project</option>
-            {projects.map(p => (
-              <option key={p.id} value={p.id}>{p.title || `Project ${p.id.slice(-6)}`}</option>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.title || `Project ${p.id.slice(-6)}`}
+              </option>
             ))}
           </select>
         </div>
 
         {/* Privacy indicator */}
         <div className="flex items-center gap-2 text-xs text-gray-500">
-          {form.privacy === 'public' && <><Globe className="w-3.5 h-3.5 text-emerald-400" /> Anyone can join this session</>}
-          {form.privacy === 'private' && <><Lock className="w-3.5 h-3.5 text-neon-purple" /> Only people with the link can join</>}
-          {form.privacy === 'invite-only' && <><Mail className="w-3.5 h-3.5 text-amber-400" /> Only invited users can join</>}
+          {form.privacy === 'public' && (
+            <>
+              <Globe className="w-3.5 h-3.5 text-emerald-400" /> Anyone can join this session
+            </>
+          )}
+          {form.privacy === 'private' && (
+            <>
+              <Lock className="w-3.5 h-3.5 text-neon-purple" /> Only people with the link can join
+            </>
+          )}
+          {form.privacy === 'invite-only' && (
+            <>
+              <Mail className="w-3.5 h-3.5 text-amber-400" /> Only invited users can join
+            </>
+          )}
         </div>
 
         {/* Actions */}
         <div className="flex gap-3 justify-end pt-2">
-          <button onClick={onClose} className="px-4 py-2 text-sm text-gray-400 hover:text-gray-200 transition-colors">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm text-gray-400 hover:text-gray-200 transition-colors"
+          >
             Cancel
           </button>
           <button

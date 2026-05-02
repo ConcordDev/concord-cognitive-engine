@@ -10,7 +10,7 @@ const panel = 'bg-black/80 backdrop-blur-sm border border-white/10 rounded-lg';
 
 // ── Types ──────────────────────────────────────────────────────────
 
-export type CameraMode = 'isometric' | 'follow' | 'free' | 'interior' | 'cinematic';
+export type CameraMode = 'isometric' | 'follow' | 'first-person' | 'free' | 'interior' | 'cinematic';
 export type ZoomLevel = 'world' | 'district' | 'neighborhood' | 'building' | 'interior';
 export type RotationAngle = 'NE' | 'SE' | 'SW' | 'NW';
 export type FollowTarget = 'avatar' | 'npc' | 'event';
@@ -39,6 +39,7 @@ interface CameraControlsProps {
 const cameraModes: { mode: CameraMode; label: string; icon: React.ReactNode }[] = [
   { mode: 'isometric', label: 'Isometric', icon: <Monitor className="w-3.5 h-3.5" /> },
   { mode: 'follow', label: 'Follow', icon: <User className="w-3.5 h-3.5" /> },
+  { mode: 'first-person', label: 'First Person', icon: <Eye className="w-3.5 h-3.5" /> },
   { mode: 'free', label: 'Free', icon: <Maximize2 className="w-3.5 h-3.5" /> },
   { mode: 'interior', label: 'Interior', icon: <Eye className="w-3.5 h-3.5" /> },
   { mode: 'cinematic', label: 'Cinematic', icon: <Camera className="w-3.5 h-3.5" /> },

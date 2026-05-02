@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback } from 'react';
 import { ChevronRight, Check, Armchair, Box, Home, GitFork, X } from 'lucide-react';
+import { tutorialManager } from '@/lib/concordia/onboarding/tutorial';
 
 const panel = 'bg-black/90 backdrop-blur-sm border border-white/10 rounded-lg';
 
@@ -44,7 +45,8 @@ const TUTORIALS: TutorialStep[] = [
     title: 'Improve a Design',
     description: 'Fork an existing shelter and add a window for better habitability.',
     icon: GitFork,
-    instruction: 'Fork the shelter, add a window. Original creator earns royalties from your improvement.',
+    instruction:
+      'Fork the shelter, add a window. Original creator earns royalties from your improvement.',
     action: 'Fork & improve',
   },
 ];
@@ -57,15 +59,22 @@ interface OnboardingTutorialProps {
 export default function OnboardingTutorial({ onComplete, onDismiss }: OnboardingTutorialProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
+  const [dropHints, setDropHints] = useState(false);
 
   const completeStep = useCallback(() => {
-    setCompletedSteps(prev => new Set([...prev, currentStep]));
+    setCompletedSteps((prev) => new Set([...prev, currentStep]));
     if (currentStep < TUTORIALS.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
+      if (dropHints) tutorialManager.enableHints();
       onComplete();
     }
-  }, [currentStep, onComplete]);
+  }, [currentStep, dropHints, onComplete]);
+
+  const handleSkip = useCallback(() => {
+    tutorialManager.skip(dropHints);
+    onDismiss();
+  }, [dropHints, onDismiss]);
 
   const tutorial = TUTORIALS[currentStep];
 
@@ -75,7 +84,7 @@ export default function OnboardingTutorial({ onComplete, onDismiss }: Onboarding
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-bold text-white">Welcome to World Lens</h2>
-          <button onClick={onDismiss} className="text-gray-500 hover:text-white">
+          <button onClick={handleSkip} className="text-gray-500 hover:text-white">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -90,7 +99,11 @@ export default function OnboardingTutorial({ onComplete, onDismiss }: Onboarding
             <div
               key={t.id}
               className={`flex-1 h-1 rounded-full transition-colors ${
-                completedSteps.has(i) ? 'bg-green-500' : i === currentStep ? 'bg-cyan-500' : 'bg-white/10'
+                completedSteps.has(i)
+                  ? 'bg-green-500'
+                  : i === currentStep
+                    ? 'bg-cyan-500'
+                    : 'bg-white/10'
               }`}
             />
           ))}
@@ -105,15 +118,30 @@ export default function OnboardingTutorial({ onComplete, onDismiss }: Onboarding
             Tutorial {tutorial.id}: {tutorial.title}
           </h3>
           <p className="text-sm text-gray-400 mb-3">{tutorial.description}</p>
-          <div className="p-3 rounded bg-white/5 text-xs text-gray-300">
-            {tutorial.instruction}
-          </div>
+          <div className="p-3 rounded bg-white/5 text-xs text-gray-300">{tutorial.instruction}</div>
         </div>
+
+        {/* Drop Hints toggle */}
+        <button
+          onClick={() => setDropHints((v) => !v)}
+          className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-white/5 hover:bg-white/8 border border-white/5 mb-3 transition-colors"
+        >
+          <span className="text-xs text-white/60 flex items-center gap-2">
+            <span>💡</span> Drop hints after tutorial
+          </span>
+          <span
+            className={`text-[10px] font-medium px-2 py-0.5 rounded-full transition-colors ${
+              dropHints ? 'bg-cyan-500/20 text-cyan-300' : 'bg-white/10 text-white/30'
+            }`}
+          >
+            {dropHints ? 'ON' : 'OFF'}
+          </span>
+        </button>
 
         {/* Actions */}
         <div className="flex gap-2">
           <button
-            onClick={onDismiss}
+            onClick={handleSkip}
             className="flex-1 py-2 text-xs text-gray-400 border border-white/10 rounded-lg hover:text-white transition-colors"
           >
             Skip Tutorial

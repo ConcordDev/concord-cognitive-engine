@@ -31,7 +31,7 @@ interface WalletWidgetProps {
 
 // ── Component ────────────────────────────────────────────────────────────────
 
-export function WalletWidget({ className, compact = false }: WalletWidgetProps) {
+function WalletWidget({ className, compact = false }: WalletWidgetProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [purchaseOpen, setPurchaseOpen] = useState(false);
 
@@ -74,9 +74,7 @@ export function WalletWidget({ className, compact = false }: WalletWidgetProps) 
         {isLoading ? (
           <span className="text-zinc-400 animate-pulse font-mono">...</span>
         ) : (
-          <span className="text-zinc-200 font-mono">
-            {Number(balance).toLocaleString()}
-          </span>
+          <span className="text-zinc-200 font-mono">{Number(balance).toLocaleString()}</span>
         )}
         <span className="text-zinc-500 text-xs">CC</span>
       </Link>
@@ -134,9 +132,7 @@ export function WalletWidget({ className, compact = false }: WalletWidgetProps) 
               >
                 {/* Balance Display */}
                 <div className="p-4 border-b border-lattice-border bg-lattice-deep">
-                  <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">
-                    Balance
-                  </p>
+                  <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Balance</p>
                   <div className="flex items-baseline gap-2">
                     <span className="text-2xl font-mono font-bold text-white">
                       {Number(balance).toLocaleString()}
@@ -177,15 +173,13 @@ export function WalletWidget({ className, compact = false }: WalletWidgetProps) 
 
       {/* Purchase Flow Modal */}
       <AnimatePresence>
-        {purchaseOpen && (
-          <PurchaseFlow
-            mode="modal"
-            onClose={() => setPurchaseOpen(false)}
-          />
-        )}
+        {purchaseOpen && <PurchaseFlow mode="modal" onClose={() => setPurchaseOpen(false)} />}
       </AnimatePresence>
     </>
   );
 }
 
-export default WalletWidget;
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedWalletWidget = withErrorBoundary(WalletWidget);
+export { _WrappedWalletWidget as WalletWidget };
+export default _WrappedWalletWidget;

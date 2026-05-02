@@ -1,0 +1,44 @@
+{
+  "world_id": "crime",
+  "world_name": "Crime World",
+  "theme": "noir",
+  "tech_level": "modern",
+  "magic_level": "none",
+  "is_hub": false,
+  "description": "A grounded modern setting — gritty city, organized crime, corrupt institutions, hard-boiled detectives. No bio powers, no magic. Skills that win here are stealth, weapon mastery, weapon attachments, infiltration, and deception. Gun skill in particular goes deeper than in the superhero world: caliber, recoil control, attachment combinations, suppressed vs unsuppressed, and so on are all distinct sub-skills players can master.",
+  "skill_affinity": {
+    "default": 0.6,
+    "stealth": 1.0,
+    "lockpicking": 1.0,
+    "infiltration": 1.0,
+    "deception": 1.0,
+    "gun": 1.0,
+    "weapons_modern": 1.0,
+    "weapon_attachments": 1.0,
+    "martial_arts": 1.0,
+    "athletics": 0.95,
+    "driving": 1.0,
+    "piloting": 0.7,
+    "tech": 0.85,
+    "hacking": 0.85,
+    "engineering": 0.7,
+    "diplomacy": 0.7,
+    "leadership": 0.8,
+    "crafting": 0.6,
+    "swordsmanship": 0.4,
+    "archery": 0.3,
+    "alchemy": 0.2,
+    "bio_powers": 0.3,
+    "magic": 0.05
+  },
+  "concord_link": {
+    "primary_access": "ghost_chips",
+    "secondary_access": ["hidden_radio_frequencies", "tattoo_signals"],
+    "veil_stability": 0.85,
+    "anchors": [
+      { "id": "anchor_crime_iron_rose_kitchen", "name": "The Iron Rose Kitchen Radio", "access_method": "hidden_radio_frequencies", "description": "An unlicensed shortwave rig in the back kitchen of Mama Delgado's house. Tuned to a frequency only her network knows. She decides who can talk on it.", "location": "iron_rose_estate", "controlled_by_faction": "iron_rose_syndicate", "stability": 0.95 },
+      { "id": "anchor_crime_ghost_chip_dispensary", "name": "Ghost Chip Dispensary", "access_method": "ghost_chips", "description": "An anonymous burner-phone vendor under a freeway overpass. The chips installed in their phones carry shadow-grade encryption. The vendor changes location every Tuesday.", "location": "dockside_warehouses", "controlled_by_faction": "ghost_network", "stability": 0.8 },
+      { "id": "anchor_crime_tattoo_parlor", "name": "Maria's Tattoo Parlor", "access_method": "tattoo_signals", "description": "Special inks etched into the skin form a passive Veil receiver. Cheap to set up, expensive to remove. Half the city's runners have one.", "location": "river_market", "controlled_by_faction": null, "stability": 0.7 }
+    ]
+  }
+}

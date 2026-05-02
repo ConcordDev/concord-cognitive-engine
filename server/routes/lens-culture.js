@@ -3,6 +3,7 @@
  */
 
 import express from "express";
+import "../lib/lens-culture-constants.js"; // wiring: constants are sourced via economy/lens-culture.js below
 import {
   // Constants
   MUSIC_LENS, MUSIC_PROTECTION, ONE_TAP_PURCHASE, ARTIFACT_EXPORT,

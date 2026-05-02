@@ -40,7 +40,7 @@ interface LensListResponse {
   total: number;
 }
 
-export function SmartContextBar({ domain, domainLabel }: SmartContextBarProps) {
+function SmartContextBar({ domain, domainLabel }: SmartContextBarProps) {
   // Fetch the most recent DTUs for this domain.
   // The query is intentionally lenient — if the API is down or the domain has
   // no data we simply render with safe defaults (0 count, no items).
@@ -61,10 +61,7 @@ export function SmartContextBar({ domain, domainLabel }: SmartContextBarProps) {
   // Falls back to the most recent item of any source if none match.
   const lastInsight =
     recentItems.find(
-      (item) =>
-        item.source === 'autogen' ||
-        item.source === 'dream' ||
-        item.source === 'synthesis',
+      (item) => item.source === 'autogen' || item.source === 'dream' || item.source === 'synthesis'
     ) || recentItems[0];
 
   return (
@@ -84,9 +81,7 @@ export function SmartContextBar({ domain, domainLabel }: SmartContextBarProps) {
         <>
           <div className="flex items-center gap-1.5 text-gray-400 min-w-0 flex-1">
             <Sparkles className="w-3.5 h-3.5 text-neon-purple flex-shrink-0" />
-            <span className="text-xs truncate">
-              {lastInsight.title || 'Latest insight'}
-            </span>
+            <span className="text-xs truncate">{lastInsight.title || 'Latest insight'}</span>
           </div>
           <div className="w-px h-4 bg-lattice-border" />
         </>
@@ -122,3 +117,7 @@ export function SmartContextBar({ domain, domainLabel }: SmartContextBarProps) {
     </div>
   );
 }
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedSmartContextBar = withErrorBoundary(SmartContextBar);
+export { _WrappedSmartContextBar as SmartContextBar };

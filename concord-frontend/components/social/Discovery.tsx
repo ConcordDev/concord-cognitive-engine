@@ -146,10 +146,7 @@ function TrendingCard({
       <div className="flex items-start gap-3">
         {/* Rank */}
         <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-lattice-surface flex items-center justify-center">
-          <span className={cn(
-            'text-sm font-bold',
-            rank <= 3 ? 'text-neon-cyan' : 'text-gray-400'
-          )}>
+          <span className={cn('text-sm font-bold', rank <= 3 ? 'text-neon-cyan' : 'text-gray-400')}>
             {rank}
           </span>
         </div>
@@ -168,8 +165,11 @@ function TrendingCard({
           </div>
           {item.tags.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-2">
-              {item.tags.slice(0, 3).map(tag => (
-                <span key={tag} className="text-xs text-neon-cyan/60 bg-neon-cyan/5 px-1.5 py-0.5 rounded-full">
+              {item.tags.slice(0, 3).map((tag) => (
+                <span
+                  key={tag}
+                  className="text-xs text-neon-cyan/60 bg-neon-cyan/5 px-1.5 py-0.5 rounded-full"
+                >
                   #{tag}
                 </span>
               ))}
@@ -278,7 +278,7 @@ function SuggestedUserCard({
               {user.displayName}
             </button>
             <button
-              onClick={() => setFollowed(prev => !prev)}
+              onClick={() => setFollowed((prev) => !prev)}
               className={cn(
                 'flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all flex-shrink-0 ml-2',
                 followed
@@ -299,9 +299,7 @@ function SuggestedUserCard({
 
           <p className="text-xs text-gray-500 mt-0.5">@{user.userId}</p>
 
-          {user.bio && (
-            <p className="text-sm text-gray-400 mt-1.5 line-clamp-2">{user.bio}</p>
-          )}
+          {user.bio && <p className="text-sm text-gray-400 mt-1.5 line-clamp-2">{user.bio}</p>}
 
           <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
             <span className="flex items-center gap-1">
@@ -322,8 +320,11 @@ function SuggestedUserCard({
 
           {user.specialization && user.specialization.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-2">
-              {user.specialization.slice(0, 4).map(spec => (
-                <span key={spec} className="text-xs text-neon-purple/70 bg-neon-purple/5 px-1.5 py-0.5 rounded-full">
+              {user.specialization.slice(0, 4).map((spec) => (
+                <span
+                  key={spec}
+                  className="text-xs text-neon-purple/70 bg-neon-purple/5 px-1.5 py-0.5 rounded-full"
+                >
                   {spec}
                 </span>
               ))}
@@ -337,7 +338,7 @@ function SuggestedUserCard({
 
 // ── Main Component ───────────────────────────────────────────────────────────
 
-export function Discovery({
+function Discovery({
   currentUserId,
   onNavigateToUser,
   onNavigateToContent,
@@ -378,7 +379,7 @@ export function Discovery({
       // Aggregate tags
       const tagCounts = new Map<string, number>();
       for (const item of trending) {
-        for (const tag of (item.tags || [])) {
+        for (const tag of item.tags || []) {
           tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
         }
       }
@@ -388,7 +389,7 @@ export function Discovery({
           tag,
           count,
           category: 'general',
-          change: count > 2 ? 'up' as const : 'stable' as const,
+          change: count > 2 ? ('up' as const) : ('stable' as const),
         }))
         .sort((a, b) => b.count - a.count)
         .slice(0, 20);
@@ -436,9 +437,10 @@ export function Discovery({
   // ── Search handler ───────────────────────────────────────────────────
 
   const handleSearchChange = useMemo(
-    () => debounce((value: string) => {
-      setSearchQuery(value);
-    }, 300),
+    () =>
+      debounce((value: string) => {
+        setSearchQuery(value);
+      }, 300),
     []
   );
 
@@ -457,14 +459,16 @@ export function Discovery({
     <div className={cn('space-y-4', className)}>
       {/* Search bar */}
       <div className="relative">
-        <Search className={cn(
-          'absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors',
-          isSearchFocused ? 'text-neon-cyan' : 'text-gray-500'
-        )} />
+        <Search
+          className={cn(
+            'absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors',
+            isSearchFocused ? 'text-neon-cyan' : 'text-gray-500'
+          )}
+        />
         <input
           type="text"
           placeholder="Search DTUs, users, topics..."
-          onChange={e => handleSearchChange(e.target.value)}
+          onChange={(e) => handleSearchChange(e.target.value)}
           onFocus={() => setIsSearchFocused(true)}
           onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
           className={cn(
@@ -527,7 +531,7 @@ export function Discovery({
       {/* Tabs */}
       <div className="flex items-center justify-between">
         <div className="flex gap-1">
-          {tabs.map(tab => (
+          {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
@@ -546,7 +550,7 @@ export function Discovery({
 
         {/* Filter toggle */}
         <button
-          onClick={() => setShowFilters(prev => !prev)}
+          onClick={() => setShowFilters((prev) => !prev)}
           className={cn(
             'flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm transition-colors',
             showFilters ? 'bg-neon-cyan/10 text-neon-cyan' : 'text-gray-400 hover:text-white'
@@ -554,9 +558,7 @@ export function Discovery({
         >
           <Filter className="w-4 h-4" />
           Filters
-          {categoryFilter !== 'all' && (
-            <span className="w-2 h-2 rounded-full bg-neon-cyan" />
-          )}
+          {categoryFilter !== 'all' && <span className="w-2 h-2 rounded-full bg-neon-cyan" />}
         </button>
       </div>
 
@@ -570,7 +572,7 @@ export function Discovery({
             className="overflow-hidden"
           >
             <div className="flex flex-wrap gap-2 pb-2">
-              {CATEGORY_FILTERS.map(filter => (
+              {CATEGORY_FILTERS.map((filter) => (
                 <button
                   key={filter.id}
                   onClick={() => setCategoryFilter(filter.id)}
@@ -617,24 +619,35 @@ export function Discovery({
             </button>
           </div>
           <div className="space-y-2">
-            {sharedSessionsQuery.data.slice(0, 5).map((session: { id: string; topic?: string; participantCount?: number; createdAt?: string }) => (
-              <button
-                key={session.id}
-                onClick={() => onNavigateToContent?.(session.id)}
-                className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-lattice-surface transition-colors text-left"
-              >
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                  <span className="text-sm text-white truncate">{session.topic || 'Shared Session'}</span>
-                </div>
-                {session.participantCount != null && (
-                  <span className="text-xs text-gray-500 flex items-center gap-1">
-                    <Users className="w-3 h-3" />
-                    {session.participantCount}
-                  </span>
-                )}
-              </button>
-            ))}
+            {sharedSessionsQuery.data
+              .slice(0, 5)
+              .map(
+                (session: {
+                  id: string;
+                  topic?: string;
+                  participantCount?: number;
+                  createdAt?: string;
+                }) => (
+                  <button
+                    key={session.id}
+                    onClick={() => onNavigateToContent?.(session.id)}
+                    className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-lattice-surface transition-colors text-left"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                      <span className="text-sm text-white truncate">
+                        {session.topic || 'Shared Session'}
+                      </span>
+                    </div>
+                    {session.participantCount != null && (
+                      <span className="text-xs text-gray-500 flex items-center gap-1">
+                        <Users className="w-3 h-3" />
+                        {session.participantCount}
+                      </span>
+                    )}
+                  </button>
+                )
+              )}
           </div>
         </div>
       )}
@@ -698,12 +711,8 @@ export function Discovery({
                 <Loader2 className="w-6 h-6 text-neon-cyan animate-spin" />
               </div>
             ) : usersQuery.data && usersQuery.data.length > 0 ? (
-              usersQuery.data.map(user => (
-                <SuggestedUserCard
-                  key={user.userId}
-                  user={user}
-                  onNavigate={onNavigateToUser}
-                />
+              usersQuery.data.map((user) => (
+                <SuggestedUserCard key={user.userId} user={user} onNavigate={onNavigateToUser} />
               ))
             ) : (
               <EmptyState
@@ -744,13 +753,7 @@ export function Discovery({
 
 // ── Media Card (for media tab) ───────────────────────────────────────────────
 
-function MediaCard({
-  item,
-  onNavigate,
-}: {
-  item: TrendingDTU;
-  onNavigate?: (id: string) => void;
-}) {
+function MediaCard({ item, onNavigate }: { item: TrendingDTU; onNavigate?: (id: string) => void }) {
   const MediaIcon = item.mediaType ? MEDIA_TYPE_ICONS[item.mediaType] || Play : Play;
 
   return (
@@ -761,10 +764,12 @@ function MediaCard({
       className="group rounded-xl bg-lattice-deep border border-lattice-border overflow-hidden hover:border-neon-cyan/30 transition-all cursor-pointer"
     >
       {/* Thumbnail area */}
-      <div className={cn(
-        'relative aspect-video bg-gradient-to-br flex items-center justify-center',
-        pickGradient(item.dtuId)
-      )}>
+      <div
+        className={cn(
+          'relative aspect-video bg-gradient-to-br flex items-center justify-center',
+          pickGradient(item.dtuId)
+        )}
+      >
         <div className="absolute inset-0 bg-black/30" />
         <MediaIcon className="w-10 h-10 text-white/80 group-hover:text-white group-hover:scale-110 transition-all relative z-10" />
 
@@ -823,4 +828,7 @@ function EmptyState({
   );
 }
 
-export default Discovery;
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedDiscovery = withErrorBoundary(Discovery);
+export { _WrappedDiscovery as Discovery };
+export default _WrappedDiscovery;

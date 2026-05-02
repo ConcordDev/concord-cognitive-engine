@@ -107,7 +107,7 @@ Guidelines:
         },
       });
     } catch (err) {
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -124,7 +124,7 @@ Guidelines:
       `).all(userId);
       res.json({ ok: true, blueprints });
     } catch (err) {
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -144,7 +144,7 @@ Guidelines:
 
       res.json({ ok: true, blueprint: { id: row.id, title: row.title, createdAt: row.created_at, ...recipe } });
     } catch (err) {
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 

@@ -184,13 +184,14 @@ import {
   getValidDomains,
   getCityRulesSchema,
 } from "../lib/city-manager.js";
+import { handlePlayerDeath, claimLootBag, handleRobbery, reclaimExpiredBags } from "../lib/pvp-loot.js";
 
 /**
  * @param {object} [opts]
  * @param {Function} [opts.requireAuth] - Auth middleware
  * @returns {Router}
  */
-export default function createWorldRoutes({ requireAuth, db = null } = {}) {
+export default function createWorldRoutes({ requireAuth, db = null, emitToUser = null } = {}) {
   const router = Router();
 
   function _userId(req) {
@@ -471,10 +472,23 @@ export default function createWorldRoutes({ requireAuth, db = null } = {}) {
   }));
 
   router.post("/daily-login", auth, wrap((req, res) => {
-    const result = recordDailyLogin(_userId(req));
-    // Award login Sparks
     const userId = _userId(req);
+    const result = recordDailyLogin(userId);
+    // Award login Sparks
     try { awardSparks(db, userId, 2, "daily_login"); } catch (_) {}
+    // Phase 19 polish-to-ten: realtime push so the frontend can show a
+    // streak banner / fanfare when the daily login records a streak day.
+    // Anonymous / re-login on same day cases skip the emit (alreadyLoggedIn).
+    if (!result.alreadyLoggedIn && emitToUser) {
+      try {
+        emitToUser(userId, "daily:login_recorded", {
+          streakDays: result.streakDays,
+          weeklyBonus: !!result.weeklyBonus,
+          xpAwarded: result.xpResult?.xpAwarded ?? 0,
+          rankUp: result.xpResult?.rankUp ?? false,
+        });
+      } catch (_) { /* realtime is best-effort */ }
+    }
     res.json({ ok: true, ...result });
   }));
 
@@ -699,8 +713,11 @@ export default function createWorldRoutes({ requireAuth, db = null } = {}) {
 
   // ── Materials API ─────────────────────────────────────────────────
 
-  router.get("/sim/materials", wrap((_req, res) => {
-    res.json({ ok: true, materials: Array.from(simMaterials.values()) });
+  router.get("/sim/materials", wrap((req, res) => {
+    const _limit = Math.min(parseInt(req.query.limit) || 100, 500);
+    const _offset = Math.max(parseInt(req.query.offset) || 0, 0);
+    const _all = Array.from(simMaterials.values());
+    res.json({ ok: true, materials: _all.slice(_offset, _offset + _limit), total: _all.length, limit: _limit, offset: _offset });
   }));
 
   router.get("/sim/materials/:id", wrap((req, res) => {
@@ -773,8 +790,11 @@ export default function createWorldRoutes({ requireAuth, db = null } = {}) {
     res.json({ ok: true, building });
   }));
 
-  router.get("/sim/buildings", wrap((_req, res) => {
-    res.json({ ok: true, buildings: Array.from(simBuildingDTUs.values()) });
+  router.get("/sim/buildings", wrap((req, res) => {
+    const _limit = Math.min(parseInt(req.query.limit) || 100, 500);
+    const _offset = Math.max(parseInt(req.query.offset) || 0, 0);
+    const _all = Array.from(simBuildingDTUs.values());
+    res.json({ ok: true, buildings: _all.slice(_offset, _offset + _limit), total: _all.length, limit: _limit, offset: _offset });
   }));
 
   router.get("/sim/buildings/:id", wrap((req, res) => {
@@ -802,8 +822,11 @@ export default function createWorldRoutes({ requireAuth, db = null } = {}) {
 
   // ── Simulation Districts API ──────────────────────────────────────
 
-  router.get("/sim/districts", wrap((_req, res) => {
-    res.json({ ok: true, districts: Array.from(simDistricts.values()) });
+  router.get("/sim/districts", wrap((req, res) => {
+    const _limit = Math.min(parseInt(req.query.limit) || 100, 500);
+    const _offset = Math.max(parseInt(req.query.offset) || 0, 0);
+    const _all = Array.from(simDistricts.values());
+    res.json({ ok: true, districts: _all.slice(_offset, _offset + _limit), total: _all.length, limit: _limit, offset: _offset });
   }));
 
   router.post("/sim/districts", auth, wrap((req, res) => {
@@ -877,8 +900,11 @@ export default function createWorldRoutes({ requireAuth, db = null } = {}) {
 
   // ── Firms API ─────────────────────────────────────────────────────
 
-  router.get("/sim/firms", wrap((_req, res) => {
-    res.json({ ok: true, firms: Array.from(simFirms.values()) });
+  router.get("/sim/firms", wrap((req, res) => {
+    const _limit = Math.min(parseInt(req.query.limit) || 100, 500);
+    const _offset = Math.max(parseInt(req.query.offset) || 0, 0);
+    const _all = Array.from(simFirms.values());
+    res.json({ ok: true, firms: _all.slice(_offset, _offset + _limit), total: _all.length, limit: _limit, offset: _offset });
   }));
 
   router.post("/sim/firms", auth, wrap((req, res) => {
@@ -922,8 +948,11 @@ export default function createWorldRoutes({ requireAuth, db = null } = {}) {
 
   // ── Events API ────────────────────────────────────────────────────
 
-  router.get("/sim/events", wrap((_req, res) => {
-    res.json({ ok: true, events: Array.from(simEvents.values()) });
+  router.get("/sim/events", wrap((req, res) => {
+    const _limit = Math.min(parseInt(req.query.limit) || 100, 500);
+    const _offset = Math.max(parseInt(req.query.offset) || 0, 0);
+    const _all = Array.from(simEvents.values());
+    res.json({ ok: true, events: _all.slice(_offset, _offset + _limit), total: _all.length, limit: _limit, offset: _offset });
   }));
 
   router.post("/sim/events", auth, wrap((req, res) => {
@@ -1207,8 +1236,11 @@ export default function createWorldRoutes({ requireAuth, db = null } = {}) {
     res.json({ ok: true, recipes: simCraftingRecipes });
   }));
 
-  router.get("/sim/crafting/stations", wrap((_req, res) => {
-    res.json({ ok: true, stations: Array.from(simCraftingStations.values()) });
+  router.get("/sim/crafting/stations", wrap((req, res) => {
+    const _limit = Math.min(parseInt(req.query.limit) || 100, 500);
+    const _offset = Math.max(parseInt(req.query.offset) || 0, 0);
+    const _all = Array.from(simCraftingStations.values());
+    res.json({ ok: true, stations: _all.slice(_offset, _offset + _limit), total: _all.length, limit: _limit, offset: _offset });
   }));
 
   router.post("/sim/crafting/stations", auth, wrap((req, res) => {
@@ -2210,6 +2242,34 @@ export default function createWorldRoutes({ requireAuth, db = null } = {}) {
       createdAt: new Date().toISOString(),
     };
     res.json({ ok: true, webhook });
+  }));
+
+  // ── PvP Loot System ────────────────────────────────────────────────────────
+
+  router.post("/combat/death", auth, wrap((req, res) => {
+    if (!db) return res.status(503).json({ ok: false, error: "DB not available" });
+    const { killedId, killerId, gameMode, worldId, x, y, z } = req.body;
+    const result = handlePlayerDeath(db, { killedId, killerId, gameMode, worldId, x, y, z });
+    res.json({ ok: true, ...result });
+  }));
+
+  router.post("/loot/:bagId/claim", auth, wrap((req, res) => {
+    if (!db) return res.status(503).json({ ok: false, error: "DB not available" });
+    const result = claimLootBag(db, { bagId: req.params.bagId, claimerId: _userId(req) });
+    res.json({ ok: true, ...result });
+  }));
+
+  router.post("/combat/robbery", auth, wrap((req, res) => {
+    if (!db) return res.status(503).json({ ok: false, error: "DB not available" });
+    const { victimId, gameMode, worldId } = req.body;
+    const result = handleRobbery(db, { robberId: _userId(req), victimId, gameMode, worldId });
+    res.json({ ok: true, ...result });
+  }));
+
+  router.post("/loot/reclaim-expired", auth, wrap((req, res) => {
+    if (!db) return res.status(503).json({ ok: false, error: "DB not available" });
+    const result = reclaimExpiredBags(db);
+    res.json({ ok: true, ...result });
   }));
 
   return router;

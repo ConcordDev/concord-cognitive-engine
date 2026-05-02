@@ -4,34 +4,50 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import {
-  Globe, Store, User, ArrowUpCircle, Layers,
-  Filter, BarChart3, MapPin, Flag,
+  Globe,
+  Store,
+  User,
+  ArrowUpCircle,
+  Layers,
+  Filter,
+  BarChart3,
+  MapPin,
+  Flag,
 } from 'lucide-react';
 import { FreshnessIndicator } from '@/components/common/FreshnessIndicator';
 
 // Federation-tier scope filter. Matches server-side federation_tier
 // values plus a "marketplace" branch and "all" for unfiltered views.
-type ScopeFilter =
-  | 'all'
-  | 'global'
-  | 'national'
-  | 'regional'
-  | 'marketplace'
-  | 'local';
+type ScopeFilter = 'all' | 'global' | 'national' | 'regional' | 'marketplace' | 'local';
 
-const SCOPE_META: Record<string, { icon: React.ElementType; color: string; label: string; desc: string }> = {
-  global:      { icon: Globe, color: 'neon-blue',   label: 'Global',      desc: 'Council-approved, federation-wide' },
-  national:    { icon: Flag, color: 'neon-purple',  label: 'National',    desc: 'Your country only' },
-  regional:    { icon: MapPin, color: 'neon-cyan',  label: 'Regional',    desc: 'Your region only' },
-  marketplace: { icon: Store, color: 'neon-orange', label: 'Marketplace', desc: 'Listed for purchase' },
-  local:       { icon: User, color: 'neon-green',   label: 'Local',       desc: 'Your personal knowledge base' },
+const SCOPE_META: Record<
+  string,
+  { icon: React.ElementType; color: string; label: string; desc: string }
+> = {
+  global: {
+    icon: Globe,
+    color: 'neon-blue',
+    label: 'Global',
+    desc: 'Council-approved, federation-wide',
+  },
+  national: { icon: Flag, color: 'neon-purple', label: 'National', desc: 'Your country only' },
+  regional: { icon: MapPin, color: 'neon-cyan', label: 'Regional', desc: 'Your region only' },
+  marketplace: {
+    icon: Store,
+    color: 'neon-orange',
+    label: 'Marketplace',
+    desc: 'Listed for purchase',
+  },
+  local: { icon: User, color: 'neon-green', label: 'Local', desc: 'Your personal knowledge base' },
 };
 
 function ScopeBadge({ scope }: { scope: string }) {
   const meta = SCOPE_META[scope] || SCOPE_META.local;
   const Icon = meta.icon;
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-${meta.color}/10 text-${meta.color} border border-${meta.color}/20`}>
+    <span
+      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-${meta.color}/10 text-${meta.color} border border-${meta.color}/20`}
+    >
       <Icon className="w-3 h-3" />
       {meta.label}
     </span>
@@ -42,10 +58,22 @@ function computeTimeFreshness(dateStr: string): number {
   const ageMs = Date.now() - new Date(dateStr).getTime();
   const ageDays = ageMs / (1000 * 60 * 60 * 24);
   const halfLife = 30;
-  return Math.max(0, Math.min(1, Math.exp(-0.693 * ageDays / halfLife)));
+  return Math.max(0, Math.min(1, Math.exp((-0.693 * ageDays) / halfLife)));
 }
 
-function DTUCard({ dtu }: { dtu: { id: string; title: string; scope?: string; tier?: string; tags?: string[]; createdAt?: string; updatedAt?: string } }) {
+function DTUCard({
+  dtu,
+}: {
+  dtu: {
+    id: string;
+    title: string;
+    scope?: string;
+    tier?: string;
+    tags?: string[];
+    createdAt?: string;
+    updatedAt?: string;
+  };
+}) {
   const queryClient = useQueryClient();
 
   const promoteMutation = useMutation({
@@ -83,7 +111,10 @@ function DTUCard({ dtu }: { dtu: { id: string; title: string; scope?: string; ti
           {dtu.tags && dtu.tags.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-2">
               {dtu.tags.slice(0, 5).map((tag) => (
-                <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded bg-lattice-deep text-gray-400">
+                <span
+                  key={tag}
+                  className="text-[10px] px-1.5 py-0.5 rounded bg-lattice-deep text-gray-400"
+                >
                   {tag}
                 </span>
               ))}
@@ -95,7 +126,13 @@ function DTUCard({ dtu }: { dtu: { id: string; title: string; scope?: string; ti
         </div>
         {canPromote && (
           <button
-            onClick={() => promoteMutation.mutate({ dtuId: dtu.id, targetScope: 'marketplace', reason: 'Manual promotion from scope controls' })}
+            onClick={() =>
+              promoteMutation.mutate({
+                dtuId: dtu.id,
+                targetScope: 'marketplace',
+                reason: 'Manual promotion from scope controls',
+              })
+            }
             disabled={promoteMutation.isPending}
             className="p-1.5 rounded hover:bg-neon-purple/10 text-gray-400 hover:text-neon-purple transition-colors"
             title="Promote to Marketplace"
@@ -108,7 +145,7 @@ function DTUCard({ dtu }: { dtu: { id: string; title: string; scope?: string; ti
   );
 }
 
-export default function ScopeControls() {
+function ScopeControls() {
   const [activeScope, setActiveScope] = useState<ScopeFilter>('all');
 
   const { data: metricsRes } = useQuery({
@@ -130,8 +167,14 @@ export default function ScopeControls() {
   });
 
   const metrics = metricsRes?.data;
-  const dtus: Array<{ id: string; title: string; scope?: string; tier?: string; tags?: string[]; createdAt?: string }> =
-    dtusRes?.data?.dtus || dtusRes?.data || [];
+  const dtus: Array<{
+    id: string;
+    title: string;
+    scope?: string;
+    tier?: string;
+    tags?: string[];
+    createdAt?: string;
+  }> = dtusRes?.data?.dtus || dtusRes?.data || [];
 
   const scopeCounts: Record<string, number> = {
     global: 0,
@@ -207,7 +250,7 @@ export default function ScopeControls() {
             return (
               <button
                 key={scope}
-                onClick={() => setActiveScope(isActive ? 'all' : scope as ScopeFilter)}
+                onClick={() => setActiveScope(isActive ? 'all' : (scope as ScopeFilter))}
                 className={`text-left p-4 rounded-lg border transition-colors ${
                   isActive
                     ? `bg-${meta.color}/10 border-${meta.color}/30`
@@ -216,7 +259,9 @@ export default function ScopeControls() {
               >
                 <div className="flex items-center gap-2 mb-1">
                   <Icon className={`w-4 h-4 text-${meta.color}`} />
-                  <span className={`text-sm font-medium ${isActive ? `text-${meta.color}` : 'text-gray-300'}`}>
+                  <span
+                    className={`text-sm font-medium ${isActive ? `text-${meta.color}` : 'text-gray-300'}`}
+                  >
                     {meta.label}
                   </span>
                 </div>
@@ -251,12 +296,12 @@ export default function ScopeControls() {
       <div className="space-y-2">
         {isLoading ? (
           <div className="animate-pulse space-y-2">
-            {[...Array(5)].map((_, i) => <div key={i} className="h-20 bg-lattice-elevated rounded-lg" />)}
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="h-20 bg-lattice-elevated rounded-lg" />
+            ))}
           </div>
         ) : Array.isArray(dtus) && dtus.length > 0 ? (
-          dtus.slice(0, 50).map((dtu) => (
-            <DTUCard key={dtu.id} dtu={dtu} />
-          ))
+          dtus.slice(0, 50).map((dtu) => <DTUCard key={dtu.id} dtu={dtu} />)
         ) : (
           <div className="text-center py-12 text-gray-500 text-sm">
             No DTUs in {activeScope === 'all' ? 'the lattice' : `${activeScope} scope`}
@@ -267,4 +312,8 @@ export default function ScopeControls() {
   );
 }
 
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedScopeControls = withErrorBoundary(ScopeControls);
+export { _WrappedScopeControls as ScopeControls };
+export default _WrappedScopeControls;
 export { ScopeBadge };

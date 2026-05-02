@@ -16,10 +16,24 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import {
-  Coins, Bot, Users, Shield, Zap, Brain,
-  Lightbulb, Search, ChevronDown, ChevronRight,
-  CheckCircle2, Clock, Sparkles, Globe,
-  Layers, Target, BarChart3, Cpu,
+  Coins,
+  Bot,
+  Users,
+  Shield,
+  Zap,
+  Brain,
+  Lightbulb,
+  Search,
+  ChevronDown,
+  ChevronRight,
+  CheckCircle2,
+  Clock,
+  Sparkles,
+  Globe,
+  Layers,
+  Target,
+  BarChart3,
+  Cpu,
 } from 'lucide-react';
 
 interface LensFeature {
@@ -70,15 +84,14 @@ const STATUS_CONFIG: Record<string, { icon: React.ElementType; color: string; la
   deprecated: { icon: Clock, color: 'bg-red-500/20 text-red-400', label: 'Deprecated' },
 };
 
-export function LensFeaturePanel({ lensId, className, compact = false }: LensFeaturePanelProps) {
+function LensFeaturePanel({ lensId, className, compact = false }: LensFeaturePanelProps) {
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedFeature, setExpandedFeature] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['lens-features', lensId],
-    queryFn: () =>
-      api.get(`/api/lens-features/${lensId}`).then(r => r.data),
+    queryFn: () => api.get(`/api/lens-features/${lensId}`).then((r) => r.data),
     staleTime: 60000,
   });
 
@@ -86,20 +99,19 @@ export function LensFeaturePanel({ lensId, className, compact = false }: LensFea
   const summary: LensFeatureSummary | null = data?.summary || null;
 
   const categories = useMemo(() => {
-    const cats = new Set(features.map(f => f.category));
+    const cats = new Set(features.map((f) => f.category));
     return Array.from(cats).sort();
   }, [features]);
 
   const filteredFeatures = useMemo(() => {
     let result = features;
     if (filterCategory !== 'all') {
-      result = result.filter(f => f.category === filterCategory);
+      result = result.filter((f) => f.category === filterCategory);
     }
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
-      result = result.filter(f =>
-        f.name.toLowerCase().includes(q) ||
-        f.description.toLowerCase().includes(q)
+      result = result.filter(
+        (f) => f.name.toLowerCase().includes(q) || f.description.toLowerCase().includes(q)
       );
     }
     return result;
@@ -134,7 +146,7 @@ export function LensFeaturePanel({ lensId, className, compact = false }: LensFea
           {summary?.usbIntegration && <Globe className="w-3.5 h-3.5 text-neon-cyan" />}
         </div>
         <div className="flex flex-wrap gap-1.5">
-          {features.slice(0, 6).map(f => {
+          {features.slice(0, 6).map((f) => {
             const cat = CATEGORY_CONFIG[f.category] || CATEGORY_CONFIG.infrastructure;
             const CatIcon = cat.icon;
             return (
@@ -189,7 +201,7 @@ export function LensFeaturePanel({ lensId, className, compact = false }: LensFea
       {/* Economic Integrations */}
       {summary?.economicIntegrations && summary.economicIntegrations.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
-          {summary.economicIntegrations.map(integration => (
+          {summary.economicIntegrations.map((integration) => (
             <span
               key={integration}
               className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] bg-neon-green/5 text-neon-green/80 border border-neon-green/10"
@@ -208,18 +220,18 @@ export function LensFeaturePanel({ lensId, className, compact = false }: LensFea
           <input
             type="text"
             value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
+            onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search features..."
             className="w-full pl-8 pr-3 py-1.5 bg-white/5 border border-white/10 rounded text-xs focus:outline-none focus:border-neon-cyan/30"
           />
         </div>
         <select
           value={filterCategory}
-          onChange={e => setFilterCategory(e.target.value)}
+          onChange={(e) => setFilterCategory(e.target.value)}
           className="px-2 py-1.5 bg-white/5 border border-white/10 rounded text-xs focus:outline-none"
         >
           <option value="all">All Categories</option>
-          {categories.map(cat => (
+          {categories.map((cat) => (
             <option key={cat} value={cat}>
               {CATEGORY_CONFIG[cat]?.label || cat}
             </option>
@@ -229,7 +241,7 @@ export function LensFeaturePanel({ lensId, className, compact = false }: LensFea
 
       {/* Feature List */}
       <div className="space-y-1.5">
-        {filteredFeatures.map(feature => {
+        {filteredFeatures.map((feature) => {
           const cat = CATEGORY_CONFIG[feature.category] || CATEGORY_CONFIG.infrastructure;
           const CatIcon = cat.icon;
           const statusCfg = STATUS_CONFIG[feature.status] || STATUS_CONFIG.active;
@@ -255,7 +267,12 @@ export function LensFeaturePanel({ lensId, className, compact = false }: LensFea
                     <p className="text-[11px] text-gray-500 truncate">{feature.description}</p>
                   )}
                 </div>
-                <span className={cn('px-1.5 py-0.5 rounded text-[9px] font-medium flex-shrink-0 inline-flex items-center gap-0.5', statusCfg.color)}>
+                <span
+                  className={cn(
+                    'px-1.5 py-0.5 rounded text-[9px] font-medium flex-shrink-0 inline-flex items-center gap-0.5',
+                    statusCfg.color
+                  )}
+                >
                   <StatusIcon className="w-2.5 h-2.5" />
                   {statusCfg.label}
                 </span>
@@ -273,7 +290,7 @@ export function LensFeaturePanel({ lensId, className, compact = false }: LensFea
                     <span className={cn('px-1.5 py-0.5 rounded', cat.color, 'bg-white/5')}>
                       {cat.label}
                     </span>
-                    {feature.integrations.map(int => (
+                    {feature.integrations.map((int) => (
                       <span key={int} className="px-1.5 py-0.5 rounded bg-white/5 text-gray-400">
                         {int.replace(/_/g, ' ')}
                       </span>
@@ -287,10 +304,12 @@ export function LensFeaturePanel({ lensId, className, compact = false }: LensFea
       </div>
 
       {filteredFeatures.length === 0 && (
-        <p className="text-center text-gray-500 text-xs py-4">
-          No features match your filters.
-        </p>
+        <p className="text-center text-gray-500 text-xs py-4">No features match your filters.</p>
       )}
     </div>
   );
 }
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedLensFeaturePanel = withErrorBoundary(LensFeaturePanel);
+export { _WrappedLensFeaturePanel as LensFeaturePanel };

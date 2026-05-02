@@ -16,7 +16,7 @@ interface PromoteDialogProps {
   onCancel?: () => void;
 }
 
-export function PromoteDialog({ dtuId, onComplete, onCancel }: PromoteDialogProps) {
+function PromoteDialog({ dtuId, onComplete, onCancel }: PromoteDialogProps) {
   const [selectedScope, setSelectedScope] = useState<string | null>(null);
 
   const promoteMutation = useMutation({
@@ -25,7 +25,13 @@ export function PromoteDialog({ dtuId, onComplete, onCancel }: PromoteDialogProp
         dtuId,
         targetScope: scope,
       });
-      return data as { ok: boolean; scope?: string; votes?: Record<string, number>; error?: string; reason?: string };
+      return data as {
+        ok: boolean;
+        scope?: string;
+        votes?: Record<string, number>;
+        error?: string;
+        reason?: string;
+      };
     },
     onSuccess: (data) => {
       if (data.ok) onComplete();
@@ -51,12 +57,10 @@ export function PromoteDialog({ dtuId, onComplete, onCancel }: PromoteDialogProp
           </div>
           <p className="text-sm text-gray-400 mb-1">Academic &amp; Instructional</p>
           <p className="text-xs text-gray-500">
-            Strict review. Claims verified. High authority. For knowledge
-            that needs to be accurate and trustworthy.
+            Strict review. Claims verified. High authority. For knowledge that needs to be accurate
+            and trustworthy.
           </p>
-          <p className="text-xs text-neon-cyan/70 mt-2">
-            70% council approval required
-          </p>
+          <p className="text-xs text-neon-cyan/70 mt-2">70% council approval required</p>
         </button>
 
         <button
@@ -73,8 +77,8 @@ export function PromoteDialog({ dtuId, onComplete, onCancel }: PromoteDialogProp
           </div>
           <p className="text-sm text-gray-400 mb-1">Creative Commons</p>
           <p className="text-xs text-gray-500">
-            Citation review only. Artistic freedom. For music, art, code,
-            and creative work that others can remix and build on.
+            Citation review only. Artistic freedom. For music, art, code, and creative work that
+            others can remix and build on.
           </p>
           <p className="text-xs text-neon-green/70 mt-2">
             50% council approval &middot; Citations verified
@@ -86,7 +90,7 @@ export function PromoteDialog({ dtuId, onComplete, onCancel }: PromoteDialogProp
         <div className="mt-4">
           <p className="text-xs text-gray-400 mb-3">
             {selectedScope === 'creative_global'
-              ? 'Your work will be available for others to discover, remix, and build on. You\'ll receive automatic royalties when derivatives sell.'
+              ? "Your work will be available for others to discover, remix, and build on. You'll receive automatic royalties when derivatives sell."
               : 'Your knowledge will be reviewed for accuracy and added to the global knowledge infrastructure.'}
           </p>
           <div className="flex gap-2">
@@ -120,8 +124,12 @@ export function PromoteDialog({ dtuId, onComplete, onCancel }: PromoteDialogProp
         <div className="mt-3 flex items-center gap-2 text-neon-green text-sm">
           <CheckCircle className="w-4 h-4" />
           <span>
-            Promoted to {promoteMutation.data.scope === 'creative_global' ? 'Creative Global' : 'Concord Global'}
-            {promoteMutation.data.votes && ` (${promoteMutation.data.votes.approve}/${promoteMutation.data.votes.total} votes)`}
+            Promoted to{' '}
+            {promoteMutation.data.scope === 'creative_global'
+              ? 'Creative Global'
+              : 'Concord Global'}
+            {promoteMutation.data.votes &&
+              ` (${promoteMutation.data.votes.approve}/${promoteMutation.data.votes.total} votes)`}
           </span>
         </div>
       )}
@@ -129,7 +137,9 @@ export function PromoteDialog({ dtuId, onComplete, onCancel }: PromoteDialogProp
       {promoteMutation.isSuccess && !promoteMutation.data?.ok && (
         <div className="mt-3 flex items-start gap-2 text-red-400 text-sm">
           <XCircle className="w-4 h-4 mt-0.5 shrink-0" />
-          <span>{promoteMutation.data?.reason || promoteMutation.data?.error || 'Promotion rejected.'}</span>
+          <span>
+            {promoteMutation.data?.reason || promoteMutation.data?.error || 'Promotion rejected.'}
+          </span>
         </div>
       )}
 
@@ -142,3 +152,7 @@ export function PromoteDialog({ dtuId, onComplete, onCancel }: PromoteDialogProp
     </div>
   );
 }
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedPromoteDialog = withErrorBoundary(PromoteDialog);
+export { _WrappedPromoteDialog as PromoteDialog };

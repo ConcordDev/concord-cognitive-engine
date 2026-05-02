@@ -4,6 +4,9 @@
  */
 import { asyncHandler } from "../lib/async-handler.js";
 import logger from '../logger.js';
+import { buildWorkingContext } from '../lib/chat/working-context.js';
+import { needsWindowCompression, compressRollingWindow } from '../lib/conversation-memory.js';
+import { attachConfidence } from '../lib/confidence-attacher.js';
 export default function registerChatRoutes(app, {
   STATE,
   makeCtx,
@@ -94,8 +97,39 @@ export default function registerChatRoutes(app, {
         return;
       }
 
-      const out = await runMacro("chat","respond", req.body, ctx);
+      // Build working context (has side effects on STATE; pass enriched ctx if inference accepts it)
+      const sessionId = req.body.sessionId || null;
+      let workingContext = null;
+      try {
+        workingContext = await buildWorkingContext({
+          sessionId,
+          userId: ctx?.actor?.userId || null,
+          currentQuery: req.body.message || req.body.content || req.body.intent || "",
+          sessionKey: ctx?.sessionKey || null,
+          db: ctx?.db || null,
+          STATE,
+        });
+      } catch (_wcErr) {
+        logger.debug('[chat] buildWorkingContext failed', { err: _wcErr?.message });
+      }
+
+      const out = await runMacro("chat","respond", req.body, { ...ctx, workingContext });
       kernelTick({ type: "USER_MSG", meta: { path: req.path }, signals: { benefit: out?.ok?0.2:0, error: out?.ok?0:0.2 } });
+
+      // Attach confidence score to the final response
+      try {
+        attachConfidence(out, {});
+      } catch (_acErr) {
+        logger.debug('[chat] attachConfidence failed', { err: _acErr?.message });
+      }
+
+      // Non-blocking rolling window compression (after response is ready)
+      const _sess = sessionId ? STATE.sessions?.get(sessionId) : null;
+      if (_sess && needsWindowCompression(_sess)) {
+        compressRollingWindow(STATE, sessionId, {}).catch(err =>
+          logger?.debug?.('[chat] window compression failed', { err: err?.message })
+        );
+      }
 
       // Realtime broadcast — so when a user has multiple tabs open
       // (or collab chat is active), the response lands in every

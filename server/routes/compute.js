@@ -25,6 +25,8 @@ import {
   getCatalogByDomain,
   getDomainSummary,
 } from '../lib/compute-registry.js';
+import { listComputeModules, loadComputeModule } from '../lib/compute/index.js';
+import { asyncHandler } from '../lib/async-handler.js';
 
 export default function createComputeRoutes({ requireAuth, domainHandlers } = {}) {
   const router = express.Router();
@@ -148,6 +150,22 @@ export default function createComputeRoutes({ requireAuth, domainHandlers } = {}
       res.status(500).json({ ok: false, error: e.message });
     }
   });
+
+  // GET /api/compute/modules — list primitive compute modules
+  router.get('/modules', asyncHandler(async (req, res) => {
+    const modules = listComputeModules();
+    res.json({ ok: true, modules });
+  }));
+
+  // POST /api/compute/run — call a function in a primitive compute module
+  router.post('/run', asyncHandler(async (req, res) => {
+    const { module: moduleName, fn, args = [] } = req.body;
+    const mod = await loadComputeModule(moduleName);
+    if (!mod) return res.status(404).json({ ok: false, error: `Unknown compute module: ${moduleName}` });
+    if (typeof mod[fn] !== 'function') return res.status(400).json({ ok: false, error: `Unknown function: ${fn}` });
+    const result = mod[fn](...args);
+    res.json({ ok: true, result });
+  }));
 
   return router;
 }

@@ -20,6 +20,15 @@ import {
 } from "../economy/lens-features-service.js";
 
 import { UNIVERSAL_FEATURES } from "../lib/lens-features.js";
+import * as basicCrudTemplate from "../lib/lens-templates/basic-crud.js";
+import * as marketplaceTemplate from "../lib/lens-templates/marketplace.js";
+import * as visualizationTemplate from "../lib/lens-templates/visualization.js";
+
+const LENS_TEMPLATES = {
+  [basicCrudTemplate.id]: basicCrudTemplate,
+  [marketplaceTemplate.id]: marketplaceTemplate,
+  [visualizationTemplate.id]: visualizationTemplate,
+};
 
 export default function lensFeatureRoutes(db, lensFeatures) {
   const router = Router();
@@ -83,30 +92,41 @@ export default function lensFeatureRoutes(db, lensFeatures) {
     });
   });
 
-  /**
-   * GET /api/lens-features/:lensId
-   * Get all features for a specific lens
-   */
+  // ── Lens Templates (must be before /:lensId wildcard) ────────────────────
+
+  router.get("/templates", (_req, res) => {
+    const templates = Object.values(LENS_TEMPLATES).map(t => ({
+      id: t.id, name: t.name, description: t.description, category: t.category, tags: t.tags,
+    }));
+    res.json({ ok: true, templates });
+  });
+
+  router.post("/generate", (req, res) => {
+    const { template, config = {} } = req.body;
+    const tmpl = LENS_TEMPLATES[template];
+    if (!tmpl) {
+      return res.status(400).json({ ok: false, error: `Unknown template: "${template}". Available: ${Object.keys(LENS_TEMPLATES).join(", ")}` });
+    }
+    try {
+      const lens = tmpl.generate(config);
+      res.json({ ok: true, lens });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  router.post("/seed", (_req, res) => {
+    const result = seedLensFeatures(db, lensFeatures);
+    res.json(result);
+  });
+
   router.get("/:lensId", (req, res) => {
     const result = getLensFeatures(db, req.params.lensId);
     res.json(result);
   });
 
-  /**
-   * GET /api/lens-features/:lensId/:featureId
-   * Get a specific feature
-   */
   router.get("/:lensId/:featureId", (req, res) => {
     const result = getFeature(db, req.params.lensId, req.params.featureId);
-    res.json(result);
-  });
-
-  /**
-   * POST /api/lens-features/seed
-   * Seed all lens features from the static registry
-   */
-  router.post("/seed", (_req, res) => {
-    const result = seedLensFeatures(db, lensFeatures);
     res.json(result);
   });
 

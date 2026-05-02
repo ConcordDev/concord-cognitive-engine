@@ -21,7 +21,19 @@ import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { api } from '@/lib/api/client';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
-import { Sparkles, Lightbulb, Wand2, X, RefreshCw, ChevronDown, ChevronUp, Zap, Search, FileText, BarChart2 } from 'lucide-react';
+import {
+  Sparkles,
+  Lightbulb,
+  Wand2,
+  X,
+  RefreshCw,
+  ChevronDown,
+  ChevronUp,
+  Zap,
+  Search,
+  FileText,
+  BarChart2,
+} from 'lucide-react';
 
 interface UniversalActionsProps {
   /** Lens domain slug (e.g. "education", "finance") */
@@ -89,12 +101,30 @@ function getActionColor(action: string) {
 
 // Fallback when manifest is not available
 const FALLBACK_ACTIONS = [
-  { id: 'analyze',  label: 'Analyze',  icon: Sparkles,  color: 'cyan'   as const, description: 'AI analysis of this artifact' },
-  { id: 'generate', label: 'Generate', icon: Wand2,     color: 'purple' as const, description: 'Generate new content from context' },
-  { id: 'suggest',  label: 'Suggest',  icon: Lightbulb, color: 'green'  as const, description: 'Get suggestions for next steps' },
+  {
+    id: 'analyze',
+    label: 'Analyze',
+    icon: Sparkles,
+    color: 'cyan' as const,
+    description: 'AI analysis of this artifact',
+  },
+  {
+    id: 'generate',
+    label: 'Generate',
+    icon: Wand2,
+    color: 'purple' as const,
+    description: 'Generate new content from context',
+  },
+  {
+    id: 'suggest',
+    label: 'Suggest',
+    icon: Lightbulb,
+    color: 'green' as const,
+    description: 'Get suggestions for next steps',
+  },
 ] as const;
 
-export function UniversalActions({
+function UniversalActions({
   domain,
   artifactId,
   params,
@@ -109,60 +139,70 @@ export function UniversalActions({
   // Fetch real action manifest from backend
   const { data: manifest } = useQuery({
     queryKey: ['lens-manifest', domain],
-    queryFn: () => api.get(`/api/lens/manifest/${domain}`).then(r => r.data),
+    queryFn: () => api.get(`/api/lens/manifest/${domain}`).then((r) => r.data),
     staleTime: 5 * 60 * 1000,
     retry: false,
     enabled: !!domain,
   });
 
   // Build action list from manifest or fallback
-  const manifestActions: Array<{ id: string; label: string; icon: typeof Sparkles; color: string; description: string }> =
-    manifest?.actions
-      ? (manifest.actions as ManifestAction[])
-          .filter(a => !generativeOnly || a.isGenerative)
-          .slice(0, 8)
-          .map(a => ({
-            id: a.action,
-            label: a.action.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
-            icon: getActionIcon(a.action),
-            color: getActionColor(a.action),
-            description: a.desc,
-          }))
-      : FALLBACK_ACTIONS.map(a => ({ ...a, color: a.color as string }));
+  const manifestActions: Array<{
+    id: string;
+    label: string;
+    icon: typeof Sparkles;
+    color: string;
+    description: string;
+  }> = manifest?.actions
+    ? (manifest.actions as ManifestAction[])
+        .filter((a) => !generativeOnly || a.isGenerative)
+        .slice(0, 8)
+        .map((a) => ({
+          id: a.action,
+          label: a.action.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+          icon: getActionIcon(a.action),
+          color: getActionColor(a.action),
+          description: a.desc,
+        }))
+    : FALLBACK_ACTIONS.map((a) => ({ ...a, color: a.color as string }));
 
   const ACTIONS = manifestActions;
 
-  const handleAction = useCallback(async (action: string) => {
-    if (!artifactId) return;
-    try {
-      const res = await runAction.mutateAsync({
-        id: artifactId,
-        action,
-        params: params || {},
-      });
-      const r = res.result as Record<string, unknown> | undefined;
-      const confidence = r?.confidence as { score: number; label: string; factors?: Record<string, number> } | undefined;
-      setResult({
-        action,
-        output: String(r?.output || r?.content || JSON.stringify(r, null, 2)),
-        source: String(r?.source || 'utility-brain'),
-        model: r?.model ? String(r.model) : undefined,
-        confidence: confidence || undefined,
-      });
-      setExpanded(true);
-    } catch (err) {
-      setResult({
-        action,
-        output: `Error: ${err instanceof Error ? err.message : String(err)}`,
-      });
-      setExpanded(true);
-    }
-  }, [artifactId, params, runAction]);
+  const handleAction = useCallback(
+    async (action: string) => {
+      if (!artifactId) return;
+      try {
+        const res = await runAction.mutateAsync({
+          id: artifactId,
+          action,
+          params: params || {},
+        });
+        const r = res.result as Record<string, unknown> | undefined;
+        const confidence = r?.confidence as
+          | { score: number; label: string; factors?: Record<string, number> }
+          | undefined;
+        setResult({
+          action,
+          output: String(r?.output || r?.content || JSON.stringify(r, null, 2)),
+          source: String(r?.source || 'utility-brain'),
+          model: r?.model ? String(r.model) : undefined,
+          confidence: confidence || undefined,
+        });
+        setExpanded(true);
+      } catch (err) {
+        setResult({
+          action,
+          output: `Error: ${err instanceof Error ? err.message : String(err)}`,
+        });
+        setExpanded(true);
+      }
+    },
+    [artifactId, params, runAction]
+  );
 
   if (compact) {
     return (
       <div className={cn('flex items-center gap-2', className)}>
-        {ACTIONS.map(a => (
+        {ACTIONS.map((a) => (
           <button
             key={a.id}
             onClick={() => handleAction(a.id)}
@@ -190,13 +230,11 @@ export function UniversalActions({
           AI Actions
           <span className="text-xs text-gray-500">(utility brain)</span>
         </h3>
-        {!artifactId && (
-          <span className="text-xs text-gray-500">Select an artifact first</span>
-        )}
+        {!artifactId && <span className="text-xs text-gray-500">Select an artifact first</span>}
       </div>
 
       <div className="flex gap-2 flex-wrap">
-        {ACTIONS.map(a => (
+        {ACTIONS.map((a) => (
           <button
             key={a.id}
             onClick={() => handleAction(a.id)}
@@ -231,18 +269,27 @@ export function UniversalActions({
               {result.source && <span className="text-gray-500">via {result.source}</span>}
               {result.model && <span className="text-gray-500">({result.model})</span>}
               {result.confidence && (
-                <span className={cn(
-                  'px-1.5 py-0.5 rounded-full text-[10px] font-medium',
-                  result.confidence.score >= 0.75 ? 'bg-neon-green/20 text-neon-green' :
-                  result.confidence.score >= 0.5 ? 'bg-neon-cyan/20 text-neon-cyan' :
-                  result.confidence.score >= 0.25 ? 'bg-amber-400/20 text-amber-400' :
-                  'bg-red-400/20 text-red-400'
-                )}>
+                <span
+                  className={cn(
+                    'px-1.5 py-0.5 rounded-full text-[10px] font-medium',
+                    result.confidence.score >= 0.75
+                      ? 'bg-neon-green/20 text-neon-green'
+                      : result.confidence.score >= 0.5
+                        ? 'bg-neon-cyan/20 text-neon-cyan'
+                        : result.confidence.score >= 0.25
+                          ? 'bg-amber-400/20 text-amber-400'
+                          : 'bg-red-400/20 text-red-400'
+                  )}
+                >
                   {Math.round(result.confidence.score * 100)}% conf
                 </span>
               )}
             </span>
-            {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            {expanded ? (
+              <ChevronUp className="w-3.5 h-3.5" />
+            ) : (
+              <ChevronDown className="w-3.5 h-3.5" />
+            )}
           </button>
           {expanded && (
             <div className="px-3 pb-3">
@@ -262,3 +309,7 @@ export function UniversalActions({
     </div>
   );
 }
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedUniversalActions = withErrorBoundary(UniversalActions);
+export { _WrappedUniversalActions as UniversalActions };

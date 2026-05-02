@@ -27,7 +27,7 @@ interface TimeCrystal {
   detectedAt: string;
 }
 
-export function TimeCrystals({ className }: { className?: string }) {
+function TimeCrystals({ className }: { className?: string }) {
   const [expanded, setExpanded] = useState(false);
   const queryClient = useQueryClient();
 
@@ -193,3 +193,8 @@ export function TimeCrystals({ className }: { className?: string }) {
     </div>
   );
 }
+
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _TimeCrystals = withErrorBoundary(TimeCrystals);
+export { _TimeCrystals as TimeCrystals };

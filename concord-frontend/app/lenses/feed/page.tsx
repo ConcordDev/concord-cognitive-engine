@@ -137,7 +137,13 @@ interface FeedPost {
   dtuId?: string;
   dtuSource?: string;
   dtuMeta?: Record<string, unknown>;
-  taggedProducts?: { listingId: string; title: string; price: number; imageUrl?: string; sellerId?: string }[];
+  taggedProducts?: {
+    listingId: string;
+    title: string;
+    price: number;
+    imageUrl?: string;
+    sellerId?: string;
+  }[];
   linkedDTUs?: { dtuId: string; title: string; type?: string }[];
 }
 
@@ -183,18 +189,28 @@ const NEW_RELEASES: MiniRelease[] = [];
 
 // ── Subcomponents ──────────────────────────────────────────────────────────────
 
-function WaveformPlayer({ waveform, duration, bitrate, title }: AudioAttachment & { className?: string }) {
+function WaveformPlayer({
+  waveform,
+  duration,
+  bitrate,
+  title,
+}: AudioAttachment & { className?: string }) {
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
 
   const togglePlay = useCallback(() => {
-    setPlaying(prev => {
+    setPlaying((prev) => {
       if (!prev) {
         // simulate playback progress
         let p = progress;
         const iv = setInterval(() => {
           p += 2;
-          if (p >= 100) { clearInterval(iv); setPlaying(false); setProgress(0); return; }
+          if (p >= 100) {
+            clearInterval(iv);
+            setPlaying(false);
+            setProgress(0);
+            return;
+          }
           setProgress(p);
         }, 200);
       }
@@ -251,7 +267,12 @@ function ReleaseCard({ release }: { release: ReleaseAttachment }) {
       className="mt-3 rounded-xl bg-lattice-deep border border-lattice-border overflow-hidden"
     >
       <div className="flex">
-        <div className={cn('w-28 h-28 flex-shrink-0 bg-gradient-to-br flex items-center justify-center', release.coverGradient)}>
+        <div
+          className={cn(
+            'w-28 h-28 flex-shrink-0 bg-gradient-to-br flex items-center justify-center',
+            release.coverGradient
+          )}
+        >
           <Newspaper className="w-10 h-10 text-white/60" />
         </div>
         <div className="flex-1 p-3 min-w-0">
@@ -261,11 +282,14 @@ function ReleaseCard({ release }: { release: ReleaseAttachment }) {
             </span>
           </div>
           <h4 className="font-bold text-white text-sm truncate">{release.title}</h4>
-          <p className="text-xs text-gray-400">{release.artist} &middot; {release.trackCount} tracks</p>
+          <p className="text-xs text-gray-400">
+            {release.artist} &middot; {release.trackCount} tracks
+          </p>
           <div className="mt-2 flex flex-wrap gap-1">
             {release.tracks.slice(0, 3).map((t, i) => (
               <span key={i} className="text-[11px] text-gray-500">
-                {i + 1}. {t}{i < 2 ? ',' : ''}
+                {i + 1}. {t}
+                {i < 2 ? ',' : ''}
               </span>
             ))}
             {release.trackCount > 3 && (
@@ -288,7 +312,7 @@ function ArtGallery({ images }: { images: ArtAttachment['images'] }) {
         images.length === 1 && 'grid-cols-1',
         images.length === 2 && 'grid-cols-2',
         images.length === 3 && 'grid-cols-2',
-        images.length >= 4 && 'grid-cols-2',
+        images.length >= 4 && 'grid-cols-2'
       )}
     >
       {images.map((img, i) => (
@@ -297,12 +321,18 @@ function ArtGallery({ images }: { images: ArtAttachment['images'] }) {
           className={cn(
             'bg-gradient-to-br flex items-center justify-center relative group',
             img.gradient,
-            images.length === 1 ? 'h-64' : images.length === 3 && i === 0 ? 'row-span-2 h-full min-h-[200px]' : 'h-32',
+            images.length === 1
+              ? 'h-64'
+              : images.length === 3 && i === 0
+                ? 'row-span-2 h-full min-h-[200px]'
+                : 'h-32'
           )}
         >
           <Palette className="w-8 h-8 text-white/30" />
           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-end p-2">
-            <span className="text-[10px] text-white/0 group-hover:text-white/80 transition-colors">{img.label}</span>
+            <span className="text-[10px] text-white/0 group-hover:text-white/80 transition-colors">
+              {img.label}
+            </span>
           </div>
         </div>
       ))}
@@ -313,10 +343,16 @@ function ArtGallery({ images }: { images: ArtAttachment['images'] }) {
 function CollabCard({ collab }: { collab: CollabAttachment }) {
   const spotsLeft = collab.maxParticipants - collab.participants;
   const joinMutation = useMutation({
-    mutationFn: () => apiHelpers.artistry.collab.sessions.join(collab.sessionName, { userId: 'current-user' }),
-    onSuccess: () => useUIStore.getState().addToast({ type: 'success', message: `Joined "${collab.sessionName}"` }),
+    mutationFn: () =>
+      apiHelpers.artistry.collab.sessions.join(collab.sessionName, { userId: 'current-user' }),
+    onSuccess: () =>
+      useUIStore
+        .getState()
+        .addToast({ type: 'success', message: `Joined "${collab.sessionName}"` }),
     onError: () => {
-      useUIStore.getState().addToast({ type: 'error', message: 'Operation failed. Please try again.' });
+      useUIStore
+        .getState()
+        .addToast({ type: 'error', message: 'Operation failed. Please try again.' });
     },
   });
   return (
@@ -332,7 +368,8 @@ function CollabCard({ collab }: { collab: CollabAttachment }) {
             <span className="text-sm font-bold text-white">{collab.sessionName}</span>
           </div>
           <p className="text-xs text-gray-400">
-            {collab.genre} &middot; {collab.participants}/{collab.maxParticipants} joined &middot; {spotsLeft} spot{spotsLeft !== 1 ? 's' : ''} left
+            {collab.genre} &middot; {collab.participants}/{collab.maxParticipants} joined &middot;{' '}
+            {spotsLeft} spot{spotsLeft !== 1 ? 's' : ''} left
           </p>
         </div>
         <button
@@ -351,22 +388,38 @@ function CollabCard({ collab }: { collab: CollabAttachment }) {
 
 export default function FeedLensPage() {
   useLensNav('feed');
-  const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('feed');
+  const {
+    latestData: realtimeData,
+    alerts: realtimeAlerts,
+    insights: realtimeInsights,
+    isLive,
+    lastUpdated,
+  } = useRealtimeLens('feed');
 
   // ── Feed presence ──────────────────────────────────────────
   // Who's on the feed right now. 30s poll against /api/presence/active
   // which is fed by the per-user activity tracker in makeCtx().
   const { data: presenceResp } = useQuery({
     queryKey: ['feed-presence'],
-    queryFn: () => api.get<{ ok: boolean; users: Array<{ userId: string; displayName: string; status: 'active' | 'idle' }> }>('/api/presence/active?lens=feed&windowMs=300000&limit=20').then((r) => r.data),
+    queryFn: () =>
+      api
+        .get<{
+          ok: boolean;
+          users: Array<{ userId: string; displayName: string; status: 'active' | 'idle' }>;
+        }>('/api/presence/active?lens=feed&windowMs=300000&limit=20')
+        .then((r) => r.data),
     refetchInterval: 30_000,
   });
   const presenceUsers = presenceResp?.users || [];
 
   const {
-    hyperDTUs, megaDTUs, regularDTUs,
-    tierDistribution, publishToMarketplace,
-    isLoading: dtusLoading, refetch: refetchDTUs,
+    hyperDTUs,
+    megaDTUs,
+    regularDTUs,
+    tierDistribution,
+    publishToMarketplace,
+    isLoading: dtusLoading,
+    refetch: refetchDTUs,
   } = useLensDTUs({ lens: 'feed' });
 
   const queryClient = useQueryClient();
@@ -382,8 +435,20 @@ export default function FeedLensPage() {
     setFeedRunning(action);
     try {
       const res = await runFeedAction.mutateAsync({ id: targetId, action });
-      if (res.ok === false) { setFeedActionResult({ _action: action, message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setFeedActionResult({ _action: action, ...(res.result as Record<string, unknown>) }); }
-    } catch (e) { console.error(`Feed action ${action} failed:`, e); setFeedActionResult({ message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` }); }
+      if (res.ok === false) {
+        setFeedActionResult({
+          _action: action,
+          message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}`,
+        });
+      } else {
+        setFeedActionResult({ _action: action, ...(res.result as Record<string, unknown>) });
+      }
+    } catch (e) {
+      console.error(`Feed action ${action} failed:`, e);
+      setFeedActionResult({
+        message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}`,
+      });
+    }
     setFeedRunning(null);
   };
 
@@ -396,7 +461,9 @@ export default function FeedLensPage() {
   // Product tagging state for compose
   const [showProductPicker, setShowProductPicker] = useState(false);
   const [productSearch, setProductSearch] = useState('');
-  const [taggedProducts, setTaggedProducts] = useState<{ listingId: string; title: string; price: number; imageUrl?: string; sellerId?: string }[]>([]);
+  const [taggedProducts, setTaggedProducts] = useState<
+    { listingId: string; title: string; price: number; imageUrl?: string; sellerId?: string }[]
+  >([]);
   const [purchaseLoading, setPurchaseLoading] = useState<string | null>(null);
   const [purchaseSuccess, setPurchaseSuccess] = useState<string | null>(null);
 
@@ -404,13 +471,20 @@ export default function FeedLensPage() {
   const { data: marketplaceListings } = useQuery({
     queryKey: ['marketplace-listings-picker', productSearch],
     queryFn: async () => {
-      const res = await api.get('/api/marketplace-lens-registry/search', { params: { q: productSearch || 'all' } }).catch(() => null);
+      const res = await api
+        .get('/api/marketplace-lens-registry/search', { params: { q: productSearch || 'all' } })
+        .catch(() => null);
       return res?.data?.results || [];
     },
     enabled: showProductPicker,
   });
 
-  const handleInlinePurchase = async (product: { listingId: string; title: string; price: number; sellerId?: string }) => {
+  const handleInlinePurchase = async (product: {
+    listingId: string;
+    title: string;
+    price: number;
+    sellerId?: string;
+  }) => {
     setPurchaseLoading(product.listingId);
     setPurchaseSuccess(null);
     try {
@@ -429,8 +503,17 @@ export default function FeedLensPage() {
     }
   };
 
-  const { isError: isError, error: error, refetch: refetch, items: postLensItems, create: createLensPost } = useLensData<Record<string, unknown>>('feed', 'post', {
-    seed: INITIAL_POSTS.map(p => ({ title: p.content?.slice(0, 80) || p.id, data: p as unknown as Record<string, unknown> })),
+  const {
+    isError: isError,
+    error: error,
+    refetch: refetch,
+    items: postLensItems,
+    create: createLensPost,
+  } = useLensData<Record<string, unknown>>('feed', 'post', {
+    seed: INITIAL_POSTS.map((p) => ({
+      title: p.content?.slice(0, 80) || p.id,
+      data: p as unknown as Record<string, unknown>,
+    })),
   });
 
   // Fetch feed from social API with infinite scrolling + DTU fallback
@@ -450,48 +533,87 @@ export default function FeedLensPage() {
     queryFn: async ({ pageParam }) => {
       const offset = pageParam as number;
       try {
-        const endpoint = activeTab === 'following' ? '/api/social/feed/following'
-          : activeTab === 'trending' ? '/api/social/feed/explore'
-          : '/api/social/feed/foryou';
-        const socialRes = await api.get(endpoint, { params: { limit: PAGE_SIZE, offset } }).catch(() => null);
+        const endpoint =
+          activeTab === 'following'
+            ? '/api/social/feed/following'
+            : activeTab === 'trending'
+              ? '/api/social/feed/explore'
+              : '/api/social/feed/foryou';
+        const socialRes = await api
+          .get(endpoint, { params: { limit: PAGE_SIZE, offset } })
+          .catch(() => null);
         const socialPosts = socialRes?.data?.posts || socialRes?.data || [];
         if (Array.isArray(socialPosts) && socialPosts.length > 0) {
           return socialPosts.map((p: Record<string, unknown>, i: number) => ({
             id: (p.id as string) || `sp-${offset + i}`,
             type: ((p.mediaType as string) || 'text') as PostType,
-            author: { id: (p.userId as string) || 'user', name: (p.displayName as string) || 'User', handle: (p.userId as string) || 'user', gradient: pickGrad(offset + i), verified: false },
+            author: {
+              id: (p.userId as string) || 'user',
+              name: (p.displayName as string) || 'User',
+              handle: (p.userId as string) || 'user',
+              gradient: pickGrad(offset + i),
+              verified: false,
+            },
             content: (p.content as string) || (p.title as string) || '',
             createdAt: (p.createdAt as string) || new Date().toISOString(),
-            likes: (p.reactionCount as number) || 0, comments: (p.commentCount as number) || 0,
-            reposts: (p.shareCount as number) || 0, shares: (p.shareCount as number) || 0, views: (p.viewCount as number) || 0,
-            liked: false, reposted: false, bookmarked: false,
-            tags: (p.tags as string[]) || [], dtuId: (p.id as string),
+            likes: (p.reactionCount as number) || 0,
+            comments: (p.commentCount as number) || 0,
+            reposts: (p.shareCount as number) || 0,
+            shares: (p.shareCount as number) || 0,
+            views: (p.viewCount as number) || 0,
+            liked: false,
+            reposted: false,
+            bookmarked: false,
+            tags: (p.tags as string[]) || [],
+            dtuId: p.id as string,
             taggedProducts: (p.taggedProducts as FeedPost['taggedProducts']) || [],
             linkedDTUs: (p.linkedDTUs as FeedPost['linkedDTUs']) || [],
           }));
         }
         // Fallback: DTUs as posts (only on first page)
         if (offset === 0) {
-          const dtuRes = await apiHelpers.dtus.paginated({ limit: PAGE_SIZE }).catch(() => ({ data: { dtus: [] } }));
+          const dtuRes = await apiHelpers.dtus
+            .paginated({ limit: PAGE_SIZE })
+            .catch(() => ({ data: { dtus: [] } }));
           if (dtuRes?.data?.dtus?.length) {
             return dtuRes.data.dtus.map((dtu: Record<string, unknown>, i: number) => ({
-              id: dtu.id as string, type: 'text' as PostType,
-              author: { id: (dtu.authorId as string) || 'user', name: (dtu.authorName as string) || 'User', handle: (dtu.authorHandle as string) || 'user', gradient: pickGrad(i), verified: false },
+              id: dtu.id as string,
+              type: 'text' as PostType,
+              author: {
+                id: (dtu.authorId as string) || 'user',
+                name: (dtu.authorName as string) || 'User',
+                handle: (dtu.authorHandle as string) || 'user',
+                gradient: pickGrad(i),
+                verified: false,
+              },
               content: (dtu.content as string)?.slice(0, 400) || (dtu.title as string) || '',
               createdAt: (dtu.createdAt as string) || new Date().toISOString(),
-              likes: 0, comments: 0, reposts: 0, shares: 0, views: 0,
-              liked: false, reposted: false, bookmarked: false, dtuId: dtu.id as string,
+              likes: 0,
+              comments: 0,
+              reposts: 0,
+              shares: 0,
+              views: 0,
+              liked: false,
+              reposted: false,
+              bookmarked: false,
+              dtuId: dtu.id as string,
               dtuSource: dtu.source as string | undefined,
               dtuMeta: dtu.meta as Record<string, unknown> | undefined,
             }));
           }
           return postLensItems.length > 0
-            ? postLensItems.map(li => ({ id: li.id, ...(li.data as Record<string, unknown>) } as unknown as FeedPost)) : [];
+            ? postLensItems.map(
+                (li) =>
+                  ({ id: li.id, ...(li.data as Record<string, unknown>) }) as unknown as FeedPost
+              )
+            : [];
         }
         return [];
       } catch {
         if (offset === 0 && postLensItems.length > 0) {
-          return postLensItems.map(li => ({ id: li.id, ...(li.data as Record<string, unknown>) } as unknown as FeedPost));
+          return postLensItems.map(
+            (li) => ({ id: li.id, ...(li.data as Record<string, unknown>) }) as unknown as FeedPost
+          );
         }
         return [];
       }
@@ -503,27 +625,42 @@ export default function FeedLensPage() {
   });
   const feedPosts = useMemo(() => feedPages?.pages.flat() ?? [], [feedPages]);
 
-  const { data: trending, isError: isError3, error: error3, refetch: refetch3,} = useQuery<TrendingTopic[]>({
+  const {
+    data: trending,
+    isError: isError3,
+    error: error3,
+    refetch: refetch3,
+  } = useQuery<TrendingTopic[]>({
     queryKey: ['trending-topics'],
     queryFn: async () => {
       try {
-        const r = await api.get('/api/social/topics/trending', { params: { limit: 10 } }).catch(() => null);
+        const r = await api
+          .get('/api/social/topics/trending', { params: { limit: 10 } })
+          .catch(() => null);
         const topics = r?.data?.topics || r?.data || [];
         if (Array.isArray(topics) && topics.length > 0) {
           return topics.map((t: Record<string, unknown>, i: number) => ({
             id: `t-${i}`,
             tag: `#${(t.tag as string) || (t.topic as string) || ''}`,
-            category: (t.category as string) || ['News', 'Tech', 'Community', 'Creative', 'Science'][i % 5],
+            category:
+              (t.category as string) || ['News', 'Tech', 'Community', 'Creative', 'Science'][i % 5],
             posts: (t.count as number) || (t.posts as number) || 0,
           }));
         }
         // Fallback: derive from DTU tags
         const dtuR = await apiHelpers.dtus.list().catch(() => ({ data: { dtus: [] } }));
         const allTags = new Set<string>();
-        (dtuR.data?.dtus || []).forEach((d: Record<string, unknown>) => ((d.tags as string[]) || []).forEach(t => allTags.add(t)));
-        return Array.from(allTags).slice(0, 5).map((tag, i) => ({
-          id: `t-${i}`, tag: `#${tag}`, category: ['News', 'Tech', 'Community', 'Creative', 'Science'][i % 5], posts: 0,
-        }));
+        (dtuR.data?.dtus || []).forEach((d: Record<string, unknown>) =>
+          ((d.tags as string[]) || []).forEach((t) => allTags.add(t))
+        );
+        return Array.from(allTags)
+          .slice(0, 5)
+          .map((tag, i) => ({
+            id: `t-${i}`,
+            tag: `#${tag}`,
+            category: ['News', 'Tech', 'Community', 'Creative', 'Science'][i % 5],
+            posts: 0,
+          }));
       } catch {
         return [];
       }
@@ -531,13 +668,32 @@ export default function FeedLensPage() {
   });
 
   const postMutation = useMutation({
-    mutationFn: (content: string) => api.post('/api/social/post', {
-      content, mediaType: 'text', tags: [],
-      taggedProducts: taggedProducts.length > 0 ? taggedProducts : undefined,
-    }),
+    mutationFn: (content: string) =>
+      api.post('/api/social/post', {
+        content,
+        mediaType: 'text',
+        tags: [],
+        taggedProducts: taggedProducts.length > 0 ? taggedProducts : undefined,
+      }),
     onSuccess: (_data, content) => {
       queryClient.invalidateQueries({ queryKey: ['feed-posts'] });
-      createLensPost({ title: content.slice(0, 80), data: { content, type: 'text', taggedProducts, createdAt: new Date().toISOString(), likes: 0, comments: 0, reposts: 0, shares: 0, views: 0, liked: false, reposted: false, bookmarked: false } });
+      createLensPost({
+        title: content.slice(0, 80),
+        data: {
+          content,
+          type: 'text',
+          taggedProducts,
+          createdAt: new Date().toISOString(),
+          likes: 0,
+          comments: 0,
+          reposts: 0,
+          shares: 0,
+          views: 0,
+          liked: false,
+          reposted: false,
+          bookmarked: false,
+        },
+      });
       setTaggedProducts([]);
       setNewPost('');
     },
@@ -550,7 +706,9 @@ export default function FeedLensPage() {
     mutationFn: (postId: string) => api.post('/api/social/react', { postId, type: 'like' }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['feed-posts'] }),
     onError: () => {
-      useUIStore.getState().addToast({ type: 'error', message: 'Operation failed. Please try again.' });
+      useUIStore
+        .getState()
+        .addToast({ type: 'error', message: 'Operation failed. Please try again.' });
     },
   });
 
@@ -561,7 +719,9 @@ export default function FeedLensPage() {
       useUIStore.getState().addToast({ type: 'success', message: 'Reposted!' });
     },
     onError: () => {
-      useUIStore.getState().addToast({ type: 'error', message: 'Operation failed. Please try again.' });
+      useUIStore
+        .getState()
+        .addToast({ type: 'error', message: 'Operation failed. Please try again.' });
     },
   });
 
@@ -569,40 +729,57 @@ export default function FeedLensPage() {
     mutationFn: (postId: string) => api.post('/api/social/bookmark', { postId }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['feed-posts'] }),
     onError: () => {
-      useUIStore.getState().addToast({ type: 'error', message: 'Operation failed. Please try again.' });
+      useUIStore
+        .getState()
+        .addToast({ type: 'error', message: 'Operation failed. Please try again.' });
     },
   });
 
   const shareMutation = useMutation({
     mutationFn: async (postId: string) => {
       if (navigator.share) {
-        await navigator.share({ title: 'Concord Post', url: `${window.location.origin}/lenses/feed?post=${postId}` });
+        await navigator.share({
+          title: 'Concord Post',
+          url: `${window.location.origin}/lenses/feed?post=${postId}`,
+        });
       } else {
         await navigator.clipboard.writeText(`${window.location.origin}/lenses/feed?post=${postId}`);
         useUIStore.getState().addToast({ type: 'success', message: 'Link copied to clipboard' });
       }
     },
     onError: () => {
-      useUIStore.getState().addToast({ type: 'error', message: 'Operation failed. Please try again.' });
+      useUIStore
+        .getState()
+        .addToast({ type: 'error', message: 'Operation failed. Please try again.' });
     },
   });
 
   // Comment & post options state
   const [expandedComments, setExpandedComments] = useState<string | null>(null);
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
-  const [postComments, setPostComments] = useState<Record<string, { id: string; userId: string; content: string; createdAt: string; replies?: unknown[] }[]>>({});
+  const [postComments, setPostComments] = useState<
+    Record<
+      string,
+      { id: string; userId: string; content: string; createdAt: string; replies?: unknown[] }[]
+    >
+  >({});
   const [postMenuOpen, setPostMenuOpen] = useState<string | null>(null);
 
   const commentMutation = useMutation({
     mutationFn: ({ postId, content }: { postId: string; content: string }) =>
       api.post('/api/social/comment', { postId, content }),
     onSuccess: (_data, { postId }) => {
-      setCommentInputs(prev => ({ ...prev, [postId]: '' }));
+      setCommentInputs((prev) => ({ ...prev, [postId]: '' }));
       queryClient.invalidateQueries({ queryKey: ['feed-posts'] });
       // Refetch comments for this post
-      api.get(`/api/social/comments/${postId}`).then(res => {
-        setPostComments(prev => ({ ...prev, [postId]: res.data?.comments || [] }));
-      }).catch((e) => { console.warn('Failed to refetch comments:', e); });
+      api
+        .get(`/api/social/comments/${postId}`)
+        .then((res) => {
+          setPostComments((prev) => ({ ...prev, [postId]: res.data?.comments || [] }));
+        })
+        .catch((e) => {
+          console.warn('Failed to refetch comments:', e);
+        });
     },
     onError: () => {
       useUIStore.getState().addToast({ type: 'error', message: 'Failed to add comment' });
@@ -621,20 +798,28 @@ export default function FeedLensPage() {
     },
   });
 
-  const toggleComments = useCallback((postId: string) => {
-    if (expandedComments === postId) {
-      setExpandedComments(null);
-      return;
-    }
-    setExpandedComments(postId);
-    // Fetch comments from backend
-    api.get(`/api/social/comments/${postId}`).then(res => {
-      setPostComments(prev => ({ ...prev, [postId]: res.data?.comments || [] }));
-    }).catch((e) => { console.warn('Failed to fetch comments:', e); });
-  }, [expandedComments]);
+  const toggleComments = useCallback(
+    (postId: string) => {
+      if (expandedComments === postId) {
+        setExpandedComments(null);
+        return;
+      }
+      setExpandedComments(postId);
+      // Fetch comments from backend
+      api
+        .get(`/api/social/comments/${postId}`)
+        .then((res) => {
+          setPostComments((prev) => ({ ...prev, [postId]: res.data?.comments || [] }));
+        })
+        .catch((e) => {
+          console.warn('Failed to fetch comments:', e);
+        });
+    },
+    [expandedComments]
+  );
 
   const handleComposeHint = useCallback((hint: string) => {
-    setNewPost(prev => prev ? `${prev}\n[${hint}]` : `[${hint}]`);
+    setNewPost((prev) => (prev ? `${prev}\n[${hint}]` : `[${hint}]`));
     composeRef.current?.focus();
   }, []);
 
@@ -661,15 +846,16 @@ export default function FeedLensPage() {
   const filteredPosts = useMemo(() => {
     if (!feedPosts) return [];
     let posts = feedPosts;
-    if (activeTab === 'releases') posts = posts.filter(p => p.type === 'release');
+    if (activeTab === 'releases') posts = posts.filter((p) => p.type === 'release');
     if (activeTab === 'trending') posts = [...posts].sort((a, b) => b.views - a.views);
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      posts = posts.filter(p =>
-        p.content.toLowerCase().includes(q) ||
-        p.author.name.toLowerCase().includes(q) ||
-        p.author.handle.toLowerCase().includes(q) ||
-        p.tags?.some(t => t.toLowerCase().includes(q))
+      posts = posts.filter(
+        (p) =>
+          p.content.toLowerCase().includes(q) ||
+          p.author.name.toLowerCase().includes(q) ||
+          p.author.handle.toLowerCase().includes(q) ||
+          p.tags?.some((t) => t.toLowerCase().includes(q))
       );
     }
     return posts;
@@ -683,20 +869,63 @@ export default function FeedLensPage() {
   ];
 
   const sidebarNav = [
-    { icon: Home, label: 'Home', active: activeTab === 'for-you', action: () => setActiveTab('for-you') },
-    { icon: Search, label: 'Explore', active: activeTab === 'trending', action: () => setActiveTab('trending') },
-    { icon: Bell, label: 'Notifications', active: activeTab === 'notifications' as string, action: () => setActiveTab('for-you' as FeedTab) },
-    { icon: Mail, label: 'Messages', active: false, action: () => { window.location.href = '/messages'; } },
-    { icon: Bookmark, label: 'Bookmarks', active: activeTab === 'bookmarks' as string, action: () => setActiveTab('following' as FeedTab) },
-    { icon: User, label: 'Profile', active: showProfile, action: () => setShowProfile(prev => !prev) },
-    { icon: Rss, label: 'Media', active: activeTab === 'releases', action: () => setActiveTab('releases') },
+    {
+      icon: Home,
+      label: 'Home',
+      active: activeTab === 'for-you',
+      action: () => setActiveTab('for-you'),
+    },
+    {
+      icon: Search,
+      label: 'Explore',
+      active: activeTab === 'trending',
+      action: () => setActiveTab('trending'),
+    },
+    {
+      icon: Bell,
+      label: 'Notifications',
+      active: activeTab === ('notifications' as string),
+      action: () => setActiveTab('for-you' as FeedTab),
+    },
+    {
+      icon: Mail,
+      label: 'Messages',
+      active: false,
+      action: () => {
+        window.location.href = '/messages';
+      },
+    },
+    {
+      icon: Bookmark,
+      label: 'Bookmarks',
+      active: activeTab === ('bookmarks' as string),
+      action: () => setActiveTab('following' as FeedTab),
+    },
+    {
+      icon: User,
+      label: 'Profile',
+      active: showProfile,
+      action: () => setShowProfile((prev) => !prev),
+    },
+    {
+      icon: Rss,
+      label: 'Media',
+      active: activeTab === 'releases',
+      action: () => setActiveTab('releases'),
+    },
   ];
-
 
   if (isError || isError2 || isError3) {
     return (
       <div className="flex items-center justify-center h-full p-8">
-        <ErrorState error={error?.message || error2?.message || error3?.message} onRetry={() => { refetch(); refetch2(); refetch3(); }} />
+        <ErrorState
+          error={error?.message || error2?.message || error3?.message}
+          onRetry={() => {
+            refetch();
+            refetch2();
+            refetch3();
+          }}
+        />
       </div>
     );
   }
@@ -706,11 +935,13 @@ export default function FeedLensPage() {
       <aside className="w-20 xl:w-64 border-r border-lattice-border/50 p-2 xl:p-4 flex flex-col items-center xl:items-start sticky top-0 h-screen overflow-y-auto bg-gradient-to-b from-lattice-surface to-lattice-bg">
         <div className="flex items-center gap-2 mb-8 p-3">
           <Newspaper className="w-8 h-8 text-blue-400" />
-          <span className="hidden xl:inline text-lg font-bold text-white tracking-tight">Concord</span>
+          <span className="hidden xl:inline text-lg font-bold text-white tracking-tight">
+            Concord
+          </span>
         </div>
 
         <nav className="flex flex-col gap-1 w-full">
-          {sidebarNav.map(item => (
+          {sidebarNav.map((item) => (
             <button
               key={item.label}
               onClick={item.action}
@@ -728,7 +959,10 @@ export default function FeedLensPage() {
         </nav>
 
         <button
-          onClick={() => { composeRef.current?.focus(); composeRef.current?.scrollIntoView({ behavior: 'smooth' }); }}
+          onClick={() => {
+            composeRef.current?.focus();
+            composeRef.current?.scrollIntoView({ behavior: 'smooth' });
+          }}
           className="mt-6 w-12 h-12 xl:w-full xl:h-auto xl:py-3 bg-neon-cyan text-black font-bold rounded-full hover:bg-neon-cyan/90 transition-colors flex items-center justify-center gap-2"
         >
           <PlusCircle className="w-5 h-5 xl:hidden" />
@@ -756,25 +990,32 @@ export default function FeedLensPage() {
             <div className="flex items-center gap-2">
               <StreakIndicator userId="current-user" className="mr-1" />
               <DMIndicator userId="current-user" />
-              {dtusLoading && <span className="w-4 h-4 border-2 border-neon-cyan border-t-transparent rounded-full animate-spin" />}
-              <button onClick={() => refetchDTUs()} disabled={dtusLoading} className="p-1 rounded hover:bg-lattice-surface/50 disabled:opacity-50 transition-colors" title="Refresh DTUs">
+              {dtusLoading && (
+                <span className="w-4 h-4 border-2 border-neon-cyan border-t-transparent rounded-full animate-spin" />
+              )}
+              <button
+                onClick={() => refetchDTUs()}
+                disabled={dtusLoading}
+                className="p-1 rounded hover:bg-lattice-surface/50 disabled:opacity-50 transition-colors"
+                title="Refresh DTUs"
+              >
                 <Sparkles className="w-5 h-5 text-neon-cyan" />
               </button>
             </div>
           </div>
 
-      {/* Real-time Enhancement Toolbar */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-        <DTUExportButton domain="feed" data={realtimeData || {}} compact />
-        {realtimeAlerts.length > 0 && (
-          <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
-            {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
-          </span>
-        )}
-      </div>
+          {/* Real-time Enhancement Toolbar */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+            <DTUExportButton domain="feed" data={realtimeData || {}} compact />
+            {realtimeAlerts.length > 0 && (
+              <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
+                {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
           <div className="flex">
-            {tabs.map(tab => (
+            {tabs.map((tab) => (
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
@@ -821,32 +1062,65 @@ export default function FeedLensPage() {
               />
               <div className="flex items-center justify-between pt-3 border-t border-lattice-border">
                 <div className="flex items-center gap-0.5 text-neon-cyan">
-                  <button onClick={() => handleComposeHint('Link')} className="p-2 rounded-full hover:bg-neon-cyan/10 transition-colors" title="Attach link">
+                  <button
+                    onClick={() => handleComposeHint('Link')}
+                    className="p-2 rounded-full hover:bg-neon-cyan/10 transition-colors"
+                    title="Attach link"
+                  >
                     <Link className="w-5 h-5" />
                   </button>
-                  <button onClick={() => handleComposeHint('Audio')} className="p-2 rounded-full hover:bg-neon-cyan/10 transition-colors" title="Attach audio">
+                  <button
+                    onClick={() => handleComposeHint('Audio')}
+                    className="p-2 rounded-full hover:bg-neon-cyan/10 transition-colors"
+                    title="Attach audio"
+                  >
                     <Globe className="w-5 h-5" />
                   </button>
-                  <button onClick={() => handleComposeHint('Image')} className="p-2 rounded-full hover:bg-neon-cyan/10 transition-colors" title="Attach image">
+                  <button
+                    onClick={() => handleComposeHint('Image')}
+                    className="p-2 rounded-full hover:bg-neon-cyan/10 transition-colors"
+                    title="Attach image"
+                  >
                     <ImageIcon className="w-5 h-5" />
                   </button>
-                  <button onClick={() => handleComposeHint('DTU Link')} className="p-2 rounded-full hover:bg-neon-cyan/10 transition-colors" title="Link DTU">
+                  <button
+                    onClick={() => handleComposeHint('DTU Link')}
+                    className="p-2 rounded-full hover:bg-neon-cyan/10 transition-colors"
+                    title="Link DTU"
+                  >
                     <Link2 className="w-5 h-5" />
                   </button>
-                  <button onClick={() => handleComposeHint('Poll')} className="p-2 rounded-full hover:bg-neon-cyan/10 transition-colors" title="Add poll">
+                  <button
+                    onClick={() => handleComposeHint('Poll')}
+                    className="p-2 rounded-full hover:bg-neon-cyan/10 transition-colors"
+                    title="Add poll"
+                  >
                     <BarChart3 className="w-5 h-5" />
                   </button>
-                  <button onClick={() => setShowProductPicker(!showProductPicker)} className={cn("p-2 rounded-full hover:bg-neon-green/10 transition-colors", showProductPicker && "bg-neon-green/10 text-neon-green")} title="Tag Product">
+                  <button
+                    onClick={() => setShowProductPicker(!showProductPicker)}
+                    className={cn(
+                      'p-2 rounded-full hover:bg-neon-green/10 transition-colors',
+                      showProductPicker && 'bg-neon-green/10 text-neon-green'
+                    )}
+                    title="Tag Product"
+                  >
                     <ShoppingBag className="w-5 h-5" />
                   </button>
-                  <button onClick={() => handleComposeHint('Link DTU')} className="p-2 rounded-full hover:bg-neon-purple/10 transition-colors text-neon-purple" title="Link DTU">
+                  <button
+                    onClick={() => handleComposeHint('Link DTU')}
+                    className="p-2 rounded-full hover:bg-neon-purple/10 transition-colors text-neon-purple"
+                    title="Link DTU"
+                  >
                     <Tag className="w-5 h-5" />
                   </button>
                   <VisionAnalyzeButton
                     domain="feed"
                     prompt="Describe this image for use as alt text in a social media post. Be concise but descriptive. Also suggest relevant hashtags."
                     onResult={(res) => {
-                      setNewPost(prev => prev ? `${prev}\n\n[Alt: ${res.analysis}]` : `[Alt: ${res.analysis}]`);
+                      setNewPost((prev) =>
+                        prev ? `${prev}\n\n[Alt: ${res.analysis}]` : `[Alt: ${res.analysis}]`
+                      );
                     }}
                   />
                 </div>
@@ -862,11 +1136,21 @@ export default function FeedLensPage() {
               {/* Tagged Products Display */}
               {taggedProducts.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {taggedProducts.map(p => (
-                    <span key={p.listingId} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-neon-green/10 text-neon-green text-xs font-medium border border-neon-green/20">
+                  {taggedProducts.map((p) => (
+                    <span
+                      key={p.listingId}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-neon-green/10 text-neon-green text-xs font-medium border border-neon-green/20"
+                    >
                       <ShoppingBag className="w-3 h-3" />
                       {p.title} ({p.price} CC)
-                      <button onClick={() => setTaggedProducts(prev => prev.filter(tp => tp.listingId !== p.listingId))} className="ml-0.5 hover:text-red-400">
+                      <button
+                        onClick={() =>
+                          setTaggedProducts((prev) =>
+                            prev.filter((tp) => tp.listingId !== p.listingId)
+                          )
+                        }
+                        className="ml-0.5 hover:text-red-400"
+                      >
                         <span className="text-xs">x</span>
                       </button>
                     </span>
@@ -889,37 +1173,74 @@ export default function FeedLensPage() {
                     className="w-full px-3 py-2 bg-lattice-surface border border-lattice-border rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-neon-green mb-2"
                   />
                   <div className="max-h-40 overflow-y-auto space-y-1">
-                    {(marketplaceListings as { id: string; name: string; lensNumber?: number; uniqueValue?: string }[] || []).slice(0, 8).map((item: { id: string; name: string; lensNumber?: number; uniqueValue?: string }) => {
-                      const alreadyTagged = taggedProducts.some(t => t.listingId === item.id);
-                      return (
-                        <button
-                          key={item.id}
-                          disabled={alreadyTagged}
-                          onClick={() => {
-                            setTaggedProducts(prev => [...prev, { listingId: item.id, title: item.name, price: 10, sellerId: 'platform' }]);
-                          }}
-                          className={cn(
-                            "w-full flex items-center justify-between p-2 rounded-lg text-left text-sm transition-colors",
-                            alreadyTagged ? "opacity-50 cursor-not-allowed bg-lattice-surface" : "hover:bg-lattice-surface"
-                          )}
-                        >
-                          <div className="flex-1 min-w-0">
-                            <p className="text-white font-medium truncate">{item.name}</p>
-                            {item.uniqueValue && <p className="text-xs text-gray-500 truncate">{item.uniqueValue}</p>}
-                          </div>
-                          {alreadyTagged ? (
-                            <span className="text-xs text-neon-green ml-2">Tagged</span>
-                          ) : (
-                            <span className="text-xs text-gray-400 ml-2">+ Tag</span>
-                          )}
-                        </button>
-                      );
-                    })}
+                    {(
+                      (marketplaceListings as {
+                        id: string;
+                        name: string;
+                        lensNumber?: number;
+                        uniqueValue?: string;
+                      }[]) || []
+                    )
+                      .slice(0, 8)
+                      .map(
+                        (item: {
+                          id: string;
+                          name: string;
+                          lensNumber?: number;
+                          uniqueValue?: string;
+                        }) => {
+                          const alreadyTagged = taggedProducts.some((t) => t.listingId === item.id);
+                          return (
+                            <button
+                              key={item.id}
+                              disabled={alreadyTagged}
+                              onClick={() => {
+                                setTaggedProducts((prev) => [
+                                  ...prev,
+                                  {
+                                    listingId: item.id,
+                                    title: item.name,
+                                    price: 10,
+                                    sellerId: 'platform',
+                                  },
+                                ]);
+                              }}
+                              className={cn(
+                                'w-full flex items-center justify-between p-2 rounded-lg text-left text-sm transition-colors',
+                                alreadyTagged
+                                  ? 'opacity-50 cursor-not-allowed bg-lattice-surface'
+                                  : 'hover:bg-lattice-surface'
+                              )}
+                            >
+                              <div className="flex-1 min-w-0">
+                                <p className="text-white font-medium truncate">{item.name}</p>
+                                {item.uniqueValue && (
+                                  <p className="text-xs text-gray-500 truncate">
+                                    {item.uniqueValue}
+                                  </p>
+                                )}
+                              </div>
+                              {alreadyTagged ? (
+                                <span className="text-xs text-neon-green ml-2">Tagged</span>
+                              ) : (
+                                <span className="text-xs text-gray-400 ml-2">+ Tag</span>
+                              )}
+                            </button>
+                          );
+                        }
+                      )}
                     {(marketplaceListings || []).length === 0 && (
-                      <p className="text-xs text-gray-500 text-center py-2">Type to search marketplace listings</p>
+                      <p className="text-xs text-gray-500 text-center py-2">
+                        Type to search marketplace listings
+                      </p>
                     )}
                   </div>
-                  <button onClick={() => setShowProductPicker(false)} className="mt-2 text-xs text-gray-400 hover:text-white">Close picker</button>
+                  <button
+                    onClick={() => setShowProductPicker(false)}
+                    className="mt-2 text-xs text-gray-400 hover:text-white"
+                  >
+                    Close picker
+                  </button>
                 </div>
               )}
             </div>
@@ -932,7 +1253,10 @@ export default function FeedLensPage() {
             <UserProfile
               userId="current-user"
               currentUserId="current-user"
-              onNavigateToUser={(uid) => { setSearchQuery(uid); setShowProfile(false); }}
+              onNavigateToUser={(uid) => {
+                setSearchQuery(uid);
+                setShowProfile(false);
+              }}
             />
           </div>
         )}
@@ -952,7 +1276,7 @@ export default function FeedLensPage() {
         <div>
           {isLoading ? (
             <div className="p-4 space-y-6">
-              {[1, 2, 3, 4].map(i => (
+              {[1, 2, 3, 4].map((i) => (
                 <div key={i} className="animate-pulse flex gap-3">
                   <div className="w-10 h-10 rounded-full bg-lattice-surface" />
                   <div className="flex-1 space-y-3">
@@ -967,14 +1291,24 @@ export default function FeedLensPage() {
           ) : filteredPosts.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-gray-400">
               <MessageCircle className="w-16 h-16 mb-4 opacity-40" />
-              <h3 className="text-lg font-medium mb-2 text-white">No posts yet</h3>
-              <p className="text-sm mb-4">Create a post or follow users to populate your feed.</p>
+              <h3 className="text-lg font-medium mb-2 text-white">Nothing in your feed yet</h3>
+              <p className="text-sm mb-6">
+                Follow topics and sources to populate your feed, or create the first post.
+              </p>
+              <button
+                onClick={() => setActiveTab('trending')}
+                className="px-5 py-2 bg-neon-cyan/20 text-neon-cyan rounded-lg text-sm hover:bg-neon-cyan/30 transition-colors"
+              >
+                Discover sources
+              </button>
             </div>
           ) : (
             <Virtuoso
               data={filteredPosts}
               useWindowScroll
-              endReached={() => { if (hasNextPage && !isFetchingNextPage) fetchNextPage(); }}
+              endReached={() => {
+                if (hasNextPage && !isFetchingNextPage) fetchNextPage();
+              }}
               overscan={400}
               itemContent={(idx, post) => (
                 <motion.article
@@ -986,10 +1320,12 @@ export default function FeedLensPage() {
                 >
                   <div className="flex gap-3">
                     {/* Avatar */}
-                    <div className={cn(
-                      'w-10 h-10 rounded-full bg-gradient-to-br flex-shrink-0',
-                      post.author.gradient,
-                    )} />
+                    <div
+                      className={cn(
+                        'w-10 h-10 rounded-full bg-gradient-to-br flex-shrink-0',
+                        post.author.gradient
+                      )}
+                    />
 
                     <div className="flex-1 min-w-0">
                       {/* Post Header */}
@@ -1006,11 +1342,17 @@ export default function FeedLensPage() {
                           {formatTime(post.createdAt)}
                         </span>
                         {post.dtuSource && (
-                          <ProvenanceBadge source={post.dtuSource} model={post.dtuMeta?.model as string} authority={post.dtuMeta?.authority as string} />
+                          <ProvenanceBadge
+                            source={post.dtuSource}
+                            model={post.dtuMeta?.model as string}
+                            authority={post.dtuMeta?.authority as string}
+                          />
                         )}
                         <div className="ml-auto relative flex-shrink-0">
                           <button
-                            onClick={() => setPostMenuOpen(postMenuOpen === post.id ? null : post.id)}
+                            onClick={() =>
+                              setPostMenuOpen(postMenuOpen === post.id ? null : post.id)
+                            }
                             className="p-1 text-gray-600 hover:text-neon-cyan hover:bg-neon-cyan/10 rounded-full transition-colors"
                           >
                             <MoreHorizontal className="w-4 h-4" />
@@ -1024,25 +1366,39 @@ export default function FeedLensPage() {
                                 className="absolute right-0 top-8 z-20 w-44 bg-lattice-surface border border-lattice-border rounded-xl shadow-lg overflow-hidden"
                               >
                                 <button
-                                  onClick={() => { deletePostMutation.mutate(post.id); }}
+                                  onClick={() => {
+                                    deletePostMutation.mutate(post.id);
+                                  }}
                                   className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
                                 >
                                   <Trash2 className="w-4 h-4" /> Delete Post
                                 </button>
                                 <button
-                                  onClick={() => { bookmarkMutation.mutate(post.id); setPostMenuOpen(null); }}
+                                  onClick={() => {
+                                    bookmarkMutation.mutate(post.id);
+                                    setPostMenuOpen(null);
+                                  }}
                                   className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-gray-300 hover:bg-lattice-deep transition-colors"
                                 >
-                                  <Bookmark className="w-4 h-4" /> {post.bookmarked ? 'Remove Bookmark' : 'Bookmark'}
+                                  <Bookmark className="w-4 h-4" />{' '}
+                                  {post.bookmarked ? 'Remove Bookmark' : 'Bookmark'}
                                 </button>
                                 <button
-                                  onClick={() => { shareMutation.mutate(post.id); setPostMenuOpen(null); }}
+                                  onClick={() => {
+                                    shareMutation.mutate(post.id);
+                                    setPostMenuOpen(null);
+                                  }}
                                   className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-gray-300 hover:bg-lattice-deep transition-colors"
                                 >
                                   <Share className="w-4 h-4" /> Copy Link
                                 </button>
                                 <button
-                                  onClick={() => { useUIStore.getState().addToast({ type: 'info', message: 'Post reported' }); setPostMenuOpen(null); }}
+                                  onClick={() => {
+                                    useUIStore
+                                      .getState()
+                                      .addToast({ type: 'info', message: 'Post reported' });
+                                    setPostMenuOpen(null);
+                                  }}
                                   className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-gray-300 hover:bg-lattice-deep transition-colors"
                                 >
                                   <Flag className="w-4 h-4" /> Report
@@ -1061,8 +1417,11 @@ export default function FeedLensPage() {
                       {/* Tags */}
                       {post.tags && post.tags.length > 0 && (
                         <div className="flex flex-wrap gap-1.5 mt-2">
-                          {post.tags.map(tag => (
-                            <span key={tag} className="text-xs text-neon-cyan hover:underline cursor-pointer">
+                          {post.tags.map((tag) => (
+                            <span
+                              key={tag}
+                              className="text-xs text-neon-cyan hover:underline cursor-pointer"
+                            >
                               #{tag}
                             </span>
                           ))}
@@ -1071,20 +1430,21 @@ export default function FeedLensPage() {
 
                       {/* Type-specific Content */}
                       {post.type === 'audio' && post.audio && (
-                        <WaveformPlayer {...post.audio} waveform={post.audio.waveform?.length ? post.audio.waveform : generateWaveform()} />
+                        <WaveformPlayer
+                          {...post.audio}
+                          waveform={
+                            post.audio.waveform?.length ? post.audio.waveform : generateWaveform()
+                          }
+                        />
                       )}
 
                       {post.type === 'release' && post.release && (
                         <ReleaseCard release={post.release} />
                       )}
 
-                      {post.type === 'art' && post.art && (
-                        <ArtGallery images={post.art.images} />
-                      )}
+                      {post.type === 'art' && post.art && <ArtGallery images={post.art.images} />}
 
-                      {post.type === 'collab' && post.collab && (
-                        <CollabCard collab={post.collab} />
-                      )}
+                      {post.type === 'collab' && post.collab && <CollabCard collab={post.collab} />}
 
                       {/* Inline Social Commerce: Tagged Products */}
                       {post.taggedProducts && post.taggedProducts.length > 0 && (
@@ -1104,23 +1464,28 @@ export default function FeedLensPage() {
                                 currency: 'CC',
                               }}
                               onBuy={(listingId) => {
-                                const p = post.taggedProducts?.find(tp => tp.listingId === listingId);
+                                const p = post.taggedProducts?.find(
+                                  (tp) => tp.listingId === listingId
+                                );
                                 if (p) handleInlinePurchase(p);
                               }}
                               onNavigateToListing={(listingId) => {
                                 window.open(`/lenses/marketplace?listing=${listingId}`, '_blank');
                               }}
                               className={cn(
-                                purchaseLoading === product.listingId && 'opacity-60 pointer-events-none',
-                                purchaseSuccess === product.listingId && 'border-green-500/50 bg-green-500/5'
+                                purchaseLoading === product.listingId &&
+                                  'opacity-60 pointer-events-none',
+                                purchaseSuccess === product.listingId &&
+                                  'border-green-500/50 bg-green-500/5'
                               )}
                             />
                           ))}
-                          {purchaseSuccess && post.taggedProducts.some(p => p.listingId === purchaseSuccess) && (
-                            <p className="text-xs text-green-400 flex items-center gap-1">
-                              <span>Purchase complete!</span>
-                            </p>
-                          )}
+                          {purchaseSuccess &&
+                            post.taggedProducts.some((p) => p.listingId === purchaseSuccess) && (
+                              <p className="text-xs text-green-400 flex items-center gap-1">
+                                <span>Purchase complete!</span>
+                              </p>
+                            )}
                         </div>
                       )}
 
@@ -1128,12 +1493,22 @@ export default function FeedLensPage() {
                       <div className="flex items-center justify-between mt-3 max-w-md text-gray-500">
                         <button
                           onClick={() => toggleComments(post.id)}
-                          className={cn('flex items-center gap-1.5 group', expandedComments === post.id && 'text-blue-400')}
+                          className={cn(
+                            'flex items-center gap-1.5 group',
+                            expandedComments === post.id && 'text-blue-400'
+                          )}
                         >
                           <div className="p-1.5 rounded-full group-hover:bg-blue-500/15 group-hover:text-blue-400 group-hover:scale-110 transition-all duration-200">
-                            <MessageCircle className={cn('w-4 h-4', expandedComments === post.id && 'fill-current')} />
+                            <MessageCircle
+                              className={cn(
+                                'w-4 h-4',
+                                expandedComments === post.id && 'fill-current'
+                              )}
+                            />
                           </div>
-                          <span className="text-xs group-hover:text-blue-400 transition-colors">{formatNumber(post.comments)}</span>
+                          <span className="text-xs group-hover:text-blue-400 transition-colors">
+                            {formatNumber(post.comments)}
+                          </span>
                         </button>
 
                         <button
@@ -1146,7 +1521,9 @@ export default function FeedLensPage() {
                           <div className="p-1.5 rounded-full group-hover:bg-neon-green/15 group-hover:text-neon-green group-hover:scale-110 transition-all duration-200">
                             <Repeat2 className="w-4 h-4" />
                           </div>
-                          <span className="text-xs group-hover:text-neon-green transition-colors">{formatNumber(post.reposts)}</span>
+                          <span className="text-xs group-hover:text-neon-green transition-colors">
+                            {formatNumber(post.reposts)}
+                          </span>
                         </button>
 
                         <button
@@ -1159,14 +1536,18 @@ export default function FeedLensPage() {
                           <div className="p-1.5 rounded-full group-hover:bg-gradient-to-r group-hover:from-pink-500/15 group-hover:to-rose-500/15 group-hover:text-neon-pink group-hover:scale-110 transition-all duration-200">
                             <Heart className={cn('w-4 h-4', post.liked && 'fill-current')} />
                           </div>
-                          <span className="text-xs group-hover:text-neon-pink transition-colors">{formatNumber(post.likes)}</span>
+                          <span className="text-xs group-hover:text-neon-pink transition-colors">
+                            {formatNumber(post.likes)}
+                          </span>
                         </button>
 
                         <div className="flex items-center gap-1.5 group" title="Views">
                           <div className="p-1.5 rounded-full group-hover:bg-neon-cyan/15 group-hover:text-neon-cyan group-hover:scale-110 transition-all duration-200">
                             <Eye className="w-4 h-4" />
                           </div>
-                          <span className="text-xs group-hover:text-neon-cyan transition-colors">{formatNumber(post.views)}</span>
+                          <span className="text-xs group-hover:text-neon-cyan transition-colors">
+                            {formatNumber(post.views)}
+                          </span>
                         </div>
 
                         <div className="flex items-center gap-0.5">
@@ -1175,7 +1556,12 @@ export default function FeedLensPage() {
                             onClick={() => bookmarkMutation.mutate(post.id)}
                             className="p-1.5 rounded-full hover:bg-neon-cyan/15 hover:text-neon-cyan hover:scale-110 transition-all duration-200"
                           >
-                            <Bookmark className={cn('w-4 h-4', post.bookmarked && 'fill-current text-neon-cyan')} />
+                            <Bookmark
+                              className={cn(
+                                'w-4 h-4',
+                                post.bookmarked && 'fill-current text-neon-cyan'
+                              )}
+                            />
                           </button>
                           <button
                             onClick={() => shareMutation.mutate(post.id)}
@@ -1211,10 +1597,21 @@ export default function FeedLensPage() {
                                   <input
                                     type="text"
                                     value={commentInputs[post.id] || ''}
-                                    onChange={(e) => setCommentInputs(prev => ({ ...prev, [post.id]: e.target.value }))}
+                                    onChange={(e) =>
+                                      setCommentInputs((prev) => ({
+                                        ...prev,
+                                        [post.id]: e.target.value,
+                                      }))
+                                    }
                                     onKeyDown={(e) => {
-                                      if (e.key === 'Enter' && (commentInputs[post.id] || '').trim()) {
-                                        commentMutation.mutate({ postId: post.id, content: commentInputs[post.id] });
+                                      if (
+                                        e.key === 'Enter' &&
+                                        (commentInputs[post.id] || '').trim()
+                                      ) {
+                                        commentMutation.mutate({
+                                          postId: post.id,
+                                          content: commentInputs[post.id],
+                                        });
                                       }
                                     }}
                                     placeholder="Write a comment..."
@@ -1223,10 +1620,16 @@ export default function FeedLensPage() {
                                   <button
                                     onClick={() => {
                                       if ((commentInputs[post.id] || '').trim()) {
-                                        commentMutation.mutate({ postId: post.id, content: commentInputs[post.id] });
+                                        commentMutation.mutate({
+                                          postId: post.id,
+                                          content: commentInputs[post.id],
+                                        });
                                       }
                                     }}
-                                    disabled={!(commentInputs[post.id] || '').trim() || commentMutation.isPending}
+                                    disabled={
+                                      !(commentInputs[post.id] || '').trim() ||
+                                      commentMutation.isPending
+                                    }
                                     className="p-1.5 rounded-full bg-neon-cyan/20 text-neon-cyan hover:bg-neon-cyan/30 disabled:opacity-40 transition-colors"
                                   >
                                     <Send className="w-4 h-4" />
@@ -1236,7 +1639,9 @@ export default function FeedLensPage() {
 
                               {/* Comment list */}
                               {(postComments[post.id] || []).length === 0 ? (
-                                <p className="text-xs text-gray-500 text-center py-2">No comments yet. Be the first!</p>
+                                <p className="text-xs text-gray-500 text-center py-2">
+                                  No comments yet. Be the first!
+                                </p>
                               ) : (
                                 <div className="space-y-2 max-h-60 overflow-y-auto">
                                   {(postComments[post.id] || []).map((comment) => (
@@ -1244,10 +1649,16 @@ export default function FeedLensPage() {
                                       <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex-shrink-0" />
                                       <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-1.5">
-                                          <span className="text-xs font-semibold text-white">{comment.userId}</span>
-                                          <span className="text-[10px] text-gray-600">{formatTime(comment.createdAt)}</span>
+                                          <span className="text-xs font-semibold text-white">
+                                            {comment.userId}
+                                          </span>
+                                          <span className="text-[10px] text-gray-600">
+                                            {formatTime(comment.createdAt)}
+                                          </span>
                                         </div>
-                                        <p className="text-sm text-gray-300 leading-snug">{comment.content}</p>
+                                        <p className="text-sm text-gray-300 leading-snug">
+                                          {comment.content}
+                                        </p>
                                       </div>
                                     </div>
                                   ))}
@@ -1267,8 +1678,14 @@ export default function FeedLensPage() {
                     {isFetchingNextPage ? (
                       <div className="animate-pulse flex justify-center gap-2">
                         <div className="w-2 h-2 bg-neon-cyan rounded-full animate-bounce" />
-                        <div className="w-2 h-2 bg-neon-cyan rounded-full animate-bounce" style={{ animationDelay: '0.15s' }} />
-                        <div className="w-2 h-2 bg-neon-cyan rounded-full animate-bounce" style={{ animationDelay: '0.3s' }} />
+                        <div
+                          className="w-2 h-2 bg-neon-cyan rounded-full animate-bounce"
+                          style={{ animationDelay: '0.15s' }}
+                        />
+                        <div
+                          className="w-2 h-2 bg-neon-cyan rounded-full animate-bounce"
+                          style={{ animationDelay: '0.3s' }}
+                        />
                       </div>
                     ) : !hasNextPage && filteredPosts.length > 0 ? (
                       <>
@@ -1304,7 +1721,7 @@ export default function FeedLensPage() {
             <TrendingUp className="w-4 h-4 text-neon-cyan" />
             <h2 className="text-base font-bold text-white">Trending Now</h2>
           </div>
-          {(trending || TRENDING_TOPICS).map(topic => (
+          {(trending || TRENDING_TOPICS).map((topic) => (
             <button
               key={topic.id}
               onClick={() => setSearchQuery(topic.tag.replace('#', ''))}
@@ -1325,9 +1742,7 @@ export default function FeedLensPage() {
 
         {/* Trending Topics — live animated widget */}
         <div className="bg-lattice-surface rounded-xl border border-lattice-border overflow-hidden p-4">
-          <TrendingTopics
-            onTopicClick={(tag) => setSearchQuery(tag)}
-          />
+          <TrendingTopics onTopicClick={(tag) => setSearchQuery(tag)} />
         </div>
 
         {/* Presence — who's currently browsing the feed. Sourced
@@ -1335,17 +1750,32 @@ export default function FeedLensPage() {
             when people join / leave. */}
         <div className="bg-lattice-surface rounded-xl border border-lattice-border overflow-hidden px-4 py-3">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">On Feed Now</span>
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+              On Feed Now
+            </span>
           </div>
           <PresenceIndicator
-            users={(Array.isArray(presenceUsers) ? presenceUsers : []).map((u: { id?: string; userId?: string; name?: string; displayName?: string; avatar?: string; status?: 'active' | 'idle' | 'viewing'; location?: string }, i: number) => ({
-              id: u.id || u.userId || `p-${i}`,
-              name: u.name || u.displayName || 'Citizen',
-              avatar: u.avatar,
-              color: ['#06b6d4', '#8b5cf6', '#22c55e', '#f59e0b', '#ec4899'][i % 5],
-              status: (u.status || 'active') as 'active' | 'idle' | 'viewing',
-              location: u.location || 'feed',
-            }))}
+            users={(Array.isArray(presenceUsers) ? presenceUsers : []).map(
+              (
+                u: {
+                  id?: string;
+                  userId?: string;
+                  name?: string;
+                  displayName?: string;
+                  avatar?: string;
+                  status?: 'active' | 'idle' | 'viewing';
+                  location?: string;
+                },
+                i: number
+              ) => ({
+                id: u.id || u.userId || `p-${i}`,
+                name: u.name || u.displayName || 'Citizen',
+                avatar: u.avatar,
+                color: ['#06b6d4', '#8b5cf6', '#22c55e', '#f59e0b', '#ec4899'][i % 5],
+                status: (u.status || 'active') as 'active' | 'idle' | 'viewing',
+                location: u.location || 'feed',
+              })
+            )}
             maxVisible={5}
           />
         </div>
@@ -1375,11 +1805,31 @@ export default function FeedLensPage() {
             Suggested Groups
           </h2>
           <div className="space-y-3">
-            {([
-              { groupId: 'g1', name: 'Sovereignty Builders', description: 'Build sovereign-first systems together', memberCount: 842, tags: ['sovereignty', 'dev'] },
-              { groupId: 'g2', name: 'DTU Creators', description: 'Share and discuss data transfer units', memberCount: 1203, tags: ['dtu', 'data'] },
-              { groupId: 'g3', name: 'Local-First Advocates', description: 'Community for local-first software', memberCount: 567, tags: ['local-first', 'privacy'] },
-            ] as GroupData[]).map(group => (
+            {(
+              [
+                {
+                  groupId: 'g1',
+                  name: 'Sovereignty Builders',
+                  description: 'Build sovereign-first systems together',
+                  memberCount: 842,
+                  tags: ['sovereignty', 'dev'],
+                },
+                {
+                  groupId: 'g2',
+                  name: 'DTU Creators',
+                  description: 'Share and discuss data transfer units',
+                  memberCount: 1203,
+                  tags: ['dtu', 'data'],
+                },
+                {
+                  groupId: 'g3',
+                  name: 'Local-First Advocates',
+                  description: 'Community for local-first software',
+                  memberCount: 567,
+                  tags: ['local-first', 'privacy'],
+                },
+              ] as GroupData[]
+            ).map((group) => (
               <GroupCard key={group.groupId} group={group} />
             ))}
           </div>
@@ -1391,16 +1841,18 @@ export default function FeedLensPage() {
             <Newspaper className="w-4 h-4 text-neon-pink" />
             <h2 className="text-base font-bold text-white">New Releases</h2>
           </div>
-          {NEW_RELEASES.map(rel => (
+          {NEW_RELEASES.map((rel) => (
             <button
               key={rel.id}
               onClick={() => setSearchQuery(rel.title)}
               className="w-full px-4 py-2.5 hover:bg-lattice-deep transition-colors flex items-center gap-3 text-left"
             >
-              <div className={cn(
-                'w-10 h-10 rounded-lg bg-gradient-to-br flex items-center justify-center flex-shrink-0',
-                rel.gradient,
-              )}>
+              <div
+                className={cn(
+                  'w-10 h-10 rounded-lg bg-gradient-to-br flex items-center justify-center flex-shrink-0',
+                  rel.gradient
+                )}
+              >
                 <Newspaper className="w-5 h-5 text-white/50" />
               </div>
               <div className="min-w-0">
@@ -1419,7 +1871,8 @@ export default function FeedLensPage() {
 
         {/* Footer links */}
         <div className="px-4 text-[11px] text-gray-600 leading-relaxed">
-          Terms &middot; Privacy &middot; Cookies &middot; Accessibility &middot; About &middot; Concord &copy; 2026
+          Terms &middot; Privacy &middot; Cookies &middot; Accessibility &middot; About &middot;
+          Concord &copy; 2026
         </div>
       </aside>
 
@@ -1435,181 +1888,344 @@ export default function FeedLensPage() {
         />
         <FeedbackWidget targetType="lens" targetId="feed" />
 
-      {/* Real-time Data Panel */}
-      <UniversalActions domain="feed" artifactId={null} compact />
+        {/* Real-time Data Panel */}
+        <UniversalActions domain="feed" artifactId={null} compact />
 
-      {/* Feed Analytics Actions */}
-      <div className="panel p-4 space-y-3">
-        <h2 className="font-semibold text-sm flex items-center gap-2">
-          <BarChart3 className="w-4 h-4 text-neon-cyan" />
-          Feed Analytics
-        </h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-          {[
-            { action: 'engagementScore',  label: 'Engagement Score', icon: TrendingUp, color: 'text-neon-green' },
-            { action: 'contentCalendar',  label: 'Content Calendar', icon: Eye,        color: 'text-neon-cyan' },
-            { action: 'audienceInsights', label: 'Audience Insights', icon: Users,     color: 'text-neon-purple' },
-            { action: 'hashtagAnalysis',  label: 'Hashtag Analysis', icon: Hash,       color: 'text-yellow-400' },
-          ].map(({ action, label, icon: Icon, color }) => (
-            <button
-              key={action}
-              onClick={() => handleFeedAction(action)}
-              disabled={!!feedRunning || !postLensItems?.[0]?.id}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-lattice-deep border border-lattice-border text-sm hover:border-white/20 disabled:opacity-40 transition-colors"
-            >
-              {feedRunning === action ? <Loader2 className="w-4 h-4 animate-spin text-gray-400" /> : <Icon className={`w-4 h-4 ${color}`} />}
-              <span className="truncate text-xs">{label}</span>
-            </button>
-          ))}
-        </div>
-
-        {feedActionResult && (
-          <div className="mt-3 rounded-lg bg-black/30 border border-white/10 p-4 relative">
-            <button onClick={() => setFeedActionResult(null)} className="absolute top-3 right-3 text-gray-500 hover:text-white">
-              <X className="w-4 h-4" />
-            </button>
-
-            {/* engagementScore */}
-            {feedActionResult._action === 'engagementScore' && (
-              <div className="space-y-3">
-                <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Engagement Report</p>
-                {(feedActionResult.message as string) ? <p className="text-sm text-gray-400">{feedActionResult.message as string}</p> : (
-                  <>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      {[
-                        { label: 'Posts', value: String(feedActionResult.totalPosts ?? 0), color: 'text-white' },
-                        { label: 'Avg Engagement', value: `${feedActionResult.avgEngagement ?? 0}%`, color: 'text-neon-green' },
-                        { label: 'Top Post', value: String(feedActionResult.topPost ?? '—'), color: 'text-neon-cyan' },
-                        { label: 'Total Reach', value: String((feedActionResult.totalReach as number || 0).toLocaleString()), color: 'text-neon-purple' },
-                      ].map(({ label, value, color }) => (
-                        <div key={label} className="bg-white/5 rounded-lg p-3 text-center">
-                          <p className={`text-sm font-bold ${color} truncate`}>{value}</p>
-                          <p className="text-xs text-gray-400">{label}</p>
-                        </div>
-                      ))}
-                    </div>
-                    {Array.isArray(feedActionResult.posts) && (feedActionResult.posts as {title:string;engagementRate:number;performance:string;likes:number;comments:number;shares:number}[]).slice(0,5).map(p => (
-                      <div key={p.title} className="flex items-center gap-3 text-xs px-2 py-1 rounded bg-white/5">
-                        <span className="flex-1 text-white truncate">{p.title}</span>
-                        <span className="text-gray-400">{p.likes}♥ {p.comments}💬 {p.shares}↗</span>
-                        <span className={`text-xs font-mono ${p.engagementRate > 5 ? 'text-neon-green' : p.engagementRate > 2 ? 'text-yellow-400' : 'text-gray-500'}`}>{p.engagementRate}%</span>
-                        <span className={`px-1.5 py-0.5 rounded text-[10px] ${p.performance === 'viral' ? 'bg-neon-green/20 text-neon-green' : p.performance === 'above-average' ? 'bg-neon-cyan/20 text-neon-cyan' : 'bg-white/5 text-gray-400'}`}>{p.performance}</span>
-                      </div>
-                    ))}
-                  </>
+        {/* Feed Analytics Actions */}
+        <div className="panel p-4 space-y-3">
+          <h2 className="font-semibold text-sm flex items-center gap-2">
+            <BarChart3 className="w-4 h-4 text-neon-cyan" />
+            Feed Analytics
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            {[
+              {
+                action: 'engagementScore',
+                label: 'Engagement Score',
+                icon: TrendingUp,
+                color: 'text-neon-green',
+              },
+              {
+                action: 'contentCalendar',
+                label: 'Content Calendar',
+                icon: Eye,
+                color: 'text-neon-cyan',
+              },
+              {
+                action: 'audienceInsights',
+                label: 'Audience Insights',
+                icon: Users,
+                color: 'text-neon-purple',
+              },
+              {
+                action: 'hashtagAnalysis',
+                label: 'Hashtag Analysis',
+                icon: Hash,
+                color: 'text-yellow-400',
+              },
+            ].map(({ action, label, icon: Icon, color }) => (
+              <button
+                key={action}
+                onClick={() => handleFeedAction(action)}
+                disabled={!!feedRunning || !postLensItems?.[0]?.id}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-lattice-deep border border-lattice-border text-sm hover:border-white/20 disabled:opacity-40 transition-colors"
+              >
+                {feedRunning === action ? (
+                  <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                ) : (
+                  <Icon className={`w-4 h-4 ${color}`} />
                 )}
-              </div>
-            )}
+                <span className="truncate text-xs">{label}</span>
+              </button>
+            ))}
+          </div>
 
-            {/* contentCalendar */}
-            {feedActionResult._action === 'contentCalendar' && (
-              <div className="space-y-3">
-                <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Content Calendar</p>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {[
-                    { label: 'Planned', value: String(feedActionResult.planedPosts ?? 0), color: 'text-neon-green' },
-                    { label: 'Target', value: String(feedActionResult.targetPosts ?? 0), color: 'text-neon-cyan' },
-                    { label: 'Coverage', value: `${feedActionResult.coveragePercent ?? 0}%`, color: feedActionResult.coveragePercent as number >= 80 ? 'text-neon-green' : 'text-yellow-400' },
-                    { label: 'Gaps', value: String((feedActionResult.gaps as string[] || []).length), color: 'text-red-400' },
-                  ].map(({ label, value, color }) => (
-                    <div key={label} className="bg-white/5 rounded-lg p-3 text-center">
-                      <p className={`text-lg font-bold ${color}`}>{value}</p>
-                      <p className="text-xs text-gray-400">{label}</p>
-                    </div>
-                  ))}
+          {feedActionResult && (
+            <div className="mt-3 rounded-lg bg-black/30 border border-white/10 p-4 relative">
+              <button
+                onClick={() => setFeedActionResult(null)}
+                className="absolute top-3 right-3 text-gray-500 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
+              {/* engagementScore */}
+              {feedActionResult._action === 'engagementScore' && (
+                <div className="space-y-3">
+                  <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">
+                    Engagement Report
+                  </p>
+                  {(feedActionResult.message as string) ? (
+                    <p className="text-sm text-gray-400">{feedActionResult.message as string}</p>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        {[
+                          {
+                            label: 'Posts',
+                            value: String(feedActionResult.totalPosts ?? 0),
+                            color: 'text-white',
+                          },
+                          {
+                            label: 'Avg Engagement',
+                            value: `${feedActionResult.avgEngagement ?? 0}%`,
+                            color: 'text-neon-green',
+                          },
+                          {
+                            label: 'Top Post',
+                            value: String(feedActionResult.topPost ?? '—'),
+                            color: 'text-neon-cyan',
+                          },
+                          {
+                            label: 'Total Reach',
+                            value: String(
+                              ((feedActionResult.totalReach as number) || 0).toLocaleString()
+                            ),
+                            color: 'text-neon-purple',
+                          },
+                        ].map(({ label, value, color }) => (
+                          <div key={label} className="bg-white/5 rounded-lg p-3 text-center">
+                            <p className={`text-sm font-bold ${color} truncate`}>{value}</p>
+                            <p className="text-xs text-gray-400">{label}</p>
+                          </div>
+                        ))}
+                      </div>
+                      {Array.isArray(feedActionResult.posts) &&
+                        (
+                          feedActionResult.posts as {
+                            title: string;
+                            engagementRate: number;
+                            performance: string;
+                            likes: number;
+                            comments: number;
+                            shares: number;
+                          }[]
+                        )
+                          .slice(0, 5)
+                          .map((p) => (
+                            <div
+                              key={p.title}
+                              className="flex items-center gap-3 text-xs px-2 py-1 rounded bg-white/5"
+                            >
+                              <span className="flex-1 text-white truncate">{p.title}</span>
+                              <span className="text-gray-400">
+                                {p.likes}♥ {p.comments}💬 {p.shares}↗
+                              </span>
+                              <span
+                                className={`text-xs font-mono ${p.engagementRate > 5 ? 'text-neon-green' : p.engagementRate > 2 ? 'text-yellow-400' : 'text-gray-500'}`}
+                              >
+                                {p.engagementRate}%
+                              </span>
+                              <span
+                                className={`px-1.5 py-0.5 rounded text-[10px] ${p.performance === 'viral' ? 'bg-neon-green/20 text-neon-green' : p.performance === 'above-average' ? 'bg-neon-cyan/20 text-neon-cyan' : 'bg-white/5 text-gray-400'}`}
+                              >
+                                {p.performance}
+                              </span>
+                            </div>
+                          ))}
+                    </>
+                  )}
                 </div>
-                {Array.isArray(feedActionResult.upcoming) && (
-                  <div className="grid grid-cols-7 gap-1">
-                    {(feedActionResult.upcoming as {date:string;day:string;planned:boolean;type:string|null}[]).slice(0,14).map(d => (
-                      <div key={d.date} className={`rounded p-1 text-center text-[10px] ${d.planned ? 'bg-neon-green/20 border border-neon-green/30 text-neon-green' : 'bg-white/5 text-gray-600'}`}>
-                        <p>{d.day}</p>
-                        {d.type && <p className="truncate text-[9px]">{d.type}</p>}
+              )}
+
+              {/* contentCalendar */}
+              {feedActionResult._action === 'contentCalendar' && (
+                <div className="space-y-3">
+                  <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">
+                    Content Calendar
+                  </p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {[
+                      {
+                        label: 'Planned',
+                        value: String(feedActionResult.planedPosts ?? 0),
+                        color: 'text-neon-green',
+                      },
+                      {
+                        label: 'Target',
+                        value: String(feedActionResult.targetPosts ?? 0),
+                        color: 'text-neon-cyan',
+                      },
+                      {
+                        label: 'Coverage',
+                        value: `${feedActionResult.coveragePercent ?? 0}%`,
+                        color:
+                          (feedActionResult.coveragePercent as number) >= 80
+                            ? 'text-neon-green'
+                            : 'text-yellow-400',
+                      },
+                      {
+                        label: 'Gaps',
+                        value: String(((feedActionResult.gaps as string[]) || []).length),
+                        color: 'text-red-400',
+                      },
+                    ].map(({ label, value, color }) => (
+                      <div key={label} className="bg-white/5 rounded-lg p-3 text-center">
+                        <p className={`text-lg font-bold ${color}`}>{value}</p>
+                        <p className="text-xs text-gray-400">{label}</p>
                       </div>
                     ))}
                   </div>
-                )}
-              </div>
-            )}
-
-            {/* audienceInsights */}
-            {feedActionResult._action === 'audienceInsights' && (
-              <div className="space-y-3">
-                <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Audience Insights</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-white/5 rounded-lg p-3">
-                    <p className="text-xs text-gray-400">Total Followers</p>
-                    <p className="text-xl font-bold text-neon-purple">{(feedActionResult.totalFollowers as number || 0).toLocaleString()}</p>
-                    <p className="text-xs text-gray-500 mt-1">Growth: {feedActionResult.growthRate as string}</p>
-                  </div>
-                  <div className="bg-white/5 rounded-lg p-3">
-                    <p className="text-xs text-gray-400">Best Posting Times</p>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {(feedActionResult.bestPostingTimes as string[] || []).map(t => (
-                        <span key={t} className="text-xs px-2 py-0.5 rounded bg-neon-cyan/20 text-neon-cyan">{t}</span>
-                      ))}
+                  {Array.isArray(feedActionResult.upcoming) && (
+                    <div className="grid grid-cols-7 gap-1">
+                      {(
+                        feedActionResult.upcoming as {
+                          date: string;
+                          day: string;
+                          planned: boolean;
+                          type: string | null;
+                        }[]
+                      )
+                        .slice(0, 14)
+                        .map((d) => (
+                          <div
+                            key={d.date}
+                            className={`rounded p-1 text-center text-[10px] ${d.planned ? 'bg-neon-green/20 border border-neon-green/30 text-neon-green' : 'bg-white/5 text-gray-600'}`}
+                          >
+                            <p>{d.day}</p>
+                            {d.type && <p className="truncate text-[9px]">{d.type}</p>}
+                          </div>
+                        ))}
                     </div>
-                  </div>
+                  )}
                 </div>
-                {Array.isArray(feedActionResult.demographics) && (feedActionResult.demographics as {group:string;percent:number;count:number}[]).length > 0 && (
-                  <div className="space-y-1">
-                    {(feedActionResult.demographics as {group:string;percent:number;count:number}[]).map(d => (
-                      <div key={d.group} className="flex items-center gap-3 text-xs">
-                        <span className="text-gray-400 w-24 capitalize">{d.group}</span>
-                        <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden">
-                          <div className="h-full bg-neon-purple/60 rounded-full" style={{ width: `${d.percent}%` }} />
-                        </div>
-                        <span className="text-white w-10 text-right">{d.percent}%</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+              )}
 
-            {/* hashtagAnalysis */}
-            {feedActionResult._action === 'hashtagAnalysis' && (
-              <div className="space-y-3">
-                <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Hashtag Analysis</p>
-                {(feedActionResult.message as string) ? <p className="text-sm text-gray-400">{feedActionResult.message as string}</p> : (
-                  <>
-                    <div className="grid grid-cols-3 gap-3">
-                      {[
-                        { label: 'Unique Tags', value: String(feedActionResult.totalUniqueTags ?? 0), color: 'text-neon-cyan' },
-                        { label: 'Posts Analyzed', value: String(feedActionResult.postsAnalyzed ?? 0), color: 'text-white' },
-                        { label: 'Top Tag', value: (feedActionResult.topTags as {tag:string}[])?.[0]?.tag ? `#${(feedActionResult.topTags as {tag:string}[])[0].tag}` : '—', color: 'text-neon-green' },
-                      ].map(({ label, value, color }) => (
-                        <div key={label} className="bg-white/5 rounded-lg p-3 text-center">
-                          <p className={`text-sm font-bold ${color}`}>{value}</p>
-                          <p className="text-xs text-gray-400">{label}</p>
-                        </div>
-                      ))}
+              {/* audienceInsights */}
+              {feedActionResult._action === 'audienceInsights' && (
+                <div className="space-y-3">
+                  <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">
+                    Audience Insights
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-white/5 rounded-lg p-3">
+                      <p className="text-xs text-gray-400">Total Followers</p>
+                      <p className="text-xl font-bold text-neon-purple">
+                        {((feedActionResult.totalFollowers as number) || 0).toLocaleString()}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Growth: {feedActionResult.growthRate as string}
+                      </p>
                     </div>
-                    {Array.isArray(feedActionResult.topTags) && (
-                      <div className="flex flex-wrap gap-2">
-                        {(feedActionResult.topTags as {tag:string;uses:number}[]).map(t => (
-                          <span key={t.tag} className="text-xs px-2 py-1 rounded bg-neon-cyan/10 border border-neon-cyan/20 text-neon-cyan">#{t.tag} <span className="text-gray-400">×{t.uses}</span></span>
+                    <div className="bg-white/5 rounded-lg p-3">
+                      <p className="text-xs text-gray-400">Best Posting Times</p>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {((feedActionResult.bestPostingTimes as string[]) || []).map((t) => (
+                          <span
+                            key={t}
+                            className="text-xs px-2 py-0.5 rounded bg-neon-cyan/20 text-neon-cyan"
+                          >
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  {Array.isArray(feedActionResult.demographics) &&
+                    (
+                      feedActionResult.demographics as {
+                        group: string;
+                        percent: number;
+                        count: number;
+                      }[]
+                    ).length > 0 && (
+                      <div className="space-y-1">
+                        {(
+                          feedActionResult.demographics as {
+                            group: string;
+                            percent: number;
+                            count: number;
+                          }[]
+                        ).map((d) => (
+                          <div key={d.group} className="flex items-center gap-3 text-xs">
+                            <span className="text-gray-400 w-24 capitalize">{d.group}</span>
+                            <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-neon-purple/60 rounded-full"
+                                style={{ width: `${d.percent}%` }}
+                              />
+                            </div>
+                            <span className="text-white w-10 text-right">{d.percent}%</span>
+                          </div>
                         ))}
                       </div>
                     )}
-                    {feedActionResult.recommendation && <p className="text-xs text-gray-500 italic">{feedActionResult.recommendation as string}</p>}
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+                </div>
+              )}
 
-      {realtimeData && (
-        <RealtimeDataPanel
-          domain="feed"
-          data={realtimeData}
-          isLive={isLive}
-          lastUpdated={lastUpdated}
-          insights={realtimeInsights}
-          compact
-        />
-      )}
+              {/* hashtagAnalysis */}
+              {feedActionResult._action === 'hashtagAnalysis' && (
+                <div className="space-y-3">
+                  <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">
+                    Hashtag Analysis
+                  </p>
+                  {(feedActionResult.message as string) ? (
+                    <p className="text-sm text-gray-400">{feedActionResult.message as string}</p>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-3 gap-3">
+                        {[
+                          {
+                            label: 'Unique Tags',
+                            value: String(feedActionResult.totalUniqueTags ?? 0),
+                            color: 'text-neon-cyan',
+                          },
+                          {
+                            label: 'Posts Analyzed',
+                            value: String(feedActionResult.postsAnalyzed ?? 0),
+                            color: 'text-white',
+                          },
+                          {
+                            label: 'Top Tag',
+                            value: (feedActionResult.topTags as { tag: string }[])?.[0]?.tag
+                              ? `#${(feedActionResult.topTags as { tag: string }[])[0].tag}`
+                              : '—',
+                            color: 'text-neon-green',
+                          },
+                        ].map(({ label, value, color }) => (
+                          <div key={label} className="bg-white/5 rounded-lg p-3 text-center">
+                            <p className={`text-sm font-bold ${color}`}>{value}</p>
+                            <p className="text-xs text-gray-400">{label}</p>
+                          </div>
+                        ))}
+                      </div>
+                      {Array.isArray(feedActionResult.topTags) && (
+                        <div className="flex flex-wrap gap-2">
+                          {(feedActionResult.topTags as { tag: string; uses: number }[]).map(
+                            (t) => (
+                              <span
+                                key={t.tag}
+                                className="text-xs px-2 py-1 rounded bg-neon-cyan/10 border border-neon-cyan/20 text-neon-cyan"
+                              >
+                                #{t.tag} <span className="text-gray-400">×{t.uses}</span>
+                              </span>
+                            )
+                          )}
+                        </div>
+                      )}
+                      {feedActionResult.recommendation && (
+                        <p className="text-xs text-gray-500 italic">
+                          {feedActionResult.recommendation as string}
+                        </p>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {realtimeData && (
+          <RealtimeDataPanel
+            domain="feed"
+            data={realtimeData}
+            isLive={isLive}
+            lastUpdated={lastUpdated}
+            insights={realtimeInsights}
+            compact
+          />
+        )}
       </div>
     </div>
   );
@@ -1619,7 +2235,9 @@ function RisingCreatorsSidebar() {
   const { data: creatorsData } = useQuery({
     queryKey: ['trending-creators'],
     queryFn: async () => {
-      const res = await api.get('/api/social/trending/creators', { params: { limit: 5, days: 7 } }).catch(() => null);
+      const res = await api
+        .get('/api/social/trending/creators', { params: { limit: 5, days: 7 } })
+        .catch(() => null);
       return (res?.data?.creators || []) as Array<{
         userId: string;
         displayName: string;
@@ -1652,7 +2270,9 @@ function RisingCreatorsSidebar() {
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium text-white truncate">{creator.displayName}</p>
             <div className="flex items-center gap-2 text-[11px] text-gray-500">
-              <span><Users className="w-3 h-3 inline" /> {creator.followerCount}</span>
+              <span>
+                <Users className="w-3 h-3 inline" /> {creator.followerCount}
+              </span>
               {creator.followerGrowth > 0 && (
                 <span className="text-green-400">+{creator.followerGrowth}</span>
               )}

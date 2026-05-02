@@ -35,7 +35,7 @@ interface DelegatedTask {
   completedAt: string | null;
 }
 
-export function TaskDelegation({ className }: { className?: string }) {
+function TaskDelegation({ className }: { className?: string }) {
   const [expanded, setExpanded] = useState(false);
   const [taskInput, setTaskInput] = useState('');
   const queryClient = useQueryClient();
@@ -173,3 +173,8 @@ export function TaskDelegation({ className }: { className?: string }) {
     </div>
   );
 }
+
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _TaskDelegation = withErrorBoundary(TaskDelegation);
+export { _TaskDelegation as TaskDelegation };

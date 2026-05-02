@@ -15,15 +15,21 @@ import { useQuery } from '@tanstack/react-query';
 import { api, apiHelpers } from '@/lib/api/client';
 import dynamic from 'next/dynamic';
 const KnowledgeSpace3D = dynamic(
-  () => import('@/components/graphs/KnowledgeSpace3DCanvas').then(mod => ({ default: mod.KnowledgeSpace3D })),
-  { ssr: false, loading: () => (
-    <div className="h-full flex items-center justify-center text-gray-500 text-sm">
-      <div className="text-center">
-        <div className="w-8 h-8 border-2 border-neon-cyan border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-        Loading 3D lattice...
+  () =>
+    import('@/components/graphs/KnowledgeSpace3DCanvas').then((mod) => ({
+      default: mod.KnowledgeSpace3D,
+    })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-full flex items-center justify-center text-gray-500 text-sm">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-neon-cyan border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          Loading 3D lattice...
+        </div>
       </div>
-    </div>
-  )}
+    ),
+  }
 );
 import { ResonanceEmpireGraph } from '@/components/graphs/ResonanceEmpireGraph';
 import { DTUEmpireCard } from '@/components/dtu/DTUEmpireCard';
@@ -39,9 +45,22 @@ import { InspectorDrawer } from '@/components/guidance/InspectorDrawer';
 import { useUIStore } from '@/store/ui';
 import { CORE_LENSES } from '@/lib/lens-registry';
 import {
-  Activity, Zap, Compass, TrendingUp, Heart, Globe,
-  MessageSquare, Layout, Share2, Code, Music,
-  Crown, Ghost, Archive, Layers, Moon,
+  Activity,
+  Zap,
+  Compass,
+  TrendingUp,
+  Heart,
+  Globe,
+  MessageSquare,
+  Layout,
+  Share2,
+  Code,
+  Music,
+  Crown,
+  Ghost,
+  Archive,
+  Layers,
+  Moon,
 } from 'lucide-react';
 import { use70Lock } from '@/hooks/use70Lock';
 import { MorningBrief } from '@/components/brief/MorningBrief';
@@ -64,7 +83,7 @@ import { TrendingDomains } from '@/components/social/TrendingDomains';
 
 const ENTERED_KEY = 'concord_entered';
 
-export function HomeClient() {
+function HomeClient() {
   const [hasEntered, setHasEntered] = useState<boolean | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const setFullPageMode = useUIStore((state) => state.setFullPageMode);
@@ -89,7 +108,8 @@ export function HomeClient() {
         setTimeout(() => resolve('timeout'), 10_000)
       );
 
-      const authCheck = api.get('/api/auth/me')
+      const authCheck = api
+        .get('/api/auth/me')
         .then(async () => {
           // Auth succeeded — eagerly fetch CSRF token for subsequent writes
           await api.get('/api/auth/csrf-token').catch(() => {});
@@ -105,17 +125,26 @@ export function HomeClient() {
           const loginTs = Number(localStorage.getItem('concord_login_ts') || '0');
           if (Date.now() - loginTs < 5000) {
             // Within 5s of login — retry once before giving up
-            api.get('/api/auth/me').then(() => {
-              setAuthChecked(true);
-            }).catch(() => {
-              try { localStorage.removeItem('concord_entered'); } catch {}
-              try { localStorage.removeItem('concord_login_ts'); } catch {}
-              window.location.href = '/login';
-            });
+            api
+              .get('/api/auth/me')
+              .then(() => {
+                setAuthChecked(true);
+              })
+              .catch(() => {
+                try {
+                  localStorage.removeItem('concord_entered');
+                } catch {}
+                try {
+                  localStorage.removeItem('concord_login_ts');
+                } catch {}
+                window.location.href = '/login';
+              });
             return;
           }
           // Not authenticated — redirect to login
-          try { localStorage.removeItem('concord_entered'); } catch {}
+          try {
+            localStorage.removeItem('concord_entered');
+          } catch {}
           window.location.href = '/login';
           return;
         }
@@ -127,7 +156,7 @@ export function HomeClient() {
         setAuthChecked(true);
       });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleEnter = () => {
@@ -165,19 +194,30 @@ export function HomeClient() {
 function DreamForgettingIndicators() {
   const { data: dreamData } = useQuery({
     queryKey: ['dream-topics'],
-    queryFn: () => api.get('/api/dream/history', { params: { limit: 5 } }).then(r => r.data).catch(() => null),
+    queryFn: () =>
+      api
+        .get('/api/dream/history', { params: { limit: 5 } })
+        .then((r) => r.data)
+        .catch(() => null),
     refetchInterval: 60000,
     retry: false,
   });
   const { data: forgettingData } = useQuery({
     queryKey: ['forgetting-status-home'],
-    queryFn: () => api.get('/api/admin/forgetting/status').then(r => r.data).catch(() => null),
+    queryFn: () =>
+      api
+        .get('/api/admin/forgetting/status')
+        .then((r) => r.data)
+        .catch(() => null),
     refetchInterval: 60000,
     retry: false,
   });
 
   const dreams = (dreamData?.dreams || []) as Array<{ title?: string; tags?: string[] }>;
-  const dreamTopics = dreams.slice(0, 3).map(d => d.title || d.tags?.[0] || 'unknown').filter(Boolean);
+  const dreamTopics = dreams
+    .slice(0, 3)
+    .map((d) => d.title || d.tags?.[0] || 'unknown')
+    .filter(Boolean);
   const forgottenCount = forgettingData?.lifetimeForgotten || 0;
   const threshold = forgettingData?.threshold || 0;
 
@@ -213,11 +253,19 @@ function DashboardPage() {
   // doesn't crash the dashboard. Each section renders a fallback on error.
   const { data: status, isLoading: statusLoading } = useQuery({
     queryKey: ['status'],
-    queryFn: () => api.get('/api/status').then((r) => r.data).catch(() => null),
+    queryFn: () =>
+      api
+        .get('/api/status')
+        .then((r) => r.data)
+        .catch(() => null),
     retry: 1,
   });
 
-  const { data: dtusData, isLoading: dtusLoading, isError: dtusError } = useQuery({
+  const {
+    data: dtusData,
+    isLoading: dtusLoading,
+    isError: dtusError,
+  } = useQuery({
     queryKey: ['dtus-paginated'],
     queryFn: () => apiHelpers.dtus.paginated({ limit: 50, pageSize: 50 }).then((r) => r.data),
     retry: 2,
@@ -226,41 +274,65 @@ function DashboardPage() {
 
   const { data: scopeMetrics } = useQuery({
     queryKey: ['scope-metrics'],
-    queryFn: () => apiHelpers.scope.metrics().then((r) => r.data).catch(() => null),
+    queryFn: () =>
+      apiHelpers.scope
+        .metrics()
+        .then((r) => r.data)
+        .catch(() => null),
     refetchInterval: 30000,
     retry: false,
   });
 
   const { data: eventsData } = useQuery({
     queryKey: ['events'],
-    queryFn: () => api.get('/api/events').then((r) => r.data).catch(() => ({ events: [] })),
+    queryFn: () =>
+      api
+        .get('/api/events')
+        .then((r) => r.data)
+        .catch(() => ({ events: [] })),
     retry: false,
   });
 
   const { data: resonanceData } = useQuery({
     queryKey: ['resonance-quick'],
-    queryFn: () => api.get('/api/lattice/resonance').then((r) => r.data).catch(() => null),
+    queryFn: () =>
+      api
+        .get('/api/lattice/resonance')
+        .then((r) => r.data)
+        .catch(() => null),
     refetchInterval: 30000,
     retry: false,
   });
 
   const { data: healthData } = useQuery({
     queryKey: ['system-health'],
-    queryFn: () => api.get('/api/system/health').then((r) => r.data).catch(() => null),
+    queryFn: () =>
+      api
+        .get('/api/system/health')
+        .then((r) => r.data)
+        .catch(() => null),
     refetchInterval: 60000,
     retry: false,
   });
 
   const { data: guidanceData } = useQuery({
     queryKey: ['guidance-suggestions'],
-    queryFn: () => api.get('/api/guidance/suggestions').then((r) => r.data).catch(() => null),
+    queryFn: () =>
+      api
+        .get('/api/guidance/suggestions')
+        .then((r) => r.data)
+        .catch(() => null),
     retry: false,
   });
 
   // DTU tier stats (Feature 10)
   const { data: dtuStats, isLoading: dtuStatsLoading } = useQuery({
     queryKey: ['dtu-tier-stats'],
-    queryFn: () => apiHelpers.dtus.stats().then((r) => r.data).catch(() => null),
+    queryFn: () =>
+      apiHelpers.dtus
+        .stats()
+        .then((r) => r.data)
+        .catch(() => null),
     refetchInterval: 30_000,
     retry: 1,
     staleTime: 15_000,
@@ -269,7 +341,11 @@ function DashboardPage() {
   // Fetch graph force-directed data for the Resonance Universe
   const { data: rawGraphData, isLoading: graphLoading } = useQuery({
     queryKey: ['graph-force'],
-    queryFn: () => apiHelpers.graph.force({ maxNodes: 200 }).then((r) => r.data).catch(() => null),
+    queryFn: () =>
+      apiHelpers.graph
+        .force({ maxNodes: 200 })
+        .then((r) => r.data)
+        .catch(() => null),
     retry: 1,
     staleTime: 30000,
   });
@@ -277,7 +353,11 @@ function DashboardPage() {
   // Also fetch graph visual data as fallback (uses /api/graph/visual)
   const { data: rawGraphVisualData } = useQuery({
     queryKey: ['graph-visual-home'],
-    queryFn: () => apiHelpers.graph.visual({ limit: 200 }).then((r) => r.data).catch(() => null),
+    queryFn: () =>
+      apiHelpers.graph
+        .visual({ limit: 200 })
+        .then((r) => r.data)
+        .catch(() => null),
     retry: 1,
     staleTime: 30000,
     enabled: !rawGraphData?.nodes?.length,
@@ -310,37 +390,55 @@ function DashboardPage() {
   const dtus = (rawDtus as Record<string, unknown>[]).map((d: Record<string, unknown>) => ({
     id: d.id as string,
     tier: ((d.tier as string) || 'regular') as 'regular' | 'mega' | 'hyper' | 'shadow',
-    summary: ((d.summary || d.title || (d.human as Record<string, unknown>)?.summary || d.content || 'Untitled') as string),
-    timestamp: ((d.timestamp || d.createdAt || d.created_at || new Date().toISOString()) as string),
-    resonance: ((d.resonance ?? (d.machine as Record<string, unknown>)?.resonance ?? 0) as number),
-    tags: ((d.tags || []) as string[]),
+    summary: (d.summary ||
+      d.title ||
+      (d.human as Record<string, unknown>)?.summary ||
+      d.content ||
+      'Untitled') as string,
+    timestamp: (d.timestamp || d.createdAt || d.created_at || new Date().toISOString()) as string,
+    resonance: (d.resonance ?? (d.machine as Record<string, unknown>)?.resonance ?? 0) as number,
+    tags: (d.tags || []) as string[],
     parentId: d.parentId as string | undefined,
-    childCount: (((d.lineage as Record<string, unknown>)?.children as unknown[] || []).length || (d.childCount as number) || 0) as number,
+    childCount: ((((d.lineage as Record<string, unknown>)?.children as unknown[]) || []).length ||
+      (d.childCount as number) ||
+      0) as number,
   }));
   const events = eventsData?.events || [];
 
   // Build 3D graph nodes from DTUs for the Resonance Universe
   const graph3DNodes = useMemo(() => {
-    return dtus.slice(0, 100).map((dtu: { id: string; tier?: string; summary?: string; title?: string; resonance?: number; domain?: string }, i: number) => {
-      // Spiral galaxy distribution
-      const t = i / Math.max(dtus.length, 1);
-      const radius = 3 + t * 18;
-      const angle = t * Math.PI * 10;
-      const y = (Math.sin(i * 0.7) * 3);
+    return dtus.slice(0, 100).map(
+      (
+        dtu: {
+          id: string;
+          tier?: string;
+          summary?: string;
+          title?: string;
+          resonance?: number;
+          domain?: string;
+        },
+        i: number
+      ) => {
+        // Spiral galaxy distribution
+        const t = i / Math.max(dtus.length, 1);
+        const radius = 3 + t * 18;
+        const angle = t * Math.PI * 10;
+        const y = Math.sin(i * 0.7) * 3;
 
-      return {
-        id: dtu.id,
-        label: dtu.title || dtu.summary?.slice(0, 24) || dtu.id.slice(0, 8),
-        tier: (dtu.tier || 'regular') as 'regular' | 'mega' | 'hyper' | 'shadow',
-        position: [
-          Math.cos(angle) * radius,
-          y,
-          Math.sin(angle) * radius,
-        ] as [number, number, number],
-        connections: [] as string[],
-        resonance: dtu.resonance ?? (resonanceData?.coherence || 0),
-      };
-    });
+        return {
+          id: dtu.id,
+          label: dtu.title || dtu.summary?.slice(0, 24) || dtu.id.slice(0, 8),
+          tier: (dtu.tier || 'regular') as 'regular' | 'mega' | 'hyper' | 'shadow',
+          position: [Math.cos(angle) * radius, y, Math.sin(angle) * radius] as [
+            number,
+            number,
+            number,
+          ],
+          connections: [] as string[],
+          resonance: dtu.resonance ?? (resonanceData?.coherence || 0),
+        };
+      }
+    );
   }, [dtus, resonanceData?.coherence]);
 
   // Build connections between nearby nodes
@@ -368,9 +466,7 @@ function DashboardPage() {
       {/* Header */}
       <header className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-white">
-            Concordos Dashboard
-          </h1>
+          <h1 className="text-2xl lg:text-3xl font-bold text-white">Concordos Dashboard</h1>
           <p className="text-gray-500 mt-1 text-sm">
             {statusLoading ? (
               <span className="animate-pulse">Connecting to lattice...</span>
@@ -420,7 +516,7 @@ function DashboardPage() {
         />
         <MetricCard
           label="Global DTUs"
-          value={statusLoading ? '...' : (scopeMetrics?.globalCount || dtuCount)}
+          value={statusLoading ? '...' : scopeMetrics?.globalCount || dtuCount}
           icon={<Globe className="w-5 h-5" />}
           color="purple"
         />
@@ -458,37 +554,37 @@ function DashboardPage() {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-7 gap-2">
             <TierStatCard
               label="Total"
-              value={dtuStatsLoading ? '...' : dtuStats.totalCount ?? 0}
+              value={dtuStatsLoading ? '...' : (dtuStats.totalCount ?? 0)}
               icon={<Layers className="w-4 h-4" />}
               color="cyan"
             />
             <TierStatCard
               label="Shadow"
-              value={dtuStatsLoading ? '...' : dtuStats.shadowCount ?? 0}
+              value={dtuStatsLoading ? '...' : (dtuStats.shadowCount ?? 0)}
               icon={<Ghost className="w-4 h-4" />}
               color="gray"
             />
             <TierStatCard
               label="Regular"
-              value={dtuStatsLoading ? '...' : dtuStats.regularCount ?? 0}
+              value={dtuStatsLoading ? '...' : (dtuStats.regularCount ?? 0)}
               icon={<Zap className="w-4 h-4" />}
               color="blue"
             />
             <TierStatCard
               label="MEGA"
-              value={dtuStatsLoading ? '...' : dtuStats.megaCount ?? 0}
+              value={dtuStatsLoading ? '...' : (dtuStats.megaCount ?? 0)}
               icon={<Crown className="w-4 h-4" />}
               color="purple"
             />
             <TierStatCard
               label="HYPER"
-              value={dtuStatsLoading ? '...' : dtuStats.hyperCount ?? 0}
+              value={dtuStatsLoading ? '...' : (dtuStats.hyperCount ?? 0)}
               icon={<Zap className="w-4 h-4" />}
               color="pink"
             />
             <TierStatCard
               label="Archived"
-              value={dtuStatsLoading ? '...' : dtuStats.archivedCount ?? 0}
+              value={dtuStatsLoading ? '...' : (dtuStats.archivedCount ?? 0)}
               icon={<Archive className="w-4 h-4" />}
               color="gray"
             />
@@ -567,7 +663,9 @@ function DashboardPage() {
                   <div className="text-center">
                     <Activity className="w-10 h-10 mx-auto mb-3 opacity-30" />
                     <p>Lattice is forming...</p>
-                    <p className="text-xs text-gray-600 mt-1">DTUs will appear here as they generate</p>
+                    <p className="text-xs text-gray-600 mt-1">
+                      DTUs will appear here as they generate
+                    </p>
                   </div>
                 </div>
               )}
@@ -642,7 +740,10 @@ function DashboardPage() {
             <Zap className="w-4 h-4 text-neon-blue" />
             Recent DTUs
           </h2>
-          <Link href="/lenses/graph" className="text-xs text-gray-500 hover:text-neon-cyan transition-colors">
+          <Link
+            href="/lenses/graph"
+            className="text-xs text-gray-500 hover:text-neon-cyan transition-colors"
+          >
             View all in Graph &rarr;
           </Link>
         </div>
@@ -657,14 +758,31 @@ function DashboardPage() {
             <p className="text-amber-400 mb-1">Unable to load DTUs</p>
             <p className="text-gray-500 text-sm">
               Check your connection or{' '}
-              <Link href="/login" className="text-neon-cyan hover:underline">sign in again</Link>
+              <Link href="/login" className="text-neon-cyan hover:underline">
+                sign in again
+              </Link>
             </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {dtus.slice(0, 6).map((dtu: { id: string; tier: 'regular' | 'mega' | 'hyper' | 'shadow'; summary: string; timestamp: string; resonance?: number; tags?: string[] }) => (
-              <DTUEmpireCard key={dtu.id} dtu={dtu} onClick={(d) => setInspecting({ type: 'dtu', id: d.id })} />
-            ))}
+            {dtus
+              .slice(0, 6)
+              .map(
+                (dtu: {
+                  id: string;
+                  tier: 'regular' | 'mega' | 'hyper' | 'shadow';
+                  summary: string;
+                  timestamp: string;
+                  resonance?: number;
+                  tags?: string[];
+                }) => (
+                  <DTUEmpireCard
+                    key={dtu.id}
+                    dtu={dtu}
+                    onClick={(d) => setInspecting({ type: 'dtu', id: d.id })}
+                  />
+                )
+              )}
             {dtus.length === 0 && (
               <div className="col-span-full text-center py-10">
                 <p className="text-gray-400 mb-1">No DTUs yet</p>
@@ -683,11 +801,21 @@ function DashboardPage() {
             Suggestions
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {guidanceData.suggestions.slice(0, 4).map((s: { id?: string; title?: string; message?: string; action?: string }, i: number) => (
-              <div key={s.id || i} className="p-3 rounded-lg bg-lattice-deep border border-lattice-border/50 text-sm text-gray-300">
-                {s.title || s.message || s.action || 'Suggestion'}
-              </div>
-            ))}
+            {guidanceData.suggestions
+              .slice(0, 4)
+              .map(
+                (
+                  s: { id?: string; title?: string; message?: string; action?: string },
+                  i: number
+                ) => (
+                  <div
+                    key={s.id || i}
+                    className="p-3 rounded-lg bg-lattice-deep border border-lattice-border/50 text-sm text-gray-300"
+                  >
+                    {s.title || s.message || s.action || 'Suggestion'}
+                  </div>
+                )
+              )}
           </div>
         </div>
       )}
@@ -737,10 +865,17 @@ function DashboardPage() {
 // ============================================================================
 
 function MetricCard({
-  label, value, icon, color, locked,
+  label,
+  value,
+  icon,
+  color,
+  locked,
 }: {
-  label: string; value: string | number; icon?: React.ReactNode;
-  color: 'blue' | 'purple' | 'pink' | 'green'; locked?: boolean;
+  label: string;
+  value: string | number;
+  icon?: React.ReactNode;
+  color: 'blue' | 'purple' | 'pink' | 'green';
+  locked?: boolean;
 }) {
   const colorMap = {
     blue: 'text-neon-blue border-neon-blue/20 bg-neon-blue/5',
@@ -749,7 +884,9 @@ function MetricCard({
     green: 'text-neon-green border-neon-green/20 bg-neon-green/5',
   };
   return (
-    <div className={`rounded-xl border p-4 ${colorMap[color]} ${locked ? 'sovereignty-lock lock-70' : ''}`}>
+    <div
+      className={`rounded-xl border p-4 ${colorMap[color]} ${locked ? 'sovereignty-lock lock-70' : ''}`}
+    >
       <div className="flex items-center gap-3">
         <span className="opacity-70">{icon}</span>
         <div>
@@ -761,15 +898,37 @@ function MetricCard({
   );
 }
 
-function QueueStatsRow({ status, statusLoading }: { status: Record<string, unknown> | null | undefined; statusLoading: boolean }) {
+function QueueStatsRow({
+  status,
+  statusLoading,
+}: {
+  status: Record<string, unknown> | null | undefined;
+  statusLoading: boolean;
+}) {
   const [expanded, setExpanded] = useState(false);
   const queues = [
-    { label: 'Ingest Queue', value: (status?.queues as Record<string, unknown>)?.ingest as number || 0, color: 'blue' as const },
-    { label: 'Autocrawl', value: (status?.queues as Record<string, unknown>)?.autocrawl as number || 0, color: 'purple' as const },
-    { label: 'Domains', value: ((status?.macro as Record<string, unknown>)?.domains as unknown[] || []).length || 0, color: 'cyan' as const },
-    { label: 'Wallets', value: (status?.counts as Record<string, unknown>)?.wallets as number || 0, color: 'green' as const },
+    {
+      label: 'Ingest Queue',
+      value: ((status?.queues as Record<string, unknown>)?.ingest as number) || 0,
+      color: 'blue' as const,
+    },
+    {
+      label: 'Autocrawl',
+      value: ((status?.queues as Record<string, unknown>)?.autocrawl as number) || 0,
+      color: 'purple' as const,
+    },
+    {
+      label: 'Domains',
+      value: (((status?.macro as Record<string, unknown>)?.domains as unknown[]) || []).length || 0,
+      color: 'cyan' as const,
+    },
+    {
+      label: 'Wallets',
+      value: ((status?.counts as Record<string, unknown>)?.wallets as number) || 0,
+      color: 'green' as const,
+    },
   ];
-  const allZero = !statusLoading && queues.every(q => q.value === 0);
+  const allZero = !statusLoading && queues.every((q) => q.value === 0);
 
   if (allZero && !expanded) {
     return (
@@ -785,27 +944,55 @@ function QueueStatsRow({ status, statusLoading }: { status: Record<string, unkno
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-      {queues.map(q => (
-        <QueueCard key={q.label} label={q.label} value={q.value} color={q.color} loading={statusLoading} />
+      {queues.map((q) => (
+        <QueueCard
+          key={q.label}
+          label={q.label}
+          value={q.value}
+          color={q.color}
+          loading={statusLoading}
+        />
       ))}
     </div>
   );
 }
 
-function QueueCard({ label, value, color, loading }: { label: string; value: number; color: 'blue' | 'purple' | 'cyan' | 'green'; loading?: boolean }) {
-  const colorClasses = { blue: 'text-neon-blue', purple: 'text-neon-purple', cyan: 'text-neon-cyan', green: 'text-neon-green' };
+function QueueCard({
+  label,
+  value,
+  color,
+  loading,
+}: {
+  label: string;
+  value: number;
+  color: 'blue' | 'purple' | 'cyan' | 'green';
+  loading?: boolean;
+}) {
+  const colorClasses = {
+    blue: 'text-neon-blue',
+    purple: 'text-neon-purple',
+    cyan: 'text-neon-cyan',
+    green: 'text-neon-green',
+  };
   return (
     <div className="rounded-lg border border-lattice-border bg-lattice-surface/30 p-3">
       <p className="text-xs text-gray-500">{label}</p>
-      <p className={`text-lg font-bold font-mono ${colorClasses[color]}`}>{loading ? <span className="animate-pulse">...</span> : value}</p>
+      <p className={`text-lg font-bold font-mono ${colorClasses[color]}`}>
+        {loading ? <span className="animate-pulse">...</span> : value}
+      </p>
     </div>
   );
 }
 
 function TierStatCard({
-  label, value, icon, color,
+  label,
+  value,
+  icon,
+  color,
 }: {
-  label: string; value: string | number; icon?: React.ReactNode;
+  label: string;
+  value: string | number;
+  icon?: React.ReactNode;
   color: 'blue' | 'purple' | 'pink' | 'green' | 'cyan' | 'gray';
 }) {
   const colorMap = {
@@ -828,3 +1015,7 @@ function TierStatCard({
     </div>
   );
 }
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedHomeClient = withErrorBoundary(HomeClient);
+export { _WrappedHomeClient as HomeClient };

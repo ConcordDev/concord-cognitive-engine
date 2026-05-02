@@ -3,6 +3,9 @@
 //   system prompt (lens context) → DTU substrate → personal substrate → history → intent
 
 import { fetchPersonalSubstrate } from "../chat-context-pipeline.js";
+import { MEMORY_LAYERS } from "../agentic/memory-bank.js";
+import freshnessEngine from "../freshness-engine.js";
+const { applyFreshnessToRelevance } = freshnessEngine;
 
 const MAX_HISTORY_MESSAGES = 40;
 const MAX_HISTORY_CHARS = 12000;
@@ -107,7 +110,17 @@ export async function assembleContext(req, db) {
 
   // 2. Public DTU substrate
   if (req.dtuRefs?.length) {
-    const dtus = await fetchPublicDTUs(req.dtuRefs, db);
+    let dtus = await fetchPublicDTUs(req.dtuRefs, db);
+    // Apply freshness-weighted re-ranking before taking top-N
+    try {
+      const ranked = applyFreshnessToRelevance(
+        dtus.map(d => ({ score: d.score || 0.5, dtu: d, ...d })),
+        { freshnessWeight: 0.3 }
+      );
+      dtus = ranked.map(r => r.dtu || r);
+    } catch (_frErr) {
+      // Non-fatal: use original order if freshness ranking fails
+    }
     const block = formatDTUContext(dtus);
     if (block) messages.push({ role: "system", content: block });
   }
@@ -129,4 +142,15 @@ export async function assembleContext(req, db) {
   messages.push({ role: "user", content: req.intent });
 
   return messages;
+}
+
+/**
+ * Describe the available memory layers for metadata / introspection purposes.
+ * This is additive — callers can inspect what memory layers are available
+ * without any behavioral change to assembleContext().
+ *
+ * @returns {typeof MEMORY_LAYERS}
+ */
+export function getMemoryLayerMetadata() {
+  return MEMORY_LAYERS;
 }

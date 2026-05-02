@@ -24,7 +24,7 @@ interface EmergentStatusData {
   total?: number;
 }
 
-export function HeartbeatBar() {
+function HeartbeatBar() {
   const queryClient = useQueryClient();
   const { lockPercentage } = use70Lock();
   const [liveDtuCount, setLiveDtuCount] = useState<number | null>(null);
@@ -33,7 +33,7 @@ export function HeartbeatBar() {
   // Fetch emergent status
   const { data: emergentData } = useQuery({
     queryKey: ['emergent-status'],
-    queryFn: () => apiHelpers.emergent.status().then(r => r.data as EmergentStatusData),
+    queryFn: () => apiHelpers.emergent.status().then((r) => r.data as EmergentStatusData),
     refetchInterval: 15000,
     retry: false,
   });
@@ -41,7 +41,7 @@ export function HeartbeatBar() {
   // Fetch scope metrics
   const { data: scopeData } = useQuery({
     queryKey: ['scope-metrics'],
-    queryFn: () => apiHelpers.scope.metrics().then(r => r.data),
+    queryFn: () => apiHelpers.scope.metrics().then((r) => r.data),
     refetchInterval: 30000,
     retry: false,
   });
@@ -49,7 +49,7 @@ export function HeartbeatBar() {
   // Fetch resonance for DTU count
   const { data: resonance } = useQuery({
     queryKey: ['resonance-quick'],
-    queryFn: () => apiHelpers.emergent.resonance().then(r => r.data),
+    queryFn: () => apiHelpers.emergent.resonance().then((r) => r.data),
     refetchInterval: 15000,
     retry: false,
   });
@@ -64,7 +64,7 @@ export function HeartbeatBar() {
       setTimeout(() => setRecentDtuFlash(false), 1500);
 
       // Increment count
-      setLiveDtuCount(prev => (prev ?? 0) + 1);
+      setLiveDtuCount((prev) => (prev ?? 0) + 1);
 
       // Invalidate queries so dashboard updates
       queryClient.invalidateQueries({ queryKey: ['dtus-paginated'] });
@@ -93,8 +93,9 @@ export function HeartbeatBar() {
   }, [queryClient]);
 
   // Sync live count with server count
-  const serverDtuCount = (resonance as Record<string, unknown>)?.dtuCount as number || 0;
-  const displayCount = liveDtuCount !== null ? Math.max(liveDtuCount, serverDtuCount) : serverDtuCount;
+  const serverDtuCount = ((resonance as Record<string, unknown>)?.dtuCount as number) || 0;
+  const displayCount =
+    liveDtuCount !== null ? Math.max(liveDtuCount, serverDtuCount) : serverDtuCount;
 
   // Reset live count when server count updates
   useEffect(() => {
@@ -103,9 +104,13 @@ export function HeartbeatBar() {
     }
   }, [serverDtuCount]);
 
-  const emergents = (emergentData as EmergentStatusData)?.emergents || (emergentData as EmergentStatusData)?.entities || [];
+  const emergents =
+    (emergentData as EmergentStatusData)?.emergents ||
+    (emergentData as EmergentStatusData)?.entities ||
+    [];
   const activeEmergents = emergents.filter(
-    (e: EmergentEntity) => e.state === 'active' || e.state === 'thinking' || e.status === 'active' || e.active === true
+    (e: EmergentEntity) =>
+      e.state === 'active' || e.state === 'thinking' || e.status === 'active' || e.active === true
   );
 
   return (
@@ -119,7 +124,9 @@ export function HeartbeatBar() {
         }`}
         title={`${displayCount.toLocaleString()} DTUs in the lattice`}
       >
-        <Zap className={`w-3.5 h-3.5 ${recentDtuFlash ? 'text-neon-cyan animate-pulse' : 'text-neon-blue'}`} />
+        <Zap
+          className={`w-3.5 h-3.5 ${recentDtuFlash ? 'text-neon-cyan animate-pulse' : 'text-neon-blue'}`}
+        />
         <span className="font-mono font-medium tabular-nums">{displayCount.toLocaleString()}</span>
         <span className="hidden xl:inline text-gray-500">DTUs</span>
       </div>
@@ -129,13 +136,19 @@ export function HeartbeatBar() {
         className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-lattice-deep"
         title={`${activeEmergents.length} emergent${activeEmergents.length !== 1 ? 's' : ''} active`}
       >
-        <Brain className={`w-3.5 h-3.5 ${activeEmergents.length > 0 ? 'text-neon-purple animate-pulse' : 'text-gray-500'}`} />
+        <Brain
+          className={`w-3.5 h-3.5 ${activeEmergents.length > 0 ? 'text-neon-purple animate-pulse' : 'text-gray-500'}`}
+        />
         <span className="font-mono">{activeEmergents.length}</span>
         <span className="hidden xl:inline text-gray-500">active</span>
         {/* Mini role indicators */}
         <div className="hidden lg:flex items-center gap-0.5 ml-0.5">
           {activeEmergents.slice(0, 3).map((e: EmergentEntity, i: number) => (
-            <EmergentDot key={e.id || i} role={e.role || 'unknown'} name={e.name || e.role || 'Emergent'} />
+            <EmergentDot
+              key={e.id || i}
+              role={e.role || 'unknown'}
+              name={e.name || e.role || 'Emergent'}
+            />
           ))}
           {activeEmergents.length > 3 && (
             <span className="text-gray-500 text-[10px]">+{activeEmergents.length - 3}</span>
@@ -158,17 +171,18 @@ export function HeartbeatBar() {
           className="hidden lg:flex items-center gap-1.5 px-2 py-1 rounded-md bg-lattice-deep text-gray-300"
           title={`Scope: ${(scopeData as Record<string, unknown>).local ?? 0} local · ${(scopeData as Record<string, unknown>).marketplace ?? 0} market · ${(scopeData as Record<string, unknown>).global ?? 0} global`}
         >
-          <span className="font-mono text-xs">{String((scopeData as Record<string, unknown>).total ?? 0)}</span>
+          <span className="font-mono text-xs">
+            {String((scopeData as Record<string, unknown>).total ?? 0)}
+          </span>
           <span className="text-gray-500 text-xs">scope</span>
         </div>
       )}
 
       {/* Live Pulse */}
-      <div
-        className="flex items-center gap-1 px-1.5 py-1"
-        title="System generating autonomously"
-      >
-        <Radio className={`w-3 h-3 ${activeEmergents.length > 0 ? 'text-neon-cyan animate-pulse' : 'text-gray-600'}`} />
+      <div className="flex items-center gap-1 px-1.5 py-1" title="System generating autonomously">
+        <Radio
+          className={`w-3 h-3 ${activeEmergents.length > 0 ? 'text-neon-cyan animate-pulse' : 'text-gray-600'}`}
+        />
       </div>
     </div>
   );
@@ -186,10 +200,9 @@ const ROLE_COLORS: Record<string, string> = {
 
 function EmergentDot({ role, name }: { role: string; name: string }) {
   const color = ROLE_COLORS[role.toLowerCase()] || 'bg-gray-400';
-  return (
-    <span
-      className={`w-1.5 h-1.5 rounded-full ${color}`}
-      title={name}
-    />
-  );
+  return <span className={`w-1.5 h-1.5 rounded-full ${color}`} title={name} />;
 }
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedHeartbeatBar = withErrorBoundary(HeartbeatBar);
+export { _WrappedHeartbeatBar as HeartbeatBar };

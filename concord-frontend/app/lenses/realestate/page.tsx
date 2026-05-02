@@ -8,13 +8,46 @@ import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { ds } from '@/lib/design-system';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
-  Building2, Home, Eye, ArrowLeftRight, KeyRound, TrendingUp,
-  Plus, Search, X, Trash2, MapPin, DollarSign, Calendar, User,
-  Bed, Bath, Ruler, ArrowUpRight, Calculator,
-  BarChart3, Wrench, Clock, CheckCircle2, AlertTriangle, Star,
-  Phone, FileText, ChevronRight, ChevronDown, Percent,
-  PiggyBank, Receipt, Hash, LandPlot, Hammer,
-  CircleDot, Minus, Bell, Layers, Map,
+  Building2,
+  Home,
+  Eye,
+  ArrowLeftRight,
+  KeyRound,
+  TrendingUp,
+  Plus,
+  Search,
+  X,
+  Trash2,
+  MapPin,
+  DollarSign,
+  Calendar,
+  User,
+  Bed,
+  Bath,
+  Ruler,
+  ArrowUpRight,
+  Calculator,
+  BarChart3,
+  Wrench,
+  Clock,
+  CheckCircle2,
+  AlertTriangle,
+  Star,
+  Phone,
+  FileText,
+  ChevronRight,
+  ChevronDown,
+  Percent,
+  PiggyBank,
+  Receipt,
+  Hash,
+  LandPlot,
+  Hammer,
+  CircleDot,
+  Minus,
+  Bell,
+  Layers,
+  Map,
 } from 'lucide-react';
 
 const MapView = dynamic(() => import('@/components/common/MapView'), { ssr: false });
@@ -32,24 +65,105 @@ import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
-type ModeTab = 'Dashboard' | 'Listings' | 'Transactions' | 'CMA' | 'Rentals' | 'Investing' | 'Showings' | 'Map';
+type ModeTab =
+  | 'Dashboard'
+  | 'Listings'
+  | 'Transactions'
+  | 'CMA'
+  | 'Rentals'
+  | 'Investing'
+  | 'Showings'
+  | 'Map';
 type ArtifactType = 'Listing' | 'Transaction' | 'CMA' | 'RentalUnit' | 'Deal' | 'Showing';
 
-type ListingStatus = 'coming_soon' | 'active' | 'pending' | 'contingent' | 'sold' | 'withdrawn' | 'expired';
-type TransactionStatus = 'listing_prep' | 'offer' | 'under_contract' | 'inspection' | 'appraisal' | 'clear_to_close' | 'closed' | 'fell_through';
+type ListingStatus =
+  | 'coming_soon'
+  | 'active'
+  | 'pending'
+  | 'contingent'
+  | 'sold'
+  | 'withdrawn'
+  | 'expired';
+type TransactionStatus =
+  | 'listing_prep'
+  | 'offer'
+  | 'under_contract'
+  | 'inspection'
+  | 'appraisal'
+  | 'clear_to_close'
+  | 'closed'
+  | 'fell_through';
 type ShowingStatus = 'scheduled' | 'confirmed' | 'completed' | 'cancelled' | 'no_show';
-type RentalStatus = 'vacant' | 'listed' | 'application' | 'leased' | 'month_to_month' | 'notice_given' | 'eviction';
-type DealStatus = 'prospecting' | 'analysis' | 'due_diligence' | 'under_contract' | 'closed' | 'passed';
+type RentalStatus =
+  | 'vacant'
+  | 'listed'
+  | 'application'
+  | 'leased'
+  | 'month_to_month'
+  | 'notice_given'
+  | 'eviction';
+type DealStatus =
+  | 'prospecting'
+  | 'analysis'
+  | 'due_diligence'
+  | 'under_contract'
+  | 'closed'
+  | 'passed';
 type CMAStatus = 'draft' | 'in_progress' | 'completed' | 'presented';
-type AnyStatus = ListingStatus | TransactionStatus | ShowingStatus | RentalStatus | DealStatus | CMAStatus | string;
+type AnyStatus =
+  | ListingStatus
+  | TransactionStatus
+  | ShowingStatus
+  | RentalStatus
+  | DealStatus
+  | CMAStatus
+  | string;
 
-interface PriceHistory { date: string; price: number; reason: string }
-interface OpenHouse { date: string; startTime: string; endTime: string; agent: string }
-interface Contingency { name: string; deadline: string; status: 'pending' | 'met' | 'waived' | 'failed' }
-interface DocChecklist { name: string; completed: boolean; dueDate?: string }
-interface Comparable { address: string; price: number; sqft: number; beds: number; baths: number; condition: string; adjustments: number; adjustedPrice: number }
-interface MaintenanceRequest { id: string; unit: string; issue: string; priority: 'low' | 'medium' | 'high' | 'emergency'; status: 'open' | 'in_progress' | 'completed'; date: string }
-interface ShowingFeedback { buyerName: string; interestLevel: number; feedback: string; followUpDate?: string }
+interface PriceHistory {
+  date: string;
+  price: number;
+  reason: string;
+}
+interface OpenHouse {
+  date: string;
+  startTime: string;
+  endTime: string;
+  agent: string;
+}
+interface Contingency {
+  name: string;
+  deadline: string;
+  status: 'pending' | 'met' | 'waived' | 'failed';
+}
+interface DocChecklist {
+  name: string;
+  completed: boolean;
+  dueDate?: string;
+}
+interface Comparable {
+  address: string;
+  price: number;
+  sqft: number;
+  beds: number;
+  baths: number;
+  condition: string;
+  adjustments: number;
+  adjustedPrice: number;
+}
+interface MaintenanceRequest {
+  id: string;
+  unit: string;
+  issue: string;
+  priority: 'low' | 'medium' | 'high' | 'emergency';
+  status: 'open' | 'in_progress' | 'completed';
+  date: string;
+}
+interface ShowingFeedback {
+  buyerName: string;
+  interestLevel: number;
+  feedback: string;
+  followUpDate?: string;
+}
 
 interface RealEstateArtifact {
   artifactType: ArtifactType;
@@ -136,33 +250,108 @@ const MODE_TABS: { id: ModeTab; icon: React.ElementType; defaultType?: ArtifactT
 
 const STATUSES_BY_TYPE: Record<ArtifactType, string[]> = {
   Listing: ['coming_soon', 'active', 'pending', 'contingent', 'sold', 'withdrawn', 'expired'],
-  Transaction: ['listing_prep', 'offer', 'under_contract', 'inspection', 'appraisal', 'clear_to_close', 'closed', 'fell_through'],
+  Transaction: [
+    'listing_prep',
+    'offer',
+    'under_contract',
+    'inspection',
+    'appraisal',
+    'clear_to_close',
+    'closed',
+    'fell_through',
+  ],
   CMA: ['draft', 'in_progress', 'completed', 'presented'],
-  RentalUnit: ['vacant', 'listed', 'application', 'leased', 'month_to_month', 'notice_given', 'eviction'],
+  RentalUnit: [
+    'vacant',
+    'listed',
+    'application',
+    'leased',
+    'month_to_month',
+    'notice_given',
+    'eviction',
+  ],
   Deal: ['prospecting', 'analysis', 'due_diligence', 'under_contract', 'closed', 'passed'],
   Showing: ['scheduled', 'confirmed', 'completed', 'cancelled', 'no_show'],
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  coming_soon: 'neon-blue', active: 'neon-green', pending: 'amber-400', contingent: 'neon-purple',
-  sold: 'neon-cyan', withdrawn: 'gray-400', expired: 'red-400',
-  listing_prep: 'gray-400', offer: 'neon-blue', under_contract: 'neon-purple', inspection: 'amber-400',
-  appraisal: 'neon-cyan', clear_to_close: 'neon-green', closed: 'neon-green', fell_through: 'red-400',
-  draft: 'gray-400', in_progress: 'neon-blue', completed: 'neon-green', presented: 'neon-cyan',
-  scheduled: 'neon-blue', confirmed: 'neon-green', cancelled: 'red-400', no_show: 'gray-400',
-  vacant: 'red-400', listed: 'neon-blue', application: 'amber-400', leased: 'neon-green',
-  month_to_month: 'neon-cyan', notice_given: 'amber-400', eviction: 'red-400',
-  prospecting: 'gray-400', analysis: 'neon-blue', due_diligence: 'amber-400', passed: 'gray-400',
+  coming_soon: 'neon-blue',
+  active: 'neon-green',
+  pending: 'amber-400',
+  contingent: 'neon-purple',
+  sold: 'neon-cyan',
+  withdrawn: 'gray-400',
+  expired: 'red-400',
+  listing_prep: 'gray-400',
+  offer: 'neon-blue',
+  under_contract: 'neon-purple',
+  inspection: 'amber-400',
+  appraisal: 'neon-cyan',
+  clear_to_close: 'neon-green',
+  closed: 'neon-green',
+  fell_through: 'red-400',
+  draft: 'gray-400',
+  in_progress: 'neon-blue',
+  completed: 'neon-green',
+  presented: 'neon-cyan',
+  scheduled: 'neon-blue',
+  confirmed: 'neon-green',
+  cancelled: 'red-400',
+  no_show: 'gray-400',
+  vacant: 'red-400',
+  listed: 'neon-blue',
+  application: 'amber-400',
+  leased: 'neon-green',
+  month_to_month: 'neon-cyan',
+  notice_given: 'amber-400',
+  eviction: 'red-400',
+  prospecting: 'gray-400',
+  analysis: 'neon-blue',
+  due_diligence: 'amber-400',
+  passed: 'gray-400',
 };
 
-const TRANSACTION_PIPELINE: string[] = ['listing_prep', 'offer', 'under_contract', 'inspection', 'appraisal', 'clear_to_close', 'closed'];
+const TRANSACTION_PIPELINE: string[] = [
+  'listing_prep',
+  'offer',
+  'under_contract',
+  'inspection',
+  'appraisal',
+  'clear_to_close',
+  'closed',
+];
 
 const DOMAIN_ACTIONS = [
-  { id: 'cap_rate_calc', label: 'Cap Rate Calc', icon: Percent, description: 'Calculate capitalization rate' },
-  { id: 'cash_flow_analysis', label: 'Cash Flow Analysis', icon: PiggyBank, description: 'Analyze monthly/annual cash flow' },
-  { id: 'cma_generate', label: 'CMA Generate', icon: Calculator, description: 'Generate comparative market analysis' },
-  { id: 'closing_timeline', label: 'Closing Timeline', icon: Clock, description: 'Generate closing timeline' },
-  { id: 'vacancy_report', label: 'Vacancy Report', icon: Building2, description: 'Generate vacancy & occupancy report' },
+  {
+    id: 'cap_rate_calc',
+    label: 'Cap Rate Calc',
+    icon: Percent,
+    description: 'Calculate capitalization rate',
+  },
+  {
+    id: 'cash_flow_analysis',
+    label: 'Cash Flow Analysis',
+    icon: PiggyBank,
+    description: 'Analyze monthly/annual cash flow',
+  },
+  {
+    id: 'cma_generate',
+    label: 'CMA Generate',
+    icon: Calculator,
+    description: 'Generate comparative market analysis',
+  },
+  {
+    id: 'closing_timeline',
+    label: 'Closing Timeline',
+    icon: Clock,
+    description: 'Generate closing timeline',
+  },
+  {
+    id: 'vacancy_report',
+    label: 'Vacancy Report',
+    icon: Building2,
+    description: 'Generate vacancy & occupancy report',
+  },
 ];
 
 const seedItems: { title: string; data: RealEstateArtifact }[] = [];
@@ -174,10 +363,19 @@ const seedItems: { title: string; data: RealEstateArtifact }[] = [];
 const fmt = (v: number) => {
   if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(2)}M`;
   if (v >= 1_000) return `$${(v / 1_000).toFixed(0)}K`;
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v);
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0,
+  }).format(v);
 };
 
-const fmtFull = (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v);
+const fmtFull = (v: number) =>
+  new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0,
+  }).format(v);
 
 const pct = (v: number) => `${v.toFixed(2)}%`;
 
@@ -268,61 +466,120 @@ export default function RealEstateLensPage() {
   const [formTaxes, setFormTaxes] = useState('');
   const [formInsurance, setFormInsurance] = useState('');
 
-  const { items, isLoading, isError, error, refetch, create, update, remove } = useLensData<RealEstateArtifact>('realestate', 'artifact', {
-    seed: seedItems.map(s => ({ title: s.title, data: s.data as unknown as Record<string, unknown>, meta: { status: s.data.status, tags: [s.data.artifactType] } })),
-  });
+  const { items, isLoading, isError, error, refetch, create, update, remove } =
+    useLensData<RealEstateArtifact>('realestate', 'artifact', {
+      seed: seedItems.map((s) => ({
+        title: s.title,
+        data: s.data as unknown as Record<string, unknown>,
+        meta: { status: s.data.status, tags: [s.data.artifactType] },
+      })),
+    });
 
   const runAction = useRunArtifact('realestate');
 
   /* ---------- derived ---------- */
 
-  const currentTabType = MODE_TABS.find(t => t.id === activeTab)?.defaultType;
+  const currentTabType = MODE_TABS.find((t) => t.id === activeTab)?.defaultType;
   const currentStatuses = currentTabType ? (STATUSES_BY_TYPE[currentTabType] ?? []) : [];
 
   const filtered = useMemo(() => {
     if (!currentTabType) return items;
-    let list = items.filter(i => (i.data as unknown as RealEstateArtifact).artifactType === currentTabType);
-    if (filterStatus !== 'all') list = list.filter(i => (i.data as unknown as RealEstateArtifact).status === filterStatus);
+    let list = items.filter(
+      (i) => (i.data as unknown as RealEstateArtifact).artifactType === currentTabType
+    );
+    if (filterStatus !== 'all')
+      list = list.filter((i) => (i.data as unknown as RealEstateArtifact).status === filterStatus);
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
-      list = list.filter(i =>
-        i.title.toLowerCase().includes(q) ||
-        (i.data as unknown as RealEstateArtifact).description?.toLowerCase().includes(q) ||
-        (i.data as unknown as RealEstateArtifact).address?.toLowerCase().includes(q) ||
-        (i.data as unknown as RealEstateArtifact).mlsNumber?.toLowerCase().includes(q) ||
-        (i.data as unknown as RealEstateArtifact).tenantName?.toLowerCase().includes(q)
+      list = list.filter(
+        (i) =>
+          i.title.toLowerCase().includes(q) ||
+          (i.data as unknown as RealEstateArtifact).description?.toLowerCase().includes(q) ||
+          (i.data as unknown as RealEstateArtifact).address?.toLowerCase().includes(q) ||
+          (i.data as unknown as RealEstateArtifact).mlsNumber?.toLowerCase().includes(q) ||
+          (i.data as unknown as RealEstateArtifact).tenantName?.toLowerCase().includes(q)
       );
     }
     return list;
   }, [items, currentTabType, filterStatus, searchQuery]);
 
   const stats = useMemo(() => {
-    const d = (t: ArtifactType) => items.filter(i => (i.data as unknown as RealEstateArtifact).artifactType === t);
+    const d = (t: ArtifactType) =>
+      items.filter((i) => (i.data as unknown as RealEstateArtifact).artifactType === t);
     const listings = d('Listing');
-    const active = listings.filter(i => (i.data as unknown as RealEstateArtifact).status === 'active');
-    const pending = listings.filter(i => (i.data as unknown as RealEstateArtifact).status === 'pending');
-    const sold = listings.filter(i => (i.data as unknown as RealEstateArtifact).status === 'sold');
+    const active = listings.filter(
+      (i) => (i.data as unknown as RealEstateArtifact).status === 'active'
+    );
+    const pending = listings.filter(
+      (i) => (i.data as unknown as RealEstateArtifact).status === 'pending'
+    );
+    const sold = listings.filter(
+      (i) => (i.data as unknown as RealEstateArtifact).status === 'sold'
+    );
     const txns = d('Transaction');
-    const closedTxns = txns.filter(i => (i.data as unknown as RealEstateArtifact).status === 'closed');
-    const pendingTxns = txns.filter(i => !['closed', 'fell_through'].includes((i.data as unknown as RealEstateArtifact).status));
+    const closedTxns = txns.filter(
+      (i) => (i.data as unknown as RealEstateArtifact).status === 'closed'
+    );
+    const pendingTxns = txns.filter(
+      (i) => !['closed', 'fell_through'].includes((i.data as unknown as RealEstateArtifact).status)
+    );
     const rentals = d('RentalUnit');
-    const occupied = rentals.filter(i => ['leased', 'month_to_month'].includes((i.data as unknown as RealEstateArtifact).status));
-    const vacant = rentals.filter(i => (i.data as unknown as RealEstateArtifact).status === 'vacant');
-    const totalListVal = active.reduce((s, i) => s + ((i.data as unknown as RealEstateArtifact).price || 0), 0);
-    const closedVol = closedTxns.reduce((s, i) => s + ((i.data as unknown as RealEstateArtifact).price || 0), 0);
-    const totalRent = occupied.reduce((s, i) => s + ((i.data as unknown as RealEstateArtifact).monthlyRent || 0), 0);
-    const avgDom = active.length > 0 ? Math.round(active.reduce((s, i) => s + ((i.data as unknown as RealEstateArtifact).daysOnMarket || 0), 0) / active.length) : 0;
+    const occupied = rentals.filter((i) =>
+      ['leased', 'month_to_month'].includes((i.data as unknown as RealEstateArtifact).status)
+    );
+    const vacant = rentals.filter(
+      (i) => (i.data as unknown as RealEstateArtifact).status === 'vacant'
+    );
+    const totalListVal = active.reduce(
+      (s, i) => s + ((i.data as unknown as RealEstateArtifact).price || 0),
+      0
+    );
+    const closedVol = closedTxns.reduce(
+      (s, i) => s + ((i.data as unknown as RealEstateArtifact).price || 0),
+      0
+    );
+    const totalRent = occupied.reduce(
+      (s, i) => s + ((i.data as unknown as RealEstateArtifact).monthlyRent || 0),
+      0
+    );
+    const avgDom =
+      active.length > 0
+        ? Math.round(
+            active.reduce(
+              (s, i) => s + ((i.data as unknown as RealEstateArtifact).daysOnMarket || 0),
+              0
+            ) / active.length
+          )
+        : 0;
     const vacancyRate = rentals.length > 0 ? (vacant.length / rentals.length) * 100 : 0;
-    const portfolioVal = rentals.reduce((s, i) => s + ((i.data as unknown as RealEstateArtifact).price || (i.data as unknown as RealEstateArtifact).purchasePrice || 0), 0);
+    const portfolioVal = rentals.reduce(
+      (s, i) =>
+        s +
+        ((i.data as unknown as RealEstateArtifact).price ||
+          (i.data as unknown as RealEstateArtifact).purchasePrice ||
+          0),
+      0
+    );
     const deals = d('Deal');
     const showings = d('Showing');
     return {
-      activeListings: active.length, pendingSales: pending.length, soldCount: sold.length,
-      totalListVal, closedVol, closedCount: closedTxns.length,
-      pendingTxns: pendingTxns.length, totalRent, occupiedCount: occupied.length,
-      vacantCount: vacant.length, vacancyRate, avgDom, portfolioVal,
-      totalRentals: rentals.length, dealCount: deals.length,
-      showingCount: showings.length, closingsThisMonth: closedTxns.length,
+      activeListings: active.length,
+      pendingSales: pending.length,
+      soldCount: sold.length,
+      totalListVal,
+      closedVol,
+      closedCount: closedTxns.length,
+      pendingTxns: pendingTxns.length,
+      totalRent,
+      occupiedCount: occupied.length,
+      vacantCount: vacant.length,
+      vacancyRate,
+      avgDom,
+      portfolioVal,
+      totalRentals: rentals.length,
+      dealCount: deals.length,
+      showingCount: showings.length,
+      closingsThisMonth: closedTxns.length,
     };
   }, [items]);
 
@@ -338,7 +595,10 @@ export default function RealEstateLensPage() {
     const taxes = (parseFloat(calcTaxes) || 0) / 12;
     const insurance = (parseFloat(calcInsurance) || 0) / 12;
     const loan = purchase - down;
-    const monthlyPI = rate > 0 ? loan * (rate * Math.pow(1 + rate, term)) / (Math.pow(1 + rate, term) - 1) : loan / term;
+    const monthlyPI =
+      rate > 0
+        ? (loan * (rate * Math.pow(1 + rate, term))) / (Math.pow(1 + rate, term) - 1)
+        : loan / term;
     const totalMonthly = monthlyPI + taxes + insurance;
     const annualRent = rent * 12;
     const annualExpenses = expenses * 12;
@@ -348,25 +608,76 @@ export default function RealEstateLensPage() {
     const capRate = purchase > 0 ? (noi / purchase) * 100 : 0;
     const cashOnCash = down > 0 ? (cashFlow / down) * 100 : 0;
     const grm = rent > 0 ? purchase / annualRent : 0;
-    return { loan, monthlyPI, totalMonthly, annualRent, annualExpenses, annualDebtService, noi, cashFlow, capRate, cashOnCash, grm };
-  }, [calcPurchase, calcDown, calcRate, calcTerm, calcRent, calcExpenses, calcTaxes, calcInsurance]);
+    return {
+      loan,
+      monthlyPI,
+      totalMonthly,
+      annualRent,
+      annualExpenses,
+      annualDebtService,
+      noi,
+      cashFlow,
+      capRate,
+      cashOnCash,
+      grm,
+    };
+  }, [
+    calcPurchase,
+    calcDown,
+    calcRate,
+    calcTerm,
+    calcRent,
+    calcExpenses,
+    calcTaxes,
+    calcInsurance,
+  ]);
 
   /* ---------- editor helpers ---------- */
 
   const resetForm = useCallback(() => {
-    setFormTitle(''); setFormDesc(''); setFormAddress(''); setFormPrice('');
-    setFormAgent(''); setFormClient(''); setFormClientPhone(''); setFormClientEmail('');
-    setFormPropType(''); setFormBeds(''); setFormBaths(''); setFormSqft('');
-    setFormLotSize(''); setFormYearBuilt(''); setFormDate(''); setFormMls('');
-    setFormNotes(''); setFormRoi(''); setFormClosingDate(''); setFormEscrow('');
-    setFormLender(''); setFormEarnest(''); setFormCommission('');
-    setFormTenant(''); setFormTenantPhone(''); setFormLeaseStart('');
-    setFormLeaseEnd(''); setFormRent(''); setFormDeposit(''); setFormRentStatus('current');
-    setFormShowDate(''); setFormShowTime(''); setFormBuyerAgent('');
-    setFormInterest('3'); setFormFollowUp('');
-    setFormPurchasePrice(''); setFormGrossRent(''); setFormOpEx('');
-    setFormMortRate(''); setFormMortTerm(''); setFormDownPay('');
-    setFormTaxes(''); setFormInsurance('');
+    setFormTitle('');
+    setFormDesc('');
+    setFormAddress('');
+    setFormPrice('');
+    setFormAgent('');
+    setFormClient('');
+    setFormClientPhone('');
+    setFormClientEmail('');
+    setFormPropType('');
+    setFormBeds('');
+    setFormBaths('');
+    setFormSqft('');
+    setFormLotSize('');
+    setFormYearBuilt('');
+    setFormDate('');
+    setFormMls('');
+    setFormNotes('');
+    setFormRoi('');
+    setFormClosingDate('');
+    setFormEscrow('');
+    setFormLender('');
+    setFormEarnest('');
+    setFormCommission('');
+    setFormTenant('');
+    setFormTenantPhone('');
+    setFormLeaseStart('');
+    setFormLeaseEnd('');
+    setFormRent('');
+    setFormDeposit('');
+    setFormRentStatus('current');
+    setFormShowDate('');
+    setFormShowTime('');
+    setFormBuyerAgent('');
+    setFormInterest('3');
+    setFormFollowUp('');
+    setFormPurchasePrice('');
+    setFormGrossRent('');
+    setFormOpEx('');
+    setFormMortRate('');
+    setFormMortTerm('');
+    setFormDownPay('');
+    setFormTaxes('');
+    setFormInsurance('');
   }, []);
 
   const openNewEditor = () => {
@@ -433,26 +744,40 @@ export default function RealEstateLensPage() {
     const payload = {
       title: formTitle,
       data: {
-        artifactType: formType, status: formStatus, description: formDesc,
-        address: formAddress, price: formPrice ? parseFloat(formPrice) : undefined,
-        agent: formAgent, client: formClient, clientPhone: formClientPhone, clientEmail: formClientEmail,
+        artifactType: formType,
+        status: formStatus,
+        description: formDesc,
+        address: formAddress,
+        price: formPrice ? parseFloat(formPrice) : undefined,
+        agent: formAgent,
+        client: formClient,
+        clientPhone: formClientPhone,
+        clientEmail: formClientEmail,
         propertyType: formPropType,
         bedrooms: formBeds ? parseInt(formBeds) : undefined,
         bathrooms: formBaths ? parseFloat(formBaths) : undefined,
         sqft: formSqft ? parseInt(formSqft) : undefined,
         lotSize: formLotSize ? parseFloat(formLotSize) : undefined,
         yearBuilt: formYearBuilt ? parseInt(formYearBuilt) : undefined,
-        date: formDate, mlsNumber: formMls, notes: formNotes,
+        date: formDate,
+        mlsNumber: formMls,
+        notes: formNotes,
         roi: formRoi ? parseFloat(formRoi) : undefined,
-        closingDate: formClosingDate, escrowCompany: formEscrow, lenderName: formLender,
+        closingDate: formClosingDate,
+        escrowCompany: formEscrow,
+        lenderName: formLender,
         earnestMoney: formEarnest ? parseFloat(formEarnest) : undefined,
         commission: formCommission ? parseFloat(formCommission) : undefined,
-        tenantName: formTenant, tenantPhone: formTenantPhone,
-        leaseStart: formLeaseStart, leaseEnd: formLeaseEnd,
+        tenantName: formTenant,
+        tenantPhone: formTenantPhone,
+        leaseStart: formLeaseStart,
+        leaseEnd: formLeaseEnd,
         monthlyRent: formRent ? parseFloat(formRent) : undefined,
         securityDeposit: formDeposit ? parseFloat(formDeposit) : undefined,
         rentStatus: formRentStatus,
-        showingDate: formShowDate, showingTime: formShowTime, buyerAgent: formBuyerAgent,
+        showingDate: formShowDate,
+        showingTime: formShowTime,
+        buyerAgent: formBuyerAgent,
         interestLevel: formInterest ? parseInt(formInterest) : undefined,
         followUpDate: formFollowUp,
         purchasePrice: formPurchasePrice ? parseFloat(formPurchasePrice) : undefined,
@@ -476,7 +801,13 @@ export default function RealEstateLensPage() {
     if (!targetId) return;
     try {
       const result = await runAction.mutateAsync({ id: targetId, action });
-      if (result.ok === false) { setActionResult({ message: `Action failed: ${(result as Record<string, unknown>).error || 'Unknown error'}` }); } else { setActionResult(result.result as Record<string, unknown>); }
+      if (result.ok === false) {
+        setActionResult({
+          message: `Action failed: ${(result as Record<string, unknown>).error || 'Unknown error'}`,
+        });
+      } else {
+        setActionResult(result.result as Record<string, unknown>);
+      }
     } catch (err) {
       console.error('Action failed:', err);
       showToast('error', 'Action failed');
@@ -488,8 +819,14 @@ export default function RealEstateLensPage() {
   const renderStarRating = (level: number) => {
     return (
       <div data-lens-theme="realestate" className="flex items-center gap-0.5">
-        {[1, 2, 3, 4, 5].map(s => (
-          <Star key={s} className={cn('w-3 h-3', s <= level ? 'text-amber-400 fill-amber-400' : 'text-gray-600')} />
+        {[1, 2, 3, 4, 5].map((s) => (
+          <Star
+            key={s}
+            className={cn(
+              'w-3 h-3',
+              s <= level ? 'text-amber-400 fill-amber-400' : 'text-gray-600'
+            )}
+          />
         ))}
       </div>
     );
@@ -502,15 +839,26 @@ export default function RealEstateLensPage() {
         {TRANSACTION_PIPELINE.map((stage, i) => {
           const isActive = i === idx;
           const isDone = i < idx;
-          const color = isDone ? 'bg-neon-green/20 text-neon-green border-neon-green/50' : isActive ? 'bg-neon-blue/20 text-neon-blue border-neon-blue/50' : 'bg-lattice-surface text-gray-500 border-lattice-border';
+          const color = isDone
+            ? 'bg-neon-green/20 text-neon-green border-neon-green/50'
+            : isActive
+              ? 'bg-neon-blue/20 text-neon-blue border-neon-blue/50'
+              : 'bg-lattice-surface text-gray-500 border-lattice-border';
           return (
             <div key={stage} className="flex items-center gap-1">
-              <div className={cn('px-2 py-1 rounded text-xs font-medium border whitespace-nowrap', color)}>
+              <div
+                className={cn(
+                  'px-2 py-1 rounded text-xs font-medium border whitespace-nowrap',
+                  color
+                )}
+              >
                 {isDone && <CheckCircle2 className="w-3 h-3 inline mr-1" />}
                 {isActive && <CircleDot className="w-3 h-3 inline mr-1" />}
                 {stage.replace(/_/g, ' ')}
               </div>
-              {i < TRANSACTION_PIPELINE.length - 1 && <ChevronRight className="w-3 h-3 text-gray-600 flex-shrink-0" />}
+              {i < TRANSACTION_PIPELINE.length - 1 && (
+                <ChevronRight className="w-3 h-3 text-gray-600 flex-shrink-0" />
+              )}
             </div>
           );
         })}
@@ -550,7 +898,9 @@ export default function RealEstateLensPage() {
               <h1 className={ds.heading1}>Real Estate</h1>
               <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
             </div>
-            <p className={ds.textMuted}>Listings, transactions, CMA, rentals, showings & investments</p>
+            <p className={ds.textMuted}>
+              Listings, transactions, CMA, rentals, showings & investments
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -568,18 +918,34 @@ export default function RealEstateLensPage() {
         </div>
       </header>
 
-
       {/* Quick Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {(() => {
-          const listings = items.filter(i => (i.data as Record<string, unknown>).price);
-          const avgPrice = listings.length > 0 ? Math.round(listings.reduce((s, i) => s + Number((i.data as Record<string, unknown>).price || 0), 0) / listings.length) : 0;
-          const pending = items.filter(i => i.meta?.status === 'pending' || (i.data as Record<string, unknown>).status === 'pending').length;
+          const listings = items.filter((i) => (i.data as Record<string, unknown>).price);
+          const avgPrice =
+            listings.length > 0
+              ? Math.round(
+                  listings.reduce(
+                    (s, i) => s + Number((i.data as Record<string, unknown>).price || 0),
+                    0
+                  ) / listings.length
+                )
+              : 0;
+          const pending = items.filter(
+            (i) =>
+              i.meta?.status === 'pending' ||
+              (i.data as Record<string, unknown>).status === 'pending'
+          ).length;
           return [
             { label: 'Listings', value: items.length, icon: Building2 },
             { label: 'Avg Price', value: `$${(avgPrice / 1000).toFixed(0)}K`, icon: DollarSign },
             { label: 'Pending Offers', value: pending, icon: KeyRound },
-            { label: 'Active', value: items.filter(i => (i.data as Record<string, unknown>).status === 'active').length, icon: TrendingUp },
+            {
+              label: 'Active',
+              value: items.filter((i) => (i.data as Record<string, unknown>).status === 'active')
+                .length,
+              icon: TrendingUp,
+            },
           ].map((stat) => (
             <div key={stat.label} className={ds.panel + ' flex items-center gap-3 p-3'}>
               <stat.icon className="w-5 h-5 text-neon-cyan shrink-0" />
@@ -594,15 +960,30 @@ export default function RealEstateLensPage() {
 
       {/* AI Actions */}
       <UniversalActions domain="realestate" artifactId={items[0]?.id} compact />
-      <RealtimeDataPanel domain="realestate" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
+      <RealtimeDataPanel
+        domain="realestate"
+        data={realtimeData}
+        isLive={isLive}
+        lastUpdated={lastUpdated}
+        insights={insights}
+        compact
+      />
       <DTUExportButton domain="realestate" data={{}} compact />
       {/* Mode Tabs */}
       <nav className="flex items-center gap-1 border-b border-lattice-border pb-3 flex-wrap">
-        {MODE_TABS.map(tab => (
+        {MODE_TABS.map((tab) => (
           <button
             key={tab.id}
-            onClick={() => { setActiveTab(tab.id); setFilterStatus('all'); setSearchQuery(''); }}
-            className={cn(ds.btnGhost, 'whitespace-nowrap', activeTab === tab.id && 'bg-neon-cyan/20 text-neon-cyan')}
+            onClick={() => {
+              setActiveTab(tab.id);
+              setFilterStatus('all');
+              setSearchQuery('');
+            }}
+            className={cn(
+              ds.btnGhost,
+              'whitespace-nowrap',
+              activeTab === tab.id && 'bg-neon-cyan/20 text-neon-cyan'
+            )}
           >
             <tab.icon className="w-4 h-4" />
             {tab.id}
@@ -615,10 +996,12 @@ export default function RealEstateLensPage() {
         <div className={ds.panel}>
           <div className={cn(ds.sectionHeader, 'mb-3')}>
             <h2 className={ds.heading3}>Domain Actions</h2>
-            <button onClick={() => setShowActionPanel(false)} className={ds.btnGhost}><X className="w-4 h-4" /></button>
+            <button onClick={() => setShowActionPanel(false)} className={ds.btnGhost}>
+              <X className="w-4 h-4" />
+            </button>
           </div>
           <div className={ds.grid3}>
-            {DOMAIN_ACTIONS.map(action => (
+            {DOMAIN_ACTIONS.map((action) => (
               <button
                 key={action.id}
                 onClick={() => handleAction(action.id)}
@@ -632,12 +1015,16 @@ export default function RealEstateLensPage() {
               </button>
             ))}
           </div>
-          {runAction.isPending && <p className="text-xs text-neon-blue animate-pulse mt-2">Running action...</p>}
+          {runAction.isPending && (
+            <p className="text-xs text-neon-blue animate-pulse mt-2">Running action...</p>
+          )}
           {actionResult && (
             <div className={cn(ds.panel, 'mt-3')}>
               <div className={cn(ds.sectionHeader, 'mb-2')}>
                 <h3 className={ds.heading3}>Action Result</h3>
-                <button onClick={() => setActionResult(null)} className={ds.btnGhost}><X className="w-4 h-4" /></button>
+                <button onClick={() => setActionResult(null)} className={ds.btnGhost}>
+                  <X className="w-4 h-4" />
+                </button>
               </div>
               <div className="space-y-3">
                 {/* capRate */}
@@ -645,15 +1032,23 @@ export default function RealEstateLensPage() {
                   <div className="space-y-2">
                     <div className="grid grid-cols-3 gap-2">
                       <div className="p-2 bg-lattice-surface rounded text-center">
-                        <p className={`text-sm font-bold ${Number(actionResult.capRate) >= 8 ? 'text-green-400' : Number(actionResult.capRate) >= 6 ? 'text-amber-400' : 'text-red-400'}`}>{String(actionResult.capRate)}%</p>
+                        <p
+                          className={`text-sm font-bold ${Number(actionResult.capRate) >= 8 ? 'text-green-400' : Number(actionResult.capRate) >= 6 ? 'text-amber-400' : 'text-red-400'}`}
+                        >
+                          {String(actionResult.capRate)}%
+                        </p>
                         <p className="text-[10px] text-gray-500">Cap Rate</p>
                       </div>
                       <div className="p-2 bg-lattice-surface rounded text-center">
-                        <p className="text-sm font-bold text-neon-cyan">${Number(actionResult.noi).toLocaleString()}</p>
+                        <p className="text-sm font-bold text-neon-cyan">
+                          ${Number(actionResult.noi).toLocaleString()}
+                        </p>
                         <p className="text-[10px] text-gray-500">NOI</p>
                       </div>
                       <div className="p-2 bg-lattice-surface rounded text-center">
-                        <p className="text-sm font-bold text-neon-cyan capitalize">{String(actionResult.rating)}</p>
+                        <p className="text-sm font-bold text-neon-cyan capitalize">
+                          {String(actionResult.rating)}
+                        </p>
                         <p className="text-[10px] text-gray-500">Rating</p>
                       </div>
                     </div>
@@ -664,25 +1059,56 @@ export default function RealEstateLensPage() {
                   <div className="space-y-2">
                     <div className="grid grid-cols-2 gap-2">
                       <div className="p-2 bg-lattice-surface rounded text-center">
-                        <p className={`text-sm font-bold ${Number((actionResult.monthly as {cashFlow:number}).cashFlow) >= 0 ? 'text-green-400' : 'text-red-400'}`}>${Number((actionResult.monthly as {cashFlow:number}).cashFlow).toLocaleString()}/mo</p>
+                        <p
+                          className={`text-sm font-bold ${Number((actionResult.monthly as { cashFlow: number }).cashFlow) >= 0 ? 'text-green-400' : 'text-red-400'}`}
+                        >
+                          $
+                          {Number(
+                            (actionResult.monthly as { cashFlow: number }).cashFlow
+                          ).toLocaleString()}
+                          /mo
+                        </p>
                         <p className="text-[10px] text-gray-500">Monthly Cash Flow</p>
                       </div>
                       <div className="p-2 bg-lattice-surface rounded text-center">
-                        <p className={`text-sm font-bold ${Number((actionResult.annual as {cashFlow:number}).cashFlow) >= 0 ? 'text-green-400' : 'text-red-400'}`}>${Number((actionResult.annual as {cashFlow:number}).cashFlow).toLocaleString()}/yr</p>
+                        <p
+                          className={`text-sm font-bold ${Number((actionResult.annual as { cashFlow: number }).cashFlow) >= 0 ? 'text-green-400' : 'text-red-400'}`}
+                        >
+                          $
+                          {Number(
+                            (actionResult.annual as { cashFlow: number }).cashFlow
+                          ).toLocaleString()}
+                          /yr
+                        </p>
                         <p className="text-[10px] text-gray-500">Annual Cash Flow</p>
                       </div>
                     </div>
                     <div className="grid grid-cols-3 gap-2">
                       <div className="p-2 bg-lattice-surface rounded text-center">
-                        <p className="text-sm font-bold text-neon-cyan">${Number((actionResult.monthly as {grossRent:number}).grossRent).toLocaleString()}</p>
+                        <p className="text-sm font-bold text-neon-cyan">
+                          $
+                          {Number(
+                            (actionResult.monthly as { grossRent: number }).grossRent
+                          ).toLocaleString()}
+                        </p>
                         <p className="text-[10px] text-gray-500">Gross Rent</p>
                       </div>
                       <div className="p-2 bg-lattice-surface rounded text-center">
-                        <p className="text-sm font-bold text-amber-400">${Number((actionResult.monthly as {expenses:number}).expenses).toLocaleString()}</p>
+                        <p className="text-sm font-bold text-amber-400">
+                          $
+                          {Number(
+                            (actionResult.monthly as { expenses: number }).expenses
+                          ).toLocaleString()}
+                        </p>
                         <p className="text-[10px] text-gray-500">Expenses</p>
                       </div>
                       <div className="p-2 bg-lattice-surface rounded text-center">
-                        <p className="text-sm font-bold text-amber-400">${Number((actionResult.monthly as {mortgage:number}).mortgage).toLocaleString()}</p>
+                        <p className="text-sm font-bold text-amber-400">
+                          $
+                          {Number(
+                            (actionResult.monthly as { mortgage: number }).mortgage
+                          ).toLocaleString()}
+                        </p>
                         <p className="text-[10px] text-gray-500">Mortgage</p>
                       </div>
                     </div>
@@ -691,10 +1117,19 @@ export default function RealEstateLensPage() {
                 {/* closingTimeline */}
                 {actionResult.timeline !== undefined && Array.isArray(actionResult.timeline) && (
                   <div className="space-y-1">
-                    <p className="text-xs text-gray-400">{String(actionResult.totalDays)}-day closing timeline</p>
-                    {(actionResult.timeline as {milestone:string;date:string;status:string}[]).map((m, i) => (
-                      <div key={i} className="flex items-center gap-2 text-xs px-2 py-1 bg-lattice-surface rounded">
-                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${m.status === 'completed' ? 'bg-green-400' : 'bg-gray-500'}`} />
+                    <p className="text-xs text-gray-400">
+                      {String(actionResult.totalDays)}-day closing timeline
+                    </p>
+                    {(
+                      actionResult.timeline as { milestone: string; date: string; status: string }[]
+                    ).map((m, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center gap-2 text-xs px-2 py-1 bg-lattice-surface rounded"
+                      >
+                        <span
+                          className={`w-2 h-2 rounded-full flex-shrink-0 ${m.status === 'completed' ? 'bg-green-400' : 'bg-gray-500'}`}
+                        />
                         <span className="text-gray-300 flex-1">{m.milestone}</span>
                         <span className="text-gray-500">{m.date}</span>
                       </div>
@@ -706,15 +1141,23 @@ export default function RealEstateLensPage() {
                   <div className="space-y-2">
                     <div className="grid grid-cols-3 gap-2">
                       <div className="p-2 bg-lattice-surface rounded text-center">
-                        <p className={`text-sm font-bold ${Number(actionResult.vacancyRate) > 10 ? 'text-red-400' : Number(actionResult.vacancyRate) > 5 ? 'text-amber-400' : 'text-green-400'}`}>{String(actionResult.vacancyRate)}%</p>
+                        <p
+                          className={`text-sm font-bold ${Number(actionResult.vacancyRate) > 10 ? 'text-red-400' : Number(actionResult.vacancyRate) > 5 ? 'text-amber-400' : 'text-green-400'}`}
+                        >
+                          {String(actionResult.vacancyRate)}%
+                        </p>
                         <p className="text-[10px] text-gray-500">Vacancy</p>
                       </div>
                       <div className="p-2 bg-lattice-surface rounded text-center">
-                        <p className="text-sm font-bold text-green-400">{String(actionResult.occupied)}</p>
+                        <p className="text-sm font-bold text-green-400">
+                          {String(actionResult.occupied)}
+                        </p>
                         <p className="text-[10px] text-gray-500">Occupied</p>
                       </div>
                       <div className="p-2 bg-lattice-surface rounded text-center">
-                        <p className="text-sm font-bold text-neon-cyan">${Number(actionResult.monthlyRentCollected).toLocaleString()}</p>
+                        <p className="text-sm font-bold text-neon-cyan">
+                          ${Number(actionResult.monthlyRentCollected).toLocaleString()}
+                        </p>
                         <p className="text-[10px] text-gray-500">Monthly Rent</p>
                       </div>
                     </div>
@@ -731,7 +1174,9 @@ export default function RealEstateLensPage() {
         <div className={ds.panel}>
           <div className={cn(ds.sectionHeader, 'mb-4')}>
             <h2 className={ds.heading2}>Investment Calculator</h2>
-            <button onClick={() => setShowInvestCalc(false)} className={ds.btnGhost}><X className="w-4 h-4" /></button>
+            <button onClick={() => setShowInvestCalc(false)} className={ds.btnGhost}>
+              <X className="w-4 h-4" />
+            </button>
           </div>
           <div className={ds.grid2}>
             <div className="space-y-3">
@@ -739,41 +1184,82 @@ export default function RealEstateLensPage() {
               <div className={ds.grid2}>
                 <div>
                   <label className={ds.label}>Purchase Price ($)</label>
-                  <input type="number" value={calcPurchase} onChange={e => setCalcPurchase(e.target.value)} className={ds.input} />
+                  <input
+                    type="number"
+                    value={calcPurchase}
+                    onChange={(e) => setCalcPurchase(e.target.value)}
+                    className={ds.input}
+                  />
                 </div>
                 <div>
                   <label className={ds.label}>Down Payment ($)</label>
-                  <input type="number" value={calcDown} onChange={e => setCalcDown(e.target.value)} className={ds.input} />
+                  <input
+                    type="number"
+                    value={calcDown}
+                    onChange={(e) => setCalcDown(e.target.value)}
+                    className={ds.input}
+                  />
                 </div>
               </div>
               <div className={ds.grid2}>
                 <div>
                   <label className={ds.label}>Interest Rate (%)</label>
-                  <input type="number" value={calcRate} onChange={e => setCalcRate(e.target.value)} className={ds.input} step="0.1" />
+                  <input
+                    type="number"
+                    value={calcRate}
+                    onChange={(e) => setCalcRate(e.target.value)}
+                    className={ds.input}
+                    step="0.1"
+                  />
                 </div>
                 <div>
                   <label className={ds.label}>Term (years)</label>
-                  <input type="number" value={calcTerm} onChange={e => setCalcTerm(e.target.value)} className={ds.input} />
+                  <input
+                    type="number"
+                    value={calcTerm}
+                    onChange={(e) => setCalcTerm(e.target.value)}
+                    className={ds.input}
+                  />
                 </div>
               </div>
               <div className={ds.grid2}>
                 <div>
                   <label className={ds.label}>Monthly Rent ($)</label>
-                  <input type="number" value={calcRent} onChange={e => setCalcRent(e.target.value)} className={ds.input} />
+                  <input
+                    type="number"
+                    value={calcRent}
+                    onChange={(e) => setCalcRent(e.target.value)}
+                    className={ds.input}
+                  />
                 </div>
                 <div>
                   <label className={ds.label}>Monthly Expenses ($)</label>
-                  <input type="number" value={calcExpenses} onChange={e => setCalcExpenses(e.target.value)} className={ds.input} />
+                  <input
+                    type="number"
+                    value={calcExpenses}
+                    onChange={(e) => setCalcExpenses(e.target.value)}
+                    className={ds.input}
+                  />
                 </div>
               </div>
               <div className={ds.grid2}>
                 <div>
                   <label className={ds.label}>Annual Taxes ($)</label>
-                  <input type="number" value={calcTaxes} onChange={e => setCalcTaxes(e.target.value)} className={ds.input} />
+                  <input
+                    type="number"
+                    value={calcTaxes}
+                    onChange={(e) => setCalcTaxes(e.target.value)}
+                    className={ds.input}
+                  />
                 </div>
                 <div>
                   <label className={ds.label}>Annual Insurance ($)</label>
-                  <input type="number" value={calcInsurance} onChange={e => setCalcInsurance(e.target.value)} className={ds.input} />
+                  <input
+                    type="number"
+                    value={calcInsurance}
+                    onChange={(e) => setCalcInsurance(e.target.value)}
+                    className={ds.input}
+                  />
                 </div>
               </div>
             </div>
@@ -792,11 +1278,29 @@ export default function RealEstateLensPage() {
               <div className={ds.grid3}>
                 <div className={ds.panel}>
                   <p className={ds.textMuted}>Cap Rate</p>
-                  <p className={cn('text-lg font-bold', investCalc.capRate >= 5 ? 'text-neon-green' : 'text-amber-400')}>{pct(investCalc.capRate)}</p>
+                  <p
+                    className={cn(
+                      'text-lg font-bold',
+                      investCalc.capRate >= 5 ? 'text-neon-green' : 'text-amber-400'
+                    )}
+                  >
+                    {pct(investCalc.capRate)}
+                  </p>
                 </div>
                 <div className={ds.panel}>
                   <p className={ds.textMuted}>Cash-on-Cash</p>
-                  <p className={cn('text-lg font-bold', investCalc.cashOnCash >= 8 ? 'text-neon-green' : investCalc.cashOnCash >= 0 ? 'text-amber-400' : 'text-red-400')}>{pct(investCalc.cashOnCash)}</p>
+                  <p
+                    className={cn(
+                      'text-lg font-bold',
+                      investCalc.cashOnCash >= 8
+                        ? 'text-neon-green'
+                        : investCalc.cashOnCash >= 0
+                          ? 'text-amber-400'
+                          : 'text-red-400'
+                    )}
+                  >
+                    {pct(investCalc.cashOnCash)}
+                  </p>
                 </div>
                 <div className={ds.panel}>
                   <p className={ds.textMuted}>GRM</p>
@@ -806,11 +1310,25 @@ export default function RealEstateLensPage() {
               <div className={ds.grid2}>
                 <div className={ds.panel}>
                   <p className={ds.textMuted}>Annual NOI</p>
-                  <p className={cn('text-lg font-bold', investCalc.noi >= 0 ? 'text-neon-green' : 'text-red-400')}>{fmtFull(investCalc.noi)}</p>
+                  <p
+                    className={cn(
+                      'text-lg font-bold',
+                      investCalc.noi >= 0 ? 'text-neon-green' : 'text-red-400'
+                    )}
+                  >
+                    {fmtFull(investCalc.noi)}
+                  </p>
                 </div>
                 <div className={ds.panel}>
                   <p className={ds.textMuted}>Annual Cash Flow</p>
-                  <p className={cn('text-lg font-bold', investCalc.cashFlow >= 0 ? 'text-neon-green' : 'text-red-400')}>{fmtFull(investCalc.cashFlow)}</p>
+                  <p
+                    className={cn(
+                      'text-lg font-bold',
+                      investCalc.cashFlow >= 0 ? 'text-neon-green' : 'text-red-400'
+                    )}
+                  >
+                    {fmtFull(investCalc.cashFlow)}
+                  </p>
                 </div>
               </div>
               <div className={ds.panel}>
@@ -856,10 +1374,21 @@ export default function RealEstateLensPage() {
                 <KeyRound className="w-5 h-5 text-neon-purple" />
                 <span className={ds.textMuted}>Vacancy Rate</span>
               </div>
-              <p className={cn('text-3xl font-bold', stats.vacancyRate <= 5 ? 'text-neon-green' : stats.vacancyRate <= 10 ? 'text-amber-400' : 'text-red-400')}>
+              <p
+                className={cn(
+                  'text-3xl font-bold',
+                  stats.vacancyRate <= 5
+                    ? 'text-neon-green'
+                    : stats.vacancyRate <= 10
+                      ? 'text-amber-400'
+                      : 'text-red-400'
+                )}
+              >
                 {pct(stats.vacancyRate)}
               </p>
-              <p className="text-xs text-gray-500 mt-1">{stats.vacantCount} of {stats.totalRentals} units</p>
+              <p className="text-xs text-gray-500 mt-1">
+                {stats.vacantCount} of {stats.totalRentals} units
+              </p>
             </div>
           </div>
 
@@ -899,43 +1428,91 @@ export default function RealEstateLensPage() {
           <div className={ds.grid2}>
             <div className={ds.panel}>
               <h3 className={cn(ds.heading3, 'mb-3')}>Recent Listings</h3>
-              {items.filter(i => (i.data as unknown as RealEstateArtifact).artifactType === 'Listing').slice(0, 5).map(item => {
-                const d = item.data as unknown as RealEstateArtifact;
-                return (
-                  <div key={item.id} className="flex items-center justify-between py-2 border-b border-lattice-border last:border-0 cursor-pointer hover:bg-lattice-elevated/50 px-2 rounded" onClick={() => { setSelectedActionItem(item.id); setActiveTab('Listings'); openEditEditor(item); }}>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-white truncate">{item.title}</p>
-                      <p className="text-xs text-gray-500 truncate">{d.address}</p>
+              {items
+                .filter((i) => (i.data as unknown as RealEstateArtifact).artifactType === 'Listing')
+                .slice(0, 5)
+                .map((item) => {
+                  const d = item.data as unknown as RealEstateArtifact;
+                  return (
+                    <div
+                      key={item.id}
+                      className="flex items-center justify-between py-2 border-b border-lattice-border last:border-0 cursor-pointer hover:bg-lattice-elevated/50 px-2 rounded"
+                      onClick={() => {
+                        setSelectedActionItem(item.id);
+                        setActiveTab('Listings');
+                        openEditEditor(item);
+                      }}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-white truncate">{item.title}</p>
+                        <p className="text-xs text-gray-500 truncate">{d.address}</p>
+                      </div>
+                      <div className="flex items-center gap-2 ml-2">
+                        {d.price != null && (
+                          <span className="text-sm font-semibold text-white">{fmt(d.price)}</span>
+                        )}
+                        <span className={ds.badge(STATUS_COLORS[d.status] || 'gray-400')}>
+                          {d.status.replace(/_/g, ' ')}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 ml-2">
-                      {d.price != null && <span className="text-sm font-semibold text-white">{fmt(d.price)}</span>}
-                      <span className={ds.badge(STATUS_COLORS[d.status] || 'gray-400')}>{d.status.replace(/_/g, ' ')}</span>
-                    </div>
-                  </div>
-                );
-              })}
-              {items.filter(i => (i.data as unknown as RealEstateArtifact).artifactType === 'Listing').length === 0 && (
-                <p className={cn(ds.textMuted, 'text-center py-4')}>No properties listed yet. Add your first real estate listing.</p>
+                  );
+                })}
+              {items.filter(
+                (i) => (i.data as unknown as RealEstateArtifact).artifactType === 'Listing'
+              ).length === 0 && (
+                <p className={cn(ds.textMuted, 'text-center py-4')}>
+                  No properties listed yet. Add your first real estate listing.
+                </p>
               )}
             </div>
             <div className={ds.panel}>
               <h3 className={cn(ds.heading3, 'mb-3')}>Active Transactions</h3>
-              {items.filter(i => (i.data as unknown as RealEstateArtifact).artifactType === 'Transaction' && !['closed', 'fell_through'].includes((i.data as unknown as RealEstateArtifact).status)).slice(0, 5).map(item => {
-                const d = item.data as unknown as RealEstateArtifact;
-                return (
-                  <div key={item.id} className="flex items-center justify-between py-2 border-b border-lattice-border last:border-0 cursor-pointer hover:bg-lattice-elevated/50 px-2 rounded" onClick={() => { setSelectedActionItem(item.id); setActiveTab('Transactions'); openEditEditor(item); }}>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-white truncate">{item.title}</p>
-                      <p className="text-xs text-gray-500">{d.closingDate ? `Closing: ${d.closingDate}` : 'No closing date'}</p>
+              {items
+                .filter(
+                  (i) =>
+                    (i.data as unknown as RealEstateArtifact).artifactType === 'Transaction' &&
+                    !['closed', 'fell_through'].includes(
+                      (i.data as unknown as RealEstateArtifact).status
+                    )
+                )
+                .slice(0, 5)
+                .map((item) => {
+                  const d = item.data as unknown as RealEstateArtifact;
+                  return (
+                    <div
+                      key={item.id}
+                      className="flex items-center justify-between py-2 border-b border-lattice-border last:border-0 cursor-pointer hover:bg-lattice-elevated/50 px-2 rounded"
+                      onClick={() => {
+                        setSelectedActionItem(item.id);
+                        setActiveTab('Transactions');
+                        openEditEditor(item);
+                      }}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-white truncate">{item.title}</p>
+                        <p className="text-xs text-gray-500">
+                          {d.closingDate ? `Closing: ${d.closingDate}` : 'No closing date'}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 ml-2">
+                        {d.price != null && (
+                          <span className="text-sm font-semibold text-white">{fmt(d.price)}</span>
+                        )}
+                        <span className={ds.badge(STATUS_COLORS[d.status] || 'gray-400')}>
+                          {d.status.replace(/_/g, ' ')}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 ml-2">
-                      {d.price != null && <span className="text-sm font-semibold text-white">{fmt(d.price)}</span>}
-                      <span className={ds.badge(STATUS_COLORS[d.status] || 'gray-400')}>{d.status.replace(/_/g, ' ')}</span>
-                    </div>
-                  </div>
-                );
-              })}
-              {items.filter(i => (i.data as unknown as RealEstateArtifact).artifactType === 'Transaction' && !['closed', 'fell_through'].includes((i.data as unknown as RealEstateArtifact).status)).length === 0 && (
+                  );
+                })}
+              {items.filter(
+                (i) =>
+                  (i.data as unknown as RealEstateArtifact).artifactType === 'Transaction' &&
+                  !['closed', 'fell_through'].includes(
+                    (i.data as unknown as RealEstateArtifact).status
+                  )
+              ).length === 0 && (
                 <p className={cn(ds.textMuted, 'text-center py-4')}>No active transactions</p>
               )}
             </div>
@@ -952,11 +1529,25 @@ export default function RealEstateLensPage() {
               <div className="flex items-center gap-2">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search listings, MLS#..." className={cn(ds.input, 'pl-9 w-56')} />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search listings, MLS#..."
+                    className={cn(ds.input, 'pl-9 w-56')}
+                  />
                 </div>
-                <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className={cn(ds.select, 'w-44')}>
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className={cn(ds.select, 'w-44')}
+                >
                   <option value="all">All statuses</option>
-                  {currentStatuses.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
+                  {currentStatuses.map((s) => (
+                    <option key={s} value={s}>
+                      {s.replace(/_/g, ' ')}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -974,9 +1565,18 @@ export default function RealEstateLensPage() {
                   const d = item.data as unknown as RealEstateArtifact;
                   const color = STATUS_COLORS[d.status] || 'gray-400';
                   return (
-                    <motion.div key={item.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }} className={ds.panelHover} onClick={() => openEditEditor(item)}>
+                    <motion.div
+                      key={item.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                      className={ds.panelHover}
+                      onClick={() => openEditEditor(item)}
+                    >
                       <div className="flex items-start justify-between mb-2">
-                        <h3 className={cn(ds.heading3, 'text-base truncate flex-1')}>{item.title}</h3>
+                        <h3 className={cn(ds.heading3, 'text-base truncate flex-1')}>
+                          {item.title}
+                        </h3>
                         <span className={ds.badge(color)}>{d.status.replace(/_/g, ' ')}</span>
                       </div>
                       {d.address && (
@@ -996,28 +1596,59 @@ export default function RealEstateLensPage() {
                             <DollarSign className="w-3 h-3" /> {fmt(d.price)}
                           </span>
                         )}
-                        {d.bedrooms != null && <span className="flex items-center gap-1"><Bed className="w-3 h-3" /> {d.bedrooms} bd</span>}
-                        {d.bathrooms != null && <span className="flex items-center gap-1"><Bath className="w-3 h-3" /> {d.bathrooms} ba</span>}
-                        {d.sqft != null && <span className="flex items-center gap-1"><Ruler className="w-3 h-3" /> {d.sqft.toLocaleString()} sqft</span>}
+                        {d.bedrooms != null && (
+                          <span className="flex items-center gap-1">
+                            <Bed className="w-3 h-3" /> {d.bedrooms} bd
+                          </span>
+                        )}
+                        {d.bathrooms != null && (
+                          <span className="flex items-center gap-1">
+                            <Bath className="w-3 h-3" /> {d.bathrooms} ba
+                          </span>
+                        )}
+                        {d.sqft != null && (
+                          <span className="flex items-center gap-1">
+                            <Ruler className="w-3 h-3" /> {d.sqft.toLocaleString()} sqft
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap mt-2">
-                        {d.lotSize != null && <span className="flex items-center gap-1"><LandPlot className="w-3 h-3" /> {d.lotSize} acres</span>}
-                        {d.yearBuilt != null && <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> Built {d.yearBuilt}</span>}
-                        {d.daysOnMarket != null && <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {d.daysOnMarket} DOM</span>}
-                        {d.agent && <span className="flex items-center gap-1"><User className="w-3 h-3" /> {d.agent}</span>}
+                        {d.lotSize != null && (
+                          <span className="flex items-center gap-1">
+                            <LandPlot className="w-3 h-3" /> {d.lotSize} acres
+                          </span>
+                        )}
+                        {d.yearBuilt != null && (
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3" /> Built {d.yearBuilt}
+                          </span>
+                        )}
+                        {d.daysOnMarket != null && (
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" /> {d.daysOnMarket} DOM
+                          </span>
+                        )}
+                        {d.agent && (
+                          <span className="flex items-center gap-1">
+                            <User className="w-3 h-3" /> {d.agent}
+                          </span>
+                        )}
                       </div>
                       {d.priceHistory && d.priceHistory.length > 0 && (
                         <div className="mt-2 pt-2 border-t border-lattice-border">
                           <p className="text-xs text-gray-500 mb-1">Price History:</p>
                           {d.priceHistory.slice(0, 2).map((ph, idx) => (
-                            <p key={idx} className="text-xs text-gray-400">{ph.date}: {fmt(ph.price)} - {ph.reason}</p>
+                            <p key={idx} className="text-xs text-gray-400">
+                              {ph.date}: {fmt(ph.price)} - {ph.reason}
+                            </p>
                           ))}
                         </div>
                       )}
                       {d.openHouses && d.openHouses.length > 0 && (
                         <div className="mt-2 pt-2 border-t border-lattice-border">
                           <p className="text-xs text-neon-blue flex items-center gap-1">
-                            <Calendar className="w-3 h-3" /> Open House: {d.openHouses[0].date} {d.openHouses[0].startTime}-{d.openHouses[0].endTime}
+                            <Calendar className="w-3 h-3" /> Open House: {d.openHouses[0].date}{' '}
+                            {d.openHouses[0].startTime}-{d.openHouses[0].endTime}
                           </p>
                         </div>
                       )}
@@ -1039,11 +1670,25 @@ export default function RealEstateLensPage() {
               <div className="flex items-center gap-2">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search deals..." className={cn(ds.input, 'pl-9 w-56')} />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search deals..."
+                    className={cn(ds.input, 'pl-9 w-56')}
+                  />
                 </div>
-                <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className={cn(ds.select, 'w-44')}>
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className={cn(ds.select, 'w-44')}
+                >
                   <option value="all">All stages</option>
-                  {currentStatuses.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
+                  {currentStatuses.map((s) => (
+                    <option key={s} value={s}>
+                      {s.replace(/_/g, ' ')}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -1057,23 +1702,36 @@ export default function RealEstateLensPage() {
               </div>
             ) : (
               <div className="space-y-3">
-                {filtered.map(item => {
+                {filtered.map((item) => {
                   const d = item.data as unknown as RealEstateArtifact;
                   const color = STATUS_COLORS[d.status] || 'gray-400';
                   const isExpanded = expandedTxn === item.id;
                   return (
                     <div key={item.id} className={ds.panel}>
-                      <div className="flex items-start justify-between cursor-pointer" onClick={() => setExpandedTxn(isExpanded ? null : item.id)}>
+                      <div
+                        className="flex items-start justify-between cursor-pointer"
+                        onClick={() => setExpandedTxn(isExpanded ? null : item.id)}
+                      >
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
                             <h3 className={cn(ds.heading3, 'text-base truncate')}>{item.title}</h3>
                             <span className={ds.badge(color)}>{d.status.replace(/_/g, ' ')}</span>
                           </div>
-                          {d.address && <p className="text-xs text-gray-500 flex items-center gap-1"><MapPin className="w-3 h-3" /> {d.address}</p>}
+                          {d.address && (
+                            <p className="text-xs text-gray-500 flex items-center gap-1">
+                              <MapPin className="w-3 h-3" /> {d.address}
+                            </p>
+                          )}
                         </div>
                         <div className="flex items-center gap-3">
-                          {d.price != null && <span className="text-lg font-bold text-white">{fmt(d.price)}</span>}
-                          {isExpanded ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
+                          {d.price != null && (
+                            <span className="text-lg font-bold text-white">{fmt(d.price)}</span>
+                          )}
+                          {isExpanded ? (
+                            <ChevronDown className="w-4 h-4 text-gray-400" />
+                          ) : (
+                            <ChevronRight className="w-4 h-4 text-gray-400" />
+                          )}
                         </div>
                       </div>
 
@@ -1086,11 +1744,17 @@ export default function RealEstateLensPage() {
                           <div className={ds.grid3}>
                             <div>
                               <p className={ds.label}>Closing Date</p>
-                              <p className="text-sm text-white">{d.closingDate || 'TBD'}</p>
+                              <p className="text-sm text-white">
+                                {d.closingDate || (
+                                  <span className="text-gray-500 text-xs">Not scheduled</span>
+                                )}
+                              </p>
                             </div>
                             <div>
                               <p className={ds.label}>Escrow</p>
-                              <p className="text-sm text-white">{d.escrowCompany || 'Not assigned'}</p>
+                              <p className="text-sm text-white">
+                                {d.escrowCompany || 'Not assigned'}
+                              </p>
                             </div>
                             <div>
                               <p className={ds.label}>Lender</p>
@@ -1100,11 +1764,15 @@ export default function RealEstateLensPage() {
                           <div className={ds.grid3}>
                             <div>
                               <p className={ds.label}>Earnest Money</p>
-                              <p className="text-sm text-white">{d.earnestMoney ? fmtFull(d.earnestMoney) : 'N/A'}</p>
+                              <p className="text-sm text-white">
+                                {d.earnestMoney ? fmtFull(d.earnestMoney) : 'N/A'}
+                              </p>
                             </div>
                             <div>
                               <p className={ds.label}>Commission (%)</p>
-                              <p className="text-sm text-white">{d.commission ? `${d.commission}%` : 'N/A'}</p>
+                              <p className="text-sm text-white">
+                                {d.commission ? `${d.commission}%` : 'N/A'}
+                              </p>
                             </div>
                             <div>
                               <p className={ds.label}>Client</p>
@@ -1115,20 +1783,49 @@ export default function RealEstateLensPage() {
                           {/* Contingencies */}
                           {d.contingencies && d.contingencies.length > 0 && (
                             <div>
-                              <h4 className={cn(ds.label, 'text-sm font-semibold text-gray-300 mb-2')}>Contingencies</h4>
+                              <h4
+                                className={cn(ds.label, 'text-sm font-semibold text-gray-300 mb-2')}
+                              >
+                                Contingencies
+                              </h4>
                               <div className="space-y-1">
                                 {d.contingencies.map((c, idx) => (
-                                  <div key={idx} className="flex items-center justify-between py-1 px-2 bg-lattice-elevated rounded text-sm">
+                                  <div
+                                    key={idx}
+                                    className="flex items-center justify-between py-1 px-2 bg-lattice-elevated rounded text-sm"
+                                  >
                                     <div className="flex items-center gap-2">
-                                      {c.status === 'met' && <CheckCircle2 className="w-4 h-4 text-neon-green" />}
-                                      {c.status === 'pending' && <Clock className="w-4 h-4 text-amber-400" />}
-                                      {c.status === 'waived' && <Minus className="w-4 h-4 text-gray-400" />}
-                                      {c.status === 'failed' && <AlertTriangle className="w-4 h-4 text-red-400" />}
+                                      {c.status === 'met' && (
+                                        <CheckCircle2 className="w-4 h-4 text-neon-green" />
+                                      )}
+                                      {c.status === 'pending' && (
+                                        <Clock className="w-4 h-4 text-amber-400" />
+                                      )}
+                                      {c.status === 'waived' && (
+                                        <Minus className="w-4 h-4 text-gray-400" />
+                                      )}
+                                      {c.status === 'failed' && (
+                                        <AlertTriangle className="w-4 h-4 text-red-400" />
+                                      )}
                                       <span className="text-white">{c.name}</span>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                      <span className="text-gray-400 text-xs">Due: {c.deadline}</span>
-                                      <span className={ds.badge(c.status === 'met' ? 'neon-green' : c.status === 'pending' ? 'amber-400' : c.status === 'waived' ? 'gray-400' : 'red-400')}>{c.status}</span>
+                                      <span className="text-gray-400 text-xs">
+                                        Due: {c.deadline}
+                                      </span>
+                                      <span
+                                        className={ds.badge(
+                                          c.status === 'met'
+                                            ? 'neon-green'
+                                            : c.status === 'pending'
+                                              ? 'amber-400'
+                                              : c.status === 'waived'
+                                                ? 'gray-400'
+                                                : 'red-400'
+                                        )}
+                                      >
+                                        {c.status}
+                                      </span>
                                     </div>
                                   </div>
                                 ))}
@@ -1139,17 +1836,44 @@ export default function RealEstateLensPage() {
                           {/* Document checklist */}
                           {d.docChecklist && d.docChecklist.length > 0 && (
                             <div>
-                              <h4 className={cn(ds.label, 'text-sm font-semibold text-gray-300 mb-2')}>Document Checklist</h4>
+                              <h4
+                                className={cn(ds.label, 'text-sm font-semibold text-gray-300 mb-2')}
+                              >
+                                Document Checklist
+                              </h4>
                               <div className="space-y-1">
                                 {d.docChecklist.map((doc, idx) => (
-                                  <div key={idx} className="flex items-center justify-between py-1 px-2 text-sm">
+                                  <div
+                                    key={idx}
+                                    className="flex items-center justify-between py-1 px-2 text-sm"
+                                  >
                                     <div className="flex items-center gap-2">
-                                      <div className={cn('w-4 h-4 rounded border flex items-center justify-center', doc.completed ? 'bg-neon-green/20 border-neon-green' : 'border-gray-600')}>
-                                        {doc.completed && <CheckCircle2 className="w-3 h-3 text-neon-green" />}
+                                      <div
+                                        className={cn(
+                                          'w-4 h-4 rounded border flex items-center justify-center',
+                                          doc.completed
+                                            ? 'bg-neon-green/20 border-neon-green'
+                                            : 'border-gray-600'
+                                        )}
+                                      >
+                                        {doc.completed && (
+                                          <CheckCircle2 className="w-3 h-3 text-neon-green" />
+                                        )}
                                       </div>
-                                      <span className={cn('text-white', doc.completed && 'line-through text-gray-500')}>{doc.name}</span>
+                                      <span
+                                        className={cn(
+                                          'text-white',
+                                          doc.completed && 'line-through text-gray-500'
+                                        )}
+                                      >
+                                        {doc.name}
+                                      </span>
                                     </div>
-                                    {doc.dueDate && <span className="text-xs text-gray-500">Due: {doc.dueDate}</span>}
+                                    {doc.dueDate && (
+                                      <span className="text-xs text-gray-500">
+                                        Due: {doc.dueDate}
+                                      </span>
+                                    )}
                                   </div>
                                 ))}
                               </div>
@@ -1157,8 +1881,16 @@ export default function RealEstateLensPage() {
                           )}
 
                           <div className="flex items-center gap-2">
-                            <button onClick={() => openEditEditor(item)} className={cn(ds.btnSmall, ds.btnSecondary)}>Edit Details</button>
-                            <button onClick={() => handleAction('closing_timeline', item.id)} className={cn(ds.btnSmall, ds.btnGhost)}>
+                            <button
+                              onClick={() => openEditEditor(item)}
+                              className={cn(ds.btnSmall, ds.btnSecondary)}
+                            >
+                              Edit Details
+                            </button>
+                            <button
+                              onClick={() => handleAction('closing_timeline', item.id)}
+                              className={cn(ds.btnSmall, ds.btnGhost)}
+                            >
                               <Clock className="w-3 h-3" /> Generate Timeline
                             </button>
                           </div>
@@ -1180,9 +1912,17 @@ export default function RealEstateLensPage() {
             <div className={cn(ds.sectionHeader, 'mb-4')}>
               <h2 className={ds.heading2}>CMA Builder</h2>
               <div className="flex items-center gap-2">
-                <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className={cn(ds.select, 'w-44')}>
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className={cn(ds.select, 'w-44')}
+                >
                   <option value="all">All statuses</option>
-                  {currentStatuses.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
+                  {currentStatuses.map((s) => (
+                    <option key={s} value={s}>
+                      {s.replace(/_/g, ' ')}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -1196,11 +1936,14 @@ export default function RealEstateLensPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                {filtered.map(item => {
+                {filtered.map((item) => {
                   const d = item.data as unknown as RealEstateArtifact;
                   const color = STATUS_COLORS[d.status] || 'gray-400';
                   const comps = d.comparables || [];
-                  const avgAdjPrice = comps.length > 0 ? comps.reduce((s, c) => s + c.adjustedPrice, 0) / comps.length : 0;
+                  const avgAdjPrice =
+                    comps.length > 0
+                      ? comps.reduce((s, c) => s + c.adjustedPrice, 0) / comps.length
+                      : 0;
                   return (
                     <div key={item.id} className={ds.panel}>
                       <div className="flex items-start justify-between mb-3">
@@ -1209,13 +1952,17 @@ export default function RealEstateLensPage() {
                             <h3 className={cn(ds.heading3, 'text-base')}>{item.title}</h3>
                             <span className={ds.badge(color)}>{d.status.replace(/_/g, ' ')}</span>
                           </div>
-                          {d.subjectProperty && <p className="text-sm text-gray-400">Subject: {d.subjectProperty}</p>}
+                          {d.subjectProperty && (
+                            <p className="text-sm text-gray-400">Subject: {d.subjectProperty}</p>
+                          )}
                         </div>
                         <div className="text-right">
                           {d.suggestedPrice != null && (
                             <div>
                               <p className={ds.textMuted}>Suggested List Price</p>
-                              <p className="text-xl font-bold text-neon-green">{fmtFull(d.suggestedPrice)}</p>
+                              <p className="text-xl font-bold text-neon-green">
+                                {fmtFull(d.suggestedPrice)}
+                              </p>
                             </div>
                           )}
                           {d.pricePerSqft != null && (
@@ -1241,28 +1988,64 @@ export default function RealEstateLensPage() {
                             </thead>
                             <tbody>
                               {comps.map((comp, idx) => (
-                                <tr key={idx} className="border-b border-lattice-border/50 hover:bg-lattice-elevated/50">
+                                <tr
+                                  key={idx}
+                                  className="border-b border-lattice-border/50 hover:bg-lattice-elevated/50"
+                                >
                                   <td className="py-2 px-2 text-white">{comp.address}</td>
-                                  <td className="py-2 px-2 text-right text-white">{fmtFull(comp.price)}</td>
-                                  <td className="py-2 px-2 text-right text-gray-400">{comp.sqft.toLocaleString()}</td>
-                                  <td className="py-2 px-2 text-right text-gray-400">{comp.beds}</td>
-                                  <td className="py-2 px-2 text-right text-gray-400">{comp.baths}</td>
+                                  <td className="py-2 px-2 text-right text-white">
+                                    {fmtFull(comp.price)}
+                                  </td>
+                                  <td className="py-2 px-2 text-right text-gray-400">
+                                    {comp.sqft.toLocaleString()}
+                                  </td>
+                                  <td className="py-2 px-2 text-right text-gray-400">
+                                    {comp.beds}
+                                  </td>
+                                  <td className="py-2 px-2 text-right text-gray-400">
+                                    {comp.baths}
+                                  </td>
                                   <td className="py-2 px-2 text-center">
-                                    <span className={ds.badge(comp.condition === 'excellent' ? 'neon-green' : comp.condition === 'good' ? 'neon-blue' : comp.condition === 'fair' ? 'amber-400' : 'red-400')}>
+                                    <span
+                                      className={ds.badge(
+                                        comp.condition === 'excellent'
+                                          ? 'neon-green'
+                                          : comp.condition === 'good'
+                                            ? 'neon-blue'
+                                            : comp.condition === 'fair'
+                                              ? 'amber-400'
+                                              : 'red-400'
+                                      )}
+                                    >
                                       {comp.condition}
                                     </span>
                                   </td>
-                                  <td className={cn('py-2 px-2 text-right', comp.adjustments >= 0 ? 'text-neon-green' : 'text-red-400')}>
-                                    {comp.adjustments >= 0 ? '+' : ''}{fmtFull(comp.adjustments)}
+                                  <td
+                                    className={cn(
+                                      'py-2 px-2 text-right',
+                                      comp.adjustments >= 0 ? 'text-neon-green' : 'text-red-400'
+                                    )}
+                                  >
+                                    {comp.adjustments >= 0 ? '+' : ''}
+                                    {fmtFull(comp.adjustments)}
                                   </td>
-                                  <td className="py-2 px-2 text-right font-semibold text-white">{fmtFull(comp.adjustedPrice)}</td>
+                                  <td className="py-2 px-2 text-right font-semibold text-white">
+                                    {fmtFull(comp.adjustedPrice)}
+                                  </td>
                                 </tr>
                               ))}
                             </tbody>
                             <tfoot>
                               <tr className="border-t border-lattice-border">
-                                <td colSpan={7} className="py-2 px-2 text-right text-gray-400 font-medium">Average Adjusted Price:</td>
-                                <td className="py-2 px-2 text-right font-bold text-neon-cyan">{fmtFull(avgAdjPrice)}</td>
+                                <td
+                                  colSpan={7}
+                                  className="py-2 px-2 text-right text-gray-400 font-medium"
+                                >
+                                  Average Adjusted Price:
+                                </td>
+                                <td className="py-2 px-2 text-right font-bold text-neon-cyan">
+                                  {fmtFull(avgAdjPrice)}
+                                </td>
                               </tr>
                             </tfoot>
                           </table>
@@ -1274,8 +2057,16 @@ export default function RealEstateLensPage() {
                       )}
 
                       <div className="flex items-center gap-2 mt-3">
-                        <button onClick={() => openEditEditor(item)} className={cn(ds.btnSmall, ds.btnSecondary)}>Edit CMA</button>
-                        <button onClick={() => handleAction('cma_generate', item.id)} className={cn(ds.btnSmall, ds.btnGhost)}>
+                        <button
+                          onClick={() => openEditEditor(item)}
+                          className={cn(ds.btnSmall, ds.btnSecondary)}
+                        >
+                          Edit CMA
+                        </button>
+                        <button
+                          onClick={() => handleAction('cma_generate', item.id)}
+                          className={cn(ds.btnSmall, ds.btnGhost)}
+                        >
                           <Calculator className="w-3 h-3" /> Regenerate
                         </button>
                       </div>
@@ -1317,13 +2108,30 @@ export default function RealEstateLensPage() {
               <div className="flex items-center gap-2">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search units, tenants..." className={cn(ds.input, 'pl-9 w-56')} />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search units, tenants..."
+                    className={cn(ds.input, 'pl-9 w-56')}
+                  />
                 </div>
-                <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className={cn(ds.select, 'w-44')}>
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className={cn(ds.select, 'w-44')}
+                >
                   <option value="all">All statuses</option>
-                  {currentStatuses.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
+                  {currentStatuses.map((s) => (
+                    <option key={s} value={s}>
+                      {s.replace(/_/g, ' ')}
+                    </option>
+                  ))}
                 </select>
-                <button onClick={() => handleAction('vacancy_report')} className={cn(ds.btnSmall, ds.btnGhost)}>
+                <button
+                  onClick={() => handleAction('vacancy_report')}
+                  className={cn(ds.btnSmall, ds.btnGhost)}
+                >
                   <FileText className="w-3 h-3" /> Vacancy Report
                 </button>
               </div>
@@ -1338,17 +2146,32 @@ export default function RealEstateLensPage() {
               </div>
             ) : (
               <div className={ds.grid2}>
-                {filtered.map(item => {
+                {filtered.map((item) => {
                   const d = item.data as unknown as RealEstateArtifact;
                   const color = STATUS_COLORS[d.status] || 'gray-400';
-                  const leaseRemaining = d.leaseEnd ? daysBetween(new Date().toISOString().split('T')[0], d.leaseEnd) : null;
-                  const rentColor = d.rentStatus === 'current' || d.rentStatus === 'paid' ? 'text-neon-green' : d.rentStatus === 'late' ? 'text-amber-400' : 'text-red-400';
+                  const leaseRemaining = d.leaseEnd
+                    ? daysBetween(new Date().toISOString().split('T')[0], d.leaseEnd)
+                    : null;
+                  const rentColor =
+                    d.rentStatus === 'current' || d.rentStatus === 'paid'
+                      ? 'text-neon-green'
+                      : d.rentStatus === 'late'
+                        ? 'text-amber-400'
+                        : 'text-red-400';
                   return (
-                    <div key={item.id} className={ds.panelHover} onClick={() => openEditEditor(item)}>
+                    <div
+                      key={item.id}
+                      className={ds.panelHover}
+                      onClick={() => openEditEditor(item)}
+                    >
                       <div className="flex items-start justify-between mb-2">
                         <div>
                           <h3 className={cn(ds.heading3, 'text-base')}>{item.title}</h3>
-                          {d.address && <p className="text-xs text-gray-500 flex items-center gap-1"><MapPin className="w-3 h-3" /> {d.address}</p>}
+                          {d.address && (
+                            <p className="text-xs text-gray-500 flex items-center gap-1">
+                              <MapPin className="w-3 h-3" /> {d.address}
+                            </p>
+                          )}
                         </div>
                         <span className={ds.badge(color)}>{d.status.replace(/_/g, ' ')}</span>
                       </div>
@@ -1359,28 +2182,51 @@ export default function RealEstateLensPage() {
                             <User className="w-3 h-3 text-gray-400" />
                             <span className="text-sm text-white font-medium">{d.tenantName}</span>
                           </div>
-                          {d.tenantPhone && <p className="text-xs text-gray-500 flex items-center gap-1 ml-5"><Phone className="w-3 h-3" /> {d.tenantPhone}</p>}
+                          {d.tenantPhone && (
+                            <p className="text-xs text-gray-500 flex items-center gap-1 ml-5">
+                              <Phone className="w-3 h-3" /> {d.tenantPhone}
+                            </p>
+                          )}
                         </div>
                       )}
 
                       <div className={ds.grid2}>
                         <div>
                           <p className={ds.label}>Monthly Rent</p>
-                          <p className="text-lg font-bold text-white">{d.monthlyRent ? fmtFull(d.monthlyRent) : 'N/A'}</p>
+                          <p className="text-lg font-bold text-white">
+                            {d.monthlyRent ? fmtFull(d.monthlyRent) : 'N/A'}
+                          </p>
                         </div>
                         <div>
                           <p className={ds.label}>Rent Status</p>
-                          <p className={cn('text-sm font-medium', rentColor)}>{d.rentStatus ? d.rentStatus.charAt(0).toUpperCase() + d.rentStatus.slice(1) : 'N/A'}</p>
+                          <p className={cn('text-sm font-medium', rentColor)}>
+                            {d.rentStatus
+                              ? d.rentStatus.charAt(0).toUpperCase() + d.rentStatus.slice(1)
+                              : 'N/A'}
+                          </p>
                         </div>
                       </div>
 
                       {d.leaseStart && d.leaseEnd && (
                         <div className="mt-2">
                           <p className={ds.label}>Lease Term</p>
-                          <p className="text-xs text-white">{d.leaseStart} to {d.leaseEnd}</p>
+                          <p className="text-xs text-white">
+                            {d.leaseStart} to {d.leaseEnd}
+                          </p>
                           {leaseRemaining != null && (
-                            <p className={cn('text-xs mt-1', leaseRemaining < 30 ? 'text-red-400' : leaseRemaining < 90 ? 'text-amber-400' : 'text-gray-400')}>
-                              {leaseRemaining > 0 ? `${leaseRemaining} days remaining` : 'Lease expired'}
+                            <p
+                              className={cn(
+                                'text-xs mt-1',
+                                leaseRemaining < 30
+                                  ? 'text-red-400'
+                                  : leaseRemaining < 90
+                                    ? 'text-amber-400'
+                                    : 'text-gray-400'
+                              )}
+                            >
+                              {leaseRemaining > 0
+                                ? `${leaseRemaining} days remaining`
+                                : 'Lease expired'}
                             </p>
                           )}
                         </div>
@@ -1396,14 +2242,29 @@ export default function RealEstateLensPage() {
                       {d.maintenanceRequests && d.maintenanceRequests.length > 0 && (
                         <div className="mt-2 pt-2 border-t border-lattice-border">
                           <p className="text-xs text-gray-400 flex items-center gap-1 mb-1">
-                            <Wrench className="w-3 h-3" /> Maintenance ({d.maintenanceRequests.filter(m => m.status !== 'completed').length} open)
+                            <Wrench className="w-3 h-3" /> Maintenance (
+                            {d.maintenanceRequests.filter((m) => m.status !== 'completed').length}{' '}
+                            open)
                           </p>
-                          {d.maintenanceRequests.filter(m => m.status !== 'completed').slice(0, 2).map((mr, idx) => (
-                            <div key={idx} className="text-xs flex items-center gap-2 py-0.5">
-                              <span className={ds.badge(mr.priority === 'emergency' ? 'red-400' : mr.priority === 'high' ? 'amber-400' : 'gray-400')}>{mr.priority}</span>
-                              <span className="text-gray-300 truncate">{mr.issue}</span>
-                            </div>
-                          ))}
+                          {d.maintenanceRequests
+                            .filter((m) => m.status !== 'completed')
+                            .slice(0, 2)
+                            .map((mr, idx) => (
+                              <div key={idx} className="text-xs flex items-center gap-2 py-0.5">
+                                <span
+                                  className={ds.badge(
+                                    mr.priority === 'emergency'
+                                      ? 'red-400'
+                                      : mr.priority === 'high'
+                                        ? 'amber-400'
+                                        : 'gray-400'
+                                  )}
+                                >
+                                  {mr.priority}
+                                </span>
+                                <span className="text-gray-300 truncate">{mr.issue}</span>
+                              </div>
+                            ))}
                         </div>
                       )}
                     </div>
@@ -1424,11 +2285,25 @@ export default function RealEstateLensPage() {
               <div className="flex items-center gap-2">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search deals..." className={cn(ds.input, 'pl-9 w-56')} />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search deals..."
+                    className={cn(ds.input, 'pl-9 w-56')}
+                  />
                 </div>
-                <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className={cn(ds.select, 'w-44')}>
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className={cn(ds.select, 'w-44')}
+                >
                   <option value="all">All statuses</option>
-                  {currentStatuses.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
+                  {currentStatuses.map((s) => (
+                    <option key={s} value={s}>
+                      {s.replace(/_/g, ' ')}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -1438,19 +2313,29 @@ export default function RealEstateLensPage() {
             ) : filtered.length === 0 ? (
               <div className="text-center py-12">
                 <TrendingUp className="w-10 h-10 text-gray-600 mx-auto mb-3" />
-                <p className={ds.textMuted}>No investment deals found. Analyze a property to get started.</p>
+                <p className={ds.textMuted}>
+                  No investment deals found. Analyze a property to get started.
+                </p>
               </div>
             ) : (
               <div className={ds.grid2}>
-                {filtered.map(item => {
+                {filtered.map((item) => {
                   const d = item.data as unknown as RealEstateArtifact;
                   const color = STATUS_COLORS[d.status] || 'gray-400';
                   return (
-                    <div key={item.id} className={ds.panelHover} onClick={() => openEditEditor(item)}>
+                    <div
+                      key={item.id}
+                      className={ds.panelHover}
+                      onClick={() => openEditEditor(item)}
+                    >
                       <div className="flex items-start justify-between mb-2">
                         <div>
                           <h3 className={cn(ds.heading3, 'text-base')}>{item.title}</h3>
-                          {d.address && <p className="text-xs text-gray-500 flex items-center gap-1"><MapPin className="w-3 h-3" /> {d.address}</p>}
+                          {d.address && (
+                            <p className="text-xs text-gray-500 flex items-center gap-1">
+                              <MapPin className="w-3 h-3" /> {d.address}
+                            </p>
+                          )}
                         </div>
                         <span className={ds.badge(color)}>{d.status.replace(/_/g, ' ')}</span>
                       </div>
@@ -1459,15 +2344,25 @@ export default function RealEstateLensPage() {
                       <div className={ds.grid3}>
                         <div>
                           <p className={ds.label}>Purchase Price</p>
-                          <p className="text-sm font-bold text-white">{d.purchasePrice ? fmtFull(d.purchasePrice) : d.price ? fmtFull(d.price) : 'N/A'}</p>
+                          <p className="text-sm font-bold text-white">
+                            {d.purchasePrice
+                              ? fmtFull(d.purchasePrice)
+                              : d.price
+                                ? fmtFull(d.price)
+                                : 'N/A'}
+                          </p>
                         </div>
                         <div>
                           <p className={ds.label}>Gross Rent (mo)</p>
-                          <p className="text-sm font-bold text-white">{d.grossRent ? fmtFull(d.grossRent) : 'N/A'}</p>
+                          <p className="text-sm font-bold text-white">
+                            {d.grossRent ? fmtFull(d.grossRent) : 'N/A'}
+                          </p>
                         </div>
                         <div>
                           <p className={ds.label}>Op Expenses (mo)</p>
-                          <p className="text-sm font-bold text-white">{d.operatingExpenses ? fmtFull(d.operatingExpenses) : 'N/A'}</p>
+                          <p className="text-sm font-bold text-white">
+                            {d.operatingExpenses ? fmtFull(d.operatingExpenses) : 'N/A'}
+                          </p>
                         </div>
                       </div>
 
@@ -1475,19 +2370,46 @@ export default function RealEstateLensPage() {
                         <div className={ds.grid4}>
                           <div className="text-center">
                             <p className="text-xs text-gray-500">Cap Rate</p>
-                            <p className={cn('text-sm font-bold', (d.capRate || 0) >= 5 ? 'text-neon-green' : 'text-amber-400')}>{d.capRate ? pct(d.capRate) : 'N/A'}</p>
+                            <p
+                              className={cn(
+                                'text-sm font-bold',
+                                (d.capRate || 0) >= 5 ? 'text-neon-green' : 'text-amber-400'
+                              )}
+                            >
+                              {d.capRate ? pct(d.capRate) : 'N/A'}
+                            </p>
                           </div>
                           <div className="text-center">
                             <p className="text-xs text-gray-500">Cash/Cash</p>
-                            <p className={cn('text-sm font-bold', (d.cashOnCash || 0) >= 8 ? 'text-neon-green' : (d.cashOnCash || 0) >= 0 ? 'text-amber-400' : 'text-red-400')}>{d.cashOnCash ? pct(d.cashOnCash) : 'N/A'}</p>
+                            <p
+                              className={cn(
+                                'text-sm font-bold',
+                                (d.cashOnCash || 0) >= 8
+                                  ? 'text-neon-green'
+                                  : (d.cashOnCash || 0) >= 0
+                                    ? 'text-amber-400'
+                                    : 'text-red-400'
+                              )}
+                            >
+                              {d.cashOnCash ? pct(d.cashOnCash) : 'N/A'}
+                            </p>
                           </div>
                           <div className="text-center">
                             <p className="text-xs text-gray-500">GRM</p>
-                            <p className="text-sm font-bold text-white">{d.grm ? d.grm.toFixed(1) : 'N/A'}</p>
+                            <p className="text-sm font-bold text-white">
+                              {d.grm ? d.grm.toFixed(1) : 'N/A'}
+                            </p>
                           </div>
                           <div className="text-center">
                             <p className="text-xs text-gray-500">NOI</p>
-                            <p className={cn('text-sm font-bold', (d.noi || 0) >= 0 ? 'text-neon-green' : 'text-red-400')}>{d.noi ? fmtFull(d.noi) : 'N/A'}</p>
+                            <p
+                              className={cn(
+                                'text-sm font-bold',
+                                (d.noi || 0) >= 0 ? 'text-neon-green' : 'text-red-400'
+                              )}
+                            >
+                              {d.noi ? fmtFull(d.noi) : 'N/A'}
+                            </p>
                           </div>
                         </div>
                       </div>
@@ -1495,15 +2417,29 @@ export default function RealEstateLensPage() {
                       {d.roi != null && (
                         <div className="mt-2 flex items-center gap-1 text-sm">
                           <ArrowUpRight className="w-4 h-4 text-neon-green" />
-                          <span className="text-neon-green font-medium">{d.roi}% projected ROI</span>
+                          <span className="text-neon-green font-medium">
+                            {d.roi}% projected ROI
+                          </span>
                         </div>
                       )}
 
                       <div className="flex items-center gap-2 mt-3">
-                        <button onClick={(e) => { e.stopPropagation(); handleAction('cap_rate_calc', item.id); }} className={cn(ds.btnSmall, ds.btnGhost)}>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAction('cap_rate_calc', item.id);
+                          }}
+                          className={cn(ds.btnSmall, ds.btnGhost)}
+                        >
                           <Percent className="w-3 h-3" /> Cap Rate
                         </button>
-                        <button onClick={(e) => { e.stopPropagation(); handleAction('cash_flow_analysis', item.id); }} className={cn(ds.btnSmall, ds.btnGhost)}>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAction('cash_flow_analysis', item.id);
+                          }}
+                          className={cn(ds.btnSmall, ds.btnGhost)}
+                        >
                           <PiggyBank className="w-3 h-3" /> Cash Flow
                         </button>
                       </div>
@@ -1525,11 +2461,25 @@ export default function RealEstateLensPage() {
               <div className="flex items-center gap-2">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search showings..." className={cn(ds.input, 'pl-9 w-56')} />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search showings..."
+                    className={cn(ds.input, 'pl-9 w-56')}
+                  />
                 </div>
-                <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className={cn(ds.select, 'w-44')}>
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className={cn(ds.select, 'w-44')}
+                >
                   <option value="all">All statuses</option>
-                  {currentStatuses.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
+                  {currentStatuses.map((s) => (
+                    <option key={s} value={s}>
+                      {s.replace(/_/g, ' ')}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -1539,17 +2489,26 @@ export default function RealEstateLensPage() {
             ) : filtered.length === 0 ? (
               <div className="text-center py-12">
                 <Eye className="w-10 h-10 text-gray-600 mx-auto mb-3" />
-                <p className={ds.textMuted}>No showings scheduled. Create one to track buyer activity.</p>
+                <p className={ds.textMuted}>
+                  No showings scheduled. Create one to track buyer activity.
+                </p>
               </div>
             ) : (
               <div className={ds.grid3}>
-                {filtered.map(item => {
+                {filtered.map((item) => {
                   const d = item.data as unknown as RealEstateArtifact;
                   const color = STATUS_COLORS[d.status] || 'gray-400';
                   return (
-                    <div key={item.id} data-lens-theme="realestate" className={ds.panelHover} onClick={() => openEditEditor(item)}>
+                    <div
+                      key={item.id}
+                      data-lens-theme="realestate"
+                      className={ds.panelHover}
+                      onClick={() => openEditEditor(item)}
+                    >
                       <div className="flex items-start justify-between mb-2">
-                        <h3 className={cn(ds.heading3, 'text-base truncate flex-1')}>{item.title}</h3>
+                        <h3 className={cn(ds.heading3, 'text-base truncate flex-1')}>
+                          {item.title}
+                        </h3>
                         <span className={ds.badge(color)}>{d.status.replace(/_/g, ' ')}</span>
                       </div>
                       {d.address && (
@@ -1562,7 +2521,11 @@ export default function RealEstateLensPage() {
                         <div>
                           <p className={ds.label}>Date & Time</p>
                           <p className="text-sm text-white">
-                            {d.showingDate || 'TBD'} {d.showingTime && `at ${d.showingTime}`}
+                            {d.showingDate ? (
+                              `${d.showingDate}${d.showingTime ? ` at ${d.showingTime}` : ''}`
+                            ) : (
+                              <span className="text-gray-500 text-xs">Not scheduled</span>
+                            )}
                           </p>
                         </div>
                         <div>
@@ -1574,8 +2537,14 @@ export default function RealEstateLensPage() {
                       {d.client && (
                         <div className="mt-2">
                           <p className={ds.label}>Buyer</p>
-                          <p className="text-sm text-white flex items-center gap-1"><User className="w-3 h-3" /> {d.client}</p>
-                          {d.clientPhone && <p className="text-xs text-gray-500 flex items-center gap-1 ml-4"><Phone className="w-3 h-3" /> {d.clientPhone}</p>}
+                          <p className="text-sm text-white flex items-center gap-1">
+                            <User className="w-3 h-3" /> {d.client}
+                          </p>
+                          {d.clientPhone && (
+                            <p className="text-xs text-gray-500 flex items-center gap-1 ml-4">
+                              <Phone className="w-3 h-3" /> {d.clientPhone}
+                            </p>
+                          )}
                         </div>
                       )}
 
@@ -1588,7 +2557,9 @@ export default function RealEstateLensPage() {
 
                       {d.feedbacks && d.feedbacks.length > 0 && (
                         <div className="mt-2 pt-2 border-t border-lattice-border">
-                          <p className="text-xs text-gray-400 mb-1">Feedback ({d.feedbacks.length})</p>
+                          <p className="text-xs text-gray-400 mb-1">
+                            Feedback ({d.feedbacks.length})
+                          </p>
                           {d.feedbacks.slice(0, 2).map((fb, idx) => (
                             <div key={idx} className="text-xs py-1">
                               <div className="flex items-center gap-2">
@@ -1623,32 +2594,65 @@ export default function RealEstateLensPage() {
           <div className={ds.modalContainer}>
             <div className={cn(ds.modalPanel, 'max-w-3xl')}>
               <div className="flex items-center justify-between p-4 border-b border-lattice-border">
-                <h2 className={ds.heading2}>{editingItem ? 'Edit' : 'New'} {formType}</h2>
-                <button onClick={() => setShowEditor(false)} className={ds.btnGhost}><X className="w-5 h-5" /></button>
+                <h2 className={ds.heading2}>
+                  {editingItem ? 'Edit' : 'New'} {formType}
+                </h2>
+                <button onClick={() => setShowEditor(false)} className={ds.btnGhost}>
+                  <X className="w-5 h-5" />
+                </button>
               </div>
               <div className="p-4 space-y-4 max-h-[75vh] overflow-y-auto">
                 {/* Common fields */}
                 <div>
                   <label className={ds.label}>Title</label>
-                  <input value={formTitle} onChange={e => setFormTitle(e.target.value)} className={ds.input} placeholder="Property or record title" />
+                  <input
+                    value={formTitle}
+                    onChange={(e) => setFormTitle(e.target.value)}
+                    className={ds.input}
+                    placeholder="Property or record title"
+                  />
                 </div>
                 <div className={ds.grid2}>
                   <div>
                     <label className={ds.label}>Type</label>
-                    <select value={formType} onChange={e => { setFormType(e.target.value as ArtifactType); setFormStatus(STATUSES_BY_TYPE[e.target.value as ArtifactType][0]); }} className={ds.select}>
-                      {MODE_TABS.filter(t => t.defaultType).map(t => <option key={t.defaultType} value={t.defaultType}>{t.defaultType}</option>)}
+                    <select
+                      value={formType}
+                      onChange={(e) => {
+                        setFormType(e.target.value as ArtifactType);
+                        setFormStatus(STATUSES_BY_TYPE[e.target.value as ArtifactType][0]);
+                      }}
+                      className={ds.select}
+                    >
+                      {MODE_TABS.filter((t) => t.defaultType).map((t) => (
+                        <option key={t.defaultType} value={t.defaultType}>
+                          {t.defaultType}
+                        </option>
+                      ))}
                     </select>
                   </div>
                   <div>
                     <label className={ds.label}>Status</label>
-                    <select value={formStatus} onChange={e => setFormStatus(e.target.value)} className={ds.select}>
-                      {(STATUSES_BY_TYPE[formType] ?? []).map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
+                    <select
+                      value={formStatus}
+                      onChange={(e) => setFormStatus(e.target.value)}
+                      className={ds.select}
+                    >
+                      {(STATUSES_BY_TYPE[formType] ?? []).map((s) => (
+                        <option key={s} value={s}>
+                          {s.replace(/_/g, ' ')}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
                 <div>
                   <label className={ds.label}>Address</label>
-                  <input value={formAddress} onChange={e => setFormAddress(e.target.value)} className={ds.input} placeholder="Full property address" />
+                  <input
+                    value={formAddress}
+                    onChange={(e) => setFormAddress(e.target.value)}
+                    className={ds.input}
+                    placeholder="Full property address"
+                  />
                 </div>
 
                 {/* Property details - Listings, CMA, Showings */}
@@ -1657,11 +2661,21 @@ export default function RealEstateLensPage() {
                     <div className={ds.grid2}>
                       <div>
                         <label className={ds.label}>Price ($)</label>
-                        <input type="number" value={formPrice} onChange={e => setFormPrice(e.target.value)} className={ds.input} placeholder="0" />
+                        <input
+                          type="number"
+                          value={formPrice}
+                          onChange={(e) => setFormPrice(e.target.value)}
+                          className={ds.input}
+                          placeholder="0"
+                        />
                       </div>
                       <div>
                         <label className={ds.label}>Property Type</label>
-                        <select value={formPropType} onChange={e => setFormPropType(e.target.value)} className={ds.select}>
+                        <select
+                          value={formPropType}
+                          onChange={(e) => setFormPropType(e.target.value)}
+                          className={ds.select}
+                        >
                           <option value="">Select type...</option>
                           <option value="Single Family">Single Family</option>
                           <option value="Condo">Condo</option>
@@ -1675,33 +2689,78 @@ export default function RealEstateLensPage() {
                     <div className={ds.grid4}>
                       <div>
                         <label className={ds.label}>Beds</label>
-                        <input type="number" value={formBeds} onChange={e => setFormBeds(e.target.value)} className={ds.input} placeholder="0" min="0" />
+                        <input
+                          type="number"
+                          value={formBeds}
+                          onChange={(e) => setFormBeds(e.target.value)}
+                          className={ds.input}
+                          placeholder="0"
+                          min="0"
+                        />
                       </div>
                       <div>
                         <label className={ds.label}>Baths</label>
-                        <input type="number" value={formBaths} onChange={e => setFormBaths(e.target.value)} className={ds.input} placeholder="0" min="0" step="0.5" />
+                        <input
+                          type="number"
+                          value={formBaths}
+                          onChange={(e) => setFormBaths(e.target.value)}
+                          className={ds.input}
+                          placeholder="0"
+                          min="0"
+                          step="0.5"
+                        />
                       </div>
                       <div>
                         <label className={ds.label}>Sq Ft</label>
-                        <input type="number" value={formSqft} onChange={e => setFormSqft(e.target.value)} className={ds.input} placeholder="0" min="0" />
+                        <input
+                          type="number"
+                          value={formSqft}
+                          onChange={(e) => setFormSqft(e.target.value)}
+                          className={ds.input}
+                          placeholder="0"
+                          min="0"
+                        />
                       </div>
                       <div>
                         <label className={ds.label}>Year Built</label>
-                        <input type="number" value={formYearBuilt} onChange={e => setFormYearBuilt(e.target.value)} className={ds.input} placeholder="2000" />
+                        <input
+                          type="number"
+                          value={formYearBuilt}
+                          onChange={(e) => setFormYearBuilt(e.target.value)}
+                          className={ds.input}
+                          placeholder="2000"
+                        />
                       </div>
                     </div>
                     <div className={ds.grid3}>
                       <div>
                         <label className={ds.label}>Lot Size (acres)</label>
-                        <input type="number" value={formLotSize} onChange={e => setFormLotSize(e.target.value)} className={ds.input} placeholder="0.0" step="0.01" />
+                        <input
+                          type="number"
+                          value={formLotSize}
+                          onChange={(e) => setFormLotSize(e.target.value)}
+                          className={ds.input}
+                          placeholder="0.0"
+                          step="0.01"
+                        />
                       </div>
                       <div>
                         <label className={ds.label}>MLS Number</label>
-                        <input value={formMls} onChange={e => setFormMls(e.target.value)} className={ds.input} placeholder="MLS#" />
+                        <input
+                          value={formMls}
+                          onChange={(e) => setFormMls(e.target.value)}
+                          className={ds.input}
+                          placeholder="MLS#"
+                        />
                       </div>
                       <div>
                         <label className={ds.label}>Listing Agent</label>
-                        <input value={formAgent} onChange={e => setFormAgent(e.target.value)} className={ds.input} placeholder="Agent name" />
+                        <input
+                          value={formAgent}
+                          onChange={(e) => setFormAgent(e.target.value)}
+                          className={ds.input}
+                          placeholder="Agent name"
+                        />
                       </div>
                     </div>
                   </>
@@ -1713,39 +2772,83 @@ export default function RealEstateLensPage() {
                     <div className={ds.grid2}>
                       <div>
                         <label className={ds.label}>Deal Price ($)</label>
-                        <input type="number" value={formPrice} onChange={e => setFormPrice(e.target.value)} className={ds.input} placeholder="0" />
+                        <input
+                          type="number"
+                          value={formPrice}
+                          onChange={(e) => setFormPrice(e.target.value)}
+                          className={ds.input}
+                          placeholder="0"
+                        />
                       </div>
                       <div>
                         <label className={ds.label}>Closing Date</label>
-                        <input type="date" value={formClosingDate} onChange={e => setFormClosingDate(e.target.value)} className={ds.input} />
+                        <input
+                          type="date"
+                          value={formClosingDate}
+                          onChange={(e) => setFormClosingDate(e.target.value)}
+                          className={ds.input}
+                        />
                       </div>
                     </div>
                     <div className={ds.grid3}>
                       <div>
                         <label className={ds.label}>Escrow Company</label>
-                        <input value={formEscrow} onChange={e => setFormEscrow(e.target.value)} className={ds.input} placeholder="Title/escrow company" />
+                        <input
+                          value={formEscrow}
+                          onChange={(e) => setFormEscrow(e.target.value)}
+                          className={ds.input}
+                          placeholder="Title/escrow company"
+                        />
                       </div>
                       <div>
                         <label className={ds.label}>Lender</label>
-                        <input value={formLender} onChange={e => setFormLender(e.target.value)} className={ds.input} placeholder="Lender name" />
+                        <input
+                          value={formLender}
+                          onChange={(e) => setFormLender(e.target.value)}
+                          className={ds.input}
+                          placeholder="Lender name"
+                        />
                       </div>
                       <div>
                         <label className={ds.label}>Agent</label>
-                        <input value={formAgent} onChange={e => setFormAgent(e.target.value)} className={ds.input} placeholder="Agent name" />
+                        <input
+                          value={formAgent}
+                          onChange={(e) => setFormAgent(e.target.value)}
+                          className={ds.input}
+                          placeholder="Agent name"
+                        />
                       </div>
                     </div>
                     <div className={ds.grid3}>
                       <div>
                         <label className={ds.label}>Earnest Money ($)</label>
-                        <input type="number" value={formEarnest} onChange={e => setFormEarnest(e.target.value)} className={ds.input} placeholder="0" />
+                        <input
+                          type="number"
+                          value={formEarnest}
+                          onChange={(e) => setFormEarnest(e.target.value)}
+                          className={ds.input}
+                          placeholder="0"
+                        />
                       </div>
                       <div>
                         <label className={ds.label}>Commission (%)</label>
-                        <input type="number" value={formCommission} onChange={e => setFormCommission(e.target.value)} className={ds.input} placeholder="3.0" step="0.1" />
+                        <input
+                          type="number"
+                          value={formCommission}
+                          onChange={(e) => setFormCommission(e.target.value)}
+                          className={ds.input}
+                          placeholder="3.0"
+                          step="0.1"
+                        />
                       </div>
                       <div>
                         <label className={ds.label}>Client</label>
-                        <input value={formClient} onChange={e => setFormClient(e.target.value)} className={ds.input} placeholder="Buyer/seller" />
+                        <input
+                          value={formClient}
+                          onChange={(e) => setFormClient(e.target.value)}
+                          className={ds.input}
+                          placeholder="Buyer/seller"
+                        />
                       </div>
                     </div>
                   </>
@@ -1757,11 +2860,21 @@ export default function RealEstateLensPage() {
                     <div className={ds.grid2}>
                       <div>
                         <label className={ds.label}>Property Value ($)</label>
-                        <input type="number" value={formPrice} onChange={e => setFormPrice(e.target.value)} className={ds.input} placeholder="0" />
+                        <input
+                          type="number"
+                          value={formPrice}
+                          onChange={(e) => setFormPrice(e.target.value)}
+                          className={ds.input}
+                          placeholder="0"
+                        />
                       </div>
                       <div>
                         <label className={ds.label}>Property Type</label>
-                        <select value={formPropType} onChange={e => setFormPropType(e.target.value)} className={ds.select}>
+                        <select
+                          value={formPropType}
+                          onChange={(e) => setFormPropType(e.target.value)}
+                          className={ds.select}
+                        >
                           <option value="">Select type...</option>
                           <option value="Single Family">Single Family</option>
                           <option value="Condo">Condo</option>
@@ -1777,15 +2890,29 @@ export default function RealEstateLensPage() {
                       <div className={ds.grid3}>
                         <div>
                           <label className={ds.label}>Tenant Name</label>
-                          <input value={formTenant} onChange={e => setFormTenant(e.target.value)} className={ds.input} placeholder="Full name" />
+                          <input
+                            value={formTenant}
+                            onChange={(e) => setFormTenant(e.target.value)}
+                            className={ds.input}
+                            placeholder="Full name"
+                          />
                         </div>
                         <div>
                           <label className={ds.label}>Phone</label>
-                          <input value={formTenantPhone} onChange={e => setFormTenantPhone(e.target.value)} className={ds.input} placeholder="(555) 000-0000" />
+                          <input
+                            value={formTenantPhone}
+                            onChange={(e) => setFormTenantPhone(e.target.value)}
+                            className={ds.input}
+                            placeholder="(555) 000-0000"
+                          />
                         </div>
                         <div>
                           <label className={ds.label}>Rent Status</label>
-                          <select value={formRentStatus} onChange={e => setFormRentStatus(e.target.value)} className={ds.select}>
+                          <select
+                            value={formRentStatus}
+                            onChange={(e) => setFormRentStatus(e.target.value)}
+                            className={ds.select}
+                          >
                             <option value="current">Current</option>
                             <option value="paid">Paid</option>
                             <option value="late">Late</option>
@@ -1799,21 +2926,43 @@ export default function RealEstateLensPage() {
                       <div className={ds.grid2}>
                         <div>
                           <label className={ds.label}>Lease Start</label>
-                          <input type="date" value={formLeaseStart} onChange={e => setFormLeaseStart(e.target.value)} className={ds.input} />
+                          <input
+                            type="date"
+                            value={formLeaseStart}
+                            onChange={(e) => setFormLeaseStart(e.target.value)}
+                            className={ds.input}
+                          />
                         </div>
                         <div>
                           <label className={ds.label}>Lease End</label>
-                          <input type="date" value={formLeaseEnd} onChange={e => setFormLeaseEnd(e.target.value)} className={ds.input} />
+                          <input
+                            type="date"
+                            value={formLeaseEnd}
+                            onChange={(e) => setFormLeaseEnd(e.target.value)}
+                            className={ds.input}
+                          />
                         </div>
                       </div>
                       <div className={ds.grid2}>
                         <div>
                           <label className={ds.label}>Monthly Rent ($)</label>
-                          <input type="number" value={formRent} onChange={e => setFormRent(e.target.value)} className={ds.input} placeholder="0" />
+                          <input
+                            type="number"
+                            value={formRent}
+                            onChange={(e) => setFormRent(e.target.value)}
+                            className={ds.input}
+                            placeholder="0"
+                          />
                         </div>
                         <div>
                           <label className={ds.label}>Security Deposit ($)</label>
-                          <input type="number" value={formDeposit} onChange={e => setFormDeposit(e.target.value)} className={ds.input} placeholder="0" />
+                          <input
+                            type="number"
+                            value={formDeposit}
+                            onChange={(e) => setFormDeposit(e.target.value)}
+                            className={ds.input}
+                            placeholder="0"
+                          />
                         </div>
                       </div>
                     </div>
@@ -1826,43 +2975,99 @@ export default function RealEstateLensPage() {
                     <div className={ds.grid2}>
                       <div>
                         <label className={ds.label}>Purchase Price ($)</label>
-                        <input type="number" value={formPurchasePrice} onChange={e => setFormPurchasePrice(e.target.value)} className={ds.input} placeholder="0" />
+                        <input
+                          type="number"
+                          value={formPurchasePrice}
+                          onChange={(e) => setFormPurchasePrice(e.target.value)}
+                          className={ds.input}
+                          placeholder="0"
+                        />
                       </div>
                       <div>
                         <label className={ds.label}>Down Payment ($)</label>
-                        <input type="number" value={formDownPay} onChange={e => setFormDownPay(e.target.value)} className={ds.input} placeholder="0" />
+                        <input
+                          type="number"
+                          value={formDownPay}
+                          onChange={(e) => setFormDownPay(e.target.value)}
+                          className={ds.input}
+                          placeholder="0"
+                        />
                       </div>
                     </div>
                     <div className={ds.grid3}>
                       <div>
                         <label className={ds.label}>Gross Monthly Rent ($)</label>
-                        <input type="number" value={formGrossRent} onChange={e => setFormGrossRent(e.target.value)} className={ds.input} placeholder="0" />
+                        <input
+                          type="number"
+                          value={formGrossRent}
+                          onChange={(e) => setFormGrossRent(e.target.value)}
+                          className={ds.input}
+                          placeholder="0"
+                        />
                       </div>
                       <div>
                         <label className={ds.label}>Monthly Op Expenses ($)</label>
-                        <input type="number" value={formOpEx} onChange={e => setFormOpEx(e.target.value)} className={ds.input} placeholder="0" />
+                        <input
+                          type="number"
+                          value={formOpEx}
+                          onChange={(e) => setFormOpEx(e.target.value)}
+                          className={ds.input}
+                          placeholder="0"
+                        />
                       </div>
                       <div>
                         <label className={ds.label}>Expected ROI (%)</label>
-                        <input type="number" value={formRoi} onChange={e => setFormRoi(e.target.value)} className={ds.input} placeholder="0" step="0.1" />
+                        <input
+                          type="number"
+                          value={formRoi}
+                          onChange={(e) => setFormRoi(e.target.value)}
+                          className={ds.input}
+                          placeholder="0"
+                          step="0.1"
+                        />
                       </div>
                     </div>
                     <div className={ds.grid4}>
                       <div>
                         <label className={ds.label}>Mortgage Rate (%)</label>
-                        <input type="number" value={formMortRate} onChange={e => setFormMortRate(e.target.value)} className={ds.input} placeholder="6.5" step="0.1" />
+                        <input
+                          type="number"
+                          value={formMortRate}
+                          onChange={(e) => setFormMortRate(e.target.value)}
+                          className={ds.input}
+                          placeholder="6.5"
+                          step="0.1"
+                        />
                       </div>
                       <div>
                         <label className={ds.label}>Term (years)</label>
-                        <input type="number" value={formMortTerm} onChange={e => setFormMortTerm(e.target.value)} className={ds.input} placeholder="30" />
+                        <input
+                          type="number"
+                          value={formMortTerm}
+                          onChange={(e) => setFormMortTerm(e.target.value)}
+                          className={ds.input}
+                          placeholder="30"
+                        />
                       </div>
                       <div>
                         <label className={ds.label}>Annual Taxes ($)</label>
-                        <input type="number" value={formTaxes} onChange={e => setFormTaxes(e.target.value)} className={ds.input} placeholder="0" />
+                        <input
+                          type="number"
+                          value={formTaxes}
+                          onChange={(e) => setFormTaxes(e.target.value)}
+                          className={ds.input}
+                          placeholder="0"
+                        />
                       </div>
                       <div>
                         <label className={ds.label}>Annual Insurance ($)</label>
-                        <input type="number" value={formInsurance} onChange={e => setFormInsurance(e.target.value)} className={ds.input} placeholder="0" />
+                        <input
+                          type="number"
+                          value={formInsurance}
+                          onChange={(e) => setFormInsurance(e.target.value)}
+                          className={ds.input}
+                          placeholder="0"
+                        />
                       </div>
                     </div>
                   </>
@@ -1874,35 +3079,69 @@ export default function RealEstateLensPage() {
                     <div className={ds.grid3}>
                       <div>
                         <label className={ds.label}>Showing Date</label>
-                        <input type="date" value={formShowDate} onChange={e => setFormShowDate(e.target.value)} className={ds.input} />
+                        <input
+                          type="date"
+                          value={formShowDate}
+                          onChange={(e) => setFormShowDate(e.target.value)}
+                          className={ds.input}
+                        />
                       </div>
                       <div>
                         <label className={ds.label}>Showing Time</label>
-                        <input type="time" value={formShowTime} onChange={e => setFormShowTime(e.target.value)} className={ds.input} />
+                        <input
+                          type="time"
+                          value={formShowTime}
+                          onChange={(e) => setFormShowTime(e.target.value)}
+                          className={ds.input}
+                        />
                       </div>
                       <div>
                         <label className={ds.label}>Buyer Agent</label>
-                        <input value={formBuyerAgent} onChange={e => setFormBuyerAgent(e.target.value)} className={ds.input} placeholder="Agent name" />
+                        <input
+                          value={formBuyerAgent}
+                          onChange={(e) => setFormBuyerAgent(e.target.value)}
+                          className={ds.input}
+                          placeholder="Agent name"
+                        />
                       </div>
                     </div>
                     <div className={ds.grid3}>
                       <div>
                         <label className={ds.label}>Buyer Name</label>
-                        <input value={formClient} onChange={e => setFormClient(e.target.value)} className={ds.input} placeholder="Buyer name" />
+                        <input
+                          value={formClient}
+                          onChange={(e) => setFormClient(e.target.value)}
+                          className={ds.input}
+                          placeholder="Buyer name"
+                        />
                       </div>
                       <div>
                         <label className={ds.label}>Buyer Phone</label>
-                        <input value={formClientPhone} onChange={e => setFormClientPhone(e.target.value)} className={ds.input} placeholder="(555) 000-0000" />
+                        <input
+                          value={formClientPhone}
+                          onChange={(e) => setFormClientPhone(e.target.value)}
+                          className={ds.input}
+                          placeholder="(555) 000-0000"
+                        />
                       </div>
                       <div>
                         <label className={ds.label}>Buyer Email</label>
-                        <input value={formClientEmail} onChange={e => setFormClientEmail(e.target.value)} className={ds.input} placeholder="email@example.com" />
+                        <input
+                          value={formClientEmail}
+                          onChange={(e) => setFormClientEmail(e.target.value)}
+                          className={ds.input}
+                          placeholder="email@example.com"
+                        />
                       </div>
                     </div>
                     <div className={ds.grid2}>
                       <div>
                         <label className={ds.label}>Interest Level (1-5)</label>
-                        <select value={formInterest} onChange={e => setFormInterest(e.target.value)} className={ds.select}>
+                        <select
+                          value={formInterest}
+                          onChange={(e) => setFormInterest(e.target.value)}
+                          className={ds.select}
+                        >
                           <option value="1">1 - Not Interested</option>
                           <option value="2">2 - Somewhat Interested</option>
                           <option value="3">3 - Interested</option>
@@ -1912,7 +3151,12 @@ export default function RealEstateLensPage() {
                       </div>
                       <div>
                         <label className={ds.label}>Follow-up Date</label>
-                        <input type="date" value={formFollowUp} onChange={e => setFormFollowUp(e.target.value)} className={ds.input} />
+                        <input
+                          type="date"
+                          value={formFollowUp}
+                          onChange={(e) => setFormFollowUp(e.target.value)}
+                          className={ds.input}
+                        />
                       </div>
                     </div>
                   </>
@@ -1923,15 +3167,30 @@ export default function RealEstateLensPage() {
                   <div className={ds.grid3}>
                     <div>
                       <label className={ds.label}>Client</label>
-                      <input value={formClient} onChange={e => setFormClient(e.target.value)} className={ds.input} placeholder="Client name" />
+                      <input
+                        value={formClient}
+                        onChange={(e) => setFormClient(e.target.value)}
+                        className={ds.input}
+                        placeholder="Client name"
+                      />
                     </div>
                     <div>
                       <label className={ds.label}>Client Phone</label>
-                      <input value={formClientPhone} onChange={e => setFormClientPhone(e.target.value)} className={ds.input} placeholder="(555) 000-0000" />
+                      <input
+                        value={formClientPhone}
+                        onChange={(e) => setFormClientPhone(e.target.value)}
+                        className={ds.input}
+                        placeholder="(555) 000-0000"
+                      />
                     </div>
                     <div>
                       <label className={ds.label}>Client Email</label>
-                      <input value={formClientEmail} onChange={e => setFormClientEmail(e.target.value)} className={ds.input} placeholder="email@example.com" />
+                      <input
+                        value={formClientEmail}
+                        onChange={(e) => setFormClientEmail(e.target.value)}
+                        className={ds.input}
+                        placeholder="email@example.com"
+                      />
                     </div>
                   </div>
                 )}
@@ -1940,18 +3199,35 @@ export default function RealEstateLensPage() {
                 {(formType === 'Listing' || formType === 'Deal') && (
                   <div>
                     <label className={ds.label}>Date</label>
-                    <input type="date" value={formDate} onChange={e => setFormDate(e.target.value)} className={ds.input} />
+                    <input
+                      type="date"
+                      value={formDate}
+                      onChange={(e) => setFormDate(e.target.value)}
+                      className={ds.input}
+                    />
                   </div>
                 )}
 
                 {/* Description & notes - always shown */}
                 <div>
                   <label className={ds.label}>Description</label>
-                  <textarea value={formDesc} onChange={e => setFormDesc(e.target.value)} className={ds.textarea} rows={3} placeholder="Property or record description..." />
+                  <textarea
+                    value={formDesc}
+                    onChange={(e) => setFormDesc(e.target.value)}
+                    className={ds.textarea}
+                    rows={3}
+                    placeholder="Property or record description..."
+                  />
                 </div>
                 <div>
                   <label className={ds.label}>Notes</label>
-                  <textarea value={formNotes} onChange={e => setFormNotes(e.target.value)} className={ds.textarea} rows={2} placeholder="Internal notes..." />
+                  <textarea
+                    value={formNotes}
+                    onChange={(e) => setFormNotes(e.target.value)}
+                    className={ds.textarea}
+                    rows={2}
+                    placeholder="Internal notes..."
+                  />
                 </div>
               </div>
 
@@ -1959,13 +3235,21 @@ export default function RealEstateLensPage() {
               <div className="flex items-center justify-between p-4 border-t border-lattice-border">
                 <div>
                   {editingItem && (
-                    <button onClick={() => { remove(editingItem.id); setShowEditor(false); }} className={ds.btnDanger}>
+                    <button
+                      onClick={() => {
+                        remove(editingItem.id);
+                        setShowEditor(false);
+                      }}
+                      className={ds.btnDanger}
+                    >
                       <Trash2 className="w-4 h-4" /> Delete
                     </button>
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => setShowEditor(false)} className={ds.btnSecondary}>Cancel</button>
+                  <button onClick={() => setShowEditor(false)} className={ds.btnSecondary}>
+                    Cancel
+                  </button>
                   <button onClick={handleSave} className={ds.btnPrimary}>
                     {editingItem ? 'Update' : 'Create'}
                   </button>
@@ -1979,9 +3263,25 @@ export default function RealEstateLensPage() {
       {/* ==================== MAP TAB ==================== */}
       {activeTab === 'Map' && (
         <div className={ds.panel}>
-          <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2"><Map className="w-4 h-4 text-neon-cyan" /> Property Locations</h3>
+          <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+            <Map className="w-4 h-4 text-neon-cyan" /> Property Locations
+          </h3>
           <MapView
-            markers={items.filter(i => { const d = i.data as RealEstateArtifact; return d.lat && d.lng; }).map(i => { const d = i.data as RealEstateArtifact; return { lat: d.lat!, lng: d.lng!, label: i.title, popup: `${d.address || ''} ${d.price ? '- $' + d.price.toLocaleString() : ''}`.trim() }; })}
+            markers={items
+              .filter((i) => {
+                const d = i.data as RealEstateArtifact;
+                return d.lat && d.lng;
+              })
+              .map((i) => {
+                const d = i.data as RealEstateArtifact;
+                return {
+                  lat: d.lat!,
+                  lng: d.lng!,
+                  label: i.title,
+                  popup:
+                    `${d.address || ''} ${d.price ? '- $' + d.price.toLocaleString() : ''}`.trim(),
+                };
+              })}
             className="h-[500px]"
           />
         </div>
@@ -1997,7 +3297,9 @@ export default function RealEstateLensPage() {
             <Layers className="w-4 h-4" />
             Lens Features & Capabilities
           </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
+          <ChevronDown
+            className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`}
+          />
         </button>
         {showFeatures && (
           <div className="px-4 pb-4">

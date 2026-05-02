@@ -1,0 +1,78 @@
+[
+  {
+    "id": "scholars_guild",
+    "name": "The Scholars' Guild",
+    "motto": "What is known cannot be destroyed — only hidden.",
+    "goal": "Recover, preserve, and share all knowledge destroyed in the Great Purge.",
+    "values": ["truth", "preservation", "open inquiry", "long memory"],
+    "fears": ["censorship", "willful ignorance", "the Purge recurring", "knowledge weaponized"],
+    "controlled_districts": ["archive_quarter", "knowledge_campus"],
+    "rival_factions": ["iron_wardens", "shadow_network"],
+    "allied_factions": [],
+    "npc_ids": ["archivist_maren", "scribe_tollan", "lorekeeper_yshe"],
+    "dialogue_style": "verbose",
+    "reputation_currency": "insight_shards",
+    "faction_state": {
+      "factionName": "Scholars' Guild",
+      "reputation": 62,
+      "tensions": "Wardens have begun confiscating unregistered texts. The Guild suspects the Purge was sanctioned, not accidental."
+    }
+  },
+  {
+    "id": "merchant_collective",
+    "name": "The Merchant Collective",
+    "motto": "Prosperity demands stability. Stability demands compromise.",
+    "goal": "Maintain the trade networks and economic equilibrium that keep Concordia fed and funded.",
+    "values": ["pragmatism", "fairness in exchange", "neutrality", "long-term gain over short-term principle"],
+    "fears": ["open faction war disrupting trade", "being forced to choose sides", "economic collapse"],
+    "controlled_districts": ["market_district", "trade_road", "warehouse_row"],
+    "rival_factions": [],
+    "allied_factions": ["iron_wardens"],
+    "npc_ids": ["factor_cade", "broker_sael"],
+    "dialogue_style": "terse",
+    "reputation_currency": "trade_marks",
+    "faction_state": {
+      "factionName": "Merchant Collective",
+      "reputation": 70,
+      "tensions": "The Collective profits from the current order but privately fears the Wardens are consolidating too much power. Cade wants to stay neutral; Sael is selling information to both sides."
+    }
+  },
+  {
+    "id": "shadow_network",
+    "name": "The Shadow Network",
+    "motto": "Every secret has a price. We simply know them all.",
+    "goal": "Maintain the balance of power by ensuring no single faction controls all information.",
+    "values": ["information is power", "anonymity", "leverage over loyalty", "survival above ideology"],
+    "fears": ["transparency", "being exposed", "any faction gaining total dominance"],
+    "controlled_districts": ["undercity", "shadow_market", "the_warrens"],
+    "rival_factions": ["scholars_guild", "iron_wardens"],
+    "allied_factions": ["merchant_collective"],
+    "npc_ids": ["broker_sael", "cipher_venn"],
+    "dialogue_style": "cryptic",
+    "reputation_currency": "favors",
+    "faction_state": {
+      "factionName": "Shadow Network",
+      "reputation": 40,
+      "tensions": "The Network holds evidence of who ordered the Purge. They have been waiting for the right moment — or the right buyer."
+    }
+  },
+  {
+    "id": "iron_wardens",
+    "name": "The Iron Wardens",
+    "motto": "Order is not given. It is enforced.",
+    "goal": "Maintain absolute security across Concordia's gates and public spaces — by force if necessary.",
+    "values": ["order", "obedience", "hierarchy", "decisive action over deliberation"],
+    "fears": ["chaos", "the city turning against them", "their role in the Purge becoming public"],
+    "controlled_districts": ["city_gates", "garrison_ward", "civic_center"],
+    "rival_factions": ["scholars_guild", "shadow_network"],
+    "allied_factions": ["merchant_collective"],
+    "npc_ids": ["warden_voss", "captain_rael"],
+    "dialogue_style": "formal",
+    "reputation_currency": "commendations",
+    "faction_state": {
+      "factionName": "Iron Wardens",
+      "reputation": 55,
+      "tensions": "Voss authorized the Purge. Rael only recently discovered this and has not yet decided what to do with the knowledge."
+    }
+  }
+]

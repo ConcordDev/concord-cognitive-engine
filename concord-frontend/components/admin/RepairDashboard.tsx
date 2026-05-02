@@ -135,8 +135,19 @@ interface DiagnoseResponse {
   diagnosis: {
     id: string;
     classified: boolean;
-    primaryIssue: { category: string; subcategory: string; severity: string; details: string } | null;
-    repairOptions: { type: string; name: string; description: string; confidence: number; source: string }[];
+    primaryIssue: {
+      category: string;
+      subcategory: string;
+      severity: string;
+      details: string;
+    } | null;
+    repairOptions: {
+      type: string;
+      name: string;
+      description: string;
+      confidence: number;
+      source: string;
+    }[];
     optionCount: number;
   };
   repair: { success: boolean; option: string; description: string; repairTimeMs: number } | null;
@@ -151,21 +162,31 @@ interface RepairDashboardProps {
 
 function severityColor(severity: string): string {
   switch (severity) {
-    case 'critical': return 'text-red-400';
-    case 'high': return 'text-orange-400';
-    case 'medium': return 'text-yellow-400';
-    case 'low': return 'text-blue-400';
-    default: return 'text-green-400';
+    case 'critical':
+      return 'text-red-400';
+    case 'high':
+      return 'text-orange-400';
+    case 'medium':
+      return 'text-yellow-400';
+    case 'low':
+      return 'text-blue-400';
+    default:
+      return 'text-green-400';
   }
 }
 
 function severityBg(severity: string): string {
   switch (severity) {
-    case 'critical': return 'bg-red-400/10 border-red-400/30';
-    case 'high': return 'bg-orange-400/10 border-orange-400/30';
-    case 'medium': return 'bg-yellow-400/10 border-yellow-400/30';
-    case 'low': return 'bg-blue-400/10 border-blue-400/30';
-    default: return 'bg-green-400/10 border-green-400/30';
+    case 'critical':
+      return 'bg-red-400/10 border-red-400/30';
+    case 'high':
+      return 'bg-orange-400/10 border-orange-400/30';
+    case 'medium':
+      return 'bg-yellow-400/10 border-yellow-400/30';
+    case 'low':
+      return 'bg-blue-400/10 border-blue-400/30';
+    default:
+      return 'bg-green-400/10 border-green-400/30';
   }
 }
 
@@ -192,19 +213,27 @@ function formatUptime(seconds: number): string {
 
 function dimensionIcon(dim: string) {
   switch (dim) {
-    case 'memory': return <HardDrive className="w-4 h-4" />;
-    case 'latency': return <Clock className="w-4 h-4" />;
-    case 'errors': return <AlertTriangle className="w-4 h-4" />;
-    case 'connections': return <Network className="w-4 h-4" />;
-    case 'cpu': return <Cpu className="w-4 h-4" />;
-    default: return <Activity className="w-4 h-4" />;
+    case 'memory':
+      return <HardDrive className="w-4 h-4" />;
+    case 'latency':
+      return <Clock className="w-4 h-4" />;
+    case 'errors':
+      return <AlertTriangle className="w-4 h-4" />;
+    case 'connections':
+      return <Network className="w-4 h-4" />;
+    case 'cpu':
+      return <Cpu className="w-4 h-4" />;
+    default:
+      return <Activity className="w-4 h-4" />;
   }
 }
 
 // -- Component ----------------------------------------------------------------
 
-export function RepairDashboard({ className, apiBase = '' }: RepairDashboardProps) {
-  const [activeTab, setActiveTab] = useState<'overview' | 'predictions' | 'history' | 'knowledge' | 'diagnose'>('overview');
+function RepairDashboard({ className, apiBase = '' }: RepairDashboardProps) {
+  const [activeTab, setActiveTab] = useState<
+    'overview' | 'predictions' | 'history' | 'knowledge' | 'diagnose'
+  >('overview');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -245,9 +274,10 @@ export function RepairDashboard({ className, apiBase = '' }: RepairDashboardProp
       if (data.ok) {
         const active = data.active || [];
         const current = data.currentScan?.predictions || [];
-        const combined = [...current, ...active.filter((a: Prediction) =>
-          !current.some((c: Prediction) => c.id === a.id)
-        )];
+        const combined = [
+          ...current,
+          ...active.filter((a: Prediction) => !current.some((c: Prediction) => c.id === a.id)),
+        ];
         setPredictions(combined);
       }
     } catch {
@@ -371,28 +401,28 @@ export function RepairDashboard({ className, apiBase = '' }: RepairDashboardProp
           <Shield className="w-6 h-6 text-neon-cyan" />
           <h1 className={ds.heading1}>Repair Brain</h1>
           {status?.health && (
-            <span className={cn(
-              'px-2 py-0.5 rounded-full text-xs font-medium border',
-              status.health.healthy
-                ? 'bg-green-400/10 border-green-400/30 text-green-400'
-                : severityBg(status.health.overallSeverity) + ' ' + severityColor(status.health.overallSeverity)
-            )}>
+            <span
+              className={cn(
+                'px-2 py-0.5 rounded-full text-xs font-medium border',
+                status.health.healthy
+                  ? 'bg-green-400/10 border-green-400/30 text-green-400'
+                  : severityBg(status.health.overallSeverity) +
+                      ' ' +
+                      severityColor(status.health.overallSeverity)
+              )}
+            >
               {status.health.healthy ? 'HEALTHY' : status.health.overallSeverity.toUpperCase()}
             </span>
           )}
         </div>
-        <button
-          onClick={fetchAll}
-          className={ds.btnGhost}
-          title="Refresh"
-        >
+        <button onClick={fetchAll} className={ds.btnGhost} title="Refresh">
           <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} />
         </button>
       </div>
 
       {/* Tab bar */}
       <div className={ds.tabBar}>
-        {tabs.map(tab => (
+        {tabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
@@ -459,13 +489,13 @@ export function RepairDashboard({ className, apiBase = '' }: RepairDashboardProp
                   severityBg(dim.severity)
                 )}
               >
-                <div className={severityColor(dim.severity)}>
-                  {dimensionIcon(dimName)}
-                </div>
+                <div className={severityColor(dim.severity)}>{dimensionIcon(dimName)}</div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-white capitalize">{dimName}</span>
-                    <span className={cn('text-xs px-1.5 py-0.5 rounded', severityColor(dim.severity))}>
+                    <span
+                      className={cn('text-xs px-1.5 py-0.5 rounded', severityColor(dim.severity))}
+                    >
                       {dim.pattern.replace(/_/g, ' ')}
                     </span>
                   </div>
@@ -501,15 +531,19 @@ export function RepairDashboard({ className, apiBase = '' }: RepairDashboardProp
             <MetricCard label="RSS" value={`${processMetrics.rssMB} MB`} />
             <MetricCard label="Heap Total" value={`${processMetrics.heapTotalMB} MB`} />
             <MetricCard label="External" value={`${processMetrics.externalMB} MB`} />
-            <MetricCard label="CPU User" value={`${(processMetrics.cpuUser / 1000).toFixed(0)}ms`} />
-            <MetricCard label="CPU System" value={`${(processMetrics.cpuSystem / 1000).toFixed(0)}ms`} />
+            <MetricCard
+              label="CPU User"
+              value={`${(processMetrics.cpuUser / 1000).toFixed(0)}ms`}
+            />
+            <MetricCard
+              label="CPU System"
+              value={`${(processMetrics.cpuSystem / 1000).toFixed(0)}ms`}
+            />
             <MetricCard label="Uptime" value={formatUptime(processMetrics.uptimeSeconds)} />
             <MetricCard
               label="Capability Growth"
               value={
-                summary.knowledgeEntries > 0
-                  ? `+${summary.knowledgeEntries} DTUs`
-                  : 'Learning...'
+                summary.knowledgeEntries > 0 ? `+${summary.knowledgeEntries} DTUs` : 'Learning...'
               }
               accent
             />
@@ -559,7 +593,12 @@ export function RepairDashboard({ className, apiBase = '' }: RepairDashboardProp
                           {pred.applied ? (
                             <CheckCircle className="w-4 h-4 text-green-400 shrink-0" />
                           ) : (
-                            <AlertTriangle className={cn('w-4 h-4 shrink-0', severityColor(pred.severity || 'medium'))} />
+                            <AlertTriangle
+                              className={cn(
+                                'w-4 h-4 shrink-0',
+                                severityColor(pred.severity || 'medium')
+                              )}
+                            />
                           )}
                           <span className="text-sm font-medium text-white">{issue}</span>
                         </div>
@@ -580,7 +619,10 @@ export function RepairDashboard({ className, apiBase = '' }: RepairDashboardProp
                         <div className="flex items-center gap-1.5">
                           <div className="w-20 h-2 rounded-full bg-lattice-void overflow-hidden">
                             <div
-                              className={cn('h-full rounded-full', confidenceColor(pred.confidence))}
+                              className={cn(
+                                'h-full rounded-full',
+                                confidenceColor(pred.confidence)
+                              )}
                               style={{ width: `${pred.confidence * 100}%` }}
                             />
                           </div>
@@ -589,7 +631,9 @@ export function RepairDashboard({ className, apiBase = '' }: RepairDashboardProp
                           </span>
                         </div>
                         {pred.confidence >= 0.8 && !pred.applied && (
-                          <span className="text-xs text-neon-cyan mt-1 block">Auto-apply eligible</span>
+                          <span className="text-xs text-neon-cyan mt-1 block">
+                            Auto-apply eligible
+                          </span>
                         )}
                       </div>
                     </div>
@@ -608,7 +652,10 @@ export function RepairDashboard({ className, apiBase = '' }: RepairDashboardProp
               Predictive Accuracy
             </h2>
             <div className={ds.grid3}>
-              <MetricCard label="Total Predictions" value={String(knowledge.stats.predictions.total)} />
+              <MetricCard
+                label="Total Predictions"
+                value={String(knowledge.stats.predictions.total)}
+              />
               <MetricCard label="Applied" value={String(knowledge.stats.predictions.applied)} />
               <MetricCard
                 label="Accuracy"
@@ -643,7 +690,10 @@ export function RepairDashboard({ className, apiBase = '' }: RepairDashboardProp
               {history.map((entry) => {
                 const isExpanded = expandedRepairId === entry.id;
                 return (
-                  <div key={entry.id} className="border border-lattice-border rounded-lg overflow-hidden">
+                  <div
+                    key={entry.id}
+                    className="border border-lattice-border rounded-lg overflow-hidden"
+                  >
                     <button
                       onClick={() => setExpandedRepairId(isExpanded ? null : entry.id)}
                       className="w-full flex items-center gap-3 p-3 text-left hover:bg-lattice-elevated/50 transition-colors"
@@ -658,7 +708,12 @@ export function RepairDashboard({ className, apiBase = '' }: RepairDashboardProp
                           <span className="text-sm font-medium text-white truncate">
                             {entry.issueType.replace(/_/g, ' ')}
                           </span>
-                          <span className={cn('text-xs px-1.5 py-0.5 rounded', severityColor(entry.severity))}>
+                          <span
+                            className={cn(
+                              'text-xs px-1.5 py-0.5 rounded',
+                              severityColor(entry.severity)
+                            )}
+                          >
                             {entry.severity}
                           </span>
                           {entry.verified && (
@@ -695,7 +750,9 @@ export function RepairDashboard({ className, apiBase = '' }: RepairDashboardProp
                               {entry.symptoms.length > 0 ? (
                                 <ul className="text-gray-300 text-xs space-y-0.5">
                                   {entry.symptoms.map((s, i) => (
-                                    <li key={i} className="truncate">- {s}</li>
+                                    <li key={i} className="truncate">
+                                      - {s}
+                                    </li>
                                   ))}
                                 </ul>
                               ) : (
@@ -732,7 +789,9 @@ export function RepairDashboard({ className, apiBase = '' }: RepairDashboardProp
           </div>
           <div className={ds.panel}>
             <div className={ds.textMuted}>Successful Repairs</div>
-            <div className="text-2xl font-bold text-green-400 mt-1">{stats?.repairs.successful ?? 0}</div>
+            <div className="text-2xl font-bold text-green-400 mt-1">
+              {stats?.repairs.successful ?? 0}
+            </div>
           </div>
           <div className={ds.panel}>
             <div className={ds.textMuted}>Failed Repairs</div>
@@ -763,14 +822,18 @@ export function RepairDashboard({ className, apiBase = '' }: RepairDashboardProp
           ) : (
             <div className="space-y-3">
               {stats.knowledge.byCategory.map((cat) => (
-                <div key={cat.category} className="flex items-center gap-3 p-3 rounded-lg bg-lattice-elevated/30">
-                  <div className="text-neon-cyan">
-                    {dimensionIcon(cat.category)}
-                  </div>
+                <div
+                  key={cat.category}
+                  className="flex items-center gap-3 p-3 rounded-lg bg-lattice-elevated/30"
+                >
+                  <div className="text-neon-cyan">{dimensionIcon(cat.category)}</div>
                   <div className="flex-1">
-                    <div className="text-sm font-medium text-white capitalize">{cat.category.replace(/_/g, ' ')}</div>
+                    <div className="text-sm font-medium text-white capitalize">
+                      {cat.category.replace(/_/g, ' ')}
+                    </div>
                     <div className="text-xs text-gray-400 mt-0.5">
-                      {cat.count} entries | {cat.totalSuccesses} successes | {cat.totalFailures} failures
+                      {cat.count} entries | {cat.totalSuccesses} successes | {cat.totalFailures}{' '}
+                      failures
                     </div>
                   </div>
                   <div className="w-32">
@@ -801,7 +864,7 @@ export function RepairDashboard({ className, apiBase = '' }: RepairDashboardProp
             </h2>
             <div className="space-y-2">
               {stats.growth.slice(-14).map((g) => {
-                const maxTotal = Math.max(...stats.growth.map(e => e.total), 1);
+                const maxTotal = Math.max(...stats.growth.map((e) => e.total), 1);
                 return (
                   <div key={g.day} className="flex items-center gap-3 text-sm">
                     <span className="text-gray-500 w-24 shrink-0 text-xs font-mono">{g.day}</span>
@@ -918,22 +981,28 @@ export function RepairDashboard({ className, apiBase = '' }: RepairDashboardProp
                 <div>
                   <div className="text-sm text-gray-400 mb-2">Classification</div>
                   {diagnoseResult.diagnosis.classified ? (
-                    <div className={cn(
-                      'p-3 rounded-lg border',
-                      severityBg(diagnoseResult.diagnosis.primaryIssue?.severity || 'info')
-                    )}>
+                    <div
+                      className={cn(
+                        'p-3 rounded-lg border',
+                        severityBg(diagnoseResult.diagnosis.primaryIssue?.severity || 'info')
+                      )}
+                    >
                       <div className="flex items-center gap-2">
-                        <span className={cn(
-                          'text-sm font-medium',
-                          severityColor(diagnoseResult.diagnosis.primaryIssue?.severity || 'info')
-                        )}>
-                          {diagnoseResult.diagnosis.primaryIssue?.category} /
-                          {' '}{diagnoseResult.diagnosis.primaryIssue?.subcategory?.replace(/_/g, ' ')}
+                        <span
+                          className={cn(
+                            'text-sm font-medium',
+                            severityColor(diagnoseResult.diagnosis.primaryIssue?.severity || 'info')
+                          )}
+                        >
+                          {diagnoseResult.diagnosis.primaryIssue?.category} /{' '}
+                          {diagnoseResult.diagnosis.primaryIssue?.subcategory?.replace(/_/g, ' ')}
                         </span>
-                        <span className={cn(
-                          'text-xs px-1.5 py-0.5 rounded',
-                          severityColor(diagnoseResult.diagnosis.primaryIssue?.severity || 'info')
-                        )}>
+                        <span
+                          className={cn(
+                            'text-xs px-1.5 py-0.5 rounded',
+                            severityColor(diagnoseResult.diagnosis.primaryIssue?.severity || 'info')
+                          )}
+                        >
                           {diagnoseResult.diagnosis.primaryIssue?.severity}
                         </span>
                       </div>
@@ -942,7 +1011,9 @@ export function RepairDashboard({ className, apiBase = '' }: RepairDashboardProp
                       </div>
                     </div>
                   ) : (
-                    <div className="text-sm text-gray-500">No issues classified from the provided information.</div>
+                    <div className="text-sm text-gray-500">
+                      No issues classified from the provided information.
+                    </div>
                   )}
                 </div>
 
@@ -954,7 +1025,10 @@ export function RepairDashboard({ className, apiBase = '' }: RepairDashboardProp
                     </div>
                     <div className="space-y-2">
                       {diagnoseResult.diagnosis.repairOptions.map((opt, i) => (
-                        <div key={i} className="flex items-center gap-3 p-2 rounded-lg bg-lattice-elevated/30">
+                        <div
+                          key={i}
+                          className="flex items-center gap-3 p-2 rounded-lg bg-lattice-elevated/30"
+                        >
                           <span className="text-xs text-gray-500 w-5 shrink-0">#{i + 1}</span>
                           <div className="flex-1 min-w-0">
                             <div className="text-sm text-white">{opt.name}</div>
@@ -963,7 +1037,10 @@ export function RepairDashboard({ className, apiBase = '' }: RepairDashboardProp
                           <div className="flex items-center gap-1 shrink-0">
                             <div className="w-12 h-1.5 rounded-full bg-lattice-void overflow-hidden">
                               <div
-                                className={cn('h-full rounded-full', confidenceColor(opt.confidence))}
+                                className={cn(
+                                  'h-full rounded-full',
+                                  confidenceColor(opt.confidence)
+                                )}
                                 style={{ width: `${opt.confidence * 100}%` }}
                               />
                             </div>
@@ -980,12 +1057,14 @@ export function RepairDashboard({ className, apiBase = '' }: RepairDashboardProp
 
                 {/* Repair result */}
                 {diagnoseResult.repair && (
-                  <div className={cn(
-                    'p-3 rounded-lg border',
-                    diagnoseResult.repair.success
-                      ? 'bg-green-400/10 border-green-400/30'
-                      : 'bg-red-400/10 border-red-400/30'
-                  )}>
+                  <div
+                    className={cn(
+                      'p-3 rounded-lg border',
+                      diagnoseResult.repair.success
+                        ? 'bg-green-400/10 border-green-400/30'
+                        : 'bg-red-400/10 border-red-400/30'
+                    )}
+                  >
                     <div className="flex items-center gap-2">
                       {diagnoseResult.repair.success ? (
                         <CheckCircle className="w-4 h-4 text-green-400" />
@@ -997,7 +1076,8 @@ export function RepairDashboard({ className, apiBase = '' }: RepairDashboardProp
                       </span>
                     </div>
                     <div className="text-xs text-gray-400 mt-1">
-                      {diagnoseResult.repair.description} ({formatDuration(diagnoseResult.repair.repairTimeMs)})
+                      {diagnoseResult.repair.description} (
+                      {formatDuration(diagnoseResult.repair.repairTimeMs)})
                     </div>
                   </div>
                 )}
@@ -1012,7 +1092,15 @@ export function RepairDashboard({ className, apiBase = '' }: RepairDashboardProp
 
 // -- Sub-components -----------------------------------------------------------
 
-function MetricCard({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) {
+function MetricCard({
+  label,
+  value,
+  accent = false,
+}: {
+  label: string;
+  value: string;
+  accent?: boolean;
+}) {
   return (
     <div className="p-3 rounded-lg bg-lattice-elevated/30">
       <div className="text-xs text-gray-500">{label}</div>
@@ -1022,3 +1110,7 @@ function MetricCard({ label, value, accent = false }: { label: string; value: st
     </div>
   );
 }
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedRepairDashboard = withErrorBoundary(RepairDashboard);
+export { _WrappedRepairDashboard as RepairDashboard };

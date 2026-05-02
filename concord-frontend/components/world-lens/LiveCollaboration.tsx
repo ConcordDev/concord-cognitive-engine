@@ -276,7 +276,7 @@ export default function LiveCollaboration({
   const handleUndo = useCallback(
     (entryId: string) => {
       /* In real implementation, this would call an undo handler */
-      console.log('Undo entry:', entryId);
+      void entryId;
     },
     [],
   );

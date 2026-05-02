@@ -1,4 +1,5 @@
 // server/lib/skill-atrophy.js
+import logger from "../logger.js";
 // Skills not used in 14+ days decay at 0.01 levels/day.
 // Capped at level 1. Legendary+ skills (level >= 500) are immune.
 // last_used_at column added by migration 046.
@@ -47,6 +48,6 @@ export async function runAtrophyCycle(db) {
 }
 
 export function startAtrophyCycle(db) {
-  runAtrophyCycle(db).catch(() => {});
-  return setInterval(() => runAtrophyCycle(db).catch(() => {}), CYCLE_INTERVAL_MS);
+  runAtrophyCycle(db).catch(err => logger?.debug?.('[skill-atrophy] background op failed', { err: err?.message }));
+  return setInterval(() => runAtrophyCycle(db).catch(err => logger?.debug?.('[skill-atrophy] background op failed', { err: err?.message })), CYCLE_INTERVAL_MS);
 }

@@ -5,9 +5,19 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  BarChart3, Palette, Wrench, Shield, Compass, BookOpen,
-  Send, Loader2, MessageSquare, ChevronDown, ChevronUp,
-  PlusCircle, Settings,
+  BarChart3,
+  Palette,
+  Wrench,
+  Shield,
+  Compass,
+  BookOpen,
+  Send,
+  Loader2,
+  MessageSquare,
+  ChevronDown,
+  ChevronUp,
+  PlusCircle,
+  Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -40,27 +50,30 @@ interface Persona {
   stats: { queries: number; lastActive: string | null };
 }
 
-export function AgentPersonas({ className }: { className?: string }) {
+function AgentPersonas({ className }: { className?: string }) {
   const [expanded, setExpanded] = useState(false);
   const [selectedPersona, setSelectedPersona] = useState<string | null>(null);
   const [question, setQuestion] = useState('');
-  const [lastResponse, setLastResponse] = useState<{ persona: string; response: string } | null>(null);
+  const [lastResponse, setLastResponse] = useState<{ persona: string; response: string } | null>(
+    null
+  );
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
     queryKey: ['personas'],
-    queryFn: () => api.get('/api/personas').then(r => r.data),
+    queryFn: () => api.get('/api/personas').then((r) => r.data),
   });
 
   const createAgentMutation = useMutation({
-    mutationFn: () => api.post('/api/agent/create').then(r => r.data),
+    mutationFn: () => api.post('/api/agent/create').then((r) => r.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['personas'] });
     },
   });
 
   const configureAgentMutation = useMutation({
-    mutationFn: (config: Record<string, unknown>) => api.put('/api/agent/config', config).then(r => r.data),
+    mutationFn: (config: Record<string, unknown>) =>
+      api.put('/api/agent/config', config).then((r) => r.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['personas'] });
     },
@@ -70,7 +83,7 @@ export function AgentPersonas({ className }: { className?: string }) {
     mutationFn: ({ personaId, q }: { personaId: string; q: string }) =>
       api.post(`/api/personas/${personaId}/ask`, { question: q }),
     onSuccess: (result, variables) => {
-      const persona = personas.find(p => p.id === variables.personaId);
+      const persona = personas.find((p) => p.id === variables.personaId);
       setLastResponse({
         persona: persona?.name || 'Agent',
         response: result.data?.response || 'No response',
@@ -84,14 +97,24 @@ export function AgentPersonas({ className }: { className?: string }) {
 
   if (isLoading) {
     return (
-      <div className={cn('p-4 bg-lattice-surface border border-lattice-border rounded-xl animate-pulse', className)}>
+      <div
+        className={cn(
+          'p-4 bg-lattice-surface border border-lattice-border rounded-xl animate-pulse',
+          className
+        )}
+      >
         <div className="h-6 bg-lattice-deep rounded w-40" />
       </div>
     );
   }
 
   return (
-    <div className={cn('bg-lattice-surface border border-lattice-border rounded-xl overflow-hidden', className)}>
+    <div
+      className={cn(
+        'bg-lattice-surface border border-lattice-border rounded-xl overflow-hidden',
+        className
+      )}
+    >
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-lattice-border">
         <div className="flex items-center gap-3">
@@ -100,7 +123,9 @@ export function AgentPersonas({ className }: { className?: string }) {
           </div>
           <div>
             <h3 className="font-medium text-white">Agent Personas</h3>
-            <p className="text-xs text-gray-500">{personas.filter(p => p.active).length} experts available</p>
+            <p className="text-xs text-gray-500">
+              {personas.filter((p) => p.active).length} experts available
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-1">
@@ -110,7 +135,11 @@ export function AgentPersonas({ className }: { className?: string }) {
             className="p-1.5 rounded-lg hover:bg-lattice-deep text-gray-400 hover:text-neon-cyan transition-colors disabled:opacity-50"
             title="Create new agent"
           >
-            {createAgentMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <PlusCircle className="w-4 h-4" />}
+            {createAgentMutation.isPending ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <PlusCircle className="w-4 h-4" />
+            )}
           </button>
           <button
             onClick={() => setExpanded(!expanded)}
@@ -125,30 +154,37 @@ export function AgentPersonas({ className }: { className?: string }) {
 
       {/* Persona grid */}
       <div className="p-4 grid grid-cols-3 gap-2">
-        {personas.filter(p => p.active).map(persona => {
-          const Icon = AVATAR_ICONS[persona.avatar] || BookOpen;
-          const colors = AVATAR_COLORS[persona.avatar] || 'text-gray-400 bg-gray-500/20';
-          const isSelected = selectedPersona === persona.id;
+        {personas
+          .filter((p) => p.active)
+          .map((persona) => {
+            const Icon = AVATAR_ICONS[persona.avatar] || BookOpen;
+            const colors = AVATAR_COLORS[persona.avatar] || 'text-gray-400 bg-gray-500/20';
+            const isSelected = selectedPersona === persona.id;
 
-          return (
-            <button
-              key={persona.id}
-              onClick={() => setSelectedPersona(isSelected ? null : persona.id)}
-              className={cn(
-                'p-3 rounded-lg border text-center transition-all',
-                isSelected
-                  ? 'border-neon-cyan/50 bg-neon-cyan/5'
-                  : 'border-lattice-border hover:border-lattice-border/80 hover:bg-lattice-deep'
-              )}
-            >
-              <div className={cn('w-8 h-8 mx-auto rounded-lg flex items-center justify-center', colors)}>
-                <Icon className="w-4 h-4" />
-              </div>
-              <p className="text-xs font-medium text-white mt-1 truncate">{persona.name}</p>
-              <p className="text-[10px] text-gray-500">{persona.stats.queries} queries</p>
-            </button>
-          );
-        })}
+            return (
+              <button
+                key={persona.id}
+                onClick={() => setSelectedPersona(isSelected ? null : persona.id)}
+                className={cn(
+                  'p-3 rounded-lg border text-center transition-all',
+                  isSelected
+                    ? 'border-neon-cyan/50 bg-neon-cyan/5'
+                    : 'border-lattice-border hover:border-lattice-border/80 hover:bg-lattice-deep'
+                )}
+              >
+                <div
+                  className={cn(
+                    'w-8 h-8 mx-auto rounded-lg flex items-center justify-center',
+                    colors
+                  )}
+                >
+                  <Icon className="w-4 h-4" />
+                </div>
+                <p className="text-xs font-medium text-white mt-1 truncate">{persona.name}</p>
+                <p className="text-[10px] text-gray-500">{persona.stats.queries} queries</p>
+              </button>
+            );
+          })}
       </div>
 
       {/* Ask selected persona */}
@@ -158,22 +194,29 @@ export function AgentPersonas({ className }: { className?: string }) {
             <input
               type="text"
               value={question}
-              onChange={e => setQuestion(e.target.value)}
-              onKeyDown={e => {
+              onChange={(e) => setQuestion(e.target.value)}
+              onKeyDown={(e) => {
                 if (e.key === 'Enter' && question.trim() && !askMutation.isPending) {
                   askMutation.mutate({ personaId: selectedPersona, q: question.trim() });
                 }
               }}
-              placeholder={`Ask ${personas.find(p => p.id === selectedPersona)?.name}...`}
+              placeholder={`Ask ${personas.find((p) => p.id === selectedPersona)?.name}...`}
               className="flex-1 bg-lattice-deep border border-lattice-border rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-neon-cyan"
               disabled={askMutation.isPending}
             />
             <button
-              onClick={() => question.trim() && askMutation.mutate({ personaId: selectedPersona, q: question.trim() })}
+              onClick={() =>
+                question.trim() &&
+                askMutation.mutate({ personaId: selectedPersona, q: question.trim() })
+              }
               disabled={!question.trim() || askMutation.isPending}
               className="px-3 py-2 bg-neon-cyan/20 text-neon-cyan rounded-lg hover:bg-neon-cyan/30 transition-colors disabled:opacity-50"
             >
-              {askMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              {askMutation.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
             </button>
           </div>
         </div>
@@ -199,12 +242,22 @@ export function AgentPersonas({ className }: { className?: string }) {
             className="overflow-hidden"
           >
             <div className="p-4 border-t border-lattice-border space-y-2">
-              {personas.map(persona => (
-                <div key={persona.id} className="flex items-center justify-between p-2 bg-lattice-deep rounded-lg">
+              {personas.map((persona) => (
+                <div
+                  key={persona.id}
+                  className="flex items-center justify-between p-2 bg-lattice-deep rounded-lg"
+                >
                   <div className="flex items-center gap-2">
                     {(() => {
                       const Icon = AVATAR_ICONS[persona.avatar] || BookOpen;
-                      return <Icon className={cn('w-4 h-4', (AVATAR_COLORS[persona.avatar] || '').split(' ')[0])} />;
+                      return (
+                        <Icon
+                          className={cn(
+                            'w-4 h-4',
+                            (AVATAR_COLORS[persona.avatar] || '').split(' ')[0]
+                          )}
+                        />
+                      );
                     })()}
                     <div>
                       <p className="text-sm text-white">{persona.name}</p>
@@ -217,12 +270,21 @@ export function AgentPersonas({ className }: { className?: string }) {
                       <p className="text-[10px] text-gray-500">{persona.brain} brain</p>
                     </div>
                     <button
-                      onClick={() => configureAgentMutation.mutate({ personaId: persona.id, active: !persona.active })}
+                      onClick={() =>
+                        configureAgentMutation.mutate({
+                          personaId: persona.id,
+                          active: !persona.active,
+                        })
+                      }
                       disabled={configureAgentMutation.isPending}
                       className="p-1 rounded hover:bg-lattice-surface text-gray-500 hover:text-neon-cyan transition-colors disabled:opacity-50"
                       title={`Configure ${persona.name}`}
                     >
-                      {configureAgentMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Settings className="w-3.5 h-3.5" />}
+                      {configureAgentMutation.isPending ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Settings className="w-3.5 h-3.5" />
+                      )}
                     </button>
                   </div>
                 </div>
@@ -234,3 +296,7 @@ export function AgentPersonas({ className }: { className?: string }) {
     </div>
   );
 }
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedAgentPersonas = withErrorBoundary(AgentPersonas);
+export { _WrappedAgentPersonas as AgentPersonas };

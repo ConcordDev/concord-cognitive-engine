@@ -20,7 +20,7 @@ interface Conversation {
   hasUnread?: boolean;
 }
 
-export function DMIndicator({ userId, className }: DMIndicatorProps) {
+function DMIndicator({ userId, className }: DMIndicatorProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
 
@@ -95,4 +95,7 @@ export function DMIndicator({ userId, className }: DMIndicatorProps) {
   );
 }
 
-export default DMIndicator;
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedDMIndicator = withErrorBoundary(DMIndicator);
+export { _WrappedDMIndicator as DMIndicator };
+export default _WrappedDMIndicator;

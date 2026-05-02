@@ -65,7 +65,18 @@ async function getPost(postId: string) {
 
 export default async function NewsletterPage({ params }: NewsletterPageProps) {
   const { postId } = await params;
-  const post = await getPost(postId);
+
+  let post = null;
+  let fetchError: string | null = null;
+  try {
+    post = await getPost(postId);
+  } catch (err) {
+    fetchError = err instanceof Error ? err.message : 'Failed to load';
+  }
+
+  if (fetchError) {
+    return <div className="p-8 text-center text-red-400">Error: {fetchError}</div>;
+  }
 
   if (!post) {
     return (
@@ -82,7 +93,9 @@ export default async function NewsletterPage({ params }: NewsletterPageProps) {
 
   const publishDate = post.createdAt
     ? new Date(post.createdAt).toLocaleDateString('en-US', {
-        year: 'numeric', month: 'long', day: 'numeric',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
       })
     : null;
 
@@ -109,7 +122,10 @@ export default async function NewsletterPage({ params }: NewsletterPageProps) {
           {post.tags?.length > 0 && (
             <div className="flex flex-wrap justify-center gap-2 mt-4">
               {post.tags.map((tag: string) => (
-                <span key={tag} className="px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-600 text-xs">
+                <span
+                  key={tag}
+                  className="px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-600 text-xs"
+                >
                   {tag}
                 </span>
               ))}

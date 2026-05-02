@@ -247,7 +247,7 @@ export function createBackupScheduler(db, opts = {}) {
     });
 
     log("info", "backup_started", { backupId, type: backupType });
-    console.log(`[BackupScheduler] Starting ${backupType} backup (${backupId})`);
+    logger.info('lib:backup-scheduler', `Starting ${backupType} backup (${backupId})`);
 
     try {
       const scriptName = config.s3Enabled ? "backup-s3.sh" : "backup.sh";
@@ -300,7 +300,7 @@ export function createBackupScheduler(db, opts = {}) {
 
       recordBackup(entry);
       log("info", "backup_completed", { backupId, durationMs, type: entry.type });
-      console.log(`[BackupScheduler] Backup completed in ${durationMs}ms (${backupId})`);
+      logger.info('lib:backup-scheduler', `Backup completed in ${durationMs}ms (${backupId})`);
 
       currentBackup = null;
       return { ok: true, backup: entry };
@@ -338,7 +338,7 @@ export function createBackupScheduler(db, opts = {}) {
     lastCheckedMinute = currentMinute;
 
     if (cronMatches(cronParsed, now)) {
-      console.log(`[BackupScheduler] CRON match at ${now.toISOString()} — triggering backup`);
+      logger.info('lib:backup-scheduler', `CRON match at ${now.toISOString()} — triggering backup`);
       executeBackup().catch((err) => {
         console.error("[BackupScheduler] Unhandled backup error:", err.message);
       });
@@ -353,7 +353,7 @@ export function createBackupScheduler(db, opts = {}) {
      */
     start() {
       if (running) {
-        console.warn("[BackupScheduler] Already running");
+        logger.info('lib:backup-scheduler', 'Already running');
         return;
       }
       ensureTable();
@@ -367,7 +367,7 @@ export function createBackupScheduler(db, opts = {}) {
       tick();
 
       const s3Status = config.s3Enabled ? "S3 enabled" : "local-only (AWS_BUCKET not set)";
-      console.log(`[BackupScheduler] Started — schedule: "${config.schedule}" [${s3Status}]`);
+      logger.info('lib:backup-scheduler', `Started — schedule: "${config.schedule}" [${s3Status}]`);
       log("info", "backup_scheduler_started", {
         schedule: config.schedule,
         s3Enabled: config.s3Enabled,
@@ -383,7 +383,7 @@ export function createBackupScheduler(db, opts = {}) {
         tickInterval = null;
       }
       running = false;
-      console.log("[BackupScheduler] Stopped");
+      logger.info('lib:backup-scheduler', 'Stopped');
       log("info", "backup_scheduler_stopped", {});
     },
 

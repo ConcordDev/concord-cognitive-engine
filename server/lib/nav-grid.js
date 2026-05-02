@@ -185,4 +185,4 @@ class NavGrid {
   }
 }
 
-module.exports = { NavGrid };
+export { NavGrid };

@@ -19,16 +19,7 @@ import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ds } from '@/lib/design-system';
 import Link from 'next/link';
-import {
-  Brain,
-  X,
-  ArrowRight,
-  Flame,
-  AlertTriangle,
-  Sparkles,
-  Target,
-  Zap,
-} from 'lucide-react';
+import { Brain, X, ArrowRight, Flame, AlertTriangle, Sparkles, Target, Zap } from 'lucide-react';
 
 interface ResurrectionContext {
   isNewUser?: boolean;
@@ -43,7 +34,7 @@ interface ResurrectionContext {
   stats: { totalDTUs: number; domains: number };
 }
 
-export function ContextResurrection() {
+function ContextResurrection() {
   const [dismissed, setDismissed] = useState(false);
   const [shown, setShown] = useState(false);
 
@@ -70,7 +61,9 @@ export function ContextResurrection() {
   const handleDismiss = () => {
     setDismissed(true);
     const sessionKey = `concord_resurrection_${new Date().toISOString().slice(0, 10)}`;
-    try { sessionStorage.setItem(sessionKey, 'true'); } catch {}
+    try {
+      sessionStorage.setItem(sessionKey, 'true');
+    } catch {}
   };
 
   if (dismissed || !data?.context) return null;
@@ -87,7 +80,12 @@ export function ContextResurrection() {
   }
 
   return (
-    <div className={cn(ds.panel, 'relative border-neon-cyan/30 bg-gradient-to-r from-lattice-surface to-neon-cyan/5')}>
+    <div
+      className={cn(
+        ds.panel,
+        'relative border-neon-cyan/30 bg-gradient-to-r from-lattice-surface to-neon-cyan/5'
+      )}
+    >
       {/* Dismiss button */}
       <button
         onClick={handleDismiss}
@@ -135,7 +133,9 @@ export function ContextResurrection() {
         {ctx.staleDTUs.length > 0 && (
           <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-400/10 border border-amber-400/20 text-sm">
             <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
-            <span className="text-amber-300">{ctx.staleDTUs.length} stale DTU{ctx.staleDTUs.length > 1 ? 's' : ''} need attention</span>
+            <span className="text-amber-300">
+              {ctx.staleDTUs.length} stale DTU{ctx.staleDTUs.length > 1 ? 's' : ''} need attention
+            </span>
           </div>
         )}
 
@@ -163,7 +163,10 @@ export function ContextResurrection() {
           <Link
             href={`/lenses/${ctx.lastDomain}`}
             onClick={handleDismiss}
-            className={cn(ds.btnSmall, 'text-neon-cyan border border-neon-cyan/30 hover:bg-neon-cyan/20')}
+            className={cn(
+              ds.btnSmall,
+              'text-neon-cyan border border-neon-cyan/30 hover:bg-neon-cyan/20'
+            )}
           >
             Continue in {ctx.lastDomain}
             <ArrowRight className="w-3.5 h-3.5" />
@@ -173,3 +176,7 @@ export function ContextResurrection() {
     </div>
   );
 }
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedContextResurrection = withErrorBoundary(ContextResurrection);
+export { _WrappedContextResurrection as ContextResurrection };

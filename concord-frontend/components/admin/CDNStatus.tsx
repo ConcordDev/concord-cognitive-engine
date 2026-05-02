@@ -71,7 +71,7 @@ interface CDNStatusProps {
 
 // ── Component ──────────────────────────────────────────────────────────
 
-export function CDNStatus({ className }: CDNStatusProps) {
+function CDNStatus({ className }: CDNStatusProps) {
   const [purgeHash, setPurgeHash] = useState('');
   const [testUrlHash, setTestUrlHash] = useState('');
   const [testResult, setTestResult] = useState<string | null>(null);
@@ -104,7 +104,10 @@ export function CDNStatus({ className }: CDNStatusProps) {
       setPurgeHash('');
       refetch();
     } catch (e) {
-      setPurgeResult({ ok: false, message: `Purge failed: ${e instanceof Error ? e.message : String(e)}` });
+      setPurgeResult({
+        ok: false,
+        message: `Purge failed: ${e instanceof Error ? e.message : String(e)}`,
+      });
     } finally {
       setIsPurging(false);
     }
@@ -119,7 +122,10 @@ export function CDNStatus({ className }: CDNStatusProps) {
       setPurgeResult({ ok: true, message: 'All CDN cache purged successfully' });
       refetch();
     } catch (e) {
-      setPurgeResult({ ok: false, message: `Purge all failed: ${e instanceof Error ? e.message : String(e)}` });
+      setPurgeResult({
+        ok: false,
+        message: `Purge all failed: ${e instanceof Error ? e.message : String(e)}`,
+      });
     } finally {
       setIsPurgingAll(false);
     }
@@ -160,7 +166,8 @@ export function CDNStatus({ className }: CDNStatusProps) {
   const getStatusInfo = () => {
     if (!health) return { color: 'gray', label: 'Unknown', icon: WifiOff };
     if (health.status === 'healthy') return { color: 'green', label: 'Healthy', icon: Wifi };
-    if (health.status === 'unconfigured') return { color: 'yellow', label: 'Unconfigured', icon: AlertTriangle };
+    if (health.status === 'unconfigured')
+      return { color: 'yellow', label: 'Unconfigured', icon: AlertTriangle };
     return { color: 'red', label: 'Error', icon: XCircle };
   };
 
@@ -171,7 +178,9 @@ export function CDNStatus({ className }: CDNStatusProps) {
 
   if (loading && !statusData) {
     return (
-      <div className={cn('bg-lattice-surface border border-lattice-border rounded-xl p-6', className)}>
+      <div
+        className={cn('bg-lattice-surface border border-lattice-border rounded-xl p-6', className)}
+      >
         <div className="flex items-center gap-3 animate-pulse">
           <Globe className="w-5 h-5 text-gray-600" />
           <span className="text-gray-500">Loading CDN status...</span>
@@ -182,7 +191,9 @@ export function CDNStatus({ className }: CDNStatusProps) {
 
   if (error) {
     return (
-      <div className={cn('bg-lattice-surface border border-lattice-border rounded-xl p-6', className)}>
+      <div
+        className={cn('bg-lattice-surface border border-lattice-border rounded-xl p-6', className)}
+      >
         <div className="flex items-center gap-3">
           <XCircle className="w-5 h-5 text-red-400" />
           <span className="text-red-400">Failed to load CDN status</span>
@@ -207,27 +218,33 @@ export function CDNStatus({ className }: CDNStatusProps) {
           </div>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
-              <div className={cn(
-                'w-2 h-2 rounded-full',
-                statusInfo.color === 'green' && 'bg-green-400 animate-pulse',
-                statusInfo.color === 'yellow' && 'bg-yellow-400',
-                statusInfo.color === 'red' && 'bg-red-400',
-                statusInfo.color === 'gray' && 'bg-gray-400',
-              )} />
-              <StatusIcon className={cn(
-                'w-4 h-4',
-                statusInfo.color === 'green' && 'text-green-400',
-                statusInfo.color === 'yellow' && 'text-yellow-400',
-                statusInfo.color === 'red' && 'text-red-400',
-                statusInfo.color === 'gray' && 'text-gray-400',
-              )} />
-              <span className={cn(
-                'text-sm',
-                statusInfo.color === 'green' && 'text-green-400',
-                statusInfo.color === 'yellow' && 'text-yellow-400',
-                statusInfo.color === 'red' && 'text-red-400',
-                statusInfo.color === 'gray' && 'text-gray-400',
-              )}>
+              <div
+                className={cn(
+                  'w-2 h-2 rounded-full',
+                  statusInfo.color === 'green' && 'bg-green-400 animate-pulse',
+                  statusInfo.color === 'yellow' && 'bg-yellow-400',
+                  statusInfo.color === 'red' && 'bg-red-400',
+                  statusInfo.color === 'gray' && 'bg-gray-400'
+                )}
+              />
+              <StatusIcon
+                className={cn(
+                  'w-4 h-4',
+                  statusInfo.color === 'green' && 'text-green-400',
+                  statusInfo.color === 'yellow' && 'text-yellow-400',
+                  statusInfo.color === 'red' && 'text-red-400',
+                  statusInfo.color === 'gray' && 'text-gray-400'
+                )}
+              />
+              <span
+                className={cn(
+                  'text-sm',
+                  statusInfo.color === 'green' && 'text-green-400',
+                  statusInfo.color === 'yellow' && 'text-yellow-400',
+                  statusInfo.color === 'red' && 'text-red-400',
+                  statusInfo.color === 'gray' && 'text-gray-400'
+                )}
+              >
                 {statusInfo.label}
               </span>
             </div>
@@ -357,12 +374,14 @@ export function CDNStatus({ className }: CDNStatusProps) {
 
             {/* Purge result */}
             {purgeResult && (
-              <div className={cn(
-                'p-2 rounded text-xs',
-                purgeResult.ok
-                  ? 'bg-green-500/10 text-green-400 border border-green-500/20'
-                  : 'bg-red-500/10 text-red-400 border border-red-500/20'
-              )}>
+              <div
+                className={cn(
+                  'p-2 rounded text-xs',
+                  purgeResult.ok
+                    ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+                    : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                )}
+              >
                 {purgeResult.message}
               </div>
             )}
@@ -449,3 +468,7 @@ function MetricRow({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedCDNStatus = withErrorBoundary(CDNStatus);
+export { _WrappedCDNStatus as CDNStatus };

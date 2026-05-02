@@ -2,15 +2,7 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  History,
-  Clock,
-  RotateCcw,
-  ChevronDown,
-  ChevronRight,
-  User,
-  Diff
-} from 'lucide-react';
+import { History, Clock, RotateCcw, ChevronDown, ChevronRight, User, Diff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Version {
@@ -40,7 +32,7 @@ export function VersionHistory({
   currentVersion,
   onRestore,
   onCompare,
-  className
+  className,
 }: VersionHistoryProps) {
   const [expandedVersion, setExpandedVersion] = useState<number | null>(null);
   const [compareMode, setCompareMode] = useState(false);
@@ -63,9 +55,9 @@ export function VersionHistory({
 
   const toggleVersion = (version: number) => {
     if (compareMode) {
-      setSelectedVersions(prev => {
+      setSelectedVersions((prev) => {
         if (prev.includes(version)) {
-          return prev.filter(v => v !== version);
+          return prev.filter((v) => v !== version);
         }
         if (prev.length >= 2) {
           return [prev[1], version];
@@ -79,7 +71,6 @@ export function VersionHistory({
 
   const handleCompare = () => {
     if (selectedVersions.length === 2 && onCompare) {
-      console.log(`[VersionHistory] Comparing versions for DTU ${dtuId}: v${selectedVersions[0]} vs v${selectedVersions[1]}`);
       onCompare(selectedVersions[0], selectedVersions[1]);
     }
   };
@@ -112,9 +103,7 @@ export function VersionHistory({
             }}
             className={cn(
               'px-3 py-1 text-xs rounded transition-colors',
-              compareMode
-                ? 'bg-neon-purple/20 text-neon-purple'
-                : 'text-gray-400 hover:text-white'
+              compareMode ? 'bg-neon-purple/20 text-neon-purple' : 'text-gray-400 hover:text-white'
             )}
           >
             <Diff className="w-3 h-3 inline mr-1" />
@@ -145,31 +134,28 @@ export function VersionHistory({
           return (
             <div
               key={v.version}
-              className={cn(
-                'border-b border-lattice-border',
-                isSelected && 'bg-neon-purple/10'
-              )}
+              className={cn('border-b border-lattice-border', isSelected && 'bg-neon-purple/10')}
             >
               <button
                 onClick={() => toggleVersion(v.version)}
                 className="w-full px-4 py-3 flex items-start gap-3 hover:bg-lattice-surface/50 transition-colors"
               >
                 {/* Version indicator */}
-                <div className={cn(
-                  'w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0',
-                  isCurrent
-                    ? 'bg-neon-cyan/20 text-neon-cyan'
-                    : 'bg-lattice-surface text-gray-400'
-                )}>
+                <div
+                  className={cn(
+                    'w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0',
+                    isCurrent
+                      ? 'bg-neon-cyan/20 text-neon-cyan'
+                      : 'bg-lattice-surface text-gray-400'
+                  )}
+                >
                   v{v.version}
                 </div>
 
                 {/* Version info */}
                 <div className="flex-1 min-w-0 text-left">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-white truncate">
-                      {v.snapshot.title}
-                    </span>
+                    <span className="text-sm text-white truncate">{v.snapshot.title}</span>
                     {isCurrent && (
                       <span className="text-[10px] px-1.5 py-0.5 rounded bg-neon-cyan/20 text-neon-cyan">
                         Current
@@ -190,20 +176,22 @@ export function VersionHistory({
 
                 {/* Expand/select indicator */}
                 {compareMode ? (
-                  <div className={cn(
-                    'w-5 h-5 rounded border flex items-center justify-center',
-                    isSelected
-                      ? 'border-neon-purple bg-neon-purple text-white'
-                      : 'border-gray-600'
-                  )}>
-                    {isSelected && <span className="text-xs">{selectedVersions.indexOf(v.version) + 1}</span>}
+                  <div
+                    className={cn(
+                      'w-5 h-5 rounded border flex items-center justify-center',
+                      isSelected
+                        ? 'border-neon-purple bg-neon-purple text-white'
+                        : 'border-gray-600'
+                    )}
+                  >
+                    {isSelected && (
+                      <span className="text-xs">{selectedVersions.indexOf(v.version) + 1}</span>
+                    )}
                   </div>
+                ) : isExpanded ? (
+                  <ChevronDown className="w-4 h-4 text-gray-400" />
                 ) : (
-                  isExpanded ? (
-                    <ChevronDown className="w-4 h-4 text-gray-400" />
-                  ) : (
-                    <ChevronRight className="w-4 h-4 text-gray-400" />
-                  )
+                  <ChevronRight className="w-4 h-4 text-gray-400" />
                 )}
               </button>
 
@@ -220,7 +208,7 @@ export function VersionHistory({
                       {/* Tags */}
                       {v.snapshot.tags.length > 0 && (
                         <div className="flex flex-wrap gap-1 mb-3">
-                          {v.snapshot.tags.map(tag => (
+                          {v.snapshot.tags.map((tag) => (
                             <span
                               key={tag}
                               className="px-2 py-0.5 text-xs bg-lattice-surface rounded text-gray-400"

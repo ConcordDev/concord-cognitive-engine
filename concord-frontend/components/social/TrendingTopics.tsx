@@ -52,7 +52,7 @@ function AnimatedCounter({ target, duration = 1200 }: { target: number; duration
 
 // ── Main Component ───────────────────────────────────────────────────────────
 
-export function TrendingTopics({ onTopicClick, className }: TrendingTopicsProps) {
+function TrendingTopics({ onTopicClick, className }: TrendingTopicsProps) {
   const { data: topics, isLoading } = useQuery({
     queryKey: ['trending-topics'],
     queryFn: async () => {
@@ -102,9 +102,7 @@ export function TrendingTopics({ onTopicClick, className }: TrendingTopicsProps)
             className="w-full group flex items-center justify-between p-3 rounded-xl bg-lattice-deep border border-lattice-border hover:border-neon-purple/30 transition-all text-left"
           >
             <div className="flex items-center gap-2.5 min-w-0">
-              <span className="text-xs font-bold text-gray-500 w-5 text-right">
-                {idx + 1}
-              </span>
+              <span className="text-xs font-bold text-gray-500 w-5 text-right">{idx + 1}</span>
               <Hash className="w-4 h-4 text-neon-purple flex-shrink-0" />
               <span className="text-sm text-white font-medium group-hover:text-neon-purple transition-colors truncate">
                 {topic.tag}
@@ -115,9 +113,7 @@ export function TrendingTopics({ onTopicClick, className }: TrendingTopicsProps)
               <span className="text-xs text-gray-500">
                 <AnimatedCounter target={topic.count} /> posts
               </span>
-              {topic.change === 'up' && (
-                <TrendingUp className="w-3.5 h-3.5 text-green-400" />
-              )}
+              {topic.change === 'up' && <TrendingUp className="w-3.5 h-3.5 text-green-400" />}
               {topic.change === 'down' && (
                 <TrendingUp className="w-3.5 h-3.5 text-red-400 rotate-180" />
               )}
@@ -132,4 +128,7 @@ export function TrendingTopics({ onTopicClick, className }: TrendingTopicsProps)
   );
 }
 
-export default TrendingTopics;
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedTrendingTopics = withErrorBoundary(TrendingTopics);
+export { _WrappedTrendingTopics as TrendingTopics };
+export default _WrappedTrendingTopics;

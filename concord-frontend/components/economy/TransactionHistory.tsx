@@ -16,18 +16,22 @@ interface Transaction {
   created_at?: string;
 }
 
-export function TransactionHistory({ userId, limit = 20 }: { userId?: string; limit?: number }) {
+function TransactionHistory({ userId, limit = 20 }: { userId?: string; limit?: number }) {
   const { data, isLoading } = useQuery({
     queryKey: ['economy-history', userId, limit],
-    queryFn: () => apiHelpers.economy.history({ user_id: userId, limit }).then(r => r.data),
+    queryFn: () => apiHelpers.economy.history({ user_id: userId, limit }).then((r) => r.data),
     refetchInterval: 60000,
     retry: false,
   });
 
-  const transactions: Transaction[] = (data as { transactions?: Transaction[]; items?: Transaction[]; history?: Transaction[] })?.transactions
-    || (data as { transactions?: Transaction[]; items?: Transaction[]; history?: Transaction[] })?.items
-    || (data as { transactions?: Transaction[]; items?: Transaction[]; history?: Transaction[] })?.history
-    || [];
+  const transactions: Transaction[] =
+    (data as { transactions?: Transaction[]; items?: Transaction[]; history?: Transaction[] })
+      ?.transactions ||
+    (data as { transactions?: Transaction[]; items?: Transaction[]; history?: Transaction[] })
+      ?.items ||
+    (data as { transactions?: Transaction[]; items?: Transaction[]; history?: Transaction[] })
+      ?.history ||
+    [];
 
   function getIcon(type?: string) {
     switch (type) {
@@ -49,7 +53,7 @@ export function TransactionHistory({ userId, limit = 20 }: { userId?: string; li
   if (isLoading) {
     return (
       <div className="space-y-2">
-        {[1, 2, 3].map(i => (
+        {[1, 2, 3].map((i) => (
           <div key={i} className="h-10 bg-lattice-deep animate-pulse rounded-lg" />
         ))}
       </div>
@@ -74,18 +78,29 @@ export function TransactionHistory({ userId, limit = 20 }: { userId?: string; li
         >
           <span className="flex-shrink-0">{getIcon(tx.type)}</span>
           <div className="min-w-0 flex-1">
-            <p className="text-xs text-gray-300 truncate">{tx.description || tx.type || 'Transaction'}</p>
+            <p className="text-xs text-gray-300 truncate">
+              {tx.description || tx.type || 'Transaction'}
+            </p>
           </div>
-          <span className={`text-xs font-mono ${(tx.amount || 0) >= 0 ? 'text-neon-green' : 'text-red-400'}`}>
-            {(tx.amount || 0) >= 0 ? '+' : ''}{tx.amount}
+          <span
+            className={`text-xs font-mono ${(tx.amount || 0) >= 0 ? 'text-neon-green' : 'text-red-400'}`}
+          >
+            {(tx.amount || 0) >= 0 ? '+' : ''}
+            {tx.amount}
           </span>
           <span className="text-[10px] text-gray-600 flex-shrink-0">
             {(tx.timestamp || tx.created_at) &&
-              new Date(tx.timestamp || tx.created_at || '').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-            }
+              new Date(tx.timestamp || tx.created_at || '').toLocaleDateString(undefined, {
+                month: 'short',
+                day: 'numeric',
+              })}
           </span>
         </div>
       ))}
     </div>
   );
 }
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedTransactionHistory = withErrorBoundary(TransactionHistory);
+export { _WrappedTransactionHistory as TransactionHistory };

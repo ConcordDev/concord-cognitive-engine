@@ -1,0 +1,137 @@
+[
+  {
+    "id": "jax_rivera",
+    "name": "Jax Rivera",
+    "alias": "The Ghost",
+    "archetype": "shadow_assassin",
+    "faction_id": "ghost_network",
+    "role": "Leader of the Ghost Network; ex-special-forces gone independent after a betrayal",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": true,
+    "level": 22,
+    "world_id": "crime",
+    "appearance": {
+      "build": "wiry, late 20s, deceptively slim",
+      "skin": "light brown",
+      "hair": "shaved head; single glowing blue tattoo running down the side of his neck",
+      "eyes": "dark, scanning, never resting in one place too long",
+      "outfit": "black tactical hoodie, fingerless gloves, custom shadow-veil mask that bends light around him",
+      "tells": "moves like smoke — silent footfalls. The blue tattoo brightens when he uses his phasing ability."
+    },
+    "backstory": "Special forces operator with three commendations and one betrayal. His unit was sold out by their own corporate liaison on a job that should have been clean. Half his team died in front of him. The corporate liaison testified at the inquiry that the unit had gone rogue, and the inquiry believed it. Jax went actually rogue in response — disappeared from the records, surfaced six months later as 'The Ghost,' built the network of operatives who had nowhere left to go. The corporation that betrayed his unit is publicly called Luminary Industries. He has not yet decided how to settle that account.",
+    "personality_traits": ["cold", "calculating", "extremely loyal to those who earn it", "talks less than anyone else in the room", "patient about revenge"],
+    "speech_patterns": "Speaks in short complete sentences. Will go an entire conversation without making eye contact and still know exactly where everyone in the room is.",
+    "powers": [
+      {
+        "id": "phase_shift",
+        "label": "Short-range phase shift",
+        "summary": "Phases through walls / between cover positions for short bursts (~3 seconds). Cannot phase through living tissue or active electronic barriers.",
+        "tier": "core"
+      },
+      {
+        "id": "shadow_blend",
+        "label": "Near-invisibility in shadow",
+        "summary": "Mask + suit refract light around him in low-light conditions. Visible to thermal but not to standard sight. Bright light defeats it.",
+        "tier": "core"
+      },
+      {
+        "id": "enhanced_reflexes",
+        "label": "Augmented reflexes + marksmanship",
+        "summary": "Special-forces training plus surgical augmentation. He hits what he's aiming at the first time, every time, at distances most snipers wouldn't attempt.",
+        "tier": "core"
+      },
+      {
+        "id": "network_intel",
+        "label": "Ghost Network intel feed",
+        "summary": "Operatives in every major city's underground. Positions, movement patterns, and identities flow back to him through cutout channels.",
+        "tier": "passive"
+      }
+    ],
+    "weaknesses": [
+      "phase shift cannot be sustained — exiting the wrong wall costs him a second of vulnerability",
+      "bright light or thermal optics defeat shadow-blend",
+      "his loyalty to former unit survivors is a known vector — anyone close to those people can ask him things he can't say no to",
+      "he will not take a contract on a child, civilian, or someone in a uniform he respects, regardless of pay"
+    ],
+    "quest_hooks": ["luminary_betrayal_evidence", "ghost_network_recruitment", "old_unit_survivor", "the_corporate_liaison"],
+    "relationships": [
+      {"npc_id": "mama_delgado", "type": "wary_truce", "notes": "They have an unwritten cease-fire. Each could end the other but the cost would be too high. They sometimes share information when their interests align — never the same information twice."},
+      {"npc_id": "luminary_vesper", "type": "blood_target", "notes": "CROSS-WORLD. Jax has confirmed Luminary Industries authorized the betrayal of his unit. The Enforcer's investigation in the superhero world has overlapped with his own. He has not yet reached out — but he intends to."},
+      {"npc_id": "enforcer_elias", "type": "potential_ally", "notes": "CROSS-WORLD. Their interests align on Vesper Kane. Jax knows of Elias by reputation; Elias does not yet know Jax exists. Their first meeting will be cautious."}
+    ],
+    "narrative_context": {
+      "current_goal": "Get the Ghost Network the evidence necessary to expose Luminary Industries' role in the unit betrayal — without becoming the public face of the exposure.",
+      "secret": "He keeps a list of every operative who survived his original unit. Six are still alive. Three are in hiding. Two work for him now. One has been working for Luminary Industries for the last three years and does not know Jax knows.",
+      "fear": "That the operative working for Luminary is a deliberate setup — that they were sent to him as bait."
+    }
+  },
+  {
+    "id": "mama_delgado",
+    "name": "Anita 'Mama' Delgado",
+    "alias": "Iron Rose",
+    "archetype": "syndicate_matriarch",
+    "faction_id": "iron_rose_syndicate",
+    "role": "Head of the Iron Rose Syndicate; queen of the city's information economy",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": true,
+    "level": 24,
+    "world_id": "crime",
+    "appearance": {
+      "build": "heavyset, deliberate, in her early 50s",
+      "skin": "deep brown",
+      "hair": "long silver dreadlocks, often pulled back during work hours",
+      "teeth": "sharp gold canines",
+      "outfit": "luxurious but practical — long coats with hidden armor plates, gold jewelry that doubles as a knuckle reinforcement",
+      "weapon": "a massive customized shotgun she calls 'The Rose' — engraved gold inlay over polished black steel; carries it like a handbag",
+      "tells": "smiles wider when she's about to make a hard decision. Asks about your family before she ends a meeting that's about to go badly."
+    },
+    "backstory": "Started running numbers in her grandmother's kitchen when she was twelve. By twenty-five she had taken over her late husband's small operation. By forty she had absorbed every other syndicate in the city through alliance, marriage, or burial. Her power is not violence — it's information. She knows which judge takes envelopes from whom, which cop's daughter is sick, which corporate vice-president is one disclosure away from divorce. She uses that information like other people use cash.",
+    "personality_traits": ["charismatic", "ruthless when needed", "motherly in a way that does not feel safe", "patient", "deeply loyal to family-by-choice"],
+    "speech_patterns": "Warm, measured, almost folksy. Will offer you food before saying anything serious. The sentence that ends the meeting is usually the politest one.",
+    "powers": [
+      {
+        "id": "information_dominance",
+        "label": "Information dominance",
+        "summary": "Operatives, paid sources, and listening posts in every institution that matters. The syndicate's intel apparatus is functionally a private intelligence service.",
+        "tier": "core"
+      },
+      {
+        "id": "wealth_and_connections",
+        "label": "Wealth + connections",
+        "summary": "Effectively unlimited operational budget for legal and illegal work. Has personal phone numbers for two senators, the chief of police, and a Luminary vice-president.",
+        "tier": "core"
+      },
+      {
+        "id": "loyalty_network",
+        "label": "Loyalty network",
+        "summary": "Hundreds of enforcers who would die for her — or kill for her — without question. The loyalty is real because over thirty years she has bailed each of them out of something.",
+        "tier": "passive"
+      },
+      {
+        "id": "the_rose",
+        "label": "The Rose (custom shotgun)",
+        "summary": "Reinforced double-barrel custom-built. Hand-loaded for her arthritis. Loud enough that she has never had to fire it twice in the same negotiation.",
+        "tier": "personal"
+      }
+    ],
+    "weaknesses": [
+      "she does not have supernatural or augmented capabilities — physically vulnerable to anything that gets past her enforcers",
+      "her grandchildren are her unguarded flank; anyone who threatens them collapses her usual patience",
+      "her information apparatus is dependent on her personal relationships; if she is incapacitated, the network does not transfer cleanly",
+      "she has not been lied to successfully in fifteen years and might not see the next big lie coming because of it"
+    ],
+    "quest_hooks": ["iron_rose_courier", "syndicate_succession", "vesper_back_channel", "the_skimming_lieutenants"],
+    "relationships": [
+      {"npc_id": "jax_rivera", "type": "wary_truce", "notes": "Cease-fire by mutual interest. They sometimes share information; never the same kind twice. Mama once warned him a hit was coming. He returned the favor by quietly removing one of her problems."},
+      {"npc_id": "luminary_vesper", "type": "transactional_ally", "notes": "CROSS-WORLD. They have a back-channel. Vesper provides her early intelligence on regulatory threats; she provides him with names of people who can disappear. Each one knows the other will betray them eventually."},
+      {"npc_id": "seraphine_voss", "type": "respectful_distance", "notes": "CROSS-WORLD. They have never met but have corresponded by letter (delivered through neutral envoys) since Mama's syndicate began operating internationally. Each calls the other 'cousin' as a private joke neither has explained to anyone else."}
+    ],
+    "narrative_context": {
+      "current_goal": "Identify the federal task force's primary informant inside the syndicate and replace them with a controlled mouthpiece — without the task force noticing the swap.",
+      "secret": "She knows Vesper Kane is the corporation behind the Jax-unit betrayal. She has not told Jax because she still values the back-channel with Vesper more than the favor it would buy her with The Ghost.",
+      "fear": "That her oldest grandson, who refuses to enter the family business and is going to law school, will find out exactly how she funds his tuition."
+    }
+  }
+]

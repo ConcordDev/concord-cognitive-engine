@@ -4,6 +4,7 @@
 // Concordia event notifications on their linked messaging channels.
 
 import crypto from "node:crypto";
+import logger from "../../logger.js";
 
 // World action intent patterns — parse "build X in Y world" style commands
 const WORLD_ACTION_PATTERNS = [
@@ -118,7 +119,7 @@ export async function notifyUserOfWorldEvent({ userId, event, db, adapters }) {
   if (!adapter?.isConfigured()) return;
 
   const text = formatWorldEventNotification(event);
-  await adapter.sendMessage(binding.external_id, text).catch(() => {});
+  await adapter.sendMessage(binding.external_id, text).catch(err => logger?.debug?.('[cross-reality-bridge] background op failed', { err: err?.message }));
 }
 
 /**

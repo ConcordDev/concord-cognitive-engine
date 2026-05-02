@@ -2,9 +2,11 @@
  * DTU routes — extracted from server.js
  * Registered directly on app (mixed prefixes)
  */
+import path from "path";
 import { asyncHandler } from "../lib/async-handler.js";
 import { logAudit } from "../lib/audit-logger.js";
 import logger from '../logger.js';
+import { packDTUContainer, verifyContainerIntegrity } from "../lib/dtu-container.js";
 
 export default function registerDtuRoutes(app, { STATE, makeCtx, runMacro, dtuForClient, dtusArray, userVisibleDTUs, _withAck, _saveStateDebounced, validate }) {
 
@@ -274,4 +276,22 @@ export default function registerDtuRoutes(app, { STATE, makeCtx, runMacro, dtuFo
     if (!dtu) return res.status(404).json({ ok: false, error: "Definition not found" });
     return res.json({ ok: true, definition: dtu });
   });
+
+  // GET /api/dtu/:id/export — pack a DTU as a portable container archive
+  app.get("/api/dtu/:id/export", asyncHandler(async (req, res) => {
+    const dtu = dtusArray().find(d => d.id === req.params.id);
+    if (!dtu) return res.status(404).json({ ok: false, error: "DTU not found" });
+    const artifactRootDir = path.join(process.cwd(), "data", "artifacts");
+    const containerPath = await packDTUContainer(dtu, artifactRootDir);
+    res.download(containerPath, `dtu-${req.params.id}.tar.gz`, err => {
+      if (err) logger.debug("[dtus] export download error", { err: err?.message });
+    });
+  }));
+
+  // GET /api/dtu/:id/verify-container — verify integrity of a DTU container
+  app.get("/api/dtu/:id/verify-container", asyncHandler(async (req, res) => {
+    const containerPath = path.join(process.cwd(), "data", "artifacts", `dtu-${req.params.id}.tar.gz`);
+    const result = await verifyContainerIntegrity(containerPath);
+    res.json({ ok: true, ...result });
+  }));
 }

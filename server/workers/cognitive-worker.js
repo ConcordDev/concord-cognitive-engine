@@ -189,3 +189,19 @@ parentPort.on("message", async (msg) => {
 });
 
 parentPort.postMessage({ type: "ready" });
+
+process.on("uncaughtException", (err) => {
+  parentPort?.postMessage({
+    type: "tick-result",
+    results: { candidates: [], errors: [`uncaughtException: ${err?.message}`], timings: {} },
+  });
+  process.exit(1);
+});
+
+process.on("unhandledRejection", (reason) => {
+  parentPort?.postMessage({
+    type: "tick-result",
+    results: { candidates: [], errors: [`unhandledRejection: ${String(reason)}`], timings: {} },
+  });
+  process.exit(1);
+});

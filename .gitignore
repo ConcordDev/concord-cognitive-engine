@@ -27,6 +27,12 @@ server/tests/.verification_scorecard.db
 .parity-test-state-*.json
 server/.parity-test-state-*.json
 
+# Test data directories (auto-generated during E2E/integration runs)
+server/.parity-test-data-*/
+
 # Frontend build output (.next inside concord-frontend)
 concord-frontend/.next/
 concord-frontend/node_modules/
+
+# Claude Code internal state (agent worktrees, plan files, etc.)
+.claude/worktrees/

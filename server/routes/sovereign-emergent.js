@@ -1893,5 +1893,33 @@ export default function createSovereignEmergentRouter({ STATE }) {
     } catch (e) { return res.json({ ok: false, error: String(e?.message || e) }); }
   }));
 
+  // Peer review endpoints — emergents review each other's DTU drafts
+  router.get("/drafts/:draftId/reviews", asyncHandler(async (req, res) => {
+    try {
+      const mod = await loadModule("../lib/emergents/quality/peer-review.js");
+      if (!mod) return res.json({ ok: false, error: "peer-review not available" });
+      const draft = STATE.dtus?.get(req.params.draftId);
+      if (!draft) return res.status(404).json({ ok: false, error: "draft not found" });
+      const reviewers = mod.selectReviewers(draft, null, { count: 2 });
+      return res.json({ ok: true, draftId: req.params.draftId, reviewers, reviewCount: reviewers.length });
+    } catch (e) { return res.json({ ok: false, error: String(e?.message || e) }); }
+  }));
+
+  router.post("/drafts/:draftId/review", asyncHandler(async (req, res) => {
+    try {
+      const mod = await loadModule("../lib/emergents/quality/peer-review.js");
+      if (!mod) return res.json({ ok: false, error: "peer-review not available" });
+      const draft = STATE.dtus?.get(req.params.draftId);
+      if (!draft) return res.status(404).json({ ok: false, error: "draft not found" });
+      const reviewers = mod.selectReviewers(draft, null, { count: 2 });
+      const reviews = await Promise.all(
+        reviewers.map(r => mod.peerReview(r, draft, null, null).catch(e => ({ error: e?.message })))
+      );
+      const validReviews = reviews.filter(r => !r.error);
+      const consensus = validReviews.length ? mod.determineConsensus(validReviews) : null;
+      return res.json({ ok: true, draftId: req.params.draftId, reviews, consensus });
+    } catch (e) { return res.json({ ok: false, error: String(e?.message || e) }); }
+  }));
+
   return router;
 }

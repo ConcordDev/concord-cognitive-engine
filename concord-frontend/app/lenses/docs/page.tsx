@@ -6,7 +6,25 @@ import { api } from '@/lib/api/client';
 import { useState, useMemo, useCallback } from 'react';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useLensData } from '@/lib/hooks/use-lens-data';
-import { Book, ChevronRight, Search, Layers, ChevronDown, Code2, GitBranch, FileJson, Shield, RefreshCw, CheckCircle2, AlertCircle, FileText, Clock, Zap, Loader2, Upload } from 'lucide-react';
+import {
+  Book,
+  ChevronRight,
+  Search,
+  Layers,
+  ChevronDown,
+  Code2,
+  GitBranch,
+  FileJson,
+  Shield,
+  RefreshCw,
+  CheckCircle2,
+  AlertCircle,
+  FileText,
+  Clock,
+  Zap,
+  Loader2,
+  Upload,
+} from 'lucide-react';
 import { ArtifactUploader } from '@/components/artifact/ArtifactUploader';
 import { motion } from 'framer-motion';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
@@ -156,7 +174,13 @@ const sections = [
 
 export default function DocsLensPage() {
   useLensNav('docs');
-  const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('docs');
+  const {
+    latestData: realtimeData,
+    alerts: realtimeAlerts,
+    insights: realtimeInsights,
+    isLive,
+    lastUpdated,
+  } = useRealtimeLens('docs');
 
   // --- Domain action state ---
   const { items: docsItems } = useLensData('docs', 'document', { seed: [] });
@@ -164,22 +188,40 @@ export default function DocsLensPage() {
   const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
   const [activeAction, setActiveAction] = useState<string | null>(null);
 
-  const handleDocsAction = useCallback(async (action: string) => {
-    const targetId = docsItems[0]?.id;
-    if (!targetId) return;
-    setActiveAction(action);
-    setActionResult(null);
-    try {
-      const res = await runAction.mutateAsync({ id: targetId, action });
-      if (res.ok === false) { setActionResult({ message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setActionResult(res.result as Record<string, unknown>); }
-    } catch (e) { console.error(`Action ${action} failed:`, e); setActionResult({ message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` }); }
-    setActiveAction(null);
-  }, [docsItems, runAction]);
+  const handleDocsAction = useCallback(
+    async (action: string) => {
+      const targetId = docsItems[0]?.id;
+      if (!targetId) return;
+      setActiveAction(action);
+      setActionResult(null);
+      try {
+        const res = await runAction.mutateAsync({ id: targetId, action });
+        if (res.ok === false) {
+          setActionResult({
+            message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}`,
+          });
+        } else {
+          setActionResult(res.result as Record<string, unknown>);
+        }
+      } catch (e) {
+        console.error(`Action ${action} failed:`, e);
+        setActionResult({
+          message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}`,
+        });
+      }
+      setActiveAction(null);
+    },
+    [docsItems, runAction]
+  );
 
   // Fetch live API documentation from the server
-  const { data: liveApiDocs } = useQuery({
+  const {
+    data: liveApiDocs,
+    isLoading: docsLoading,
+    isError: docsError,
+  } = useQuery({
     queryKey: ['api-docs'],
-    queryFn: () => api.get('/api/v1/docs').then(r => r.data),
+    queryFn: () => api.get('/api/v1/docs').then((r) => r.data),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -201,6 +243,40 @@ export default function DocsLensPage() {
 
   const currentContent = selectedSection ? sectionContent[selectedSection] : null;
 
+  if (docsLoading) {
+    return (
+      <div className="p-6 space-y-6 animate-pulse">
+        <div className="h-8 bg-lattice-surface rounded-lg w-1/4" />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="h-16 bg-lattice-surface rounded-xl" />
+          ))}
+        </div>
+        <div className="h-48 bg-lattice-surface rounded-xl" />
+      </div>
+    );
+  }
+
+  if (docsError) {
+    return (
+      <div className="p-6 flex items-center justify-center min-h-[40vh]">
+        <div className="text-center space-y-3">
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto" />
+          <h2 className="text-lg font-semibold text-white">Failed to load documentation</h2>
+          <p className="text-sm text-gray-400">
+            Could not fetch API docs. Please refresh the page.
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="text-xs text-neon-cyan hover:underline"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div data-lens-theme="docs" className="p-6 space-y-6">
       <header className="flex items-center justify-between">
@@ -208,48 +284,66 @@ export default function DocsLensPage() {
           <span className="text-2xl">📚</span>
           <div>
             <h1 className="text-xl font-bold">Docs Lens</h1>
-            <p className="text-sm text-gray-400">
-              Concord system documentation and guides
-            </p>
+            <p className="text-sm text-gray-400">Concord system documentation and guides</p>
           </div>
 
-      {/* Real-time Enhancement Toolbar */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-        <DTUExportButton domain="docs" data={realtimeData || {}} compact />
-        {realtimeAlerts.length > 0 && (
-          <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
-            {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
-          </span>
-        )}
-      </div>
+          {/* Real-time Enhancement Toolbar */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+            <DTUExportButton domain="docs" data={realtimeData || {}} compact />
+            {realtimeAlerts.length > 0 && (
+              <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
+                {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
         </div>
       </header>
 
       {/* Quick Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 * 0.05 }} className="panel p-3 flex items-center gap-3">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0 * 0.05 }}
+          className="panel p-3 flex items-center gap-3"
+        >
           <FileText className="w-5 h-5 text-neon-blue" />
           <div>
             <p className="text-lg font-bold">{sections.length}</p>
             <p className="text-xs text-gray-500">Total Docs</p>
           </div>
         </motion.div>
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1 * 0.05 }} className="panel p-3 flex items-center gap-3">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 1 * 0.05 }}
+          className="panel p-3 flex items-center gap-3"
+        >
           <Clock className="w-5 h-5 text-neon-green" />
           <div>
             <p className="text-lg font-bold">3</p>
             <p className="text-xs text-gray-500">Recently Updated</p>
           </div>
         </motion.div>
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 2 * 0.05 }} className="panel p-3 flex items-center gap-3">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 2 * 0.05 }}
+          className="panel p-3 flex items-center gap-3"
+        >
           <GitBranch className="w-5 h-5 text-neon-purple" />
           <div>
             <p className="text-lg font-bold">4</p>
             <p className="text-xs text-gray-500">Version Count</p>
           </div>
         </motion.div>
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 3 * 0.05 }} className="panel p-3 flex items-center gap-3">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 3 * 0.05 }}
+          className="panel p-3 flex items-center gap-3"
+        >
           <CheckCircle2 className="w-5 h-5 text-neon-cyan" />
           <div>
             <p className="text-lg font-bold">98%</p>
@@ -264,152 +358,253 @@ export default function DocsLensPage() {
           <Zap className="w-4 h-4 text-neon-blue" /> AI Document Analysis
         </h3>
         <div className="flex flex-wrap gap-2">
-          {(['readabilityScore','crossReference','versionDiff'] as const).map(action => (
+          {(['readabilityScore', 'crossReference', 'versionDiff'] as const).map((action) => (
             <button
               key={action}
               onClick={() => handleDocsAction(action)}
               disabled={activeAction !== null || !docsItems[0]?.id}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded bg-neon-blue/10 border border-neon-blue/30 text-neon-blue hover:bg-neon-blue/20 disabled:opacity-50 transition-colors"
             >
-              {activeAction === action ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
-              {action === 'readabilityScore' ? 'Readability Score' : action === 'crossReference' ? 'Cross Reference' : 'Version Diff'}
+              {activeAction === action ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                <Zap className="w-3 h-3" />
+              )}
+              {action === 'readabilityScore'
+                ? 'Readability Score'
+                : action === 'crossReference'
+                  ? 'Cross Reference'
+                  : 'Version Diff'}
             </button>
           ))}
         </div>
 
         {/* readabilityScore result */}
-        {actionResult && actionResult.metrics !== undefined && actionResult.summary !== undefined && (
-          <div className="space-y-3 pt-2 border-t border-white/5">
-            <div className="grid grid-cols-4 gap-2">
-              <div className="p-2 bg-lattice-surface rounded text-center">
-                <p className={`text-lg font-bold ${Number((actionResult.metrics as Record<string,number>)?.fleschReadingEase) >= 60 ? 'text-neon-green' : Number((actionResult.metrics as Record<string,number>)?.fleschReadingEase) >= 30 ? 'text-yellow-400' : 'text-red-400'}`}>
-                  {String((actionResult.metrics as Record<string,number>)?.fleschReadingEase ?? 0)}
-                </p>
-                <p className="text-[10px] text-gray-500">Flesch Ease</p>
+        {actionResult &&
+          actionResult.metrics !== undefined &&
+          actionResult.summary !== undefined && (
+            <div className="space-y-3 pt-2 border-t border-white/5">
+              <div className="grid grid-cols-4 gap-2">
+                <div className="p-2 bg-lattice-surface rounded text-center">
+                  <p
+                    className={`text-lg font-bold ${Number((actionResult.metrics as Record<string, number>)?.fleschReadingEase) >= 60 ? 'text-neon-green' : Number((actionResult.metrics as Record<string, number>)?.fleschReadingEase) >= 30 ? 'text-yellow-400' : 'text-red-400'}`}
+                  >
+                    {String(
+                      (actionResult.metrics as Record<string, number>)?.fleschReadingEase ?? 0
+                    )}
+                  </p>
+                  <p className="text-[10px] text-gray-500">Flesch Ease</p>
+                </div>
+                <div className="p-2 bg-lattice-surface rounded text-center">
+                  <p className="text-lg font-bold text-neon-cyan">
+                    {String(
+                      (actionResult.summary as Record<string, unknown>)?.averageGradeLevel ?? 0
+                    )}
+                  </p>
+                  <p className="text-[10px] text-gray-500">Grade Level</p>
+                </div>
+                <div className="p-2 bg-lattice-surface rounded text-center">
+                  <p className="text-lg font-bold text-neon-purple">
+                    {String((actionResult.statistics as Record<string, unknown>)?.wordCount ?? 0)}
+                  </p>
+                  <p className="text-[10px] text-gray-500">Words</p>
+                </div>
+                <div className="p-2 bg-lattice-surface rounded text-center">
+                  <p className="text-lg font-bold text-yellow-400">
+                    {String(
+                      (actionResult.summary as Record<string, unknown>)?.readingTimeMinutes ?? 0
+                    )}
+                    m
+                  </p>
+                  <p className="text-[10px] text-gray-500">Read Time</p>
+                </div>
               </div>
-              <div className="p-2 bg-lattice-surface rounded text-center">
-                <p className="text-lg font-bold text-neon-cyan">{String((actionResult.summary as Record<string,unknown>)?.averageGradeLevel ?? 0)}</p>
-                <p className="text-[10px] text-gray-500">Grade Level</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="p-2 bg-lattice-surface rounded text-xs">
+                  <p className="text-gray-500 mb-1">Difficulty</p>
+                  <span
+                    className={`px-2 py-0.5 rounded text-[10px] font-medium ${
+                      (actionResult.summary as Record<string, string>)?.difficulty === 'elementary'
+                        ? 'bg-neon-green/20 text-neon-green'
+                        : (actionResult.summary as Record<string, string>)?.difficulty ===
+                            'middle-school'
+                          ? 'bg-neon-cyan/20 text-neon-cyan'
+                          : (actionResult.summary as Record<string, string>)?.difficulty ===
+                              'high-school'
+                            ? 'bg-yellow-400/20 text-yellow-400'
+                            : 'bg-red-400/20 text-red-400'
+                    }`}
+                  >
+                    {String(
+                      (actionResult.summary as Record<string, string>)?.difficulty ?? '—'
+                    ).replace('-', ' ')}
+                  </span>
+                </div>
+                <div className="p-2 bg-lattice-surface rounded text-xs">
+                  <p className="text-gray-500 mb-1">Flesch Category</p>
+                  <span className="text-gray-300">
+                    {String(
+                      (actionResult.summary as Record<string, string>)?.fleschCategory ?? '—'
+                    )}
+                  </span>
+                </div>
               </div>
-              <div className="p-2 bg-lattice-surface rounded text-center">
-                <p className="text-lg font-bold text-neon-purple">{String((actionResult.statistics as Record<string,unknown>)?.wordCount ?? 0)}</p>
-                <p className="text-[10px] text-gray-500">Words</p>
-              </div>
-              <div className="p-2 bg-lattice-surface rounded text-center">
-                <p className="text-lg font-bold text-yellow-400">{String((actionResult.summary as Record<string,unknown>)?.readingTimeMinutes ?? 0)}m</p>
-                <p className="text-[10px] text-gray-500">Read Time</p>
-              </div>
+              {!!actionResult.technicalIndicators && (
+                <div className="grid grid-cols-3 gap-2 text-xs">
+                  <div className="p-2 bg-lattice-surface rounded text-center">
+                    <p className="text-sm font-bold text-orange-400">
+                      {String(
+                        (actionResult.technicalIndicators as Record<string, unknown>)
+                          ?.abbreviationCount ?? 0
+                      )}
+                    </p>
+                    <p className="text-[10px] text-gray-500">Abbrevs</p>
+                  </div>
+                  <div className="p-2 bg-lattice-surface rounded text-center">
+                    <p className="text-sm font-bold text-red-400">
+                      {String(
+                        (actionResult.technicalIndicators as Record<string, unknown>)
+                          ?.longSentenceCount ?? 0
+                      )}
+                    </p>
+                    <p className="text-[10px] text-gray-500">Long Sentences</p>
+                  </div>
+                  <div className="p-2 bg-lattice-surface rounded text-center">
+                    <p className="text-sm font-bold text-yellow-400">
+                      {String(
+                        (actionResult.technicalIndicators as Record<string, unknown>)
+                          ?.passiveVoiceInstances ?? 0
+                      )}
+                    </p>
+                    <p className="text-[10px] text-gray-500">Passive Voice</p>
+                  </div>
+                </div>
+              )}
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="p-2 bg-lattice-surface rounded text-xs">
-                <p className="text-gray-500 mb-1">Difficulty</p>
-                <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${
-                  (actionResult.summary as Record<string,string>)?.difficulty === 'elementary' ? 'bg-neon-green/20 text-neon-green' :
-                  (actionResult.summary as Record<string,string>)?.difficulty === 'middle-school' ? 'bg-neon-cyan/20 text-neon-cyan' :
-                  (actionResult.summary as Record<string,string>)?.difficulty === 'high-school' ? 'bg-yellow-400/20 text-yellow-400' :
-                  'bg-red-400/20 text-red-400'
-                }`}>
-                  {String((actionResult.summary as Record<string,string>)?.difficulty ?? '—').replace('-', ' ')}
-                </span>
-              </div>
-              <div className="p-2 bg-lattice-surface rounded text-xs">
-                <p className="text-gray-500 mb-1">Flesch Category</p>
-                <span className="text-gray-300">{String((actionResult.summary as Record<string,string>)?.fleschCategory ?? '—')}</span>
-              </div>
-            </div>
-            {!!actionResult.technicalIndicators && (
-              <div className="grid grid-cols-3 gap-2 text-xs">
-                <div className="p-2 bg-lattice-surface rounded text-center">
-                  <p className="text-sm font-bold text-orange-400">{String((actionResult.technicalIndicators as Record<string,unknown>)?.abbreviationCount ?? 0)}</p>
-                  <p className="text-[10px] text-gray-500">Abbrevs</p>
-                </div>
-                <div className="p-2 bg-lattice-surface rounded text-center">
-                  <p className="text-sm font-bold text-red-400">{String((actionResult.technicalIndicators as Record<string,unknown>)?.longSentenceCount ?? 0)}</p>
-                  <p className="text-[10px] text-gray-500">Long Sentences</p>
-                </div>
-                <div className="p-2 bg-lattice-surface rounded text-center">
-                  <p className="text-sm font-bold text-yellow-400">{String((actionResult.technicalIndicators as Record<string,unknown>)?.passiveVoiceInstances ?? 0)}</p>
-                  <p className="text-[10px] text-gray-500">Passive Voice</p>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+          )}
 
         {/* crossReference result */}
-        {actionResult && actionResult.graphDensity !== undefined && actionResult.totalPages !== undefined && (
-          <div className="space-y-3 pt-2 border-t border-white/5">
-            <div className="grid grid-cols-4 gap-2">
-              <div className="p-2 bg-lattice-surface rounded text-center">
-                <p className="text-lg font-bold text-neon-cyan">{String(actionResult.totalPages)}</p>
-                <p className="text-[10px] text-gray-500">Pages</p>
+        {actionResult &&
+          actionResult.graphDensity !== undefined &&
+          actionResult.totalPages !== undefined && (
+            <div className="space-y-3 pt-2 border-t border-white/5">
+              <div className="grid grid-cols-4 gap-2">
+                <div className="p-2 bg-lattice-surface rounded text-center">
+                  <p className="text-lg font-bold text-neon-cyan">
+                    {String(actionResult.totalPages)}
+                  </p>
+                  <p className="text-[10px] text-gray-500">Pages</p>
+                </div>
+                <div className="p-2 bg-lattice-surface rounded text-center">
+                  <p className="text-lg font-bold text-neon-green">
+                    {String(actionResult.totalLinks)}
+                  </p>
+                  <p className="text-[10px] text-gray-500">Links</p>
+                </div>
+                <div className="p-2 bg-lattice-surface rounded text-center">
+                  <p
+                    className={`text-lg font-bold ${Number((actionResult.brokenLinks as Record<string, number>)?.count) > 0 ? 'text-red-400' : 'text-neon-green'}`}
+                  >
+                    {String((actionResult.brokenLinks as Record<string, number>)?.count ?? 0)}
+                  </p>
+                  <p className="text-[10px] text-gray-500">Broken Links</p>
+                </div>
+                <div className="p-2 bg-lattice-surface rounded text-center">
+                  <p
+                    className={`text-lg font-bold ${Number(actionResult.healthScore) >= 80 ? 'text-neon-green' : Number(actionResult.healthScore) >= 60 ? 'text-yellow-400' : 'text-red-400'}`}
+                  >
+                    {String(actionResult.healthScore ?? 0)}
+                  </p>
+                  <p className="text-[10px] text-gray-500">Health Score</p>
+                </div>
               </div>
-              <div className="p-2 bg-lattice-surface rounded text-center">
-                <p className="text-lg font-bold text-neon-green">{String(actionResult.totalLinks)}</p>
-                <p className="text-[10px] text-gray-500">Links</p>
+              <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-neon-blue rounded-full transition-all"
+                  style={{ width: `${actionResult.healthScore ?? 0}%` }}
+                />
               </div>
-              <div className="p-2 bg-lattice-surface rounded text-center">
-                <p className={`text-lg font-bold ${Number((actionResult.brokenLinks as Record<string,number>)?.count) > 0 ? 'text-red-400' : 'text-neon-green'}`}>
-                  {String((actionResult.brokenLinks as Record<string,number>)?.count ?? 0)}
-                </p>
-                <p className="text-[10px] text-gray-500">Broken Links</p>
-              </div>
-              <div className="p-2 bg-lattice-surface rounded text-center">
-                <p className={`text-lg font-bold ${Number(actionResult.healthScore) >= 80 ? 'text-neon-green' : Number(actionResult.healthScore) >= 60 ? 'text-yellow-400' : 'text-red-400'}`}>
-                  {String(actionResult.healthScore ?? 0)}
-                </p>
-                <p className="text-[10px] text-gray-500">Health Score</p>
-              </div>
+              {!!actionResult.orphanPages &&
+                Number((actionResult.orphanPages as Record<string, number>)?.count) > 0 && (
+                  <p className="text-xs text-yellow-400 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />{' '}
+                    {String((actionResult.orphanPages as Record<string, number>).count)} orphan
+                    page(s)
+                  </p>
+                )}
+              {!!actionResult.circularReferences &&
+                Number((actionResult.circularReferences as Record<string, number>)?.count) > 0 && (
+                  <p className="text-xs text-red-400 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />{' '}
+                    {String((actionResult.circularReferences as Record<string, number>).count)}{' '}
+                    circular reference(s)
+                  </p>
+                )}
             </div>
-            <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-              <div className="h-full bg-neon-blue rounded-full transition-all" style={{ width: `${actionResult.healthScore ?? 0}%` }} />
-            </div>
-            {!!actionResult.orphanPages && Number((actionResult.orphanPages as Record<string,number>)?.count) > 0 && (
-              <p className="text-xs text-yellow-400 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {String((actionResult.orphanPages as Record<string,number>).count)} orphan page(s)</p>
-            )}
-            {!!actionResult.circularReferences && Number((actionResult.circularReferences as Record<string,number>)?.count) > 0 && (
-              <p className="text-xs text-red-400 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {String((actionResult.circularReferences as Record<string,number>).count)} circular reference(s)</p>
-            )}
-          </div>
-        )}
+          )}
 
         {/* versionDiff result */}
-        {actionResult && actionResult.changeSignificance !== undefined && actionResult.summary !== undefined && actionResult.wordDelta !== undefined && (
-          <div className="space-y-3 pt-2 border-t border-white/5">
-            <div className="grid grid-cols-3 gap-2">
-              <div className="p-2 bg-lattice-surface rounded text-center">
-                <p className={`text-lg font-bold ${Number(actionResult.changeSignificance) >= 70 ? 'text-red-400' : Number(actionResult.changeSignificance) >= 40 ? 'text-yellow-400' : 'text-neon-green'}`}>
-                  {String(actionResult.changeSignificance)}
-                </p>
-                <p className="text-[10px] text-gray-500">Significance</p>
+        {actionResult &&
+          actionResult.changeSignificance !== undefined &&
+          actionResult.summary !== undefined &&
+          actionResult.wordDelta !== undefined && (
+            <div className="space-y-3 pt-2 border-t border-white/5">
+              <div className="grid grid-cols-3 gap-2">
+                <div className="p-2 bg-lattice-surface rounded text-center">
+                  <p
+                    className={`text-lg font-bold ${Number(actionResult.changeSignificance) >= 70 ? 'text-red-400' : Number(actionResult.changeSignificance) >= 40 ? 'text-yellow-400' : 'text-neon-green'}`}
+                  >
+                    {String(actionResult.changeSignificance)}
+                  </p>
+                  <p className="text-[10px] text-gray-500">Significance</p>
+                </div>
+                <div className="p-2 bg-lattice-surface rounded text-center">
+                  <p
+                    className={`text-lg font-bold ${Number(actionResult.wordDelta) >= 0 ? 'text-neon-green' : 'text-red-400'}`}
+                  >
+                    {Number(actionResult.wordDelta) >= 0 ? '+' : ''}
+                    {String(actionResult.wordDelta)}
+                  </p>
+                  <p className="text-[10px] text-gray-500">Word Delta</p>
+                </div>
+                <div className="p-2 bg-lattice-surface rounded text-center">
+                  <p className="text-xs font-bold text-neon-cyan capitalize">
+                    {String(actionResult.significanceLabel ?? '—')}
+                  </p>
+                  <p className="text-[10px] text-gray-500">Label</p>
+                </div>
               </div>
-              <div className="p-2 bg-lattice-surface rounded text-center">
-                <p className={`text-lg font-bold ${Number(actionResult.wordDelta) >= 0 ? 'text-neon-green' : 'text-red-400'}`}>{Number(actionResult.wordDelta) >= 0 ? '+' : ''}{String(actionResult.wordDelta)}</p>
-                <p className="text-[10px] text-gray-500">Word Delta</p>
-              </div>
-              <div className="p-2 bg-lattice-surface rounded text-center">
-                <p className="text-xs font-bold text-neon-cyan capitalize">{String(actionResult.significanceLabel ?? '—')}</p>
-                <p className="text-[10px] text-gray-500">Label</p>
-              </div>
+              {!!actionResult.summary && (
+                <div className="grid grid-cols-5 gap-1 text-center">
+                  {Object.entries(actionResult.summary as Record<string, number>).map(
+                    ([key, val]) => (
+                      <div
+                        key={key}
+                        className={`p-1.5 rounded text-xs ${
+                          key === 'added'
+                            ? 'bg-neon-green/10 border border-neon-green/20'
+                            : key === 'deleted'
+                              ? 'bg-red-400/10 border border-red-400/20'
+                              : key === 'modified'
+                                ? 'bg-yellow-400/10 border border-yellow-400/20'
+                                : key === 'moved'
+                                  ? 'bg-neon-purple/10 border border-neon-purple/20'
+                                  : 'bg-white/5 border border-white/5'
+                        }`}
+                      >
+                        <p
+                          className={`font-bold ${key === 'added' ? 'text-neon-green' : key === 'deleted' ? 'text-red-400' : key === 'modified' ? 'text-yellow-400' : key === 'moved' ? 'text-neon-purple' : 'text-gray-400'}`}
+                        >
+                          {val}
+                        </p>
+                        <p className="text-[10px] text-gray-500 capitalize">{key}</p>
+                      </div>
+                    )
+                  )}
+                </div>
+              )}
             </div>
-            {!!actionResult.summary && (
-              <div className="grid grid-cols-5 gap-1 text-center">
-                {Object.entries(actionResult.summary as Record<string, number>).map(([key, val]) => (
-                  <div key={key} className={`p-1.5 rounded text-xs ${
-                    key === 'added' ? 'bg-neon-green/10 border border-neon-green/20' :
-                    key === 'deleted' ? 'bg-red-400/10 border border-red-400/20' :
-                    key === 'modified' ? 'bg-yellow-400/10 border border-yellow-400/20' :
-                    key === 'moved' ? 'bg-neon-purple/10 border border-neon-purple/20' :
-                    'bg-white/5 border border-white/5'
-                  }`}>
-                    <p className={`font-bold ${key === 'added' ? 'text-neon-green' : key === 'deleted' ? 'text-red-400' : key === 'modified' ? 'text-yellow-400' : key === 'moved' ? 'text-neon-purple' : 'text-gray-400'}`}>{val}</p>
-                    <p className="text-[10px] text-gray-500 capitalize">{key}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+          )}
 
         {actionResult && !!actionResult.message && (
           <p className="text-xs text-gray-400 italic pt-1">{String(actionResult.message)}</p>
@@ -464,7 +659,9 @@ export default function DocsLensPage() {
               </h2>
               <div className="text-gray-300 space-y-4">
                 {currentContent.body.split('\n\n').map((paragraph, idx) => (
-                  <p key={idx} className="whitespace-pre-line">{paragraph}</p>
+                  <p key={idx} className="whitespace-pre-line">
+                    {paragraph}
+                  </p>
                 ))}
               </div>
             </div>
@@ -472,9 +669,7 @@ export default function DocsLensPage() {
             <div className="text-center py-12">
               <Book className="w-16 h-16 text-gray-600 mx-auto mb-4" />
               <h2 className="text-xl font-semibold mb-2">Welcome to Concord Docs</h2>
-              <p className="text-gray-400 mb-6">
-                Select a section from the sidebar to get started
-              </p>
+              <p className="text-gray-400 mb-6">Select a section from the sidebar to get started</p>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {sections.slice(0, 4).map((section) => (
                   <button
@@ -491,32 +686,30 @@ export default function DocsLensPage() {
           )}
         </div>
 
-      {/* File Upload */}
-      <div className="panel p-4 space-y-3">
-        <h3 className="text-sm font-semibold text-gray-300 flex items-center gap-2">
-          <Upload className="w-4 h-4 text-neon-green" /> Upload Document
-        </h3>
-        <ArtifactUploader
-          lens="docs"
-          onUploadComplete={(dtuId) => {
-            console.log('[Docs] Uploaded artifact:', dtuId);
-          }}
-          acceptTypes=".pdf,.md,.txt,.docx,.json,.csv"
-          compact
-        />
-      </div>
+        {/* File Upload */}
+        <div className="panel p-4 space-y-3">
+          <h3 className="text-sm font-semibold text-gray-300 flex items-center gap-2">
+            <Upload className="w-4 h-4 text-neon-green" /> Upload Document
+          </h3>
+          <ArtifactUploader
+            lens="docs"
+            onUploadComplete={(_dtuId) => {}}
+            acceptTypes=".pdf,.md,.txt,.docx,.json,.csv"
+            compact
+          />
+        </div>
 
-      {/* Real-time Data Panel */}
-      {realtimeData && (
-        <RealtimeDataPanel
-          domain="docs"
-          data={realtimeData}
-          isLive={isLive}
-          lastUpdated={lastUpdated}
-          insights={realtimeInsights}
-          compact
-        />
-      )}
+        {/* Real-time Data Panel */}
+        {realtimeData && (
+          <RealtimeDataPanel
+            domain="docs"
+            data={realtimeData}
+            isLive={isLive}
+            lastUpdated={lastUpdated}
+            insights={realtimeInsights}
+            compact
+          />
+        )}
       </div>
 
       {/* Documentation Hub — Auto-Generated API Docs & Version Tracking */}
@@ -536,7 +729,9 @@ export default function DocsLensPage() {
               <FileJson className="w-4 h-4 text-neon-cyan" />
               <span className="text-sm font-semibold text-white">REST Endpoints</span>
             </div>
-            <p className="text-2xl font-bold text-neon-cyan">{liveApiDocs?.endpoints?.length ?? 47}</p>
+            <p className="text-2xl font-bold text-neon-cyan">
+              {liveApiDocs?.endpoints?.length ?? 47}
+            </p>
             <p className="text-xs text-gray-500">Across {liveApiDocs?.domainCount ?? 12} domains</p>
             <div className="flex items-center gap-1 text-xs text-neon-green">
               <CheckCircle2 className="w-3 h-3" />
@@ -548,7 +743,9 @@ export default function DocsLensPage() {
               <GitBranch className="w-4 h-4 text-neon-purple" />
               <span className="text-sm font-semibold text-white">API Version</span>
             </div>
-            <p className="text-2xl font-bold text-neon-purple">{liveApiDocs?.version ?? 'v2.4.1'}</p>
+            <p className="text-2xl font-bold text-neon-purple">
+              {liveApiDocs?.version ?? 'v2.4.1'}
+            </p>
             <p className="text-xs text-gray-500">Released 3 days ago</p>
             <div className="flex items-center gap-1 text-xs text-yellow-400">
               <AlertCircle className="w-3 h-3" />
@@ -584,40 +781,99 @@ export default function DocsLensPage() {
           <div className="divide-y divide-white/5">
             {(() => {
               const fallbackEndpoints = [
-                { method: 'GET', path: '/api/dtus', desc: 'List all DTUs with pagination', status: 'stable' },
+                {
+                  method: 'GET',
+                  path: '/api/dtus',
+                  desc: 'List all DTUs with pagination',
+                  status: 'stable',
+                },
                 { method: 'POST', path: '/api/dtus', desc: 'Create a new DTU', status: 'stable' },
-                { method: 'POST', path: '/api/forge/auto', desc: 'AI-generated DTU creation', status: 'stable' },
-                { method: 'GET', path: '/api/graph/nodes', desc: 'Fetch knowledge graph nodes', status: 'stable' },
-                { method: 'POST', path: '/api/chat', desc: 'Natural language query interface', status: 'beta' },
-                { method: 'GET', path: '/api/council/queue', desc: 'Pending governance proposals', status: 'stable' },
-                { method: 'POST', path: '/api/economy/tip', desc: 'Send CC tip to a creator', status: 'beta' },
-                { method: 'GET', path: '/api/reflection/status', desc: 'Self-model reflection status', status: 'stable' },
+                {
+                  method: 'POST',
+                  path: '/api/forge/auto',
+                  desc: 'AI-generated DTU creation',
+                  status: 'stable',
+                },
+                {
+                  method: 'GET',
+                  path: '/api/graph/nodes',
+                  desc: 'Fetch knowledge graph nodes',
+                  status: 'stable',
+                },
+                {
+                  method: 'POST',
+                  path: '/api/chat',
+                  desc: 'Natural language query interface',
+                  status: 'beta',
+                },
+                {
+                  method: 'GET',
+                  path: '/api/council/queue',
+                  desc: 'Pending governance proposals',
+                  status: 'stable',
+                },
+                {
+                  method: 'POST',
+                  path: '/api/economy/tip',
+                  desc: 'Send CC tip to a creator',
+                  status: 'beta',
+                },
+                {
+                  method: 'GET',
+                  path: '/api/reflection/status',
+                  desc: 'Self-model reflection status',
+                  status: 'stable',
+                },
               ];
-              const endpoints = liveApiDocs?.endpoints?.length > 0
-                ? liveApiDocs.endpoints.map((ep: { method?: string; path?: string; description?: string; status?: string }) => ({
-                    method: ep.method ?? 'GET',
-                    path: ep.path ?? '',
-                    desc: ep.description ?? '',
-                    status: ep.status ?? 'stable',
-                  }))
-                : fallbackEndpoints;
+              const endpoints =
+                liveApiDocs?.endpoints?.length > 0
+                  ? liveApiDocs.endpoints.map(
+                      (ep: {
+                        method?: string;
+                        path?: string;
+                        description?: string;
+                        status?: string;
+                      }) => ({
+                        method: ep.method ?? 'GET',
+                        path: ep.path ?? '',
+                        desc: ep.description ?? '',
+                        status: ep.status ?? 'stable',
+                      })
+                    )
+                  : fallbackEndpoints;
               return endpoints;
-            })().map((endpoint: { method: string; path: string; desc: string; status: string }, idx: number) => (
-              <div key={idx} className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/5 transition-colors">
-                <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded ${
-                  endpoint.method === 'GET' ? 'bg-neon-green/20 text-neon-green' : 'bg-neon-cyan/20 text-neon-cyan'
-                }`}>
-                  {endpoint.method}
-                </span>
-                <span className="text-sm font-mono text-gray-300 flex-1">{endpoint.path}</span>
-                <span className="text-xs text-gray-500 hidden md:block">{endpoint.desc}</span>
-                <span className={`text-xs px-2 py-0.5 rounded ${
-                  endpoint.status === 'stable' ? 'bg-neon-green/10 text-neon-green' : 'bg-neon-purple/10 text-neon-purple'
-                }`}>
-                  {endpoint.status}
-                </span>
-              </div>
-            ))}
+            })().map(
+              (
+                endpoint: { method: string; path: string; desc: string; status: string },
+                idx: number
+              ) => (
+                <div
+                  key={idx}
+                  className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/5 transition-colors"
+                >
+                  <span
+                    className={`text-xs font-mono font-bold px-2 py-0.5 rounded ${
+                      endpoint.method === 'GET'
+                        ? 'bg-neon-green/20 text-neon-green'
+                        : 'bg-neon-cyan/20 text-neon-cyan'
+                    }`}
+                  >
+                    {endpoint.method}
+                  </span>
+                  <span className="text-sm font-mono text-gray-300 flex-1">{endpoint.path}</span>
+                  <span className="text-xs text-gray-500 hidden md:block">{endpoint.desc}</span>
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded ${
+                      endpoint.status === 'stable'
+                        ? 'bg-neon-green/10 text-neon-green'
+                        : 'bg-neon-purple/10 text-neon-purple'
+                    }`}
+                  >
+                    {endpoint.status}
+                  </span>
+                </div>
+              )
+            )}
           </div>
         </div>
 
@@ -629,24 +885,50 @@ export default function DocsLensPage() {
           </h3>
           <div className="space-y-3">
             {[
-              { version: 'v2.4.1', date: 'Feb 26, 2026', changes: 'Added economy tip endpoint, CRETI scoring docs', tag: 'latest' },
-              { version: 'v2.4.0', date: 'Feb 18, 2026', changes: 'ConnectiveTissue bar integration, fork royalties', tag: '' },
-              { version: 'v2.3.2', date: 'Feb 5, 2026', changes: 'Reflection lens API, self-model endpoints', tag: '' },
-              { version: 'v2.3.0', date: 'Jan 22, 2026', changes: 'Queue lens overhaul, governor job controls', tag: 'breaking' },
+              {
+                version: 'v2.4.1',
+                date: 'Feb 26, 2026',
+                changes: 'Added economy tip endpoint, CRETI scoring docs',
+                tag: 'latest',
+              },
+              {
+                version: 'v2.4.0',
+                date: 'Feb 18, 2026',
+                changes: 'ConnectiveTissue bar integration, fork royalties',
+                tag: '',
+              },
+              {
+                version: 'v2.3.2',
+                date: 'Feb 5, 2026',
+                changes: 'Reflection lens API, self-model endpoints',
+                tag: '',
+              },
+              {
+                version: 'v2.3.0',
+                date: 'Jan 22, 2026',
+                changes: 'Queue lens overhaul, governor job controls',
+                tag: 'breaking',
+              },
             ].map((v, idx) => (
               <div key={idx} className="flex items-start gap-3">
                 <div className="flex flex-col items-center mt-1">
-                  <div className={`w-2.5 h-2.5 rounded-full ${idx === 0 ? 'bg-neon-cyan' : 'bg-gray-600'}`} />
+                  <div
+                    className={`w-2.5 h-2.5 rounded-full ${idx === 0 ? 'bg-neon-cyan' : 'bg-gray-600'}`}
+                  />
                   {idx < 3 && <div className="w-px h-8 bg-white/10" />}
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-mono font-bold text-white">{v.version}</span>
                     {v.tag === 'latest' && (
-                      <span className="text-xs px-1.5 py-0.5 rounded bg-neon-cyan/20 text-neon-cyan">latest</span>
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-neon-cyan/20 text-neon-cyan">
+                        latest
+                      </span>
                     )}
                     {v.tag === 'breaking' && (
-                      <span className="text-xs px-1.5 py-0.5 rounded bg-red-500/20 text-red-400">breaking</span>
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-red-500/20 text-red-400">
+                        breaking
+                      </span>
                     )}
                   </div>
                   <p className="text-xs text-gray-500 mt-0.5">{v.date}</p>
@@ -671,7 +953,9 @@ export default function DocsLensPage() {
             <Layers className="w-4 h-4" />
             Lens Features & Capabilities
           </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
+          <ChevronDown
+            className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`}
+          />
         </button>
         {showFeatures && (
           <div className="px-4 pb-4">

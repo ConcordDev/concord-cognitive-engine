@@ -20,7 +20,7 @@ interface Swarm {
   lastUpdated: string;
 }
 
-export function SwarmIntelligence({ className }: { className?: string }) {
+function SwarmIntelligence({ className }: { className?: string }) {
   const [expanded, setExpanded] = useState(false);
   const [selectedSwarm, setSelectedSwarm] = useState<string | null>(null);
   const queryClient = useQueryClient();
@@ -153,3 +153,8 @@ export function SwarmIntelligence({ className }: { className?: string }) {
     </div>
   );
 }
+
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _SwarmIntelligence = withErrorBoundary(SwarmIntelligence);
+export { _SwarmIntelligence as SwarmIntelligence };

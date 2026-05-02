@@ -81,7 +81,18 @@ export default async function PublicLensArtifactPage({
   params: Promise<{ domain: string; id: string }>;
 }) {
   const { domain, id } = await params;
-  const artifact = await fetchArtifact(domain, id);
+
+  let artifact = null;
+  let fetchError: string | null = null;
+  try {
+    artifact = await fetchArtifact(domain, id);
+  } catch (err) {
+    fetchError = err instanceof Error ? err.message : 'Failed to load';
+  }
+
+  if (fetchError) {
+    return <div className="p-8 text-center text-red-400">Error: {fetchError}</div>;
+  }
 
   // If the artifact specifies a redirect (e.g., content moved to another lens), follow it
   if (artifact?.redirect) {
@@ -98,12 +109,24 @@ export default async function PublicLensArtifactPage({
       <main className="min-h-screen bg-zinc-950 flex items-center justify-center p-8">
         <div className="max-w-md text-center space-y-4">
           <div className="w-16 h-16 rounded-full bg-zinc-800 flex items-center justify-center mx-auto">
-            <svg className="w-8 h-8 text-zinc-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <svg
+              className="w-8 h-8 text-zinc-600"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
             </svg>
           </div>
           <h1 className="text-xl font-semibold text-white">Not Found</h1>
-          <p className="text-sm text-zinc-500">This content may have been removed or is no longer available.</p>
+          <p className="text-sm text-zinc-500">
+            This content may have been removed or is no longer available.
+          </p>
           <Link
             href="/lenses/feed"
             className="inline-block px-4 py-2 rounded-lg bg-cyan-500/20 text-cyan-400 text-sm hover:bg-cyan-500/30 transition-colors"
@@ -124,7 +147,11 @@ export default async function PublicLensArtifactPage({
   const source = artifact.data?.source || artifact.data?.sourceLens || null;
   const tags = artifact.meta?.tags || [];
   const createdAt = artifact.createdAt
-    ? new Date(artifact.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+    ? new Date(artifact.createdAt).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      })
     : null;
 
   return (
@@ -135,35 +162,35 @@ export default async function PublicLensArtifactPage({
           <span className="px-2 py-0.5 rounded text-xs bg-cyan-500/20 text-cyan-400 font-medium">
             {domainLabel}
           </span>
-          <span className="px-2 py-0.5 rounded text-xs bg-zinc-800 text-zinc-400">
-            {typeLabel}
-          </span>
+          <span className="px-2 py-0.5 rounded text-xs bg-zinc-800 text-zinc-400">{typeLabel}</span>
           {source && (
             <span className="px-2 py-0.5 rounded text-xs bg-zinc-800 text-zinc-500">
               from {source}
             </span>
           )}
-          {createdAt && (
-            <span className="text-xs text-zinc-600 ml-auto">{createdAt}</span>
-          )}
+          {createdAt && <span className="text-xs text-zinc-600 ml-auto">{createdAt}</span>}
         </div>
 
         {/* Title */}
         <h1 className="text-2xl font-bold text-white leading-tight">{title}</h1>
 
         {/* Description */}
-        {description && (
-          <p className="text-zinc-400 text-sm leading-relaxed">{description}</p>
-        )}
+        {description && <p className="text-zinc-400 text-sm leading-relaxed">{description}</p>}
 
         {/* Tags */}
         {tags.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
-            {tags.filter((t: string) => !t.startsWith('stance:') && t !== 'auto_event').slice(0, 10).map((tag: string) => (
-              <span key={tag} className="px-2 py-0.5 rounded-full text-xs bg-zinc-800/80 text-zinc-500">
-                {tag}
-              </span>
-            ))}
+            {tags
+              .filter((t: string) => !t.startsWith('stance:') && t !== 'auto_event')
+              .slice(0, 10)
+              .map((tag: string) => (
+                <span
+                  key={tag}
+                  className="px-2 py-0.5 rounded-full text-xs bg-zinc-800/80 text-zinc-500"
+                >
+                  {tag}
+                </span>
+              ))}
           </div>
         )}
 

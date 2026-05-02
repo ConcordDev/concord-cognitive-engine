@@ -1,0 +1,44 @@
+{
+  "world_id": "concordia",
+  "world_name": "Concordia",
+  "theme": "fantasy",
+  "tech_level": "pre-industrial",
+  "magic_level": "moderate",
+  "is_hub": true,
+  "description": "The walled city-state and the main hub. Players spawn here and travel out to other worlds. Founded by four factions who once agreed, through the Founding Compact, that no single power would control what Concordia knows or forgets.",
+  "skill_affinity": {
+    "default": 0.85,
+    "swordsmanship": 1.0,
+    "martial_arts": 0.9,
+    "athletics": 0.9,
+    "archery": 1.0,
+    "magic": 0.85,
+    "stealth": 0.9,
+    "lockpicking": 0.9,
+    "diplomacy": 1.0,
+    "deception": 1.0,
+    "leadership": 1.0,
+    "crafting": 1.0,
+    "alchemy": 0.85,
+    "gun": 0.4,
+    "weapons_modern": 0.4,
+    "weapon_attachments": 0.4,
+    "hacking": 0.2,
+    "tech": 0.3,
+    "engineering": 0.7,
+    "bio_powers": 0.5,
+    "infiltration": 0.9,
+    "driving": 0.3,
+    "piloting": 0.2
+  },
+  "concord_link": {
+    "primary_access": "the_veil_directly",
+    "secondary_access": ["resonance_stones", "founding_archive_terminals"],
+    "veil_stability": 1.0,
+    "anchors": [
+      { "id": "anchor_concordia_council_chamber", "name": "The Council Chamber Resonance Stone", "access_method": "resonance_stones", "description": "The original anchor — set by the four founding factions at the signing of the Compact. Veil stability is highest here because all four factions' resonance signatures are bonded to it.", "location": "council_chamber", "controlled_by_faction": null, "stability": 1.0 },
+      { "id": "anchor_concordia_archive", "name": "The Founding Archive Terminal", "access_method": "founding_archive_terminals", "description": "A wall of inscribed glass in the Scholars' Archive. Touch a name etched into the surface to send a Veil-message to that resonance.", "location": "archive_quarter", "controlled_by_faction": "scholars_guild", "stability": 0.95 },
+      { "id": "anchor_concordia_market_well", "name": "The Market Well", "access_method": "the_veil_directly", "description": "A public well in the central market that hums faintly. Drop a sealed paper inscribed with a recipient's true name; the paper dissolves and the message arrives.", "location": "market_district", "controlled_by_faction": null, "stability": 0.85 }
+    ]
+  }
+}

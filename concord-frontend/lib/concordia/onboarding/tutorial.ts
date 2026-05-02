@@ -30,9 +30,9 @@ export type PlayerAction =
 
 export interface TutorialHint {
   message: string;
-  duration: number;        // ms to display
+  duration: number; // ms to display
   position: 'bottom-center' | 'top-center' | 'bottom-right';
-  controls?: string[];     // shown as keybind badges (max 3)
+  controls?: string[]; // shown as keybind badges (max 3)
 }
 
 export interface TutorialState {
@@ -40,21 +40,22 @@ export interface TutorialState {
   skipped: boolean;
   stepsCompleted: TutorialStep[];
   startedAt: number;
+  hintsEnabled: boolean;
 }
 
 // Step → required player action to advance
 const ADVANCE_ON: Record<TutorialStep, PlayerAction | null> = {
-  'movement-basic':          'moved-significant-distance',
-  'camera-control':          'rotated-camera',
-  'sprint':                  'sprinted',
-  'first-npc':               'near-npc',
-  'first-dialogue':          'completed-dialogue',
-  'first-creation':          'placed-object',
-  'first-combat-intro':      'entered-combat',
-  'first-combat-hotbar':     'used-hotbar-skill',
-  'lens-portal-intro':       'entered-lens-portal',
-  'social-intro':            'sent-quick-message',
-  'done':                    null,
+  'movement-basic': 'moved-significant-distance',
+  'camera-control': 'rotated-camera',
+  sprint: 'sprinted',
+  'first-npc': 'near-npc',
+  'first-dialogue': 'completed-dialogue',
+  'first-creation': 'placed-object',
+  'first-combat-intro': 'entered-combat',
+  'first-combat-hotbar': 'used-hotbar-skill',
+  'lens-portal-intro': 'entered-lens-portal',
+  'social-intro': 'sent-quick-message',
+  done: null,
 };
 
 const STEP_ORDER: TutorialStep[] = [
@@ -85,7 +86,7 @@ const STEP_HINTS: Record<TutorialStep, TutorialHint | null> = {
     position: 'bottom-center',
     controls: ['Mouse'],
   },
-  'sprint': {
+  sprint: {
     message: 'Hold Shift to sprint.',
     duration: 5000,
     position: 'bottom-center',
@@ -133,7 +134,7 @@ const STEP_HINTS: Record<TutorialStep, TutorialHint | null> = {
     position: 'bottom-center',
     controls: ['Z', 'Quick messages'],
   },
-  'done': null,
+  done: null,
 };
 
 const STORAGE_KEY = 'concordia:tutorial:state';
@@ -148,8 +149,15 @@ export class TutorialManager {
     this._state = this._load();
   }
 
-  get state(): TutorialState { return this._state; }
-  get isDone(): boolean { return this._state.skipped || this._state.step === 'done'; }
+  get state(): TutorialState {
+    return this._state;
+  }
+  get isDone(): boolean {
+    return this._state.skipped || this._state.step === 'done';
+  }
+  get hintsEnabled(): boolean {
+    return this._state.hintsEnabled;
+  }
 
   onHint(cb: (hint: TutorialHint | null) => void) {
     this._hintCallback = cb;
@@ -160,10 +168,26 @@ export class TutorialManager {
     this._showHint(this._state.step);
   }
 
-  skip() {
-    this._state = { ...this._state, skipped: true };
+  skip(withHints = false) {
+    this._state = { ...this._state, skipped: true, hintsEnabled: withHints };
     this._save();
     this._hintCallback?.(null);
+  }
+
+  enableHints() {
+    this._state = { ...this._state, hintsEnabled: true };
+    this._save();
+  }
+
+  disableHints() {
+    this._state = { ...this._state, hintsEnabled: false };
+    this._save();
+    this._hintCallback?.(null);
+  }
+
+  toggleHints() {
+    if (this._state.hintsEnabled) this.disableHints();
+    else this.enableHints();
   }
 
   advance(action: PlayerAction) {
@@ -198,7 +222,9 @@ export class TutorialManager {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) return JSON.parse(raw) as TutorialState;
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     return this._defaultState();
   }
 
@@ -206,7 +232,9 @@ export class TutorialManager {
     if (typeof window === 'undefined') return;
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(this._state));
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
 
   private _defaultState(): TutorialState {
@@ -215,6 +243,7 @@ export class TutorialManager {
       skipped: false,
       stepsCompleted: [],
       startedAt: Date.now(),
+      hintsEnabled: false,
     };
   }
 }
@@ -223,15 +252,15 @@ export const tutorialManager = new TutorialManager();
 
 // Tutorial topic labels for HelpMenu
 export const TUTORIAL_TOPICS: Record<TutorialStep, string> = {
-  'movement-basic':       'Basic Movement',
-  'camera-control':       'Camera Control',
-  'sprint':               'Sprinting',
-  'first-npc':            'Talking to NPCs',
-  'first-dialogue':       'Dialogue System',
-  'first-creation':       'Creating Objects',
-  'first-combat-intro':   'Combat Basics',
-  'first-combat-hotbar':  'Combat Hotbar',
-  'lens-portal-intro':    'Lens Portals',
-  'social-intro':         'Multiplayer',
-  'done':                 '',
+  'movement-basic': 'Basic Movement',
+  'camera-control': 'Camera Control',
+  sprint: 'Sprinting',
+  'first-npc': 'Talking to NPCs',
+  'first-dialogue': 'Dialogue System',
+  'first-creation': 'Creating Objects',
+  'first-combat-intro': 'Combat Basics',
+  'first-combat-hotbar': 'Combat Hotbar',
+  'lens-portal-intro': 'Lens Portals',
+  'social-intro': 'Multiplayer',
+  done: '',
 };

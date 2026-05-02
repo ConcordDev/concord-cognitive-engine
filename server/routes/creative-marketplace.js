@@ -52,6 +52,11 @@ import {
   LICENSE_TYPES,
 } from "../economy/creative-marketplace.js";
 import { QUEST_REWARD_POLICY } from "../lib/creative-marketplace-constants.js";
+import {
+  MARKETPLACE_CONTENT_TYPES,
+  getContentTypeInfo,
+  listContentTypes,
+} from "../lib/marketplace-types.js";
 
 /**
  * Create the creative marketplace router.
@@ -91,6 +96,10 @@ export default function createCreativeMarketplaceRouter({ db, requireAuth, detec
 
   router.get("/artifact-types", (_req, res) => {
     res.json({ ok: true, types: ARTIFACT_TYPES });
+  });
+
+  router.get("/content-types", (_req, res) => {
+    res.json({ ok: true, contentTypes: listContentTypes() });
   });
 
   // ── Publish Artifact ────────────────────────────────────────────────

@@ -37,7 +37,7 @@ function getMilestoneLabel(streak: number): string | null {
 
 // ── Main Component ───────────────────────────────────────────────────────────
 
-export function StreakIndicator({ userId, className }: StreakIndicatorProps) {
+function StreakIndicator({ userId, className }: StreakIndicatorProps) {
   const { data, isLoading } = useQuery({
     queryKey: ['streak', userId],
     queryFn: async () => {
@@ -98,15 +98,12 @@ export function StreakIndicator({ userId, className }: StreakIndicatorProps) {
           role="img"
           aria-label="fire"
         >
-          <Flame className={cn(
-            'w-3.5 h-3.5',
-            milestone ? 'text-orange-400' : 'text-orange-500/70'
-          )} />
+          <Flame
+            className={cn('w-3.5 h-3.5', milestone ? 'text-orange-400' : 'text-orange-500/70')}
+          />
         </motion.span>
 
-        <span className={cn(
-          milestone ? 'text-orange-300' : 'text-orange-400/80'
-        )}>
+        <span className={cn(milestone ? 'text-orange-300' : 'text-orange-400/80')}>
           {data.currentStreak} day streak
         </span>
 
@@ -125,4 +122,7 @@ export function StreakIndicator({ userId, className }: StreakIndicatorProps) {
   );
 }
 
-export default StreakIndicator;
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedStreakIndicator = withErrorBoundary(StreakIndicator);
+export { _WrappedStreakIndicator as StreakIndicator };
+export default _WrappedStreakIndicator;

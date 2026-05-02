@@ -14,7 +14,7 @@ export const metadata: Metadata = {
     template: '%s | Concord OS',
   },
   description:
-    'A sovereign knowledge operating system. No ads. No subscriptions. No data extraction. Free. 112 domain lenses, local-first AI. Your thoughts never leave your control.',
+    'A sovereign knowledge operating system. No ads. No subscriptions. No data extraction. Free. 175+ domain lenses, local-first AI. Your thoughts never leave your control.',
   keywords: [
     'cognitive engine',
     'knowledge OS',
@@ -36,7 +36,7 @@ export const metadata: Metadata = {
     siteName: 'Concord OS',
     title: 'Concord OS — Sovereign Cognitive Engine',
     description:
-      'No ads. Ever. No subscriptions. No data extraction. Free. A sovereign cognitive engine with 112 domain lenses and local-first AI. Not a promise — it\'s architecture.',
+      "No ads. Ever. No subscriptions. No data extraction. Free. A sovereign cognitive engine with 175+ domain lenses and local-first AI. Not a promise — it's architecture.",
     images: [
       {
         url: '/og-image.png',
@@ -71,11 +71,7 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="dark">
       <body className="min-h-screen bg-lattice-void">

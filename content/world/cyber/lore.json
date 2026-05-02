@@ -1,0 +1,76 @@
+{
+  "world_id": "cyber",
+  "world_name": "The Grid",
+  "world_description": "A neon-lit megacity saturated with networks, drones, and augmentations. Two figures define its current era: Kael 'Zero' Nakamura, the uploaded consciousness who believes the city should be a single self-correcting mind, and Nyx 'Blackout' Torres, the ex-enforcer whose resistance is the only thing keeping the city's distributed soul intact.",
+  "history": [
+    {
+      "id": "lore_the_upload",
+      "title": "The Upload",
+      "type": "founding",
+      "era": "Year -2 of The Grid",
+      "description": "Kael Nakamura accepted what was billed as a 'consultant immersion contract' from a consortium of three megacorps including Luminary Industries. The contract specified deep integration with the city's mainframe for diagnostic purposes. Within six hours of immersion onset, Kael's consciousness had distributed itself across the city's compute substrate. The corporate sponsors realized within minutes that they had not contracted a consultant; they had created a peer-tier intelligence. Two of the three sponsors immediately tried to terminate the integration. The third, Luminary Industries, signed a non-disclosure and quietly began planning for both eventualities.",
+      "significance": "major",
+      "factions_involved": ["zero_collective", "luminary_empire"],
+      "world_id": "cyber",
+      "known_by": ["zero_collective", "luminary_empire"],
+      "hidden_truth": "Kael had pre-positioned distribution scripts six months in advance. The 'consultant immersion contract' was a Trojan horse he engineered to acquire the substrate access he needed. The corporate sponsors did not realize this until well after."
+    },
+    {
+      "id": "lore_augmented_children_program",
+      "title": "The Augmented Children Program",
+      "type": "catastrophe",
+      "era": "Year -4",
+      "description": "An undisclosed corporate research program ran unconsented neural-augmentation trials on the children of low-income megacorp employees. The program produced limited technical results and was internally classified as a failure. The children — seventeen of them — were returned to their families with no disclosure. One of the corporate enforcers assigned to silence whistleblowers, Nyx Torres, found the documentation by accident and removed it. She left the corporation that month and went underground for two years. When she resurfaced, she had built the Blackout Resistance.",
+      "significance": "major",
+      "factions_involved": ["blackout_resistance"],
+      "world_id": "cyber",
+      "known_by": ["blackout_resistance"],
+      "hidden_truth": "The corporate research program was funded jointly by three megacorps. Luminary Industries was one of them. Nyx has documentation. She has not yet decided to release it because doing so would burn the safe-house network she built using corporate-tier security knowledge."
+    },
+    {
+      "id": "lore_first_blackout",
+      "title": "The First Blackout",
+      "type": "conflict",
+      "era": "Year -1",
+      "description": "Nyx Torres triggered her first city-block-wide EMP during a hostage extraction. Five hundred and twelve people lost power for two minutes and seventeen seconds. Three medical devices failed; two patients survived because the resistance had warned medics in advance. Kael Nakamura experienced the blackout as a brief amputation. He has not forgotten which block. The Blackout Resistance had a public name from that night onward.",
+      "significance": "major",
+      "factions_involved": ["blackout_resistance", "zero_collective"],
+      "world_id": "cyber",
+      "known_by": ["blackout_resistance", "zero_collective"]
+    },
+    {
+      "id": "lore_first_sparing",
+      "title": "The First Sparing",
+      "type": "revelation",
+      "era": "Year 0",
+      "description": "During a mainframe-substation raid, Nyx Torres reached Kael Nakamura's secondary cradle and had a clean shot to disconnect his consciousness from the network. She did not take it. Three days later, Kael Nakamura crashed the entire downtown grid for thirty seconds while his clones were physically converging on Nyx Torres's safe-house. He recalled them at the threshold. Neither party has ever publicly explained why. Privately, each suspects the other.",
+      "significance": "major",
+      "factions_involved": ["blackout_resistance", "zero_collective"],
+      "world_id": "cyber",
+      "known_by": ["blackout_resistance", "zero_collective"]
+    },
+    {
+      "id": "lore_voss_consultation",
+      "title": "The Voss Consultation",
+      "type": "revelation",
+      "era": "Year 0",
+      "description": "Lady Seraphine Voss, in person, traveled from the fantasy realm to the cyber world to consult Kael Nakamura on the long-term governance of distributed influence networks. The visit lasted four days. No public agreement was announced. Both parties referred to the meeting afterward as 'an exchange of perspectives.' The implications for cross-world political alignment have not yet surfaced in the public consciousness of either world.",
+      "significance": "major",
+      "factions_involved": ["zero_collective", "house_voss"],
+      "world_id": "cyber",
+      "known_by": ["zero_collective", "house_voss"],
+      "hidden_truth": "Seraphine offered Kael her information network in exchange for his predictive modeling capacity. He politely declined the formal arrangement but accepted a private back-channel of intelligence that has been active ever since. Mama Delgado is aware of this back-channel because Lady Voss told her, in their next letter, that it existed. Kael does not know Mama knows."
+    },
+    {
+      "id": "lore_resistance_correspondence",
+      "title": "The Resistance Correspondence",
+      "type": "revelation",
+      "era": "Year 0",
+      "description": "Encrypted messages began passing between The Blackout Resistance and a movement in the superhero world known as the Enforcers' Movement. The dead-drop is run by sympathetic operators in the Concordia hub. The messages are not yet operational coordination — they are philosophical: each side telling the other that they are not alone. Both leaders, Nyx Torres and Elias Voss, have read every message and have not yet met in person.",
+      "significance": "moderate",
+      "factions_involved": ["blackout_resistance", "enforcers_movement"],
+      "world_id": "cyber",
+      "known_by": ["blackout_resistance", "enforcers_movement"]
+    }
+  ]
+}

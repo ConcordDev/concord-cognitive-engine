@@ -243,7 +243,34 @@ export type SocketEvent =
   // Server health checks
   | 'health:pulse'
   // Platform presence
-  | 'platform:activity';
+  | 'platform:activity'
+  // Quest realtime push (emergent quests)
+  | 'quest:new'
+  // Phase 8: player-to-player trade
+  | 'trade:request'
+  | 'trade:offer_updated'
+  | 'trade:other_ready'
+  | 'trade:complete'
+  | 'trade:cancelled'
+  // Phase 9: party / group system
+  | 'party:invite'
+  | 'party:invite_declined'
+  | 'party:member_joined'
+  | 'party:member_left'
+  | 'party:leader_changed'
+  | 'party:kicked'
+  | 'party:chat'
+  // Phase 19: retention hooks
+  | 'daily:login_recorded'
+  // Wave 1 deferral 3: level-up rank crossing
+  | 'level:up'
+  // Tier 3 deferral 12: faction event scheduler
+  | 'faction:event_started'
+  | 'faction:event_ended'
+  // The Concord Link cross-world messaging
+  | 'concord-link:message'
+  // World travel
+  | 'world:traveled';
 
 // ---- Enriched Event Payload (Category 2+5: Concurrency + Observability) ----
 interface EnrichedPayload {

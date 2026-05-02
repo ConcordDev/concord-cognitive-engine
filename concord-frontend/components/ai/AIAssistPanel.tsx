@@ -18,11 +18,18 @@ import {
   GitBranch,
   MessageSquare,
   Lightbulb,
-  Wand2
+  Wand2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-type AIAction = 'expand' | 'summarize' | 'question' | 'connections' | 'rewrite' | 'explain' | 'challenge';
+type AIAction =
+  | 'expand'
+  | 'summarize'
+  | 'question'
+  | 'connections'
+  | 'rewrite'
+  | 'explain'
+  | 'challenge';
 
 interface AIMessage {
   id: string;
@@ -41,22 +48,25 @@ interface AIAssistPanelProps {
   className?: string;
 }
 
-const actionConfig: Record<AIAction, { icon: React.ElementType; label: string; description: string }> = {
+const actionConfig: Record<
+  AIAction,
+  { icon: React.ElementType; label: string; description: string }
+> = {
   expand: { icon: Zap, label: 'Expand', description: 'Elaborate on the selected content' },
   summarize: { icon: FileText, label: 'Summarize', description: 'Create a concise summary' },
   question: { icon: MessageSquare, label: 'Question', description: 'Ask about this content' },
   connections: { icon: GitBranch, label: 'Find Connections', description: 'Discover related DTUs' },
   rewrite: { icon: RefreshCw, label: 'Rewrite', description: 'Improve clarity and style' },
   explain: { icon: Lightbulb, label: 'Explain', description: 'Explain in simpler terms' },
-  challenge: { icon: Brain, label: 'Challenge', description: 'Present counterarguments' }
+  challenge: { icon: Brain, label: 'Challenge', description: 'Present counterarguments' },
 };
 
-export function AIAssistPanel({
+function AIAssistPanel({
   isOpen,
   onClose,
   selectedText,
   dtuContext,
-  className
+  className,
 }: AIAssistPanelProps) {
   const [messages, setMessages] = useState<AIMessage[]>([]);
   const [input, setInput] = useState('');
@@ -89,10 +99,10 @@ export function AIAssistPanel({
       role: 'user',
       content: `[${actionConfig[action].label}] ${contextText.slice(0, 200)}${contextText.length > 200 ? '...' : ''}`,
       action,
-      timestamp: new Date()
+      timestamp: new Date(),
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    setMessages((prev) => [...prev, userMessage]);
     setShowQuickActions(false);
     await generateResponse(action, contextText);
   };
@@ -105,10 +115,10 @@ export function AIAssistPanel({
       id: Date.now().toString(),
       role: 'user',
       content: input.trim(),
-      timestamp: new Date()
+      timestamp: new Date(),
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    setMessages((prev) => [...prev, userMessage]);
     setInput('');
     setShowQuickActions(false);
     await generateResponse('question', input.trim());
@@ -125,10 +135,10 @@ export function AIAssistPanel({
       content: '',
       action,
       timestamp: new Date(),
-      isStreaming: true
+      isStreaming: true,
     };
 
-    setMessages(prev => [...prev, assistantMessage]);
+    setMessages((prev) => [...prev, assistantMessage]);
 
     const actionPrompts: Record<AIAction, string> = {
       expand: `Expand and analyze the following content in depth:\n\n${content}`,
@@ -142,40 +152,53 @@ export function AIAssistPanel({
 
     try {
       const { api: apiClient } = await import('@/lib/api/client');
-      const response = await apiClient.post('/api/chat', {
-        prompt: actionPrompts[action],
-        mode: 'explore',
-      }, { params: { full: '1' } });
+      const response = await apiClient.post(
+        '/api/chat',
+        {
+          prompt: actionPrompts[action],
+          mode: 'explore',
+        },
+        { params: { full: '1' } }
+      );
 
-      const fullResponse = response.data?.answer || response.data?.response || response.data?.content || response.data?.text || 'No response from the cognitive engine.';
+      const fullResponse =
+        response.data?.answer ||
+        response.data?.response ||
+        response.data?.content ||
+        response.data?.text ||
+        'No response from the cognitive engine.';
       let currentText = '';
 
       // Stream the response in chunks for UX without excessive state updates
       const chunkSize = 25;
       for (let i = 0; i < fullResponse.length; i += chunkSize) {
-        await new Promise(resolve => setTimeout(resolve, 8 * chunkSize));
+        await new Promise((resolve) => setTimeout(resolve, 8 * chunkSize));
         currentText += fullResponse.slice(i, i + chunkSize);
 
-        setMessages(prev => prev.map(msg =>
-          msg.id === assistantMessage.id
-            ? { ...msg, content: currentText }
-            : msg
-        ));
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === assistantMessage.id ? { ...msg, content: currentText } : msg
+          )
+        );
       }
     } catch {
-      setMessages(prev => prev.map(msg =>
-        msg.id === assistantMessage.id
-          ? { ...msg, content: 'Unable to reach the cognitive engine. Please check the backend connection.' }
-          : msg
-      ));
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === assistantMessage.id
+            ? {
+                ...msg,
+                content:
+                  'Unable to reach the cognitive engine. Please check the backend connection.',
+              }
+            : msg
+        )
+      );
     }
 
     // Mark as complete
-    setMessages(prev => prev.map(msg =>
-      msg.id === assistantMessage.id
-        ? { ...msg, isStreaming: false }
-        : msg
-    ));
+    setMessages((prev) =>
+      prev.map((msg) => (msg.id === assistantMessage.id ? { ...msg, isStreaming: false } : msg))
+    );
 
     setIsLoading(false);
   };
@@ -217,11 +240,7 @@ export function AIAssistPanel({
                 onClick={() => setIsExpanded(!isExpanded)}
                 className="p-1.5 text-gray-400 hover:text-white transition-colors"
               >
-                {isExpanded ? (
-                  <Minimize2 className="w-4 h-4" />
-                ) : (
-                  <Maximize2 className="w-4 h-4" />
-                )}
+                {isExpanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
               </button>
               <button
                 onClick={onClose}
@@ -238,13 +257,12 @@ export function AIAssistPanel({
               <p className="text-xs text-gray-400">
                 {selectedText ? (
                   <>
-                    <span className="text-neon-cyan">Selected:</span>{' '}
-                    "{selectedText.slice(0, 50)}..."
+                    <span className="text-neon-cyan">Selected:</span> "{selectedText.slice(0, 50)}
+                    ..."
                   </>
                 ) : dtuContext ? (
                   <>
-                    <span className="text-neon-cyan">Context:</span>{' '}
-                    {dtuContext.title}
+                    <span className="text-neon-cyan">Context:</span> {dtuContext.title}
                   </>
                 ) : null}
               </p>
@@ -252,7 +270,10 @@ export function AIAssistPanel({
           )}
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4" style={{ height: 'calc(100% - 180px)' }}>
+          <div
+            className="flex-1 overflow-y-auto p-4 space-y-4"
+            style={{ height: 'calc(100% - 180px)' }}
+          >
             {messages.length === 0 && showQuickActions ? (
               <div className="space-y-4">
                 <p className="text-sm text-gray-400 text-center">
@@ -263,24 +284,24 @@ export function AIAssistPanel({
 
                 {(selectedText || dtuContext) && (
                   <div className="grid grid-cols-2 gap-2">
-                    {(Object.entries(actionConfig) as [AIAction, typeof actionConfig[AIAction]][]).map(
-                      ([action, config]) => {
-                        const Icon = config.icon;
-                        return (
-                          <button
-                            key={action}
-                            onClick={() => handleQuickAction(action)}
-                            className="flex items-center gap-2 p-3 bg-lattice-surface border border-lattice-border rounded-lg hover:border-neon-purple/50 hover:bg-neon-purple/5 transition-colors text-left"
-                          >
-                            <Icon className="w-4 h-4 text-neon-purple" />
-                            <div>
-                              <p className="text-sm text-white">{config.label}</p>
-                              <p className="text-xs text-gray-500">{config.description}</p>
-                            </div>
-                          </button>
-                        );
-                      }
-                    )}
+                    {(
+                      Object.entries(actionConfig) as [AIAction, (typeof actionConfig)[AIAction]][]
+                    ).map(([action, config]) => {
+                      const Icon = config.icon;
+                      return (
+                        <button
+                          key={action}
+                          onClick={() => handleQuickAction(action)}
+                          className="flex items-center gap-2 p-3 bg-lattice-surface border border-lattice-border rounded-lg hover:border-neon-purple/50 hover:bg-neon-purple/5 transition-colors text-left"
+                        >
+                          <Icon className="w-4 h-4 text-neon-purple" />
+                          <div>
+                            <p className="text-sm text-white">{config.label}</p>
+                            <p className="text-xs text-gray-500">{config.description}</p>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -290,10 +311,7 @@ export function AIAssistPanel({
                   key={message.id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className={cn(
-                    'flex',
-                    message.role === 'user' ? 'justify-end' : 'justify-start'
-                  )}
+                  className={cn('flex', message.role === 'user' ? 'justify-end' : 'justify-start')}
                 >
                   <div
                     className={cn(
@@ -328,7 +346,9 @@ export function AIAssistPanel({
                           )}
                         </button>
                         <button
-                          onClick={() => generateResponse(message.action || 'expand', message.content)}
+                          onClick={() =>
+                            generateResponse(message.action || 'expand', message.content)
+                          }
                           className="p-1 text-gray-400 hover:text-white transition-colors"
                           title="Regenerate"
                         >
@@ -389,11 +409,17 @@ export function AIAssistPanel({
   );
 }
 
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedAIAssistPanel = withErrorBoundary(AIAssistPanel);
+export { _WrappedAIAssistPanel as AIAssistPanel };
+
 // Hook to manage AI assist panel
 export function useAIAssist() {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedText, setSelectedText] = useState<string | undefined>();
-  const [dtuContext, setDtuContext] = useState<{ id: string; title: string; content: string } | undefined>();
+  const [dtuContext, setDtuContext] = useState<
+    { id: string; title: string; content: string } | undefined
+  >();
 
   useEffect(() => {
     const handler = (e: CustomEvent) => {
@@ -414,6 +440,6 @@ export function useAIAssist() {
       setDtuContext(context);
       setIsOpen(true);
     },
-    close: () => setIsOpen(false)
+    close: () => setIsOpen(false),
   };
 }

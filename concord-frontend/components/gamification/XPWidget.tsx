@@ -40,7 +40,7 @@ interface XPWidgetProps {
   className?: string;
 }
 
-export function XPWidget({ expanded: defaultExpanded = false, className }: XPWidgetProps) {
+function XPWidget({ expanded: defaultExpanded = false, className }: XPWidgetProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
 
   const { data: profile } = useQuery<{ ok: boolean } & XPProfile>({
@@ -52,7 +52,11 @@ export function XPWidget({ expanded: defaultExpanded = false, className }: XPWid
     staleTime: 30000,
   });
 
-  const { data: heatmapData } = useQuery<{ ok: boolean; heatmap: HeatmapDay[]; streak: XPProfile['streak'] }>({
+  const { data: heatmapData } = useQuery<{
+    ok: boolean;
+    heatmap: HeatmapDay[];
+    streak: XPProfile['streak'];
+  }>({
     queryKey: ['xp-heatmap'],
     queryFn: async () => {
       const { data } = await api.get('/api/xp/heatmap?days=90');
@@ -64,7 +68,8 @@ export function XPWidget({ expanded: defaultExpanded = false, className }: XPWid
 
   if (!profile) return null;
 
-  const progressPercent = profile.xpRequired > 0 ? Math.round((profile.xpProgress / profile.xpRequired) * 100) : 0;
+  const progressPercent =
+    profile.xpRequired > 0 ? Math.round((profile.xpProgress / profile.xpRequired) * 100) : 0;
 
   return (
     <div className={cn('relative', className)}>
@@ -96,7 +101,11 @@ export function XPWidget({ expanded: defaultExpanded = false, className }: XPWid
             style={{ width: `${progressPercent}%` }}
           />
         </div>
-        {expanded ? <ChevronUp className="w-3 h-3 text-gray-500" /> : <ChevronDown className="w-3 h-3 text-gray-500" />}
+        {expanded ? (
+          <ChevronUp className="w-3 h-3 text-gray-500" />
+        ) : (
+          <ChevronDown className="w-3 h-3 text-gray-500" />
+        )}
       </button>
 
       {/* Expanded dashboard */}
@@ -110,7 +119,9 @@ export function XPWidget({ expanded: defaultExpanded = false, className }: XPWid
                 <span className="font-semibold text-white">{profile.title}</span>
                 <span className="text-xs text-gray-500">Lv {profile.level}</span>
               </div>
-              <span className="text-sm font-mono text-neon-cyan">{profile.totalXP.toLocaleString()} XP</span>
+              <span className="text-sm font-mono text-neon-cyan">
+                {profile.totalXP.toLocaleString()} XP
+              </span>
             </div>
             {/* Progress bar */}
             <div className="space-y-1">
@@ -121,7 +132,9 @@ export function XPWidget({ expanded: defaultExpanded = false, className }: XPWid
                 />
               </div>
               <div className="flex items-center justify-between text-[11px] text-gray-500">
-                <span>{profile.xpProgress.toLocaleString()} / {profile.xpRequired.toLocaleString()}</span>
+                <span>
+                  {profile.xpProgress.toLocaleString()} / {profile.xpRequired.toLocaleString()}
+                </span>
                 <span>Next: {profile.nextLevelTitle}</span>
               </div>
             </div>
@@ -151,8 +164,9 @@ export function XPWidget({ expanded: defaultExpanded = false, className }: XPWid
             <div className="p-3">
               <p className="text-[11px] text-gray-500 mb-2">90-day contribution heatmap</p>
               <div className="flex flex-wrap gap-[2px]">
-                {heatmapData.heatmap.map(day => {
-                  const intensity = day.xp > 100 ? 4 : day.xp > 50 ? 3 : day.xp > 20 ? 2 : day.xp > 0 ? 1 : 0;
+                {heatmapData.heatmap.map((day) => {
+                  const intensity =
+                    day.xp > 100 ? 4 : day.xp > 50 ? 3 : day.xp > 20 ? 2 : day.xp > 0 ? 1 : 0;
                   const colors = [
                     'bg-lattice-void',
                     'bg-neon-green/20',
@@ -176,3 +190,7 @@ export function XPWidget({ expanded: defaultExpanded = false, className }: XPWid
     </div>
   );
 }
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedXPWidget = withErrorBoundary(XPWidget);
+export { _WrappedXPWidget as XPWidget };

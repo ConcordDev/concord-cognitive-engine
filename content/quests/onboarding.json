@@ -1,0 +1,202 @@
+[
+  {
+    "id": "the_arrival",
+    "title": "A Stranger at the Gate",
+    "description": "You have arrived at Concordia's east gate. The Iron Wardens process arrivals with practiced efficiency. A fellow traveler named Kael seems to be having trouble with the entry inspection.",
+    "giver_npc_id": "gatekeeper_orin",
+    "difficulty": "beginner",
+    "domain": "concordia_main",
+    "estimated_time": "20m",
+    "objectives": [
+      {
+        "id": "obj_arrival_1",
+        "type": "reach_location",
+        "target": "east_gate",
+        "required_count": 1,
+        "description": "Approach the east gate"
+      },
+      {
+        "id": "obj_arrival_2",
+        "type": "talk_to",
+        "target": "gatekeeper_orin",
+        "required_count": 1,
+        "description": "Present yourself to the gate guard"
+      },
+      {
+        "id": "obj_arrival_3",
+        "type": "talk_to",
+        "target": "wanderer_kael",
+        "required_count": 1,
+        "description": "Speak with the other traveler being held up at the gate"
+      },
+      {
+        "id": "obj_arrival_4",
+        "type": "reach_location",
+        "target": "market_district",
+        "required_count": 1,
+        "description": "Enter Concordia and reach the market district"
+      }
+    ],
+    "rewards": {
+      "xp": 50,
+      "gold": 10,
+      "skill_xp": {"exploration": 25}
+    },
+    "breadcrumbs": [
+      {
+        "id": "bc_arrival_1",
+        "content": "Concordia is governed by four factions who signed something called the Founding Compact. The Iron Wardens control the gates. The confiscation list Orin checked included a category for 'pre-Year 70 historical materials' — which struck you as an odd thing to confiscate.",
+        "unlocks_after": "obj_arrival_4",
+        "release_mode": "on_completion"
+      }
+    ],
+    "follow_up_quest_ids": ["first_contact"],
+    "prerequisites": [],
+    "tags": ["tutorial", "onboarding", "concordia_main"]
+  },
+  {
+    "id": "first_contact",
+    "title": "The Faction Question",
+    "description": "Kael has heard that newcomers to Concordia are expected to affiliate with one of the four factions within their first week — or find a patron who can vouch for independent status. The Scholars' Guild has posted a notice in the market offering 'orientation for interested newcomers.' It seems like a reasonable place to start.",
+    "giver_npc_id": "wanderer_kael",
+    "difficulty": "beginner",
+    "domain": "concordia_main",
+    "estimated_time": "30m",
+    "objectives": [
+      {
+        "id": "obj_fc_1",
+        "type": "reach_location",
+        "target": "archive_quarter",
+        "required_count": 1,
+        "description": "Find the Scholars' Guild outpost in the archive quarter"
+      },
+      {
+        "id": "obj_fc_2",
+        "type": "talk_to",
+        "target": "scribe_tollan",
+        "required_count": 1,
+        "description": "Speak with the scribe running orientation"
+      },
+      {
+        "id": "obj_fc_3",
+        "type": "gather",
+        "target": "orientation_pamphlet",
+        "required_count": 1,
+        "description": "Collect the faction overview pamphlet Tollan prepares"
+      },
+      {
+        "id": "obj_fc_4",
+        "type": "talk_to",
+        "target": "lorekeeper_yshe",
+        "required_count": 1,
+        "description": "Find Yshe Dawnmere, who Tollan mentions as someone who 'knows the city the way it actually works'"
+      }
+    ],
+    "rewards": {
+      "xp": 75,
+      "gold": 15,
+      "skill_xp": {"social": 30, "lore_concordia": 40}
+    },
+    "breadcrumbs": [
+      {
+        "id": "bc_fc_1",
+        "content": "Tollan gave you the official overview but became visibly uncomfortable when you asked about the Great Purge. He said it was 'a closed matter.' Then he corrected himself: 'A concluded investigation.' The distinction felt deliberate.",
+        "unlocks_after": "obj_fc_2",
+        "release_mode": "on_completion"
+      },
+      {
+        "id": "bc_fc_2",
+        "content": "Yshe described the Shadow Network as 'the faction that doesn't exist, officially, but that everyone deals with eventually.' She offered to introduce you to a contact there, 'when you are ready for things to get complicated.'",
+        "unlocks_after": "obj_fc_4",
+        "release_mode": "on_completion"
+      }
+    ],
+    "follow_up_quest_ids": ["the_choice"],
+    "prerequisites": ["the_arrival"],
+    "tags": ["tutorial", "onboarding", "concordia_main", "factions"]
+  },
+  {
+    "id": "the_choice",
+    "title": "The First Obligation",
+    "description": "Scribe Tollan has a problem: a crate of recovered texts was confiscated at the east gate this morning under the new 'historical materials' category. The texts are pre-Year 70, legitimate scholarship, and not seditious by any reasonable standard. He needs someone to retrieve them from the gate garrison — but the Wardens will only release confiscated property to a citizen with faction standing. You do not yet have standing. You need to decide whose name to invoke.",
+    "giver_npc_id": "scribe_tollan",
+    "difficulty": "beginner",
+    "domain": "concordia_main",
+    "estimated_time": "45m",
+    "objectives": [
+      {
+        "id": "obj_choice_1",
+        "type": "talk_to",
+        "target": "scribe_tollan",
+        "required_count": 1,
+        "description": "Hear Tollan's request"
+      },
+      {
+        "id": "obj_choice_2",
+        "type": "reach_location",
+        "target": "garrison_ward",
+        "required_count": 1,
+        "description": "Go to the garrison to claim the confiscated texts"
+      },
+      {
+        "id": "obj_choice_3",
+        "type": "talk_to",
+        "target": "captain_rael",
+        "required_count": 1,
+        "description": "Speak with the captain processing the confiscation"
+      },
+      {
+        "id": "obj_choice_4",
+        "type": "deliver",
+        "target": "confiscated_texts",
+        "required_count": 1,
+        "description": "Return the recovered texts to Tollan"
+      }
+    ],
+    "moral_branch": {
+      "description": "At the garrison, Captain Rael will ask who vouches for you. Your answer determines your initial faction standing.",
+      "options": [
+        {
+          "id": "vouch_scholars",
+          "trigger": "claim_scholars_guild",
+          "consequence": "Rael releases the texts but notes your name as Guild-affiliated. You gain Scholars' Guild standing. Voss will eventually see this report.",
+          "reputation_change": {"scholars_guild": 15, "iron_wardens": -5}
+        },
+        {
+          "id": "vouch_wardens",
+          "trigger": "claim_warden_support",
+          "consequence": "Rael releases the texts quickly. You gain Warden standing but Tollan notices the ease of the retrieval and becomes quietly suspicious of you.",
+          "reputation_change": {"iron_wardens": 15, "scholars_guild": -10}
+        },
+        {
+          "id": "vouch_honest",
+          "trigger": "claim_independent",
+          "consequence": "Rael respects the honesty. She releases the texts as a personal favor, off the record. You gain no standing but Rael remembers you differently from most people who walk through her garrison.",
+          "reputation_change": {"iron_wardens": 5, "captain_rael_personal": 20}
+        }
+      ]
+    },
+    "rewards": {
+      "xp": 100,
+      "gold": 25,
+      "skill_xp": {"social": 40, "negotiation": 30}
+    },
+    "breadcrumbs": [
+      {
+        "id": "bc_choice_1",
+        "content": "Captain Rael told you the confiscation order came from Voss personally. When you asked what was in the texts, she said: 'I did not read them.' It was not a dismissal. It sounded like a decision she had made carefully.",
+        "unlocks_after": "obj_choice_3",
+        "release_mode": "on_completion"
+      },
+      {
+        "id": "bc_choice_2",
+        "content": "When you returned the texts to Tollan, he examined them quickly and said only: 'These are not the ones he is looking for.' He did not explain who 'he' was.",
+        "unlocks_after": "obj_choice_4",
+        "release_mode": "on_completion"
+      }
+    ],
+    "follow_up_quest_ids": ["cracks_in_the_compact"],
+    "prerequisites": ["first_contact"],
+    "tags": ["tutorial", "onboarding", "concordia_main", "moral_choice", "factions"]
+  }
+]

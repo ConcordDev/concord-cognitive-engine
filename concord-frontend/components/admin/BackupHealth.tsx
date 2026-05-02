@@ -96,19 +96,27 @@ function formatTime(dateStr: string | null): string {
 
 function statusColor(status: string): string {
   switch (status) {
-    case 'healthy': return 'text-green-400';
-    case 'warning': return 'text-yellow-400';
-    case 'critical': return 'text-red-400';
-    default: return 'text-gray-400';
+    case 'healthy':
+      return 'text-green-400';
+    case 'warning':
+      return 'text-yellow-400';
+    case 'critical':
+      return 'text-red-400';
+    default:
+      return 'text-gray-400';
   }
 }
 
 function statusBg(status: string): string {
   switch (status) {
-    case 'healthy': return 'bg-green-400/10 border-green-400/30';
-    case 'warning': return 'bg-yellow-400/10 border-yellow-400/30';
-    case 'critical': return 'bg-red-400/10 border-red-400/30';
-    default: return 'bg-gray-400/10 border-gray-400/30';
+    case 'healthy':
+      return 'bg-green-400/10 border-green-400/30';
+    case 'warning':
+      return 'bg-yellow-400/10 border-yellow-400/30';
+    case 'critical':
+      return 'bg-red-400/10 border-red-400/30';
+    default:
+      return 'bg-gray-400/10 border-gray-400/30';
   }
 }
 
@@ -127,7 +135,7 @@ function StatusIcon({ status }: { status: string }) {
 
 // ── Component ───────────────────────────────────────────────────────────
 
-export function BackupHealth({ className, apiBase = '' }: BackupHealthProps) {
+function BackupHealth({ className, apiBase = '' }: BackupHealthProps) {
   const [status, setStatus] = useState<BackupStatus | null>(null);
   const [history, setHistory] = useState<BackupEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -195,7 +203,9 @@ export function BackupHealth({ className, apiBase = '' }: BackupHealthProps) {
 
   if (loading && !status) {
     return (
-      <div className={cn('bg-lattice-surface border border-lattice-border rounded-xl p-6', className)}>
+      <div
+        className={cn('bg-lattice-surface border border-lattice-border rounded-xl p-6', className)}
+      >
         <div className="flex items-center gap-3 text-gray-400">
           <Loader2 className="w-5 h-5 animate-spin" />
           <span>Loading backup status...</span>
@@ -212,10 +222,12 @@ export function BackupHealth({ className, apiBase = '' }: BackupHealthProps) {
           <Database className="w-5 h-5 text-neon-cyan" />
           <h2 className="text-lg font-semibold text-white">Backup Health</h2>
           {status && (
-            <div className={cn(
-              'px-2.5 py-0.5 rounded-full text-xs font-medium border',
-              statusBg(status.status)
-            )}>
+            <div
+              className={cn(
+                'px-2.5 py-0.5 rounded-full text-xs font-medium border',
+                statusBg(status.status)
+              )}
+            >
               <span className={statusColor(status.status)}>
                 {status.status.charAt(0).toUpperCase() + status.status.slice(1)}
               </span>
@@ -268,11 +280,15 @@ export function BackupHealth({ className, apiBase = '' }: BackupHealthProps) {
             <span className="text-sm text-gray-400">Status</span>
           </div>
           <div className={cn('text-lg font-bold', statusColor(status?.status || 'unknown'))}>
-            {status?.status === 'healthy' ? 'Healthy' :
-             status?.status === 'warning' ? 'Warning' :
-             status?.status === 'critical' ? 'Critical' :
-             status?.status === 'not_initialized' ? 'Not Set Up' :
-             'Unknown'}
+            {status?.status === 'healthy'
+              ? 'Healthy'
+              : status?.status === 'warning'
+                ? 'Warning'
+                : status?.status === 'critical'
+                  ? 'Critical'
+                  : status?.status === 'not_initialized'
+                    ? 'Not Set Up'
+                    : 'Unknown'}
           </div>
           <div className="text-xs text-gray-500 mt-1">
             {status?.schedulerRunning ? 'Scheduler active' : 'Scheduler stopped'}
@@ -285,9 +301,7 @@ export function BackupHealth({ className, apiBase = '' }: BackupHealthProps) {
             <Clock className="w-5 h-5 text-neon-purple" />
             <span className="text-sm text-gray-400">Last Backup</span>
           </div>
-          <div className="text-lg font-bold text-white">
-            {status?.age?.human || 'Never'}
-          </div>
+          <div className="text-lg font-bold text-white">{status?.age?.human || 'Never'}</div>
           <div className="text-xs text-gray-500 mt-1">
             Alert after {status?.alertThresholdHours || 12}h
           </div>
@@ -299,9 +313,7 @@ export function BackupHealth({ className, apiBase = '' }: BackupHealthProps) {
             <HardDrive className="w-5 h-5 text-blue-400" />
             <span className="text-sm text-gray-400">Local</span>
           </div>
-          <div className="text-lg font-bold text-white">
-            {status?.localFiles?.db || 0} files
-          </div>
+          <div className="text-lg font-bold text-white">{status?.localFiles?.db || 0} files</div>
           <div className="text-xs text-gray-500 mt-1">
             {formatBytes(status?.localFiles?.totalSizeBytes || 0)} used
           </div>
@@ -332,7 +344,9 @@ export function BackupHealth({ className, apiBase = '' }: BackupHealthProps) {
       {status && (
         <div className="px-6 pb-2">
           <div className="flex items-center gap-4 text-xs text-gray-500">
-            <span>Schedule: <code className="text-gray-400">{status.schedule}</code></span>
+            <span>
+              Schedule: <code className="text-gray-400">{status.schedule}</code>
+            </span>
             <span>Total: {status.counts?.total || 0}</span>
             <span>Successful: {status.counts?.successful || 0}</span>
             {(status.counts?.failed || 0) > 0 && (
@@ -353,12 +367,18 @@ export function BackupHealth({ className, apiBase = '' }: BackupHealthProps) {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-lattice-border">
-                  <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Status</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">
+                    Status
+                  </th>
                   <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Type</th>
                   <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Time</th>
                   <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Size</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Duration</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Integrity</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">
+                    Duration
+                  </th>
+                  <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">
+                    Integrity
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -368,12 +388,14 @@ export function BackupHealth({ className, apiBase = '' }: BackupHealthProps) {
                     className="border-b border-lattice-border/50 last:border-0 hover:bg-lattice-surface/50"
                   >
                     <td className="px-4 py-2.5">
-                      <span className={cn(
-                        'inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium',
-                        entry.status === 'completed' && 'bg-green-500/10 text-green-400',
-                        entry.status === 'failed' && 'bg-red-500/10 text-red-400',
-                        entry.status === 'started' && 'bg-blue-500/10 text-blue-400',
-                      )}>
+                      <span
+                        className={cn(
+                          'inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium',
+                          entry.status === 'completed' && 'bg-green-500/10 text-green-400',
+                          entry.status === 'failed' && 'bg-red-500/10 text-red-400',
+                          entry.status === 'started' && 'bg-blue-500/10 text-blue-400'
+                        )}
+                      >
                         {entry.status === 'completed' && <CheckCircle className="w-3 h-3" />}
                         {entry.status === 'failed' && <XCircle className="w-3 h-3" />}
                         {entry.status === 'started' && <Loader2 className="w-3 h-3 animate-spin" />}
@@ -381,12 +403,14 @@ export function BackupHealth({ className, apiBase = '' }: BackupHealthProps) {
                       </span>
                     </td>
                     <td className="px-4 py-2.5">
-                      <span className={cn(
-                        'text-xs px-1.5 py-0.5 rounded',
-                        entry.type === 's3' && 'bg-blue-500/10 text-blue-400',
-                        entry.type === 'local' && 'bg-gray-500/10 text-gray-400',
-                        entry.type === 'restore' && 'bg-purple-500/10 text-purple-400',
-                      )}>
+                      <span
+                        className={cn(
+                          'text-xs px-1.5 py-0.5 rounded',
+                          entry.type === 's3' && 'bg-blue-500/10 text-blue-400',
+                          entry.type === 'local' && 'bg-gray-500/10 text-gray-400',
+                          entry.type === 'restore' && 'bg-purple-500/10 text-purple-400'
+                        )}
+                      >
                         {entry.type}
                       </span>
                     </td>
@@ -415,17 +439,17 @@ export function BackupHealth({ className, apiBase = '' }: BackupHealthProps) {
           </div>
 
           {/* Error details for failed backups */}
-          {history.filter(e => e.status === 'failed' && e.error).slice(0, 2).map((entry) => (
-            <div
-              key={`err-${entry.id}`}
-              className="mt-2 px-3 py-2 bg-red-500/5 border border-red-500/20 rounded text-xs text-red-300"
-            >
-              <span className="font-medium">
-                {formatTime(entry.started_at)}:
-              </span>{' '}
-              {entry.error}
-            </div>
-          ))}
+          {history
+            .filter((e) => e.status === 'failed' && e.error)
+            .slice(0, 2)
+            .map((entry) => (
+              <div
+                key={`err-${entry.id}`}
+                className="mt-2 px-3 py-2 bg-red-500/5 border border-red-500/20 rounded text-xs text-red-300"
+              >
+                <span className="font-medium">{formatTime(entry.started_at)}:</span> {entry.error}
+              </div>
+            ))}
         </div>
       )}
 
@@ -444,3 +468,7 @@ export function BackupHealth({ className, apiBase = '' }: BackupHealthProps) {
     </div>
   );
 }
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedBackupHealth = withErrorBoundary(BackupHealth);
+export { _WrappedBackupHealth as BackupHealth };

@@ -47,7 +47,7 @@ interface StripeConnectPanelProps {
 
 // ── Component ────────────────────────────────────────────────────────────────
 
-export function StripeConnectPanel({ className }: StripeConnectPanelProps) {
+function StripeConnectPanel({ className }: StripeConnectPanelProps) {
   const queryClient = useQueryClient();
   const [amount, setAmount] = useState('');
   const [connecting, setConnecting] = useState(false);
@@ -57,8 +57,7 @@ export function StripeConnectPanel({ className }: StripeConnectPanelProps) {
   // Fetch Connect status
   const { data: connectStatus, isLoading: statusLoading } = useQuery({
     queryKey: ['stripe-connect-status'],
-    queryFn: () =>
-      apiHelpers.economy.connectStatus().then((r) => r.data as ConnectStatus),
+    queryFn: () => apiHelpers.economy.connectStatus().then((r) => r.data as ConnectStatus),
     retry: false,
   });
 
@@ -167,8 +166,8 @@ export function StripeConnectPanel({ className }: StripeConnectPanelProps) {
             <div>
               <p className="text-sm text-white font-medium">Secure Verification</p>
               <p className="text-xs text-gray-400">
-                Stripe handles all identity verification and banking details. Your
-                sensitive information is never stored on our servers.
+                Stripe handles all identity verification and banking details. Your sensitive
+                information is never stored on our servers.
               </p>
             </div>
           </div>
@@ -177,8 +176,8 @@ export function StripeConnectPanel({ className }: StripeConnectPanelProps) {
             <div>
               <p className="text-sm text-white font-medium">Quick Setup</p>
               <p className="text-xs text-gray-400">
-                The process takes about 5 minutes. You will need a valid ID and
-                bank account information.
+                The process takes about 5 minutes. You will need a valid ID and bank account
+                information.
               </p>
             </div>
           </div>
@@ -230,8 +229,8 @@ export function StripeConnectPanel({ className }: StripeConnectPanelProps) {
           <div className="flex items-start gap-3">
             <Info className="w-5 h-5 text-amber-400 mt-0.5 flex-shrink-0" />
             <p className="text-sm text-gray-300">
-              Stripe may need additional information to verify your identity or
-              banking details. Complete the remaining steps to enable withdrawals.
+              Stripe may need additional information to verify your identity or banking details.
+              Complete the remaining steps to enable withdrawals.
             </p>
           </div>
         </div>
@@ -326,18 +325,14 @@ export function StripeConnectPanel({ className }: StripeConnectPanelProps) {
             <div className="bg-lattice-deep rounded-lg p-4 border border-lattice-border space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-400">Withdrawal Amount</span>
-                <span className="font-mono text-white">
-                  {parsedAmount.toLocaleString()} CC
-                </span>
+                <span className="font-mono text-white">{parsedAmount.toLocaleString()} CC</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-400 flex items-center gap-1">
                   Platform Fee ({PLATFORM_FEE_PERCENT}%)
                   <Info className="w-3 h-3" />
                 </span>
-                <span className="font-mono text-red-400">
-                  -{fee.toFixed(2)} CC
-                </span>
+                <span className="font-mono text-red-400">-{fee.toFixed(2)} CC</span>
               </div>
               <div className="border-t border-lattice-border pt-2">
                 <div className="flex items-center justify-between">
@@ -364,24 +359,20 @@ export function StripeConnectPanel({ className }: StripeConnectPanelProps) {
             : 'bg-lattice-elevated text-gray-500 cursor-not-allowed'
         )}
       >
-        {withdrawing ? (
-          <Loader2 className="w-5 h-5 animate-spin" />
-        ) : (
-          <Coins className="w-5 h-5" />
-        )}
+        {withdrawing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Coins className="w-5 h-5" />}
         {withdrawing
           ? 'Processing...'
           : isValidAmount
-          ? `Withdraw ${parsedAmount.toLocaleString()} CC`
-          : 'Enter withdrawal amount'}
+            ? `Withdraw ${parsedAmount.toLocaleString()} CC`
+            : 'Enter withdrawal amount'}
       </button>
 
       {/* Estimated Arrival */}
       <div className="flex items-start gap-2 text-xs text-gray-500">
         <Clock className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
         <span>
-          Estimated arrival: 2-3 business days after approval. Funds will be
-          deposited into your connected bank account.
+          Estimated arrival: 2-3 business days after approval. Funds will be deposited into your
+          connected bank account.
         </span>
       </div>
 
@@ -421,4 +412,7 @@ function Toast({ toast }: { toast: { type: 'success' | 'error'; message: string 
   );
 }
 
-export default StripeConnectPanel;
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedStripeConnectPanel = withErrorBoundary(StripeConnectPanel);
+export { _WrappedStripeConnectPanel as StripeConnectPanel };
+export default _WrappedStripeConnectPanel;

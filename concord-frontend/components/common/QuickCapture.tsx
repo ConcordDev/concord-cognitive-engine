@@ -11,7 +11,7 @@ interface QuickCaptureProps {
   domain: string;
 }
 
-export function QuickCapture({ domain }: QuickCaptureProps) {
+function QuickCapture({ domain }: QuickCaptureProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [content, setContent] = useState('');
   const [title, setTitle] = useState('');
@@ -191,3 +191,7 @@ export function QuickCapture({ domain }: QuickCaptureProps) {
     </>
   );
 }
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedQuickCapture = withErrorBoundary(QuickCapture);
+export { _WrappedQuickCapture as QuickCapture };

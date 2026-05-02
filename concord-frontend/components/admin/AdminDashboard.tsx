@@ -54,13 +54,10 @@ interface AdminDashboardProps {
   className?: string;
 }
 
-export function AdminDashboard({
-  stats,
-  auditLogs,
-  onRefresh,
-  className
-}: AdminDashboardProps) {
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'audit' | 'settings'>('overview');
+function AdminDashboard({ stats, auditLogs, onRefresh, className }: AdminDashboardProps) {
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'audit' | 'settings'>(
+    'overview'
+  );
 
   const formatBytes = (bytes: number) => {
     if (bytes === 0) return '0 B';
@@ -108,8 +105,8 @@ export function AdminDashboard({
             { id: 'overview', label: 'Overview', icon: Activity },
             { id: 'users', label: 'Users', icon: Users },
             { id: 'audit', label: 'Audit Log', icon: FileText },
-            { id: 'settings', label: 'Settings', icon: Settings }
-          ].map(tab => {
+            { id: 'settings', label: 'Settings', icon: Settings },
+          ].map((tab) => {
             const Icon = tab.icon;
             return (
               <button
@@ -181,8 +178,11 @@ export function AdminDashboard({
                 <div
                   className={cn(
                     'h-full rounded-full transition-all',
-                    storagePercent > 90 ? 'bg-red-500' :
-                    storagePercent > 70 ? 'bg-yellow-500' : 'bg-neon-cyan'
+                    storagePercent > 90
+                      ? 'bg-red-500'
+                      : storagePercent > 70
+                        ? 'bg-yellow-500'
+                        : 'bg-neon-cyan'
                   )}
                   style={{ width: `${storagePercent}%` }}
                 />
@@ -200,7 +200,7 @@ export function AdminDashboard({
                 <span className="font-medium text-white">Recent Activity</span>
               </div>
               <div className="space-y-3">
-                {auditLogs.slice(0, 5).map(log => (
+                {auditLogs.slice(0, 5).map((log) => (
                   <div
                     key={log.id}
                     className="flex items-center justify-between py-2 border-b border-lattice-border/50 last:border-0"
@@ -230,23 +230,31 @@ export function AdminDashboard({
                 <tr className="bg-lattice-bg">
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-400">User</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-400">Action</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400">Resource</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400">
+                    Resource
+                  </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-400">Details</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-400">Time</th>
                 </tr>
               </thead>
               <tbody>
-                {auditLogs.map(log => (
-                  <tr key={log.id} className="border-t border-lattice-border/50 hover:bg-lattice-bg/50">
+                {auditLogs.map((log) => (
+                  <tr
+                    key={log.id}
+                    className="border-t border-lattice-border/50 hover:bg-lattice-bg/50"
+                  >
                     <td className="px-4 py-3 text-sm text-white">{log.userName}</td>
                     <td className="px-4 py-3">
-                      <span className={cn(
-                        'px-2 py-0.5 text-xs rounded',
-                        log.action === 'create' && 'bg-green-500/20 text-green-400',
-                        log.action === 'update' && 'bg-blue-500/20 text-blue-400',
-                        log.action === 'delete' && 'bg-red-500/20 text-red-400',
-                        !['create', 'update', 'delete'].includes(log.action) && 'bg-gray-500/20 text-gray-400'
-                      )}>
+                      <span
+                        className={cn(
+                          'px-2 py-0.5 text-xs rounded',
+                          log.action === 'create' && 'bg-green-500/20 text-green-400',
+                          log.action === 'update' && 'bg-blue-500/20 text-blue-400',
+                          log.action === 'delete' && 'bg-red-500/20 text-red-400',
+                          !['create', 'update', 'delete'].includes(log.action) &&
+                            'bg-gray-500/20 text-gray-400'
+                        )}
+                      >
                         {log.action}
                       </span>
                     </td>
@@ -282,7 +290,9 @@ export function AdminDashboard({
             </div>
             <div className="bg-lattice-surface border border-lattice-border rounded-lg p-4 mt-4">
               <p className="text-sm text-gray-400 mb-2">DTUs per User (avg)</p>
-              <p className="text-xl font-semibold text-white">{stats.dtus.averagePerUser.toFixed(1)}</p>
+              <p className="text-xl font-semibold text-white">
+                {stats.dtus.averagePerUser.toFixed(1)}
+              </p>
             </div>
           </div>
         )}
@@ -296,14 +306,24 @@ export function AdminDashboard({
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-lattice-surface border border-lattice-border rounded-lg p-4">
                 <p className="text-sm text-gray-400">Storage Used</p>
-                <p className="text-lg font-semibold text-white">{formatBytes(stats.storage.used)} / {formatBytes(stats.storage.total)}</p>
+                <p className="text-lg font-semibold text-white">
+                  {formatBytes(stats.storage.used)} / {formatBytes(stats.storage.total)}
+                </p>
                 <div className="w-full bg-lattice-bg rounded-full h-2 mt-2">
-                  <div className={cn('h-2 rounded-full', storagePercent > 80 ? 'bg-red-500' : 'bg-neon-cyan')} style={{ width: `${Math.min(storagePercent, 100)}%` }} />
+                  <div
+                    className={cn(
+                      'h-2 rounded-full',
+                      storagePercent > 80 ? 'bg-red-500' : 'bg-neon-cyan'
+                    )}
+                    style={{ width: `${Math.min(storagePercent, 100)}%` }}
+                  />
                 </div>
               </div>
               <div className="bg-lattice-surface border border-lattice-border rounded-lg p-4">
                 <p className="text-sm text-gray-400">API Requests Today</p>
-                <p className="text-lg font-semibold text-white">{stats.api.requestsToday.toLocaleString()}</p>
+                <p className="text-lg font-semibold text-white">
+                  {stats.api.requestsToday.toLocaleString()}
+                </p>
               </div>
               <div className="bg-lattice-surface border border-lattice-border rounded-lg p-4">
                 <p className="text-sm text-gray-400">Avg Latency</p>
@@ -311,12 +331,21 @@ export function AdminDashboard({
               </div>
               <div className="bg-lattice-surface border border-lattice-border rounded-lg p-4">
                 <p className="text-sm text-gray-400">Error Rate</p>
-                <p className={cn('text-lg font-semibold', stats.api.errorRate > 5 ? 'text-red-400' : 'text-neon-green')}>{stats.api.errorRate}%</p>
+                <p
+                  className={cn(
+                    'text-lg font-semibold',
+                    stats.api.errorRate > 5 ? 'text-red-400' : 'text-neon-green'
+                  )}
+                >
+                  {stats.api.errorRate}%
+                </p>
               </div>
             </div>
             <div className="bg-lattice-surface border border-lattice-border rounded-lg p-4">
               <p className="text-sm text-gray-400">Attachments</p>
-              <p className="text-lg font-semibold text-white">{stats.storage.attachments.toLocaleString()} files</p>
+              <p className="text-lg font-semibold text-white">
+                {stats.storage.attachments.toLocaleString()} files
+              </p>
             </div>
           </div>
         )}
@@ -330,7 +359,7 @@ function StatCard({
   value,
   change,
   icon: Icon,
-  color
+  color,
 }: {
   title: string;
   value: string | number;
@@ -342,7 +371,7 @@ function StatCard({
     cyan: 'text-neon-cyan bg-neon-cyan/10',
     purple: 'text-neon-purple bg-neon-purple/10',
     green: 'text-green-400 bg-green-400/10',
-    yellow: 'text-yellow-400 bg-yellow-400/10'
+    yellow: 'text-yellow-400 bg-yellow-400/10',
   };
 
   return (
@@ -358,3 +387,7 @@ function StatCard({
     </div>
   );
 }
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedAdminDashboard = withErrorBoundary(AdminDashboard);
+export { _WrappedAdminDashboard as AdminDashboard };

@@ -1484,7 +1484,16 @@ export default function MarketplaceLensPage() {
             {filteredItems.length === 0 && (
               <div className="text-center py-16 text-gray-500">
                 <Search className="w-10 h-10 mx-auto mb-3 opacity-40" />
-                <p>No items match your filters.</p>
+                <p className="mb-1 font-medium text-gray-400">No items match your filters</p>
+                <p className="text-sm mb-5 text-gray-600">
+                  Try broader filters or be the first to list something
+                </p>
+                <button
+                  onClick={() => setSearch('')}
+                  className="px-5 py-2 bg-neon-cyan/20 text-neon-cyan rounded-lg text-sm hover:bg-neon-cyan/30 transition-colors"
+                >
+                  Clear search
+                </button>
               </div>
             )}
 
@@ -2136,39 +2145,31 @@ export default function MarketplaceLensPage() {
                   <span className="text-sm text-gray-400">{formatPrice(p.price)}</span>
                   <button
                     onClick={async () => {
-                      useUIStore
-                        .getState()
-                        .addToast({
-                          type: 'info',
-                          message: `Preparing download: ${p.item.title}...`,
-                        });
+                      useUIStore.getState().addToast({
+                        type: 'info',
+                        message: `Preparing download: ${p.item.title}...`,
+                      });
                       try {
                         const res = await api.get(`/api/marketplace/install`, {
                           params: { id: p.item.id },
                         });
                         if (res.data?.ok) {
-                          useUIStore
-                            .getState()
-                            .addToast({
-                              type: 'success',
-                              message: `${p.item.title} installed successfully`,
-                            });
+                          useUIStore.getState().addToast({
+                            type: 'success',
+                            message: `${p.item.title} installed successfully`,
+                          });
                         } else {
-                          useUIStore
-                            .getState()
-                            .addToast({
-                              type: 'success',
-                              message: `${p.item.title} added to your library`,
-                            });
+                          useUIStore.getState().addToast({
+                            type: 'success',
+                            message: `${p.item.title} added to your library`,
+                          });
                         }
                       } catch (e) {
                         console.error('Marketplace install failed:', e);
-                        useUIStore
-                          .getState()
-                          .addToast({
-                            type: 'error',
-                            message: `Failed to install ${p.item.title}`,
-                          });
+                        useUIStore.getState().addToast({
+                          type: 'error',
+                          message: `Failed to install ${p.item.title}`,
+                        });
                       }
                     }}
                     className="btn-neon small flex items-center gap-1 text-sm"

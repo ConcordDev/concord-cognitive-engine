@@ -48,7 +48,7 @@ interface Future {
   createdAt: string;
 }
 
-export function BountiesAndFutures({ className }: { className?: string }) {
+function BountiesAndFutures({ className }: { className?: string }) {
   const [tab, setTab] = useState<'bounties' | 'futures'>('bounties');
   const [expanded, setExpanded] = useState(false);
 
@@ -309,3 +309,8 @@ function FuturesTab({ expanded }: { expanded: boolean }) {
     </div>
   );
 }
+
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _BountiesAndFutures = withErrorBoundary(BountiesAndFutures);
+export { _BountiesAndFutures as BountiesAndFutures };

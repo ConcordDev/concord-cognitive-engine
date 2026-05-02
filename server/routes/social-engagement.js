@@ -116,7 +116,7 @@ export default function createSocialEngagementRoutes({ db, requireAuth }) {
       });
     } catch (err) {
       console.error("[social-engagement] GET /analytics/post/:postId error:", err);
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -142,7 +142,7 @@ export default function createSocialEngagementRoutes({ db, requireAuth }) {
       res.json({ ok: true });
     } catch (err) {
       console.error("[social-engagement] POST /pin error:", err);
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -157,7 +157,7 @@ export default function createSocialEngagementRoutes({ db, requireAuth }) {
       res.json({ ok: true, deleted: result.changes });
     } catch (err) {
       console.error("[social-engagement] DELETE /pin/:postId error:", err);
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -192,7 +192,7 @@ export default function createSocialEngagementRoutes({ db, requireAuth }) {
       res.json({ ok: true, pins, count: pins.length });
     } catch (err) {
       console.error("[social-engagement] GET /pins/:userId error:", err);
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -221,7 +221,7 @@ export default function createSocialEngagementRoutes({ db, requireAuth }) {
       res.json({ ok: true, postId, seconds: secs });
     } catch (err) {
       console.error("[social-engagement] POST /watchtime error:", err);
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -275,7 +275,7 @@ export default function createSocialEngagementRoutes({ db, requireAuth }) {
       res.json({ ok: true, streak, lastPostAt: mostRecentDay });
     } catch (err) {
       console.error("[social-engagement] GET /streak error:", err);
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -298,7 +298,7 @@ export default function createSocialEngagementRoutes({ db, requireAuth }) {
       res.json({ ok: true, id });
     } catch (err) {
       console.error("[social-engagement] POST /commerce/tag error:", err);
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -335,7 +335,7 @@ export default function createSocialEngagementRoutes({ db, requireAuth }) {
       res.json({ ok: true, postId, totalSales, salesByListing, taggedListings: tags.length });
     } catch (err) {
       console.error("[social-engagement] GET /commerce/post/:postId/sales error:", err);
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -363,7 +363,7 @@ export default function createSocialEngagementRoutes({ db, requireAuth }) {
       res.json({ ok: true, postId, totalEarnings, currency: "CC", taggedListings: tags.length });
     } catch (err) {
       console.error("[social-engagement] GET /commerce/post/:postId/earnings error:", err);
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 

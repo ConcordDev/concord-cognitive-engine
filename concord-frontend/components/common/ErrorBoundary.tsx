@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Component, type ErrorInfo, type ReactNode } from 'react';
+import React, { Component, type ComponentType, type ErrorInfo, type ReactNode } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 
 interface ErrorBoundaryProps {
@@ -84,4 +84,17 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
     return this.props.children;
   }
+}
+
+export function withErrorBoundary<P extends object>(
+  Wrapped: ComponentType<P>,
+  fallback?: ReactNode,
+): React.FC<P> {
+  const WithBoundary: React.FC<P> = (props) => (
+    <ErrorBoundary fallback={fallback}>
+      <Wrapped {...props} />
+    </ErrorBoundary>
+  );
+  WithBoundary.displayName = `withErrorBoundary(${Wrapped.displayName || Wrapped.name || 'Component'})`;
+  return WithBoundary;
 }

@@ -129,7 +129,7 @@ async function exportTrace(trace) {
       signal: AbortSignal.timeout(5000),
     });
   } catch {
-    // OTel export is non-fatal — never propagate to caller
+    // intentional: telemetry export failure should not surface to user
   }
 }
 
@@ -155,7 +155,7 @@ if (ENABLED) {
 
     if (type === "finish" || type === "failure") {
       _inflight.delete(inferenceId);
-      exportTrace(trace).catch(() => {});
+      exportTrace(trace).catch(() => {}); // intentional: telemetry export failure should not surface to user
     }
   });
 }

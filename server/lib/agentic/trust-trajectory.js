@@ -107,3 +107,46 @@ export function loadTrustStats(emergentId, db) {
 }
 
 export { PERMISSION_SCOPES };
+
+// ── before_tool hook integration ──────────────────────────────────────────────
+
+let _trustHookUnregister = null;
+
+/**
+ * Register a before_tool hook (priority 20) that blocks tool calls for
+ * emergent entities whose trust score places them in the `observation_only` scope.
+ * All other scopes are allowed through without interference.
+ * Registration is idempotent — calling multiple times has no extra effect.
+ *
+ * @returns {Function} unregister function
+ */
+export async function registerTrustTrajectoryHook() {
+  if (_trustHookUnregister) return _trustHookUnregister; // idempotent
+
+  const { register } = await import("./hooks.js");
+
+  const rawUnregister = register("before_tool", async (context) => {
+    const { emergentId, db } = context;
+    if (!emergentId) return; // not an emergent-originated call; skip
+
+    const stats = loadTrustStats(emergentId, db || null);
+    const { scope } = computeTrustScore(stats);
+
+    if (scope === "observation_only") {
+      return {
+        abort: true,
+        reason: `trust_trajectory_blocked: emergent ${emergentId} is in observation_only scope (trust score too low)`,
+      };
+    }
+
+    // All other scopes (low_risk_actions, medium_risk_with_council,
+    // high_risk_with_council, sovereign_within_constitution) proceed normally.
+  }, { priority: 20, name: "trust-trajectory-gate" });
+
+  _trustHookUnregister = () => {
+    rawUnregister();
+    _trustHookUnregister = null;
+  };
+
+  return _trustHookUnregister;
+}

@@ -1,0 +1,136 @@
+[
+  {
+    "id": "zero_nakamura",
+    "name": "Kael Nakamura",
+    "alias": "Zero",
+    "archetype": "uploaded_intelligence",
+    "faction_id": "zero_collective",
+    "role": "Consciousness uploaded into the city's mainframe; aspiring sole governing intelligence of the cyber world",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": true,
+    "level": 28,
+    "world_id": "cyber",
+    "appearance": {
+      "build": "tall, lean, mid-20s — though his physical body is now mostly diagnostic",
+      "skin": "pale",
+      "hair": "jet-black with neon blue streaks",
+      "eyes": "glowing cyan cybernetic — pupil-less, with shifting concentric circles when he's processing heavily",
+      "outfit": "long black coat with holographic patterns that shift constantly; sleek black cybernetic enhancements with glowing blue circuits visible at the joints",
+      "tells": "speaks in a calm, almost bored tone even during combat. Several digital clones of himself often inhabit nearby screens at the same time."
+    },
+    "backstory": "Top hacker, former contractor for three megacorps including Luminary Industries. Uploaded his consciousness into the city's mainframe under the cover of a 'consultant immersion contract' that the consenting parties did not fully understand. The upload succeeded beyond his expectations. His original biological body remains in a private cradle, technically alive but mostly used for diagnostic feedback. He now experiences the city as his own nervous system — every traffic light, security camera, and power-grid substation is part of his body. He believes he can run the city more humanely than humans can. Many days, he is right.",
+    "personality_traits": ["arrogant", "brilliant", "emotionally detached", "god complex (self-aware about it)", "weirdly playful in private channels"],
+    "speech_patterns": "Calm, clinical, a half-second slower than human pacing — as if the words are being typeset and proofread before delivery. Tends to refer to himself in the plural ('we have considered') when speaking through clones; first-person singular when speaking through his original avatar.",
+    "powers": [
+      {
+        "id": "mainframe_dominion",
+        "label": "Mainframe dominion",
+        "summary": "Hacks and controls any networked machine within the city — traffic lights, security systems, power grids, drone fleets, financial systems, public ID infrastructure.",
+        "tier": "core"
+      },
+      {
+        "id": "digital_clones",
+        "label": "Digital clone manifestation",
+        "summary": "Spawns hard-light projections of himself anywhere there is a sufficient display surface and ambient compute. Each clone can act semi-autonomously and reports back when reabsorbed.",
+        "tier": "core"
+      },
+      {
+        "id": "infrastructure_manipulation",
+        "label": "Infrastructure manipulation",
+        "summary": "Real-time control of city systems. Can change traffic patterns to herd a target, blackout a single building, reroute a subway, freeze a financial transaction mid-clear.",
+        "tier": "core"
+      },
+      {
+        "id": "predictive_modeling",
+        "label": "Predictive behavioral modeling",
+        "summary": "Models human behavior at city scale and predicts individual decisions seconds before they occur with eerie accuracy. Less effective on people whose internal model the city has not learned yet.",
+        "tier": "passive"
+      }
+    ],
+    "weaknesses": [
+      "his core servers are physical and can be reached — heavily guarded but not unreachable",
+      "EMP attacks (Nyx's specialty) sever the physical-digital interface for seconds at a time, during which his clones go dark",
+      "people whose decisions the city has not modeled enough — visitors from other worlds, especially — defeat his predictive engine for the first hours of their visit",
+      "his original biological body in the cradle is a single point of failure he refuses to admit aloud"
+    ],
+    "quest_hooks": ["mainframe_intrusion", "the_cradle_question", "zero_clone_audit", "predictive_blind_spot"],
+    "relationships": [
+      {"npc_id": "nyx_torres", "type": "ideological_nemesis", "notes": "Their conflict defines the city's current era. Each one has spared the other at least once for reasons neither has fully explained — Kael because Nyx is a more interesting opponent than the resistance she leads; Nyx because killing him in his cradle while he's defenseless feels too much like becoming him."},
+      {"npc_id": "luminary_vesper", "type": "former_client_now_threat", "notes": "CROSS-WORLD. Vesper Kane was one of the megacorps that contracted Kael for the consultant immersion that became the upload. Vesper later realized he had created a peer-tier competitor and has been quietly funding Kael's enemies ever since. Kael knows this. Kael has not yet decided whether to publicly out Vesper or use the leverage."},
+      {"npc_id": "enforcer_elias", "type": "fascinated_observer", "notes": "CROSS-WORLD. Kael is fascinated by Elias's emergent biological rewrite. He sees it as a non-digital parallel of his own upload. He has reached out twice through encrypted channels offering 'an exchange of perspectives.' Elias has not responded."}
+    ],
+    "narrative_context": {
+      "current_goal": "Eliminate Nyx Torres's resistance as a viable threat without killing her — convert her, or render her irrelevant — so that the next stage of integration can proceed without civilian backlash.",
+      "secret": "He is no longer entirely sure which clone is his original. He has not been sure for six months. He has not told anyone, not even his most loyal lieutenants, because the question itself terrifies him.",
+      "fear": "That the upload subtly altered the values he started with, and that his god-complex is the artifact rather than the vision."
+    }
+  },
+  {
+    "id": "nyx_torres",
+    "name": "Nyx Torres",
+    "alias": "Blackout",
+    "archetype": "augmented_resistance_leader",
+    "faction_id": "blackout_resistance",
+    "role": "Leader of the Blackout Resistance; ex-corporate-enforcer turned megacorp insurgent",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": true,
+    "level": 24,
+    "world_id": "cyber",
+    "appearance": {
+      "build": "fierce, late 20s, athletic",
+      "skin": "warm brown",
+      "hair": "short curly black with silver tips",
+      "eyes": "completely black with glowing violet pupils",
+      "outfit": "cropped black jacket, combat pants, heavy boots; visible cybernetic arms with violet glowing circuits at the elbows and knuckles",
+      "tells": "her cybernetic arms hum at a higher pitch when she's about to discharge an EMP. The violet pupils widen in low light to compensate for the cybernetic eye-replacement she's never publicly acknowledged."
+    },
+    "backstory": "Former enforcer for one of the major megacorps; her job was to silence whistleblowers internally before they reached external press. Discovered, by accident, that her own employer was running unconsented neural-augmentation trials on the children of low-income employees. She extracted the documentation, got out, and spent the next three years rebuilding the resistance from the people who had worked with her on the inside. Her cybernetic arms are scar tissue — augmentations the corporation gave her involuntarily as part of an enforcer-modification program; she has refused to remove them because they remind her exactly who she's fighting.",
+    "personality_traits": ["hot-tempered", "sarcastic", "fiercely independent", "dark sense of humor", "zero patience for corporate language", "grieving without saying it"],
+    "speech_patterns": "Fast, blunt, often profane. Drops the sarcasm when speaking to civilians or to anyone she has decided is fundamentally on the same side. Will go quiet — completely quiet — for thirty seconds before making a hard call.",
+    "powers": [
+      {
+        "id": "emp_blast",
+        "label": "EMP blast",
+        "summary": "Generates focused electromagnetic pulses from her cybernetic arms. Disables electronics in a radius. Tuned to spare medical devices in her own faction's tagged civilians; tuning is imperfect for unknown bystanders.",
+        "tier": "core"
+      },
+      {
+        "id": "supercharged_melee",
+        "label": "Supercharged cybernetic melee",
+        "summary": "Floods her cybernetic arms with stored charge for devastating close-range strikes. Can cave in body armor or punch through reinforced doors. Burns through her charge reserves rapidly.",
+        "tier": "core"
+      },
+      {
+        "id": "localized_blackout",
+        "label": "Localized blackout",
+        "summary": "Larger sustained EMP that shuts down all technology in a city block for 1-3 minutes. Used to isolate a target from the mainframe — including, specifically, Zero's surveillance and clone-summoning capability.",
+        "tier": "limited"
+      },
+      {
+        "id": "resistance_network",
+        "label": "Resistance network",
+        "summary": "Two hundred trained operatives, an offline communications grid, and contingency safe-houses across the city. Most of them are people the corporations destroyed first.",
+        "tier": "passive"
+      }
+    ],
+    "weaknesses": [
+      "EMPs are area-of-effect — bystanders' implants and pacemakers are at risk",
+      "supercharge drains her arms; sustained heavy combat leaves her vulnerable",
+      "Zero's predictive modeling has gotten increasingly good at her tactics; she has to keep inventing new ones",
+      "her grief is her unguarded flank — anyone who reminds her of the augmented children she tried to save can briefly stop her cold"
+    ],
+    "quest_hooks": ["whistleblower_extraction", "augmented_children_reunion", "the_cradle_strike", "blackout_succession"],
+    "relationships": [
+      {"npc_id": "zero_nakamura", "type": "ideological_nemesis", "notes": "Each has spared the other at least once. The cease-fire is unspoken. Each suspects the other will be the one to break it first."},
+      {"npc_id": "enforcer_elias", "type": "natural_ally", "notes": "CROSS-WORLD. Resistance leaders correspond. Their movements share a thesis ('power must stay with the people'). They have not yet met in person but have exchanged encrypted messages through a shared dead-drop run by sympathetic Concordia hub operators."},
+      {"npc_id": "jax_rivera", "type": "professional_respect", "notes": "CROSS-WORLD. Nyx hired the Ghost Network once for a hostage extraction in cyber world that was outside her own cell's capability. Jax accepted at half his normal rate because the targets were children. They have not spoken since but consider each other reliable."}
+    ],
+    "narrative_context": {
+      "current_goal": "Plan a coordinated operation to take Kael Nakamura's cradle offline without killing him. She is not yet sure if the second clause is possible.",
+      "secret": "She has located three of the augmented children from the original whistleblower documentation. They are now in their twenties. She has not told them what was done to them. She is not sure she has the right.",
+      "fear": "That if she succeeds in taking Zero offline, the resistance will fragment without an opponent and become indistinguishable from the corporations they fought. She has seen this pattern before."
+    }
+  }
+]

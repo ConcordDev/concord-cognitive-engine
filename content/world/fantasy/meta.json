@@ -1,0 +1,44 @@
+{
+  "world_id": "fantasy",
+  "world_name": "The Sundering",
+  "theme": "fantasy",
+  "tech_level": "pre-industrial",
+  "magic_level": "abundant",
+  "is_hub": false,
+  "description": "A high-fantasy world with goblins, dragons, demons, orcs, and ancient magical bloodlines. Skyrim-class. The metaphysical substrate of the world is saturated with magic — wizards channel ambient magical fields directly. There's no electricity, no internet, no firearms. Tech skills brought from cyber or crime worlds simply have nothing to grip onto here.",
+  "skill_affinity": {
+    "default": 0.6,
+    "magic": 1.0,
+    "alchemy": 1.0,
+    "swordsmanship": 1.0,
+    "archery": 1.0,
+    "martial_arts": 0.85,
+    "athletics": 0.9,
+    "stealth": 0.95,
+    "lockpicking": 0.9,
+    "infiltration": 0.85,
+    "diplomacy": 0.95,
+    "deception": 0.95,
+    "leadership": 0.95,
+    "crafting": 1.0,
+    "engineering": 0.4,
+    "tech": 0.05,
+    "hacking": 0.0,
+    "gun": 0.0,
+    "weapons_modern": 0.0,
+    "weapon_attachments": 0.0,
+    "bio_powers": 0.4,
+    "driving": 0.0,
+    "piloting": 0.0
+  },
+  "concord_link": {
+    "primary_access": "crystal_orbs",
+    "secondary_access": ["enchanted_mirrors", "blood_runes", "dream_messages", "talking_familiars"],
+    "veil_stability": 0.9,
+    "anchors": [
+      { "id": "anchor_fantasy_voss_estate_mirror", "name": "The Voss Estate Mirror", "access_method": "enchanted_mirrors", "description": "A floor-length silvered mirror in Lady Seraphine's private receiving room. Whatever is said in front of it travels to her chosen recipients in any world. The mirror also shows her who's been observing her.", "location": "voss_estate", "controlled_by_faction": "house_voss", "stability": 1.0 },
+      { "id": "anchor_fantasy_wildwood_oak", "name": "The Listening Oak", "access_method": "blood_runes", "description": "An ancient oak in the elder grove. Cut a rune into its bark with one's own blood; the message travels through the root network into the Veil. The oak remembers every message ever inscribed.", "location": "elder_grove", "controlled_by_faction": "wildwood_circle", "stability": 0.95 },
+      { "id": "anchor_fantasy_dream_pool", "name": "The Dream Pool", "access_method": "dream_messages", "description": "A still pool in a hidden grove. Sleep beside it to send a dream-message to any sympathetic resonance. Cheap; slow; the message arrives the next time the recipient dreams.", "location": "thornwood_glade", "controlled_by_faction": null, "stability": 0.7 }
+    ]
+  }
+}

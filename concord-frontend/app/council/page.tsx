@@ -82,17 +82,20 @@ interface AgreementCell {
 
 const VOICES: VoiceName[] = ['skeptic', 'socratic', 'opposer', 'idealist', 'pragmatist'];
 
-const VOICE_CONFIG: Record<VoiceName, {
-  label: string;
-  color: string;
-  bgClass: string;
-  textClass: string;
-  borderClass: string;
-  barClass: string;
-  tendency: string;
-  description: string;
-  icon: typeof Shield;
-}> = {
+const VOICE_CONFIG: Record<
+  VoiceName,
+  {
+    label: string;
+    color: string;
+    bgClass: string;
+    textClass: string;
+    borderClass: string;
+    barClass: string;
+    tendency: string;
+    description: string;
+    icon: typeof Shield;
+  }
+> = {
   skeptic: {
     label: 'Skeptic',
     color: 'red',
@@ -186,7 +189,10 @@ function ConfidenceBar({ value, color }: { value: number; color: string }) {
     <div className="flex items-center gap-2 w-full">
       <div className="flex-1 h-2 bg-lattice-void rounded-full overflow-hidden">
         <div
-          className={cn('h-full rounded-full transition-all', CONFIDENCE_BAR_COLORS[color] || 'bg-gray-500')}
+          className={cn(
+            'h-full rounded-full transition-all',
+            CONFIDENCE_BAR_COLORS[color] || 'bg-gray-500'
+          )}
           style={{ width: `${Math.round(value * 100)}%` }}
         />
       </div>
@@ -204,7 +210,12 @@ function OutcomeBadge({ outcome }: { outcome: 'approved' | 'rejected' | 'split' 
     split: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
   };
   return (
-    <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border', styles[outcome])}>
+    <span
+      className={cn(
+        'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border',
+        styles[outcome]
+      )}
+    >
       {outcome === 'approved' && <ThumbsUp className="w-3 h-3" />}
       {outcome === 'rejected' && <ThumbsDown className="w-3 h-3" />}
       {outcome === 'split' && <Scale className="w-3 h-3" />}
@@ -217,7 +228,14 @@ function _VoiceBadge({ voice }: { voice: VoiceName }) {
   const config = VOICE_CONFIG[voice];
   const Icon = config.icon;
   return (
-    <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border', config.bgClass, config.textClass, config.borderClass)}>
+    <span
+      className={cn(
+        'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border',
+        config.bgClass,
+        config.textClass,
+        config.borderClass
+      )}
+    >
       <Icon className="w-3 h-3" />
       {config.label}
     </span>
@@ -240,13 +258,7 @@ function formatTime(iso: string): string {
 // Decision Detail View
 // ---------------------------------------------------------------------------
 
-function DecisionDetail({
-  decision,
-  onBack,
-}: {
-  decision: CouncilDecision;
-  onBack: () => void;
-}) {
+function DecisionDetail({ decision, onBack }: { decision: CouncilDecision; onBack: () => void }) {
   const [expandedVoice, setExpandedVoice] = useState<VoiceName | null>(null);
 
   const approves = decision.votes.filter((v) => v.vote === 'approve').length;
@@ -310,9 +322,15 @@ function DecisionDetail({
           )}
         </div>
         <div className="flex gap-4 text-xs text-gray-400">
-          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-green-500" /> Approve ({approves})</span>
-          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-gray-600" /> Abstain ({abstains})</span>
-          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-500" /> Reject ({rejects})</span>
+          <span className="flex items-center gap-1">
+            <span className="w-2.5 h-2.5 rounded-full bg-green-500" /> Approve ({approves})
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-2.5 h-2.5 rounded-full bg-gray-600" /> Abstain ({abstains})
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-2.5 h-2.5 rounded-full bg-red-500" /> Reject ({rejects})
+          </span>
         </div>
       </div>
 
@@ -327,27 +345,42 @@ function DecisionDetail({
           return (
             <div
               key={v.voice}
-              className={cn(ds.panel, 'cursor-pointer transition-colors', `hover:border-${config.color}-500/40`)}
+              className={cn(
+                ds.panel,
+                'cursor-pointer transition-colors',
+                `hover:border-${config.color}-500/40`
+              )}
               onClick={() => setExpandedVoice(isExpanded ? null : v.voice)}
             >
               <div className="flex items-center gap-3">
-                <div className={cn('w-9 h-9 rounded-lg flex items-center justify-center', config.bgClass)}>
+                <div
+                  className={cn(
+                    'w-9 h-9 rounded-lg flex items-center justify-center',
+                    config.bgClass
+                  )}
+                >
                   <Icon className={cn('w-5 h-5', config.textClass)} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className={cn('font-medium text-sm', config.textClass)}>{config.label}</span>
+                    <span className={cn('font-medium text-sm', config.textClass)}>
+                      {config.label}
+                    </span>
                     <span className="text-xs text-gray-500">({config.tendency})</span>
                   </div>
                   <ConfidenceBar value={v.confidence} color={config.color} />
                 </div>
                 <VoteIcon vote={v.vote} />
-                <span className={cn(
-                  'text-xs font-medium px-2 py-0.5 rounded',
-                  v.vote === 'approve' ? 'text-green-400 bg-green-500/10' :
-                  v.vote === 'reject' ? 'text-red-400 bg-red-500/10' :
-                  'text-gray-400 bg-gray-500/10'
-                )}>
+                <span
+                  className={cn(
+                    'text-xs font-medium px-2 py-0.5 rounded',
+                    v.vote === 'approve'
+                      ? 'text-green-400 bg-green-500/10'
+                      : v.vote === 'reject'
+                        ? 'text-red-400 bg-red-500/10'
+                        : 'text-gray-400 bg-gray-500/10'
+                  )}
+                >
                   {v.vote.toUpperCase()}
                 </span>
                 {isExpanded ? (
@@ -438,7 +471,9 @@ function DecisionsTab() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="font-medium text-white text-sm truncate">{decision.dtuTitle}</span>
+                  <span className="font-medium text-white text-sm truncate">
+                    {decision.dtuTitle}
+                  </span>
                   <OutcomeBadge outcome={decision.outcome} />
                 </div>
                 <p className={cn(ds.textMuted, 'mb-2 line-clamp-1')}>{decision.summary}</p>
@@ -454,7 +489,7 @@ function DecisionsTab() {
                           'flex items-center gap-1 px-1.5 py-0.5 rounded text-xs border',
                           config.bgClass,
                           config.borderClass,
-                          config.textClass,
+                          config.textClass
                         )}
                         title={`${config.label}: ${v.vote} (${Math.round(v.confidence * 100)}%)`}
                       >
@@ -510,7 +545,8 @@ function VoicesTab() {
     <div className="space-y-4">
       <h2 className={ds.heading2}>Council Voices</h2>
       <p className={ds.textMuted}>
-        Five distinct voices deliberate on every DTU. Each brings a unique perspective and voting tendency.
+        Five distinct voices deliberate on every DTU. Each brings a unique perspective and voting
+        tendency.
       </p>
 
       {!isLoading && profiles.length === 0 && (
@@ -527,20 +563,33 @@ function VoicesTab() {
           return (
             <div
               key={profile.name}
-              className={cn(ds.panel, 'transition-colors cursor-pointer', `hover:border-${config.color}-500/40`)}
+              className={cn(
+                ds.panel,
+                'transition-colors cursor-pointer',
+                `hover:border-${config.color}-500/40`
+              )}
               onClick={() => setExpandedVoice(isExpanded ? null : profile.name)}
             >
               <div className="flex items-start gap-4">
-                <div className={cn('w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0', config.bgClass)}>
+                <div
+                  className={cn(
+                    'w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0',
+                    config.bgClass
+                  )}
+                >
                   <Icon className={cn('w-6 h-6', config.textClass)} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <span className={cn('font-semibold', config.textClass)}>{config.label}</span>
-                    <span className={cn(
-                      'text-xs px-2 py-0.5 rounded-full border',
-                      config.bgClass, config.textClass, config.borderClass,
-                    )}>
+                    <span
+                      className={cn(
+                        'text-xs px-2 py-0.5 rounded-full border',
+                        config.bgClass,
+                        config.textClass,
+                        config.borderClass
+                      )}
+                    >
                       {config.tendency}
                     </span>
                   </div>
@@ -598,12 +647,16 @@ function VoicesTab() {
                       <div key={idx} className="flex items-center gap-3 text-sm">
                         <VoteIcon vote={rv.vote} />
                         <span className="font-mono text-xs text-gray-500">{rv.dtuId}</span>
-                        <span className={cn(
-                          'text-xs px-1.5 py-0.5 rounded',
-                          rv.vote === 'approve' ? 'text-green-400 bg-green-500/10' :
-                          rv.vote === 'reject' ? 'text-red-400 bg-red-500/10' :
-                          'text-gray-400 bg-gray-500/10'
-                        )}>
+                        <span
+                          className={cn(
+                            'text-xs px-1.5 py-0.5 rounded',
+                            rv.vote === 'approve'
+                              ? 'text-green-400 bg-green-500/10'
+                              : rv.vote === 'reject'
+                                ? 'text-red-400 bg-red-500/10'
+                                : 'text-gray-400 bg-gray-500/10'
+                          )}
+                        >
                           {rv.vote}
                         </span>
                         <div className="flex-1">
@@ -631,7 +684,7 @@ function HeatmapTab() {
     queryKey: ['council-heatmap'],
     queryFn: async () => {
       try {
-        const res = await api.post('/api/sovereign/decree', { action: 'council-voices' });
+        const res = await api.post('/api/run', { action: 'council-voices' });
         return res.data?.heatmap as AgreementCell[] | undefined;
       } catch {
         return undefined;
@@ -642,9 +695,14 @@ function HeatmapTab() {
   const cells = heatmapData ?? [];
 
   function getCell(a: VoiceName, b: VoiceName): AgreementCell {
-    return cells.find((c) => c.voiceA === a && c.voiceB === b) ?? {
-      voiceA: a, voiceB: b, agreementRate: 0, sampleSize: 0,
-    };
+    return (
+      cells.find((c) => c.voiceA === a && c.voiceB === b) ?? {
+        voiceA: a,
+        voiceB: b,
+        agreementRate: 0,
+        sampleSize: 0,
+      }
+    );
   }
 
   function getCellColor(rate: number): string {
@@ -659,95 +717,118 @@ function HeatmapTab() {
     <div className="space-y-4">
       <h2 className={ds.heading2}>Agreement Heatmap</h2>
       <p className={ds.textMuted}>
-        How often each pair of voices votes the same way. Higher values indicate more frequent agreement.
+        How often each pair of voices votes the same way. Higher values indicate more frequent
+        agreement.
       </p>
 
-      {cells.length === 0 && (
-        <CouncilEmptyState message="No governance decisions yet" />
-      )}
+      {cells.length === 0 && <CouncilEmptyState message="No governance decisions yet" />}
 
-      {cells.length > 0 && <div className={ds.panel}>
-        {/* Legend */}
-        <div className="flex items-center gap-3 mb-4 text-xs text-gray-400">
-          <span>Low Agreement</span>
-          <div className="flex gap-0.5">
-            <div className="w-5 h-3 rounded-sm bg-red-500/25" />
-            <div className="w-5 h-3 rounded-sm bg-orange-500/25" />
-            <div className="w-5 h-3 rounded-sm bg-yellow-500/25" />
-            <div className="w-5 h-3 rounded-sm bg-green-500/30" />
-            <div className="w-5 h-3 rounded-sm bg-green-500/60" />
+      {cells.length > 0 && (
+        <div className={ds.panel}>
+          {/* Legend */}
+          <div className="flex items-center gap-3 mb-4 text-xs text-gray-400">
+            <span>Low Agreement</span>
+            <div className="flex gap-0.5">
+              <div className="w-5 h-3 rounded-sm bg-red-500/25" />
+              <div className="w-5 h-3 rounded-sm bg-orange-500/25" />
+              <div className="w-5 h-3 rounded-sm bg-yellow-500/25" />
+              <div className="w-5 h-3 rounded-sm bg-green-500/30" />
+              <div className="w-5 h-3 rounded-sm bg-green-500/60" />
+            </div>
+            <span>High Agreement</span>
           </div>
-          <span>High Agreement</span>
-        </div>
 
-        {/* Grid */}
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr>
-                <th className="p-2 text-left text-xs text-gray-500 w-24" />
-                {VOICES.map((voice) => {
-                  const config = VOICE_CONFIG[voice];
+          {/* Grid */}
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr>
+                  <th className="p-2 text-left text-xs text-gray-500 w-24" />
+                  {VOICES.map((voice) => {
+                    const config = VOICE_CONFIG[voice];
+                    return (
+                      <th key={voice} className="p-2 text-center">
+                        <span className={cn('text-xs font-medium', config.textClass)}>
+                          {config.label}
+                        </span>
+                      </th>
+                    );
+                  })}
+                </tr>
+              </thead>
+              <tbody>
+                {VOICES.map((rowVoice) => {
+                  const rowConfig = VOICE_CONFIG[rowVoice];
                   return (
-                    <th key={voice} className="p-2 text-center">
-                      <span className={cn('text-xs font-medium', config.textClass)}>
-                        {config.label}
-                      </span>
-                    </th>
+                    <tr key={rowVoice}>
+                      <td className="p-2">
+                        <span className={cn('text-xs font-medium', rowConfig.textClass)}>
+                          {rowConfig.label}
+                        </span>
+                      </td>
+                      {VOICES.map((colVoice) => {
+                        const cell = getCell(rowVoice, colVoice);
+                        const isDiagonal = rowVoice === colVoice;
+                        return (
+                          <td key={colVoice} className="p-1">
+                            <div
+                              className={cn(
+                                'w-full aspect-square rounded-lg flex items-center justify-center text-xs font-mono font-medium transition-all',
+                                isDiagonal
+                                  ? 'bg-gray-700/50 text-gray-400'
+                                  : getCellColor(cell.agreementRate)
+                              )}
+                              title={`${VOICE_CONFIG[rowVoice].label} vs ${VOICE_CONFIG[colVoice].label}: ${Math.round(cell.agreementRate * 100)}% agreement (n=${cell.sampleSize})`}
+                            >
+                              {isDiagonal ? '--' : `${Math.round(cell.agreementRate * 100)}%`}
+                            </div>
+                          </td>
+                        );
+                      })}
+                    </tr>
                   );
                 })}
-              </tr>
-            </thead>
-            <tbody>
-              {VOICES.map((rowVoice) => {
-                const rowConfig = VOICE_CONFIG[rowVoice];
-                return (
-                  <tr key={rowVoice}>
-                    <td className="p-2">
-                      <span className={cn('text-xs font-medium', rowConfig.textClass)}>
-                        {rowConfig.label}
-                      </span>
-                    </td>
-                    {VOICES.map((colVoice) => {
-                      const cell = getCell(rowVoice, colVoice);
-                      const isDiagonal = rowVoice === colVoice;
-                      return (
-                        <td key={colVoice} className="p-1">
-                          <div
-                            className={cn(
-                              'w-full aspect-square rounded-lg flex items-center justify-center text-xs font-mono font-medium transition-all',
-                              isDiagonal ? 'bg-gray-700/50 text-gray-400' : getCellColor(cell.agreementRate),
-                            )}
-                            title={`${VOICE_CONFIG[rowVoice].label} vs ${VOICE_CONFIG[colVoice].label}: ${Math.round(cell.agreementRate * 100)}% agreement (n=${cell.sampleSize})`}
-                          >
-                            {isDiagonal ? '--' : `${Math.round(cell.agreementRate * 100)}%`}
-                          </div>
-                        </td>
-                      );
-                    })}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>}
+      )}
 
       {/* Key Insights */}
       <div className={ds.panel}>
         <h3 className={cn(ds.heading3, 'mb-3')}>Key Patterns</h3>
         <div className="space-y-2">
           {[
-            { pair: 'Skeptic & Opposer', desc: 'Highest agreement among critical voices. Often reject together.', rate: 72 },
-            { pair: 'Idealist & Pragmatist', desc: 'Moderate agreement. Pragmatist tempers Idealist\'s ambition.', rate: 61 },
-            { pair: 'Opposer & Idealist', desc: 'Lowest agreement. Fundamentally opposing worldviews.', rate: 14 },
-            { pair: 'Socratic & Pragmatist', desc: 'Balanced pair. Socratic questioning guides practical decisions.', rate: 55 },
+            {
+              pair: 'Skeptic & Opposer',
+              desc: 'Highest agreement among critical voices. Often reject together.',
+              rate: 72,
+            },
+            {
+              pair: 'Idealist & Pragmatist',
+              desc: "Moderate agreement. Pragmatist tempers Idealist's ambition.",
+              rate: 61,
+            },
+            {
+              pair: 'Opposer & Idealist',
+              desc: 'Lowest agreement. Fundamentally opposing worldviews.',
+              rate: 14,
+            },
+            {
+              pair: 'Socratic & Pragmatist',
+              desc: 'Balanced pair. Socratic questioning guides practical decisions.',
+              rate: 55,
+            },
           ].map((insight) => (
             <div key={insight.pair} className="flex items-start gap-3 text-sm">
-              <div className={cn(
-                'w-8 h-8 rounded flex items-center justify-center flex-shrink-0 text-xs font-mono font-bold',
-                insight.rate >= 50 ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400',
-              )}>
+              <div
+                className={cn(
+                  'w-8 h-8 rounded flex items-center justify-center flex-shrink-0 text-xs font-mono font-bold',
+                  insight.rate >= 50
+                    ? 'bg-green-500/20 text-green-400'
+                    : 'bg-red-500/20 text-red-400'
+                )}
+              >
                 {insight.rate}%
               </div>
               <div>
@@ -773,7 +854,7 @@ function EvaluateTab() {
 
   const evaluateMutation = useMutation({
     mutationFn: async (dtuId: string) => {
-      const res = await api.post('/api/sovereign/decree', {
+      const res = await api.post('/api/run', {
         action: 'council-voices',
         target: dtuId,
       });
@@ -799,7 +880,8 @@ function EvaluateTab() {
     <div className="space-y-4">
       <h2 className={ds.heading2}>Evaluate DTU</h2>
       <p className={ds.textMuted}>
-        Submit a DTU ID for the five council voices to deliberate on. Each voice will independently evaluate and vote.
+        Submit a DTU ID for the five council voices to deliberate on. Each voice will independently
+        evaluate and vote.
       </p>
 
       {/* Input Section */}
@@ -847,7 +929,8 @@ function EvaluateTab() {
         <div className={cn(ds.panel, 'border-yellow-500/30')}>
           <p className="text-yellow-400 text-sm flex items-center gap-2">
             <AlertTriangle className="w-4 h-4" />
-            The council did not return a decision for this DTU. It may not exist or may not be eligible for evaluation.
+            The council did not return a decision for this DTU. It may not exist or may not be
+            eligible for evaluation.
           </p>
         </div>
       )}
@@ -878,11 +961,18 @@ function EvaluateTab() {
               return (
                 <div key={v.voice} className={cn(ds.panel, 'border', config.borderClass)}>
                   <div className="flex items-center gap-2 mb-2">
-                    <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center', config.bgClass)}>
+                    <div
+                      className={cn(
+                        'w-8 h-8 rounded-lg flex items-center justify-center',
+                        config.bgClass
+                      )}
+                    >
                       <Icon className={cn('w-4 h-4', config.textClass)} />
                     </div>
                     <div>
-                      <span className={cn('font-medium text-sm', config.textClass)}>{config.label}</span>
+                      <span className={cn('font-medium text-sm', config.textClass)}>
+                        {config.label}
+                      </span>
                       <span className="text-xs text-gray-500 block">{config.tendency}</span>
                     </div>
                     <div className="ml-auto">
@@ -908,11 +998,18 @@ function EvaluateTab() {
               const Icon = config.icon;
               return (
                 <div key={voice} className="flex items-start gap-3">
-                  <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0', config.bgClass)}>
+                  <div
+                    className={cn(
+                      'w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0',
+                      config.bgClass
+                    )}
+                  >
                     <Icon className={cn('w-4 h-4', config.textClass)} />
                   </div>
                   <div>
-                    <span className={cn('text-sm font-medium', config.textClass)}>{config.label}</span>
+                    <span className={cn('text-sm font-medium', config.textClass)}>
+                      {config.label}
+                    </span>
                     <span className="text-xs text-gray-500 ml-2">({config.tendency})</span>
                     <p className="text-xs text-gray-400">{config.description}</p>
                   </div>
@@ -972,7 +1069,15 @@ function SubmissionsTab() {
   });
 
   const reviewMutation = useMutation({
-    mutationFn: async ({ id, decision, notes }: { id: string; decision: 'approve' | 'reject'; notes: string }) => {
+    mutationFn: async ({
+      id,
+      decision,
+      notes,
+    }: {
+      id: string;
+      decision: 'approve' | 'reject';
+      notes: string;
+    }) => {
       const res = await api.post(`/api/global/review/${id}`, { decision, notes });
       return res.data;
     },
@@ -1034,7 +1139,10 @@ function SubmissionsTab() {
       ) : (
         <div className="space-y-3">
           {queue.map((sub) => (
-            <div key={sub.id} className={cn(ds.panel, 'hover:border-neon-cyan/30 transition-colors')}>
+            <div
+              key={sub.id}
+              className={cn(ds.panel, 'hover:border-neon-cyan/30 transition-colors')}
+            >
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <h4 className="font-semibold text-white">{sub.title || 'Untitled DTU'}</h4>
@@ -1043,13 +1151,14 @@ function SubmissionsTab() {
                     <span>{sub.submittedAt ? formatTime(sub.submittedAt) : ''}</span>
                     <span className="px-1.5 py-0.5 rounded bg-lattice-deep">{sub.tier}</span>
                   </div>
-                  {sub.reason && (
-                    <p className="text-sm text-gray-400 mt-2">{sub.reason}</p>
-                  )}
+                  {sub.reason && <p className="text-sm text-gray-400 mt-2">{sub.reason}</p>}
                   {sub.tags && sub.tags.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-2">
                       {sub.tags.slice(0, 6).map((tag) => (
-                        <span key={tag} className="text-xs px-2 py-0.5 rounded bg-lattice-deep text-gray-500">
+                        <span
+                          key={tag}
+                          className="text-xs px-2 py-0.5 rounded bg-lattice-deep text-gray-500"
+                        >
                           {tag}
                         </span>
                       ))}
@@ -1075,17 +1184,22 @@ function SubmissionsTab() {
                             disabled={reviewMutation.isPending}
                             className="px-3 py-1 text-xs rounded bg-green-500/20 text-green-400 border border-green-500/30 hover:bg-green-500/30"
                           >
-                            <ThumbsUp className="w-3 h-3 inline mr-1" />Approve
+                            <ThumbsUp className="w-3 h-3 inline mr-1" />
+                            Approve
                           </button>
                           <button
                             onClick={() => handleReview(sub.id, 'reject')}
                             disabled={reviewMutation.isPending}
                             className="px-3 py-1 text-xs rounded bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30"
                           >
-                            <ThumbsDown className="w-3 h-3 inline mr-1" />Reject
+                            <ThumbsDown className="w-3 h-3 inline mr-1" />
+                            Reject
                           </button>
                           <button
-                            onClick={() => { setReviewingId(null); setReviewNotes(''); }}
+                            onClick={() => {
+                              setReviewingId(null);
+                              setReviewNotes('');
+                            }}
                             className="px-2 py-1 text-xs text-gray-500 hover:text-white"
                           >
                             Cancel
@@ -1113,18 +1227,30 @@ function SubmissionsTab() {
         <div className="mt-6">
           <h3 className={cn(ds.heading3, 'mb-3')}>Recent Contributions</h3>
           <div className="space-y-2">
-            {contributions.slice(0, 10).map((c: { dtuId: string; submittedBy: string; acceptedAt: string; reviewedBy: string }) => (
-              <div key={c.dtuId} className="flex items-center justify-between px-3 py-2 rounded-lg bg-lattice-deep/50">
-                <div className="flex items-center gap-2 text-sm">
-                  <ThumbsUp className="w-3.5 h-3.5 text-green-400" />
-                  <span className="text-gray-300">DTU {c.dtuId?.slice(0, 12)}</span>
-                  <span className="text-gray-600">by {c.submittedBy}</span>
-                </div>
-                <span className="text-xs text-gray-500">
-                  {c.acceptedAt ? formatTime(c.acceptedAt) : ''}
-                </span>
-              </div>
-            ))}
+            {contributions
+              .slice(0, 10)
+              .map(
+                (c: {
+                  dtuId: string;
+                  submittedBy: string;
+                  acceptedAt: string;
+                  reviewedBy: string;
+                }) => (
+                  <div
+                    key={c.dtuId}
+                    className="flex items-center justify-between px-3 py-2 rounded-lg bg-lattice-deep/50"
+                  >
+                    <div className="flex items-center gap-2 text-sm">
+                      <ThumbsUp className="w-3.5 h-3.5 text-green-400" />
+                      <span className="text-gray-300">DTU {c.dtuId?.slice(0, 12)}</span>
+                      <span className="text-gray-600">by {c.submittedBy}</span>
+                    </div>
+                    <span className="text-xs text-gray-500">
+                      {c.acceptedAt ? formatTime(c.acceptedAt) : ''}
+                    </span>
+                  </div>
+                )
+              )}
           </div>
         </div>
       )}
@@ -1279,8 +1405,8 @@ function PromotionsTab() {
             Promotion Queue
           </h3>
           <p className="text-xs text-gray-500 mt-1">
-            DTUs waiting for council approval to move up the federation ladder.
-            Regional → National → Global. Each tier has its own council voice.
+            DTUs waiting for council approval to move up the federation ladder. Regional → National
+            → Global. Each tier has its own council voice.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -1325,13 +1451,15 @@ function PromotionsTab() {
             const Icon = meta.icon;
             const isPending = proposal.status.startsWith('pending');
             return (
-              <div
-                key={proposal.id}
-                className={cn('rounded-xl border p-4', meta.border)}
-              >
+              <div key={proposal.id} className={cn('rounded-xl border p-4', meta.border)}>
                 <div className="flex items-start justify-between gap-3 mb-3">
                   <div className="min-w-0 flex-1">
-                    <div className={cn('inline-flex items-center gap-1.5 text-xs font-medium mb-2', meta.color)}>
+                    <div
+                      className={cn(
+                        'inline-flex items-center gap-1.5 text-xs font-medium mb-2',
+                        meta.color
+                      )}
+                    >
                       <Icon className="w-3.5 h-3.5" />
                       {meta.label}
                     </div>
@@ -1400,7 +1528,7 @@ export default function CouncilConsolePage() {
     queryKey: ['council-stats'],
     queryFn: async () => {
       try {
-        const res = await api.post('/api/sovereign/decree', { action: 'council-decisions' });
+        const res = await api.post('/api/run', { action: 'council-decisions' });
         const decisions = (res.data?.decisions as CouncilDecision[]) ?? [];
         const approved = decisions.filter((d) => d.outcome === 'approved').length;
         const rejected = decisions.filter((d) => d.outcome === 'rejected').length;
@@ -1438,9 +1566,7 @@ export default function CouncilConsolePage() {
         ].map((stat) => (
           <div key={stat.label} className={ds.panel}>
             <span className="text-xs text-gray-500 block">{stat.label}</span>
-            <span className={cn('text-2xl font-bold font-mono', stat.color)}>
-              {stat.value}
-            </span>
+            <span className={cn('text-2xl font-bold font-mono', stat.color)}>{stat.value}</span>
           </div>
         ))}
       </div>
@@ -1456,7 +1582,9 @@ export default function CouncilConsolePage() {
               key={voice}
               className={cn(
                 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border',
-                config.bgClass, config.textClass, config.borderClass,
+                config.bgClass,
+                config.textClass,
+                config.borderClass
               )}
             >
               <Icon className="w-3 h-3" />

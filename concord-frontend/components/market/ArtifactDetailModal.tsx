@@ -19,10 +19,10 @@ interface ArtifactDetailModalProps {
   onClose: () => void;
 }
 
-export function ArtifactDetailModal({ artifactId, onClose }: ArtifactDetailModalProps) {
+function ArtifactDetailModal({ artifactId, onClose }: ArtifactDetailModalProps) {
   const { data: artifact, isLoading } = useQuery({
     queryKey: ['artifact-detail', artifactId],
-    queryFn: () => api.get(`/api/marketplace/listings/${artifactId}`).then(r => r.data),
+    queryFn: () => api.get(`/api/marketplace/listings/${artifactId}`).then((r) => r.data),
     enabled: !!artifactId,
   });
 
@@ -40,8 +40,10 @@ export function ArtifactDetailModal({ artifactId, onClose }: ArtifactDetailModal
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-lattice-surface border border-lattice-border rounded-xl shadow-2xl
-        w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+      <div
+        className="bg-lattice-surface border border-lattice-border rounded-xl shadow-2xl
+        w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-lattice-border">
           <h2 className="text-lg font-bold text-white truncate">{artifact.title || 'Artifact'}</h2>
@@ -76,14 +78,18 @@ export function ArtifactDetailModal({ artifactId, onClose }: ArtifactDetailModal
               {/* Badges */}
               <div className="flex gap-2 flex-wrap">
                 {artifact.domain && (
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                    bg-neon-blue/10 text-neon-blue border border-neon-blue/30">
+                  <span
+                    className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                    bg-neon-blue/10 text-neon-blue border border-neon-blue/30"
+                  >
                     {artifact.domain}
                   </span>
                 )}
                 {artifact.fileType && (
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                    bg-zinc-800 text-zinc-300 border border-zinc-700">
+                  <span
+                    className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                    bg-zinc-800 text-zinc-300 border border-zinc-700"
+                  >
                     {artifact.fileType}
                   </span>
                 )}
@@ -96,9 +102,7 @@ export function ArtifactDetailModal({ artifactId, onClose }: ArtifactDetailModal
               )}
 
               {/* Entity attribution */}
-              {artifact.createdBy && (
-                <EntityAttributionCard entityId={artifact.createdBy} />
-              )}
+              {artifact.createdBy && <EntityAttributionCard entityId={artifact.createdBy} />}
 
               {/* Actions */}
               <div className="flex gap-3">
@@ -149,4 +153,7 @@ export function ArtifactDetailModal({ artifactId, onClose }: ArtifactDetailModal
   );
 }
 
-export default ArtifactDetailModal;
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedArtifactDetailModal = withErrorBoundary(ArtifactDetailModal);
+export { _WrappedArtifactDetailModal as ArtifactDetailModal };
+export default _WrappedArtifactDetailModal;

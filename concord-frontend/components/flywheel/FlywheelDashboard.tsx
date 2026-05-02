@@ -41,7 +41,7 @@ const SPOKES = [
   { key: 'users', label: 'Users', icon: Users, color: 'text-blue-400' },
 ] as const;
 
-export function FlywheelDashboard() {
+function FlywheelDashboard() {
   const { data, isLoading } = useQuery<{ ok: boolean; metrics: FlywheelMetrics }>({
     queryKey: ['flywheel'],
     queryFn: () => flywheelMetrics(),
@@ -139,3 +139,8 @@ export function FlywheelDashboard() {
     </div>
   );
 }
+
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _FlywheelDashboard = withErrorBoundary(FlywheelDashboard);
+export { _FlywheelDashboard as FlywheelDashboard };

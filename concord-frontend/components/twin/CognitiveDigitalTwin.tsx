@@ -18,7 +18,7 @@ const BIAS_LABELS: Record<string, { label: string; color: string }> = {
   sunkCost: { label: 'Sunk Cost', color: 'text-orange-400' },
 };
 
-export function CognitiveDigitalTwin({ className }: { className?: string }) {
+function CognitiveDigitalTwin({ className }: { className?: string }) {
   const [expanded, setExpanded] = useState(false);
   const [simQuestion, setSimQuestion] = useState('');
   const [cloneQuestion, setCloneQuestion] = useState('');
@@ -291,3 +291,8 @@ export function CognitiveDigitalTwin({ className }: { className?: string }) {
     </div>
   );
 }
+
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _CognitiveDigitalTwin = withErrorBoundary(CognitiveDigitalTwin);
+export { _CognitiveDigitalTwin as CognitiveDigitalTwin };

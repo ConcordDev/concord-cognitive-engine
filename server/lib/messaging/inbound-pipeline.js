@@ -4,6 +4,8 @@
 
 import crypto from "node:crypto";
 import { PERMISSION_TIERS } from "./permission-tiers.js";
+import logger from "../../logger.js";
+import { parseWorldIntent, routeToWorldOrChat } from "./cross-reality-bridge.js";
 
 /**
  * Process an inbound message from an external platform.
@@ -34,7 +36,7 @@ export async function processInboundMessage({ adapter, normalized, db, infer, cr
     // Unknown sender — send onboarding prompt
     await adapter.sendMessage(normalized.chatId,
       `This account isn't linked to Concord. Visit your Concord settings to connect ${platform}.`
-    ).catch(() => {});
+    ).catch(err => logger?.debug?.('[inbound-pipeline] background op failed', { err: err?.message }));
     return;
   }
 
@@ -43,10 +45,18 @@ export async function processInboundMessage({ adapter, normalized, db, infer, cr
     try {
       const guard = await contentGuard.check(normalized.text, { userId: binding.user_id, platform });
       if (!guard.ok) {
-        await adapter.sendMessage(normalized.chatId, "I can't help with that.").catch(() => {});
+        await adapter.sendMessage(normalized.chatId, "I can't help with that.").catch(err => logger?.debug?.('[inbound-pipeline] background op failed', { err: err?.message }));
         return;
       }
     } catch { /* content guard errors are non-fatal */ }
+  }
+
+  // 2b. Cross-reality routing — check if message targets a virtual world
+  const worldIntent = parseWorldIntent(normalized.text ?? '');
+  if (worldIntent) {
+    // TODO: wire infer and worldExecute when available in this scope for full routing
+    await routeToWorldOrChat({ text: normalized.text, userId: binding.user_id, worldId: null, infer, worldExecute: null }).catch(err => logger?.debug?.('[inbound] world routing failed', { err: err?.message }));
+    return; // handled by world routing
   }
 
   // 3. Record inbound message
@@ -89,7 +99,7 @@ export async function processInboundMessage({ adapter, normalized, db, infer, cr
   if (!responseText) return;
 
   // 5. Send response back on the platform
-  const sendResult = await adapter.sendMessage(normalized.chatId, responseText).catch(() => ({ ok: false }));
+  const sendResult = await adapter.sendMessage(normalized.chatId, responseText).catch(err => { logger?.debug?.('[inbound-pipeline] background op failed', { err: err?.message }); return { ok: false }; });
 
   // 6. Record outbound message
   const outboundId = `msg_${crypto.randomBytes(8).toString("hex")}`;

@@ -51,7 +51,7 @@ interface MorningBriefProps {
   className?: string;
 }
 
-export function MorningBrief({ compact = false, className }: MorningBriefProps) {
+function MorningBrief({ compact = false, className }: MorningBriefProps) {
   const [expanded, setExpanded] = useState(true);
   const queryClient = useQueryClient();
 
@@ -66,9 +66,12 @@ export function MorningBrief({ compact = false, className }: MorningBriefProps) 
   });
 
   // Fetch latest brief (authoritative)
-  const { data: briefData, isLoading: isFetching } = useQuery<{ ok: boolean; brief: BriefData | null }>({
+  const { data: briefData, isLoading: isFetching } = useQuery<{
+    ok: boolean;
+    brief: BriefData | null;
+  }>({
     queryKey: ['morning-brief'],
-    queryFn: () => api.get('/api/brief/morning').then(r => r.data),
+    queryFn: () => api.get('/api/brief/morning').then((r) => r.data),
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
@@ -122,12 +125,16 @@ export function MorningBrief({ compact = false, className }: MorningBriefProps) 
         </h3>
         <div className="flex items-center gap-2">
           {brief?.confidence && (
-            <span className={cn(
-              'text-xs px-2 py-0.5 rounded-full',
-              brief.confidence.label === 'high' ? 'bg-neon-green/20 text-neon-green' :
-              brief.confidence.label === 'medium' ? 'bg-amber-400/20 text-amber-400' :
-              'bg-red-400/20 text-red-400'
-            )}>
+            <span
+              className={cn(
+                'text-xs px-2 py-0.5 rounded-full',
+                brief.confidence.label === 'high'
+                  ? 'bg-neon-green/20 text-neon-green'
+                  : brief.confidence.label === 'medium'
+                    ? 'bg-amber-400/20 text-amber-400'
+                    : 'bg-red-400/20 text-red-400'
+              )}
+            >
               {Math.round(brief.confidence.score * 100)}% confident
             </span>
           )}
@@ -168,7 +175,11 @@ export function MorningBrief({ compact = false, className }: MorningBriefProps) 
             {brief.stats.topDomains.length > 0 && (
               <span className="flex items-center gap-1">
                 <Sparkles className="w-3.5 h-3.5 text-neon-cyan" />
-                Top: {brief.stats.topDomains.slice(0, 3).map((d: { domain: string; count: number }) => d.domain).join(', ')}
+                Top:{' '}
+                {brief.stats.topDomains
+                  .slice(0, 3)
+                  .map((d: { domain: string; count: number }) => d.domain)
+                  .join(', ')}
               </span>
             )}
           </div>
@@ -195,7 +206,9 @@ export function MorningBrief({ compact = false, className }: MorningBriefProps) 
                   <span>via {brief.source}</span>
                   {brief.model && <span>({brief.model})</span>}
                   {!briefData && offlineSource === 'cache' && (
-                    <span className="text-amber-400/70">(cached{offlineBriefStale ? ', refreshing' : ''})</span>
+                    <span className="text-amber-400/70">
+                      (cached{offlineBriefStale ? ', refreshing' : ''})
+                    </span>
                   )}
                   {!briefData && offlineSource === 'offline' && (
                     <span className="text-gray-500">(offline)</span>
@@ -212,11 +225,7 @@ export function MorningBrief({ compact = false, className }: MorningBriefProps) 
           <p className="text-sm text-gray-500 mb-4">
             Generate an AI-powered summary of your recent cognitive activity
           </p>
-          <button
-            onClick={handleGenerate}
-            disabled={isLoading}
-            className={cn(ds.btnPrimary)}
-          >
+          <button onClick={handleGenerate} disabled={isLoading} className={cn(ds.btnPrimary)}>
             {isLoading ? (
               <>
                 <RefreshCw className="w-4 h-4 animate-spin" />
@@ -234,3 +243,7 @@ export function MorningBrief({ compact = false, className }: MorningBriefProps) 
     </div>
   );
 }
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedMorningBrief = withErrorBoundary(MorningBrief);
+export { _WrappedMorningBrief as MorningBrief };

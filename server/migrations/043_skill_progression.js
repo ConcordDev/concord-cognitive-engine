@@ -23,7 +23,7 @@ export function up(db) {
   try {
     db.exec(`
       CREATE INDEX IF NOT EXISTS idx_dtus_skill_level
-        ON dtus(type, skill_level) WHERE type = 'skill'
+        ON dtus(skill_level)
     `);
   } catch (e) {
     if (!e?.message?.includes("already exists")) throw e;

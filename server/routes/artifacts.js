@@ -21,6 +21,10 @@ import { Router } from "express";
 import crypto from "crypto";
 import path from "path";
 import fs from "fs";
+import {
+  STORAGE_CONSTANTS,
+  ARTIFACT_STORAGE,
+} from "../lib/storage-constants.js";
 
 function uid() {
   return crypto.randomUUID();
@@ -129,7 +133,7 @@ export default function createArtifactsRouter({ db, requireAuth, STATE }) {
       res.json({ ok: true, artifacts, count: artifacts.length, offset });
     } catch (err) {
       console.error("[artifacts] GET / error:", err);
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -205,7 +209,7 @@ export default function createArtifactsRouter({ db, requireAuth, STATE }) {
       res.json({ ok: true, artifactId, name: safeName, sizeBytes: buf.length, storageMode });
     } catch (err) {
       console.error("[artifacts] POST /upload error:", err);
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -218,7 +222,7 @@ export default function createArtifactsRouter({ db, requireAuth, STATE }) {
       res.json({ ok: true, artifact: parseArtifact(row) });
     } catch (err) {
       console.error("[artifacts] GET /:id error:", err);
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -245,7 +249,7 @@ export default function createArtifactsRouter({ db, requireAuth, STATE }) {
       res.json({ ok: true, artifact, dtuTitle, downloadUrl: `/api/artifacts/${req.params.id}/download` });
     } catch (err) {
       console.error("[artifacts] GET /:id/info error:", err);
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -275,7 +279,7 @@ export default function createArtifactsRouter({ db, requireAuth, STATE }) {
       res.status(404).json({ ok: false, error: "Artifact content unavailable" });
     } catch (err) {
       console.error("[artifacts] GET /:id/download error:", err);
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 
@@ -295,7 +299,7 @@ export default function createArtifactsRouter({ db, requireAuth, STATE }) {
       res.json({ ok: true, artifactId: req.params.id, deleted: true });
     } catch (err) {
       console.error("[artifacts] DELETE /:id error:", err);
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   });
 

@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Quest, QuestReward } from '@/lib/concordia/quest-system';
 import { questTracker } from '@/lib/concordia/quest-system';
+import { subscribe } from '@/lib/realtime/socket';
+import { useUIStore } from '@/store/ui';
 
 // ── Sub-components ────────────────────────────────────────────────────
 
@@ -152,13 +154,53 @@ export function QuestLog({ quests: propQuests, worldId, onClose }: QuestLogProps
       const res = await fetch(`/api/worlds/${worldId}/quests?status=all`);
       if (!res.ok) return;
       const data = await res.json();
-      setServerQuests((data.quests || []).map(normaliseServerQuest));
+      const next = (data.quests || []).map(normaliseServerQuest);
+      // Phase 18 polish-to-ten: fire quest-complete fanfare when a quest
+      // transitions from non-completed to completed in this fetch. Compares
+      // against the previous serverQuests state, so only fresh transitions
+      // trigger the juice (re-mounts don't re-fire).
+      setServerQuests((prev) => {
+        const prevById = new Map(prev.map((q) => [q.id, q.status]));
+        for (const q of next) {
+          if (q.status === 'completed' && prevById.has(q.id) && prevById.get(q.id) !== 'completed') {
+            try {
+              window.dispatchEvent(new CustomEvent('concordia:game-juice', { detail: { trigger: 'quest-complete' } }));
+            } catch { /* juice is best-effort */ }
+          }
+        }
+        return next;
+      });
     } finally {
       setLoading(false);
     }
   }, [worldId]);
 
   useEffect(() => { fetchServerQuests(); }, [fetchServerQuests]);
+
+  // Realtime quest push: refetch + toast + ambient SFX when an emergent
+  // quest arrives for the world the player is currently in.
+  useEffect(() => {
+    if (!worldId) return;
+    const addToast = useUIStore.getState().addToast;
+    const unsubscribe = subscribe<{ questId: string; worldId: string; title: string }>(
+      'quest:new',
+      (payload) => {
+        if (payload.worldId && payload.worldId !== worldId) return;
+        fetchServerQuests();
+        addToast({
+          type: 'info',
+          message: `New quest: ${payload.title}`,
+          duration: 8000,
+        });
+        try {
+          window.dispatchEvent(new CustomEvent('concordia:soundscape-command', {
+            detail: { action: 'triggerSFX', sfxId: 'notification-glow' },
+          }));
+        } catch { /* SFX is best-effort */ }
+      },
+    );
+    return unsubscribe;
+  }, [worldId, fetchServerQuests]);
 
   const handleAccept = useCallback(async (questId: string) => {
     if (worldId) {

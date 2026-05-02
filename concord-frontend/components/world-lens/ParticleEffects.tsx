@@ -22,7 +22,9 @@ export type VFXType =
   | 'water-flow'
   | 'electrical-arcs'
   | 'celebration'
-  | 'forge-glow';
+  | 'forge-glow'
+  // Wave 1 deferral 4: impact dust on knockback wall hits, kill blows.
+  | 'dust';
 
 export type WeatherVFX = 'rain' | 'snow' | 'wind-debris' | 'none';
 
@@ -93,6 +95,9 @@ const vfxColors: Record<VFXType, string[]> = {
   'electrical-arcs': ['#A78BFA', '#818CF8', '#E0E7FF', '#FFFFFF'],
   celebration: ['#EF4444', '#F97316', '#EAB308', '#22C55E', '#3B82F6', '#8B5CF6', '#EC4899'],
   'forge-glow': ['#F97316', '#FB923C', '#FDBA74', '#FDE68A'],
+  // Dust: gray-brown puff with off-white highlights. Reads as kicked-up
+  // debris on hard impact.
+  dust: ['#9CA3AF', '#A8A29E', '#D6D3D1', '#E7E5E4', '#78716C'],
 };
 
 const vfxGravity: Record<VFXType, number> = {
@@ -106,6 +111,8 @@ const vfxGravity: Record<VFXType, number> = {
   'electrical-arcs': 0,
   celebration: 0.04,
   'forge-glow': -0.03,
+  // Dust settles slowly downward
+  dust: 0.04,
 };
 
 // ── Context ───────────────────────────────────────────────────────
@@ -209,6 +216,22 @@ export default function ParticleEffects({
       particlesRef.current.push(spawnParticle(type, position));
     }
   }, []);
+
+  // Wave 1 deferral 4: window-event dispatch so sibling components can fire
+  // particle effects without being inside this provider. Mirrors the
+  // SoundscapeEngine `concordia:soundscape-command` pattern.
+  // detail: { type: VFXType, position: { x, y }, count?: number }
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as
+        | { type?: VFXType; position?: Position2D; count?: number }
+        | undefined;
+      if (!detail?.type || !detail.position) return;
+      triggerVFX(detail.type, detail.position, detail.count ?? 12);
+    };
+    window.addEventListener('concordia:particle-effect', handler);
+    return () => window.removeEventListener('concordia:particle-effect', handler);
+  }, [triggerVFX]);
 
   const setWeatherVFX = useCallback((weather: WeatherState | null) => {
     weatherRef.current = weather;

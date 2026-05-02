@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, Flame, Trash2, TrendingUp, Loader2, ChevronDown, ChevronUp, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export function MetabolismPanel({ className }: { className?: string }) {
+function MetabolismPanel({ className }: { className?: string }) {
   const [expanded, setExpanded] = useState(false);
   const queryClient = useQueryClient();
 
@@ -187,3 +187,8 @@ export function MetabolismPanel({ className }: { className?: string }) {
     </div>
   );
 }
+
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _MetabolismPanel = withErrorBoundary(MetabolismPanel);
+export { _MetabolismPanel as MetabolismPanel };

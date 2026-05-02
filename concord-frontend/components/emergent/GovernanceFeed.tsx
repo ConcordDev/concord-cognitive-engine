@@ -24,12 +24,12 @@ interface CouncilAction {
   votes?: { approve?: number; reject?: number };
 }
 
-export function GovernanceFeed() {
+function GovernanceFeed() {
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
     queryKey: ['council-actions'],
-    queryFn: () => apiHelpers.atlas.councilActions({ limit: 10 }).then(r => r.data),
+    queryFn: () => apiHelpers.atlas.councilActions({ limit: 10 }).then((r) => r.data),
     refetchInterval: 30000,
     retry: false,
   });
@@ -53,9 +53,10 @@ export function GovernanceFeed() {
     };
   }, [queryClient]);
 
-  const actions: CouncilAction[] = (data as { actions?: CouncilAction[]; items?: CouncilAction[] })?.actions
-    || (data as { actions?: CouncilAction[]; items?: CouncilAction[] })?.items
-    || (Array.isArray(data) ? data as CouncilAction[] : []);
+  const actions: CouncilAction[] =
+    (data as { actions?: CouncilAction[]; items?: CouncilAction[] })?.actions ||
+    (data as { actions?: CouncilAction[]; items?: CouncilAction[] })?.items ||
+    (Array.isArray(data) ? (data as CouncilAction[]) : []);
 
   function getActionIcon(action: CouncilAction) {
     const type = action.type || action.action || '';
@@ -101,7 +102,7 @@ export function GovernanceFeed() {
 
       {isLoading ? (
         <div className="space-y-2">
-          {[1, 2, 3].map(i => (
+          {[1, 2, 3].map((i) => (
             <div key={i} className="h-10 bg-lattice-deep animate-pulse rounded-lg" />
           ))}
         </div>
@@ -126,8 +127,10 @@ export function GovernanceFeed() {
               </div>
               <span className="text-[10px] text-gray-600 flex-shrink-0 mt-0.5">
                 {(action.timestamp || action.created_at) &&
-                  new Date(action.timestamp || action.created_at || '').toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
-                }
+                  new Date(action.timestamp || action.created_at || '').toLocaleTimeString(
+                    undefined,
+                    { hour: '2-digit', minute: '2-digit' }
+                  )}
               </span>
             </div>
           ))}
@@ -136,3 +139,7 @@ export function GovernanceFeed() {
     </div>
   );
 }
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedGovernanceFeed = withErrorBoundary(GovernanceFeed);
+export { _WrappedGovernanceFeed as GovernanceFeed };

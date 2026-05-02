@@ -47,13 +47,15 @@ const CitationBadge = React.memo(function CitationBadge({ type }: { type: string
     extension: 'bg-purple-500/20 text-purple-400',
   };
   return (
-    <span className={`text-xs px-1.5 py-0.5 rounded ${colors[type] || 'bg-gray-700 text-gray-400'}`}>
+    <span
+      className={`text-xs px-1.5 py-0.5 rounded ${colors[type] || 'bg-gray-700 text-gray-400'}`}
+    >
       {type}
     </span>
   );
 });
 
-export function RoyaltyDashboard({ userId }: RoyaltyDashboardProps) {
+function RoyaltyDashboard({ userId }: RoyaltyDashboardProps) {
   const { data: royalties, isLoading } = useQuery<RoyaltyData>({
     queryKey: ['royalties', userId],
     queryFn: async () => {
@@ -90,15 +92,11 @@ export function RoyaltyDashboard({ userId }: RoyaltyDashboardProps) {
       <div className="grid grid-cols-2 gap-3 mb-5">
         <div className="p-3 rounded-lg bg-gray-800/50 border border-gray-700">
           <p className="text-xs text-gray-500 mb-1">Total earned</p>
-          <p className="text-xl font-bold text-neon-green">
-            ${earned.toFixed(2)}
-          </p>
+          <p className="text-xl font-bold text-neon-green">${earned.toFixed(2)}</p>
         </div>
         <div className="p-3 rounded-lg bg-gray-800/50 border border-gray-700">
           <p className="text-xs text-gray-500 mb-1">This month</p>
-          <p className="text-xl font-bold text-neon-cyan">
-            ${monthly.toFixed(2)}
-          </p>
+          <p className="text-xl font-bold text-neon-cyan">${monthly.toFixed(2)}</p>
         </div>
       </div>
 
@@ -118,14 +116,10 @@ export function RoyaltyDashboard({ userId }: RoyaltyDashboardProps) {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <GitBranch className="w-3 h-3 text-gray-500 shrink-0" />
-                    <span className="text-sm text-white truncate">
-                      {stream.originalTitle}
-                    </span>
+                    <span className="text-sm text-white truncate">{stream.originalTitle}</span>
                     <CitationBadge type={stream.citationType} />
                   </div>
-                  <p className="text-xs text-gray-500 ml-5">
-                    {stream.totalSales} sales
-                  </p>
+                  <p className="text-xs text-gray-500 ml-5">{stream.totalSales} sales</p>
                 </div>
                 <span className="text-sm font-medium text-neon-green shrink-0 ml-2">
                   ${stream.totalRoyalties.toFixed(2)}
@@ -167,7 +161,7 @@ export function RoyaltyDashboard({ userId }: RoyaltyDashboardProps) {
         </div>
       )}
 
-      {(!royalties?.streams?.length && !royalties?.recentPayments?.length) && (
+      {!royalties?.streams?.length && !royalties?.recentPayments?.length && (
         <p className="text-xs text-gray-500">
           No royalty earnings yet. Create content that others remix to start earning.
         </p>
@@ -175,3 +169,7 @@ export function RoyaltyDashboard({ userId }: RoyaltyDashboardProps) {
     </div>
   );
 }
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedRoyaltyDashboard = withErrorBoundary(RoyaltyDashboard);
+export { _WrappedRoyaltyDashboard as RoyaltyDashboard };

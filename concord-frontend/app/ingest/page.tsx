@@ -107,58 +107,24 @@ export default function IngestMonitorPage() {
   /*  Queries                                                          */
   /* ---------------------------------------------------------------- */
 
-  // Ingest queue (REST)
-  const {
-    data: queueData,
-    isLoading: queueLoading,
-  } = useQuery({
+  // Ingest queue
+  const { data: queueData, isLoading: queueLoading } = useQuery({
     queryKey: ['ingest-queue'],
-    queryFn: async () => {
-      // Try REST first, fall back to sovereign decree
-      try {
-        const res = await api.get('/api/ingest/queue');
-        return res.data;
-      } catch {
-        const res = await api.post('/api/sovereign/decree', { action: 'ingest-queue' });
-        return res.data;
-      }
-    },
+    queryFn: () => api.get('/api/ingest/queue').then((r) => r.data),
     refetchInterval: 5000,
   });
 
-  // Ingest stats (REST)
-  const {
-    data: statsData,
-    isLoading: statsLoading,
-  } = useQuery({
+  // Ingest stats
+  const { data: statsData, isLoading: statsLoading } = useQuery({
     queryKey: ['ingest-stats'],
-    queryFn: async () => {
-      try {
-        const res = await api.get('/api/ingest/stats');
-        return res.data;
-      } catch {
-        const res = await api.post('/api/sovereign/decree', { action: 'ingest-stats' });
-        return res.data;
-      }
-    },
+    queryFn: () => api.get('/api/ingest/stats').then((r) => r.data),
     refetchInterval: 10000,
   });
 
-  // Allowlist (REST)
-  const {
-    data: allowlistData,
-    isLoading: allowlistLoading,
-  } = useQuery({
+  // Allowlist
+  const { data: allowlistData, isLoading: allowlistLoading } = useQuery({
     queryKey: ['ingest-allowlist'],
-    queryFn: async () => {
-      try {
-        const res = await api.get('/api/ingest/allowlist');
-        return res.data;
-      } catch {
-        const res = await api.post('/api/sovereign/decree', { action: 'ingest-allowlist' });
-        return res.data;
-      }
-    },
+    queryFn: () => api.get('/api/ingest/allowlist').then((r) => r.data),
   });
 
   /* ---------------------------------------------------------------- */
@@ -176,18 +142,21 @@ export default function IngestMonitorPage() {
     rateLimits: statsData?.rateLimits ?? {},
     domainBreakdown: statsData?.domainBreakdown ?? statsData?.domains ?? {},
     queueDepth: statsData?.queueDepth ?? queue.filter((i) => i.status === 'queued').length,
-    processingCount: statsData?.processingCount ?? queue.filter((i) => i.status === 'processing').length,
+    processingCount:
+      statsData?.processingCount ?? queue.filter((i) => i.status === 'processing').length,
   };
 
   const allowlist: AllowlistEntry[] = Array.isArray(allowlistData?.domains ?? allowlistData)
     ? (allowlistData?.domains ?? allowlistData).map((d: string | AllowlistEntry) =>
-        typeof d === 'string' ? { domain: d } : d,
+        typeof d === 'string' ? { domain: d } : d
       )
     : [];
 
-  const blocklist: BlocklistEntry[] = Array.isArray(statsData?.blocklist ?? statsData?.blockedDomains)
+  const blocklist: BlocklistEntry[] = Array.isArray(
+    statsData?.blocklist ?? statsData?.blockedDomains
+  )
     ? (statsData?.blocklist ?? statsData?.blockedDomains).map((d: string | BlocklistEntry) =>
-        typeof d === 'string' ? { domain: d } : d,
+        typeof d === 'string' ? { domain: d } : d
       )
     : [];
 
@@ -201,19 +170,8 @@ export default function IngestMonitorPage() {
   /* ---------------------------------------------------------------- */
 
   const submitUrl = useMutation({
-    mutationFn: async (url: string) => {
-      // Try REST, fallback to sovereign decree
-      try {
-        const res = await api.post('/api/ingest/submit', { url, tier: tierInput });
-        return res.data;
-      } catch {
-        const res = await api.post('/api/sovereign/decree', {
-          action: 'ingest',
-          data: { url },
-        });
-        return res.data;
-      }
-    },
+    mutationFn: (url: string) =>
+      api.post('/api/ingest/submit', { url, tier: tierInput }).then((r) => r.data),
     onSuccess: () => {
       setUrlInput('');
       queryClient.invalidateQueries({ queryKey: ['ingest-queue'] });
@@ -222,13 +180,8 @@ export default function IngestMonitorPage() {
   });
 
   const addToAllowlist = useMutation({
-    mutationFn: async (domain: string) => {
-      const res = await api.post('/api/sovereign/decree', {
-        action: 'ingest-allowlist',
-        data: { action: 'add', domain },
-      });
-      return res.data;
-    },
+    mutationFn: (domain: string) =>
+      api.post('/api/ingest/allowlist', { action: 'add', domain }).then((r) => r.data),
     onSuccess: () => {
       setNewDomain('');
       queryClient.invalidateQueries({ queryKey: ['ingest-allowlist'] });
@@ -236,26 +189,15 @@ export default function IngestMonitorPage() {
   });
 
   const removeFromAllowlist = useMutation({
-    mutationFn: async (domain: string) => {
-      const res = await api.post('/api/sovereign/decree', {
-        action: 'ingest-allowlist',
-        data: { action: 'remove', domain },
-      });
-      return res.data;
-    },
+    mutationFn: (domain: string) =>
+      api.post('/api/ingest/allowlist', { action: 'remove', domain }).then((r) => r.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ingest-allowlist'] });
     },
   });
 
   const blockDomainMutation = useMutation({
-    mutationFn: async (domain: string) => {
-      const res = await api.post('/api/sovereign/decree', {
-        action: 'ingest-block',
-        data: { domain },
-      });
-      return res.data;
-    },
+    mutationFn: (domain: string) => api.post('/api/ingest/block', { domain }).then((r) => r.data),
     onSuccess: () => {
       setBlockDomain('');
       queryClient.invalidateQueries({ queryKey: ['ingest-stats'] });
@@ -264,10 +206,7 @@ export default function IngestMonitorPage() {
   });
 
   const flushQueue = useMutation({
-    mutationFn: async () => {
-      const res = await api.post('/api/sovereign/decree', { action: 'ingest-flush' });
-      return res.data;
-    },
+    mutationFn: () => api.post('/api/ingest/flush').then((r) => r.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ingest-queue'] });
       queryClient.invalidateQueries({ queryKey: ['ingest-stats'] });
@@ -311,7 +250,9 @@ export default function IngestMonitorPage() {
           <Download className="w-8 h-8 text-neon-blue" />
           <div>
             <h1 className={ds.heading1}>Ingest Monitor</h1>
-            <p className={ds.textMuted}>System 13f -- URL ingestion pipeline, rate limits, and domain governance</p>
+            <p className={ds.textMuted}>
+              System 13f -- URL ingestion pipeline, rate limits, and domain governance
+            </p>
           </div>
         </div>
         <button
@@ -407,9 +348,7 @@ export default function IngestMonitorPage() {
             <Clock className="w-5 h-5 text-yellow-400" />
             <span className={ds.textMuted}>Queue Depth</span>
           </div>
-          <p className="text-3xl font-bold text-white">
-            {queueLoading ? '--' : stats.queueDepth}
-          </p>
+          <p className="text-3xl font-bold text-white">{queueLoading ? '--' : stats.queueDepth}</p>
           <p className={ds.textMuted}>
             {stats.processingCount > 0 && `${stats.processingCount} processing`}
           </p>
@@ -421,9 +360,7 @@ export default function IngestMonitorPage() {
             <AlertTriangle className="w-5 h-5 text-red-400" />
             <span className={ds.textMuted}>Failed</span>
           </div>
-          <p className="text-3xl font-bold text-white">
-            {statsLoading ? '--' : stats.totalFailed}
-          </p>
+          <p className="text-3xl font-bold text-white">{statsLoading ? '--' : stats.totalFailed}</p>
         </div>
       </div>
 
@@ -437,10 +374,10 @@ export default function IngestMonitorPage() {
           {Object.entries(TIER_LIMITS).map(([tier, limit]) => {
             const used = stats.rateLimits[tier]?.used ?? 0;
             const serverLimit = stats.rateLimits[tier]?.limit ?? limit;
-            const isUnlimited = serverLimit === null || serverLimit === undefined || tier === 'sovereign';
+            const isUnlimited =
+              serverLimit === null || serverLimit === undefined || tier === 'sovereign';
             const pct = isUnlimited ? 0 : serverLimit ? (used / serverLimit) * 100 : 0;
-            const barColor =
-              pct > 90 ? 'bg-red-500' : pct > 70 ? 'bg-yellow-500' : 'bg-neon-green';
+            const barColor = pct > 90 ? 'bg-red-500' : pct > 70 ? 'bg-yellow-500' : 'bg-neon-green';
 
             return (
               <div key={tier} className="p-3 bg-lattice-elevated rounded-lg">
@@ -458,9 +395,7 @@ export default function IngestMonitorPage() {
                     />
                   </div>
                 )}
-                {isUnlimited && (
-                  <div className="h-2 bg-neon-cyan/30 rounded-full" />
-                )}
+                {isUnlimited && <div className="h-2 bg-neon-cyan/30 rounded-full" />}
               </div>
             );
           })}
@@ -472,7 +407,11 @@ export default function IngestMonitorPage() {
         {[
           { key: 'queue' as const, label: 'Ingest Queue', icon: <Clock className="w-4 h-4" /> },
           { key: 'allowlist' as const, label: 'Allowlist', icon: <Shield className="w-4 h-4" /> },
-          { key: 'blocklist' as const, label: 'Blocklist', icon: <AlertTriangle className="w-4 h-4" /> },
+          {
+            key: 'blocklist' as const,
+            label: 'Blocklist',
+            icon: <AlertTriangle className="w-4 h-4" />,
+          },
         ].map((tab) => (
           <button
             key={tab.key}
@@ -492,9 +431,7 @@ export default function IngestMonitorPage() {
             <h2 className={cn(ds.heading3, 'flex items-center gap-2')}>
               <Clock className="w-5 h-5 text-neon-blue" />
               Ingest Queue
-              <span className="ml-2 text-sm font-normal text-gray-400">
-                ({queue.length} items)
-              </span>
+              <span className="ml-2 text-sm font-normal text-gray-400">({queue.length} items)</span>
             </h2>
             <button
               onClick={() => flushQueue.mutate()}
@@ -537,7 +474,7 @@ export default function IngestMonitorPage() {
                           item.status === 'queued' && 'bg-gray-400',
                           item.status === 'processing' && 'bg-blue-400 animate-pulse',
                           item.status === 'completed' && 'bg-green-400',
-                          item.status === 'failed' && 'bg-red-400',
+                          item.status === 'failed' && 'bg-red-400'
                         )}
                       />
                       <div className="min-w-0 flex-1">
@@ -563,7 +500,9 @@ export default function IngestMonitorPage() {
                           {item.dtusGenerated} DTU{item.dtusGenerated !== 1 ? 's' : ''}
                         </span>
                       )}
-                      <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', cfg.bgClass)}>
+                      <span
+                        className={cn('px-2 py-0.5 rounded-full text-xs font-medium', cfg.bgClass)}
+                      >
                         {cfg.label}
                       </span>
                     </div>
@@ -697,9 +636,7 @@ export default function IngestMonitorPage() {
                   <div className="flex items-center gap-2">
                     <Shield className="w-4 h-4 text-red-400" />
                     <span className="text-white text-sm">{entry.domain}</span>
-                    {entry.reason && (
-                      <span className={ds.textMuted}>-- {entry.reason}</span>
-                    )}
+                    {entry.reason && <span className={ds.textMuted}>-- {entry.reason}</span>}
                   </div>
                   {entry.blockedAt && (
                     <span className={ds.textMuted}>
@@ -721,9 +658,7 @@ export default function IngestMonitorPage() {
             Domain Breakdown
           </h2>
           {sortedDomains.length === 0 ? (
-            <p className="text-center py-6 text-gray-500">
-              No domain data yet.
-            </p>
+            <p className="text-center py-6 text-gray-500">No domain data yet.</p>
           ) : (
             <div className="space-y-2 max-h-[360px] overflow-y-auto">
               {sortedDomains.map(([domain, count]) => {

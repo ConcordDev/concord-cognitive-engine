@@ -5,6 +5,7 @@ import zlib from "zlib";
 import logger from '../logger.js';
 import { transcodeImage, transcodeAudio, transcodeVideo, generateVideoDerivatives, isTranscodingAvailable } from './artifact-transcoder.js';
 import { checkBudget, downgradePlan } from './artifact-budget.js';
+import { ARTIFACT, FEEDBACK } from './artifact-constants.js';
 
 const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), "data");
 // Prefer network volume (/workspace/concord-data) over root disk for artifact storage.

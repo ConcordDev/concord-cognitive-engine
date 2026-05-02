@@ -1,7 +1,7 @@
 // server/migrations/053_lens_portals.js
 // Lens portal buildings: each lens maps to a visitable in-world location.
 
-export default function migrate(db) {
+export function up(db) {
   db.exec(`
     CREATE TABLE IF NOT EXISTS lens_portals (
       id                  TEXT PRIMARY KEY,

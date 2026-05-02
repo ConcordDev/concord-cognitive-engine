@@ -11,8 +11,15 @@ import { api, exportSubstrate } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/ui';
 import {
-  Shield, Lock, Globe, Trash2, Settings,
-  Database, RefreshCw, AlertTriangle, Download,
+  Shield,
+  Lock,
+  Globe,
+  Trash2,
+  Settings,
+  Database,
+  RefreshCw,
+  AlertTriangle,
+  Download,
 } from 'lucide-react';
 
 type ConsentMode = 'ask' | 'always_temp' | 'always_permanent' | 'never';
@@ -29,19 +36,40 @@ interface SovereigntyStatus {
   sovereigntyPct: number;
 }
 
-const CONSENT_OPTIONS: { value: ConsentMode; label: string; desc: string; icon: typeof Shield }[] = [
-  { value: 'ask', label: 'Ask me every time', desc: 'Sovereignty prompt on each global assist', icon: Shield },
-  { value: 'always_temp', label: 'Sync temporarily', desc: 'Auto-approve, borrow then forget', icon: RefreshCw },
-  { value: 'always_permanent', label: 'Sync permanently', desc: 'Auto-approve, add to my substrate', icon: Database },
-  { value: 'never', label: 'Never use global', desc: 'Always answer from local only', icon: Lock },
-];
+const CONSENT_OPTIONS: { value: ConsentMode; label: string; desc: string; icon: typeof Shield }[] =
+  [
+    {
+      value: 'ask',
+      label: 'Ask me every time',
+      desc: 'Sovereignty prompt on each global assist',
+      icon: Shield,
+    },
+    {
+      value: 'always_temp',
+      label: 'Sync temporarily',
+      desc: 'Auto-approve, borrow then forget',
+      icon: RefreshCw,
+    },
+    {
+      value: 'always_permanent',
+      label: 'Sync permanently',
+      desc: 'Auto-approve, add to my substrate',
+      icon: Database,
+    },
+    {
+      value: 'never',
+      label: 'Never use global',
+      desc: 'Always answer from local only',
+      icon: Lock,
+    },
+  ];
 
-export function SovereigntyDashboard() {
+function SovereigntyDashboard() {
   const qc = useQueryClient();
 
   const { data: status, isLoading } = useQuery<SovereigntyStatus>({
     queryKey: ['sovereignty-status'],
-    queryFn: () => api.get('/api/sovereignty/status').then(r => r.data),
+    queryFn: () => api.get('/api/sovereignty/status').then((r) => r.data),
     refetchInterval: 30000,
   });
 
@@ -71,8 +99,12 @@ export function SovereigntyDashboard() {
       a.download = `substrate-export-${new Date().toISOString().slice(0, 10)}.gz`;
       a.click();
       URL.revokeObjectURL(url);
-    } catch (e) { console.error('[Sovereignty] Failed to export substrate:', e); useUIStore.getState().addToast({ type: 'error', message: 'Failed to export substrate' }); }
-    finally { setExporting(false); }
+    } catch (e) {
+      console.error('[Sovereignty] Failed to export substrate:', e);
+      useUIStore.getState().addToast({ type: 'error', message: 'Failed to export substrate' });
+    } finally {
+      setExporting(false);
+    }
   };
 
   if (isLoading || !status) {
@@ -104,12 +136,16 @@ export function SovereigntyDashboard() {
             <Download className={cn('w-3.5 h-3.5', exporting && 'animate-pulse')} />
             Export
           </button>
-          <div className={cn(
-            'px-3 py-1 rounded-full text-sm font-medium',
-            pct >= 80 ? 'bg-neon-green/20 text-neon-green' :
-            pct >= 50 ? 'bg-neon-cyan/20 text-neon-cyan' :
-            'bg-amber-400/20 text-amber-400'
-          )}>
+          <div
+            className={cn(
+              'px-3 py-1 rounded-full text-sm font-medium',
+              pct >= 80
+                ? 'bg-neon-green/20 text-neon-green'
+                : pct >= 50
+                  ? 'bg-neon-cyan/20 text-neon-cyan'
+                  : 'bg-amber-400/20 text-amber-400'
+            )}
+          >
             {pct}% sovereign
           </div>
         </div>
@@ -150,7 +186,7 @@ export function SovereigntyDashboard() {
           When my substrate isn&apos;t enough:
         </h3>
         <div className="space-y-2">
-          {CONSENT_OPTIONS.map(opt => (
+          {CONSENT_OPTIONS.map((opt) => (
             <button
               key={opt.value}
               onClick={() => updatePref.mutate(opt.value)}
@@ -162,15 +198,19 @@ export function SovereigntyDashboard() {
                   : 'border-zinc-700 hover:border-zinc-600'
               )}
             >
-              <opt.icon className={cn(
-                'w-4 h-4',
-                status.globalAssistConsent === opt.value ? 'text-neon-cyan' : 'text-zinc-500'
-              )} />
+              <opt.icon
+                className={cn(
+                  'w-4 h-4',
+                  status.globalAssistConsent === opt.value ? 'text-neon-cyan' : 'text-zinc-500'
+                )}
+              />
               <div>
-                <p className={cn(
-                  'text-sm font-medium',
-                  status.globalAssistConsent === opt.value ? 'text-white' : 'text-zinc-300'
-                )}>
+                <p
+                  className={cn(
+                    'text-sm font-medium',
+                    status.globalAssistConsent === opt.value ? 'text-white' : 'text-zinc-300'
+                  )}
+                >
                   {opt.label}
                 </p>
                 <p className="text-xs text-zinc-500">{opt.desc}</p>
@@ -188,8 +228,11 @@ export function SovereigntyDashboard() {
             Synced domains
           </h3>
           <div className="flex flex-wrap gap-2">
-            {status.syncedDomains.map(domain => (
-              <div key={domain} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-sm">
+            {status.syncedDomains.map((domain) => (
+              <div
+                key={domain}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-sm"
+              >
                 <span className="text-zinc-300">{domain}</span>
                 <button
                   onClick={() => unsync.mutate(domain)}
@@ -222,7 +265,10 @@ export function SovereigntyDashboard() {
                 Remove all {status.syncedGlobalDTUs} synced DTUs?
               </span>
               <button
-                onClick={() => { unsync.mutate(undefined); setConfirmUnsyncAll(false); }}
+                onClick={() => {
+                  unsync.mutate(undefined);
+                  setConfirmUnsyncAll(false);
+                }}
                 className="px-3 py-1 rounded bg-red-500/20 text-red-400 text-sm hover:bg-red-500/30"
               >
                 Yes, unsync all
@@ -240,3 +286,7 @@ export function SovereigntyDashboard() {
     </div>
   );
 }
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedSovereigntyDashboard = withErrorBoundary(SovereigntyDashboard);
+export { _WrappedSovereigntyDashboard as SovereigntyDashboard };

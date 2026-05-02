@@ -28,9 +28,26 @@ interface InviteDetails {
 }
 
 const AVAILABLE_DOMAINS = [
-  'healthcare', 'food', 'fitness', 'finance', 'accounting', 'law', 'insurance',
-  'realestate', 'household', 'creative', 'education', 'technology', 'business',
-  'travel', 'social', 'music', 'art', 'writing', 'science', 'career',
+  'healthcare',
+  'food',
+  'fitness',
+  'finance',
+  'accounting',
+  'law',
+  'insurance',
+  'realestate',
+  'household',
+  'creative',
+  'education',
+  'technology',
+  'business',
+  'travel',
+  'social',
+  'music',
+  'art',
+  'writing',
+  'science',
+  'career',
 ];
 
 interface SharedSessionInviteProps {
@@ -39,7 +56,7 @@ interface SharedSessionInviteProps {
   onDeclined?: () => void;
 }
 
-export function SharedSessionInvite({ sessionId, onJoined, onDeclined }: SharedSessionInviteProps) {
+function SharedSessionInvite({ sessionId, onJoined, onDeclined }: SharedSessionInviteProps) {
   const [sharingLevel, setSharingLevel] = useState<'query' | 'full' | 'none'>('query');
   const [sharingDomains, setSharingDomains] = useState<string[]>([]);
   const [isJoining, setIsJoining] = useState(false);
@@ -50,8 +67,8 @@ export function SharedSessionInvite({ sessionId, onJoined, onDeclined }: SharedS
   });
 
   const toggleDomain = useCallback((domain: string) => {
-    setSharingDomains(prev =>
-      prev.includes(domain) ? prev.filter(d => d !== domain) : [...prev, domain]
+    setSharingDomains((prev) =>
+      prev.includes(domain) ? prev.filter((d) => d !== domain) : [...prev, domain]
     );
   }, []);
 
@@ -91,12 +108,8 @@ export function SharedSessionInvite({ sessionId, onJoined, onDeclined }: SharedS
     <div className="max-w-lg mx-auto p-8 space-y-6">
       <div className="text-center">
         <Users className="w-10 h-10 text-cyan-400 mx-auto mb-3" />
-        <h2 className="text-xl font-bold text-white">
-          Shared Session Invite
-        </h2>
-        <p className="text-sm text-zinc-400 mt-2">
-          {data.message}
-        </p>
+        <h2 className="text-xl font-bold text-white">Shared Session Invite</h2>
+        <p className="text-sm text-zinc-400 mt-2">{data.message}</p>
       </div>
 
       {/* Current participants */}
@@ -107,8 +120,11 @@ export function SharedSessionInvite({ sessionId, onJoined, onDeclined }: SharedS
             <div key={i} className="flex items-center justify-between text-sm">
               <span className="text-zinc-300">{p.name}</span>
               <span className="text-xs text-zinc-600">
-                {p.sharingLevel === 'full' ? 'Full sharing' :
-                  p.sharingLevel === 'query' ? 'AI access' : 'Chat only'}
+                {p.sharingLevel === 'full'
+                  ? 'Full sharing'
+                  : p.sharingLevel === 'query'
+                    ? 'AI access'
+                    : 'Chat only'}
               </span>
             </div>
           ))}
@@ -117,15 +133,28 @@ export function SharedSessionInvite({ sessionId, onJoined, onDeclined }: SharedS
 
       {/* Sharing level selection */}
       <div className="space-y-3">
-        <p className="text-sm text-zinc-400">
-          Choose how much of your substrate to share:
-        </p>
+        <p className="text-sm text-zinc-400">Choose how much of your substrate to share:</p>
 
-        {(data.options?.sharingLevels || [
-          { id: 'full' as const, label: 'Full collaboration', description: 'AI draws from your substrate. You can share DTUs and artifacts.' },
-          { id: 'query' as const, label: 'AI can reference me', description: 'The shared AI can search your substrate for context. Others can\'t browse your data.' },
-          { id: 'none' as const, label: 'Just chat', description: 'Your substrate stays sealed. Only your messages contribute.' },
-        ]).map(option => {
+        {(
+          data.options?.sharingLevels || [
+            {
+              id: 'full' as const,
+              label: 'Full collaboration',
+              description: 'AI draws from your substrate. You can share DTUs and artifacts.',
+            },
+            {
+              id: 'query' as const,
+              label: 'AI can reference me',
+              description:
+                "The shared AI can search your substrate for context. Others can't browse your data.",
+            },
+            {
+              id: 'none' as const,
+              label: 'Just chat',
+              description: 'Your substrate stays sealed. Only your messages contribute.',
+            },
+          ]
+        ).map((option) => {
           const Icon = SHARING_ICONS[option.id] || Shield;
           return (
             <button
@@ -135,13 +164,15 @@ export function SharedSessionInvite({ sessionId, onJoined, onDeclined }: SharedS
                 'w-full text-left p-3 rounded-lg border transition-all flex items-start gap-3',
                 sharingLevel === option.id
                   ? 'border-cyan-500 bg-cyan-500/5'
-                  : 'border-zinc-700 bg-zinc-800/50 hover:border-zinc-600',
+                  : 'border-zinc-700 bg-zinc-800/50 hover:border-zinc-600'
               )}
             >
-              <Icon className={cn(
-                'w-4 h-4 mt-0.5 shrink-0',
-                sharingLevel === option.id ? 'text-cyan-400' : 'text-zinc-500',
-              )} />
+              <Icon
+                className={cn(
+                  'w-4 h-4 mt-0.5 shrink-0',
+                  sharingLevel === option.id ? 'text-cyan-400' : 'text-zinc-500'
+                )}
+              />
               <div>
                 <p className="text-sm font-medium text-white">{option.label}</p>
                 <p className="text-xs text-zinc-400 mt-0.5">{option.description}</p>
@@ -158,7 +189,7 @@ export function SharedSessionInvite({ sessionId, onJoined, onDeclined }: SharedS
             Limit sharing to specific domains (optional):
           </p>
           <div className="flex flex-wrap gap-2">
-            {AVAILABLE_DOMAINS.map(d => (
+            {AVAILABLE_DOMAINS.map((d) => (
               <button
                 key={d}
                 onClick={() => toggleDomain(d)}
@@ -166,16 +197,14 @@ export function SharedSessionInvite({ sessionId, onJoined, onDeclined }: SharedS
                   'px-2 py-1 text-xs rounded-lg border transition-colors',
                   sharingDomains.includes(d)
                     ? 'border-cyan-500/50 bg-cyan-500/10 text-cyan-400'
-                    : 'border-zinc-700 text-zinc-500 hover:border-zinc-600',
+                    : 'border-zinc-700 text-zinc-500 hover:border-zinc-600'
                 )}
               >
                 {d}
               </button>
             ))}
           </div>
-          <p className="text-[10px] text-zinc-600 mt-1">
-            Leave empty to share all your domains
-          </p>
+          <p className="text-[10px] text-zinc-600 mt-1">Leave empty to share all your domains</p>
         </div>
       )}
 
@@ -187,11 +216,7 @@ export function SharedSessionInvite({ sessionId, onJoined, onDeclined }: SharedS
           className="flex-1 py-3 rounded-lg bg-cyan-500/20 border border-cyan-500/50
             text-cyan-400 font-medium disabled:opacity-50 hover:bg-cyan-500/30 transition-colors"
         >
-          {isJoining ? (
-            <Loader className="w-4 h-4 animate-spin mx-auto" />
-          ) : (
-            'Join Session'
-          )}
+          {isJoining ? <Loader className="w-4 h-4 animate-spin mx-auto" /> : 'Join Session'}
         </button>
         <button
           onClick={onDeclined}
@@ -204,3 +229,7 @@ export function SharedSessionInvite({ sessionId, onJoined, onDeclined }: SharedS
     </div>
   );
 }
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedSharedSessionInvite = withErrorBoundary(SharedSessionInvite);
+export { _WrappedSharedSessionInvite as SharedSessionInvite };

@@ -3745,6 +3745,66 @@ const EXECUTORS = {
       return { success: true, message: `Macro ${context.macroDomain}.${context.macroName} rolled back` };
     },
   },
+
+  apply_code_patch: {
+    category: "logic",
+    description: "Apply a search-and-replace patch to a server source file to fix a syntax or runtime error",
+    canApply: (context) => {
+      if (!context?.filePath || !context?.search || !context?.replace) return false;
+      // Only allow patching files within the server directory
+      const serverDir = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
+      const target = path.resolve(context.filePath);
+      return target.startsWith(serverDir) && /\.(js|cjs|mjs)$/.test(target);
+    },
+    execute: async (context) => {
+      if (!context?.filePath || !context?.search || typeof context?.replace !== "string") {
+        return { success: false, reason: "Missing filePath, search, or replace in context" };
+      }
+
+      const serverDir = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
+      const target = path.resolve(context.filePath);
+
+      if (!target.startsWith(serverDir)) {
+        return { success: false, reason: "Path escape attempt blocked — only server/ files allowed" };
+      }
+
+      if (!/\.(js|cjs|mjs)$/.test(target)) {
+        return { success: false, reason: "Only .js/.cjs/.mjs files may be patched" };
+      }
+
+      let content;
+      try {
+        content = fs.readFileSync(target, "utf-8");
+      } catch (readErr) {
+        return { success: false, reason: `Cannot read file: ${readErr.message}` };
+      }
+
+      if (!content.includes(context.search)) {
+        return { success: false, reason: "Search string not found in file — patch not applied" };
+      }
+
+      // Backup original content in RUNTIME_PATCHES for rollback
+      const backupKey = `file_patch:${target}`;
+      if (!RUNTIME_PATCHES.has(backupKey)) {
+        RUNTIME_PATCHES.set(backupKey, { type: "file_backup", original: content, appliedAt: nowISO() });
+      }
+
+      const patched = content.replace(context.search, context.replace);
+
+      try {
+        fs.writeFileSync(target, patched, "utf-8");
+      } catch (writeErr) {
+        return { success: false, reason: `Cannot write file: ${writeErr.message}` };
+      }
+
+      return {
+        success: true,
+        message: `Patched ${path.relative(serverDir, target)}: replaced ${context.search.slice(0, 60).replace(/\n/g, "\\n")}…`,
+        rollbackAvailable: true,
+        backupKey,
+      };
+    },
+  },
 };
 
 // ── Executor Matcher ────────────────────────────────────────────────────────
@@ -3783,6 +3843,10 @@ function findExecutorForDiagnosis(diagnosis) {
     "autogen": "reset_autogen_stall",
     "ollama": "restart_ollama",
     "websocket": "reconnect_websocket",
+    "SyntaxError": "apply_code_patch",
+    "Cannot find module": "apply_code_patch",
+    "is not defined": "apply_code_patch",
+    "ERR_MODULE_NOT_FOUND": "apply_code_patch",
   };
   for (const [keyword, executor] of Object.entries(keywordMap)) {
     if (msg.toLowerCase().includes(keyword.toLowerCase())) return executor;
@@ -3821,7 +3885,11 @@ REASONING: <one_line>
 If no executor fits, respond:
 EXECUTOR: none
 CONFIDENCE: 0.0
-REASONING: <why>`;
+REASONING: <why>
+
+For apply_code_patch, set CONTEXT to JSON like:
+{"filePath":"server/emergent/<file>.js","search":"<exact_broken_string>","replace":"<fixed_string>"}
+Only use apply_code_patch for SyntaxError, ReferenceError, or ERR_MODULE_NOT_FOUND where the fix is a single search-and-replace.`;
 
   try {
     // Yield to active chat — but don't wait more than 1s
@@ -4254,14 +4322,33 @@ function _updateOrganFromRepair(phase, result) {
 
 /**
  * Agent tick function. Called by the agent system.
- * Runs all guardian monitors in sequence.
+ * Runs guardian monitors that haven't been checked recently.
+ * Concurrency-guarded — overlapping calls are silently skipped.
  */
+let _repairAgentTickRunning = false;
+const _MONITOR_CHECK_TIMEOUT_MS = 30_000;
+
 export async function repairAgentTick() {
+  if (_repairAgentTickRunning) {
+    logger.debug('emergent:repair-cortex', 'repairAgentTick skipped — previous tick still running');
+    return { ok: true, skipped: true };
+  }
+  _repairAgentTickRunning = true;
   try {
     const results = {};
     for (const [name, monitor] of Object.entries(GUARDIAN_MONITORS)) {
+      // Skip monitors that ran recently via startGuardian() — avoid double-work
+      const lastChecked = _guardianStatuses.get(name)?.lastChecked;
+      if (lastChecked) {
+        const ageMs = Date.now() - new Date(lastChecked).getTime();
+        if (ageMs < monitor.interval * 0.9) continue;
+      }
       try {
-        const result = await monitor.check();
+        const checkWithTimeout = Promise.race([
+          monitor.check(),
+          new Promise((_, rej) => setTimeout(() => rej(new Error('monitor_timeout')), _MONITOR_CHECK_TIMEOUT_MS)),
+        ]);
+        const result = await checkWithTimeout;
         _guardianStatuses.set(name, { ...result, lastChecked: nowISO() });
 
         if (!result.healthy) {
@@ -4269,12 +4356,14 @@ export async function repairAgentTick() {
         }
 
         results[name] = result;
-      } catch (_e) { logger.debug('emergent:repair-cortex', 'silent', { error: _e?.message }); }
+      } catch (_e) { logger.debug('emergent:repair-cortex', 'silent', { name, error: _e?.message }); }
     }
 
     return { ok: true, monitors: results };
   } catch (e) {
     return { ok: false, error: String(e?.message || e) };
+  } finally {
+    _repairAgentTickRunning = false;
   }
 }
 

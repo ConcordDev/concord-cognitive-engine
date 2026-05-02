@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { apiHelpers } from '@/lib/api/client';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -91,7 +93,11 @@ const SEED_LISTINGS: Listing[] = [
       'Comprehensive seismic load review for structural DTUs. Includes zone classification, response spectrum analysis, and compliance report.',
     fullDescription:
       'Full seismic assessment per IBC/Eurocode 8 standards. I will review your structural DTU against the target seismic zone, perform response spectrum analysis, verify base shear calculations, and produce a detailed compliance report with recommendations. Includes one revision round.\n\nDeliverables:\n- Seismic hazard classification\n- Response spectrum overlay\n- Base shear & drift check\n- Compliance summary PDF',
-    portfolio: ['Bridge pier seismic retrofit', 'High-rise core wall analysis', '3-story timber frame validation'],
+    portfolio: [
+      'Bridge pier seismic retrofit',
+      'High-rise core wall analysis',
+      '3-story timber frame validation',
+    ],
   },
   {
     id: 'l2',
@@ -123,7 +129,11 @@ const SEED_LISTINGS: Listing[] = [
       'Expert material selection consulting for marine and coastal environments. Corrosion, fatigue, and cost optimization.',
     fullDescription:
       'Specializing in material selection for harsh environments. I help you choose the right alloy, coating, or composite for marine, offshore, and coastal structures.\n\nTopics covered:\n- Corrosion resistance mapping\n- Fatigue life estimation\n- Cost-weight-performance tradeoffs\n- Galvanic compatibility checks\n- Maintenance schedule recommendations\n\nHourly rate, minimum 1 hour.',
-    portfolio: ['Offshore platform riser material study', 'Marina dock composite selection', 'Subsea pipeline coating spec'],
+    portfolio: [
+      'Offshore platform riser material study',
+      'Marina dock composite selection',
+      'Subsea pipeline coating spec',
+    ],
   },
   {
     id: 'l4',
@@ -155,7 +165,11 @@ const SEED_LISTINGS: Listing[] = [
       'Full world planning service: terrain layout, district zoning, infrastructure routing, and environmental storytelling.',
     fullDescription:
       'Comprehensive world planning from blank canvas to a fully documented district map. I handle terrain generation guidance, district zoning with purpose-driven layouts, infrastructure routing (roads, utilities, transit), and environmental storytelling layers.\n\nDeliverables:\n- Annotated district map\n- Zoning plan with rationale\n- Infrastructure routing diagram\n- Environmental narrative document\n- 5 point-of-interest briefs\n\nTimeline: 7 days for standard world (up to 10 districts).',
-    portfolio: ['Neon Harbor district plan', 'Verdant Heights residential zone', 'Industrial Spine logistics layout'],
+    portfolio: [
+      'Neon Harbor district plan',
+      'Verdant Heights residential zone',
+      'Industrial Spine logistics layout',
+    ],
   },
 ];
 
@@ -185,7 +199,9 @@ function formatDelivery(hours: number): string {
 function renderStars(rating: number): string {
   const full = Math.floor(rating);
   const half = rating - full >= 0.5;
-  return '\u2605'.repeat(full) + (half ? '\u00BD' : '') + '\u2606'.repeat(5 - full - (half ? 1 : 0));
+  return (
+    '\u2605'.repeat(full) + (half ? '\u00BD' : '') + '\u2606'.repeat(5 - full - (half ? 1 : 0))
+  );
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -208,10 +224,40 @@ export default function ServiceMarketplace() {
   const [reviewStars, setReviewStars] = useState(5);
   const [reviewText, setReviewText] = useState('');
 
+  // ── Live listings from backend (falls back to seed data when empty) ──
+  const { data: liveListingsData } = useQuery({
+    queryKey: ['world-services'],
+    queryFn: () => apiHelpers.lens.list('world').then((r) => r.data),
+    staleTime: 60_000,
+  });
+  const liveListings: Listing[] = useMemo(() => {
+    const raw = liveListingsData;
+    const items: Record<string, unknown>[] = Array.isArray(raw?.items)
+      ? raw.items
+      : Array.isArray(raw)
+        ? raw
+        : [];
+    if (items.length === 0) return SEED_LISTINGS;
+    return items.map((item: Record<string, unknown>) => ({
+      id: String(item.id ?? item.dtuId ?? ''),
+      title: String(item.title ?? ''),
+      provider: String(item.provider ?? item.author ?? ''),
+      avatarColor: String(item.avatarColor ?? '#6366f1'),
+      priceCC: Number(item.priceCC ?? item.price ?? 0),
+      priceUnit: String(item.priceUnit ?? 'per project'),
+      rating: Number(item.rating ?? 4.5),
+      deliveryHours: Number(item.deliveryHours ?? 48),
+      category: String(item.category ?? 'General'),
+      description: String(item.description ?? ''),
+      fullDescription: String(item.fullDescription ?? item.description ?? ''),
+      portfolio: Array.isArray(item.portfolio) ? item.portfolio.map(String) : [],
+    }));
+  }, [liveListingsData]);
+
   // ── Filtered & sorted listings ──
 
   const filteredListings = useMemo(() => {
-    let list = [...SEED_LISTINGS];
+    let list = [...liveListings];
     if (category !== 'All') {
       list = list.filter((l) => l.category === category);
     }
@@ -241,11 +287,11 @@ export default function ServiceMarketplace() {
         break;
     }
     return list;
-  }, [category, sort, search]);
+  }, [category, sort, search, liveListings]);
 
   const selectedListing = useMemo(
-    () => SEED_LISTINGS.find((l) => l.id === selectedId) ?? null,
-    [selectedId]
+    () => liveListings.find((l) => l.id === selectedId) ?? null,
+    [selectedId, liveListings]
   );
 
   // ── Order actions ──
@@ -271,7 +317,11 @@ export default function ServiceMarketplace() {
     setOrders((prev) =>
       prev.map((o) =>
         o.id === orderId
-          ? { ...o, status: 'completed' as OrderStatus, review: { stars: reviewStars, text: reviewText } }
+          ? {
+              ...o,
+              status: 'completed' as OrderStatus,
+              review: { stars: reviewStars, text: reviewText },
+            }
           : o
       )
     );
@@ -315,12 +365,9 @@ export default function ServiceMarketplace() {
 
           <div className="flex items-center gap-3 mt-3 text-xs text-white/50">
             <span className="text-amber-400">
-              {renderStars(listing.rating)}{' '}
-              <span className="text-white/40">{listing.rating}</span>
+              {renderStars(listing.rating)} <span className="text-white/40">{listing.rating}</span>
             </span>
-            {listing.deliveryHours > 0 && (
-              <span>{formatDelivery(listing.deliveryHours)}</span>
-            )}
+            {listing.deliveryHours > 0 && <span>{formatDelivery(listing.deliveryHours)}</span>}
             <span className="bg-white/5 px-1.5 py-0.5 rounded text-[10px]">{listing.category}</span>
           </div>
         </div>
@@ -413,8 +460,7 @@ export default function ServiceMarketplace() {
             </div>
             <div className="flex items-center justify-between">
               <div className="text-sm text-white/50">
-                Escrow:{' '}
-                <span className="text-emerald-400 font-semibold">{l.priceCC} CC</span>
+                Escrow: <span className="text-emerald-400 font-semibold">{l.priceCC} CC</span>
               </div>
               <div className="flex gap-2">
                 <button
@@ -448,9 +494,7 @@ export default function ServiceMarketplace() {
             <div className="flex flex-col items-center">
               <div
                 className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold ${
-                  i <= currentIdx
-                    ? 'bg-emerald-500/80 text-white'
-                    : 'bg-white/10 text-white/30'
+                  i <= currentIdx ? 'bg-emerald-500/80 text-white' : 'bg-white/10 text-white/30'
                 }`}
               >
                 {i < currentIdx ? '\u2713' : i + 1}
@@ -465,9 +509,7 @@ export default function ServiceMarketplace() {
             </div>
             {i < ORDER_STEPS.length - 1 && (
               <div
-                className={`flex-1 h-px ${
-                  i < currentIdx ? 'bg-emerald-500/50' : 'bg-white/10'
-                }`}
+                className={`flex-1 h-px ${i < currentIdx ? 'bg-emerald-500/50' : 'bg-white/10'}`}
               />
             )}
           </React.Fragment>
@@ -501,8 +543,8 @@ export default function ServiceMarketplace() {
                   order.status === 'completed'
                     ? 'bg-emerald-500/20 text-emerald-400'
                     : order.status === 'delivered'
-                    ? 'bg-blue-500/20 text-blue-400'
-                    : 'bg-amber-500/20 text-amber-400'
+                      ? 'bg-blue-500/20 text-blue-400'
+                      : 'bg-amber-500/20 text-amber-400'
                 }`}
               >
                 {ORDER_STEP_LABELS[order.status]}
@@ -594,9 +636,7 @@ export default function ServiceMarketplace() {
           <button
             onClick={() => setTab('browse')}
             className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${
-              tab === 'browse'
-                ? 'bg-white/10 text-white'
-                : 'text-white/40 hover:text-white/70'
+              tab === 'browse' ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/70'
             }`}
           >
             Browse
@@ -604,9 +644,7 @@ export default function ServiceMarketplace() {
           <button
             onClick={() => setTab('my-orders')}
             className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${
-              tab === 'my-orders'
-                ? 'bg-white/10 text-white'
-                : 'text-white/40 hover:text-white/70'
+              tab === 'my-orders' ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/70'
             }`}
           >
             My Orders
@@ -697,9 +735,7 @@ export default function ServiceMarketplace() {
               {/* Grid / List */}
               <div
                 className={
-                  viewMode === 'grid'
-                    ? 'grid grid-cols-1 md:grid-cols-2 gap-3'
-                    : 'space-y-3'
+                  viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 gap-3' : 'space-y-3'
                 }
               >
                 {filteredListings.map(renderCard)}

@@ -4,8 +4,16 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import {
-  Activity, Zap, GitBranch, Shield, AlertTriangle,
-  CheckCircle, XCircle, TrendingUp, Clock, BarChart3
+  Activity,
+  Zap,
+  GitBranch,
+  Shield,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
+  TrendingUp,
+  Clock,
+  BarChart3,
 } from 'lucide-react';
 
 type PipelineMetrics = {
@@ -29,8 +37,18 @@ type IntentSignal = {
   signal: Record<string, unknown>;
 };
 
-function MetricCard({ label, value, icon: Icon, color = 'neon-blue', sub }: {
-  label: string; value: string | number; icon: React.ElementType; color?: string; sub?: string;
+function MetricCard({
+  label,
+  value,
+  icon: Icon,
+  color = 'neon-blue',
+  sub,
+}: {
+  label: string;
+  value: string | number;
+  icon: React.ElementType;
+  color?: string;
+  sub?: string;
 }) {
   return (
     <div className="bg-lattice-elevated border border-lattice-border rounded-lg p-4 flex items-start gap-3">
@@ -59,15 +77,17 @@ function IntentBar({ intent, count, total }: { intent: string; count: number; to
     <div className="flex items-center gap-3">
       <span className="text-xs text-gray-400 w-36 truncate">{intent.replace(/_/g, ' ')}</span>
       <div className="flex-1 h-3 bg-lattice-deep rounded-full overflow-hidden">
-        <div className={`h-full ${colors[intent] || 'bg-neon-cyan'} rounded-full transition-all`}
-          style={{ width: `${Math.max(pct, 2)}%` }} />
+        <div
+          className={`h-full ${colors[intent] || 'bg-neon-cyan'} rounded-full transition-all`}
+          style={{ width: `${Math.max(pct, 2)}%` }}
+        />
       </div>
       <span className="text-xs text-gray-300 w-10 text-right">{count}</span>
     </div>
   );
 }
 
-export default function PipelineMonitor() {
+function PipelineMonitor() {
   const { data: metricsRes, isLoading: metricsLoading } = useQuery({
     queryKey: ['pipeline-metrics'],
     queryFn: () => apiHelpers.pipeline.metrics(),
@@ -95,15 +115,18 @@ export default function PipelineMonitor() {
       <div className="animate-pulse space-y-4">
         <div className="h-8 bg-lattice-elevated rounded w-48" />
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[...Array(4)].map((_, i) => <div key={i} className="h-24 bg-lattice-elevated rounded-lg" />)}
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-24 bg-lattice-elevated rounded-lg" />
+          ))}
         </div>
       </div>
     );
   }
 
-  const successRate = metrics && metrics.totalRuns > 0
-    ? Math.round((metrics.candidatesProduced / metrics.totalRuns) * 100)
-    : 0;
+  const successRate =
+    metrics && metrics.totalRuns > 0
+      ? Math.round((metrics.candidatesProduced / metrics.totalRuns) * 100)
+      : 0;
 
   return (
     <div className="space-y-6">
@@ -112,14 +135,20 @@ export default function PipelineMonitor() {
         <div className="flex items-center gap-3">
           <Activity className="w-6 h-6 text-neon-blue" />
           <h2 className="text-xl font-bold text-gray-100">Pipeline Monitor</h2>
-          <span className="text-xs px-2 py-0.5 rounded-full bg-neon-blue/10 text-neon-blue border border-neon-blue/20">v5.5.0</span>
+          <span className="text-xs px-2 py-0.5 rounded-full bg-neon-blue/10 text-neon-blue border border-neon-blue/20">
+            v5.5.0
+          </span>
         </div>
         {currentIntent && (
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-lattice-elevated border border-lattice-border">
             <Zap className="w-4 h-4 text-neon-yellow" />
             <span className="text-xs text-gray-400">Current Intent:</span>
-            <span className="text-sm font-medium text-neon-cyan">{currentIntent.intent?.replace(/_/g, ' ')}</span>
-            <span className="text-xs text-gray-500">({currentIntent.score?.toFixed?.(0) ?? '?'})</span>
+            <span className="text-sm font-medium text-neon-cyan">
+              {currentIntent.intent?.replace(/_/g, ' ')}
+            </span>
+            <span className="text-xs text-gray-500">
+              ({currentIntent.score?.toFixed?.(0) ?? '?'})
+            </span>
           </div>
         )}
       </div>
@@ -166,7 +195,12 @@ export default function PipelineMonitor() {
             {Object.entries(metrics.byIntent)
               .sort(([, a], [, b]) => (b as number) - (a as number))
               .map(([intent, count]) => (
-                <IntentBar key={intent} intent={intent} count={count as number} total={metrics.totalRuns} />
+                <IntentBar
+                  key={intent}
+                  intent={intent}
+                  count={count as number}
+                  total={metrics.totalRuns}
+                />
               ))}
           </div>
         </div>
@@ -183,7 +217,10 @@ export default function PipelineMonitor() {
             </h3>
             <div className="space-y-2">
               {Object.entries(metrics.byVariant).map(([variant, count]) => (
-                <div key={variant} className="flex items-center justify-between px-3 py-2 rounded bg-lattice-deep">
+                <div
+                  key={variant}
+                  className="flex items-center justify-between px-3 py-2 rounded bg-lattice-deep"
+                >
                   <span className="text-sm text-gray-300 capitalize">{variant}</span>
                   <span className="text-sm font-mono text-neon-cyan">{count as number}</span>
                 </div>
@@ -206,22 +243,31 @@ export default function PipelineMonitor() {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-xs text-gray-400">Duplicates Found</span>
-                <span className={`text-sm font-medium ${dedupResult.duplicatePairs?.length > 0 ? 'text-neon-orange' : 'text-neon-green'}`}>
+                <span
+                  className={`text-sm font-medium ${dedupResult.duplicatePairs?.length > 0 ? 'text-neon-orange' : 'text-neon-green'}`}
+                >
                   {dedupResult.duplicatePairs?.length ?? 0}
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-xs text-gray-400">Threshold</span>
-                <span className="text-sm text-gray-200">{((dedupResult.threshold ?? 0.82) * 100).toFixed(0)}%</span>
+                <span className="text-sm text-gray-200">
+                  {((dedupResult.threshold ?? 0.82) * 100).toFixed(0)}%
+                </span>
               </div>
               {dedupResult.duplicatePairs?.length > 0 && (
                 <div className="mt-2 space-y-1">
-                  {dedupResult.duplicatePairs.slice(0, 3).map((p: { titleA: string; titleB: string; similarity: number }, i: number) => (
-                    <div key={i} className="text-xs text-gray-500 bg-lattice-deep rounded px-2 py-1">
-                      <span className="text-neon-orange">{Math.round(p.similarity * 100)}%</span>{' '}
-                      {p.titleA?.slice(0, 30)} ↔ {p.titleB?.slice(0, 30)}
-                    </div>
-                  ))}
+                  {dedupResult.duplicatePairs
+                    .slice(0, 3)
+                    .map((p: { titleA: string; titleB: string; similarity: number }, i: number) => (
+                      <div
+                        key={i}
+                        className="text-xs text-gray-500 bg-lattice-deep rounded px-2 py-1"
+                      >
+                        <span className="text-neon-orange">{Math.round(p.similarity * 100)}%</span>{' '}
+                        {p.titleA?.slice(0, 30)} ↔ {p.titleB?.slice(0, 30)}
+                      </div>
+                    ))}
                 </div>
               )}
             </div>
@@ -256,3 +302,8 @@ export default function PipelineMonitor() {
     </div>
   );
 }
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedPipelineMonitor = withErrorBoundary(PipelineMonitor);
+export { _WrappedPipelineMonitor as PipelineMonitor };
+export default _WrappedPipelineMonitor;

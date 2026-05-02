@@ -11,9 +11,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { useRouter } from 'next/navigation';
-import {
-  Rocket, CheckCircle, Circle, ArrowRight, X, Brain, Package, Globe,
-} from 'lucide-react';
+import { Rocket, CheckCircle, Circle, ArrowRight, X, Brain, Package, Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface FirstWinStep {
@@ -36,7 +34,8 @@ const STEP_ICONS: Record<string, typeof Brain> = {
 };
 
 const STEP_DESCRIPTIONS: Record<string, string> = {
-  create_dtu: 'Create a Discrete Thought Unit in the Chat workspace — the fundamental knowledge unit in Concord.',
+  create_dtu:
+    'Create a Discrete Thought Unit in the Chat workspace — the fundamental knowledge unit in Concord.',
   create_artifact: 'Generate or upload a file artifact in the Studio workspace.',
   view_global: 'See your work in the Global truth view — the canonical source of all data.',
 };
@@ -49,7 +48,7 @@ const STEP_ROUTES: Record<string, string> = {
 
 const DISMISSED_KEY = 'concord_first_win_dismissed';
 
-export function FirstWinWizard() {
+function FirstWinWizard() {
   const router = useRouter();
   const [dismissed, setDismissed] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -87,7 +86,8 @@ export function FirstWinWizard() {
 
   if (!resolved || resolved.allDone || dismissed) return null;
 
-  const currentStep = resolved.steps.find((s) => !s.completed) || resolved.steps[resolved.steps.length - 1];
+  const currentStep =
+    resolved.steps.find((s) => !s.completed) || resolved.steps[resolved.steps.length - 1];
 
   return (
     <div className="fixed bottom-4 right-4 z-40 w-80 bg-lattice-surface border border-neon-blue/30 rounded-lg shadow-lg overflow-hidden">
@@ -101,7 +101,11 @@ export function FirstWinWizard() {
           <span className="text-xs text-gray-500">
             {resolved.completedCount}/{resolved.steps.length}
           </span>
-          <button onClick={handleDismiss} className="text-gray-500 hover:text-white" aria-label="Dismiss wizard">
+          <button
+            onClick={handleDismiss}
+            className="text-gray-500 hover:text-white"
+            aria-label="Dismiss wizard"
+          >
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -133,20 +137,25 @@ export function FirstWinWizard() {
               {step.completed ? (
                 <CheckCircle className="w-4 h-4 text-neon-green flex-shrink-0 mt-0.5" />
               ) : (
-                <Icon className={cn('w-4 h-4 flex-shrink-0 mt-0.5', isCurrent ? 'text-neon-blue' : 'text-gray-600')} />
+                <Icon
+                  className={cn(
+                    'w-4 h-4 flex-shrink-0 mt-0.5',
+                    isCurrent ? 'text-neon-blue' : 'text-gray-600'
+                  )}
+                />
               )}
               <div className="flex-1 min-w-0">
-                <div className={cn(
-                  'font-medium text-xs',
-                  step.completed ? 'text-gray-500 line-through' : 'text-white'
-                )}>
+                <div
+                  className={cn(
+                    'font-medium text-xs',
+                    step.completed ? 'text-gray-500 line-through' : 'text-white'
+                  )}
+                >
                   {step.label}
                 </div>
                 {isCurrent && (
                   <>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      {STEP_DESCRIPTIONS[step.id]}
-                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5">{STEP_DESCRIPTIONS[step.id]}</p>
                     {STEP_ROUTES[step.id] && (
                       <button
                         onClick={() => router.push(STEP_ROUTES[step.id])}
@@ -165,3 +174,7 @@ export function FirstWinWizard() {
     </div>
   );
 }
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedFirstWinWizard = withErrorBoundary(FirstWinWizard);
+export { _WrappedFirstWinWizard as FirstWinWizard };

@@ -53,7 +53,7 @@ function valenceIndicator(valence: number) {
 
 // ── Component ───────────────────────────────────────────────────────────────
 
-export default function QualiaBodyMap({
+function QualiaBodyMap({
   entityId,
   embodiment,
   channels,
@@ -87,10 +87,15 @@ export default function QualiaBodyMap({
         </div>
         <div className="bg-zinc-800/50 rounded p-2">
           <div className="text-xs text-zinc-500 mb-1">Body Coherence</div>
-          <div className={`text-lg font-mono ${
-            coherencePct > 60 ? 'text-emerald-400' :
-            coherencePct > 30 ? 'text-amber-400' : 'text-red-400'
-          }`}>
+          <div
+            className={`text-lg font-mono ${
+              coherencePct > 60
+                ? 'text-emerald-400'
+                : coherencePct > 30
+                  ? 'text-amber-400'
+                  : 'text-red-400'
+            }`}
+          >
             {coherencePct}%
           </div>
         </div>
@@ -134,3 +139,8 @@ export default function QualiaBodyMap({
     </div>
   );
 }
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedQualiaBodyMap = withErrorBoundary(QualiaBodyMap);
+export { _WrappedQualiaBodyMap as QualiaBodyMap };
+export default _WrappedQualiaBodyMap;

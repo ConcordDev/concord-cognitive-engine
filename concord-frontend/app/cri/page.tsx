@@ -88,7 +88,7 @@ async function decree<T = unknown>(payload: {
   target?: string;
   data?: Record<string, unknown>;
 }): Promise<T> {
-  const res = await api.post('/api/sovereign/decree', payload);
+  const res = await api.post('/api/run', payload);
   return res.data as T;
 }
 
@@ -141,7 +141,10 @@ function ProgressBar({ value, color = 'neon-cyan' }: { value: number; color?: st
   return (
     <div className="w-full h-2 rounded-full bg-lattice-elevated overflow-hidden">
       <div
-        className={cn('h-full rounded-full transition-all', PROGRESS_BAR_COLORS[color] || 'bg-neon-cyan')}
+        className={cn(
+          'h-full rounded-full transition-all',
+          PROGRESS_BAR_COLORS[color] || 'bg-neon-cyan'
+        )}
         style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
       />
     </div>
@@ -177,21 +180,36 @@ function DTUBarChart({ cris }: { cris: CRISummary[] }) {
 }
 
 const STATUS_BADGE_CLASSES: Record<string, string> = {
-  active: 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-neon-green/20 text-neon-green',
-  completed: 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-neon-blue/20 text-neon-blue',
-  paused: 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-400/20 text-yellow-400',
-  proposed: 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-400/20 text-gray-400',
-  scheduled: 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-neon-purple/20 text-neon-purple',
-  cancelled: 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-400/20 text-red-400',
-  testing: 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-neon-cyan/20 text-neon-cyan',
-  confirmed: 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-neon-green/20 text-neon-green',
-  refuted: 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-400/20 text-red-400',
-  forming: 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-400/20 text-yellow-400',
+  active:
+    'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-neon-green/20 text-neon-green',
+  completed:
+    'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-neon-blue/20 text-neon-blue',
+  paused:
+    'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-400/20 text-yellow-400',
+  proposed:
+    'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-400/20 text-gray-400',
+  scheduled:
+    'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-neon-purple/20 text-neon-purple',
+  cancelled:
+    'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-400/20 text-red-400',
+  testing:
+    'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-neon-cyan/20 text-neon-cyan',
+  confirmed:
+    'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-neon-green/20 text-neon-green',
+  refuted:
+    'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-400/20 text-red-400',
+  forming:
+    'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-400/20 text-yellow-400',
 };
 
 function StatusBadge({ status }: { status: string }) {
   return (
-    <span className={STATUS_BADGE_CLASSES[status] ?? 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-400/20 text-gray-400'}>
+    <span
+      className={
+        STATUS_BADGE_CLASSES[status] ??
+        'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-400/20 text-gray-400'
+      }
+    >
       {status}
     </span>
   );
@@ -214,8 +232,7 @@ function CreateCRIModal({
   const [domain, setDomain] = useState('');
 
   const createMut = useMutation({
-    mutationFn: () =>
-      decree({ action: 'cri-create', data: { name, domain } }),
+    mutationFn: () => decree({ action: 'cri-create', data: { name, domain } }),
     onSuccess: () => {
       setName('');
       setDomain('');
@@ -275,9 +292,7 @@ function CreateCRIModal({
         </div>
 
         {createMut.isError && (
-          <p className="px-4 pb-3 text-sm text-red-400">
-            Failed to create CRI. Please try again.
-          </p>
+          <p className="px-4 pb-3 text-sm text-red-400">Failed to create CRI. Please try again.</p>
         )}
       </div>
     </div>
@@ -303,8 +318,7 @@ function AddMemberModal({
   const [role, setRole] = useState('researcher');
 
   const addMut = useMutation({
-    mutationFn: () =>
-      decree({ action: 'cri-add-member', target: criId, data: { entityId, role } }),
+    mutationFn: () => decree({ action: 'cri-add-member', target: criId, data: { entityId, role } }),
     onSuccess: () => {
       setEntityId('');
       setRole('researcher');
@@ -341,11 +355,7 @@ function AddMemberModal({
           </div>
           <div>
             <label className={ds.label}>Role</label>
-            <select
-              className={ds.select}
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-            >
+            <select className={ds.select} value={role} onChange={(e) => setRole(e.target.value)}>
               <option value="researcher">Researcher</option>
               <option value="lead">Lead</option>
               <option value="advisor">Advisor</option>
@@ -368,9 +378,7 @@ function AddMemberModal({
         </div>
 
         {addMut.isError && (
-          <p className="px-4 pb-3 text-sm text-red-400">
-            Failed to add member. Please try again.
-          </p>
+          <p className="px-4 pb-3 text-sm text-red-400">Failed to add member. Please try again.</p>
         )}
       </div>
     </div>
@@ -395,8 +403,7 @@ function CreateProgramModal({
   const [title, setTitle] = useState('');
 
   const createMut = useMutation({
-    mutationFn: () =>
-      decree({ action: 'cri-program', target: criId, data: { title } }),
+    mutationFn: () => decree({ action: 'cri-program', target: criId, data: { title } }),
     onSuccess: () => {
       setTitle('');
       onCreated();
@@ -459,18 +466,16 @@ function CreateProgramModal({
 // CRI Detail View
 // ---------------------------------------------------------------------------
 
-function CRIDetailView({
-  criId,
-  onBack,
-}: {
-  criId: string;
-  onBack: () => void;
-}) {
+function CRIDetailView({ criId, onBack }: { criId: string; onBack: () => void }) {
   const queryClient = useQueryClient();
   const [showAddMember, setShowAddMember] = useState(false);
   const [showCreateProgram, setShowCreateProgram] = useState(false);
 
-  const { data: detail, isLoading, isError } = useQuery<CRIDetail>({
+  const {
+    data: detail,
+    isLoading,
+    isError,
+  } = useQuery<CRIDetail>({
     queryKey: ['cri-status', criId],
     queryFn: () => decree<CRIDetail>({ action: 'cri-status', target: criId }),
     refetchInterval: 30_000,
@@ -544,9 +549,24 @@ function CRIDetailView({
       {/* Stats row */}
       <div className={ds.grid4}>
         <StatCard icon={Users} label="Members" value={members.length} color="neon-blue" />
-        <StatCard icon={Beaker} label="Active Programs" value={activePrograms.length} color="neon-purple" />
-        <StatCard icon={Calendar} label="Upcoming Summits" value={upcomingSummits.length} color="neon-cyan" />
-        <StatCard icon={BarChart3} label="DTU Production" value={detail.dtuProductionRate ?? detail.totalDtus ?? 0} color="neon-green" />
+        <StatCard
+          icon={Beaker}
+          label="Active Programs"
+          value={activePrograms.length}
+          color="neon-purple"
+        />
+        <StatCard
+          icon={Calendar}
+          label="Upcoming Summits"
+          value={upcomingSummits.length}
+          color="neon-cyan"
+        />
+        <StatCard
+          icon={BarChart3}
+          label="DTU Production"
+          value={detail.dtuProductionRate ?? detail.totalDtus ?? 0}
+          color="neon-green"
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -605,7 +625,9 @@ function CRIDetailView({
               {programs.map((p) => (
                 <div key={p.id} className="space-y-1.5 py-2 px-3 rounded-lg bg-lattice-elevated/50">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm text-white font-medium truncate max-w-[160px]">{p.title}</p>
+                    <p className="text-sm text-white font-medium truncate max-w-[160px]">
+                      {p.title}
+                    </p>
                     <StatusBadge status={p.status} />
                   </div>
                   <ProgressBar value={p.progress ?? 0} color="neon-purple" />
@@ -665,7 +687,10 @@ function CRIDetailView({
               </thead>
               <tbody>
                 {summits.map((s) => (
-                  <tr key={s.id} className="border-b border-lattice-border/50 hover:bg-lattice-elevated/30">
+                  <tr
+                    key={s.id}
+                    className="border-b border-lattice-border/50 hover:bg-lattice-elevated/30"
+                  >
                     <td className="py-2 px-3 text-white font-mono text-xs">
                       {new Date(s.date).toLocaleDateString()}
                     </td>
@@ -738,12 +763,7 @@ export default function CRIDashboardPage() {
 
   // If a CRI is selected, show the detail view
   if (selectedCRI) {
-    return (
-      <CRIDetailView
-        criId={selectedCRI}
-        onBack={() => setSelectedCRI(null)}
-      />
-    );
+    return <CRIDetailView criId={selectedCRI} onBack={() => setSelectedCRI(null)} />;
   }
 
   // Aggregate stats
@@ -760,15 +780,10 @@ export default function CRIDashboardPage() {
           </div>
           <div>
             <h1 className={ds.heading1}>CRI Dashboard</h1>
-            <p className={ds.textMuted}>
-              Collaborative Research Institutes -- System 13e
-            </p>
+            <p className={ds.textMuted}>Collaborative Research Institutes -- System 13e</p>
           </div>
         </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className={ds.btnPrimary}
-        >
+        <button onClick={() => setShowCreateModal(true)} className={ds.btnPrimary}>
           <Plus className="w-4 h-4" />
           New CRI
         </button>
@@ -779,7 +794,12 @@ export default function CRIDashboardPage() {
         <StatCard icon={Building2} label="Total CRIs" value={cris.length} color="neon-purple" />
         <StatCard icon={Users} label="Total Members" value={totalMembers} color="neon-blue" />
         <StatCard icon={Beaker} label="Active Programs" value={totalPrograms} color="neon-cyan" />
-        <StatCard icon={TrendingUp} label="Institutes Active" value={cris.filter((c) => c.status === 'active' || !c.status).length} color="neon-green" />
+        <StatCard
+          icon={TrendingUp}
+          label="Institutes Active"
+          value={cris.filter((c) => c.status === 'active' || !c.status).length}
+          color="neon-green"
+        />
       </div>
 
       {/* Loading / Error states */}
@@ -791,7 +811,9 @@ export default function CRIDashboardPage() {
 
       {isError && (
         <div className={ds.panel}>
-          <p className="text-red-400">Failed to load CRIs. The sovereign decree endpoint may not be available.</p>
+          <p className="text-red-400">
+            Failed to load CRIs. The sovereign decree endpoint may not be available.
+          </p>
           <button
             onClick={() => queryClient.invalidateQueries({ queryKey: ['cri-list'] })}
             className={cn(ds.btnSecondary, 'mt-3')}
@@ -812,7 +834,9 @@ export default function CRIDashboardPage() {
               <div className={cn(ds.panel, 'flex flex-col items-center justify-center py-12')}>
                 <Building2 className="w-12 h-12 text-gray-600 mb-3" />
                 <p className="text-gray-400 mb-1">No CRIs found</p>
-                <p className={ds.textMuted}>Create a Collaborative Research Institute to get started.</p>
+                <p className={ds.textMuted}>
+                  Create a Collaborative Research Institute to get started.
+                </p>
                 <button
                   onClick={() => setShowCreateModal(true)}
                   className={cn(ds.btnPrimary, 'mt-4')}
@@ -838,9 +862,7 @@ export default function CRIDashboardPage() {
                         <h3 className="text-white font-semibold truncate">{cri.name}</h3>
                         {cri.status && <StatusBadge status={cri.status} />}
                       </div>
-                      <p className={cn(ds.textMuted, 'truncate')}>
-                        {cri.domain}
-                      </p>
+                      <p className={cn(ds.textMuted, 'truncate')}>{cri.domain}</p>
                     </div>
 
                     <div className="flex items-center gap-6 shrink-0">

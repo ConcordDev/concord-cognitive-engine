@@ -1,0 +1,42 @@
+[
+  {
+    "id": "ghost_network",
+    "name": "The Ghost Network",
+    "motto": "Seen once is once too many.",
+    "goal": "Maintain the most feared assassin-and-extraction network on the eastern seaboard. Selective contracts only — no children, no civilians, no work for the corporations who ran the betrayal.",
+    "values": ["loyalty earned", "discretion absolute", "no cleaning up other people's messes for free"],
+    "fears": ["the original betrayers locating Jax", "a corruption inside the network", "becoming the thing they used to fight"],
+    "controlled_districts": ["dockside_warehouses", "abandoned_subway_lines"],
+    "rival_factions": ["iron_rose_syndicate"],
+    "allied_factions": [],
+    "npc_ids": ["jax_rivera"],
+    "dialogue_style": "terse",
+    "reputation_currency": "ghost_marks",
+    "world_id": "crime",
+    "faction_state": {
+      "factionName": "Ghost Network",
+      "reputation": 71,
+      "tensions": "Cold war with the Iron Rose Syndicate. They share a city, not a philosophy. Mama Delgado wants information; Jax wants to disappear. Each tolerates the other because moving against the other is unwinnable for both."
+    }
+  },
+  {
+    "id": "iron_rose_syndicate",
+    "name": "The Iron Rose Syndicate",
+    "motto": "Eat first. Then we'll talk.",
+    "goal": "Run the largest organized-crime operation on the eastern seaboard through information, loyalty, and selective violence. Long-term: legitimize enough holdings that the next generation doesn't need a shotgun.",
+    "values": ["loyalty rewarded", "information weaponized", "family by choice", "ruthless precision when ruthlessness is required"],
+    "fears": ["the federal task force getting a clean conviction", "Jax taking a contract on her without a warning", "her grandchildren ending up in the family business by default"],
+    "controlled_districts": ["uptown_blocks", "river_market", "iron_rose_estate", "luminary_industries_back_channels"],
+    "rival_factions": ["ghost_network"],
+    "allied_factions": [],
+    "npc_ids": ["mama_delgado"],
+    "dialogue_style": "warm_threat",
+    "reputation_currency": "favor_marks",
+    "world_id": "crime",
+    "faction_state": {
+      "factionName": "Iron Rose Syndicate",
+      "reputation": 82,
+      "tensions": "The federal task force has been circling for two years. The neighborhood loves her. Half the cops on her payroll are starting to realize the heat is real. Mama Delgado knows three of her lieutenants are skimming and is letting it run because she wants to see who the skimmers are loyal to first."
+    }
+  }
+]

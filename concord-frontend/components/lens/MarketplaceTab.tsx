@@ -36,15 +36,17 @@ interface MarketplaceArtifact {
   price?: number;
 }
 
-export function MarketplaceTab({ domain, className }: MarketplaceTabProps) {
+function MarketplaceTab({ domain, className }: MarketplaceTabProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['marketplace-domain', domain],
     queryFn: () =>
-      api.get('/api/lens/artifacts', {
-        params: { domain, status: 'marketplace_ready', limit: 50 },
-      }).then(r => r.data),
+      api
+        .get('/api/lens/artifacts', {
+          params: { domain, status: 'marketplace_ready', limit: 50 },
+        })
+        .then((r) => r.data),
     staleTime: 30000,
   });
 
@@ -64,7 +66,9 @@ export function MarketplaceTab({ domain, className }: MarketplaceTabProps) {
       <div className={cn('p-8 text-center', className)}>
         <Store className="w-10 h-10 mx-auto mb-3 text-gray-600" />
         <p className="text-gray-400 text-sm">No marketplace items in this domain yet.</p>
-        <p className="text-gray-500 text-xs mt-1">Create artifacts and they&apos;ll appear here once approved.</p>
+        <p className="text-gray-500 text-xs mt-1">
+          Create artifacts and they&apos;ll appear here once approved.
+        </p>
       </div>
     );
   }
@@ -94,7 +98,9 @@ export function MarketplaceTab({ domain, className }: MarketplaceTabProps) {
               <h4 className="text-sm font-medium text-white truncate flex-1 mr-2">
                 {artifact.title}
               </h4>
-              <QualityTierBadge tier={artifact.meta?.qualityTier || artifact.meta?.status || 'pending'} />
+              <QualityTierBadge
+                tier={artifact.meta?.qualityTier || artifact.meta?.status || 'pending'}
+              />
             </div>
 
             <p className="text-xs text-gray-500 mb-2 truncate">
@@ -134,3 +140,7 @@ export function MarketplaceTab({ domain, className }: MarketplaceTabProps) {
     </div>
   );
 }
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedMarketplaceTab = withErrorBoundary(MarketplaceTab);
+export { _WrappedMarketplaceTab as MarketplaceTab };

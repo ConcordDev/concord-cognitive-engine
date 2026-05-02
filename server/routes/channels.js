@@ -225,7 +225,7 @@ export default function createChannelsRouter({ STATE, requireAuth, realtimeEmit 
    * Get the authenticated user's channel preferences.
    */
   router.get("/settings", auth, asyncHandler(async (req, res) => {
-    const userId = req.user?.id || req.user?.userId || req.headers["x-user-id"] || "anonymous";
+    const userId = req.user?.id || req.user?.userId || "anonymous";
     const prefs = getUserPreferences(userId, STATE);
     const status = getChannelStatus();
 
@@ -248,7 +248,7 @@ export default function createChannelsRouter({ STATE, requireAuth, realtimeEmit 
    * }
    */
   router.put("/settings", auth, asyncHandler(async (req, res) => {
-    const userId = req.user?.id || req.user?.userId || req.headers["x-user-id"];
+    const userId = req.user?.id || req.user?.userId;
     if (!userId) {
       return res.status(401).json({ ok: false, error: "authentication_required" });
     }
@@ -276,7 +276,7 @@ export default function createChannelsRouter({ STATE, requireAuth, realtimeEmit 
    * Body: { chatId: string, username?: string }
    */
   router.post("/connect/telegram", auth, asyncHandler(async (req, res) => {
-    const userId = req.user?.id || req.user?.userId || req.headers["x-user-id"];
+    const userId = req.user?.id || req.user?.userId;
     if (!userId) {
       return res.status(401).json({ ok: false, error: "authentication_required" });
     }
@@ -311,7 +311,7 @@ export default function createChannelsRouter({ STATE, requireAuth, realtimeEmit 
    * Body: { userId: string, username?: string, webhookUrl?: string }
    */
   router.post("/connect/discord", auth, asyncHandler(async (req, res) => {
-    const userId = req.user?.id || req.user?.userId || req.headers["x-user-id"];
+    const userId = req.user?.id || req.user?.userId;
     if (!userId) {
       return res.status(401).json({ ok: false, error: "authentication_required" });
     }
@@ -343,7 +343,7 @@ export default function createChannelsRouter({ STATE, requireAuth, realtimeEmit 
    * Body: { address: string }
    */
   router.post("/connect/email", auth, asyncHandler(async (req, res) => {
-    const userId = req.user?.id || req.user?.userId || req.headers["x-user-id"];
+    const userId = req.user?.id || req.user?.userId;
     if (!userId) {
       return res.status(401).json({ ok: false, error: "authentication_required" });
     }
@@ -377,7 +377,7 @@ export default function createChannelsRouter({ STATE, requireAuth, realtimeEmit 
    * Unlink a channel from the user's account.
    */
   router.delete("/connect/:channel", auth, asyncHandler(async (req, res) => {
-    const userId = req.user?.id || req.user?.userId || req.headers["x-user-id"];
+    const userId = req.user?.id || req.user?.userId;
     if (!userId) {
       return res.status(401).json({ ok: false, error: "authentication_required" });
     }

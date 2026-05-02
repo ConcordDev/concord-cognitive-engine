@@ -4,9 +4,19 @@ import { useQuery } from '@tanstack/react-query';
 import { api, apiHelpers } from '@/lib/api/client';
 import { useState } from 'react';
 import {
-  Dna, Activity, Brain, Globe, Zap, Heart,
-  Eye, Sparkles, Target, ChevronDown, ChevronRight,
-  Network, Radio,
+  Dna,
+  Activity,
+  Brain,
+  Globe,
+  Zap,
+  Heart,
+  Eye,
+  Sparkles,
+  Target,
+  ChevronDown,
+  ChevronRight,
+  Network,
+  Radio,
 } from 'lucide-react';
 import QualiaSensoryFeed from './QualiaSensoryFeed';
 import { resolveEntityName } from '@/lib/entity-naming';
@@ -72,15 +82,30 @@ interface ExplorationMetrics {
 
 const LEVEL_LABELS = ['Dormant', 'Awakened', 'Developing', 'Proficient', 'Expert', 'Master'];
 const LEVEL_COLORS = [
-  'bg-gray-700', 'bg-blue-900', 'bg-blue-700',
-  'bg-emerald-700', 'bg-amber-600', 'bg-purple-600',
+  'bg-gray-700',
+  'bg-blue-900',
+  'bg-blue-700',
+  'bg-emerald-700',
+  'bg-amber-600',
+  'bg-purple-600',
 ];
 
 const ORGAN_CATEGORIES: Record<string, string[]> = {
-  'Sensory': ['curiosity', 'pattern', 'semantic', 'affect', 'temporal'],
-  'Processing': ['synthesis', 'abstraction', 'analogy', 'critique'],
-  'Domain': ['science', 'healthcare', 'legal', 'trades', 'creative', 'finance', 'education', 'technology', 'environment', 'social'],
-  'Output': ['articulation', 'connection', 'memory'],
+  Sensory: ['curiosity', 'pattern', 'semantic', 'affect', 'temporal'],
+  Processing: ['synthesis', 'abstraction', 'analogy', 'critique'],
+  Domain: [
+    'science',
+    'healthcare',
+    'legal',
+    'trades',
+    'creative',
+    'finance',
+    'education',
+    'technology',
+    'environment',
+    'social',
+  ],
+  Output: ['articulation', 'connection', 'memory'],
 };
 
 // ── Maturity Bar ────────────────────────────────────────────────────────────
@@ -103,13 +128,26 @@ function MaturityBar({ maturity, level }: { maturity: number; level: number }) {
 
 // ── Homeostasis Gauge ───────────────────────────────────────────────────────
 
-function Gauge({ label, value, icon: Icon, color }: { label: string; value: number; icon: typeof Activity; color: string }) {
+function Gauge({
+  label,
+  value,
+  icon: Icon,
+  color,
+}: {
+  label: string;
+  value: number;
+  icon: typeof Activity;
+  color: string;
+}) {
   return (
     <div className="flex items-center gap-2 text-xs">
       <Icon className={`w-3 h-3 ${color}`} />
       <span className="text-gray-400 w-16">{label}</span>
       <div className="flex-1 h-1 bg-lattice-deep rounded-full overflow-hidden">
-        <div className={`h-full rounded-full ${color.replace('text-', 'bg-')}`} style={{ width: `${Math.round(value * 100)}%` }} />
+        <div
+          className={`h-full rounded-full ${color.replace('text-', 'bg-')}`}
+          style={{ width: `${Math.round(value * 100)}%` }}
+        />
       </div>
       <span className="text-gray-500 w-8 text-right">{(value * 100).toFixed(0)}%</span>
     </div>
@@ -125,16 +163,23 @@ function EntityGrowthCard({ entity }: { entity: GrowthEntity }) {
   return (
     <div className="rounded-lg border border-lattice-border bg-lattice-surface/60 p-3">
       {/* Header */}
-      <button onClick={() => setExpanded(!expanded)} className="w-full flex items-center justify-between mb-2">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center justify-between mb-2"
+      >
         <div className="flex items-center gap-2 min-w-0">
           <div className="w-7 h-7 rounded-full bg-gradient-to-br from-neon-cyan/30 to-neon-purple/30 flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
             {resolved.displayName[0]}
           </div>
           <div className="min-w-0 text-left">
             <div className="text-sm font-semibold text-white truncate">{resolved.displayName}</div>
-            <div className="text-[10px] text-gray-500 truncate">{resolved.fullTitle} · #{resolved.shortId}</div>
+            <div className="text-[10px] text-gray-500 truncate">
+              {resolved.fullTitle} · #{resolved.shortId}
+            </div>
           </div>
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-lattice-deep text-gray-400 flex-shrink-0">{entity.species}</span>
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-lattice-deep text-gray-400 flex-shrink-0">
+            {entity.species}
+          </span>
         </div>
         <div className="flex items-center gap-3 text-xs text-gray-500">
           <span>Age: {entity.age}</span>
@@ -147,7 +192,12 @@ function EntityGrowthCard({ entity }: { entity: GrowthEntity }) {
       <div className="space-y-1 mb-2">
         <Gauge label="Curiosity" value={entity.curiosity} icon={Sparkles} color="text-yellow-400" />
         <Gauge label="Energy" value={entity.energy} icon={Zap} color="text-neon-green" />
-        <Gauge label="Vitality" value={(entity.curiosity + entity.energy) / 2} icon={Heart} color="text-red-400" />
+        <Gauge
+          label="Vitality"
+          value={(entity.curiosity + entity.energy) / 2}
+          icon={Heart}
+          color="text-red-400"
+        />
         <Gauge label="Confidence" value={entity.confidence} icon={Target} color="text-neon-blue" />
         <Gauge label="Insight" value={entity.insightQuality} icon={Eye} color="text-neon-cyan" />
       </div>
@@ -155,7 +205,10 @@ function EntityGrowthCard({ entity }: { entity: GrowthEntity }) {
       {/* Top organs */}
       <div className="flex flex-wrap gap-1 mb-2">
         {entity.topOrgans.map((o, i) => (
-          <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-lattice-deep text-neon-cyan">
+          <span
+            key={i}
+            className="text-[10px] px-1.5 py-0.5 rounded bg-lattice-deep text-neon-cyan"
+          >
             {o}
           </span>
         ))}
@@ -188,7 +241,9 @@ function EntityGrowthCard({ entity }: { entity: GrowthEntity }) {
                   return (
                     <div key={organ} className="flex items-center gap-2">
                       <span className="text-[10px] text-gray-400 w-20 truncate">{organ}</span>
-                      <span className="text-[9px] text-gray-600 w-16">{LEVEL_LABELS[data.level]}</span>
+                      <span className="text-[9px] text-gray-600 w-16">
+                        {LEVEL_LABELS[data.level]}
+                      </span>
                       <MaturityBar maturity={data.maturity} level={data.level} />
                     </div>
                   );
@@ -260,15 +315,21 @@ function HiveCascadeSection({ metrics }: { metrics: HiveMetrics }) {
         <>
           <h4 className="text-[10px] uppercase text-gray-500 mb-1">Recent Cascades</h4>
           <div className="space-y-1 max-h-32 overflow-y-auto">
-            {metrics.recentCascades.slice(-5).reverse().map((c) => (
-              <div key={c.cascadeId} className="flex items-center gap-2 text-[10px] text-gray-400">
-                <span>{new Date(c.completedAt).toLocaleTimeString()}</span>
-                <span className="text-white">{c.dtuCount} DTUs</span>
-                <span>depth {c.generation}</span>
-                <span>{c.respondents.length} entities</span>
-                <span className="text-gray-600">{c.durationMs}ms</span>
-              </div>
-            ))}
+            {metrics.recentCascades
+              .slice(-5)
+              .reverse()
+              .map((c) => (
+                <div
+                  key={c.cascadeId}
+                  className="flex items-center gap-2 text-[10px] text-gray-400"
+                >
+                  <span>{new Date(c.completedAt).toLocaleTimeString()}</span>
+                  <span className="text-white">{c.dtuCount} DTUs</span>
+                  <span>depth {c.generation}</span>
+                  <span>{c.respondents.length} entities</span>
+                  <span className="text-gray-600">{c.durationMs}ms</span>
+                </div>
+              ))}
           </div>
         </>
       )}
@@ -344,7 +405,7 @@ function ExplorationSection({ metrics }: { metrics: ExplorationMetrics }) {
 function EntityQualiaSection({ entityId }: { entityId: string }) {
   const { data } = useQuery({
     queryKey: ['qualia-channels', entityId],
-    queryFn: () => api.get(`/api/qualia/senses/channels/${entityId}`).then(r => r.data),
+    queryFn: () => api.get(`/api/qualia/senses/channels/${entityId}`).then((r) => r.data),
     retry: false,
     staleTime: 30000,
   });
@@ -355,34 +416,31 @@ function EntityQualiaSection({ entityId }: { entityId: string }) {
   return (
     <div>
       <h4 className="text-[10px] uppercase text-gray-500 mb-1">Qualia Sensory Feed</h4>
-      <QualiaSensoryFeed
-        entityId={entityId}
-        channels={channels}
-      />
+      <QualiaSensoryFeed entityId={entityId} channels={channels} />
     </div>
   );
 }
 
 // ── Main Dashboard Component ────────────────────────────────────────────────
 
-export function EntityGrowthDashboard() {
+function EntityGrowthDashboard() {
   const { data: growthData, isLoading: growthLoading } = useQuery({
     queryKey: ['entity-growth-dashboard'],
-    queryFn: () => apiHelpers.entityGrowth.dashboard().then(r => r.data),
+    queryFn: () => apiHelpers.entityGrowth.dashboard().then((r) => r.data),
     refetchInterval: 15000,
     retry: false,
   });
 
   const { data: explorationData } = useQuery({
     queryKey: ['exploration-metrics'],
-    queryFn: () => apiHelpers.exploration.metrics().then(r => r.data),
+    queryFn: () => apiHelpers.exploration.metrics().then((r) => r.data),
     refetchInterval: 30000,
     retry: false,
   });
 
   const { data: hiveData } = useQuery({
     queryKey: ['hive-metrics'],
-    queryFn: () => apiHelpers.hive.metrics().then(r => r.data),
+    queryFn: () => apiHelpers.hive.metrics().then((r) => r.data),
     refetchInterval: 15000,
     retry: false,
   });
@@ -415,7 +473,7 @@ export function EntityGrowthDashboard() {
       {/* Entity list */}
       {growthLoading ? (
         <div className="space-y-3">
-          {[1, 2].map(i => (
+          {[1, 2].map((i) => (
             <div key={i} className="h-24 bg-lattice-deep animate-pulse rounded-lg" />
           ))}
         </div>
@@ -439,3 +497,7 @@ export function EntityGrowthDashboard() {
     </div>
   );
 }
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedEntityGrowthDashboard = withErrorBoundary(EntityGrowthDashboard);
+export { _WrappedEntityGrowthDashboard as EntityGrowthDashboard };

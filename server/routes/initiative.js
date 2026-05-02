@@ -32,7 +32,7 @@ import { createInitiativeEngine } from "../lib/initiative-engine.js";
  * @returns {string}
  */
 function _getUserId(req) {
-  return req.user?.id || req.headers["x-user-id"] || "anonymous";
+  return req.user?.id || "anonymous";
 }
 
 /**
@@ -41,10 +41,12 @@ function _getUserId(req) {
  * @param {import('express').Express} app - Express application
  * @param {object} deps - Dependencies from server wiring
  * @param {import('better-sqlite3').Database} deps.db - SQLite database
+ * @param {Function} [deps.requireAuth] - Auth middleware
  * @param {Function} [deps.realtimeEmit] - WebSocket broadcast function (optional)
  */
 export default function registerInitiativeRoutes(app, deps) {
   const { db } = deps;
+  const _auth = typeof deps.requireAuth === "function" ? deps.requireAuth : (_r, _s, n) => n();
   const engine = createInitiativeEngine(db);
 
   // Expose engine for external callers (e.g., proactive tick in server.js)
@@ -53,7 +55,7 @@ export default function registerInitiativeRoutes(app, deps) {
   // ── GET /api/initiative/settings ─────────────────────────────────────
   // Get user's initiative settings (creates defaults if not present)
 
-  app.get("/api/initiative/settings", asyncHandler(async (req, res) => {
+  app.get("/api/initiative/settings", _auth, asyncHandler(async (req, res) => {
     const userId = _getUserId(req);
     const settings = engine.getSettings(userId);
     const backoff = engine.getBackoff(userId);
@@ -92,7 +94,7 @@ export default function registerInitiativeRoutes(app, deps) {
   // ── PUT /api/initiative/settings ─────────────────────────────────────
   // Update settings (partial merge)
 
-  app.put("/api/initiative/settings", asyncHandler(async (req, res) => {
+  app.put("/api/initiative/settings", _auth, asyncHandler(async (req, res) => {
     const userId = _getUserId(req);
     const body = req.body || {};
 
@@ -112,7 +114,7 @@ export default function registerInitiativeRoutes(app, deps) {
   // ── GET /api/initiative/pending ──────────────────────────────────────
   // Get pending initiatives for the current user
 
-  app.get("/api/initiative/pending", asyncHandler(async (req, res) => {
+  app.get("/api/initiative/pending", _auth, asyncHandler(async (req, res) => {
     const userId = _getUserId(req);
     const result = engine.getPending(userId);
 
@@ -122,7 +124,7 @@ export default function registerInitiativeRoutes(app, deps) {
   // ── GET /api/initiative/history ──────────────────────────────────────
   // Get initiative history with pagination { limit, offset, status? }
 
-  app.get("/api/initiative/history", asyncHandler(async (req, res) => {
+  app.get("/api/initiative/history", _auth, asyncHandler(async (req, res) => {
     const userId = _getUserId(req);
     const limit = req.query.limit ? Number(req.query.limit) : undefined;
     const offset = req.query.offset ? Number(req.query.offset) : undefined;
@@ -136,7 +138,7 @@ export default function registerInitiativeRoutes(app, deps) {
   // ── POST /api/initiative/trigger ─────────────────────────────────────
   // Manually trigger an initiative evaluation { triggerType, context }
 
-  app.post("/api/initiative/trigger", asyncHandler(async (req, res) => {
+  app.post("/api/initiative/trigger", _auth, asyncHandler(async (req, res) => {
     const userId = _getUserId(req);
     const { triggerType, context } = req.body || {};
 
@@ -218,7 +220,7 @@ export default function registerInitiativeRoutes(app, deps) {
   // ── GET /api/initiative/style ────────────────────────────────────────
   // Get user's learned style profile
 
-  app.get("/api/initiative/style", asyncHandler(async (req, res) => {
+  app.get("/api/initiative/style", _auth, asyncHandler(async (req, res) => {
     const userId = _getUserId(req);
     const profile = engine.getStyleProfile(userId);
 
@@ -228,7 +230,7 @@ export default function registerInitiativeRoutes(app, deps) {
   // ── POST /api/initiative/style/learn ─────────────────────────────────
   // Submit a message for style learning { message }
 
-  app.post("/api/initiative/style/learn", asyncHandler(async (req, res) => {
+  app.post("/api/initiative/style/learn", _auth, asyncHandler(async (req, res) => {
     const userId = _getUserId(req);
     const { message } = req.body || {};
 
@@ -253,7 +255,7 @@ export default function registerInitiativeRoutes(app, deps) {
   // ── POST /api/initiative/double-text ─────────────────────────────────
   // Generate a double text { originalMessage, context }
 
-  app.post("/api/initiative/double-text", asyncHandler(async (req, res) => {
+  app.post("/api/initiative/double-text", _auth, asyncHandler(async (req, res) => {
     const userId = _getUserId(req);
     const { originalMessage, context } = req.body || {};
 

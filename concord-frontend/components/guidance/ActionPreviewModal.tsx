@@ -10,9 +10,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
-import {
-  AlertTriangle, Plus, Pencil, Trash2, X, Shield, Loader2,
-} from 'lucide-react';
+import { AlertTriangle, Plus, Pencil, Trash2, X, Shield, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface PreviewItem {
@@ -44,7 +42,7 @@ interface ActionPreviewModalProps {
   onCancel: () => void;
 }
 
-export function ActionPreviewModal({
+function ActionPreviewModal({
   action,
   entityType,
   entityId,
@@ -62,7 +60,11 @@ export function ActionPreviewModal({
 
   const preview = data?.preview;
   const hasWarnings = (preview?.warnings?.length || 0) > 0;
-  const hasChanges = (preview?.willCreate?.length || 0) + (preview?.willModify?.length || 0) + (preview?.willDelete?.length || 0) > 0;
+  const hasChanges =
+    (preview?.willCreate?.length || 0) +
+      (preview?.willModify?.length || 0) +
+      (preview?.willDelete?.length || 0) >
+    0;
 
   const handleConfirm = async () => {
     setConfirming(true);
@@ -102,7 +104,9 @@ export function ActionPreviewModal({
               <div className="text-xs text-gray-500">
                 <span className="font-mono bg-gray-800 px-1 py-0.5 rounded">{action}</span>
                 {' on '}
-                <span className="text-gray-400">{entityType}:{entityId.slice(0, 12)}</span>
+                <span className="text-gray-400">
+                  {entityType}:{entityId.slice(0, 12)}
+                </span>
               </div>
 
               {/* Will create */}
@@ -114,7 +118,9 @@ export function ActionPreviewModal({
                   </div>
                   {preview.willCreate.map((item, i) => (
                     <div key={i} className="text-xs text-gray-400 pl-4">
-                      {item.type}{item.id ? `: ${item.id}` : ''}{item.title ? ` — ${item.title}` : ''}
+                      {item.type}
+                      {item.id ? `: ${item.id}` : ''}
+                      {item.title ? ` — ${item.title}` : ''}
                     </div>
                   ))}
                 </div>
@@ -129,7 +135,8 @@ export function ActionPreviewModal({
                   </div>
                   {preview.willModify.map((item, i) => (
                     <div key={i} className="text-xs text-gray-400 pl-4">
-                      {item.type}:{item.id?.slice(0, 10)} — {item.field}: {String(item.from)} → {String(item.to)}
+                      {item.type}:{item.id?.slice(0, 10)} — {item.field}: {String(item.from)} →{' '}
+                      {String(item.to)}
                     </div>
                   ))}
                 </div>
@@ -194,3 +201,7 @@ export function ActionPreviewModal({
     </div>
   );
 }
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedActionPreviewModal = withErrorBoundary(ActionPreviewModal);
+export { _WrappedActionPreviewModal as ActionPreviewModal };

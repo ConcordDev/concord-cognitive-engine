@@ -315,6 +315,30 @@ export default function registerOperationRoutes(app, {
     }
   }));
 
+  app.post("/api/ingest/flush", requireRole("owner", "admin", "founder"), asyncHandler(async (req, res) => {
+    try {
+      const mod = await import("../emergent/ingest-engine.js").catch(() => null);
+      if (!mod?.flushQueue) return res.status(501).json({ ok: false, error: "Flush not available" });
+      const result = mod.flushQueue();
+      return res.json({ ok: true, ...(typeof result === "object" ? result : {}) });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: String(e?.message || e) });
+    }
+  }));
+
+  app.post("/api/ingest/block", requireRole("owner", "admin", "founder"), asyncHandler(async (req, res) => {
+    try {
+      const { domain } = req.body || {};
+      if (!domain) return res.status(400).json({ ok: false, error: "domain required" });
+      const mod = await import("../emergent/ingest-engine.js").catch(() => null);
+      if (!mod?.addToBlocklist) return res.status(501).json({ ok: false, error: "Block not available" });
+      mod.addToBlocklist(domain);
+      return res.json({ ok: true, blocked: domain });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: String(e?.message || e) });
+    }
+  }));
+
   // Jobs status endpoint
   app.get("/api/jobs/status", (req, res) => {
     try {

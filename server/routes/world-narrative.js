@@ -8,6 +8,12 @@ import { Router } from "express";
 import logger from "../logger.js";
 import { synthesizeLore, generateQuestChain, writeDialogueTree } from "../lib/oracle-brain.js";
 import { getTimeline } from "../emergent/history-engine.js";
+import {
+  synthesizeArcLore,
+  generateArcQuestChain,
+  generateAuthoredDialogue,
+} from "../lib/narrative-bridge.js";
+import { getAuthoredNPC } from "../lib/content-seeder.js";
 
 // In-memory LRU cache: worldId → { lore, generatedAt }
 const _loreCache = new Map();
@@ -28,9 +34,9 @@ function setCachedLore(worldId, lore) {
 }
 
 async function buildLore(worldId) {
-  const timelineResult = getTimeline({ limit: 20, granularity: "major" });
-  const worldEvents = timelineResult?.events || [];
-  const result = await synthesizeLore(worldEvents, []);
+  // Use narrative bridge so authored lore events (Founding Compact, Purge, etc.)
+  // flow into the synthesis prompt as world history context.
+  const result = await synthesizeArcLore(worldId);
   if (result.ok) {
     setCachedLore(worldId, result.lore);
     logger.info({ worldId }, "lore_synthesized");
@@ -64,7 +70,7 @@ export default function createWorldNarrativeRoutes({ requireAuth, requireAdmin }
       await fn(req, res);
     } catch (err) {
       logger.warn({ err: err.message }, "world_narrative_route_error");
-      res.status(500).json({ ok: false, error: err.message });
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
     }
   };
 
@@ -107,40 +113,61 @@ export default function createWorldNarrativeRoutes({ requireAuth, requireAdmin }
   }));
 
   // GET /api/world/quest-chain/:npcId
+  // For authored NPCs, enriches with faction state and NPC backstory via narrative bridge.
+  // Falls back to procedural generation for non-authored NPCs.
   router.get("/quest-chain/:npcId", auth, wrap(async (req, res) => {
     const { npcId } = req.params;
     const playerLevel = parseInt(req.query.playerLevel || "1", 10);
-    const factionState = {
-      factionName: req.query.faction || "Independent",
-      reputation: parseInt(req.query.reputation || "50", 10),
-    };
 
-    const result = await generateQuestChain(npcId, factionState, playerLevel);
+    const isAuthored = getAuthoredNPC(npcId) !== null;
+
+    let result;
+    if (isAuthored) {
+      result = await generateArcQuestChain(npcId, playerLevel);
+    } else {
+      const factionState = {
+        factionName: req.query.faction || "Independent",
+        reputation: parseInt(req.query.reputation || "50", 10),
+      };
+      result = await generateQuestChain(npcId, factionState, playerLevel);
+    }
+
     if (!result.ok) {
       return res.status(503).json({ ok: false, error: result.error });
     }
-    res.json({ ok: true, questChain: result.questChain });
+    res.json({ ok: true, questChain: result.questChain, authored: isAuthored });
   }));
 
   // GET /api/world/dialogue/:npcId
+  // For authored NPCs, injects backstory, faction context, and speech patterns.
+  // Falls back to procedural generation for non-authored NPCs.
   router.get("/dialogue/:npcId", auth, wrap(async (req, res) => {
-    const npcTraits = {
-      id: req.params.npcId,
-      name: req.query.name || "Citizen",
-      personality: req.query.personality || "reserved",
-      role: req.query.role || "resident",
-    };
-    const questContext = {
-      questTitle: req.query.questTitle || "",
-      currentStep: parseInt(req.query.step || "0", 10),
-    };
+    const { npcId } = req.params;
+    const questId            = req.query.questId || null;
     const playerRelationship = req.query.relationship || "neutral";
+    const isAuthored         = getAuthoredNPC(npcId) !== null;
 
-    const result = await writeDialogueTree(npcTraits, questContext, playerRelationship);
+    let result;
+    if (isAuthored) {
+      result = await generateAuthoredDialogue(npcId, questId, playerRelationship);
+    } else {
+      const npcTraits = {
+        id:          npcId,
+        name:        req.query.name || "Citizen",
+        personality: req.query.personality || "reserved",
+        role:        req.query.role || "resident",
+      };
+      const questContext = {
+        questTitle:  req.query.questTitle || "",
+        currentStep: parseInt(req.query.step || "0", 10),
+      };
+      result = await writeDialogueTree(npcTraits, questContext, playerRelationship);
+    }
+
     if (!result.ok) {
       return res.status(503).json({ ok: false, error: result.error });
     }
-    res.json({ ok: true, dialogueTree: result.dialogueTree });
+    res.json({ ok: true, dialogueTree: result.dialogueTree, authored: isAuthored });
   }));
 
   return router;

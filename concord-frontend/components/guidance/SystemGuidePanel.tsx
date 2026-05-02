@@ -15,8 +15,13 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import {
-  Lightbulb, CheckCircle, Circle, ChevronRight,
-  Activity, AlertTriangle, Minimize2,
+  Lightbulb,
+  CheckCircle,
+  Circle,
+  ChevronRight,
+  Activity,
+  AlertTriangle,
+  Minimize2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -62,7 +67,7 @@ interface EventItem {
   entityType: string | null;
 }
 
-export function SystemGuidePanel() {
+function SystemGuidePanel() {
   const [collapsed, setCollapsed] = useState(false);
 
   const { data: health } = useQuery<HealthData>({
@@ -114,7 +119,11 @@ export function SystemGuidePanel() {
           <Lightbulb className="w-4 h-4 text-neon-blue" />
           Guide
         </span>
-        <button onClick={() => setCollapsed(true)} className="text-gray-500 hover:text-white" aria-label="Collapse guide panel">
+        <button
+          onClick={() => setCollapsed(true)}
+          className="text-gray-500 hover:text-white"
+          aria-label="Collapse guide panel"
+        >
           <Minimize2 className="w-3.5 h-3.5" />
         </button>
       </div>
@@ -135,7 +144,9 @@ export function SystemGuidePanel() {
         {health?.counts && (
           <div className="flex items-center gap-3 mt-1.5 text-xs text-gray-500">
             {Object.entries(health.counts).map(([k, v]) => (
-              <span key={k}>{k}: {v}</span>
+              <span key={k}>
+                {k}: {v}
+              </span>
             ))}
           </div>
         )}
@@ -155,7 +166,9 @@ export function SystemGuidePanel() {
                 ) : (
                   <Circle className="w-3.5 h-3.5 text-gray-600" />
                 )}
-                <span className={cn(step.completed ? 'text-gray-500 line-through' : 'text-gray-300')}>
+                <span
+                  className={cn(step.completed ? 'text-gray-500 line-through' : 'text-gray-300')}
+                >
                   {step.label}
                 </span>
               </div>
@@ -200,7 +213,9 @@ export function SystemGuidePanel() {
                 <div className="flex items-center gap-1">
                   <span className="font-mono text-gray-600">{formatTime(evt.createdAt)}</span>
                   {evt.undoToken && (
-                    <span className="text-neon-blue text-[10px]" title="Undoable">undo</span>
+                    <span className="text-neon-blue text-[10px]" title="Undoable">
+                      undo
+                    </span>
                   )}
                 </div>
                 <div className="text-gray-400 truncate">{evt.summary || evt.type}</div>
@@ -216,10 +231,12 @@ export function SystemGuidePanel() {
 function HealthDot({ ok, label }: { ok?: boolean; label: string }) {
   return (
     <span className="flex items-center gap-0.5 text-xs">
-      <span className={cn(
-        'w-1.5 h-1.5 rounded-full',
-        ok === true ? 'bg-neon-green' : ok === false ? 'bg-red-500' : 'bg-gray-600'
-      )} />
+      <span
+        className={cn(
+          'w-1.5 h-1.5 rounded-full',
+          ok === true ? 'bg-neon-green' : ok === false ? 'bg-red-500' : 'bg-gray-600'
+        )}
+      />
       <span className="text-gray-500">{label}</span>
     </span>
   );
@@ -233,3 +250,7 @@ function formatTime(iso: string): string {
     return iso.slice(11, 16);
   }
 }
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedSystemGuidePanel = withErrorBoundary(SystemGuidePanel);
+export { _WrappedSystemGuidePanel as SystemGuidePanel };

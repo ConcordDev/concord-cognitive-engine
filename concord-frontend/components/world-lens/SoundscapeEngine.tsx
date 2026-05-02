@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { resumeAudioContext } from '../../lib/audio/unlock';
 
 /* ── Types ─────────────────────────────────────────────────────── */
 
@@ -91,6 +92,13 @@ const SFX_MAP: Record<string, SFXDef> = {
   // level up / xp
   'xp-tick':           { freq: 1320, type: 'sine',     duration: 0.15, attack: 0.001, decay: 0.14 },
   'level-up':          { freq: 523,  type: 'triangle', duration: 1.2,  attack: 0.01, decay: 0.9,  semitones: [0, 4, 7, 12, 19] },
+  // combat impacts — layered tones for percussive weight
+  'hit-light':         { freq: 140,  type: 'triangle', duration: 0.18, attack: 0.001, decay: 0.16 },
+  'hit-heavy':         { freq: 70,   type: 'sawtooth', duration: 0.28, attack: 0.001, decay: 0.26, semitones: [0, -5] },
+  'hit-crit':          { freq: 260,  type: 'square',   duration: 0.32, attack: 0.001, decay: 0.28, semitones: [0, -7, 12] },
+  'dodge-whoosh':      { freq: 700,  type: 'sine',     duration: 0.14, attack: 0.001, decay: 0.12 },
+  'block-clang':       { freq: 110,  type: 'square',   duration: 0.22, attack: 0.001, decay: 0.20, semitones: [0, 7] },
+  'kill-blow':         { freq: 55,   type: 'sawtooth', duration: 0.55, attack: 0.001, decay: 0.50, semitones: [0, -12] },
 };
 
 const DISTRICT_ALIAS: Record<string, DistrictName> = {
@@ -173,13 +181,18 @@ export function useSoundscape(): SoundscapeAPI {
 
 /* ── Web Audio helpers ──────────────────────────────────────────── */
 
-function getOrCreateAudioContext(ref: React.MutableRefObject<AudioContext | null>): AudioContext | null {
+function getOrCreateAudioContext(
+  ref: React.MutableRefObject<AudioContext | null>,
+  onCreate?: (ctx: AudioContext) => void,
+): AudioContext | null {
   if (typeof window === 'undefined') return null;
-  if (!ref.current || ref.current.state === 'closed') {
+  const wasNew = !ref.current || ref.current.state === 'closed';
+  if (wasNew) {
     try { ref.current = new AudioContext(); } catch { return null; }
+    if (ref.current && onCreate) onCreate(ref.current);
   }
-  if (ref.current.state === 'suspended') {
-    ref.current.resume().catch(() => {});
+  if (ref.current && ref.current.state === 'suspended') {
+    void resumeAudioContext(ref.current);
   }
   return ref.current;
 }
@@ -253,9 +266,36 @@ export default function SoundscapeEngine({
   const noiseGainRef    = useRef<GainNode | null>(null);
   const musicElRef      = useRef<HTMLAudioElement | null>(null);
 
+  // SFX queued before AudioContext is unlocked. Flushed on statechange.
+  // 2s TTL, 32-entry cap to prevent unbounded growth.
+  const pendingSfxRef = useRef<Array<{
+    sfxId: string;
+    queuedAt: number;
+    spatial?: { x: number; y: number; z: number };
+  }>>([]);
+
+  const flushPendingSfx = useCallback(() => {
+    const ctx = audioCtxRef.current;
+    if (!ctx || ctx.state !== 'running' || !masterGainRef.current) return;
+    const now = Date.now();
+    const queue = pendingSfxRef.current;
+    pendingSfxRef.current = [];
+    for (const entry of queue) {
+      if (now - entry.queuedAt > 2000) continue;
+      const def = SFX_MAP[entry.sfxId];
+      if (!def) continue;
+      if (entry.spatial) playToneSpatial(ctx, def, masterGainRef.current, entry.spatial);
+      else playToneSequence(ctx, def, masterGainRef.current);
+    }
+  }, []);
+
   // Lazy-init audio on first user gesture
   const initAudio = useCallback(() => {
-    const ctx = getOrCreateAudioContext(audioCtxRef);
+    const ctx = getOrCreateAudioContext(audioCtxRef, (newCtx) => {
+      newCtx.addEventListener('statechange', () => {
+        if (newCtx.state === 'running') flushPendingSfx();
+      });
+    });
     if (!ctx) return null;
     if (!masterGainRef.current) {
       masterGainRef.current = ctx.createGain();
@@ -263,7 +303,7 @@ export default function SoundscapeEngine({
       masterGainRef.current.connect(ctx.destination);
     }
     return ctx;
-  }, []);
+  }, [flushPendingSfx]);
 
   // Build district ambient drone whenever district changes
   useEffect(() => {
@@ -387,21 +427,32 @@ export default function SoundscapeEngine({
     setState(prev => ({ ...prev, weather, weatherIntensity: intensity ?? 0.5 }));
   }, []);
 
+  const enqueueSfx = useCallback((sfxId: string, spatial?: { x: number; y: number; z: number }) => {
+    pendingSfxRef.current.push({ sfxId, queuedAt: Date.now(), spatial });
+    if (pendingSfxRef.current.length > 32) pendingSfxRef.current.shift();
+  }, []);
+
   const triggerSFX = useCallback((sfxId: string) => {
     const def = SFX_MAP[sfxId];
     if (!def) return;
     const ctx = initAudio();
-    if (!ctx || !masterGainRef.current) return;
+    if (!ctx || !masterGainRef.current || ctx.state !== 'running') {
+      enqueueSfx(sfxId);
+      return;
+    }
     playToneSequence(ctx, def, masterGainRef.current);
-  }, [initAudio]);
+  }, [initAudio, enqueueSfx]);
 
   const playSpatialSFX = useCallback((sfxId: string, worldPos: { x: number; y: number; z: number }) => {
     const def = SFX_MAP[sfxId];
     if (!def) return;
     const ctx = initAudio();
-    if (!ctx || !masterGainRef.current) return;
+    if (!ctx || !masterGainRef.current || ctx.state !== 'running') {
+      enqueueSfx(sfxId, worldPos);
+      return;
+    }
     playToneSpatial(ctx, def, masterGainRef.current, worldPos);
-  }, [initAudio]);
+  }, [initAudio, enqueueSfx]);
 
   const playMusicTrack = useCallback((url: string) => {
     musicElRef.current?.pause();
@@ -421,6 +472,82 @@ export default function SoundscapeEngine({
     setDistrict, setTimeOfDay, setInterior, setWeather,
     triggerSFX, playSpatialSFX, playMusicTrack, stopMusicTrack,
   };
+
+  // Allow any sibling or parent component to call SoundscapeEngine APIs via
+  // window events — avoids requiring everything to live inside this provider.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { action, district, time, interior, weather, intensity, sfxId, position } =
+        (e as CustomEvent).detail ?? {};
+      if (action === 'setDistrict' && district) setDistrict(district);
+      else if (action === 'setTimeOfDay' && time) setTimeOfDay(time);
+      else if (action === 'setInterior' && typeof interior === 'boolean') setInterior(interior);
+      else if (action === 'setWeather' && weather) setWeather(weather, intensity);
+      else if (action === 'triggerSFX' && sfxId) triggerSFX(sfxId);
+      // Phase 14: spatial SFX dispatch from anywhere in the app via the same
+      // window event channel. Position is { x, y, z } in world space.
+      else if (action === 'playSpatialSFX' && sfxId && position) playSpatialSFX(sfxId, position);
+    };
+    window.addEventListener('concordia:soundscape-command', handler);
+
+    // Phase 15: dynamic ambient ducking on combat events. The ambient
+    // drone fades to ~30% during sustained combat and back up after a
+    // 3s quiet period. Re-firing extends the duck window — no thrash.
+    let duckExpireTimer: ReturnType<typeof setTimeout> | null = null;
+    const baseGain = 1.0;
+    const duckGain = 0.30;
+    const ramp = 0.25; // seconds
+
+    const fadeDroneTo = (target: number, rampSec: number) => {
+      const ctx = audioCtxRef.current;
+      const drone = droneGainRef.current;
+      if (!ctx || !drone) return;
+      const now = ctx.currentTime;
+      drone.gain.cancelScheduledValues(now);
+      drone.gain.setTargetAtTime(target, now, rampSec / 3); // setTargetAtTime time-constant ≈ 63% in tau
+    };
+
+    const combatHandler = () => {
+      fadeDroneTo(duckGain, ramp);
+      if (duckExpireTimer) clearTimeout(duckExpireTimer);
+      duckExpireTimer = setTimeout(() => {
+        fadeDroneTo(baseGain, ramp * 2);
+        duckExpireTimer = null;
+      }, 3000);
+    };
+    window.addEventListener('concordia:hit-reaction', combatHandler);
+    window.addEventListener('concordia:death-collapse', combatHandler);
+
+    // Phase 16 → Phase 15 follow-up: duck the master mix during NPC dialogue
+    // so SFX don't drown out the speech. Drops master to ~50% on
+    // dialogue-active, restores on dialogue-ended.
+    const dialogueDuckGain = 0.50;
+    const dialogueOnHandler = () => {
+      const ctx = audioCtxRef.current;
+      const master = masterGainRef.current;
+      if (!ctx || !master) return;
+      master.gain.cancelScheduledValues(ctx.currentTime);
+      master.gain.setTargetAtTime(dialogueDuckGain, ctx.currentTime, 0.08);
+    };
+    const dialogueOffHandler = () => {
+      const ctx = audioCtxRef.current;
+      const master = masterGainRef.current;
+      if (!ctx || !master) return;
+      master.gain.cancelScheduledValues(ctx.currentTime);
+      master.gain.setTargetAtTime(0.6, ctx.currentTime, 0.20); // 0.6 = the master init value at line 275
+    };
+    window.addEventListener('concordia:dialogue-active', dialogueOnHandler);
+    window.addEventListener('concordia:dialogue-ended', dialogueOffHandler);
+
+    return () => {
+      window.removeEventListener('concordia:soundscape-command', handler);
+      window.removeEventListener('concordia:hit-reaction', combatHandler);
+      window.removeEventListener('concordia:death-collapse', combatHandler);
+      window.removeEventListener('concordia:dialogue-active', dialogueOnHandler);
+      window.removeEventListener('concordia:dialogue-ended', dialogueOffHandler);
+      if (duckExpireTimer) clearTimeout(duckExpireTimer);
+    };
+  }, [setDistrict, setTimeOfDay, setInterior, setWeather, triggerSFX, playSpatialSFX]);
 
   return (
     <SoundscapeContext.Provider value={api}>
