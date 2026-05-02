@@ -1030,7 +1030,7 @@ export default function WorldLensPage() {
 
   // 3D Explore mode state
   const [cameraMode, setCameraMode] = useState<
-    'isometric' | 'follow' | 'free' | 'interior' | 'cinematic'
+    'isometric' | 'follow' | 'first-person' | 'free' | 'interior' | 'cinematic'
   >('follow');
   const [concordiaTheme, setConcordiaTheme] = useState<'neon-punk' | 'classic' | 'minimal'>(
     'neon-punk'
@@ -2689,6 +2689,13 @@ export default function WorldLensPage() {
             quality={getStoredQualityPreset()}
             theme={concordiaTheme}
             renderStyle={concordiaRenderStyle}
+            cameraMode={cameraMode}
+            getPlayerPose={() => ({
+              x: playerAvatar.position.x,
+              y: playerAvatar.position.y,
+              z: playerAvatar.position.z,
+              yaw: playerAvatar.rotation,
+            })}
             onBuildingClick={(id) => {
               const b = activeDistrict.buildings.find((b) => b.id === id);
               if (b) setSelectedBuilding(b);
@@ -2788,6 +2795,7 @@ export default function WorldLensPage() {
               npcs={worldNPCs}
               weatherModifiers={weatherModifiers ?? undefined}
               quality="medium"
+              cameraMode={cameraMode}
               onMove={(pos, rotation) => {
                 // Update local avatar immediately for snappy response,
                 // then emit to the server so other players see us move.

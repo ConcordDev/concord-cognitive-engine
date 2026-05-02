@@ -142,6 +142,8 @@ interface AvatarSystem3DProps {
   onStaminaChange?: (stamina: number, max: number) => void;
   weatherModifiers?: import('@/lib/world-lens/world-deformation').WeatherPhysicsModifiers;
   quality?: import('@/components/world-lens/ConcordiaScene').QualityPreset;
+  /** When 'first-person', hide the local player's mesh so the camera doesn't render the back of their own head. */
+  cameraMode?: 'isometric' | 'follow' | 'first-person' | 'free' | 'interior' | 'cinematic';
 }
 
 // ── Constants ─────────────────────────────────────────────────────
@@ -252,9 +254,17 @@ export default function AvatarSystem3D({
   onStaminaChange,
   weatherModifiers,
   quality = 'medium',
+  cameraMode = 'follow',
 }: AvatarSystem3DProps) {
   const avatarGroupRef = useRef<unknown>(null);
   const playerMeshRef = useRef<unknown>(null);
+
+  // Hide own avatar mesh in first-person so the camera doesn't see the
+  // back of its own head. Effect runs whenever cameraMode flips.
+  useEffect(() => {
+    const m = playerMeshRef.current as { visible: boolean } | null;
+    if (m) m.visible = cameraMode !== 'first-person';
+  }, [cameraMode]);
   const mixersRef = useRef<Map<string, unknown>>(new Map());
   // Phase 5: tick fn for the per-frame opacity fade on dying meshes;
   // hoisted to a ref so the existing game-loop block can invoke it.

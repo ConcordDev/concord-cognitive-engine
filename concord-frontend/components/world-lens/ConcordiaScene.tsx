@@ -94,6 +94,14 @@ interface ConcordiaSceneProps {
   ) => void;
   width?: number | string;
   height?: number | string;
+  /**
+   * Camera mode (Skyrim-style follow, first-person, or fixed isometric).
+   * Drives the per-frame camera transform via getPlayerPose. Defaults to
+   * 'isometric' (the previous hardcoded behavior) when not supplied.
+   */
+  cameraMode?: 'isometric' | 'follow' | 'first-person' | 'free' | 'interior' | 'cinematic';
+  /** Per-frame player position + yaw, used for follow + first-person camera. */
+  getPlayerPose?: () => { x: number; y: number; z: number; yaw: number } | null;
 }
 
 // ── Quality Presets ──────────────────────────────────────────────
@@ -187,7 +195,18 @@ export default function ConcordiaScene({
   onSceneReady,
   width = '100%',
   height = '100%',
+  cameraMode = 'isometric',
+  getPlayerPose,
 }: ConcordiaSceneProps) {
+  // Mirror cameraMode + getPlayerPose into refs so the game loop can read
+  // the latest values without re-running the heavy init effect on each
+  // mode change. Updated on every render via the small effect below.
+  const cameraModeRef = useRef(cameraMode);
+  const getPlayerPoseRef = useRef(getPlayerPose);
+  useEffect(() => { cameraModeRef.current = cameraMode; }, [cameraMode]);
+  useEffect(() => { getPlayerPoseRef.current = getPlayerPose; }, [getPlayerPose]);
+  // Pointer-lock yaw + pitch driven by mouse movement when locked.
+  const lookRef = useRef({ yaw: 0, pitch: 0 });
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const physicsRef = useRef<{
     step: (dt: number) => void;
@@ -639,6 +658,43 @@ export default function ConcordiaScene({
         // Step physics simulation
         physicsRef.current?.step(delta);
 
+        // ── Camera follow / first-person ──────────────────────────
+        // Drive the camera transform from the player's pose every frame
+        // so 'follow' mode actually follows and 'first-person' puts the
+        // camera at the player's head height. Mouse-look (pointer lock)
+        // additively rotates yaw/pitch in both modes.
+        const mode = cameraModeRef.current;
+        const getPose = getPlayerPoseRef.current;
+        if (mode !== 'isometric' && mode !== 'cinematic' && getPose) {
+          const pose = getPose();
+          if (pose) {
+            const yaw = pose.yaw + lookRef.current.yaw;
+            const pitch = lookRef.current.pitch;
+            if (mode === 'first-person') {
+              // Camera at player head height (~1.6m), looking forward.
+              const eyeY = pose.y + 1.6;
+              camera.position.set(pose.x, eyeY, pose.z);
+              const lookX = pose.x + Math.sin(yaw) * Math.cos(pitch);
+              const lookY = eyeY + Math.sin(pitch);
+              const lookZ = pose.z + Math.cos(yaw) * Math.cos(pitch);
+              camera.lookAt(lookX, lookY, lookZ);
+            } else if (mode === 'follow' || mode === 'interior') {
+              // Behind + above the player. 'interior' is closer / lower.
+              const dist = mode === 'interior' ? 3 : 6;
+              const height = mode === 'interior' ? 1.6 : 3.2;
+              const cx = pose.x - Math.sin(yaw) * dist * Math.cos(pitch);
+              const cy = pose.y + height + Math.sin(-pitch) * dist;
+              const cz = pose.z - Math.cos(yaw) * dist * Math.cos(pitch);
+              // Lerp toward target for a smooth follow rather than snap.
+              const lerp = Math.min(1, delta * 8);
+              camera.position.x += (cx - camera.position.x) * lerp;
+              camera.position.y += (cy - camera.position.y) * lerp;
+              camera.position.z += (cz - camera.position.z) * lerp;
+              camera.lookAt(pose.x, pose.y + 1.4, pose.z);
+            }
+          }
+        }
+
         // Update weather transition + emit modifiers
         weatherSys.update(delta);
         onWeatherModifiersRef.current?.(weatherSys.getModifiers());
@@ -790,12 +846,38 @@ export default function ConcordiaScene({
     }
     canvas.addEventListener('click', handleCanvasClick);
 
+    // ── Mouse-look (pointer lock) for follow + first-person ─────
+    // Click the canvas to enter pointer lock when in a player-tracking
+    // mode; mousemove drives yaw + pitch additive offsets that the game
+    // loop applies to the camera. Esc / outside-click releases.
+    const SENSITIVITY = 0.0025;
+    function maybeRequestPointerLock() {
+      const mode = cameraModeRef.current;
+      if (mode !== 'follow' && mode !== 'first-person' && mode !== 'interior') return;
+      try {
+        (canvas as HTMLCanvasElement & { requestPointerLock?: () => void }).requestPointerLock?.();
+      } catch { /* pointer lock may be unsupported */ }
+    }
+    function handleMouseMove(e: MouseEvent) {
+      if (document.pointerLockElement !== canvas) return;
+      const yawDelta = -(e.movementX || 0) * SENSITIVITY;
+      const pitchDelta = -(e.movementY || 0) * SENSITIVITY;
+      lookRef.current.yaw = (lookRef.current.yaw + yawDelta) % (Math.PI * 2);
+      lookRef.current.pitch = Math.max(-1.2, Math.min(1.2, lookRef.current.pitch + pitchDelta));
+    }
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+    canvas.addEventListener('mousedown', maybeRequestPointerLock);
+    document.addEventListener('mousemove', handleMouseMove);
+
     // ── Cleanup ───────────────────────────────────────────────────
     return () => {
       disposed = true;
       cancelAnimationFrame(frameIdRef.current);
       window.removeEventListener('resize', handleResize);
       canvas.removeEventListener('click', handleCanvasClick);
+      canvas.removeEventListener('mousedown', maybeRequestPointerLock);
+      document.removeEventListener('mousemove', handleMouseMove);
+      try { document.exitPointerLock?.(); } catch { /* no-op */ }
 
       // Dispose all geometries, materials, and textures in scene
       if (sceneRef.current) {
