@@ -26394,6 +26394,36 @@ app.use("/api/black-market", createBlackMarketRouter({ requireAuth, db }));
 import createVehiclesRouter from "./routes/vehicles.js";
 app.use("/api/vehicles", createVehiclesRouter({ requireAuth, db }));
 
+// Server-authoritative combat netcode — broadcasts attack/hit/death events
+// to nearby peers. Hits are validated against attacker reach + weapon damage
+// cap + cooldown before broadcast. Failed validation drops the event.
+import createCombatRouter from "./routes/combat.js";
+import {
+  getUserPosition as _presenceGetUserPosition,
+  getUserIdsInCity as _presenceGetUserIdsInCity,
+} from "./lib/city-presence.js";
+const _combatGetNearbyUserIds = (cityId, position, radius) => {
+  if (!cityId || !position) return [];
+  try {
+    const ids = _presenceGetUserIdsInCity(cityId) ?? [];
+    const out = [];
+    for (const uid of ids) {
+      const p = _presenceGetUserPosition(uid);
+      if (!p) continue;
+      const dx = p.x - position.x, dz = p.z - position.z;
+      if (Math.sqrt(dx * dx + dz * dz) <= radius) out.push(uid);
+    }
+    return out;
+  } catch { return []; }
+};
+app.use("/api/combat", createCombatRouter({
+  requireAuth,
+  REALTIME,
+  getUserPosition:  _presenceGetUserPosition,
+  getNearbyUserIds: _combatGetNearbyUserIds,
+  db,
+}));
+
 // World travel — moves users between Concordia + sub-worlds, source of
 // truth for users.current_world (read by /api/concord-link/send).
 import createWorldTravelRouter from "./routes/world-travel.js";
