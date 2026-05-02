@@ -147,6 +147,14 @@ const BazaarLayer = dynamic(
   () => import('@/components/world-lens/BazaarLayer'),
   { ssr: false },
 );
+const DiegeticSurfaces = dynamic(
+  () => import('@/components/world-lens/DiegeticSurfaces'),
+  { ssr: false },
+);
+const CraftingPanelV2 = dynamic(
+  () => import('@/components/world-lens/CraftingPanelV2'),
+  { ssr: false },
+);
 const LevelUpJuiceBridge = dynamic(
   () => import('@/components/world-lens/LevelUpJuiceBridge').then((m) => ({ default: m.LevelUpJuiceBridge })),
   { ssr: false },
@@ -1076,6 +1084,7 @@ export default function WorldLensPage() {
     | 'arena'
     | 'jobs'
     | 'lore'
+    | 'character'
   >('none');
   // Local player avatar — mutable so moves update it in place. On
   // first mount we ask the server for saved state (via player:load)
@@ -2877,6 +2886,12 @@ export default function WorldLensPage() {
           <LevelUpJuiceBridge />
           <PerformanceOverlay />
           <BazaarLayer worldId="concordia" />
+          <DiegeticSurfaces
+            playerPosition={playerAvatar.position}
+            onOpenMap={() => setShowPanel('map')}
+            onOpenSheet={() => setShowPanel('character')}
+            onOpenInventory={() => setShowPanel('inventory')}
+          />
           <SocialOverlay
             myUserId={playerAvatar.id}
             nearbyPlayers={otherPlayers.map((p) => ({ id: p.id, name: p.name }))}
@@ -3415,13 +3430,16 @@ export default function WorldLensPage() {
             </div>
           )}
           {showPanel === 'crafting' && (
-            <CraftingBench
-              playerId={playerAvatar.id}
-              toolTier={0}
-              toolQuality={10}
-              skillLevel={1}
-              onClose={() => setShowPanel('none')}
-            />
+            <div className="space-y-3">
+              <CraftingBench
+                playerId={playerAvatar.id}
+                toolTier={0}
+                toolQuality={10}
+                skillLevel={1}
+                onClose={() => setShowPanel('none')}
+              />
+              <CraftingPanelV2 worldId="concordia" onClose={() => setShowPanel('none')} />
+            </div>
           )}
           {showPanel === 'guild' && (
             <GuildPanel playerId={playerAvatar.id} onClose={() => setShowPanel('none')} />

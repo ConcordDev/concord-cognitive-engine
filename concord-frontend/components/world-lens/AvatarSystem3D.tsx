@@ -1005,6 +1005,38 @@ export default function AvatarSystem3D({
       }
       window.addEventListener('concordia:hit-reaction', handleHitReaction);
 
+      // Procedural combat clips: build a per-skeleton clip map on first hit
+      // and crossfade in for attack-light / heavy / block / parry / dodge /
+      // hit-flinch / death animation events.
+      const combatClipMaps = new WeakMap<object, Record<string, import('three').AnimationClip>>();
+      async function handleCombatAnim(e: Event) {
+        const detail = (e as CustomEvent).detail as
+          | { entityId?: string; animation?: string }
+          | undefined;
+        if (!detail?.entityId || !detail?.animation) return;
+        const mixer = mixersRef.current.get(detail.entityId) as MixerType | undefined;
+        if (!mixer) return;
+        try {
+          const root = (mixer as unknown as { getRoot?: () => unknown }).getRoot?.();
+          const skeleton = (root as { skeleton?: import('three').Skeleton } | undefined)?.skeleton;
+          if (!skeleton) return;
+          let clipMap = combatClipMaps.get(skeleton as unknown as object);
+          if (!clipMap) {
+            const mod = await import('@/lib/concordia/combat-clips');
+            clipMap = mod.buildCombatClipMap(skeleton);
+            combatClipMaps.set(skeleton as unknown as object, clipMap);
+          }
+          const mod2 = await import('@/lib/concordia/combat-clips');
+          mod2.playCombatClip(
+            mixer as unknown as import('three').AnimationMixer,
+            detail.animation as Parameters<typeof mod2.playCombatClip>[1],
+            clipMap as Record<Parameters<typeof mod2.playCombatClip>[1], import('three').AnimationClip>,
+            { fadeMs: 80, loop: detail.animation === 'block' },
+          );
+        } catch { /* clip generation/playback silent */ }
+      }
+      window.addEventListener('concordia:combat-anim', handleCombatAnim);
+
       // ── Death collapse (Phase 5) ─────────────────────────────
       // Detail: { targetId: string, hitDirection?: { x: number; z: number } }
       // Procedural collapse + opacity fade. Avoids the 16-bone Rapier
@@ -1794,6 +1826,7 @@ export default function AvatarSystem3D({
         window.removeEventListener('keydown', handleKeyDown);
         window.removeEventListener('keyup', handleKeyUp);
         window.removeEventListener('concordia:hit-reaction', handleHitReaction);
+        window.removeEventListener('concordia:combat-anim', handleCombatAnim);
         window.removeEventListener('concordia:death-collapse', handleDeathCollapse);
         for (const t of hitReactionTimers.values()) clearTimeout(t);
         hitReactionTimers.clear();

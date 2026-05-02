@@ -26418,6 +26418,85 @@ app.use("/api/player-trade", createPlayerTradeRouter({ requireAuth, db, emitToUs
 import createPartiesRouter from "./routes/parties.js";
 app.use("/api/parties", createPartiesRouter({ requireAuth, db, emitToUser }));
 
+// Cooperative mechanics: coop build sites, shared party stash, cross-world
+// raids. Built on top of the parties primitive — endpoints assume the caller
+// has been verified as a party member by the route guard.
+import * as _coopMechanics from "./lib/coop-mechanics.js";
+app.post("/api/coop/build/site", requireAuth(), (req, res) => {
+  const userId = req.user?.id;
+  const { partyId, position } = req.body || {};
+  if (!partyId) return res.status(400).json({ ok: false, error: "partyId_required" });
+  res.json(_coopMechanics.createCoopBuildSite({ partyId, ownerId: userId, position }));
+});
+app.post("/api/coop/build/edit", requireAuth(), (req, res) => {
+  const userId = req.user?.id;
+  const { siteId, dtuId, op, cell } = req.body || {};
+  const r = _coopMechanics.applyCoopBuildEdit({ siteId, userId, dtuId, op, cell });
+  if (r.ok) {
+    try { REALTIME?.io?.to(`party:${r.site.partyId}`).emit("coop:build:edit", { siteId, by: userId, dtuId, op, cell }); }
+    catch { /* realtime best-effort */ }
+  }
+  res.json(r);
+});
+app.get("/api/coop/build/:siteId", (req, res) => {
+  res.json(_coopMechanics.getCoopBuildSite(req.params.siteId));
+});
+app.get("/api/coop/build/party/:partyId", (req, res) => {
+  res.json(_coopMechanics.listCoopBuildSites(req.params.partyId));
+});
+
+app.get("/api/coop/stash/:partyId", requireAuth(), (req, res) => {
+  res.json(_coopMechanics.getSharedStash(req.params.partyId));
+});
+app.post("/api/coop/stash/deposit", requireAuth(), (req, res) => {
+  const userId = req.user?.id;
+  const { partyId, item } = req.body || {};
+  res.json(_coopMechanics.depositToStash({ partyId, userId, item }));
+});
+app.post("/api/coop/stash/withdraw", requireAuth(), (req, res) => {
+  const userId = req.user?.id;
+  const { partyId, itemId, isLeader, voteApproved } = req.body || {};
+  const r = _coopMechanics.withdrawFromStash({ partyId, userId, itemId, isLeader: !!isLeader, voteApproved: !!voteApproved });
+  if (r.ok) {
+    try { REALTIME?.io?.to(`party:${partyId}`).emit("coop:stash:withdraw", { itemId, by: userId }); }
+    catch { /* realtime best-effort */ }
+  }
+  res.json(r);
+});
+app.post("/api/coop/stash/permission", requireAuth(), (req, res) => {
+  const { partyId, isLeader, permission } = req.body || {};
+  res.json(_coopMechanics.setStashPermission({ partyId, isLeader: !!isLeader, permission }));
+});
+
+app.post("/api/coop/raid/start", requireAuth(), (req, res) => {
+  const userId = req.user?.id;
+  const { partyId, target, threshold, worlds } = req.body || {};
+  res.json(_coopMechanics.startRaid({ partyId, leaderId: userId, target, threshold, worlds }));
+});
+app.post("/api/coop/raid/contribute", requireAuth(), (req, res) => {
+  const userId = req.user?.id;
+  const { raidId, worldId, amount } = req.body || {};
+  const r = _coopMechanics.contributeToRaid({ raidId, userId, worldId, amount });
+  if (r.ok) {
+    try { REALTIME?.io?.to(`party:${r.raid.partyId}`).emit("coop:raid:progress", r.raid); }
+    catch { /* realtime best-effort */ }
+    if (r.raid.state === "completed") {
+      try { REALTIME?.io?.to(`party:${r.raid.partyId}`).emit("coop:raid:completed", r.raid); }
+      catch { /* realtime best-effort */ }
+    }
+  }
+  res.json(r);
+});
+app.get("/api/coop/raid/:raidId", (req, res) => {
+  res.json(_coopMechanics.getRaid(req.params.raidId));
+});
+app.get("/api/coop/raids", (req, res) => {
+  const filter = {};
+  if (req.query.partyId) filter.partyId = String(req.query.partyId);
+  if (req.query.state)   filter.state   = String(req.query.state);
+  res.json(_coopMechanics.listActiveRaids(filter));
+});
+
 // Wave 1 deferral 3: attach realtime XP emitter so rank-ups fire `level:up`
 // to the user room. Best-effort — never blocks XP writes.
 try {
@@ -28330,6 +28409,23 @@ async function governorTick(reason="heartbeat") {
           });
         }
       });
+
+      // World event auto-generation. Every 40 ticks (~10 min) we check
+      // each cadence and schedule a fresh concert/market/raid/etc. when due.
+      if ((STATE.__bgTickCounter || 0) % 40 === 0) {
+        await runHeartbeatModule("world_event_scheduler_tick", async () => {
+          const sched = await import("./lib/world-event-scheduler.js").catch(() => null);
+          if (sched?.tick) {
+            const r = sched.tick({ worlds: ["concordia"] });
+            if (r?.created?.length) {
+              structuredLog("info", "world_event_scheduler_tick", { created: r.created.length });
+              for (const c of r.created) {
+                try { REALTIME?.io?.emit?.("world:event:scheduled", c); } catch { /* realtime best-effort */ }
+              }
+            }
+          }
+        });
+      }
 
       // Citation chain → quest chain conversion. Run every 60 ticks (~15 min)
       // so it never thrashes the main loop. Materializes 0..N "verify lineage"
@@ -30428,7 +30524,21 @@ register("marketplace", "purchaseWithRoyalties", async (ctx, input) => {
     price,
     royalties: royalties.length,
     seller: dtu.marketplace.seller || dtu.meta?.createdBy,
+    title: dtu.title || "(untitled)",
+    listingId: dtu.marketplace?.listingId ?? dtuId,
   });
+
+  // Seller-side notification — fanfare on sale.
+  try {
+    const sellerId = dtu.marketplace.seller || dtu.meta?.createdBy;
+    if (sellerId && REALTIME?.io) {
+      REALTIME.io.to(`user:${sellerId}`).emit("marketplace:sale", {
+        listingId: dtu.marketplace?.listingId ?? dtuId,
+        title: dtu.title || "(untitled)",
+        earnings: Math.round((price - (price * 0.05)) * 100) / 100,
+      });
+    }
+  } catch (_e) { /* sale emit best-effort */ }
 
   // If seller is streaming, record the sale
   try {

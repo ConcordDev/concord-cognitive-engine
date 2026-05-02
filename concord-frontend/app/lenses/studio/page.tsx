@@ -461,6 +461,19 @@ export default function StudioLensPage() {
     drumEngineRef.current = new DrumMachineEngine();
     recorderRef.current = new AudioRecorder();
 
+    // World-soundscape bridge: when DAW playback toggles, broadcast a
+    // window event the SoundscapeEngine listens for so the world's music
+    // slot can play this DAW project as the player walks around. Best-effort.
+    const unsubMusic = transportRef.current.on('playStateChange', (data: { playing?: boolean }) => {
+      try {
+        window.dispatchEvent(new CustomEvent('concordia:daw-playback', {
+          detail: { playing: !!data.playing, projectName: project?.name ?? 'studio_session' },
+        }));
+      } catch { /* dispatch best-effort */ }
+    });
+    // Cleanup is handled in the existing return below.
+    void unsubMusic;
+
     const unsub = transportRef.current.on('beatChange', (data) => {
       const beat = data.beat as number;
       setCurrentBeat(beat);

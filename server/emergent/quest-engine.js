@@ -365,6 +365,15 @@ export function completeStep(questId, stepId) {
         }
         quest.breadcrumbs.pendingInsights = [];
       }
+
+      // Realtime emit so the GameJuice bridge fires the fanfare.
+      try {
+        const userId = quest.progress?.userId;
+        const io = globalThis.realtimeEmit ? null : globalThis._concordREALTIME?.io;
+        const payload = { questId: quest.id, title: quest.title, completedAt: quest.progress.completedAt };
+        if (userId && io) io.to(`user:${userId}`).emit("quest:completed", payload);
+        else if (typeof globalThis.realtimeEmit === "function") globalThis.realtimeEmit("quest:completed", payload);
+      } catch { /* realtime best-effort */ }
     }
 
     return {
