@@ -121,6 +121,23 @@ export function LevelUpJuiceBridge() {
       },
     );
 
+    // Reputation badge earned — fanfare + toast.
+    const offBadge = subscribe<{ key: string; label: string; tier: string; category: string }>(
+      'reputation:badge-earned',
+      (msg) => {
+        addToast({
+          type: 'success',
+          message: `Badge earned — ${msg.label} (${msg.tier})`,
+          duration: 8000,
+        });
+        try {
+          window.dispatchEvent(new CustomEvent('concordia:game-juice', {
+            detail: { trigger: 'fanfare', opts: { value: msg.label } },
+          }));
+        } catch { /* ok */ }
+      },
+    );
+
     return () => {
       offLevelUp();
       offQualityApproved();
@@ -130,6 +147,7 @@ export function LevelUpJuiceBridge() {
       offSkillXp();
       offRaid();
       offLineageQuest();
+      offBadge();
     };
   }, []);
 

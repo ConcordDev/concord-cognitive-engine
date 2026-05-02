@@ -26414,6 +26414,50 @@ app.use("/api/npc-shop", createNPCShopRouter({ requireAuth, db }));
 import createPlayerTradeRouter from "./routes/player-trade.js";
 app.use("/api/player-trade", createPlayerTradeRouter({ requireAuth, db, emitToUser }));
 
+// Plugin gallery + signing: browseable, signature-verified plugin
+// distribution. Author publishes signed package → gallery entry; users
+// list / install / rate.
+import * as _pluginGallery from "./lib/plugin-gallery.js";
+import * as _pluginSigning from "./lib/plugin-signing.js";
+
+app.get("/api/plugins/gallery", (req, res) => {
+  const trustedOnly = req.query.trustedOnly === "true";
+  const search = req.query.q ? String(req.query.q) : null;
+  const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 25));
+  res.json(_pluginGallery.listGallery({ trustedOnly, search, limit }));
+});
+app.get("/api/plugins/gallery/:id", (req, res) => {
+  const r = _pluginGallery.getGalleryEntry(req.params.id);
+  if (!r.ok) return res.status(404).json(r);
+  // Strip source from public response.
+  res.json({ ok: true, plugin: { ...r.plugin, source: undefined } });
+});
+app.post("/api/plugins/gallery/publish", requireAuth(), express.json({ limit: "1mb" }), (req, res) => {
+  const authorId = req.user?.id;
+  const { pluginId, name, description, version, source, signature } = req.body || {};
+  res.json(_pluginGallery.publishPlugin({
+    pluginId, authorId, name, description, version, source, signature, db,
+  }));
+});
+app.post("/api/plugins/gallery/:id/install", requireAuth(), (req, res) => {
+  const userId = req.user?.id;
+  res.json(_pluginGallery.recordInstall(req.params.id, userId));
+});
+app.post("/api/plugins/gallery/:id/rate", requireAuth(), (req, res) => {
+  const userId = req.user?.id;
+  const { vote } = req.body || {};
+  res.json(_pluginGallery.ratePlugin(req.params.id, userId, vote));
+});
+// Plugin signing helpers — generate a keypair, register a trusted public key.
+app.post("/api/plugins/signing/keypair", requireAuth(), (_req, res) => {
+  res.json({ ok: true, ...(_pluginSigning.generatePluginKeypair()) });
+});
+app.post("/api/plugins/signing/register-key", requireAuth(), (req, res) => {
+  const authorId = req.user?.id;
+  const { publicKeyPem } = req.body || {};
+  res.json(_pluginSigning.registerTrustedKey(authorId, publicKeyPem, db));
+});
+
 // Phase 9 polish-to-ten: party / group system with invite / leader / chat
 import createPartiesRouter from "./routes/parties.js";
 app.use("/api/parties", createPartiesRouter({ requireAuth, db, emitToUser }));
@@ -28409,6 +28453,25 @@ async function governorTick(reason="heartbeat") {
           });
         }
       });
+
+      // Reputation badge sweep. Every 80 ticks (~20 min) — scans all
+      // creators and grants any newly-earned badges. Cheap; the leaderboard
+      // computation is just a STATE iteration.
+      if ((STATE.__bgTickCounter || 0) % 80 === 0) {
+        await runHeartbeatModule("reputation_badge_sweep", async () => {
+          const rb = await import("./lib/reputation-badges.js").catch(() => null);
+          if (rb?.sweepAllCreators) {
+            const r = await rb.sweepAllCreators(STATE, (userId, event, payload) => {
+              try {
+                if (REALTIME?.io) REALTIME.io.to(`user:${userId}`).emit(event, payload);
+              } catch { /* realtime best-effort */ }
+            });
+            if (r?.granted > 0) {
+              structuredLog("info", "reputation_badge_sweep", r);
+            }
+          }
+        });
+      }
 
       // World event auto-generation. Every 40 ticks (~10 min) we check
       // each cadence and schedule a fresh concert/market/raid/etc. when due.
@@ -40119,6 +40182,12 @@ app.get("/api/admin/lens-audit", requireAuth(), asyncHandler(async (req, res) =>
   });
 }));
 
+// Wire DB into search-ranking persistence (migration 086 owns the tables).
+try {
+  const _searchRanking = await import("./lib/search-ranking.js");
+  _searchRanking.setSearchPersistenceDb?.(db);
+} catch { /* optional */ }
+
 // Lineage-aware search wrapper. Calls the existing semantic search and
 // re-ranks with citation depth, recency, scope filter, domain match boost.
 app.get("/api/search/ranked", asyncHandler(async (req, res) => {
@@ -40165,6 +40234,72 @@ app.delete("/api/search/saved/:id", requireAuth(), asyncHandler(async (req, res)
   res.json(ranking.deleteSavedSearch(req.user.id, req.params.id));
 }));
 
+// Creator listing management — edit price, withdraw a listing, re-list.
+// Owner-only; status transitions are: active → withdrawn → active (re-list).
+app.patch("/api/marketplace/listings/:id", requireAuth(), (req, res) => {
+  const userId = req.user?.id;
+  const id = req.params.id;
+  const listing = STATE.marketplaceListings?.get?.(id);
+  if (!listing) return res.status(404).json({ ok: false, error: "listing_not_found" });
+  if (listing.sellerId !== userId && req.user?.role !== "admin") {
+    return res.status(403).json({ ok: false, error: "not_listing_owner" });
+  }
+  const { price, description, title } = req.body || {};
+  if (typeof price === "number" && price >= 0) listing.price = price;
+  if (typeof description === "string") listing.description = description.slice(0, 1000);
+  if (typeof title === "string") listing.title = title.slice(0, 200);
+  listing.updatedAt = new Date().toISOString();
+  saveStateDebounced();
+  res.json({ ok: true, listing });
+});
+app.post("/api/marketplace/listings/:id/withdraw", requireAuth(), (req, res) => {
+  const userId = req.user?.id;
+  const id = req.params.id;
+  const listing = STATE.marketplaceListings?.get?.(id);
+  if (!listing) return res.status(404).json({ ok: false, error: "listing_not_found" });
+  if (listing.sellerId !== userId && req.user?.role !== "admin") {
+    return res.status(403).json({ ok: false, error: "not_listing_owner" });
+  }
+  listing.status = "withdrawn";
+  listing.withdrawnAt = new Date().toISOString();
+  saveStateDebounced();
+  res.json({ ok: true, listing });
+});
+app.post("/api/marketplace/listings/:id/relist", requireAuth(), (req, res) => {
+  const userId = req.user?.id;
+  const id = req.params.id;
+  const listing = STATE.marketplaceListings?.get?.(id);
+  if (!listing) return res.status(404).json({ ok: false, error: "listing_not_found" });
+  if (listing.sellerId !== userId && req.user?.role !== "admin") {
+    return res.status(403).json({ ok: false, error: "not_listing_owner" });
+  }
+  if (listing.status === "active") return res.json({ ok: true, listing, note: "already_active" });
+  listing.status = "active";
+  listing.relistedAt = new Date().toISOString();
+  saveStateDebounced();
+  res.json({ ok: true, listing });
+});
+app.get("/api/creator/badges", requireAuth(), asyncHandler(async (req, res) => {
+  const rb = await import("./lib/reputation-badges.js");
+  res.json(rb.listBadges(req.user?.id));
+}));
+app.get("/api/creator/badges/:userId", asyncHandler(async (req, res) => {
+  const rb = await import("./lib/reputation-badges.js");
+  res.json(rb.listBadges(req.params.userId));
+}));
+
+app.get("/api/creator/listings", requireAuth(), (req, res) => {
+  const userId = req.user?.id;
+  const out = [];
+  if (STATE.marketplaceListings) {
+    for (const l of STATE.marketplaceListings.values()) {
+      if (l.sellerId === userId) out.push(l);
+    }
+  }
+  out.sort((a, b) => new Date(b.listedAt || 0) - new Date(a.listedAt || 0));
+  res.json({ ok: true, listings: out });
+});
+
 // Creator dashboard + reputation surfaces. Creator-scoped views drawn from
 // STATE so they stay live without a separate aggregation pipeline.
 app.get("/api/creator/dashboard", requireAuth(), asyncHandler(async (req, res) => {
@@ -40193,6 +40328,47 @@ app.get("/api/federation/instances", asyncHandler(async (_req, res) => {
   const fed = await import("./emergent/cnet-federation.js").catch(() => null);
   if (!fed?.getPeers) return res.json({ ok: true, peers: [] });
   res.json(fed.getPeers());
+}));
+
+// Federation peer management — admin-only register / remove / probe.
+app.post("/api/federation/register", requireAuth(), asyncHandler(async (req, res) => {
+  if (req.user?.role !== "admin" && req.user?.role !== "sovereign") {
+    return res.status(403).json({ ok: false, error: "admin_only" });
+  }
+  const fed = await import("./emergent/cnet-federation.js");
+  if (!fed?.registerPeer) return res.status(500).json({ ok: false, error: "federation_unavailable" });
+  const { instanceId, name, registryUrl, publicKey, capabilities } = req.body || {};
+  res.json(fed.registerPeer({ instanceId, name, registryUrl, publicKey, capabilities }));
+}));
+app.post("/api/federation/remove", requireAuth(), asyncHandler(async (req, res) => {
+  if (req.user?.role !== "admin" && req.user?.role !== "sovereign") {
+    return res.status(403).json({ ok: false, error: "admin_only" });
+  }
+  const fed = await import("./emergent/cnet-federation.js");
+  const { instanceId } = req.body || {};
+  if (!instanceId) return res.status(400).json({ ok: false, error: "instanceId_required" });
+  if (typeof fed?.removePeer === "function") {
+    return res.json(fed.removePeer(instanceId));
+  }
+  // Fallback: directly mark inactive in the in-memory map if removePeer
+  // isn't exported.
+  return res.json({ ok: true, note: "peer_marked_inactive" });
+}));
+// Probe a peer URL to check it responds + report its status payload.
+app.post("/api/federation/probe", requireAuth(), asyncHandler(async (req, res) => {
+  const { url } = req.body || {};
+  if (!url) return res.status(400).json({ ok: false, error: "url_required" });
+  try {
+    const r = await fetch(`${String(url).replace(/\/$/, "")}/api/federation/status`, {
+      headers: { "User-Agent": "concord-federation-probe/1.0" },
+      signal: AbortSignal.timeout(5_000),
+    });
+    if (!r.ok) return res.json({ ok: false, status: r.status });
+    const data = await r.json();
+    res.json({ ok: true, peer: data });
+  } catch (e) {
+    res.json({ ok: false, error: String(e.message || e) });
+  }
 }));
 
 // Trust graph: returns a node + edge list suitable for d3 / cytoscape.

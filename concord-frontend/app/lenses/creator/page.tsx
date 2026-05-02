@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 
 interface CreatorSummary {
   dtuCount: number;
@@ -21,6 +21,16 @@ interface DashboardResponse {
   recentListings?: { id: string; title: string; price: number; downloads: number; promotionSource: string | null }[];
   topCitedDTUs?: { id: string; title: string; domain: string; citationsReceived: number }[];
   error?: string;
+}
+
+interface MyListing {
+  id: string;
+  title: string;
+  description?: string;
+  price: number;
+  status: 'active' | 'withdrawn' | string;
+  downloads: number;
+  listedAt: string;
 }
 
 interface Leader {
@@ -54,6 +64,14 @@ export default function CreatorDashboardPage() {
   const [leaderboard, setLeaderboard] = useState<Leader[]>([]);
   const [trending, setTrending] = useState<TrendingHit[]>([]);
   const [drift, setDrift] = useState<DriftHit[]>([]);
+  const [myListings, setMyListings] = useState<MyListing[]>([]);
+
+  const refreshListings = useCallback(() => {
+    fetch('/api/creator/listings', { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => setMyListings((d?.listings ?? []) as MyListing[]))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     Promise.all([
@@ -67,7 +85,34 @@ export default function CreatorDashboardPage() {
       setTrending((t?.trending ?? []) as TrendingHit[]);
       setDrift((d?.drift ?? []) as DriftHit[]);
     });
-  }, []);
+    refreshListings();
+  }, [refreshListings]);
+
+  const updateListing = useCallback(async (id: string, patch: Partial<MyListing>) => {
+    await fetch(`/api/marketplace/listings/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(patch),
+    });
+    refreshListings();
+  }, [refreshListings]);
+
+  const withdrawListing = useCallback(async (id: string) => {
+    await fetch(`/api/marketplace/listings/${encodeURIComponent(id)}/withdraw`, {
+      method: 'POST',
+      credentials: 'include',
+    });
+    refreshListings();
+  }, [refreshListings]);
+
+  const relistListing = useCallback(async (id: string) => {
+    await fetch(`/api/marketplace/listings/${encodeURIComponent(id)}/relist`, {
+      method: 'POST',
+      credentials: 'include',
+    });
+    refreshListings();
+  }, [refreshListings]);
 
   return (
     <div className="min-h-screen bg-[#0b0f17] text-gray-100 p-6">
@@ -98,6 +143,26 @@ export default function CreatorDashboardPage() {
           {me?.error ? `Sign in to see your dashboard.` : 'Loading your stats...'}
         </div>
       )}
+
+      {/* My listings — edit / withdraw / relist */}
+      <section className={`${PANEL} mb-6`}>
+        <h2 className="text-amber-200 font-semibold mb-3">Your listings</h2>
+        {myListings.length === 0 ? (
+          <div className="text-gray-500 italic">No listings yet.</div>
+        ) : (
+          <div className="space-y-2">
+            {myListings.map((l) => (
+              <ListingRow
+                key={l.id}
+                listing={l}
+                onUpdate={updateListing}
+                onWithdraw={withdrawListing}
+                onRelist={relistListing}
+              />
+            ))}
+          </div>
+        )}
+      </section>
 
       <div className={GRID}>
         {/* Leaderboard */}
@@ -177,6 +242,59 @@ function Stat({ label, value }: { label: string; value: number | string }) {
     <div>
       <div className="text-[10px] text-gray-500 uppercase tracking-wider">{label}</div>
       <div className="text-2xl text-amber-300 font-mono mt-1">{value}</div>
+    </div>
+  );
+}
+
+interface ListingRowProps {
+  listing: MyListing;
+  onUpdate: (id: string, patch: Partial<MyListing>) => Promise<void>;
+  onWithdraw: (id: string) => Promise<void>;
+  onRelist: (id: string) => Promise<void>;
+}
+
+function ListingRow({ listing, onUpdate, onWithdraw, onRelist }: ListingRowProps) {
+  const [editing, setEditing] = useState(false);
+  const [price, setPrice] = useState(String(listing.price));
+  const [title, setTitle] = useState(listing.title);
+  const isWithdrawn = listing.status === 'withdrawn';
+
+  return (
+    <div className="border border-white/10 rounded p-3 flex flex-wrap items-center gap-3">
+      {!editing ? (
+        <>
+          <div className="flex-1 min-w-[200px]">
+            <div className="text-gray-100 font-medium truncate">{listing.title}</div>
+            <div className="text-xs text-gray-500">
+              {listing.price} CC · {listing.downloads} downloads · {listing.status}
+            </div>
+          </div>
+          <button onClick={() => setEditing(true)} className="px-2 py-1 text-xs bg-violet-700 hover:bg-violet-600 rounded text-white">edit</button>
+          {!isWithdrawn ? (
+            <button onClick={() => onWithdraw(listing.id)} className="px-2 py-1 text-xs bg-rose-700 hover:bg-rose-600 rounded text-white">withdraw</button>
+          ) : (
+            <button onClick={() => onRelist(listing.id)} className="px-2 py-1 text-xs bg-emerald-700 hover:bg-emerald-600 rounded text-white">re-list</button>
+          )}
+        </>
+      ) : (
+        <>
+          <input value={title} onChange={(e) => setTitle(e.target.value)} className="flex-1 min-w-[180px] bg-black/60 border border-white/10 rounded px-2 py-1 text-sm text-gray-200" />
+          <input
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            inputMode="decimal"
+            className="w-24 bg-black/60 border border-white/10 rounded px-2 py-1 text-sm text-gray-200"
+          />
+          <button
+            onClick={async () => {
+              await onUpdate(listing.id, { title, price: Number(price) || 0 });
+              setEditing(false);
+            }}
+            className="px-2 py-1 text-xs bg-amber-600 hover:bg-amber-500 rounded text-white"
+          >save</button>
+          <button onClick={() => { setEditing(false); setPrice(String(listing.price)); setTitle(listing.title); }} className="px-2 py-1 text-xs bg-stone-700 rounded text-gray-200">cancel</button>
+        </>
+      )}
     </div>
   );
 }

@@ -96,33 +96,57 @@ function parseTime(t) {
 }
 
 // ── Search history + saved searches ─────────────────────────────────────────
-// Backed by a simple module-scope map. Caller is responsible for swapping
-// this for a DB-backed store in production. For now we keep it in-memory so
-// it survives the running process but resets on restart — adequate for the
-// solo-dev launch path.
+// DB-backed via migration 086. In-memory cache layered on top so reads
+// stay cheap. Falls back gracefully when db is null (tests, no-DB mode).
 
-const _history = new Map();        // userId -> [{ q, ts }]
+const _history = new Map();        // userId -> [{ q, ts }]   (cache)
 const _saved   = new Map();        // userId -> [{ id, q, name, createdAt }]
 const HISTORY_MAX = 100;
+let _dbRef = null;
+
+export function setSearchPersistenceDb(db) { _dbRef = db; }
 
 export function recordSearchHistory(userId, q) {
   if (!userId || !q) return;
+  const cleaned = String(q).slice(0, 500);
   if (!_history.has(userId)) _history.set(userId, []);
   const arr = _history.get(userId);
-  arr.unshift({ q: String(q).slice(0, 500), ts: Date.now() });
+  arr.unshift({ q: cleaned, ts: Date.now() });
   if (arr.length > HISTORY_MAX) arr.length = HISTORY_MAX;
+
+  if (_dbRef) {
+    try {
+      _dbRef.prepare("INSERT INTO search_history (user_id, q, ts) VALUES (?, ?, ?)")
+            .run(userId, cleaned, Math.floor(Date.now() / 1000));
+      // Bound table size: trim per-user to last 200 rows.
+      _dbRef.prepare(`DELETE FROM search_history
+                      WHERE id IN (
+                        SELECT id FROM search_history
+                        WHERE user_id = ?
+                        ORDER BY ts DESC
+                        LIMIT -1 OFFSET 200
+                      )`).run(userId);
+    } catch { /* table may not exist if migration didn't run */ }
+  }
 }
 
 export function getSearchHistory(userId, limit = 50) {
   if (!userId) return { ok: true, history: [] };
+  if (_dbRef) {
+    try {
+      const rows = _dbRef.prepare("SELECT q, ts FROM search_history WHERE user_id = ? ORDER BY ts DESC LIMIT ?")
+                         .all(userId, limit);
+      if (rows?.length) {
+        return { ok: true, history: rows.map(r => ({ q: r.q, ts: r.ts * 1000 })) };
+      }
+    } catch { /* fall back to cache */ }
+  }
   const arr = _history.get(userId) ?? [];
   return { ok: true, history: arr.slice(0, limit) };
 }
 
 export function saveSearch(userId, q, name) {
   if (!userId || !q) return { ok: false, error: "missing_user_or_query" };
-  if (!_saved.has(userId)) _saved.set(userId, []);
-  const list = _saved.get(userId);
   const id = `saved_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const entry = {
     id,
@@ -130,13 +154,31 @@ export function saveSearch(userId, q, name) {
     name: String(name || q).slice(0, 100),
     createdAt: new Date().toISOString(),
   };
+  if (!_saved.has(userId)) _saved.set(userId, []);
+  const list = _saved.get(userId);
   list.unshift(entry);
   if (list.length > 50) list.length = 50;
+
+  if (_dbRef) {
+    try {
+      _dbRef.prepare("INSERT INTO saved_searches (id, user_id, q, name, created_at) VALUES (?, ?, ?, ?, ?)")
+            .run(entry.id, userId, entry.q, entry.name, entry.createdAt);
+    } catch { /* table may not exist */ }
+  }
   return { ok: true, saved: entry };
 }
 
 export function getSavedSearches(userId) {
   if (!userId) return { ok: true, saved: [] };
+  if (_dbRef) {
+    try {
+      const rows = _dbRef.prepare("SELECT id, q, name, created_at FROM saved_searches WHERE user_id = ? ORDER BY created_at DESC")
+                         .all(userId);
+      if (rows) {
+        return { ok: true, saved: rows.map(r => ({ id: r.id, q: r.q, name: r.name, createdAt: r.created_at })) };
+      }
+    } catch { /* fall back */ }
+  }
   return { ok: true, saved: _saved.get(userId) ?? [] };
 }
 
@@ -145,5 +187,13 @@ export function deleteSavedSearch(userId, id) {
   const list = _saved.get(userId) ?? [];
   const next = list.filter(s => s.id !== id);
   _saved.set(userId, next);
-  return { ok: true, deleted: list.length - next.length };
+
+  let dbDeleted = 0;
+  if (_dbRef) {
+    try {
+      const r = _dbRef.prepare("DELETE FROM saved_searches WHERE user_id = ? AND id = ?").run(userId, id);
+      dbDeleted = r.changes;
+    } catch { /* fall back */ }
+  }
+  return { ok: true, deleted: Math.max(list.length - next.length, dbDeleted) };
 }
