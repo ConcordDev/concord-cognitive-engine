@@ -5422,6 +5422,25 @@ async function initMetrics() {
       registers: [METRICS.registry]
     });
 
+    // Heartbeat liveness — incremented every governorTick. If the rate of
+    // this counter drops to 0 the heartbeat has died and every emergent
+    // system is silently frozen. The Prometheus alert rule is in
+    // monitoring/prometheus/alerts/heartbeat.yml.
+    METRICS.counters.heartbeatTicks = new prom.Counter({
+      name: "concord_heartbeat_ticks_total",
+      help: "Total governor heartbeat ticks executed",
+      registers: [METRICS.registry]
+    });
+
+    // Per-module heartbeat block error counter so we know which tick block
+    // is throwing (and which to wrap-fix). Routed through runHeartbeatModule.
+    METRICS.counters.heartbeatModuleErrors = new prom.Counter({
+      name: "concord_heartbeat_module_errors_total",
+      help: "Errors caught inside individual heartbeat tick blocks, by module",
+      labelNames: ["module"],
+      registers: [METRICS.registry]
+    });
+
     structuredLog("info", "metrics_initialized", { provider: "prometheus" });
   } catch (e) {
     structuredLog("error", "metrics_init_failed", { error: e.message });
@@ -27343,10 +27362,40 @@ function _governorCtx() {
 // Heartbeat tick history ring buffer (used by /api/heartbeat/history endpoint)
 const _tickHistory = [];
 
+/**
+ * Run one heartbeat module block with a guaranteed try/catch + structured
+ * error log + per-module Prometheus counter. The heartbeat invariant is
+ * "must never throw" — every tick block must be wrapped, and adding a new
+ * block without wrap will eventually crash the simulation.
+ *
+ * Use this helper for every new tick block:
+ *
+ *   await runHeartbeatModule("walker_journey", async () => {
+ *     const lib = await import("./lib/concord-link-walkers.js");
+ *     lib.advanceJourneyTick(db);
+ *   });
+ *
+ * Return value is the function's resolved value or undefined on error.
+ */
+async function runHeartbeatModule(name, fn) {
+  try {
+    return await fn();
+  } catch (err) {
+    try {
+      structuredLog("warn", "heartbeat_module_error", { module: name, error: String(err?.message || err) });
+      METRICS?.counters?.heartbeatModuleErrors?.inc({ module: name });
+    } catch { /* metrics best-effort */ }
+    return undefined;
+  }
+}
+
 let _governorTickRunning = false;
 async function governorTick(reason="heartbeat") {
   if (_governorTickRunning) return { ok: false, reason: "tick_already_running" };
   _governorTickRunning = true;
+  // Heartbeat liveness: bump the counter so Prometheus can detect a frozen
+  // tick loop via `rate(concord_heartbeat_ticks_total[1m]) == 0` for 60s+.
+  try { METRICS?.counters?.heartbeatTicks?.inc(); } catch { /* metrics best-effort */ }
   try {
     const s = STATE.settings || {};
     if (s.heartbeatEnabled === false) { _governorTickRunning = false; return { ok:false, reason:"heartbeat_disabled" }; }
@@ -27972,20 +28021,20 @@ async function governorTick(reason="heartbeat") {
       // Creature bond decay — every 8 ticks (~2 min). Bonds without recent
       // encounters drift down so transient pairings don't crossbreed at scale.
       if ((_tick % 8) === 0 && _tick > 0) {
-        try {
+        await runHeartbeatModule("creature_bond_decay", async () => {
           const cb = await import("./lib/creature-crossbreeding.js");
           cb.decayBonds(db);
-        } catch (_e) { /* heartbeat invariant */ }
+        });
       }
 
       // Combat state tick — regen poise, decay knockback. Cheap.
-      try { tickCombatState(); } catch (_e) { /* heartbeat invariant */ }
+      await runHeartbeatModule("combat_state_tick", async () => { tickCombatState(); });
 
       // Weather rolls — every 40 ticks (~10 min). Each world advances its
       // own Markov chain over (clear, overcast, rain, storm, snow, fog,
       // wind) with stickiness so the weather doesn't churn every minute.
       if ((_tick % 40) === 0 && _tick > 0) {
-        try { advanceWorldWeather(REALTIME); } catch (_e) { /* non-fatal */ }
+        await runHeartbeatModule("weather_advance", async () => { advanceWorldWeather(REALTIME); });
       }
 
       // NPC schedule re-plan — every 4 ticks (~60s) check whether the day
@@ -27995,7 +28044,7 @@ async function governorTick(reason="heartbeat") {
       // own cadence; this hook just labels what each NPC SHOULD be doing
       // so the simulator can route accordingly.
       if ((_tick % 4) === 0 && _tick > 0) {
-        try {
+        await runHeartbeatModule("npc_schedule_replan", async () => {
           const wc = await import("./lib/world-clock.js");
           const ns = await import("./lib/npc-schedules.js");
           const segment = wc.getDayPhase();
@@ -28010,15 +28059,14 @@ async function governorTick(reason="heartbeat") {
               structuredLog("info", "npc_schedule_replan", { segment, count: npcs.length });
             }
           }
-        } catch (_e) { /* heartbeat invariant */ }
+        });
       }
 
       // News auto-pull — every 4 ticks (~60s), drain new world_events_log
       // rows into STATE.dtus as regular event DTUs. The existing
       // NEWS_COMPRESSION cycle then rolls them into Mega/Hyper as they age.
-      // Best-effort: missing table or db error never throws.
       if ((_tick % 4) === 0 && _tick > 0) {
-        try {
+        await runHeartbeatModule("news_log_pull", async () => {
           const { pullWorldEventsIntoNews } = await import("./emergent/news-lens-hub.js");
           const since = STATE._lastNewsLogPoll || 0;
           const r = pullWorldEventsIntoNews(STATE, db, since, { limit: 50 });
@@ -28026,7 +28074,7 @@ async function governorTick(reason="heartbeat") {
             STATE._lastNewsLogPoll = r.highWaterMark;
             if (r.ingested > 0) structuredLog("info", "news_log_ingest", { ingested: r.ingested, highWaterMark: r.highWaterMark });
           }
-        } catch (_e) { /* heartbeat invariant — never throw */ }
+        });
       }
 
       // News event compression — every NEWS_COMPRESSION ticks (~50 min)
@@ -28164,8 +28212,8 @@ async function governorTick(reason="heartbeat") {
 
       // Concord Link Walker journeys — advance every in_transit walker one
       // anchor closer to its destination per tick. Final hop rolls intercept
-      // and updates the message + contract state. Best-effort, never throws.
-      try {
+      // and updates the message + contract state.
+      await runHeartbeatModule("concord_link_walker_tick", async () => {
         const walkerLib = await import("./lib/concord-link-walkers.js").catch(() => null);
         const blackMarket = await import("./lib/black-market.js").catch(() => null);
         if (walkerLib?.advanceJourneyTick) {
@@ -28180,9 +28228,6 @@ async function governorTick(reason="heartbeat") {
               } catch (_e) { /* realtime best-effort */ }
             },
             onIntercepted: ({ messageId }) => {
-              // Surface interception to the black market under the default
-              // fence (broker_sael). Some intercepts simply do not surface
-              // — that variance is implemented inside surfaceInterceptedMessage.
               if (!messageId || !blackMarket?.surfaceInterceptedMessage) return;
               try { blackMarket.surfaceInterceptedMessage(db, messageId); }
               catch (_e) { /* surfacing best-effort */ }
@@ -28194,12 +28239,10 @@ async function governorTick(reason="heartbeat") {
         }
         // Expire stale black-market listings every 20 ticks (~5 minutes).
         if (blackMarket?.expireListings && (STATE.__bgTickCounter || 0) % 20 === 0) {
-          try {
-            const r = blackMarket.expireListings(db);
-            if (r.expired > 0) structuredLog("info", "black_market_expired", r);
-          } catch (_e) { /* best-effort */ }
+          const r = blackMarket.expireListings(db);
+          if (r.expired > 0) structuredLog("info", "black_market_expired", r);
         }
-      } catch (_e) { /* non-fatal */ }
+      });
 
       if (typeof _tickHistory !== "undefined") {
         _tickHistory.push({

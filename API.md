@@ -374,3 +374,74 @@ Common HTTP status codes:
 Auth endpoints have stricter rate limits. General API rate limits depend on server configuration. Rate-limited responses return `429` with a `Retry-After` header.
 
 For the complete OpenAPI 3.1 specification with request/response schemas, see [`server/openapi.yaml`](server/openapi.yaml).
+
+---
+
+## Phase F2 — Emergent Concordia Endpoints
+
+Routes added in Phase F / F2 (Concordia AAA polish + emergent creatures + skills + crossbreeding + combat netcode + world clock + weather + social pings).
+
+### Procedural Creatures
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| POST | `/api/creature/spawn` | yes | Generate a physics-validated creature blueprint from a description seed. Body: `{ description, worldId?, topology?, massKg?, heightM?, traits?, origin? }`. Returns `{ ok, blueprint }` with `blueprint.parts`, `blueprint.gait`, `blueprint.skillIds`, `blueprint.validation`. Auto-rescales mass when wing/leg proportions can't support declared mass; `provenance.rescaled` is true when this happened. |
+| GET | `/api/creature/topologies` | no | List supported topologies (humanoid, quadruped, winged_quadruped, winged_biped, serpentine, polyped, amorphous). |
+| GET | `/api/creature/baselines/:worldId` | no | Authored baseline creatures for a world (5 each per superhero / fantasy / crime / cyber). Includes topology hint, size band, starting behavior, emergent ability seeds. |
+| POST | `/api/creature/validate` | no | Dry-run physics validation against an existing blueprint. Returns `{ ok, reason?, fix? }` where `fix.suggestedMassKg` advises the rescale that would pass. |
+| POST | `/api/creature/encounter` | yes | Bump bond between two creatures. Body: `{ aId, bId, worldA, worldB, environment?, sameEnvironmentBonus?, sharedThreatBonus? }`. Bonds decay if not refreshed every 60s. |
+| POST | `/api/creature/crossbreed` | yes | Record encounter + try to generate hybrid. Body: `{ a, b, environment?, sameEnvironmentBonus?, sharedThreatBonus? }`. Returns `{ ok, hybrid, stability, crossWorld, inheritedSkillIds, tensionSkill, parents, generation }`. Cross-world hybrids require bond ≥ 200 (vs 100 same-world) and stability caps at 0.4. |
+| POST | `/api/creature/hybrid` | yes | Direct hybrid generation (skips encounter step). Same response shape. |
+| GET | `/api/creature/lineage/:id` | no | Parents + descendants of a creature: `{ self, descendants[] }`. |
+
+### Emergent Skills
+
+Mounted at `/api/emergent-skills/*` to avoid colliding with the existing `/api/skills/*` import/export router.
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| POST | `/api/emergent-skills/create` | yes | Author a new skill. Body: `{ name, verb, requires?, costs?, effects[] }`. Effects must use only `EFFECT_KINDS` (damage, heal, displace, stun, buff, debuff, summon, transform, terrain, ranged_projectile, channel). Unknown kinds are rejected. |
+| POST | `/api/emergent-skills/evolve` | yes | Derive a child skill. Body: `{ parentId, mutation }`. Sets `provenance.parentId` so chains are traceable. |
+| GET | `/api/emergent-skills/list` | no | List skills. Optional `?origin=...&parentId=...` filters. |
+| GET | `/api/emergent-skills/:id` | no | Read one skill. |
+
+### Combat Netcode
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| POST | `/api/combat/attack` | yes | Declare an attack swing. Body: `{ weapon?, animation?, direction?, cooldownMs? }`. Cooldown floor 200ms. Broadcasts `combat:attack` to peers within 1500m. 429 on cooldown. |
+| POST | `/api/combat/hit` | yes | Submit a damage event. Body: `{ victimId, damage, isCrit?, weapon?, hitDirection? }`. Server validates: reach (3m melee / 80m ranged), damage cap (`weapon.maxDamage * 2.5` w/ crit), cross-city, self-target. Failed validation returns 400 and is NOT broadcast. Consults victim's combat state — i-frames → `combat:miss` event, block → 0.5× damage, depleted poise → `staggered: true` in payload. |
+| POST | `/api/combat/death` | yes | Self-report death. Body: `{ victimId?, killerId? }`. Broadcasts `combat:death` to peers. |
+| GET | `/api/combat/state/:actorId` | no | Snapshot: `{ poise, poiseMax, staggered, iframed, blocking, knockbackVel }`. |
+| POST | `/api/combat/iframes` | yes | Grant 50–800ms i-frames (post-dodge). Body: `{ durationMs }`. |
+| POST | `/api/combat/block` | yes | Open a 100–2000ms block window. Body: `{ durationMs }`. |
+
+### Social
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| POST | `/api/social/ping` | yes | Spatial ping to nearby players. Body: `{ type, target?, text? }`. Types: `wave / needs_help / loot_here / meet_here / danger / inspect`. 800m radius, 12/min + 4s same-type cooldown. Broadcasts `social:ping`. 429 on rate limit. |
+
+### World Clock + Weather + NPC Schedules
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | `/api/world/clock` | no | Current `{ phase, segment, dayLengthMs, serverTime }`. 24-real-minute cycle, 6 segments (dawn / morning / midday / afternoon / dusk / night). Server emits `world:clock` over socket.io every 30s. |
+| GET | `/api/world/weather/:worldId` | no | Current weather state for a world: `{ type, intensity, since, windDirection }`. Server emits `world:weather` after each Markov step (every 40 ticks ≈ 10 min). |
+| GET | `/api/world/npc-behavior` | no | What an NPC should be doing right now: `?id=...&archetype=...` → `{ behavior, segment }`. |
+| GET | `/api/world/npc-archetypes` | no | List of registered schedule archetypes. |
+| POST | `/api/world/npc-schedule` | yes | Override an NPC's schedule. Body: `{ npcId, schedule }`. Pass `null` schedule to clear. |
+
+### Phase F WebSocket Events
+
+| Event | Payload | Source |
+|---|---|---|
+| `world:clock` | `{ phase, segment, epochMs, dayLengthMs, ts }` | Every 30s from world-clock broadcast |
+| `world:weather` | `{ worldId, type, intensity, since, windDirection, ts }` | Per-world Markov step |
+| `concord-link:delivered` | `{ messageId, ts }` | Walker journey final hop succeeded |
+| `combat:attack` | `{ attackerId, weapon, animation, direction, position, ts }` | On `/api/combat/attack` |
+| `combat:hit` | `{ attackerId, victimId, damage, isCrit, blocked, staggered, hitDirection, magnitude, position, weapon, ts }` | On validated `/api/combat/hit` |
+| `combat:miss` | `{ attackerId, victimId, missed:true, ts }` | When victim is in i-frames |
+| `combat:death` | `{ victimId, killerId, position, ts }` | On `/api/combat/death` |
+| `social:ping` | `{ from, type, position, cityId, target, text, ts }` | On `/api/social/ping` |
+| `quest:new` | `{ questId, worldId, title, description, giverNpcId, rewardJson, ts }` | Quest emergence per heartbeat |

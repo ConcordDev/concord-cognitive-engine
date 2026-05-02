@@ -1,0 +1,137 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "graphTooltip": 1,
+  "id": null,
+  "uid": "concord-phase-f2",
+  "title": "Concord — Phase F2 (Heartbeat / Walkers / Black Market / Combat / News)",
+  "tags": ["concord", "phase-f2", "heartbeat"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-3h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Heartbeat ticks per minute",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "rate(concord_heartbeat_ticks_total[1m]) * 60", "legendFormat": "ticks/min", "refId": "A" }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value" },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "red", "value": null },
+            { "color": "yellow", "value": 1 },
+            { "color": "green", "value": 3 }
+          ] }
+        }
+      }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Heartbeat module errors by module (per 5m)",
+      "gridPos": { "h": 8, "w": 18, "x": 6, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "increase(concord_heartbeat_module_errors_total[5m])", "legendFormat": "{{ module }}", "refId": "A" }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Walker journeys — delivered / intercepted / errors",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "rate(concord_http_requests_total{path=~\"/api/concord-link/walkers.*\",status=\"200\"}[5m])", "legendFormat": "walker requests 200", "refId": "A" },
+        { "expr": "rate(concord_http_requests_total{path=~\"/api/concord-link/walkers.*\",status=~\"4..|5..\"}[5m])", "legendFormat": "walker requests 4xx/5xx", "refId": "B" }
+      ],
+      "description": "Walker tick stats land in structuredLog `concord_link_walker_tick`. Use logs panel for delivered/intercepted/errors counts; this panel tracks the API surface."
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Black market — listing activity",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "rate(concord_http_requests_total{path=~\"/api/black-market.*\"}[5m])", "legendFormat": "{{ method }} {{ status }}", "refId": "A" }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Combat — hits / misses / deaths (peer fanout)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "rate(concord_http_requests_total{path=~\"/api/combat/(attack|hit|death)\"}[5m])", "legendFormat": "{{ path }} {{ status }}", "refId": "A" }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Combat anti-cheat rejections (status 400)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "rate(concord_http_requests_total{path=~\"/api/combat/(hit|attack)\",status=\"400\"}[5m])", "legendFormat": "{{ path }} rejected", "refId": "A" }
+      ],
+      "description": "High rejection rate means a client is firing invalid hits — possible cheat attempt or client-side bug."
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Creature spawns / crossbreeds / hybrids",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "rate(concord_http_requests_total{path=~\"/api/creature/(spawn|crossbreed|hybrid)\"}[5m])", "legendFormat": "{{ path }}", "refId": "A" }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Emergent skills — author / evolve",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "rate(concord_http_requests_total{path=~\"/api/emergent-skills/(create|evolve)\"}[5m])", "legendFormat": "{{ path }}", "refId": "A" }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Social pings — by status (200 vs 429 rate-limit)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 32 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "rate(concord_http_requests_total{path=\"/api/social/ping\"}[5m])", "legendFormat": "status {{ status }}", "refId": "A" }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "stat",
+      "title": "DTU count (live)",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 32 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "concord_dtus_total", "refId": "A" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value" }
+    },
+    {
+      "id": 11,
+      "type": "stat",
+      "title": "Active WebSocket connections",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 32 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "concord_ws_connections", "refId": "A" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value" }
+    }
+  ]
+}
