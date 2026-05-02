@@ -16,6 +16,7 @@ import {
   computeMessageCost,
   applyShadowBurn,
 } from "../lib/concord-link.js";
+import { getCurrentWorld } from "../lib/world-travel.js";
 
 export default function createConcordLinkRouter({ requireAuth, db, emitToUser }) {
   const router = Router();
@@ -66,13 +67,16 @@ export default function createConcordLinkRouter({ requireAuth, db, emitToUser })
         return res.status(400).json({ ok: false, error: "sourceWorld and destWorld required" });
       }
 
-      // Note: this route does NOT charge the sender's wallet automatically
-      // — the cost is recorded but a downstream wallet hook needs to debit.
-      // Hooked into the existing economy in a follow-up commit.
+      // Validate sourceWorld against the user's actual current_world. You
+      // can't send a message from a world you're not in. Self-correct silently
+      // so a stale client doesn't get blocked — but use the server-truth value.
+      const actualSource = getCurrentWorld(db, senderId);
+      const effectiveSource = actualSource || sourceWorld;
+
       const result = sendMessage(db, {
         senderId, senderKind: "user",
         receiverId, receiverKind,
-        sourceWorld, destWorld,
+        sourceWorld: effectiveSource, destWorld,
         messageType, payload,
         encryption,
         emotionalWeight: Math.max(0, Math.min(1, Number(emotionalWeight) || 0)),

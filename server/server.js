@@ -26363,6 +26363,11 @@ app.use("/api/anomalies", createAnomaliesRouter({ requireAuth, db }));
 import createConcordLinkRouter from "./routes/concord-link.js";
 app.use("/api/concord-link", createConcordLinkRouter({ requireAuth, db, emitToUser }));
 
+// World travel — moves users between Concordia + sub-worlds, source of
+// truth for users.current_world (read by /api/concord-link/send).
+import createWorldTravelRouter from "./routes/world-travel.js";
+app.use("/api/world-travel", createWorldTravelRouter({ requireAuth, db, emitToUser }));
+
 // Bootstrap CC0 asset sources at startup. Best-effort — if network is
 // unavailable, the registry stays at whatever's already there.
 setTimeout(() => {
