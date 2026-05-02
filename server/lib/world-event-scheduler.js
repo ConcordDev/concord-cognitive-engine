@@ -69,6 +69,48 @@ function pickDistrict(eventType) {
   return list[Math.floor(Math.random() * list.length)];
 }
 
+// Per-event-type host pool — picks a Concordia NPC whose role fits the event.
+const HOST_POOL = {
+  concert:    [{ id: "scribe_tollan",     name: "Tollan Greave" }, { id: "wanderer_kael",  name: "Kael" }],
+  exhibition: [{ id: "archivist_maren",   name: "Maren Ashveil" }, { id: "scribe_tollan",  name: "Tollan Greave" }],
+  market:     [{ id: "lorekeeper_yshe",   name: "Yshe Dawnmere" }, { id: "factor_cade",    name: "Factor Cade" }],
+  meetup:     [{ id: "wanderer_kael",     name: "Kael" }, { id: "factor_cade",            name: "Factor Cade" }],
+  workshop:   [{ id: "scribe_tollan",     name: "Tollan Greave" }, { id: "archivist_maren", name: "Maren Ashveil" }],
+  debate:     [{ id: "archivist_maren",   name: "Maren Ashveil" }, { id: "factor_cade",     name: "Factor Cade" }],
+  tournament: [{ id: "captain_rael",      name: "Captain Rael" }, { id: "warden_voss",     name: "Commander Voss" }],
+  hackathon:  [{ id: "lorekeeper_yshe",   name: "Yshe Dawnmere" }, { id: "scribe_tollan",   name: "Tollan Greave" }],
+  ceremony:   [{ id: "warden_voss",       name: "Commander Voss" }, { id: "factor_cade",   name: "Factor Cade" }],
+  rally:      [{ id: "captain_rael",      name: "Captain Rael" }, { id: "factor_cade",     name: "Factor Cade" }],
+  festival:   [{ id: "wanderer_kael",     name: "Kael" }, { id: "lorekeeper_yshe",         name: "Yshe Dawnmere" }],
+  raid:       [{ id: "captain_rael",      name: "Captain Rael" }, { id: "broker_sael",     name: "Sael" }],
+  referendum: [{ id: "factor_cade",       name: "Factor Cade" }, { id: "warden_voss",      name: "Commander Voss" }],
+};
+
+function pickHost(eventType) {
+  const pool = HOST_POOL[eventType] ?? [{ id: "wanderer_kael", name: "Kael" }];
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+// Reward scaling: CC payout + skill XP, weighted by event significance.
+function computeReward(eventType, def) {
+  const tiers = {
+    concert:    { cc: 30,  skillXp: 0.10, dtuChance: 0.30 },
+    exhibition: { cc: 25,  skillXp: 0.12, dtuChance: 0.40 },
+    market:     { cc: 15,  skillXp: 0.05, dtuChance: 0.20 },
+    meetup:     { cc: 10,  skillXp: 0.04, dtuChance: 0.15 },
+    workshop:   { cc: 35,  skillXp: 0.20, dtuChance: 0.50 },
+    debate:     { cc: 25,  skillXp: 0.12, dtuChance: 0.30 },
+    tournament: { cc: 80,  skillXp: 0.25, dtuChance: 0.40 },
+    hackathon:  { cc: 100, skillXp: 0.30, dtuChance: 0.60 },
+    ceremony:   { cc: 50,  skillXp: 0.10, dtuChance: 0.30 },
+    rally:      { cc: 20,  skillXp: 0.05, dtuChance: 0.10 },
+    festival:   { cc: 60,  skillXp: 0.15, dtuChance: 0.40 },
+    raid:       { cc: 200, skillXp: 0.50, dtuChance: 0.80 },
+    referendum: { cc: 25,  skillXp: 0.10, dtuChance: 0.20 },
+  };
+  return tiers[eventType] ?? { cc: 10, skillXp: 0.05, dtuChance: 0.10 };
+}
+
 function flavorTitle(eventType) {
   const titles = {
     concert:    ["Sunset Sessions", "Echoes of the Forge", "Lattice Live", "Resonance Night"],
@@ -105,21 +147,25 @@ export function scheduleEventsForWorld({ worldId, now = Date.now() }) {
 
     const districtId = pickDistrict(eventType);
     const startTime = new Date(now + 30 * 60 * 1000).toISOString(); // start 30 min from now
+    const host = pickHost(eventType);
+    const reward = computeReward(eventType, def);
     const e = createEvent({
       type: eventType,
       title: flavorTitle(eventType),
-      description: `Auto-scheduled ${def.name} in ${districtId}.`,
+      description: `${def.name} in ${districtId}. Hosted by ${host.name}. Attend to earn ${reward.cc} CC + ${reward.skillXp} skill XP.`,
       worldId,
       districtId,
       startTime,
       duration: def.defaultDuration,
       maxPlayers: def.maxPlayers,
-      hostId: "system_event_scheduler",
+      hostId: host.id,
+      hostName: host.name,
+      reward,
       location: { x: 0, y: 0, z: 0, districtId },
       createdAt: new Date(now).toISOString(),
     });
     if (e?.ok && e.event?.id) {
-      created.push({ id: e.event.id, type: eventType, districtId });
+      created.push({ id: e.event.id, type: eventType, districtId, hostId: host.id, reward });
       _lastGeneratedAt.set(k, now);
     }
   }

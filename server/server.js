@@ -6424,6 +6424,20 @@ async function tryInitWebSockets(server) {
       // Ack back to attacker with full detail (damage, crit, kill)
       socket.emit("combat:attack:ack", result);
 
+      // Award combat XP on a successful hit (any damage > 0). Kills get a
+      // larger boost via the skill-progression auto-skill row.
+      if (result?.ok && result.damage > 0) {
+        try {
+          import("./lib/skill-progression.js").then(sp => {
+            sp.recordGameplayXP?.(db, userId, "combat", { damage: result.damage, kill: !!result.targetKilled });
+            if (result.targetKilled) {
+              // bump again on kill so kills feel meaningful
+              sp.recordGameplayXP?.(db, userId, "combat", { kill: true });
+            }
+          }).catch(() => {});
+        } catch { /* xp grant best-effort */ }
+      }
+
       if (result.ok) {
         // Broadcast the hit event so everyone in the attacker's
         // chunk sees it — damage numbers, blood, etc.
@@ -26382,6 +26396,13 @@ if (db) {
     // Seed authored world content (factions, NPCs, lore, quest chains) into
     // in-memory systems. Must run after world seed so history engine is ready.
     try { seedContent({ db }); } catch (e) { console.warn("[content-seeder]", e.message); }
+    // Starter content — recipes + hostile spawns. Idempotent; safe on every boot.
+    try {
+      const starter = await import("./lib/starter-content.js");
+      const r1 = starter.seedStarterRecipes(db);
+      const r2 = starter.seedStarterHostiles(db, "concordia-hub");
+      structuredLog("info", "starter_content_seeded", { recipes: r1.count, hostiles: r2.count });
+    } catch (e) { console.warn("[starter-content]", e.message); }
     // Start an NPC simulator for each seeded world
     const worldRows = db.prepare("SELECT id FROM worlds WHERE status = 'active'").all();
     for (const { id } of worldRows) {
@@ -40160,6 +40181,76 @@ app.get("/api/marketplace/listings", asyncHandler(async (req, res) => {
   }, makeCtx(req)));
 }));
 
+// Gather resource action — player right-clicks a terrain location to harvest.
+// Yield depends on biome (district zoneType) and a small randomization, with
+// gather-bonus from any held tool DTU. Awards the player a material DTU and
+// fires gather XP into a relevant skill.
+const _gatherCooldown = new Map(); // userId -> ts
+app.post("/api/world/gather", requireAuth(), async (req, res) => {
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ ok: false, error: "unauthorized" });
+  const now = Date.now();
+  const last = _gatherCooldown.get(userId) ?? 0;
+  if (now - last < 1500) {
+    return res.status(429).json({ ok: false, error: "gather_cooldown", retryInMs: 1500 - (now - last) });
+  }
+  _gatherCooldown.set(userId, now);
+
+  const { x, z, biome = "forest", toolBonus = 1.0 } = req.body || {};
+  if (typeof x !== "number" || typeof z !== "number") {
+    return res.status(400).json({ ok: false, error: "x_z_required" });
+  }
+  // Simple yield table per biome.
+  const yieldTable = {
+    forest:    [{ type: "wood",       name: "Wood",       weight: 5 }, { type: "fiber",      name: "Fiber",      weight: 3 }, { type: "herb_green", name: "Green Herb", weight: 2 }],
+    rocky:     [{ type: "stone",      name: "Stone",      weight: 5 }, { type: "iron_ore",   name: "Iron Ore",   weight: 1 }, { type: "fiber",      name: "Fiber",      weight: 1 }],
+    grassland: [{ type: "fiber",      name: "Fiber",      weight: 4 }, { type: "herb_blue",  name: "Blue Herb",  weight: 2 }, { type: "wood",       name: "Wood",       weight: 2 }],
+    water:     [{ type: "water",      name: "Clean Water", weight: 4 }, { type: "fiber",     name: "Fiber",      weight: 1 }],
+    frontier:  [{ type: "iron_ore",   name: "Iron Ore",   weight: 3 }, { type: "stone",      name: "Stone",      weight: 3 }, { type: "hide",       name: "Hide",       weight: 1 }],
+  };
+  const table = yieldTable[biome] ?? yieldTable.forest;
+  const totalWeight = table.reduce((s, r) => s + r.weight, 0);
+  let pick = Math.random() * totalWeight;
+  let chosen = table[0];
+  for (const row of table) {
+    if (pick < row.weight) { chosen = row; break; }
+    pick -= row.weight;
+  }
+  const baseQty = Math.floor(1 + Math.random() * 2);
+  const quantity = Math.max(1, Math.round(baseQty * Math.max(1, Math.min(3, toolBonus))));
+
+  // Insert material DTU(s) into the player's inventory.
+  const inserted = [];
+  try {
+    for (let i = 0; i < quantity; i++) {
+      const id = `mat_${userId.slice(0, 8)}_${chosen.type}_${now}_${i}`;
+      try {
+        db.prepare(`INSERT INTO dtus (id, type, title, creator_id, data, created_at)
+                    VALUES (?, 'material', ?, ?, ?, ?)`)
+          .run(id, chosen.name, userId, JSON.stringify({ type: chosen.type, quantity: 1, gatheredFrom: { x, z, biome } }),
+               Math.floor(now / 1000));
+        inserted.push(id);
+      } catch { /* per-row insert silent */ }
+    }
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: "gather_insert_failed" });
+  }
+
+  // Award skill XP — gathering bumps gathering / nature lore.
+  try {
+    const skillProgression = await import("./lib/skill-progression.js").catch(() => null);
+    if (skillProgression?.recordGameplayXP) {
+      skillProgression.recordGameplayXP(db, userId, "gather", { biome, quantity });
+    }
+  } catch { /* xp award best-effort */ }
+
+  res.json({
+    ok: true,
+    yield: { type: chosen.type, name: chosen.name, quantity },
+    inventoryDtuIds: inserted,
+  });
+});
+
 // Lens backend completeness summary — runs the audit script and returns the
 // summary JSON. Admin-only because the script reads the entire domain dir.
 app.get("/api/admin/lens-audit", requireAuth(), asyncHandler(async (req, res) => {
@@ -43017,6 +43108,36 @@ app.get("/api/quests/mine", asyncHandler(async (req, res) => {
   } catch (e) {
     res.json({ ok: false, error: String(e?.message || e), quests: [] });
   }
+}));
+
+// Quest acceptance — players click Accept on the dialogue panel and we
+// register the quest as their active goal + bind progress to their userId.
+app.post("/api/quests/accept", requireAuth(), asyncHandler(async (req, res) => {
+  const userId = req.user?.id;
+  const { questId } = req.body || {};
+  if (!questId) return res.status(400).json({ ok: false, error: "questId_required" });
+  try {
+    const qe = await import("./emergent/quest-engine.js");
+    const start = qe.startQuest?.(questId, userId);
+    if (start?.ok) {
+      try { REALTIME?.io?.to(`user:${userId}`).emit("quest:accepted", { questId, ts: nowISO() }); }
+      catch { /* realtime best-effort */ }
+      try { window?.dispatchEvent?.(new CustomEvent("concordia:tutorial-action", { detail: { action: "accepted-quest" } })); }
+      catch { /* server has no window */ }
+      return res.json({ ok: true, quest: start.quest });
+    }
+    res.status(400).json(start || { ok: false, error: "start_failed" });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+}));
+
+// Quest decline — clears the offer so it doesn't keep showing.
+app.post("/api/quests/decline", requireAuth(), asyncHandler(async (req, res) => {
+  const { questId } = req.body || {};
+  if (!questId) return res.status(400).json({ ok: false, error: "questId_required" });
+  // Server-side declined quests are advisory only — no persistence needed.
+  res.json({ ok: true, declined: questId });
 }));
 
 // Physics simulation — backed by STATE for persistence

@@ -164,6 +164,30 @@ export function endEvent(eventId, userId = null) {
   event.endedAt = new Date().toISOString();
   event.updatedAt = new Date().toISOString();
 
+  // Reward distribution to attendees. The reward field is set by the world-
+  // event-scheduler at creation; if it's missing (manual events), nothing
+  // happens here. Each attendee gets a CC payout via realtime emit so the
+  // CurrencyHUD updates; skill XP recorded via realtimeEmit("skill:xp-awarded").
+  try {
+    if (event.reward && event.attendees && globalThis._concordREALTIME?.io) {
+      const io = globalThis._concordREALTIME.io;
+      for (const userId of event.attendees) {
+        io.to(`user:${userId}`).emit("event:reward", {
+          eventId,
+          eventTitle: event.title,
+          cc: event.reward.cc,
+          skillXp: event.reward.skillXp,
+        });
+        io.to(`user:${userId}`).emit("skill:xp-awarded", {
+          dtuId: `event_${event.type}`,
+          action: "event",
+          xp: event.reward.skillXp,
+          leveledUp: false,
+        });
+      }
+    }
+  } catch { /* reward distribution best-effort */ }
+
   return {
     ..._serializeEvent(event),
     attendeeCount: event.attendees.size,

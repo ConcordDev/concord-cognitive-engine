@@ -195,6 +195,14 @@ export default function createAuthRouter({
 
     AuthDB.createUser(user);
 
+    // Grant starter inventory so the new user can immediately gather, craft,
+    // and trade without spending the first 30 minutes empty-handed.
+    try {
+      import("../lib/starter-content.js").then((sc) => {
+        sc.grantStarterInventoryToUser?.(db, userId);
+      }).catch(() => { /* starter grant best-effort */ });
+    } catch { /* import silent */ }
+
     // Track per-IP daily registrations
     if (ipEntry && ipEntry.day === today) {
       ipEntry.count++;

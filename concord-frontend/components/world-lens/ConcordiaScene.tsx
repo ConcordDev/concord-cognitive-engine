@@ -947,6 +947,32 @@ export default function ConcordiaScene({
     }
     canvas.addEventListener('click', handleCanvasClick);
 
+    // Right-click → fire concordia:gather-request with the world point.
+    // World page handles the network call + inventory update.
+    function handleContextMenu(e: MouseEvent) {
+      e.preventDefault();
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const mouse = new THREE.Vector2(
+        ((e.clientX - rect.left) / rect.width) * 2 - 1,
+        -((e.clientY - rect.top) / rect.height) * 2 + 1,
+      );
+      const rc2 = raycasterRef.current as InstanceType<typeof import('three').Raycaster>;
+      const cam2 = cameraRef.current as InstanceType<typeof import('three').PerspectiveCamera>;
+      rc2.setFromCamera(mouse, cam2);
+      const tg = layersRef.current['terrain'] as InstanceType<typeof import('three').Group> | undefined;
+      if (!tg) return;
+      const hits = rc2.intersectObjects(tg.children, true);
+      if (!hits.length) return;
+      const p = hits[0].point;
+      try {
+        window.dispatchEvent(new CustomEvent('concordia:gather-request', {
+          detail: { x: p.x, y: p.y, z: p.z },
+        }));
+      } catch { /* dispatch best-effort */ }
+    }
+    canvas.addEventListener('contextmenu', handleContextMenu);
+
     // ── Mouse-look (pointer lock) for follow + first-person ─────
     // Click the canvas to enter pointer lock when in a player-tracking
     // mode; mousemove drives yaw + pitch additive offsets that the game
@@ -976,6 +1002,7 @@ export default function ConcordiaScene({
       cancelAnimationFrame(frameIdRef.current);
       window.removeEventListener('resize', handleResize);
       canvas.removeEventListener('click', handleCanvasClick);
+      canvas.removeEventListener('contextmenu', handleContextMenu);
       canvas.removeEventListener('mousedown', maybeRequestPointerLock);
       document.removeEventListener('mousemove', handleMouseMove);
       try { document.exitPointerLock?.(); } catch { /* no-op */ }

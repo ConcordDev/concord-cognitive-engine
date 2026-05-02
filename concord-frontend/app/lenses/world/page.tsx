@@ -155,6 +155,14 @@ const CraftingPanelV2 = dynamic(
   () => import('@/components/world-lens/CraftingPanelV2'),
   { ssr: false },
 );
+const CoopPanel = dynamic(
+  () => import('@/components/world-lens/CoopPanel'),
+  { ssr: false },
+);
+const CurrencyHUD = dynamic(
+  () => import('@/components/world-lens/CurrencyHUD'),
+  { ssr: false },
+);
 const LevelUpJuiceBridge = dynamic(
   () => import('@/components/world-lens/LevelUpJuiceBridge').then((m) => ({ default: m.LevelUpJuiceBridge })),
   { ssr: false },
@@ -2489,6 +2497,46 @@ export default function WorldLensPage() {
     [dialogueCtx]
   );
 
+  // Right-click gather: ConcordiaScene dispatches concordia:gather-request
+  // with a world position. POST to /api/world/gather and surface a toast
+  // with the yielded resource. Tutorial advances on `gathered` action.
+  useEffect(() => {
+    const handler = async (e: Event) => {
+      const detail = (e as CustomEvent).detail as { x: number; y: number; z: number } | undefined;
+      if (!detail) return;
+      // Pick biome by district zone or fall back to forest.
+      const biome = activeDistrict.id?.includes('frontier') ? 'frontier'
+        : activeDistrict.id?.includes('exchange') ? 'grassland'
+        : activeDistrict.id?.includes('docks') ? 'water'
+        : activeDistrict.id?.includes('forge') ? 'rocky'
+        : 'forest';
+      try {
+        const r = await fetch('/api/world/gather', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ x: detail.x, z: detail.z, biome }),
+        });
+        const data = await r.json();
+        if (data?.ok) {
+          pushCombatLog(`Gathered ${data.yield.quantity}× ${data.yield.name}`, 'info');
+          window.dispatchEvent(new CustomEvent('concordia:tutorial-action', {
+            detail: { action: 'gathered' },
+          }));
+          window.dispatchEvent(new CustomEvent('concordia:game-juice', {
+            detail: { trigger: 'snap-click' },
+          }));
+        } else if (data?.error === 'gather_cooldown') {
+          // silent — too fast
+        } else {
+          pushCombatLog(`Gather failed: ${data?.error ?? 'unknown'}`, 'info');
+        }
+      } catch { /* network silent */ }
+    };
+    window.addEventListener('concordia:gather-request', handler);
+    return () => window.removeEventListener('concordia:gather-request', handler);
+  }, [activeDistrict.id, pushCombatLog]);
+
   // Phase F fix 2: ConcordiaScene's canvas raycaster dispatches
   // `concordia:open-dialogue` when the player clicks an NPC mesh. Look up
   // the full NPC from rawWorldNPCs and route into openNPCDialogue, which
@@ -2893,6 +2941,7 @@ export default function WorldLensPage() {
           <LevelUpJuiceBridge />
           <PerformanceOverlay />
           <BazaarLayer worldId="concordia" />
+          <CurrencyHUD onClick={() => setShowPanel('profile')} />
           <DiegeticSurfaces
             playerPosition={playerAvatar.position}
             onOpenMap={() => setShowPanel('map')}
@@ -3471,6 +3520,16 @@ export default function WorldLensPage() {
           )}
           {showPanel === 'lore' && (
             <LorePanel worldId="concordia-hub" onClose={() => setShowPanel('none')} />
+          )}
+          {showPanel === 'guild' && false /* CoopPanel handles party UX */}
+          {(showPanel === 'players' || showPanel === 'guild') && (
+            <div className="absolute top-4 right-4 z-20 max-h-[70vh] overflow-auto pointer-events-auto">
+              <CoopPanel
+                userId={playerAvatar.id}
+                isLeader={false}
+                onClose={() => setShowPanel('none')}
+              />
+            </div>
           )}
           {showPanel === 'players' && (
             <div className="absolute top-4 left-4 z-20 w-80 max-h-[70vh] overflow-auto pointer-events-auto">

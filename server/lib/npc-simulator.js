@@ -41,12 +41,17 @@ const AGGRO_PROFILE = {
   criminal:  { alertRadius: 8,  pursuitRadius: 15, melee: 2, aggro: 0.6, canCallHelp: false },
   farmer:    { alertRadius: 6,  pursuitRadius: 0,  melee: 0, aggro: 0.0, canCallHelp: false },
   merchant:  { alertRadius: 6,  pursuitRadius: 0,  melee: 0, aggro: 0.0, canCallHelp: false },
+  // Frontier hostile creatures — aggressive on sight, longer pursuit.
+  wraith:      { alertRadius: 12, pursuitRadius: 22, melee: 2, aggro: 0.85, canCallHelp: false },
+  drift_eater: { alertRadius: 18, pursuitRadius: 30, melee: 3, aggro: 0.95, canCallHelp: true },
+  shard_husk:  { alertRadius: 15, pursuitRadius: 25, melee: 2, aggro: 0.8,  canCallHelp: false },
   default:   { alertRadius: 8,  pursuitRadius: 12, melee: 2, aggro: 0.3, canCallHelp: false },
 };
 
 // Base NPC attack damage by archetype (added on top of 8-15 base roll)
 const ARCHETYPE_DAMAGE_BONUS = {
   guard: 5, soldier: 8, bandit: 4,
+  wraith: 6, drift_eater: 12, shard_husk: 8,
 };
 
 // Rate-limit: minimum ms between NPC attacks on same target

@@ -143,6 +143,12 @@ export function createCraftingRouter({ db, requireAuth }) {
       if (!result.ok) {
         return res.status(422).json(result);
       }
+      // Award craft XP on success.
+      try {
+        import("../lib/skill-progression.js").then(sp => {
+          sp.recordGameplayXP?.(db, userId, "craft", { recipeId });
+        }).catch(() => {});
+      } catch { /* xp grant best-effort */ }
       res.json(result);
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });

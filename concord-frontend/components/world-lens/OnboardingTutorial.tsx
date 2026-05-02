@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
-import { ChevronRight, Check, Armchair, Box, Home, GitFork, X } from 'lucide-react';
+import React, { useState, useCallback, useEffect } from 'react';
+import { ChevronRight, Check, Footprints, MessageSquare, Axe, Hammer, Swords, X } from 'lucide-react';
 import { tutorialManager } from '@/lib/concordia/onboarding/tutorial';
 
 const panel = 'bg-black/90 backdrop-blur-sm border border-white/10 rounded-lg';
@@ -18,36 +18,43 @@ interface TutorialStep {
 const TUTORIALS: TutorialStep[] = [
   {
     id: 1,
-    title: 'Place a Bench',
-    description: 'Pick a bench from the component library and place it in the park.',
-    icon: Armchair,
-    instruction: 'Click a bench component in the marketplace, then click the park to place it.',
-    action: 'Place bench',
+    title: 'Move around',
+    description: 'WASD to walk, hold Shift to run. The world is yours to explore.',
+    icon: Footprints,
+    instruction: 'Press W to walk forward. Try Shift+W for running.',
+    action: 'walked',
   },
   {
     id: 2,
-    title: 'Build a Wall',
-    description: 'Pick a material, set wall dimensions, and watch physics validate in real time.',
-    icon: Box,
-    instruction: 'Select USB-A Composite, create a 3m × 2.5m × 0.2m wall. Green glow = it holds!',
-    action: 'Build wall',
+    title: 'Talk to an NPC',
+    description: 'Walk up to any NPC and click on them. They have stories, quests, and trade.',
+    icon: MessageSquare,
+    instruction: 'Approach an NPC and click on them, or press E when nearby.',
+    action: 'opened-dialogue',
   },
   {
     id: 3,
-    title: 'Build a Shelter',
-    description: 'Four walls, a roof, a door. Your first building.',
-    icon: Home,
-    instruction: 'Add 4 walls, 1 floor, and 1 roof. Run validation. See your name on it.',
-    action: 'Build shelter',
+    title: 'Gather resources',
+    description: 'Right-click on terrain (grass, stone, water) to harvest materials.',
+    icon: Axe,
+    instruction: 'Right-click any terrain — wood, stone, fiber, or herbs.',
+    action: 'gathered',
   },
   {
     id: 4,
-    title: 'Improve a Design',
-    description: 'Fork an existing shelter and add a window for better habitability.',
-    icon: GitFork,
-    instruction:
-      'Fork the shelter, add a window. Original creator earns royalties from your improvement.',
-    action: 'Fork & improve',
+    title: 'Craft something',
+    description: 'Open the crafting panel and turn your gathered materials into a weapon or tool.',
+    icon: Hammer,
+    instruction: 'Press C to open crafting. Try the Wooden Sword recipe — it needs 5 wood + 2 fiber.',
+    action: 'crafted',
+  },
+  {
+    id: 5,
+    title: 'Fight a hostile',
+    description: 'Frontier district has wraiths and drift-eaters. Combat awards XP that levels skills.',
+    icon: Swords,
+    instruction: 'Travel to the frontier, target a hostile creature, attack with left-click.',
+    action: 'combat-hit',
   },
 ];
 
@@ -70,6 +77,32 @@ export default function OnboardingTutorial({ onComplete, onDismiss }: Onboarding
       onComplete();
     }
   }, [currentStep, dropHints, onComplete]);
+
+  // Auto-advance the tutorial when the player performs the matching action.
+  // Each step lists an `action` token; the world page already dispatches
+  // concordia:tutorial-action events with the same token whenever the user
+  // moves / opens dialogue / etc. Listen and advance when a match arrives.
+  useEffect(() => {
+    function onAction(e: Event) {
+      const detail = (e as CustomEvent).detail as { action?: string } | undefined;
+      const action = detail?.action;
+      if (!action) return;
+      const expected = TUTORIALS[currentStep]?.action;
+      if (!expected) return;
+      // Map several incoming action tokens onto each step.
+      const matches: Record<string, string[]> = {
+        'walked':         ['walked', 'moved', 'sent-quick-message'],
+        'opened-dialogue':['opened-dialogue', 'talk-npc', 'entered-lens-portal'],
+        'gathered':       ['gathered', 'gather-success'],
+        'crafted':        ['crafted', 'craft-success', 'craft-complete'],
+        'combat-hit':     ['combat-hit', 'combat-crit', 'combat-kill'],
+      };
+      const accept = matches[expected] ?? [expected];
+      if (accept.includes(action)) completeStep();
+    }
+    window.addEventListener('concordia:tutorial-action', onAction);
+    return () => window.removeEventListener('concordia:tutorial-action', onAction);
+  }, [currentStep, completeStep]);
 
   const handleSkip = useCallback(() => {
     tutorialManager.skip(dropHints);
