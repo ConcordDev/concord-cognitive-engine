@@ -181,5 +181,33 @@
       "secret": "He has been talking to a federal agent he believes is a small-time courier for one of the rival families. He has been talking to her for six weeks. She has not yet asked him for anything specific.",
       "fear": "Not the federal informant, who he does not yet recognize as a threat — but the older brother, who he is afraid will reappear and reclaim everything Tommy has been building toward."
     }
+  },
+  {
+    "id": "walker_dock_run_renny",
+    "name": "Renaldo 'Dock-Run Renny' Sabb",
+    "alias": "Dock-Run",
+    "archetype": "link_walker",
+    "faction_id": "ghost_network",
+    "role": "Concord Link courier on the crime ↔ Concordia route; vetted by Cipher",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": false,
+    "level": 10,
+    "world_id": "crime",
+    "link_walker": true,
+    "reputation": 55,
+    "appearance": {
+      "build": "compact, mid-thirties, dock-worker shoulders",
+      "outfit": "faded longshoreman jacket; carries a duffel that looks empty even when it isn't",
+      "tells": "checks the duffel's seam-stitch when he is being followed; does not check it any other time"
+    },
+    "backstory": "Worked the docks for eleven years before the Ghost Network put him on the books as an approved courier. Cipher vetted him the day Jax cleared the first cross-world contract; the vetting took six weeks. He has not been compromised.",
+    "personality_traits": ["matter-of-fact", "patient with bureaucracy", "sharp about which contracts to refuse"],
+    "speech_patterns": "Quiet dock-worker cadence; uses 'sir' and 'ma'am' with payers who don't deserve it because Cipher told him to.",
+    "narrative_context": {
+      "current_goal": "Carry the Ghost Network's standing arrangement letters to four Concordia contacts before the federal task force traces the route.",
+      "secret": "He has lifted one package off the books — a letter from his sister to their cousin in fantasy world — and walked it free of charge. Cipher knows. Cipher has not said anything.",
+      "fear": "That Cipher's silence on the off-the-books letter will be revisited later, on Cipher's terms."
+    }
   }
 ]

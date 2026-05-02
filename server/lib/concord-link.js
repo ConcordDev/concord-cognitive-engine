@@ -18,6 +18,7 @@
 
 import crypto from "crypto";
 import { getWorldMeta } from "./cross-world-effectiveness.js";
+import { listAvailableWalkers, hireWalker } from "./concord-link-walkers.js";
 
 // ── Cost matrix ─────────────────────────────────────────────────────────────
 
@@ -228,6 +229,34 @@ export function sendMessage(db, opts, deps = {}) {
     return { ok: false, reason: debitFailedReason || "send_failed", cost };
   }
 
+  // Physical messages dispatch a Link Walker. The message status stays
+  // 'sent' (not 'delivered') until the walker completes its journey on a
+  // future heartbeat tick. If no walker is available, the message is
+  // already in the inbox so the user has at least their record; the
+  // dispatch attempt is best-effort.
+  let dispatchedWalker = null;
+  if (messageType === "physical" && status !== "corrupted") {
+    try {
+      const candidates = listAvailableWalkers(db, { homeWorld: sourceWorld, limit: 5 });
+      const pick = candidates[0]; // highest reputation already
+      if (pick) {
+        const hire = hireWalker(db, {
+          walkerId:     pick.id,
+          payerId:      senderId,
+          sourceWorld,
+          destWorld,
+          messageId,
+          feeSparks:    0, // sparks already debited via cost above
+        });
+        if (hire?.ok) {
+          dispatchedWalker = hire.walker;
+          // Override status: the message is in_transit, not delivered.
+          db.prepare(`UPDATE concord_link_messages SET status='sent', delivered_at=NULL WHERE id=?`).run(messageId);
+        }
+      }
+    } catch { /* dispatch best-effort; message row already exists */ }
+  }
+
   // Realtime push to recipient if player + online
   if (status === "delivered" && receiverKind === "user" && deps.emitToUser) {
     try {
@@ -258,7 +287,7 @@ export function sendMessage(db, opts, deps = {}) {
     } catch { /* notification is best-effort */ }
   }
 
-  return { ok: true, messageId, status, cost, corrupted };
+  return { ok: true, messageId, status, cost, corrupted, walker: dispatchedWalker };
 }
 
 /**

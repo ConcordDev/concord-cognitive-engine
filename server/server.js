@@ -4835,6 +4835,10 @@ function authMiddleware(req, res, next) {
     "/api/export",
     // Repair cortex v3.1 (frontend error reporting must work without auth)
     "/api/repair",
+    // Concord Link — public reads for anchors, cost preview, walker bazaar.
+    // Auth is still enforced on /send, /inbox, /:id/read, /walkers/hire by
+    // the route handlers themselves.
+    "/api/concord-link",
     // Dual Global & Creative Registry (public discovery)
     "/api/scope", "/api/creative",
     // Missing frontend routes (three-gate audit scan)
@@ -26371,6 +26375,11 @@ app.use("/api/anomalies", createAnomaliesRouter({ requireAuth, db }));
 import createConcordLinkRouter from "./routes/concord-link.js";
 app.use("/api/concord-link", createConcordLinkRouter({ requireAuth, db, emitToUser }));
 
+// Link Walker bazaar + journey tracking. Mounted as a sub-path under
+// concord-link so the panel UI can stay co-located.
+import createConcordLinkWalkersRouter from "./routes/concord-link-walkers.js";
+app.use("/api/concord-link/walkers", createConcordLinkWalkersRouter({ requireAuth, db }));
+
 // World travel — moves users between Concordia + sub-worlds, source of
 // truth for users.current_world (read by /api/concord-link/send).
 import createWorldTravelRouter from "./routes/world-travel.js";
@@ -27811,6 +27820,35 @@ async function governorTick(reason="heartbeat") {
           } catch (_e) { /* non-fatal */ }
         }
       }
+
+      // Concord Link Walker journeys — advance every in_transit walker one
+      // anchor closer to its destination per tick. Final hop rolls intercept
+      // and updates the message + contract state. Best-effort, never throws.
+      try {
+        const walkerLib = await import("./lib/concord-link-walkers.js").catch(() => null);
+        if (walkerLib?.advanceJourneyTick) {
+          const stats = walkerLib.advanceJourneyTick(db, {
+            onDelivered: ({ messageId }) => {
+              if (!messageId || !REALTIME?.io) return;
+              try {
+                const row = db.prepare("SELECT receiver_id FROM concord_link_messages WHERE id = ?").get(messageId);
+                if (row?.receiver_id) {
+                  REALTIME.io.to(`user:${row.receiver_id}`).emit("concord-link:delivered", { messageId, ts: nowISO() });
+                }
+              } catch (_e) { /* realtime best-effort */ }
+            },
+            onIntercepted: ({ messageId }) => {
+              // Phase C will hook surfaceInterceptedMessage here. For now,
+              // the message status is already 'intercepted' in DB so the
+              // black-market layer can pick it up by polling.
+              if (!messageId) return;
+            },
+          });
+          if (stats.delivered > 0 || stats.intercepted > 0 || stats.errors > 0) {
+            structuredLog("info", "concord_link_walker_tick", stats);
+          }
+        }
+      } catch (_e) { /* non-fatal */ }
 
       if (typeof _tickHistory !== "undefined") {
         _tickHistory.push({

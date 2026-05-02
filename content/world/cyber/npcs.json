@@ -180,5 +180,33 @@
       "secret": "He has been keeping written records — actual paper, in a footlocker — of every operation since 1989. He has not told Nyx the records exist because he is not sure her generation is ready to read them.",
       "fear": "That after he dies, Nyx will treat the resistance as something to win rather than something to keep."
     }
+  },
+  {
+    "id": "walker_static_tap",
+    "name": "Static Tap",
+    "alias": "The Carrier",
+    "archetype": "link_walker",
+    "faction_id": "blackout_resistance",
+    "role": "Offline-only Concord Link courier between cyber world's blackout zones and Concordia",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": false,
+    "level": 13,
+    "world_id": "cyber",
+    "link_walker": true,
+    "reputation": 72,
+    "appearance": {
+      "build": "average height, quiet posture, no visible augmentation",
+      "outfit": "thrift-store layered clothing with no synthetic fabric anywhere on it; wears a faraday-lined satchel like a second spine",
+      "tells": "taps fingertips in an irregular rhythm when he is checking nothing else is listening"
+    },
+    "backstory": "Started as a runner for Old Dom's shortwave grid. The first time the Link's cyber anchor opened he asked Dom for permission and Dom asked him three questions. He answered them right. He has been carrying for the resistance and for a small approved list of Concordia clients ever since. He will not carry for anyone Kael can model.",
+    "personality_traits": ["careful", "principled", "trusts paper over screens", "willing to wait three days for a clean handoff"],
+    "speech_patterns": "Plain, short, will refuse a job by going silent rather than saying no.",
+    "narrative_context": {
+      "current_goal": "Get a manuscript Old Dom finished writing six weeks ago to a Concordia archivist before Old Dom's health gives out.",
+      "secret": "He has identified, by satchel weight alone, three packages he has carried that he believes were intercepted and replaced before he picked them up. He has not told Nyx because he is not sure if telling her would protect or compromise the route.",
+      "fear": "That the next time he refuses a job from Kael's network, the refusal will be the last one allowed."
+    }
   }
 ]

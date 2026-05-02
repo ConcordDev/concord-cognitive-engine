@@ -184,5 +184,33 @@
       "secret": "He has been corresponding with one of the other Great Houses for six years under a false signature. The other house believes they are corresponding with a sympathetic Voss insider. They are. They simply do not yet realize how sympathetic.",
       "fear": "That Seraphine already knows about the correspondence and is waiting for him to commit before she ends it."
     }
+  },
+  {
+    "id": "walker_branna_mossroad",
+    "name": "Branna of the Mossroad",
+    "alias": "The Long Way",
+    "archetype": "link_walker",
+    "faction_id": "wildwood_circle",
+    "role": "Concord Link courier on the fantasy ↔ Concordia route; trained by the Wildwood Circle",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": false,
+    "level": 12,
+    "world_id": "fantasy",
+    "link_walker": true,
+    "reputation": 70,
+    "appearance": {
+      "build": "small, sturdy, half-elf with deliberate steps",
+      "outfit": "moss-green riding coat over leather; carries a yew staff that is also her draft signature",
+      "tells": "the staff hums one tone lower when an anchor is unstable"
+    },
+    "backstory": "Walked the deep forest paths for the Wildwood Circle before the Concord Link existed. The first day they activated the fantasy anchor she walked through it without asking permission and reported back six hours later with a sealed package from Concordia and a note that said 'this works.' She has not stopped walking since.",
+    "personality_traits": ["patient", "watches more than she speaks", "trusts the forest before any anchor"],
+    "speech_patterns": "Soft, with long pauses; uses old roadwalker idioms.",
+    "narrative_context": {
+      "current_goal": "Get the elder grove's annual report to Velora before the autumn frost makes the longer route impassable.",
+      "secret": "She has noticed something walking parallel to her on the cyber-side approach, three trips in a row. She has not told the Circle yet.",
+      "fear": "That whatever is walking parallel is not from cyber world at all."
+    }
   }
 ]

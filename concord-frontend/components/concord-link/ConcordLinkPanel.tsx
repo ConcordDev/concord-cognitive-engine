@@ -63,6 +63,15 @@ interface CostPreview {
   encryptionMultiplier?: number;
 }
 
+interface WalkerRow {
+  id: string;
+  npc_id: string;
+  home_world: string;
+  current_world: string;
+  status: string;
+  reputation: number;
+}
+
 const MESSAGE_TYPES = ['text', 'voice', 'data', 'dream', 'echo', 'physical', 'broadcast'] as const;
 const ENCRYPTION_LEVELS = ['none', 'basic', 'high', 'shadow'] as const;
 
@@ -78,11 +87,12 @@ const fmtTime = (epochSec: number) => {
 
 export function ConcordLinkPanel({ myUserId }: { myUserId: string }) {
   const [open, setOpen] = useState(false);
-  const [tab, setTab] = useState<'inbox' | 'compose' | 'anchors'>('inbox');
+  const [tab, setTab] = useState<'inbox' | 'compose' | 'anchors' | 'walkers'>('inbox');
   const [inbox, setInbox] = useState<InboxMessage[]>([]);
   const [unread, setUnread] = useState(0);
   const [currentWorld, setCurrentWorld] = useState('concordia');
   const [anchors, setAnchors] = useState<AnchorRow[]>([]);
+  const [walkers, setWalkers] = useState<WalkerRow[]>([]);
 
   const [composeReceiver, setComposeReceiver] = useState('');
   const [composeDest, setComposeDest] = useState('concordia');
@@ -141,6 +151,21 @@ export function ConcordLinkPanel({ myUserId }: { myUserId: string }) {
     })();
     return () => { cancelled = true; };
   }, [currentWorld]);
+
+  // Load walkers when the tab opens or world changes
+  useEffect(() => {
+    if (tab !== 'walkers' || !currentWorld) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/concord-link/walkers?homeWorld=${encodeURIComponent(currentWorld)}`);
+        if (!res.ok || cancelled) return;
+        const json = await res.json();
+        if (Array.isArray(json?.walkers)) setWalkers(json.walkers);
+      } catch { /* network errors silent */ }
+    })();
+    return () => { cancelled = true; };
+  }, [tab, currentWorld]);
 
   // ── Realtime: prepend new messages + raise unread + sfx ───────────────
   useEffect(() => {
@@ -271,6 +296,7 @@ export function ConcordLinkPanel({ myUserId }: { myUserId: string }) {
     { id: 'inbox' as const, label: 'Inbox', badge: unread },
     { id: 'compose' as const, label: 'Compose' },
     { id: 'anchors' as const, label: 'Anchors' },
+    { id: 'walkers' as const, label: 'Walkers' },
   ]), [unread]);
 
   if (!open) {
@@ -503,6 +529,36 @@ export function ConcordLinkPanel({ myUserId }: { myUserId: string }) {
                   {a.controlled_by_faction && ` · ${a.controlled_by_faction}`}
                 </p>
                 <p className="text-[11px] text-slate-300">{a.description}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {tab === 'walkers' && (
+          <div className="space-y-2">
+            <p className="mb-2 text-[10px] uppercase tracking-wider text-cyan-400">
+              Available walkers in {currentWorld}
+            </p>
+            <p className="mb-3 text-[10px] text-slate-500">
+              Physical messages auto-dispatch the highest-reputation walker available
+              when you press <span className="text-cyan-300">Send</span> in Compose.
+              Walkers carry packages between worlds in real time; their journey
+              advances every heartbeat tick (~15s). Reputation rises on delivery,
+              falls on interception.
+            </p>
+            {walkers.length === 0 ? (
+              <p className="py-8 text-center text-xs text-slate-500">
+                No walkers currently available in this world.
+              </p>
+            ) : walkers.map((w) => (
+              <div key={w.id} className="rounded border border-slate-800 bg-slate-900/40 p-2">
+                <div className="flex items-baseline justify-between gap-2">
+                  <h4 className="text-xs font-semibold text-slate-100">{w.npc_id}</h4>
+                  <span className="text-[10px] text-cyan-300">rep {w.reputation}</span>
+                </div>
+                <p className="text-[10px] uppercase tracking-wider text-slate-500">
+                  {w.status} · home {w.home_world} · here {w.current_world}
+                </p>
               </div>
             ))}
           </div>

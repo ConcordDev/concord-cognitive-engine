@@ -192,5 +192,33 @@
       "secret": "He has met with a Department of Justice attorney, anonymously, twice. He has not yet handed over anything. He has handed over enough to be killed if Vesper finds out.",
       "fear": "That he will keep finding reasons not to leak until it is too late, and that the eventual disaster will be partly his."
     }
+  },
+  {
+    "id": "walker_bullet",
+    "name": "Devon 'Bullet' Cross",
+    "alias": "Bullet",
+    "archetype": "link_walker",
+    "faction_id": "enforcers_movement",
+    "role": "Concord Link courier on the superhero ↔ Concordia route; ex-bike messenger",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": false,
+    "level": 9,
+    "world_id": "superhero",
+    "link_walker": true,
+    "reputation": 60,
+    "appearance": {
+      "build": "lean, mid-twenties, perpetually in motion",
+      "outfit": "battered Bronx-courier jacket retrofitted for cross-world travel; helmet always on, even where there is no traffic",
+      "tells": "spins a key ring on one finger when waiting for an anchor to stabilize"
+    },
+    "backstory": "Was a bike messenger in the Bronx for six years before Bex Park flagged him for the Movement's first formal courier rotation. He volunteered for the Link the day the second anchor opened and ran his first cross-world package within a week.",
+    "personality_traits": ["fast", "loyal", "treats the Link like a longer block", "uncomfortable when standing still"],
+    "speech_patterns": "Bronx accent, fast cadence, drops a syllable when he's calculating a route in his head.",
+    "narrative_context": {
+      "current_goal": "Build a corruption-free route between the Bronx mutual-aid grid and Bex's Concordia contacts so the Movement can move resources without Luminary's drones knowing.",
+      "secret": "He once delivered a package for a payer he later realized was Luminary-adjacent. He turned the fee over to Bex anonymously and has not run a job for that payer since.",
+      "fear": "That a route he ran clean will be the one that gets a building bombed."
+    }
   }
 ]
