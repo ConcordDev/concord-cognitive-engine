@@ -493,6 +493,113 @@ function WorkstationPrompt({
   );
 }
 
+// ── Day / Night Cycle ───────────────────────────────────────────────────────
+//
+// Phase F fix 4: gives Concordia a real day/night cycle. Until now the
+// world was eternal grey noon; the audit's World-life cell flagged this as
+// the single biggest "feels lifeless" complaint.
+//
+// One in-world day = DAY_LENGTH_MS of real time (default 24 minutes).
+// Sun orbits in a great circle east → up → west → down → up. Five color
+// stops keyed off the cycle phase t ∈ [0,1):
+//   t=0.00 dawn     warm orange  ambient 0.45  directional 0.9
+//   t=0.25 noon     bright white ambient 0.55  directional 1.4
+//   t=0.50 dusk     deep amber   ambient 0.40  directional 0.8
+//   t=0.75 midnight cold blue    ambient 0.15  directional 0.25
+//
+// Throttled to ~10Hz state updates so drei's <Sky> doesn't re-render every
+// frame. If skyPreset is provided as anything other than 'auto', the cycle
+// is paused at that preset for backward compatibility with callers that
+// want a fixed time-of-day.
+
+const DAY_LENGTH_MS = 24 * 60 * 1000;
+
+interface DayNightStop {
+  t: number;
+  sky:        [number, number, number]; // sunPosition vector
+  ambient:    number;
+  directional: number;
+}
+
+const DAY_NIGHT_STOPS: DayNightStop[] = [
+  { t: 0.00, sky: [ 1.0, 0.10, 0.0],  ambient: 0.45, directional: 0.9  }, // dawn (east horizon)
+  { t: 0.25, sky: [ 0.0, 1.00, 0.0],  ambient: 0.55, directional: 1.4  }, // noon (overhead)
+  { t: 0.50, sky: [-1.0, 0.10, 0.0],  ambient: 0.40, directional: 0.8  }, // dusk (west horizon)
+  { t: 0.75, sky: [ 0.0, -1.0, 0.0],  ambient: 0.15, directional: 0.25 }, // midnight (below)
+];
+
+function lerp(a: number, b: number, k: number): number { return a + (b - a) * k; }
+function lerp3(a: [number, number, number], b: [number, number, number], k: number): [number, number, number] {
+  return [lerp(a[0], b[0], k), lerp(a[1], b[1], k), lerp(a[2], b[2], k)];
+}
+
+function sampleDayNight(t: number): { sky: [number, number, number]; ambient: number; directional: number } {
+  // Wrap to [0,1)
+  const phase = ((t % 1) + 1) % 1;
+  // Find adjacent stops
+  let i = 0;
+  for (; i < DAY_NIGHT_STOPS.length - 1; i++) {
+    if (phase < DAY_NIGHT_STOPS[i + 1].t) break;
+  }
+  const a = DAY_NIGHT_STOPS[i];
+  const b = DAY_NIGHT_STOPS[(i + 1) % DAY_NIGHT_STOPS.length];
+  const span = (b.t > a.t ? b.t : b.t + 1) - a.t;
+  const k = span === 0 ? 0 : (phase - a.t) / span;
+  return {
+    sky:         lerp3(a.sky, b.sky, k),
+    ambient:     lerp(a.ambient, b.ambient, k),
+    directional: lerp(a.directional, b.directional, k),
+  };
+}
+
+interface DayNightCycleProps {
+  skyPreset?: "auto" | "sunset" | "dawn" | "night" | "noon";
+  startedAt?: number; // epoch ms — used so all clients see the same time-of-day
+}
+
+function DayNightCycle({ skyPreset = "auto", startedAt }: DayNightCycleProps) {
+  const [sample, setSample] = useState(() => sampleDayNight(0));
+  const lastUpdateRef = useRef(0);
+  const start = useRef(startedAt ?? Date.now()).current;
+
+  useFrame(() => {
+    if (skyPreset !== "auto") return;
+    const now = performance.now();
+    if (now - lastUpdateRef.current < 100) return; // ~10Hz
+    lastUpdateRef.current = now;
+    const t = ((Date.now() - start) % DAY_LENGTH_MS) / DAY_LENGTH_MS;
+    setSample(sampleDayNight(t));
+  });
+
+  // Backward-compat presets (paused cycle).
+  let sky:         [number, number, number] = sample.sky;
+  let ambient:     number = sample.ambient;
+  let directional: number = sample.directional;
+  if (skyPreset === "noon")    { sky = [0, 1, 0];     ambient = 0.55; directional = 1.4; }
+  if (skyPreset === "dawn")    { sky = [1, 0.1, 0];   ambient = 0.45; directional = 0.9; }
+  if (skyPreset === "sunset")  { sky = [1, 0.3, -0.5]; ambient = 0.40; directional = 0.8; }
+  if (skyPreset === "night")   { sky = [0, -1, 0];    ambient = 0.15; directional = 0.25; }
+
+  return (
+    <>
+      <ambientLight intensity={ambient} />
+      <directionalLight
+        position={[sky[0] * 500, Math.max(50, sky[1] * 300), sky[2] * 200]}
+        intensity={directional}
+        castShadow
+        shadow-mapSize-width={2048}
+        shadow-mapSize-height={2048}
+        shadow-camera-far={2000}
+        shadow-camera-left={-500}
+        shadow-camera-right={500}
+        shadow-camera-top={500}
+        shadow-camera-bottom={-500}
+      />
+      <Sky distance={450000} sunPosition={sky} inclination={0.5} azimuth={0.25} />
+    </>
+  );
+}
+
 // ── Chunk Streamer ──────────────────────────────────────────────────────────
 //
 // Phase F fix 7: with WORLD_SIZE=20km the entire world cannot be rendered at
@@ -567,7 +674,8 @@ interface WorldRendererProps {
   onDistrictEnter?: (district: District) => void;
   onWorkstationActivate?: (workstation: string, district: District) => void;
   onObjectClick?: (obj: WorldObject) => void;
-  skyPreset?: "sunset" | "dawn" | "night" | "noon";
+  /** 'auto' (default) runs the live day/night cycle. Any other value pins the sky to that preset. */
+  skyPreset?: "auto" | "sunset" | "dawn" | "night" | "noon";
 }
 
 export default function WorldRenderer({
@@ -576,7 +684,7 @@ export default function WorldRenderer({
   onDistrictEnter,
   onWorkstationActivate,
   onObjectClick,
-  skyPreset = "sunset",
+  skyPreset = "auto",
 }: WorldRendererProps) {
   const [currentDistrictId, setCurrentDistrictId] = useState<string | null>(null);
   const [nearestWorkstation, setNearestWorkstation] = useState<string | null>(null);
@@ -660,37 +768,11 @@ export default function WorldRenderer({
         }}
       >
         <Suspense fallback={null}>
-          {/* Lighting */}
-          <ambientLight intensity={0.3} />
-          <directionalLight
-            position={[500, 300, 200]}
-            intensity={1.2}
-            castShadow
-            shadow-mapSize-width={2048}
-            shadow-mapSize-height={2048}
-            shadow-camera-far={2000}
-            shadow-camera-left={-500}
-            shadow-camera-right={500}
-            shadow-camera-top={500}
-            shadow-camera-bottom={-500}
-          />
+          {/* Lighting + sky driven by the day/night cycle. Setting skyPreset
+              to a fixed value (the original behavior) pauses the cycle there
+              for backward compat; the default 'auto' lets the cycle run. */}
+          <DayNightCycle skyPreset={skyPreset === "auto" ? "auto" : skyPreset} />
           <pointLight position={[0, 50, 0]} intensity={0.5} color="#f39c12" />
-
-          {/* Sky */}
-          <Sky
-            distance={450000}
-            sunPosition={
-              skyPreset === "noon"
-                ? [0, 1, 0]
-                : skyPreset === "dawn"
-                ? [1, 0.1, 0]
-                : skyPreset === "night"
-                ? [0, -1, 0]
-                : [1, 0.3, -0.5] // sunset
-            }
-            inclination={skyPreset === "night" ? 0 : 0.5}
-            azimuth={0.25}
-          />
 
           {/* Fog */}
           <fog attach="fog" args={["#1a1a2e", VIEW_DISTANCE * 0.5, VIEW_DISTANCE]} />
