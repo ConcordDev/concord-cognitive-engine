@@ -325,11 +325,21 @@ export function NPCDialogue({ npc, worldId, onClose, onQuestAccepted }: NPCDialo
   const [isTalking, setIsTalking] = useState(false);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const talkCheckRafRef = useRef<number | null>(null);
+  // Tier 2 deferral 11: Piper TTS playback handle. When the new path is
+  // active this holds the cancel hook; the old utteranceRef is unused.
+  const piperHandleRef = useRef<{ cancel: () => void } | null>(null);
 
   // Cancel TTS and clean up
   const cancelSpeech = useCallback(() => {
-    if (!TTS_SUPPORTED) return;
-    window.speechSynthesis.cancel();
+    // Piper path
+    if (piperHandleRef.current) {
+      try { piperHandleRef.current.cancel(); } catch { /* ok */ }
+      piperHandleRef.current = null;
+    }
+    // Web Speech path
+    if (TTS_SUPPORTED) {
+      try { window.speechSynthesis.cancel(); } catch { /* ok */ }
+    }
     utteranceRef.current = null;
     setIsTalking(false);
     if (talkCheckRafRef.current !== null) {
@@ -358,48 +368,50 @@ export function NPCDialogue({ npc, worldId, onClose, onQuestAccepted }: NPCDialo
   // Speak text
   const speak = useCallback(
     (text: string) => {
-      if (!TTS_SUPPORTED || muted) return;
+      if (muted) return;
       cancelSpeech();
 
       const profile = VOICE_PROFILES[npc.archetype] ?? VOICE_PROFILES.default;
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.pitch = profile.pitch;
-      utterance.rate = profile.rate;
 
-      // Voice selection — voices may not be loaded yet; try both sync and after voiceschanged
-      const tryAssignVoice = () => {
-        const voice = pickVoice(profile);
-        if (voice) utterance.voice = voice;
-      };
-      tryAssignVoice();
-      if (!utterance.voice) {
-        window.speechSynthesis.addEventListener('voiceschanged', tryAssignVoice, { once: true });
-      }
-
-      utterance.onstart = () => {
-        setIsTalking(true);
-        startTalkingPoll();
-        // Phase 16: emit dialogue-active so Phase 15's mixer ducks SFX.
-        try { window.dispatchEvent(new CustomEvent('concordia:dialogue-active', { detail: { npcId: npc.id } })); }
-        catch { /* event dispatch is best-effort */ }
-      };
-      utterance.onend = () => {
-        setIsTalking(false);
-        if (talkCheckRafRef.current !== null) {
-          cancelAnimationFrame(talkCheckRafRef.current);
-          talkCheckRafRef.current = null;
+      // Tier 2 deferral 11: try Piper first, fall back to Web Speech.
+      // The Piper module handles the fallback internally — if the network
+      // request 4xx's or exceeds the 800ms perceived-lag threshold, it
+      // calls back into Web Speech automatically.
+      void (async () => {
+        try {
+          const { speakWithPiperOrFallback } = await import('@/lib/voice/piper-stream');
+          const handle = await speakWithPiperOrFallback(
+            text,
+            { rate: profile.rate, pitch: profile.pitch },
+            {
+              onStart: () => {
+                setIsTalking(true);
+                startTalkingPoll();
+                try { window.dispatchEvent(new CustomEvent('concordia:dialogue-active', { detail: { npcId: npc.id } })); }
+                catch { /* ok */ }
+              },
+              onEnd: () => {
+                setIsTalking(false);
+                if (talkCheckRafRef.current !== null) {
+                  cancelAnimationFrame(talkCheckRafRef.current);
+                  talkCheckRafRef.current = null;
+                }
+                try { window.dispatchEvent(new CustomEvent('concordia:dialogue-ended', { detail: { npcId: npc.id } })); }
+                catch { /* ok */ }
+              },
+            },
+          );
+          piperHandleRef.current = handle;
+        } catch {
+          // Piper module failed to load; fall through to legacy Web Speech path below.
         }
-        try { window.dispatchEvent(new CustomEvent('concordia:dialogue-ended', { detail: { npcId: npc.id } })); }
-        catch { /* event dispatch is best-effort */ }
-      };
-      utterance.onerror = () => {
-        setIsTalking(false);
-        try { window.dispatchEvent(new CustomEvent('concordia:dialogue-ended', { detail: { npcId: npc.id } })); }
-        catch { /* event dispatch is best-effort */ }
-      };
+      })();
 
-      utteranceRef.current = utterance;
-      window.speechSynthesis.speak(utterance);
+      // Note: legacy Web Speech path removed. The Piper module's internal
+      // fallback (lib/voice/piper-stream.ts:speakWithWebSpeech) handles the
+      // case where Piper is unavailable, so we don't need a parallel path
+      // here. archetype voice selection is intentionally simpler now —
+      // Piper voice mapping happens server-side via PIPER_VOICE env var.
     },
     [muted, npc.archetype, npc.id, cancelSpeech, startTalkingPoll]
   );

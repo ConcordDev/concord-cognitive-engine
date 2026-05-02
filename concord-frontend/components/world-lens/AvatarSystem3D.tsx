@@ -259,6 +259,8 @@ export default function AvatarSystem3D({
   // Phase 5: tick fn for the per-frame opacity fade on dying meshes;
   // hoisted to a ref so the existing game-loop block can invoke it.
   const deathFadeTickRef = useRef<(() => void) | null>(null);
+  // Tier 2 deferral 10: per-frame tick for all active ragdolls.
+  const ragdollTickRef = useRef<(() => void) | null>(null);
   const keysRef = useRef<Set<string>>(new Set());
   const playerPositionRef = useRef({ ...playerAvatar.position });
   const playerRotationRef = useRef(playerAvatar.rotation);
@@ -1018,9 +1020,43 @@ export default function AvatarSystem3D({
           hitReactionTimers.delete(id);
         }
 
-        // Crossfade into the collapse animation. The clip holds its final
-        // pose so the body stays prone after the 1.5s collapse.
+        // Always start the procedural collapse synchronously — cheap, plays
+        // for 1.5s then holds the prone pose. If the bone-physics ragdoll
+        // (Tier 2 deferral 10) is available and instantiates successfully,
+        // it preempts the mixer mid-clip and takes over the bones.
         playClip(mixer, 'death_collapse', 80);
+
+        // Tier 2 deferral 10: fire-and-forget ragdoll attempt. If Rapier is
+        // ready and the skeleton exposes all expected bones, the ragdoll
+        // takes over and stops the animation mixer for this avatar so
+        // physics drives the pose.
+        let ragdollHandle: { tickFrame: () => void; dispose: () => void } | null = null;
+        const meshForRagdoll =
+          (id === playerAvatar.id && playerMeshRef.current)
+            ? playerMeshRef.current as InstanceType<typeof import('three').Group>
+            : (npcMeshes.get(id) as { mesh: InstanceType<typeof import('three').Group> } | undefined)?.mesh;
+        const physicsAny = physicsWorld as unknown as { RAPIER?: unknown; world?: unknown };
+        if (meshForRagdoll && physicsAny.RAPIER && physicsAny.world) {
+          import('@/lib/combat/ragdoll').then((mod) => {
+            try {
+              const handle = mod.instantiateRagdoll(
+                meshForRagdoll as unknown as { getObjectByName: (n: string) => { name: string; getWorldPosition: (t: { x: number; y: number; z: number }) => void; position: { x: number; y: number; z: number; set?: (x: number, y: number, z: number) => void }; quaternion: { x: number; y: number; z: number; w: number; set?: (x: number, y: number, z: number, w: number) => void } } | undefined },
+                {
+                  RAPIER: physicsAny.RAPIER as Parameters<typeof mod.instantiateRagdoll>[1]['RAPIER'],
+                  world:  physicsAny.world  as Parameters<typeof mod.instantiateRagdoll>[1]['world'],
+                },
+                { hitDirection: detail.hitDirection, impactForce: 6 },
+              );
+              if (handle) {
+                ragdollHandle = handle;
+                mod.registerActiveRagdoll(handle);
+                if (!ragdollTickRef.current) ragdollTickRef.current = mod.tickAllActiveRagdolls;
+                // Stop the procedural clip — physics is driving now.
+                try { (mixer as { stopAllAction?: () => void }).stopAllAction?.(); } catch { /* ok */ }
+              }
+            } catch { /* fall back to procedural collapse already running */ }
+          }).catch(() => { /* import failure is non-fatal */ });
+        }
 
         // Phase 14: spatial death audio at the NPC's world position so the
         // kill-blow comes from the right direction (HRTF + reverb).
@@ -1087,6 +1123,14 @@ export default function AvatarSystem3D({
             });
           } catch {
             /* defensive cleanup */
+          }
+          // Tier 2 deferral 10: dispose the ragdoll's bodies + joints
+          // alongside the mesh disposal. Best-effort; module may not be loaded.
+          if (ragdollHandle) {
+            try {
+              ragdollHandle.dispose();
+              import('@/lib/combat/ragdoll').then((mod) => mod.unregisterActiveRagdoll(ragdollHandle!)).catch(() => { /* ok */ });
+            } catch { /* ok */ }
           }
           mixersRef.current.delete(id);
           npcMeshes.delete(id);
@@ -1360,6 +1404,10 @@ export default function AvatarSystem3D({
 
         // Phase 5: per-frame opacity fade on dying meshes
         deathFadeTickRef.current?.();
+
+        // Tier 2 deferral 10: tick all active ragdolls so their bones
+        // copy from rigid-body transforms each frame.
+        ragdollTickRef.current?.();
 
         // ── Movement style blend (0.4s transition) ─────────
         const sb = styleBlendRef.current;
