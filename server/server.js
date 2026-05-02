@@ -4779,6 +4779,8 @@ function authMiddleware(req, res, next) {
     "/api/inference/slos", "/api/audit/provenance",
     // Plugins & extensions
     "/api/plugins", "/api/macros",
+    // OpenAPI spec + Swagger UI need to be public so the browser can render docs.
+    "/api/openapi.json", "/api/openapi.yaml", "/api/docs",
     // Creator surfaces (leaderboard / trending / drift) — read-only public,
     // dashboard remains authed.
     "/api/creator/leaderboard", "/api/creator/trending-citations", "/api/creator/influence-drift",
@@ -4841,6 +4843,8 @@ function authMiddleware(req, res, next) {
     // World clock + weather + combat state — public reads.
     "/api/world/clock", "/api/world/npc-behavior", "/api/world/npc-archetypes",
     "/api/world/weather",
+    // World player surfaces — bazaar (vendor stalls), perf telemetry GET.
+    "/api/world/bazaar", "/api/world/perf-telemetry",
     "/api/combat/state",
     // Concord Link — public reads for anchors, cost preview, walker bazaar.
     // Auth is still enforced on /send, /inbox, /:id/read, /walkers/hire by
@@ -4873,7 +4877,13 @@ function authMiddleware(req, res, next) {
     // Foundation Atlas signal tomography
     "/api/atlas",
   ];
-  if (req.method === "GET" && !_isSovereignRoute && publicReadPaths.some(p => req.path.startsWith(p))) return next();
+  // Public-read bypass: anon GETs to whitelisted paths skip auth. But if the
+  // caller sent an Authorization header or auth cookie, run the full auth
+  // pipeline so req.user gets populated — that lets routes which want
+  // user-scoped behavior (search history, saved searches) see the JWT.
+  const _hasAuthHeader = !!(req.headers.authorization || req.headers["x-api-key"] ||
+                            req.cookies?.concord_auth || req.cookies?.concord_refresh);
+  if (req.method === "GET" && !_isSovereignRoute && !_hasAuthHeader && publicReadPaths.some(p => req.path.startsWith(p))) return next();
   // Gate 1 POST bypass: allow /api/repair POST without auth (frontend error fallback path)
   if (req.method === "POST" && req.path.startsWith("/api/repair")) return next();
   // Gate 1 POST bypass: allow creative registry POST without auth (public discovery)
