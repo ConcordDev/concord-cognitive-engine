@@ -4848,7 +4848,7 @@ function authMiddleware(req, res, next) {
     // Procedural creatures + emergent skills — public reads of taxonomy
     // and skill lists. Spawn / create / evolve still require auth.
     "/api/creature",
-    "/api/skills",
+    "/api/emergent-skills",
     // Dual Global & Creative Registry (public discovery)
     "/api/scope", "/api/creative",
     // Missing frontend routes (three-gate audit scan)
@@ -26600,18 +26600,19 @@ app.get("/api/creature/lineage/:id", (req, res) => {
 });
 
 // Emergent skills — author / evolve / list / get
-app.post("/api/skills/create", requireAuth, (req, res) => {
+// Emergent skills — author / evolve / list / get. Namespaced under
+// /api/emergent-skills/* to avoid colliding with the existing /api/skills
+// routes (skills/import, skills/export, skills/import-dir).
+app.post("/api/emergent-skills/create", requireAuth, (req, res) => {
   try {
     const userId = req.user?.id || req.headers["x-user-id"];
     const r = createEmergentSkill(db, { ...(req.body || {}), origin: req.body?.origin ?? userId ?? "user" });
     if (!r.ok) return res.status(400).json(r);
-    // Asset emergence: skill becomes an evo-asset whose interaction weight
-    // grows whenever it's used (see onSkillUsed in the gameplay bridge).
     try { _gameplayBridge.onSkillAuthored(db, { skill: r.skill, origin: userId ?? "user" }); } catch { /* non-fatal */ }
     res.status(201).json(r);
   } catch { res.status(500).json({ ok: false, error: "create_failed" }); }
 });
-app.post("/api/skills/evolve", requireAuth, (req, res) => {
+app.post("/api/emergent-skills/evolve", requireAuth, (req, res) => {
   try {
     const userId = req.user?.id || req.headers["x-user-id"];
     const { parentId, mutation = {} } = req.body || {};
@@ -26622,7 +26623,7 @@ app.post("/api/skills/evolve", requireAuth, (req, res) => {
     res.status(201).json(r);
   } catch { res.status(500).json({ ok: false, error: "evolve_failed" }); }
 });
-app.get("/api/skills/list", (req, res) => {
+app.get("/api/emergent-skills/list", (req, res) => {
   try {
     const filter = {
       origin:   req.query.origin   ? String(req.query.origin)   : undefined,
@@ -26631,7 +26632,7 @@ app.get("/api/skills/list", (req, res) => {
     res.json({ ok: true, skills: listSkills(filter) });
   } catch { res.status(500).json({ ok: false, error: "list_failed" }); }
 });
-app.get("/api/skills/:id", (req, res) => {
+app.get("/api/emergent-skills/:id", (req, res) => {
   const s = getSkill(req.params.id);
   if (!s) return res.status(404).json({ ok: false, error: "not_found" });
   res.json({ ok: true, skill: s });
