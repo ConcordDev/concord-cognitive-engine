@@ -18,6 +18,7 @@ import { createQuest } from "../emergent/quest-engine.js";
 import { recordEvent, EVENT_TYPES } from "../emergent/history-engine.js";
 import { registerWorldMeta } from "./cross-world-effectiveness.js";
 import { seedAnchorsFromWorldMeta } from "./concord-link.js";
+import { seedWalkersFromAuthored } from "./concord-link-walkers.js";
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const CONTENT_ROOT = join(__dir, "../../content");
@@ -285,10 +286,24 @@ export function seedContent({ db = null } = {}) {
     results.quests += seedQuestFile(factionQuests);
   }
 
+  // Walkers — promote any authored NPC with link_walker:true into the
+  // concord_link_walkers table so the runtime can dispatch them. Idempotent.
+  if (db) {
+    try {
+      const walkers = [..._authoredNPCs.values()].filter(n => n?.link_walker);
+      if (walkers.length > 0) {
+        const r = seedWalkersFromAuthored(db, walkers);
+        results.walkers = r.inserted;
+      }
+    } catch (err) {
+      logger.warn({ err: err.message }, "content_seeder_walkers_failed");
+    }
+  }
+
   _seeded = true;
 
   logger.info(
-    { factions: results.factions, npcs: results.npcs, lore: results.lore, quests: results.quests },
+    { factions: results.factions, npcs: results.npcs, lore: results.lore, quests: results.quests, walkers: results.walkers || 0 },
     "content_seeded"
   );
 

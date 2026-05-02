@@ -410,10 +410,13 @@ export function runSummit(criId, summitId) {
  *
  * @param {string} criId - CRI identifier
  * @param {string} summitId - Summit identifier
- * @param {{ decisionsReached?: string[], newResearchJobs?: string[], hypothesesUpdated?: string[] }} outcomes
+ * @param {{ decisionsReached?: string[], newResearchJobs?: string[], hypothesesUpdated?: string[], factionIds?: string[] }} outcomes
+ * @param {object} [bridge] - optional injected bridge { db, bridgeSummitToWorld, createEvent }
+ *                            for surfacing referendum outcomes into world events +
+ *                            faction_policy_state. Failure is silent.
  * @returns {{ ok: boolean, summit?: object, error?: string }}
  */
-export function completeSummit(criId, summitId, outcomes) {
+export function completeSummit(criId, summitId, outcomes, bridge = null) {
   try {
     const cri = _cris.get(criId);
     if (!cri) return { ok: false, error: "cri_not_found" };
@@ -490,6 +493,21 @@ export function completeSummit(criId, summitId, outcomes) {
           }
         }
       }
+    }
+
+    // Bridge to world: publish a referendum world event and persist faction
+    // policy state so NPC dialogue + behavior can react. Strictly best-effort —
+    // bridge failure must never block the summit completion.
+    if (bridge && typeof bridge.bridgeSummitToWorld === "function") {
+      try {
+        bridge.bridgeSummitToWorld({
+          db:          bridge.db,
+          summit,
+          cri,
+          createEvent: bridge.createEvent,
+          factionIds:  Array.isArray(outcomes?.factionIds) ? outcomes.factionIds : [],
+        });
+      } catch { /* silent — heartbeat invariant */ }
     }
 
     return { ok: true, summit };

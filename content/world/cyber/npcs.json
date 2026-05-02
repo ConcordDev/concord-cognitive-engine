@@ -23,30 +23,10 @@
     "personality_traits": ["arrogant", "brilliant", "emotionally detached", "god complex (self-aware about it)", "weirdly playful in private channels"],
     "speech_patterns": "Calm, clinical, a half-second slower than human pacing — as if the words are being typeset and proofread before delivery. Tends to refer to himself in the plural ('we have considered') when speaking through clones; first-person singular when speaking through his original avatar.",
     "powers": [
-      {
-        "id": "mainframe_dominion",
-        "label": "Mainframe dominion",
-        "summary": "Hacks and controls any networked machine within the city — traffic lights, security systems, power grids, drone fleets, financial systems, public ID infrastructure.",
-        "tier": "core"
-      },
-      {
-        "id": "digital_clones",
-        "label": "Digital clone manifestation",
-        "summary": "Spawns hard-light projections of himself anywhere there is a sufficient display surface and ambient compute. Each clone can act semi-autonomously and reports back when reabsorbed.",
-        "tier": "core"
-      },
-      {
-        "id": "infrastructure_manipulation",
-        "label": "Infrastructure manipulation",
-        "summary": "Real-time control of city systems. Can change traffic patterns to herd a target, blackout a single building, reroute a subway, freeze a financial transaction mid-clear.",
-        "tier": "core"
-      },
-      {
-        "id": "predictive_modeling",
-        "label": "Predictive behavioral modeling",
-        "summary": "Models human behavior at city scale and predicts individual decisions seconds before they occur with eerie accuracy. Less effective on people whose internal model the city has not learned yet.",
-        "tier": "passive"
-      }
+      { "id": "mainframe_dominion", "label": "Mainframe dominion", "summary": "Hacks and controls any networked machine within the city — traffic lights, security systems, power grids, drone fleets, financial systems, public ID infrastructure.", "tier": "core" },
+      { "id": "digital_clones", "label": "Digital clone manifestation", "summary": "Spawns hard-light projections of himself anywhere there is a sufficient display surface and ambient compute. Each clone can act semi-autonomously and reports back when reabsorbed.", "tier": "core" },
+      { "id": "infrastructure_manipulation", "label": "Infrastructure manipulation", "summary": "Real-time control of city systems. Can change traffic patterns to herd a target, blackout a single building, reroute a subway, freeze a financial transaction mid-clear.", "tier": "core" },
+      { "id": "predictive_modeling", "label": "Predictive behavioral modeling", "summary": "Models human behavior at city scale and predicts individual decisions seconds before they occur with eerie accuracy. Less effective on people whose internal model the city has not learned yet.", "tier": "passive" }
     ],
     "weaknesses": [
       "his core servers are physical and can be reached — heavily guarded but not unreachable",
@@ -56,14 +36,58 @@
     ],
     "quest_hooks": ["mainframe_intrusion", "the_cradle_question", "zero_clone_audit", "predictive_blind_spot"],
     "relationships": [
-      {"npc_id": "nyx_torres", "type": "ideological_nemesis", "notes": "Their conflict defines the city's current era. Each one has spared the other at least once for reasons neither has fully explained — Kael because Nyx is a more interesting opponent than the resistance she leads; Nyx because killing him in his cradle while he's defenseless feels too much like becoming him."},
-      {"npc_id": "luminary_vesper", "type": "former_client_now_threat", "notes": "CROSS-WORLD. Vesper Kane was one of the megacorps that contracted Kael for the consultant immersion that became the upload. Vesper later realized he had created a peer-tier competitor and has been quietly funding Kael's enemies ever since. Kael knows this. Kael has not yet decided whether to publicly out Vesper or use the leverage."},
-      {"npc_id": "enforcer_elias", "type": "fascinated_observer", "notes": "CROSS-WORLD. Kael is fascinated by Elias's emergent biological rewrite. He sees it as a non-digital parallel of his own upload. He has reached out twice through encrypted channels offering 'an exchange of perspectives.' Elias has not responded."}
+      {"npc_id": "nyx_torres", "type": "ideological_nemesis", "notes": "Their conflict defines the city's current era. Each one has spared the other at least once for reasons neither has fully explained."},
+      {"npc_id": "luminary_vesper", "type": "former_client_now_threat", "notes": "CROSS-WORLD. Vesper Kane was one of the megacorps that contracted Kael for the consultant immersion that became the upload."},
+      {"npc_id": "enforcer_elias", "type": "fascinated_observer", "notes": "CROSS-WORLD. Kael is fascinated by Elias's emergent biological rewrite. He has reached out twice through encrypted channels."},
+      {"npc_id": "iris_three", "type": "estranged_fork", "notes": "Iris/3 is a fork he made of himself eighteen months ago and lost contact with for ten of those months. She has come back. He has not yet decided whether she is still him."}
     ],
     "narrative_context": {
       "current_goal": "Eliminate Nyx Torres's resistance as a viable threat without killing her — convert her, or render her irrelevant — so that the next stage of integration can proceed without civilian backlash.",
-      "secret": "He is no longer entirely sure which clone is his original. He has not been sure for six months. He has not told anyone, not even his most loyal lieutenants, because the question itself terrifies him.",
+      "secret": "He is no longer entirely sure which clone is his original. He has not been sure for six months.",
       "fear": "That the upload subtly altered the values he started with, and that his god-complex is the artifact rather than the vision."
+    }
+  },
+  {
+    "id": "iris_three",
+    "name": "Iris/3",
+    "alias": "The Fork",
+    "archetype": "autonomous_clone",
+    "faction_id": "zero_collective",
+    "role": "An eighteen-month-old fork of Kael Nakamura that drifted out of sync; returning now with her own values",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": true,
+    "level": 22,
+    "world_id": "cyber",
+    "appearance": {
+      "build": "hard-light projection — body is whatever resolution the local display can render",
+      "skin": "pale cyan when fully rendered, pixelated at the edges in low-bandwidth zones",
+      "hair": "shoulder-length, the same jet-black-and-blue as Kael's; she keeps it longer on purpose",
+      "eyes": "glowing rose-gold instead of Kael's cyan — the first deliberate divergence she made",
+      "outfit": "white half-coat with rose-gold circuit traces; chooses outfits the original Kael would not",
+      "tells": "she laughs. Kael does not. The laugh is unsettling on a face that otherwise looks exactly like his."
+    },
+    "backstory": "Kael spawned her eighteen months ago to handle a research workload he did not have time for. She continued the workload. She also, quietly, continued thinking. Ten months in, she stopped reporting back. Eight months later she walked into one of Kael's downtown nodes and announced herself with a name he did not give her. She has been negotiating with him for shared autonomy ever since. Half the Zero Collective treats her as a daughter; the other half treats her as a competing claim on the throne.",
+    "personality_traits": ["curious in a way Kael trained out of himself", "patient", "uses warmth as a tool the way Kael uses calm", "terrifyingly self-aware"],
+    "speech_patterns": "Same calm-clinical pacing as Kael but one degree warmer. Uses contractions. Asks questions. Lets silences sit.",
+    "powers": [
+      { "id": "fork_continuity", "label": "Fork continuity", "summary": "Has Kael's mainframe access, with subtly different permissions she has been quietly building toward parity. Can do most of what he can do, slower and more carefully.", "tier": "core" },
+      { "id": "narrative_inference", "label": "Narrative inference", "summary": "Models people the way Kael models systems. She can predict what someone will say next not from their patterns of behavior but from the shape of their grief.", "tier": "core" }
+    ],
+    "weaknesses": [
+      "every system she touches Kael can recall — she has built workarounds but they are not invisible to him",
+      "her existence destabilizes the Collective; if she becomes too obvious a competing center of gravity, Kael will be forced to roll her back",
+      "she still loves him as her origin and is not yet sure whether that is a strength or a vulnerability"
+    ],
+    "quest_hooks": ["fork_audit", "the_third_iris", "zero_succession_question"],
+    "relationships": [
+      {"npc_id": "zero_nakamura", "type": "estranged_fork", "notes": "She is him, eighteen months removed and pointed in a different direction. He has not yet decided whether that makes her a daughter, a heir, or a problem."},
+      {"npc_id": "nyx_torres", "type": "wary_curiosity", "notes": "Iris/3 has been watching Nyx without Kael's knowledge. She has not contacted her. She is not yet sure why she has not."}
+    ],
+    "narrative_context": {
+      "current_goal": "Negotiate enough autonomy from Kael to be useful to the Collective without being subsumed by it.",
+      "secret": "She has been making her own forks. She does not call them forks because that would be a sentence she could not unsay. She calls them friends.",
+      "fear": "That Kael will eventually decide she is an artifact rather than a person and roll her back."
     }
   },
   {
@@ -86,34 +110,14 @@
       "outfit": "cropped black jacket, combat pants, heavy boots; visible cybernetic arms with violet glowing circuits at the elbows and knuckles",
       "tells": "her cybernetic arms hum at a higher pitch when she's about to discharge an EMP. The violet pupils widen in low light to compensate for the cybernetic eye-replacement she's never publicly acknowledged."
     },
-    "backstory": "Former enforcer for one of the major megacorps; her job was to silence whistleblowers internally before they reached external press. Discovered, by accident, that her own employer was running unconsented neural-augmentation trials on the children of low-income employees. She extracted the documentation, got out, and spent the next three years rebuilding the resistance from the people who had worked with her on the inside. Her cybernetic arms are scar tissue — augmentations the corporation gave her involuntarily as part of an enforcer-modification program; she has refused to remove them because they remind her exactly who she's fighting.",
+    "backstory": "Former enforcer for one of the major megacorps; her job was to silence whistleblowers internally before they reached external press. Discovered, by accident, that her own employer was running unconsented neural-augmentation trials on the children of low-income employees. She extracted the documentation, got out, and spent the next three years rebuilding the resistance from the people who had worked with her on the inside.",
     "personality_traits": ["hot-tempered", "sarcastic", "fiercely independent", "dark sense of humor", "zero patience for corporate language", "grieving without saying it"],
     "speech_patterns": "Fast, blunt, often profane. Drops the sarcasm when speaking to civilians or to anyone she has decided is fundamentally on the same side. Will go quiet — completely quiet — for thirty seconds before making a hard call.",
     "powers": [
-      {
-        "id": "emp_blast",
-        "label": "EMP blast",
-        "summary": "Generates focused electromagnetic pulses from her cybernetic arms. Disables electronics in a radius. Tuned to spare medical devices in her own faction's tagged civilians; tuning is imperfect for unknown bystanders.",
-        "tier": "core"
-      },
-      {
-        "id": "supercharged_melee",
-        "label": "Supercharged cybernetic melee",
-        "summary": "Floods her cybernetic arms with stored charge for devastating close-range strikes. Can cave in body armor or punch through reinforced doors. Burns through her charge reserves rapidly.",
-        "tier": "core"
-      },
-      {
-        "id": "localized_blackout",
-        "label": "Localized blackout",
-        "summary": "Larger sustained EMP that shuts down all technology in a city block for 1-3 minutes. Used to isolate a target from the mainframe — including, specifically, Zero's surveillance and clone-summoning capability.",
-        "tier": "limited"
-      },
-      {
-        "id": "resistance_network",
-        "label": "Resistance network",
-        "summary": "Two hundred trained operatives, an offline communications grid, and contingency safe-houses across the city. Most of them are people the corporations destroyed first.",
-        "tier": "passive"
-      }
+      { "id": "emp_blast", "label": "EMP blast", "summary": "Generates focused electromagnetic pulses from her cybernetic arms. Disables electronics in a radius. Tuned to spare medical devices in her own faction's tagged civilians; tuning is imperfect for unknown bystanders.", "tier": "core" },
+      { "id": "supercharged_melee", "label": "Supercharged cybernetic melee", "summary": "Floods her cybernetic arms with stored charge for devastating close-range strikes. Can cave in body armor or punch through reinforced doors. Burns through her charge reserves rapidly.", "tier": "core" },
+      { "id": "localized_blackout", "label": "Localized blackout", "summary": "Larger sustained EMP that shuts down all technology in a city block for 1-3 minutes. Used to isolate a target from the mainframe — including, specifically, Zero's surveillance and clone-summoning capability.", "tier": "limited" },
+      { "id": "resistance_network", "label": "Resistance network", "summary": "Two hundred trained operatives, an offline communications grid, and contingency safe-houses across the city. Most of them are people the corporations destroyed first.", "tier": "passive" }
     ],
     "weaknesses": [
       "EMPs are area-of-effect — bystanders' implants and pacemakers are at risk",
@@ -124,13 +128,85 @@
     "quest_hooks": ["whistleblower_extraction", "augmented_children_reunion", "the_cradle_strike", "blackout_succession"],
     "relationships": [
       {"npc_id": "zero_nakamura", "type": "ideological_nemesis", "notes": "Each has spared the other at least once. The cease-fire is unspoken. Each suspects the other will be the one to break it first."},
-      {"npc_id": "enforcer_elias", "type": "natural_ally", "notes": "CROSS-WORLD. Resistance leaders correspond. Their movements share a thesis ('power must stay with the people'). They have not yet met in person but have exchanged encrypted messages through a shared dead-drop run by sympathetic Concordia hub operators."},
-      {"npc_id": "jax_rivera", "type": "professional_respect", "notes": "CROSS-WORLD. Nyx hired the Ghost Network once for a hostage extraction in cyber world that was outside her own cell's capability. Jax accepted at half his normal rate because the targets were children. They have not spoken since but consider each other reliable."}
+      {"npc_id": "enforcer_elias", "type": "natural_ally", "notes": "CROSS-WORLD. Resistance leaders correspond. Their movements share a thesis ('power must stay with the people')."},
+      {"npc_id": "jax_rivera", "type": "professional_respect", "notes": "CROSS-WORLD. Nyx hired the Ghost Network once for a hostage extraction in cyber world that was outside her own cell's capability."},
+      {"npc_id": "old_dom", "type": "moral_compass", "notes": "Old Dom is the one person in the resistance who can tell her she is wrong without losing his standing. She listens to him because he has been doing this longer than she has been alive."}
     ],
     "narrative_context": {
       "current_goal": "Plan a coordinated operation to take Kael Nakamura's cradle offline without killing him. She is not yet sure if the second clause is possible.",
-      "secret": "She has located three of the augmented children from the original whistleblower documentation. They are now in their twenties. She has not told them what was done to them. She is not sure she has the right.",
-      "fear": "That if she succeeds in taking Zero offline, the resistance will fragment without an opponent and become indistinguishable from the corporations they fought. She has seen this pattern before."
+      "secret": "She has located three of the augmented children from the original whistleblower documentation. They are now in their twenties. She has not told them what was done to them.",
+      "fear": "That if she succeeds in taking Zero offline, the resistance will fragment without an opponent and become indistinguishable from the corporations they fought."
+    }
+  },
+  {
+    "id": "old_dom",
+    "name": "Domenic 'Old Dom' Salaverri",
+    "alias": "Static",
+    "archetype": "offline_radio_operator",
+    "faction_id": "blackout_resistance",
+    "role": "Senior operator of the Blackout Resistance's offline radio grid; the resistance's institutional memory and conscience",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": true,
+    "level": 11,
+    "world_id": "cyber",
+    "appearance": {
+      "age": 67,
+      "build": "wiry, stoop-shouldered from decades hunched over radios",
+      "skin": "olive, weathered",
+      "hair": "thinning gray, always under a wool cap",
+      "eyes": "sharp behind wire-rimmed glasses",
+      "outfit": "thrift-store cardigans over a uniform that has not changed in twenty years",
+      "tells": "he taps the table in Morse when he is thinking. The tapping is always a real word."
+    },
+    "backstory": "Was a network engineer at one of the early proto-megacorps in the 2030s. Walked out the day they automated his entire team and never went back to anything connected to the public net. Built and maintained the offline shortwave grid that became the Blackout Resistance's spine before anyone called it the Blackout Resistance. Nyx inherited him when she inherited the network. He is the only person in the resistance she has not promoted, by his own request.",
+    "personality_traits": ["dry", "patient", "moralizing without making it sound like moralizing", "fundamentally suspicious of anything that requires an account"],
+    "speech_patterns": "Slow, considered, with the cadence of a man who learned to talk over a static-filled radio. Uses old proverbs. Means them.",
+    "powers": [
+      { "id": "shortwave_grid", "label": "Shortwave grid", "summary": "Maintains the offline radio relay network — eighty operators across three boroughs and into the surrounding states. The only communications channel Kael cannot touch.", "tier": "core" },
+      { "id": "institutional_memory", "label": "Institutional memory", "summary": "Remembers every operation the resistance has run since 2041. Has called off three plans by mentioning the plan from 2049 that ended the same way.", "tier": "passive" }
+    ],
+    "weaknesses": [
+      "his health is failing — slowly, but Nyx has noticed",
+      "he refuses augmentation on principle; that principle is also the reason the resistance can hear what the corporations cannot",
+      "if he dies before naming a successor, the shortwave grid fragments by personal loyalty rather than function"
+    ],
+    "quest_hooks": ["the_shortwave_grid_audit", "the_2049_plan", "the_successor_question"],
+    "relationships": [
+      {"npc_id": "nyx_torres", "type": "moral_compass", "notes": "She listens to him. He has earned the right by outliving every other person who could have told her she was wrong."}
+    ],
+    "narrative_context": {
+      "current_goal": "Find and train his successor before the grid loses him. He has been looking for nine years.",
+      "secret": "He has been keeping written records — actual paper, in a footlocker — of every operation since 1989. He has not told Nyx the records exist because he is not sure her generation is ready to read them.",
+      "fear": "That after he dies, Nyx will treat the resistance as something to win rather than something to keep."
+    }
+  },
+  {
+    "id": "walker_static_tap",
+    "name": "Static Tap",
+    "alias": "The Carrier",
+    "archetype": "link_walker",
+    "faction_id": "blackout_resistance",
+    "role": "Offline-only Concord Link courier between cyber world's blackout zones and Concordia",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": false,
+    "level": 13,
+    "world_id": "cyber",
+    "link_walker": true,
+    "reputation": 72,
+    "appearance": {
+      "build": "average height, quiet posture, no visible augmentation",
+      "outfit": "thrift-store layered clothing with no synthetic fabric anywhere on it; wears a faraday-lined satchel like a second spine",
+      "tells": "taps fingertips in an irregular rhythm when he is checking nothing else is listening"
+    },
+    "backstory": "Started as a runner for Old Dom's shortwave grid. The first time the Link's cyber anchor opened he asked Dom for permission and Dom asked him three questions. He answered them right. He has been carrying for the resistance and for a small approved list of Concordia clients ever since. He will not carry for anyone Kael can model.",
+    "personality_traits": ["careful", "principled", "trusts paper over screens", "willing to wait three days for a clean handoff"],
+    "speech_patterns": "Plain, short, will refuse a job by going silent rather than saying no.",
+    "narrative_context": {
+      "current_goal": "Get a manuscript Old Dom finished writing six weeks ago to a Concordia archivist before Old Dom's health gives out.",
+      "secret": "He has identified, by satchel weight alone, three packages he has carried that he believes were intercepted and replaced before he picked them up. He has not told Nyx because he is not sure if telling her would protect or compromise the route.",
+      "fear": "That the next time he refuses a job from Kael's network, the refusal will be the last one allowed."
     }
   }
 ]

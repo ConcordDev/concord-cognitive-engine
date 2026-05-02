@@ -17,6 +17,7 @@ import logger from "../logger.js";
 import { synthesizeLore, generateQuestChain, writeDialogueTree } from "./oracle-brain.js";
 import { getTimeline } from "../emergent/history-engine.js";
 import { getAuthoredNPC, getAuthoredFaction, getQuestsForNPC } from "./content-seeder.js";
+import { getFactionPolicyState } from "./council-world-bridge.js";
 
 const DIALOGUE_TTL_MS   = 5 * 60 * 1000;   // 5 minutes
 const QUEST_TTL_MS      = 10 * 60 * 1000;  // 10 minutes
@@ -48,13 +49,24 @@ function cacheSet(map, key, result) {
  * Build enriched npcTraits from authored NPC data.
  * Falls back to the raw npcId string if no authored NPC found.
  */
-function buildNPCTraits(npcId) {
+function buildNPCTraits(npcId, db = null) {
   const npc = getAuthoredNPC(npcId);
   if (!npc) {
     return { id: npcId, name: npcId, personality: "reserved", role: "resident" };
   }
 
   const faction = npc.faction_id ? getAuthoredFaction(npc.faction_id) : null;
+
+  // Pull the most recent council referendum outcome for the NPC's faction so
+  // dialogue can visibly shift after a Phase A summit. Best-effort: a missing
+  // db, missing table, or missing faction simply leaves recentPolicy null.
+  let recentPolicy = null;
+  if (db && npc.faction_id) {
+    try {
+      const history = getFactionPolicyState(db, npc.faction_id);
+      if (history?.length > 0) recentPolicy = history[0].outcome;
+    } catch { /* policy is best-effort context, never blocks dialogue */ }
+  }
 
   return {
     id:          npc.id,
@@ -67,6 +79,7 @@ function buildNPCTraits(npcId) {
     factionGoal: faction?.goal ?? "",
     currentGoal: npc.narrative_context?.current_goal ?? "",
     fears:       npc.narrative_context?.fear ?? "",
+    recentPolicy,
     // Deliberately exclude secrets from LLM context — those are for human authors only
   };
 }
@@ -74,15 +87,29 @@ function buildNPCTraits(npcId) {
 /**
  * Build enriched factionState from authored faction data.
  */
-function buildFactionState(npcId) {
+function buildFactionState(npcId, db = null) {
   const npc = getAuthoredNPC(npcId);
   if (!npc?.faction_id) {
-    return { factionName: "Independent", reputation: 50, tensions: "" };
+    return { factionName: "Independent", reputation: 50, tensions: "", recentPolicy: null };
   }
 
   const faction = getAuthoredFaction(npc.faction_id);
   if (!faction) {
-    return { factionName: "Independent", reputation: 50, tensions: "" };
+    return { factionName: "Independent", reputation: 50, tensions: "", recentPolicy: null };
+  }
+
+  // Phase A bridge: pull the most recent referendum outcome so quest chains
+  // reflect council decisions. Failure is silent — we never block on policy.
+  let recentPolicy = null;
+  let policyTimestamp = null;
+  if (db) {
+    try {
+      const history = getFactionPolicyState(db, npc.faction_id);
+      if (history?.length > 0) {
+        recentPolicy    = history[0].outcome;
+        policyTimestamp = history[0].ts;
+      }
+    } catch { /* best-effort */ }
   }
 
   return {
@@ -91,6 +118,8 @@ function buildFactionState(npcId) {
     tensions:     faction.faction_state?.tensions ?? "",
     rivalFactions: faction.rival_factions?.join(", ") ?? "",
     motto:        faction.motto ?? "",
+    recentPolicy,
+    policyTimestamp,
   };
 }
 
@@ -132,12 +161,21 @@ function buildQuestContext(npcId, questId) {
  * @param {string} playerRelationship  - "stranger" | "ally" | "enemy" | "neutral"
  * @returns {Promise<{ ok: boolean, dialogueTree?: object, authored: boolean, error?: string }>}
  */
-export async function generateAuthoredDialogue(npcId, questId = null, playerRelationship = "neutral") {
-  const cacheKey = `${npcId}:${questId ?? "none"}:${playerRelationship}`;
+export async function generateAuthoredDialogue(npcId, questId = null, playerRelationship = "neutral", db = null) {
+  // Cache-bust on policy timestamp so a fresh referendum invalidates stale dialogue.
+  const npcForKey = getAuthoredNPC(npcId);
+  let policyKey = "0";
+  if (db && npcForKey?.faction_id) {
+    try {
+      const h = getFactionPolicyState(db, npcForKey.faction_id);
+      if (h?.length > 0) policyKey = String(h[0].ts);
+    } catch { /* default 0 */ }
+  }
+  const cacheKey = `${npcId}:${questId ?? "none"}:${playerRelationship}:p${policyKey}`;
   const cached = cacheGet(_dialogueCache, cacheKey, DIALOGUE_TTL_MS);
   if (cached) return { ...cached, cached: true };
 
-  const npcTraits    = buildNPCTraits(npcId);
+  const npcTraits    = buildNPCTraits(npcId, db);
   const questContext = buildQuestContext(npcId, questId);
   const authored     = getAuthoredNPC(npcId) !== null;
 
@@ -161,12 +199,14 @@ export async function generateAuthoredDialogue(npcId, questId = null, playerRela
  * @param {number} playerLevel
  * @returns {Promise<{ ok: boolean, questChain?: object, authored: boolean, error?: string }>}
  */
-export async function generateArcQuestChain(npcId, playerLevel = 1) {
-  const cacheKey = `${npcId}:${playerLevel}`;
+export async function generateArcQuestChain(npcId, playerLevel = 1, db = null) {
+  const factionState = buildFactionState(npcId, db);
+  // Quest chain caches separately per policy so a referendum forks the chain.
+  const policyKey = factionState.policyTimestamp ?? "0";
+  const cacheKey = `${npcId}:${playerLevel}:p${policyKey}`;
   const cached = cacheGet(_questCache, cacheKey, QUEST_TTL_MS);
   if (cached) return { ...cached, cached: true };
 
-  const factionState = buildFactionState(npcId);
   const authored     = getAuthoredNPC(npcId) !== null;
 
   // For authored NPCs, enrich the factionState with the NPC's narrative context

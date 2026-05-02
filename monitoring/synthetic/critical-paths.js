@@ -71,6 +71,51 @@ const CHECKS = [
     expectedStatus: 200,
     validate: (body) => body.ok === true,
   },
+  // ── Phase F2 probes ─────────────────────────────────────────────────────
+  // These hit the heartbeat-driven systems. If world/clock returns and the
+  // phase advances between successive probe runs, the heartbeat is alive.
+  {
+    name: "world-clock",
+    url: `${BASE_URL}/api/world/clock`,
+    expectedStatus: 200,
+    validate: (body) => body.ok === true && typeof body.phase === "number" && typeof body.segment === "string",
+  },
+  {
+    name: "world-weather-concordia",
+    url: `${BASE_URL}/api/world/weather/concordia`,
+    expectedStatus: 200,
+    validate: (body) => body.ok === true && body.weather && typeof body.weather.type === "string",
+  },
+  {
+    name: "creature-topologies",
+    url: `${BASE_URL}/api/creature/topologies`,
+    expectedStatus: 200,
+    validate: (body) => Array.isArray(body.topologies) && body.topologies.length >= 7,
+  },
+  {
+    name: "creature-baselines-fantasy",
+    url: `${BASE_URL}/api/creature/baselines/fantasy`,
+    expectedStatus: 200,
+    validate: (body) => Array.isArray(body.baselines) && body.baselines.length >= 5,
+  },
+  {
+    name: "emergent-skills-list",
+    url: `${BASE_URL}/api/emergent-skills/list`,
+    expectedStatus: 200,
+    validate: (body) => body.ok === true && Array.isArray(body.skills),
+  },
+  {
+    name: "concord-link-anchors-concordia",
+    url: `${BASE_URL}/api/concord-link/anchors/concordia`,
+    expectedStatus: 200,
+    validate: (body) => body.ok === true && Array.isArray(body.anchors),
+  },
+  {
+    name: "black-market-browse",
+    url: `${BASE_URL}/api/black-market`,
+    expectedStatus: 200,
+    validate: (body) => body.ok === true && Array.isArray(body.listings),
+  },
 ];
 
 async function runCheck(check) {

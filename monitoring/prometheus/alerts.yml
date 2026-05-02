@@ -57,13 +57,22 @@ groups:
           description: "Average latency: {{ $value }}ms (threshold: 30s)"
 
       - alert: ConcordNoHeartbeat
-        expr: rate(concord_heartbeat_tick_total[5m]) == 0
+        expr: rate(concord_heartbeat_ticks_total[5m]) == 0
         for: 3m
         labels:
           severity: critical
         annotations:
           summary: "Concord heartbeat has stopped"
-          description: "No heartbeat ticks in the last 5 minutes — server may be hung"
+          description: "No heartbeat ticks in the last 5 minutes — server may be hung. Every emergent system is silently frozen."
+
+      - alert: ConcordHeartbeatModuleErrors
+        expr: rate(concord_heartbeat_module_errors_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Heartbeat module {{ $labels.module }} is throwing errors"
+          description: "Module is averaging > 0.1 errors/sec for 5+ minutes. The runHeartbeatModule wrapper is catching them, but the underlying bug should be fixed."
 
       - alert: ConcordSyntheticCheckFailing
         expr: concord_synthetic_check_pass == 0

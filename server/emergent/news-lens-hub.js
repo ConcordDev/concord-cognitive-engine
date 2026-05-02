@@ -602,6 +602,107 @@ export function decompressNewsDTU(STATE, dtuId) {
   };
 }
 
+/**
+ * Auto-pull from world_events_log into the News lens.
+ *
+ * world_events_log is the append-only audit log emitted by world-mechanics
+ * (chunk crossings, combat outcomes, referendum resolutions from Phase A,
+ * etc). This function selects rows fired since `sinceUnixSec` and turns
+ * each into a regular event DTU on STATE.dtus, where the existing
+ * compressNewsEvents pipeline can roll them up into Megas and Hypers.
+ *
+ * Idempotent across overlapping windows because each row's id becomes the
+ * dtu id, and STATE.dtus is a Map so duplicates are overwritten in-place.
+ *
+ * Caller is responsible for tracking and advancing `sinceUnixSec` between
+ * polls (typically STATE._lastNewsLogPoll). Returns the new high-water
+ * mark so callers can store it without scanning the full result.
+ *
+ * @param {Object} STATE
+ * @param {import('better-sqlite3').Database} db
+ * @param {number} sinceUnixSec - rows with fired_at strictly greater are pulled
+ * @param {Object} [opts]
+ * @param {number} [opts.limit=50] - hard cap per call to keep tick latency bounded
+ * @returns {{ ok: boolean, ingested: number, highWaterMark: number }}
+ */
+export function pullWorldEventsIntoNews(STATE, db, sinceUnixSec, opts = {}) {
+  const limit = Math.max(1, Math.min(opts.limit || 50, 500));
+  if (!STATE?.dtus || !db) return { ok: false, ingested: 0, highWaterMark: sinceUnixSec || 0 };
+
+  let rows = [];
+  try {
+    rows = db.prepare(`
+      SELECT id, city_id, user_id, trigger_id, mechanic_id, action,
+             reward, context_json, fired_at
+        FROM world_events_log
+       WHERE strftime('%s', fired_at) > ?
+       ORDER BY fired_at ASC
+       LIMIT ?
+    `).all(String(sinceUnixSec || 0), limit);
+  } catch {
+    // Table may not exist on older deploys; bail without throwing.
+    return { ok: false, ingested: 0, highWaterMark: sinceUnixSec || 0 };
+  }
+
+  let ingested = 0;
+  let highWater = sinceUnixSec || 0;
+
+  for (const row of rows) {
+    try {
+      const firedAtSec = Math.floor(new Date(row.fired_at).getTime() / 1000);
+      if (firedAtSec > highWater) highWater = firedAtSec;
+
+      // Skip if already ingested
+      if (STATE.dtus.has(row.id)) continue;
+
+      let context = {};
+      try { context = JSON.parse(row.context_json || "{}"); } catch { /* default {} */ }
+
+      const dtu = {
+        id:        row.id,
+        title:     `${row.trigger_id}${row.action ? `:${row.action}` : ""}${row.city_id ? ` · ${row.city_id}` : ""}`,
+        tier:      "regular",
+        source:    "world_events_log",
+        domain:    inferDomainFromTrigger(row.trigger_id),
+        human:     {
+          summary: `Event ${row.trigger_id}${row.user_id ? ` by ${row.user_id}` : ""} in ${row.city_id || "concordia"}.`,
+        },
+        core:      {
+          definitions: [],
+          invariants:  [],
+          claims:      [`trigger=${row.trigger_id}`],
+        },
+        meta: {
+          eventOrigin:     true,
+          sourceEventType: row.trigger_id,
+          cityId:          row.city_id,
+          userId:          row.user_id,
+          mechanicId:      row.mechanic_id || null,
+          context,
+        },
+        createdAt: row.fired_at,
+        timestamp: row.fired_at,
+      };
+
+      STATE.dtus.set(row.id, dtu);
+      ingested++;
+    } catch { /* per-row failures are silent — heartbeat invariant */ }
+  }
+
+  return { ok: true, ingested, highWaterMark: highWater };
+}
+
+function inferDomainFromTrigger(triggerId) {
+  if (!triggerId) return "general";
+  const t = String(triggerId).toLowerCase();
+  if (t.includes("combat") || t.includes("hit") || t.includes("kill"))     return "combat";
+  if (t.includes("referendum") || t.includes("council") || t.includes("vote")) return "governance";
+  if (t.includes("market") || t.includes("trade") || t.includes("listing"))  return "economy";
+  if (t.includes("walker") || t.includes("link") || t.includes("message"))   return "communication";
+  if (t.includes("zone") || t.includes("travel") || t.includes("portal"))    return "travel";
+  return "general";
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function getWeekNumber(d) {

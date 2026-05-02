@@ -1985,9 +1985,22 @@ export default function WorldLensPage() {
         emitHitNumber(data.damage, element, !!data.isCrit);
         emitScreenShake(data.isCrit ? 5 : Math.min(4, Math.ceil(data.damage / 20)));
         emitHitStop(data.isCrit ? 140 : 70);
+        // Phase F fix 3: pass damage magnitude + target world position so
+        // GameJuice can route through spatial audio (HRTF + occlusion) and
+        // scale visual feedback intensity by hit weight.
+        const targetPos = combatStateRef.current.target?.position;
         window.dispatchEvent(
           new CustomEvent('concordia:game-juice', {
-            detail: { trigger: data.isCrit ? 'combat-crit' : 'combat-hit' },
+            detail: {
+              trigger: data.isCrit ? 'combat-crit' : 'combat-hit',
+              opts: {
+                magnitude: data.damage,
+                targetId: combatStateRef.current.target?.id,
+                position: targetPos
+                  ? { x: targetPos.x, y: targetPos.y, z: targetPos.z }
+                  : undefined,
+              },
+            },
           })
         );
 
@@ -2040,9 +2053,20 @@ export default function WorldLensPage() {
         pushCombatLog(`${targetName} defeated!`, 'death');
         emitScreenShake(6);
         emitHitStop(200);
+        // Phase F fix 3: spatial-position the kill SFX so it plays from where
+        // the kill happened rather than as a flat 2D blast.
+        const killPos = combatStateRef.current.target?.position;
         window.dispatchEvent(
           new CustomEvent('concordia:game-juice', {
-            detail: { trigger: 'combat-kill' },
+            detail: {
+              trigger: 'combat-kill',
+              opts: {
+                targetId: combatStateRef.current.target?.id,
+                position: killPos
+                  ? { x: killPos.x, y: killPos.y, z: killPos.z }
+                  : undefined,
+              },
+            },
           })
         );
         // Phase 5 death collapse: visible buckle + face-plant + 6.5s
@@ -2422,6 +2446,22 @@ export default function WorldLensPage() {
     [dialogueCtx]
   );
 
+  // Phase F fix 2: ConcordiaScene's canvas raycaster dispatches
+  // `concordia:open-dialogue` when the player clicks an NPC mesh. Look up
+  // the full NPC from rawWorldNPCs and route into openNPCDialogue, which
+  // already handles conscious vs simple NPCs.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { npcId?: string } | undefined;
+      const npcId = detail?.npcId;
+      if (!npcId) return;
+      const npc = rawWorldNPCs.find((n) => n.id === npcId);
+      if (npc) openNPCDialogue(npc);
+    };
+    window.addEventListener('concordia:open-dialogue', handler);
+    return () => window.removeEventListener('concordia:open-dialogue', handler);
+  }, [rawWorldNPCs, openNPCDialogue]);
+
   const handleSelectCombatTarget = useCallback(
     (p: { id: string; name: string; type: 'enemy' | 'player' }) => {
       setCombatState((prev) => ({
@@ -2762,6 +2802,7 @@ export default function WorldLensPage() {
             active={false}
           />
           <SoundscapeEngine
+            initialDistrict={activeDistrict.id}
             playerPosition={{
               x: playerAvatar.position.x,
               y: playerAvatar.position.y,

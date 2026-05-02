@@ -4835,6 +4835,20 @@ function authMiddleware(req, res, next) {
     "/api/export",
     // Repair cortex v3.1 (frontend error reporting must work without auth)
     "/api/repair",
+    // World clock + weather + combat state — public reads.
+    "/api/world/clock", "/api/world/npc-behavior", "/api/world/npc-archetypes",
+    "/api/world/weather",
+    "/api/combat/state",
+    // Concord Link — public reads for anchors, cost preview, walker bazaar.
+    // Auth is still enforced on /send, /inbox, /:id/read, /walkers/hire by
+    // the route handlers themselves.
+    "/api/concord-link",
+    // Black market — public browse of redacted listings; purchase requires auth.
+    "/api/black-market",
+    // Procedural creatures + emergent skills — public reads of taxonomy
+    // and skill lists. Spawn / create / evolve still require auth.
+    "/api/creature",
+    "/api/emergent-skills",
     // Dual Global & Creative Registry (public discovery)
     "/api/scope", "/api/creative",
     // Missing frontend routes (three-gate audit scan)
@@ -5405,6 +5419,25 @@ async function initMetrics() {
     METRICS.counters.citationFailures = new prom.Counter({
       name: "concord_citation_integrity_failures_total",
       help: "Total citation integrity check failures",
+      registers: [METRICS.registry]
+    });
+
+    // Heartbeat liveness — incremented every governorTick. If the rate of
+    // this counter drops to 0 the heartbeat has died and every emergent
+    // system is silently frozen. The Prometheus alert rule is in
+    // monitoring/prometheus/alerts/heartbeat.yml.
+    METRICS.counters.heartbeatTicks = new prom.Counter({
+      name: "concord_heartbeat_ticks_total",
+      help: "Total governor heartbeat ticks executed",
+      registers: [METRICS.registry]
+    });
+
+    // Per-module heartbeat block error counter so we know which tick block
+    // is throwing (and which to wrap-fix). Routed through runHeartbeatModule.
+    METRICS.counters.heartbeatModuleErrors = new prom.Counter({
+      name: "concord_heartbeat_module_errors_total",
+      help: "Errors caught inside individual heartbeat tick blocks, by module",
+      labelNames: ["module"],
       registers: [METRICS.registry]
     });
 
@@ -13346,7 +13379,15 @@ async function initGhostFleet() {
   // 15. CRI System
   try {
     const cri = await import("./emergent/cri-system.js");
+    const councilBridge = await import("./lib/council-world-bridge.js").catch(() => null);
+    const worldEvents   = await import("./lib/world-events.js").catch(() => null);
     GHOST_FLEET_STATUS.modules["cri-system"] = { loaded: true, loadedAt: new Date().toISOString() };
+
+    // Inject the world bridge so summit outcomes surface as referendum world
+    // events and faction policy state. Bridge failures are silent (see bridge impl).
+    const _summitBridge = (councilBridge && worldEvents)
+      ? { db, bridgeSummitToWorld: councilBridge.bridgeSummitToWorld, createEvent: worldEvents.createEvent }
+      : null;
 
     register("cri", "create", (_ctx, input = {}) => cri.createCRI(input.name, input.domain));
     register("cri", "get", (_ctx, input = {}) => cri.getCRI(input.id));
@@ -13356,7 +13397,7 @@ async function initGhostFleet() {
     register("cri", "create_program", (_ctx, input = {}) => cri.createProgram(input.criId, input.title, input.lead));
     register("cri", "schedule_summit", (_ctx, input = {}) => cri.scheduleSummit(input.criId, input.title, input.participants, input.agenda));
     register("cri", "run_summit", (_ctx, input = {}) => cri.runSummit(input.criId, input.summitId));
-    register("cri", "complete_summit", (_ctx, input = {}) => cri.completeSummit(input.criId, input.summitId, input.outcomes));
+    register("cri", "complete_summit", (_ctx, input = {}) => cri.completeSummit(input.criId, input.summitId, input.outcomes, _summitBridge));
     register("cri", "status", (_ctx, input = {}) => cri.getCRIStatus(input.id));
     register("cri", "metrics", () => cri.getCRIMetrics());
 
@@ -26363,6 +26404,282 @@ app.use("/api/anomalies", createAnomaliesRouter({ requireAuth, db }));
 import createConcordLinkRouter from "./routes/concord-link.js";
 app.use("/api/concord-link", createConcordLinkRouter({ requireAuth, db, emitToUser }));
 
+// Link Walker bazaar + journey tracking. Mounted as a sub-path under
+// concord-link so the panel UI can stay co-located.
+import createConcordLinkWalkersRouter from "./routes/concord-link-walkers.js";
+app.use("/api/concord-link/walkers", createConcordLinkWalkersRouter({ requireAuth, db }));
+
+// Black market — Sael's stall, where intercepted Concord Link messages get
+// surfaced for resale (sparks only, sender/receiver redacted). Listings are
+// seeded by the walker journey tick when an interception lands.
+import createBlackMarketRouter from "./routes/black-market.js";
+app.use("/api/black-market", createBlackMarketRouter({ requireAuth, db }));
+
+// Vehicles — cars, gliders, planes for big-world traversal. Mount/dismount
+// is server-authoritative; speed clamp in city-presence.js reads vehicleType
+// from the presence entry only.
+import createVehiclesRouter from "./routes/vehicles.js";
+app.use("/api/vehicles", createVehiclesRouter({ requireAuth, db }));
+
+// Server-authoritative combat netcode — broadcasts attack/hit/death events
+// to nearby peers. Hits are validated against attacker reach + weapon damage
+// cap + cooldown before broadcast. Failed validation drops the event.
+import createCombatRouter from "./routes/combat.js";
+import {
+  getUserPosition as _presenceGetUserPosition,
+  getUserIdsInCity as _presenceGetUserIdsInCity,
+} from "./lib/city-presence.js";
+const _combatGetNearbyUserIds = (cityId, position, radius) => {
+  if (!cityId || !position) return [];
+  try {
+    const ids = _presenceGetUserIdsInCity(cityId) ?? [];
+    const out = [];
+    for (const uid of ids) {
+      const p = _presenceGetUserPosition(uid);
+      if (!p) continue;
+      const dx = p.x - position.x, dz = p.z - position.z;
+      if (Math.sqrt(dx * dx + dz * dz) <= radius) out.push(uid);
+    }
+    return out;
+  } catch { return []; }
+};
+app.use("/api/combat", createCombatRouter({
+  requireAuth,
+  REALTIME,
+  getUserPosition:  _presenceGetUserPosition,
+  getNearbyUserIds: _combatGetNearbyUserIds,
+  db,
+}));
+
+// Procedural creatures + emergent skills. Creatures are physics-validated
+// procedural spawns from in-fiction descriptions (a dragon described in
+// dialogue can be physically generated and spawned). Skills are NOT static —
+// they're authored at runtime by NPCs / users / emergents / enemies and
+// can evolve into derivative skills.
+import { generateCreature, validateCreaturePhysics, TOPOLOGIES as CREATURE_TOPOLOGIES } from "./lib/procedural-creature.js";
+import { bootEmergentSkills, createSkill as createEmergentSkill, evolveSkill, getSkill, listSkills, attachSkills } from "./lib/emergent-skills.js";
+try {
+  bootEmergentSkills(db);
+  structuredLog("info", "emergent_skills_boot", { ok: true });
+} catch (err) {
+  structuredLog("warn", "emergent_skills_boot_failed", { error: err?.message });
+}
+
+// World clock — server-authoritative day/night phase, broadcast every 30s.
+import { startWorldClockBroadcast, getWorldPhase, getDayPhase, WORLD_CLOCK_CONSTANTS } from "./lib/world-clock.js";
+import { getCurrentBehavior as getNPCCurrentBehavior, setNPCSchedule, NPC_SCHEDULE_ARCHETYPES, batchCurrentBehaviors } from "./lib/npc-schedules.js";
+import { advanceWeather as advanceWorldWeather, getWeather as getWorldWeather, WEATHER_CONSTANTS } from "./lib/weather.js";
+import { applyHitToState, tickCombatState, getCombatState, grantIFrames as _grantIFrames, setBlock as _setBlock, resetCombatState } from "./lib/combat-state.js";
+
+app.get("/api/world/weather/:worldId", (req, res) => {
+  res.json({ ok: true, weather: getWorldWeather(req.params.worldId) });
+});
+app.get("/api/combat/state/:actorId", (req, res) => {
+  res.json({ ok: true, state: getCombatState(req.params.actorId) });
+});
+app.post("/api/combat/iframes", requireAuth, (req, res) => {
+  const userId = req.user?.id || req.headers["x-user-id"];
+  if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
+  _grantIFrames(userId, Math.min(800, Math.max(50, Number(req.body?.durationMs) || 350)));
+  res.json({ ok: true });
+});
+app.post("/api/combat/block", requireAuth, (req, res) => {
+  const userId = req.user?.id || req.headers["x-user-id"];
+  if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
+  _setBlock(userId, Math.min(2000, Math.max(100, Number(req.body?.durationMs) || 600)));
+  res.json({ ok: true });
+});
+
+// Start the world-clock broadcast loop once REALTIME is ready. We poll briefly
+// for it because REALTIME may finish initializing after this import runs.
+let _worldClockStop = null;
+const _startWorldClock = () => {
+  if (_worldClockStop) return;
+  if (REALTIME?.io) {
+    _worldClockStop = startWorldClockBroadcast(REALTIME);
+    structuredLog("info", "world_clock_broadcast_started", { dayLengthMs: WORLD_CLOCK_CONSTANTS.dayLengthMs });
+  } else {
+    setTimeout(_startWorldClock, 1000);
+  }
+};
+_startWorldClock();
+
+app.get("/api/world/clock", (_req, res) => {
+  const phase = getWorldPhase();
+  res.json({
+    ok: true,
+    phase,
+    segment: getDayPhase(phase),
+    dayLengthMs: WORLD_CLOCK_CONSTANTS.dayLengthMs,
+    serverTime: new Date().toISOString(),
+  });
+});
+app.get("/api/world/npc-behavior", (req, res) => {
+  const id = String(req.query.id || "");
+  const archetype = String(req.query.archetype || "default");
+  res.json({ ok: true, behavior: getNPCCurrentBehavior({ id, archetype }), segment: getDayPhase() });
+});
+app.post("/api/world/npc-schedule", requireAuth, (req, res) => {
+  const { npcId, schedule } = req.body || {};
+  if (!npcId) return res.status(400).json({ ok: false, error: "npcId_required" });
+  setNPCSchedule(npcId, schedule || null);
+  res.json({ ok: true });
+});
+app.get("/api/world/npc-archetypes", (_req, res) => {
+  res.json({ ok: true, archetypes: NPC_SCHEDULE_ARCHETYPES });
+});
+
+// Procedural creature spawn — POST a description, get a physics-validated
+// blueprint with attached skills. Caller renders the blueprint via the
+// frontend creature loader.
+import { listBaselines } from "./lib/procedural-creature.js";
+import {
+  ensureCrossbreedingTables,
+  recordEncounter,
+  decayBonds as _decayCreatureBonds,
+  generateHybrid,
+  maybeCrossbreed,
+  getLineage as getCreatureLineage,
+} from "./lib/creature-crossbreeding.js";
+
+try { ensureCrossbreedingTables(db); } catch { /* idempotent */ }
+
+import * as _gameplayBridge from "./lib/gameplay-asset-bridge.js";
+
+app.post("/api/creature/spawn", requireAuth, (req, res) => {
+  try {
+    const { description, topology, massKg, heightM, traits = [], origin = "user", worldId = "concordia" } = req.body || {};
+    if (!description) return res.status(400).json({ ok: false, error: "description_required" });
+    const bp = generateCreature({ description, topology, massKg, heightM, traits, origin, worldId });
+    bp.skillIds = attachSkills(bp);
+    // Asset emergence: register this creature spawn so the evo-asset
+    // pipeline can promote frequently-spawned variants into refined assets.
+    try { _gameplayBridge.onCreatureSpawned(db, bp); } catch { /* non-fatal */ }
+    res.json({ ok: true, blueprint: bp });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err?.message || "spawn_failed" });
+  }
+});
+app.get("/api/creature/topologies", (_req, res) => res.json({ ok: true, topologies: CREATURE_TOPOLOGIES }));
+app.get("/api/creature/baselines/:worldId", (req, res) => {
+  try { res.json({ ok: true, baselines: listBaselines(req.params.worldId) }); }
+  catch { res.status(404).json({ ok: false, error: "world_not_found" }); }
+});
+app.post("/api/creature/validate", (req, res) => {
+  try {
+    const v = validateCreaturePhysics(req.body || {});
+    res.json({ ok: v.ok, ...v });
+  } catch { res.status(400).json({ ok: false, error: "invalid_blueprint" }); }
+});
+
+// ── Crossbreeding ─────────────────────────────────────────────────────
+//
+// Two creatures bond when they share environment + threats; when bond
+// crosses threshold they're eligible to produce a hybrid. Cross-world
+// hybrids (only via Concord Link) are rarer + less stable but legendary.
+
+app.post("/api/creature/encounter", requireAuth, (req, res) => {
+  try {
+    const r = recordEncounter(db, req.body || {});
+    res.json({ ok: r.ok, ...r });
+  } catch (err) { res.status(500).json({ ok: false, error: err?.message }); }
+});
+app.post("/api/creature/crossbreed", requireAuth, (req, res) => {
+  try {
+    const { a, b, environment } = req.body || {};
+    if (!a || !b) return res.status(400).json({ ok: false, error: "both_parents_required" });
+    const r = maybeCrossbreed(db, { a, b, environment, sameEnvironmentBonus: !!req.body?.sameEnvironmentBonus, sharedThreatBonus: !!req.body?.sharedThreatBonus });
+    if (!r.ok) return res.status(400).json(r);
+    // Asset emergence: a successful hybrid is registered as either a CREATURE
+    // (unstable) or a SPECIES (stable + multi-generation) asset.
+    try {
+      _gameplayBridge.onHybridBirth(db, {
+        hybrid:     r.hybrid,
+        stability:  r.stability,
+        generation: r.generation,
+        crossWorld: r.crossWorld,
+        parents:    r.parents,
+      });
+    } catch { /* non-fatal */ }
+    res.status(201).json(r);
+  } catch (err) { res.status(500).json({ ok: false, error: err?.message }); }
+});
+app.post("/api/creature/hybrid", requireAuth, (req, res) => {
+  try {
+    const { a, b, environment, generation = 1 } = req.body || {};
+    const r = generateHybrid(db, { a, b, environment, generation });
+    if (!r.ok) return res.status(400).json(r);
+    res.status(201).json(r);
+  } catch (err) { res.status(500).json({ ok: false, error: err?.message }); }
+});
+app.get("/api/creature/lineage/:id", (req, res) => {
+  const ln = getCreatureLineage(db, req.params.id);
+  if (!ln) return res.status(404).json({ ok: false, error: "no_lineage" });
+  res.json({ ok: true, ...ln });
+});
+
+// Emergent skills — author / evolve / list / get
+// Emergent skills — author / evolve / list / get. Namespaced under
+// /api/emergent-skills/* to avoid colliding with the existing /api/skills
+// routes (skills/import, skills/export, skills/import-dir).
+app.post("/api/emergent-skills/create", requireAuth, (req, res) => {
+  try {
+    const userId = req.user?.id || req.headers["x-user-id"];
+    const r = createEmergentSkill(db, { ...(req.body || {}), origin: req.body?.origin ?? userId ?? "user" });
+    if (!r.ok) return res.status(400).json(r);
+    try { _gameplayBridge.onSkillAuthored(db, { skill: r.skill, origin: userId ?? "user" }); } catch { /* non-fatal */ }
+    res.status(201).json(r);
+  } catch { res.status(500).json({ ok: false, error: "create_failed" }); }
+});
+app.post("/api/emergent-skills/evolve", requireAuth, (req, res) => {
+  try {
+    const userId = req.user?.id || req.headers["x-user-id"];
+    const { parentId, mutation = {} } = req.body || {};
+    if (!parentId) return res.status(400).json({ ok: false, error: "parentId required" });
+    const r = evolveSkill(db, parentId, (skill) => ({ ...skill, ...mutation }));
+    if (!r.ok) return res.status(400).json(r);
+    try { _gameplayBridge.onSkillAuthored(db, { skill: r.skill, origin: userId ?? "user" }); } catch { /* non-fatal */ }
+    res.status(201).json(r);
+  } catch { res.status(500).json({ ok: false, error: "evolve_failed" }); }
+});
+app.get("/api/emergent-skills/list", (req, res) => {
+  try {
+    const filter = {
+      origin:   req.query.origin   ? String(req.query.origin)   : undefined,
+      parentId: req.query.parentId ? String(req.query.parentId) : undefined,
+    };
+    res.json({ ok: true, skills: listSkills(filter) });
+  } catch { res.status(500).json({ ok: false, error: "list_failed" }); }
+});
+app.get("/api/emergent-skills/:id", (req, res) => {
+  const s = getSkill(req.params.id);
+  if (!s) return res.status(404).json({ ok: false, error: "not_found" });
+  res.json({ ok: true, skill: s });
+});
+
+// Social pings — wave / loot here / danger / meet here / inspect / needs help.
+// Spatial broadcast (800m), per-user rate limited (12/min, 4s same-type cooldown).
+import { broadcastSocialPing } from "./lib/social-pings.js";
+app.post("/api/social/ping", requireAuth, (req, res) => {
+  try {
+    const userId = req.user?.id || req.headers["x-user-id"];
+    if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
+    const pos = _presenceGetUserPosition(userId);
+    if (!pos) return res.status(400).json({ ok: false, error: "no_presence" });
+    const { type, target = null, text = "" } = req.body || {};
+    const r = broadcastSocialPing(REALTIME, _combatGetNearbyUserIds, {
+      userId,
+      cityId:   pos.cityId,
+      position: { x: pos.x, y: pos.y, z: pos.z },
+      type, target, text,
+    });
+    if (r.delivered === 0 && r.reason) return res.status(429).json(r);
+    res.json({ ok: true, delivered: r.delivered });
+  } catch {
+    res.status(500).json({ ok: false, error: "An unexpected error occurred" });
+  }
+});
+
 // World travel — moves users between Concordia + sub-worlds, source of
 // truth for users.current_world (read by /api/concord-link/send).
 import createWorldTravelRouter from "./routes/world-travel.js";
@@ -26402,7 +26719,7 @@ app.use("/api/crafting",          createCraftingRouter({ requireAuth, db }));
 
 // ===== WORLD NARRATIVE (Oracle brain: lore synthesis, quest chains, dialogue) =====
 import createWorldNarrativeRouter, { buildLore } from "./routes/world-narrative.js";
-app.use("/api/world/narrative", createWorldNarrativeRouter({ requireAuth, requireRole }));
+app.use("/api/world/narrative", createWorldNarrativeRouter({ requireAuth, requireRole, db }));
 // Synthesize lore every 10 minutes in the background
 setInterval(() => {
   buildLore("concordia-hub").catch(e => logger.warn({ err: e.message }, "lore_interval_failed"));
@@ -27045,10 +27362,40 @@ function _governorCtx() {
 // Heartbeat tick history ring buffer (used by /api/heartbeat/history endpoint)
 const _tickHistory = [];
 
+/**
+ * Run one heartbeat module block with a guaranteed try/catch + structured
+ * error log + per-module Prometheus counter. The heartbeat invariant is
+ * "must never throw" — every tick block must be wrapped, and adding a new
+ * block without wrap will eventually crash the simulation.
+ *
+ * Use this helper for every new tick block:
+ *
+ *   await runHeartbeatModule("walker_journey", async () => {
+ *     const lib = await import("./lib/concord-link-walkers.js");
+ *     lib.advanceJourneyTick(db);
+ *   });
+ *
+ * Return value is the function's resolved value or undefined on error.
+ */
+async function runHeartbeatModule(name, fn) {
+  try {
+    return await fn();
+  } catch (err) {
+    try {
+      structuredLog("warn", "heartbeat_module_error", { module: name, error: String(err?.message || err) });
+      METRICS?.counters?.heartbeatModuleErrors?.inc({ module: name });
+    } catch { /* metrics best-effort */ }
+    return undefined;
+  }
+}
+
 let _governorTickRunning = false;
 async function governorTick(reason="heartbeat") {
   if (_governorTickRunning) return { ok: false, reason: "tick_already_running" };
   _governorTickRunning = true;
+  // Heartbeat liveness: bump the counter so Prometheus can detect a frozen
+  // tick loop via `rate(concord_heartbeat_ticks_total[1m]) == 0` for 60s+.
+  try { METRICS?.counters?.heartbeatTicks?.inc(); } catch { /* metrics best-effort */ }
   try {
     const s = STATE.settings || {};
     if (s.heartbeatEnabled === false) { _governorTickRunning = false; return { ok:false, reason:"heartbeat_disabled" }; }
@@ -27671,6 +28018,65 @@ async function governorTick(reason="heartbeat") {
         } catch (e) { structuredLog("warn", "governor_lens_learning", { error: String(e?.message || e) }); }
       }
 
+      // Creature bond decay — every 8 ticks (~2 min). Bonds without recent
+      // encounters drift down so transient pairings don't crossbreed at scale.
+      if ((_tick % 8) === 0 && _tick > 0) {
+        await runHeartbeatModule("creature_bond_decay", async () => {
+          const cb = await import("./lib/creature-crossbreeding.js");
+          cb.decayBonds(db);
+        });
+      }
+
+      // Combat state tick — regen poise, decay knockback. Cheap.
+      await runHeartbeatModule("combat_state_tick", async () => { tickCombatState(); });
+
+      // Weather rolls — every 40 ticks (~10 min). Each world advances its
+      // own Markov chain over (clear, overcast, rain, storm, snow, fog,
+      // wind) with stickiness so the weather doesn't churn every minute.
+      if ((_tick % 40) === 0 && _tick > 0) {
+        await runHeartbeatModule("weather_advance", async () => { advanceWorldWeather(REALTIME); });
+      }
+
+      // NPC schedule re-plan — every 4 ticks (~60s) check whether the day
+      // segment changed since last evaluation; if it did, re-plan all NPC
+      // behaviors. Cheap: just consults npc-schedules.js getCurrentBehavior.
+      // The actual movement / activity is handled by npc-simulator on its
+      // own cadence; this hook just labels what each NPC SHOULD be doing
+      // so the simulator can route accordingly.
+      if ((_tick % 4) === 0 && _tick > 0) {
+        await runHeartbeatModule("npc_schedule_replan", async () => {
+          const wc = await import("./lib/world-clock.js");
+          const ns = await import("./lib/npc-schedules.js");
+          const segment = wc.getDayPhase();
+          if (STATE._lastNPCSegment !== segment) {
+            STATE._lastNPCSegment = segment;
+            // Pull current authored NPCs so the labels propagate; npc-simulator
+            // reads STATE.npcCurrentBehaviors when it runs its own tick.
+            const seeder = await import("./lib/content-seeder.js").catch(() => null);
+            if (seeder?._authoredNPCs) {
+              const npcs = [...seeder._authoredNPCs.values()];
+              STATE.npcCurrentBehaviors = ns.batchCurrentBehaviors(npcs);
+              structuredLog("info", "npc_schedule_replan", { segment, count: npcs.length });
+            }
+          }
+        });
+      }
+
+      // News auto-pull — every 4 ticks (~60s), drain new world_events_log
+      // rows into STATE.dtus as regular event DTUs. The existing
+      // NEWS_COMPRESSION cycle then rolls them into Mega/Hyper as they age.
+      if ((_tick % 4) === 0 && _tick > 0) {
+        await runHeartbeatModule("news_log_pull", async () => {
+          const { pullWorldEventsIntoNews } = await import("./emergent/news-lens-hub.js");
+          const since = STATE._lastNewsLogPoll || 0;
+          const r = pullWorldEventsIntoNews(STATE, db, since, { limit: 50 });
+          if (r.ok) {
+            STATE._lastNewsLogPoll = r.highWaterMark;
+            if (r.ingested > 0) structuredLog("info", "news_log_ingest", { ingested: r.ingested, highWaterMark: r.highWaterMark });
+          }
+        });
+      }
+
       // News event compression — every NEWS_COMPRESSION ticks (~50 min)
       // Compresses old event DTUs into daily Megas, weekly Megas, monthly Hypers
       // Keeps the News lens clean and current while preserving depth
@@ -27803,6 +28209,40 @@ async function governorTick(reason="heartbeat") {
           } catch (_e) { /* non-fatal */ }
         }
       }
+
+      // Concord Link Walker journeys — advance every in_transit walker one
+      // anchor closer to its destination per tick. Final hop rolls intercept
+      // and updates the message + contract state.
+      await runHeartbeatModule("concord_link_walker_tick", async () => {
+        const walkerLib = await import("./lib/concord-link-walkers.js").catch(() => null);
+        const blackMarket = await import("./lib/black-market.js").catch(() => null);
+        if (walkerLib?.advanceJourneyTick) {
+          const stats = walkerLib.advanceJourneyTick(db, {
+            onDelivered: ({ messageId }) => {
+              if (!messageId || !REALTIME?.io) return;
+              try {
+                const row = db.prepare("SELECT receiver_id FROM concord_link_messages WHERE id = ?").get(messageId);
+                if (row?.receiver_id) {
+                  REALTIME.io.to(`user:${row.receiver_id}`).emit("concord-link:delivered", { messageId, ts: nowISO() });
+                }
+              } catch (_e) { /* realtime best-effort */ }
+            },
+            onIntercepted: ({ messageId }) => {
+              if (!messageId || !blackMarket?.surfaceInterceptedMessage) return;
+              try { blackMarket.surfaceInterceptedMessage(db, messageId); }
+              catch (_e) { /* surfacing best-effort */ }
+            },
+          });
+          if (stats.delivered > 0 || stats.intercepted > 0 || stats.errors > 0) {
+            structuredLog("info", "concord_link_walker_tick", stats);
+          }
+        }
+        // Expire stale black-market listings every 20 ticks (~5 minutes).
+        if (blackMarket?.expireListings && (STATE.__bgTickCounter || 0) % 20 === 0) {
+          const r = blackMarket.expireListings(db);
+          if (r.expired > 0) structuredLog("info", "black_market_expired", r);
+        }
+      });
 
       if (typeof _tickHistory !== "undefined") {
         _tickHistory.push({

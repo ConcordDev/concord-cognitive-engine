@@ -149,7 +149,8 @@
     "name": "Sael",
     "archetype": "bandit",
     "faction_id": "shadow_network",
-    "role": "Information Broker, Shadow Network Operative",
+    "black_market_fence": true,
+    "role": "Information Broker, Shadow Network Operative; runs the black-market stall for intercepted Concord Link messages",
     "is_conscious": true,
     "is_immortal": false,
     "quest_giver": true,
@@ -233,6 +234,65 @@
       "current_goal": "Process arrivals efficiently and go home on time.",
       "secret": null,
       "fear": "Being promoted into a position that requires judgment."
+    }
+  },
+  {
+    "id": "walker_tully_vex",
+    "name": "Tully Vex",
+    "alias": "Footpath",
+    "archetype": "link_walker",
+    "faction_id": "merchant_collective",
+    "role": "Senior Concord Link courier; runs the Concordia → fantasy and Concordia → cyber routes",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": false,
+    "level": 14,
+    "world_id": "concordia",
+    "link_walker": true,
+    "reputation": 78,
+    "appearance": {
+      "build": "wiry, late thirties, gait too even to be a normal walker's",
+      "skin": "weathered tan",
+      "outfit": "long oilskin coat that reads as a courier's uniform in any world he passes through; satchel cross-body",
+      "tells": "checks the satchel by feel, never sight; recites the next anchor under his breath when no one is listening"
+    },
+    "backstory": "Walked the Concordia trade roads for twelve years before he learned the anchors could carry a body as well as a letter. Took the Link courier oath the day his daughter aged out of the apprentice rolls. Has lost three packages in eight years, all of which he can describe in detail. The Merchant Collective sponsors him; the Shadow Network has tried twice to buy him out.",
+    "personality_traits": ["taciturn", "punctual", "patient with first-time senders", "remembers every face along his routes"],
+    "speech_patterns": "Short sentences. Won't lie about routing risk; will lie about nothing else.",
+    "narrative_context": {
+      "current_goal": "Pay off the last of the apprenticeship lien on his daughter's name within the year.",
+      "secret": "He has been writing down every intercepted package his peers report and keeping the list in a watertight tin under a floorboard. He has not told anyone the list exists.",
+      "fear": "That one of the people he has refused to sell out will eventually decide the refusal is the problem."
+    }
+  },
+  {
+    "id": "walker_sona_karth",
+    "name": "Sona Karth",
+    "alias": "The Quiet Mile",
+    "archetype": "link_walker",
+    "faction_id": "scholars_guild",
+    "role": "Concord Link courier specializing in fragile and high-importance packages",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": false,
+    "level": 11,
+    "world_id": "concordia",
+    "link_walker": true,
+    "reputation": 65,
+    "appearance": {
+      "build": "tall, late twenties, deliberately unmemorable",
+      "skin": "warm brown",
+      "hair": "shoulder-length, tied back with a scholar's grey ribbon",
+      "outfit": "Scholar's Guild grey, but cut for travel; carries two satchels — one decoy, one real",
+      "tells": "she always knows which satchel you would reach for first"
+    },
+    "backstory": "Trained as a Scholar's Guild scribe before she realized she had a better head for routes than for ink. Walks because she finds standing still in the archive harder than walking through three worlds. Her packages tend to be one-of-a-kind manuscripts the Guild cannot afford to lose. She has not lost one.",
+    "personality_traits": ["calm", "observant", "polite to strangers", "uninterested in praise"],
+    "speech_patterns": "Soft, steady, uses the recipient's title once and then their name.",
+    "narrative_context": {
+      "current_goal": "Deliver the four manuscripts the Guild has earmarked for the next Concordia summit, in person, before any of them can be intercepted.",
+      "secret": "She suspects one of the Guild's senior archivists is selling her route schedule to a third party. She has not yet confirmed which.",
+      "fear": "That she will deliver the wrong manuscript to the wrong person and not realize it until it is too late."
     }
   }
 ]

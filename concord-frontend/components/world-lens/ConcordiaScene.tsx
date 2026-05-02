@@ -854,7 +854,38 @@ export default function ConcordiaScene({
       const cam = cameraRef.current as InstanceType<typeof import('three').PerspectiveCamera>;
       rc.setFromCamera(mouse, cam);
 
-      // Check buildings layer first
+      // Check NPC avatars first — clicking an NPC opens dialogue.
+      // AvatarSystem3D tags meshes with userData.isNPC + userData.avatarId.
+      // We dispatch a window event so the world page (which owns dialogue
+      // state) can react without ConcordiaScene needing to know about it.
+      const avatarsGroup = layersRef.current['avatars'] as InstanceType<
+        typeof import('three').Group
+      > | undefined;
+      if (avatarsGroup) {
+        const hits = rc.intersectObjects(avatarsGroup.children, true);
+        if (hits.length > 0) {
+          let obj = hits[0].object as InstanceType<typeof import('three').Object3D>;
+          // Walk up to find the avatar root (the group AvatarSystem3D added).
+          while (obj.parent && obj.parent !== avatarsGroup && !(obj.userData as { isNPC?: boolean })?.isNPC) {
+            obj = obj.parent as typeof obj;
+          }
+          const npcUd = obj.userData as { isNPC?: boolean; avatarId?: string; name?: string; occupation?: string } | undefined;
+          if (npcUd?.isNPC && npcUd.avatarId) {
+            try {
+              window.dispatchEvent(new CustomEvent('concordia:open-dialogue', {
+                detail: {
+                  npcId:      npcUd.avatarId,
+                  npcName:    npcUd.name ?? npcUd.avatarId,
+                  occupation: npcUd.occupation ?? null,
+                },
+              }));
+            } catch { /* dispatch best-effort */ }
+            return;
+          }
+        }
+      }
+
+      // Check buildings layer next
       const buildingsGroup = layersRef.current['buildings'] as InstanceType<
         typeof import('three').Group
       >;

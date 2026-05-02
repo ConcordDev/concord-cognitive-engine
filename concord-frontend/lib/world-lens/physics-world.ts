@@ -29,6 +29,22 @@ export interface CharacterMoveResult {
   z: number;
 }
 
+interface RagdollSegment {
+  name:    string;
+  halfH:   number;
+  radius:  number;
+  parentIdx: number;
+  anchorParent: { x: number; y: number; z: number };
+  anchorChild:  { x: number; y: number; z: number };
+}
+
+export interface RagdollHandle {
+  id:    string;
+  bodies: RigidBody[];
+  segmentNames: string[];
+  spawnedAt: number;
+}
+
 class PhysicsWorld {
   private RAPIER: RapierType | null         = null;
   private THREE:  ThreeType | null          = null;
@@ -402,6 +418,206 @@ class PhysicsWorld {
     const ctrl = this.controllers.get(id);
     if (ctrl) this.world.removeCharacterController(ctrl);
     this.controllers.delete(id);
+  }
+
+  // ── Projectiles ────────────────────────────────────────────────────────────
+  //
+  // Phase F2 init 2: dynamic rigid bodies for arrows / bullets / thrown items.
+  // Each projectile is a small dynamic body with a sphere collider, ballistic
+  // trajectory under gravity, and a TTL after which it auto-disposes.
+
+  private projectiles: Map<string, { body: RigidBody; spawnedAt: number; ttl: number; ownerId?: string; damage?: number; onHit?: (hitEntityId: string) => void }> = new Map();
+
+  /**
+   * Spawn a projectile with an initial velocity. Returns its physics id.
+   * Caller renders a visual mesh whose position tracks getProjectilePosition(id).
+   */
+  spawnProjectile(opts: {
+    position: { x: number; y: number; z: number };
+    velocity: { x: number; y: number; z: number };
+    radius?:  number;
+    mass?:    number;
+    ttlMs?:   number;
+    ownerId?: string;
+    damage?:  number;
+    onHit?:   (hitEntityId: string) => void;
+  }): string | null {
+    if (!this.RAPIER || !this.world) return null;
+    const RAPIER = this.RAPIER;
+    const id = `proj_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+    const bodyDesc = RAPIER.RigidBodyDesc.dynamic()
+      .setTranslation(opts.position.x, opts.position.y, opts.position.z)
+      .setLinvel(opts.velocity.x, opts.velocity.y, opts.velocity.z)
+      .setLinearDamping(0.05)        // light air resistance
+      .setCcdEnabled(true);          // continuous collision so fast projectiles don't tunnel
+    const body = this.world.createRigidBody(bodyDesc);
+
+    const collDesc = RAPIER.ColliderDesc.ball(opts.radius ?? 0.08)
+      .setMass(opts.mass ?? 0.05)
+      .setRestitution(0.2)
+      .setFriction(0.3)
+      .setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS);
+    this.world.createCollider(collDesc, body);
+
+    this.projectiles.set(id, {
+      body,
+      spawnedAt: performance.now(),
+      ttl:       opts.ttlMs ?? 6000,
+      ownerId:   opts.ownerId,
+      damage:    opts.damage,
+      onHit:     opts.onHit,
+    });
+    this.bodies.set(id, body);
+    return id;
+  }
+
+  /** World-space position of a live projectile. Returns null if expired/missing. */
+  getProjectilePosition(id: string): { x: number; y: number; z: number } | null {
+    const p = this.projectiles.get(id);
+    if (!p) return null;
+    const t = p.body.translation();
+    return { x: t.x, y: t.y, z: t.z };
+  }
+
+  /**
+   * Sweep expired projectiles. Call once per frame from the host scene.
+   * Also scans the projectile body's contact pairs and fires onHit callbacks.
+   */
+  stepProjectiles(now: number = performance.now()): void {
+    if (!this.world) return;
+    for (const [id, p] of this.projectiles) {
+      if (now - p.spawnedAt > p.ttl) {
+        this.world.removeRigidBody(p.body);
+        this.projectiles.delete(id);
+        this.bodies.delete(id);
+        continue;
+      }
+
+      // Hit detection: scan colliders touching the projectile.
+      // Rapier doesn't expose contact events without an EventQueue; we use a
+      // proximity narrow-phase check via intersectionsWith. The bodies' user
+      // data carries an `entityId` set by spawn helpers.
+      const projCollider = this.world.getCollider(0);
+      let hit: { entityId: string } | null = null;
+      this.world.forEachCollider(c => {
+        if (hit) return;
+        if (c.parent()?.handle === p.body.handle) return;
+        if (this.world!.intersectionPair(c, projCollider!) || (this.world as unknown as { intersectionPairsWith?: (c: unknown, cb: (other: unknown) => void) => void }).intersectionPairsWith) {
+          const other = c.parent();
+          const ud = other ? (other.userData as { entityId?: string } | undefined) : undefined;
+          if (ud?.entityId && ud.entityId !== p.ownerId) hit = { entityId: ud.entityId };
+        }
+      });
+      if (hit) {
+        try { p.onHit?.(hit.entityId); } catch { /* listener best-effort */ }
+        this.world.removeRigidBody(p.body);
+        this.projectiles.delete(id);
+        this.bodies.delete(id);
+      }
+    }
+  }
+
+  // ── Ragdoll on death ───────────────────────────────────────────────────────
+  //
+  // When an NPC dies, swap its kinematic capsule for a ragdoll: a chain of
+  // dynamic bodies (head, torso, hips, 4 limb segments) connected by joints.
+  // The bodies tumble under gravity and the host renderer reads each segment
+  // pose to drive the bone transforms.
+
+  private ragdolls: Map<string, RagdollHandle> = new Map();
+
+  /**
+   * Convert a character into a ragdoll. The capsule is removed; a new body
+   * graph is created and returned. Caller binds bone transforms each frame
+   * via getRagdollPose(id, segment).
+   */
+  spawnRagdoll(id: string, position: { x: number; y: number; z: number }, impulse?: { x: number; y: number; z: number }): RagdollHandle | null {
+    if (!this.RAPIER || !this.world) return null;
+    const RAPIER = this.RAPIER;
+
+    // Free the kinematic character if present.
+    this.removeCharacter(id);
+
+    const segments: RagdollSegment[] = [
+      { name: "torso",     halfH: 0.30, radius: 0.18, parentIdx: -1, anchorParent: { x: 0,    y:  0.30, z: 0 }, anchorChild: { x: 0, y: 0, z: 0 } },
+      { name: "head",      halfH: 0.10, radius: 0.12, parentIdx:  0, anchorParent: { x: 0,    y:  0.40, z: 0 }, anchorChild: { x: 0, y: -0.10, z: 0 } },
+      { name: "hips",      halfH: 0.12, radius: 0.18, parentIdx:  0, anchorParent: { x: 0,    y: -0.30, z: 0 }, anchorChild: { x: 0, y:  0.10, z: 0 } },
+      { name: "leftThigh", halfH: 0.20, radius: 0.10, parentIdx:  2, anchorParent: { x: -0.10, y: -0.10, z: 0 }, anchorChild: { x: 0, y:  0.20, z: 0 } },
+      { name: "rightThigh",halfH: 0.20, radius: 0.10, parentIdx:  2, anchorParent: { x:  0.10, y: -0.10, z: 0 }, anchorChild: { x: 0, y:  0.20, z: 0 } },
+      { name: "leftArm",   halfH: 0.20, radius: 0.08, parentIdx:  0, anchorParent: { x: -0.20, y:  0.20, z: 0 }, anchorChild: { x: 0, y:  0.20, z: 0 } },
+      { name: "rightArm",  halfH: 0.20, radius: 0.08, parentIdx:  0, anchorParent: { x:  0.20, y:  0.20, z: 0 }, anchorChild: { x: 0, y:  0.20, z: 0 } },
+    ];
+
+    const bodies: RigidBody[] = [];
+    for (let i = 0; i < segments.length; i++) {
+      const s = segments[i];
+      const seedY = position.y + (i === 0 ? 1.0 : 0.5);
+      const desc = RAPIER.RigidBodyDesc.dynamic()
+        .setTranslation(position.x, seedY, position.z)
+        .setLinearDamping(0.5)
+        .setAngularDamping(0.5);
+      const body = this.world.createRigidBody(desc);
+      const cd = RAPIER.ColliderDesc.capsule(s.halfH, s.radius)
+        .setMass(s.name === "torso" ? 12 : s.name === "head" ? 4 : 3)
+        .setFriction(0.8);
+      this.world.createCollider(cd, body);
+      bodies.push(body);
+    }
+
+    // Joints: spherical for shoulders/hips, revolute would be more correct
+    // for elbows/knees but we ship one-segment limbs so spherical suffices.
+    for (let i = 1; i < segments.length; i++) {
+      const s = segments[i];
+      if (s.parentIdx < 0) continue;
+      const parent = bodies[s.parentIdx];
+      const child  = bodies[i];
+      const jointDesc = RAPIER.JointData.spherical(s.anchorParent, s.anchorChild);
+      this.world.createImpulseJoint(jointDesc, parent, child, true);
+    }
+
+    // Initial impulse — a death blow direction.
+    if (impulse) {
+      bodies[0].applyImpulse({ x: impulse.x, y: impulse.y, z: impulse.z }, true);
+      bodies[1].applyImpulse({ x: impulse.x * 0.4, y: impulse.y * 0.6, z: impulse.z * 0.4 }, true);
+    }
+
+    const handle: RagdollHandle = {
+      id,
+      bodies,
+      segmentNames: segments.map(s => s.name),
+      spawnedAt: performance.now(),
+    };
+    this.ragdolls.set(id, handle);
+    return handle;
+  }
+
+  /** Read the world transform of a ragdoll segment so the renderer can drive bones. */
+  getRagdollPose(id: string, segmentName: string): { x: number; y: number; z: number; rx: number; ry: number; rz: number; rw: number } | null {
+    const r = this.ragdolls.get(id);
+    if (!r) return null;
+    const idx = r.segmentNames.indexOf(segmentName);
+    if (idx < 0) return null;
+    const body = r.bodies[idx];
+    const t = body.translation();
+    const q = body.rotation();
+    return { x: t.x, y: t.y, z: t.z, rx: q.x, ry: q.y, rz: q.z, rw: q.w };
+  }
+
+  /** Free a ragdoll's bodies + joints (call after the body's faded out). */
+  removeRagdoll(id: string): void {
+    if (!this.world) return;
+    const r = this.ragdolls.get(id);
+    if (!r) return;
+    for (const b of r.bodies) {
+      try { this.world.removeRigidBody(b); } catch { /* idempotent */ }
+    }
+    this.ragdolls.delete(id);
+  }
+
+  /** All currently-active ragdoll ids. Useful for cleanup loops. */
+  getRagdollIds(): string[] {
+    return [...this.ragdolls.keys()];
   }
 
   /** Dispose the entire physics world. */

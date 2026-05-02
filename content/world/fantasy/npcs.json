@@ -23,30 +23,10 @@
     "personality_traits": ["quiet", "ancient-feeling", "speaks in riddles", "dry dark humor", "grieving without admitting it"],
     "speech_patterns": "Speaks slowly with long pauses. Tends toward half-truths and metaphor. Will answer a direct question with a question about the asker. The dry humor only surfaces when he's about to do something terrible.",
     "powers": [
-      {
-        "id": "life_death_duality",
-        "label": "Life-death duality magic",
-        "summary": "Channels the curse and the life-force together. Can grow deadly thorn fields, drain enemies' life force in a radius, or heal allies with the same energy. The pool is shared — healing takes from his own draining capacity and vice versa.",
-        "tier": "core"
-      },
-      {
-        "id": "thornlash",
-        "label": "Thornlash",
-        "summary": "Calls black thorned vines from the earth that snare and impale. The thorns drink blood and feed his life pool, making sustained combat increasingly one-sided in his favor.",
-        "tier": "core"
-      },
-      {
-        "id": "verdant_command",
-        "label": "Verdant command",
-        "summary": "Commands plant life — moves trees, opens paths, closes them behind him. In a forest he is functionally untrackable.",
-        "tier": "core"
-      },
-      {
-        "id": "necrotic_drain",
-        "label": "Necrotic drain",
-        "summary": "Touch (or close-range gesture) drains years of life from a target. Cannot be sustained without losing himself further to the curse.",
-        "tier": "limited"
-      }
+      { "id": "life_death_duality", "label": "Life-death duality magic", "summary": "Channels the curse and the life-force together. Can grow deadly thorn fields, drain enemies' life force in a radius, or heal allies with the same energy. The pool is shared — healing takes from his own draining capacity and vice versa.", "tier": "core" },
+      { "id": "thornlash", "label": "Thornlash", "summary": "Calls black thorned vines from the earth that snare and impale. The thorns drink blood and feed his life pool, making sustained combat increasingly one-sided in his favor.", "tier": "core" },
+      { "id": "verdant_command", "label": "Verdant command", "summary": "Commands plant life — moves trees, opens paths, closes them behind him. In a forest he is functionally untrackable.", "tier": "core" },
+      { "id": "necrotic_drain", "label": "Necrotic drain", "summary": "Touch (or close-range gesture) drains years of life from a target. Cannot be sustained without losing himself further to the curse.", "tier": "limited" }
     ],
     "weaknesses": [
       "fire — clears the curse-roots from a battlefield faster than he can regrow them",
@@ -57,12 +37,58 @@
     "quest_hooks": ["root_of_the_curse", "bone_bead_recovery", "the_quiet_grove", "wildwood_schism"],
     "relationships": [
       {"npc_id": "seraphine_voss", "type": "wary_respect", "notes": "She has tried to recruit him three times. He has refused three times. They both understand that if either ever attacks the other directly, the realm's balance collapses. Neither is in a hurry."},
-      {"npc_id": "nyx_torres", "type": "philosophical_kinship", "notes": "CROSS-WORLD. Thorne does not understand cyber world's technology but understands resistance to a centralized self-correcting power. He has sent her one message — a riddle about wolves and walls — through a Concordia hub messenger. She framed it."}
+      {"npc_id": "nyx_torres", "type": "philosophical_kinship", "notes": "CROSS-WORLD. Thorne does not understand cyber world's technology but understands resistance to a centralized self-correcting power. He has sent her one message — a riddle about wolves and walls — through a Concordia hub messenger. She framed it."},
+      {"npc_id": "velora_mossheart", "type": "former_mentor_now_warden", "notes": "She was his teacher before the curse. She is the one who would have to put him down if it came to that. They both know it. Neither has spoken about it directly in twelve years."}
     ],
     "narrative_context": {
       "current_goal": "Find the original source of the curse before it consumes the elder grove. Then decide whether to die with it or survive past it.",
       "secret": "The curse did not come from outside the Wildwood Circle. It came from one of his own — a former apprentice he loved. He has not told anyone, not even himself, all the way through.",
       "fear": "That the apprentice is still alive somewhere, and that meeting them again will finish what the curse began."
+    }
+  },
+  {
+    "id": "velora_mossheart",
+    "name": "Velora Mossheart",
+    "alias": "The Last Warden",
+    "archetype": "elder_druid",
+    "faction_id": "wildwood_circle",
+    "role": "Senior druid of the Wildwood Circle; the one who would have to end Thorne if it came to that",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": true,
+    "level": 28,
+    "world_id": "fantasy",
+    "appearance": {
+      "build": "tall, weathered, late sixties in human years",
+      "skin": "dark bronze etched with pale silver scarring along both forearms",
+      "hair": "white braided through with raven feathers and river stones",
+      "eyes": "moss-green; pupils slit slightly when she draws on the grove",
+      "outfit": "deep green riding leathers under a cloak woven from autumn ferns; carries a yew staff older than her name",
+      "tells": "speaks slower the angrier she gets. The yew staff hums a half-tone lower when she is about to call lightning."
+    },
+    "backstory": "She trained Thorne. She watched him take the curse to save the elder grove and refused to use the contingency she had prepared because she still believed he could come back. She has carried the contingency every day since. Half the Circle thinks she is too soft on him; the other half thinks she is the only one with the right to make the call. She thinks both halves are correct.",
+    "personality_traits": ["measured", "private grief", "fiercely loyal to the grove over any individual", "speaks rarely but never wastes a word"],
+    "speech_patterns": "Low, slow, deliberate. When she addresses someone by name, it is a warning. When she stops using your name mid-conversation, it is too late.",
+    "powers": [
+      { "id": "elder_grove_communion", "label": "Elder grove communion", "summary": "Roots her consciousness into the elder grove. Sees through every living tree in a radius of ten miles. Cannot move while communing.", "tier": "core" },
+      { "id": "stormcall", "label": "Stormcall", "summary": "Calls lightning from clear sky. One strike, surgical, takes a full minute to recharge. She has used it three times in fifty years.", "tier": "limited" },
+      { "id": "the_contingency", "label": "The contingency", "summary": "A bone-and-yew arrow she carved the day Thorne took the curse. It will undo him cleanly, no second chances. She has not loosed it.", "tier": "personal" }
+    ],
+    "weaknesses": [
+      "she will not use the contingency unless Thorne kills first; everyone who knows her knows this and at least two factions have plans built around it",
+      "her grief for what Thorne was is her unguarded flank — confronting her with his old self destabilizes her",
+      "stormcall requires open sky; covered ground silences her largest tool"
+    ],
+    "quest_hooks": ["the_contingency_arrow", "elder_grove_audit", "wildwood_schism", "thorne_intervention"],
+    "relationships": [
+      {"npc_id": "thorne_blackroot", "type": "former_mentor_now_warden", "notes": "She taught him. She kept the contingency. She has not loosed it. Both halves of the Circle judge her for one of the two."},
+      {"npc_id": "iros_greenflame", "type": "reluctant_apprentice", "notes": "Iros is her first apprentice since Thorne. She has not told him about the contingency. She is trying to decide if not telling him is fair."},
+      {"npc_id": "seraphine_voss", "type": "old_adversary", "notes": "They have not met since a tense night thirty years ago when Velora caught Seraphine in the elder grove looking for something neither will name. They have a working agreement to never enter each other's territory uninvited."}
+    ],
+    "narrative_context": {
+      "current_goal": "Identify the original source of the curse before Thorne does, so she can decide whether to spare him or finish him on terms she chooses.",
+      "secret": "She suspects the apprentice who became the curse is still alive. She has been quietly tracking rumors for eight years. She has not told Thorne because telling him would either save him or break him, and she does not yet know which.",
+      "fear": "That the contingency will not be enough — that Thorne is now bigger than the arrow she carved for him."
     }
   },
   {
@@ -90,36 +116,11 @@
     "personality_traits": ["elegant", "seductive", "ruthlessly ambitious", "knows everyone's secrets", "long-game patient"],
     "speech_patterns": "Refined accent. Pauses for effect. Uses titles when speaking to peers, first names when speaking to people she has already decided to use. Compliments that make her targets feel discovered rather than flattered.",
     "powers": [
-      {
-        "id": "blood_manipulation",
-        "label": "Blood manipulation",
-        "summary": "Controls her own and others' blood. Can stop bleeding in an ally, accelerate it in an enemy, or drag an enemy toward her by their own circulation.",
-        "tier": "core"
-      },
-      {
-        "id": "illusion_weaving",
-        "label": "Illusion weaving",
-        "summary": "Casts intricate illusions — extra guests at her balls, false escape routes for her prey, an entire empty room appearing as a packed hall. Targeted; high-fidelity; not detectable except by counter-magic or salt.",
-        "tier": "core"
-      },
-      {
-        "id": "mist_swarm",
-        "label": "Mist and bat swarm",
-        "summary": "Dissolves into mist (movement) or a swarm of bats (combat / escape). Reforms with no fatigue.",
-        "tier": "core"
-      },
-      {
-        "id": "sangueblade",
-        "label": "Sangueblade",
-        "summary": "Her rapier sings when drawn — a clean tone audible across a ballroom. The blade drinks blood it draws and feeds her bloodline.",
-        "tier": "core"
-      },
-      {
-        "id": "court_information",
-        "label": "Court information network",
-        "summary": "Spies in every noble house and most peasant taverns. She knows what kings ate for breakfast.",
-        "tier": "passive"
-      }
+      { "id": "blood_manipulation", "label": "Blood manipulation", "summary": "Controls her own and others' blood. Can stop bleeding in an ally, accelerate it in an enemy, or drag an enemy toward her by their own circulation.", "tier": "core" },
+      { "id": "illusion_weaving", "label": "Illusion weaving", "summary": "Casts intricate illusions — extra guests at her balls, false escape routes for her prey, an entire empty room appearing as a packed hall. Targeted; high-fidelity; not detectable except by counter-magic or salt.", "tier": "core" },
+      { "id": "mist_swarm", "label": "Mist and bat swarm", "summary": "Dissolves into mist (movement) or a swarm of bats (combat / escape). Reforms with no fatigue.", "tier": "core" },
+      { "id": "sangueblade", "label": "Sangueblade", "summary": "Her rapier sings when drawn — a clean tone audible across a ballroom. The blade drinks blood it draws and feeds her bloodline.", "tier": "core" },
+      { "id": "court_information", "label": "Court information network", "summary": "Spies in every noble house and most peasant taverns. She knows what kings ate for breakfast.", "tier": "passive" }
     ],
     "weaknesses": [
       "sunlight at full strength — she can be active in indoor daylight but full sun strips her power",
@@ -132,12 +133,84 @@
       {"npc_id": "thorne_blackroot", "type": "wary_respect", "notes": "Tried three times to bring him into her network. Refused three times. They have a rule: never attack each other directly. Neither has tested it yet."},
       {"npc_id": "mama_delgado", "type": "respectful_distance", "notes": "CROSS-WORLD. They have never met but correspond by letter through neutral envoys, calling each other 'cousin' as a private joke. The letters discuss long-term contingencies for cross-world flow of resources and intelligence."},
       {"npc_id": "zero_nakamura", "type": "transactional_back_channel", "notes": "CROSS-WORLD. She traveled in person to The Grid to consult Kael for four days. He politely declined a formal arrangement but accepted a private intelligence back-channel that has been active since."},
-      {"npc_id": "luminary_vesper", "type": "respectful_distance", "notes": "CROSS-WORLD. They have never met. They have studied each other from across the worlds. Both consider the other the most dangerous person in any reality. Both are correct."}
+      {"npc_id": "luminary_vesper", "type": "respectful_distance", "notes": "CROSS-WORLD. They have never met. They have studied each other from across the worlds. Both consider the other the most dangerous person in any reality. Both are correct."},
+      {"npc_id": "caelan_voss", "type": "deliberate_threat", "notes": "Her cousin. Publicly her presumptive heir. Privately the person she has chosen as the failure-mode of her own succession plan — she will not name him publicly until she has confirmed he cannot be turned against her."}
     ],
     "narrative_context": {
       "current_goal": "Identify and quietly compromise an heir from each of the four other Great Houses, so that within a generation House Voss can move openly without fearing reprisal.",
       "secret": "She fed on her own mother to claim the bloodline early. The mother was complicit. The realm believes the mother died of a fever.",
       "fear": "That the bloodline is ending with her — that her own ambition has made her too cautious to take a consort, and that without an heir her death undoes a thousand years of patience."
+    }
+  },
+  {
+    "id": "caelan_voss",
+    "name": "Lord Caelan Voss",
+    "alias": "The Quiet Heir",
+    "archetype": "vampire_courtier",
+    "faction_id": "house_voss",
+    "role": "Seraphine's cousin and presumptive heir; secretly resents being measured against her every breath",
+    "is_conscious": true,
+    "is_immortal": true,
+    "quest_giver": true,
+    "level": 19,
+    "world_id": "fantasy",
+    "appearance": {
+      "build": "average height, fencer-lean",
+      "skin": "porcelain pale, like Seraphine, like all of them",
+      "hair": "ash-blond, cut short and unfashionable on purpose",
+      "eyes": "pale grey",
+      "outfit": "plain black coats over white linen — deliberately understated against Seraphine's gowns",
+      "tells": "pauses a half-second too long before answering Seraphine. Smiles politely whenever someone underestimates him."
+    },
+    "backstory": "Born forty years after Seraphine into a junior branch of House Voss. Trained as a duelist, a poisoner, and a courtier — same curriculum every Voss child gets. Has spent his adult life one step behind Seraphine in every measurable way. He has come to suspect, correctly, that this is by design. The duchess does not need a strong heir; she needs a competent placeholder she can replace if the bloodline ever produces something better.",
+    "personality_traits": ["soft-spoken", "patient", "harboring a slow-burning resentment", "scrupulously polite", "underestimated"],
+    "speech_patterns": "Quiet. Measured. Never raises his voice. Says exactly the courteous thing required and never one word more.",
+    "powers": [
+      { "id": "blood_thinning", "label": "Blood-thinning touch", "summary": "Inverse of Seraphine's blood manipulation — slows or thins blood in a target. Used in duels to bleed an opponent out without obvious wounding.", "tier": "core" },
+      { "id": "mist_step", "label": "Mist step", "summary": "Short-range mist shift. Less polished than Seraphine's full dissolution but enough to dodge a strike or cross a courtyard unseen.", "tier": "core" },
+      { "id": "courtier_reading", "label": "Courtier's reading", "summary": "He has spent his life watching Seraphine read other people. He has gotten quite good at it himself.", "tier": "passive" }
+    ],
+    "weaknesses": [
+      "every comparison to Seraphine is a wound he will not admit to",
+      "his resentment is starting to leak into his decisions and at least two of the other Great Houses have noticed",
+      "he cannot kill Seraphine without bringing the bloodline-cascade weakness down on himself"
+    ],
+    "quest_hooks": ["the_quiet_succession", "voss_bloodline_audit", "duel_at_third_bell"],
+    "relationships": [
+      {"npc_id": "seraphine_voss", "type": "deliberate_threat", "notes": "She made him her heir on a leash. He has spent twenty years deciding whether to slip the leash or wear it long enough to inherit it."}
+    ],
+    "narrative_context": {
+      "current_goal": "Quietly identify whether Seraphine is grooming a replacement heir — and if so, surface the replacement before they are ready, on terms Caelan controls.",
+      "secret": "He has been corresponding with one of the other Great Houses for six years under a false signature. The other house believes they are corresponding with a sympathetic Voss insider. They are. They simply do not yet realize how sympathetic.",
+      "fear": "That Seraphine already knows about the correspondence and is waiting for him to commit before she ends it."
+    }
+  },
+  {
+    "id": "walker_branna_mossroad",
+    "name": "Branna of the Mossroad",
+    "alias": "The Long Way",
+    "archetype": "link_walker",
+    "faction_id": "wildwood_circle",
+    "role": "Concord Link courier on the fantasy ↔ Concordia route; trained by the Wildwood Circle",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": false,
+    "level": 12,
+    "world_id": "fantasy",
+    "link_walker": true,
+    "reputation": 70,
+    "appearance": {
+      "build": "small, sturdy, half-elf with deliberate steps",
+      "outfit": "moss-green riding coat over leather; carries a yew staff that is also her draft signature",
+      "tells": "the staff hums one tone lower when an anchor is unstable"
+    },
+    "backstory": "Walked the deep forest paths for the Wildwood Circle before the Concord Link existed. The first day they activated the fantasy anchor she walked through it without asking permission and reported back six hours later with a sealed package from Concordia and a note that said 'this works.' She has not stopped walking since.",
+    "personality_traits": ["patient", "watches more than she speaks", "trusts the forest before any anchor"],
+    "speech_patterns": "Soft, with long pauses; uses old roadwalker idioms.",
+    "narrative_context": {
+      "current_goal": "Get the elder grove's annual report to Velora before the autumn frost makes the longer route impassable.",
+      "secret": "She has noticed something walking parallel to her on the cyber-side approach, three trips in a row. She has not told the Circle yet.",
+      "fear": "That whatever is walking parallel is not from cyber world at all."
     }
   }
 ]

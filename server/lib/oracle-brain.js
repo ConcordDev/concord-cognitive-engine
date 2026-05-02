@@ -103,13 +103,17 @@ Write the 3-paragraph chronicle entry now:`;
  * @returns {Promise<{ ok: boolean, questChain?: Object, error?: string }>}
  */
 export async function generateQuestChain(npcId, factionState = {}, playerLevel = 1) {
+  const policyLine = factionState.recentPolicy
+    ? `Recent Council Decision: ${factionState.recentPolicy}\n`
+    : "";
+
   const prompt = `You are the Quest Oracle for Concordia.
 Generate a 3-step quest chain for an NPC interaction. Output ONLY valid JSON.
 
 NPC ID: ${npcId}
 Faction: ${factionState.factionName || "Independent"}
 Reputation: ${factionState.reputation ?? 50}/100
-Player Level: ${playerLevel}
+${policyLine}Player Level: ${playerLevel}
 
 Output this exact JSON structure:
 {
@@ -168,6 +172,10 @@ Output this exact JSON structure:
  * @returns {Promise<{ ok: boolean, dialogueTree?: Object, error?: string }>}
  */
 export async function writeDialogueTree(npcTraits = {}, questContext = {}, playerRelationship = "neutral") {
+  const policyLine = npcTraits.recentPolicy
+    ? `Recent Council Decision (NPC will reference this): ${npcTraits.recentPolicy}\n`
+    : "";
+
   const prompt = `You are writing branching NPC dialogue for Concordia.
 Output ONLY valid JSON. Create a 4-node dialogue tree.
 
@@ -176,6 +184,7 @@ Personality: ${npcTraits.personality || "reserved"}
 Role: ${npcTraits.role || "resident"}
 Player Relationship: ${playerRelationship}
 Quest Context: ${questContext.questTitle || "none"} (step ${questContext.currentStep || 0})
+${policyLine}
 
 Output this exact JSON structure:
 {

@@ -30,14 +30,36 @@ const MAX_VISIBLE_AVATARS = 100;
 const FLUSH_INTERVAL_MS = 30_000; // persist dirty positions every 30s
 
 // ── Movement validation ─────────────────────────────────────────────────────
-// Anti-cheat bounds. Values chosen to match AvatarSystem3D's client-side
-// MOVE_SPEED (5m/s) and RUN_SPEED (12m/s) with generous slack for latency
-// jitter. Server rejects deltas that clearly exceed what a human player
-// could do — that's teleport / noclip / speed-hack territory.
-const MAX_SPRINT_SPEED_MPS = 16;            // Client RUN_SPEED is 12; slack for latency
-const MAX_SINGLE_FRAME_DISTANCE = 250;      // hard ceiling per update regardless of dt
+// Anti-cheat bounds. Walking values match AvatarSystem3D's client-side
+// MOVE_SPEED (5m/s) and RUN_SPEED (12m/s) with generous slack for latency.
+// Vehicles raise the ceiling. The vehicle type the server trusts is whatever
+// is currently set on the in-memory presence entry via setUserVehicle() —
+// callers must verify ownership against the vehicles table before flipping
+// the type, and the entry is reset to null whenever the player dismounts.
+const MAX_SPRINT_SPEED_MPS = 16;            // Walking + sprint ceiling, with latency slack
+const VEHICLE_MAX_SPEED_MPS = Object.freeze({
+  walk:   16,
+  car:    40,
+  glider: 60,
+  plane: 150,
+});
+const FRAME_DISTANCE_RATIO = 16;            // single-frame ceiling = max_speed * ratio
 const MIN_UPDATE_INTERVAL_MS = 20;          // no faster than 50Hz from any one user
 const GRACE_PERIOD_MS = 500;                // first few updates after login skip speed check
+
+/**
+ * Server-authoritative max-speed lookup. Caller passes in the entry's
+ * vehicle_type (already validated against DB at mount time); unknowns
+ * fall back to walking.
+ */
+export function getMaxSpeedForVehicle(vehicleType) {
+  return VEHICLE_MAX_SPEED_MPS[vehicleType] ?? VEHICLE_MAX_SPEED_MPS.walk;
+}
+
+/** Single-frame teleport ceiling, scaled by vehicle type. */
+function getMaxFrameDistance(vehicleType) {
+  return getMaxSpeedForVehicle(vehicleType) * FRAME_DISTANCE_RATIO;
+}
 
 // ── NPC state ──────────────────────────────────────────────────────────────
 // NPCs live in the same spatial-chunking system as players but track their
@@ -260,9 +282,16 @@ export function updateUserPosition(userId, { cityId, x, y, z, direction, action,
       const dy = y - prev.y;
       const dz = z - prev.z;
       const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+      // Vehicle-aware speed ceiling. The vehicle type was validated against
+      // the vehicles table at mount time and stored on the entry; we trust
+      // the server-side entry, NEVER a client-supplied vehicle hint.
+      const vehicleType = prev?.vehicleType || "walk";
+      const maxSpeed    = getMaxSpeedForVehicle(vehicleType);
+      const maxFrameDistance = getMaxFrameDistance(vehicleType);
+
       // Hard ceiling regardless of dt — real players can't teleport
-      if (distance > MAX_SINGLE_FRAME_DISTANCE) {
-        logger.debug?.("city-presence", `rejected teleport by ${userId}: ${distance.toFixed(1)}m in ${dt}ms`);
+      if (distance > maxFrameDistance) {
+        logger.debug?.("city-presence", `rejected teleport by ${userId}: ${distance.toFixed(1)}m in ${dt}ms (${vehicleType})`);
         return {
           ok: false,
           reason: "teleport_detected",
@@ -271,15 +300,16 @@ export function updateUserPosition(userId, { cityId, x, y, z, direction, action,
           chunkCrossed: false,
         };
       }
-      // Speed check: distance / dt must be under MAX_SPRINT_SPEED_MPS
+      // Speed check: distance / dt must be under the vehicle's max
       const speedMps = distance / (dt / 1000);
-      if (speedMps > MAX_SPRINT_SPEED_MPS) {
-        logger.debug?.("city-presence", `rejected speed hack by ${userId}: ${speedMps.toFixed(1)}m/s`);
+      if (speedMps > maxSpeed) {
+        logger.debug?.("city-presence", `rejected speed hack by ${userId}: ${speedMps.toFixed(1)}m/s (${vehicleType} max ${maxSpeed})`);
         return {
           ok: false,
           reason: "speed_hack_detected",
           observedSpeed: speedMps,
-          maxSpeed: MAX_SPRINT_SPEED_MPS,
+          maxSpeed,
+          vehicleType,
           prev: { x: prev.x, y: prev.y, z: prev.z },
           nearby: getNearbyUsers(userId),
           chunkCrossed: false,
@@ -323,6 +353,11 @@ export function updateUserPosition(userId, { cityId, x, y, z, direction, action,
     stamina: prev?.stamina ?? 100,
     maxStamina: prev?.maxStamina ?? 100,
     clientState: prev?.clientState ?? {},
+    // Vehicle state — carried over from previous entry. Only setUserVehicle
+    // can flip this, never the position update path. That separation is
+    // what makes vehicle anti-cheat authoritative.
+    vehicleId:   prev?.vehicleId   ?? null,
+    vehicleType: prev?.vehicleType ?? null,
     lastUpdate: now,
     createdAt: prev?.createdAt ?? now,
     dirty: true, // mark for next flush
@@ -363,6 +398,49 @@ export function updateUserPosition(userId, { cityId, x, y, z, direction, action,
  */
 export function getUserPosition(userId) {
   return _userPositions.get(userId);
+}
+
+/**
+ * Authoritative vehicle mount / dismount. The route handler MUST verify
+ * vehicle ownership against the vehicles table before calling this — the
+ * presence layer trusts whatever it is given, by design. Callers pass
+ * vehicleType=null to dismount.
+ *
+ * @param {string} userId
+ * @param {{ vehicleId: string|null, vehicleType: string|null }} args
+ * @returns {boolean} true if the entry was updated, false if user has no
+ *                   active presence to flip yet (mount before first move).
+ */
+export function setUserVehicle(userId, { vehicleId = null, vehicleType = null } = {}) {
+  const entry = _userPositions.get(userId);
+  if (!entry) {
+    // No presence yet — stash a stub so the next position update inherits
+    // the vehicle state. Walking is the implicit default.
+    _userPositions.set(userId, {
+      cityId: "concordia-central",
+      districtId: null,
+      x: 0, y: 0, z: 0,
+      direction: 0, rotation: 0,
+      action: "idle", currentAnimation: "idle",
+      health: 100, maxHealth: 100, stamina: 100, maxStamina: 100,
+      clientState: {},
+      vehicleId, vehicleType,
+      lastUpdate: Date.now(), createdAt: Date.now(),
+      dirty: true, avatar: null,
+    });
+    return true;
+  }
+  entry.vehicleId   = vehicleId;
+  entry.vehicleType = vehicleType;
+  entry.dirty       = true;
+  return true;
+}
+
+/** Read the server-side vehicle the player is currently on. Null = on foot. */
+export function getUserVehicle(userId) {
+  const e = _userPositions.get(userId);
+  if (!e) return { vehicleId: null, vehicleType: null };
+  return { vehicleId: e.vehicleId ?? null, vehicleType: e.vehicleType ?? null };
 }
 
 /**
@@ -498,6 +576,8 @@ export function broadcastPositions(cityId, realtimeEmit) {
         direction: p.direction,
         action: p.action,
         avatar: p.avatar,
+        vehicleId:   p.vehicleId   ?? null,
+        vehicleType: p.vehicleType ?? null,
         displayName: uid, // caller may enrich later
       });
     }

@@ -25,31 +25,10 @@
     "personality_traits": ["quiet", "intense", "morally weighted", "loyal to the people he protects", "emotionally raw under the surface"],
     "speech_patterns": "Slight Bronx accent that thickens when angry or grieving. Speaks in short complete sentences. Doesn't perform charisma. When he's about to fight, he goes quieter, not louder.",
     "powers": [
-      {
-        "id": "purple_vein_energy",
-        "label": "Purple vein energy manipulation",
-        "summary": "Lightning blasts, energy constructs (whips, blades, shields, chains), enhanced strength and durability, kinetic + plasma absorption that converts attacks into temporary power boosts.",
-        "tier": "core"
-      },
-      {
-        "id": "shadow_perception",
-        "label": "Shadow perception (mask)",
-        "summary": "Sees behavioral state — grief levels, criminal reputation, hidden intentions, fear, loyalty — of anyone in line of sight. Detects lies. Predicts opponents' next moves from emotional state.",
-        "tier": "core",
-        "limitation": "Overuse causes migraines and temporary blindness in one eye."
-      },
-      {
-        "id": "emergent_growth",
-        "label": "Emergent growth (uncapped)",
-        "summary": "Every fight, near-death, and emotional breakthrough permanently raises his ceiling. New abilities surface during extreme stress.",
-        "tier": "passive"
-      },
-      {
-        "id": "heavyweight_combat",
-        "label": "Heavyweight combat style",
-        "summary": "Vein Slam (ground shockwave). Shadow Bind (chains tighten on struggle). Final Stand (full-body lightning aura — faster, stronger, area-of-effect attacks).",
-        "tier": "core"
-      }
+      { "id": "purple_vein_energy", "label": "Purple vein energy manipulation", "summary": "Lightning blasts, energy constructs (whips, blades, shields, chains), enhanced strength and durability, kinetic + plasma absorption that converts attacks into temporary power boosts.", "tier": "core" },
+      { "id": "shadow_perception", "label": "Shadow perception (mask)", "summary": "Sees behavioral state — grief levels, criminal reputation, hidden intentions, fear, loyalty — of anyone in line of sight. Detects lies. Predicts opponents' next moves from emotional state.", "tier": "core", "limitation": "Overuse causes migraines and temporary blindness in one eye." },
+      { "id": "emergent_growth", "label": "Emergent growth (uncapped)", "summary": "Every fight, near-death, and emotional breakthrough permanently raises his ceiling. New abilities surface during extreme stress.", "tier": "passive" },
+      { "id": "heavyweight_combat", "label": "Heavyweight combat style", "summary": "Vein Slam (ground shockwave). Shadow Bind (chains tighten on struggle). Final Stand (full-body lightning aura — faster, stronger, area-of-effect attacks).", "tier": "core" }
     ],
     "weaknesses": [
       "rage or grief makes his powers unstable",
@@ -61,12 +40,57 @@
       {"npc_id": "luminary_vesper", "type": "ideological_nemesis", "notes": "Elias sees Vesper as the exact concentration of power his movement exists to prevent. They have not met in person yet but the city is being primed for their first encounter."},
       {"npc_id": "nyx_torres", "type": "natural_ally", "notes": "CROSS-WORLD. Encrypted correspondence with the Blackout Resistance via Concordia-hub dead-drop operators. Philosophical alignment is total. They have not yet operationally coordinated."},
       {"npc_id": "jax_rivera", "type": "potential_ally", "notes": "CROSS-WORLD. Their investigations of Luminary Industries are converging. Jax knows of Elias by reputation; Elias does not yet know Jax exists. Will discover the alignment soon."},
-      {"npc_id": "zero_nakamura", "type": "watched_curiosity", "notes": "CROSS-WORLD. Kael has reached out twice through encrypted channels offering 'an exchange of perspectives' on biological vs digital substrate rewriting. Elias has not responded; he sees Kael's god-complex as a different shape of the same problem Vesper represents."}
+      {"npc_id": "zero_nakamura", "type": "watched_curiosity", "notes": "CROSS-WORLD. Kael has reached out twice through encrypted channels offering 'an exchange of perspectives' on biological vs digital substrate rewriting. Elias has not responded; he sees Kael's god-complex as a different shape of the same problem Vesper represents."},
+      {"npc_id": "bex_park", "type": "trusted_organizer", "notes": "Bex runs the Bronx mutual-aid spine. She does not have powers; she does not need them. He defers to her on which neighborhoods can absorb a fight and which cannot."}
     ],
     "narrative_context": {
       "current_goal": "Stop the unchecked private consolidation of the city's cognitive infrastructure before it is too late to reverse.",
       "secret": "He still doesn't fully understand what was rewritten in him during the 72 hours. He's afraid of what else might surface.",
       "fear": "That his own growth, uncapped, might one day make him the very thing he's trying to stop."
+    }
+  },
+  {
+    "id": "bex_park",
+    "name": "Beatrice 'Bex' Park",
+    "alias": "The Spine",
+    "archetype": "community_organizer",
+    "faction_id": "enforcers_movement",
+    "role": "Bronx mutual-aid coordinator; the movement's logistics and conscience without superpowers",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": true,
+    "level": 8,
+    "world_id": "superhero",
+    "appearance": {
+      "age": 34,
+      "build": "short, sturdy, perpetually carrying a clipboard",
+      "skin": "warm brown",
+      "hair": "tight black coils, often pulled back with a pencil",
+      "eyes": "steady brown",
+      "outfit": "denim jacket over neighborhood-association t-shirts, sneakers that have walked every block of three boroughs",
+      "tells": "writes everything down; the people who try to flatter her watch her pen, not her face"
+    },
+    "backstory": "Started a building-association tenant union at twenty-two. By thirty she had networked seventy buildings into a mutual-aid grid that fed and housed people the city had given up on. Met Elias when he was still a delivery driver knocking on her door for a sick neighbor's groceries. She refused to call him a hero on principle but agreed, after the third Luminary drone incident, to coordinate the movement's ground operations. She has no powers. She has the only complete map of who in the Bronx will open their door for the movement and who will not.",
+    "personality_traits": ["practical", "unimpressed by cape-talk", "guards the people, not the cause", "patient with strangers, sharp with insiders"],
+    "speech_patterns": "Plain English, short sentences, lots of names. Will interrupt a hero monologue to ask if anyone has eaten today.",
+    "powers": [
+      { "id": "neighborhood_intel", "label": "Neighborhood intel grid", "summary": "Knows in real time which blocks are safe to fight in and which have a hospital with no back-up generator. Updated by the seventy-building network.", "tier": "passive" },
+      { "id": "civic_bond", "label": "Civic bond", "summary": "Movement members will run an extra mile because Bex asked. Not because of what she is — because of what she has done for them.", "tier": "passive" }
+    ],
+    "weaknesses": [
+      "no powers, no augmentation, vulnerable to anything that punches through her ground-level operatives",
+      "her network is built on personal trust; if she is publicly compromised, three boroughs of mutual aid evaporate overnight",
+      "Luminary intelligence has profiled her as the movement's center of gravity and is, slowly, looking for a way to reach her"
+    ],
+    "quest_hooks": ["mutual_aid_audit", "the_seventy_buildings", "bronx_drone_incident", "spine_compromise"],
+    "relationships": [
+      {"npc_id": "enforcer_elias", "type": "trusted_organizer", "notes": "He listens to her. The movement is real because she made it real before he was ever powered."},
+      {"npc_id": "marcus_holloway", "type": "polite_recognition", "notes": "Has met him twice at city council meetings. Each one knows the other is the inflection point for their respective side. Each has decided not to push it yet."}
+    ],
+    "narrative_context": {
+      "current_goal": "Keep the movement's ground operations running without escalating into a war the neighborhoods cannot survive.",
+      "secret": "She has a list of three movement members she suspects of selling tips to Luminary intelligence. She has not surfaced the list because she is not yet sure if removing them would weaken the network more than letting them keep operating.",
+      "fear": "That Elias will decide a hard fight is worth a building's worth of casualties and ask her to deliver the building."
     }
   },
   {
@@ -95,24 +119,9 @@
     "personality_traits": ["sociopathic", "charismatic", "tactical", "patient", "long-game"],
     "speech_patterns": "Polished East Coast aristocratic. Vocabulary one tier above the room. Knows when to use silence as a weapon. Drops the polish only when he's manipulating someone and wants them to feel they got the 'real him'.",
     "powers": [
-      {
-        "id": "red_gold_plasma",
-        "label": "Red-gold plasma manipulation",
-        "summary": "Plasma blasts, plasma constructs (swords, whips, shields, explosive projectiles), Overdrive Form (molten skin cracks, single-punch building-leveling explosions), Chain Ignition (small reactions cascade into city-block detonations).",
-        "tier": "core"
-      },
-      {
-        "id": "billionaire_infrastructure",
-        "label": "Billionaire infrastructure & tech",
-        "summary": "Drone swarms (combat / explosive / barrier-forming), private super-soldier team, orbital strike capability (used sparingly to avoid public suspicion), mid-fight armor reconfiguration, district-level resource denial via corporate control.",
-        "tier": "core"
-      },
-      {
-        "id": "tactical_genius",
-        "label": "Tactical genius & charisma",
-        "summary": "Predicts opponents several steps ahead. Uses his public image to turn civilians against The Enforcer mid-fight. Plants doubt with a few well-chosen words.",
-        "tier": "passive"
-      }
+      { "id": "red_gold_plasma", "label": "Red-gold plasma manipulation", "summary": "Plasma blasts, plasma constructs (swords, whips, shields, explosive projectiles), Overdrive Form (molten skin cracks, single-punch building-leveling explosions), Chain Ignition (small reactions cascade into city-block detonations).", "tier": "core" },
+      { "id": "billionaire_infrastructure", "label": "Billionaire infrastructure & tech", "summary": "Drone swarms (combat / explosive / barrier-forming), private super-soldier team, orbital strike capability (used sparingly to avoid public suspicion), mid-fight armor reconfiguration, district-level resource denial via corporate control.", "tier": "core" },
+      { "id": "tactical_genius", "label": "Tactical genius & charisma", "summary": "Predicts opponents several steps ahead. Uses his public image to turn civilians against The Enforcer mid-fight. Plants doubt with a few well-chosen words.", "tier": "passive" }
     ],
     "signature_moves": [
       "Nova Slam — leap and crash with both fists, massive plasma explosion",
@@ -131,12 +140,85 @@
       {"npc_id": "mama_delgado", "type": "transactional_ally", "notes": "CROSS-WORLD. Active back-channel: Vesper provides early intelligence on regulatory threats; Mama provides names that can disappear. Each one knows the other will betray them eventually."},
       {"npc_id": "jax_rivera", "type": "blood_target", "notes": "CROSS-WORLD. Jax is the senior survivor of the unit Vesper personally sold out. Vesper does not yet know Jax's identity is the public 'Ghost.' He will, soon."},
       {"npc_id": "zero_nakamura", "type": "former_creator_now_threat", "notes": "CROSS-WORLD. Vesper was one of the corporate sponsors of the consultant-immersion contract that became Kael's upload. He has been quietly funding Kael's enemies (including the Blackout Resistance) ever since he realized what he had created."},
-      {"npc_id": "seraphine_voss", "type": "respectful_distance", "notes": "CROSS-WORLD. They have never met. They have studied each other from across the worlds. Both consider the other the most dangerous person in any reality. Both are correct."}
+      {"npc_id": "seraphine_voss", "type": "respectful_distance", "notes": "CROSS-WORLD. They have never met. They have studied each other from across the worlds. Both consider the other the most dangerous person in any reality. Both are correct."},
+      {"npc_id": "marcus_holloway", "type": "doubting_lieutenant", "notes": "Marcus has been his chief of staff for six years. Vesper still trusts him. Vesper has not yet noticed that Marcus has stopped trusting Vesper."}
     ],
     "narrative_context": {
       "current_goal": "Engineer a crisis large enough to justify his public ascension to centralized stewardship of the city.",
       "secret": "He authorized at least one civilian-casualty incident and framed it on a third-party threat. Evidence exists in his private archive. If The Enforcer ever gets to it, the empire collapses overnight.",
       "fear": "That somewhere out there is a person whose growth he cannot predict. He has begun to suspect that person is The Enforcer."
+    }
+  },
+  {
+    "id": "marcus_holloway",
+    "name": "Marcus Holloway",
+    "alias": "Chief of Staff",
+    "archetype": "doubting_lieutenant",
+    "faction_id": "luminary_empire",
+    "role": "Vesper Kane's chief of staff; the man who would be the first to know and the last to act",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": true,
+    "level": 12,
+    "world_id": "superhero",
+    "appearance": {
+      "age": 41,
+      "build": "tall, soft-spoken, wears suits like uniforms",
+      "skin": "warm tan",
+      "hair": "salt-and-pepper, conservatively cut",
+      "eyes": "tired hazel",
+      "outfit": "Luminary corporate suits — Vesper picks the cut; Marcus picks the tie; the tie is always the same gray",
+      "tells": "writes notes on real paper. Stops writing when he is genuinely afraid of what he is hearing."
+    },
+    "backstory": "Government affairs lawyer hired by Luminary Industries six years ago. Promoted twice. He has signed the documents that funded the orphanages, built the infrastructure, and quietly authorized the destabilization budgets. He believed, for the first three years, that the visible good outweighed the invisible cost. He has not believed it for two years now and has not told anyone. He keeps signing because he is not yet ready to stop.",
+    "personality_traits": ["competent", "quietly compromised", "loyal beyond his own comfort", "tracking his own complicity"],
+    "speech_patterns": "Polite, precise, lawyer-trained. Pauses are real, not theatrical. When he goes quiet for thirty seconds, he is choosing whether to lie.",
+    "powers": [
+      { "id": "corporate_access", "label": "Corporate access", "summary": "Top-tier credentials inside Kane Tower. Knows what every department is doing on any given day. The single most dangerous non-powered person inside Luminary Industries.", "tier": "passive" },
+      { "id": "the_archive_key", "label": "The archive key", "summary": "Has, since week three, kept a personal copy of every major contract he has signed in a deposit box he tells no one about. He has never opened the box since the day he sealed it.", "tier": "personal" }
+    ],
+    "weaknesses": [
+      "his daughter is in a Luminary-funded private school and his retirement is fully Luminary stock — leaving Vesper costs his family everything",
+      "he has compartmentalized his guilt for so long that he is no longer sure what would actually trigger him to act",
+      "Vesper still trusts him; that trust is its own cage"
+    ],
+    "quest_hooks": ["the_archive_key", "chief_of_staff_extraction", "luminary_internal_audit"],
+    "relationships": [
+      {"npc_id": "luminary_vesper", "type": "doubting_lieutenant", "notes": "Marcus has watched Vesper from the next room for six years. He stopped believing the public face two years ago. He has not stopped doing his job."},
+      {"npc_id": "bex_park", "type": "polite_recognition", "notes": "Met her twice at city council meetings. Each one is the soft underbelly of the other's organization. Each has decided not to push it yet."}
+    ],
+    "narrative_context": {
+      "current_goal": "Decide, finally, whether to leak the archive or burn it. He has had this decision for two years. He is running out of time to make it cleanly.",
+      "secret": "He has met with a Department of Justice attorney, anonymously, twice. He has not yet handed over anything. He has handed over enough to be killed if Vesper finds out.",
+      "fear": "That he will keep finding reasons not to leak until it is too late, and that the eventual disaster will be partly his."
+    }
+  },
+  {
+    "id": "walker_bullet",
+    "name": "Devon 'Bullet' Cross",
+    "alias": "Bullet",
+    "archetype": "link_walker",
+    "faction_id": "enforcers_movement",
+    "role": "Concord Link courier on the superhero ↔ Concordia route; ex-bike messenger",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": false,
+    "level": 9,
+    "world_id": "superhero",
+    "link_walker": true,
+    "reputation": 60,
+    "appearance": {
+      "build": "lean, mid-twenties, perpetually in motion",
+      "outfit": "battered Bronx-courier jacket retrofitted for cross-world travel; helmet always on, even where there is no traffic",
+      "tells": "spins a key ring on one finger when waiting for an anchor to stabilize"
+    },
+    "backstory": "Was a bike messenger in the Bronx for six years before Bex Park flagged him for the Movement's first formal courier rotation. He volunteered for the Link the day the second anchor opened and ran his first cross-world package within a week.",
+    "personality_traits": ["fast", "loyal", "treats the Link like a longer block", "uncomfortable when standing still"],
+    "speech_patterns": "Bronx accent, fast cadence, drops a syllable when he's calculating a route in his head.",
+    "narrative_context": {
+      "current_goal": "Build a corruption-free route between the Bronx mutual-aid grid and Bex's Concordia contacts so the Movement can move resources without Luminary's drones knowing.",
+      "secret": "He once delivered a package for a payer he later realized was Luminary-adjacent. He turned the fee over to Bex anonymously and has not run a job for that payer since.",
+      "fear": "That a route he ran clean will be the one that gets a building bombed."
     }
   }
 ]

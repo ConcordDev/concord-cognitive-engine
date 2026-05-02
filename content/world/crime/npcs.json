@@ -19,34 +19,14 @@
       "outfit": "black tactical hoodie, fingerless gloves, custom shadow-veil mask that bends light around him",
       "tells": "moves like smoke — silent footfalls. The blue tattoo brightens when he uses his phasing ability."
     },
-    "backstory": "Special forces operator with three commendations and one betrayal. His unit was sold out by their own corporate liaison on a job that should have been clean. Half his team died in front of him. The corporate liaison testified at the inquiry that the unit had gone rogue, and the inquiry believed it. Jax went actually rogue in response — disappeared from the records, surfaced six months later as 'The Ghost,' built the network of operatives who had nowhere left to go. The corporation that betrayed his unit is publicly called Luminary Industries. He has not yet decided how to settle that account.",
+    "backstory": "Special forces operator with three commendations and one betrayal. His unit was sold out by their own corporate liaison on a job that should have been clean. Half his team died in front of him. The corporate liaison testified at the inquiry that the unit had gone rogue, and the inquiry believed it. Jax went actually rogue in response — disappeared from the records, surfaced six months later as 'The Ghost,' built the network of operatives who had nowhere left to go.",
     "personality_traits": ["cold", "calculating", "extremely loyal to those who earn it", "talks less than anyone else in the room", "patient about revenge"],
     "speech_patterns": "Speaks in short complete sentences. Will go an entire conversation without making eye contact and still know exactly where everyone in the room is.",
     "powers": [
-      {
-        "id": "phase_shift",
-        "label": "Short-range phase shift",
-        "summary": "Phases through walls / between cover positions for short bursts (~3 seconds). Cannot phase through living tissue or active electronic barriers.",
-        "tier": "core"
-      },
-      {
-        "id": "shadow_blend",
-        "label": "Near-invisibility in shadow",
-        "summary": "Mask + suit refract light around him in low-light conditions. Visible to thermal but not to standard sight. Bright light defeats it.",
-        "tier": "core"
-      },
-      {
-        "id": "enhanced_reflexes",
-        "label": "Augmented reflexes + marksmanship",
-        "summary": "Special-forces training plus surgical augmentation. He hits what he's aiming at the first time, every time, at distances most snipers wouldn't attempt.",
-        "tier": "core"
-      },
-      {
-        "id": "network_intel",
-        "label": "Ghost Network intel feed",
-        "summary": "Operatives in every major city's underground. Positions, movement patterns, and identities flow back to him through cutout channels.",
-        "tier": "passive"
-      }
+      { "id": "phase_shift", "label": "Short-range phase shift", "summary": "Phases through walls / between cover positions for short bursts (~3 seconds). Cannot phase through living tissue or active electronic barriers.", "tier": "core" },
+      { "id": "shadow_blend", "label": "Near-invisibility in shadow", "summary": "Mask + suit refract light around him in low-light conditions. Visible to thermal but not to standard sight. Bright light defeats it.", "tier": "core" },
+      { "id": "enhanced_reflexes", "label": "Augmented reflexes + marksmanship", "summary": "Special-forces training plus surgical augmentation. He hits what he's aiming at the first time, every time, at distances most snipers wouldn't attempt.", "tier": "core" },
+      { "id": "network_intel", "label": "Ghost Network intel feed", "summary": "Operatives in every major city's underground. Positions, movement patterns, and identities flow back to him through cutout channels.", "tier": "passive" }
     ],
     "weaknesses": [
       "phase shift cannot be sustained — exiting the wrong wall costs him a second of vulnerability",
@@ -56,14 +36,57 @@
     ],
     "quest_hooks": ["luminary_betrayal_evidence", "ghost_network_recruitment", "old_unit_survivor", "the_corporate_liaison"],
     "relationships": [
-      {"npc_id": "mama_delgado", "type": "wary_truce", "notes": "They have an unwritten cease-fire. Each could end the other but the cost would be too high. They sometimes share information when their interests align — never the same information twice."},
-      {"npc_id": "luminary_vesper", "type": "blood_target", "notes": "CROSS-WORLD. Jax has confirmed Luminary Industries authorized the betrayal of his unit. The Enforcer's investigation in the superhero world has overlapped with his own. He has not yet reached out — but he intends to."},
-      {"npc_id": "enforcer_elias", "type": "potential_ally", "notes": "CROSS-WORLD. Their interests align on Vesper Kane. Jax knows of Elias by reputation; Elias does not yet know Jax exists. Their first meeting will be cautious."}
+      {"npc_id": "mama_delgado", "type": "wary_truce", "notes": "They have an unwritten cease-fire. Each could end the other but the cost would be too high. They sometimes share information when their interests align."},
+      {"npc_id": "luminary_vesper", "type": "blood_target", "notes": "CROSS-WORLD. Jax has confirmed Luminary Industries authorized the betrayal of his unit."},
+      {"npc_id": "enforcer_elias", "type": "potential_ally", "notes": "CROSS-WORLD. Their interests align on Vesper Kane. Jax knows of Elias by reputation; Elias does not yet know Jax exists."},
+      {"npc_id": "cipher_marks", "type": "trusted_fixer", "notes": "Cipher does not speak. Cipher does not need to. He runs Jax's logistics, identifies tails, and has saved Jax's life four times that Jax knows about and at least two more that Jax does not."}
     ],
     "narrative_context": {
       "current_goal": "Get the Ghost Network the evidence necessary to expose Luminary Industries' role in the unit betrayal — without becoming the public face of the exposure.",
       "secret": "He keeps a list of every operative who survived his original unit. Six are still alive. Three are in hiding. Two work for him now. One has been working for Luminary Industries for the last three years and does not know Jax knows.",
       "fear": "That the operative working for Luminary is a deliberate setup — that they were sent to him as bait."
+    }
+  },
+  {
+    "id": "cipher_marks",
+    "name": "Cipher Marks",
+    "alias": "Cipher",
+    "archetype": "silent_fixer",
+    "faction_id": "ghost_network",
+    "role": "The Ghost Network's logistics fixer; mute by injury, unreplaceable by competence",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": true,
+    "level": 14,
+    "world_id": "crime",
+    "appearance": {
+      "build": "average height, deliberately unmemorable",
+      "skin": "dark olive",
+      "hair": "buzzed, no style",
+      "eyes": "calm gray",
+      "outfit": "delivery-driver coats over light kevlar; carries a tablet and a notepad with equal frequency",
+      "tells": "communicates through a custom shorthand on the tablet, sign language with operatives who have learned it, written notes with strangers; never carries a phone"
+    },
+    "backstory": "Was a federal-level forensic accountant before a witness-tampering operation went bad and a piece of shrapnel took his vocal cords and most of one ear. The federal agency closed his case. Jax recruited him out of a halfway house six years later. He has run the Ghost Network's books, identifications, safehouse rotations, and laundering channels ever since. He has never been compromised. He may be the only person in the network who has never been compromised.",
+    "personality_traits": ["watchful", "fond of small jokes nobody else gets", "remembers everything", "patient with anyone who learns sign"],
+    "speech_patterns": "Writes in clean print. Signs in fast, idiomatic ASL with movement-economy that suggests he has been doing it for longer than the injury could explain. Uses the tablet for strangers.",
+    "powers": [
+      { "id": "forensic_accounting", "label": "Forensic accounting", "summary": "Can trace any laundering chain to its origin given a week and a quiet desk. Has identified at least three federal informants by following the money.", "tier": "core" },
+      { "id": "logistics_grid", "label": "Logistics grid", "summary": "Maintains the network's safehouse rotations, document fabrication, and movement schedules. Nobody else has the full grid in their head.", "tier": "passive" }
+    ],
+    "weaknesses": [
+      "the grid is in his head — if he is captured, the network's logistical layer collapses for at least seventy-two hours",
+      "his halfway-house records still exist somewhere; an enemy who finds them has leverage on his pre-Ghost identity",
+      "Jax leans on him too heavily and both of them know it"
+    ],
+    "quest_hooks": ["safehouse_rotation_audit", "the_halfway_house_records", "the_third_informant"],
+    "relationships": [
+      {"npc_id": "jax_rivera", "type": "trusted_fixer", "notes": "Jax is the only person Cipher has voluntarily trusted with his original name. Jax has not used it since."}
+    ],
+    "narrative_context": {
+      "current_goal": "Identify the operative inside the network who Jax suspects has been working for Luminary — without Jax having to ask him out loud.",
+      "secret": "He learned ASL fluently before the injury. He is not sure anyone has noticed.",
+      "fear": "That Jax will ask him to take the suspected operative out personally, and that he will say yes when he should say no."
     }
   },
   {
@@ -87,34 +110,14 @@
       "weapon": "a massive customized shotgun she calls 'The Rose' — engraved gold inlay over polished black steel; carries it like a handbag",
       "tells": "smiles wider when she's about to make a hard decision. Asks about your family before she ends a meeting that's about to go badly."
     },
-    "backstory": "Started running numbers in her grandmother's kitchen when she was twelve. By twenty-five she had taken over her late husband's small operation. By forty she had absorbed every other syndicate in the city through alliance, marriage, or burial. Her power is not violence — it's information. She knows which judge takes envelopes from whom, which cop's daughter is sick, which corporate vice-president is one disclosure away from divorce. She uses that information like other people use cash.",
+    "backstory": "Started running numbers in her grandmother's kitchen when she was twelve. By twenty-five she had taken over her late husband's small operation. By forty she had absorbed every other syndicate in the city through alliance, marriage, or burial. Her power is not violence — it's information.",
     "personality_traits": ["charismatic", "ruthless when needed", "motherly in a way that does not feel safe", "patient", "deeply loyal to family-by-choice"],
     "speech_patterns": "Warm, measured, almost folksy. Will offer you food before saying anything serious. The sentence that ends the meeting is usually the politest one.",
     "powers": [
-      {
-        "id": "information_dominance",
-        "label": "Information dominance",
-        "summary": "Operatives, paid sources, and listening posts in every institution that matters. The syndicate's intel apparatus is functionally a private intelligence service.",
-        "tier": "core"
-      },
-      {
-        "id": "wealth_and_connections",
-        "label": "Wealth + connections",
-        "summary": "Effectively unlimited operational budget for legal and illegal work. Has personal phone numbers for two senators, the chief of police, and a Luminary vice-president.",
-        "tier": "core"
-      },
-      {
-        "id": "loyalty_network",
-        "label": "Loyalty network",
-        "summary": "Hundreds of enforcers who would die for her — or kill for her — without question. The loyalty is real because over thirty years she has bailed each of them out of something.",
-        "tier": "passive"
-      },
-      {
-        "id": "the_rose",
-        "label": "The Rose (custom shotgun)",
-        "summary": "Reinforced double-barrel custom-built. Hand-loaded for her arthritis. Loud enough that she has never had to fire it twice in the same negotiation.",
-        "tier": "personal"
-      }
+      { "id": "information_dominance", "label": "Information dominance", "summary": "Operatives, paid sources, and listening posts in every institution that matters. The syndicate's intel apparatus is functionally a private intelligence service.", "tier": "core" },
+      { "id": "wealth_and_connections", "label": "Wealth + connections", "summary": "Effectively unlimited operational budget for legal and illegal work.", "tier": "core" },
+      { "id": "loyalty_network", "label": "Loyalty network", "summary": "Hundreds of enforcers who would die for her — or kill for her — without question.", "tier": "passive" },
+      { "id": "the_rose", "label": "The Rose (custom shotgun)", "summary": "Reinforced double-barrel custom-built. Loud enough that she has never had to fire it twice in the same negotiation.", "tier": "personal" }
     ],
     "weaknesses": [
       "she does not have supernatural or augmented capabilities — physically vulnerable to anything that gets past her enforcers",
@@ -124,14 +127,87 @@
     ],
     "quest_hooks": ["iron_rose_courier", "syndicate_succession", "vesper_back_channel", "the_skimming_lieutenants"],
     "relationships": [
-      {"npc_id": "jax_rivera", "type": "wary_truce", "notes": "Cease-fire by mutual interest. They sometimes share information; never the same kind twice. Mama once warned him a hit was coming. He returned the favor by quietly removing one of her problems."},
-      {"npc_id": "luminary_vesper", "type": "transactional_ally", "notes": "CROSS-WORLD. They have a back-channel. Vesper provides her early intelligence on regulatory threats; she provides him with names of people who can disappear. Each one knows the other will betray them eventually."},
-      {"npc_id": "seraphine_voss", "type": "respectful_distance", "notes": "CROSS-WORLD. They have never met but have corresponded by letter (delivered through neutral envoys) since Mama's syndicate began operating internationally. Each calls the other 'cousin' as a private joke neither has explained to anyone else."}
+      {"npc_id": "jax_rivera", "type": "wary_truce", "notes": "Cease-fire by mutual interest. They sometimes share information; never the same kind twice."},
+      {"npc_id": "luminary_vesper", "type": "transactional_ally", "notes": "CROSS-WORLD. They have a back-channel."},
+      {"npc_id": "seraphine_voss", "type": "respectful_distance", "notes": "CROSS-WORLD. They have never met but have corresponded by letter (delivered through neutral envoys)."},
+      {"npc_id": "tomas_reyes", "type": "chosen_heir", "notes": "Her younger grandson. The eager one. She has not yet told him she is grooming him because the older grandson is the one she actually intended to inherit, and the older one has refused."}
     ],
     "narrative_context": {
       "current_goal": "Identify the federal task force's primary informant inside the syndicate and replace them with a controlled mouthpiece — without the task force noticing the swap.",
       "secret": "She knows Vesper Kane is the corporation behind the Jax-unit betrayal. She has not told Jax because she still values the back-channel with Vesper more than the favor it would buy her with The Ghost.",
       "fear": "That her oldest grandson, who refuses to enter the family business and is going to law school, will find out exactly how she funds his tuition."
+    }
+  },
+  {
+    "id": "tomas_reyes",
+    "name": "Tomás Reyes",
+    "alias": "Tommy",
+    "archetype": "eager_heir",
+    "faction_id": "iron_rose_syndicate",
+    "role": "Mama Delgado's younger grandson; second-choice heir who is not yet aware he is the second choice",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": true,
+    "level": 9,
+    "world_id": "crime",
+    "appearance": {
+      "age": 22,
+      "build": "tall, broad-shouldered, gym-built",
+      "skin": "deep brown",
+      "hair": "short faded with a sharp line up",
+      "eyes": "warm brown with too much eagerness in them",
+      "outfit": "designer streetwear that costs more than the syndicate's enforcers see in a month; thinks he looks subtle",
+      "tells": "checks his reflection in passing windows. Says 'we' when he means 'I'."
+    },
+    "backstory": "Grew up in the syndicate's gravity. Watched his older brother turn down the family business and assumed, instantly, that this made him the heir. Has spent four years performing competence for his grandmother — running couriers, handling minor disputes, building a small crew of his own. He is not actually bad at any of it. He is also not yet good enough for what he thinks he is being prepared for.",
+    "personality_traits": ["eager", "performative", "loyal to his grandmother in a way that flatters him", "easier to read than he realizes"],
+    "speech_patterns": "Confident, fast, peppered with slang half a generation older than he is — picked up from older enforcers. Drops it instantly around his grandmother.",
+    "powers": [
+      { "id": "small_crew", "label": "Small crew", "summary": "Six loyal lieutenants of his own age. Capable enforcers; not yet a team.", "tier": "core" },
+      { "id": "courier_network", "label": "Courier network", "summary": "Runs the syndicate's east-side courier rotation. Knows every package that moves and every face that moves it.", "tier": "passive" }
+    ],
+    "weaknesses": [
+      "he is being watched by federal investigators who have correctly identified him as the most leverageable Delgado",
+      "his older brother — the law-school one — is the heir his grandmother actually intended; if the brother changes his mind, Tommy is reduced overnight",
+      "his loyalty to his grandmother is so total that he will not see her grooming him for failure if she ever does"
+    ],
+    "quest_hooks": ["the_courier_rotation", "the_younger_heir", "tommy_sting_operation"],
+    "relationships": [
+      {"npc_id": "mama_delgado", "type": "chosen_heir", "notes": "He thinks he is her chosen heir. He is not technically wrong; he is also not technically right."},
+      {"npc_id": "cipher_marks", "type": "wary_recognition", "notes": "Cipher has identified Tommy as a federal-leverage candidate and quietly flagged him in the Ghost Network's records. Tommy does not know Cipher exists."}
+    ],
+    "narrative_context": {
+      "current_goal": "Earn his grandmother's public acknowledgment as the syndicate's heir within the next twelve months. He thinks this is a foregone conclusion. It is not.",
+      "secret": "He has been talking to a federal agent he believes is a small-time courier for one of the rival families. He has been talking to her for six weeks. She has not yet asked him for anything specific.",
+      "fear": "Not the federal informant, who he does not yet recognize as a threat — but the older brother, who he is afraid will reappear and reclaim everything Tommy has been building toward."
+    }
+  },
+  {
+    "id": "walker_dock_run_renny",
+    "name": "Renaldo 'Dock-Run Renny' Sabb",
+    "alias": "Dock-Run",
+    "archetype": "link_walker",
+    "faction_id": "ghost_network",
+    "role": "Concord Link courier on the crime ↔ Concordia route; vetted by Cipher",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": false,
+    "level": 10,
+    "world_id": "crime",
+    "link_walker": true,
+    "reputation": 55,
+    "appearance": {
+      "build": "compact, mid-thirties, dock-worker shoulders",
+      "outfit": "faded longshoreman jacket; carries a duffel that looks empty even when it isn't",
+      "tells": "checks the duffel's seam-stitch when he is being followed; does not check it any other time"
+    },
+    "backstory": "Worked the docks for eleven years before the Ghost Network put him on the books as an approved courier. Cipher vetted him the day Jax cleared the first cross-world contract; the vetting took six weeks. He has not been compromised.",
+    "personality_traits": ["matter-of-fact", "patient with bureaucracy", "sharp about which contracts to refuse"],
+    "speech_patterns": "Quiet dock-worker cadence; uses 'sir' and 'ma'am' with payers who don't deserve it because Cipher told him to.",
+    "narrative_context": {
+      "current_goal": "Carry the Ghost Network's standing arrangement letters to four Concordia contacts before the federal task force traces the route.",
+      "secret": "He has lifted one package off the books — a letter from his sister to their cousin in fantasy world — and walked it free of charge. Cipher knows. Cipher has not said anything.",
+      "fear": "That Cipher's silence on the off-the-books letter will be revisited later, on Cipher's terms."
     }
   }
 ]
