@@ -6,6 +6,24 @@
  */
 
 import { Router } from "express";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname  = dirname(__filename);
+const YAML_PATH  = resolve(__dirname, "..", "openapi.yaml");
+
+let _cachedYaml = null;
+function loadYamlSpec() {
+  if (_cachedYaml !== null) return _cachedYaml;
+  try {
+    _cachedYaml = readFileSync(YAML_PATH, "utf8");
+  } catch {
+    _cachedYaml = "";
+  }
+  return _cachedYaml;
+}
 
 export default function openapiRoutes() {
   const router = Router();
@@ -253,19 +271,105 @@ export default function openapiRoutes() {
     },
   };
 
+  // Wire the new platform endpoints we've added so they're discoverable in
+  // the public spec. Each has a thin entry — full request/response details
+  // live in the YAML spec (which is authoritative when present).
+  spec.tags.push(
+    { name: "Telemetry", description: "Anonymous client perf telemetry" },
+    { name: "World", description: "World bazaar, weather, NPC schedule" },
+    { name: "Council", description: "Council Live Theater stream" },
+    { name: "Intelligence", description: "Knowledge weather, drift radar, continuity diary" },
+    { name: "Repair", description: "Repair brain pre-flight validation" },
+    { name: "Federation", description: "Cross-instance peering and search" },
+  );
+
+  Object.assign(spec.paths, {
+    "/world/perf-telemetry": {
+      get:  { tags: ["Telemetry"], summary: "Aggregated p10/p50/p90 FPS + breach rate",
+              responses: { 200: { description: "Telemetry summary" } } },
+      post: { tags: ["Telemetry"], summary: "Submit a 30s rolling perf sample (anonymous)",
+              responses: { 200: { description: "Sample accepted" } } },
+    },
+    "/world/bazaar": {
+      get: { tags: ["World"], summary: "Top marketplace listings as in-world stalls",
+             parameters: [{ name: "worldId", in: "query", schema: { type: "string", default: "concordia" } },
+                          { name: "limit",   in: "query", schema: { type: "integer", default: 24 } }],
+             responses: { 200: { description: "Stall list with positions" } } },
+    },
+    "/marketplace/dream-promoted": {
+      get: { tags: ["Marketplace"], summary: "Listings promoted by the most recent dream cycle",
+             responses: { 200: { description: "Dream-promoted listings" } } },
+    },
+    "/quests/citation-chains": {
+      get: { tags: ["Search"], summary: "Deep citation chains eligible to materialize as quests",
+             responses: { 200: { description: "Chain previews" } } },
+    },
+    "/quests/materialize-chain": {
+      post: { tags: ["Search"], summary: "Materialize a citation chain as a verify-the-lineage quest",
+              responses: { 200: { description: "Quest creation result" } } },
+    },
+    "/council/theater": {
+      get: { tags: ["Council"], summary: "Snapshot of the live council theater (current/next/history)",
+             responses: { 200: { description: "Theater state" } } },
+    },
+    "/intelligence/knowledge-weather": {
+      get: { tags: ["Intelligence"], summary: "24h warm/cold fronts by knowledge domain",
+             responses: { 200: { description: "Domain weather" } } },
+    },
+    "/intelligence/drift-radar": {
+      get: { tags: ["Intelligence"], summary: "Domain pairs with shared citations but divergent vocabulary",
+             responses: { 200: { description: "Drift candidates" } } },
+    },
+    "/intelligence/continuity-diary": {
+      get: { tags: ["Intelligence"], summary: "Rolling journal of major system events",
+             parameters: [{ name: "kind",  in: "query", schema: { type: "string" } },
+                          { name: "limit", in: "query", schema: { type: "integer", default: 30 } }],
+             responses: { 200: { description: "Diary entries" } } },
+    },
+    "/federation/instances": {
+      get: { tags: ["Federation"], summary: "Known peer Concord instances",
+             responses: { 200: { description: "Peer list" } } },
+    },
+    "/federation/search": {
+      get: { tags: ["Federation"], summary: "Cross-instance DTU semantic search",
+             parameters: [{ name: "q",     in: "query", required: true, schema: { type: "string" } },
+                          { name: "limit", in: "query", schema: { type: "integer", default: 20 } }],
+             responses: { 200: { description: "Federated search results" } } },
+    },
+  });
+
   router.get("/openapi.json", (_req, res) => {
     res.json(spec);
+  });
+
+  router.get("/openapi.yaml", (_req, res) => {
+    const yaml = loadYamlSpec();
+    if (!yaml) return res.status(404).type("text/plain").send("openapi.yaml not found");
+    res.type("text/yaml; charset=utf-8").send(yaml);
   });
 
   router.get("/docs", (_req, res) => {
     res.setHeader("Content-Type", "text/html");
     res.send(`<!DOCTYPE html>
 <html><head><title>Concord API Docs</title>
+<meta charset="utf-8">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css">
+<style>
+  body{margin:0;background:#0b0f17;color:#e2e8f0;font-family:system-ui,sans-serif}
+  .topbar{background:#0b0f17;border-bottom:1px solid #1f2937;padding:12px 24px}
+  .topbar a{color:#fbbf24;margin-right:16px;text-decoration:none}
+  .topbar a:hover{text-decoration:underline}
+</style>
 </head><body>
+<div class="topbar">
+  <strong style="color:#fbbf24">Concord API</strong>
+  <a href="/api/openapi.json">openapi.json</a>
+  <a href="/api/openapi.yaml">openapi.yaml</a>
+  <a href="https://github.com/ryttps94jq-gif/concord-cognitive-engine">GitHub</a>
+</div>
 <div id="swagger-ui"></div>
 <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
-<script>SwaggerUIBundle({ url: "/api/openapi.json", dom_id: "#swagger-ui" });</script>
+<script>SwaggerUIBundle({ url: "/api/openapi.json", dom_id: "#swagger-ui", deepLinking: true });</script>
 </body></html>`);
   });
 

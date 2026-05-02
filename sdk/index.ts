@@ -162,6 +162,20 @@ export class ConcordClient {
   public readonly chat: ChatClient;
   /** API key management sub-client. */
   public readonly keys: KeysClient;
+  /** Concord Link courier sub-client. */
+  public readonly link: LinkClient;
+  /** Marketplace + bazaar sub-client. */
+  public readonly marketplace: MarketplaceClient;
+  /** Mesh peering + transport sub-client. */
+  public readonly mesh: MeshClient;
+  /** World presence stream sub-client. */
+  public readonly presence: PresenceClient;
+  /** Combat netcode sub-client. */
+  public readonly combat: CombatClient;
+  /** Federation peering + cross-instance search sub-client. */
+  public readonly federation: FederationClient;
+  /** Intelligence views (knowledge weather / drift / diary) sub-client. */
+  public readonly intelligence: IntelligenceClient;
 
   /**
    * Create a new Concord client.
@@ -180,6 +194,13 @@ export class ConcordClient {
     this.dtus = new DTUClient(this);
     this.chat = new ChatClient(this);
     this.keys = new KeysClient(this);
+    this.link = new LinkClient(this);
+    this.marketplace = new MarketplaceClient(this);
+    this.mesh = new MeshClient(this);
+    this.presence = new PresenceClient(this);
+    this.combat = new CombatClient(this);
+    this.federation = new FederationClient(this);
+    this.intelligence = new IntelligenceClient(this);
   }
 
   // ── Internal HTTP helpers ──────────────────────────────────────────────
@@ -449,6 +470,213 @@ class KeysClient {
   async usage(keyId: string): Promise<ApiResponse> {
     return this.client.get<ApiResponse>(`/api/keys/${encodeURIComponent(keyId)}/usage`);
   }
+}
+
+// ── Concord Link courier sub-client ──────────────────────────────────────
+
+export interface LinkSendInput {
+  receiverId: string;
+  message: string;
+  worldId?: string;
+  payload?: Record<string, unknown>;
+}
+
+class LinkClient {
+  constructor(private client: ConcordClient) {}
+
+  /** Send a Concord Link message via a walker courier. */
+  async send(input: LinkSendInput): Promise<ApiResponse> {
+    return this.client.post<ApiResponse>("/api/concord-link/send", input);
+  }
+
+  /** List inbox messages for the authenticated user. */
+  async inbox(): Promise<ApiResponse> {
+    return this.client.get<ApiResponse>("/api/concord-link/inbox");
+  }
+
+  /** Subscribe to Link delivery + intercept events via socket.io. */
+  subscribe(handler: (event: string, payload: unknown) => void): () => void {
+    return subscribeViaSocket(this.client, [
+      "concord-link:delivered",
+      "concord-link:intercepted",
+    ], handler);
+  }
+}
+
+// ── Marketplace + bazaar sub-client ──────────────────────────────────────
+
+class MarketplaceClient {
+  constructor(private client: ConcordClient) {}
+
+  /** Browse active marketplace listings. */
+  async listings(params: { category?: string; search?: string; sort?: string; page?: number; pageSize?: number } = {}): Promise<ApiResponse> {
+    const q = new URLSearchParams();
+    for (const [k, v] of Object.entries(params)) if (v !== undefined) q.set(k, String(v));
+    return this.client.get<ApiResponse>(`/api/marketplace/listings?${q}`);
+  }
+
+  /** Submit a personal DTU as a marketplace listing (runs repair-brain pre-flight). */
+  async submit(dtuId: string, price: number): Promise<ApiResponse> {
+    return this.client.post<ApiResponse>("/api/marketplace/submit", { dtuId, price });
+  }
+
+  /** Get the latest dream-cycle promoted listings (free, score-ranked). */
+  async dreamPromoted(limit = 20): Promise<ApiResponse> {
+    return this.client.get<ApiResponse>(`/api/marketplace/dream-promoted?limit=${limit}`);
+  }
+
+  /** Get the in-world bazaar — top listings as 3D-positioned vendor stalls. */
+  async bazaar(worldId = "concordia", limit = 24): Promise<ApiResponse> {
+    return this.client.get<ApiResponse>(
+      `/api/world/bazaar?worldId=${encodeURIComponent(worldId)}&limit=${limit}`,
+    );
+  }
+
+  /** Cite a DTU when forking — caller automatically receives 95% royalty share. */
+  async cite(dtuId: string, citedDtuId: string, reason?: string): Promise<ApiResponse> {
+    return this.client.post<ApiResponse>(`/api/dtus/${encodeURIComponent(dtuId)}/cite`, {
+      citedDtuId,
+      reason,
+    });
+  }
+}
+
+// ── Mesh peering + transport sub-client ──────────────────────────────────
+
+class MeshClient {
+  constructor(private client: ConcordClient) {}
+
+  /** List currently visible mesh peers (BLE / WiFi / LoRa). */
+  async peers(): Promise<ApiResponse> {
+    return this.client.get<ApiResponse>("/api/mesh/peers");
+  }
+
+  /** Pair with a discovered peer over a specific transport. */
+  async pair(peerId: string, transport: "ble" | "wifi" | "lora" | "rf" | "nfc"): Promise<ApiResponse> {
+    return this.client.post<ApiResponse>("/api/mesh/pair", { peerId, transport });
+  }
+
+  /** Sync DTUs with a paired peer (one-tap UX). */
+  async sync(peerId: string, dtuIds: string[]): Promise<ApiResponse> {
+    return this.client.post<ApiResponse>("/api/mesh/sync", { peerId, dtuIds });
+  }
+}
+
+// ── World presence stream sub-client ─────────────────────────────────────
+
+class PresenceClient {
+  constructor(private client: ConcordClient) {}
+
+  /** Get the current city presence snapshot. */
+  async snapshot(worldId = "concordia"): Promise<ApiResponse> {
+    return this.client.get<ApiResponse>(`/api/world/presence?worldId=${encodeURIComponent(worldId)}`);
+  }
+
+  /** Subscribe to presence updates over the world socket. */
+  subscribe(worldId: string, handler: (event: string, payload: unknown) => void): () => void {
+    return subscribeViaSocket(this.client, [
+      "city:positions",
+      "player:move:ack",
+      "player:respawn:ack",
+    ], handler, { worldId });
+  }
+}
+
+// ── Combat netcode sub-client ────────────────────────────────────────────
+
+class CombatClient {
+  constructor(private client: ConcordClient) {}
+
+  /** Subscribe to combat events: attacks, hits, dodges, blocks, kills. */
+  subscribe(handler: (event: string, payload: unknown) => void): () => void {
+    return subscribeViaSocket(this.client, [
+      "combat:attack:ack",
+      "combat:hit",
+      "combat:dodge:ack",
+      "combat:block:ack",
+      "combat:kill",
+    ], handler);
+  }
+}
+
+// ── Federation sub-client ────────────────────────────────────────────────
+
+class FederationClient {
+  constructor(private client: ConcordClient) {}
+
+  /** List known peer instances. */
+  async instances(): Promise<ApiResponse> {
+    return this.client.get<ApiResponse>("/api/federation/instances");
+  }
+
+  /** Cross-instance semantic search. */
+  async search(q: string, limit = 20): Promise<ApiResponse> {
+    return this.client.get<ApiResponse>(
+      `/api/federation/search?q=${encodeURIComponent(q)}&limit=${limit}`,
+    );
+  }
+
+  /** Get the trust graph between known instances. */
+  async trustGraph(): Promise<ApiResponse> {
+    return this.client.get<ApiResponse>("/api/federation/trust-graph");
+  }
+}
+
+// ── Intelligence views sub-client ────────────────────────────────────────
+
+class IntelligenceClient {
+  constructor(private client: ConcordClient) {}
+
+  /** 24h knowledge weather (warm/cold fronts by domain). */
+  async knowledgeWeather(): Promise<ApiResponse> {
+    return this.client.get<ApiResponse>("/api/intelligence/knowledge-weather");
+  }
+
+  /** Domain pairs whose vocabularies are drifting apart. */
+  async driftRadar(): Promise<ApiResponse> {
+    return this.client.get<ApiResponse>("/api/intelligence/drift-radar");
+  }
+
+  /** Rolling diary of major system events. */
+  async continuityDiary(opts: { kind?: string; limit?: number } = {}): Promise<ApiResponse> {
+    const q = new URLSearchParams();
+    for (const [k, v] of Object.entries(opts)) if (v !== undefined) q.set(k, String(v));
+    return this.client.get<ApiResponse>(`/api/intelligence/continuity-diary?${q}`);
+  }
+}
+
+// ── Internal: socket.io subscribe helper ─────────────────────────────────
+
+function subscribeViaSocket(
+  client: ConcordClient,
+  events: string[],
+  handler: (event: string, payload: unknown) => void,
+  _opts: { worldId?: string } = {},
+): () => void {
+  let sock: { on: (e: string, h: (p: unknown) => void) => void; off: (e: string, h: (p: unknown) => void) => void; disconnect: () => void } | null = null;
+  let cancelled = false;
+  (async () => {
+    try {
+      // Lazy-load socket.io-client so consumers without realtime needs don't
+      // pull the dependency.
+      const mod: { io: (url: string, opts: Record<string, unknown>) => typeof sock } = await import("socket.io-client");
+      if (cancelled) return;
+      sock = mod.io((client as unknown as { baseUrl: string }).baseUrl, {
+        transports: ["websocket", "polling"],
+        auth: { token: (client as unknown as { apiKey: string }).apiKey },
+      });
+      for (const e of events) sock?.on(e, (payload: unknown) => handler(e, payload));
+    } catch {
+      // socket.io-client not installed — caller must add it as a peer dep.
+    }
+  })();
+  return () => {
+    cancelled = true;
+    try {
+      for (const e of events) sock?.off(e, () => {});
+      sock?.disconnect();
+    } catch { /* socket cleanup silent */ }
+  };
 }
 
 // ── Default export ─────────────────────────────────────────────────────────
