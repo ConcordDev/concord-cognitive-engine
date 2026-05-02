@@ -143,6 +143,10 @@ const LevelUpJuiceBridge = dynamic(
   () => import('@/components/world-lens/LevelUpJuiceBridge').then((m) => ({ default: m.LevelUpJuiceBridge })),
   { ssr: false },
 );
+const SocialOverlay = dynamic(
+  () => import('@/components/world-lens/SocialOverlay').then((m) => ({ default: m.SocialOverlay })),
+  { ssr: false },
+);
 const LoadingTransitions = dynamic(() => import('@/components/world-lens/LoadingTransitions'), {
   ssr: false,
 });
@@ -2003,6 +2007,19 @@ export default function WorldLensPage() {
               detail: { targetId: targetIdForReaction, severity, hitDirection },
             })
           );
+          // EvoAsset: record interaction with the targeted NPC's asset
+          // (crits weighted higher — combat highlights drive more evolution
+          // pressure than passive presence). Best-effort fire-and-forget.
+          try {
+            import('@/lib/evo-asset/loader').then((m) =>
+              m.recordAssetInteraction(
+                'authored',
+                `npc:${targetIdForReaction}`,
+                data.isCrit ? 'combat_crit' : 'combat_hit',
+                data.isCrit ? 2.0 : 1.0,
+              ),
+            ).catch(() => { /* network silent */ });
+          } catch { /* import silent */ }
         }
         // Combo counter — consecutive hits on same target within 4 seconds
         const tid = combatStateRef.current.target?.id ?? null;
@@ -2462,6 +2479,14 @@ export default function WorldLensPage() {
     setSelectedBuilding(building);
     setSelectedInfra(null);
     setSelectedTerrain(null);
+    // EvoAsset: record building interaction so the asset's evolution_score
+    // accumulates. Drives the heartbeat scheduler to refine frequently-used
+    // buildings ahead of unused ones. Best-effort — fire-and-forget.
+    try {
+      import('@/lib/evo-asset/loader').then((m) =>
+        m.recordAssetInteraction('authored', building.dtuId, 'building_inspect', 1.0),
+      ).catch(() => { /* network errors silent */ });
+    } catch { /* import failure silent */ }
     // Generate mock citations for demo
     setCitations([
       {
@@ -2746,6 +2771,7 @@ export default function WorldLensPage() {
             <></>
           </GameJuice>
           <LevelUpJuiceBridge />
+          <SocialOverlay myUserId={playerAvatar.id} />
           <LoadingTransitions
             transition="district"
             destination={{ name: 'Loading...' }}

@@ -44,6 +44,15 @@ export function PlayerDeathSequence({
     };
     requestAnimationFrame(fadeStep);
 
+    // Wave 1 deferral 1: trigger DoF cinematic mode for the death sequence.
+    // ConcordiaScene's post chain listens for this event and ramps the
+    // depth-of-field shader. Cleared on unmount.
+    try {
+      window.dispatchEvent(new CustomEvent('concordia:cinematic-mode', {
+        detail: { active: true, strength: 0.7 },
+      }));
+    } catch { /* event dispatch best-effort */ }
+
     const toInfo = setTimeout(() => setPhase('info'), 1500);
     const toRespawn = setTimeout(() => setPhase('respawn'), 3000);
 
@@ -51,6 +60,11 @@ export function PlayerDeathSequence({
       cancelled = true;
       clearTimeout(toInfo);
       clearTimeout(toRespawn);
+      try {
+        window.dispatchEvent(new CustomEvent('concordia:cinematic-mode', {
+          detail: { active: false },
+        }));
+      } catch { /* event dispatch best-effort */ }
     };
   }, []);
 

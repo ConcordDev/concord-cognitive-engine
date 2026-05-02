@@ -389,6 +389,20 @@ export function NPCDialogue({ npc, worldId, onClose, onQuestAccepted }: NPCDialo
                 startTalkingPoll();
                 try { window.dispatchEvent(new CustomEvent('concordia:dialogue-active', { detail: { npcId: npc.id } })); }
                 catch { /* ok */ }
+                // Wave 1 deferral 1: light DoF for dialogue framing.
+                try {
+                  window.dispatchEvent(new CustomEvent('concordia:cinematic-mode', {
+                    detail: { active: true, strength: 0.4 },
+                  }));
+                } catch { /* ok */ }
+                // EvoAsset: record interaction with the NPC's dialogue asset
+                // so frequently-talked-to NPCs evolve their speech-line variety
+                // and visual fidelity ahead of unused ones.
+                try {
+                  import('@/lib/evo-asset/loader').then((m) =>
+                    m.recordAssetInteraction('authored', `npc:${npc.id}`, 'dialogue', 1.5),
+                  ).catch(() => { /* network silent */ });
+                } catch { /* import silent */ }
               },
               onEnd: () => {
                 setIsTalking(false);
@@ -398,6 +412,11 @@ export function NPCDialogue({ npc, worldId, onClose, onQuestAccepted }: NPCDialo
                 }
                 try { window.dispatchEvent(new CustomEvent('concordia:dialogue-ended', { detail: { npcId: npc.id } })); }
                 catch { /* ok */ }
+                try {
+                  window.dispatchEvent(new CustomEvent('concordia:cinematic-mode', {
+                    detail: { active: false },
+                  }));
+                } catch { /* ok */ }
               },
             },
           );
