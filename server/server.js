@@ -4839,6 +4839,8 @@ function authMiddleware(req, res, next) {
     // Auth is still enforced on /send, /inbox, /:id/read, /walkers/hire by
     // the route handlers themselves.
     "/api/concord-link",
+    // Black market — public browse of redacted listings; purchase requires auth.
+    "/api/black-market",
     // Dual Global & Creative Registry (public discovery)
     "/api/scope", "/api/creative",
     // Missing frontend routes (three-gate audit scan)
@@ -26380,6 +26382,12 @@ app.use("/api/concord-link", createConcordLinkRouter({ requireAuth, db, emitToUs
 import createConcordLinkWalkersRouter from "./routes/concord-link-walkers.js";
 app.use("/api/concord-link/walkers", createConcordLinkWalkersRouter({ requireAuth, db }));
 
+// Black market — Sael's stall, where intercepted Concord Link messages get
+// surfaced for resale (sparks only, sender/receiver redacted). Listings are
+// seeded by the walker journey tick when an interception lands.
+import createBlackMarketRouter from "./routes/black-market.js";
+app.use("/api/black-market", createBlackMarketRouter({ requireAuth, db }));
+
 // World travel — moves users between Concordia + sub-worlds, source of
 // truth for users.current_world (read by /api/concord-link/send).
 import createWorldTravelRouter from "./routes/world-travel.js";
@@ -27826,6 +27834,7 @@ async function governorTick(reason="heartbeat") {
       // and updates the message + contract state. Best-effort, never throws.
       try {
         const walkerLib = await import("./lib/concord-link-walkers.js").catch(() => null);
+        const blackMarket = await import("./lib/black-market.js").catch(() => null);
         if (walkerLib?.advanceJourneyTick) {
           const stats = walkerLib.advanceJourneyTick(db, {
             onDelivered: ({ messageId }) => {
@@ -27838,15 +27847,24 @@ async function governorTick(reason="heartbeat") {
               } catch (_e) { /* realtime best-effort */ }
             },
             onIntercepted: ({ messageId }) => {
-              // Phase C will hook surfaceInterceptedMessage here. For now,
-              // the message status is already 'intercepted' in DB so the
-              // black-market layer can pick it up by polling.
-              if (!messageId) return;
+              // Surface interception to the black market under the default
+              // fence (broker_sael). Some intercepts simply do not surface
+              // — that variance is implemented inside surfaceInterceptedMessage.
+              if (!messageId || !blackMarket?.surfaceInterceptedMessage) return;
+              try { blackMarket.surfaceInterceptedMessage(db, messageId); }
+              catch (_e) { /* surfacing best-effort */ }
             },
           });
           if (stats.delivered > 0 || stats.intercepted > 0 || stats.errors > 0) {
             structuredLog("info", "concord_link_walker_tick", stats);
           }
+        }
+        // Expire stale black-market listings every 20 ticks (~5 minutes).
+        if (blackMarket?.expireListings && (STATE.__bgTickCounter || 0) % 20 === 0) {
+          try {
+            const r = blackMarket.expireListings(db);
+            if (r.expired > 0) structuredLog("info", "black_market_expired", r);
+          } catch (_e) { /* best-effort */ }
         }
       } catch (_e) { /* non-fatal */ }
 
