@@ -1,0 +1,42 @@
+[
+  {
+    "id": "enforcers_movement",
+    "name": "The Enforcers' Movement",
+    "motto": "Your data trains AI that is yours.",
+    "goal": "Ensure power — economic, cognitive, narrative — stays with the people who generate it.",
+    "values": ["sovereignty", "lived experience", "transparency", "loyalty to the bottom"],
+    "fears": ["a single private actor consolidating the cognitive layer", "the people forgetting they own their own data", "vigilante power becoming the next aristocracy"],
+    "controlled_districts": ["bronx_arterials", "outer_boroughs", "low_rent_grid"],
+    "rival_factions": ["luminary_empire"],
+    "allied_factions": [],
+    "npc_ids": ["enforcer_elias"],
+    "dialogue_style": "blunt",
+    "reputation_currency": "respect_marks",
+    "world_id": "superhero",
+    "faction_state": {
+      "factionName": "Enforcers' Movement",
+      "reputation": 58,
+      "tensions": "Low public profile. Operates through neighborhood mutual-aid networks and direct intervention. Iron rule: no one in the movement profits from another member's data, ever. Tension with even sympathetic city officials who want to formalize the movement into something controllable."
+    }
+  },
+  {
+    "id": "luminary_empire",
+    "name": "Luminary Industries",
+    "motto": "Order. Progress. Light.",
+    "goal": "Centralize economic, cognitive, and security infrastructure under a single benevolent stewardship — Vesper Kane's.",
+    "values": ["efficiency", "scale", "polished image", "private order"],
+    "fears": ["public exposure of internal practices", "regulatory capture by a rival", "any individual whose growth Vesper can't predict or control"],
+    "controlled_districts": ["upper_manhattan_grid", "financial_arc", "kane_tower_complex", "private_orbital_facility"],
+    "rival_factions": ["enforcers_movement"],
+    "allied_factions": [],
+    "npc_ids": ["luminary_vesper"],
+    "dialogue_style": "polished",
+    "reputation_currency": "luminary_credits",
+    "world_id": "superhero",
+    "faction_state": {
+      "factionName": "Luminary Industries",
+      "reputation": 91,
+      "tensions": "Public reputation is enormous — orphanage funding, infrastructure builds, headline-grabbing rescues. Private practices include destabilization operations against any neighborhood that resists Luminary integration. Internal pressure from Vesper's lieutenants who suspect the public face is a mask but would lose everything if they spoke up."
+    }
+  }
+]

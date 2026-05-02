@@ -10,7 +10,7 @@
  * after server init. Subsequent calls are no-ops.
  */
 
-import { readFileSync } from "fs";
+import { readFileSync, readdirSync, statSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import logger from "../logger.js";
@@ -19,6 +19,32 @@ import { recordEvent, EVENT_TYPES } from "../emergent/history-engine.js";
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const CONTENT_ROOT = join(__dir, "../../content");
+
+/**
+ * Find any sub-world content directories under content/world/. Each
+ * subdirectory may contain its own factions.json + npcs.json + lore.json
+ * for a distinct themed world (superhero, noir, cyberpunk, etc.). The
+ * top-level content/world/{factions,npcs,lore}.json files belong to the
+ * main Concordia walled-city setting.
+ *
+ * Returns an array of { id, path } where id is the subdirectory name and
+ * path is the relative path to use with readJSON.
+ */
+function discoverSubWorlds() {
+  const out = [];
+  try {
+    const worldDir = join(CONTENT_ROOT, "world");
+    for (const entry of readdirSync(worldDir)) {
+      const full = join(worldDir, entry);
+      try {
+        if (statSync(full).isDirectory()) out.push({ id: entry, path: `world/${entry}` });
+      } catch { /* skip inaccessible entries */ }
+    }
+  } catch (err) {
+    logger.warn({ err: err.message }, "content_seeder_world_scan_failed");
+  }
+  return out;
+}
 
 // Module-level seeded flag — prevents double-seeding on hot reload
 let _seeded = false;
@@ -208,6 +234,18 @@ export function seedContent() {
   const lore = readJSON("world/lore.json");
   if (lore) {
     results.lore = seedLore(lore);
+  }
+
+  // Sub-worlds — each subdirectory under content/world/ may carry its own
+  // factions.json + npcs.json + lore.json. Each entry should already be
+  // tagged with `world_id` so emergent systems can scope by world.
+  for (const sub of discoverSubWorlds()) {
+    const subFactions = readJSON(`${sub.path}/factions.json`);
+    if (Array.isArray(subFactions)) results.factions += seedFactions(subFactions);
+    const subNpcs = readJSON(`${sub.path}/npcs.json`);
+    if (Array.isArray(subNpcs)) results.npcs += seedNPCs(subNpcs);
+    const subLore = readJSON(`${sub.path}/lore.json`);
+    if (subLore) results.lore += seedLore(subLore);
   }
 
   // Onboarding quest chain
