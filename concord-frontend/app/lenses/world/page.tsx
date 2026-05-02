@@ -2446,6 +2446,22 @@ export default function WorldLensPage() {
     [dialogueCtx]
   );
 
+  // Phase F fix 2: ConcordiaScene's canvas raycaster dispatches
+  // `concordia:open-dialogue` when the player clicks an NPC mesh. Look up
+  // the full NPC from rawWorldNPCs and route into openNPCDialogue, which
+  // already handles conscious vs simple NPCs.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { npcId?: string } | undefined;
+      const npcId = detail?.npcId;
+      if (!npcId) return;
+      const npc = rawWorldNPCs.find((n) => n.id === npcId);
+      if (npc) openNPCDialogue(npc);
+    };
+    window.addEventListener('concordia:open-dialogue', handler);
+    return () => window.removeEventListener('concordia:open-dialogue', handler);
+  }, [rawWorldNPCs, openNPCDialogue]);
+
   const handleSelectCombatTarget = useCallback(
     (p: { id: string; name: string; type: 'enemy' | 'player' }) => {
       setCombatState((prev) => ({
