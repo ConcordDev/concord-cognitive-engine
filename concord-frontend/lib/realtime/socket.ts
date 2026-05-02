@@ -263,7 +263,10 @@ export type SocketEvent =
   // Phase 19: retention hooks
   | 'daily:login_recorded'
   // Wave 1 deferral 3: level-up rank crossing
-  | 'level:up';
+  | 'level:up'
+  // Tier 3 deferral 12: faction event scheduler
+  | 'faction:event_started'
+  | 'faction:event_ended';
 
 // ---- Enriched Event Payload (Category 2+5: Concurrency + Observability) ----
 interface EnrichedPayload {

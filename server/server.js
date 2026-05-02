@@ -27700,6 +27700,28 @@ async function governorTick(reason="heartbeat") {
         } catch (_e) { /* non-fatal — heartbeat must never crash */ }
       }
 
+      // Tier 3 deferral 12: faction event scheduler. Every 200th tick
+      // (~50min at default cadence), rolls one event per active world from
+      // the authored content/world/lore.json templates. Idempotent within a
+      // 7-day per-(template, world) cooldown.
+      if ((STATE.__bgTickCounter || 0) % 200 === 0) {
+        try {
+          const sched = await import("./lib/faction-event-scheduler.js").catch(() => null);
+          if (sched?.runFactionEventTick) {
+            const contentSeeder = await import("./lib/content-seeder.js").catch(() => null);
+            const cityPresence  = await import("./lib/city-presence.js").catch(() => null);
+            const stats = await sched.runFactionEventTick(STATE, db, {
+              contentSeeder,
+              emitToUser,
+              cityPresence,
+            });
+            if (stats.rolled > 0 || stats.ended > 0) {
+              structuredLog("info", "faction_event_tick", stats);
+            }
+          }
+        } catch (_e) { /* non-fatal */ }
+      }
+
       // EvoAsset Engine: evolution scheduler runs every 100th tick. Refines
       // top-scored candidates, gates each through the Atlas 5-stage pipeline,
       // promotes verified versions. Best-effort — heartbeat must never crash.
