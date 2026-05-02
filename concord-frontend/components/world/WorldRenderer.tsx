@@ -493,6 +493,72 @@ function WorkstationPrompt({
   );
 }
 
+// ── Chunk Streamer ──────────────────────────────────────────────────────────
+//
+// Phase F fix 7: with WORLD_SIZE=20km the entire world cannot be rendered at
+// once on weak hardware. ChunkStreamer keeps only the (2*radius+1)² grid of
+// chunks around the player active, filtering districts and world objects
+// by position. Cheap: filters a JS array per render pass and lets React
+// reconcile the diff. ACTIVE_CHUNK_RADIUS=1 → 3×3 grid → ~9 km² loaded.
+//
+// Coordinates: world center is (0,0). Chunk index for a position p is
+//   Math.floor((p + WORLD_SIZE/2) / CHUNK_SIZE).
+// Inputs that lack a position default to the world center so legacy data
+// without coords still appears (graceful degradation).
+
+interface ChunkStreamerProps {
+  playerPos: { x: number; z: number };
+  districts: District[];
+  objects: WorldObject[];
+  chunkRadius?: number;
+  onObjectClick?: (obj: WorldObject) => void;
+}
+
+function chunkIndex(p: number): number {
+  return Math.floor((p + WORLD_SIZE / 2) / CHUNK_SIZE);
+}
+
+function isWithinActiveChunk(
+  pos: { x: number; z: number } | undefined,
+  cx: number,
+  cz: number,
+  radius: number
+): boolean {
+  if (!pos) return true; // missing coords → always show, never accidentally cull
+  const ix = chunkIndex(pos.x);
+  const iz = chunkIndex(pos.z);
+  return Math.abs(ix - cx) <= radius && Math.abs(iz - cz) <= radius;
+}
+
+function ChunkStreamer({
+  playerPos,
+  districts,
+  objects,
+  chunkRadius = ACTIVE_CHUNK_RADIUS,
+  onObjectClick,
+}: ChunkStreamerProps) {
+  const cx = chunkIndex(playerPos.x);
+  const cz = chunkIndex(playerPos.z);
+
+  const visibleDistricts = districts.filter((d) =>
+    isWithinActiveChunk(d.position ? { x: d.position.x, z: d.position.z } : undefined, cx, cz, chunkRadius)
+  );
+  const visibleObjects = objects.filter((obj) =>
+    isWithinActiveChunk(obj.position ? { x: obj.position.x, z: obj.position.z } : undefined, cx, cz, chunkRadius)
+  );
+
+  return (
+    <>
+      {visibleDistricts.map((d) => (
+        <DistrictZone key={d.id} district={d} lodLevel="high" />
+      ))}
+      {visibleObjects.map((obj) => (
+        <WorldObjectMesh key={obj.id} obj={obj} onClick={onObjectClick} />
+      ))}
+    </>
+  );
+}
+
 // ── Main World Renderer ──────────────────────────────────────────────────────
 
 interface WorldRendererProps {
@@ -633,15 +699,15 @@ export default function WorldRenderer({
           <Ground />
           <GridOverlay />
 
-          {/* Districts */}
-          {districts.map((d) => (
-            <DistrictZone key={d.id} district={d} lodLevel="high" />
-          ))}
-
-          {/* World Objects */}
-          {objects.map((obj) => (
-            <WorldObjectMesh key={obj.id} obj={obj} onClick={onObjectClick} />
-          ))}
+          {/* Districts + World Objects, streamed by ChunkStreamer so only
+              the chunks within ACTIVE_CHUNK_RADIUS of the player are mounted */}
+          <ChunkStreamer
+            playerPos={playerPos}
+            districts={districts}
+            objects={objects}
+            chunkRadius={ACTIVE_CHUNK_RADIUS}
+            onObjectClick={onObjectClick}
+          />
 
           {/* Player Controller */}
           <PlayerController
