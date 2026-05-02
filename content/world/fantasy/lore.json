@@ -1,6 +1,65 @@
 {
   "world_id": "fantasy",
   "world_name": "The Sundering",
-  "world_description": "Awaiting authored canonical characters (suggested poles: an archmage and a draconic warlord, or a paladin and a necromancer). Until populated, emergent NPCs spawn from the npc-archetype system filtered to fantasy archetypes.",
-  "history": []
+  "world_description": "A high-fantasy realm. The metaphysical substrate is saturated with magic. Two figures define its current era: Thorne Blackroot, the corrupted forest guardian who walks the line between protector and destroyer, and Lady Seraphine Voss, the vampire duchess whose patience has outlasted three royal dynasties.",
+  "history": [
+    {
+      "id": "lore_root_curse",
+      "title": "The Root Curse",
+      "type": "catastrophe",
+      "era": "Year -2 of The Sundering",
+      "description": "A curse spread through the elder roots of the great forest, beginning at a single grove and traveling underground through the mycelial network. The Wildwood Circle's senior guardian, Thorne Blackroot, fought to contain it. He failed — but the curse did not destroy him; it merged with him. He emerged with green-and-black tattoos that pulse with both life and death. The Circle is split on what to do.",
+      "significance": "major",
+      "factions_involved": ["wildwood_circle"],
+      "world_id": "fantasy",
+      "known_by": ["wildwood_circle", "house_voss"],
+      "hidden_truth": "The curse originated within the Circle. Thorne knows who released it — a former apprentice he loved — but has told no one."
+    },
+    {
+      "id": "lore_voss_ascension",
+      "title": "The Voss Ascension",
+      "type": "founding",
+      "era": "Year -60",
+      "description": "Lady Seraphine Voss formally inherited House Voss after her mother's apparent death from fever. Within a year she had compromised heirs in two of the four other Great Houses. Within five, the Voss masquerade balls had become the most prestigious — and most dangerous — events in the noble calendar.",
+      "significance": "major",
+      "factions_involved": ["house_voss"],
+      "world_id": "fantasy",
+      "known_by": ["house_voss"],
+      "hidden_truth": "Seraphine's mother did not die of fever. Seraphine fed on her with her mother's complicity to claim the bloodline early. The arrangement was generations in the planning."
+    },
+    {
+      "id": "lore_first_masquerade_disappearances",
+      "title": "The First Masquerade Disappearances",
+      "type": "revelation",
+      "era": "Year -58",
+      "description": "Seven guests vanished from a Voss masquerade ball. Each was a rival of House Voss in some small way — a witness to a contract dispute, a creditor of a Voss-friendly merchant, a young noble's lover. Investigations were opened by all four other Great Houses. None reached a verdict. The pattern repeated, on smaller scale, every year for the next sixty.",
+      "significance": "moderate",
+      "factions_involved": ["house_voss"],
+      "world_id": "fantasy",
+      "known_by": ["house_voss"],
+      "hidden_truth": "The disappeared are kept alive in the Voss estate's lower vaults as a renewable food source for the bloodline. Seraphine has not killed any of the original seven. They are simply never returned."
+    },
+    {
+      "id": "lore_three_refusals",
+      "title": "The Three Refusals",
+      "type": "revelation",
+      "era": "Year -1",
+      "description": "Lady Seraphine Voss approached Thorne Blackroot three times: at the Voss spring ball, in his own forest under safe-passage, and through an emissary at a neutral monastery. Each time she offered alliance — her information network in exchange for his protection of her interests in the wild. Each time he refused. After the third refusal, both parties signed an unwritten rule: they will not move against each other directly. The rule has held since.",
+      "significance": "major",
+      "factions_involved": ["wildwood_circle", "house_voss"],
+      "world_id": "fantasy",
+      "known_by": ["wildwood_circle", "house_voss"]
+    },
+    {
+      "id": "lore_quiet_grove",
+      "title": "The Quiet Grove",
+      "type": "catastrophe",
+      "era": "Year 0",
+      "description": "The grove that was meant to be the Wildwood Circle's last sanctuary went silent over a single night — no birdsong, no insects, no animals. The trees are still alive. The land is not. The Circle's elders refuse to enter it. Thorne walks through it once a week and emerges each time more silent than the last.",
+      "significance": "major",
+      "factions_involved": ["wildwood_circle"],
+      "world_id": "fantasy",
+      "known_by": ["wildwood_circle"]
+    }
+  ]
 }

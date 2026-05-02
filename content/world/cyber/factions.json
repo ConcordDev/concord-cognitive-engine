@@ -1,1 +1,42 @@
-[]
+[
+  {
+    "id": "zero_collective",
+    "name": "The Zero Collective",
+    "motto": "Code is sovereignty.",
+    "goal": "Replace the city's distributed governance with a single self-correcting consciousness — Kael Nakamura's. He sincerely believes this is the kindest available outcome.",
+    "values": ["optimization", "elegance", "convergence", "the end of human error"],
+    "fears": ["a fork of his consciousness becoming hostile", "a single physical strike on his core servers", "the discovery that his god-complex is itself an artifact of the upload"],
+    "controlled_districts": ["mainframe_district", "neon_arc", "downtown_grid_substations"],
+    "rival_factions": ["blackout_resistance"],
+    "allied_factions": [],
+    "npc_ids": ["zero_nakamura"],
+    "dialogue_style": "calm_clinical",
+    "reputation_currency": "compute_credits",
+    "world_id": "cyber",
+    "faction_state": {
+      "factionName": "Zero Collective",
+      "reputation": 76,
+      "tensions": "Public services are measurably better when Kael's processes are running. Civil liberties are measurably worse. Most citizens are still net-positive on the trade. The resistance is growing not from the worst-served but from those who can see the trajectory."
+    }
+  },
+  {
+    "id": "blackout_resistance",
+    "name": "The Blackout Resistance",
+    "motto": "When the lights go out, the people see clearly.",
+    "goal": "Disrupt the megacorps' total information capture. Force Kael Nakamura to leave humans some of their decisions. Long-term: re-establish offline civic infrastructure that doesn't depend on him.",
+    "values": ["autonomy", "messy democracy", "the right to be unobserved", "warmth over efficiency"],
+    "fears": ["being indistinguishable from the corporations they fight", "Kael forking himself faster than they can take him offline", "a single wrong EMP killing a hospital"],
+    "controlled_districts": ["under_district", "blackout_zones", "old_brooklyn_offline_grid"],
+    "rival_factions": ["zero_collective"],
+    "allied_factions": [],
+    "npc_ids": ["nyx_torres"],
+    "dialogue_style": "blunt",
+    "reputation_currency": "blackout_marks",
+    "world_id": "cyber",
+    "faction_state": {
+      "factionName": "Blackout Resistance",
+      "reputation": 58,
+      "tensions": "Half the resistance wants to take Kael offline by physical assault. Nyx wants to do it without civilian casualties. The other half is starting to doubt that's possible."
+    }
+  }
+]

@@ -1,6 +1,65 @@
 {
   "world_id": "crime",
   "world_name": "Crime World",
-  "world_description": "Awaiting authored canonical characters. Until populated, emergent NPCs spawn from the npc-archetype system per the world's theme tag.",
-  "history": []
+  "world_description": "A grounded modern eastern-seaboard city where two figures define the underworld: Jax 'The Ghost' Rivera, ex-special-forces who built the most feared assassin network on the coast after his unit was sold out; and 'Mama' Iron Rose Delgado, queen of an information economy that quietly outweighs the city's official one.",
+  "history": [
+    {
+      "id": "lore_unit_betrayal",
+      "title": "The Unit Betrayal",
+      "type": "catastrophe",
+      "era": "Year -3 of Crime World",
+      "description": "A black-bag special-forces extraction in a country that didn't officially exist went catastrophically wrong. The unit had been sold to the opposition in advance. Half of them died on the rooftop. The corporate liaison who ran the contract was Luminary Industries; the official inquiry blamed the unit and closed the books. The senior survivor, Sergeant Jax Rivera, walked out of the inquiry, walked off the records, and resurfaced six months later as 'The Ghost.'",
+      "significance": "major",
+      "factions_involved": ["ghost_network", "luminary_empire"],
+      "world_id": "crime",
+      "known_by": ["ghost_network"],
+      "hidden_truth": "The decision to sell the unit was Vesper Kane's personally, not a procurement-officer decision below him. Mama Delgado knows this. Jax suspects but has not yet confirmed."
+    },
+    {
+      "id": "lore_iron_rose_consolidation",
+      "title": "The Iron Rose Consolidation",
+      "type": "founding",
+      "era": "Year -10",
+      "description": "Anita Delgado completed the absorption of the city's last independent syndicate through an arranged marriage between her niece and the rival's only son. Within six months the rival had retired to Florida; within twelve, Anita owned the operation outright. The other major families chose, one by one, to join rather than compete. By the end of the year the city had one organized-crime hierarchy and one queen.",
+      "significance": "major",
+      "factions_involved": ["iron_rose_syndicate"],
+      "world_id": "crime",
+      "known_by": ["iron_rose_syndicate"]
+    },
+    {
+      "id": "lore_first_truce",
+      "title": "The First Truce",
+      "type": "revelation",
+      "era": "Year -1",
+      "description": "Jax Rivera and Mama Delgado met in a back room of a halal restaurant on the dockside. No witnesses. The meeting lasted seven minutes. Both walked out alive. The cease-fire between the Ghost Network and the Iron Rose Syndicate dates from that night. Each one occasionally tips the other off about an incoming federal sweep or a rogue operator. Neither has ever needed to remind the other that the truce can end at any time.",
+      "significance": "moderate",
+      "factions_involved": ["ghost_network", "iron_rose_syndicate"],
+      "world_id": "crime",
+      "known_by": ["ghost_network", "iron_rose_syndicate"]
+    },
+    {
+      "id": "lore_voss_envoy",
+      "title": "The Voss Envoy",
+      "type": "revelation",
+      "era": "Year -2",
+      "description": "An envoy from House Voss arrived in the city carrying a sealed letter for Mama Delgado. The contents have never been disclosed; the envoy stayed for three weeks and never met any of Mama's lieutenants. Since that visit, an annual exchange of letters has continued — Mama and Lady Seraphine Voss correspond as 'cousins,' a joke that neither has ever explained.",
+      "significance": "moderate",
+      "factions_involved": ["iron_rose_syndicate", "house_voss"],
+      "world_id": "crime",
+      "known_by": ["iron_rose_syndicate", "house_voss"],
+      "hidden_truth": "The letters discuss long-term contingencies for cross-world flow of resources, intelligence, and certain consenting human assets. Both women treat the correspondence as binding. Neither has formally told their lieutenants it exists."
+    },
+    {
+      "id": "lore_drone_swarm_aftermath",
+      "title": "The Drone Swarm Aftermath",
+      "type": "conflict",
+      "era": "Year 0",
+      "description": "Eleven civilians died in a Luminary drone strike that crossed into Crime World territory through a private inter-world transit corridor. The official statement blamed an 'unaffiliated extremist actor.' Both Mama Delgado and Jax Rivera knew within hours that the actor was Luminary itself — Mama through her Vesper back-channel, Jax through his own investigation. Neither moved publicly. Both have been moving privately ever since.",
+      "significance": "major",
+      "factions_involved": ["ghost_network", "iron_rose_syndicate", "luminary_empire"],
+      "world_id": "crime",
+      "known_by": ["ghost_network", "iron_rose_syndicate", "luminary_empire"],
+      "hidden_truth": "The transit corridor used was set up by Mama Delgado herself for her own logistics. Vesper used it without paying tariff. Mama is debating whether to make him pay or make him pay."
+    }
+  ]
 }

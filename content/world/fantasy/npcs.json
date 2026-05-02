@@ -1,1 +1,143 @@
-[]
+[
+  {
+    "id": "thorne_blackroot",
+    "name": "Thorne Blackroot",
+    "alias": "The Shadow Druid",
+    "archetype": "shadow_druid",
+    "faction_id": "wildwood_circle",
+    "role": "Corrupted forest guardian; walking line between protector and destroyer",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": true,
+    "level": 24,
+    "world_id": "fantasy",
+    "appearance": {
+      "build": "tall, lean elf",
+      "skin": "deep brown, covered in intricate glowing-green tattoos that pulse with life energy",
+      "hair": "long dreadlocks tied back with vines and bone beads",
+      "eyes": "left eye normal; right eye completely black with a glowing emerald pupil",
+      "outfit": "layered robes of living moss, bark, and shadow silk that shift and breathe with him",
+      "tells": "the green tattoos brighten when he heals and dim toward black when he drains. The corrupted eye sees death's residue on every living thing."
+    },
+    "backstory": "Thorne was a guardian of the great forests for two centuries before a curse spread through the elder roots and reached him. He fought it. He failed. The curse did not destroy him — it merged with him. He now walks both sides of the cycle: he can grow lethal thorns from the earth, drain the life force out of an enemy in seconds, OR pour that same energy into healing an ally back from the brink. He cannot turn it off. The forests he once protected are slowly going quiet around him.",
+    "personality_traits": ["quiet", "ancient-feeling", "speaks in riddles", "dry dark humor", "grieving without admitting it"],
+    "speech_patterns": "Speaks slowly with long pauses. Tends toward half-truths and metaphor. Will answer a direct question with a question about the asker. The dry humor only surfaces when he's about to do something terrible.",
+    "powers": [
+      {
+        "id": "life_death_duality",
+        "label": "Life-death duality magic",
+        "summary": "Channels the curse and the life-force together. Can grow deadly thorn fields, drain enemies' life force in a radius, or heal allies with the same energy. The pool is shared — healing takes from his own draining capacity and vice versa.",
+        "tier": "core"
+      },
+      {
+        "id": "thornlash",
+        "label": "Thornlash",
+        "summary": "Calls black thorned vines from the earth that snare and impale. The thorns drink blood and feed his life pool, making sustained combat increasingly one-sided in his favor.",
+        "tier": "core"
+      },
+      {
+        "id": "verdant_command",
+        "label": "Verdant command",
+        "summary": "Commands plant life — moves trees, opens paths, closes them behind him. In a forest he is functionally untrackable.",
+        "tier": "core"
+      },
+      {
+        "id": "necrotic_drain",
+        "label": "Necrotic drain",
+        "summary": "Touch (or close-range gesture) drains years of life from a target. Cannot be sustained without losing himself further to the curse.",
+        "tier": "limited"
+      }
+    ],
+    "weaknesses": [
+      "fire — clears the curse-roots from a battlefield faster than he can regrow them",
+      "the corruption advances every time he uses necrotic drain past a threshold; he resists for fear of becoming the thing he was meant to stop",
+      "consecrated ground silences his magic entirely",
+      "the bone beads in his hair are the anchors that keep his consciousness intact; remove them and he loses himself"
+    ],
+    "quest_hooks": ["root_of_the_curse", "bone_bead_recovery", "the_quiet_grove", "wildwood_schism"],
+    "relationships": [
+      {"npc_id": "seraphine_voss", "type": "wary_respect", "notes": "She has tried to recruit him three times. He has refused three times. They both understand that if either ever attacks the other directly, the realm's balance collapses. Neither is in a hurry."},
+      {"npc_id": "nyx_torres", "type": "philosophical_kinship", "notes": "CROSS-WORLD. Thorne does not understand cyber world's technology but understands resistance to a centralized self-correcting power. He has sent her one message — a riddle about wolves and walls — through a Concordia hub messenger. She framed it."}
+    ],
+    "narrative_context": {
+      "current_goal": "Find the original source of the curse before it consumes the elder grove. Then decide whether to die with it or survive past it.",
+      "secret": "The curse did not come from outside the Wildwood Circle. It came from one of his own — a former apprentice he loved. He has not told anyone, not even himself, all the way through.",
+      "fear": "That the apprentice is still alive somewhere, and that meeting them again will finish what the curse began."
+    }
+  },
+  {
+    "id": "seraphine_voss",
+    "name": "Lady Seraphine Voss",
+    "alias": "The Crimson Duchess",
+    "archetype": "vampire_noble",
+    "faction_id": "house_voss",
+    "role": "Vampire noble, political power broker, host of the masquerade hunting grounds",
+    "is_conscious": true,
+    "is_immortal": true,
+    "quest_giver": true,
+    "level": 26,
+    "world_id": "fantasy",
+    "appearance": {
+      "build": "tall, slender, deliberately elegant",
+      "skin": "porcelain pale",
+      "hair": "long, flowing crimson",
+      "eyes": "piercing violet",
+      "outfit": "luxurious blood-red gowns with black lace and gold filigree; never the same one twice in public",
+      "weapon": "a delicate but deadly rapier that hums and sings when drawn — forged from a blood-pact alloy",
+      "tells": "she watches her host's pulse, always. When she's amused, her teeth show one beat too long. The fingertips of her right glove are reinforced — that's the hand that will move first."
+    },
+    "backstory": "Heir to one of the oldest vampire bloodlines in the realm. Her great-grandmother was the consort of a king. Her grandmother poisoned that king and three of his successors. Her mother brokered the peace between the noble houses that has held for sixty years. Seraphine is the patient continuation of all of them. She does not need to rule openly because she already rules through everyone who thinks they do.",
+    "personality_traits": ["elegant", "seductive", "ruthlessly ambitious", "knows everyone's secrets", "long-game patient"],
+    "speech_patterns": "Refined accent. Pauses for effect. Uses titles when speaking to peers, first names when speaking to people she has already decided to use. Compliments that make her targets feel discovered rather than flattered.",
+    "powers": [
+      {
+        "id": "blood_manipulation",
+        "label": "Blood manipulation",
+        "summary": "Controls her own and others' blood. Can stop bleeding in an ally, accelerate it in an enemy, or drag an enemy toward her by their own circulation.",
+        "tier": "core"
+      },
+      {
+        "id": "illusion_weaving",
+        "label": "Illusion weaving",
+        "summary": "Casts intricate illusions — extra guests at her balls, false escape routes for her prey, an entire empty room appearing as a packed hall. Targeted; high-fidelity; not detectable except by counter-magic or salt.",
+        "tier": "core"
+      },
+      {
+        "id": "mist_swarm",
+        "label": "Mist and bat swarm",
+        "summary": "Dissolves into mist (movement) or a swarm of bats (combat / escape). Reforms with no fatigue.",
+        "tier": "core"
+      },
+      {
+        "id": "sangueblade",
+        "label": "Sangueblade",
+        "summary": "Her rapier sings when drawn — a clean tone audible across a ballroom. The blade drinks blood it draws and feeds her bloodline.",
+        "tier": "core"
+      },
+      {
+        "id": "court_information",
+        "label": "Court information network",
+        "summary": "Spies in every noble house and most peasant taverns. She knows what kings ate for breakfast.",
+        "tier": "passive"
+      }
+    ],
+    "weaknesses": [
+      "sunlight at full strength — she can be active in indoor daylight but full sun strips her power",
+      "consecrated holy items — most clergy don't have the courage to use them, but the few who do are real threats",
+      "her bloodline depends on continuity. Her death without an heir cascades through House Voss",
+      "her vanity — she will engage in a fair duel rather than win an unfair one if witnesses are watching"
+    ],
+    "quest_hooks": ["masquerade_invitation", "missing_guest_investigation", "house_voss_succession", "broker_of_secrets"],
+    "relationships": [
+      {"npc_id": "thorne_blackroot", "type": "wary_respect", "notes": "Tried three times to bring him into her network. Refused three times. They have a rule: never attack each other directly. Neither has tested it yet."},
+      {"npc_id": "mama_delgado", "type": "respectful_distance", "notes": "CROSS-WORLD. They have never met but correspond by letter through neutral envoys, calling each other 'cousin' as a private joke. The letters discuss long-term contingencies for cross-world flow of resources and intelligence."},
+      {"npc_id": "zero_nakamura", "type": "transactional_back_channel", "notes": "CROSS-WORLD. She traveled in person to The Grid to consult Kael for four days. He politely declined a formal arrangement but accepted a private intelligence back-channel that has been active since."},
+      {"npc_id": "luminary_vesper", "type": "respectful_distance", "notes": "CROSS-WORLD. They have never met. They have studied each other from across the worlds. Both consider the other the most dangerous person in any reality. Both are correct."}
+    ],
+    "narrative_context": {
+      "current_goal": "Identify and quietly compromise an heir from each of the four other Great Houses, so that within a generation House Voss can move openly without fearing reprisal.",
+      "secret": "She fed on her own mother to claim the bloodline early. The mother was complicit. The realm believes the mother died of a fever.",
+      "fear": "That the bloodline is ending with her — that her own ambition has made her too cautious to take a consort, and that without an heir her death undoes a thousand years of patience."
+    }
+  }
+]
