@@ -32,6 +32,14 @@ const SocialActionPanel = dynamic(
   () => import('@/components/world-lens/SocialActionPanel').then((m) => ({ default: m.SocialActionPanel })),
   { ssr: false },
 );
+const ConcordLinkPanel = dynamic(
+  () => import('@/components/concord-link/ConcordLinkPanel').then((m) => ({ default: m.ConcordLinkPanel })),
+  { ssr: false },
+);
+const WorldTravelPanel = dynamic(
+  () => import('@/components/world-travel/WorldTravelPanel').then((m) => ({ default: m.WorldTravelPanel })),
+  { ssr: false },
+);
 
 interface FactionEventPayload {
   eventId: string;
@@ -248,6 +256,15 @@ export function SocialOverlay({ myUserId, nearbyPlayers = [] }: { myUserId: stri
 
       {/* Social action panel — sender side for trade requests + party invites */}
       <SocialActionPanel myUserId={myUserId} nearbyPlayers={nearbyPlayers} />
+
+      {/* Concord Link — cross-world messaging UI (inbox + compose + anchors).
+          Renders a pill in the top-right when closed, slides out a full panel
+          when toggled. All costs paid in sparks (no real-money charges). */}
+      <ConcordLinkPanel myUserId={myUserId} />
+
+      {/* World Travel — slide-in left-edge portal selector. Travel itself is
+          free; only the Concord Link's cross-world messages cost sparks. */}
+      <WorldTravelPanel myUserId={myUserId} />
     </>
   );
 }

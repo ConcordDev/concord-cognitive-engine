@@ -268,7 +268,9 @@ export type SocketEvent =
   | 'faction:event_started'
   | 'faction:event_ended'
   // The Concord Link cross-world messaging
-  | 'concord-link:message';
+  | 'concord-link:message'
+  // World travel
+  | 'world:traveled';
 
 // ---- Enriched Event Payload (Category 2+5: Concurrency + Observability) ----
 interface EnrichedPayload {
