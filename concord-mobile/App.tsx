@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { View, Text, StyleSheet, ActivityIndicator, Linking, Alert } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, Linking, Alert, DeviceEventEmitter } from 'react-native';
 import { AppNavigator } from './src/surface/navigation/AppNavigator';
 import { useIdentityStore } from './src/store/identity-store';
 import { useMeshStore } from './src/store/mesh-store';
@@ -89,9 +89,44 @@ export default function App() {
   const setTransportStatus = useMeshStore(s => s.setTransportStatus);
   const updateBalance = useEconomyStore(s => s.updateBalance);
 
-  // ── Deep Link Handler (checkout return flow) ──────────────────────────
+  // ── Deep Link Handler (checkout return + DTU / quest / event linking) ──
+  // Supported URL forms (both concordapp:// and https://concord-os.org/...):
+  //   .../dtu/<dtuId>           — open the DTU in the inspect panel
+  //   .../quest/<questId>       — open the quest tracker on this quest
+  //   .../event/<eventId>       — open the world event RSVP page
+  //   .../listing/<listingId>   — open the marketplace listing
+  //   .../checkout-complete     — Stripe purchase return
   const handleDeepLink = useCallback(({ url }: { url: string }) => {
     if (!url) return;
+
+    // Strip both schemes so the matcher works on either form.
+    const path = url
+      .replace(/^concordapp:\/\//, '')
+      .replace(/^https?:\/\/(www\.)?concord-os\.org\//, '')
+      .replace(/^https?:\/\/[^/]+\//, '');
+
+    const dtuMatch     = path.match(/^dtu\/([a-zA-Z0-9_-]+)/);
+    const questMatch   = path.match(/^quest\/([a-zA-Z0-9_-]+)/);
+    const eventMatch   = path.match(/^event\/([a-zA-Z0-9_-]+)/);
+    const listingMatch = path.match(/^listing\/([a-zA-Z0-9_-]+)/);
+
+    if (dtuMatch) {
+      // Push DTU id into a global event the screens listen for.
+      DeviceEventEmitter.emit('concord:open-dtu', { dtuId: dtuMatch[1] });
+      return;
+    }
+    if (questMatch) {
+      DeviceEventEmitter.emit('concord:open-quest', { questId: questMatch[1] });
+      return;
+    }
+    if (eventMatch) {
+      DeviceEventEmitter.emit('concord:open-event', { eventId: eventMatch[1] });
+      return;
+    }
+    if (listingMatch) {
+      DeviceEventEmitter.emit('concord:open-listing', { listingId: listingMatch[1] });
+      return;
+    }
 
     if (url.includes('checkout-complete')) {
       // Purchase succeeded — Stripe webhook handles the actual minting.

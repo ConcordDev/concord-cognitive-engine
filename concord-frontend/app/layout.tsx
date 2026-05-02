@@ -74,6 +74,15 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="dark">
+      <head>
+        {/* iOS Smart App Banner — surfaces the native app on /dtu/, /quest/,
+            /event/, /listing/ pages and deep-links into the matching screen. */}
+        <meta name="apple-itunes-app" content="app-id=concordapp, app-argument=https://concord-os.org" />
+        {/* Android Chrome equivalent: rel=alternate hints to the OS that a
+            native app exists. The actual deep link is owned by the asset
+            statements file at /.well-known/assetlinks.json. */}
+        <link rel="alternate" href="android-app://org.concord.app" />
+      </head>
       <body className="min-h-screen bg-lattice-void">
         <Providers>{children}</Providers>
       </body>

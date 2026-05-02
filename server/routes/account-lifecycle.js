@@ -17,6 +17,7 @@ import {
   requestAccountDeletion,
   cancelAccountDeletion,
   exportUserData,
+  mergeAccounts,
   checkSellerEligibility,
   requestRefund,
   resolveDispute,
@@ -113,6 +114,60 @@ export default function createAccountLifecycleRouter({ db, requireAuth, adminOnl
     res.setHeader("Content-Type", "application/json");
     res.setHeader("Content-Disposition", `attachment; filename="concord-data-export-${userId}.json"`);
     res.json(result.data);
+  });
+
+  // ── Account Merge ─────────────────────────────────────────────────────
+  // POST /api/account/merge { sourceUserId, mergeToken }
+  // The merge token is a short-lived (10 min) JWT issued by /api/account/merge-token
+  // when both accounts authenticate via different providers. Caller is the
+  // "survivor" account; sourceUserId is the account whose data gets reassigned.
+
+  router.post("/account/merge", auth, (req, res) => {
+    const survivorUserId = req.user?.id;
+    if (!survivorUserId) return res.status(401).json({ ok: false, error: "unauthorized" });
+
+    const { sourceUserId, mergeToken } = req.body || {};
+    if (!sourceUserId || !mergeToken) {
+      return res.status(400).json({ ok: false, error: "missing_source_or_token" });
+    }
+
+    // Verify the merge token (issued by /merge-token after the source account
+    // re-authenticated). Token payload: { sourceUserId, exp }.
+    let tokenPayload;
+    try {
+      const jwt = require("jsonwebtoken");
+      tokenPayload = jwt.verify(mergeToken, process.env.JWT_SECRET || "dev_secret");
+    } catch {
+      return res.status(401).json({ ok: false, error: "invalid_merge_token" });
+    }
+    if (tokenPayload.sourceUserId !== sourceUserId) {
+      return res.status(401).json({ ok: false, error: "token_mismatch" });
+    }
+
+    const result = mergeAccounts(db, {
+      survivorUserId,
+      sourceUserId,
+      actorId: survivorUserId,
+    });
+    res.status(result.ok ? 200 : 400).json(result);
+  });
+
+  // Issue a merge token after the source account authenticates. The user
+  // requests it from the source-account session, then pastes the token into
+  // their survivor session to confirm the merge.
+  router.post("/account/merge-token", auth, (req, res) => {
+    const sourceUserId = req.user?.id;
+    if (!sourceUserId) return res.status(401).json({ ok: false, error: "unauthorized" });
+    try {
+      const jwt = require("jsonwebtoken");
+      const token = jwt.sign(
+        { sourceUserId, kind: "account_merge", exp: Math.floor(Date.now() / 1000) + 600 },
+        process.env.JWT_SECRET || "dev_secret",
+      );
+      res.json({ ok: true, mergeToken: token, expiresInSec: 600 });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: "token_issue_failed" });
+    }
   });
 
   // ── Seller Verification ──────────────────────────────────────────────

@@ -4779,6 +4779,9 @@ function authMiddleware(req, res, next) {
     "/api/inference/slos", "/api/audit/provenance",
     // Plugins & extensions
     "/api/plugins", "/api/macros",
+    // Creator surfaces (leaderboard / trending / drift) — read-only public,
+    // dashboard remains authed.
+    "/api/creator/leaderboard", "/api/creator/trending-citations", "/api/creator/influence-drift",
     // Growth & entities
     "/api/entity-growth", "/api/entity-exploration", "/api/goals",
     "/api/hypothesis",
@@ -39982,6 +39985,73 @@ app.get("/api/marketplace/listings", asyncHandler(async (req, res) => {
     page: req.query.page,
     pageSize: req.query.pageSize
   }, makeCtx(req)));
+}));
+
+// Lineage-aware search wrapper. Calls the existing semantic search and
+// re-ranks with citation depth, recency, scope filter, domain match boost.
+app.get("/api/search/ranked", asyncHandler(async (req, res) => {
+  const q = String(req.query.q || "").slice(0, 500);
+  if (!q) return res.status(400).json({ ok: false, error: "q_required" });
+  const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 20));
+  const requestedDomain = req.query.domain ? String(req.query.domain) : null;
+
+  const semantic = await runMacro("search", "semantic", { q, limit: limit * 2 }, makeCtx(req)).catch(() => null);
+  const raw = semantic?.results ?? [];
+
+  const ranking = await import("./lib/search-ranking.js");
+  const scopes = req.user ? ["public", "personal", "org", "federated"] : ["public"];
+  const ranked = ranking.rankResults(raw, STATE, {
+    q,
+    userId: req.user?.id,
+    allowedScopes: scopes,
+    requestedDomain,
+  }).slice(0, limit);
+
+  // Record into history if authenticated.
+  if (req.user?.id) ranking.recordSearchHistory(req.user.id, q);
+
+  res.json({ ok: true, q, total: ranked.length, results: ranked });
+}));
+
+// Search history + saved searches (per user).
+app.get("/api/search/history", requireAuth(), asyncHandler(async (req, res) => {
+  const ranking = await import("./lib/search-ranking.js");
+  const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 50));
+  res.json(ranking.getSearchHistory(req.user.id, limit));
+}));
+app.get("/api/search/saved", requireAuth(), asyncHandler(async (req, res) => {
+  const ranking = await import("./lib/search-ranking.js");
+  res.json(ranking.getSavedSearches(req.user.id));
+}));
+app.post("/api/search/saved", requireAuth(), asyncHandler(async (req, res) => {
+  const ranking = await import("./lib/search-ranking.js");
+  const { q, name } = req.body || {};
+  res.json(ranking.saveSearch(req.user.id, q, name));
+}));
+app.delete("/api/search/saved/:id", requireAuth(), asyncHandler(async (req, res) => {
+  const ranking = await import("./lib/search-ranking.js");
+  res.json(ranking.deleteSavedSearch(req.user.id, req.params.id));
+}));
+
+// Creator dashboard + reputation surfaces. Creator-scoped views drawn from
+// STATE so they stay live without a separate aggregation pipeline.
+app.get("/api/creator/dashboard", requireAuth(), asyncHandler(async (req, res) => {
+  const cd = await import("./lib/creator-dashboard.js");
+  const userId = req.user?.id;
+  res.json(cd.computeCreatorDashboard(userId, STATE));
+}));
+app.get("/api/creator/leaderboard", asyncHandler(async (req, res) => {
+  const cd = await import("./lib/creator-dashboard.js");
+  const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 25));
+  res.json(cd.computeReputationLeaderboard(STATE, { limit }));
+}));
+app.get("/api/creator/trending-citations", asyncHandler(async (_req, res) => {
+  const cd = await import("./lib/creator-dashboard.js");
+  res.json(cd.computeTrendingCitations(STATE));
+}));
+app.get("/api/creator/influence-drift", asyncHandler(async (_req, res) => {
+  const cd = await import("./lib/creator-dashboard.js");
+  res.json(cd.computeInfluenceDrift(STATE));
 }));
 
 // Federation: peer list, trust graph visualization, cross-instance search.
