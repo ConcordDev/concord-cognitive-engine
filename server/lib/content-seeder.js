@@ -16,6 +16,7 @@ import { fileURLToPath } from "url";
 import logger from "../logger.js";
 import { createQuest } from "../emergent/quest-engine.js";
 import { recordEvent, EVENT_TYPES } from "../emergent/history-engine.js";
+import { registerWorldMeta } from "./cross-world-effectiveness.js";
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const CONTENT_ROOT = join(__dir, "../../content");
@@ -236,10 +237,23 @@ export function seedContent() {
     results.lore = seedLore(lore);
   }
 
+  // World meta for Concordia (the hub) — stored at content/world/_meta.json
+  // because Concordia's content lives at the top level.
+  const concordiaMeta = readJSON("world/_meta.json");
+  if (concordiaMeta?.world_id) {
+    registerWorldMeta(concordiaMeta);
+    results.worlds = (results.worlds || 0) + 1;
+  }
+
   // Sub-worlds — each subdirectory under content/world/ may carry its own
-  // factions.json + npcs.json + lore.json. Each entry should already be
-  // tagged with `world_id` so emergent systems can scope by world.
+  // meta.json + factions.json + npcs.json + lore.json. Each entry should
+  // already be tagged with `world_id` so emergent systems can scope by world.
   for (const sub of discoverSubWorlds()) {
+    const meta = readJSON(`${sub.path}/meta.json`);
+    if (meta?.world_id) {
+      registerWorldMeta(meta);
+      results.worlds = (results.worlds || 0) + 1;
+    }
     const subFactions = readJSON(`${sub.path}/factions.json`);
     if (Array.isArray(subFactions)) results.factions += seedFactions(subFactions);
     const subNpcs = readJSON(`${sub.path}/npcs.json`);
