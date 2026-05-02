@@ -4835,6 +4835,9 @@ function authMiddleware(req, res, next) {
     "/api/export",
     // Repair cortex v3.1 (frontend error reporting must work without auth)
     "/api/repair",
+    // World clock — public read of the current day/night phase. Mutators
+    // (npc-schedule overrides) require auth.
+    "/api/world/clock", "/api/world/npc-behavior", "/api/world/npc-archetypes",
     // Concord Link — public reads for anchors, cost preview, walker bazaar.
     // Auth is still enforced on /send, /inbox, /:id/read, /walkers/hire by
     // the route handlers themselves.
@@ -26442,6 +26445,49 @@ try {
   structuredLog("warn", "emergent_skills_boot_failed", { error: err?.message });
 }
 
+// World clock — server-authoritative day/night phase, broadcast every 30s.
+import { startWorldClockBroadcast, getWorldPhase, getDayPhase, WORLD_CLOCK_CONSTANTS } from "./lib/world-clock.js";
+import { getCurrentBehavior as getNPCCurrentBehavior, setNPCSchedule, NPC_SCHEDULE_ARCHETYPES, batchCurrentBehaviors } from "./lib/npc-schedules.js";
+
+// Start the world-clock broadcast loop once REALTIME is ready. We poll briefly
+// for it because REALTIME may finish initializing after this import runs.
+let _worldClockStop = null;
+const _startWorldClock = () => {
+  if (_worldClockStop) return;
+  if (REALTIME?.io) {
+    _worldClockStop = startWorldClockBroadcast(REALTIME);
+    structuredLog("info", "world_clock_broadcast_started", { dayLengthMs: WORLD_CLOCK_CONSTANTS.dayLengthMs });
+  } else {
+    setTimeout(_startWorldClock, 1000);
+  }
+};
+_startWorldClock();
+
+app.get("/api/world/clock", (_req, res) => {
+  const phase = getWorldPhase();
+  res.json({
+    ok: true,
+    phase,
+    segment: getDayPhase(phase),
+    dayLengthMs: WORLD_CLOCK_CONSTANTS.dayLengthMs,
+    serverTime: new Date().toISOString(),
+  });
+});
+app.get("/api/world/npc-behavior", (req, res) => {
+  const id = String(req.query.id || "");
+  const archetype = String(req.query.archetype || "default");
+  res.json({ ok: true, behavior: getNPCCurrentBehavior({ id, archetype }), segment: getDayPhase() });
+});
+app.post("/api/world/npc-schedule", requireAuth, (req, res) => {
+  const { npcId, schedule } = req.body || {};
+  if (!npcId) return res.status(400).json({ ok: false, error: "npcId_required" });
+  setNPCSchedule(npcId, schedule || null);
+  res.json({ ok: true });
+});
+app.get("/api/world/npc-archetypes", (_req, res) => {
+  res.json({ ok: true, archetypes: NPC_SCHEDULE_ARCHETYPES });
+});
+
 // Procedural creature spawn — POST a description, get a physics-validated
 // blueprint with attached skills. Caller renders the blueprint via the
 // frontend creature loader.
@@ -27885,6 +27931,31 @@ async function governorTick(reason="heartbeat") {
         try {
           const cb = await import("./lib/creature-crossbreeding.js");
           cb.decayBonds(db);
+        } catch (_e) { /* heartbeat invariant */ }
+      }
+
+      // NPC schedule re-plan — every 4 ticks (~60s) check whether the day
+      // segment changed since last evaluation; if it did, re-plan all NPC
+      // behaviors. Cheap: just consults npc-schedules.js getCurrentBehavior.
+      // The actual movement / activity is handled by npc-simulator on its
+      // own cadence; this hook just labels what each NPC SHOULD be doing
+      // so the simulator can route accordingly.
+      if ((_tick % 4) === 0 && _tick > 0) {
+        try {
+          const wc = await import("./lib/world-clock.js");
+          const ns = await import("./lib/npc-schedules.js");
+          const segment = wc.getDayPhase();
+          if (STATE._lastNPCSegment !== segment) {
+            STATE._lastNPCSegment = segment;
+            // Pull current authored NPCs so the labels propagate; npc-simulator
+            // reads STATE.npcCurrentBehaviors when it runs its own tick.
+            const seeder = await import("./lib/content-seeder.js").catch(() => null);
+            if (seeder?._authoredNPCs) {
+              const npcs = [...seeder._authoredNPCs.values()];
+              STATE.npcCurrentBehaviors = ns.batchCurrentBehaviors(npcs);
+              structuredLog("info", "npc_schedule_replan", { segment, count: npcs.length });
+            }
+          }
         } catch (_e) { /* heartbeat invariant */ }
       }
 

@@ -560,14 +560,29 @@ interface DayNightCycleProps {
 function DayNightCycle({ skyPreset = "auto", startedAt }: DayNightCycleProps) {
   const [sample, setSample] = useState(() => sampleDayNight(0));
   const lastUpdateRef = useRef(0);
-  const start = useRef(startedAt ?? Date.now()).current;
+  const startRef      = useRef(startedAt ?? Date.now());
+
+  // Subscribe to server-broadcast world clock so all clients see exactly the
+  // same time-of-day. Falls back to local Date.now() if the server hasn't
+  // emitted yet.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { epochMs?: number; dayLengthMs?: number } | undefined;
+      if (detail?.epochMs)     startRef.current = detail.epochMs;
+      // If server reports a non-default day length, honor it locally.
+      // (We don't reassign DAY_LENGTH_MS here; a future enhancement could
+      // dispatch a context event for renderer-wide consumption.)
+    };
+    window.addEventListener("concordia:world-clock", handler);
+    return () => window.removeEventListener("concordia:world-clock", handler);
+  }, []);
 
   useFrame(() => {
     if (skyPreset !== "auto") return;
     const now = performance.now();
     if (now - lastUpdateRef.current < 100) return; // ~10Hz
     lastUpdateRef.current = now;
-    const t = ((Date.now() - start) % DAY_LENGTH_MS) / DAY_LENGTH_MS;
+    const t = ((Date.now() - startRef.current) % DAY_LENGTH_MS) / DAY_LENGTH_MS;
     setSample(sampleDayNight(t));
   });
 
