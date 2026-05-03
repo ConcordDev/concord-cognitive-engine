@@ -164,6 +164,10 @@ const PlayerActionMenu = dynamic(
   () => import('@/components/world-lens/PlayerActionMenu'),
   { ssr: false },
 );
+const CombatFlowHotbar = dynamic(
+  () => import('@/components/world-lens/CombatFlowHotbar'),
+  { ssr: false },
+);
 const AnimationManager = dynamic(() => import('@/components/world-lens/AnimationManager'), {
   ssr: false,
 });
@@ -1275,6 +1279,9 @@ export default function WorldLensPage() {
 
   // ── Combat feel: combo counter, stagger, limb damage ─────────────────────
   const [comboCount, setComboCount] = useState(0);
+  // Flow Combat: most recent action chain feeds CombatFlowHotbar's
+  // suggestion endpoint. Last 5 actions kept; older drop off.
+  const [recentChain, setRecentChain] = useState<Array<{ action: string }>>([]);
   const [staggered, setStaggered] = useState(false);
   const [limbState, setLimbState] = useState<LimbState>({
     head: 100,
@@ -2176,6 +2183,14 @@ export default function WorldLensPage() {
           setComboCount(0);
           comboTargetRef.current = null;
         }, 4000);
+
+        // Flow Combat recentChain — last 5 actions, newest at end. Used by
+        // CombatFlowHotbar.suggest endpoint to surface the next combo step.
+        const heavy = (data.damage ?? 0) > 18;
+        setRecentChain((prev) => {
+          const next = [...prev, { action: heavy ? 'attack-heavy' : 'attack-light' }];
+          return next.slice(-5);
+        });
       }
 
       if (data.targetKilled) {
@@ -3129,6 +3144,19 @@ export default function WorldLensPage() {
           <TutorialHighlight />
           <WorldVisualHooks />
           <PlayerActionMenu />
+          <CombatFlowHotbar
+            playerPos={playerAvatar.position}
+            inCombat={!!combatState.target || comboCount > 0}
+            recentChain={recentChain}
+            equippedWeapon={
+              combatState.weapon
+                ? {
+                    id: combatState.weapon.name.toLowerCase().replace(/\s+/g, '_'),
+                    type: (combatState.weapon.type as 'melee' | 'ranged' | 'magic' | 'fist') ?? 'melee',
+                  }
+                : null
+            }
+          />
           <AnimationManager>
             <></>
           </AnimationManager>

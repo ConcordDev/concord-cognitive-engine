@@ -6449,6 +6449,50 @@ async function tryInitWebSockets(server) {
       }
 
       if (result.ok) {
+        // Flow Combat: record this attack into the procedural substrate
+        // so the flow engine can derive combos from it. The detection of
+        // combat context (ground/aerial/vehicle/hacker/underwater) uses the
+        // attacker's last known position; aerial / hacker / vehicle flags
+        // come from the attack payload when supplied.
+        try {
+          import("./lib/combat/context-engine.js").then(({ detectCombatContext }) => {
+            const pos = cityPresence.getPlayerPosition?.(userId) || { x: 0, y: 0, z: 0 };
+            const ctx = detectCombatContext({
+              position: pos,
+              groundY: 0,
+              inVehicle:  !!data.inVehicle,
+              hackerMode: !!data.hackerMode,
+              grounded:   data.grounded !== false,
+            });
+            return import("./lib/combat/flow-recorder.js").then(({ recordCombatFlow }) => {
+              recordCombatFlow(db, {
+                fighterId:  userId,
+                fighterKind:"player",
+                context:    ctx.context,
+                style:      data.style || ctx.styleHints[0] || null,
+                action:     data.heavy ? "attack-heavy" : "attack-light",
+                actionMeta: { weapon: data.weapon || "fist", chain: data.chainId, step: data.stepIndex || 0 },
+                targetId:   String(data.targetId || ""),
+                hit:        result.damage > 0,
+                damage:     Number(result.damage || 0),
+                isCrit:     !!result.isCrit,
+                chainId:    data.chainId || null,
+                stepIndex:  Number(data.stepIndex || 0),
+              });
+              // Auto-evolve every 8 actions so the player sees procedural
+              // combo branches surface naturally without a polling endpoint.
+              if (Math.random() < 0.125) {
+                import("./lib/combat/flow-engine.js").then(({ evolveFighterCombos }) => {
+                  const r = evolveFighterCombos(db, userId, "player");
+                  if (r?.ok && r.evolved.some((e) => e.evolvedNow)) {
+                    realtimeEmit("combat:combo-evolved", { userId, evolved: r.evolved.filter((e) => e.evolvedNow) });
+                  }
+                }).catch(() => {});
+              }
+            });
+          }).catch(() => { /* flow record best-effort */ });
+        } catch { /* dynamic import guard */ }
+
         // Broadcast the hit event so everyone in the attacker's
         // chunk sees it — damage numbers, blood, etc.
         realtimeEmit("combat:hit", {
@@ -26452,6 +26496,10 @@ app.use("/api/npc-shop", createNPCShopRouter({ requireAuth, db }));
 // Phase 8 polish-to-ten: player-to-player trade with both-sides-confirm escrow
 import createPlayerTradeRouter from "./routes/player-trade.js";
 app.use("/api/player-trade", createPlayerTradeRouter({ requireAuth, db, emitToUser }));
+
+// Flow Combat — context engine + Combat Flow DTUs + procedural combo evolution
+import createCombatFlowRouter from "./routes/combat-flow.js";
+app.use("/api/combat-flow", createCombatFlowRouter({ db, requireAuth }));
 
 // Plugin gallery + signing: browseable, signature-verified plugin
 // distribution. Author publishes signed package → gallery entry; users
