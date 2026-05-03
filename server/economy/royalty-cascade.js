@@ -9,6 +9,13 @@ import { randomUUID } from "crypto";
 import { recordTransactionBatch, generateTxId } from "./ledger.js";
 import { PLATFORM_ACCOUNT_ID } from "./fees.js";
 import { canCiteDtu, canCiteSpecificDtu } from "../lib/consent.js";
+import {
+  grantEarnedStorage,
+  countTriggersSinceLastGrant,
+  STORAGE_EARN_PER_ROYALTY_BATCH_BYTES,
+  ROYALTY_BATCH_SIZE,
+  STORAGE_REASONS,
+} from "../lib/storage-quota.js";
 
 function uid(prefix = "roy") {
   return `${prefix}_` + randomUUID().replace(/-/g, "").slice(0, 16);
@@ -271,6 +278,38 @@ export function distributeRoyalties(db, { contentId, transactionAmount, sourceTx
     for (let i = 0; i < payoutRecords.length; i++) {
       const pr = payoutRecords[i];
       stmt.run(pr.id, pr.transactionId, pr.contentId, pr.recipientId, pr.amount, pr.generation, pr.royaltyRate, pr.sourceTxId, results[i]?.id || null, nowISO());
+    }
+
+    // Earned-storage hook. Every ROYALTY_BATCH_SIZE payouts received by a
+    // single recipient grants STORAGE_EARN_PER_ROYALTY_BATCH_BYTES (default
+    // 1 GiB per 100 payouts). Active creators expand storage organically;
+    // lurkers stay at the 5 GiB baseline. Idempotent via grant_key.
+    try {
+      const recipientCounts = new Map();
+      for (const pr of payoutRecords) {
+        recipientCounts.set(pr.recipientId, (recipientCounts.get(pr.recipientId) || 0) + 1);
+      }
+      for (const [recipientId, _addedNow] of recipientCounts.entries()) {
+        if (!recipientId || recipientId === PLATFORM_ACCOUNT_ID) continue;
+        const totalReceived = db.prepare(
+          `SELECT COUNT(*) AS n FROM royalty_payouts WHERE recipient_id = ?`
+        ).get(recipientId)?.n || 0;
+        const grantsAlreadyMade = countTriggersSinceLastGrant(db, recipientId, STORAGE_REASONS.EARNED_ROYALTY);
+        const targetGrants = Math.floor(totalReceived / ROYALTY_BATCH_SIZE);
+        for (let g = grantsAlreadyMade + 1; g <= targetGrants; g++) {
+          grantEarnedStorage(
+            db,
+            recipientId,
+            STORAGE_REASONS.EARNED_ROYALTY,
+            STORAGE_EARN_PER_ROYALTY_BATCH_BYTES,
+            `royalty_batch:${recipientId}:${g}`,
+          );
+        }
+      }
+    } catch (e) {
+      // Storage grants are best-effort. The royalty distribution itself
+      // must never fail because of an accounting hiccup.
+      try { console.warn("[royalty-cascade] storage grant failed", e?.message); } catch { /* ignore */ }
     }
 
     return results;

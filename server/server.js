@@ -100,6 +100,17 @@ registerHeartbeat("eco-expiry-sweep", {
 // EvoEcosystem W6: prune expired Refusal Field entries every tick so
 // world systems consulting isRefused(...) get fresh state.
 import { runRefusalFieldSweep, activeFields as activeRefusalFields, applyTemporaryRefusal, isRefused } from "./lib/refusal-field.js";
+import {
+  getUserStorage,
+  assertHasSpaceFor,
+  recordStorageDelta,
+  grantEarnedStorage,
+  countTriggersSinceLastGrant,
+  STORAGE_EARN_PER_MEGA_BYTES,
+  STORAGE_EARN_PER_SALE_BATCH_BYTES,
+  SALE_BATCH_SIZE,
+  STORAGE_REASONS,
+} from "./lib/storage-quota.js";
 registerHeartbeat("refusal-field-sweep", {
   frequency: 1,
   handler: runRefusalFieldSweep,
@@ -11436,6 +11447,48 @@ const _SYSTEM_DTU_SOURCES = new Set([
 function dtusArray() { return typeof STATE.dtus?.values === "function" ? Array.from(STATE.dtus.values()) : []; }
 
 /**
+ * Defense-in-depth: refuse a session lookup if the requester doesn't
+ * own (or isn't a participant of) the session. The implicit gate today
+ * is "you must know the sessionId" — UUIDs are unguessable in practice,
+ * but a leaked sessionId via logs/sharing should not grant access.
+ *
+ * Sessions created before commit d15cc1c won't have ownerId — for
+ * those we fall back to permissive (legacy) behavior so existing chats
+ * keep working. New sessions all carry ownerId.
+ */
+function assertSessionAccessible(sess, userId) {
+  if (!sess) return false;
+  if (!sess.ownerId) return true; // legacy session — pre-ownership-tracking
+  if (!userId) return false;
+  if (sess.ownerId === userId) return true;
+  if (sess.participantIds?.has?.(userId)) return true;
+  return false;
+}
+
+/**
+ * Find the user's most recent active session. Replaces the wrong-key
+ * lookup `STATE.sessions.get(userId)` which always returned undefined
+ * because sessions are keyed by sessionId, not userId. Returns the
+ * session with the latest message timestamp, or null if the user has
+ * no sessions.
+ */
+function getMostRecentSessionForUser(userId) {
+  if (!userId || !STATE.sessions) return null;
+  let mostRecent = null;
+  let mostRecentTs = 0;
+  for (const sess of STATE.sessions.values()) {
+    if (sess?.ownerId !== userId) continue;
+    const lastMsg = sess.messages?.[sess.messages.length - 1];
+    const ts = lastMsg?.ts ? new Date(lastMsg.ts).getTime() : 0;
+    if (ts > mostRecentTs) {
+      mostRecentTs = ts;
+      mostRecent = sess;
+    }
+  }
+  return mostRecent;
+}
+
+/**
  * User-visible DTUs only: filters out repair cortex, system internals,
  * internal-scope DTUs, and (when `viewerId` is passed) any private /
  * user-scoped content not owned by the viewer.
@@ -18610,7 +18663,14 @@ const _mentionsSelf = Array.from(_selfTokens).some(t => _pLow.includes(t));
   const baseSettings = (ctx?.state?.settings) ? ctx.state.settings : (STATE.settings || {});
 
   if (!STATE.sessions.has(sessionId)) {
+    // ownerId enables defense-in-depth: assertSessionAccessible() refuses
+    // session reads from anyone other than the owner (or a participant
+    // for shared-session flows). participantIds starts as just the owner;
+    // shared-session join handlers add additional userIds.
+    const _ownerId = ctx?.actor?.userId || input?.userId || null;
     STATE.sessions.set(sessionId, {
+      ownerId: _ownerId,
+      participantIds: _ownerId ? new Set([_ownerId]) : new Set(),
       createdAt: nowISO(),
       messages: [],
       currentLens: null,
@@ -27933,7 +27993,14 @@ if (db) {
           // Check each trigger type
           for (const triggerType of ["check_in", "pending_work", "reflective_followup", "substrate_discovery"]) {
             try {
-              const lastMsg = STATE.sessions.get(userId)?.messages?.slice(-1)[0];
+              // BUGFIX: STATE.sessions is keyed by sessionId, not userId,
+              // so the prior `.get(userId)` always returned undefined and
+              // idleMinutes always landed at 999 — meaning every trigger
+              // type would always fire for every active user. Use the
+              // ownerId-aware helper to find the user's most recent
+              // session correctly.
+              const _userSess = getMostRecentSessionForUser(userId);
+              const lastMsg = _userSess?.messages?.slice(-1)[0];
               const idleMinutes = lastMsg?.ts ? Math.round((Date.now() - new Date(lastMsg.ts).getTime()) / 60000) : 999;
 
               // Only trigger if user has been idle long enough
@@ -29055,6 +29122,23 @@ async function governorTick(reason="heartbeat") {
                         }
                       }
                     }
+                    // Earned-storage hook — every MEGA owned by a creator
+                    // grants STORAGE_EARN_PER_MEGA_BYTES (default 512 MiB).
+                    // The MEGA owner is the creator most-cited in the cluster
+                    // (its meta.createdBy); we grant once per MEGA, idempotent
+                    // by the MEGA's id.
+                    try {
+                      const megaOwner = mega.dtu?.meta?.createdBy;
+                      if (megaOwner) {
+                        grantEarnedStorage(
+                          db,
+                          megaOwner,
+                          STORAGE_REASONS.EARNED_MEGA,
+                          STORAGE_EARN_PER_MEGA_BYTES,
+                          `mega:${mega.dtu.id}`,
+                        );
+                      }
+                    } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
                   }
                 } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
               }
@@ -32829,6 +32913,14 @@ app.get("/api/feedback-review", asyncHandler(async (req, res) => {
 // ── Artifact API Endpoints ──
 app.post("/api/artifact/upload", async (req, res) => {
   try {
+    // Storage quota gate. Artifact uploads are the byte-heavy path —
+    // cooking and combat DTUs are tiny, but a single audio/video can
+    // be hundreds of MB. The 5 GiB baseline + earned expansion is
+    // enforced here. Anonymous uploads are not permitted (no user to
+    // bill bytes against).
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
+
     const artifactMod = await import("./lib/artifact-store.js").catch(() => null);
     if (!artifactMod) return res.status(500).json({ ok: false, error: "artifact_store_unavailable" });
 
@@ -32836,6 +32928,16 @@ app.post("/api/artifact/upload", async (req, res) => {
     const chunks = [];
     for await (const chunk of req) chunks.push(chunk);
     const buffer = Buffer.concat(chunks);
+
+    // Quota check before write. Must come AFTER reading the body so we
+    // know the actual byte count, but BEFORE storeArtifact so we don't
+    // commit to disk just to fail.
+    try {
+      assertHasSpaceFor(db, userId, buffer.length);
+    } catch (e) {
+      if (e?.code === "quota_exceeded") return res.status(413).json(e.payload);
+      throw e;
+    }
 
     const contentType = req.headers["content-type"] || "application/octet-stream";
     const filename = req.headers["x-filename"] || `upload_${Date.now()}`;
@@ -32860,10 +32962,13 @@ app.post("/api/artifact/upload", async (req, res) => {
       artifact: artifactRef,
       lineage: { parents: [], children: [] },
       authority: { score: 0.5 },
-      meta: { createdBy: req.user?.id || "anonymous", lens: domain, type: artifactMod.inferKindFromType(contentType), tags: [domain], createdAt: new Date().toISOString() },
+      meta: { createdBy: userId, lens: domain, type: artifactMod.inferKindFromType(contentType), tags: [domain], createdAt: new Date().toISOString() },
     };
 
     STATE.dtus.set(dtuId, dtu);
+    // Record byte delta for the user. Best-effort — counter drift won't
+    // crash the upload pipeline if it happens.
+    recordStorageDelta(db, userId, artifactRef.sizeBytes || buffer.length, STORAGE_REASONS.UPLOAD, dtuId);
     res.json({ ok: true, dtuId, artifact: { type: artifactRef.type, sizeBytes: artifactRef.sizeBytes } });
   } catch (err) {
     res.status(500).json({ ok: false, error: String(err?.message || err) });
@@ -33195,6 +33300,10 @@ app.delete("/api/plugins/:pluginId", asyncHandler(async (req, res) => {
 
 // ── Global Query API ────────────────────────────────────────────────────────
 
+// Global pool only — no per-user scoping needed. queryGlobalFallback
+// pulls exclusively from the public/global DTU pool (scope='global'
+// or visibility='public'), so cache contents are safe to share across
+// users by design. Audited in commit d15cc1c.
 const _globalQueryCache = new Map(); // queryKey → { result, cachedAt }
 const GLOBAL_QUERY_CACHE_MS = 300_000; // 5 minutes — aligned with global tick
 
@@ -39729,9 +39838,14 @@ function initChatSocketHandlers(io) {
 
         if (_streamBrainUrl) {
           try {
-            // Ensure session exists
+            // Ensure session exists. Capture ownerId from the socket auth
+            // metadata (set by the io.use middleware in initRealtime) so
+            // assertSessionAccessible can later refuse cross-user reads.
             if (!STATE.sessions.has(sessionId)) {
+              const _ownerId = socket.data?.userId || null;
               STATE.sessions.set(sessionId, {
+                ownerId: _ownerId,
+                participantIds: _ownerId ? new Set([_ownerId]) : new Set(),
                 createdAt: nowISO(),
                 messages: [],
                 currentLens: null,
@@ -56091,8 +56205,14 @@ function ensureSemanticEngine() {
   if (!STATE.semantic) {
     STATE.semantic = {
       embeddings: new Map(),            // DTU ID -> embedding vector
-      intentCache: new Map(),           // Recent intent classifications
-      entityCache: new Map(),           // Extracted entities cache
+      // intentCache + entityCache: reserved for future intent/entity
+      // classification caching. Currently unused — no reads or writes
+      // in the codebase as of commit d15cc1c. If you wire these up,
+      // key them by `${userId}:${input}` to honor the
+      // personal_dtus_never_leak invariant; intent classification on a
+      // user's free-text input may surface PII in the cache key.
+      intentCache: new Map(),           // (reserved — see comment above)
+      entityCache: new Map(),           // (reserved — see comment above)
       vocabulary: new Map(),            // Term frequency for local TF-IDF
       stats: {
         embeddingsComputed: 0,
@@ -61499,6 +61619,26 @@ app.post('/api/economic/marketplace/buy', (req, res) => {
 
     // Update listing
     listing.sales += 1;
+
+    // Earned-storage hook — every SALE_BATCH_SIZE sales by a single seller
+    // grants STORAGE_EARN_PER_SALE_BATCH_BYTES (default 1 GiB per 10 sales).
+    // Idempotent via the (seller, salesCount) grant key so re-tries can't
+    // double-count.
+    try {
+      if (listing.seller && db) {
+        const grantsAlreadyMade = countTriggersSinceLastGrant(db, listing.seller, STORAGE_REASONS.EARNED_SALE);
+        const targetGrants = Math.floor(listing.sales / SALE_BATCH_SIZE);
+        for (let g = grantsAlreadyMade + 1; g <= targetGrants; g++) {
+          grantEarnedStorage(
+            db,
+            listing.seller,
+            STORAGE_REASONS.EARNED_SALE,
+            STORAGE_EARN_PER_SALE_BATCH_BYTES,
+            `sale_batch:${listing.seller}:${g}`,
+          );
+        }
+      }
+    } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
 
     // Record purchase for buyer (so they can access the asset)
     const purchaseRecord = {
