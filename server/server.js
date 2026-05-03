@@ -27244,11 +27244,24 @@ app.post("/api/world/buildings/spawn", requireAuth, (req, res) => {
     }
 
     const id = `wb_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    // The world_buildings table from migration 063 requires building_type
+    // NOT NULL. We infer it from the blueprint's kind so the row remains
+    // valid for downstream renderers + structural-decay logic.
+    const buildingType = (() => {
+      const k = body?.meta?.kind ?? body?.kind ?? "building";
+      if (k === "vehicle") return "vehicle";
+      if (k === "weapon") return "weapon-emplacement";
+      return "house"; // generic player-spawned structure
+    })();
     db.prepare(`
       INSERT INTO world_buildings
-        (id, world_id, blueprint_dtu_id, spawned_by_user_id, x, y, z, rotation_y)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(id, worldId, blueprintId, userId, position.x, position.y, position.z, Number(rotationY) || 0);
+        (id, world_id, building_type, blueprint_dtu_id, spawned_by_user_id, owner_type, owner_id, x, y, z, rotation_y, rotation, is_seed)
+      VALUES (?, ?, ?, ?, ?, 'player', ?, ?, ?, ?, ?, ?, 0)
+    `).run(
+      id, worldId, buildingType, blueprintId, userId, userId,
+      position.x, position.y, position.z,
+      Number(rotationY) || 0, Number(rotationY) || 0,
+    );
 
     try {
       REALTIME?.io?.to(`world:${worldId}`).emit("world:building-spawned", {

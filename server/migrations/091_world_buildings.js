@@ -1,28 +1,40 @@
 // server/migrations/091_world_buildings.js
 //
-// v2.0 instantiation: blueprint DTUs become spawned buildings in the world.
-// `world_buildings` references a blueprint DTU plus a position; the 3D
-// renderer walks this table on world load to render community-spawned
-// structures. The blueprint DTU itself is the source of truth — this
-// table is just (instance_id, blueprint_id, position) records.
+// v2.0 instantiation: blueprint DTUs become spawned buildings in the
+// world. The `world_buildings` table was created by migration 063 for
+// hand-placed seed structures; this migration extends it with two
+// nullable columns so player-spawned DTU blueprints can coexist with
+// the seed-city geometry in one table.
+//
+// New columns:
+//   blueprint_dtu_id     — references the DTU this building was spawned
+//                          from (NULL for seed-city structures)
+//   spawned_by_user_id   — who placed it (NULL for seed)
+//   rotation_y           — yaw rotation in radians (parallel to existing
+//                          `rotation` so we don't break old code; we use
+//                          rotation_y on new spawns and the renderer
+//                          falls back to rotation when null)
+//
+// The 091_world_buildings.js name predates this rewrite. Kept here so
+// migration ordering stays linear and idempotent.
 
 export function up(db) {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS world_buildings (
-      id              TEXT PRIMARY KEY,
-      world_id        TEXT NOT NULL,
-      blueprint_dtu_id TEXT NOT NULL,
-      spawned_by_user_id TEXT,
-      x REAL NOT NULL,
-      y REAL NOT NULL,
-      z REAL NOT NULL,
-      rotation_y REAL NOT NULL DEFAULT 0,
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
-    );
+  // Idempotent ALTER TABLE — only adds columns that don't already exist.
+  let cols = [];
+  try {
+    cols = db.prepare("PRAGMA table_info(world_buildings)").all().map((r) => r.name);
+  } catch { return; /* table missing — nothing to do; will be created by 063 first */ }
 
-    CREATE INDEX IF NOT EXISTS idx_world_buildings_world ON world_buildings(world_id);
-    CREATE INDEX IF NOT EXISTS idx_world_buildings_blueprint ON world_buildings(blueprint_dtu_id);
-  `);
+  if (!cols.includes("blueprint_dtu_id")) {
+    db.exec("ALTER TABLE world_buildings ADD COLUMN blueprint_dtu_id TEXT");
+    db.exec("CREATE INDEX IF NOT EXISTS idx_world_buildings_blueprint ON world_buildings(blueprint_dtu_id)");
+  }
+  if (!cols.includes("spawned_by_user_id")) {
+    db.exec("ALTER TABLE world_buildings ADD COLUMN spawned_by_user_id TEXT");
+  }
+  if (!cols.includes("rotation_y")) {
+    db.exec("ALTER TABLE world_buildings ADD COLUMN rotation_y REAL DEFAULT 0");
+  }
 }
 
-export function down(_db) { /* sqlite — keep table on rollback */ }
+export function down(_db) { /* sqlite — keep on rollback */ }
