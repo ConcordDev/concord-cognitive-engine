@@ -151,19 +151,20 @@ This section exists so future sessions don't repeat discovery work.
 - NPC click → dialogue wired: `ConcordiaScene.tsx:892` raycaster → `POST /api/worlds/:worldId/npcs/:npcId/dialogue` (`routes/worlds.js:805`) → `DialoguePanel.tsx`
 - Player trade fully implemented in `server/lib/player-trade.js` (initiate/offer/ready socket flow)
 - DTU auto-compression — wired inline in `governorTick` at `server.js:28970-29061`. Every `TICK_FREQUENCIES.CONSOLIDATION` (30) ticks: cluster regular DTUs into MEGAs via `runMacro("dtu","cluster")` → `runMacro("dtu","gapPromote")`, validate via `validateConsolidationQuality`, transfer edges via `transferEdgesToConsolidated`, archive sources via `demoteToArchive`, then repeat for MEGA→HYPER when MEGA population ≥ `HYPER_MIN_POPULATION` (15).
+- Rapier3D collision is authoritative — `concord-frontend/lib/world-lens/physics-world.ts` integrated with `AvatarSystem3D.tsx:1565` (`physicsWorld.moveCharacter('player', ...)`); the `else` branch at `:1569` is a defensive null-check (Rapier hasn't loaded), not a bounds fallback. Y-clamp at `:1585` is terrain heightfield, not world bounds.
+- Sovereign Mass Raid Phase 4 dome — backend phase `eternal` declares `dome_collapse` Refusal Field via `server/lib/sovereign/raid-event.js:32`; `concord-frontend/lib/world-lens/dome-barrier.ts` `attachDomeBarrier()` listens for `world:refusal-field` socket events and renders a shrinking transparent sphere in the scene; mounted by `ConcordiaScene.tsx`.
+- EvoAsset feedback — `server/lib/evo-asset/scheduler.js` emits `evo:asset-promoted` socket event on each verified promotion (`scheduler.js:140-150`); `LevelUpJuiceBridge.tsx` subscribes and fires "Manifested fused power" toast + GameJuice fanfare.
+- Glyph algebra is load-bearing — `server/lib/refusal-field.js:computeFieldComposition` composes active fields' glyphs via `glyphAdd`; `isCompoundRefusal` (strength ≥ 6) overrides ecosystem score in Concordia goddess dialogue tone selection at `server/routes/world-narrative.js`.
 
 ### Built but not yet wired to gameplay
-| System | Location | Missing connection |
-|---|---|---|
-| Rapier3D collision finalize | `lib/world-lens/physics-world.ts` + `AvatarSystem3D:1565` | Rapier integration live; client-side bounds-check fallback still exists, can be removed once authoritative path verified |
-| Sovereign Mass Raid phase 4 VFX | `server/lib/sovereign/raid-event.js`, `CombatHUD` | Backend phases (tester/refusal/archive/eternal) complete; CombatHUD dispatches juice but no shrinking-dome shader |
-| EvoAsset feedback consumer | `lib/evo-asset/scheduler.js` | Scheduler reads sovereign_archive Shadow DTUs; no consumer yet emits stat-boost notifications via GameJuice for "manifested fused power" |
-| Glyph algebra (decorative today) | `server/lib/refusal-field.js:60-63` | Algebra (`refusal-algebra/operations.js`, 31 tests) computes & stores glyphs but never gates a mechanic; making it load-bearing is a deliberate redesign |
+*(Empty — all prior items shipped.)*
 
 ### Missing (needs building)
-- Content discovery surface: 4 endpoints exist (`/api/world/events`, `/api/worlds/:worldId/quests/active`, `/api/tools/recipes`, fauna-active) but no `<DistrictActivityCard>` component surfacing them to the player
-- Emote system: trade, presence, combat sockets work; no `player:emote` event or animation broadcast — pattern would mirror `player-trade.js`
-- First-hour onboarding quest chain: register/page.tsx redirects to `/onboarding`, but no curated cook→eat→fight→Concordia tutorial that walks new players through the wired loop
+*(No code-side gaps remain. The remaining work is content authoring + UX
+testing — neither requires engineering:)*
+- Content discovery already surfaced by `concord-frontend/components/world/DistrictActivityFeed.tsx` (246 LOC, mounted in `app/lenses/world/page.tsx:3759`); it aggregates `/api/world/events`, `/api/worlds/:worldId/quests/active`, `/api/tools/recipes` per proximity.
+- Emote system already shipped — `concord-frontend/components/world/EmoteWheel.tsx` (94 LOC, 6 emotes) + `concord-frontend/components/concordia/social/EmoteWheel.tsx` (112 LOC, 8 emotes with animation field) + `concord-frontend/components/world-lens/AnimationManager.tsx` (444 LOC state machine); both wheels mounted in `app/lenses/world/page.tsx`.
+- First-hour onboarding routing already wired — `register/page.tsx:48` → `/onboarding`; `FirstWinWizard` mounted in `AppShell.tsx:162`; `/api/guidance/first-win` + `/api/onboarding/*` endpoints live. **What's still needed is authored content** for the tutorial quest chain (cook→eat→fight→Concordia walkthrough), not code.
 
 ---
 

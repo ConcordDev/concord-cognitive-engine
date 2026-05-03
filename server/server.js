@@ -29274,6 +29274,10 @@ async function governorTick(reason="heartbeat") {
               createAtlasDtu:    atlasMod?.createAtlasDtu,
               promoteAtlasDtu:   atlasMod?.promoteAtlasDtu,
               runAutoPromoteGate: guardMod?.runAutoPromoteGate,
+              // EvoAsset feedback consumer: scheduler emits this on each
+              // verified promotion so the LevelUpJuiceBridge frontend
+              // surfaces a "manifested fused power" toast + GameJuice fanfare.
+              realtimeEmit,
             });
             if (stats.evolved > 0 || stats.errors > 0) {
               structuredLog("info", "evo_asset_tick", stats);

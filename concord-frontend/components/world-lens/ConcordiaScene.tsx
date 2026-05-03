@@ -235,6 +235,9 @@ export default function ConcordiaScene({
     setSize: (w: number, h: number) => void;
     render: (t: null) => void;
   } | null>(null);
+  // Sovereign Mass Raid Phase 4 dome — listener cleanup. Set in scene init,
+  // invoked during teardown so the listener disposes with the scene.
+  const domeCleanupRef = useRef<(() => void) | null>(null);
   const probeManagerRef = useRef<
     import('@/lib/world-lens/reflection-probes').ReflectionProbeManager | null
   >(null);
@@ -512,6 +515,18 @@ export default function ConcordiaScene({
         layers[name] = group;
       }
       layersRef.current = layers;
+
+      // ── Sovereign Mass Raid Phase 4 dome ────────────────────────
+      // Subscribes to world:refusal-field; when a dome_collapse field
+      // fires, attaches a shrinking sphere mesh to the scene for the
+      // duration of the field. Cleanup runs in the teardown block below.
+      try {
+        const { attachDomeBarrier } = await import('@/lib/world-lens/dome-barrier');
+        domeCleanupRef.current = attachDomeBarrier(scene as unknown as {
+          add: (mesh: unknown) => void;
+          remove: (mesh: unknown) => void;
+        });
+      } catch { /* dome VFX is best-effort */ }
 
       // ── Clock & Raycaster ───────────────────────────────────────
       clock = new THREE.Clock();
@@ -1056,6 +1071,9 @@ export default function ConcordiaScene({
           }
         });
       }
+
+      try { domeCleanupRef.current?.(); } catch { /* ignore */ }
+      domeCleanupRef.current = null;
 
       ssgiPassRef.current?.dispose();
       ssgiPassRef.current = null;

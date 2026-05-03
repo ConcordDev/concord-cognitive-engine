@@ -900,9 +900,9 @@ export const LENS_STATUS_MAP: LensStatusEntry[] = [
   { id: 'federation', status: 'system', mergeTarget: null, postMergeRole: 'standalone', rationale: 'Cross-instance shadow DTU export/import; system lens.' },
   { id: 'black-market', status: 'hybrid', mergeTarget: 'marketplace', postMergeRole: 'mode', rationale: 'Gray-market mode of the marketplace lens; sparks-only currency.' },
   { id: 'genesis', status: 'hybrid', mergeTarget: 'world', postMergeRole: 'mode', rationale: 'Emergent identity feed; surface for the world’s living entities.' },
-  { id: 'world-creator/anomalies', status: 'system', mergeTarget: 'world', postMergeRole: 'mode', rationale: 'Public + creator anomaly viewer for created worlds.' },
+  { id: 'world-creator/anomalies', status: 'hybrid', mergeTarget: 'world', postMergeRole: 'mode', rationale: 'Public + creator anomaly viewer for created worlds; hybrid mode of the world product lens.' },
   { id: 'root', status: 'system', mergeTarget: null, postMergeRole: 'standalone', rationale: 'Refusal-algebra glyph calculator (client-side); system tool.' },
-  { id: 'hub', status: 'system', mergeTarget: null, postMergeRole: 'standalone', rationale: 'Lens discovery + recommendation surface; system landing.' },
+  // (hub already classified at line 542 above; do not duplicate.)
 
   // ── Remaining registry entries (round 2) ──
 
@@ -926,10 +926,10 @@ export const LENS_STATUS_MAP: LensStatusEntry[] = [
   { id: 'analytics', status: 'product', mergeTarget: null, postMergeRole: 'standalone', rationale: 'Cross-lens analytics + KPIs surface.' },
   { id: 'bridge', status: 'system', mergeTarget: null, postMergeRole: 'standalone', rationale: 'Cross-domain bridge for cross-lens search + relationships.' },
   { id: 'disputes', status: 'hybrid', mergeTarget: 'law', postMergeRole: 'mode', rationale: 'Conflict resolution flows under law.' },
-  { id: 'privacy', status: 'system', mergeTarget: 'security', postMergeRole: 'mode', rationale: 'Privacy controls and audit; security-adjacent.' },
+  { id: 'privacy', status: 'hybrid', mergeTarget: 'security', postMergeRole: 'mode', rationale: 'Privacy controls and audit; hybrid mode of security.' },
   { id: 'wallet', status: 'product', mergeTarget: null, postMergeRole: 'standalone', rationale: 'Concord Coin wallet, transactions, balance, withdrawal.' },
   { id: 'world', status: 'product', mergeTarget: null, postMergeRole: 'standalone', rationale: 'Concordia 3D world — terrain, avatars, combat, dialogue, NPCs.' },
-  { id: 'all', status: 'system', mergeTarget: 'hub', postMergeRole: 'mode', rationale: 'Aggregate "all lenses" view; folds into Hub.' },
+  { id: 'all', status: 'hybrid', mergeTarget: 'hub', postMergeRole: 'mode', rationale: 'Aggregate "all lenses" view; hybrid mode of Hub.' },
   { id: 'automotive', status: 'hybrid', mergeTarget: 'trades', postMergeRole: 'mode', rationale: 'Automotive service trades.' },
   { id: 'carpentry', status: 'hybrid', mergeTarget: 'trades', postMergeRole: 'mode', rationale: 'Trade specialty.' },
   { id: 'construction', status: 'product', mergeTarget: null, postMergeRole: 'standalone', rationale: 'Construction project management super-lens.' },
