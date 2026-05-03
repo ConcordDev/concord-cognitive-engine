@@ -42,6 +42,7 @@ import { initAll as initLoaf } from "./loaf/index.js";
 import { init as initEmergent } from "./emergent/index.js";
 import { tickAllRegistered, registerHeartbeat } from "./emergent/heartbeat-registry.js";
 import { runSocialNpcBridge } from "./emergent/social-npc-bridge.js";
+import { runNpcKnowledgeBridge } from "./lib/npc-knowledge-bridge.js";
 
 // Register every-5-tick (~5 minute) social → NPC bridge. Public Social Lens
 // posts are wrapped as Shadow DTUs (tag: 'social_awareness') so NPC dialogue
@@ -50,6 +51,15 @@ import { runSocialNpcBridge } from "./emergent/social-npc-bridge.js";
 registerHeartbeat("social-npc-bridge", {
   frequency: 5,
   handler: runSocialNpcBridge,
+});
+
+// Register every-10-tick (~10 minute) NPC knowledge bridge. Medical /
+// research / engineering DTUs are mirrored into npc_knowledge so NPCs
+// in those roles (doctor, scholar, engineer) can reference real human
+// research in dialogue.
+registerHeartbeat("npc-knowledge-bridge", {
+  frequency: 10,
+  handler: runNpcKnowledgeBridge,
 });
 import { ConcordError } from "./lib/errors.js";
 import { asyncHandler } from "./lib/async-handler.js";
@@ -26900,6 +26910,124 @@ import { applyHitToState, tickCombatState, getCombatState, grantIFrames as _gran
 
 app.get("/api/world/weather/:worldId", (req, res) => {
   res.json({ ok: true, weather: getWorldWeather(req.params.worldId) });
+});
+
+// v2.0 instantiation: community music DTUs for a district. Frontend
+// SoundscapeEngine cycles these alongside the procedural ambient stems.
+app.get("/api/world/soundscape/:districtId/tracks", async (req, res) => {
+  try {
+    const { getDistrictPlaylist } = await import("./lib/soundscape-bridge.js");
+    const { universe, mood } = req.query;
+    const result = getDistrictPlaylist(db, req.params.districtId, {
+      universe: typeof universe === "string" ? universe : undefined,
+      mood:     typeof mood === "string" ? mood : undefined,
+    });
+    res.json({ ok: true, ...result });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// v2.0 instantiation: spawn a blueprint DTU into the world.
+// Body: { worldId, blueprintId, position: {x,y,z}, rotationY? }.
+// Verifies blueprint DTU shape, inserts into world_buildings, emits
+// realtime so other players in the same world see the structure appear.
+app.post("/api/world/buildings/spawn", requireAuth, (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
+    const { worldId, blueprintId, position, rotationY } = req.body || {};
+    if (!worldId || !blueprintId || !position) {
+      return res.status(400).json({ ok: false, error: "worldId_blueprintId_position_required" });
+    }
+    if (typeof position.x !== "number" || typeof position.y !== "number" || typeof position.z !== "number") {
+      return res.status(400).json({ ok: false, error: "position_xyz_required" });
+    }
+
+    const blueprint = db.prepare("SELECT id, owner_user_id, body_json, visibility FROM dtus WHERE id = ?").get(blueprintId);
+    if (!blueprint) return res.status(404).json({ ok: false, error: "blueprint_not_found" });
+
+    // A user can spawn their own blueprint OR a marketplace-published one.
+    // Personal blueprints stay private — sovereignty invariant.
+    let body = {};
+    try { body = JSON.parse(blueprint.body_json || "{}"); } catch { /* malformed body */ }
+    if (body?.meta?.type !== "blueprint") {
+      return res.status(400).json({ ok: false, error: "dtu_not_a_blueprint" });
+    }
+    const isOwner = blueprint.owner_user_id === userId;
+    const isPublished = blueprint.visibility === "marketplace" || blueprint.visibility === "public";
+    if (!isOwner && !isPublished) {
+      return res.status(403).json({ ok: false, error: "blueprint_not_accessible" });
+    }
+
+    const id = `wb_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    db.prepare(`
+      INSERT INTO world_buildings
+        (id, world_id, blueprint_dtu_id, spawned_by_user_id, x, y, z, rotation_y)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(id, worldId, blueprintId, userId, position.x, position.y, position.z, Number(rotationY) || 0);
+
+    try {
+      REALTIME?.io?.to(`world:${worldId}`).emit("world:building-spawned", {
+        id, worldId, blueprintDtuId: blueprintId, position, rotationY: Number(rotationY) || 0,
+      });
+    } catch { /* realtime best-effort */ }
+
+    res.json({ ok: true, building: { id, worldId, blueprintDtuId: blueprintId, position, rotationY: Number(rotationY) || 0 } });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// List spawned buildings for a world. Used by BuildingRenderer3D on world load.
+app.get("/api/world/buildings/:worldId", (req, res) => {
+  try {
+    const rows = db.prepare(`
+      SELECT id, world_id, blueprint_dtu_id, spawned_by_user_id, x, y, z, rotation_y, created_at
+      FROM world_buildings WHERE world_id = ?
+      ORDER BY created_at ASC
+    `).all(req.params.worldId);
+    res.json({ ok: true, buildings: rows });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// XP cascade for cross-world music plays. Frontend reports a play after
+// the track finishes (or after >50% completion). The author gets XP.
+// We deliberately deny self-plays so XP only flows from other users
+// hearing your music.
+app.post("/api/world/soundscape/track-played", requireAuth, async (req, res) => {
+  try {
+    const playerUserId = req.user?.id;
+    const { dtuId, completionRatio } = req.body || {};
+    if (!playerUserId) return res.status(401).json({ ok: false, error: "auth_required" });
+    if (!dtuId) return res.status(400).json({ ok: false, error: "dtuId_required" });
+    if (typeof completionRatio !== "number" || completionRatio < 0.5) {
+      return res.json({ ok: true, awarded: false, reason: "below_completion_threshold" });
+    }
+
+    const trackRow = db.prepare("SELECT id, owner_user_id FROM dtus WHERE id = ?").get(dtuId);
+    if (!trackRow) return res.status(404).json({ ok: false, error: "track_not_found" });
+    if (trackRow.owner_user_id === playerUserId) {
+      return res.json({ ok: true, awarded: false, reason: "self_play" });
+    }
+
+    const skillProg = await import("./lib/skill-progression.js").catch(() => null);
+    if (skillProg?.awardExperience) {
+      try {
+        await skillProg.awardExperience(
+          { id: trackRow.id, type: "skill" },
+          "cross_world_use",
+          { worldId: req.body?.worldId, userId: trackRow.owner_user_id, lensTag: "studio" },
+          db,
+        );
+      } catch { /* xp award best-effort */ }
+    }
+    res.json({ ok: true, awarded: true, recipient: trackRow.owner_user_id });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
 });
 app.get("/api/combat/state/:actorId", (req, res) => {
   res.json({ ok: true, state: getCombatState(req.params.actorId) });

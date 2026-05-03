@@ -18,6 +18,7 @@ import { synthesizeLore, generateQuestChain, writeDialogueTree } from "./oracle-
 import { getTimeline } from "../emergent/history-engine.js";
 import { getAuthoredNPC, getAuthoredFaction, getQuestsForNPC, getAuthoredDialogue } from "./content-seeder.js";
 import { getFactionPolicyState } from "./council-world-bridge.js";
+import { getKnowledgeForRole } from "./npc-knowledge-bridge.js";
 
 const DIALOGUE_TTL_MS   = 5 * 60 * 1000;   // 5 minutes
 const QUEST_TTL_MS      = 10 * 60 * 1000;  // 10 minutes
@@ -132,8 +133,37 @@ function buildNPCTraits(npcId, db = null) {
     // reached this NPC's world/faction via the social-npc-bridge. Capped
     // at 1KB total + 5 items so the LLM prompt stays tight.
     socialSignals: buildSocialSignals(npcId, db),
+    // v2.0 instantiation: recent medical/research/engineering DTUs mapped
+    // to this NPC's role. Doctors/scholars/engineers reference real human
+    // research in their dialogue.
+    professionalKnowledge: buildProfessionalKnowledge(npc, db),
     // Deliberately exclude secrets from LLM context — those are for human authors only
   };
+}
+
+/**
+ * Pull npc_knowledge entries scoped to this NPC's role (doctor / scholar /
+ * engineer / etc.). Returns an empty array if the role doesn't have
+ * mapped knowledge or the bridge hasn't run yet.
+ */
+function buildProfessionalKnowledge(npc, db) {
+  if (!db || !npc) return [];
+  // Map authored NPC roles to npc_knowledge roles. Authored roles vary
+  // wildly ("court physician", "armorer-apprentice"), so we substring-match.
+  const roleStr = (npc.role || "").toLowerCase();
+  let role = null;
+  if (/doctor|physician|surgeon|medic|healer/.test(roleStr)) role = "doctor";
+  else if (/scholar|scientist|researcher|sage/.test(roleStr)) role = "scholar";
+  else if (/engineer|smith|craftsman|builder|architect/.test(roleStr)) role = "engineer";
+  if (!role) return [];
+
+  try {
+    return getKnowledgeForRole(db, { worldId: npc.world_id ?? "concordia-hub", role, limit: 3 });
+  } catch {
+    // Knowledge query failed (e.g. table not yet migrated). Fall back to
+    // empty — dialogue still generates, just without role-specific signal.
+    return [];
+  }
 }
 
 /**

@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { resumeAudioContext } from '../../lib/audio/unlock';
+import { api as apiClient } from '../../lib/api/client';
 
 /* ── Types ─────────────────────────────────────────────────────── */
 
@@ -531,6 +532,95 @@ export default function SoundscapeEngine({
       ctx.listener.upZ.setValueAtTime(0, ctx.currentTime);
     } catch { /* older Safari may not support AudioParam on listener */ }
   }, [playerPosition]);
+
+  // ── v2.0 Community music tracks layer ────────────────────────────
+  // When the player walks into a district, fetch any community-uploaded
+  // music DTUs that opted in for that district (tag 'soundscape' +
+  // 'district:<name>'). Cycle them at low volume on top of the procedural
+  // ambient stems. Author gets cross_world_use XP after >50% play.
+  const communityAudioRef = useRef<HTMLAudioElement | null>(null);
+  const communityTrackPlayStartRef = useRef<{ dtuId: string; startedAt: number; durationMs: number } | null>(null);
+  const communityTracksRef = useRef<Array<{ dtuId: string; title: string; url?: string; durationMs?: number }>>([]);
+  const communityIdxRef = useRef(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    const district = state.currentDistrict;
+    if (!district || district === 'silent') {
+      communityTracksRef.current = [];
+      if (communityAudioRef.current) {
+        try { communityAudioRef.current.pause(); } catch { /* noop */ }
+      }
+      return;
+    }
+    apiClient.get(`/api/world/soundscape/${encodeURIComponent(district)}/tracks`, { params: { universe: 'concordia' } })
+      .then((res) => {
+        if (cancelled) return;
+        const tracks = (res?.data?.tracks ?? []) as Array<{ dtuId: string; title: string; durationMs?: number }>;
+        // Each track's audio asset lives at /api/dtus/:id/asset (existing route).
+        communityTracksRef.current = tracks.map((t) => ({
+          dtuId: t.dtuId,
+          title: t.title,
+          durationMs: t.durationMs ?? undefined,
+          url: `/api/dtus/${encodeURIComponent(t.dtuId)}/asset`,
+        }));
+        communityIdxRef.current = 0;
+      })
+      .catch(() => { /* tracks layer is best-effort — never block engine */ });
+    return () => { cancelled = true; };
+  }, [state.currentDistrict]);
+
+  const reportTrackPlayed = useCallback((entry: { dtuId: string; startedAt: number; durationMs: number }) => {
+    const elapsed = Date.now() - entry.startedAt;
+    const completionRatio = entry.durationMs > 0 ? Math.min(1, elapsed / entry.durationMs) : 1;
+    apiClient.post('/api/world/soundscape/track-played', {
+      dtuId: entry.dtuId,
+      completionRatio,
+      worldId: 'concordia-hub',
+    }).catch(() => { /* xp report is best-effort */ });
+  }, []);
+
+  const playNextCommunityTrack = useCallback(() => {
+    const tracks = communityTracksRef.current;
+    if (!tracks || tracks.length === 0) return;
+    if (typeof window === 'undefined') return;
+    const audio = communityAudioRef.current ?? new Audio();
+    communityAudioRef.current = audio;
+
+    // Report previous track if it played > 50%.
+    const prev = communityTrackPlayStartRef.current;
+    if (prev) reportTrackPlayed(prev);
+
+    const idx = communityIdxRef.current % tracks.length;
+    const track = tracks[idx];
+    communityIdxRef.current = idx + 1;
+
+    audio.src = track.url ?? '';
+    audio.volume = 0.18; // tucked under the procedural drone
+    audio.crossOrigin = 'anonymous';
+    audio.onended = playNextCommunityTrack;
+    communityTrackPlayStartRef.current = {
+      dtuId: track.dtuId,
+      startedAt: Date.now(),
+      durationMs: track.durationMs ?? 180000,
+    };
+    audio.play().catch(() => { /* user-gesture or fetch fail; quietly skip */ });
+  }, [reportTrackPlayed]);
+
+  // Kick off cycling when tracks become available.
+  useEffect(() => {
+    if (communityTracksRef.current.length > 0 && !communityAudioRef.current) {
+      playNextCommunityTrack();
+    }
+  }, [state.currentDistrict, playNextCommunityTrack]);
+
+  // Stop community track playback on unmount.
+  useEffect(() => () => {
+    if (communityAudioRef.current) {
+      try { communityAudioRef.current.pause(); } catch { /* noop */ }
+      communityAudioRef.current = null;
+    }
+  }, []);
 
   // Weather audio bridge: rain hiss + storm rumble + ducks district drone & music.
   // Storm/rain partially drown the district ambience; clear/wind reset to baseline.
