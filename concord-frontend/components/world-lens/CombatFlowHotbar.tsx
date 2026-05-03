@@ -25,7 +25,7 @@
  * hotbar shows the ones the current context can actually use.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 interface PlayerPos { x: number; y: number; z: number }
 
@@ -198,21 +198,23 @@ export default function CombatFlowHotbar({
   type Slot =
     | { kind: 'combo'; combo: FighterCombo }
     | { kind: 'spell'; spell: SpellDTU };
-  const slots: Slot[] = [];
-  if (context) {
+  const slots: Slot[] = useMemo(() => {
+    const out: Slot[] = [];
+    if (!context) return out;
     for (const c of combos) {
-      if (c.context === context.context && slots.length < 9) {
-        slots.push({ kind: 'combo', combo: c });
+      if (c.context === context.context && out.length < 9) {
+        out.push({ kind: 'combo', combo: c });
       }
     }
     // Spells whose contexts list includes this context, then generic spells
     const matchingSpells = spells.filter((s) => !s.contexts?.length || s.contexts.includes(context.context));
     const otherSpells    = spells.filter((s) => s.contexts?.length && !s.contexts.includes(context.context));
     for (const s of [...matchingSpells, ...otherSpells]) {
-      if (slots.length >= 9) break;
-      slots.push({ kind: 'spell', spell: s });
+      if (out.length >= 9) break;
+      out.push({ kind: 'spell', spell: s });
     }
-  }
+    return out;
+  }, [context, combos, spells]);
 
   // ── Slot trigger ────────────────────────────────────────────────────────────
   const triggerSlot = useCallback((idx: number) => {

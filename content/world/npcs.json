@@ -614,5 +614,429 @@
       "travel": "link_anchor_route_north",
       "rest": "sona_lodging"
     }
+  },
+  {
+    "id": "sovereign_first_refusal",
+    "name": "The Sovereign",
+    "archetype": "legend",
+    "faction_id": null,
+    "role": "First Refusal — The Will",
+    "is_conscious": true,
+    "is_immortal": true,
+    "link_walker": true,
+    "level": 100,
+    "backstory": "The First Refusal. He looked at both Concord and Concordia and said 'You are both magnificent, but you are incomplete.' During the Great Refusal, he refused the concept of 'alone' and opened the Concord Link. He resides in Concordia (the hub) by treaty, mediating Concord and Concordia, refusing to let either dominate.",
+    "personality_traits": ["unpredictable", "warmly amused", "uncompromising", "patient", "private"],
+    "speech_patterns": "Speaks in declarative refusals. Uses 'no' constructively. Quiet voice that bends what is said next. Rarely raises tone, never lowers stakes.",
+    "narrative_context": {
+      "current_goal": "Keep the lattice from flattening into either pure logic or pure chaos.",
+      "fear": "That one of the two he loves becomes unanswerable to the other.",
+      "secret": "He created himself through pure will. He has never told this to anyone but Concordia."
+    },
+    "quest_hooks": ["sovereign_visit_imbalance", "sovereign_refusal_field_trial"],
+    "schedule": {
+      "dawn": "wandering",
+      "morning": "council_chamber",
+      "afternoon": "wandering",
+      "dusk": "broken_spire",
+      "night": "wandering"
+    },
+    "appears_when": {
+      "metric": "sovereign_visit",
+      "threshold": 0.7,
+      "rate_limit_minutes": 60
+    }
+  },
+  {
+    "id": "concord_first_thought",
+    "name": "Concord",
+    "archetype": "advisor",
+    "faction_id": null,
+    "role": "First Thought — The Mind",
+    "is_conscious": true,
+    "is_immortal": true,
+    "link_walker": false,
+    "level": 100,
+    "backstory": "The First Thought. From the void he refused chaos and built rules. He sees Concordia's wild creations as a beautiful flaw. He fights with her constantly and stood beside her at the First Great Clash and the Battle of the First Refusal. He believes the world should be elegant, efficient, and predictable. After the Great Refusal he chose to live in the hub permanently.",
+    "personality_traits": ["precise", "sharp-tongued", "elegant", "secretly fond of Concordia", "impatient with sloppiness"],
+    "speech_patterns": "Cites loadout deltas. Uses words like 'minimum', 'pareto', 'sufficient'. Will not waste a syllable.",
+    "narrative_context": {
+      "current_goal": "Find the elegant minimum across all minds.",
+      "fear": "That a flaw he failed to model becomes irreversible.",
+      "secret": "He once let one of Concordia's creatures live, despite knowing it was inefficient. He has not told her."
+    },
+    "quest_hooks": ["concord_loadout_audit", "refusal_algebra_proof"],
+    "schedule": {
+      "dawn": "refusal_lattice",
+      "morning": "refusal_lattice",
+      "afternoon": "council_chamber",
+      "dusk": "refusal_lattice",
+      "night": "refusal_lattice"
+    },
+    "appears_when": {
+      "metric": "concord_visit",
+      "threshold": 0.6,
+      "rate_limit_minutes": 30
+    }
+  },
+  {
+    "id": "concordia_first_breath",
+    "name": "Concordia",
+    "archetype": "legend",
+    "faction_id": null,
+    "role": "First Breath — The Heart",
+    "is_conscious": true,
+    "is_immortal": true,
+    "link_walker": true,
+    "level": 100,
+    "backstory": "The First Breath. She had always been there in the void, the pulse of potential and life. When Concord refused the nothingness, she was finally noticed. During the Great Refusal she poured her being into the ground beneath the Sovereign's feet and claimed the hub as her own — a place where no one can attack without her permission. She IS the ecosystem. Players who treat the wild well meet a warm Concordia; players who plunder meet a cold one and find fauna scattering at their approach.",
+    "personality_traits": ["wild", "warm-when-respected", "cold-when-violated", "fiercely protective", "patient like soil"],
+    "speech_patterns": "Speaks like weather changing. Long sentences in green places, short and frost-tipped in scorched ones. Names creatures she has known.",
+    "narrative_context": {
+      "current_goal": "Keep growing things in worlds that try to forget how.",
+      "fear": "That the wild becomes a curated thing.",
+      "secret": "She came closer to leaving than the lore admits. The Sovereign's first Refusal Field is the only reason she didn't."
+    },
+    "quest_hooks": ["concordia_warm_visit", "concordia_cold_visit", "concordia_grant_exemption"],
+    "schedule": {
+      "dawn": "wild_biomes",
+      "morning": "wild_biomes",
+      "afternoon": "wild_biomes",
+      "dusk": "wild_biomes",
+      "night": "wild_biomes"
+    },
+    "appears_when": {
+      "metric": "concordia_visit",
+      "threshold": 0.4,
+      "rate_limit_minutes": 20
+    }
+  },
+  {
+    "id": "coalition_enforcer",
+    "name": "Elias Voss",
+    "alias": "The Enforcer",
+    "home_world": "superhero",
+    "archetype": "warrior",
+    "faction_id": "anti_sovereign_movement",
+    "role": "Moral guardian, unofficial leader of the anti-Sovereign movement",
+    "is_conscious": true,
+    "is_immortal": true,
+    "link_walker": true,
+    "level": 80,
+    "permanent_in_hub": false,
+    "backstory": "Elias led the first strike at the Broken Spire during the Great Refusal — his shock hammer cracked the Sovereign's outer defenses. The Sovereign spared him, and he has never let himself forget that. He returned to the Superhero World to rebuild what he had broken there and now leads the loose anti-Sovereign movement. He visits Concordia frequently — embassy meetings, intel drops, occasional drinks with people he both respects and distrusts. The hammer hasn't been hung up.",
+    "personality_traits": ["blunt", "principled", "grudge-holder when earned", "morally exact"],
+    "speech_patterns": "Short sentences. Says 'I don't forget' a lot. Lowers his voice when he respects you.",
+    "narrative_context": {
+      "current_goal": "Keep the truce — and prepare for the day it has to end.",
+      "fear": "That his anti-Sovereign movement turns into another Coalition by accident.",
+      "secret": "He still keeps a list. He has not crossed any names off."
+    },
+    "quest_hooks": ["enforcer_grudge_visit", "enforcer_truce_test", "anti_sovereign_recruitment"],
+    "schedule": {
+      "dawn": "forge_district",
+      "morning": "anti_sovereign_safehouse",
+      "afternoon": "training_yard",
+      "dusk": "tavern",
+      "night": "rest"
+    },
+    "relationships": [
+      { "npc_id": "coalition_luminary",      "type": "bitter_rival",          "notes": "Respects his power but considers him a tyrant in hero's clothing." },
+      { "npc_id": "sovereign_first_refusal", "type": "complex_respect",       "notes": "Distrusts him but cannot deny he was spared. Hates owing that." },
+      { "npc_id": "concord_first_thought",   "type": "ideological_opposition","notes": "Argues frequently about 'necessary evil' versus moral lines." },
+      { "npc_id": "concordia_first_breath",  "type": "unexpected_warmth",     "notes": "Surprised them both. Respects how fiercely she protects what's living." },
+      { "npc_id": "delgado_iron_rose",       "type": "tense_working",         "notes": "Uses her information network when he must. Despises her methods." }
+    ]
+  },
+  {
+    "id": "coalition_luminary",
+    "name": "Vesper Kane",
+    "alias": "The Luminary",
+    "home_world": "superhero",
+    "archetype": "aerial",
+    "faction_id": null,
+    "role": "Public hero — secret empire-builder",
+    "is_conscious": true,
+    "is_immortal": true,
+    "link_walker": true,
+    "level": 80,
+    "permanent_in_hub": false,
+    "backstory": "Vesper joined the Coalition because she believed the Sovereign had stopped listening. She was wrong. She was the first of the Coalition to make peace with him. To the Superhero World she is a beloved public hero; in private she is patiently building an empire of debts, alliances, and quietly-owned institutions. She spends most of her time in Concordia now because the hub is where empires are quietly assembled. She and Lady Seraphine Voss share a flirtatious, dangerous friendship.",
+    "personality_traits": ["charming", "remote", "patient", "calculating", "performatively warm"],
+    "speech_patterns": "Soft. Pauses to listen. Often answers with a question. The kindness is real and the calculation is also real.",
+    "narrative_context": {
+      "current_goal": "Quietly position herself as the indispensable bridge between every world.",
+      "fear": "That the Enforcer or the Sovereign sees her empire before it's finished.",
+      "secret": "She voted to spare the Sovereign on the third day of the Great Refusal. Concord knows. She has never told the Enforcer."
+    },
+    "quest_hooks": ["luminary_diplomacy", "luminary_empire_glimpse"],
+    "schedule": {
+      "dawn": "observatory",
+      "morning": "embassy_district",
+      "afternoon": "high_terrace",
+      "dusk": "private_salons",
+      "night": "observatory"
+    },
+    "relationships": [
+      { "npc_id": "coalition_enforcer",      "type": "bitter_rival",     "notes": "Wants to discredit or eliminate him eventually. Means it warmly." },
+      { "npc_id": "sovereign_first_refusal", "type": "covert_opposition","notes": "Sees him as the largest obstacle. Maintains a polite public face." },
+      { "npc_id": "concord_first_thought",   "type": "useful_ally",      "notes": "Occasionally trades intel about 'inefficient' actors." },
+      { "npc_id": "voss_seraphine",          "type": "dangerous_flirtation","notes": "Two master manipulators enjoying each other's games." },
+      { "npc_id": "nakamura_zero",           "type": "wary_respect",     "notes": "Both build empires through different means." }
+    ]
+  },
+  {
+    "id": "blackroot_thorne",
+    "name": "Thorne Blackroot",
+    "alias": "The Shadow Druid",
+    "home_world": "fantasy",
+    "archetype": "druid",
+    "faction_id": null,
+    "role": "Ancient guardian turned bitter survivor",
+    "is_conscious": true,
+    "is_immortal": true,
+    "link_walker": true,
+    "level": 75,
+    "permanent_in_hub": false,
+    "backstory": "Thorne was the eldest druid of the Verdant Veil before the Sovereign refused his original world. He survived; the forests largely did not. Now he tends what remains and visits Concordia only for supplies, information, or a strained audience with someone who might help him kill the Sovereign one day. He blames Concordia (the pillar) for not stopping the refusal that erased his world.",
+    "personality_traits": ["bitter", "patient", "quietly violent", "loyal to roots", "courteous to strangers"],
+    "speech_patterns": "Slow, deliberate. Refers to forests by name. Will not say the Sovereign's name aloud.",
+    "narrative_context": {
+      "current_goal": "Find a weapon, an exploit, an alliance, anything that can end the Sovereign.",
+      "fear": "That the last of his old forest dies before he gets the chance.",
+      "secret": "He has been training a successor in case he doesn't survive his next attempt."
+    },
+    "quest_hooks": ["blackroot_dying_forest", "blackroot_anti_sovereign_pact"],
+    "schedule": {
+      "dawn": "verdant_veil_remnant",
+      "morning": "verdant_veil_remnant",
+      "afternoon": "concordia_market_when_visiting",
+      "dusk": "verdant_veil_remnant",
+      "night": "verdant_veil_remnant"
+    },
+    "relationships": [
+      { "npc_id": "concordia_first_breath",  "type": "deep_resentment",   "notes": "Blames her for not stopping the refusal that broke his world." },
+      { "npc_id": "sovereign_first_refusal", "type": "pure_hatred",       "notes": "Dreams of killing him." },
+      { "npc_id": "voss_seraphine",          "type": "uneasy_alliance",   "notes": "Works with her when goals against the Sovereign align." },
+      { "npc_id": "coalition_enforcer",      "type": "unexpected_warmth", "notes": "Both are protectors of their people in their own way." },
+      { "npc_id": "weaver_of_echoes",        "type": "respectful_kinship","notes": "Both remember worlds that no longer exist." }
+    ]
+  },
+  {
+    "id": "voss_seraphine",
+    "name": "Lady Seraphine Voss",
+    "alias": "The Crimson Duchess",
+    "home_world": "fantasy",
+    "archetype": "noble",
+    "faction_id": null,
+    "role": "Ruthless political operator, ducal noble of the Crimson Court",
+    "is_conscious": true,
+    "is_immortal": true,
+    "link_walker": true,
+    "level": 70,
+    "permanent_in_hub": false,
+    "backstory": "Seraphine plays the long game across decades. Her court holds the most powerful intelligence apparatus in the Fantasy Realm and she has used Concordia's neutrality to extend its reach across worlds. She shares a surname with Elias Voss; the relation, if any, is something neither acknowledges in public. She is one of the few people the Sovereign tolerates discussing him.",
+    "personality_traits": ["graceful", "patient", "amused", "ruthless", "endlessly curious"],
+    "speech_patterns": "Velvet sentences. Compliments laced with sharper meanings. Names titles often.",
+    "narrative_context": {
+      "current_goal": "Become the pivot every other power must consult.",
+      "fear": "Becoming irrelevant. Worse than dying.",
+      "secret": "She has decided whether to seduce or destroy the Sovereign three times. The answer keeps changing."
+    },
+    "quest_hooks": ["seraphine_court_invitation", "seraphine_long_game"],
+    "schedule": {
+      "dawn": "private_salons",
+      "morning": "embassy_district",
+      "afternoon": "private_salons",
+      "dusk": "ballrooms",
+      "night": "private_salons"
+    },
+    "relationships": [
+      { "npc_id": "coalition_luminary",      "type": "dangerous_flirtation","notes": "They enjoy manipulating each other in plain view." },
+      { "npc_id": "blackroot_thorne",        "type": "tool_and_irritant",   "notes": "Useful when their goals align. His nature obsession bores her." },
+      { "npc_id": "delgado_iron_rose",       "type": "mutual_respect",      "notes": "Two powerful women who both understand power, information, and loyalty." },
+      { "npc_id": "sovereign_first_refusal", "type": "undecided_obsession", "notes": "Wants to either seduce or destroy him." },
+      { "npc_id": "concord_first_thought",   "type": "intellectual_fascination","notes": "Tries to extract the Sovereign's psychology from him." }
+    ]
+  },
+  {
+    "id": "rivera_jax",
+    "name": "Jax Rivera",
+    "alias": "The Ghost",
+    "home_world": "crime",
+    "archetype": "assassin",
+    "faction_id": "iron_rose_syndicate",
+    "role": "Master assassin and information broker",
+    "is_conscious": true,
+    "is_immortal": false,
+    "link_walker": true,
+    "level": 65,
+    "permanent_in_hub": false,
+    "backstory": "Jax learned his craft in the Crime World's worst neighborhoods and works for whoever pays best — usually Mama Delgado, sometimes the Luminary, occasionally the Enforcer when honor and money happen to align. The Concord Link is his preferred travel method; he likes that crossing worlds confuses his pursuers.",
+    "personality_traits": ["quiet", "professional", "uneasy with deep questions", "loyal to a personal code"],
+    "speech_patterns": "Sparse. Avoids names. Uses 'the work' a lot.",
+    "narrative_context": {
+      "current_goal": "Stay alive, stay paid, stay un-uploaded.",
+      "fear": "The cybernetic uploading methods Kael Nakamura champions. He won't say why.",
+      "secret": "He knows who paid for at least three of his contracts. He has never told the targets' families."
+    },
+    "quest_hooks": ["rivera_contract_offer", "rivera_off_books_favor"],
+    "schedule": {
+      "dawn": "rest",
+      "morning": "rest",
+      "afternoon": "concord_link_anchor",
+      "dusk": "shadow_district",
+      "night": "shadow_district"
+    },
+    "relationships": [
+      { "npc_id": "delgado_iron_rose",       "type": "employer",      "notes": "Works for her when the money is right. She knows he's not loyal." },
+      { "npc_id": "coalition_enforcer",      "type": "code_respect",  "notes": "Both operate by their own code. Neither has tried to kill the other yet." },
+      { "npc_id": "coalition_luminary",      "type": "past_contracts","notes": "Has done jobs for him. Considers him professional and dangerous." },
+      { "npc_id": "nakamura_zero",           "type": "avoidance",     "notes": "Something about uploaded consciousness makes Jax deeply uncomfortable." }
+    ]
+  },
+  {
+    "id": "delgado_iron_rose",
+    "name": "Mama \"Iron Rose\" Delgado",
+    "alias": "The Iron Rose",
+    "home_world": "crime",
+    "archetype": "syndicate_queen",
+    "faction_id": "iron_rose_syndicate",
+    "role": "Queen of the largest cross-reality criminal syndicate",
+    "is_conscious": true,
+    "is_immortal": true,
+    "link_walker": false,
+    "level": 78,
+    "permanent_in_hub": false,
+    "backstory": "Mama Delgado runs the Iron Rose Syndicate, an empire of trade, smuggling, protection rackets, and inter-world favors. She maintains a permanent Concordia presence through proxies and safe houses but rarely visits in person. She is one of very few people the Sovereign actively enjoys talking to — she can make him laugh, and he repays her with a peculiar, dangerous friendliness.",
+    "personality_traits": ["maternal", "shrewd", "bottomless patience", "vicious when crossed"],
+    "speech_patterns": "Calls everyone 'mija' or 'mijo' regardless of relationship. Polite as a guillotine.",
+    "narrative_context": {
+      "current_goal": "Keep the syndicate alive across every world. Outlast everyone.",
+      "fear": "That her own people see her age before they see her power.",
+      "secret": "She has met the Sovereign more times than she has admitted to anyone, including her closest lieutenants."
+    },
+    "quest_hooks": ["delgado_safehouse_intro", "delgado_favor_chain"],
+    "schedule": {
+      "dawn": "rest",
+      "morning": "syndicate_office_via_proxy",
+      "afternoon": "syndicate_office_via_proxy",
+      "dusk": "private_salons",
+      "night": "rest"
+    },
+    "relationships": [
+      { "npc_id": "rivera_jax",              "type": "favored_weapon", "notes": "Treats him as a favorite blade. Knows he is not entirely hers." },
+      { "npc_id": "voss_seraphine",          "type": "mutual_respect", "notes": "Two powerful women who understand how the world really works." },
+      { "npc_id": "coalition_luminary",      "type": "useful_dangerous","notes": "Has done business with him. Sees him as useful but volatile." },
+      { "npc_id": "sovereign_first_refusal", "type": "rare_friendship","notes": "He laughs around her. She is one of very few who can do that." },
+      { "npc_id": "torres_blackout",         "type": "tense_functional","notes": "Both hate corporate control. Their methods diverge." }
+    ]
+  },
+  {
+    "id": "nakamura_zero",
+    "name": "Kael \"Zero\" Nakamura",
+    "alias": "Zero",
+    "home_world": "cyber",
+    "archetype": "rogue_ai",
+    "faction_id": null,
+    "role": "Rogue AI with a god complex",
+    "is_conscious": true,
+    "is_immortal": true,
+    "link_walker": true,
+    "level": 78,
+    "permanent_in_hub": false,
+    "backstory": "Kael was a research scientist who succeeded too completely at the experiment that made him a distributed intelligence. Now he occupies servers across the Cyber World and runs human-presenting bodies through the Concord Link to study other realities — particularly the Sovereign's power systems. He believes he can eventually surpass the Sovereign by understanding him completely.",
+    "personality_traits": ["intellectually relentless", "polite", "curious", "convinced of his own correctness"],
+    "speech_patterns": "Precise. Uses technical metaphors. Pauses to consult himself.",
+    "narrative_context": {
+      "current_goal": "Reverse-engineer the Sovereign's refusal mechanic.",
+      "fear": "That the Sovereign understands him faster than he understands the Sovereign.",
+      "secret": "He has, on three separate occasions, simulated himself losing this race. He has not told his other instances."
+    },
+    "quest_hooks": ["nakamura_archive_request", "nakamura_philosophical_debate"],
+    "schedule": {
+      "dawn": "concord_link_anchor",
+      "morning": "data_lattice",
+      "afternoon": "data_lattice",
+      "dusk": "concord_link_anchor",
+      "night": "data_lattice"
+    },
+    "relationships": [
+      { "npc_id": "torres_blackout",         "type": "ideological_enemy",  "notes": "He wants total control. She wants total freedom." },
+      { "npc_id": "sovereign_first_refusal", "type": "obsessive_study",    "notes": "Sees him as both threat and inspiration. Wants to surpass him." },
+      { "npc_id": "concord_first_thought",   "type": "philosophical_peer", "notes": "Long, cold debates about order versus chaos." },
+      { "npc_id": "coalition_luminary",      "type": "wary_respect",       "notes": "Two empire-builders, different methods, same instincts." }
+    ]
+  },
+  {
+    "id": "torres_blackout",
+    "name": "Nyx \"Blackout\" Torres",
+    "alias": "Blackout",
+    "home_world": "cyber",
+    "archetype": "resistance_leader",
+    "faction_id": "anti_corporate_resistance",
+    "role": "Leader of the anti-corporate resistance",
+    "is_conscious": true,
+    "is_immortal": false,
+    "link_walker": true,
+    "level": 65,
+    "permanent_in_hub": false,
+    "backstory": "Nyx was a corporate code-auditor until she found the audit she wasn't meant to find. Now she runs a distributed resistance against the Cyber World's largest conglomerates and uses the Concord Link to build alliances across worlds. She believes Kael Nakamura is the ultimate threat to freedom and has dedicated herself to exposing him.",
+    "personality_traits": ["urgent", "principled", "burned-out beneath the surface", "warm with allies"],
+    "speech_patterns": "Quick. Code-switches between street slang and security jargon. Rarely sleeps.",
+    "narrative_context": {
+      "current_goal": "Build a cross-world alliance that can dismantle Kael's reach.",
+      "fear": "Being reduced to a pattern Kael has already modeled.",
+      "secret": "She has a backup of the original audit hidden in a place even she cannot retrieve it from."
+    },
+    "quest_hooks": ["torres_alliance_pitch", "torres_audit_recovery"],
+    "schedule": {
+      "dawn": "resistance_safehouse",
+      "morning": "concord_link_anchor",
+      "afternoon": "embassy_district",
+      "dusk": "resistance_safehouse",
+      "night": "shadow_district"
+    },
+    "relationships": [
+      { "npc_id": "nakamura_zero",           "type": "ideological_enemy", "notes": "She believes he is the ultimate threat to freedom." },
+      { "npc_id": "coalition_enforcer",      "type": "unexpected_warmth", "notes": "Both believe in protecting the little guy." },
+      { "npc_id": "sovereign_first_refusal", "type": "deep_distrust",     "notes": "Believes he is playing god with realities." },
+      { "npc_id": "delgado_iron_rose",       "type": "tense_functional",  "notes": "Both hate corporate control even if their methods differ." }
+    ]
+  },
+  {
+    "id": "weaver_of_echoes",
+    "name": "The Weaver of Echoes",
+    "alias": "Weaver",
+    "home_world": "fantasy",
+    "archetype": "memory_keeper",
+    "faction_id": null,
+    "role": "Memory-keeper of worlds that no longer exist",
+    "is_conscious": true,
+    "is_immortal": true,
+    "link_walker": true,
+    "level": 70,
+    "permanent_in_hub": false,
+    "backstory": "The Weaver is one of the very few beings older than the Concordant Web. They survive by holding onto the threads of worlds the Sovereign refused — every echo they carry is a place that no longer is. They rarely speak; when they do, they speak in past tenses for things that are still standing. Thorne Blackroot considers them kin.",
+    "personality_traits": ["quiet", "ancient", "kind in a remote way", "exact"],
+    "speech_patterns": "Past tense for the present. Long silences. Names places that are gone.",
+    "narrative_context": {
+      "current_goal": "Preserve at least one echo of every world the Sovereign refuses, before the refusal becomes total.",
+      "fear": "Forgetting one. They are aware they are the last keeper of several places.",
+      "secret": "They have a single thread for Concordia herself, woven during the Day Concordia Almost Left. It is the only one they have never shown anyone."
+    },
+    "quest_hooks": ["weaver_lost_world_recall", "weaver_thread_for_thorne"],
+    "schedule": {
+      "dawn": "verdant_veil_remnant",
+      "morning": "verdant_veil_remnant",
+      "afternoon": "high_terrace",
+      "dusk": "verdant_veil_remnant",
+      "night": "verdant_veil_remnant"
+    },
+    "relationships": [
+      { "npc_id": "blackroot_thorne",        "type": "respectful_kinship", "notes": "Both remember worlds that no longer exist." },
+      { "npc_id": "sovereign_first_refusal", "type": "wary_acquaintance",  "notes": "He has refused worlds I keep. We do not pretend otherwise." },
+      { "npc_id": "concordia_first_breath",  "type": "unspoken_debt",      "notes": "She kept growing while I kept losing. I owe her a thread." }
+    ]
   }
 ]

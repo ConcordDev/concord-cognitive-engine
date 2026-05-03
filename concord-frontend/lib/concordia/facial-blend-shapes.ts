@@ -258,7 +258,6 @@ export function updateMicroExpressions(
   fatigueScale = 1.0, // 0=exhausted (more blinks), 1=fresh
 ): BlendWeights {
   const result: BlendWeights = {};
-  const blinkFreq = 1 / state.blinkInterval;
 
   state.blinkTimer += delta;
 

@@ -151,6 +151,30 @@ export const ARTIFACT_TYPES = Object.freeze({
     maxSizeMB: 50,
     derivativeTypes: ["expansion", "translation", "cross_domain_bridge", "mega_inclusion"],
   },
+
+  // ── Concordia v2.0 personal recipe artifacts ─────────────────────────
+  // These are virtual artifacts: the "file" is the DTU's serialized recipe
+  // data, persisted as a synthetic dtu:// path by personal-locker
+  // list-on-marketplace. Buyers receive a license that surfaces the recipe
+  // in their hotbar / crafting bench.
+  fighting_style_recipe: {
+    extensions: [".json"],
+    maxSizeMB: 1,
+    virtual: true,
+    derivativeTypes: ["variant", "stance_shift", "expansion", "fusion"],
+  },
+  spell_recipe: {
+    extensions: [".json"],
+    maxSizeMB: 1,
+    virtual: true,
+    derivativeTypes: ["variant", "scaling", "elemental_shift", "fusion"],
+  },
+  blueprint: {
+    extensions: [".json"],
+    maxSizeMB: 5,
+    virtual: true,
+    derivativeTypes: ["modification", "scale_variant", "material_swap", "fusion"],
+  },
 });
 
 // ═══════════════════════════════════════════════════════════════════════════

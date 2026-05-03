@@ -3,7 +3,10 @@
 // Privacy: user intent and personal substrate content are never captured —
 // only structural metadata (timing, token counts, brain name, step types).
 
-const MAX_SPANS = 2000;
+// Bumped 2000 → 50000 for 32GB-heap deployments. Larger trace ring
+// means we can debug cascading inference issues across hours of
+// gameplay without losing the early spans.
+const MAX_SPANS = Number(process.env.CONCORD_TRACER_MAX_SPANS) || 50_000;
 const _spans = [];
 let _listeners = [];
 

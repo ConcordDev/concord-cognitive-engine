@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Play, Info } from 'lucide-react';
+import { X, Play } from 'lucide-react';
 import { getAllGameModes, type GameMode } from '@/lib/concordia/game-mode-orchestrator';
 import { useGameMode } from '@/hooks/useGameMode';
 

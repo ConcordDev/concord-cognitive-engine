@@ -147,6 +147,7 @@ export async function executeComputerUse(call, opts = {}) {
         await page.evaluate(({ dir, amt }) => {
           const x = dir === "left" ? -amt : dir === "right" ? amt : 0;
           const y = dir === "up" ? -amt : dir === "down" ? amt : 0;
+          // eslint-disable-next-line no-undef -- runs inside Playwright page context
           window.scrollBy(x, y);
         }, { dir: scrollDirection || "down", amt: scrollAmount });
         result = { ok: true, scrolled: `${scrollDirection} ${scrollAmount}px` };
@@ -156,6 +157,7 @@ export async function executeComputerUse(call, opts = {}) {
         const el = selector ? await page.$(selector) : null;
         const extractedText = el
           ? await el.textContent()
+          // eslint-disable-next-line no-undef -- runs inside Playwright page context
           : await page.evaluate(() => document.body.innerText?.slice(0, 5000));
         result = { ok: true, text: extractedText?.trim() || "" };
         break;

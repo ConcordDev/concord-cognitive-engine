@@ -23,7 +23,6 @@ import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
-import { showToast } from '@/components/common/Toasts';
 
 type AnimTab = 'projects' | 'timeline' | 'assets' | 'render' | 'stats';
 type AnimType = '2d' | '3d' | 'motion-graphics' | 'stop-motion' | 'pixel' | 'vector';

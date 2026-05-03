@@ -18,6 +18,7 @@ import { synthesizeLore, generateQuestChain, writeDialogueTree } from "./oracle-
 import { getTimeline } from "../emergent/history-engine.js";
 import { getAuthoredNPC, getAuthoredFaction, getQuestsForNPC, getAuthoredDialogue } from "./content-seeder.js";
 import { getFactionPolicyState } from "./council-world-bridge.js";
+import { getKnowledgeForRole } from "./npc-knowledge-bridge.js";
 
 const DIALOGUE_TTL_MS   = 5 * 60 * 1000;   // 5 minutes
 const QUEST_TTL_MS      = 10 * 60 * 1000;  // 10 minutes
@@ -49,10 +50,58 @@ function cacheSet(map, key, result) {
  * Build enriched npcTraits from authored NPC data.
  * Falls back to the raw npcId string if no authored NPC found.
  */
+/**
+ * Pull recent "social_awareness" shadows for an NPC's world/faction.
+ * Cap on size keeps oracle prompts from blowing out (default 1024 bytes).
+ * Returns a short array of { author, summary } strings; empty array if
+ * the social-npc-bridge hasn't run yet or STATE is missing.
+ */
+function buildSocialSignals(npcId, _db = null, maxBytes = 1024, maxItems = 5) {
+  // STATE.shadowDtus is populated by the shadow-graph + social-npc-bridge.
+  const state = globalThis._concordSTATE;
+  if (!state?.shadowDtus || state.shadowDtus.size === 0) return [];
+
+  const npc = getAuthoredNPC(npcId);
+  const npcWorld = npc?.world_id ?? null;
+  const npcFaction = npc?.faction_id ?? null;
+
+  // Newest first.
+  const all = Array.from(state.shadowDtus.values())
+    .filter((s) => Array.isArray(s.tags) && s.tags.includes("social_awareness"))
+    .filter((s) => {
+      // If the shadow names a target world or faction, it must match the NPC's.
+      // Untargeted (global) shadows reach every NPC.
+      if (s.targetWorldId && npcWorld && s.targetWorldId !== npcWorld) return false;
+      if (s.targetFactionId && npcFaction && s.targetFactionId !== npcFaction) return false;
+      return true;
+    })
+    .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+
+  const out = [];
+  let bytes = 0;
+  for (const s of all) {
+    if (out.length >= maxItems) break;
+    const summary = (s.core?.summary ?? s.summary ?? "").toString().slice(0, 280);
+    if (!summary) continue;
+    const item = { author: s.authorHandle ?? "anon", summary };
+    const itemSize = Buffer.byteLength(JSON.stringify(item), "utf-8");
+    if (bytes + itemSize > maxBytes) break;
+    out.push(item);
+    bytes += itemSize;
+  }
+  return out;
+}
+
 function buildNPCTraits(npcId, db = null) {
   const npc = getAuthoredNPC(npcId);
   if (!npc) {
-    return { id: npcId, name: npcId, personality: "reserved", role: "resident" };
+    return {
+      id: npcId,
+      name: npcId,
+      personality: "reserved",
+      role: "resident",
+      socialSignals: buildSocialSignals(npcId, db),
+    };
   }
 
   const faction = npc.faction_id ? getAuthoredFaction(npc.faction_id) : null;
@@ -71,6 +120,8 @@ function buildNPCTraits(npcId, db = null) {
   return {
     id:          npc.id,
     name:        npc.name,
+    alias:       npc.alias ?? null,
+    homeWorld:   npc.home_world ?? null,
     role:        npc.role,
     personality: npc.personality_traits?.join(", ") ?? "reserved",
     speechStyle: npc.speech_patterns ?? "",
@@ -80,8 +131,71 @@ function buildNPCTraits(npcId, db = null) {
     currentGoal: npc.narrative_context?.current_goal ?? "",
     fears:       npc.narrative_context?.fear ?? "",
     recentPolicy,
+    // v2.0 bidirectional awareness: recent public Social Lens posts that
+    // reached this NPC's world/faction via the social-npc-bridge. Capped
+    // at 1KB total + 5 items so the LLM prompt stays tight.
+    socialSignals: buildSocialSignals(npcId, db),
+    // v2.0 instantiation: recent medical/research/engineering DTUs mapped
+    // to this NPC's role. Doctors/scholars/engineers reference real human
+    // research in their dialogue.
+    professionalKnowledge: buildProfessionalKnowledge(npc, db),
+    // Concordant Web: this NPC's view of every other major character —
+    // resolved to short summaries so the oracle prompt can answer
+    // "what do you think of X?" in-character without the LLM inventing
+    // a stance. Capped at 8 entries to keep prompts tight.
+    relationshipWeb: buildRelationshipWeb(npc),
     // Deliberately exclude secrets from LLM context — those are for human authors only
   };
+}
+
+/**
+ * Resolve this NPC's `relationships[]` array against the authored NPC
+ * registry. Each entry becomes a short string the oracle can read like
+ * a personal cheat-sheet.
+ *
+ * Output shape: [{ id, name, alias, homeWorld, type, notes }]
+ */
+function buildRelationshipWeb(npc) {
+  if (!npc?.relationships || !Array.isArray(npc.relationships)) return [];
+  const out = [];
+  for (const rel of npc.relationships.slice(0, 8)) {
+    if (!rel?.npc_id || !rel?.type) continue;
+    const target = getAuthoredNPC(rel.npc_id);
+    out.push({
+      id:        rel.npc_id,
+      name:      target?.name ?? rel.npc_id,
+      alias:     target?.alias ?? null,
+      homeWorld: target?.home_world ?? null,
+      type:      rel.type,
+      notes:     (rel.notes ?? "").slice(0, 200),
+    });
+  }
+  return out;
+}
+
+/**
+ * Pull npc_knowledge entries scoped to this NPC's role (doctor / scholar /
+ * engineer / etc.). Returns an empty array if the role doesn't have
+ * mapped knowledge or the bridge hasn't run yet.
+ */
+function buildProfessionalKnowledge(npc, db) {
+  if (!db || !npc) return [];
+  // Map authored NPC roles to npc_knowledge roles. Authored roles vary
+  // wildly ("court physician", "armorer-apprentice"), so we substring-match.
+  const roleStr = (npc.role || "").toLowerCase();
+  let role = null;
+  if (/doctor|physician|surgeon|medic|healer/.test(roleStr)) role = "doctor";
+  else if (/scholar|scientist|researcher|sage/.test(roleStr)) role = "scholar";
+  else if (/engineer|smith|craftsman|builder|architect/.test(roleStr)) role = "engineer";
+  if (!role) return [];
+
+  try {
+    return getKnowledgeForRole(db, { worldId: npc.world_id ?? "concordia-hub", role, limit: 3 });
+  } catch {
+    // Knowledge query failed (e.g. table not yet migrated). Fall back to
+    // empty — dialogue still generates, just without role-specific signal.
+    return [];
+  }
 }
 
 /**

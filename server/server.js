@@ -12,8 +12,15 @@
  */
 
 // === DATA DIRECTORY (canonical) ===
+// Resolution order:
+//   1. DATA_DIR env var (explicit override)
+//   2. /workspace/concord-data — RunPod's persistent network volume.
+//      If /workspace exists we treat the pod as a RunPod deployment and
+//      put DB + state + artifacts on the volume that survives pod restart.
+//   3. ./data (local dev fallback)
 /** @type {string} Data directory for persistent storage */
-const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), 'data');
+const DATA_DIR = process.env.DATA_DIR
+  || (fs.existsSync('/workspace') ? '/workspace/concord-data' : path.join(process.cwd(), 'data'));
 // Ensure required directories exist early — prevents crash on first write
 try { fs.mkdirSync(DATA_DIR, { recursive: true }); } catch { /* intentional */ }
 try { fs.mkdirSync(path.join(DATA_DIR, 'backups'), { recursive: true }); } catch { /* intentional */ }
@@ -40,6 +47,77 @@ import { spawnSync } from "child_process";
 import { Worker } from "node:worker_threads";
 import { initAll as initLoaf } from "./loaf/index.js";
 import { init as initEmergent } from "./emergent/index.js";
+import { tickAllRegistered, registerHeartbeat } from "./emergent/heartbeat-registry.js";
+import { runSocialNpcBridge } from "./emergent/social-npc-bridge.js";
+import { runNpcKnowledgeBridge } from "./lib/npc-knowledge-bridge.js";
+import {
+  runMetricsDecay,
+  getMetrics as getEcoMetrics,
+  adjust as adjustEcoMetrics,
+} from "./lib/ecosystem/score-engine.js";
+
+// Register every-5-tick (~5 minute) social → NPC bridge. Public Social Lens
+// posts are wrapped as Shadow DTUs (tag: 'social_awareness') so NPC dialogue
+// prompts can stay aware of real-world cultural signals. Private/friends-only
+// posts are filtered server-side (defense in depth: SQL + JS guards).
+registerHeartbeat("social-npc-bridge", {
+  frequency: 5,
+  handler: runSocialNpcBridge,
+});
+
+// Register every-10-tick (~10 minute) NPC knowledge bridge. Medical /
+// research / engineering DTUs are mirrored into npc_knowledge so NPCs
+// in those roles (doctor, scholar, engineer) can reference real human
+// research in dialogue.
+registerHeartbeat("npc-knowledge-bridge", {
+  frequency: 10,
+  handler: runNpcKnowledgeBridge,
+});
+
+// Decay refusal_debt slowly so a single misstep doesn't follow a player
+// forever. Alignment scalars do not decay — they accumulate from choices.
+registerHeartbeat("metrics-decay", {
+  frequency: 20,
+  handler: runMetricsDecay,
+});
+
+// EvoEcosystem W1: ambient fauna spawner. Tops up per-biome populations
+// every ~30 ticks (~30 minutes). Respects per-species targets defined in
+// loot-tables.speciesForBiome().
+import { runFaunaSpawner } from "./lib/ecosystem/fauna-spawner.js";
+registerHeartbeat("fauna-spawner", {
+  frequency: 30,
+  handler: runFaunaSpawner,
+});
+
+// EvoEcosystem W3: spoiled inventory + expired buff sweep every 5 ticks.
+import { runEcoExpirySweep, applyConsumable, cookRecipe, getActiveEffects } from "./lib/ecosystem/cook-engine.js";
+registerHeartbeat("eco-expiry-sweep", {
+  frequency: 5,
+  handler: runEcoExpirySweep,
+});
+
+// EvoEcosystem W6: prune expired Refusal Field entries every tick so
+// world systems consulting isRefused(...) get fresh state.
+import { runRefusalFieldSweep, activeFields as activeRefusalFields, applyTemporaryRefusal, isRefused } from "./lib/refusal-field.js";
+registerHeartbeat("refusal-field-sweep", {
+  frequency: 1,
+  handler: runRefusalFieldSweep,
+});
+
+// EvoEcosystem W2: prune expired creature corpses so the table doesn't
+// grow monotonically. Every 10 ticks (~10 minutes); corpses default to
+// 30-min TTL so the cleanup cadence is conservative.
+registerHeartbeat("corpse-cleanup", {
+  frequency: 10,
+  handler: ({ db: ctxDb }) => {
+    if (!ctxDb) return { ok: false };
+    try {
+      const r = ctxDb.prepare(`DELETE FROM creature_corpses WHERE expires_at < unixepoch() AND claimed = 0`).run();
+      return { ok: true, pruned: r.changes };
+    } catch { return { ok: false, reason: "table_missing" }; }
+  },
+});
 import { ConcordError } from "./lib/errors.js";
 import { asyncHandler } from "./lib/async-handler.js";
 import { init as initGRC, formatAndValidate as grcFormatAndValidate, getGRCSystemPrompt } from "./grc/index.js";
@@ -1330,9 +1408,9 @@ const CONSOLIDATION = Object.freeze({
   HYPER_MAX_PER_CYCLE: 4,         // was 2 — accelerate hierarchical compression
   COVERAGE_THRESHOLD: 0.8,        // MEGA must cover 80% of source claims
   AUTHORITY_PRESERVATION: 0.9,    // MEGA authority >= 90% of avg source authority
-  ARCHIVE_BATCH_SIZE: 100,        // was 50 — larger batches ok with more RAM
+  ARCHIVE_BATCH_SIZE: Number(process.env.CONCORD_ARCHIVE_BATCH_SIZE) || 2000,    // bumped 100 → 2000 for 32GB
   REHYDRATION_CACHE_TTL: 300000,  // 5 minutes cache for rehydrated DTUs
-  REHYDRATION_CACHE_MAX: 200,     // was 100 — more RAM available
+  REHYDRATION_CACHE_MAX: Number(process.env.CONCORD_REHYDRATION_CACHE_MAX) || 5000, // bumped 200 → 5000 for 32GB
   HEAP_TARGET_PERCENT: 0.75,      // was 0.65 — more RAM available
   HEAP_WARNING_PERCENT: 0.85,     // was 0.80
   HEAP_CRITICAL_PERCENT: 0.90,    // aggressive consolidation at 90%
@@ -3470,7 +3548,12 @@ const STATE = {
     stats: { cronTicks: 0, metaProposals: 0, metaCommits: 0, federationRx: 0, federationTx: 0 }
   },
   settings: {
-    heartbeatMs: 10000,
+    // Bumped from 10s → 5s for 32GB / RTX PRO 4500 deployments. The
+    // heartbeat fans out across registered modules; each is independently
+    // try-caught and most are fast (under 100ms). 5s keeps emergent
+    // simulation responsive without overloading the GPU. Override via
+    // env CONCORD_HEARTBEAT_MS or the runtime settings macro.
+    heartbeatMs: Number(process.env.CONCORD_HEARTBEAT_MS) || 5000,
     heartbeatEnabled: true,
     autogenEnabled: true,
     dreamEnabled: true,
@@ -3558,11 +3641,20 @@ function initDatabase() {
     db.pragma("journal_mode = WAL");        // Concurrent readers + writer
     db.pragma("synchronous = NORMAL");      // Safe with WAL, 3-5× faster than FULL
     db.pragma("foreign_keys = ON");
-    db.pragma("mmap_size = 268435456");     // 256MB mmap — reduces syscall overhead on large worlds
-    db.pragma("cache_size = -32000");       // 32MB page cache
+    // Tuning bumped for 32GB-host deployments. mmap=4GB lets SQLite
+    // memory-map large tables (DTU substrate) directly so reads bypass
+    // the page cache entirely; cache=-1024MB (1GB negative = KB count
+    // is page count) holds frequently-touched pages in RAM. Override
+    // via env on smaller boxes.
+    const mmapMb = Number(process.env.CONCORD_SQLITE_MMAP_MB) || 4096;
+    const cacheMb = Number(process.env.CONCORD_SQLITE_CACHE_MB) || 1024;
+    const walPages = Number(process.env.CONCORD_SQLITE_WAL_AUTOCHECKPOINT_PAGES) || 10000;
+    db.pragma(`mmap_size = ${mmapMb * 1024 * 1024}`);
+    db.pragma(`cache_size = -${cacheMb * 1024}`);
     db.pragma("temp_store = MEMORY");       // Temp tables in RAM
     db.pragma("busy_timeout = 5000");       // Wait up to 5s before SQLITE_BUSY error
-    db.pragma("wal_autocheckpoint = 1000"); // Checkpoint every 1000 pages (~4MB)
+    db.pragma(`wal_autocheckpoint = ${walPages}`); // Checkpoint cadence
+    db.pragma("page_size = 8192");          // Larger pages amortize I/O on big rows (DTU body_json)
 
     // Create tables
     db.exec(`
@@ -3659,6 +3751,21 @@ if (db) {
     structuredLog("info", "schema_migration_complete", { currentVersion: migrationResult.currentVersion, appliedCount: migrationResult.appliedCount });
   } catch (e) {
     console.error("[Concord] Migration failed:", e.message);
+  }
+
+  // Make db available to systems that read STATE.db directly (e.g. the
+  // refusal-field persistence layer). Modules that already capture `db`
+  // via closure are unaffected.
+  STATE.db = db;
+
+  // Reload any non-expired Refusal Field declarations so a deploy mid-
+  // quest doesn't lose the Sovereign's active gates.
+  try {
+    const { loadPersistedRefusalFields } = await import("./lib/refusal-field.js");
+    const r = loadPersistedRefusalFields(STATE);
+    if (r?.ok) structuredLog("info", "refusal_fields_reloaded", { loaded: r.loaded });
+  } catch (e) {
+    console.warn("[Concord] Refusal field reload skipped:", e.message);
   }
 }
 
@@ -5033,7 +5140,14 @@ if (z) {
     tier: z.enum(["regular", "mega", "hyper"]).optional().default("regular"),
     tags: z.array(z.string().max(50)).max(40).optional().default([]),
     creti: z.string().max(50000).optional(),
-    source: z.string().max(100).optional()
+    source: z.string().max(100).optional(),
+    // v2.0 recipe substrate: pass through scope, visibility, and meta so
+    // the recipe DTU types (fighting_style_recipe, spell_recipe, blueprint)
+    // can default to scope='personal' and stay protected by the
+    // personal_dtus_never_leak sovereignty invariant.
+    scope: z.enum(["personal", "synced_global", "global"]).optional(),
+    visibility: z.enum(["private", "internal", "public", "marketplace"]).optional(),
+    meta: z.record(z.unknown()).optional(),
   });
 
   schemas.dtuUpdate = z.object({
@@ -5721,9 +5835,13 @@ function botGuardMiddleware(req, res, next) {
 const _CONCURRENCY = {
   active: new Map(), // operationType -> count
   limits: {
-    llm_call: Number(process.env.LLM_CONCURRENCY_LIMIT || 16),
-    bulk_import: 4,
-    simulation: 6,
+    // Bumped llm_call 16 → 64 for 32GB-heap + RTX PRO 4500 deployments;
+    // bulk_import 4 → 32 (heavy I/O + GPU embed work paralellizes well);
+    // simulation 6 → 32 (per-tick simulation jobs want to fan out so
+    // emergent modules don't queue behind each other).
+    llm_call:    Number(process.env.LLM_CONCURRENCY_LIMIT || 64),
+    bulk_import: Number(process.env.BULK_IMPORT_CONCURRENCY || 32),
+    simulation:  Number(process.env.SIM_CONCURRENCY || 32),
     ml_infer: 6,
   },
 
@@ -6442,9 +6560,48 @@ async function tryInitWebSockets(server) {
         }).modifiers;
       } catch { /* fall through to default */ }
 
+      // Mass Raid friendly-fire immunity: while inside a Sovereign mass
+      // raid instance, attacks between participants pass through harmlessly
+      // (per The Great Refusal canon — players can't damage each other in
+      // the raid; they're all focused on the Sovereign).
+      const _ffTargetId = String(data.targetId || "").slice(0, 128);
+      try {
+        const { isFriendlyFireImmune } = await import("./lib/sovereign/raid-event.js");
+        if (isFriendlyFireImmune(STATE, userId, _ffTargetId)) {
+          socket.emit("combat:attack:ack", {
+            ok: true, immune: true, reason: "raid_friendly_fire", damage: 0,
+          });
+          return;
+        }
+      } catch { /* raid module unavailable — continue with normal damage */ }
+
+      // Refusal Field: Sovereign-targeted attacks during the eternal raid
+      // phase cannot land — he literally refuses victory by numbers.
+      // Same gate applies to any kind of refused-death suspension.
+      try {
+        const { isRefused } = await import("./lib/refusal-field.js");
+        const _attackerWorld = STATE?.activeSovereignRaid?.worldId
+          ?? cityPresence.getPlayerWorld?.(userId)
+          ?? "concordia-hub";
+        const targetIsSovereign = _ffTargetId.startsWith("sovereign_") ||
+          _ffTargetId === "sovereign_first_refusal";
+        if (targetIsSovereign && isRefused(STATE, _attackerWorld, "win_refused")) {
+          socket.emit("combat:attack:ack", {
+            ok: true, refused: true, reason: "win_refused", damage: 0,
+          });
+          return;
+        }
+        if (isRefused(STATE, _attackerWorld, "death_suspended") && Number(data.expectedKill) === 1) {
+          socket.emit("combat:attack:ack", {
+            ok: true, refused: true, reason: "death_suspended", damage: 0,
+          });
+          return;
+        }
+      } catch { /* refusal-field unavailable — continue normally */ }
+
       const result = cityPresence.applyAttack({
         attackerId: userId,
-        targetId: String(data.targetId || "").slice(0, 128),
+        targetId: _ffTargetId,
         baseDamage: Number(data.baseDamage) || 10,
         range: Number(data.range) || 3,
         armorPierce: Number(data.armorPierce) || 0,
@@ -6636,7 +6793,7 @@ async function tryInitWebSockets(server) {
                 `).run(nodeId, pos.x || 0, pos.y || 0, pos.z || 0,
                   JSON.stringify(dropped), Date.now(), Date.now() + 300_000, userId);
                 realtimeEmit("world:loot-node", { id: nodeId, x: pos.x, y: pos.y, z: pos.z, itemCount: dropped.length });
-              } catch (_) {}
+              } catch { /* loot emit best-effort */ }
             }
           }
 
@@ -6742,7 +6899,16 @@ async function tryInitWebSockets(server) {
       if (!userId || !dtuId) return;
 
       const skill = db.prepare("SELECT * FROM dtus WHERE id = ?").get(dtuId);
-      if (!skill || skill.type !== "skill") return;
+      if (!skill) return;
+      // Accept legacy 'skill' typed rows AND v2.0 hotbar combat skills.
+      // Combat skill DTUs from concord-frontend/lib/concordia/combat/hotbar.ts
+      // are created with meta.type='combat_skill' and tagged 'combat_skill'.
+      // Without this widening, combat-skill uses bypassed XP awards AND the
+      // Sovereign Refusal Archive entirely.
+      const isSkillLike = skill.type === "skill"
+        || (typeof skill.tags_json === "string" && skill.tags_json.includes("combat_skill"))
+        || (typeof skill.body_json === "string" && skill.body_json.includes('"combat_skill"'));
+      if (!isSkillLike) return;
 
       const { awardExperience, getMasteryMarkers } = await import("./lib/skill-progression.js");
       const prevBadge = getMasteryMarkers(skill).badge;
@@ -6757,6 +6923,15 @@ async function tryInitWebSockets(server) {
       const leveledUp = Math.floor(updated.skill_level) > Math.floor(prevLevel);
 
       socket.emit("skill:xp-awarded", { dtuId, ...result, mastery, leveledUp });
+
+      // Sovereign Refusal Archive: record this power into the Sovereign's
+      // shadow collection so the existing EvoAsset evolution scheduler
+      // can refine it and the Sovereign can manifest a fused, limit-
+      // refused form during raid encounters. Best-effort.
+      try {
+        const { recordPlayerPowerForArchive } = await import("./lib/sovereign/refusal-archive.js");
+        recordPlayerPowerForArchive(STATE, updated, userId);
+      } catch { /* archive recording is best-effort */ }
 
       if (leveledUp && mastery.badge !== prevBadge) {
         realtimeEmit("world:notification", {
@@ -6848,6 +7023,7 @@ async function tryInitWebSockets(server) {
     });
 
     socket.on("disconnect", () => {
+      const userId = socket.data?.userId;
       if (userId) {
         try { cityPresence.removeUser(userId); } catch (_e) { /* ignore */ }
       }
@@ -11476,7 +11652,7 @@ function upsertDTU(dtu, { broadcast = true, federate = false } = {}) {
           }
         }
       }
-    } catch (_) {}
+    } catch { /* skill xp award best-effort */ }
   }
 
   // Broadcast DTU change via WebSocket (local-first realtime)
@@ -12046,35 +12222,92 @@ const EMBEDDINGS = {
   dim: 384 // default for all-MiniLM-L6-v2
 };
 
-// Initialize local embeddings (Xenova Transformers - runs in Node.js)
+// Initialize embeddings. Preferred path: Ollama-hosted embedding model
+// running on the GPU via the existing ollama-vision (or any Ollama)
+// service — Blackwell tensor cores + cuBLAS make this ~50× faster than
+// the CPU-bound Xenova fallback. Configure with:
+//   CONCORD_EMBED_BACKEND=ollama (default)
+//   CONCORD_EMBED_OLLAMA_URL=http://ollama-vision:11434
+//   CONCORD_EMBED_OLLAMA_MODEL=nomic-embed-text   (768-dim, fast)
+// Override CONCORD_EMBED_BACKEND=xenova to keep the CPU path (offline
+// dev, CI, deployments without GPU).
 async function initLocalEmbeddings() {
+  const backend = (process.env.CONCORD_EMBED_BACKEND || "ollama").toLowerCase();
+
+  if (backend === "ollama") {
+    const ollamaUrl = process.env.CONCORD_EMBED_OLLAMA_URL
+      || process.env.BRAIN_VISION_URL
+      || process.env.OLLAMA_URL
+      || "http://ollama-vision:11434";
+    const model = process.env.CONCORD_EMBED_OLLAMA_MODEL || "nomic-embed-text";
+    try {
+      // Probe with a short embedding so we fail fast if the model isn't
+      // pulled yet. The Ollama server auto-pulls on first request,
+      // which can be slow; we explicitly probe so the warmup happens
+      // up front instead of inside the first DTU index.
+      const probe = await fetch(`${ollamaUrl.replace(/\/$/, "")}/api/embeddings`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ model, prompt: "warmup" }),
+        signal: AbortSignal.timeout(60_000),
+      });
+      if (!probe.ok) throw new Error(`probe HTTP ${probe.status}`);
+      const probeBody = await probe.json();
+      const dim = Array.isArray(probeBody?.embedding) ? probeBody.embedding.length : 768;
+      EMBEDDINGS.backend = "ollama";
+      EMBEDDINGS.ollamaUrl = ollamaUrl;
+      EMBEDDINGS.ollamaModel = model;
+      EMBEDDINGS.enabled = true;
+      EMBEDDINGS.dim = dim;
+      structuredLog("info", "embeddings_loaded", { backend: "ollama", model, dim, url: ollamaUrl });
+      return { ok: true, backend: "ollama" };
+    } catch (e) {
+      structuredLog("warn", "embeddings_ollama_init_failed", { error: e.message, fallback: "xenova" });
+      // Fall through to Xenova fallback below.
+    }
+  }
+
+  // CPU fallback — kept for offline dev / deployments without a GPU.
   try {
     const { pipeline } = await import("@xenova/transformers").catch(() => ({}));
     if (!pipeline) {
       structuredLog("warn", "embeddings_unavailable", { reason: "transformers not installed" });
       return { ok: false, reason: "package_not_installed" };
     }
-
     EMBEDDINGS.model = await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2");
+    EMBEDDINGS.backend = "xenova";
     EMBEDDINGS.enabled = true;
     EMBEDDINGS.dim = 384;
-    structuredLog("info", "embeddings_loaded", { model: "all-MiniLM-L6-v2" });
-    return { ok: true };
+    structuredLog("info", "embeddings_loaded", { backend: "xenova", model: "all-MiniLM-L6-v2" });
+    return { ok: true, backend: "xenova" };
   } catch (e) {
     structuredLog("error", "embeddings_load_failed", { error: e.message });
     return { ok: false, error: String(e.message || e) };
   }
 }
 
-// Generate embedding for text (with circuit breaker)
+// Generate embedding for text (with circuit breaker). Routes through
+// whichever backend initLocalEmbeddings selected.
 async function generateEmbedding(text) {
-  if (!EMBEDDINGS.enabled || !EMBEDDINGS.model) {
-    return { ok: false, error: "Embeddings not enabled" };
-  }
+  if (!EMBEDDINGS.enabled) return { ok: false, error: "Embeddings not enabled" };
 
   try {
     return await _breakers.embeddings.call(
       async () => {
+        if (EMBEDDINGS.backend === "ollama") {
+          const res = await fetch(`${EMBEDDINGS.ollamaUrl.replace(/\/$/, "")}/api/embeddings`, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ model: EMBEDDINGS.ollamaModel, prompt: String(text).slice(0, 8000) }),
+            signal: AbortSignal.timeout(30_000),
+          });
+          if (!res.ok) throw new Error(`ollama embed HTTP ${res.status}`);
+          const j = await res.json();
+          if (!Array.isArray(j?.embedding)) throw new Error("ollama embed returned no embedding");
+          return { ok: true, embedding: j.embedding, dim: j.embedding.length };
+        }
+        // Xenova fallback path.
+        if (!EMBEDDINGS.model) return { ok: false, error: "embeddings_model_missing" };
         const output = await EMBEDDINGS.model(text, { pooling: "mean", normalize: true });
         const embedding = Array.from(output.data);
         return { ok: true, embedding, dim: embedding.length };
@@ -12885,7 +13118,7 @@ setTimeout(() => initLLMPipeline(), 100);
 
 // ── LLM Queue + Circuit Breakers ──────────────────────────────────────────
 const _llmQueue = createLLMQueue({
-  concurrency: parseInt(process.env.LLM_CONCURRENCY || "8", 10),
+  concurrency: parseInt(process.env.LLM_CONCURRENCY || "32", 10),
   maxQueueDepth: 200,
   onReject: (priority, reason) => {
     structuredLog("warn", "llm_queue_reject", { priority, reason });
@@ -17323,6 +17556,23 @@ async function pipelineCommitDTU(ctx, dtu, opts={}) {
     realtimeEmit("dtu:created", {
       id: dtu.id, title: dtu.title, tier: dtu.tier, tags: dtu.tags, updatedAt: dtu.updatedAt,
     });
+    // v2.0 Workstream 6c: realtime fast-path for public timeline posts so
+    // they appear instantly in other players' feeds (and so the
+    // social-npc-bridge worker can pick them up without waiting for the
+    // every-5-tick batch). Privacy gate is intentionally strict: only
+    // posts the author explicitly marked 'public' broadcast.
+    try {
+      const tagsArr = Array.isArray(dtu.tags) ? dtu.tags : [];
+      const privacy = dtu.body?.privacy ?? dtu.meta?.privacy ?? null;
+      if (tagsArr.includes("timeline") && privacy === "public") {
+        realtimeEmit("timeline:post", {
+          dtuId: dtu.id,
+          authorId: dtu.ownerUserId ?? null,
+          summary: (dtu.body?.content ?? dtu.title ?? "").toString().slice(0, 280),
+          createdAt: dtu.createdAt ?? new Date().toISOString(),
+        });
+      }
+    } catch { /* realtime emit best-effort */ }
     // Graph lens realtime — same payload shape as upsertDTU's
     // broadcast so graph visualizers hot-patch their node cache
     // whether the write came through the legacy upsert path or the
@@ -19516,7 +19766,7 @@ Rules for tool use:
             const eng = getBrowserEngine();
             const page = await Promise.race([
               eng.fetchRenderedPage(browseUrl, { selector: browseSelector }),
-              new Promise((_, rej) => setTimeout(() => rej(new Error("browse_url timeout")), 15000)),
+              new Promise((_, rej) => { setTimeout(() => rej(new Error("browse_url timeout")), 15000); }),
             ]);
             return {
               tool: call.tool, ok: true,
@@ -26559,7 +26809,7 @@ import "./lib/inference/otel-exporter.js";
 
 // ── Competitive Parity: Span persistence to SQLite ──────────────────────────
 import { wireSpanPersistence } from "./lib/inference/thread-manager.js";
-if (db) { try { wireSpanPersistence(db); } catch {} }
+if (db) { try { wireSpanPersistence(db); } catch { /* span wiring best-effort */ } }
 
 // ── Production Integrity: SLO monitoring ────────────────────────────────────
 import { wireInferenceToSLO, getSLODashboard } from "./lib/monitoring/slo.js";
@@ -26594,6 +26844,12 @@ app.use("/api/worlds", createWorldsRouter({ requireAuth, db }));
 
 import createCityAssetsRouter from "./routes/city-assets.js";
 app.use("/api/city-assets", createCityAssetsRouter({ requireAuth }));
+
+import createAvatarsRouter from "./routes/avatars.js";
+app.use("/api/avatars", createAvatarsRouter({ db, requireAuth }));
+
+import createWorldCreatureRouter from "./routes/world-creature.js";
+app.use("/api/world/creature", createWorldCreatureRouter({ db, requireAuth, state: STATE }));
 
 if (db) {
   try {
@@ -26632,7 +26888,7 @@ if (db) {
     // Start hourly crisis watch (auto-expires + auto-triggers knowledge_extinction)
     startCrisisWatch(db, realtimeEmit);
     // Start daily NPC property disrepair clock (dead NPC homes decay over time)
-    setInterval(() => { try { processDisrepairTick(db); } catch (_e) {} }, DISREPAIR_TICK_INTERVAL);
+    setInterval(() => { try { processDisrepairTick(db); } catch { /* disrepair tick best-effort */ } }, DISREPAIR_TICK_INTERVAL);
   } catch (e) { console.warn("[worlds] startup failed:", e.message); }
 }
 
@@ -26881,6 +27137,372 @@ import { applyHitToState, tickCombatState, getCombatState, grantIFrames as _gran
 
 app.get("/api/world/weather/:worldId", (req, res) => {
   res.json({ ok: true, weather: getWorldWeather(req.params.worldId) });
+});
+
+// v2.0 instantiation: stream a music DTU's audio bytes for the
+// SoundscapeEngine. We deliberately serve via this route (not the
+// generic /api/dtus/:id/asset path) so we can scope CORS + cache headers
+// to soundscape consumption and apply opt-in checks (must be tagged
+// 'soundscape', visibility != private). Cross-origin allowed because
+// the audio is intentionally public-by-author.
+app.get("/api/world/soundscape/track/:dtuId/audio", (req, res) => {
+  try {
+    const dtu = STATE?.dtus?.get?.(req.params.dtuId);
+    if (!dtu) return res.status(404).json({ ok: false, error: "dtu_not_found" });
+    const tags = Array.isArray(dtu.tags) ? dtu.tags : [];
+    if (!tags.includes("soundscape")) return res.status(403).json({ ok: false, error: "not_soundscape_opt_in" });
+    const visibility = dtu.meta?.visibility ?? dtu.visibility ?? "private";
+    if (visibility === "private") return res.status(403).json({ ok: false, error: "private_visibility" });
+    const ref = dtu.artifact;
+    if (!ref?.diskPath) return res.status(404).json({ ok: false, error: "no_audio_artifact" });
+
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+    res.setHeader("Cache-Control", "public, max-age=3600");
+    if (ref.mimeType) res.setHeader("Content-Type", ref.mimeType);
+    import("./lib/artifact-store.js").then(({ retrieveArtifactStream }) => {
+      const stream = retrieveArtifactStream(ref);
+      if (!stream) return res.status(404).end();
+      stream.on("error", () => { try { res.status(500).end(); } catch { /* already sent */ } });
+      stream.pipe(res);
+    }).catch(() => res.status(500).json({ ok: false, error: "stream_failed" }));
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// v2.0 instantiation: community music DTUs for a district. Frontend
+// SoundscapeEngine cycles these alongside the procedural ambient stems.
+app.get("/api/world/soundscape/:districtId/tracks", async (req, res) => {
+  try {
+    const { getDistrictPlaylist } = await import("./lib/soundscape-bridge.js");
+    const { universe, mood } = req.query;
+    const result = getDistrictPlaylist(db, req.params.districtId, {
+      universe: typeof universe === "string" ? universe : undefined,
+      mood:     typeof mood === "string" ? mood : undefined,
+    });
+    res.json({ ok: true, ...result });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// v2.0 instantiation: spawn a blueprint DTU into the world.
+// Body: { worldId, blueprintId, position: {x,y,z}, rotationY? }.
+// Verifies blueprint DTU shape, inserts into world_buildings, emits
+// realtime so other players in the same world see the structure appear.
+app.post("/api/world/buildings/spawn", requireAuth, (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
+    const { worldId, blueprintId, position, rotationY } = req.body || {};
+    if (!worldId || !blueprintId || !position) {
+      return res.status(400).json({ ok: false, error: "worldId_blueprintId_position_required" });
+    }
+    if (typeof position.x !== "number" || typeof position.y !== "number" || typeof position.z !== "number") {
+      return res.status(400).json({ ok: false, error: "position_xyz_required" });
+    }
+
+    const blueprint = db.prepare("SELECT id, owner_user_id, body_json, visibility FROM dtus WHERE id = ?").get(blueprintId);
+    if (!blueprint) return res.status(404).json({ ok: false, error: "blueprint_not_found" });
+
+    // A user can spawn their own blueprint OR a marketplace-published one.
+    // Personal blueprints stay private — sovereignty invariant.
+    let body = {};
+    try { body = JSON.parse(blueprint.body_json || "{}"); } catch { /* malformed body */ }
+    if (body?.meta?.type !== "blueprint") {
+      return res.status(400).json({ ok: false, error: "dtu_not_a_blueprint" });
+    }
+    const isOwner = blueprint.owner_user_id === userId;
+    const isPublished = blueprint.visibility === "marketplace" || blueprint.visibility === "public";
+    if (!isOwner && !isPublished) {
+      return res.status(403).json({ ok: false, error: "blueprint_not_accessible" });
+    }
+
+    // Bounding-box overlap check: a blueprint declares dimensions in its
+    // body; reject the spawn if the would-be footprint overlaps an
+    // existing building's footprint at this position.
+    const dims = body?.meta?.dimensions ?? body?.dimensions ?? null;
+    if (dims && Number.isFinite(dims.x) && Number.isFinite(dims.z)) {
+      const halfX = Math.abs(dims.x) / 2;
+      const halfZ = Math.abs(dims.z) / 2;
+      // Approximate worst-case neighbor footprint (12m / side) to avoid
+      // joining the existing buildings table to its blueprint dims at
+      // every spawn. Treats the new placement as a rectangle and
+      // existing buildings as 12m squares.
+      const PAD = 6;
+      const overlap = db.prepare(`
+        SELECT id FROM world_buildings
+        WHERE world_id = ?
+          AND ABS(x - ?) < ?
+          AND ABS(z - ?) < ?
+        LIMIT 1
+      `).get(worldId, position.x, halfX + PAD, position.z, halfZ + PAD);
+      if (overlap) {
+        return res.status(409).json({ ok: false, error: "overlap_with_existing_building", existingId: overlap.id });
+      }
+    }
+
+    const id = `wb_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    // The world_buildings table from migration 063 requires building_type
+    // NOT NULL. We infer it from the blueprint's kind so the row remains
+    // valid for downstream renderers + structural-decay logic.
+    const buildingType = (() => {
+      const k = body?.meta?.kind ?? body?.kind ?? "building";
+      if (k === "vehicle") return "vehicle";
+      if (k === "weapon") return "weapon-emplacement";
+      return "house"; // generic player-spawned structure
+    })();
+    db.prepare(`
+      INSERT INTO world_buildings
+        (id, world_id, building_type, blueprint_dtu_id, spawned_by_user_id, owner_type, owner_id, x, y, z, rotation_y, rotation, is_seed)
+      VALUES (?, ?, ?, ?, ?, 'player', ?, ?, ?, ?, ?, ?, 0)
+    `).run(
+      id, worldId, buildingType, blueprintId, userId, userId,
+      position.x, position.y, position.z,
+      Number(rotationY) || 0, Number(rotationY) || 0,
+    );
+
+    try {
+      REALTIME?.io?.to(`world:${worldId}`).emit("world:building-spawned", {
+        id, worldId, blueprintDtuId: blueprintId, position, rotationY: Number(rotationY) || 0,
+      });
+    } catch { /* realtime best-effort */ }
+
+    res.json({ ok: true, building: { id, worldId, blueprintDtuId: blueprintId, position, rotationY: Number(rotationY) || 0 } });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// List spawned buildings for a world. Used by BuildingRenderer3D on world load.
+app.get("/api/world/buildings/:worldId", (req, res) => {
+  try {
+    const rows = db.prepare(`
+      SELECT id, world_id, blueprint_dtu_id, spawned_by_user_id, x, y, z, rotation_y, created_at
+      FROM world_buildings WHERE world_id = ?
+      ORDER BY created_at ASC
+    `).all(req.params.worldId);
+    res.json({ ok: true, buildings: rows });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// Delete a spawned building (owner-only). Realtime-emits so renderers
+// remove the structure without a refresh.
+app.delete("/api/world/buildings/:id", requireAuth, (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
+    const row = db.prepare(`SELECT * FROM world_buildings WHERE id = ?`).get(req.params.id);
+    if (!row) return res.status(404).json({ ok: false, error: "building_not_found" });
+    if (row.spawned_by_user_id !== userId) return res.status(403).json({ ok: false, error: "not_owner" });
+    db.prepare(`DELETE FROM world_buildings WHERE id = ?`).run(row.id);
+    try {
+      REALTIME?.io?.to(`world:${row.world_id}`).emit("world:building-removed", { id: row.id, worldId: row.world_id });
+    } catch { /* realtime best-effort */ }
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// EvoEcosystem W4: per-player four-axis metrics. Read-only for the player
+// themselves; writes happen through internal hooks (gather, kill, craft,
+// etc.) calling adjustEcoMetrics().
+app.get("/api/world/me/metrics", requireAuth, (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
+    const worldId = String(req.query.worldId || "concordia-hub");
+    res.json({ ok: true, metrics: getEcoMetrics(db, userId, worldId), worldId });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// EvoEcosystem W3: cooking. Wraps craft-engine for food recipe DTUs.
+// Output is a consumable food DTU with effects[] and shelfLifeHours.
+app.post("/api/world/cook", requireAuth, async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
+    const { recipeId, worldId, qualityMultiplier } = req.body || {};
+    if (!recipeId) return res.status(400).json({ ok: false, error: "recipeId_required" });
+    const result = await cookRecipe(db, userId, String(worldId || "concordia-hub"), recipeId, {
+      qualityMultiplier: typeof qualityMultiplier === "number" ? qualityMultiplier : undefined,
+    });
+    if (!result.ok) return res.status(422).json(result);
+    // Cooking is creative — bumps concordia_alignment by a small amount.
+    try { adjustEcoMetrics(db, userId, String(worldId || "concordia-hub"), { concordia_alignment: 0.5 }); }
+    catch { /* metrics best-effort */ }
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// EvoEcosystem W3: consume a food DTU — applies its effects[] as
+// time-limited buffs/debuffs. Deducts a single inventory unit.
+app.post("/api/world/consume/:dtuId", requireAuth, (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
+    const result = applyConsumable(db, userId, req.params.dtuId);
+    if (!result.ok) return res.status(422).json(result);
+    // Realtime push so the player's HUD updates without waiting for a
+    // poll. Each effect is an independent moodlet; clients merge them
+    // into the active-effects bar.
+    try {
+      for (const eff of result.applied ?? []) {
+        REALTIME?.io?.to(`user:${userId}`).emit("player:effect-applied", {
+          userId,
+          effect: { ...eff, source_dtu_id: req.params.dtuId },
+        });
+      }
+    } catch { /* realtime emit best-effort */ }
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// Sovereign Refusal Archive — preview a manifestation. The Sovereign
+// fuses N archive shadows (powers he has observed) into a single
+// limit-refused combat blueprint. Raid combat fetches this just before
+// the Sovereign uses a power, so the player can see what's coming.
+// Public read; rate-limited to prevent archive scraping.
+let _manifestRateState = { count: 0, windowStart: 0 };
+app.get("/api/world/sovereign/manifestation/preview", async (req, res) => {
+  try {
+    const now = Date.now();
+    if (now - _manifestRateState.windowStart > 60_000) {
+      _manifestRateState = { count: 0, windowStart: now };
+    }
+    if (++_manifestRateState.count > 60) {
+      return res.status(429).json({ ok: false, error: "rate_limited" });
+    }
+    const { draftSovereignManifestation } = await import("./lib/sovereign/refusal-archive.js");
+    const draws = Math.max(1, Math.min(5, Number(req.query.draws) || 3));
+    const preferTargetId = typeof req.query.targetId === "string" ? req.query.targetId : undefined;
+    const manifest = draftSovereignManifestation(STATE, { draws, preferTargetId });
+    res.json({ ok: true, manifestation: manifest });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// EvoEcosystem W6: read the active Refusal Fields for a world. Frontend
+// HUD shows a banner per active field with the lore-flavored glyph hint.
+app.get("/api/world/refusal-fields/:worldId", (req, res) => {
+  try {
+    res.json({ ok: true, fields: activeRefusalFields(STATE, req.params.worldId) });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// Sovereign quest beats / system imbalance events trigger a Refusal Field
+// here. Currently auth-gated to admin operators; in future the Sovereign
+// NPC's quest engine will fire it when a player's metrics push the
+// imbalance signal past the visit threshold.
+app.post("/api/world/refusal-fields/:worldId/apply", requireAuth, (req, res) => {
+  try {
+    const { kind, durationMs, reason } = req.body || {};
+    const entry = applyTemporaryRefusal(STATE, req.params.worldId, kind, { durationMs, reason });
+    if (!entry) return res.status(400).json({ ok: false, error: "invalid_kind_or_world" });
+    try {
+      REALTIME?.io?.to(`world:${req.params.worldId}`).emit("world:refusal-field", entry);
+    } catch { /* realtime best-effort */ }
+    res.json({ ok: true, field: entry });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// EvoEcosystem W3: the player's currently-active effects. Frontend HUD
+// reads this to render countdown timers.
+app.get("/api/world/effects/me", requireAuth, (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
+    res.json({ ok: true, effects: getActiveEffects(db, userId) });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// v2.0 Workstream 6b: federation export — peers in the trust graph pull
+// public social shadows from this instance via this endpoint.
+//
+// When CONCORD_FEDERATION_TOKEN is set, requests must carry the matching
+// Bearer token. When unset (research / development), the endpoint stays
+// open. The data is intentionally public-author-consented; auth is for
+// rate-limiting / abuse control, not secrecy.
+app.get("/api/world/social-shadows", (req, res) => {
+  try {
+    const expected = process.env.CONCORD_FEDERATION_TOKEN;
+    if (expected) {
+      const auth = req.headers?.authorization ?? "";
+      const m = /^Bearer\s+(.+)$/i.exec(auth);
+      if (!m || m[1] !== expected) {
+        return res.status(401).json({ ok: false, error: "federation_auth_required" });
+      }
+    }
+    const shadows = STATE?.shadowDtus ? Array.from(STATE.shadowDtus.values()) : [];
+    const recent = shadows
+      .filter((s) => Array.isArray(s.tags) && s.tags.includes("social_awareness"))
+      .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))
+      .slice(0, 50)
+      .map((s) => ({
+        id: s.id,
+        summary: s.core?.summary ?? s.summary ?? "",
+        authorHandle: s.authorHandle ?? "anon",
+        targetWorldId: s.targetWorldId ?? null,
+        createdAt: s.createdAt ?? null,
+      }));
+    res.json({ ok: true, shadows: recent });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// XP cascade for cross-world music plays. Frontend reports a play after
+// the track finishes (or after >50% completion). The author gets XP.
+// We deliberately deny self-plays so XP only flows from other users
+// hearing your music.
+app.post("/api/world/soundscape/track-played", requireAuth, async (req, res) => {
+  try {
+    const playerUserId = req.user?.id;
+    const { dtuId, completionRatio } = req.body || {};
+    if (!playerUserId) return res.status(401).json({ ok: false, error: "auth_required" });
+    if (!dtuId) return res.status(400).json({ ok: false, error: "dtuId_required" });
+    if (typeof completionRatio !== "number" || completionRatio < 0.5) {
+      return res.json({ ok: true, awarded: false, reason: "below_completion_threshold" });
+    }
+
+    const trackRow = db.prepare("SELECT id, owner_user_id FROM dtus WHERE id = ?").get(dtuId);
+    if (!trackRow) return res.status(404).json({ ok: false, error: "track_not_found" });
+    if (trackRow.owner_user_id === playerUserId) {
+      return res.json({ ok: true, awarded: false, reason: "self_play" });
+    }
+
+    const skillProg = await import("./lib/skill-progression.js").catch(() => null);
+    if (skillProg?.awardExperience) {
+      try {
+        await skillProg.awardExperience(
+          { id: trackRow.id, type: "skill" },
+          "cross_world_use",
+          { worldId: req.body?.worldId, userId: trackRow.owner_user_id, lensTag: "studio" },
+          db,
+        );
+      } catch { /* xp award best-effort */ }
+    }
+    res.json({ ok: true, awarded: true, recipient: trackRow.owner_user_id });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
 });
 app.get("/api/combat/state/:actorId", (req, res) => {
   res.json({ ok: true, state: getCombatState(req.params.actorId) });
@@ -28634,12 +29256,10 @@ async function governorTick(reason="heartbeat") {
             const visionMod = await import("./lib/vision-inference.js").catch(() => null);
             const atlasMod  = await import("./emergent/atlas-store.js").catch(() => null);
             const guardMod  = await import("./emergent/atlas-write-guard.js").catch(() => null);
-            const callImageGen = async (opts) => {
-              if (typeof _callMultimodalBrain === "function") {
-                return _callMultimodalBrain({ kind: "image", ...opts });
-              }
-              return null;
-            };
+            // Multimodal image gen is not wired in this build. EvoAsset's
+            // refinement passes detect a null callImageGen and skip the
+            // detail-maps pass without crashing.
+            const callImageGen = async () => null;
             const stats = await evoSched.runEvolutionTick(STATE, db, {
               callVision:        visionMod?.callVision,
               callImageGen,
@@ -28662,7 +29282,7 @@ async function governorTick(reason="heartbeat") {
             const cityPresence = await import("./lib/city-presence.js").catch(() => null);
             const npcList = cityPresence?.getAllNPCsForEmergence?.() ?? [];
             for (const npc of npcList.slice(0, 5)) {
-              const newQuests = await questEmergence.detectQuestOpportunities(npc, db, _selectBrain).catch(() => []);
+              const newQuests = await questEmergence.detectQuestOpportunities(npc, db, _selectBrainForNpc).catch(() => []);
               // Realtime-push each new quest to every player currently present
               // in the NPC's world. The quest log already fetches via HTTP on
               // mount; this emit replaces the gap where quests would otherwise
@@ -28830,6 +29450,19 @@ async function governorTick(reason="heartbeat") {
         if (_tickHistory.length > 100) _tickHistory.shift();
       }
     } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+
+    // Heartbeat module registry: iterate any modules registered via
+    // server/emergent/heartbeat-registry.js and fire those whose tick is due.
+    // Each handler is independently try/caught inside the registry — a single
+    // module failure cannot stop the tick.
+    try {
+      await tickAllRegistered({
+        state: STATE,
+        db,
+        tickCount: STATE.__bgTickCounter || 0,
+        reason,
+      });
+    } catch (e) { observe(e, "governor_heartbeat_registry"); }
 
     return { ok:true };
   } catch (e) {
@@ -43415,8 +44048,6 @@ app.post("/api/quests/accept", requireAuth(), asyncHandler(async (req, res) => {
     if (start?.ok) {
       try { REALTIME?.io?.to(`user:${userId}`).emit("quest:accepted", { questId, ts: nowISO() }); }
       catch { /* realtime best-effort */ }
-      try { window?.dispatchEvent?.(new CustomEvent("concordia:tutorial-action", { detail: { action: "accepted-quest" } })); }
-      catch { /* server has no window */ }
       return res.json({ ok: true, quest: start.quest });
     }
     res.status(400).json(start || { ok: false, error: "start_failed" });

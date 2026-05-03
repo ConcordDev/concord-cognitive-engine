@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Hash, ArrowRightLeft, Plus, X, Divide, BookOpen, RefreshCw, AlertCircle } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Hash, ArrowRightLeft, X, BookOpen, AlertCircle } from 'lucide-react';
 import { useLensNav } from '@/hooks/useLensNav';
 
 /* ─── Refusal Algebra types ─── */
@@ -119,7 +119,7 @@ export default function RootLens() {
   const glyph2dec = useMemo(() => {
     if (!glyphInput.trim()) { setGlyphError(''); return null; }
     try { const v = glyphsToDecimal(glyphInput.trim()); setGlyphError(''); return v; }
-    catch (e: any) { setGlyphError(e.message); return null; }
+    catch (e) { setGlyphError(e instanceof Error ? e.message : String(e)); return null; }
   }, [glyphInput]);
 
   /* Operation result */

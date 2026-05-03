@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, Calendar, Users, Music, Swords, ShoppingBag, BookOpen, Plus, Clock } from 'lucide-react';
+import { X, Calendar, Users, Music, Swords, ShoppingBag, BookOpen } from 'lucide-react';
 
 interface WorldEvent {
   id: string;

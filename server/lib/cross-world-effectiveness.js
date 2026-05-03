@@ -28,6 +28,16 @@ const _worldRegistry = new Map();
 export function registerWorldMeta(meta) {
   if (!meta?.world_id) return;
   _worldRegistry.set(meta.world_id, meta);
+  // Register every alias as a pointer to the same meta object so legacy
+  // ids resolve to the canonical world. Used during the
+  // 'concordia' → 'concordia-hub' transition (migration 098).
+  if (Array.isArray(meta.world_id_aliases)) {
+    for (const alias of meta.world_id_aliases) {
+      if (typeof alias === "string" && alias && alias !== meta.world_id) {
+        _worldRegistry.set(alias, meta);
+      }
+    }
+  }
 }
 
 export function getWorldMeta(worldId) {

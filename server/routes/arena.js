@@ -132,8 +132,8 @@ export default function createArenaRouter({ requireAuth, db, realtimeEmit }) {
       try {
         wagerId = createMatch(db, userId, matched.user_id, realtimeEmit);
       } catch {
-        try { awardSparks(db, userId,         ARENA_SPARKS_WAGER, "arena_escrow_refund"); } catch (_) {}
-        try { awardSparks(db, matched.user_id, ARENA_SPARKS_WAGER, "arena_escrow_refund"); } catch (_) {}
+        try { awardSparks(db, userId,         ARENA_SPARKS_WAGER, "arena_escrow_refund"); } catch { /* refund best-effort */ }
+        try { awardSparks(db, matched.user_id, ARENA_SPARKS_WAGER, "arena_escrow_refund"); } catch { /* refund best-effort */ }
         return res.status(402).json({ ok: false, error: "insufficient_sparks" });
       }
 

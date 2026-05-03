@@ -144,7 +144,7 @@ export function IncomingWagerPrompt({ wagerId, proposerName, amount, currency, d
     setLoading(true);
     try {
       await api.post(`/api/wagers/${wagerId}/${action}`);
-      action === 'accept' ? onAccept() : onDecline();
+      if (action === 'accept') onAccept(); else onDecline();
     } catch { onDecline(); }
     finally { setLoading(false); }
   };

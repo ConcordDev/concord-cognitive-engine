@@ -25,7 +25,7 @@ interface BlueprintPanelProps {
   onClose: () => void;
 }
 
-export function BlueprintPanel({ playerId, toolTier, skillLevel, onClose }: BlueprintPanelProps) {
+export function BlueprintPanel({ playerId: _playerId, toolTier, skillLevel, onClose }: BlueprintPanelProps) {
   const [blueprints, setBlueprints] = useState<Blueprint[]>([]);
   const [selected, setSelected] = useState<Blueprint | null>(null);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);

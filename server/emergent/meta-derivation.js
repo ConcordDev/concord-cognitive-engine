@@ -35,8 +35,11 @@ const META_DERIVATION_INTERVAL_MS = parseInt(
 const CONVERGENCE_INTERVAL_MS = 24 * 3600_000; // 24 hours
 const MIN_DTUS_FOR_META = 100;
 const MIN_DOMAINS_FOR_META = 5;
-const MAX_SESSIONS_PER_CYCLE = 3;
-const MAX_META_DTUS_PER_DAY = 10;
+// Bumped 3 → 20 sessions / 10 → 100 DTUs/day for 32GB + RTX PRO 4500
+// deployments. Meta-derivation is GPU-bound (subconscious brain LLM
+// calls); the previous defaults left the GPU idle.
+const MAX_SESSIONS_PER_CYCLE = Number(process.env.CONCORD_META_SESSIONS_PER_CYCLE) || 20;
+const MAX_META_DTUS_PER_DAY = Number(process.env.CONCORD_META_DTUS_PER_DAY) || 100;
 const JACCARD_TRIVIALITY_THRESHOLD = 0.4;
 const CONVERGENCE_SIMILARITY_THRESHOLD = 0.7;
 

@@ -48,7 +48,13 @@ docker-compose up           # starts backend + frontend + 4 Ollama instances
 ```
 
 ### Environment variables
-The server requires `JWT_SECRET` in production. Without it, a random secret is generated (sessions don't survive restart). `DB_PATH` defaults to `server/data/concord.db`. `PORT` defaults to 5050. `CONCORD_NO_LISTEN=true` prevents the server from binding a port (used in tests). Four Ollama URLs: `BRAIN_CONSCIOUS_URL` (11434), `BRAIN_SUBCONSCIOUS_URL` (11435), `BRAIN_UTILITY_URL` (11436), `BRAIN_REPAIR_URL` (11437).
+The server requires `JWT_SECRET` in production. Without it, a random secret is generated (sessions don't survive restart). `DB_PATH` defaults to `server/data/concord.db`. `PORT` defaults to 5050. `CONCORD_NO_LISTEN=true` prevents the server from binding a port (used in tests). Five Ollama URLs: `BRAIN_CONSCIOUS_URL` (11434), `BRAIN_SUBCONSCIOUS_URL` (11435), `BRAIN_UTILITY_URL` (11436), `BRAIN_REPAIR_URL` (11437), `BRAIN_VISION_URL` (11438 — LLaVA).
+
+**Heap & cap tuning** (32GB-deployment defaults — override on smaller boxes):
+- `MAX_OLD_SPACE_SIZE=32768` and start node with `--max-old-space-size=32768`. Keep both in sync; the memory-pressure watchdog reads the env var.
+- `CONCORD_MAX_SHADOWS` (default 50000) — cap for `STATE.shadowDtus`.
+- `CONCORD_PLAYLIST_LIMIT` (100), `CONCORD_NPC_KNOWLEDGE_BATCH` (1000), `CONCORD_SOCIAL_BRIDGE_BATCH` (2000), `CONCORD_FAUNA_SPAWN_BATCH` (500), `CONCORD_FEED_DTUS_PER_HOUR` (10000), `CONCORD_LLM_QUEUE_DEPTH` (1000), `CONCORD_DIALOGUE_MAX_CONCURRENT` (50), `CONCORD_DOWNLOADS_PER_USER` (25).
+- `CONCORD_FEDERATION_TOKEN` — when set, federation `/api/world/social-shadows` requires Bearer auth.
 
 ---
 
@@ -70,17 +76,20 @@ Frontend calls `POST /api/lens/run` with `{ domain, name, input }`. This routes 
 `governorTick()` in `server.js` drives all emergent simulation: 33 wired modules in `server/emergent/` running at varying frequencies (every tick, every 5th, every 20th, etc.). Always wrap new heartbeat additions in `try/catch` — a module crash must never stop the tick.
 
 ### DTU substrate
-Discrete Thought Units are the atomic knowledge format. Four layers: `human` (readable summary), `core` (structured claims/definitions), `machine` (tags, embeddings, verifier), `artifact` (optional binary at `./data/artifacts/{dtuId}/`). Regular DTUs consolidate into MEGA (5–20 originals) then HYPER (50–200) at 33:1 compression every 30 ticks. Memory ceiling: ~170,000 DTUs in-heap.
+Discrete Thought Units are the atomic knowledge format. Four layers: `human` (readable summary), `core` (structured claims/definitions), `machine` (tags, embeddings, verifier), `artifact` (optional binary at `./data/artifacts/{dtuId}/`). Regular DTUs consolidate into MEGA (5–20 originals) then HYPER (50–200) at 33:1 compression every 30 ticks. There is **no hard DTU ceiling**; memory pressure is governed by `server/lib/memory-pressure.js` against `MAX_OLD_SPACE_SIZE`. With the 32GB-heap default the substrate comfortably holds ~1.5M DTUs.
 
-### Four-brain architecture
-| Brain | Model | Port | Role |
-|---|---|---|---|
-| Conscious | qwen2.5:14b | 11434 | Chat, deep reasoning, council |
-| Subconscious | qwen2.5:7b | 11435 | Autogen, dream, synthesis |
-| Utility | qwen2.5:3b | 11436 | Lens actions, quick tasks (65% of requests) |
-| Repair | qwen2.5:0.5b | 11437 | Error detection, auto-fix |
+### Five-brain architecture (four cognitive + LLaVA vision)
+Default models tuned for the **NVIDIA RTX PRO 4500 Blackwell** (32GB GDDR7, 5th-gen tensor cores). Override any model via env var.
 
-`initThreeBrains()` probes all four on startup and auto-pulls models if Ollama is reachable. `ctx.llm.chat()` routes to conscious; falls back to subconscious if conscious fails.
+| Brain | Default model (q4_K_M) | VRAM | Port | Role |
+|---|---|---|---|---|
+| Conscious | `qwen2.5:32b-instruct-q4_K_M` | ~18GB | 11434 | Chat, deep reasoning, council |
+| Subconscious | `qwen2.5:7b-instruct-q5_K_M` | ~5GB | 11435 | Autogen, dream, synthesis |
+| Utility | `qwen2.5:3b-instruct-q5_K_M` | ~2GB | 11436 | Lens actions, quick tasks (65% of requests) |
+| Repair | `qwen2.5:1.5b-instruct-q5_K_M` | ~1GB | 11437 | Error detection, auto-fix |
+| Vision | `llava:13b-v1.6-vicuna-q4_K_M` | ~9GB | 11438 | LLaVA — image understanding, food vision, doc layout |
+
+All five Ollama services run with `OLLAMA_FLASH_ATTENTION=1` + `OLLAMA_KV_CACHE_TYPE=q8_0` to use the Blackwell tensor cores and halve KV cache memory. `initThreeBrains()` (legacy name; now probes five) probes them on startup and auto-pulls models. `ctx.llm.chat()` routes to conscious; falls back to subconscious. Vision queries route through `server/lib/vision-inference.js#callVision` which reads `BRAIN_VISION_URL`.
 
 ### 175-lens frontend
 `concord-frontend/app/lenses/` has 182 directories (175 lenses + system pages). Each lens page calls its backend domain macro. Lens feature specs live in `server/lib/lens-features.js` and `server/lib/lens-features-extended.js`. **~20–30 lenses have full backend implementations; ~100 are declared but backend-stub only.** Use `npm run score-lenses` to audit current implementation completeness.
@@ -107,7 +116,7 @@ SQLite via `better-sqlite3`. Synchronous, in-process, no ORM. Migrations in `ser
 
 ---
 
-## Current Wiring Status (as of last full audit)
+## Current Wiring Status (post-Concordant Web)
 
 This section exists so future sessions don't repeat discovery work.
 
@@ -115,30 +124,54 @@ This section exists so future sessions don't repeat discovery work.
 - Auth (JWT + cookie), login/signup
 - Chat system (WebSocket streaming, DTU context, web search, personality persistence)
 - DTU creation, marketplace, citation royalties
-- Skill progression tracking and mastery UI
+- Skill progression tracking and mastery UI (combat skills via `skill:use` archive Sovereign Refusal Archive)
 - Real-time world presence (spatial chunking, avatar interpolation, anti-cheat)
 - World events (11 types, RSVP, DTU generation, entry fees)
 - Faction/org creation, governance voting
 - 3D world rendering (terrain, buildings, avatars with IK, weather, day/night)
-- Content seeder + narrative bridge (wired at startup — seeds factions, NPCs, lore, quest chains)
+- Content seeder + narrative bridge — seeds 24 authored NPCs (incl. Sovereign / Concord / Concordia / 5 Coalition + Web NPCs / Weaver of Echoes), 7 factions, 19 lore events, 7 hand-authored idle dialogue trees that bypass the LLM
+- v2.0 recipe substrate (fighting_style_recipe / spell_recipe / blueprint), `scope='personal'` defaulting + `personal_dtus_never_leak` invariant, list-on-marketplace with tier pricing
+- Social-NPC bridge — public timeline DTUs surface to NPC oracle prompts via Shadow DTUs every 5 ticks, with backend privacy gate
+- Music DTU → soundscape (community tracks per district) + cross-world XP cascade
+- Building blueprint → world spawn (with bounding-box overlap check + DELETE)
+- Medical/research/engineering DTU → NPC knowledge (npc_knowledge table, surfaced in role-matched dialogue)
+- Per-player four-axis metrics (ecosystem_score / concord_alignment / concordia_alignment / refusal_debt) with decay sweep
+- Refusal Field — base-6 glyph algebra → time-bounded gates on death / harvest / hostility / consequence / numbers / dome / win, **persistent across restart** via migration 097
+- Concordia (goddess) auto-selects warm/cold dialogue phase from `ecosystem_score` at the dialogue endpoint
+- Mass Raid friendly-fire immunity wired into the `combat:attack` socket path
+- Multi-avatar — migration 093 + `/api/avatars` CRUD + AvatarSwitcher UI; personal-locker queries scope by `avatar_id`; hotbar reads `localStorage.concordia:activeAvatarId`
+- Federation export `/api/world/social-shadows` with optional `CONCORD_FEDERATION_TOKEN` Bearer auth + import pass tagged `federated_signal`
+- Realtime fast-path for public timeline posts (`timeline:post` socket event) and active-effect application (`player:effect-applied`)
+- DAW → soundscape ducking, world-scoped via `concordia:activeWorldId` localStorage hint
+- Crafting UI lens (`/lenses/crafting`) with Mine / Browse Marketplace / Author tabs + inline tier-pricing modal + ActiveEffectsBar HUD
+- Heartbeat-registry pattern — modules register at one site instead of editing `governorTick()`. Currently registered: social-npc-bridge (5), npc-knowledge-bridge (10), metrics-decay (20), fauna-spawner (30), eco-expiry-sweep (5), refusal-field-sweep (1), corpse-cleanup (10)
 
 ### Built but not yet wired to gameplay
 | System | Location | Missing connection |
 |---|---|---|
-| Audio engine + 16 district soundscapes | `lib/daw/engine.ts`, `components/world-lens/SoundscapeEngine.tsx` | Not initialized on world entry; SFX not connected to GameJuice triggers |
 | GameJuice feedback system | `components/world-lens/GameJuice.tsx` | Not receiving level-up, combat, quest-complete events from backend |
-| NPC click → dialogue | `components/concordia/dialogue/DialoguePanel.tsx` | No event handler wiring click on world NPC → `GET /api/world/dialogue/:npcId` |
-| Emergent quest delivery | `server/emergent/quest-engine.js`, `server/lib/quest-emergence.js` | No scheduler running `quest-emergence` on interval; no frontend notification |
+| NPC click → dialogue panel | `components/concordia/dialogue/DialoguePanel.tsx` | No event handler wiring click on world NPC → `GET /api/world/dialogue/:npcId` |
 | Rapier3D collision | `lib/world-lens/physics-world.ts` | Installed, not integrated with world movement |
-| DAW UI ↔ audio engine | `concord-frontend/app/lenses/studio/` | Piano roll / mixer UI not wired to `lib/daw/engine.ts` |
 | World event auto-generation | `server/lib/world-events.js` | No scheduler generating recurring events on world startup |
+| Sovereign Mass Raid combat phases | `server/lib/sovereign/raid-event.js` | Phase progression on join works; phase 4 dome-shrink VFX + draftSovereignManifestation rendering not yet in CombatHUD |
+| EvoEcosystem → EvoAsset evolution feedback | `lib/evo-asset/scheduler.js` consumes Shadow DTUs from `sovereign_archive`, but recorded archive entries have no consumer for "manifested fused power" yet |
 
 ### Missing (needs building)
-- Content discovery surface: no system surfacing active district events/quests to the player
-- Multiplayer interaction: presence works, no trade/emote/direct interaction
-- Crafting UI: `server/lib/crafting/craft-engine.js` backend exists, no frontend
-- New world lore seeding: only one authored world foundation; new worlds get no authored seed
+- Content discovery surface: no system surfacing active district events/quests/recipes/fauna to the player
+- Multiplayer interaction: presence works; trade/emote/direct interaction not wired
+- New world lore seeding: only Concordia hub + four sub-worlds (fantasy / superhero / crime / cyber) are seeded; new worlds get no authored seed
 - New user routing: onboarding flow exists but first-time users not confirmed routed through it
+
+---
+
+## Recent shipped work (most → least recent)
+
+| Commit | What landed |
+|---|---|
+| Concordant Web | 8 cross-world authored major characters + 3 factions + Concordant Law + Sovereign Refusal Archive + Mass Raid scaffold + Refusal Field new kinds (numbers/dome/win refused) |
+| EvoEcosystem | Migrations 094–096; fauna spawner; loot tables; butcher route; cooking pipeline (raw→cooked→buff); active-effects table; Concordia neutral-zone middleware; Refusal Field; Three Pillars seed |
+| v2.0 Bidirectional Creative OS | Heartbeat registry; recipe substrate; social-NPC bridge; music/blueprint/medical instantiation; multi-avatar; federation; realtime; DAW layering |
+| Audit pass | Heap → 32GB; lifted 9 artificial caps; fixed 6 broken items + 14 polish items; +5 integration / migration tests |
 
 ---
 

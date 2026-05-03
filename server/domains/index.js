@@ -184,6 +184,11 @@ import welding from './welding.js';
 import whiteboard from './whiteboard.js';
 import world from './world.js';
 import all from './all.js';
+import crafting from './crafting.js';
+import settings from './settings.js';
+import creator from './creator.js';
+import federation from './federation.js';
+import blackMarket from './black-market.js';
 
 export default [
   healthcare,
@@ -361,4 +366,9 @@ export default [
   whiteboard,
   world,
   all,
+  crafting,
+  settings,
+  creator,
+  federation,
+  blackMarket,
 ];

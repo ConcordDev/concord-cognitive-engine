@@ -22,9 +22,12 @@
 /** sessionId → SessionAccumulator */
 const _sessions = new Map();
 
-const MAX_SESSION_HISTORY = 30;
-const MAX_DOMAIN_SIGNALS = 50;
-const MAX_ACTIVE_LENSES = 15;
+// Bumped for 32GB-heap deployments. Session context accumulator is the
+// LLM's working memory across lens visits; bigger windows = better
+// continuity for long sessions across many of the 175 lenses.
+const MAX_SESSION_HISTORY = Number(process.env.CONCORD_SESSION_HISTORY) || 300;
+const MAX_DOMAIN_SIGNALS = Number(process.env.CONCORD_DOMAIN_SIGNALS) || 500;
+const MAX_ACTIVE_LENSES = Number(process.env.CONCORD_ACTIVE_LENSES) || 175; // every lens, in principle
 const SIGNAL_DECAY_FACTOR = 0.85;
 const SESSION_TTL_MS = 4 * 3600_000; // 4 hours
 

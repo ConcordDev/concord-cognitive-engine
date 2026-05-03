@@ -41,7 +41,6 @@ export function computeVATSTargets(
   targets: Array<{ id: string; name: string; distance: number; health: number }>,
   special: SPECIALStats,
 ): VATSTarget[] {
-  const derived = deriveStats(special);
   // Base accuracy decays with distance; Perception extends effective range
   const rangeBonus = (special.perception - 5) * 3; // metres
 

@@ -86,7 +86,9 @@ const _rejectedGlobal = new Map();
 
 /** Event log (capped) */
 const _eventLog = [];
-const MAX_EVENT_LOG = 5000;
+// Bumped 5000 → 100000 for 32GB-heap deployments — federation event
+// log keeps an audit trail; bigger ring means less truncation.
+const MAX_EVENT_LOG = Number(process.env.CONCORD_FEDERATION_EVENT_LOG) || 100_000;
 
 /** Metrics */
 const _metrics = {

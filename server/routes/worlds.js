@@ -502,7 +502,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
           description: `${username} has prestiged in ${req.params.worldId} after reaching avg level ${avgLevel.toFixed(1)}.`,
           significance: "prestige",
         });
-      } catch (_) {}
+      } catch { /* lore append best-effort */ }
 
       res.json({ ok: true, prestigedSkills: playerSkills.length, fromAvgLevel: avgLevel.toFixed(1) });
     } catch (e) { res.status(500).json({ error: e.message }); }
@@ -1110,7 +1110,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       // Seed world on first access (idempotent)
       const world = loadWorld(db, worldId);
       if (world) {
-        try { seedWorldContent(db, worldId, world.universe_type || 'standard'); } catch (_) {}
+        try { seedWorldContent(db, worldId, world.universe_type || 'standard'); } catch { /* seed best-effort */ }
       }
 
       let nodes;
@@ -1132,7 +1132,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
   });
 
   // POST /api/worlds/:worldId/nodes/:nodeId/gather — player gathers from a resource node
-  router.post("/:worldId/nodes/:nodeId/gather", requireAuth, (req, res) => {
+  router.post("/:worldId/nodes/:nodeId/gather", requireAuth, async (req, res) => {
     try {
       const { worldId, nodeId } = req.params;
       const { toolType = 'hands', toolTier = 1, skillLevel = 1, x, z } = req.body;
@@ -1166,6 +1166,16 @@ export default function createWorldsRouter({ requireAuth, db }) {
         quantityRemaining: result.nodeState.quantityRemaining,
         isDepleted: result.nodeState.isDepleted,
       });
+
+      // EvoEcosystem W4: ecosystem_score reactivity. Sustainable gather
+      // (node not depleted) gives a small +; clearcut (depletion) gives a
+      // larger - because Concordia notices when the wild stops growing
+      // back. Wrapped in try/catch — never blocks gather.
+      try {
+        const ecoMod = await import("../lib/ecosystem/score-engine.js");
+        const delta = result.nodeState.isDepleted ? -3 : +0.5;
+        ecoMod.adjust(db, req.user.id, worldId, { ecosystem_score: delta });
+      } catch { /* metrics best-effort */ }
 
       // Update supply side of market (gathering increases supply)
       try {
@@ -1218,7 +1228,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       // Seed world on first access (idempotent)
       const world = loadWorld(db, worldId);
       if (world) {
-        try { seedWorldContent(db, worldId, world.universe_type || 'standard'); } catch (_) {}
+        try { seedWorldContent(db, worldId, world.universe_type || 'standard'); } catch { /* seed best-effort */ }
       }
       const buildings = db.prepare(
         'SELECT * FROM world_buildings WHERE world_id = ? AND state != ? ORDER BY created_at ASC'

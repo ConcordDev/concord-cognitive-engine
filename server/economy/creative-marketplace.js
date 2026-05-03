@@ -107,7 +107,12 @@ export function publishArtifact(db, {
     return { ok: false, error: "invalid_artifact_type", validTypes: Object.keys(ARTIFACT_TYPES) };
   }
   if (!title || title.length < 1) return { ok: false, error: "missing_title" };
-  if (!filePath) return { ok: false, error: "missing_file_path" };
+  // Virtual artifacts (e.g. recipe DTUs) carry their data inside a DTU
+  // record, not a filesystem file. The caller still supplies a synthetic
+  // dtu:// path + computed size + hash so the rest of the pipeline (royalty
+  // cascade citation chains, transaction ledger) is identical.
+  const isVirtual = !!ARTIFACT_TYPES[type].virtual;
+  if (!filePath) return { ok: false, error: isVirtual ? "missing_dtu_ref" : "missing_file_path" };
   if (!fileSize || fileSize <= 0) return { ok: false, error: "invalid_file_size" };
   if (!fileHash) return { ok: false, error: "missing_file_hash" };
 
@@ -935,7 +940,7 @@ export function getArtifact(db, artifactId) {
  * Search/browse creative artifacts on the marketplace.
  */
 export function searchArtifacts(db, {
-  type, genre, creatorId, federationTier, locationRegional, locationNational,
+  type, types, genre, creatorId, federationTier, locationRegional, locationNational,
   minPrice, maxPrice, minRating, status = "active",
   sortBy = "newest", limit = 50, offset = 0,
 } = {}) {
@@ -943,7 +948,18 @@ export function searchArtifacts(db, {
   const params = [];
 
   if (status) { sql += " AND marketplace_status = ?"; params.push(status); }
-  if (type) { sql += " AND type = ?"; params.push(type); }
+  // Single-type filter (legacy) or multi-type filter via comma-separated
+  // string / array. Both cohabit so existing callers don't break.
+  if (type && !types) { sql += " AND type = ?"; params.push(type); }
+  if (types) {
+    const list = Array.isArray(types)
+      ? types
+      : String(types).split(",").map((s) => s.trim()).filter(Boolean);
+    if (list.length > 0) {
+      sql += ` AND type IN (${list.map(() => "?").join(",")})`;
+      params.push(...list);
+    }
+  }
   if (genre) { sql += " AND genre = ?"; params.push(genre); }
   if (creatorId) { sql += " AND creator_id = ?"; params.push(creatorId); }
   if (federationTier) { sql += " AND federation_tier = ?"; params.push(federationTier); }

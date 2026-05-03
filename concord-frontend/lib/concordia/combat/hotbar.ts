@@ -80,11 +80,14 @@ export async function createCombatSkill(
       return { error: validation.reason };
     }
 
-    // Create combat skill DTU
+    // Create combat skill DTU. Default to scope='personal' so the skill is
+    // private to this user's avatar; they can explicitly publish later via
+    // POST /api/personal-locker/dtus/:id/list-on-marketplace.
     const dtuRes = await api.post('/api/dtus', {
       title: spec.name,
       content: spec.description,
       tags: ['combat_skill', 'concordia'],
+      scope: 'personal',
       meta: {
         type: 'combat_skill',
         cooldownMs: validation.computedCooldownMs,
@@ -126,9 +129,19 @@ export async function createCombatSkill(
 
 export async function loadHotbarFromSubstrate(
   _playerId: string,
+  avatarId?: string,
 ): Promise<HotbarState> {
   try {
-    const res = await api.get('/api/personal-locker/dtus?lens=game');
+    // v2.0: scope by active avatar so a user with multiple avatars sees
+    // each one's distinct combat skills. If the caller didn't pass an
+    // explicit avatarId, fall back to the active avatar id stored in
+    // localStorage by AvatarSwitcher. Backwards-compat: when neither is
+    // present, the backend returns all the user's skills (legacy mode).
+    const resolvedAvatarId = avatarId
+      ?? (typeof window !== 'undefined' ? window.localStorage.getItem('concordia:activeAvatarId') : null);
+    const params = new URLSearchParams({ lens: 'game' });
+    if (resolvedAvatarId) params.set('avatarId', resolvedAvatarId);
+    const res = await api.get(`/api/personal-locker/dtus?${params.toString()}`);
     const dtus: Array<{
       id: string;
       title?: string;

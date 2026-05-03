@@ -70,7 +70,6 @@ import {
   ClipboardCheck,
   Coins,
   Send,
-  Sparkles,
   Brain,
   MessageSquare,
   UserPlus,

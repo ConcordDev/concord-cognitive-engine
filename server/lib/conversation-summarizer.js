@@ -20,8 +20,10 @@ import { BRAIN_CONFIG } from "./brain-config.js";
 /** Number of exchanges (user+assistant pairs) between summary updates */
 const SUMMARY_INTERVAL = 5;
 
-/** Maximum number of archived summaries to retain per session */
-const MAX_ARCHIVED_SUMMARIES = 20;
+/** Maximum number of archived summaries to retain per session.
+ *  Bumped 20 → 200 for 32GB-heap deployments — long sessions get
+ *  finer-grained summary chains. */
+const MAX_ARCHIVED_SUMMARIES = Number(process.env.CONCORD_ARCHIVED_SUMMARIES) || 200;
 
 /** Max tokens for summary generation prompt */
 const SUMMARY_MAX_TOKENS = 600;

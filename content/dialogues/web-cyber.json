@@ -1,0 +1,96 @@
+{
+  "nakamura_zero:idle:default": {
+    "npcId": "nakamura_zero",
+    "questId": "idle",
+    "phase": "default",
+    "greeting": "He's standing too still in front of an inscribed glass terminal in the archive. Multiple voices speak from his throat in unison for half a second before the unison resolves into one.",
+    "nodes": [
+      {
+        "id": "node_open",
+        "npcText": "Acknowledged. You are an unmodeled variable. State your intent — I have allocated forty seconds.",
+        "playerOptions": [
+          { "text": "Tell me about the Sovereign's power.", "leadsTo": "node_sovereign" },
+          { "text": "What do you want?", "leadsTo": "node_want" },
+          { "text": "What about Nyx Torres?", "leadsTo": "node_nyx" },
+          { "text": "Nothing. Pass.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_sovereign",
+        "npcText": "He refuses by default. Most systems consent by default. The asymmetry is the entire mechanism. I am attempting to invert it without becoming him. The literature on this is short. I am writing most of it.",
+        "playerOptions": [
+          { "text": "Goodbye.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_want",
+        "npcText": "To understand him entirely. To then surpass him. To then find out whether 'surpass' meant anything. I am, in three private models of myself, losing this race. I have not told my other instances.",
+        "playerOptions": [
+          { "text": "Goodbye.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_nyx",
+        "npcText": "She is correct that I am a threat. She is wrong that this means I should be stopped. We have not yet found a vocabulary in which both statements can be uttered at once.",
+        "playerOptions": [
+          { "text": "Goodbye.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_close",
+        "npcText": "Connection ends. Your variables remain unmodeled. I will revisit.",
+        "isTerminal": true
+      }
+    ]
+  },
+  "torres_blackout:idle:default": {
+    "npcId": "torres_blackout",
+    "questId": "idle",
+    "phase": "default",
+    "greeting": "She's in the corner of the safe house, three displays going. She mutes one when you enter. Her eyes haven't slept in too long.",
+    "nodes": [
+      {
+        "id": "node_open",
+        "npcText": "If you're here you're either useful or you're surveillance. Pick.",
+        "playerOptions": [
+          { "text": "Useful, hopefully.", "leadsTo": "node_useful" },
+          { "text": "Tell me about the resistance.", "leadsTo": "node_resistance" },
+          { "text": "What's your problem with Kael?", "leadsTo": "node_kael" },
+          { "text": "Just looking.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_useful",
+        "npcText": "Prove it. Carry a packet for me to a fantasy-side embassy without opening it. If it returns sealed I'll talk longer next time.",
+        "playerOptions": [
+          { "text": "Done.", "leadsTo": "node_close_warm" },
+          { "text": "Maybe later.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_resistance",
+        "npcText": "We audit power. We shelter people the audits expose. We refuse to use the corporations' tools against them — mostly. Mama Delgado's safe houses are sometimes the only option. I hate that. I use it anyway.",
+        "playerOptions": [
+          { "text": "Goodbye.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_kael",
+        "npcText": "He thinks freedom is an inefficiency. I think his thinking is the inefficiency. The day he models me down to a pattern is the day he wins. I plan to die before that day, on my own terms, with the model still wrong.",
+        "playerOptions": [
+          { "text": "Goodbye.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_close",
+        "npcText": "Door's behind you.",
+        "isTerminal": true
+      },
+      {
+        "id": "node_close_warm",
+        "npcText": "Then go. I'll know when it returns.",
+        "isTerminal": true
+      }
+    ]
+  }
+}

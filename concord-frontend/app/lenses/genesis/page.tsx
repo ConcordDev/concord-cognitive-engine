@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Cpu, Zap, MessageSquare, Eye, Star, Clock, Trophy } from 'lucide-react';
 import Link from 'next/link';
@@ -241,11 +241,12 @@ export default function GenesisLens() {
       </header>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         {[
           { label: 'Named emergents', value: emergents.length, icon: Cpu },
           { label: 'Active', value: activeCount, icon: Zap },
           { label: 'Artifacts today', value: artifactsToday, icon: Star },
+          { label: 'Communications today', value: communicationsToday, icon: MessageSquare },
         ].map(({ label, value, icon: Icon }) => (
           <div key={label} className="p-4 rounded-xl bg-white/5 border border-white/10">
             <div className="flex items-center gap-2 mb-1">

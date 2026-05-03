@@ -211,7 +211,7 @@ export function WorldMarkers({
       out.push({ ...m, screenX, screenY, visible, edgeClamped, offScreenAngle, distance });
     }
     return out;
-  }, [markers, cameraPos.x, cameraPos.y, cameraPos.z, cameraForward.x, cameraForward.y, cameraForward.z, cameraUp.x, cameraUp.y, cameraUp.z, fov, visibilityRadius]);
+  }, [markers, cameraPos, cameraForward, cameraUp, fov, visibilityRadius]);
 
   return (
     <div ref={containerRef} className="pointer-events-none fixed inset-0 z-[40]" aria-hidden>

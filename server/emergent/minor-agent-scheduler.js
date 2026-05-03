@@ -17,7 +17,11 @@ export class MinorAgentScheduler {
     this.tickIntervalMs = tickIntervalMs;
     this.agents = new Map(); // emergentId → EmergentMinorAgent
     this._timer = null;
-    this._maxConcurrent = 5; // 28 vCPU — 5 concurrent agent ticks is safe
+    // Bumped 5 → 32 for 32GB / RTX PRO 4500 deployments. The previous
+    // 5-concurrent default left agents queueing behind each other even
+    // though the GPU and CPU cores were idle. Override via env if you
+    // run on smaller hardware.
+    this._maxConcurrent = Number(process.env.CONCORD_AGENT_TICK_CONCURRENT) || 32;
   }
 
   /**

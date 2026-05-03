@@ -100,7 +100,7 @@ export default function createLensPortalsRouter({ requireAuth, db }) {
           );
         }
       }
-    } catch (_) {}
+    } catch { /* portal seed is best-effort */ }
 
     res.json({ ok: true, lensId: portal.lens_id, xpResult });
   });

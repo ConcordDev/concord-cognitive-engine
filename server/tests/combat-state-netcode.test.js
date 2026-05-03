@@ -61,7 +61,7 @@ describe("combat-state: poise regen", () => {
     applyHitToState("regen_v", { damage: 50 });
     const before = getCombatState("regen_v").poise;
     // Simulate a few ticks
-    await new Promise(r => setTimeout(r, 200));
+    await new Promise(r => { setTimeout(r, 200); });
     tickCombatState();
     const after = getCombatState("regen_v").poise;
     assert.ok(after >= before);

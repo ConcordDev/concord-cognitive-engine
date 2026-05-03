@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 
 const Excalidraw = dynamic(

@@ -93,8 +93,9 @@ export class QuestGenerator {
     // Pull recent DTUs from this district for inspiration
     let snippets: string[] = [];
     try {
+      const avatarId = typeof window !== 'undefined' ? window.localStorage.getItem('concordia:activeAvatarId') : null;
       const { data } = await api.get('/api/personal-locker/dtus', {
-        params: { lens: districtId, limit: 10 },
+        params: { lens: districtId, limit: 10, ...(avatarId ? { avatarId } : {}) },
       });
       const dtus = Array.isArray(data) ? data : (data?.dtus ?? []);
       snippets = dtus

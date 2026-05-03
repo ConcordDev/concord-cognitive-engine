@@ -124,14 +124,14 @@ export default function createCreativeMarketplaceRouter({ db, requireAuth, detec
 
   router.get("/artifacts", (req, res) => {
     const {
-      type, genre, creatorId, federationTier,
+      type, types, genre, creatorId, federationTier,
       locationRegional, locationNational,
       minPrice, maxPrice, minRating,
       status, sortBy, limit, offset,
     } = req.query;
 
     const result = searchArtifacts(db, {
-      type, genre, creatorId, federationTier,
+      type, types, genre, creatorId, federationTier,
       locationRegional, locationNational,
       minPrice: minPrice ? Number(minPrice) : undefined,
       maxPrice: maxPrice ? Number(maxPrice) : undefined,

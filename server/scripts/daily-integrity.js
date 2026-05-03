@@ -36,7 +36,7 @@ async function runScript(scriptPath, args = []) {
   } catch (e) {
     const durationMs = Date.now() - start;
     let data = null;
-    try { data = JSON.parse(e.stdout || ""); } catch {}
+    try { data = JSON.parse(e.stdout || ""); } catch { /* stdout was non-JSON */ }
     return { ok: false, error: e.message, data, durationMs };
   }
 }
@@ -124,7 +124,7 @@ async function main() {
     const filename = `integrity-${new Date().toISOString().slice(0, 10)}.json`;
     await writeFile(path.join(REPORTS_DIR, filename), JSON.stringify(report, null, 2));
     log(`\nReport saved: reports/production-integrity/${filename}`);
-  } catch {}
+  } catch { /* report write best-effort */ }
 
   if (JSON_MODE) {
     process.stdout.write(JSON.stringify(report, null, 2));

@@ -310,7 +310,6 @@ export default function PhysicsLensPage() {
       loadPreset(preset);
       setIsRunning(true);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Helper functions

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Hexagon, Lock } from 'lucide-react';
+import { Lock } from 'lucide-react';
 
 export interface LensPortal {
   id: string;

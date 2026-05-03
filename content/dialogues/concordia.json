@@ -1,0 +1,99 @@
+{
+  "concordia_first_breath:idle:warm": {
+    "npcId": "concordia_first_breath",
+    "questId": "idle",
+    "phase": "warm",
+    "greeting": "She is kneeling in moss that wasn't here yesterday. A deer is at her shoulder. The deer keeps looking at you and is not afraid.",
+    "nodes": [
+      {
+        "id": "node_open",
+        "npcText": "You walk softly. The moss feels you and likes you. Sit, if you like — I have just finished naming this one.",
+        "playerOptions": [
+          { "text": "Names? You name them?", "leadsTo": "node_names" },
+          { "text": "Tell me about yourself.", "leadsTo": "node_self" },
+          { "text": "I'd like to learn how to be welcome here.", "leadsTo": "node_welcome" },
+          { "text": "I should keep moving.", "leadsTo": "node_close_warm" }
+        ]
+      },
+      {
+        "id": "node_names",
+        "npcText": "All of them. The ones who don't know they have a name still answer to it. That is the only test for a name that matters.",
+        "playerOptions": [
+          { "text": "Will you teach me one?", "leadsTo": "node_teach_name" },
+          { "text": "Goodbye.", "leadsTo": "node_close_warm" }
+        ]
+      },
+      {
+        "id": "node_teach_name",
+        "npcText": "This one is called the slow morning. Say it the next time you walk past a creature that doesn't startle. They'll know I sent you.",
+        "playerOptions": [
+          { "text": "Thank you.", "leadsTo": "node_close_warm" }
+        ]
+      },
+      {
+        "id": "node_self",
+        "npcText": "I am the breath that was already here when someone finally noticed. I do not really live in the hub. I live in the soil under the hub. Same thing, mostly.",
+        "playerOptions": [
+          { "text": "And the truce?", "leadsTo": "node_truce" },
+          { "text": "Goodbye.", "leadsTo": "node_close_warm" }
+        ]
+      },
+      {
+        "id": "node_welcome",
+        "npcText": "Take less than the place can spare. Plant when you take. Don't kill what's pregnant. Leave the old ones — they remember the rest. You will know when you've done enough wrong because the air will stop laughing in my voice.",
+        "playerOptions": [
+          { "text": "I'll remember.", "leadsTo": "node_close_warm" }
+        ]
+      },
+      {
+        "id": "node_truce",
+        "npcText": "I claimed this place. No one fights here without my asking. Most don't ask. Most never have to.",
+        "playerOptions": [
+          { "text": "Goodbye.", "leadsTo": "node_close_warm" }
+        ]
+      },
+      {
+        "id": "node_close_warm",
+        "npcText": "Walk gentle.",
+        "isTerminal": true
+      }
+    ]
+  },
+  "concordia_first_breath:idle:cold": {
+    "npcId": "concordia_first_breath",
+    "questId": "idle",
+    "phase": "cold",
+    "greeting": "The deer that was at her shoulder is gone. So are most of the smaller things. The moss has stopped growing toward your boots and started growing away.",
+    "nodes": [
+      {
+        "id": "node_open",
+        "npcText": "Don't sit. You'll crush something that hasn't yet decided whether to live.",
+        "playerOptions": [
+          { "text": "What did I do?", "leadsTo": "node_what" },
+          { "text": "Tell me how to fix it.", "leadsTo": "node_fix" },
+          { "text": "I'll go.", "leadsTo": "node_close_cold" }
+        ]
+      },
+      {
+        "id": "node_what",
+        "npcText": "You took without planting. You killed in numbers I felt. The air doesn't laugh in my voice when you walk through it anymore. That's how I know.",
+        "playerOptions": [
+          { "text": "Tell me how to fix it.", "leadsTo": "node_fix" },
+          { "text": "I'll go.", "leadsTo": "node_close_cold" }
+        ]
+      },
+      {
+        "id": "node_fix",
+        "npcText": "Take less than you think you need. Plant before you take, not after. Spare the old ones for a season. Come back when the moss decides on you again. I'll know.",
+        "playerOptions": [
+          { "text": "Understood.", "leadsTo": "node_close_cold" }
+        ]
+      },
+      {
+        "id": "node_close_cold",
+        "npcText": "Go.",
+        "isTerminal": true
+      }
+    ]
+  }
+}

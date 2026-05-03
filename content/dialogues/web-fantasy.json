@@ -1,0 +1,104 @@
+{
+  "blackroot_thorne:idle:default": {
+    "npcId": "blackroot_thorne",
+    "questId": "idle",
+    "phase": "default",
+    "greeting": "He is sitting on a stump that wasn't here when you arrived. The bark is gray and the leaves around him are wrong-coloured. He doesn't look up when you stop.",
+    "nodes": [
+      {
+        "id": "node_open",
+        "npcText": "Speak softly. The forest where I came from died loud, and I have not forgiven loud noises since.",
+        "playerOptions": [
+          { "text": "Tell me about your forest.", "leadsTo": "node_forest" },
+          { "text": "Why do you visit Concordia?", "leadsTo": "node_visit" },
+          { "text": "What do you think of the Sovereign?", "leadsTo": "node_sovereign" },
+          { "text": "I'll let you sit.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_forest",
+        "npcText": "The Verdant Veil. He refused it, and most of it stopped existing. What remains is mine to keep alive. I do not have the years to waste on people who do not understand that.",
+        "playerOptions": [
+          { "text": "I'm sorry.", "leadsTo": "node_close_warm" },
+          { "text": "Why do you blame Concordia?", "leadsTo": "node_blame" }
+        ]
+      },
+      {
+        "id": "node_blame",
+        "npcText": "Because she IS the wild. She could have refused the refusal. She did not. She has her reasons. They are not mine.",
+        "playerOptions": [
+          { "text": "Goodbye.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_visit",
+        "npcText": "Supplies. Information. People who hate the Sovereign and might be useful. I do not enjoy this place. I tolerate it.",
+        "playerOptions": [
+          { "text": "Goodbye.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_sovereign",
+        "npcText": "I think one day I will kill him. I think I will fail. I think I will try anyway.",
+        "playerOptions": [
+          { "text": "Understood.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_close",
+        "npcText": "Walk soft.",
+        "isTerminal": true
+      },
+      {
+        "id": "node_close_warm",
+        "npcText": "Few are. Thank you for the smaller of them.",
+        "isTerminal": true
+      }
+    ]
+  },
+  "voss_seraphine:idle:default": {
+    "npcId": "voss_seraphine",
+    "questId": "idle",
+    "phase": "default",
+    "greeting": "She is in the salon, half-turned, a glass of something deep red in one hand. She looks at you the way a cat looks at a window.",
+    "nodes": [
+      {
+        "id": "node_open",
+        "npcText": "Charming of you to interrupt. Sit, please. I'd ask your business but I assume it changes once you see who's here.",
+        "playerOptions": [
+          { "text": "Tell me about the Court.", "leadsTo": "node_court" },
+          { "text": "Tell me about the Sovereign.", "leadsTo": "node_sovereign" },
+          { "text": "Are you related to Elias Voss?", "leadsTo": "node_voss" },
+          { "text": "I'll come back another time.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_court",
+        "npcText": "The Crimson Court holds the most useful kind of power: the kind that doesn't need to introduce itself. We trade in debts, marriages, and the occasional weather pattern. You may pay me a compliment, if it helps.",
+        "playerOptions": [
+          { "text": "Tell me about the Sovereign.", "leadsTo": "node_sovereign" },
+          { "text": "Goodbye.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_sovereign",
+        "npcText": "I have, on three separate occasions, decided whether to seduce or destroy him. The decision keeps changing. He's bad for me either way. I find that delicious.",
+        "playerOptions": [
+          { "text": "Goodbye.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_voss",
+        "npcText": "We share a name. We do not, in public, share much else. Don't ask Elias. He won't tell you and he'll like you less for asking.",
+        "playerOptions": [
+          { "text": "Understood.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_close",
+        "npcText": "Mind the doors. Some of them owe me something.",
+        "isTerminal": true
+      }
+    ]
+  }
+}

@@ -36,8 +36,12 @@ const PRIORITY_LABELS = ["critical", "high", "normal", "low"];
  * @returns {LLMQueue}
  */
 export function createLLMQueue(opts = {}) {
-  const concurrency = opts.concurrency || parseInt(process.env.LLM_CONCURRENCY || "2", 10);
-  const maxQueueDepth = opts.maxQueueDepth || 200;
+  // Bumped default 2 → 32 for 32GB / RTX PRO 4500 deployments. The hard
+  // ceiling is whatever Ollama can chew through (OLLAMA_NUM_PARALLEL).
+  const concurrency = opts.concurrency || parseInt(process.env.LLM_CONCURRENCY || "32", 10);
+  // Bumped default 200 → 1000 for 32GB-heap deployments. Override via opts
+  // or env CONCORD_LLM_QUEUE_DEPTH.
+  const maxQueueDepth = opts.maxQueueDepth || Number(process.env.CONCORD_LLM_QUEUE_DEPTH) || 1000;
   const onReject = opts.onReject || (() => {});
 
   // Priority buckets: array of arrays, index = priority level

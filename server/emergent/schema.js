@@ -95,7 +95,7 @@ export const SESSION_LIMITS = Object.freeze({
   MAX_TURNS_NO_NOVELTY: 10,     // stop if novelty stays below threshold for N turns
   NOVELTY_FLOOR:        0.15,   // minimum novelty score to continue
   MIN_CRITIQUE_RATIO:   0.2,    // at least 20% of turns must be critique
-  MAX_CONCURRENT:       5,      // max concurrent sessions
+  MAX_CONCURRENT:       Number(process.env.CONCORD_DIALOGUE_MAX_CONCURRENT) || 50, // bumped 5→50 for 32GB-heap deployments
   SUMMARY_INTERVAL:     10,     // emit summary every N turns
 });
 

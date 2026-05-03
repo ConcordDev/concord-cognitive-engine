@@ -2,9 +2,12 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { api } from '@/lib/api/client';
 import { disconnectSocket } from '@/lib/realtime/socket';
-import { User, LogOut, Settings, Shield, Zap } from 'lucide-react';
+import { User, LogOut, Settings, Shield, Zap, Users } from 'lucide-react';
+
+const AvatarSwitcher = dynamic(() => import('@/components/concordia/AvatarSwitcher'), { ssr: false });
 
 interface UserMenuProps {
   powerMode?: boolean;
@@ -14,6 +17,7 @@ interface UserMenuProps {
 export function UserMenu({ powerMode, onTogglePowerMode }: UserMenuProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [showAvatarSwitcher, setShowAvatarSwitcher] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -105,6 +109,20 @@ export function UserMenu({ powerMode, onTogglePowerMode }: UserMenuProps) {
                 {powerMode ? 'ON' : 'OFF'}
               </span>
             </button>
+          )}
+          <div className="border-t border-lattice-border" />
+          <button
+            onClick={() => setShowAvatarSwitcher((v) => !v)}
+            className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:bg-lattice-elevated transition-colors"
+            role="menuitem"
+          >
+            <Users className="w-4 h-4" />
+            Avatars
+          </button>
+          {showAvatarSwitcher && (
+            <div className="px-3 pb-3">
+              <AvatarSwitcher />
+            </div>
           )}
           <div className="border-t border-lattice-border" />
           <button

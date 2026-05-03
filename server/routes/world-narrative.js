@@ -144,9 +144,26 @@ export default function createWorldNarrativeRoutes({ requireAuth, requireAdmin, 
   router.get("/dialogue/:npcId", auth, wrap(async (req, res) => {
     const { npcId } = req.params;
     const questId            = req.query.questId || null;
-    const phase              = req.query.phase || null;
+    let   phase              = req.query.phase || null;
     const playerRelationship = req.query.relationship || "neutral";
     const isAuthored         = getAuthoredNPC(npcId) !== null;
+
+    // Concordia (the goddess) reacts to the player's ecosystem_score.
+    // When the caller doesn't pin a phase, we auto-select 'warm' for
+    // non-negative scores and 'cold' for negative scores so her hand-
+    // authored dialogue tree feels alive without the client having to
+    // know which to ask for.
+    if (isAuthored && !phase && npcId === "concordia_first_breath") {
+      try {
+        const userId = req.user?.id;
+        const worldId = String(req.query.worldId || "concordia-hub");
+        if (userId) {
+          const { getMetrics } = await import("../lib/ecosystem/score-engine.js");
+          const m = getMetrics(db, userId, worldId);
+          phase = (m.ecosystem_score >= 0) ? "warm" : "cold";
+        }
+      } catch { /* fall through with no phase if metrics unavailable */ }
+    }
 
     let result;
     if (isAuthored) {

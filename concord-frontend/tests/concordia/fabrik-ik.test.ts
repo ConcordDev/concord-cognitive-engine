@@ -54,8 +54,6 @@ function solveFABRIK(chain: FBRKChain, target: Vec3, maxIter = 10, tol = 0.005):
     // Forward pass
     positions[n] = { ...target };
     for (let i = n - 1; i >= 0; i--) {
-      const r = dist(positions[i + 1], positions[i]);
-      const lambda = chain.bones[i].length / r;
       positions[i] = add(positions[i + 1], scale(normalize(sub(positions[i], positions[i + 1])), chain.bones[i].length));
     }
     // Backward pass

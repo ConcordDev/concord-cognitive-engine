@@ -206,9 +206,9 @@ export const STORAGE_CONSTANTS = Object.freeze({
   VAULT_CLEANUP_TICK: 1000,
   VAULT_GRACE_PERIOD_DAYS: 30,
 
-  // Downloads
-  MAX_CONCURRENT_DOWNLOADS_PER_USER: 5,
-  MAX_BANDWIDTH_PER_USER_MBPS: 50,
+  // Downloads — bumped 5→25 + 50→200 Mbps for 32GB / fast-network deployments.
+  MAX_CONCURRENT_DOWNLOADS_PER_USER: Number(process.env.CONCORD_DOWNLOADS_PER_USER) || 25,
+  MAX_BANDWIDTH_PER_USER_MBPS: Number(process.env.CONCORD_BANDWIDTH_PER_USER_MBPS) || 200,
   DOWNLOAD_RESUME_ENABLED: true,
 
   // CRI cache

@@ -80,7 +80,7 @@ export function CraftingMinigame({ skillLevel, itemName, onComplete, onCancel }:
     setMultiplier(m);
     triggerSFX(m >= 1.0 ? 'craft-release-good' : 'craft-release-bad');
     setTimeout(() => onComplete(m), 900);
-  }, [released, spotTop, spotHeight, onComplete]);
+  }, [released, spotTop, spotHeight, onComplete, triggerSFX]);
 
   const qualityLabel = multiplier === null ? '' :
     multiplier >= 1.4 ? 'Masterwork!' :

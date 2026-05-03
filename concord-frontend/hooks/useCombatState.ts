@@ -7,7 +7,6 @@ import { SPECIALStats, DEFAULT_SPECIAL } from '@/lib/concordia/player-stats';
 import { canHarm, makeEntity, type EntityTier } from '@/lib/concordia/entity-protection';
 import type { DomainType } from '@/lib/concordia/district-domains';
 import { emit } from '@/lib/realtime/socket';
-import { emitEvent } from '@/lib/realtime/event-bus';
 
 // ── Types ────────────────────────────────────────────────────────────
 
@@ -138,7 +137,7 @@ export function useCombatState(
     }
 
     return true;
-  }, [addLog]);
+  }, [addLog, domain]);
 
   const dodge = useCallback(() => {
     const cost = 15;

@@ -13,7 +13,9 @@
 
 const _jobs = new Map();
 
-const MAX_JOBS = 200;
+// Bumped 200 → 5000 for 32GB-heap deployments. Active worlds with
+// thousands of NPCs hit the old cap during peak ticks.
+const MAX_JOBS = Number(process.env.CONCORD_SIM_MAX_JOBS) || 5000;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // PUBLIC API

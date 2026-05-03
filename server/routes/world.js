@@ -475,7 +475,7 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
     const userId = _userId(req);
     const result = recordDailyLogin(userId);
     // Award login Sparks
-    try { awardSparks(db, userId, 2, "daily_login"); } catch (_) {}
+    try { awardSparks(db, userId, 2, "daily_login"); } catch { /* award best-effort */ }
     // Phase 19 polish-to-ten: realtime push so the frontend can show a
     // streak banner / fanfare when the daily login records a streak day.
     // Anonymous / re-login on same day cases skip the emit (alreadyLoggedIn).
@@ -501,7 +501,7 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
     const userId = _userId(req);
     const result = completeDailyTask(userId, req.params.taskId);
     if (result.ok) {
-      try { awardSparks(db, userId, 5, "daily_task_complete"); } catch (_) {}
+      try { awardSparks(db, userId, 5, "daily_task_complete"); } catch { /* award best-effort */ }
     }
     res.json({ ok: true, ...result });
   }));

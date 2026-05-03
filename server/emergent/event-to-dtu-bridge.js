@@ -282,12 +282,18 @@ function extractClaims(event, classification) {
 // Sliding window of seen hashes — prevents duplicate DTUs from same event data
 const SEEN_HASHES = new Map(); // hash → timestamp
 const SEEN_HASH_MAX_AGE = 300_000; // 5 minutes
-const SEEN_HASH_MAX_SIZE = 10_000;
+// Bumped 10k → 100k for 32GB-heap deployments — wider deduplication
+// window so legitimately-different events with similar prefixes don't
+// collide.
+const SEEN_HASH_MAX_SIZE = Number(process.env.CONCORD_EVENT_DEDUP_SIZE) || 100_000;
 
 // Rate limiting per event type
 const TYPE_RATE_COUNTERS = new Map(); // eventType → { count, windowStart }
 const TYPE_RATE_WINDOW_MS = 60_000; // 1 minute
-const TYPE_RATE_MAX_DEFAULT = 10; // max DTUs per type per minute
+// Bumped 10 → 200/minute default for 32GB + RTX deployments. Most lens
+// activity (DTU creation, emergent events) lives well above 10/min on
+// active worlds; the old default was the throttle players were hitting.
+const TYPE_RATE_MAX_DEFAULT = Number(process.env.CONCORD_EVENT_RATE_PER_MIN) || 200;
 
 /**
  * Custom rate limits per event type.

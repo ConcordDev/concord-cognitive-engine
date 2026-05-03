@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, Trophy, Zap, Star, Sword, ChevronUp } from 'lucide-react';
+import { X, Trophy, Zap, Star, Sword } from 'lucide-react';
 
 type LeaderboardCategory = 'sparks' | 'skills' | 'crafts' | 'nemesis';
 

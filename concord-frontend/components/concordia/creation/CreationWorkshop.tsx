@@ -210,7 +210,7 @@ export function CreationWorkshop({
     } finally {
       setLoading(false);
     }
-  }, [spec, selectedMaterial]);
+  }, [spec, selectedMaterial, toolTier]);
 
   const handlePlace = useCallback(async () => {
     if (!preview || !validation?.passed) return;
@@ -244,7 +244,7 @@ export function CreationWorkshop({
     } finally {
       setLoading(false);
     }
-  }, [preview, validation, playerPosition, playerId, onPlaced, onClose]);
+  }, [preview, validation, playerPosition, playerId, onPlaced, onClose, toolTier, toolQuality]);
 
   const handleVoice = useCallback(async () => {
     if (recording) {

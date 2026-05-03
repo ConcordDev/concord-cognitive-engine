@@ -64,8 +64,6 @@ const TUTORIALS: TutorialStep[] = [
   },
 ];
 
-const FIRST_COMBAT_KEY = 'concordia:tutorial:first-combat-blessed';
-
 interface OnboardingTutorialProps {
   onComplete: () => void;
   onDismiss: () => void;

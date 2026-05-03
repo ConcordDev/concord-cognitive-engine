@@ -67,8 +67,8 @@ export default function createCityAssetsRouter({ requireAuth } = {}) {
 
   // POST /api/city-assets/character — create or update character profile
   router.post("/character", auth, asyncHandler(async (req, res) => {
-    const userId = req.user?.id ?? req.body.userId;
-    if (!userId) return res.status(400).json({ ok: false, error: "userId required" });
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
     const profile = createCharacterProfile(userId, req.body.slots ?? {});
     res.json({ ok: true, profile, availableSlots: CHARACTER_SLOTS });
   }));

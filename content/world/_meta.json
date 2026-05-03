@@ -1,5 +1,6 @@
 {
-  "world_id": "concordia",
+  "world_id": "concordia-hub",
+  "world_id_aliases": ["concordia"],
   "world_name": "Concordia",
   "theme": "fantasy",
   "tech_level": "pre-industrial",

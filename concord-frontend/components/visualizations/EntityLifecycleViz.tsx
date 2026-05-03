@@ -110,7 +110,7 @@ export default function EntityLifecycleViz({ entities: entitiesProp, className }
   const pulseRef = useRef(0);
 
   // Time bounds
-  const { tMin, tMax, tRange } = useMemo(() => {
+  const { tMin, tRange } = useMemo(() => {
     let min = Infinity, max = -Infinity;
     for (const e of entities) for (const ev of e.events) {
       if (ev.timestamp < min) min = ev.timestamp;
@@ -118,7 +118,7 @@ export default function EntityLifecycleViz({ entities: entitiesProp, className }
     }
     if (!isFinite(min)) { min = Date.now() - 86400000; max = Date.now(); }
     const range = (max - min) || 3600000;
-    return { tMin: min - range * 0.05, tMax: max + range * 0.05, tRange: range * 1.1 };
+    return { tMin: min - range * 0.05, tRange: range * 1.1 };
   }, [entities]);
 
   // Resize

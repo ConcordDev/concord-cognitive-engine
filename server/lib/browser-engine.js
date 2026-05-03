@@ -1,4 +1,4 @@
-/* eslint-env browser */
+/* global window, document */
 /**
  * Browser Engine — Playwright-Based Browser Automation for Concord
  *

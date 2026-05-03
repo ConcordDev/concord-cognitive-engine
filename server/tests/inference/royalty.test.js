@@ -27,14 +27,14 @@ describe("@concord/inference — Royalty Hook", () => {
     await assert.doesNotReject(async () => {
       emitRoyaltyEvent("inf_test", [{ dtuId: "dtu_a", weight: 1 }], null);
       // Give setImmediate a chance to run
-      await new Promise(r => setImmediate(r));
+      await new Promise(r => { setImmediate(r); });
     });
   });
 
   it("emitRoyaltyEvent skips when no contributors", async () => {
     await assert.doesNotReject(async () => {
       emitRoyaltyEvent("inf_empty", [], null);
-      await new Promise(r => setImmediate(r));
+      await new Promise(r => { setImmediate(r); });
     });
   });
 });

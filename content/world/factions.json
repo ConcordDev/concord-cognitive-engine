@@ -74,5 +74,65 @@
       "reputation": 55,
       "tensions": "Voss authorized the Purge. Rael only recently discovered this and has not yet decided what to do with the knowledge."
     }
+  },
+  {
+    "id": "anti_sovereign_movement",
+    "name": "The Anti-Sovereign Movement",
+    "scope": "cross_world",
+    "motto": "He spared us. Next time we won't need sparing.",
+    "goal": "Prepare a unified, principled answer for the day the Sovereign's refusal goes too far.",
+    "values": ["restraint", "moral lines", "shared accountability"],
+    "fears": ["becoming the next Coalition by accident", "internal infighting", "premature confrontation"],
+    "controlled_districts": [],
+    "rival_factions": [],
+    "allied_factions": ["anti_corporate_resistance"],
+    "npc_ids": ["coalition_enforcer"],
+    "dialogue_style": "frank",
+    "reputation_currency": "shared_intelligence",
+    "faction_state": {
+      "factionName": "Anti-Sovereign Movement",
+      "reputation": 30,
+      "tensions": "Members disagree on whether the Sovereign needs to be stopped, contained, or simply outlasted."
+    }
+  },
+  {
+    "id": "iron_rose_syndicate",
+    "name": "The Iron Rose Syndicate",
+    "scope": "cross_world",
+    "motto": "Family is whoever I say it is.",
+    "goal": "Maintain the largest cross-reality criminal network and the safe houses, favors, and silences it requires.",
+    "values": ["loyalty up the chain", "discretion", "long memory"],
+    "fears": ["betrayal from within", "an heir that doesn't want the work", "a Concord audit"],
+    "controlled_districts": ["shadow_district"],
+    "rival_factions": ["anti_corporate_resistance"],
+    "allied_factions": [],
+    "npc_ids": ["delgado_iron_rose", "rivera_jax"],
+    "dialogue_style": "warm_dangerous",
+    "reputation_currency": "favors_owed",
+    "faction_state": {
+      "factionName": "Iron Rose Syndicate",
+      "reputation": 60,
+      "tensions": "Mama's age is a quiet topic with sharp consequences. Jax's loyalty is conditional on payment."
+    }
+  },
+  {
+    "id": "anti_corporate_resistance",
+    "name": "The Anti-Corporate Resistance",
+    "scope": "cross_world",
+    "motto": "Audit the powerful. Shelter the rest.",
+    "goal": "Dismantle Cyber World's largest conglomerates and prevent any of them — including Kael Nakamura — from absorbing other worlds.",
+    "values": ["transparency", "freedom", "decentralisation"],
+    "fears": ["being modeled by Kael before they can move", "losing the original audit", "internal corruption"],
+    "controlled_districts": [],
+    "rival_factions": ["iron_rose_syndicate"],
+    "allied_factions": ["anti_sovereign_movement"],
+    "npc_ids": ["torres_blackout"],
+    "dialogue_style": "urgent",
+    "reputation_currency": "audit_credits",
+    "faction_state": {
+      "factionName": "Anti-Corporate Resistance",
+      "reputation": 40,
+      "tensions": "The resistance is forced to use criminal infrastructure (Iron Rose) for some operations — Nyx hates this."
+    }
   }
 ]

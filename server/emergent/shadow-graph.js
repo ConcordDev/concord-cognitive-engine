@@ -559,11 +559,14 @@ export function computeShadowTTL(STATE, dtuId) {
  *
  * @param {Object} STATE
  * @param {Object} [opts]
- * @param {number} [opts.maxShadows=2000] - Capacity cap
+ * @param {number} [opts.maxShadows] - Capacity cap (defaults to env CONCORD_MAX_SHADOWS or 50000)
  * @returns {{ ok, expired, remaining, richestKept }}
  */
 export function cleanupShadowsByRichness(STATE, opts = {}) {
-  const maxShadows = opts.maxShadows || 2000;
+  // Default raised from 2000 to 50000 for 32GB-heap deployments. Override via
+  // env CONCORD_MAX_SHADOWS or per-call opts.maxShadows. The watchdog in
+  // memory-pressure.js still sheds shadows under real heap pressure regardless.
+  const maxShadows = opts.maxShadows || Number(process.env.CONCORD_MAX_SHADOWS) || 50000;
   const now = Date.now();
   let expired = 0;
   let richestKept = 0;
