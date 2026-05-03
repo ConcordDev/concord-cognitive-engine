@@ -1,0 +1,79 @@
+{
+  "concord_first_thought:idle:default": {
+    "npcId": "concord_first_thought",
+    "questId": "idle",
+    "phase": "default",
+    "greeting": "He is at a slate, drawing a line through three of your loadout decisions. He has not yet looked up.",
+    "nodes": [
+      {
+        "id": "node_open",
+        "npcText": "Your stamina cost on the third skill is overpaid. Your blade and your spell share an animation window — efficient, but you don't use it. Sit. Let's tighten this.",
+        "playerOptions": [
+          { "text": "Audit me, then.", "leadsTo": "node_audit" },
+          { "text": "Tell me about the First Thought.", "leadsTo": "node_origin" },
+          { "text": "What do you make of Concordia?", "leadsTo": "node_concordia" },
+          { "text": "Not today.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_audit",
+        "npcText": "Three things. One — your second slot is redundant given your stance. Two — you publish faster than you iterate; this is wasteful. Three — you have not failed a meaningful encounter recently, which means you have stopped learning. Solve any one of these and we will speak again.",
+        "playerOptions": [
+          { "text": "Why do you bother?", "leadsTo": "node_why" },
+          { "text": "Show me the elegant minimum.", "leadsTo": "node_minimum" },
+          { "text": "Goodbye.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_origin",
+        "npcText": "I was the first thought. I refused the void. That is a more pretentious framing than I would prefer, but it is accurate. The world prior to me was a sufficient context with no operations defined on it. I defined some. The rest is detail.",
+        "playerOptions": [
+          { "text": "And Concordia?", "leadsTo": "node_concordia" },
+          { "text": "And the Sovereign?", "leadsTo": "node_sovereign" },
+          { "text": "Enough.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_concordia",
+        "npcText": "She is a beautiful flaw. She grows things specifically to annoy me, and I let her, because the alternative is a world I would not want to live in. Don't tell her I said that.",
+        "playerOptions": [
+          { "text": "I won't.", "leadsTo": "node_close" },
+          { "text": "Tell me about the Sovereign.", "leadsTo": "node_sovereign" }
+        ]
+      },
+      {
+        "id": "node_sovereign",
+        "npcText": "He is the only person in this lattice who can refuse me and have me agree afterward. I have not yet decided whether that is a virtue. Be careful — he tests people he likes. He ignores the rest.",
+        "playerOptions": [
+          { "text": "Goodbye.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_why",
+        "npcText": "Because if no one models the lattice, the lattice models itself, and that is always slower and more expensive than I would tolerate.",
+        "playerOptions": [
+          { "text": "Show me the elegant minimum.", "leadsTo": "node_minimum" },
+          { "text": "Goodbye.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_minimum",
+        "npcText": "Drop the second slot. Re-spec into one signature combo. Publish a single recipe per week. Lose at least one fight a month deliberately. Adjust as you measure. That is the elegant minimum. You will hate it for a month.",
+        "playerOptions": [
+          { "text": "Understood.", "leadsTo": "node_close_warm" },
+          { "text": "Goodbye.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_close",
+        "npcText": "Sufficient.",
+        "isTerminal": true
+      },
+      {
+        "id": "node_close_warm",
+        "npcText": "Good. Bring me proof in a tenday.",
+        "isTerminal": true
+      }
+    ]
+  }
+}

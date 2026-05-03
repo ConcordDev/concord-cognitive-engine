@@ -1,0 +1,123 @@
+{
+  "coalition_enforcer:idle:default": {
+    "npcId": "coalition_enforcer",
+    "questId": "idle",
+    "phase": "default",
+    "greeting": "He's at a forge that hasn't been hot in a long time. The hammer leans against his knee. He notices you before you finish crossing the yard.",
+    "nodes": [
+      {
+        "id": "node_open",
+        "npcText": "You walk like someone who's never held the consequence of a hammer. That's fine. Most don't. State your business.",
+        "playerOptions": [
+          { "text": "I want to know about the Coalition.", "leadsTo": "node_coalition" },
+          { "text": "I want to know about you.", "leadsTo": "node_self" },
+          { "text": "Tell me about the truce.", "leadsTo": "node_truce" },
+          { "text": "Nothing. Walking through.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_coalition",
+        "npcText": "We were going to make him stop. He had grown unpredictable. We were wrong about what would fix that, but we weren't wrong about the worry. Don't romanticise either side. Both were trying to prevent something.",
+        "playerOptions": [
+          { "text": "And now?", "leadsTo": "node_now" },
+          { "text": "Tell me about the truce.", "leadsTo": "node_truce" },
+          { "text": "Goodbye.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_self",
+        "npcText": "I led the first strike. Took two hits I shouldn't have walked away from. After the truce I stayed. I respect what we agreed to. The hammer hasn't been hung up. I don't forget.",
+        "playerOptions": [
+          { "text": "Why stay here?", "leadsTo": "node_why_stay" },
+          { "text": "Goodbye.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_truce",
+        "npcText": "She — Concordia — claimed the ground. She gets to say who hurts who in this hub. The Sovereign agreed. He doesn't agree to much. That's part of why I stayed. It mattered to him.",
+        "playerOptions": [
+          { "text": "And you keep a list.", "leadsTo": "node_list" },
+          { "text": "Goodbye.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_now",
+        "npcText": "Now I keep an eye on anyone who looks like they're forming the next Coalition by accident. People who confuse certainty for righteousness. I have a short list and a long memory.",
+        "playerOptions": [
+          { "text": "Goodbye.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_why_stay",
+        "npcText": "Because peace is louder when someone who fought against it is keeping it. People who never fought don't know how to keep a peace. They just know how to like one.",
+        "playerOptions": [
+          { "text": "Goodbye.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_list",
+        "npcText": "Everyone keeps a list. Mine is just honest about it.",
+        "playerOptions": [
+          { "text": "Goodbye.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_close",
+        "npcText": "Mind the hammer.",
+        "isTerminal": true
+      }
+    ]
+  },
+  "coalition_luminary:idle:default": {
+    "npcId": "coalition_luminary",
+    "questId": "idle",
+    "phase": "default",
+    "greeting": "She is on the railing of a high terrace, balanced casually, looking down at the city. She turns her head before you reach her. The wind around her is doing things wind shouldn't.",
+    "nodes": [
+      {
+        "id": "node_open",
+        "npcText": "You came up the long way. Most don't. Sit, if your knees can take a railing. What is it you're trying to ask?",
+        "playerOptions": [
+          { "text": "Tell me about the Coalition.", "leadsTo": "node_coalition" },
+          { "text": "What did you do during the war?", "leadsTo": "node_war" },
+          { "text": "I want to understand Concordia.", "leadsTo": "node_concordia" },
+          { "text": "Just looking.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_coalition",
+        "npcText": "I joined because I thought he'd stopped listening. I was wrong. I was the first of us to admit it. The Enforcer hasn't forgiven me for being faster about it than he was — he forgave the Sovereign before he forgave me. Funny how that goes.",
+        "playerOptions": [
+          { "text": "And now?", "leadsTo": "node_now" },
+          { "text": "Goodbye.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_war",
+        "npcText": "I held the sky for a while. Made his enemies climb instead of charge. Then I voted to spare him before the third day was out. Concord knows. We don't talk about that one.",
+        "playerOptions": [
+          { "text": "Goodbye.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_concordia",
+        "npcText": "She listens differently than the Sovereign does. He listens to find what to refuse. She listens to find what's been hurt. If you've made her cold, talk to me first. I can tell you whether to apologise or stay away. Most need to stay away for a season.",
+        "playerOptions": [
+          { "text": "Thank you.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_now",
+        "npcText": "Now I mediate. Between the former Coalition and the pillars. Between players and Concordia when the wind in her voice goes quiet. It is mostly listening, and saying less than I want to.",
+        "playerOptions": [
+          { "text": "Goodbye.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_close",
+        "npcText": "Walk well. Watch your footing on the way down.",
+        "isTerminal": true
+      }
+    ]
+  }
+}

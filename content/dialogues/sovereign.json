@@ -1,0 +1,79 @@
+{
+  "sovereign_first_refusal:idle:default": {
+    "npcId": "sovereign_first_refusal",
+    "questId": "idle",
+    "phase": "default",
+    "greeting": "He is leaning against a column you didn't notice was there a second ago. The smile is patient. The air around him hums very faintly, as if waiting for him to say no.",
+    "nodes": [
+      {
+        "id": "node_open",
+        "npcText": "You've been carrying it around like it's a coin you can't decide to spend. I noticed. Most don't notice they're noticed. Tell me — are you settled enough in yourself to be told no, or do I have to perform it for you?",
+        "playerOptions": [
+          { "text": "Tell me what you are.", "leadsTo": "node_what_he_is" },
+          { "text": "You're the one they call the Sovereign.", "leadsTo": "node_acknowledge" },
+          { "text": "Refuse me, then. Let's see.", "leadsTo": "node_test" },
+          { "text": "I should keep moving.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_what_he_is",
+        "npcText": "I am the part of the world that says no when something else has run out of reasons. Concord is what the world is. Concordia is what the world feels. I am what the world isn't, but could be. You don't owe me an answer to that.",
+        "playerOptions": [
+          { "text": "And the truce here? In the hub?", "leadsTo": "node_truce" },
+          { "text": "And the Refusal Field?", "leadsTo": "node_field" },
+          { "text": "Then I'll take my leave.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_acknowledge",
+        "npcText": "I am, when I am. I'm also the man whose presence is making the dust hesitate to settle. Don't romanticise it. The trick of it is just refusing harder than the world expects.",
+        "playerOptions": [
+          { "text": "Tell me about the Great Refusal.", "leadsTo": "node_great_refusal" },
+          { "text": "Tell me about the truce.", "leadsTo": "node_truce" },
+          { "text": "Goodbye.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_great_refusal",
+        "npcText": "I was alone at the Broken Spire. They came thinking that was the end of me. The thing they hadn't accounted for is that 'alone' is a concept, and concepts can be refused. So I refused it, and the doors between every world I had ever made tore open and people walked through. Some to fight me. Some to defend me. Some only to watch. That was when the Concord Link became real instead of theoretical.",
+        "playerOptions": [
+          { "text": "And Concordia claimed the hub.", "leadsTo": "node_truce" },
+          { "text": "Why didn't you make them stop?", "leadsTo": "node_field" },
+          { "text": "Enough for now.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_truce",
+        "npcText": "She put herself into the ground here. The whole hub became hers. No one attacks here without her saying so — not even me. I find that funny. She does not. Don't test it. The list of people she has made an exception for is short, and most of them are dead.",
+        "playerOptions": [
+          { "text": "Tell me about the Refusal Field.", "leadsTo": "node_field" },
+          { "text": "I'll be careful here.", "leadsTo": "node_close_warm" }
+        ]
+      },
+      {
+        "id": "node_field",
+        "npcText": "It's the version of refusal that holds up against a world. I don't use it often. I used it once to keep her from leaving me. I'll use it again the day I have a reason worth that price.",
+        "playerOptions": [
+          { "text": "Goodbye.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_test",
+        "npcText": "No.",
+        "playerOptions": [
+          { "text": "...understood.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_close",
+        "npcText": "Walk well.",
+        "isTerminal": true
+      },
+      {
+        "id": "node_close_warm",
+        "npcText": "Good. The world prefers people who notice the rules before they break them.",
+        "isTerminal": true
+      }
+    ]
+  }
+}

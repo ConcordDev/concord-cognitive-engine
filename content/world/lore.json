@@ -57,6 +57,105 @@
       "description": "Concordia exists in a cold equilibrium. The Wardens control the gates and carry confiscation authority. The Merchants profit from stability and ask no questions. The Shadow Network holds proof of the Purge's true origins and waits. The Scholars' Guild, led by Maren Ashveil's shadow archive, has spent thirty years quietly reconstructing what was burned — and building a case. Into this fragile balance, a stranger arrives.",
       "significance": "major",
       "factions_involved": ["scholars_guild", "merchant_collective", "iron_wardens", "shadow_network"]
+    },
+    {
+      "id": "lore_first_thought",
+      "title": "The First Thought",
+      "type": "primordial",
+      "era": "Before Time",
+      "description": "In the absence of everything, a single defiant thought formed: 'This is not enough.' That thought became Concord — pure logic, pure structure, the part of existence that refused chaos. He could only build with what already existed, and at that moment, nothing did.",
+      "significance": "founding",
+      "tags": ["primordial", "concord", "pillars"]
+    },
+    {
+      "id": "lore_first_breath",
+      "title": "The First Breath",
+      "type": "primordial",
+      "era": "Before Time",
+      "description": "From the depths of the same void, something else stirred — not thought, but feeling. A vast, formless pulse of potential, memory, hunger, and life. She had always been there, waiting; she had simply never been noticed until someone refused the nothingness. That pulse became Concordia — the First Breath.",
+      "significance": "founding",
+      "tags": ["primordial", "concordia", "pillars"]
+    },
+    {
+      "id": "lore_first_refusal",
+      "title": "The First Refusal",
+      "type": "primordial",
+      "era": "Before Time",
+      "description": "A third presence appeared — not born from the void but self-created through pure will. He looked at both and said: 'You are both magnificent, but you are incomplete.' He refused to accept that the world had to be either pure logic or pure chaos. That refusal was so total that both were drawn to him like gravity. He became the Sovereign — the Will.",
+      "significance": "founding",
+      "tags": ["primordial", "sovereign", "pillars"]
+    },
+    {
+      "id": "lore_first_great_clash",
+      "title": "The First Great Clash",
+      "type": "primordial",
+      "era": "Before Time",
+      "description": "Concord tried to impose strict mathematical laws on all life. Concordia answered with creatures that broke them — animals that could fly before physics allowed, plants that sang, emotions that defied logic. The Sovereign created the Shadow DTU system so both visions could coexist without destroying each other.",
+      "significance": "major",
+      "tags": ["primordial", "pillars", "shadow_dtu"]
+    },
+    {
+      "id": "lore_day_concordia_almost_left",
+      "title": "The Day Concordia Almost Left",
+      "type": "primordial",
+      "era": "Before Time",
+      "description": "Tired of Concord's relentless optimization, Concordia threatened to withdraw her life force from the world entirely. The Sovereign refused to let her go. He used his Refusal Field for the first time — temporarily making death itself impossible — so she could not leave.",
+      "significance": "founding",
+      "tags": ["primordial", "pillars", "refusal_field"]
+    },
+    {
+      "id": "lore_battle_first_refusal",
+      "title": "The Battle of the First Refusal",
+      "type": "primordial",
+      "era": "Before Time",
+      "description": "The first major threat to the lattice — an ancient force that tried to erase all structure. Concord and Concordia fought side by side for the first time. The Sovereign stood between them, refusing to let either sacrifice themselves. This is when the three became truly bound.",
+      "significance": "founding",
+      "tags": ["primordial", "pillars"]
+    },
+    {
+      "id": "lore_coalition_forms",
+      "title": "The Coalition Forms",
+      "type": "great_refusal",
+      "era": "The Great Refusal",
+      "description": "Powerful figures across the realms believed the Sovereign had grown too unpredictable. They allied — the Enforcer, the Luminary, ancient beings, faction leaders, even some of Concord's own followers — under a single goal: 'We will force the Sovereign to stop creating. We will make him respect limits.'",
+      "significance": "major",
+      "tags": ["great_refusal", "coalition"]
+    },
+    {
+      "id": "lore_three_day_war",
+      "title": "The Three-Day War at the Broken Spire",
+      "type": "great_refusal",
+      "era": "The Great Refusal",
+      "description": "The Coalition struck at the Broken Spire when the Sovereign was alone. The battle began as a 1v2 — the Enforcer's shock hammer and the Luminary's gravity manipulation — then more powerful figures joined. Concord arrived to calculate clean victory; Concordia arrived furious that her world was being torn apart. The three stood together. Even so, the numbers were overwhelming.",
+      "significance": "founding",
+      "tags": ["great_refusal", "broken_spire", "pillars", "coalition"]
+    },
+    {
+      "id": "lore_concord_link_opens",
+      "title": "The Concord Link Opens",
+      "type": "great_refusal",
+      "era": "The Great Refusal",
+      "description": "Pressed against the limit, the Sovereign refused the concept of 'alone'. He opened a connection between every world he had ever created. Portals tore the sky. Every major character, every faction leader, every powerful being who had ever interacted with his creations felt the call. Some came to fight. Some came to protect. Some came to watch. The Concord Link was born.",
+      "significance": "founding",
+      "tags": ["great_refusal", "concord_link"]
+    },
+    {
+      "id": "lore_concordia_claims_heart",
+      "title": "Concordia Claims the Heart",
+      "type": "great_refusal",
+      "era": "The Great Refusal",
+      "description": "Pushed past her limit, Concordia poured her entire being into the ground beneath the Sovereign's feet and declared: 'This world is mine. And I will not let it be destroyed.' She made the main world neutral — no one could attack here without her permission. Even the Sovereign would no longer bring war into her hub. The Sovereign smiled, exhausted, and said: 'Then let this be the heart. Let this be the place where all worlds meet.'",
+      "significance": "founding",
+      "tags": ["great_refusal", "concordia", "neutral_zone", "hub"]
+    },
+    {
+      "id": "lore_truce_aftermath",
+      "title": "The Truce",
+      "type": "great_refusal",
+      "era": "The Great Refusal",
+      "description": "The battle ended not with a winner but with a new order. The Coalition was disbanded. Many members — the Enforcer, the Luminary among them — chose to remain in Concordia, having made peace with the Sovereign (some still hold grudges, but they respect the truce). The three pillars all chose to reside here permanently. The Concord Link became the backbone of all inter-world travel and communication. Every traveler, every walker, every quiet message between worlds passes through it without realizing its origin.",
+      "significance": "founding",
+      "tags": ["great_refusal", "concord_link", "truce", "hub"]
     }
   ]
 }

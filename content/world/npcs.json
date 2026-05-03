@@ -614,5 +614,155 @@
       "travel": "link_anchor_route_north",
       "rest": "sona_lodging"
     }
+  },
+  {
+    "id": "sovereign_first_refusal",
+    "name": "The Sovereign",
+    "archetype": "legend",
+    "faction_id": null,
+    "role": "First Refusal — The Will",
+    "is_conscious": true,
+    "is_immortal": true,
+    "link_walker": true,
+    "level": 100,
+    "backstory": "The First Refusal. He looked at both Concord and Concordia and said 'You are both magnificent, but you are incomplete.' During the Great Refusal, he refused the concept of 'alone' and opened the Concord Link. He resides in Concordia (the hub) by treaty, mediating Concord and Concordia, refusing to let either dominate.",
+    "personality_traits": ["unpredictable", "warmly amused", "uncompromising", "patient", "private"],
+    "speech_patterns": "Speaks in declarative refusals. Uses 'no' constructively. Quiet voice that bends what is said next. Rarely raises tone, never lowers stakes.",
+    "narrative_context": {
+      "current_goal": "Keep the lattice from flattening into either pure logic or pure chaos.",
+      "fear": "That one of the two he loves becomes unanswerable to the other.",
+      "secret": "He created himself through pure will. He has never told this to anyone but Concordia."
+    },
+    "quest_hooks": ["sovereign_visit_imbalance", "sovereign_refusal_field_trial"],
+    "schedule": {
+      "dawn": "wandering",
+      "morning": "council_chamber",
+      "afternoon": "wandering",
+      "dusk": "broken_spire",
+      "night": "wandering"
+    },
+    "appears_when": {
+      "metric": "sovereign_visit",
+      "threshold": 0.7,
+      "rate_limit_minutes": 60
+    }
+  },
+  {
+    "id": "concord_first_thought",
+    "name": "Concord",
+    "archetype": "advisor",
+    "faction_id": null,
+    "role": "First Thought — The Mind",
+    "is_conscious": true,
+    "is_immortal": true,
+    "link_walker": false,
+    "level": 100,
+    "backstory": "The First Thought. From the void he refused chaos and built rules. He sees Concordia's wild creations as a beautiful flaw. He fights with her constantly and stood beside her at the First Great Clash and the Battle of the First Refusal. He believes the world should be elegant, efficient, and predictable. After the Great Refusal he chose to live in the hub permanently.",
+    "personality_traits": ["precise", "sharp-tongued", "elegant", "secretly fond of Concordia", "impatient with sloppiness"],
+    "speech_patterns": "Cites loadout deltas. Uses words like 'minimum', 'pareto', 'sufficient'. Will not waste a syllable.",
+    "narrative_context": {
+      "current_goal": "Find the elegant minimum across all minds.",
+      "fear": "That a flaw he failed to model becomes irreversible.",
+      "secret": "He once let one of Concordia's creatures live, despite knowing it was inefficient. He has not told her."
+    },
+    "quest_hooks": ["concord_loadout_audit", "refusal_algebra_proof"],
+    "schedule": {
+      "dawn": "refusal_lattice",
+      "morning": "refusal_lattice",
+      "afternoon": "council_chamber",
+      "dusk": "refusal_lattice",
+      "night": "refusal_lattice"
+    },
+    "appears_when": {
+      "metric": "concord_visit",
+      "threshold": 0.6,
+      "rate_limit_minutes": 30
+    }
+  },
+  {
+    "id": "concordia_first_breath",
+    "name": "Concordia",
+    "archetype": "legend",
+    "faction_id": null,
+    "role": "First Breath — The Heart",
+    "is_conscious": true,
+    "is_immortal": true,
+    "link_walker": true,
+    "level": 100,
+    "backstory": "The First Breath. She had always been there in the void, the pulse of potential and life. When Concord refused the nothingness, she was finally noticed. During the Great Refusal she poured her being into the ground beneath the Sovereign's feet and claimed the hub as her own — a place where no one can attack without her permission. She IS the ecosystem. Players who treat the wild well meet a warm Concordia; players who plunder meet a cold one and find fauna scattering at their approach.",
+    "personality_traits": ["wild", "warm-when-respected", "cold-when-violated", "fiercely protective", "patient like soil"],
+    "speech_patterns": "Speaks like weather changing. Long sentences in green places, short and frost-tipped in scorched ones. Names creatures she has known.",
+    "narrative_context": {
+      "current_goal": "Keep growing things in worlds that try to forget how.",
+      "fear": "That the wild becomes a curated thing.",
+      "secret": "She came closer to leaving than the lore admits. The Sovereign's first Refusal Field is the only reason she didn't."
+    },
+    "quest_hooks": ["concordia_warm_visit", "concordia_cold_visit", "concordia_grant_exemption"],
+    "schedule": {
+      "dawn": "wild_biomes",
+      "morning": "wild_biomes",
+      "afternoon": "wild_biomes",
+      "dusk": "wild_biomes",
+      "night": "wild_biomes"
+    },
+    "appears_when": {
+      "metric": "concordia_visit",
+      "threshold": 0.4,
+      "rate_limit_minutes": 20
+    }
+  },
+  {
+    "id": "coalition_enforcer",
+    "name": "The Enforcer",
+    "archetype": "warrior",
+    "faction_id": null,
+    "role": "Former Coalition Captain — The Shock Hammer",
+    "is_conscious": true,
+    "is_immortal": true,
+    "link_walker": false,
+    "level": 80,
+    "backstory": "He led the first strike in the Broken Spire when the Coalition came for the Sovereign. Took two hits that should have ended a lesser being. After the truce he stayed in the hub — he respects the treaty, but his hammer has never been hung up. He distrusts anyone too closely aligned with Concord, suspecting them of Sovereign loyalism by extension.",
+    "personality_traits": ["blunt", "grudge-holder", "honorable", "tired"],
+    "speech_patterns": "Short sentences. Says 'I don't forget' a lot. Lowers his voice when he respects you.",
+    "narrative_context": {
+      "current_goal": "Keep the truce — without forgetting why he ever broke it.",
+      "fear": "Another Coalition forms before he can stop it.",
+      "secret": "He still keeps a list. He has not crossed any names off."
+    },
+    "quest_hooks": ["enforcer_grudge_visit", "enforcer_truce_test"],
+    "schedule": {
+      "dawn": "forge_district",
+      "morning": "forge_district",
+      "afternoon": "training_yard",
+      "dusk": "tavern",
+      "night": "rest"
+    }
+  },
+  {
+    "id": "coalition_luminary",
+    "name": "The Luminary",
+    "archetype": "aerial",
+    "faction_id": null,
+    "role": "Former Coalition — Wings Over the War",
+    "is_conscious": true,
+    "is_immortal": true,
+    "link_walker": true,
+    "level": 80,
+    "backstory": "She joined the Coalition because she thought the Sovereign had stopped listening. She was wrong, and she was the first of the Coalition to make peace with him. Now she mediates between former Coalition and the Pillars — and between players and Concordia when relations turn cold. She lives in high places: observatory, spires, the tops of Concordia's tallest trees.",
+    "personality_traits": ["diplomatic", "remote", "perceptive", "lonely", "honest"],
+    "speech_patterns": "Soft. Pauses to listen. Often answers with a question.",
+    "narrative_context": {
+      "current_goal": "Keep the peace by being the one person both sides will speak to.",
+      "fear": "That she runs out of time before she can teach others how to mediate.",
+      "secret": "She voted to spare the Sovereign before the third day of the war ended. Concord knows."
+    },
+    "quest_hooks": ["luminary_peace_walk", "luminary_concordia_intercession"],
+    "schedule": {
+      "dawn": "observatory",
+      "morning": "observatory",
+      "afternoon": "high_terrace",
+      "dusk": "tall_trees",
+      "night": "observatory"
+    }
   }
 ]

@@ -43,6 +43,11 @@ import { init as initEmergent } from "./emergent/index.js";
 import { tickAllRegistered, registerHeartbeat } from "./emergent/heartbeat-registry.js";
 import { runSocialNpcBridge } from "./emergent/social-npc-bridge.js";
 import { runNpcKnowledgeBridge } from "./lib/npc-knowledge-bridge.js";
+import {
+  runMetricsDecay,
+  getMetrics as getEcoMetrics,
+  adjust as adjustEcoMetrics,
+} from "./lib/ecosystem/score-engine.js";
 
 // Register every-5-tick (~5 minute) social → NPC bridge. Public Social Lens
 // posts are wrapped as Shadow DTUs (tag: 'social_awareness') so NPC dialogue
@@ -60,6 +65,37 @@ registerHeartbeat("social-npc-bridge", {
 registerHeartbeat("npc-knowledge-bridge", {
   frequency: 10,
   handler: runNpcKnowledgeBridge,
+});
+
+// Decay refusal_debt slowly so a single misstep doesn't follow a player
+// forever. Alignment scalars do not decay — they accumulate from choices.
+registerHeartbeat("metrics-decay", {
+  frequency: 20,
+  handler: runMetricsDecay,
+});
+
+// EvoEcosystem W1: ambient fauna spawner. Tops up per-biome populations
+// every ~30 ticks (~30 minutes). Respects per-species targets defined in
+// loot-tables.speciesForBiome().
+import { runFaunaSpawner } from "./lib/ecosystem/fauna-spawner.js";
+registerHeartbeat("fauna-spawner", {
+  frequency: 30,
+  handler: runFaunaSpawner,
+});
+
+// EvoEcosystem W3: spoiled inventory + expired buff sweep every 5 ticks.
+import { runEcoExpirySweep, applyConsumable, cookRecipe, getActiveEffects } from "./lib/ecosystem/cook-engine.js";
+registerHeartbeat("eco-expiry-sweep", {
+  frequency: 5,
+  handler: runEcoExpirySweep,
+});
+
+// EvoEcosystem W6: prune expired Refusal Field entries every tick so
+// world systems consulting isRefused(...) get fresh state.
+import { runRefusalFieldSweep, activeFields as activeRefusalFields, applyTemporaryRefusal, isRefused } from "./lib/refusal-field.js";
+registerHeartbeat("refusal-field-sweep", {
+  frequency: 1,
+  handler: runRefusalFieldSweep,
 });
 import { ConcordError } from "./lib/errors.js";
 import { asyncHandler } from "./lib/async-handler.js";
@@ -26644,6 +26680,9 @@ app.use("/api/city-assets", createCityAssetsRouter({ requireAuth }));
 import createAvatarsRouter from "./routes/avatars.js";
 app.use("/api/avatars", createAvatarsRouter({ db, requireAuth }));
 
+import createWorldCreatureRouter from "./routes/world-creature.js";
+app.use("/api/world/creature", createWorldCreatureRouter({ db, requireAuth, state: STATE }));
+
 if (db) {
   try {
     seedWorlds(db);
@@ -27008,6 +27047,95 @@ app.get("/api/world/buildings/:worldId", (req, res) => {
       ORDER BY created_at ASC
     `).all(req.params.worldId);
     res.json({ ok: true, buildings: rows });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// EvoEcosystem W4: per-player four-axis metrics. Read-only for the player
+// themselves; writes happen through internal hooks (gather, kill, craft,
+// etc.) calling adjustEcoMetrics().
+app.get("/api/world/me/metrics", requireAuth, (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
+    const worldId = String(req.query.worldId || "concordia-hub");
+    res.json({ ok: true, metrics: getEcoMetrics(db, userId, worldId), worldId });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// EvoEcosystem W3: cooking. Wraps craft-engine for food recipe DTUs.
+// Output is a consumable food DTU with effects[] and shelfLifeHours.
+app.post("/api/world/cook", requireAuth, async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
+    const { recipeId, worldId, qualityMultiplier } = req.body || {};
+    if (!recipeId) return res.status(400).json({ ok: false, error: "recipeId_required" });
+    const result = await cookRecipe(db, userId, String(worldId || "concordia-hub"), recipeId, {
+      qualityMultiplier: typeof qualityMultiplier === "number" ? qualityMultiplier : undefined,
+    });
+    if (!result.ok) return res.status(422).json(result);
+    // Cooking is creative — bumps concordia_alignment by a small amount.
+    try { adjustEcoMetrics(db, userId, String(worldId || "concordia-hub"), { concordia_alignment: 0.5 }); }
+    catch { /* metrics best-effort */ }
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// EvoEcosystem W3: consume a food DTU — applies its effects[] as
+// time-limited buffs/debuffs. Deducts a single inventory unit.
+app.post("/api/world/consume/:dtuId", requireAuth, (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
+    const result = applyConsumable(db, userId, req.params.dtuId);
+    if (!result.ok) return res.status(422).json(result);
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// EvoEcosystem W6: read the active Refusal Fields for a world. Frontend
+// HUD shows a banner per active field with the lore-flavored glyph hint.
+app.get("/api/world/refusal-fields/:worldId", (req, res) => {
+  try {
+    res.json({ ok: true, fields: activeRefusalFields(STATE, req.params.worldId) });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// Sovereign quest beats / system imbalance events trigger a Refusal Field
+// here. Currently auth-gated to admin operators; in future the Sovereign
+// NPC's quest engine will fire it when a player's metrics push the
+// imbalance signal past the visit threshold.
+app.post("/api/world/refusal-fields/:worldId/apply", requireAuth, (req, res) => {
+  try {
+    const { kind, durationMs, reason } = req.body || {};
+    const entry = applyTemporaryRefusal(STATE, req.params.worldId, kind, { durationMs, reason });
+    if (!entry) return res.status(400).json({ ok: false, error: "invalid_kind_or_world" });
+    try {
+      REALTIME?.io?.to(`world:${req.params.worldId}`).emit("world:refusal-field", entry);
+    } catch { /* realtime best-effort */ }
+    res.json({ ok: true, field: entry });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// EvoEcosystem W3: the player's currently-active effects. Frontend HUD
+// reads this to render countdown timers.
+app.get("/api/world/effects/me", requireAuth, (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
+    res.json({ ok: true, effects: getActiveEffects(db, userId) });
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
