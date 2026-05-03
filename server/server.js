@@ -6415,7 +6415,7 @@ async function tryInitWebSockets(server) {
     // everyone in the attacker's chunk so nearby players see the
     // damage numbers render. Rate-limited to 4 attacks/sec.
     let _lastAttackAt = 0;
-    socket.on("combat:attack", (data) => {
+    socket.on("combat:attack", async (data) => {
       const userId = socket.data?.userId;
       if (!userId) return;
       if (!data || typeof data !== "object") return;
@@ -6423,12 +6423,32 @@ async function tryInitWebSockets(server) {
       if (now - _lastAttackAt < 250) return; // ~4 attacks/sec cap
       _lastAttackAt = now;
 
+      // Flow Combat: derive context modifiers up-front so applyAttack can
+      // honor them (stamina cost, damage scaling, evade roll) in one place.
+      // Falls back to no-op modifiers when the context engine isn't loaded.
+      let _contextModifiers = null;
+      try {
+        const _pos = cityPresence.getPlayerPosition?.(userId) || { x: 0, y: 0, z: 0 };
+        // Synchronous-ish: the context engine is pure + tiny, but we import
+        // it dynamically to keep server.js cold-start lean. Cache the import
+        // promise on globalThis so subsequent attacks don't re-import.
+        if (!globalThis._concordContextEngine) {
+          globalThis._concordContextEngine = import("./lib/combat/context-engine.js");
+        }
+        const ce = await globalThis._concordContextEngine;
+        _contextModifiers = ce.detectCombatContext({
+          position: _pos, groundY: 0, grounded: data.grounded !== false,
+          inVehicle: !!data.inVehicle, hackerMode: !!data.hackerMode,
+        }).modifiers;
+      } catch { /* fall through to default */ }
+
       const result = cityPresence.applyAttack({
         attackerId: userId,
         targetId: String(data.targetId || "").slice(0, 128),
         baseDamage: Number(data.baseDamage) || 10,
         range: Number(data.range) || 3,
         armorPierce: Number(data.armorPierce) || 0,
+        contextModifiers: _contextModifiers,
       });
 
       // Ack back to attacker with full detail (damage, crit, kill)
@@ -6568,6 +6588,33 @@ async function tryInitWebSockets(server) {
       try {
         realtimeEmit("combat:dodge:ack", { userId, direction, t: now });
       } catch (e) { /* socket emit silent */ }
+      // Flow Combat: record dodge into the substrate. Hit=true if a recent
+      // incoming attack was within the i-frame window (the client passes
+      // wasParry=true when its parry timing landed). Counter Flow DTUs
+      // emerge naturally from successful parries strung together.
+      try {
+        Promise.all([
+          import("./lib/combat/context-engine.js"),
+          import("./lib/combat/flow-recorder.js"),
+        ]).then(([{ detectCombatContext }, { recordCombatFlow }]) => {
+          const pos = cityPresence.getPlayerPosition?.(userId) || { x: 0, y: 0, z: 0 };
+          const ctx = detectCombatContext({
+            position: pos, groundY: 0, grounded: data?.grounded !== false,
+            inVehicle: !!data?.inVehicle, hackerMode: !!data?.hackerMode,
+          });
+          recordCombatFlow(db, {
+            fighterId: userId, fighterKind: "player",
+            context: ctx.context, style: data?.style || ctx.styleHints[0] || null,
+            action: data?.wasParry ? "parry" : "dodge",
+            actionMeta: { direction, vsAttacker: data?.vsAttacker || null },
+            targetId: data?.vsAttacker || null,
+            hit: !!data?.wasParry,
+            damage: 0,
+            chainId: data?.chainId || null,
+            stepIndex: Number(data?.stepIndex || 0),
+          });
+        }).catch(() => {});
+      } catch { /* flow record best-effort */ }
     });
 
     let _lastBlockAt = 0;
@@ -6581,6 +6628,30 @@ async function tryInitWebSockets(server) {
       try {
         realtimeEmit("combat:block:ack", { userId, active, t: now });
       } catch (e) { /* socket emit silent */ }
+      // Only record on block-engage (active=true), not on block-release —
+      // a block held for 5 seconds is one decision, not 50.
+      if (active) {
+        try {
+          Promise.all([
+            import("./lib/combat/context-engine.js"),
+            import("./lib/combat/flow-recorder.js"),
+          ]).then(([{ detectCombatContext }, { recordCombatFlow }]) => {
+            const pos = cityPresence.getPlayerPosition?.(userId) || { x: 0, y: 0, z: 0 };
+            const ctx = detectCombatContext({
+              position: pos, groundY: 0, grounded: data?.grounded !== false,
+              inVehicle: !!data?.inVehicle, hackerMode: !!data?.hackerMode,
+            });
+            recordCombatFlow(db, {
+              fighterId: userId, fighterKind: "player",
+              context: ctx.context, style: data?.style || ctx.styleHints[0] || null,
+              action: "block",
+              actionMeta: {},
+              hit: false,
+              damage: 0,
+            });
+          }).catch(() => {});
+        } catch { /* flow record best-effort */ }
+      }
     });
 
     // ── Skill use → XP award + mastery milestone notifications ──────
