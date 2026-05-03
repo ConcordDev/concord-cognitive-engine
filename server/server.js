@@ -41,6 +41,16 @@ import { Worker } from "node:worker_threads";
 import { initAll as initLoaf } from "./loaf/index.js";
 import { init as initEmergent } from "./emergent/index.js";
 import { tickAllRegistered, registerHeartbeat } from "./emergent/heartbeat-registry.js";
+import { runSocialNpcBridge } from "./emergent/social-npc-bridge.js";
+
+// Register every-5-tick (~5 minute) social → NPC bridge. Public Social Lens
+// posts are wrapped as Shadow DTUs (tag: 'social_awareness') so NPC dialogue
+// prompts can stay aware of real-world cultural signals. Private/friends-only
+// posts are filtered server-side (defense in depth: SQL + JS guards).
+registerHeartbeat("social-npc-bridge", {
+  frequency: 5,
+  handler: runSocialNpcBridge,
+});
 import { ConcordError } from "./lib/errors.js";
 import { asyncHandler } from "./lib/async-handler.js";
 import { init as initGRC, formatAndValidate as grcFormatAndValidate, getGRCSystemPrompt } from "./grc/index.js";

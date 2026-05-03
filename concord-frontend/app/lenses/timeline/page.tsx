@@ -104,6 +104,11 @@ export default function TimelineLensPage() {
   const [limit, setLimit] = useState(30);
   const [showPostModal, setShowPostModal] = useState(false);
   const [postContent, setPostContent] = useState('');
+  // Privacy choice for new posts. Defaults to 'private' so posts only become
+  // visible to NPCs (via the social-npc-bridge) when the user explicitly
+  // opts in. The "NPCs are listening" indicator surfaces next to the toggle
+  // when 'public' is selected.
+  const [postPrivacy, setPostPrivacy] = useState<'public' | 'friends' | 'private'>('private');
   const [viewMode, setViewMode] = useState<'timeline' | 'feed'>('timeline');
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [hoveredEventId, setHoveredEventId] = useState<string | null>(null);
@@ -198,7 +203,14 @@ export default function TimelineLensPage() {
   });
 
   const postMutation = useMutation({
-    mutationFn: (content: string) => apiHelpers.dtus.create({ content, tags: ['timeline'] }),
+    mutationFn: (content: string) => apiHelpers.dtus.create({
+      content,
+      tags: ['timeline'],
+      // Persist privacy in body_json so the server-side social-npc-bridge can
+      // gate on data.privacy === 'public' (with a JS-side defense-in-depth
+      // re-check). 'private' is the failsafe default.
+      meta: { privacy: postPrivacy },
+    } as Parameters<typeof apiHelpers.dtus.create>[0]),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['timeline-posts'] });
       setNewPost('');
@@ -982,6 +994,23 @@ export default function TimelineLensPage() {
                   autoFocus
                   className="flex-1 bg-transparent text-white placeholder-gray-500 outline-none resize-none text-lg"
                 />
+              </div>
+              <div className="flex items-center gap-3 pt-3 border-t border-gray-700">
+                <label className="text-xs text-gray-400">Visibility</label>
+                <select
+                  value={postPrivacy}
+                  onChange={(e) => setPostPrivacy(e.target.value as 'public' | 'friends' | 'private')}
+                  className="bg-[#3a3b3c] text-white text-xs rounded-md px-2 py-1.5 border border-gray-600 focus:border-blue-500 outline-none"
+                >
+                  <option value="private">Only me</option>
+                  <option value="friends">Friends</option>
+                  <option value="public">Public</option>
+                </select>
+                {postPrivacy === 'public' && (
+                  <span className="text-[11px] text-amber-400/80 inline-flex items-center gap-1">
+                    NPCs are listening
+                  </span>
+                )}
               </div>
               <div className="flex items-center justify-between pt-3 border-t border-gray-700">
                 <div className="flex items-center gap-2">

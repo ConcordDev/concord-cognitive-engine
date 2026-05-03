@@ -49,10 +49,58 @@ function cacheSet(map, key, result) {
  * Build enriched npcTraits from authored NPC data.
  * Falls back to the raw npcId string if no authored NPC found.
  */
+/**
+ * Pull recent "social_awareness" shadows for an NPC's world/faction.
+ * Cap on size keeps oracle prompts from blowing out (default 1024 bytes).
+ * Returns a short array of { author, summary } strings; empty array if
+ * the social-npc-bridge hasn't run yet or STATE is missing.
+ */
+function buildSocialSignals(npcId, _db = null, maxBytes = 1024, maxItems = 5) {
+  // STATE.shadowDtus is populated by the shadow-graph + social-npc-bridge.
+  const state = globalThis._concordSTATE;
+  if (!state?.shadowDtus || state.shadowDtus.size === 0) return [];
+
+  const npc = getAuthoredNPC(npcId);
+  const npcWorld = npc?.world_id ?? null;
+  const npcFaction = npc?.faction_id ?? null;
+
+  // Newest first.
+  const all = Array.from(state.shadowDtus.values())
+    .filter((s) => Array.isArray(s.tags) && s.tags.includes("social_awareness"))
+    .filter((s) => {
+      // If the shadow names a target world or faction, it must match the NPC's.
+      // Untargeted (global) shadows reach every NPC.
+      if (s.targetWorldId && npcWorld && s.targetWorldId !== npcWorld) return false;
+      if (s.targetFactionId && npcFaction && s.targetFactionId !== npcFaction) return false;
+      return true;
+    })
+    .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+
+  const out = [];
+  let bytes = 0;
+  for (const s of all) {
+    if (out.length >= maxItems) break;
+    const summary = (s.core?.summary ?? s.summary ?? "").toString().slice(0, 280);
+    if (!summary) continue;
+    const item = { author: s.authorHandle ?? "anon", summary };
+    const itemSize = Buffer.byteLength(JSON.stringify(item), "utf-8");
+    if (bytes + itemSize > maxBytes) break;
+    out.push(item);
+    bytes += itemSize;
+  }
+  return out;
+}
+
 function buildNPCTraits(npcId, db = null) {
   const npc = getAuthoredNPC(npcId);
   if (!npc) {
-    return { id: npcId, name: npcId, personality: "reserved", role: "resident" };
+    return {
+      id: npcId,
+      name: npcId,
+      personality: "reserved",
+      role: "resident",
+      socialSignals: buildSocialSignals(npcId, db),
+    };
   }
 
   const faction = npc.faction_id ? getAuthoredFaction(npc.faction_id) : null;
@@ -80,6 +128,10 @@ function buildNPCTraits(npcId, db = null) {
     currentGoal: npc.narrative_context?.current_goal ?? "",
     fears:       npc.narrative_context?.fear ?? "",
     recentPolicy,
+    // v2.0 bidirectional awareness: recent public Social Lens posts that
+    // reached this NPC's world/faction via the social-npc-bridge. Capped
+    // at 1KB total + 5 items so the LLM prompt stays tight.
+    socialSignals: buildSocialSignals(npcId, db),
     // Deliberately exclude secrets from LLM context — those are for human authors only
   };
 }
