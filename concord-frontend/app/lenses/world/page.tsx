@@ -2769,6 +2769,14 @@ export default function WorldLensPage() {
           comboName: detail.comboName,
         });
       }).catch(() => { /* fallback: no special VFX */ });
+      // Tier-scaled biomechanics animation. Pick the action token from the
+      // first step of the combo (attack-light / heavy / kick / grapple)
+      // and dispatch concordia:combat-anim with tier so AvatarSystem3D
+      // plays the matching tier-N clip rather than the baseline clip.
+      const firstAction = detail.steps[0]?.action ?? 'attack-light';
+      window.dispatchEvent(new CustomEvent('concordia:combat-anim', {
+        detail: { entityId: playerAvatar.id, animation: firstAction, tier },
+      }));
       // Emit a single combat:attack stamped with the combo id + chain.
       // The flow-recorder records each step as it lands; the suggestion
       // engine then knows to advance the chain.
@@ -2858,8 +2866,27 @@ export default function WorldLensPage() {
     }
     if (!worldSocket.isConnected) return;
     const heavy = (combatStateRef.current.weapon?.damage ?? 10) > 18;
+    // Tier-scaled biomechanics: best matching combo's tier drives how rich
+    // the animation looks. Read from /api/combat-flow/combos lazily — the
+    // hotbar already keeps a fresh list, but we can't share state cleanly,
+    // so derive from recentChain instead: when the player has an evolved
+    // combo whose first step matches and they've been chaining, infer
+    // tier from the most recent suggestion received. Falls back to tier 1.
+    const inferredTier = (() => {
+      // The CombatFlowHotbar's suggestion endpoint puts a tier on the
+      // chain prefix. We don't have direct access to it here, but the
+      // recentChain length is a reasonable proxy: longer chains imply
+      // the player is mid-combo, so use the chain depth as a soft tier
+      // estimate. Capped at 3 — true tier-4/5 are reserved for explicit
+      // combo-trigger dispatches via the hotbar.
+      return Math.min(3, Math.max(1, Math.floor(recentChain.length / 2) + 1));
+    })();
     window.dispatchEvent(new CustomEvent('concordia:combat-anim', {
-      detail: { entityId: playerAvatar.id, animation: heavy ? 'attack-heavy' : 'attack-light' },
+      detail: {
+        entityId: playerAvatar.id,
+        animation: heavy ? 'attack-heavy' : 'attack-light',
+        tier: inferredTier,
+      },
     }));
     // Polish: play the swing SFX immediately on attack input rather than
     // waiting for the server ack — the swoosh-then-impact rhythm is what
@@ -2873,7 +2900,7 @@ export default function WorldLensPage() {
       range: 3,
       armorPierce: 0,
     });
-  }, [worldSocket, pushCombatLog, playerAvatar.id]);
+  }, [worldSocket, pushCombatLog, playerAvatar.id, recentChain.length]);
 
   const handleBlock = useCallback(() => {
     // Block raises cover bonus briefly; reflects client-side until

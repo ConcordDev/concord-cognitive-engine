@@ -1025,10 +1025,20 @@ export default function AvatarSystem3D({
       // Procedural combat clips: build a per-skeleton clip map on first hit
       // and crossfade in for attack-light / heavy / block / parry / dodge /
       // hit-flinch / death animation events.
-      const combatClipMaps = new WeakMap<object, Record<string, import('three').AnimationClip>>();
+      // Two-tier strategy:
+      //   1. If the event carries a tier (1-5), pick the matching tier-scaled
+      //      biomechanics clip (combat-biomechanics.ts) — wind-up + hip drive
+      //      + off-hand counter + follow-through scale with mastery so a
+      //      tier-5 evolved combo's punch *looks* genuinely heavier than a
+      //      tier-1 first-attempt.
+      //   2. Fall back to the baseline combat-clips.ts pose table when no
+      //      tier is supplied (block / parry / dodge / hit-flinch / death
+      //      stay on the baseline path — they're not combo-tier-scaled).
+      const combatClipMaps      = new WeakMap<object, Record<string, import('three').AnimationClip>>();
+      const biomechClipMaps     = new WeakMap<object, Record<string, import('three').AnimationClip>>();
       async function handleCombatAnim(e: Event) {
         const detail = (e as CustomEvent).detail as
-          | { entityId?: string; animation?: string }
+          | { entityId?: string; animation?: string; tier?: number; body?: 'slim' | 'average' | 'stocky' | 'tall' }
           | undefined;
         if (!detail?.entityId || !detail?.animation) return;
         const mixer = mixersRef.current.get(detail.entityId) as MixerType | undefined;
@@ -1037,6 +1047,40 @@ export default function AvatarSystem3D({
           const root = (mixer as unknown as { getRoot?: () => unknown }).getRoot?.();
           const skeleton = (root as { skeleton?: import('three').Skeleton } | undefined)?.skeleton;
           if (!skeleton) return;
+
+          // Tier-scaled biomechanics path. attack-light / heavy / kick /
+          // grapple all support 5 mastery tiers. block / parry / dodge /
+          // hit-flinch / death don't (they're reactive, not mastered).
+          const TIERED_ACTIONS = new Set(['attack-light', 'attack-heavy', 'kick', 'grapple']);
+          if (typeof detail.tier === 'number' && TIERED_ACTIONS.has(detail.animation)) {
+            const tier = Math.max(1, Math.min(5, Math.floor(detail.tier)));
+            let bMap = biomechClipMaps.get(skeleton as unknown as object);
+            if (!bMap) {
+              const bmod = await import('@/lib/concordia/combat-biomechanics');
+              bMap = bmod.buildBiomechClipMap(
+                skeleton,
+                detail.body ?? 'average',
+                ['attack-light', 'attack-heavy', 'kick', 'grapple'],
+                [1, 2, 3, 4, 5],
+              );
+              biomechClipMaps.set(skeleton as unknown as object, bMap);
+            }
+            const clipKey = `${detail.animation}-t${tier}`;
+            const clip = bMap[clipKey];
+            if (clip) {
+              const action = (mixer as unknown as import('three').AnimationMixer).clipAction(clip);
+              action.reset();
+              // Higher tiers crossfade slightly faster (sharper commitment)
+              const fadeMs = Math.max(40, 100 - tier * 8);
+              action.setLoop(2200 /* THREE.LoopOnce */, 1);
+              action.fadeIn(fadeMs / 1000);
+              action.setEffectiveWeight(1);
+              action.play();
+              return;
+            }
+          }
+
+          // Baseline fallback
           let clipMap = combatClipMaps.get(skeleton as unknown as object);
           if (!clipMap) {
             const mod = await import('@/lib/concordia/combat-clips');
