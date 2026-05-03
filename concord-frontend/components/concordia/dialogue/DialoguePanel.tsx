@@ -166,7 +166,7 @@ export function DialoguePanel({
   if (!state.active) return null;
 
   return (
-    <div className="absolute inset-x-0 bottom-0 flex justify-center pb-4 pointer-events-none">
+    <div className="absolute inset-x-0 bottom-0 flex justify-center pb-4 pointer-events-none" data-active-dialogue="true">
       <div className="bg-black/90 backdrop-blur-md border border-white/10 rounded-2xl w-full max-w-xl mx-4 pointer-events-auto flex flex-col max-h-[60vh]">
 
         {/* NPC header */}

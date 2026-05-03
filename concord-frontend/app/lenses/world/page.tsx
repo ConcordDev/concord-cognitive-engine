@@ -184,6 +184,14 @@ const EquipmentSlotsPanel = dynamic(
   () => import('@/components/world-lens/EquipmentSlotsPanel'),
   { ssr: false },
 );
+const PauseMenu = dynamic(
+  () => import('@/components/world-lens/PauseMenu'),
+  { ssr: false },
+);
+const FactionWarBanner = dynamic(
+  () => import('@/components/world-lens/FactionWarBanner'),
+  { ssr: false },
+);
 const AnimationManager = dynamic(() => import('@/components/world-lens/AnimationManager'), {
   ssr: false,
 });
@@ -3350,6 +3358,12 @@ export default function WorldLensPage() {
               <EquipmentSlotsPanel onClose={() => setEquipmentOpen(false)} />
             </div>
           )}
+          <PauseMenu
+            onOpenControls={() => setControlsOpen(true)}
+            onOpenLoadout={() => setEquipmentOpen(true)}
+            onQuit={() => { window.location.href = '/'; }}
+          />
+          <FactionWarBanner />
           <AnimationManager>
             <></>
           </AnimationManager>

@@ -293,6 +293,10 @@ export type SocketEvent =
   | 'training:resume'
   | 'training:round-end'
   | 'training:end'
+  // Faction wars (NPCs evolving in background; players can join either side)
+  | 'faction-war:tick'
+  | 'faction-war:kill'
+  | 'faction-war:end'
   // World scheduler
   | 'world:event:scheduled'
   // Tier 3 deferral 12: faction event scheduler
