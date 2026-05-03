@@ -6,7 +6,7 @@
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { api } from '@/lib/api/client';
-import { Hammer, ShoppingBag, Plus, Loader2 } from 'lucide-react';
+import { Hammer, ShoppingBag, Plus, Loader2, Flame, Sparkles } from 'lucide-react';
 
 const RecipeAuthorPanel = dynamic(() => import('@/components/concordia/recipes/RecipeAuthorPanel'), { ssr: false });
 
@@ -44,7 +44,7 @@ export default function CraftingPage() {
       const all = (r.data?.dtus ?? []) as Array<RecipeRow>;
       const recipes = all.filter((d) => {
         const t = d.meta?.type ?? d.type;
-        return t === 'fighting_style_recipe' || t === 'spell_recipe' || t === 'blueprint';
+        return t === 'fighting_style_recipe' || t === 'spell_recipe' || t === 'blueprint' || t === 'food_recipe';
       });
       setMine(recipes);
     } catch (e: unknown) {
@@ -104,6 +104,28 @@ export default function CraftingPage() {
     setListError(null);
   }
 
+  // Cook a food_recipe DTU. Server wraps craft-engine.executeCraft and
+  // stamps spoils_at on the cooked output; the resulting consumable
+  // appears in the player's inventory and can be eaten via /api/world/
+  // consume/:dtuId (the active-effects HUD picks up the buff in real
+  // time).
+  const [cooking, setCooking] = useState<string | null>(null);
+  const [cookResults, setCookResults] = useState<Record<string, string>>({});
+
+  async function cookRecipe(recipeId: string) {
+    setCooking(recipeId);
+    setCookResults((prev) => ({ ...prev, [recipeId]: '' }));
+    try {
+      const res = await api.post('/api/world/cook', { recipeId, worldId: 'concordia-hub' });
+      const dtuTitle = res.data?.dtu?.title ?? res.data?.itemAdded?.item_name ?? 'cooked dish';
+      setCookResults((prev) => ({ ...prev, [recipeId]: `Cooked: ${dtuTitle}` }));
+    } catch (e: unknown) {
+      setCookResults((prev) => ({ ...prev, [recipeId]: e instanceof Error ? e.message : 'Cook failed' }));
+    } finally {
+      setCooking(null);
+    }
+  }
+
   async function submitListing() {
     if (!listing) return;
     setListSubmitting(true);
@@ -159,20 +181,41 @@ export default function CraftingPage() {
             <p className="text-white/50 text-sm">No personal recipes yet. Author one to get started.</p>
           ) : (
             <ul className="space-y-3">
-              {mine.map((r) => (
-                <li key={r.id} className="bg-white/5 border border-white/10 rounded-lg p-4 flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-semibold">{r.title}</p>
-                    <p className="text-[11px] text-white/50">{(r.meta?.type ?? r.type ?? '').replace(/_/g, ' ')}</p>
-                  </div>
-                  <button
-                    onClick={() => listOnMarketplace(r.id)}
-                    className="px-3 py-1.5 bg-amber-500/20 border border-amber-500/40 rounded-md text-xs hover:bg-amber-500/30"
-                  >
-                    List on marketplace
-                  </button>
-                </li>
-              ))}
+              {mine.map((r) => {
+                const recipeType = r.meta?.type ?? r.type ?? '';
+                const isFood = recipeType === 'food_recipe';
+                return (
+                  <li key={r.id} className="bg-white/5 border border-white/10 rounded-lg p-4 flex items-center justify-between">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold truncate">{r.title}</p>
+                      <p className="text-[11px] text-white/50">{recipeType.replace(/_/g, ' ')}</p>
+                      {cookResults[r.id] && (
+                        <p className="text-[11px] text-emerald-300 mt-1 inline-flex items-center gap-1">
+                          <Sparkles className="w-3 h-3" /> {cookResults[r.id]}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {isFood && (
+                        <button
+                          onClick={() => cookRecipe(r.id)}
+                          disabled={cooking === r.id}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-orange-500/20 border border-orange-500/40 rounded-md text-xs hover:bg-orange-500/30 disabled:opacity-50"
+                        >
+                          {cooking === r.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Flame className="w-3.5 h-3.5" />}
+                          Cook
+                        </button>
+                      )}
+                      <button
+                        onClick={() => listOnMarketplace(r.id)}
+                        className="px-3 py-1.5 bg-amber-500/20 border border-amber-500/40 rounded-md text-xs hover:bg-amber-500/30"
+                      >
+                        List on marketplace
+                      </button>
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>

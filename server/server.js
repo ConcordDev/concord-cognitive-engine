@@ -27368,6 +27368,31 @@ app.post("/api/world/consume/:dtuId", requireAuth, (req, res) => {
   }
 });
 
+// Sovereign Refusal Archive — preview a manifestation. The Sovereign
+// fuses N archive shadows (powers he has observed) into a single
+// limit-refused combat blueprint. Raid combat fetches this just before
+// the Sovereign uses a power, so the player can see what's coming.
+// Public read; rate-limited to prevent archive scraping.
+let _manifestRateState = { count: 0, windowStart: 0 };
+app.get("/api/world/sovereign/manifestation/preview", async (req, res) => {
+  try {
+    const now = Date.now();
+    if (now - _manifestRateState.windowStart > 60_000) {
+      _manifestRateState = { count: 0, windowStart: now };
+    }
+    if (++_manifestRateState.count > 60) {
+      return res.status(429).json({ ok: false, error: "rate_limited" });
+    }
+    const { draftSovereignManifestation } = await import("./lib/sovereign/refusal-archive.js");
+    const draws = Math.max(1, Math.min(5, Number(req.query.draws) || 3));
+    const preferTargetId = typeof req.query.targetId === "string" ? req.query.targetId : undefined;
+    const manifest = draftSovereignManifestation(STATE, { draws, preferTargetId });
+    res.json({ ok: true, manifestation: manifest });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
 // EvoEcosystem W6: read the active Refusal Fields for a world. Frontend
 // HUD shows a banner per active field with the lore-flavored glyph hint.
 app.get("/api/world/refusal-fields/:worldId", (req, res) => {

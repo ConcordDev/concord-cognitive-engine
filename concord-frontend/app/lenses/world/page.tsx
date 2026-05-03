@@ -197,6 +197,10 @@ const AnimationManager = dynamic(() => import('@/components/world-lens/Animation
 });
 const GameJuice = dynamic(() => import('@/components/world-lens/GameJuice'), { ssr: false });
 const ActiveEffectsBar = dynamic(() => import('@/components/concordia/HUD/ActiveEffectsBar'), { ssr: false });
+const CorpseMarkerOverlay = dynamic(() => import('@/components/concordia/HUD/CorpseMarkerOverlay'), { ssr: false });
+const RefusalFieldBanner = dynamic(() => import('@/components/concordia/HUD/RefusalFieldBanner'), { ssr: false });
+const EcosystemMetricsBadge = dynamic(() => import('@/components/concordia/HUD/EcosystemMetricsBadge'), { ssr: false });
+const SovereignManifestationToast = dynamic(() => import('@/components/concordia/HUD/SovereignManifestationToast'), { ssr: false });
 const PerformanceOverlay = dynamic(
   () => import('@/components/world-lens/PerformanceOverlay'),
   { ssr: false },
@@ -4518,6 +4522,10 @@ export default function WorldLensPage() {
           {/* Impact feedback — floating damage numbers + screen shake */}
           <ImpactFeedback />
           <ActiveEffectsBar />
+          <CorpseMarkerOverlay worldId="concordia-hub" toolTier={1} />
+          <RefusalFieldBanner worldId="concordia-hub" />
+          <EcosystemMetricsBadge worldId="concordia-hub" />
+          <SovereignManifestationToast />
         </div>
       ) : viewMode === 'streams' ? (
         <CityStreamingSection />

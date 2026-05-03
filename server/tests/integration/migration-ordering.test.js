@@ -84,6 +84,19 @@ describe("integration: migration ordering", () => {
         iv BLOB,
         auth_tag BLOB
       );
+      -- Migration 063 creates world_buildings; mirror its essential
+      -- columns so 091's ALTER TABLE has something to mutate.
+      CREATE TABLE IF NOT EXISTS world_buildings (
+        id TEXT PRIMARY KEY,
+        world_id TEXT NOT NULL,
+        building_type TEXT NOT NULL,
+        x REAL NOT NULL, y REAL NOT NULL, z REAL NOT NULL,
+        rotation REAL DEFAULT 0,
+        owner_type TEXT DEFAULT 'world',
+        owner_id TEXT,
+        is_seed INTEGER DEFAULT 0,
+        created_at INTEGER DEFAULT (unixepoch())
+      );
     `);
   });
 
