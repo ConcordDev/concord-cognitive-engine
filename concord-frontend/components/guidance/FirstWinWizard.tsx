@@ -11,7 +11,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { useRouter } from 'next/navigation';
-import { Rocket, CheckCircle, Circle, ArrowRight, X, Brain, Package, Globe } from 'lucide-react';
+import { Rocket, CheckCircle, Circle, ArrowRight, X, Brain, Package, Globe, ChefHat, Heart, Swords, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface FirstWinStep {
@@ -27,10 +27,30 @@ interface FirstWinData {
   completedCount: number;
 }
 
+interface FirstCyclePhase {
+  questId: string;
+  phase: 'cook' | 'eat' | 'fight' | 'commune';
+  status: string;
+  complete: boolean;
+}
+
+interface FirstCycleData {
+  ok: boolean;
+  tutorial: 'first_cycle';
+  currentPhase: 'cook' | 'eat' | 'fight' | 'commune' | 'complete';
+  complete: boolean;
+  phases: FirstCyclePhase[];
+}
+
 const STEP_ICONS: Record<string, typeof Brain> = {
   create_dtu: Brain,
   create_artifact: Package,
   view_global: Globe,
+  // First Cycle tutorial — Concordia's mechanic-onboarding loop.
+  first_cycle_cook:    ChefHat,
+  first_cycle_eat:     Heart,
+  first_cycle_fight:   Swords,
+  first_cycle_commune: Sparkles,
 };
 
 const STEP_DESCRIPTIONS: Record<string, string> = {
@@ -38,12 +58,34 @@ const STEP_DESCRIPTIONS: Record<string, string> = {
     'Create a Discrete Thought Unit in the Chat workspace — the fundamental knowledge unit in Concord.',
   create_artifact: 'Generate or upload a file artifact in the Studio workspace.',
   view_global: 'See your work in the Global truth view — the canonical source of all data.',
+  // First Cycle — Concordia speaks each phase aloud in the world; the wizard
+  // mirrors what she says so the player can pick up where they left off.
+  first_cycle_cook:
+    'Walk into the glade. Gather two ingredients. Cook your first meal at the starter station.',
+  first_cycle_eat:
+    'Open inventory and consume the meal you cooked. Feel the warmth — that is the world giving back.',
+  first_cycle_fight:
+    'Walk to the Training Hollow. Defeat three Ember Sprites with Flow Combat. Pick up the Ember Core that drops.',
+  first_cycle_commune:
+    'Return to the glade. Speak with Concordia at the living tree. Choose your branch — the world remembers.',
 };
 
 const STEP_ROUTES: Record<string, string> = {
   create_dtu: '/lenses/chat',
   create_artifact: '/lenses/studio',
   view_global: '/global',
+  // All four First Cycle phases route into the Concordia world lens.
+  first_cycle_cook:    '/lenses/world',
+  first_cycle_eat:     '/lenses/world',
+  first_cycle_fight:   '/lenses/world',
+  first_cycle_commune: '/lenses/world',
+};
+
+const FIRST_CYCLE_LABELS: Record<string, string> = {
+  first_cycle_cook:    'First Cycle — Cook',
+  first_cycle_eat:     'First Cycle — Eat',
+  first_cycle_fight:   'First Cycle — Fight',
+  first_cycle_commune: 'First Cycle — Commune with Concordia',
 };
 
 const DISMISSED_KEY = 'concord_first_win_dismissed';
@@ -71,6 +113,17 @@ function FirstWinWizard() {
     retry: 1,
   });
 
+  // First Cycle — the mechanic-onboarding tutorial that runs BEFORE the
+  // First Win loop. Cook → Eat → Fight → Commune. When tutorial.complete
+  // is true we hide these phases; otherwise they prepend the wizard's
+  // step list so new players see Concordia's loop first.
+  const { data: tutorial } = useQuery<FirstCycleData>({
+    queryKey: ['tutorial-first-cycle'],
+    queryFn: async () => (await api.get('/api/tutorial/first-cycle')).data,
+    refetchInterval: 15_000,
+    retry: 1,
+  });
+
   // Static fallback when guidance API is unavailable (e.g. no SQLite)
   const FALLBACK_DATA: FirstWinData = {
     ok: true,
@@ -82,7 +135,27 @@ function FirstWinWizard() {
     allDone: false,
     completedCount: 0,
   };
-  const resolved = data || (isError ? FALLBACK_DATA : null);
+  const baseResolved = data || (isError ? FALLBACK_DATA : null);
+
+  // Merge First Cycle phases as additional steps when the tutorial is
+  // incomplete. Phases come first so the wizard reads top-to-bottom in
+  // the order Concordia walks the player through the world.
+  const resolved: FirstWinData | null = (() => {
+    if (!baseResolved) return null;
+    if (!tutorial || tutorial.complete) return baseResolved;
+    const cyclePhases: FirstWinStep[] = tutorial.phases.map((p) => ({
+      id: p.questId,
+      label: FIRST_CYCLE_LABELS[p.questId] ?? p.questId,
+      completed: p.complete,
+    }));
+    const cycleCompleted = cyclePhases.filter((s) => s.completed).length;
+    return {
+      ok: true,
+      steps: [...cyclePhases, ...baseResolved.steps],
+      allDone: false,
+      completedCount: cycleCompleted + baseResolved.completedCount,
+    };
+  })();
 
   if (!resolved || resolved.allDone || dismissed) return null;
 

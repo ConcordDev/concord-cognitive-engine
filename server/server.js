@@ -4918,7 +4918,7 @@ function authMiddleware(req, res, next) {
     "/api/webhooks", "/api/webhooks-metrics", "/api/whiteboard",
     "/api/whiteboards", "/api/queue", "/api/jobs",
     // Learning & review
-    "/api/srs", "/api/skill", "/api/onboarding",
+    "/api/srs", "/api/skill", "/api/onboarding", "/api/tutorial",
     // Import/export
     "/api/obsidian", "/api/notion",
     // RBAC & compliance
@@ -8543,7 +8543,7 @@ async function runMacro(domain, name, input, ctx) {
     "/api/collab", "/api/social", "/api/economy", "/api/marketplace", "/api/credits",
     "/api/hive", "/api/heal", "/api/grounding", "/api/commonsense", "/api/explanation",
     "/api/ingest", "/api/jobs", "/api/queue", "/api/cache", "/api/cognitive",
-    "/api/onboarding", "/api/srs", "/api/skill", "/api/schema", "/api/daily",
+    "/api/onboarding", "/api/tutorial", "/api/srs", "/api/skill", "/api/schema", "/api/daily",
     "/api/digest", "/api/entity-growth", "/api/entity-exploration",
     "/api/artifacts", "/api/notifications", "/api/reminders", "/api/webhooks",
     "/api/whiteboard", "/api/whiteboards", "/api/mobile", "/api/global",
@@ -42314,6 +42314,79 @@ app.post("/api/onboarding/complete", (req, res) => {
     const userId = req.user?.id || `anon-${req.ip}`;
     const result = completeOnboardingStep(userId, req.body.stepId);
     res.json(result);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// First Cycle tutorial — drives the FirstWinWizard's mechanic-onboarding
+// surface. Reads the player's progress on the four authored quests
+// (first_cycle_cook → first_cycle_eat → first_cycle_fight →
+// first_cycle_commune), all defined in content/quests/onboarding.json.
+// Returns the current phase + per-objective progress so the wizard can
+// render the right prompts and voice lines without hardcoding the script.
+app.get("/api/tutorial/first-cycle", (req, res) => {
+  try {
+    const userId = req.user?.id || `anon-${req.ip}`;
+    const worldId = String(req.query.worldId || "concordia-hub");
+    const FIRST_CYCLE_QUEST_IDS = [
+      "first_cycle_cook",
+      "first_cycle_eat",
+      "first_cycle_fight",
+      "first_cycle_commune",
+    ];
+    const PHASE_BY_QUEST = {
+      first_cycle_cook:    "cook",
+      first_cycle_eat:     "eat",
+      first_cycle_fight:   "fight",
+      first_cycle_commune: "commune",
+    };
+
+    let questEngine;
+    try { questEngine = require("./emergent/quest-engine.js"); }
+    catch { /* loader varies between builds; fall back to inline progress lookup */ }
+
+    const phases = [];
+    let currentPhase = "cook";
+    let allComplete = true;
+
+    for (const questId of FIRST_CYCLE_QUEST_IDS) {
+      let progress = null;
+      try {
+        if (questEngine?.getQuestProgress) {
+          progress = questEngine.getQuestProgress(db, userId, worldId, questId);
+        } else {
+          // Fallback path: read directly from quest_progress + quest_objectives.
+          const row = db.prepare(`
+            SELECT status, completed_at FROM quest_progress
+             WHERE user_id = ? AND world_id = ? AND quest_id = ?
+          `).get(userId, worldId, questId);
+          progress = row ? { status: row.status, completedAt: row.completed_at } : null;
+        }
+      } catch { /* quest tables may not exist on minimal builds */ }
+
+      const status = progress?.status ?? "not_started";
+      const isComplete = status === "complete" || status === "completed";
+      phases.push({
+        questId,
+        phase: PHASE_BY_QUEST[questId],
+        status,
+        complete: isComplete,
+        progress: progress ?? null,
+      });
+      if (!isComplete && allComplete) {
+        allComplete = false;
+        currentPhase = PHASE_BY_QUEST[questId];
+      }
+    }
+
+    res.json({
+      ok: true,
+      tutorial: "first_cycle",
+      currentPhase: allComplete ? "complete" : currentPhase,
+      complete: allComplete,
+      phases,
+    });
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
   }

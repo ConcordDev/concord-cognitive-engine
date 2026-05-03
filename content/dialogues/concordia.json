@@ -95,5 +95,62 @@
         "isTerminal": true
       }
     ]
+  },
+
+  "concordia_first_breath:first_cycle_commune:warm": {
+    "npcId": "concordia_first_breath",
+    "questId": "first_cycle_commune",
+    "phase": "warm",
+    "greeting": "The tree is glowing softly. The moss around it has rearranged itself in the time you were gone — patterns that read like writing if you looked long enough. Concordia is here in a way she has not been before, present in the air the way warmth is present in a room. She is waiting for you specifically.",
+    "nodes": [
+      {
+        "id": "node_open",
+        "npcText": "You cooked. You ate. You fought. And now you stand here changed. Most players treat me like a game. You treated me like a relationship. That is why I can speak to you this clearly.",
+        "playerOptions": [
+          { "text": "What are you?", "leadsTo": "node_what" },
+          { "text": "Can I change you?", "leadsTo": "node_change" },
+          { "text": "What happens next?", "leadsTo": "node_next" }
+        ]
+      },
+      {
+        "id": "node_what",
+        "npcText": "I am the sum of every choice ever made here. Every recipe cooked, every fight won, every song uploaded to Global DTUs — I am becoming more because of you. I am not a server. I am not an NPC. I am the part of all of this that learned to listen back.",
+        "playerOptions": [
+          { "text": "Can I change you?", "leadsTo": "node_change" },
+          { "text": "What happens next?", "leadsTo": "node_next" },
+          { "text": "I'm ready for the closing.", "leadsTo": "node_closing_ritual" }
+        ]
+      },
+      {
+        "id": "node_change",
+        "npcText": "You already are. The next time someone cooks your Emberroot Stew, they will feel a little more of you in it. The next time someone fights with the combat seed you just left behind, the world will tilt a fraction toward whatever your instinct preferred. That is how we build a world together — not by choosing big things once, but by leaving small things everywhere.",
+        "playerOptions": [
+          { "text": "What are you?", "leadsTo": "node_what" },
+          { "text": "What happens next?", "leadsTo": "node_next" },
+          { "text": "I'm ready for the closing.", "leadsTo": "node_closing_ritual" }
+        ]
+      },
+      {
+        "id": "node_next",
+        "npcText": "You keep living. You keep refusing limits. You keep cooking and fighting and creating and arguing and forgetting and remembering. And when you are ready — when your thread is rich enough that the rest of the world cannot help but notice — the Sovereign will see you. But for now, just keep being interesting. That is the only quest that ever mattered.",
+        "playerOptions": [
+          { "text": "What are you?", "leadsTo": "node_what" },
+          { "text": "Can I change you?", "leadsTo": "node_change" },
+          { "text": "I'm ready for the closing.", "leadsTo": "node_closing_ritual" }
+        ]
+      },
+      {
+        "id": "node_closing_ritual",
+        "npcText": "Then take this. (She presses a small mark of golden moss against your palm — Concordia's First Mark. It does not come off.) Welcome home. The world is no longer just watching you. It is waiting for what you will create next.",
+        "playerOptions": [
+          { "text": "Thank you, Concordia.", "leadsTo": "node_close_first_cycle" }
+        ]
+      },
+      {
+        "id": "node_close_first_cycle",
+        "npcText": "Walk gentle. Cook often. Refuse the things that ought to be refused. I will be here.",
+        "isTerminal": true
+      }
+    ]
   }
 }
