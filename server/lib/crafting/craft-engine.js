@@ -123,10 +123,20 @@ export function executeCraft(db, userId, worldId, recipeId, opts = {}) {
     // 9. Create output DTU
     const playerCraftingLevel = _bestSkillLevel(playerSkills, 'crafting');
     const spec = recipeData.spec || {};
+    // Quality multiplier from the crafting minigame (0.5–1.5 typical range).
+    // Applied to all numeric stat fields so a perfect minigame run produces
+    // measurably better gear than a mashed one.
+    const qualityMultiplier = Math.max(0.5, Math.min(2.0, opts.qualityMultiplier ?? 1.0));
+    const baseStats = estimateStats(spec, playerSkills, worldRules);
+    const scaledStats = {};
+    for (const [k, v] of Object.entries(baseStats || {})) {
+      scaledStats[k] = typeof v === 'number' ? Math.round(v * qualityMultiplier * 100) / 100 : v;
+    }
     const outputData = {
       crafted_in_world: worldId,
       recipe_id: recipeId,
-      stats: estimateStats(spec, playerSkills, worldRules),
+      stats: scaledStats,
+      quality_multiplier: qualityMultiplier,
       enchantments: spec.enchantments || [],
       properties: spec.properties || {},
     };
