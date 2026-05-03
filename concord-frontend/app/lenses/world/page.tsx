@@ -2019,8 +2019,22 @@ export default function WorldLensPage() {
         const element =
           (data.element as 'fire' | 'ice' | 'lightning' | 'poison' | 'physical') ?? 'physical';
         emitHitNumber(data.damage, element, !!data.isCrit);
-        emitScreenShake(data.isCrit ? 5 : Math.min(4, Math.ceil(data.damage / 20)));
-        emitHitStop(data.isCrit ? 140 : 70);
+        // Severity tiers control hit-pause + zoom strength
+        const severity: 'light' | 'heavy' | 'crit' = data.isCrit
+          ? 'crit'
+          : data.damage > 25
+            ? 'heavy'
+            : 'light';
+        // Type-specific shake amplitude — crits lean harder than raw damage
+        const shakeAmp = data.isCrit
+          ? 6
+          : data.damage > 25
+            ? Math.min(5, 3 + Math.floor(data.damage / 30))
+            : Math.min(3, Math.ceil(data.damage / 18));
+        emitScreenShake(shakeAmp);
+        // Hit-stop duration scales with severity for genuine pause-on-crit feel
+        const hitStopMs = data.isCrit ? 160 : data.damage > 25 ? 110 : 70;
+        emitHitStop(hitStopMs, severity);
         // Phase F fix 3: pass damage magnitude + target world position so
         // GameJuice can route through spatial audio (HRTF + occlusion) and
         // scale visual feedback intensity by hit weight.
@@ -2087,8 +2101,8 @@ export default function WorldLensPage() {
 
       if (data.targetKilled) {
         pushCombatLog(`${targetName} defeated!`, 'death');
-        emitScreenShake(6);
-        emitHitStop(200);
+        emitScreenShake(7);
+        emitHitStop(260, 'kill');
         // Phase F fix 3: spatial-position the kill SFX so it plays from where
         // the kill happened rather than as a flat 2D blast.
         const killPos = combatStateRef.current.target?.position;
@@ -2158,8 +2172,19 @@ export default function WorldLensPage() {
         damageFlash: true,
       }));
       pushCombatLog(`Took ${data.damage} damage${data.isCrit ? ' (crit)' : ''}.`, 'damage-taken');
-      emitScreenShake(data.isCrit ? 7 : Math.min(5, Math.ceil(data.damage / 15)));
-      emitHitStop(data.isCrit ? 120 : 60);
+      // Player-taken hits shake harder than dealt hits (you feel your own pain)
+      const incomingShake = data.isCrit
+        ? 8
+        : data.damage > 25
+          ? Math.min(6, 4 + Math.floor(data.damage / 25))
+          : Math.min(4, Math.ceil(data.damage / 15));
+      emitScreenShake(incomingShake);
+      const incomingSeverity: 'light' | 'heavy' | 'crit' = data.isCrit
+        ? 'crit'
+        : data.damage > 25
+          ? 'heavy'
+          : 'light';
+      emitHitStop(data.isCrit ? 150 : data.damage > 25 ? 100 : 60, incomingSeverity);
       window.dispatchEvent(
         new CustomEvent('concordia:game-juice', {
           detail: { trigger: 'combat-hit' },
