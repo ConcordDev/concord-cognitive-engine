@@ -106,7 +106,14 @@ module.exports = withSentryConfig(nextConfig, {
   silent: true,
   org: process.env.SENTRY_ORG || "",
   project: process.env.SENTRY_PROJECT || "concord-frontend",
-  disableLogger: true,
+  // disableLogger was deprecated; the SDK now reads
+  // webpack.treeshake.removeDebugLogging from the bundler config. Sentry's
+  // own bundler-plugin still strips debug logs when this flag is on, so we
+  // keep behaviour parity. Remove this flag once the warning is gone in a
+  // future SDK release.
+  bundleSizeOptimizations: {
+    excludeDebugStatements: true,
+  },
   tunnelRoute: "/monitoring",
   hideSourceMaps: true,
   widenClientFileUpload: false,
