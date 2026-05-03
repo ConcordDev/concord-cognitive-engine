@@ -21,6 +21,18 @@
 
 import crypto from "crypto";
 
+// ── DB Registration ──────────────────────────────────────────────────────────
+//
+// quest-engine is in-memory and intentionally has no DB dependency. The
+// reward-grant pathway needs a writable db handle though, so the server
+// boot calls setQuestRewardDB(db) once after migrations finish. Without
+// this registration, quest completion still fires the realtime emit and
+// breadcrumbs unlock — the rewards just don't grant.
+
+let _rewardDB = null;
+
+export function setQuestRewardDB(db) { _rewardDB = db; }
+
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
 function uid(prefix = "id") {
@@ -161,6 +173,12 @@ export function createQuest(title, config = {}) {
       estimatedTime: config.estimatedTime || null,
       steps,
       breadcrumbs,
+      // Quest-level rewards block — passed through from authored JSON. The
+      // completion handler grants these via lib/quest-rewards.grantQuestRewards
+      // when the final step lands. Unknown shape is tolerated; missing fields
+      // simply become no-op grants.
+      rewards: (config.rewards && typeof config.rewards === "object") ? config.rewards : {},
+      authoredId: typeof config.authoredId === "string" ? config.authoredId : null,
       progress: {
         userId: null,
         startedAt: null,
@@ -374,6 +392,20 @@ export function completeStep(questId, stepId) {
         if (userId && io) io.to(`user:${userId}`).emit("quest:completed", payload);
         else if (typeof globalThis.realtimeEmit === "function") globalThis.realtimeEmit("quest:completed", payload);
       } catch { /* realtime best-effort */ }
+
+      // Quest-level reward grant. Requires both a known userId on the quest
+      // progress and a registered db reference (set at server boot via
+      // setQuestRewardDB). Idempotent at the lib layer; safe to call on
+      // re-completion attempts.
+      try {
+        const userId = quest.progress?.userId;
+        const db = _rewardDB;
+        if (userId && db && quest.rewards && Object.keys(quest.rewards).length > 0) {
+          import("../lib/quest-rewards.js")
+            .then((m) => m.grantQuestRewards(db, userId, quest.id, quest.rewards))
+            .catch(() => { /* grant best-effort — log inside the lib */ });
+        }
+      } catch { /* reward grant best-effort */ }
     }
 
     return {

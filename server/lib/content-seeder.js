@@ -196,6 +196,10 @@ function seedQuestFile(quests) {
         prerequisites: quest.prerequisites ?? [],
         followUp:      quest.follow_up_quest_ids ?? [],
         tags:          quest.tags ?? [],
+        // Quest-level rewards block forwarded to the engine so the
+        // completion handler can grant gold + named items + skill xp.
+        rewards:       quest.rewards ?? {},
+        authoredId:    quest.id,
       });
 
       if (result.ok) {

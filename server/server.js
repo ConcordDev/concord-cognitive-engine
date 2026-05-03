@@ -26403,6 +26403,14 @@ if (db) {
     seedWorlds(db);
     seedToolRecipes(db);
     seedLensPortals(db, "concordia-hub");
+    // Register db with the quest engine so completion grants can write
+    // currency / inventory / skill xp via lib/quest-rewards. Must run before
+    // seedContent because seeded quests can be picked up + completed any
+    // time after registration.
+    try {
+      const qe = await import("./emergent/quest-engine.js");
+      qe.setQuestRewardDB?.(db);
+    } catch (e) { console.warn("[quest-engine]", e.message); }
     // Seed authored world content (factions, NPCs, lore, quest chains) into
     // in-memory systems. Must run after world seed so history engine is ready.
     try { seedContent({ db }); } catch (e) { console.warn("[content-seeder]", e.message); }
