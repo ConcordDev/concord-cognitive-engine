@@ -4,7 +4,10 @@
 // stores learned patterns as MEGA DTU candidates, emits insights via WebSocket.
 
 const LEARNING_STATE = new Map(); // domain -> { lastRunAt, patterns, insightCount }
-const MAX_PATTERNS_PER_DOMAIN = 50;
+// Bumped 50 → 500 patterns/domain for 32GB-heap deployments. Each lens
+// learns more patterns before LRU eviction kicks in; richer cross-lens
+// signal for the meta-derivation engine.
+const MAX_PATTERNS_PER_DOMAIN = Number(process.env.CONCORD_LENS_PATTERNS_PER_DOMAIN) || 500;
 
 function ensureLearningState(domain) {
   if (!LEARNING_STATE.has(domain)) {

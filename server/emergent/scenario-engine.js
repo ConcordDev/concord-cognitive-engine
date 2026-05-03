@@ -19,9 +19,12 @@ import logger from "../logger.js";
 
 // ── Configuration ────────────────────────────────────────────────────────────
 
-const MAX_VARIABLES = 20;
-const MAX_STEPS = 50;
-const MAX_SCENARIOS_PER_USER = 100;
+// Bumped for 32GB-heap deployments: scenarios used to be capped because
+// they could each pin 50 LLM-derived steps in memory; with the larger
+// heap and faster GPU brains the constraint relaxes.
+const MAX_VARIABLES = Number(process.env.CONCORD_SCENARIO_VARS) || 100;
+const MAX_STEPS = Number(process.env.CONCORD_SCENARIO_STEPS) || 200;
+const MAX_SCENARIOS_PER_USER = Number(process.env.CONCORD_SCENARIOS_PER_USER) || 1000;
 
 /** Variable types supported by the engine */
 const VARIABLE_TYPES = {

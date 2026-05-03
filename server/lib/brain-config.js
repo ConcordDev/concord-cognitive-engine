@@ -13,7 +13,10 @@ export const BRAIN_CONFIG = Object.freeze({
     temperature: 0.7,
     timeout: 45000,    // GPU inference is faster — tighten to fail fast on real errors
     priority: 1,       // CRITICAL — user-facing
-    maxConcurrent: 3,  // GPU can handle parallel conscious thoughts
+    // Bumped 3 → 8 to match OLLAMA_NUM_PARALLEL=8 on the conscious
+    // service. Anything lower bottlenecks the JS queue while the GPU
+    // sits idle.
+    maxConcurrent: Number(process.env.BRAIN_CONSCIOUS_CONCURRENT) || 8,
     contextWindow: 32768,
     maxTokens: 4096,   // Full output — let it think
   },
@@ -24,7 +27,9 @@ export const BRAIN_CONFIG = Object.freeze({
     temperature: 0.85,
     timeout: 30000,    // GPU: faster inference, tighter timeout
     priority: 2,       // NORMAL — autonomous background
-    maxConcurrent: 4,  // GPU: autogen + dreams + evolution + entity teaching
+    // Bumped 4 → 12 to match OLLAMA_NUM_PARALLEL=12 on the
+    // subconscious service.
+    maxConcurrent: Number(process.env.BRAIN_SUBCONSCIOUS_CONCURRENT) || 12,
     contextWindow: 8192,
     maxTokens: 1200,   // GPU: 7B brain can generate longer, more coherent DTUs
   },
@@ -35,7 +40,9 @@ export const BRAIN_CONFIG = Object.freeze({
     temperature: 0.3,
     timeout: 20000,    // GPU: fast 3B model, tight timeout
     priority: 3,       // LOW — support tasks
-    maxConcurrent: 6,  // GPU: entities spam lens/action calls, needs most parallelism
+    // Bumped 6 → 16 to match OLLAMA_NUM_PARALLEL=16 on the utility
+    // service. Lens action spam doesn't queue at the JS layer anymore.
+    maxConcurrent: Number(process.env.BRAIN_UTILITY_CONCURRENT) || 16,
     contextWindow: 16384,
     maxTokens: 800,    // GPU: more complete outputs for entity actions
   },
@@ -46,7 +53,8 @@ export const BRAIN_CONFIG = Object.freeze({
     temperature: 0.1,
     timeout: 10000,    // GPU: 1.5B repair brain is fast
     priority: 0,       // HIGHEST — system health
-    maxConcurrent: 2,  // Stays same — repair is low-frequency
+    // Bumped 2 → 4 to match OLLAMA_NUM_PARALLEL=4 on repair.
+    maxConcurrent: Number(process.env.BRAIN_REPAIR_CONCURRENT) || 4,
     contextWindow: 4096,
     maxTokens: 500,    // GPU: 1.5B can actually articulate error analysis now
   },

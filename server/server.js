@@ -12,8 +12,15 @@
  */
 
 // === DATA DIRECTORY (canonical) ===
+// Resolution order:
+//   1. DATA_DIR env var (explicit override)
+//   2. /workspace/concord-data — RunPod's persistent network volume.
+//      If /workspace exists we treat the pod as a RunPod deployment and
+//      put DB + state + artifacts on the volume that survives pod restart.
+//   3. ./data (local dev fallback)
 /** @type {string} Data directory for persistent storage */
-const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), 'data');
+const DATA_DIR = process.env.DATA_DIR
+  || (fs.existsSync('/workspace') ? '/workspace/concord-data' : path.join(process.cwd(), 'data'));
 // Ensure required directories exist early — prevents crash on first write
 try { fs.mkdirSync(DATA_DIR, { recursive: true }); } catch { /* intentional */ }
 try { fs.mkdirSync(path.join(DATA_DIR, 'backups'), { recursive: true }); } catch { /* intentional */ }
@@ -1401,9 +1408,9 @@ const CONSOLIDATION = Object.freeze({
   HYPER_MAX_PER_CYCLE: 4,         // was 2 — accelerate hierarchical compression
   COVERAGE_THRESHOLD: 0.8,        // MEGA must cover 80% of source claims
   AUTHORITY_PRESERVATION: 0.9,    // MEGA authority >= 90% of avg source authority
-  ARCHIVE_BATCH_SIZE: 100,        // was 50 — larger batches ok with more RAM
+  ARCHIVE_BATCH_SIZE: Number(process.env.CONCORD_ARCHIVE_BATCH_SIZE) || 2000,    // bumped 100 → 2000 for 32GB
   REHYDRATION_CACHE_TTL: 300000,  // 5 minutes cache for rehydrated DTUs
-  REHYDRATION_CACHE_MAX: 200,     // was 100 — more RAM available
+  REHYDRATION_CACHE_MAX: Number(process.env.CONCORD_REHYDRATION_CACHE_MAX) || 5000, // bumped 200 → 5000 for 32GB
   HEAP_TARGET_PERCENT: 0.75,      // was 0.65 — more RAM available
   HEAP_WARNING_PERCENT: 0.85,     // was 0.80
   HEAP_CRITICAL_PERCENT: 0.90,    // aggressive consolidation at 90%
@@ -3541,7 +3548,12 @@ const STATE = {
     stats: { cronTicks: 0, metaProposals: 0, metaCommits: 0, federationRx: 0, federationTx: 0 }
   },
   settings: {
-    heartbeatMs: 10000,
+    // Bumped from 10s → 5s for 32GB / RTX PRO 4500 deployments. The
+    // heartbeat fans out across registered modules; each is independently
+    // try-caught and most are fast (under 100ms). 5s keeps emergent
+    // simulation responsive without overloading the GPU. Override via
+    // env CONCORD_HEARTBEAT_MS or the runtime settings macro.
+    heartbeatMs: Number(process.env.CONCORD_HEARTBEAT_MS) || 5000,
     heartbeatEnabled: true,
     autogenEnabled: true,
     dreamEnabled: true,
@@ -3629,11 +3641,20 @@ function initDatabase() {
     db.pragma("journal_mode = WAL");        // Concurrent readers + writer
     db.pragma("synchronous = NORMAL");      // Safe with WAL, 3-5× faster than FULL
     db.pragma("foreign_keys = ON");
-    db.pragma("mmap_size = 268435456");     // 256MB mmap — reduces syscall overhead on large worlds
-    db.pragma("cache_size = -32000");       // 32MB page cache
+    // Tuning bumped for 32GB-host deployments. mmap=4GB lets SQLite
+    // memory-map large tables (DTU substrate) directly so reads bypass
+    // the page cache entirely; cache=-1024MB (1GB negative = KB count
+    // is page count) holds frequently-touched pages in RAM. Override
+    // via env on smaller boxes.
+    const mmapMb = Number(process.env.CONCORD_SQLITE_MMAP_MB) || 4096;
+    const cacheMb = Number(process.env.CONCORD_SQLITE_CACHE_MB) || 1024;
+    const walPages = Number(process.env.CONCORD_SQLITE_WAL_AUTOCHECKPOINT_PAGES) || 10000;
+    db.pragma(`mmap_size = ${mmapMb * 1024 * 1024}`);
+    db.pragma(`cache_size = -${cacheMb * 1024}`);
     db.pragma("temp_store = MEMORY");       // Temp tables in RAM
     db.pragma("busy_timeout = 5000");       // Wait up to 5s before SQLITE_BUSY error
-    db.pragma("wal_autocheckpoint = 1000"); // Checkpoint every 1000 pages (~4MB)
+    db.pragma(`wal_autocheckpoint = ${walPages}`); // Checkpoint cadence
+    db.pragma("page_size = 8192");          // Larger pages amortize I/O on big rows (DTU body_json)
 
     // Create tables
     db.exec(`
@@ -5814,9 +5835,13 @@ function botGuardMiddleware(req, res, next) {
 const _CONCURRENCY = {
   active: new Map(), // operationType -> count
   limits: {
-    llm_call: Number(process.env.LLM_CONCURRENCY_LIMIT || 16),
-    bulk_import: 4,
-    simulation: 6,
+    // Bumped llm_call 16 → 64 for 32GB-heap + RTX PRO 4500 deployments;
+    // bulk_import 4 → 32 (heavy I/O + GPU embed work paralellizes well);
+    // simulation 6 → 32 (per-tick simulation jobs want to fan out so
+    // emergent modules don't queue behind each other).
+    llm_call:    Number(process.env.LLM_CONCURRENCY_LIMIT || 64),
+    bulk_import: Number(process.env.BULK_IMPORT_CONCURRENCY || 32),
+    simulation:  Number(process.env.SIM_CONCURRENCY || 32),
     ml_infer: 6,
   },
 
@@ -12197,35 +12222,92 @@ const EMBEDDINGS = {
   dim: 384 // default for all-MiniLM-L6-v2
 };
 
-// Initialize local embeddings (Xenova Transformers - runs in Node.js)
+// Initialize embeddings. Preferred path: Ollama-hosted embedding model
+// running on the GPU via the existing ollama-vision (or any Ollama)
+// service — Blackwell tensor cores + cuBLAS make this ~50× faster than
+// the CPU-bound Xenova fallback. Configure with:
+//   CONCORD_EMBED_BACKEND=ollama (default)
+//   CONCORD_EMBED_OLLAMA_URL=http://ollama-vision:11434
+//   CONCORD_EMBED_OLLAMA_MODEL=nomic-embed-text   (768-dim, fast)
+// Override CONCORD_EMBED_BACKEND=xenova to keep the CPU path (offline
+// dev, CI, deployments without GPU).
 async function initLocalEmbeddings() {
+  const backend = (process.env.CONCORD_EMBED_BACKEND || "ollama").toLowerCase();
+
+  if (backend === "ollama") {
+    const ollamaUrl = process.env.CONCORD_EMBED_OLLAMA_URL
+      || process.env.BRAIN_VISION_URL
+      || process.env.OLLAMA_URL
+      || "http://ollama-vision:11434";
+    const model = process.env.CONCORD_EMBED_OLLAMA_MODEL || "nomic-embed-text";
+    try {
+      // Probe with a short embedding so we fail fast if the model isn't
+      // pulled yet. The Ollama server auto-pulls on first request,
+      // which can be slow; we explicitly probe so the warmup happens
+      // up front instead of inside the first DTU index.
+      const probe = await fetch(`${ollamaUrl.replace(/\/$/, "")}/api/embeddings`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ model, prompt: "warmup" }),
+        signal: AbortSignal.timeout(60_000),
+      });
+      if (!probe.ok) throw new Error(`probe HTTP ${probe.status}`);
+      const probeBody = await probe.json();
+      const dim = Array.isArray(probeBody?.embedding) ? probeBody.embedding.length : 768;
+      EMBEDDINGS.backend = "ollama";
+      EMBEDDINGS.ollamaUrl = ollamaUrl;
+      EMBEDDINGS.ollamaModel = model;
+      EMBEDDINGS.enabled = true;
+      EMBEDDINGS.dim = dim;
+      structuredLog("info", "embeddings_loaded", { backend: "ollama", model, dim, url: ollamaUrl });
+      return { ok: true, backend: "ollama" };
+    } catch (e) {
+      structuredLog("warn", "embeddings_ollama_init_failed", { error: e.message, fallback: "xenova" });
+      // Fall through to Xenova fallback below.
+    }
+  }
+
+  // CPU fallback — kept for offline dev / deployments without a GPU.
   try {
     const { pipeline } = await import("@xenova/transformers").catch(() => ({}));
     if (!pipeline) {
       structuredLog("warn", "embeddings_unavailable", { reason: "transformers not installed" });
       return { ok: false, reason: "package_not_installed" };
     }
-
     EMBEDDINGS.model = await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2");
+    EMBEDDINGS.backend = "xenova";
     EMBEDDINGS.enabled = true;
     EMBEDDINGS.dim = 384;
-    structuredLog("info", "embeddings_loaded", { model: "all-MiniLM-L6-v2" });
-    return { ok: true };
+    structuredLog("info", "embeddings_loaded", { backend: "xenova", model: "all-MiniLM-L6-v2" });
+    return { ok: true, backend: "xenova" };
   } catch (e) {
     structuredLog("error", "embeddings_load_failed", { error: e.message });
     return { ok: false, error: String(e.message || e) };
   }
 }
 
-// Generate embedding for text (with circuit breaker)
+// Generate embedding for text (with circuit breaker). Routes through
+// whichever backend initLocalEmbeddings selected.
 async function generateEmbedding(text) {
-  if (!EMBEDDINGS.enabled || !EMBEDDINGS.model) {
-    return { ok: false, error: "Embeddings not enabled" };
-  }
+  if (!EMBEDDINGS.enabled) return { ok: false, error: "Embeddings not enabled" };
 
   try {
     return await _breakers.embeddings.call(
       async () => {
+        if (EMBEDDINGS.backend === "ollama") {
+          const res = await fetch(`${EMBEDDINGS.ollamaUrl.replace(/\/$/, "")}/api/embeddings`, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ model: EMBEDDINGS.ollamaModel, prompt: String(text).slice(0, 8000) }),
+            signal: AbortSignal.timeout(30_000),
+          });
+          if (!res.ok) throw new Error(`ollama embed HTTP ${res.status}`);
+          const j = await res.json();
+          if (!Array.isArray(j?.embedding)) throw new Error("ollama embed returned no embedding");
+          return { ok: true, embedding: j.embedding, dim: j.embedding.length };
+        }
+        // Xenova fallback path.
+        if (!EMBEDDINGS.model) return { ok: false, error: "embeddings_model_missing" };
         const output = await EMBEDDINGS.model(text, { pooling: "mean", normalize: true });
         const embedding = Array.from(output.data);
         return { ok: true, embedding, dim: embedding.length };
@@ -13036,7 +13118,7 @@ setTimeout(() => initLLMPipeline(), 100);
 
 // ── LLM Queue + Circuit Breakers ──────────────────────────────────────────
 const _llmQueue = createLLMQueue({
-  concurrency: parseInt(process.env.LLM_CONCURRENCY || "8", 10),
+  concurrency: parseInt(process.env.LLM_CONCURRENCY || "32", 10),
   maxQueueDepth: 200,
   onReject: (priority, reason) => {
     structuredLog("warn", "llm_queue_reject", { priority, reason });

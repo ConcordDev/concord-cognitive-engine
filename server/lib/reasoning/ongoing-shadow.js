@@ -21,7 +21,8 @@ const QUALITY_INSIGHT_THRESHOLD = 0.80; // minimum preservation ratio
 
 /** @type {Map<string, object>} */
 const _sessions = new Map();
-const MAX_SESSIONS = 500;
+// Bumped 500 → 10000 for 32GB-heap deployments.
+const MAX_SESSIONS = Number(process.env.CONCORD_ONGOING_SHADOW_SESSIONS) || 10_000;
 
 function _pruneOldSessions() {
   if (_sessions.size <= MAX_SESSIONS) return;

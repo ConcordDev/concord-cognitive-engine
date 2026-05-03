@@ -50,6 +50,27 @@ services:
       # 13b LLaVA at q4 to keep alongside the brains.
       - BRAIN_VISION_URL=${BRAIN_VISION_URL:-http://ollama-vision:11434}
       - BRAIN_VISION_MODEL=${BRAIN_VISION_MODEL:-llava:13b-v1.6-vicuna-q4_K_M}
+      # GPU embeddings via Ollama. nomic-embed-text is 768-dim and ~50×
+      # faster than the CPU Xenova fallback on this hardware.
+      - CONCORD_EMBED_BACKEND=${CONCORD_EMBED_BACKEND:-ollama}
+      - CONCORD_EMBED_OLLAMA_URL=${CONCORD_EMBED_OLLAMA_URL:-http://ollama-vision:11434}
+      - CONCORD_EMBED_OLLAMA_MODEL=${CONCORD_EMBED_OLLAMA_MODEL:-nomic-embed-text}
+      # Brain server-side concurrency — match OLLAMA_NUM_PARALLEL on each
+      # service. Override per env when running on smaller hardware.
+      - BRAIN_CONSCIOUS_CONCURRENT=${BRAIN_CONSCIOUS_CONCURRENT:-8}
+      - BRAIN_SUBCONSCIOUS_CONCURRENT=${BRAIN_SUBCONSCIOUS_CONCURRENT:-12}
+      - BRAIN_UTILITY_CONCURRENT=${BRAIN_UTILITY_CONCURRENT:-16}
+      - BRAIN_REPAIR_CONCURRENT=${BRAIN_REPAIR_CONCURRENT:-4}
+      - BRAIN_VISION_CONCURRENT=${BRAIN_VISION_CONCURRENT:-8}
+      - LLM_CONCURRENCY=${LLM_CONCURRENCY:-32}
+      - LLM_CONCURRENCY_LIMIT=${LLM_CONCURRENCY_LIMIT:-64}
+      # Heartbeat & emergent throttles
+      - CONCORD_HEARTBEAT_MS=${CONCORD_HEARTBEAT_MS:-5000}
+      - CONCORD_AGENT_TICK_CONCURRENT=${CONCORD_AGENT_TICK_CONCURRENT:-32}
+      - CONCORD_GHOST_THREADS_CONCURRENT=${CONCORD_GHOST_THREADS_CONCURRENT:-16}
+      # SQLite tuning
+      - CONCORD_SQLITE_MMAP_MB=${CONCORD_SQLITE_MMAP_MB:-4096}
+      - CONCORD_SQLITE_CACHE_MB=${CONCORD_SQLITE_CACHE_MB:-1024}
       # Auth — MUST set these in .env file
       - JWT_SECRET=${JWT_SECRET}
       - SESSION_SECRET=${SESSION_SECRET:-}

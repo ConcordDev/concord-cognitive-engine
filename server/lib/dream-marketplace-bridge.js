@@ -24,7 +24,8 @@
 import { vetDTUForPublish } from "./repair-brain.js";
 
 const DREAM_PROMOTION_FLOOR = 60;
-const MAX_PROMOTIONS_PER_CYCLE = 8;
+// Bumped 8 → 50 for 32GB / RTX PRO 4500 deployments. Override via env.
+const MAX_PROMOTIONS_PER_CYCLE = Number(process.env.CONCORD_DREAM_PROMOTIONS_PER_CYCLE) || 50;
 
 /**
  * Score a dream-produced candidate for marketplace promotion.

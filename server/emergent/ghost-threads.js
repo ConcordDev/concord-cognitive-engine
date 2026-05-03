@@ -29,8 +29,9 @@ const GHOST_THREAD_CONFIG = {
   maxInsights: 500,
   // Cooldown between ghost thread runs (ms)
   cooldownMs: 60_000,
-  // Maximum concurrent threads
-  maxConcurrent: 3,
+  // Maximum concurrent threads. Bumped 3 → 16 for 32GB / RTX PRO 4500
+  // deployments. Ghost threads are LLM-bound; the GPU can chew far more.
+  maxConcurrent: Number(process.env.CONCORD_GHOST_THREADS_CONCURRENT) || 16,
 };
 
 // ── Connection Patterns ──────────────────────────────────────────────────────
