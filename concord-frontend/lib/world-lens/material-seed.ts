@@ -8,7 +8,7 @@
 
 import type { MaterialDTU } from './types';
 
-export const SEED_MATERIALS: MaterialDTU[] = [
+export const MATERIALS_CATALOG: MaterialDTU[] = [
   // ── USB Composite Variants ────────────────────────────────────
   {
     id: 'mat-usb-a',

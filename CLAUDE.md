@@ -144,13 +144,13 @@ This section exists so future sessions don't repeat discovery work.
 - Realtime fast-path for public timeline posts (`timeline:post` socket event) and active-effect application (`player:effect-applied`)
 - DAW → soundscape ducking, world-scoped via `concordia:activeWorldId` localStorage hint
 - Crafting UI lens (`/lenses/crafting`) with Mine / Browse Marketplace / Author tabs + inline tier-pricing modal + ActiveEffectsBar HUD
-- Heartbeat-registry pattern — modules register at one site instead of editing `governorTick()`. Currently registered: social-npc-bridge (5), npc-knowledge-bridge (10), metrics-decay (20), fauna-spawner (30), eco-expiry-sweep (5), refusal-field-sweep (1), corpse-cleanup (10), dtu-compression-sweep (30), world-event-scheduler
+- Heartbeat-registry pattern — modules register at one site instead of editing `governorTick()`. Currently registered: social-npc-bridge (5), npc-knowledge-bridge (10), metrics-decay (20), fauna-spawner (30), eco-expiry-sweep (5), refusal-field-sweep (1), corpse-cleanup (10), world-event-scheduler
 - World event auto-generation — `server/lib/world-event-scheduler.js` registered at `server.js:29359-29365` via heartbeat, generating recurring events on cadence
 - New world lore seeding — `server/lib/content-seeder.js:36` `discoverSubWorlds()` auto-discovers any `content/world/<name>/` directory; new worlds with content seed automatically
 - GameJuice receives level-up via `LevelUpJuiceBridge.tsx`; combat events via CombatHUD dispatch
 - NPC click → dialogue wired: `ConcordiaScene.tsx:892` raycaster → `POST /api/worlds/:worldId/npcs/:npcId/dialogue` (`routes/worlds.js:805`) → `DialoguePanel.tsx`
 - Player trade fully implemented in `server/lib/player-trade.js` (initiate/offer/ready socket flow)
-- DTU auto-compression — `server/emergent/dtu-compression-sweep.js` registered at heartbeat frequency 30 ticks; calls existing `compressToDMega()` and `compressToHyper()` over candidate cohorts
+- DTU auto-compression — wired inline in `governorTick` at `server.js:28970-29061`. Every `TICK_FREQUENCIES.CONSOLIDATION` (30) ticks: cluster regular DTUs into MEGAs via `runMacro("dtu","cluster")` → `runMacro("dtu","gapPromote")`, validate via `validateConsolidationQuality`, transfer edges via `transferEdgesToConsolidated`, archive sources via `demoteToArchive`, then repeat for MEGA→HYPER when MEGA population ≥ `HYPER_MIN_POPULATION` (15).
 
 ### Built but not yet wired to gameplay
 | System | Location | Missing connection |
@@ -189,7 +189,7 @@ This section exists so future sessions don't repeat discovery work.
 - **Heartbeat modules must never throw.** Always wrap in `try/catch`.
 - **DTU originals are tombstoned by the forgetting-engine retention pathway** (`server/emergent/forgetting-engine.js:134, 155`), preserving lineage. The user-initiated `dtu:deleted` event hard-deletes; do not extend hard-delete paths to retention sweeps.
 - **NPC secrets (narrative_context.secret) must not be passed to LLM prompts.** They are for human authors and branch conditions only. The narrative bridge enforces this at `server/lib/narrative-bridge.js:147`.
-- **DTU consolidation is automatic** via `server/emergent/dtu-compression-sweep.js` heartbeat (every 30 ticks). MEGA cluster size 5–20, HYPER MEGA cluster size 3–10. Constants at `server.js:1399-1419`. Manual `compressToDMega()` / `compressToHyper()` still callable from macros.
+- **DTU consolidation is automatic** via inline pipeline in `governorTick` at `server.js:28970-29061` (every `TICK_FREQUENCIES.CONSOLIDATION = 30` ticks). Forms MEGAs from regular DTU clusters (size 5–20), then HYPERs from MEGA clusters (size 3–10) once MEGA population ≥ 15. Constants at `server.js:1399-1419`. Manual `compressToDMega()` / `compressToHyper()` (`server/economy/dtu-pipeline.js:326, 399`) still callable from macros.
 - **Refusal Field glyph algebra is decorative today.** `server/lib/refusal-field.js:62-63` wraps glyph computation in try/catch with comment "glyph is decorative — never block the field". Refusal mechanics are enforced by the `FIELD_KINDS` table, not the algebra. Migrating this to load-bearing requires a deliberate redesign.
 - Migrations are append-only. Never modify an existing migration file.
 - `CONCORD_NO_LISTEN=true` + `NODE_ENV=test` both suppress port binding for tests.
