@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useCallback, useRef, useState } from 'react';
+import React, { createContext, useContext, useCallback, useEffect, useRef, useState } from 'react';
 
 const panel = 'bg-black/80 backdrop-blur-sm border border-white/10 rounded-lg';
 
@@ -15,7 +15,16 @@ export type AvatarAnimation =
   | 'craft'
   | 'sit'
   | 'wave'
-  | 'celebrate';
+  | 'celebrate'
+  | 'attack-light'
+  | 'attack-heavy'
+  | 'block'
+  | 'dodge-left'
+  | 'dodge-right'
+  | 'dodge-back'
+  | 'parry'
+  | 'hit-flinch'
+  | 'death';
 
 export type NPCOccupation =
   | 'blacksmith'
@@ -75,15 +84,38 @@ export interface AnimationManagerAPI {
 // ── Transition map ────────────────────────────────────────────────
 
 const avatarTransitions: Record<AvatarAnimation, AvatarAnimation[]> = {
-  idle: ['walk', 'build', 'inspect', 'craft', 'sit', 'wave', 'celebrate'],
-  walk: ['idle', 'run', 'build', 'inspect'],
-  run: ['walk', 'idle'],
+  idle: ['walk', 'build', 'inspect', 'craft', 'sit', 'wave', 'celebrate', 'attack-light', 'attack-heavy', 'block', 'dodge-left', 'dodge-right', 'dodge-back', 'parry', 'hit-flinch', 'death'],
+  walk: ['idle', 'run', 'build', 'inspect', 'attack-light', 'block', 'dodge-left', 'dodge-right', 'dodge-back', 'hit-flinch'],
+  run: ['walk', 'idle', 'attack-light', 'dodge-back'],
   build: ['idle', 'walk'],
   inspect: ['idle', 'walk'],
   craft: ['idle'],
   sit: ['idle'],
   wave: ['idle'],
   celebrate: ['idle'],
+  // Combat states all return to idle (or chain into hit-flinch / death on damage).
+  'attack-light':  ['idle', 'attack-heavy', 'hit-flinch'],
+  'attack-heavy':  ['idle', 'hit-flinch'],
+  block:           ['idle', 'parry', 'hit-flinch'],
+  parry:           ['idle', 'attack-light'],
+  'dodge-left':    ['idle', 'walk'],
+  'dodge-right':   ['idle', 'walk'],
+  'dodge-back':    ['idle', 'walk'],
+  'hit-flinch':    ['idle', 'death'],
+  death:           ['death'],
+};
+
+// Per-animation duration & blend timing (ms). Combat is faster than locomotion.
+const animationTimings: Partial<Record<AvatarAnimation, { duration: number; blend: number }>> = {
+  'attack-light': { duration: 450,  blend: 80  },
+  'attack-heavy': { duration: 900,  blend: 120 },
+  block:          { duration: 1200, blend: 100 },
+  parry:          { duration: 350,  blend: 60  },
+  'dodge-left':   { duration: 500,  blend: 80  },
+  'dodge-right':  { duration: 500,  blend: 80  },
+  'dodge-back':   { duration: 600,  blend: 80  },
+  'hit-flinch':   { duration: 350,  blend: 60  },
+  death:          { duration: 2000, blend: 200 },
 };
 
 const constructionPhases: ConstructionPhase[] = [
@@ -176,8 +208,9 @@ export default function AnimationManager({ children, debug = false }: AnimationM
 
   const playAnimation = useCallback(
     (entityId: string, animation: AvatarAnimation | NPCAnimation) => {
-      const blendTime = 150; // ms blend between states
-      const duration = 2000; // default animation cycle
+      const timing = animationTimings[animation as AvatarAnimation];
+      const blendTime = timing?.blend ?? 150;
+      const duration  = timing?.duration ?? 2000;
 
       const item: AnimationQueueItem = {
         id: `${entityId}-${animation}-${Date.now()}`,
@@ -261,6 +294,34 @@ export default function AnimationManager({ children, debug = false }: AnimationM
       });
     }, 50);
   }, []);
+
+  // Subscribe to global combat-anim events so callers (combat handlers, AI,
+  // network) can drive animations without holding the context ref.
+  useEffect(() => {
+    const handler = (ev: Event) => {
+      const detail = (ev as CustomEvent).detail as {
+        entityId?: string;
+        animation?: string;
+      } | undefined;
+      if (!detail?.entityId || !detail?.animation) return;
+      playAnimation(detail.entityId, detail.animation as AvatarAnimation);
+    };
+    window.addEventListener('concordia:combat-anim', handler);
+    // Hit-reaction events also drive a flinch animation on the target.
+    const hitHandler = (ev: Event) => {
+      const detail = (ev as CustomEvent).detail as {
+        targetId?: string;
+        severity?: 'light' | 'heavy' | 'crit';
+      } | undefined;
+      if (!detail?.targetId) return;
+      playAnimation(detail.targetId, detail.severity === 'crit' ? 'death' : 'hit-flinch');
+    };
+    window.addEventListener('concordia:hit-reaction', hitHandler);
+    return () => {
+      window.removeEventListener('concordia:combat-anim', handler);
+      window.removeEventListener('concordia:hit-reaction', hitHandler);
+    };
+  }, [playAnimation]);
 
   const api: AnimationManagerAPI = {
     playAnimation,

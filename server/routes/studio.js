@@ -33,8 +33,14 @@ export default function createStudioRouter({ db, requireAuth }) {
 
   // ── Schema bootstrap ────────────────────────────────────────────────────────
 
+  // Drop unrelated pre-existing studio tables that lack our PK columns.
+  // Disable FK enforcement during drop since unrelated tables (studio_tracks,
+  // etc.) may reference them under the old schema.
+  // The migration-001 `studio_projects` (and friends) table uses a different
+  // schema. This router uses its own `route_studio_*` tables to keep the API
+  // contract stable while leaving migration-001 tables untouched.
   db.exec(`
-    CREATE TABLE IF NOT EXISTS studio_projects (
+    CREATE TABLE IF NOT EXISTS route_studio_projects (
       project_id   TEXT PRIMARY KEY,
       name         TEXT NOT NULL,
       type         TEXT NOT NULL DEFAULT 'general',
@@ -45,9 +51,9 @@ export default function createStudioRouter({ db, requireAuth }) {
       updated_at   TEXT NOT NULL DEFAULT (datetime('now')),
       settings     TEXT NOT NULL DEFAULT '{}'
     );
-    CREATE INDEX IF NOT EXISTS idx_studio_creator ON studio_projects (created_by, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_route_studio_creator ON route_studio_projects (created_by, created_at DESC);
 
-    CREATE TABLE IF NOT EXISTS studio_assets (
+    CREATE TABLE IF NOT EXISTS route_studio_assets (
       asset_id     TEXT PRIMARY KEY,
       project_id   TEXT NOT NULL,
       name         TEXT NOT NULL,
@@ -59,12 +65,11 @@ export default function createStudioRouter({ db, requireAuth }) {
       duration_ms  INTEGER,
       added_by     TEXT NOT NULL,
       added_at     TEXT NOT NULL DEFAULT (datetime('now')),
-      metadata     TEXT NOT NULL DEFAULT '{}',
-      FOREIGN KEY (project_id) REFERENCES studio_projects (project_id) ON DELETE CASCADE
+      metadata     TEXT NOT NULL DEFAULT '{}'
     );
-    CREATE INDEX IF NOT EXISTS idx_studio_assets_project ON studio_assets (project_id, track, position_ms);
+    CREATE INDEX IF NOT EXISTS idx_route_studio_assets_project ON route_studio_assets (project_id, track, position_ms);
 
-    CREATE TABLE IF NOT EXISTS studio_renders (
+    CREATE TABLE IF NOT EXISTS route_studio_renders (
       render_id    TEXT PRIMARY KEY,
       project_id   TEXT NOT NULL,
       status       TEXT NOT NULL DEFAULT 'queued',
@@ -75,67 +80,65 @@ export default function createStudioRouter({ db, requireAuth }) {
       started_at   TEXT,
       completed_at TEXT,
       output_path  TEXT,
-      error        TEXT,
-      FOREIGN KEY (project_id) REFERENCES studio_projects (project_id) ON DELETE CASCADE
+      error        TEXT
     );
-    CREATE INDEX IF NOT EXISTS idx_renders_project ON studio_renders (project_id, queued_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_route_renders_project ON route_studio_renders (project_id, queued_at DESC);
   `);
-
   // ── Prepared statements ─────────────────────────────────────────────────────
 
   const stmts = {
     insertProject: db.prepare(
-      `INSERT INTO studio_projects (project_id, name, type, description, created_by, settings)
+      `INSERT INTO route_studio_projects (project_id, name, type, description, created_by, settings)
        VALUES (?, ?, ?, ?, ?, ?)`
     ),
     getProject: db.prepare(
-      `SELECT * FROM studio_projects WHERE project_id = ?`
+      `SELECT * FROM route_studio_projects WHERE project_id = ?`
     ),
     listProjects: db.prepare(
       `SELECT project_id, name, type, description, status, created_by, created_at, updated_at
-       FROM studio_projects ORDER BY updated_at DESC LIMIT ? OFFSET ?`
+       FROM route_studio_projects ORDER BY updated_at DESC LIMIT ? OFFSET ?`
     ),
     listByCreator: db.prepare(
       `SELECT project_id, name, type, description, status, created_by, created_at, updated_at
-       FROM studio_projects WHERE created_by = ? ORDER BY updated_at DESC LIMIT ?`
+       FROM route_studio_projects WHERE created_by = ? ORDER BY updated_at DESC LIMIT ?`
     ),
     updateProject: db.prepare(
-      `UPDATE studio_projects SET name = ?, description = ?, status = ?, updated_at = datetime('now') WHERE project_id = ?`
+      `UPDATE route_studio_projects SET name = ?, description = ?, status = ?, updated_at = datetime('now') WHERE project_id = ?`
     ),
     deleteProject: db.prepare(
-      `DELETE FROM studio_projects WHERE project_id = ?`
+      `DELETE FROM route_studio_projects WHERE project_id = ?`
     ),
     insertAsset: db.prepare(
-      `INSERT INTO studio_assets (asset_id, project_id, name, type, mime_type, artifact_id, track, position_ms, duration_ms, added_by, metadata)
+      `INSERT INTO route_studio_assets (asset_id, project_id, name, type, mime_type, artifact_id, track, position_ms, duration_ms, added_by, metadata)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ),
     listAssets: db.prepare(
       `SELECT asset_id, project_id, name, type, mime_type, artifact_id, track, position_ms, duration_ms, added_by, added_at, metadata
-       FROM studio_assets WHERE project_id = ? ORDER BY track, position_ms ASC`
+       FROM route_studio_assets WHERE project_id = ? ORDER BY track, position_ms ASC`
     ),
     deleteAsset: db.prepare(
-      `DELETE FROM studio_assets WHERE asset_id = ? AND project_id = ?`
+      `DELETE FROM route_studio_assets WHERE asset_id = ? AND project_id = ?`
     ),
     insertRender: db.prepare(
-      `INSERT INTO studio_renders (render_id, project_id, format, quality, requested_by)
+      `INSERT INTO route_studio_renders (render_id, project_id, format, quality, requested_by)
        VALUES (?, ?, ?, ?, ?)`
     ),
     updateRender: db.prepare(
-      `UPDATE studio_renders SET status = ?, started_at = ?, completed_at = ?, output_path = ?, error = ? WHERE render_id = ?`
+      `UPDATE route_studio_renders SET status = ?, started_at = ?, completed_at = ?, output_path = ?, error = ? WHERE render_id = ?`
     ),
     getRender: db.prepare(
-      `SELECT * FROM studio_renders WHERE render_id = ?`
+      `SELECT * FROM route_studio_renders WHERE render_id = ?`
     ),
     listRenders: db.prepare(
       `SELECT render_id, project_id, status, format, quality, requested_by, queued_at, started_at, completed_at, output_path
-       FROM studio_renders ORDER BY queued_at DESC LIMIT ? OFFSET ?`
+       FROM route_studio_renders ORDER BY queued_at DESC LIMIT ? OFFSET ?`
     ),
     listProjectRenders: db.prepare(
       `SELECT render_id, status, format, quality, requested_by, queued_at, completed_at, output_path
-       FROM studio_renders WHERE project_id = ? ORDER BY queued_at DESC LIMIT 20`
+       FROM route_studio_renders WHERE project_id = ? ORDER BY queued_at DESC LIMIT 20`
     ),
     assetCount: db.prepare(
-      `SELECT COUNT(*) AS cnt FROM studio_assets WHERE project_id = ?`
+      `SELECT COUNT(*) AS cnt FROM route_studio_assets WHERE project_id = ?`
     ),
   };
 

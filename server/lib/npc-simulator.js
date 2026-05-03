@@ -41,12 +41,17 @@ const AGGRO_PROFILE = {
   criminal:  { alertRadius: 8,  pursuitRadius: 15, melee: 2, aggro: 0.6, canCallHelp: false },
   farmer:    { alertRadius: 6,  pursuitRadius: 0,  melee: 0, aggro: 0.0, canCallHelp: false },
   merchant:  { alertRadius: 6,  pursuitRadius: 0,  melee: 0, aggro: 0.0, canCallHelp: false },
+  // Frontier hostile creatures — aggressive on sight, longer pursuit.
+  wraith:      { alertRadius: 12, pursuitRadius: 22, melee: 2, aggro: 0.85, canCallHelp: false },
+  drift_eater: { alertRadius: 18, pursuitRadius: 30, melee: 3, aggro: 0.95, canCallHelp: true },
+  shard_husk:  { alertRadius: 15, pursuitRadius: 25, melee: 2, aggro: 0.8,  canCallHelp: false },
   default:   { alertRadius: 8,  pursuitRadius: 12, melee: 2, aggro: 0.3, canCallHelp: false },
 };
 
 // Base NPC attack damage by archetype (added on top of 8-15 base roll)
 const ARCHETYPE_DAMAGE_BONUS = {
   guard: 5, soldier: 8, bandit: 4,
+  wraith: 6, drift_eater: 12, shard_husk: 8,
 };
 
 // Rate-limit: minimum ms between NPC attacks on same target
@@ -367,6 +372,61 @@ function _performNPCAttack(npc, target, worldId, db, archetype) {
     applyDamageToPlayer(db, worldId, npc.id, 'npc', target.userId, damageResult, {
       element: 'none', bar_used: 'hp', bar_cost: damageResult.finalDamage,
     });
+
+    // Flow Combat: NPCs evolve their own styles. Record this attack into the
+    // flow substrate so the flow engine can derive personalized combos for
+    // this specific NPC + bias them toward whichever style worked best
+    // against this specific player. The recorder + engine handle
+    // fighter_kind='npc' identically to players.
+    try {
+      import("./combat/context-engine.js").then(({ detectCombatContext }) => {
+        const ctx = detectCombatContext({
+          position: { x: npc.location.x, y: npc.location.y ?? 0, z: npc.location.z },
+          groundY: 0,
+          grounded: true,
+        });
+        return import("./combat/flow-recorder.js").then(({ recordCombatFlow }) => {
+          // Per-player NPC memory: target id is stamped on every flow row so
+          // the engine can later query "what worked against this specific
+          // player?" via getRecentFlows({ context, targetId } filter).
+          const npcCombatState = _npcCombatState.get(npc.id);
+          const chainId = npcCombatState?._currentChain || `npc:${npc.id}:${target.userId}:${Date.now()}`;
+          if (npcCombatState) {
+            npcCombatState._currentChain = chainId;
+            npcCombatState._stepIndex = (npcCombatState._stepIndex || 0) + 1;
+          }
+          recordCombatFlow(db, {
+            fighterId:  npc.id,
+            fighterKind:'npc',
+            context:    ctx.context,
+            style:      archetype || ctx.styleHints[0] || null,
+            action:     totalDamage > 12 ? 'attack-heavy' : 'attack-light',
+            actionMeta: { archetype, vs: target.userId },
+            targetId:   target.userId,
+            hit:        damageResult.finalDamage > 0,
+            damage:     Number(damageResult.finalDamage || 0),
+            isCrit:     !!damageResult.isCrit,
+            chainId,
+            stepIndex:  npcCombatState?._stepIndex ?? 0,
+          });
+          // 1-in-12 attacks trigger an evolution pass for this NPC. Lower
+          // frequency than players to keep per-tick CPU bounded across many
+          // NPCs simultaneously.
+          if (Math.random() < 0.083) {
+            return import("./combat/flow-engine.js").then(({ evolveFighterCombos }) => {
+              const r = evolveFighterCombos(db, npc.id, "npc");
+              if (r?.ok && r.evolved.some((e) => e.evolvedNow)) {
+                const io = globalThis._concordREALTIME?.io;
+                io?.to(`user:${target.userId}`).emit("combat:npc-combo-evolved", {
+                  npcId: npc.id,
+                  evolved: r.evolved.filter((e) => e.evolvedNow),
+                });
+              }
+            });
+          }
+        });
+      }).catch(() => { /* flow record best-effort */ });
+    } catch { /* dynamic import guard */ }
 
     // Emit real-time attack notification to the target player's session
     const io = globalThis._concordREALTIME?.io;

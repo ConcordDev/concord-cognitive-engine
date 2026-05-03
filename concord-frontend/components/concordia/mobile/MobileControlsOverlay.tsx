@@ -92,12 +92,14 @@ interface MobileControlsOverlayProps {
 
 export function MobileControlsOverlay(props: MobileControlsOverlayProps) {
   const isTouch = useIsTouchDevice();
-  if (!isTouch) return null;
 
   const { mode, onMovement, onCamera, onJump, onInteract, onAttack, onDodge, onBlock, onThrottle, onBrake, onSteer, onExitVehicle, onHotbar, hotbarCount = 4 } = props;
 
+  // Hooks must be called unconditionally — early-return pattern moved below.
   const handleMove = useCallback((v: { x: number; y: number }) => onMovement(v.x, v.y), [onMovement]);
   const handleCam  = useCallback((v: { x: number; y: number }) => onCamera(v.x, v.y), [onCamera]);
+
+  if (!isTouch) return null;
 
   if (mode === 'exploration') {
     return (

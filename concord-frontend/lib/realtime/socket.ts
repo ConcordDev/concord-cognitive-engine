@@ -264,6 +264,41 @@ export type SocketEvent =
   | 'daily:login_recorded'
   // Wave 1 deferral 3: level-up rank crossing
   | 'level:up'
+  // GameJuice event mesh — fanfare/coin-clink/badge triggers from server
+  | 'quest:completed'
+  | 'quest:lineage-quest'
+  | 'marketplace:purchase'
+  | 'marketplace:sale'
+  | 'skill:xp-awarded'
+  | 'coop:raid:progress'
+  | 'coop:raid:completed'
+  | 'coop:build:edit'
+  | 'coop:stash:withdraw'
+  | 'reputation:badge-earned'
+  // Council Live Theater stream
+  | 'council:theater:scheduled'
+  | 'council:theater:started'
+  | 'council:theater:voice'
+  | 'council:theater:complete'
+  // Combat netcode
+  | 'combat:dodge:ack'
+  | 'combat:block:ack'
+  // Flow Combat — procedural emergent combat
+  | 'combat:combo-evolved'
+  | 'combat:npc-combo-evolved'
+  // PvP Training Match
+  | 'training:challenge'
+  | 'training:start'
+  | 'training:safe-reset'
+  | 'training:resume'
+  | 'training:round-end'
+  | 'training:end'
+  // Faction wars (NPCs evolving in background; players can join either side)
+  | 'faction-war:tick'
+  | 'faction-war:kill'
+  | 'faction-war:end'
+  // World scheduler
+  | 'world:event:scheduled'
   // Tier 3 deferral 12: faction event scheduler
   | 'faction:event_started'
   | 'faction:event_ended'

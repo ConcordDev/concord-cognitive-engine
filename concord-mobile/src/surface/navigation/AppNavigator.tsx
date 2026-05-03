@@ -1,8 +1,14 @@
 // Concord Mobile — Root Navigation
 // Bottom tab navigation with core screens
 
-import React from 'react';
-import { NavigationContainer, type NavigatorScreenParams, type LinkingOptions } from '@react-navigation/native';
+import React, { useEffect } from 'react';
+import { DeviceEventEmitter } from 'react-native';
+import {
+  NavigationContainer,
+  createNavigationContainerRef,
+  type NavigatorScreenParams,
+  type LinkingOptions,
+} from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
@@ -80,24 +86,79 @@ function MainTabs() {
   );
 }
 
-// Deep linking configuration for checkout return flow
+// Deep linking — surfaces a native nav target for every URL form the
+// shared web/native scheme supports. concordapp://dtu/<id>, /quest/<id>,
+// /event/<id>, /listing/<id>, plus the existing checkout flow.
 const linking: LinkingOptions<RootStackParamList> = {
-  prefixes: ['concordapp://'],
+  prefixes: ['concordapp://', 'https://concord-os.org/', 'https://www.concord-os.org/'],
   config: {
     screens: {
       Main: {
         screens: {
           Wallet: 'checkout-complete',
+          Lenses: 'lenses',
+          Marketplace: {
+            path: 'listing/:listingId',
+            parse: { listingId: (v) => v },
+          },
+          Chat: 'chat',
         },
       },
       BuyCoins: 'buy-coins',
+      Atlas: 'atlas',
+      Settings: 'settings',
+      DTUDetail: { path: 'dtu/:dtuId', parse: { dtuId: (v) => v } },
+      LensDetail: { path: 'lens/:lensId', parse: { lensId: (v) => v } },
     },
   },
 };
 
+// Navigation ref for imperative deep-link routing from App.tsx event handler.
+export const navigationRef = createNavigationContainerRef<RootStackParamList>();
+
 export function AppNavigator() {
+  // Per-screen deep link bridge: App.tsx parses concordapp:// URLs into
+  // DeviceEventEmitter signals; we listen here and push the appropriate
+  // stack route. Per-screen subscribers can also listen if they need the
+  // ID alongside their own state.
+  useEffect(() => {
+    const subs: Array<{ remove: () => void }> = [];
+    subs.push(DeviceEventEmitter.addListener('concord:open-dtu', ({ dtuId }: { dtuId: string }) => {
+      if (navigationRef.isReady() && dtuId) {
+        navigationRef.navigate('DTUDetail', { dtuId });
+      }
+    }));
+    subs.push(DeviceEventEmitter.addListener('concord:open-quest', ({ questId }: { questId: string }) => {
+      // Quests live within Lenses; route there with a query param.
+      if (navigationRef.isReady() && questId) {
+        navigationRef.navigate('Main', {
+          screen: 'Lenses',
+          params: { questId },
+        } as never);
+      }
+    }));
+    subs.push(DeviceEventEmitter.addListener('concord:open-event', ({ eventId }: { eventId: string }) => {
+      if (navigationRef.isReady() && eventId) {
+        // World events tab on the Lenses screen with an eventId param.
+        navigationRef.navigate('Main', {
+          screen: 'Lenses',
+          params: { eventId, focus: 'events' },
+        } as never);
+      }
+    }));
+    subs.push(DeviceEventEmitter.addListener('concord:open-listing', ({ listingId }: { listingId: string }) => {
+      if (navigationRef.isReady() && listingId) {
+        navigationRef.navigate('Main', {
+          screen: 'Marketplace',
+          params: { listingId },
+        } as never);
+      }
+    }));
+    return () => { for (const s of subs) s.remove(); };
+  }, []);
+
   return (
-    <NavigationContainer linking={linking}>
+    <NavigationContainer ref={navigationRef} linking={linking}>
       <Stack.Navigator
         screenOptions={{
           headerShown: false,

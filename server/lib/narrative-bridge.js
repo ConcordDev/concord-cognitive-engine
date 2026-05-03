@@ -16,7 +16,7 @@
 import logger from "../logger.js";
 import { synthesizeLore, generateQuestChain, writeDialogueTree } from "./oracle-brain.js";
 import { getTimeline } from "../emergent/history-engine.js";
-import { getAuthoredNPC, getAuthoredFaction, getQuestsForNPC } from "./content-seeder.js";
+import { getAuthoredNPC, getAuthoredFaction, getQuestsForNPC, getAuthoredDialogue } from "./content-seeder.js";
 import { getFactionPolicyState } from "./council-world-bridge.js";
 
 const DIALOGUE_TTL_MS   = 5 * 60 * 1000;   // 5 minutes
@@ -161,7 +161,25 @@ function buildQuestContext(npcId, questId) {
  * @param {string} playerRelationship  - "stranger" | "ally" | "enemy" | "neutral"
  * @returns {Promise<{ ok: boolean, dialogueTree?: object, authored: boolean, error?: string }>}
  */
-export async function generateAuthoredDialogue(npcId, questId = null, playerRelationship = "neutral", db = null) {
+export async function generateAuthoredDialogue(npcId, questId = null, playerRelationship = "neutral", db = null, phase = null) {
+  // Hand-authored dialogue takes precedence over LLM generation. The seeder
+  // loads trees from content/dialogues/ keyed by `${npcId}:${questId}:${phase}`.
+  // Returning the authored tree directly bypasses the LLM and any caching —
+  // these trees are immutable per release and don't need TTL invalidation.
+  const authoredTree = getAuthoredDialogue(npcId, questId, phase);
+  if (authoredTree) {
+    return {
+      ok: true,
+      authored: true,
+      handAuthored: true,
+      dialogueTree: {
+        npcId,
+        generatedAt: new Date().toISOString(),
+        ...authoredTree,
+      },
+    };
+  }
+
   // Cache-bust on policy timestamp so a fresh referendum invalidates stale dialogue.
   const npcForKey = getAuthoredNPC(npcId);
   let policyKey = "0";
@@ -178,6 +196,33 @@ export async function generateAuthoredDialogue(npcId, questId = null, playerRela
   const npcTraits    = buildNPCTraits(npcId, db);
   const questContext = buildQuestContext(npcId, questId);
   const authored     = getAuthoredNPC(npcId) !== null;
+
+  // Repair-brain pre-flight on the seed text we're about to feed the LLM.
+  // We check the backstory + speech_patterns since those are the strings most
+  // likely to have been authored or user-supplied. NPC `secret` is intentionally
+  // excluded from the prompt entirely; we only vet what we send.
+  try {
+    const rb = await import("./repair-brain.js");
+    const seedText = [
+      npcTraits?.role,
+      npcTraits?.backstory,
+      npcTraits?.personality_traits?.join?.(", "),
+      npcTraits?.speech_patterns,
+    ].filter(Boolean).join(" \n ").slice(0, 3000);
+    if (seedText) {
+      const vet = await rb.vetNPCDialogue(seedText, npcTraits);
+      if (vet?.score !== null && vet?.score < rb.REPAIR_DEFAULT_FLOOR.dialogue) {
+        logger.warn({ npcId, score: vet.score, flags: vet.flags },
+                    "narrative_bridge_dialogue_blocked_by_repair");
+        return {
+          ok: false,
+          error: "repair_brain_blocked",
+          repair: vet,
+          authored,
+        };
+      }
+    }
+  } catch { /* repair brain unavailable — fail open */ }
 
   const result = await writeDialogueTree(npcTraits, questContext, playerRelationship);
 

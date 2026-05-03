@@ -44,7 +44,7 @@ const NPC_SHOPS = {
 
 export default function createNPCShopRouter({ requireAuth, db }) {
   const router = Router();
-  const auth = requireAuth;
+  const auth = typeof requireAuth === "function" && requireAuth.length === 0 ? requireAuth() : requireAuth;
   const _userId = (req) => req.user?.id || req.headers["x-user-id"] || null;
 
   // GET /api/npc-shop — list all NPC shops

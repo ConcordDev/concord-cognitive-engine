@@ -11,7 +11,7 @@ const BALANCE_COLS = { sparks: "sparks", cc: "concordia_credits" };
 
 export default function createWagersRouter({ requireAuth, db, realtimeEmit }) {
   const router = Router();
-  const auth = requireAuth;
+  const auth = typeof requireAuth === "function" && requireAuth.length === 0 ? requireAuth() : requireAuth;
   const _userId = (req) => req.user?.id || req.headers["x-user-id"] || null;
 
   // GET /api/wagers — list my active/pending wagers

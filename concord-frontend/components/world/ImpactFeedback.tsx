@@ -4,12 +4,16 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
+type HitSeverity = 'light' | 'heavy' | 'crit' | 'kill';
+
 interface HitNumber {
   id: number;
   value: number;
   element: 'fire' | 'ice' | 'lightning' | 'poison' | 'physical' | 'heal';
-  x: number; // viewport percent
+  x: number;        // viewport percent
   y: number;
+  driftX: number;   // px horizontal drift over lifetime
+  rotation: number; // initial rotation deg
   critical: boolean;
   createdAt: number;
 }
@@ -17,6 +21,11 @@ interface HitNumber {
 interface ShakeState {
   active: boolean;
   intensity: number; // 1-10
+}
+
+interface HitStopState {
+  active: boolean;
+  severity: HitSeverity;
 }
 
 // ── Element color map ─────────────────────────────────────────────────────────
@@ -45,7 +54,7 @@ let _emitHit: ((value: number, element: HitNumber['element'], critical?: boolean
   null;
 let _emitShake: ((intensity: number) => void) | null = null;
 let _emitHeal: ((value: number) => void) | null = null;
-let _emitStop: ((durationMs: number) => void) | null = null;
+let _emitStop: ((durationMs: number, severity?: HitSeverity) => void) | null = null;
 
 export function emitHitNumber(
   value: number,
@@ -61,10 +70,11 @@ export function emitScreenShake(intensity: number) {
 
 /**
  * Brief brightness + contrast flash that makes hits feel physically weighty.
- * durationMs: 60–80ms for normal hits, 120–160ms for crits/kills.
+ * durationMs: 60–80ms light, 100–140ms heavy, 140–180ms crit, 220–280ms kill.
+ * severity controls hit-pause zoom strength (kill > crit > heavy > light).
  */
-export function emitHitStop(durationMs = 80): void {
-  _emitStop?.(durationMs);
+export function emitHitStop(durationMs = 80, severity: HitSeverity = 'light'): void {
+  _emitStop?.(durationMs, severity);
 }
 
 export function emitHealNumber(value: number) {
@@ -76,21 +86,26 @@ export function emitHealNumber(value: number) {
 export function ImpactFeedback() {
   const [hitNumbers, setHitNumbers] = useState<HitNumber[]>([]);
   const [shake, setShake] = useState<ShakeState>({ active: false, intensity: 0 });
-  const [hitStopActive, setHitStopActive] = useState(false);
+  const [hitStop, setHitStop] = useState<HitStopState>({ active: false, severity: 'light' });
   const counterRef = useRef(0);
   const shakeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hitStopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const addHit = useCallback((value: number, element: HitNumber['element'], critical = false) => {
     const id = ++counterRef.current;
-    // Randomize position around center-ish of screen, cluster toward center
-    const x = 40 + Math.random() * 20;
-    const y = 35 + Math.random() * 15;
+    // Cluster around center, jitter so multi-hits don't overlap
+    const x = 42 + Math.random() * 16;
+    const y = 36 + Math.random() * 12;
+    // Sideways drift: ±60px for normal, ±100px for crits
+    const driftX = (Math.random() - 0.5) * (critical ? 200 : 120);
+    // Slight rotation jitter — crits tilt more for impact
+    const rotation = (Math.random() - 0.5) * (critical ? 16 : 8);
     setHitNumbers((prev) => [
       ...prev.slice(-24),
-      { id, value, element, x, y, critical, createdAt: Date.now() },
+      { id, value, element, x, y, driftX, rotation, critical, createdAt: Date.now() },
     ]);
-    setTimeout(() => setHitNumbers((prev) => prev.filter((h) => h.id !== id)), 1200);
+    const lifeMs = critical ? 1500 : 1100;
+    setTimeout(() => setHitNumbers((prev) => prev.filter((h) => h.id !== id)), lifeMs);
   }, []);
 
   const triggerShake = useCallback((intensity: number) => {
@@ -100,10 +115,13 @@ export function ImpactFeedback() {
     shakeTimerRef.current = setTimeout(() => setShake({ active: false, intensity: 0 }), dur);
   }, []);
 
-  const triggerHitStop = useCallback((durationMs: number) => {
-    setHitStopActive(true);
+  const triggerHitStop = useCallback((durationMs: number, severity: HitSeverity = 'light') => {
+    setHitStop({ active: true, severity });
     if (hitStopTimerRef.current) clearTimeout(hitStopTimerRef.current);
-    hitStopTimerRef.current = setTimeout(() => setHitStopActive(false), Math.max(40, durationMs));
+    hitStopTimerRef.current = setTimeout(
+      () => setHitStop({ active: false, severity: 'light' }),
+      Math.max(40, durationMs),
+    );
   }, []);
 
   // Register global emitters
@@ -119,7 +137,7 @@ export function ImpactFeedback() {
     };
   }, [addHit, triggerShake, triggerHitStop]);
 
-  // CSS shake style
+  // CSS shake style — random jitter on each render frame for genuine motion
   const shakeStyle = shake.active
     ? {
         transform: `translate(${(Math.random() - 0.5) * shake.intensity * 2}px, ${(Math.random() - 0.5) * shake.intensity}px)`,
@@ -127,25 +145,46 @@ export function ImpactFeedback() {
       }
     : {};
 
+  // Hit-stop config by severity — controls flash strength + zoom + tint
+  const hitStopCfg: Record<HitSeverity, {
+    brightness: number;
+    saturation: number;
+    contrast: number;
+    zoom: number;
+    tint: string;
+  }> = {
+    light: { brightness: 1.35, saturation: 1.20, contrast: 1.05, zoom: 1.000, tint: 'rgba(255,255,255,0.05)' },
+    heavy: { brightness: 1.50, saturation: 1.30, contrast: 1.10, zoom: 1.005, tint: 'rgba(255,200,140,0.07)' },
+    crit:  { brightness: 1.70, saturation: 1.45, contrast: 1.15, zoom: 1.012, tint: 'rgba(255,220,80,0.10)' },
+    kill:  { brightness: 1.85, saturation: 1.55, contrast: 1.20, zoom: 1.020, tint: 'rgba(255,90,60,0.13)' },
+  };
+
   return (
     <>
-      {/* Hit-stop: brief brightness + saturation spike on impact — creates physical weight */}
-      {hitStopActive && (
-        <div
-          className="fixed inset-0 z-[7] pointer-events-none"
-          style={{
-            backdropFilter: 'brightness(1.45) saturate(1.3) contrast(1.08)',
-            background: 'radial-gradient(circle at 50% 50%, rgba(255,255,255,0.06) 0%, transparent 70%)',
-          }}
-        />
-      )}
+      {/* Hit-stop: brightness + saturation spike + transient zoom on impact */}
+      {hitStop.active && (() => {
+        const cfg = hitStopCfg[hitStop.severity];
+        return (
+          <div
+            className="fixed inset-0 z-[7] pointer-events-none"
+            style={{
+              backdropFilter: `brightness(${cfg.brightness}) saturate(${cfg.saturation}) contrast(${cfg.contrast})`,
+              WebkitBackdropFilter: `brightness(${cfg.brightness}) saturate(${cfg.saturation}) contrast(${cfg.contrast})`,
+              background: `radial-gradient(circle at 50% 50%, ${cfg.tint} 0%, transparent 70%)`,
+              transform: `scale(${cfg.zoom})`,
+              transformOrigin: '50% 45%',
+              transition: 'transform 60ms ease-out',
+            }}
+          />
+        );
+      })()}
 
-      {/* Screen shake wrapper — wraps the world view content via this overlay */}
+      {/* Screen shake wrapper */}
       {shake.active && (
         <div className="fixed inset-0 z-[5] pointer-events-none" style={shakeStyle} />
       )}
 
-      {/* Red vignette on damage (enhanced version of basic damageFlash) */}
+      {/* Red vignette on heavy damage (intensity ≥ 3) */}
       {shake.active && shake.intensity >= 3 && (
         <div
           className="fixed inset-0 z-[6] pointer-events-none"
@@ -155,13 +194,34 @@ export function ImpactFeedback() {
         />
       )}
 
-      {/* Floating hit numbers */}
+      {/* Floating hit numbers — scale-pop spawn + parabolic arc + horizontal drift */}
       <div className="fixed inset-0 z-[45] pointer-events-none overflow-hidden">
         {hitNumbers.map((hit) => {
-          const age = (Date.now() - hit.createdAt) / 1200;
-          const opacity = Math.max(0, 1 - age * 1.2);
-          const translateY = -age * 80;
-          const scale = hit.critical ? 1.4 : 1.0;
+          const lifeMs = hit.critical ? 1500 : 1100;
+          const age = (Date.now() - hit.createdAt) / lifeMs; // 0..1
+          const ageClamp = Math.max(0, Math.min(1, age));
+
+          // Scale-pop: 0.3 → peak (1.4 normal / 1.7 crit) → settle to 1.0/1.4
+          // Pop window 0..0.10 of lifetime
+          const popProgress = Math.min(1, ageClamp / 0.10);
+          const popScale = popProgress < 0.5
+            ? 0.3 + popProgress * 2 * (hit.critical ? 1.7 : 1.4 - 0.3)
+            : (hit.critical ? 1.7 : 1.4) - (popProgress - 0.5) * 2 * ((hit.critical ? 1.7 : 1.4) - (hit.critical ? 1.4 : 1.0));
+          const restScale = hit.critical ? 1.4 : 1.0;
+          const scale = ageClamp < 0.10 ? popScale : restScale;
+
+          // Parabolic arc: y = -h * (1 - (1 - 2t)^2) using rise-then-fade
+          // Rises ~120px (normal) / ~160px (crit) at peak (t=0.5), then falls slightly
+          const arcHeight = hit.critical ? 160 : 120;
+          const t = ageClamp;
+          const translateY = -arcHeight * (4 * t * (1 - t) * 0.65 + t * 0.55);
+          const translateX = hit.driftX * t;
+
+          // Opacity: full until 60%, fade out
+          const opacity = ageClamp < 0.6 ? 1 : Math.max(0, 1 - (ageClamp - 0.6) / 0.4);
+
+          // Crit tilt drifts toward 0 over life; normal stays subtle
+          const rot = hit.rotation * (1 - ageClamp * 0.6);
 
           return (
             <div
@@ -171,10 +231,12 @@ export function ImpactFeedback() {
                 left: `${hit.x}%`,
                 top: `${hit.y}%`,
                 opacity,
-                transform: `translateY(${translateY}px) scale(${scale})`,
-                fontSize: hit.critical ? '1.75rem' : '1.2rem',
-                letterSpacing: hit.critical ? '-0.02em' : '0',
-                transition: 'opacity 100ms, transform 100ms',
+                transform: `translate(${translateX}px, ${translateY}px) scale(${scale}) rotate(${rot}deg)`,
+                fontSize: hit.critical ? '2rem' : '1.25rem',
+                letterSpacing: hit.critical ? '-0.03em' : '0',
+                textShadow: hit.critical
+                  ? '0 2px 8px rgba(0,0,0,0.85), 0 0 14px rgba(253,224,71,0.6)'
+                  : '0 2px 4px rgba(0,0,0,0.7)',
                 willChange: 'transform, opacity',
               }}
             >
@@ -184,7 +246,12 @@ export function ImpactFeedback() {
               {hit.element === 'heal' ? '+' : '-'}
               {Math.round(Math.abs(hit.value))}
               {hit.critical && (
-                <span className="text-xs font-semibold ml-1 text-yellow-300 drop-shadow-none">
+                <span
+                  className="text-xs font-bold ml-1 text-yellow-200"
+                  style={{
+                    textShadow: '0 0 6px rgba(253,224,71,0.9)',
+                  }}
+                >
                   CRIT!
                 </span>
               )}

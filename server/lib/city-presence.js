@@ -401,6 +401,24 @@ export function getUserPosition(userId) {
 }
 
 /**
+ * Restore a player's resource bars to full. Used by the PvP training match
+ * Safe Reset between rounds. No-op if the player has no live presence.
+ * Returns true if the bars were touched.
+ */
+export function restorePlayerBars(userId) {
+  const p = _userPositions.get(userId);
+  if (!p) return false;
+  p.health      = p.maxHealth ?? 100;
+  p.stamina     = p.maxStamina ?? 100;
+  p.mana        = p.maxMana ?? 100;
+  p.bioPower    = p.maxBioPower ?? 100;
+  p.perception  = p.maxPerception ?? 100;
+  // Reset any per-zone armor too so the next round starts clean
+  p.limbArmor = { head: 100, torso: 100, left_arm: 100, right_arm: 100, left_leg: 100, right_leg: 100 };
+  return true;
+}
+
+/**
  * Authoritative vehicle mount / dismount. The route handler MUST verify
  * vehicle ownership against the vehicles table before calling this — the
  * presence layer trusts whatever it is given, by design. Callers pass
@@ -948,7 +966,7 @@ function _getZoneDebuff(zone, armorPct) {
   return null;
 }
 
-export function applyAttack({ attackerId, targetId, baseDamage = 10, range = 3, armorPierce = 0 }) {
+export function applyAttack({ attackerId, targetId, baseDamage = 10, range = 3, armorPierce = 0, contextModifiers = null }) {
   if (!attackerId || !targetId) return { ok: false, error: "missing_ids" };
   if (attackerId === targetId) return { ok: false, error: "cannot_attack_self" };
 
@@ -972,15 +990,39 @@ export function applyAttack({ attackerId, targetId, baseDamage = 10, range = 3, 
   const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
   if (dist > range) return { ok: false, error: "out_of_range", distance: dist, range };
 
+  // Flow Combat context modifiers — caller can pass a modifiers object from
+  // detectCombatContext() to scale stamina cost (aerial costs more, vehicle
+  // costs less), damage (vehicle ramming hits harder, hacker attacks weaker
+  // physically), and the defender's evade chance. Defaults are no-op.
+  const mods = contextModifiers || {};
+  const staminaMul = Number(mods.staminaCostMul ?? 1) || 1;
+  const damageMul  = Number(mods.damageMul       ?? 1) || 1;
+  const evadeBonus = Number(mods.evadeBonus      ?? 0) || 0;
+
   // Stamina check
-  const STAMINA_COST = 8;
+  const STAMINA_COST = Math.max(1, Math.round(8 * staminaMul));
   if ((attacker.stamina || 0) < STAMINA_COST) {
     return { ok: false, error: "insufficient_stamina", stamina: attacker.stamina };
   }
 
-  // Damage variance ±20%
+  // Defender evade roll (context-bonus on top of any innate dodge stat).
+  // Evade > 0 means the attack might whiff entirely.
+  if (evadeBonus > 0 && Math.random() < evadeBonus) {
+    return {
+      ok: true,
+      damage: 0,
+      isCrit: false,
+      evaded: true,
+      targetHealth: target.health ?? target.hp ?? 0,
+      targetMaxHealth: target.maxHealth ?? target.maxHp ?? 100,
+      targetKilled: false,
+      reason: "context_evade",
+    };
+  }
+
+  // Damage variance ±20% then context multiplier
   const variance = 0.8 + Math.random() * 0.4;
-  const variedBase = Math.round(baseDamage * variance);
+  const variedBase = Math.max(1, Math.round(baseDamage * variance * damageMul));
 
   // Hit zone selection
   const hitZone = _pickHitZone();

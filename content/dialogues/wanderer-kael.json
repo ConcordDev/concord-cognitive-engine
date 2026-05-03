@@ -1,0 +1,131 @@
+{
+  "wanderer_kael:kael_torchlight:start": {
+    "npcId": "wanderer_kael",
+    "questId": "kael_torchlight",
+    "phase": "start",
+    "greeting": "Kael flags you down from across the square. They've got a lamp in one hand and an irritated expression that doesn't quite hide the relief at seeing a familiar face.",
+    "nodes": [
+      {
+        "id": "node_1_open",
+        "npcText": "You — finally. Listen, this is going to sound stupid. There's an alley behind the cooper's shop, and it is eating my lamps. Three nights, three lamps, all out by dawn. I'd think it was kids except nothing was taken. I want to try again with a proper bound torch and someone with me who isn't me.",
+        "playerOptions": [
+          { "text": "Eating your lamps. Did you check for a draft?", "leadsTo": "node_2_draft" },
+          { "text": "Why drag me into this?", "leadsTo": "node_3_why_me" },
+          { "text": "What's the catch?", "leadsTo": "node_4_catch" },
+          { "text": "Sure. What do you need?", "leadsTo": "node_5_what" }
+        ]
+      },
+      {
+        "id": "node_2_draft",
+        "npcText": "Of course I checked for a draft. There isn't one — not at street level, anyway. That's part of why this bothers me. A wind that only exists when no one is watching is not a wind, it's a habit, and habits in walled cities tend to belong to someone.",
+        "playerOptions": [
+          { "text": "All right, you've got me curious. What do you need?", "leadsTo": "node_5_what" },
+          { "text": "You sound paranoid.", "leadsTo": "node_6_paranoid" }
+        ]
+      },
+      {
+        "id": "node_3_why_me",
+        "npcText": "Because you're the only person in this city who hasn't asked me to swear an oath to one faction or another, and apparently that's now a rare quality. Also, you owe me half a meal from the gate.",
+        "playerOptions": [
+          { "text": "Fine. What do you need?", "leadsTo": "node_5_what" },
+          { "text": "I owe you nothing. But I'll bite.", "leadsTo": "node_5_what" }
+        ]
+      },
+      {
+        "id": "node_4_catch",
+        "npcText": "The catch is I am not telling you the whole story because I do not know the whole story. The catch is I think something down there does not want light, and I would rather find out with company. The catch is fifty coins and a lamp I've been polishing for two weeks if you help me find out.",
+        "playerOptions": [
+          { "text": "Fifty coins for an evening's work? Sold.", "leadsTo": "node_5_what" },
+          { "text": "Keep the lamp. I'll do it for the coin.", "leadsTo": "node_5_what" },
+          { "text": "I want to know what you're not telling me.", "leadsTo": "node_6_paranoid" }
+        ]
+      },
+      {
+        "id": "node_5_what",
+        "npcText": "Three lengths of fiber — the reed beds at the canal edge are best, the ones up by the gate are too dry and burn ragged. Bind a torch with them and a piece of wood at any workbench. Then meet me at the cooper's corner. I'll be the one not pretending I'm not nervous.",
+        "playerOptions": [
+          { "text": "Reed beds, fiber, torch, cooper's corner. On my way.", "leadsTo": null },
+          { "text": "If I'm not back by sundown, find someone louder than me.", "leadsTo": "node_7_humor" }
+        ]
+      },
+      {
+        "id": "node_6_paranoid",
+        "npcText": "Maybe I am. I've been here two weeks longer than you and the only thing I've learned for certain is that everyone in Concordia is louder about what they don't know than what they do. Three lamps, gone, no thieves, no wind. I'd rather be paranoid and hold a torch than calm and standing in the dark.",
+        "playerOptions": [
+          { "text": "Fair. Tell me what you need.", "leadsTo": "node_5_what" },
+          { "text": "I'll think about it.", "leadsTo": "node_8_decline" }
+        ]
+      },
+      {
+        "id": "node_7_humor",
+        "npcText": "If you're not back by sundown I will find someone louder than you, drag them into the alley, and blame this entirely on you in front of whichever god is listening. Get the fiber.",
+        "playerOptions": [
+          { "text": "On my way.", "leadsTo": null }
+        ]
+      },
+      {
+        "id": "node_8_decline",
+        "npcText": "Think fast. I'm not waiting forever and I'm not doing this alone. If you change your mind, I'll be at the corner with the lamp until the second bell after dusk.",
+        "playerOptions": [
+          { "text": "Understood.", "leadsTo": null }
+        ]
+      }
+    ]
+  },
+
+  "wanderer_kael:kael_torchlight:return": {
+    "npcId": "wanderer_kael",
+    "questId": "kael_torchlight",
+    "phase": "return",
+    "greeting": "Kael spots the bound torch in your hand before you've fully turned the corner. Their shoulders drop a little. They were standing very still.",
+    "nodes": [
+      {
+        "id": "node_r1_arrive",
+        "npcText": "You actually came back. With a real torch. I was beginning to think this city had eaten you the way it ate the lamps. Let me see it.",
+        "playerOptions": [
+          { "text": "Here. Three from the canal beds, like you said.", "leadsTo": "node_r2_inspect" },
+          { "text": "Took me longer than I expected. Sorry.", "leadsTo": "node_r2_inspect" }
+        ]
+      },
+      {
+        "id": "node_r2_inspect",
+        "npcText": "Better than mine were. The bind's tight. Hold it up — I want to see how it sits in the wind off the canal.",
+        "playerOptions": [
+          { "text": "Steady enough. No flutter.", "leadsTo": "node_r3_observation" },
+          { "text": "It's fine. What did you find while I was gone?", "leadsTo": "node_r3_observation" }
+        ]
+      },
+      {
+        "id": "node_r3_observation",
+        "npcText": "Steady. Of course it's steady — there's a draft from below and the alley still didn't kill it. Which means it isn't the wind that's been blowing my lamps out. There's a draft from below, and there shouldn't be. Not in this district. The cellar lines were sealed in Voss's first year.",
+        "playerOptions": [
+          { "text": "You think someone's down there?", "leadsTo": "node_r4_below" },
+          { "text": "Sealed cellars don't usually un-seal themselves.", "leadsTo": "node_r4_below" }
+        ]
+      },
+      {
+        "id": "node_r4_below",
+        "npcText": "I think something is down there, or someone, and either way we're keeping that to ourselves until we know more. Take this. I bought it off a peddler at the gate before I had any idea what to do with it. I've been polishing it for two weeks waiting for a reason. Consider this the reason.",
+        "playerOptions": [
+          { "text": "Kael — this is too much.", "leadsTo": "node_r5_giftclose" },
+          { "text": "I'll keep it. Thank you.", "leadsTo": "node_r5_giftclose" }
+        ]
+      },
+      {
+        "id": "node_r5_giftclose",
+        "npcText": "It is exactly enough. Take the lamp, take your fifty coins, and take the rest of the evening for yourself. I'm going to sit on this corner one more night and watch the alley do nothing. If I'm wrong about the draft, I want to be the one who's wrong, alone. If I'm right — I'll come find you in the morning.",
+        "playerOptions": [
+          { "text": "Be careful, Kael.", "leadsTo": null },
+          { "text": "If you're right, don't go down without me.", "leadsTo": "node_r6_promise" }
+        ]
+      },
+      {
+        "id": "node_r6_promise",
+        "npcText": "I won't. I promise I won't. You've got my word and I am, against my better judgement, someone who keeps it.",
+        "playerOptions": [
+          { "text": "Good. Tomorrow, then.", "leadsTo": null }
+        ]
+      }
+    ]
+  }
+}

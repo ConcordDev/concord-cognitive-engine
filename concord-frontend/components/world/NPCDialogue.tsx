@@ -576,15 +576,42 @@ export function NPCDialogue({ npc, worldId, onClose, onQuestAccepted }: NPCDialo
     if (!questOffered) return;
     setAcceptingQuest(true);
     try {
-      await fetch(`/api/worlds/${worldId}/quests/${questOffered.id}/accept`, { method: 'POST' });
+      // Try the canonical /api/quests/accept first; fall back to the legacy
+      // world-scoped endpoint if it isn't available.
+      let r = await fetch('/api/quests/accept', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ questId: questOffered.id }),
+      }).catch(() => null);
+      if (!r || !r.ok) {
+        r = await fetch(`/api/worlds/${worldId}/quests/${questOffered.id}/accept`, { method: 'POST' });
+      }
       onQuestAccepted?.(questOffered.id);
       setResponse(`Quest accepted: "${questOffered.title}". Good luck.`);
       setQuestOffered(null);
+      try {
+        window.dispatchEvent(new CustomEvent('concordia:tutorial-action', {
+          detail: { action: 'accepted-quest' },
+        }));
+      } catch { /* tutorial dispatch best-effort */ }
     } catch {
       /* non-fatal */
     }
     setAcceptingQuest(false);
   }, [questOffered, worldId, onQuestAccepted]);
+
+  const declineQuest = useCallback(() => {
+    if (!questOffered) return;
+    fetch('/api/quests/decline', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ questId: questOffered.id }),
+    }).catch(() => { /* decline silent */ });
+    setResponse('Maybe another time, then.');
+    setQuestOffered(null);
+  }, [questOffered]);
 
   // ── Render ───────────────────────────────────────────────────────────────────
   const moodCfg = MOOD_CONFIG[mood] ?? MOOD_CONFIG.neutral;
@@ -708,13 +735,22 @@ export function NPCDialogue({ npc, worldId, onClose, onQuestAccepted }: NPCDialo
                   <p className="text-[11px] text-white/60 leading-relaxed mb-2">
                     {questOffered.description}
                   </p>
-                  <button
-                    onClick={acceptQuest}
-                    disabled={acceptingQuest}
-                    className="text-[11px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-3 py-1.5 rounded-lg hover:bg-amber-500/30 transition-colors disabled:opacity-50"
-                  >
-                    {acceptingQuest ? 'Accepting…' : 'Accept Quest'}
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={acceptQuest}
+                      disabled={acceptingQuest}
+                      className="text-[11px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-3 py-1.5 rounded-lg hover:bg-amber-500/30 transition-colors disabled:opacity-50"
+                    >
+                      {acceptingQuest ? 'Accepting…' : 'Accept Quest'}
+                    </button>
+                    <button
+                      onClick={declineQuest}
+                      disabled={acceptingQuest}
+                      className="text-[11px] bg-stone-700/40 text-stone-300 border border-stone-600/40 px-3 py-1.5 rounded-lg hover:bg-stone-600/50 transition-colors disabled:opacity-50"
+                    >
+                      Decline
+                    </button>
+                  </div>
                 </div>
               )}
             </>

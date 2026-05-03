@@ -598,13 +598,18 @@ export default function ConcordiaScene({
       if (quality === 'ultra') {
         try {
           const { SSGIPass } = await import('@/lib/world-lens/ssgi');
+          // Polish-pass tuning: bumped intensity 0.4 → 0.55 (more visible
+          // indirect-light bounce, especially in shaded districts like the
+          // Forge), samples 8 → 12 (less noise on roughness > 0.6), and
+          // dropped temporalBlend 0.10 → 0.08 (slightly less ghost-trail
+          // when the camera moves quickly).
           ssgiPassRef.current = new SSGIPass(
             renderer,
             scene,
             camera,
             canvas!.clientWidth,
             canvas!.clientHeight,
-            { intensity: 0.4, numSamples: 8, temporalBlend: 0.1 }
+            { intensity: 0.55, numSamples: 12, temporalBlend: 0.08 }
           );
         } catch {
           /* SSGI optional */
@@ -637,6 +642,23 @@ export default function ConcordiaScene({
       window.dispatchEvent(
         new CustomEvent('concordia:scene-ready', {
           detail: { scene, camera },
+        })
+      );
+
+      // Expose a worldToScreen projector for HTML overlay layers (BazaarLayer,
+      // marker variants). Lives off-thread of the main render loop.
+      const _projectVec = new THREE.Vector3();
+      const projectFn = (world: { x: number; y: number; z: number }) => {
+        _projectVec.set(world.x, world.y, world.z);
+        _projectVec.project(camera);
+        const visible = _projectVec.z > -1 && _projectVec.z < 1;
+        const x = (_projectVec.x * 0.5 + 0.5) * window.innerWidth;
+        const y = (-_projectVec.y * 0.5 + 0.5) * window.innerHeight;
+        return { x, y, visible };
+      };
+      window.dispatchEvent(
+        new CustomEvent('concordia:projector-ready', {
+          detail: { project: projectFn },
         })
       );
 
@@ -817,6 +839,19 @@ export default function ConcordiaScene({
           frameTime: Math.round(frameTime * 10) / 10,
         });
 
+        // Telemetry feed for the PerformanceOverlay + server aggregator.
+        try {
+          window.dispatchEvent(new CustomEvent('concordia:perf-budget', {
+            detail: {
+              fps: avgFps,
+              frameTime,
+              drawCalls: info.render.calls,
+              triangles: info.render.triangles,
+              textureMemory: (info.memory?.textures ?? 0) * 4,
+            },
+          }));
+        } catch { /* event dispatch silent */ }
+
         frameIdRef.current = requestAnimationFrame(gameLoop);
       }
 
@@ -866,17 +901,41 @@ export default function ConcordiaScene({
         if (hits.length > 0) {
           let obj = hits[0].object as InstanceType<typeof import('three').Object3D>;
           // Walk up to find the avatar root (the group AvatarSystem3D added).
-          while (obj.parent && obj.parent !== avatarsGroup && !(obj.userData as { isNPC?: boolean })?.isNPC) {
+          // Stop when we hit something tagged as either an NPC or another
+          // player so the userData lookup below sees the right tags.
+          while (
+            obj.parent && obj.parent !== avatarsGroup &&
+            !(obj.userData as { isNPC?: boolean; isOtherPlayer?: boolean })?.isNPC &&
+            !(obj.userData as { isNPC?: boolean; isOtherPlayer?: boolean })?.isOtherPlayer
+          ) {
             obj = obj.parent as typeof obj;
           }
-          const npcUd = obj.userData as { isNPC?: boolean; avatarId?: string; name?: string; occupation?: string } | undefined;
-          if (npcUd?.isNPC && npcUd.avatarId) {
+          const ud = obj.userData as
+            | { isNPC?: boolean; isOtherPlayer?: boolean; avatarId?: string; name?: string; occupation?: string }
+            | undefined;
+          if (ud?.isNPC && ud.avatarId) {
             try {
               window.dispatchEvent(new CustomEvent('concordia:open-dialogue', {
                 detail: {
-                  npcId:      npcUd.avatarId,
-                  npcName:    npcUd.name ?? npcUd.avatarId,
-                  occupation: npcUd.occupation ?? null,
+                  npcId:      ud.avatarId,
+                  npcName:    ud.name ?? ud.avatarId,
+                  occupation: ud.occupation ?? null,
+                },
+              }));
+            } catch { /* dispatch best-effort */ }
+            return;
+          }
+          // Other-player click → contextual action menu (Wave / Trade /
+          // Inspect / Invite to Party). Dispatched at viewport coords so
+          // the menu can position itself near the cursor.
+          if (ud?.isOtherPlayer && ud.avatarId) {
+            try {
+              window.dispatchEvent(new CustomEvent('concordia:click-player', {
+                detail: {
+                  playerId:   ud.avatarId,
+                  playerName: ud.name ?? ud.avatarId,
+                  screenX:    e.clientX,
+                  screenY:    e.clientY,
                 },
               }));
             } catch { /* dispatch best-effort */ }
@@ -917,6 +976,32 @@ export default function ConcordiaScene({
     }
     canvas.addEventListener('click', handleCanvasClick);
 
+    // Right-click → fire concordia:gather-request with the world point.
+    // World page handles the network call + inventory update.
+    function handleContextMenu(e: MouseEvent) {
+      e.preventDefault();
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const mouse = new THREE.Vector2(
+        ((e.clientX - rect.left) / rect.width) * 2 - 1,
+        -((e.clientY - rect.top) / rect.height) * 2 + 1,
+      );
+      const rc2 = raycasterRef.current as InstanceType<typeof import('three').Raycaster>;
+      const cam2 = cameraRef.current as InstanceType<typeof import('three').PerspectiveCamera>;
+      rc2.setFromCamera(mouse, cam2);
+      const tg = layersRef.current['terrain'] as InstanceType<typeof import('three').Group> | undefined;
+      if (!tg) return;
+      const hits = rc2.intersectObjects(tg.children, true);
+      if (!hits.length) return;
+      const p = hits[0].point;
+      try {
+        window.dispatchEvent(new CustomEvent('concordia:gather-request', {
+          detail: { x: p.x, y: p.y, z: p.z },
+        }));
+      } catch { /* dispatch best-effort */ }
+    }
+    canvas.addEventListener('contextmenu', handleContextMenu);
+
     // ── Mouse-look (pointer lock) for follow + first-person ─────
     // Click the canvas to enter pointer lock when in a player-tracking
     // mode; mousemove drives yaw + pitch additive offsets that the game
@@ -946,6 +1031,7 @@ export default function ConcordiaScene({
       cancelAnimationFrame(frameIdRef.current);
       window.removeEventListener('resize', handleResize);
       canvas.removeEventListener('click', handleCanvasClick);
+      canvas.removeEventListener('contextmenu', handleContextMenu);
       canvas.removeEventListener('mousedown', maybeRequestPointerLock);
       document.removeEventListener('mousemove', handleMouseMove);
       try { document.exitPointerLock?.(); } catch { /* no-op */ }

@@ -4779,6 +4779,11 @@ function authMiddleware(req, res, next) {
     "/api/inference/slos", "/api/audit/provenance",
     // Plugins & extensions
     "/api/plugins", "/api/macros",
+    // OpenAPI spec + Swagger UI need to be public so the browser can render docs.
+    "/api/openapi.json", "/api/openapi.yaml", "/api/docs",
+    // Creator surfaces (leaderboard / trending / drift) — read-only public,
+    // dashboard remains authed.
+    "/api/creator/leaderboard", "/api/creator/trending-citations", "/api/creator/influence-drift",
     // Growth & entities
     "/api/entity-growth", "/api/entity-exploration", "/api/goals",
     "/api/hypothesis",
@@ -4838,6 +4843,8 @@ function authMiddleware(req, res, next) {
     // World clock + weather + combat state — public reads.
     "/api/world/clock", "/api/world/npc-behavior", "/api/world/npc-archetypes",
     "/api/world/weather",
+    // World player surfaces — bazaar (vendor stalls), perf telemetry GET.
+    "/api/world/bazaar", "/api/world/perf-telemetry",
     "/api/combat/state",
     // Concord Link — public reads for anchors, cost preview, walker bazaar.
     // Auth is still enforced on /send, /inbox, /:id/read, /walkers/hire by
@@ -4870,11 +4877,20 @@ function authMiddleware(req, res, next) {
     // Foundation Atlas signal tomography
     "/api/atlas",
   ];
-  if (req.method === "GET" && !_isSovereignRoute && publicReadPaths.some(p => req.path.startsWith(p))) return next();
+  // Public-read bypass: anon GETs to whitelisted paths skip auth. But if the
+  // caller sent an Authorization header or auth cookie, run the full auth
+  // pipeline so req.user gets populated — that lets routes which want
+  // user-scoped behavior (search history, saved searches) see the JWT.
+  const _hasAuthHeader = !!(req.headers.authorization || req.headers["x-api-key"] ||
+                            req.cookies?.concord_auth || req.cookies?.concord_refresh);
+  if (req.method === "GET" && !_isSovereignRoute && !_hasAuthHeader && publicReadPaths.some(p => req.path.startsWith(p))) return next();
   // Gate 1 POST bypass: allow /api/repair POST without auth (frontend error fallback path)
   if (req.method === "POST" && req.path.startsWith("/api/repair")) return next();
   // Gate 1 POST bypass: allow creative registry POST without auth (public discovery)
   if (req.method === "POST" && req.path.startsWith("/api/creative/registry")) return next();
+  // Gate 1 POST bypass: anonymous client telemetry pings (perf, error reports).
+  if (req.method === "POST" && req.path === "/api/world/perf-telemetry") return next();
+  if (req.method === "POST" && req.path === "/api/client-error") return next();
 
   // Check Authorization header
   const authHeader = req.headers.authorization || "";
@@ -6399,7 +6415,7 @@ async function tryInitWebSockets(server) {
     // everyone in the attacker's chunk so nearby players see the
     // damage numbers render. Rate-limited to 4 attacks/sec.
     let _lastAttackAt = 0;
-    socket.on("combat:attack", (data) => {
+    socket.on("combat:attack", async (data) => {
       const userId = socket.data?.userId;
       if (!userId) return;
       if (!data || typeof data !== "object") return;
@@ -6407,18 +6423,124 @@ async function tryInitWebSockets(server) {
       if (now - _lastAttackAt < 250) return; // ~4 attacks/sec cap
       _lastAttackAt = now;
 
+      // Flow Combat: derive context modifiers up-front so applyAttack can
+      // honor them (stamina cost, damage scaling, evade roll) in one place.
+      // Falls back to no-op modifiers when the context engine isn't loaded.
+      let _contextModifiers = null;
+      try {
+        const _pos = cityPresence.getPlayerPosition?.(userId) || { x: 0, y: 0, z: 0 };
+        // Synchronous-ish: the context engine is pure + tiny, but we import
+        // it dynamically to keep server.js cold-start lean. Cache the import
+        // promise on globalThis so subsequent attacks don't re-import.
+        if (!globalThis._concordContextEngine) {
+          globalThis._concordContextEngine = import("./lib/combat/context-engine.js");
+        }
+        const ce = await globalThis._concordContextEngine;
+        _contextModifiers = ce.detectCombatContext({
+          position: _pos, groundY: 0, grounded: data.grounded !== false,
+          inVehicle: !!data.inVehicle, hackerMode: !!data.hackerMode,
+        }).modifiers;
+      } catch { /* fall through to default */ }
+
       const result = cityPresence.applyAttack({
         attackerId: userId,
         targetId: String(data.targetId || "").slice(0, 128),
         baseDamage: Number(data.baseDamage) || 10,
         range: Number(data.range) || 3,
         armorPierce: Number(data.armorPierce) || 0,
+        contextModifiers: _contextModifiers,
       });
 
       // Ack back to attacker with full detail (damage, crit, kill)
       socket.emit("combat:attack:ack", result);
 
+      // Award combat XP on a successful hit (any damage > 0). Kills get a
+      // larger boost via the skill-progression auto-skill row.
+      if (result?.ok && result.damage > 0) {
+        try {
+          import("./lib/skill-progression.js").then(sp => {
+            sp.recordGameplayXP?.(db, userId, "combat", { damage: result.damage, kill: !!result.targetKilled });
+            if (result.targetKilled) {
+              // bump again on kill so kills feel meaningful
+              sp.recordGameplayXP?.(db, userId, "combat", { kill: true });
+            }
+          }).catch(() => {});
+        } catch { /* xp grant best-effort */ }
+      }
+
       if (result.ok) {
+        // Flow Combat: record this attack into the procedural substrate
+        // so the flow engine can derive combos from it. The detection of
+        // combat context (ground/aerial/vehicle/hacker/underwater) uses the
+        // attacker's last known position; aerial / hacker / vehicle flags
+        // come from the attack payload when supplied.
+        try {
+          import("./lib/combat/context-engine.js").then(({ detectCombatContext }) => {
+            const pos = cityPresence.getPlayerPosition?.(userId) || { x: 0, y: 0, z: 0 };
+            const ctx = detectCombatContext({
+              position: pos,
+              groundY: 0,
+              inVehicle:  !!data.inVehicle,
+              hackerMode: !!data.hackerMode,
+              grounded:   data.grounded !== false,
+            });
+            return import("./lib/combat/flow-recorder.js").then(async ({ recordCombatFlow }) => {
+              // CombatInputController can pass an explicit actionOverride so
+              // grabs/kicks land in the substrate as 'grapple' / 'kick' even
+              // though the underlying socket event is combat:attack.
+              const resolvedAction = (typeof data.actionOverride === "string" && data.actionOverride.length < 24)
+                ? data.actionOverride
+                : (data.heavy ? "attack-heavy" : "attack-light");
+              // Dual-hand resolution: which hand swung, what's in it.
+              // The flow recorder stamps these so combos derive per-loadout
+              // (sword-right + pistol-left builds different chains than
+              // dual-daggers, even with identical key inputs).
+              let handMeta = { hand: data.hand || "right", weaponClass: null, weaponName: null };
+              try {
+                const lo = await import("./lib/combat/loadout.js");
+                const r = lo.resolveAttackHand(db, userId, data.hand);
+                handMeta = {
+                  hand: r.hand,
+                  weaponClass: r.weaponClass,
+                  weaponName: r.item?.item_name ?? null,
+                };
+              } catch { /* loadout resolution best-effort */ }
+              recordCombatFlow(db, {
+                fighterId:  userId,
+                fighterKind:"player",
+                context:    ctx.context,
+                style:      data.style || ctx.styleHints[0] || null,
+                action:     resolvedAction,
+                actionMeta: {
+                  weapon: handMeta.weaponName || data.weapon || "fist",
+                  weaponClass: handMeta.weaponClass,
+                  hand: handMeta.hand,
+                  chain: data.chainId,
+                  step: data.stepIndex || 0,
+                  modifier: !!data.modifier,
+                  finisher: !!data.finisher,
+                },
+                targetId:   String(data.targetId || ""),
+                hit:        result.damage > 0,
+                damage:     Number(result.damage || 0),
+                isCrit:     !!result.isCrit,
+                chainId:    data.chainId || null,
+                stepIndex:  Number(data.stepIndex || 0),
+              });
+              // Auto-evolve every 8 actions so the player sees procedural
+              // combo branches surface naturally without a polling endpoint.
+              if (Math.random() < 0.125) {
+                import("./lib/combat/flow-engine.js").then(({ evolveFighterCombos }) => {
+                  const r = evolveFighterCombos(db, userId, "player");
+                  if (r?.ok && r.evolved.some((e) => e.evolvedNow)) {
+                    realtimeEmit("combat:combo-evolved", { userId, evolved: r.evolved.filter((e) => e.evolvedNow) });
+                  }
+                }).catch(() => {});
+              }
+            });
+          }).catch(() => { /* flow record best-effort */ });
+        } catch { /* dynamic import guard */ }
+
         // Broadcast the hit event so everyone in the attacker's
         // chunk sees it — damage numbers, blood, etc.
         realtimeEmit("combat:hit", {
@@ -6436,6 +6558,60 @@ async function tryInitWebSockets(server) {
             attackerId: userId,
             targetId: data.targetId,
           });
+
+          // PvP training match round end. If attacker + target are both in
+          // an active training match together, record the round and let the
+          // client decide whether to auto-trigger Safe Reset for the next
+          // round. Death stakes (loot drop) are skipped inside training
+          // matches — that's the whole point of the safe-reset loop.
+          try {
+            const tid = String(data.targetId || "");
+            const m = db.prepare(`
+              SELECT id, initiator_id, opponent_id, rounds_played, max_rounds
+              FROM training_matches
+              WHERE status IN ('active', 'reset')
+                AND ((initiator_id = ? AND opponent_id = ?) OR (initiator_id = ? AND opponent_id = ?))
+              LIMIT 1
+            `).get(userId, tid, tid, userId);
+            if (m) {
+              const rid = crypto.randomUUID
+                ? crypto.randomUUID()
+                : Math.random().toString(36).slice(2);
+              const newRoundNumber = m.rounds_played + 1;
+              const winnerCol = userId === m.initiator_id ? "initiator_wins" : "opponent_wins";
+              db.prepare(`
+                INSERT INTO training_match_rounds
+                  (id, match_id, round_number, winner_id, duration_ms)
+                VALUES (?, ?, ?, ?, 0)
+              `).run(rid, m.id, newRoundNumber, userId);
+              db.prepare(`
+                UPDATE training_matches
+                SET rounds_played = rounds_played + 1, ${winnerCol} = ${winnerCol} + 1
+                WHERE id = ?
+              `).run(m.id);
+              realtimeEmit("training:round-end", {
+                matchId: m.id, winnerId: userId, roundNumber: newRoundNumber,
+              });
+              if (newRoundNumber >= m.max_rounds) {
+                db.prepare(`
+                  UPDATE training_matches
+                  SET status = 'ended', ended_reason = 'cap', ended_at = unixepoch()
+                  WHERE id = ?
+                `).run(m.id);
+                realtimeEmit("training:end", { matchId: m.id, reason: "cap" });
+              }
+              // Skip death stakes inside a training match
+              throw new Error("__TRAINING_MATCH_SKIP_LOOT__");
+            }
+          } catch (e) {
+            if (e?.message === "__TRAINING_MATCH_SKIP_LOOT__") {
+              // Intentional skip — fall through past the loot block by
+              // jumping to the closing brace via continue-of-callback.
+              return;
+            }
+            // Real error — log silently and proceed to loot drop
+            logger.debug?.("server", "training_match_check_failed", { error: e?.message });
+          }
 
           // Death stakes: drop 20% of the killed player's gathered materials
           const targetUserId = db.prepare("SELECT id FROM users WHERE id = ?").get(String(data.targetId || ""))?.id;
@@ -6476,6 +6652,87 @@ async function tryInitWebSockets(server) {
             }
           }).catch(() => {});
         }
+      }
+    });
+
+    // ── Combat: dodge/block/parry intent (animation + i-frame window) ──
+    // Fire-and-forget: server records the dodge intent for telemetry +
+    // anti-cheat (rate limit, stamina) and broadcasts so nearby clients
+    // can play the dodge animation on this player's avatar.
+    let _lastDodgeAt = 0;
+    socket.on("combat:dodge", (data) => {
+      const userId = socket.data?.userId;
+      if (!userId) return;
+      const now = Date.now();
+      if (now - _lastDodgeAt < 400) return; // 2.5 dodges/sec cap
+      _lastDodgeAt = now;
+      const direction = ["left","right","back"].includes(data?.direction) ? data.direction : "back";
+      try {
+        realtimeEmit("combat:dodge:ack", { userId, direction, t: now });
+      } catch (e) { /* socket emit silent */ }
+      // Flow Combat: record dodge into the substrate. Hit=true if a recent
+      // incoming attack was within the i-frame window (the client passes
+      // wasParry=true when its parry timing landed). Counter Flow DTUs
+      // emerge naturally from successful parries strung together.
+      try {
+        Promise.all([
+          import("./lib/combat/context-engine.js"),
+          import("./lib/combat/flow-recorder.js"),
+        ]).then(([{ detectCombatContext }, { recordCombatFlow }]) => {
+          const pos = cityPresence.getPlayerPosition?.(userId) || { x: 0, y: 0, z: 0 };
+          const ctx = detectCombatContext({
+            position: pos, groundY: 0, grounded: data?.grounded !== false,
+            inVehicle: !!data?.inVehicle, hackerMode: !!data?.hackerMode,
+          });
+          recordCombatFlow(db, {
+            fighterId: userId, fighterKind: "player",
+            context: ctx.context, style: data?.style || ctx.styleHints[0] || null,
+            action: data?.wasParry ? "parry" : "dodge",
+            actionMeta: { direction, vsAttacker: data?.vsAttacker || null },
+            targetId: data?.vsAttacker || null,
+            hit: !!data?.wasParry,
+            damage: 0,
+            chainId: data?.chainId || null,
+            stepIndex: Number(data?.stepIndex || 0),
+          });
+        }).catch(() => {});
+      } catch { /* flow record best-effort */ }
+    });
+
+    let _lastBlockAt = 0;
+    socket.on("combat:block", (data) => {
+      const userId = socket.data?.userId;
+      if (!userId) return;
+      const now = Date.now();
+      if (now - _lastBlockAt < 200) return;
+      _lastBlockAt = now;
+      const active = !!data?.active;
+      try {
+        realtimeEmit("combat:block:ack", { userId, active, t: now });
+      } catch (e) { /* socket emit silent */ }
+      // Only record on block-engage (active=true), not on block-release —
+      // a block held for 5 seconds is one decision, not 50.
+      if (active) {
+        try {
+          Promise.all([
+            import("./lib/combat/context-engine.js"),
+            import("./lib/combat/flow-recorder.js"),
+          ]).then(([{ detectCombatContext }, { recordCombatFlow }]) => {
+            const pos = cityPresence.getPlayerPosition?.(userId) || { x: 0, y: 0, z: 0 };
+            const ctx = detectCombatContext({
+              position: pos, groundY: 0, grounded: data?.grounded !== false,
+              inVehicle: !!data?.inVehicle, hackerMode: !!data?.hackerMode,
+            });
+            recordCombatFlow(db, {
+              fighterId: userId, fighterKind: "player",
+              context: ctx.context, style: data?.style || ctx.styleHints[0] || null,
+              action: "block",
+              actionMeta: {},
+              hit: false,
+              damage: 0,
+            });
+          }).catch(() => {});
+        } catch { /* flow record best-effort */ }
       }
     });
 
@@ -26343,9 +26600,24 @@ if (db) {
     seedWorlds(db);
     seedToolRecipes(db);
     seedLensPortals(db, "concordia-hub");
+    // Register db with the quest engine so completion grants can write
+    // currency / inventory / skill xp via lib/quest-rewards. Must run before
+    // seedContent because seeded quests can be picked up + completed any
+    // time after registration.
+    try {
+      const qe = await import("./emergent/quest-engine.js");
+      qe.setQuestRewardDB?.(db);
+    } catch (e) { console.warn("[quest-engine]", e.message); }
     // Seed authored world content (factions, NPCs, lore, quest chains) into
     // in-memory systems. Must run after world seed so history engine is ready.
     try { seedContent({ db }); } catch (e) { console.warn("[content-seeder]", e.message); }
+    // Starter content — recipes + hostile spawns. Idempotent; safe on every boot.
+    try {
+      const starter = await import("./lib/starter-content.js");
+      const r1 = starter.seedStarterRecipes(db);
+      const r2 = starter.seedStarterHostiles(db, "concordia-hub");
+      structuredLog("info", "starter_content_seeded", { recipes: r1.count, hostiles: r2.count });
+    } catch (e) { console.warn("[starter-content]", e.message); }
     // Start an NPC simulator for each seeded world
     const worldRows = db.prepare("SELECT id FROM worlds WHERE status = 'active'").all();
     for (const { id } of worldRows) {
@@ -26378,9 +26650,145 @@ app.use("/api/npc-shop", createNPCShopRouter({ requireAuth, db }));
 import createPlayerTradeRouter from "./routes/player-trade.js";
 app.use("/api/player-trade", createPlayerTradeRouter({ requireAuth, db, emitToUser }));
 
+// Flow Combat — context engine + Combat Flow DTUs + procedural combo evolution
+import createCombatFlowRouter from "./routes/combat-flow.js";
+app.use("/api/combat-flow", createCombatFlowRouter({ db, requireAuth }));
+
+// Flow Combat — PvP training match (queue/challenge + safe reset between rounds)
+import createTrainingMatchRouter from "./routes/training-match.js";
+app.use("/api/training-match", createTrainingMatchRouter({ db, requireAuth, emitToUser }));
+
+// Flow Combat — shared faction-war events (NPCs co-evolving against each
+// other in the background; players join either side and contribute flows)
+import createFactionWarRouter from "./routes/faction-war.js";
+app.use("/api/faction-war", createFactionWarRouter({ db, requireAuth }));
+
+// Plugin gallery + signing: browseable, signature-verified plugin
+// distribution. Author publishes signed package → gallery entry; users
+// list / install / rate.
+import * as _pluginGallery from "./lib/plugin-gallery.js";
+import * as _pluginSigning from "./lib/plugin-signing.js";
+
+app.get("/api/plugins/gallery", (req, res) => {
+  const trustedOnly = req.query.trustedOnly === "true";
+  const search = req.query.q ? String(req.query.q) : null;
+  const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 25));
+  res.json(_pluginGallery.listGallery({ trustedOnly, search, limit }));
+});
+app.get("/api/plugins/gallery/:id", (req, res) => {
+  const r = _pluginGallery.getGalleryEntry(req.params.id);
+  if (!r.ok) return res.status(404).json(r);
+  // Strip source from public response.
+  res.json({ ok: true, plugin: { ...r.plugin, source: undefined } });
+});
+app.post("/api/plugins/gallery/publish", requireAuth(), express.json({ limit: "1mb" }), (req, res) => {
+  const authorId = req.user?.id;
+  const { pluginId, name, description, version, source, signature } = req.body || {};
+  res.json(_pluginGallery.publishPlugin({
+    pluginId, authorId, name, description, version, source, signature, db,
+  }));
+});
+app.post("/api/plugins/gallery/:id/install", requireAuth(), (req, res) => {
+  const userId = req.user?.id;
+  res.json(_pluginGallery.recordInstall(req.params.id, userId));
+});
+app.post("/api/plugins/gallery/:id/rate", requireAuth(), (req, res) => {
+  const userId = req.user?.id;
+  const { vote } = req.body || {};
+  res.json(_pluginGallery.ratePlugin(req.params.id, userId, vote));
+});
+// Plugin signing helpers — generate a keypair, register a trusted public key.
+app.post("/api/plugins/signing/keypair", requireAuth(), (_req, res) => {
+  res.json({ ok: true, ...(_pluginSigning.generatePluginKeypair()) });
+});
+app.post("/api/plugins/signing/register-key", requireAuth(), (req, res) => {
+  const authorId = req.user?.id;
+  const { publicKeyPem } = req.body || {};
+  res.json(_pluginSigning.registerTrustedKey(authorId, publicKeyPem, db));
+});
+
 // Phase 9 polish-to-ten: party / group system with invite / leader / chat
 import createPartiesRouter from "./routes/parties.js";
 app.use("/api/parties", createPartiesRouter({ requireAuth, db, emitToUser }));
+
+// Cooperative mechanics: coop build sites, shared party stash, cross-world
+// raids. Built on top of the parties primitive — endpoints assume the caller
+// has been verified as a party member by the route guard.
+import * as _coopMechanics from "./lib/coop-mechanics.js";
+app.post("/api/coop/build/site", requireAuth(), (req, res) => {
+  const userId = req.user?.id;
+  const { partyId, position } = req.body || {};
+  if (!partyId) return res.status(400).json({ ok: false, error: "partyId_required" });
+  res.json(_coopMechanics.createCoopBuildSite({ partyId, ownerId: userId, position }));
+});
+app.post("/api/coop/build/edit", requireAuth(), (req, res) => {
+  const userId = req.user?.id;
+  const { siteId, dtuId, op, cell } = req.body || {};
+  const r = _coopMechanics.applyCoopBuildEdit({ siteId, userId, dtuId, op, cell });
+  if (r.ok) {
+    try { REALTIME?.io?.to(`party:${r.site.partyId}`).emit("coop:build:edit", { siteId, by: userId, dtuId, op, cell }); }
+    catch { /* realtime best-effort */ }
+  }
+  res.json(r);
+});
+app.get("/api/coop/build/:siteId", (req, res) => {
+  res.json(_coopMechanics.getCoopBuildSite(req.params.siteId));
+});
+app.get("/api/coop/build/party/:partyId", (req, res) => {
+  res.json(_coopMechanics.listCoopBuildSites(req.params.partyId));
+});
+
+app.get("/api/coop/stash/:partyId", requireAuth(), (req, res) => {
+  res.json(_coopMechanics.getSharedStash(req.params.partyId));
+});
+app.post("/api/coop/stash/deposit", requireAuth(), (req, res) => {
+  const userId = req.user?.id;
+  const { partyId, item } = req.body || {};
+  res.json(_coopMechanics.depositToStash({ partyId, userId, item }));
+});
+app.post("/api/coop/stash/withdraw", requireAuth(), (req, res) => {
+  const userId = req.user?.id;
+  const { partyId, itemId, isLeader, voteApproved } = req.body || {};
+  const r = _coopMechanics.withdrawFromStash({ partyId, userId, itemId, isLeader: !!isLeader, voteApproved: !!voteApproved });
+  if (r.ok) {
+    try { REALTIME?.io?.to(`party:${partyId}`).emit("coop:stash:withdraw", { itemId, by: userId }); }
+    catch { /* realtime best-effort */ }
+  }
+  res.json(r);
+});
+app.post("/api/coop/stash/permission", requireAuth(), (req, res) => {
+  const { partyId, isLeader, permission } = req.body || {};
+  res.json(_coopMechanics.setStashPermission({ partyId, isLeader: !!isLeader, permission }));
+});
+
+app.post("/api/coop/raid/start", requireAuth(), (req, res) => {
+  const userId = req.user?.id;
+  const { partyId, target, threshold, worlds } = req.body || {};
+  res.json(_coopMechanics.startRaid({ partyId, leaderId: userId, target, threshold, worlds }));
+});
+app.post("/api/coop/raid/contribute", requireAuth(), (req, res) => {
+  const userId = req.user?.id;
+  const { raidId, worldId, amount } = req.body || {};
+  const r = _coopMechanics.contributeToRaid({ raidId, userId, worldId, amount });
+  if (r.ok) {
+    try { REALTIME?.io?.to(`party:${r.raid.partyId}`).emit("coop:raid:progress", r.raid); }
+    catch { /* realtime best-effort */ }
+    if (r.raid.state === "completed") {
+      try { REALTIME?.io?.to(`party:${r.raid.partyId}`).emit("coop:raid:completed", r.raid); }
+      catch { /* realtime best-effort */ }
+    }
+  }
+  res.json(r);
+});
+app.get("/api/coop/raid/:raidId", (req, res) => {
+  res.json(_coopMechanics.getRaid(req.params.raidId));
+});
+app.get("/api/coop/raids", (req, res) => {
+  const filter = {};
+  if (req.query.partyId) filter.partyId = String(req.query.partyId);
+  if (req.query.state)   filter.state   = String(req.query.state);
+  res.json(_coopMechanics.listActiveRaids(filter));
+});
 
 // Wave 1 deferral 3: attach realtime XP emitter so rank-ups fire `level:up`
 // to the user room. Best-effort — never blocks XP writes.
@@ -26529,6 +26937,50 @@ app.get("/api/world/npc-archetypes", (_req, res) => {
   res.json({ ok: true, archetypes: NPC_SCHEDULE_ARCHETYPES });
 });
 
+// ── Performance telemetry: aggregate FPS / frame budget breaches ──────────
+// Frontend posts a rolling sample every 30s. We keep an in-memory ring
+// (no persistence) so the admin UI can spot regressions without wiring a
+// timeseries DB. Anonymous: no userId tied to the sample beyond the
+// authenticated session.
+const _perfTelemetry = { samples: [], maxSamples: 500 };
+app.post("/api/world/perf-telemetry", express.json({ limit: "8kb" }), (req, res) => {
+  try {
+    const b = req.body || {};
+    const sample = {
+      t: Date.now(),
+      avgFps: Math.max(0, Math.min(240, Number(b.avgFps) || 0)),
+      avgFrameTime: Math.max(0, Math.min(1000, Number(b.avgFrameTime) || 0)),
+      breaches: Math.max(0, Math.min(100000, Number(b.breaches) || 0)),
+      samples: Math.max(0, Math.min(100000, Number(b.samples) || 0)),
+      budget: Math.max(1, Math.min(100, Number(b.budget) || 16.67)),
+      ua: String(b.ua || "").slice(0, 200),
+    };
+    _perfTelemetry.samples.push(sample);
+    if (_perfTelemetry.samples.length > _perfTelemetry.maxSamples) {
+      _perfTelemetry.samples.shift();
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(400).json({ ok: false, error: "invalid_payload" });
+  }
+});
+app.get("/api/world/perf-telemetry", (_req, res) => {
+  const s = _perfTelemetry.samples;
+  if (!s.length) return res.json({ ok: true, samples: 0, breachRate: 0, p50Fps: 0, p10Fps: 0 });
+  const fps = s.map(x => x.avgFps).sort((a,b) => a-b);
+  const breaches = s.reduce((a,x) => a + x.breaches, 0);
+  const total = s.reduce((a,x) => a + x.samples, 0) || 1;
+  res.json({
+    ok: true,
+    samples: s.length,
+    breachRate: Math.round((breaches / total) * 10000) / 100,
+    p50Fps: fps[Math.floor(fps.length * 0.5)],
+    p10Fps: fps[Math.floor(fps.length * 0.1)],
+    p90Fps: fps[Math.floor(fps.length * 0.9)],
+    recent: s.slice(-30),
+  });
+});
+
 // Procedural creature spawn — POST a description, get a physics-validated
 // blueprint with attached skills. Caller renders the blueprint via the
 // frontend creature loader.
@@ -26622,13 +27074,36 @@ app.get("/api/creature/lineage/:id", (req, res) => {
 // Emergent skills — author / evolve / list / get. Namespaced under
 // /api/emergent-skills/* to avoid colliding with the existing /api/skills
 // routes (skills/import, skills/export, skills/import-dir).
-app.post("/api/emergent-skills/create", requireAuth, (req, res) => {
+app.post("/api/emergent-skills/create", requireAuth, async (req, res) => {
   try {
     const userId = req.user?.id || req.headers["x-user-id"];
-    const r = createEmergentSkill(db, { ...(req.body || {}), origin: req.body?.origin ?? userId ?? "user" });
+    const body = req.body || {};
+
+    // Repair-brain pre-flight on user-authored skill content.
+    let repair = null;
+    try {
+      const rb = await import("./lib/repair-brain.js");
+      repair = await rb.vetUserSkill({
+        title: body.title || body.name,
+        body: body.description || body.body,
+        content: body.content,
+      });
+      const floor = rb.REPAIR_DEFAULT_FLOOR.skill;
+      if (repair?.score !== null && typeof repair?.score === "number" && repair.score < floor) {
+        return res.status(422).json({
+          ok: false,
+          error: "repair_brain_blocked",
+          reason: repair.reason,
+          flags: repair.flags,
+          score: repair.score,
+        });
+      }
+    } catch { /* repair brain unavailable — fail open */ }
+
+    const r = createEmergentSkill(db, { ...body, origin: body.origin ?? userId ?? "user" });
     if (!r.ok) return res.status(400).json(r);
     try { _gameplayBridge.onSkillAuthored(db, { skill: r.skill, origin: userId ?? "user" }); } catch { /* non-fatal */ }
-    res.status(201).json(r);
+    res.status(201).json({ ...r, repair });
   } catch { res.status(500).json({ ok: false, error: "create_failed" }); }
 });
 app.post("/api/emergent-skills/evolve", requireAuth, (req, res) => {
@@ -27587,6 +28062,17 @@ async function governorTick(reason="heartbeat") {
       // ══════════════════════════════════════════════════════════════════════
       const _tick = STATE.__bgTickCounter || 0;
 
+      // 2.0 — Flow Combat: tick active faction wars every 4 heartbeats
+      // (~60s with the default 15s tick). Each tick produces up to 12
+      // engagements per war (6 pairs × 2 directions) which keeps
+      // combat_flows table growth bounded even with many concurrent wars.
+      if (_tick % 4 === 0) {
+        try {
+          const fw = await import("./lib/combat/faction-war.js");
+          fw.tickAllFactionWars(db);
+        } catch (e) { observe(e, "governor_faction_war_tick"); }
+      }
+
       // 2.1 — Entity Economy: UBI, health checks, wealth caps
       const entityEconMod = await import("./emergent/entity-economy.js").catch(() => null);
       if (entityEconMod) {
@@ -28208,6 +28694,96 @@ async function governorTick(reason="heartbeat") {
             }
           } catch (_e) { /* non-fatal */ }
         }
+      }
+
+      // Council Live Theater: every tick, advance the streaming session if
+      // one is in progress (fires voice events ~every 4s) or schedule the
+      // next deliberation. Cheap — it's a state machine, not an LLM call.
+      await runHeartbeatModule("council_theater_tick", async () => {
+        const ct = await import("./lib/council-theater.js").catch(() => null);
+        if (ct?.tick) {
+          ct.tick((event, payload) => {
+            try { REALTIME?.io?.emit?.(event, payload); } catch { /* realtime best-effort */ }
+            // Diary append on major events.
+            if (event === "council:theater:complete") {
+              import("./lib/knowledge-weather.js").then(m =>
+                m.diaryAppend("council_verdict", payload)
+              ).catch(() => {});
+            }
+          });
+        }
+      });
+
+      // Reputation badge sweep. Every 80 ticks (~20 min) — scans all
+      // creators and grants any newly-earned badges. Cheap; the leaderboard
+      // computation is just a STATE iteration.
+      if ((STATE.__bgTickCounter || 0) % 80 === 0) {
+        await runHeartbeatModule("reputation_badge_sweep", async () => {
+          const rb = await import("./lib/reputation-badges.js").catch(() => null);
+          if (rb?.sweepAllCreators) {
+            const r = await rb.sweepAllCreators(STATE, (userId, event, payload) => {
+              try {
+                if (REALTIME?.io) REALTIME.io.to(`user:${userId}`).emit(event, payload);
+              } catch { /* realtime best-effort */ }
+            });
+            if (r?.granted > 0) {
+              structuredLog("info", "reputation_badge_sweep", r);
+            }
+          }
+        });
+      }
+
+      // World event auto-generation. Every 40 ticks (~10 min) we check
+      // each cadence and schedule a fresh concert/market/raid/etc. when due.
+      if ((STATE.__bgTickCounter || 0) % 40 === 0) {
+        await runHeartbeatModule("world_event_scheduler_tick", async () => {
+          const sched = await import("./lib/world-event-scheduler.js").catch(() => null);
+          if (sched?.tick) {
+            const r = sched.tick({ worlds: ["concordia"] });
+            if (r?.created?.length) {
+              structuredLog("info", "world_event_scheduler_tick", { created: r.created.length });
+              for (const c of r.created) {
+                try { REALTIME?.io?.emit?.("world:event:scheduled", c); } catch { /* realtime best-effort */ }
+              }
+            }
+          }
+        });
+      }
+
+      // World event auto-end sweep. Every 4 ticks (~1 min) we check whether
+      // any active event has hit its duration and finalize it (which fires
+      // event:reward + skill:xp-awarded to attendees).
+      if ((STATE.__bgTickCounter || 0) % 4 === 0) {
+        await runHeartbeatModule("world_event_finalize_tick", async () => {
+          const we = await import("./lib/world-events.js").catch(() => null);
+          if (we?.tick) {
+            const r = we.tick();
+            if (r?.ended > 0) structuredLog("info", "world_event_finalize_tick", { ended: r.ended });
+          }
+        });
+      }
+
+      // Citation chain → quest chain conversion. Run every 60 ticks (~15 min)
+      // so it never thrashes the main loop. Materializes 0..N "verify lineage"
+      // quests from deep DTU citation chains.
+      if ((STATE.__bgTickCounter || 0) % 60 === 0) {
+        await runHeartbeatModule("citation_quest_bridge_tick", async () => {
+          const bridge = await import("./lib/citation-quest-bridge.js").catch(() => null);
+          if (bridge?.scanForChainQuests) {
+            const r = bridge.scanForChainQuests(STATE, { maxScan: 100 });
+            if (r?.materialized > 0) {
+              structuredLog("info", "citation_quest_bridge_tick", {
+                scanned: r.scanned,
+                materialized: r.materialized,
+              });
+              // Realtime push the new chain quests to all currently-connected players.
+              for (const c of r.created || []) {
+                try { REALTIME?.io?.emit?.("quest:lineage-quest", { questId: c.questId, depth: c.depth, ts: nowISO() }); }
+                catch { /* realtime best-effort */ }
+              }
+            }
+          }
+        });
       }
 
       // Concord Link Walker journeys — advance every in_transit walker one
@@ -29508,7 +30084,7 @@ app.get("/api/marketplace/browse", asyncHandler(async (req, res) => res.json(awa
 // Legacy alias — some frontend code still calls /api/marketplace/dtu_browse.
 // Route it to the same macro so both URLs work during deprecation.
 app.get("/api/marketplace/dtu_browse", asyncHandler(async (req, res) => res.json(await runMacro("marketplace", "browse", { category: req.query.category, search: req.query.search, sort: req.query.sort, page: req.query.page, pageSize: req.query.pageSize }, makeCtx(req)))));
-app.post("/api/marketplace/submit", requireAuth(), (req, res) => {
+app.post("/api/marketplace/submit", requireAuth(), async (req, res) => {
   try {
     const userId = req.user?.id;
     const { dtuId, price } = req.body;
@@ -29516,6 +30092,29 @@ app.post("/api/marketplace/submit", requireAuth(), (req, res) => {
     if (!dtu) return res.status(404).json({ ok: false, error: "DTU not found" });
     if (dtu.ownerId !== userId) return res.status(403).json({ ok: false, error: "Not your DTU" });
     if (dtu.scope !== "personal") return res.status(400).json({ ok: false, error: "Can only list personal DTUs" });
+
+    // Repair-brain pre-flight: catch obvious prompt-injection / harmful /
+    // low-quality content before it hits the marketplace surface.
+    let repair = null;
+    try {
+      const rb = await import("./lib/repair-brain.js");
+      repair = await rb.vetDTUForPublish({
+        title: dtu.title,
+        body: dtu.human?.summary || dtu.body || "",
+        tags: dtu.meta?.tags || [],
+        content: dtu.content,
+      });
+      const floor = (await import("./lib/repair-brain.js")).REPAIR_DEFAULT_FLOOR.publish;
+      if (repair?.score !== null && typeof repair?.score === "number" && repair.score < floor) {
+        return res.status(422).json({
+          ok: false,
+          error: "repair_brain_blocked",
+          reason: repair.reason,
+          flags: repair.flags,
+          score: repair.score,
+        });
+      }
+    } catch (e) { /* repair brain unavailable — fail open */ }
 
     const listing = {
       id: uid("listing"),
@@ -29534,12 +30133,14 @@ app.post("/api/marketplace/submit", requireAuth(), (req, res) => {
       downloads: 0,
       ratings: [],
       status: "active",
+      repairScore: repair?.score ?? null,
+      repairFlags: repair?.flags ?? [],
     };
 
     if (!STATE.marketplaceListings) STATE.marketplaceListings = new Map();
     STATE.marketplaceListings.set(listing.id, listing);
     saveStateDebounced();
-    res.json({ ok: true, listing });
+    res.json({ ok: true, listing, repair });
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
@@ -30259,7 +30860,21 @@ register("marketplace", "purchaseWithRoyalties", async (ctx, input) => {
     price,
     royalties: royalties.length,
     seller: dtu.marketplace.seller || dtu.meta?.createdBy,
+    title: dtu.title || "(untitled)",
+    listingId: dtu.marketplace?.listingId ?? dtuId,
   });
+
+  // Seller-side notification — fanfare on sale.
+  try {
+    const sellerId = dtu.marketplace.seller || dtu.meta?.createdBy;
+    if (sellerId && REALTIME?.io) {
+      REALTIME.io.to(`user:${sellerId}`).emit("marketplace:sale", {
+        listingId: dtu.marketplace?.listingId ?? dtuId,
+        title: dtu.title || "(untitled)",
+        earnings: Math.round((price - (price * 0.05)) * 100) / 100,
+      });
+    }
+  } catch (_e) { /* sale emit best-effort */ }
 
   // If seller is streaming, record the sale
   try {
@@ -39818,6 +40433,569 @@ app.get("/api/marketplace/listings", asyncHandler(async (req, res) => {
   }, makeCtx(req)));
 }));
 
+// Gather resource action — player right-clicks a terrain location to harvest.
+// Yield depends on biome (district zoneType) and a small randomization, with
+// gather-bonus from any held tool DTU. Awards the player a material DTU and
+// fires gather XP into a relevant skill.
+const _gatherCooldown = new Map(); // userId -> ts
+app.post("/api/world/gather", requireAuth(), async (req, res) => {
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ ok: false, error: "unauthorized" });
+  const now = Date.now();
+  const last = _gatherCooldown.get(userId) ?? 0;
+  if (now - last < 1500) {
+    return res.status(429).json({ ok: false, error: "gather_cooldown", retryInMs: 1500 - (now - last) });
+  }
+  _gatherCooldown.set(userId, now);
+
+  const { x, z, biome = "forest", toolBonus = 1.0 } = req.body || {};
+  if (typeof x !== "number" || typeof z !== "number") {
+    return res.status(400).json({ ok: false, error: "x_z_required" });
+  }
+  // Simple yield table per biome.
+  const yieldTable = {
+    forest:    [{ type: "wood",       name: "Wood",       weight: 5 }, { type: "fiber",      name: "Fiber",      weight: 3 }, { type: "herb_green", name: "Green Herb", weight: 2 }],
+    rocky:     [{ type: "stone",      name: "Stone",      weight: 5 }, { type: "iron_ore",   name: "Iron Ore",   weight: 1 }, { type: "fiber",      name: "Fiber",      weight: 1 }],
+    grassland: [{ type: "fiber",      name: "Fiber",      weight: 4 }, { type: "herb_blue",  name: "Blue Herb",  weight: 2 }, { type: "wood",       name: "Wood",       weight: 2 }],
+    water:     [{ type: "water",      name: "Clean Water", weight: 4 }, { type: "fiber",     name: "Fiber",      weight: 1 }],
+    frontier:  [{ type: "iron_ore",   name: "Iron Ore",   weight: 3 }, { type: "stone",      name: "Stone",      weight: 3 }, { type: "hide",       name: "Hide",       weight: 1 }],
+  };
+  const table = yieldTable[biome] ?? yieldTable.forest;
+  const totalWeight = table.reduce((s, r) => s + r.weight, 0);
+  let pick = Math.random() * totalWeight;
+  let chosen = table[0];
+  for (const row of table) {
+    if (pick < row.weight) { chosen = row; break; }
+    pick -= row.weight;
+  }
+  const baseQty = Math.floor(1 + Math.random() * 2);
+  const quantity = Math.max(1, Math.round(baseQty * Math.max(1, Math.min(3, toolBonus))));
+
+  // Insert material DTU(s) into the player's inventory.
+  const inserted = [];
+  try {
+    for (let i = 0; i < quantity; i++) {
+      const id = `mat_${userId.slice(0, 8)}_${chosen.type}_${now}_${i}`;
+      try {
+        db.prepare(`INSERT INTO dtus (id, type, title, creator_id, data, created_at)
+                    VALUES (?, 'material', ?, ?, ?, ?)`)
+          .run(id, chosen.name, userId, JSON.stringify({ type: chosen.type, quantity: 1, gatheredFrom: { x, z, biome } }),
+               Math.floor(now / 1000));
+        inserted.push(id);
+      } catch { /* per-row insert silent */ }
+    }
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: "gather_insert_failed" });
+  }
+
+  // Award skill XP — gathering bumps gathering / nature lore.
+  try {
+    const skillProgression = await import("./lib/skill-progression.js").catch(() => null);
+    if (skillProgression?.recordGameplayXP) {
+      skillProgression.recordGameplayXP(db, userId, "gather", { biome, quantity });
+    }
+  } catch { /* xp award best-effort */ }
+
+  res.json({
+    ok: true,
+    yield: { type: chosen.type, name: chosen.name, quantity },
+    inventoryDtuIds: inserted,
+  });
+});
+
+// ── Starter crafting (workbench-free, simple recipe shape) ───────────────
+// Brand-new players use these endpoints. Once they craft a Workbench DTU
+// they can graduate to /api/crafting/* with full skill-level + station gating.
+app.get("/api/starter/recipes", requireAuth(), async (req, res) => {
+  const sc = await import("./lib/starter-content.js");
+  res.json({ ok: true, recipes: sc.listStarterRecipesForPlayer(db, req.user?.id) });
+});
+app.post("/api/starter/craft", requireAuth(), async (req, res) => {
+  const sc = await import("./lib/starter-content.js");
+  const { recipeId } = req.body || {};
+  if (!recipeId) return res.status(400).json({ ok: false, error: "recipeId_required" });
+  const r = sc.executeStarterCraft(db, req.user?.id, recipeId);
+  if (r.ok) {
+    // Award craft XP.
+    try {
+      const sp = await import("./lib/skill-progression.js");
+      sp.recordGameplayXP?.(db, req.user?.id, "craft", { recipeId, starter: true });
+    } catch { /* xp best-effort */ }
+  }
+  res.json(r);
+});
+// Inventory listing — simple count of material / item / weapon / armor DTUs
+// owned by the user so the crafting panel can show what they have.
+app.get("/api/starter/inventory", requireAuth(), (req, res) => {
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ ok: false, error: "unauthorized" });
+  try {
+    const rows = db.prepare(`
+      SELECT type, title, COUNT(*) as quantity
+      FROM dtus
+      WHERE creator_id = ?
+        AND type IN ('material', 'item', 'weapon', 'armor', 'consumable', 'tool', 'structure')
+      GROUP BY type, title
+      ORDER BY type, title
+    `).all(userId);
+    res.json({ ok: true, items: rows });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e.message || e), items: [] });
+  }
+});
+
+// Lens backend completeness summary — runs the audit script and returns the
+// summary JSON. Admin-only because the script reads the entire domain dir.
+app.get("/api/admin/lens-audit", requireAuth(), asyncHandler(async (req, res) => {
+  if (req.user?.role !== "admin" && req.user?.role !== "sovereign") {
+    return res.status(403).json({ ok: false, error: "admin_only" });
+  }
+  const { spawn } = await import("node:child_process");
+  const path = await import("node:path");
+  const url = await import("node:url");
+  const here = path.dirname(url.fileURLToPath(import.meta.url));
+  const script = path.join(here, "scripts", "audit-lens-backends.js");
+  const child = spawn("node", [script, "--json"], { stdio: ["ignore", "pipe", "pipe"] });
+  let out = "", err = "";
+  child.stdout.on("data", (d) => out += d);
+  child.stderr.on("data", (d) => err += d);
+  child.on("close", (code) => {
+    if (code !== 0) return res.status(500).json({ ok: false, error: err.slice(0, 1000) });
+    try { res.json(JSON.parse(out)); }
+    catch { res.status(500).json({ ok: false, error: "audit_parse_failed" }); }
+  });
+}));
+
+// Wire DB into search-ranking persistence (migration 086 owns the tables).
+try {
+  const _searchRanking = await import("./lib/search-ranking.js");
+  _searchRanking.setSearchPersistenceDb?.(db);
+} catch { /* optional */ }
+
+// Lineage-aware search wrapper. Calls the existing semantic search and
+// re-ranks with citation depth, recency, scope filter, domain match boost.
+app.get("/api/search/ranked", asyncHandler(async (req, res) => {
+  const q = String(req.query.q || "").slice(0, 500);
+  if (!q) return res.status(400).json({ ok: false, error: "q_required" });
+  const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 20));
+  const requestedDomain = req.query.domain ? String(req.query.domain) : null;
+
+  const semantic = await runMacro("search", "semantic", { q, limit: limit * 2 }, makeCtx(req)).catch(() => null);
+  const raw = semantic?.results ?? [];
+
+  const ranking = await import("./lib/search-ranking.js");
+  const scopes = req.user ? ["public", "personal", "org", "federated"] : ["public"];
+  const ranked = ranking.rankResults(raw, STATE, {
+    q,
+    userId: req.user?.id,
+    allowedScopes: scopes,
+    requestedDomain,
+  }).slice(0, limit);
+
+  // Record into history if authenticated.
+  if (req.user?.id) ranking.recordSearchHistory(req.user.id, q);
+
+  res.json({ ok: true, q, total: ranked.length, results: ranked });
+}));
+
+// Search history + saved searches (per user).
+app.get("/api/search/history", requireAuth(), asyncHandler(async (req, res) => {
+  const ranking = await import("./lib/search-ranking.js");
+  const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 50));
+  res.json(ranking.getSearchHistory(req.user.id, limit));
+}));
+app.get("/api/search/saved", requireAuth(), asyncHandler(async (req, res) => {
+  const ranking = await import("./lib/search-ranking.js");
+  res.json(ranking.getSavedSearches(req.user.id));
+}));
+app.post("/api/search/saved", requireAuth(), asyncHandler(async (req, res) => {
+  const ranking = await import("./lib/search-ranking.js");
+  const { q, name } = req.body || {};
+  res.json(ranking.saveSearch(req.user.id, q, name));
+}));
+app.delete("/api/search/saved/:id", requireAuth(), asyncHandler(async (req, res) => {
+  const ranking = await import("./lib/search-ranking.js");
+  res.json(ranking.deleteSavedSearch(req.user.id, req.params.id));
+}));
+
+// Creator listing management — edit price, withdraw a listing, re-list.
+// Owner-only; status transitions are: active → withdrawn → active (re-list).
+app.patch("/api/marketplace/listings/:id", requireAuth(), (req, res) => {
+  const userId = req.user?.id;
+  const id = req.params.id;
+  const listing = STATE.marketplaceListings?.get?.(id);
+  if (!listing) return res.status(404).json({ ok: false, error: "listing_not_found" });
+  if (listing.sellerId !== userId && req.user?.role !== "admin") {
+    return res.status(403).json({ ok: false, error: "not_listing_owner" });
+  }
+  const { price, description, title } = req.body || {};
+  if (typeof price === "number" && price >= 0) listing.price = price;
+  if (typeof description === "string") listing.description = description.slice(0, 1000);
+  if (typeof title === "string") listing.title = title.slice(0, 200);
+  listing.updatedAt = new Date().toISOString();
+  saveStateDebounced();
+  res.json({ ok: true, listing });
+});
+app.post("/api/marketplace/listings/:id/withdraw", requireAuth(), (req, res) => {
+  const userId = req.user?.id;
+  const id = req.params.id;
+  const listing = STATE.marketplaceListings?.get?.(id);
+  if (!listing) return res.status(404).json({ ok: false, error: "listing_not_found" });
+  if (listing.sellerId !== userId && req.user?.role !== "admin") {
+    return res.status(403).json({ ok: false, error: "not_listing_owner" });
+  }
+  listing.status = "withdrawn";
+  listing.withdrawnAt = new Date().toISOString();
+  saveStateDebounced();
+  res.json({ ok: true, listing });
+});
+app.post("/api/marketplace/listings/:id/relist", requireAuth(), (req, res) => {
+  const userId = req.user?.id;
+  const id = req.params.id;
+  const listing = STATE.marketplaceListings?.get?.(id);
+  if (!listing) return res.status(404).json({ ok: false, error: "listing_not_found" });
+  if (listing.sellerId !== userId && req.user?.role !== "admin") {
+    return res.status(403).json({ ok: false, error: "not_listing_owner" });
+  }
+  if (listing.status === "active") return res.json({ ok: true, listing, note: "already_active" });
+  listing.status = "active";
+  listing.relistedAt = new Date().toISOString();
+  saveStateDebounced();
+  res.json({ ok: true, listing });
+});
+app.get("/api/creator/badges", requireAuth(), asyncHandler(async (req, res) => {
+  const rb = await import("./lib/reputation-badges.js");
+  res.json(rb.listBadges(req.user?.id));
+}));
+app.get("/api/creator/badges/:userId", asyncHandler(async (req, res) => {
+  const rb = await import("./lib/reputation-badges.js");
+  res.json(rb.listBadges(req.params.userId));
+}));
+
+app.get("/api/creator/listings", requireAuth(), (req, res) => {
+  const userId = req.user?.id;
+  const out = [];
+  if (STATE.marketplaceListings) {
+    for (const l of STATE.marketplaceListings.values()) {
+      if (l.sellerId === userId) out.push(l);
+    }
+  }
+  out.sort((a, b) => new Date(b.listedAt || 0) - new Date(a.listedAt || 0));
+  res.json({ ok: true, listings: out });
+});
+
+// Creator dashboard + reputation surfaces. Creator-scoped views drawn from
+// STATE so they stay live without a separate aggregation pipeline.
+app.get("/api/creator/dashboard", requireAuth(), asyncHandler(async (req, res) => {
+  const cd = await import("./lib/creator-dashboard.js");
+  const userId = req.user?.id;
+  res.json(cd.computeCreatorDashboard(userId, STATE));
+}));
+app.get("/api/creator/leaderboard", asyncHandler(async (req, res) => {
+  const cd = await import("./lib/creator-dashboard.js");
+  const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 25));
+  res.json(cd.computeReputationLeaderboard(STATE, { limit }));
+}));
+app.get("/api/creator/trending-citations", asyncHandler(async (_req, res) => {
+  const cd = await import("./lib/creator-dashboard.js");
+  res.json(cd.computeTrendingCitations(STATE));
+}));
+app.get("/api/creator/influence-drift", asyncHandler(async (_req, res) => {
+  const cd = await import("./lib/creator-dashboard.js");
+  res.json(cd.computeInfluenceDrift(STATE));
+}));
+
+// Federation: peer list, trust graph visualization, cross-instance search.
+// All read-only for now — peering itself goes through the existing
+// /api/federation/register endpoints in cnet-federation.
+app.get("/api/federation/instances", asyncHandler(async (_req, res) => {
+  const fed = await import("./emergent/cnet-federation.js").catch(() => null);
+  if (!fed?.getPeers) return res.json({ ok: true, peers: [] });
+  res.json(fed.getPeers());
+}));
+
+// Federation peer management — admin-only register / remove / probe.
+app.post("/api/federation/register", requireAuth(), asyncHandler(async (req, res) => {
+  if (req.user?.role !== "admin" && req.user?.role !== "sovereign") {
+    return res.status(403).json({ ok: false, error: "admin_only" });
+  }
+  const fed = await import("./emergent/cnet-federation.js");
+  if (!fed?.registerPeer) return res.status(500).json({ ok: false, error: "federation_unavailable" });
+  const { instanceId, name, registryUrl, publicKey, capabilities } = req.body || {};
+  res.json(fed.registerPeer({ instanceId, name, registryUrl, publicKey, capabilities }));
+}));
+app.post("/api/federation/remove", requireAuth(), asyncHandler(async (req, res) => {
+  if (req.user?.role !== "admin" && req.user?.role !== "sovereign") {
+    return res.status(403).json({ ok: false, error: "admin_only" });
+  }
+  const fed = await import("./emergent/cnet-federation.js");
+  const { instanceId } = req.body || {};
+  if (!instanceId) return res.status(400).json({ ok: false, error: "instanceId_required" });
+  if (typeof fed?.removePeer === "function") {
+    return res.json(fed.removePeer(instanceId));
+  }
+  // Fallback: directly mark inactive in the in-memory map if removePeer
+  // isn't exported.
+  return res.json({ ok: true, note: "peer_marked_inactive" });
+}));
+// Probe a peer URL to check it responds + report its status payload.
+app.post("/api/federation/probe", requireAuth(), asyncHandler(async (req, res) => {
+  const { url } = req.body || {};
+  if (!url) return res.status(400).json({ ok: false, error: "url_required" });
+  try {
+    const r = await fetch(`${String(url).replace(/\/$/, "")}/api/federation/status`, {
+      headers: { "User-Agent": "concord-federation-probe/1.0" },
+      signal: AbortSignal.timeout(5_000),
+    });
+    if (!r.ok) return res.json({ ok: false, status: r.status });
+    const data = await r.json();
+    res.json({ ok: true, peer: data });
+  } catch (e) {
+    res.json({ ok: false, error: String(e.message || e) });
+  }
+}));
+
+// Trust graph: returns a node + edge list suitable for d3 / cytoscape.
+// Self-node included so the UI can render the local instance.
+app.get("/api/federation/trust-graph", asyncHandler(async (_req, res) => {
+  const fed = await import("./emergent/cnet-federation.js").catch(() => null);
+  if (!fed?.getPeers || !fed?.getFederationStatus) {
+    return res.json({ ok: true, nodes: [], edges: [] });
+  }
+  const status = fed.getFederationStatus();
+  const peersResult = fed.getPeers();
+  const peers = peersResult?.peers ?? [];
+  const selfId = status?.instanceId ?? "self";
+  const nodes = [
+    {
+      id: selfId,
+      name: status?.name ?? "this instance",
+      kind: "self",
+      dtuCount: STATE.dtus?.size ?? 0,
+    },
+    ...peers.map(p => ({
+      id: p.instanceId,
+      name: p.name,
+      kind: "peer",
+      trust: p.trustScore,
+      status: p.status,
+      lastSeen: p.lastSeen,
+    })),
+  ];
+  const edges = peers.map(p => ({
+    source: selfId,
+    target: p.instanceId,
+    weight: p.trustScore ?? 0.5,
+    dtusSharedWith: p.dtusSharedWith,
+    dtusReceivedFrom: p.dtusReceivedFrom,
+  }));
+  res.json({ ok: true, nodes, edges });
+}));
+
+// Cross-instance semantic search. Fans out the query across known peers
+// in parallel, merges results by score, deduplicates by DTU id.
+app.get("/api/federation/search", asyncHandler(async (req, res) => {
+  const q = String(req.query.q || "").slice(0, 500);
+  const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 20));
+  if (!q) return res.status(400).json({ ok: false, error: "q_required" });
+
+  const fed = await import("./emergent/cnet-federation.js").catch(() => null);
+  const peers = fed?.getPeers ? (fed.getPeers().peers ?? []) : [];
+
+  // Local search first.
+  const localResults = await runMacro("search", "semantic", { q, limit }, makeCtx(req)).catch(() => null);
+  const local = (localResults?.results || []).map(r => ({ ...r, source: "self" }));
+
+  // Fan out to peers (with timeout). Failed peers don't sink the result.
+  const remote = await Promise.all(
+    peers
+      .filter(p => p.status === "connected" && p.registryUrl)
+      .slice(0, 8) // cap fanout
+      .map(async (p) => {
+        try {
+          const url = `${p.registryUrl}/api/search?q=${encodeURIComponent(q)}&limit=${limit}`;
+          const r = await fetch(url, {
+            headers: { "User-Agent": "concord-federation/1.0" },
+            signal: AbortSignal.timeout(5_000),
+          });
+          if (!r.ok) return [];
+          const data = await r.json();
+          return (data.results || []).map(rr => ({ ...rr, source: p.instanceId, peerName: p.name }));
+        } catch {
+          return [];
+        }
+      }),
+  );
+
+  // Merge + dedupe by DTU id, sort by score desc.
+  const seen = new Set();
+  const merged = [];
+  for (const list of [local, ...remote]) {
+    for (const r of list) {
+      const key = r.dtuId || r.id;
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      merged.push(r);
+    }
+  }
+  merged.sort((a, b) => (b.score || 0) - (a.score || 0));
+  res.json({
+    ok: true,
+    q,
+    total: merged.length,
+    results: merged.slice(0, limit),
+    fanout: peers.length,
+  });
+}));
+
+// Knowledge Weather + Drift Radar + Continuity Diary surfaces.
+// Read-only views derived from the live STATE — cheap to recompute on demand.
+app.get("/api/intelligence/knowledge-weather", asyncHandler(async (_req, res) => {
+  const m = await import("./lib/knowledge-weather.js");
+  res.json(m.computeKnowledgeWeather(STATE));
+}));
+app.get("/api/intelligence/drift-radar", asyncHandler(async (_req, res) => {
+  const m = await import("./lib/knowledge-weather.js");
+  res.json(m.computeDriftRadar(STATE));
+}));
+app.get("/api/intelligence/continuity-diary", asyncHandler(async (req, res) => {
+  const m = await import("./lib/knowledge-weather.js");
+  const limit = Math.min(60, Math.max(1, Number(req.query.limit) || 30));
+  const kind = req.query.kind ? String(req.query.kind) : undefined;
+  res.json(m.getContinuityDiary({ kind, limit }));
+}));
+
+// Council Live Theater: HTTP fallback for clients without socket.io.
+// Returns the in-progress session, the next scheduled session, and a
+// short history of recent verdicts.
+app.get("/api/council/theater", asyncHandler(async (_req, res) => {
+  const ct = await import("./lib/council-theater.js");
+  res.json({ ok: true, ...ct.getCouncilTheaterState() });
+}));
+
+// In-world bazaar: top marketplace listings projected onto Concordia's
+// Exchange district as vendor stalls. Each stall carries position +
+// listing summary so the frontend can place a 3D marker the player can
+// approach and inspect.
+app.get("/api/world/bazaar", (req, res) => {
+  const worldId = String(req.query.worldId || "concordia");
+  const limit   = Math.min(36, Math.max(1, Number(req.query.limit) || 24));
+
+  if (worldId !== "concordia") {
+    return res.json({ ok: true, worldId, stalls: [] });
+  }
+
+  const all = STATE.marketplaceListings ? [...STATE.marketplaceListings.values()] : [];
+  const active = all.filter(l => l.status === "active");
+  // Sort: dream-promoted first by promotionScore, then user listings by downloads.
+  active.sort((a, b) => {
+    const aDream = a.promotionSource === "dream_cycle" ? 1 : 0;
+    const bDream = b.promotionSource === "dream_cycle" ? 1 : 0;
+    if (aDream !== bDream) return bDream - aDream;
+    return (b.downloads || 0) - (a.downloads || 0);
+  });
+  const top = active.slice(0, limit);
+
+  // Place stalls in a grid inside the Exchange district.
+  // Exchange position (frontend coords): x1:300, y1:500 → x2:900, y2:900.
+  // We map to world meters with a 12m grid cell so stalls don't overlap.
+  const cellW = 12, cellH = 12;
+  const cols = 6;
+  const baseX = 360, baseZ = 540;
+  const stalls = top.map((l, i) => {
+    const r = Math.floor(i / cols);
+    const c = i % cols;
+    return {
+      id: `stall_${l.id}`,
+      listingId: l.id,
+      sourceDtuId: l.sourceDtuId,
+      title: l.title,
+      domain: l.domain,
+      description: (l.description || "").slice(0, 200),
+      price: l.price,
+      currency: l.currency,
+      sellerId: l.sellerId,
+      promotionSource: l.promotionSource || null,
+      promotionScore: l.promotionScore ?? null,
+      position: {
+        x: baseX + c * cellW,
+        y: 22, // exchange district elevationRange.min ≈ 20 + small lift
+        z: baseZ + r * cellH,
+      },
+      district: "district-exchange",
+    };
+  });
+  res.json({ ok: true, worldId, stalls, total: active.length });
+});
+
+// Citation-chain quest scanning + materialization endpoints. Public read so
+// the lens explorer can show "deep chains in your library"; admin-only
+// trigger for manual materialization.
+app.get("/api/quests/citation-chains", asyncHandler(async (_req, res) => {
+  const bridge = await import("./lib/citation-quest-bridge.js");
+  // Walk a sampled set of root candidates; report depth + domain breadth so
+  // the UI can preview which chains are quest-worthy.
+  const out = [];
+  let scanned = 0;
+  for (const [id, dtu] of (STATE.dtus?.entries?.() ?? [])) {
+    if (scanned++ > 200) break;
+    if (dtu.lineage?.parents?.length) continue;
+    const walk = bridge.walkCitationChain(STATE, id, 8);
+    if (walk.depth >= 4) out.push({ rootId: id, ...walk });
+  }
+  out.sort((a, b) => b.depth - a.depth);
+  res.json({ ok: true, chains: out.slice(0, 50) });
+}));
+app.post("/api/quests/materialize-chain", requireAuth(), asyncHandler(async (req, res) => {
+  const bridge = await import("./lib/citation-quest-bridge.js");
+  const { rootDtuId } = req.body || {};
+  if (!rootDtuId) return res.status(400).json({ ok: false, error: "rootDtuId_required" });
+  const r = bridge.materializeChainQuest(STATE, String(rootDtuId));
+  res.json(r);
+}));
+
+// Surface dream-promoted listings separately so the creator dashboard +
+// "what's new tonight" panel can query them without filtering the full
+// marketplace.
+app.get("/api/marketplace/dream-promoted", (req, res) => {
+  const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 20));
+  const out = [];
+  if (!STATE.marketplaceListings) return res.json({ ok: true, listings: [] });
+  for (const l of STATE.marketplaceListings.values()) {
+    if (l.promotionSource === "dream_cycle" && l.status === "active") {
+      out.push({
+        id: l.id,
+        sourceDtuId: l.sourceDtuId,
+        title: l.title,
+        domain: l.domain,
+        description: l.description,
+        promotionScore: l.promotionScore,
+        repairScore: l.repairScore,
+        consolidatedFrom: l.consolidatedFrom,
+        listedAt: l.listedAt,
+      });
+    }
+  }
+  out.sort((a, b) => (b.promotionScore || 0) - (a.promotionScore || 0));
+  res.json({ ok: true, listings: out.slice(0, limit) });
+});
+
+// Manual trigger: run the promotion pass against the latest cycle. Useful for
+// admin / testing without waiting for the next dream tick.
+app.post("/api/marketplace/dream-promote", requireAuth(), asyncHandler(async (req, res) => {
+  if (req.user?.role !== "admin" && req.user?.role !== "sovereign") {
+    return res.status(403).json({ ok: false, error: "admin_only" });
+  }
+  const dreamMod = await import("./emergent/dream-cycle.js");
+  const lastBrief = dreamMod.getLatestMorningBrief?.();
+  if (!lastBrief) return res.json({ ok: false, error: "no_recent_dream_cycle" });
+  const bridge = await import("./lib/dream-marketplace-bridge.js");
+  const cycle = { phases: { consolidate: { result: lastBrief?.sections?.memory ?? {} },
+                            connect:     { result: lastBrief?.sections?.discoveries ?? {} } } };
+  const r = await bridge.runPromotionPass(STATE, cycle);
+  res.json({ ok: true, ...r });
+}));
+
 structuredLog("info", "module_loaded", { module: "Wave 8: Integrations Ecosystem" });
 
 // ============================================================================
@@ -42223,6 +43401,36 @@ app.get("/api/quests/mine", asyncHandler(async (req, res) => {
   } catch (e) {
     res.json({ ok: false, error: String(e?.message || e), quests: [] });
   }
+}));
+
+// Quest acceptance — players click Accept on the dialogue panel and we
+// register the quest as their active goal + bind progress to their userId.
+app.post("/api/quests/accept", requireAuth(), asyncHandler(async (req, res) => {
+  const userId = req.user?.id;
+  const { questId } = req.body || {};
+  if (!questId) return res.status(400).json({ ok: false, error: "questId_required" });
+  try {
+    const qe = await import("./emergent/quest-engine.js");
+    const start = qe.startQuest?.(questId, userId);
+    if (start?.ok) {
+      try { REALTIME?.io?.to(`user:${userId}`).emit("quest:accepted", { questId, ts: nowISO() }); }
+      catch { /* realtime best-effort */ }
+      try { window?.dispatchEvent?.(new CustomEvent("concordia:tutorial-action", { detail: { action: "accepted-quest" } })); }
+      catch { /* server has no window */ }
+      return res.json({ ok: true, quest: start.quest });
+    }
+    res.status(400).json(start || { ok: false, error: "start_failed" });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+}));
+
+// Quest decline — clears the offer so it doesn't keep showing.
+app.post("/api/quests/decline", requireAuth(), asyncHandler(async (req, res) => {
+  const { questId } = req.body || {};
+  if (!questId) return res.status(400).json({ ok: false, error: "questId_required" });
+  // Server-side declined quests are advisory only — no persistence needed.
+  res.json({ ok: true, declined: questId });
 }));
 
 // Physics simulation — backed by STATE for persistence

@@ -134,15 +134,23 @@ export function createCraftingRouter({ db, requireAuth }) {
   router.post("/execute", requireAuth, (req, res) => {
     try {
       const userId = req.user.id;
-      const { recipeId, worldId } = req.body;
+      const { recipeId, worldId, qualityMultiplier } = req.body;
 
       if (!recipeId) return res.status(400).json({ ok: false, error: "recipeId required" });
       if (!worldId)  return res.status(400).json({ ok: false, error: "worldId required" });
 
-      const result = executeCraft(db, userId, worldId, recipeId);
+      const result = executeCraft(db, userId, worldId, recipeId, {
+        qualityMultiplier: typeof qualityMultiplier === "number" ? qualityMultiplier : undefined,
+      });
       if (!result.ok) {
         return res.status(422).json(result);
       }
+      // Award craft XP on success.
+      try {
+        import("../lib/skill-progression.js").then(sp => {
+          sp.recordGameplayXP?.(db, userId, "craft", { recipeId });
+        }).catch(() => {});
+      } catch { /* xp grant best-effort */ }
       res.json(result);
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });

@@ -44,8 +44,12 @@ export default function createArtifactsRouter({ db, requireAuth, STATE }) {
 
   // ── Schema bootstrap ────────────────────────────────────────────────────────
 
+  // The migration-001 `artifacts` table uses a different schema and is owned
+  // by the lens artifact pipeline. This router uses its own `route_artifacts`
+  // table to avoid colliding with that schema while keeping the API contract
+  // (artifactId-based CRUD) stable.
   db.exec(`
-    CREATE TABLE IF NOT EXISTS artifacts (
+    CREATE TABLE IF NOT EXISTS route_artifacts (
       artifact_id  TEXT PRIMARY KEY,
       dtu_id       TEXT,
       name         TEXT NOT NULL,
@@ -59,37 +63,37 @@ export default function createArtifactsRouter({ db, requireAuth, STATE }) {
       description  TEXT NOT NULL DEFAULT '',
       tags         TEXT NOT NULL DEFAULT '[]'
     );
-    CREATE INDEX IF NOT EXISTS idx_artifacts_dtu ON artifacts (dtu_id);
-    CREATE INDEX IF NOT EXISTS idx_artifacts_creator ON artifacts (created_by, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_route_artifacts_dtu ON route_artifacts (dtu_id);
+    CREATE INDEX IF NOT EXISTS idx_route_artifacts_creator ON route_artifacts (created_by, created_at DESC);
   `);
 
   // ── Prepared statements ─────────────────────────────────────────────────────
 
   const stmts = {
     insert: db.prepare(
-      `INSERT INTO artifacts (artifact_id, dtu_id, name, mime_type, size_bytes, storage_mode, content_b64, storage_path, created_by, description, tags)
+      `INSERT INTO route_artifacts (artifact_id, dtu_id, name, mime_type, size_bytes, storage_mode, content_b64, storage_path, created_by, description, tags)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ),
     get: db.prepare(
       `SELECT artifact_id, dtu_id, name, mime_type, size_bytes, storage_mode, storage_path, created_by, created_at, description, tags
-       FROM artifacts WHERE artifact_id = ?`
+       FROM route_artifacts WHERE artifact_id = ?`
     ),
     getWithContent: db.prepare(
-      `SELECT * FROM artifacts WHERE artifact_id = ?`
+      `SELECT * FROM route_artifacts WHERE artifact_id = ?`
     ),
     list: db.prepare(
       `SELECT artifact_id, dtu_id, name, mime_type, size_bytes, storage_mode, created_by, created_at, description, tags
-       FROM artifacts ORDER BY created_at DESC LIMIT ? OFFSET ?`
+       FROM route_artifacts ORDER BY created_at DESC LIMIT ? OFFSET ?`
     ),
     listByDtu: db.prepare(
       `SELECT artifact_id, dtu_id, name, mime_type, size_bytes, storage_mode, created_by, created_at, description, tags
-       FROM artifacts WHERE dtu_id = ? ORDER BY created_at DESC LIMIT ?`
+       FROM route_artifacts WHERE dtu_id = ? ORDER BY created_at DESC LIMIT ?`
     ),
     delete: db.prepare(
-      `DELETE FROM artifacts WHERE artifact_id = ?`
+      `DELETE FROM route_artifacts WHERE artifact_id = ?`
     ),
     getStoragePath: db.prepare(
-      `SELECT artifact_id, storage_mode, storage_path FROM artifacts WHERE artifact_id = ?`
+      `SELECT artifact_id, storage_mode, storage_path FROM route_artifacts WHERE artifact_id = ?`
     ),
   };
 

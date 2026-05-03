@@ -59,6 +59,7 @@ import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { GovernanceVotingPanel } from '@/components/emergent/GovernanceVotingPanel';
+import CouncilTheaterPanel from '@/components/council/CouncilTheaterPanel';
 import { EntityCard } from '@/components/entity/EntityCard';
 
 // ---------------------------------------------------------------------------
@@ -1659,6 +1660,11 @@ export default function CouncilLensPage() {
         {/* Governance Voting Panel — emergent proposal voting */}
         <div className="mt-8">
           <GovernanceVotingPanel proposalId="latest" />
+        </div>
+
+        {/* Council Live Theater — scheduled streaming deliberations */}
+        <div className="mt-8">
+          <CouncilTheaterPanel />
         </div>
       </div>
     );

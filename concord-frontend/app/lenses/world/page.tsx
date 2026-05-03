@@ -67,7 +67,7 @@ const DistrictActivityFeed = dynamic(
     })),
   { ssr: false }
 );
-const EmoteWheel = dynamic(
+const EmoteWheelLegacy = dynamic(
   () => import('@/components/world/EmoteWheel').then((m) => ({ default: m.EmoteWheel })),
   { ssr: false }
 );
@@ -135,10 +135,95 @@ const ParticleEffectsComponent = dynamic(() => import('@/components/world-lens/P
 const SoundscapeEngine = dynamic(() => import('@/components/world-lens/SoundscapeEngine'), {
   ssr: false,
 });
+const WorldSFXHooks = dynamic(() => import('@/components/world-lens/WorldSFXHooks'), {
+  ssr: false,
+});
+const LowHpVignette = dynamic(() => import('@/components/world-lens/LowHpVignette'), {
+  ssr: false,
+});
+const NPCBehaviorHooks = dynamic(() => import('@/components/world-lens/NPCBehaviorHooks'), {
+  ssr: false,
+});
+const ItemAcquisitionToast = dynamic(
+  () => import('@/components/world-lens/ItemAcquisitionToast'),
+  { ssr: false },
+);
+const TutorialCinematic = dynamic(
+  () => import('@/components/world-lens/TutorialCinematic'),
+  { ssr: false },
+);
+const TutorialHighlight = dynamic(
+  () => import('@/components/world-lens/TutorialHighlight'),
+  { ssr: false },
+);
+const WorldVisualHooks = dynamic(
+  () => import('@/components/world-lens/WorldVisualHooks'),
+  { ssr: false },
+);
+const PlayerActionMenu = dynamic(
+  () => import('@/components/world-lens/PlayerActionMenu'),
+  { ssr: false },
+);
+const CombatFlowHotbar = dynamic(
+  () => import('@/components/world-lens/CombatFlowHotbar'),
+  { ssr: false },
+);
+const TrainingMatchPanel = dynamic(
+  () => import('@/components/world-lens/TrainingMatchPanel'),
+  { ssr: false },
+);
+const CombatInputController = dynamic(
+  () => import('@/components/world-lens/CombatInputController'),
+  { ssr: false },
+);
+const ControlsMenu = dynamic(
+  () => import('@/components/world-lens/ControlsMenu'),
+  { ssr: false },
+);
+const EquipmentSlotsPanel = dynamic(
+  () => import('@/components/world-lens/EquipmentSlotsPanel'),
+  { ssr: false },
+);
+const PauseMenu = dynamic(
+  () => import('@/components/world-lens/PauseMenu'),
+  { ssr: false },
+);
+const FactionWarBanner = dynamic(
+  () => import('@/components/world-lens/FactionWarBanner'),
+  { ssr: false },
+);
 const AnimationManager = dynamic(() => import('@/components/world-lens/AnimationManager'), {
   ssr: false,
 });
 const GameJuice = dynamic(() => import('@/components/world-lens/GameJuice'), { ssr: false });
+const PerformanceOverlay = dynamic(
+  () => import('@/components/world-lens/PerformanceOverlay'),
+  { ssr: false },
+);
+const BazaarLayer = dynamic(
+  () => import('@/components/world-lens/BazaarLayer'),
+  { ssr: false },
+);
+const DiegeticSurfaces = dynamic(
+  () => import('@/components/world-lens/DiegeticSurfaces'),
+  { ssr: false },
+);
+const CraftingPanelV2 = dynamic(
+  () => import('@/components/world-lens/CraftingPanelV2'),
+  { ssr: false },
+);
+const CoopPanel = dynamic(
+  () => import('@/components/world-lens/CoopPanel'),
+  { ssr: false },
+);
+const CurrencyHUD = dynamic(
+  () => import('@/components/world-lens/CurrencyHUD'),
+  { ssr: false },
+);
+const PostTutorialHints = dynamic(
+  () => import('@/components/world-lens/PostTutorialHints'),
+  { ssr: false },
+);
 const LevelUpJuiceBridge = dynamic(
   () => import('@/components/world-lens/LevelUpJuiceBridge').then((m) => ({ default: m.LevelUpJuiceBridge })),
   { ssr: false },
@@ -1068,6 +1153,7 @@ export default function WorldLensPage() {
     | 'arena'
     | 'jobs'
     | 'lore'
+    | 'character'
   >('none');
   // Local player avatar — mutable so moves update it in place. On
   // first mount we ask the server for saved state (via player:load)
@@ -1178,6 +1264,7 @@ export default function WorldLensPage() {
     maxHealth: number;
     level: number;
     type: 'enemy' | 'player';
+    position?: { x: number; y: number; z: number };
   };
   const [combatState, setCombatState] = useState<{
     health: number;
@@ -1216,6 +1303,60 @@ export default function WorldLensPage() {
 
   // ── Combat feel: combo counter, stagger, limb damage ─────────────────────
   const [comboCount, setComboCount] = useState(0);
+  // Flow Combat: most recent action chain feeds CombatFlowHotbar's
+  // suggestion endpoint. Last 5 actions kept; older drop off.
+  const [recentChain, setRecentChain] = useState<Array<{ action: string }>>([]);
+  // Live combat context for the input controller — mirrors what the hotbar
+  // fetches from /api/combat-flow/context but kept local since the
+  // controller fires every keypress and shouldn't wait on a network round
+  // trip. Updated on player position / vehicle / aerial state change.
+  const [combatContext, setCombatContext] = useState<
+    'ground' | 'aerial' | 'vehicle' | 'hacker' | 'underwater' | 'mixed'
+  >('ground');
+  // Shift modifier held — the 5th key. Tracked locally so each keypress
+  // can consult it without a re-render dependency.
+  const modifierHeldRef = useRef(false);
+  // Controls remap menu open/close + Equipment slot panel toggle
+  const [controlsOpen, setControlsOpen] = useState(false);
+  const [equipmentOpen, setEquipmentOpen] = useState(false);
+  // Dual-hand loadout — fetched from /api/combat-flow/loadout on mount and
+  // refreshed whenever equipment changes. Drives Biomutant-style left/right/
+  // two-hand routing in the input controller.
+  const [combatLoadout, setCombatLoadout] = useState<{
+    rightHand: { weaponClass: string | null; handedness: 'right' | 'left' | 'two' | 'either' } | null;
+    leftHand:  { weaponClass: string | null; handedness: 'right' | 'left' | 'two' | 'either' } | null;
+  } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    function refresh() {
+      fetch('/api/combat-flow/loadout', { credentials: 'same-origin' })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j) => {
+          if (cancelled) return;
+          const lo = j?.loadout;
+          if (!lo) { setCombatLoadout(null); return; }
+          setCombatLoadout({
+            rightHand: lo.rightHand ? {
+              weaponClass: lo.rightHand.weapon_class ?? null,
+              handedness: (lo.rightHand.handedness ?? 'either') as 'right' | 'left' | 'two' | 'either',
+            } : null,
+            leftHand: lo.leftHand ? {
+              weaponClass: lo.leftHand.weapon_class ?? null,
+              handedness: (lo.leftHand.handedness ?? 'either') as 'right' | 'left' | 'two' | 'either',
+            } : null,
+          });
+        })
+        .catch(() => {});
+    }
+    refresh();
+    const onEquip = () => refresh();
+    window.addEventListener('concordia:loadout-changed', onEquip);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('concordia:loadout-changed', onEquip);
+    };
+  }, []);
   const [staggered, setStaggered] = useState(false);
   const [limbState, setLimbState] = useState<LimbState>({
     head: 100,
@@ -1247,6 +1388,21 @@ export default function WorldLensPage() {
     update: (delta: number, inCombat: boolean) => void;
     dispose: () => void;
   } | null>(null);
+  // Procedural ambient music duck — pinged on each combat hit. After 4s
+  // of no hits the duck releases and music returns to full volume.
+  const musicDuckTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pingMusicCombatDuck = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    window.dispatchEvent(new CustomEvent('concordia:soundscape-command', {
+      detail: { action: 'setMusicCombatIntensity', intensity: 1 },
+    }));
+    if (musicDuckTimerRef.current) clearTimeout(musicDuckTimerRef.current);
+    musicDuckTimerRef.current = setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('concordia:soundscape-command', {
+        detail: { action: 'setMusicCombatIntensity', intensity: 0 },
+      }));
+    }, 4000);
+  }, []);
   const prevCharStateRef = useRef<CharState | null>(null);
   const inputSeqRef = useRef(0);
   const reconRef = useRef<ReconciliationBuffer | null>(null);
@@ -1513,6 +1669,14 @@ export default function WorldLensPage() {
         detail: { action: 'setDistrict', district: activeDistrict.id },
       })
     );
+    // Polish-pass: also crossfade the procedural ambient music to the
+    // district-appropriate profile (forge=industrial minor, academy=major
+    // pad, docks=lonely fifths, etc.).
+    window.dispatchEvent(
+      new CustomEvent('concordia:soundscape-command', {
+        detail: { action: 'setMusicDistrict', district: activeDistrict.id },
+      })
+    );
   }, [activeDistrict.id]);
 
   // Poll for nearby nodes every 5s based on player position
@@ -1669,14 +1833,48 @@ export default function WorldLensPage() {
         );
         return;
       }
-      // Nearest NPC dialogue
+      // Nearest NPC dialogue — defer to a global event so the openNPCDialogue
+      // callback (declared later) doesn't need to be in this effect's
+      // dependency closure.
       if (nearbyNPC && !dialogueNPC) {
-        openNPCDialogue(nearbyNPC);
+        try {
+          window.dispatchEvent(new CustomEvent('concordia:open-dialogue', {
+            detail: { npcId: nearbyNPC.id, npcName: nearbyNPC.name, occupation: nearbyNPC.archetype ?? null },
+          }));
+        } catch { /* dispatch best-effort */ }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [portals, playerAvatar.position, nearbyNPC, dialogueNPC, openNPCDialogue]);
+  }, [portals, playerAvatar.position, nearbyNPC, dialogueNPC]);
+
+  // Shift modifier tracking for Flow Combat. modifierHeldRef is read by
+  // CombatInputController each tap to decide whether to flag the action
+  // as evolved-variant.
+  useEffect(() => {
+    function onShiftDown(e: KeyboardEvent) { if (e.key === 'Shift') modifierHeldRef.current = true; }
+    function onShiftUp(e: KeyboardEvent)   { if (e.key === 'Shift') modifierHeldRef.current = false; }
+    window.addEventListener('keydown', onShiftDown);
+    window.addEventListener('keyup',   onShiftUp);
+    return () => {
+      window.removeEventListener('keydown', onShiftDown);
+      window.removeEventListener('keyup',   onShiftUp);
+    };
+  }, []);
+
+  // Local combat context derivation. Cheap heuristic — the server's
+  // detectCombatContext is authoritative when the hotbar polls it, but for
+  // the input controller we want zero network latency on every keystroke,
+  // so we mirror the same rules client-side. Updates whenever player y /
+  // animation / vehicle state changes.
+  useEffect(() => {
+    const y = playerAvatar.position.y;
+    const inVehicle = inputMode === 'driving';
+    const aerial    = (playerAvatar.currentAnimation as string) === 'jump' || y > 3;
+    if (inVehicle) setCombatContext('vehicle');
+    else if (aerial) setCombatContext('aerial');
+    else setCombatContext('ground');
+  }, [playerAvatar.position.y, playerAvatar.currentAnimation, inputMode]);
 
   // G key: toggle emote wheel in explore mode
   useEffect(() => {
@@ -1818,7 +2016,20 @@ export default function WorldLensPage() {
                 'celebrate',
                 'craft',
               ]);
-              return (validClips.has(a) ? a : 'idle') as
+              // EmoteWheel ships a broader vocabulary than the renderer
+              // supports (bow/cheer/laugh/dance/shrug/thumbup). Map each
+              // onto the closest valid clip so the emote isn't silently
+              // dropped to idle on remote clients.
+              const emoteAlias: Record<string, string> = {
+                bow:     'inspect',
+                cheer:   'celebrate',
+                laugh:   'celebrate',
+                dance:   'celebrate',
+                shrug:   'point',
+                thumbup: 'celebrate',
+              };
+              const mapped = emoteAlias[a] ?? a;
+              return (validClips.has(mapped) ? mapped : 'idle') as
                 | 'idle'
                 | 'walk'
                 | 'run'
@@ -1933,6 +2144,19 @@ export default function WorldLensPage() {
         targetKilled?: boolean;
         attackerStamina?: number;
       };
+      // Polish: forced-success first-blow. The first time the player lands
+      // a hit in this profile, force isCrit to true client-side so the
+      // tutorial moment lands with the full crit feedback (zoom hit-stop,
+      // big damage number, layered SFX). Server damage is unchanged — this
+      // only juices the local feedback layer.
+      if (data?.ok && typeof data.damage === 'number' && data.damage > 0) {
+        try {
+          if (typeof window !== 'undefined' && !localStorage.getItem('concordia:tutorial:first-combat-blessed')) {
+            data.isCrit = true;
+            localStorage.setItem('concordia:tutorial:first-combat-blessed', '1');
+          }
+        } catch { /* storage best-effort */ }
+      }
       if (!data?.ok) {
         if (data?.error === 'out_of_range') pushCombatLog('Target out of range.', 'info');
         else if (data?.error === 'insufficient_stamina')
@@ -1977,14 +2201,29 @@ export default function WorldLensPage() {
         'damage-dealt'
       );
       combatMusicRef.current?.onCombatEvent(1.0);
+      pingMusicCombatDuck();
 
       // Physics impact feedback — hit-stop + floating numbers + screen shake + audio
       if (typeof data.damage === 'number' && data.damage > 0) {
         const element =
           (data.element as 'fire' | 'ice' | 'lightning' | 'poison' | 'physical') ?? 'physical';
         emitHitNumber(data.damage, element, !!data.isCrit);
-        emitScreenShake(data.isCrit ? 5 : Math.min(4, Math.ceil(data.damage / 20)));
-        emitHitStop(data.isCrit ? 140 : 70);
+        // Severity tiers control hit-pause + zoom strength
+        const severity: 'light' | 'heavy' | 'crit' = data.isCrit
+          ? 'crit'
+          : data.damage > 25
+            ? 'heavy'
+            : 'light';
+        // Type-specific shake amplitude — crits lean harder than raw damage
+        const shakeAmp = data.isCrit
+          ? 6
+          : data.damage > 25
+            ? Math.min(5, 3 + Math.floor(data.damage / 30))
+            : Math.min(3, Math.ceil(data.damage / 18));
+        emitScreenShake(shakeAmp);
+        // Hit-stop duration scales with severity for genuine pause-on-crit feel
+        const hitStopMs = data.isCrit ? 160 : data.damage > 25 ? 110 : 70;
+        emitHitStop(hitStopMs, severity);
         // Phase F fix 3: pass damage magnitude + target world position so
         // GameJuice can route through spatial audio (HRTF + occlusion) and
         // scale visual feedback intensity by hit weight.
@@ -2047,12 +2286,20 @@ export default function WorldLensPage() {
           setComboCount(0);
           comboTargetRef.current = null;
         }, 4000);
+
+        // Flow Combat recentChain — last 5 actions, newest at end. Used by
+        // CombatFlowHotbar.suggest endpoint to surface the next combo step.
+        const heavy = (data.damage ?? 0) > 18;
+        setRecentChain((prev) => {
+          const next = [...prev, { action: heavy ? 'attack-heavy' : 'attack-light' }];
+          return next.slice(-5);
+        });
       }
 
       if (data.targetKilled) {
         pushCombatLog(`${targetName} defeated!`, 'death');
-        emitScreenShake(6);
-        emitHitStop(200);
+        emitScreenShake(7);
+        emitHitStop(260, 'kill');
         // Phase F fix 3: spatial-position the kill SFX so it plays from where
         // the kill happened rather than as a flat 2D blast.
         const killPos = combatStateRef.current.target?.position;
@@ -2122,8 +2369,20 @@ export default function WorldLensPage() {
         damageFlash: true,
       }));
       pushCombatLog(`Took ${data.damage} damage${data.isCrit ? ' (crit)' : ''}.`, 'damage-taken');
-      emitScreenShake(data.isCrit ? 7 : Math.min(5, Math.ceil(data.damage / 15)));
-      emitHitStop(data.isCrit ? 120 : 60);
+      pingMusicCombatDuck();
+      // Player-taken hits shake harder than dealt hits (you feel your own pain)
+      const incomingShake = data.isCrit
+        ? 8
+        : data.damage > 25
+          ? Math.min(6, 4 + Math.floor(data.damage / 25))
+          : Math.min(4, Math.ceil(data.damage / 15));
+      emitScreenShake(incomingShake);
+      const incomingSeverity: 'light' | 'heavy' | 'crit' = data.isCrit
+        ? 'crit'
+        : data.damage > 25
+          ? 'heavy'
+          : 'light';
+      emitHitStop(data.isCrit ? 150 : data.damage > 25 ? 100 : 60, incomingSeverity);
       window.dispatchEvent(
         new CustomEvent('concordia:game-juice', {
           detail: { trigger: 'combat-hit' },
@@ -2270,8 +2529,25 @@ export default function WorldLensPage() {
     worldSocket.on('city:positions', handleCityPositions);
     worldSocket.on('player:move:ack', handleMoveAck);
     worldSocket.on('player:move:nack', handleMoveNack);
+    const handleCombatDodgeAck = (msg: unknown) => {
+      const data = msg as { userId?: string; direction?: 'left' | 'right' | 'back' };
+      if (!data?.userId) return;
+      const dir = data.direction === 'left' ? 'dodge-left' : data.direction === 'right' ? 'dodge-right' : 'dodge-back';
+      window.dispatchEvent(new CustomEvent('concordia:combat-anim', {
+        detail: { entityId: data.userId, animation: dir },
+      }));
+    };
+    const handleCombatBlockAck = (msg: unknown) => {
+      const data = msg as { userId?: string; active?: boolean };
+      if (!data?.userId) return;
+      window.dispatchEvent(new CustomEvent('concordia:combat-anim', {
+        detail: { entityId: data.userId, animation: data.active ? 'block' : 'idle' },
+      }));
+    };
     worldSocket.on('combat:attack:ack', handleCombatAck);
     worldSocket.on('combat:hit', handleCombatHit);
+    worldSocket.on('combat:dodge:ack', handleCombatDodgeAck);
+    worldSocket.on('combat:block:ack', handleCombatBlockAck);
     worldSocket.on('combat:kill', handleCombatKill);
     worldSocket.on('player:respawn:ack', handleRespawnAck);
     worldSocket.on('world:notification', handleWorldNotification);
@@ -2286,6 +2562,8 @@ export default function WorldLensPage() {
       worldSocket.off('player:move:nack', handleMoveNack);
       worldSocket.off('combat:attack:ack', handleCombatAck);
       worldSocket.off('combat:hit', handleCombatHit);
+      worldSocket.off('combat:dodge:ack', handleCombatDodgeAck);
+      worldSocket.off('combat:block:ack', handleCombatBlockAck);
       worldSocket.off('combat:kill', handleCombatKill);
       worldSocket.off('player:respawn:ack', handleRespawnAck);
       worldSocket.off('world:notification', handleWorldNotification);
@@ -2446,6 +2724,68 @@ export default function WorldLensPage() {
     [dialogueCtx]
   );
 
+  // Right-click gather: ConcordiaScene dispatches concordia:gather-request
+  // with a world position. POST to /api/world/gather and surface a toast
+  // with the yielded resource + visual feedback (avatar swing animation +
+  // particle burst at the gather point + floating yield text).
+  useEffect(() => {
+    const handler = async (e: Event) => {
+      const detail = (e as CustomEvent).detail as { x: number; y: number; z: number } | undefined;
+      if (!detail) return;
+
+      // Immediate visual feedback before the network round-trip.
+      window.dispatchEvent(new CustomEvent('concordia:combat-anim', {
+        detail: { entityId: playerAvatar.id, animation: 'attack-light' },
+      }));
+      window.dispatchEvent(new CustomEvent('concordia:particle-effect', {
+        detail: { type: 'dust', position: detail, count: 16 },
+      }));
+
+      const biome = activeDistrict.id?.includes('frontier') ? 'frontier'
+        : activeDistrict.id?.includes('exchange') ? 'grassland'
+        : activeDistrict.id?.includes('docks') ? 'water'
+        : activeDistrict.id?.includes('forge') ? 'rocky'
+        : 'forest';
+      try {
+        const r = await fetch('/api/world/gather', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ x: detail.x, z: detail.z, biome }),
+        });
+        const data = await r.json();
+        if (data?.ok) {
+          pushCombatLog(`Gathered ${data.yield.quantity}× ${data.yield.name}`, 'info');
+          window.dispatchEvent(new CustomEvent('concordia:tutorial-action', {
+            detail: { action: 'gathered' },
+          }));
+          window.dispatchEvent(new CustomEvent('concordia:game-juice', {
+            detail: { trigger: 'coin-clink', opts: { value: `+${data.yield.quantity} ${data.yield.name}` } },
+          }));
+          // Floating yield text via the existing hit-number renderer.
+          window.dispatchEvent(new CustomEvent('concordia:floating-text', {
+            detail: { text: `+${data.yield.quantity} ${data.yield.name}`, position: detail, color: '#fbbf24' },
+          }));
+          // Polish: rarity-bordered toast with golden glow
+          window.dispatchEvent(new CustomEvent('concordia:item-acquired', {
+            detail: {
+              name: data.yield.name,
+              qty: data.yield.quantity,
+              type: data.yield.type ?? 'material',
+              rarity: data.yield.rarity ?? 'common',
+            },
+          }));
+        } else if (data?.error === 'gather_cooldown') {
+          // Quiet — player is mashing.
+        } else {
+          pushCombatLog(`Gather failed: ${data?.error ?? 'unknown'}`, 'info');
+        }
+      } catch { /* network silent */ }
+    };
+    window.addEventListener('concordia:gather-request', handler);
+    return () => window.removeEventListener('concordia:gather-request', handler);
+  }, [activeDistrict.id, pushCombatLog, playerAvatar.id]);
+
   // Phase F fix 2: ConcordiaScene's canvas raycaster dispatches
   // `concordia:open-dialogue` when the player clicks an NPC mesh. Look up
   // the full NPC from rawWorldNPCs and route into openNPCDialogue, which
@@ -2461,6 +2801,101 @@ export default function WorldLensPage() {
     window.addEventListener('concordia:open-dialogue', handler);
     return () => window.removeEventListener('concordia:open-dialogue', handler);
   }, [rawWorldNPCs, openNPCDialogue]);
+
+  // CombatFlowHotbar dispatches concordia:combo-trigger when the player
+  // hits a hotbar slot or completes the suggested chain. Fire the tiered
+  // VFX (particles + hit-stop + shake + audio + cinematic flash on T5) +
+  // emit a series of combat:attack events along the combo's step plan
+  // with a shared chainId so the flow recorder groups them as one chain.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as {
+        comboId?: string;
+        comboName?: string;
+        steps?: Array<{ action: string }>;
+        tier?: number;
+        vfxSeed?: string;
+      } | undefined;
+      if (!detail?.comboId || !detail?.steps?.length) return;
+      const tier = Math.max(1, Math.min(5, Number(detail.tier ?? 1)));
+      // VFX chain
+      import('@/lib/combat/combo-vfx').then((m) => {
+        m.dispatchComboVfx({
+          tier,
+          vfxSeed: detail.vfxSeed,
+          comboName: detail.comboName,
+        });
+      }).catch(() => { /* fallback: no special VFX */ });
+      // Tier-scaled biomechanics animation. Pick the action token from the
+      // first step of the combo (attack-light / heavy / kick / grapple)
+      // and dispatch concordia:combat-anim with tier so AvatarSystem3D
+      // plays the matching tier-N clip rather than the baseline clip.
+      const firstAction = detail.steps[0]?.action ?? 'attack-light';
+      window.dispatchEvent(new CustomEvent('concordia:combat-anim', {
+        detail: { entityId: playerAvatar.id, animation: firstAction, tier },
+      }));
+      // Emit a single combat:attack stamped with the combo id + chain.
+      // The flow-recorder records each step as it lands; the suggestion
+      // engine then knows to advance the chain.
+      const target = combatStateRef.current.target;
+      if (target && worldSocket.isConnected) {
+        const chainId = `combo:${detail.comboId}:${Date.now()}`;
+        // Fire just the first attack — the player still has to follow up
+        // manually for the remaining steps. The hotbar surfaces what comes
+        // next via the suggestion pill.
+        worldSocket.emit('combat:attack', {
+          targetId: target.id,
+          baseDamage: (combatStateRef.current.weapon?.damage ?? 10) * (1 + tier * 0.05),
+          range: 3,
+          armorPierce: tier - 1,
+          chainId,
+          stepIndex: 0,
+          heavy: detail.steps[0]?.action === 'attack-heavy',
+          style: 'evolved-combo',
+        });
+      }
+    };
+    window.addEventListener('concordia:combo-trigger', handler);
+    return () => window.removeEventListener('concordia:combo-trigger', handler);
+  }, [worldSocket]);
+
+  // PlayerActionMenu (and any other source) dispatches concordia:emote with
+  // an emoteId — broadcast it through the same player:move animation field
+  // EmoteWheel uses, so other players see us perform the emote.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { emoteId?: string } | undefined;
+      const emoteId = detail?.emoteId;
+      if (!emoteId) return;
+      // Local play
+      setPlayerAvatar((prev) => ({
+        ...prev,
+        currentAnimation: (emoteId as typeof prev.currentAnimation),
+      }));
+      // Broadcast
+      if (worldSocket.isConnected) {
+        worldSocket.emit('player:move', {
+          cityId: activeDistrict.id,
+          districtId: activeDistrict.id,
+          x: playerAvatar.position.x,
+          y: playerAvatar.position.y,
+          z: playerAvatar.position.z,
+          rotation: playerAvatar.rotation,
+          direction: playerAvatar.rotation,
+          action: emoteId,
+          currentAnimation: emoteId,
+        });
+      }
+      // Reset to idle after the emote duration so we don't get stuck waving
+      setTimeout(() => {
+        setPlayerAvatar((prev) =>
+          prev.currentAnimation === emoteId ? { ...prev, currentAnimation: 'idle' } : prev
+        );
+      }, 1800);
+    };
+    window.addEventListener('concordia:emote', handler);
+    return () => window.removeEventListener('concordia:emote', handler);
+  }, [activeDistrict.id, playerAvatar.position, playerAvatar.rotation, worldSocket]);
 
   const handleSelectCombatTarget = useCallback(
     (p: { id: string; name: string; type: 'enemy' | 'player' }) => {
@@ -2487,23 +2922,70 @@ export default function WorldLensPage() {
       return;
     }
     if (!worldSocket.isConnected) return;
+    const heavy = (combatStateRef.current.weapon?.damage ?? 10) > 18;
+    // Tier-scaled biomechanics: best matching combo's tier drives how rich
+    // the animation looks. Read from /api/combat-flow/combos lazily — the
+    // hotbar already keeps a fresh list, but we can't share state cleanly,
+    // so derive from recentChain instead: when the player has an evolved
+    // combo whose first step matches and they've been chaining, infer
+    // tier from the most recent suggestion received. Falls back to tier 1.
+    const inferredTier = (() => {
+      // The CombatFlowHotbar's suggestion endpoint puts a tier on the
+      // chain prefix. We don't have direct access to it here, but the
+      // recentChain length is a reasonable proxy: longer chains imply
+      // the player is mid-combo, so use the chain depth as a soft tier
+      // estimate. Capped at 3 — true tier-4/5 are reserved for explicit
+      // combo-trigger dispatches via the hotbar.
+      return Math.min(3, Math.max(1, Math.floor(recentChain.length / 2) + 1));
+    })();
+    window.dispatchEvent(new CustomEvent('concordia:combat-anim', {
+      detail: {
+        entityId: playerAvatar.id,
+        animation: heavy ? 'attack-heavy' : 'attack-light',
+        tier: inferredTier,
+      },
+    }));
+    // Polish: play the swing SFX immediately on attack input rather than
+    // waiting for the server ack — the swoosh-then-impact rhythm is what
+    // sells the strike. Heavy weapons get the deeper sword-swoosh-heavy.
+    window.dispatchEvent(new CustomEvent('concordia:sword-swing', {
+      detail: { heavy },
+    }));
     worldSocket.emit('combat:attack', {
       targetId: target.id,
       baseDamage: combatStateRef.current.weapon?.damage ?? 10,
       range: 3,
       armorPierce: 0,
     });
-  }, [worldSocket, pushCombatLog]);
+  }, [worldSocket, pushCombatLog, playerAvatar.id, recentChain.length]);
 
   const handleBlock = useCallback(() => {
     // Block raises cover bonus briefly; reflects client-side until
     // the server-side block action is wired.
     setCombatState((prev) => ({ ...prev, coverBonus: Math.max(prev.coverBonus, 20) }));
     pushCombatLog('Blocking — damage reduced while holding.', 'block');
+    window.dispatchEvent(new CustomEvent('concordia:combat-anim', {
+      detail: { entityId: playerAvatar.id, animation: 'block' },
+    }));
     setTimeout(() => {
       setCombatState((prev) => ({ ...prev, coverBonus: 0 }));
     }, 2000);
-  }, [pushCombatLog]);
+  }, [pushCombatLog, playerAvatar.id]);
+
+  const handleDodge = useCallback((direction: 'left' | 'right' | 'back' = 'back') => {
+    if (combatStateRef.current.stamina < 15) {
+      pushCombatLog('Too tired to dodge.', 'info');
+      return;
+    }
+    setCombatState((prev) => ({ ...prev, stamina: Math.max(0, prev.stamina - 15) }));
+    const anim = direction === 'left' ? 'dodge-left' : direction === 'right' ? 'dodge-right' : 'dodge-back';
+    window.dispatchEvent(new CustomEvent('concordia:combat-anim', {
+      detail: { entityId: playerAvatar.id, animation: anim },
+    }));
+    if (worldSocket.isConnected) {
+      worldSocket.emit('combat:dodge', { direction });
+    }
+  }, [worldSocket, pushCombatLog, playerAvatar.id]);
 
   const handleRespawn = useCallback(() => {
     if (!worldSocket.isConnected) return;
@@ -2782,9 +3264,16 @@ export default function WorldLensPage() {
           <BuildingRenderer3D buildings={[]} viewMode="normal" />
           <SkyWeatherRenderer
             timeOfDay={12}
-            weather="clear"
+            weather={(() => {
+              const t = weatherData?.type ?? 'clear';
+              if (t === 'clear' || t === 'rain' || t === 'snow' || t === 'fog' || t === 'overcast' || t === 'storm') return t;
+              if (t === 'heavy_rain') return 'rain';
+              if (t === 'blizzard') return 'snow';
+              if (t === 'sandstorm') return 'fog';
+              return 'clear';
+            })()}
             windDirection={0}
-            windSpeed={2}
+            windSpeed={2 + (weatherData?.intensity ?? 0) * 6}
             season="summer"
             quality="medium"
           />
@@ -2812,6 +3301,69 @@ export default function WorldLensPage() {
             }}
             weatherOverride={weatherData ?? undefined}
           />
+          <WorldSFXHooks
+            playerPos={playerAvatar.position}
+            districtId={activeDistrict.id}
+            moving={playerAvatar.currentAnimation === 'walk' || playerAvatar.currentAnimation === 'run'}
+          />
+          <LowHpVignette
+            health={combatState.health}
+            maxHealth={combatState.maxHealth}
+            isDead={combatState.isDead}
+          />
+          <NPCBehaviorHooks
+            playerPos={playerAvatar.position}
+            npcs={rawWorldNPCs.map((n) => ({
+              id: n.id,
+              position: { x: n.position.x, y: n.position.y, z: n.position.z ?? 0 },
+            }))}
+          />
+          <ItemAcquisitionToast />
+          <TutorialCinematic />
+          <TutorialHighlight />
+          <WorldVisualHooks />
+          <PlayerActionMenu />
+          <CombatFlowHotbar
+            playerPos={playerAvatar.position}
+            inCombat={!!combatState.target || comboCount > 0}
+            recentChain={recentChain}
+            equippedWeapon={
+              combatState.weapon
+                ? {
+                    id: combatState.weapon.name.toLowerCase().replace(/\s+/g, '_'),
+                    type: (combatState.weapon.type as 'melee' | 'ranged' | 'magic' | 'fist') ?? 'melee',
+                  }
+                : null
+            }
+          />
+          <TrainingMatchPanel myUserId={playerAvatar.id} />
+          <CombatInputController
+            inputMode={inputMode}
+            context={combatContext}
+            hasTarget={!!combatState.target}
+            playerId={playerAvatar.id}
+            worldSocket={worldSocket}
+            modifierHeld={modifierHeldRef.current}
+            loadout={combatLoadout}
+            onAction={(evt) => {
+              setRecentChain((prev) => {
+                const next = [...prev, { action: evt.resolved }];
+                return next.slice(-5);
+              });
+            }}
+          />
+          <ControlsMenu open={controlsOpen} onClose={() => setControlsOpen(false)} />
+          {equipmentOpen && (
+            <div className="fixed top-20 left-4 z-50">
+              <EquipmentSlotsPanel onClose={() => setEquipmentOpen(false)} />
+            </div>
+          )}
+          <PauseMenu
+            onOpenControls={() => setControlsOpen(true)}
+            onOpenLoadout={() => setEquipmentOpen(true)}
+            onQuit={() => { window.location.href = '/'; }}
+          />
+          <FactionWarBanner />
           <AnimationManager>
             <></>
           </AnimationManager>
@@ -2819,6 +3371,15 @@ export default function WorldLensPage() {
             <></>
           </GameJuice>
           <LevelUpJuiceBridge />
+          <PerformanceOverlay />
+          <BazaarLayer worldId="concordia" />
+          <CurrencyHUD onClick={() => setShowPanel('profile')} />
+          <DiegeticSurfaces
+            playerPosition={playerAvatar.position}
+            onOpenMap={() => setShowPanel('map')}
+            onOpenSheet={() => setShowPanel('character')}
+            onOpenInventory={() => setShowPanel('inventory')}
+          />
           <SocialOverlay
             myUserId={playerAvatar.id}
             nearbyPlayers={otherPlayers.map((p) => ({ id: p.id, name: p.name }))}
@@ -2897,7 +3458,7 @@ export default function WorldLensPage() {
                 }
               }}
               onEmote={(emote) => {
-                setPlayerAvatar((prev) => ({ ...prev, currentAnimation: emote }));
+                setPlayerAvatar((prev) => ({ ...prev, currentAnimation: emote as PlayerAnimationClip }));
                 if (worldSocket.isConnected) {
                   worldSocket.emit('player:move', {
                     cityId: activeDistrict.id,
@@ -3138,7 +3699,7 @@ export default function WorldLensPage() {
           )}
           {(inputMode === 'social' || inputMode === 'exploration') && (
             <>
-              <EmoteWheel
+              <EmoteWheelLegacy
                 onEmote={(emoteId) => {
                   setPlayerAvatar((prev) => ({ ...prev, currentAnimation: 'wave' }));
                   if (worldSocket.isConnected) {
@@ -3155,6 +3716,7 @@ export default function WorldLensPage() {
                     });
                   }
                 }}
+                onClose={() => { /* legacy wheel auto-dismisses on emote */ }}
               />
               <QuickMessageBar
                 onSend={(msg) => {
@@ -3292,6 +3854,7 @@ export default function WorldLensPage() {
                 key={key}
                 onClick={() => setShowPanel(showPanel === key ? 'none' : key)}
                 className={`flex flex-col items-center gap-0.5 px-2.5 py-1 rounded-lg text-[10px] transition-colors ${showPanel === key ? 'bg-emerald-500/20 text-emerald-300' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                data-tutorial-target={key === 'crafting' ? 'crafting-button' : undefined}
               >
                 <Icon className="w-4 h-4" />
                 {label}
@@ -3321,7 +3884,19 @@ export default function WorldLensPage() {
             <div className="absolute top-4 left-4 z-20 w-80 max-h-[70vh] overflow-auto pointer-events-auto">
               {/* QuestLog — detailed quest journal with active/available/completed tabs */}
               <QuestLog
-                quests={worldQuests}
+                quests={worldQuests.map((q) => ({
+                  id: q.id,
+                  title: q.title,
+                  description: q.description,
+                  status: (q.status === 'available' || q.status === 'active' || q.status === 'completed' || q.status === 'failed')
+                    ? q.status
+                    : 'available',
+                  domain: 'mainland',
+                  giverId: q.giver_npc_id ?? 'world',
+                  giverName: q.giver_npc_id ?? 'World',
+                  objectives: [],
+                  reward: { cc: 0, xp: 0, karmaBonus: 0 },
+                }))}
                 worldId={activeDistrict.id}
                 onClose={() => setShowPanel('none')}
               />
@@ -3357,13 +3932,16 @@ export default function WorldLensPage() {
             </div>
           )}
           {showPanel === 'crafting' && (
-            <CraftingBench
-              playerId={playerAvatar.id}
-              toolTier={0}
-              toolQuality={10}
-              skillLevel={1}
-              onClose={() => setShowPanel('none')}
-            />
+            <div className="space-y-3">
+              <CraftingBench
+                playerId={playerAvatar.id}
+                toolTier={0}
+                toolQuality={10}
+                skillLevel={1}
+                onClose={() => setShowPanel('none')}
+              />
+              <CraftingPanelV2 worldId="concordia" onClose={() => setShowPanel('none')} />
+            </div>
           )}
           {showPanel === 'guild' && (
             <GuildPanel playerId={playerAvatar.id} onClose={() => setShowPanel('none')} />
@@ -3386,6 +3964,16 @@ export default function WorldLensPage() {
           )}
           {showPanel === 'lore' && (
             <LorePanel worldId="concordia-hub" onClose={() => setShowPanel('none')} />
+          )}
+          {showPanel === 'guild' && false /* CoopPanel handles party UX */}
+          {(showPanel === 'players' || showPanel === 'guild') && (
+            <div className="absolute top-4 right-4 z-20 max-h-[70vh] overflow-auto pointer-events-auto">
+              <CoopPanel
+                userId={playerAvatar.id}
+                isLeader={false}
+                onClose={() => setShowPanel('none')}
+              />
+            </div>
           )}
           {showPanel === 'players' && (
             <div className="absolute top-4 left-4 z-20 w-80 max-h-[70vh] overflow-auto pointer-events-auto">
@@ -4306,6 +4894,9 @@ export default function WorldLensPage() {
           onDismiss={handleOnboardingComplete}
         />
       )}
+
+      {/* Post-tutorial hints — rotates contextual tips after first visit */}
+      {!showOnboarding && <PostTutorialHints />}
     </div>
   );
 }

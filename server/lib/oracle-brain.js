@@ -221,7 +221,12 @@ Output this exact JSON structure:
 }`;
 
   const result = await callUtilityBrain(prompt, MAX_TOKENS_DIALOGUE);
-  if (!result.ok) return result;
+  if (!result.ok) {
+    // LLM unavailable — return a deterministic fallback tree so the dialogue
+    // panel still functions. Players in offline mode get terse but coherent
+    // lines tailored from npcTraits + questContext.
+    return { ok: true, dialogueTree: _buildFallbackDialogue(npcTraits, questContext, playerRelationship) };
+  }
 
   try {
     const jsonMatch = result.text.match(/\{[\s\S]*\}/);
@@ -238,6 +243,56 @@ Output this exact JSON structure:
       },
     };
   } catch {
-    return { ok: false, error: "dialogue_json_parse_failed" };
+    return { ok: true, dialogueTree: _buildFallbackDialogue(npcTraits, questContext, playerRelationship) };
   }
+}
+
+// ── Offline / fallback dialogue ─────────────────────────────────────────────
+// Used when the Utility brain is offline or returns malformed JSON. The
+// generated tree has the same shape as the LLM output so the dialogue
+// panel doesn't need to special-case it.
+function _buildFallbackDialogue(npcTraits = {}, questContext = {}, _playerRelationship = "neutral") {
+  const name = npcTraits.name || "Citizen";
+  const role = npcTraits.role || "resident";
+  const greeting = questContext.questTitle
+    ? `${name} looks up. "You're the one I've been waiting for. ${questContext.questTitle}."`
+    : `${name} nods. "Stranger. What brings you to my corner of Concordia?"`;
+  return {
+    npcId: npcTraits.id,
+    generatedAt: new Date().toISOString(),
+    fallback: true,
+    greeting,
+    nodes: [
+      {
+        id: "node_1",
+        npcText: questContext.questTitle
+          ? `It's about ${questContext.questTitle}. The work isn't safe, but it pays.`
+          : `Things have been quiet. Word travels slowly between districts.`,
+        playerOptions: [
+          { text: "Tell me more.", leadsTo: "node_2" },
+          { text: "I should go.",  leadsTo: "node_4" },
+        ],
+      },
+      {
+        id: "node_2",
+        npcText: `As a ${role}, I see what others miss. Take care of this and I'll have something for you.`,
+        playerOptions: [
+          { text: "I'll help.",     leadsTo: "node_3" },
+          { text: "Not today.",     leadsTo: "node_4" },
+        ],
+      },
+      {
+        id: "node_3",
+        npcText: `Good. Find what I described and come back.`,
+        playerOptions: [
+          { text: "On my way.", leadsTo: "node_4" },
+        ],
+      },
+      {
+        id: "node_4",
+        npcText: `Until next time, traveler.`,
+        playerOptions: [],
+      },
+    ],
+  };
 }

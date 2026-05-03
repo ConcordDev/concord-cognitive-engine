@@ -53,9 +53,10 @@ function discoverSubWorlds() {
 let _seeded = false;
 
 // In-memory registries populated by seeder, read by narrative-bridge
-export const _authoredNPCs     = new Map();   // npcId → npc object
-export const _authoredFactions = new Map();   // factionId → faction object
-export const _authoredQuests   = new Map();   // questId → { raw, engineId }
+export const _authoredNPCs       = new Map();   // npcId → npc object
+export const _authoredFactions   = new Map();   // factionId → faction object
+export const _authoredQuests     = new Map();   // questId → { raw, engineId }
+export const _authoredDialogues  = new Map();   // "npcId:questId:phase" → tree
 
 // ── File Readers ─────────────────────────────────────────────────────────────
 
@@ -86,6 +87,14 @@ function seedNPCs(npcs) {
   let count = 0;
   for (const npc of npcs) {
     _authoredNPCs.set(npc.id, npc);
+    // Apply authored per-NPC schedule overrides via npc-schedules.
+    if (npc.schedule && typeof npc.schedule === "object") {
+      try {
+        // Lazy import — npc-schedules is ESM, top-level import would fight
+        // content-seeder's mixed cjs/esm context.
+        import("./npc-schedules.js").then(m => m.setNPCSchedule(npc.id, npc.schedule)).catch(() => {});
+      } catch { /* schedule application is best-effort */ }
+    }
     count++;
   }
   return count;
@@ -187,6 +196,10 @@ function seedQuestFile(quests) {
         prerequisites: quest.prerequisites ?? [],
         followUp:      quest.follow_up_quest_ids ?? [],
         tags:          quest.tags ?? [],
+        // Quest-level rewards block forwarded to the engine so the
+        // completion handler can grant gold + named items + skill xp.
+        rewards:       quest.rewards ?? {},
+        authoredId:    quest.id,
       });
 
       if (result.ok) {
@@ -286,6 +299,33 @@ export function seedContent({ db = null } = {}) {
     results.quests += seedQuestFile(factionQuests);
   }
 
+  // Hand-authored side quests — each is its own file under content/quests/
+  // and may have a paired authored dialogue tree under content/dialogues/.
+  for (const sideFile of ["quests/kael-torchlight.json"]) {
+    const side = readJSON(sideFile);
+    if (Array.isArray(side)) results.quests += seedQuestFile(side);
+  }
+
+  // Authored dialogue trees — keyed by `npcId:questId:phase`. The narrative
+  // bridge looks these up and short-circuits the LLM dialogue path when a
+  // hand-authored tree exists for the requested context.
+  results.dialogues = 0;
+  try {
+    const dialogueDir = join(CONTENT_ROOT, "dialogues");
+    for (const entry of readdirSync(dialogueDir)) {
+      if (!entry.endsWith(".json")) continue;
+      const tree = readJSON(`dialogues/${entry}`);
+      if (tree && typeof tree === "object" && !Array.isArray(tree)) {
+        for (const [key, val] of Object.entries(tree)) {
+          if (val && typeof val === "object") {
+            _authoredDialogues.set(key, val);
+            results.dialogues++;
+          }
+        }
+      }
+    }
+  } catch { /* no dialogues directory — fine */ }
+
   // Walkers — promote any authored NPC with link_walker:true into the
   // concord_link_walkers table so the runtime can dispatch them. Idempotent.
   if (db) {
@@ -303,7 +343,7 @@ export function seedContent({ db = null } = {}) {
   _seeded = true;
 
   logger.info(
-    { factions: results.factions, npcs: results.npcs, lore: results.lore, quests: results.quests, walkers: results.walkers || 0 },
+    { factions: results.factions, npcs: results.npcs, lore: results.lore, quests: results.quests, walkers: results.walkers || 0, dialogues: results.dialogues || 0 },
     "content_seeded"
   );
 
@@ -329,6 +369,27 @@ export function getQuestsForNPC(npcId) {
     if (entry.npcId === npcId) result.push(entry);
   }
   return result;
+}
+
+/**
+ * Look up a hand-authored dialogue tree.
+ * Tries the most-specific key first then falls back to less-specific:
+ *   1. `${npcId}:${questId}:${phase}`
+ *   2. `${npcId}:${questId}` (no phase)
+ *   3. `${npcId}:idle` (no quest)
+ * Returns null when no authored tree exists for the requested context.
+ */
+export function getAuthoredDialogue(npcId, questId = null, phase = null) {
+  if (!npcId) return null;
+  if (questId && phase) {
+    const a = _authoredDialogues.get(`${npcId}:${questId}:${phase}`);
+    if (a) return a;
+  }
+  if (questId) {
+    const b = _authoredDialogues.get(`${npcId}:${questId}`);
+    if (b) return b;
+  }
+  return _authoredDialogues.get(`${npcId}:idle`) ?? null;
 }
 
 /** Return all authored NPCs in a given faction. */

@@ -144,12 +144,13 @@ export default function createWorldNarrativeRoutes({ requireAuth, requireAdmin, 
   router.get("/dialogue/:npcId", auth, wrap(async (req, res) => {
     const { npcId } = req.params;
     const questId            = req.query.questId || null;
+    const phase              = req.query.phase || null;
     const playerRelationship = req.query.relationship || "neutral";
     const isAuthored         = getAuthoredNPC(npcId) !== null;
 
     let result;
     if (isAuthored) {
-      result = await generateAuthoredDialogue(npcId, questId, playerRelationship, db);
+      result = await generateAuthoredDialogue(npcId, questId, playerRelationship, db, phase);
     } else {
       const npcTraits = {
         id:          npcId,
@@ -167,7 +168,12 @@ export default function createWorldNarrativeRoutes({ requireAuth, requireAdmin, 
     if (!result.ok) {
       return res.status(503).json({ ok: false, error: result.error });
     }
-    res.json({ ok: true, dialogueTree: result.dialogueTree, authored: isAuthored });
+    res.json({
+      ok: true,
+      dialogueTree: result.dialogueTree,
+      authored: isAuthored,
+      handAuthored: !!result.handAuthored,
+    });
   }));
 
   return router;

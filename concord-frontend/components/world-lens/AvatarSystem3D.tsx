@@ -1005,6 +1005,99 @@ export default function AvatarSystem3D({
       }
       window.addEventListener('concordia:hit-reaction', handleHitReaction);
 
+      // Polish: NPCs face the player when within 5m. NPCBehaviorHooks ticks
+      // every 250ms and dispatches `concordia:npc-look-at` with the desired
+      // yaw — we update the existing per-NPC targetRot which the frame loop
+      // already smooth-interpolates, so the head turn happens for free.
+      function handleNPCLookAt(e: Event) {
+        const detail = (e as CustomEvent).detail as
+          | { npcId?: string; targetRot?: number }
+          | undefined;
+        if (!detail?.npcId || typeof detail.targetRot !== 'number') return;
+        const npcEntry = npcMeshes.get(detail.npcId) as
+          | { targetRot: number }
+          | undefined;
+        if (!npcEntry) return;
+        npcEntry.targetRot = detail.targetRot;
+      }
+      window.addEventListener('concordia:npc-look-at', handleNPCLookAt);
+
+      // Procedural combat clips: build a per-skeleton clip map on first hit
+      // and crossfade in for attack-light / heavy / block / parry / dodge /
+      // hit-flinch / death animation events.
+      // Two-tier strategy:
+      //   1. If the event carries a tier (1-5), pick the matching tier-scaled
+      //      biomechanics clip (combat-biomechanics.ts) — wind-up + hip drive
+      //      + off-hand counter + follow-through scale with mastery so a
+      //      tier-5 evolved combo's punch *looks* genuinely heavier than a
+      //      tier-1 first-attempt.
+      //   2. Fall back to the baseline combat-clips.ts pose table when no
+      //      tier is supplied (block / parry / dodge / hit-flinch / death
+      //      stay on the baseline path — they're not combo-tier-scaled).
+      const combatClipMaps      = new WeakMap<object, Record<string, import('three').AnimationClip>>();
+      const biomechClipMaps     = new WeakMap<object, Record<string, import('three').AnimationClip>>();
+      async function handleCombatAnim(e: Event) {
+        const detail = (e as CustomEvent).detail as
+          | { entityId?: string; animation?: string; tier?: number; body?: 'slim' | 'average' | 'stocky' | 'tall' }
+          | undefined;
+        if (!detail?.entityId || !detail?.animation) return;
+        const mixer = mixersRef.current.get(detail.entityId) as MixerType | undefined;
+        if (!mixer) return;
+        try {
+          const root = (mixer as unknown as { getRoot?: () => unknown }).getRoot?.();
+          const skeleton = (root as { skeleton?: import('three').Skeleton } | undefined)?.skeleton;
+          if (!skeleton) return;
+
+          // Tier-scaled biomechanics path. attack-light / heavy / kick /
+          // grapple all support 5 mastery tiers. block / parry / dodge /
+          // hit-flinch / death don't (they're reactive, not mastered).
+          const TIERED_ACTIONS = new Set(['attack-light', 'attack-heavy', 'kick', 'grapple']);
+          if (typeof detail.tier === 'number' && TIERED_ACTIONS.has(detail.animation)) {
+            const tier = Math.max(1, Math.min(5, Math.floor(detail.tier)));
+            let bMap = biomechClipMaps.get(skeleton as unknown as object);
+            if (!bMap) {
+              const bmod = await import('@/lib/concordia/combat-biomechanics');
+              bMap = bmod.buildBiomechClipMap(
+                skeleton,
+                detail.body ?? 'average',
+                ['attack-light', 'attack-heavy', 'kick', 'grapple'],
+                [1, 2, 3, 4, 5],
+              );
+              biomechClipMaps.set(skeleton as unknown as object, bMap);
+            }
+            const clipKey = `${detail.animation}-t${tier}`;
+            const clip = bMap[clipKey];
+            if (clip) {
+              const action = (mixer as unknown as import('three').AnimationMixer).clipAction(clip);
+              action.reset();
+              // Higher tiers crossfade slightly faster (sharper commitment)
+              const fadeMs = Math.max(40, 100 - tier * 8);
+              action.setLoop(2200 /* THREE.LoopOnce */, 1);
+              action.fadeIn(fadeMs / 1000);
+              action.setEffectiveWeight(1);
+              action.play();
+              return;
+            }
+          }
+
+          // Baseline fallback
+          let clipMap = combatClipMaps.get(skeleton as unknown as object);
+          if (!clipMap) {
+            const mod = await import('@/lib/concordia/combat-clips');
+            clipMap = mod.buildCombatClipMap(skeleton);
+            combatClipMaps.set(skeleton as unknown as object, clipMap);
+          }
+          const mod2 = await import('@/lib/concordia/combat-clips');
+          mod2.playCombatClip(
+            mixer as unknown as import('three').AnimationMixer,
+            detail.animation as Parameters<typeof mod2.playCombatClip>[1],
+            clipMap as Record<Parameters<typeof mod2.playCombatClip>[1], import('three').AnimationClip>,
+            { fadeMs: 80, loop: detail.animation === 'block' },
+          );
+        } catch { /* clip generation/playback silent */ }
+      }
+      window.addEventListener('concordia:combat-anim', handleCombatAnim);
+
       // ── Death collapse (Phase 5) ─────────────────────────────
       // Detail: { targetId: string, hitDirection?: { x: number; z: number } }
       // Procedural collapse + opacity fade. Avoids the 16-bone Rapier
@@ -1794,7 +1887,9 @@ export default function AvatarSystem3D({
         window.removeEventListener('keydown', handleKeyDown);
         window.removeEventListener('keyup', handleKeyUp);
         window.removeEventListener('concordia:hit-reaction', handleHitReaction);
+        window.removeEventListener('concordia:combat-anim', handleCombatAnim);
         window.removeEventListener('concordia:death-collapse', handleDeathCollapse);
+        window.removeEventListener('concordia:npc-look-at', handleNPCLookAt);
         for (const t of hitReactionTimers.values()) clearTimeout(t);
         hitReactionTimers.clear();
         for (const arr of dyingTimers.values()) for (const t of arr) clearTimeout(t);

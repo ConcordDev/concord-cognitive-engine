@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   MapPin, Loader2, Building2, Users, Zap, Cloud, Network,
-  Sparkles,
+  Sparkles, ScrollText,
 } from 'lucide-react';
 
 const panel = 'bg-black/80 backdrop-blur-sm border border-white/10 rounded-lg';
@@ -51,7 +51,33 @@ interface LoadingTransitionsProps {
 
 // ── Tips ───────────────────────────────────────────────────────────
 
-const tips = [
+interface Tip { kind: 'lore' | 'gameplay'; text: string }
+
+// Lore tips draw from the authored world (lore.json + factions.json) — the
+// Founding Compact, the Purge, the Trade Wars, the Gate Crisis, etc. They're
+// authored for the load screen specifically: shorter than the full lore
+// entries, written to land on a player who hasn't read any of it yet.
+const loreTips: string[] = [
+  'The Founding Compact has held for seventy-five years. Some of it has been honored.',
+  'The Wardens closed the investigation into the burning of the Scholars\' archive in four days.',
+  'The locks on the Scholars\' vaults were opened from the outside. No one has answered for it yet.',
+  '"Pre-Year 70 historical materials" appears on every Warden confiscation list. The category is undefined on purpose.',
+  'The Shadow Network has leverage over the Wardens, the Scholars, and the Merchants — all three, at the same time.',
+  'Cipher leaked enough to keep the wound open. Not enough to close anyone\'s door.',
+  'The Trade Wars ended with a cartel that locked out independent merchants permanently.',
+  'For eleven days during the Gate Crisis, no caravan moved. No one was ever told why.',
+  'Lady Voss never reads the texts she orders confiscated. That is not a kindness.',
+  'The east gate processes new arrivals like a ledger. Most of them don\'t notice they\'ve been logged.',
+  'The Compact says no single power controls what Concordia knows. Four factions counts as one when they all agree.',
+  'Captain Rael has never failed to follow an order. She has refused to give a few.',
+  'The Lorekeeper line was forty-three names long before the Purge. Three of those names survived.',
+  'Citation chains are public. Citation motives are not.',
+  'The Academy district was built where the first archive stood. The new vaults are deeper.',
+  'The Forge district keeps a cold furnace lit. Nobody remembers why; nobody puts it out.',
+  'A merchant who refuses the Compact is asked to leave. A merchant who agrees but doesn\'t mean it is allowed to stay.',
+];
+
+const gameplayTips: string[] = [
   'Buildings cited by other creators earn passive royalties.',
   'Infrastructure must be validated before it becomes permanent.',
   'The Exchange is the busiest trading district in Concordia.',
@@ -59,14 +85,23 @@ const tips = [
   'Higher environmental scores attract more NPC settlers.',
   'Combine materials from different creators for bonus synergies.',
   'Guard NPCs will patrol near validated structures automatically.',
-  'Weather affects construction speed — plan around rain!',
+  'Weather affects construction speed — plan around rain.',
   'Your reputation level unlocks advanced building materials.',
   'Districts with balanced infrastructure grow faster.',
-  'Celebrate milestones with other players for bonus XP.',
-  'The Academy district specializes in knowledge DTU research.',
   'Place waypoints with M to navigate efficiently.',
   'Validated structures resist disaster events better.',
   'Check the notification feed for overnight royalty summaries.',
+];
+
+// Combined pool — 70% lore, 30% gameplay. Lore tips appear weighted heavier
+// because that's the polish goal: tell the player something about the world
+// every time the loading screen is up.
+const tips: Tip[] = [
+  ...loreTips.flatMap((t) => [
+    { kind: 'lore' as const, text: t },
+    { kind: 'lore' as const, text: t }, // 2× weight ≈ 70% of pool
+  ]),
+  ...gameplayTips.map((t) => ({ kind: 'gameplay' as const, text: t })),
 ];
 
 // ── Phase Config ──────────────────────────────────────────────────
@@ -261,15 +296,17 @@ export default function LoadingTransitions({
     () => Math.floor(Math.random() * tips.length),
   );
 
-  // Rotate tips every 6 seconds
+  // Rotate tips every 4 seconds (polish-pass cadence)
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentTipIdx((prev) => (prev + 1) % tips.length);
-    }, 6000);
+    }, 4000);
     return () => clearInterval(interval);
   }, []);
 
-  const displayTip = externalTip || tips[currentTipIdx];
+  const currentTip = tips[currentTipIdx];
+  const displayTip = externalTip || currentTip.text;
+  const displayKind: Tip['kind'] = externalTip ? 'gameplay' : currentTip.kind;
 
   // ── Seamless transition (brief blur) ──────────────────
   if (transition === 'seamless') {
@@ -360,12 +397,29 @@ export default function LoadingTransitions({
           </div>
         )}
 
-        {/* Tip */}
-        <div className={`${panel} px-4 py-2 max-w-sm`}>
+        {/* Tip — lore tips get the scroll icon + warmer tint, gameplay tips
+            keep the sparkle. Crossfade key on the index so the text actually
+            re-renders with the keyframe animation rather than a hard swap. */}
+        <div className={`${panel} px-4 py-2 max-w-sm transition-opacity`} key={currentTipIdx}>
           <div className="flex items-start gap-2">
-            <Sparkles className="w-3.5 h-3.5 text-amber-400 flex-shrink-0 mt-0.5" />
-            <p className="text-[11px] text-gray-400 leading-relaxed">{displayTip}</p>
+            {displayKind === 'lore' ? (
+              <ScrollText className="w-3.5 h-3.5 text-amber-300 flex-shrink-0 mt-0.5" />
+            ) : (
+              <Sparkles className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0 mt-0.5" />
+            )}
+            <p
+              className={`text-[11px] leading-relaxed ${displayKind === 'lore' ? 'text-amber-100/80 italic' : 'text-gray-400'}`}
+              style={{ animation: 'tipFadeIn 600ms ease-out' }}
+            >
+              {displayTip}
+            </p>
           </div>
+          <style jsx>{`
+            @keyframes tipFadeIn {
+              from { opacity: 0; transform: translateY(4px); }
+              to   { opacity: 1; transform: translateY(0); }
+            }
+          `}</style>
         </div>
 
         {/* Destination preview info */}

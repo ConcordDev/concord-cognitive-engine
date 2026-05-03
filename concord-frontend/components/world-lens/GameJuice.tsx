@@ -95,9 +95,9 @@ const TRIGGER_SFX: Record<JuiceTrigger, string> = {
   'disaster':              'rumble',
   'construction-complete': 'build-finish',
   'competition-win':       'victory-sting',
-  'combat-hit':            'hit-light',
-  'combat-crit':           'hit-crit',
-  'combat-kill':           'kill-blow',
+  'combat-hit':            'hit-confirm-light',
+  'combat-crit':            'hit-confirm-crit',
+  'combat-kill':            'hit-confirm-kill',
   'combat-dodge':          'dodge-whoosh',
   'combat-block':          'block-clang',
   'quest-complete':        'gather-success',
@@ -124,7 +124,12 @@ export default function GameJuice({ children, enabled = true, intensity: initial
       // when a world position is supplied so the SFX comes from the right
       // direction relative to the listener (HRTF + reverb + occlusion via
       // SoundscapeEngine.playSpatialSFX).
-      const sfxId = TRIGGER_SFX[trigger];
+      // Heavy-hit variant: combat-hit with magnitude > 25 plays the heavier
+      // confirmation stack (transient + heavy + thump-deep) for genuine weight.
+      let sfxId = TRIGGER_SFX[trigger];
+      if (trigger === 'combat-hit' && (opts?.magnitude ?? 0) > 25) {
+        sfxId = 'hit-confirm-heavy';
+      }
       if (sfxId) {
         if (opts?.position) soundscape.playSpatialSFX(sfxId, opts.position);
         else soundscape.triggerSFX(sfxId);

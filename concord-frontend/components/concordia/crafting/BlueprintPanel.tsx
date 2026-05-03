@@ -59,9 +59,45 @@ export function BlueprintPanel({ playerId, toolTier, skillLevel, onClose }: Blue
   const handleMinigameComplete = useCallback(async (multiplier: number) => {
     setCrafting(false);
     if (!selected) return;
-    setResult(`Crafting complete! Quality multiplier: ×${multiplier}`);
-    // In a full implementation, POST to /api/worlds/:id/craft with blueprintId + multiplier
-    // to actually consume materials and place the item. For now surface the result.
+    try {
+      const r = await api.post('/api/crafting/execute', {
+        recipeId: selected.id,
+        worldId: 'concordia',
+        qualityMultiplier: multiplier,
+      });
+      const data = r.data;
+      if (data?.ok) {
+        setResult(`✓ Crafted ${data.dtu?.name ?? selected.designTitle ?? selected.title} at ×${multiplier} quality.`);
+        // Refresh inventory so the materials-checklist updates immediately
+        api.get('/api/world/inventory').then((ir) => setInventory(ir.data?.items ?? [])).catch(() => {});
+        // Surface to the polish-pass toast + craft-ding via existing event channels
+        if (typeof window !== 'undefined') {
+          const ratedRarity = multiplier >= 1.4 ? 'epic'
+            : multiplier >= 1.15 ? 'rare'
+            : multiplier >= 0.9 ? 'uncommon'
+            : 'common';
+          window.dispatchEvent(new CustomEvent('concordia:item-acquired', {
+            detail: {
+              name: data.dtu?.name ?? selected.title,
+              qty: 1,
+              type: data.dtu?.type ?? 'item',
+              rarity: ratedRarity,
+            },
+          }));
+          window.dispatchEvent(new CustomEvent('concordia:craft-success', {
+            detail: { recipeId: selected.id, quality: multiplier },
+          }));
+        }
+      } else if (data?.error === 'Insufficient resources') {
+        const missing = (data.missing_resources ?? []).map((m: { resource_id: string; shortage: number }) =>
+          `${m.shortage}× ${m.resource_id}`).join(', ');
+        setResult(`Need: ${missing}`);
+      } else {
+        setResult(data?.error ?? 'Craft failed.');
+      }
+    } catch {
+      setResult('Network error — craft did not complete.');
+    }
   }, [selected]);
 
   if (loading) {

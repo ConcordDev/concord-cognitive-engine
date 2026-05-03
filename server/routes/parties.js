@@ -21,7 +21,12 @@ const MAX_PARTY_SIZE = 8;
 
 export default function createPartiesRouter({ requireAuth, db, emitToUser }) {
   const router = Router();
-  const auth = requireAuth;
+  // requireAuth is a factory — call it once to produce middleware. The
+  // previous `const auth = requireAuth` pattern leaked the factory into
+  // Express, which hung the request because the factory never calls next().
+  const auth = typeof requireAuth === "function"
+    ? (requireAuth.length === 0 ? requireAuth() : requireAuth)
+    : requireAuth;
   const _userId = (req) => req.user?.id || req.headers["x-user-id"] || null;
   const _emit = (uid, event, payload) => {
     try { emitToUser?.(uid, event, payload); } catch { /* best-effort */ }
