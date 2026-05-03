@@ -91,15 +91,53 @@ const SKY_FRAGMENT_SHADER = `
     return color;
   }
 
+  // Polish-pass: hash-based starfield. Produces a static field of pinprick
+  // stars at night that fades during dawn/dusk and disappears during day.
+  // The hash is cheap (no textures) and stable per direction so stars don't
+  // shimmer wildly between frames.
+  float starHash(vec3 p) {
+    p = fract(p * vec3(443.897, 441.423, 437.195));
+    p += dot(p, p.yzx + 19.19);
+    return fract((p.x + p.y) * p.z);
+  }
+
+  vec3 starfield(vec3 dir, float intensity) {
+    // Quantize direction into a sparse grid; only a small fraction of cells
+    // contain a star, weighted to look natural.
+    vec3 q = dir * 220.0;
+    vec3 cell = floor(q);
+    vec3 frac = fract(q);
+    float h = starHash(cell);
+    if (h < 0.985) return vec3(0.0);
+    // Center the star in the cell with a soft radial falloff.
+    vec2 d = frac.xy - 0.5;
+    float r = length(d);
+    float spark = smoothstep(0.42, 0.0, r);
+    // Slight chromatic jitter so the field has variety
+    vec3 tint = mix(vec3(0.85, 0.9, 1.0), vec3(1.0, 0.95, 0.8), starHash(cell + 7.3));
+    return tint * spark * (0.5 + 0.5 * starHash(cell + 13.1)) * intensity;
+  }
+
   void main() {
     // Height above horizon (normalized)
-    float height = normalize(vWorldPosition).y;
-    height = max(0.0, height);
+    vec3 dir = normalize(vWorldPosition);
+    float height = max(0.0, dir.y);
 
     vec3 skyColor = getSkyColor(uTimeOfDay, height);
 
+    // Atmospheric scattering approximation — boost saturation near horizon
+    // during golden-hour windows for a richer dawn/dusk read.
+    float horizonScatter = pow(1.0 - height, 4.0);
+    if (uTimeOfDay > 5.0 && uTimeOfDay < 8.0) {
+      // Dawn: warm bias near horizon
+      skyColor = mix(skyColor, skyColor * vec3(1.18, 1.05, 0.85), horizonScatter * 0.6);
+    } else if (uTimeOfDay > 16.5 && uTimeOfDay < 19.5) {
+      // Dusk: deep red bias
+      skyColor = mix(skyColor, skyColor * vec3(1.25, 0.85, 0.7), horizonScatter * 0.7);
+    }
+
     // Sun/moon glow near horizon
-    float sunDot = max(0.0, dot(normalize(vWorldPosition), uSunDirection));
+    float sunDot = max(0.0, dot(dir, uSunDirection));
     float sunGlow = pow(sunDot, 32.0) * 0.5;
     float sunDisc = pow(sunDot, 256.0) * 2.0;
 
@@ -108,10 +146,25 @@ const SKY_FRAGMENT_SHADER = `
       skyColor += vec3(1.0, 0.9, 0.7) * (sunGlow + sunDisc);
     } else {
       // Nighttime moon (cooler tint)
-      float moonDot = max(0.0, dot(normalize(vWorldPosition), -uSunDirection));
+      float moonDot = max(0.0, dot(dir, -uSunDirection));
       float moonGlow = pow(moonDot, 64.0) * 0.3;
       float moonDisc = pow(moonDot, 512.0) * 1.0;
       skyColor += vec3(0.7, 0.8, 1.0) * (moonGlow + moonDisc);
+    }
+
+    // Starfield — full at night, faded dawn/dusk, off in day. Cloud cover
+    // reduces star visibility (stars only show through clear gaps).
+    float starIntensity = 0.0;
+    if (uTimeOfDay < 5.0 || uTimeOfDay > 20.5) {
+      starIntensity = 1.0;
+    } else if (uTimeOfDay < 6.5) {
+      starIntensity = (6.5 - uTimeOfDay) / 1.5;
+    } else if (uTimeOfDay > 19.0) {
+      starIntensity = (uTimeOfDay - 19.0) / 1.5;
+    }
+    starIntensity *= (1.0 - uCloudCover * 0.7);
+    if (starIntensity > 0.0 && height > 0.05) {
+      skyColor += starfield(dir, starIntensity);
     }
 
     gl_FragColor = vec4(skyColor, 1.0);

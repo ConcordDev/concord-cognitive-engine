@@ -363,9 +363,22 @@ export default function TerrainRenderer({
             const aoFactor = Math.max(0, Math.min(1, (avgNeighborH - thisH) / 8));
             const aoScale = 1 - aoFactor * 0.4;
 
-            colors[i * 3]     = vColor.r * aoScale;
-            colors[i * 3 + 1] = vColor.g * aoScale;
-            colors[i * 3 + 2] = vColor.b * aoScale;
+            // Polish-pass: procedural per-vertex colour variation. Two noise
+            // octaves perturb the base zone colour by ±8% lightness and a
+            // small warm/cool drift (±4% hue) so the terrain surface reads
+            // as natural variation rather than a single flat sheet.
+            const cNoise1 = Math.sin(vx * 0.073 + vz * 0.091) * 0.5;
+            const cNoise2 = Math.sin(vx * 0.211 + vz * 0.157) * 0.5;
+            const lightness = 1 + (cNoise1 + cNoise2) * 0.08;            // ±0.08
+            const warmth    = (cNoise1 - cNoise2) * 0.04;                  // ±0.04 R-vs-B drift
+
+            const r = vColor.r * aoScale * lightness * (1 + warmth);
+            const g = vColor.g * aoScale * lightness;
+            const b = vColor.b * aoScale * lightness * (1 - warmth);
+
+            colors[i * 3]     = Math.max(0, Math.min(1, r));
+            colors[i * 3 + 1] = Math.max(0, Math.min(1, g));
+            colors[i * 3 + 2] = Math.max(0, Math.min(1, b));
           }
           geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
           material.vertexColors = true;

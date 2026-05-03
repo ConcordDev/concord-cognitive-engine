@@ -598,13 +598,18 @@ export default function ConcordiaScene({
       if (quality === 'ultra') {
         try {
           const { SSGIPass } = await import('@/lib/world-lens/ssgi');
+          // Polish-pass tuning: bumped intensity 0.4 → 0.55 (more visible
+          // indirect-light bounce, especially in shaded districts like the
+          // Forge), samples 8 → 12 (less noise on roughness > 0.6), and
+          // dropped temporalBlend 0.10 → 0.08 (slightly less ghost-trail
+          // when the camera moves quickly).
           ssgiPassRef.current = new SSGIPass(
             renderer,
             scene,
             camera,
             canvas!.clientWidth,
             canvas!.clientHeight,
-            { intensity: 0.4, numSamples: 8, temporalBlend: 0.1 }
+            { intensity: 0.55, numSamples: 12, temporalBlend: 0.08 }
           );
         } catch {
           /* SSGI optional */

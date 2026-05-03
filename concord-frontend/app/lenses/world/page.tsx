@@ -156,6 +156,10 @@ const TutorialHighlight = dynamic(
   () => import('@/components/world-lens/TutorialHighlight'),
   { ssr: false },
 );
+const WorldVisualHooks = dynamic(
+  () => import('@/components/world-lens/WorldVisualHooks'),
+  { ssr: false },
+);
 const AnimationManager = dynamic(() => import('@/components/world-lens/AnimationManager'), {
   ssr: false,
 });
@@ -3068,6 +3072,7 @@ export default function WorldLensPage() {
           <ItemAcquisitionToast />
           <TutorialCinematic />
           <TutorialHighlight />
+          <WorldVisualHooks />
           <AnimationManager>
             <></>
           </AnimationManager>
