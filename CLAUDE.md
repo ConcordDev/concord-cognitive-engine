@@ -103,7 +103,7 @@ Discrete Thought Units are the atomic knowledge format. Four layers: `human` (re
 SQLite via `better-sqlite3`. Synchronous, in-process, no ORM. Migrations in `server/migrations/` (068 migrations as of last audit), run automatically at startup and manually via `npm run migrate`. Schema version tracked in `schema_version` table.
 
 ### Mobile
-`concord-mobile/` — React Native + Expo v52. Real native app with BLE, WiFi P2P, geolocation, NFC, SQLite local store, wallet/marketplace. Not a web wrapper. **Secure storage is placeholder (not production-ready).**
+`concord-mobile/` — React Native + Expo v52. Real native app with BLE, WiFi P2P, geolocation, NFC, SQLite local store, wallet/marketplace. Not a web wrapper. Secure storage uses `expo-secure-store` (iOS Keychain / Android Keystore) on native and `WebCrypto` AES-GCM with a non-extractable key in IndexedDB on web — selected by `createSecureStorageForPlatform(Platform)` in `App.tsx`.
 
 ---
 

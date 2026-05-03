@@ -2,14 +2,14 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { View, Text, StyleSheet, ActivityIndicator, Linking, Alert, DeviceEventEmitter } from 'react-native';
+import { Platform, View, Text, StyleSheet, ActivityIndicator, Linking, Alert, DeviceEventEmitter } from 'react-native';
 import { AppNavigator } from './src/surface/navigation/AppNavigator';
 import { useIdentityStore } from './src/store/identity-store';
 import { useMeshStore } from './src/store/mesh-store';
 import { useEconomyStore } from './src/store/economy-store';
 import { detectHardwareCapabilities, getGracefulDegradation } from './src/utils/hardware-detect';
 import { createIdentityManager } from './src/identity/identity-manager';
-import type { SecureStorage } from './src/identity/identity-manager';
+import { createSecureStorageForPlatform, createInMemorySecureStorage } from './src/identity/secure-storage-expo';
 import { TRANSPORT_LAYERS } from './src/utils/constants';
 
 // ── Boot Phase Labels ────────────────────────────────────────────────────────
@@ -43,41 +43,34 @@ function LoadingScreen({ phase }: { phase: BootPhase }) {
   );
 }
 
-// ── Placeholder Secure Storage ───────────────────────────────────────────────
-// SECURITY WARNING: This implementation stores the device identity keypair in
-// plain JavaScript heap memory. Data is NOT persisted across app restarts, and
-// is NOT protected by the OS secure enclave (iOS Keychain / Android Keystore).
+// ── Secure Storage ───────────────────────────────────────────────────────────
 //
-// To fix this properly, add one of the following to package.json and wire it:
-//   • expo-secure-store  — Expo-managed Keychain/Keystore wrapper (recommended)
-//   • react-native-keychain — bare React Native Keychain/Keystore wrapper
+// Production secure storage for the device identity keypair. Pick the
+// platform-appropriate backend exactly once at module init so the rest of the
+// app sees a stable handle:
+//   • iOS / Android → expo-secure-store (Keychain / Keystore, encrypted at
+//     rest, scoped to this app, WHEN_UNLOCKED_THIS_DEVICE_ONLY).
+//   • Web wrapper   → WebCrypto AES-GCM with a non-extractable key in
+//     IndexedDB. Strictly weaker than Keychain but stronger than naked
+//     localStorage and resilient to XSS exfil of the master key.
+//   • Anything else → in-memory (e.g. the Jest test environment); the
+//     identity manager handles the regenerate-on-cold-start case gracefully.
 //
-// Neither package is currently installed (checked package.json). Until one is
-// added, the identity keypair is ephemeral — it regenerates on every cold
-// start — and must NOT be used for production signing or authentication.
+// createSecureStorageForPlatform returns an in-memory backend rather than
+// throwing when the native module isn't available, which keeps Metro/Jest
+// from crashing during dev. Failures during real boot are logged below.
 
-console.warn(
-  '[SecureStorage] Using in-memory placeholder — identity keypair is NOT ' +
-  'persisted and NOT protected by the OS secure enclave. ' +
-  'Install expo-secure-store or react-native-keychain to fix this.'
-);
-
-const memoryStorage = new Map<string, string>();
-
-const placeholderSecureStorage: SecureStorage = {
-  async setItem(key: string, value: string) {
-    memoryStorage.set(key, value);
-  },
-  async getItem(key: string) {
-    return memoryStorage.get(key) ?? null;
-  },
-  async removeItem(key: string) {
-    memoryStorage.delete(key);
-  },
-  async hasItem(key: string) {
-    return memoryStorage.has(key);
-  },
-};
+let secureStorage: ReturnType<typeof createSecureStorageForPlatform>;
+try {
+  secureStorage = createSecureStorageForPlatform(Platform);
+} catch (err) {
+  console.warn(
+    '[SecureStorage] Native backend unavailable — falling back to in-memory ' +
+    `(reason: ${(err as Error)?.message ?? 'unknown'}). Identity keypair will ` +
+    'regenerate on cold start until expo-secure-store loads correctly.'
+  );
+  secureStorage = createInMemorySecureStorage();
+}
 
 // ── App ──────────────────────────────────────────────────────────────────────
 
@@ -174,7 +167,7 @@ export default function App() {
       // ── Phase 2: Initialize or load identity (Ed25519 keypair) ─────────
       setBootPhase('identity');
       try {
-        const identityManager = createIdentityManager(placeholderSecureStorage);
+        const identityManager = createIdentityManager(secureStorage);
         const identity = await identityManager.initialize();
         setIdentity(identity);
       } catch (error) {
