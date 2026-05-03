@@ -88,14 +88,40 @@ const nextConfig = {
       },
     ];
   },
-  // WebXR opts for AR lens
-  webpack: (config, { isServer }) => {
+  // WebXR opts for AR lens + persistent-cache big-string compression.
+  webpack: (config, { isServer, dev }) => {
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
         fs: false,
         net: false,
         tls: false,
+      };
+    }
+    // Webpack's PackFileCacheStrategy warns on cache entries > 128KB
+    // ("Serializing big strings (NkiB) impacts deserialization perf —
+    // consider using Buffer instead"). Several lens pages are 130-210kiB
+    // single-source files (world/page.tsx ~197kB, realestate ~139kB,
+    // education ~210kB) which trip the warning on every cached rebuild.
+    //
+    // Two-part mitigation:
+    //   1. Enable gzip compression on the persistent cache so the on-disk
+    //      footprint is small even for the big strings.
+    //   2. In production builds, raise the infrastructureLogging level to
+    //      'error' — the big-string warning is purely advisory and would
+    //      only be actionable by splitting the lens pages, which is a much
+    //      bigger refactor. Dev builds keep all warnings so real issues
+    //      still surface.
+    if (config.cache && config.cache.type === 'filesystem' && !dev) {
+      config.cache = {
+        ...config.cache,
+        compression: 'gzip',
+      };
+    }
+    if (!dev) {
+      config.infrastructureLogging = {
+        ...(config.infrastructureLogging || {}),
+        level: 'error',
       };
     }
     return config;
