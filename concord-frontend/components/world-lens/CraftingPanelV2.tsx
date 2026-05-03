@@ -85,6 +85,19 @@ export default function CraftingPanelV2({ worldId, onClose }: CraftingPanelProps
           window.dispatchEvent(new CustomEvent('concordia:craft-success', {
             detail: { recipeId: recipe.id, output: recipe.output.name },
           }));
+          // Polish-pass item-acquisition toast — uses recipe.output.quality
+          // tier as a rough rarity hint (tier_1 → common, tier_4 → epic)
+          const qualityToRarity: Record<string, string> = {
+            tier_1: 'common', tier_2: 'uncommon', tier_3: 'rare', tier_4: 'epic', tier_5: 'legendary',
+          };
+          window.dispatchEvent(new CustomEvent('concordia:item-acquired', {
+            detail: {
+              name: recipe.output.name,
+              qty: 1,
+              type: recipe.output.type ?? recipe.category ?? 'material',
+              rarity: qualityToRarity[recipe.output.quality ?? 'tier_1'] ?? 'common',
+            },
+          }));
         } catch { /* ok */ }
       } else if (data?.error === 'insufficient_resources') {
         const missing = (data.missing ?? []).map((m: { name: string; required: number; have: number }) =>

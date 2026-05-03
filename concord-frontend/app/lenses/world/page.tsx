@@ -144,6 +144,10 @@ const LowHpVignette = dynamic(() => import('@/components/world-lens/LowHpVignett
 const NPCBehaviorHooks = dynamic(() => import('@/components/world-lens/NPCBehaviorHooks'), {
   ssr: false,
 });
+const ItemAcquisitionToast = dynamic(
+  () => import('@/components/world-lens/ItemAcquisitionToast'),
+  { ssr: false },
+);
 const AnimationManager = dynamic(() => import('@/components/world-lens/AnimationManager'), {
   ssr: false,
 });
@@ -2602,6 +2606,15 @@ export default function WorldLensPage() {
           window.dispatchEvent(new CustomEvent('concordia:floating-text', {
             detail: { text: `+${data.yield.quantity} ${data.yield.name}`, position: detail, color: '#fbbf24' },
           }));
+          // Polish: rarity-bordered toast with golden glow
+          window.dispatchEvent(new CustomEvent('concordia:item-acquired', {
+            detail: {
+              name: data.yield.name,
+              qty: data.yield.quantity,
+              type: data.yield.type ?? 'material',
+              rarity: data.yield.rarity ?? 'common',
+            },
+          }));
         } else if (data?.error === 'gather_cooldown') {
           // Quiet — player is mashing.
         } else {
@@ -3031,6 +3044,7 @@ export default function WorldLensPage() {
               position: { x: n.position.x, y: n.position.y, z: n.position.z ?? 0 },
             }))}
           />
+          <ItemAcquisitionToast />
           <AnimationManager>
             <></>
           </AnimationManager>
