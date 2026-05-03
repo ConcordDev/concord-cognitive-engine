@@ -148,16 +148,32 @@ export default function createWorldNarrativeRoutes({ requireAuth, requireAdmin, 
     const playerRelationship = req.query.relationship || "neutral";
     const isAuthored         = getAuthoredNPC(npcId) !== null;
 
-    // Concordia (the goddess) reacts to the player's ecosystem_score.
-    // When the caller doesn't pin a phase, we auto-select 'warm' for
-    // non-negative scores and 'cold' for negative scores so her hand-
-    // authored dialogue tree feels alive without the client having to
-    // know which to ask for.
+    // Concordia (the goddess) reacts to the player's ecosystem_score AND
+    // the active Refusal-Field composition. When the caller doesn't pin a
+    // phase, we auto-select using two signals:
+    //   1. Refusal-Field strength (glyph algebra composition) — overrides
+    //      ecosystem when the Sovereign has stacked enough refusals that
+    //      reality bends. This is the load-bearing seat for the glyph
+    //      algebra: see server/lib/refusal-field.js#computeFieldComposition.
+    //   2. ecosystem_score — falls back to the per-player alignment metric
+    //      when no compound refusal is active.
     if (isAuthored && !phase && npcId === "concordia_first_breath") {
       try {
         const userId = req.user?.id;
         const worldId = String(req.query.worldId || "concordia-hub");
-        if (userId) {
+        // Compound refusal cuts to "cold" regardless of ecosystem score —
+        // the goddess' tone follows the Sovereign's will when it bends
+        // hard enough. STATE comes through as req.app.locals.STATE.
+        const STATE = req.app?.locals?.STATE;
+        if (STATE) {
+          try {
+            const { isCompoundRefusal } = await import("../lib/refusal-field.js");
+            if (isCompoundRefusal(STATE, worldId)) {
+              phase = "cold";
+            }
+          } catch { /* fall through */ }
+        }
+        if (!phase && userId) {
           const { getMetrics } = await import("../lib/ecosystem/score-engine.js");
           const m = getMetrics(db, userId, worldId);
           phase = (m.ecosystem_score >= 0) ? "warm" : "cold";

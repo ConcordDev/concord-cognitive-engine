@@ -141,6 +141,73 @@ export function isRefused(state, worldId, kind) {
   return activeFields(state, worldId).some((e) => e.kind === kind);
 }
 
+/**
+ * Compose all active field glyphs into a single composite signature using
+ * the base-6 refusal algebra. Returns a numeric strength score derived from
+ * the composed glyph, plus the underlying glyph object for HUD/dialogue use.
+ *
+ * Strength semantics (what callers should branch on):
+ *   0     — no refusal active
+ *   1-2   — single field active (mild refusal)
+ *   3-5   — multiple fields composed; the Sovereign is exerting will
+ *   6+    — compounded refusal; reality bends. Triggers special phases:
+ *           Concordia goddess dialogue shifts to "deep cold", world events
+ *           suspend, and the dome-collapse Mass Raid phase becomes eligible.
+ *
+ * This is the load-bearing seat for the glyph algebra: callers consult the
+ * composite signature, not the individual field list, so the algebra
+ * actually shapes what the world does.
+ */
+export function computeFieldComposition(state, worldId) {
+  const live = activeFields(state, worldId);
+  if (live.length === 0) return { strength: 0, glyph: null, composedFrom: 0 };
+
+  // Compose every active field glyph via glyphAdd. Each addition layers
+  // the algebra: stacking more refusals raises the composite layer index,
+  // which is what we read for strength.
+  let composite = null;
+  let composedFrom = 0;
+  for (const entry of live) {
+    if (!entry.glyph) continue;
+    try {
+      composite = composite == null
+        ? entry.glyph
+        : glyphAdd(composite, entry.glyph).value;
+      composedFrom += 1;
+    } catch { /* algebra failure must never break gameplay */ }
+  }
+
+  // Strength derives from how many active fields contributed to the
+  // composite plus the composite glyph's layer depth (when available).
+  // A single field yields strength 1; two compose to 2 or 3 depending on
+  // whether their glyphs interact constructively; deep stacks reach 6+.
+  let strength = composedFrom;
+  if (composite && typeof composite === "object" && Number.isFinite(composite.depth)) {
+    strength = Math.max(strength, Math.min(9, composedFrom + composite.depth));
+  }
+
+  return { strength, glyph: composite, composedFrom };
+}
+
+/**
+ * Numeric strength shortcut. Returns 0 when no fields are active.
+ * Use this in branch logic that wants compound-refusal awareness without
+ * caring about the underlying glyph object.
+ */
+export function getFieldStrength(state, worldId) {
+  return computeFieldComposition(state, worldId).strength;
+}
+
+/**
+ * Compound-refusal gate. True once 3+ stacked refusal fields produce
+ * a composite glyph that crosses the "reality bends" threshold. This
+ * is the actual mechanic the algebra now drives — Concordia dialogue
+ * cold phase, world-event suspension, dome-collapse raid phase.
+ */
+export function isCompoundRefusal(state, worldId) {
+  return getFieldStrength(state, worldId) >= 6;
+}
+
 /** Heartbeat sweep — calls activeFields() to prune memory, also deletes
  * expired rows from the persistent table so on next restart we don't
  * reload stale entries. */
