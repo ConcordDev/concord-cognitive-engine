@@ -169,6 +169,85 @@ export default function createPersonalLockerRouter({ db, getLockerKey, requireAu
     }
   });
 
+  // ── POST /api/personal-locker/dtus/:id/list-on-marketplace ──────────────
+  // v2.0: promote a personal recipe DTU (fighting_style_recipe / spell_recipe /
+  // blueprint) to the creative marketplace with tier pricing. Composes the
+  // existing `personal_dtus_never_leak` sovereignty check + publishArtifact()
+  // — no parallel royalty logic.
+  //
+  // Body: { type, price?, tierPrices?, description? }.
+  //   `type` should be one of the recipe artifact types in ARTIFACT_TYPES
+  //   (fighting_style_recipe, spell_recipe, blueprint). The route auto-detects
+  //   from the DTU's meta.type if not provided.
+  router.post("/dtus/:id/list-on-marketplace", async (req, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
+
+      // Recipe DTUs live in the main `dtus` table (created via /api/dtus,
+      // scope='personal'/visibility='private' by default). Read with strict
+      // ownership check.
+      const row = db.prepare("SELECT * FROM dtus WHERE id = ? AND owner_user_id = ?")
+        .get(req.params.id, userId);
+      if (!row) return res.status(404).json({ ok: false, error: "not_found_or_not_owned" });
+
+      // assertSovereignty enforces: a personal DTU cannot be read by anyone
+      // but the owner. Reusing the existing invariant rather than reimplementing.
+      assertSovereignty({
+        type: "dtu_read",
+        dtu: { scope: "personal", ownerId: row.owner_user_id },
+        requestingUser: userId,
+      });
+
+      let body = {};
+      try { body = JSON.parse(row.body_json || "{}"); } catch { /* malformed body, treat as empty */ }
+      const metaType = body?.meta?.type || req.body?.type;
+      const RECIPE_TYPES = new Set(["fighting_style_recipe", "spell_recipe", "blueprint"]);
+      if (!RECIPE_TYPES.has(metaType)) {
+        return res.status(400).json({ ok: false, error: "not_a_recipe_dtu", got: metaType });
+      }
+
+      const { price, tierPrices, description } = req.body || {};
+      if (!price && !tierPrices) {
+        return res.status(400).json({ ok: false, error: "price_or_tierPrices_required" });
+      }
+
+      // Synthesize the file fields for a virtual artifact: the recipe data
+      // is the artifact. The dtu:// path lets the rest of the marketplace
+      // pipeline (citations, royalty cascade, transactions) treat it
+      // identically to a file artifact.
+      const serialized = JSON.stringify(body);
+      const fileSize = Buffer.byteLength(serialized, "utf-8");
+      const fileHash = crypto.createHash("sha256").update(serialized).digest("hex");
+      const filePath = `dtu://${row.id}`;
+
+      const { publishArtifact } = await import("../economy/creative-marketplace.js");
+      const result = publishArtifact(db, {
+        creatorId: userId,
+        type: metaType,
+        title: row.title || "Untitled Recipe",
+        description: description || "",
+        filePath, fileSize, fileHash,
+        price: price || 0,
+        tierPrices,
+      });
+
+      if (!result.ok) return res.status(400).json(result);
+
+      // Update the DTU's visibility so other surfaces (creator dashboard,
+      // marketplace listings) reflect that it's been published. The DTU
+      // itself stays scope='personal' by ownership — buyers receive a
+      // license, not the DTU row.
+      db.prepare("UPDATE dtus SET visibility = 'marketplace', updated_at = datetime('now') WHERE id = ?")
+        .run(row.id);
+
+      return res.json({ ok: true, listing: result });
+    } catch (err) {
+      if (err?.message?.includes("SOVEREIGNTY")) return res.status(403).json({ ok: false, error: "access_denied" });
+      return res.status(500).json({ ok: false, error: err?.message || String(err) });
+    }
+  });
+
   // ── GET /api/personal-locker/context ─────────────────────────────────────
 
   router.get("/context", (req, res) => {

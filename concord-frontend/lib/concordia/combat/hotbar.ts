@@ -80,11 +80,14 @@ export async function createCombatSkill(
       return { error: validation.reason };
     }
 
-    // Create combat skill DTU
+    // Create combat skill DTU. Default to scope='personal' so the skill is
+    // private to this user's avatar; they can explicitly publish later via
+    // POST /api/personal-locker/dtus/:id/list-on-marketplace.
     const dtuRes = await api.post('/api/dtus', {
       title: spec.name,
       content: spec.description,
       tags: ['combat_skill', 'concordia'],
+      scope: 'personal',
       meta: {
         type: 'combat_skill',
         cooldownMs: validation.computedCooldownMs,

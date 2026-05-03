@@ -107,7 +107,12 @@ export function publishArtifact(db, {
     return { ok: false, error: "invalid_artifact_type", validTypes: Object.keys(ARTIFACT_TYPES) };
   }
   if (!title || title.length < 1) return { ok: false, error: "missing_title" };
-  if (!filePath) return { ok: false, error: "missing_file_path" };
+  // Virtual artifacts (e.g. recipe DTUs) carry their data inside a DTU
+  // record, not a filesystem file. The caller still supplies a synthetic
+  // dtu:// path + computed size + hash so the rest of the pipeline (royalty
+  // cascade citation chains, transaction ledger) is identical.
+  const isVirtual = !!ARTIFACT_TYPES[type].virtual;
+  if (!filePath) return { ok: false, error: isVirtual ? "missing_dtu_ref" : "missing_file_path" };
   if (!fileSize || fileSize <= 0) return { ok: false, error: "invalid_file_size" };
   if (!fileHash) return { ok: false, error: "missing_file_hash" };
 

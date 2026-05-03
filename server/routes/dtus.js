@@ -7,6 +7,7 @@ import { asyncHandler } from "../lib/async-handler.js";
 import { logAudit } from "../lib/audit-logger.js";
 import logger from '../logger.js';
 import { packDTUContainer, verifyContainerIntegrity } from "../lib/dtu-container.js";
+import { validateRecipeByType, PERSONAL_DEFAULT_RECIPE_TYPES } from "../lib/dtu-validators/recipe-validators.js";
 
 export default function registerDtuRoutes(app, { STATE, makeCtx, runMacro, dtuForClient, dtusArray, userVisibleDTUs, _withAck, _saveStateDebounced, validate }) {
 
@@ -138,7 +139,24 @@ export default function registerDtuRoutes(app, { STATE, makeCtx, runMacro, dtuFo
   app.post("/api/dtus", validate("dtuCreate"), asyncHandler(async (req, res) => {
     try {
       const ctx = makeCtx(req);
-      const out = await runMacro("dtu","create", req.body || {}, ctx);
+      const body = req.body || {};
+
+      // v2.0 recipe substrate: validate the new recipe DTU types and
+      // default their scope to 'personal' so the sovereignty invariant
+      // (`personal_dtus_never_leak`) protects them automatically. Users can
+      // explicitly publish via POST /api/personal-locker/dtus/:id/list-on-marketplace.
+      const metaType = body?.meta?.type;
+      if (metaType) {
+        const recipeCheck = validateRecipeByType(metaType, body?.meta || {});
+        if (!recipeCheck.ok) {
+          return res.status(400).json({ ok: false, error: `recipe_invalid:${recipeCheck.error}` });
+        }
+        if (PERSONAL_DEFAULT_RECIPE_TYPES.has(metaType) && !body.scope) {
+          body.scope = "personal";
+        }
+      }
+
+      const out = await runMacro("dtu","create", body, ctx);
 
       // ── Daily DTU soft cap warning (Category 5: Operational) ──────────
       // Non-blocking: the DTU is still created, but warn the user if they

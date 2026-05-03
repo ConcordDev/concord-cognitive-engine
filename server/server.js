@@ -40,6 +40,7 @@ import { spawnSync } from "child_process";
 import { Worker } from "node:worker_threads";
 import { initAll as initLoaf } from "./loaf/index.js";
 import { init as initEmergent } from "./emergent/index.js";
+import { tickAllRegistered, registerHeartbeat } from "./emergent/heartbeat-registry.js";
 import { ConcordError } from "./lib/errors.js";
 import { asyncHandler } from "./lib/async-handler.js";
 import { init as initGRC, formatAndValidate as grcFormatAndValidate, getGRCSystemPrompt } from "./grc/index.js";
@@ -5033,7 +5034,14 @@ if (z) {
     tier: z.enum(["regular", "mega", "hyper"]).optional().default("regular"),
     tags: z.array(z.string().max(50)).max(40).optional().default([]),
     creti: z.string().max(50000).optional(),
-    source: z.string().max(100).optional()
+    source: z.string().max(100).optional(),
+    // v2.0 recipe substrate: pass through scope, visibility, and meta so
+    // the recipe DTU types (fighting_style_recipe, spell_recipe, blueprint)
+    // can default to scope='personal' and stay protected by the
+    // personal_dtus_never_leak sovereignty invariant.
+    scope: z.enum(["personal", "synced_global", "global"]).optional(),
+    visibility: z.enum(["private", "internal", "public", "marketplace"]).optional(),
+    meta: z.record(z.unknown()).optional(),
   });
 
   schemas.dtuUpdate = z.object({
@@ -28829,6 +28837,19 @@ async function governorTick(reason="heartbeat") {
         if (_tickHistory.length > 100) _tickHistory.shift();
       }
     } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+
+    // Heartbeat module registry: iterate any modules registered via
+    // server/emergent/heartbeat-registry.js and fire those whose tick is due.
+    // Each handler is independently try/caught inside the registry — a single
+    // module failure cannot stop the tick.
+    try {
+      await tickAllRegistered({
+        state: STATE,
+        db,
+        tickCount: STATE.__bgTickCounter || 0,
+        reason,
+      });
+    } catch (e) { observe(e, "governor_heartbeat_registry"); }
 
     return { ok:true };
   } catch (e) {
