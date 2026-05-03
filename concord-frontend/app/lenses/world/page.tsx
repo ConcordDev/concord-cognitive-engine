@@ -148,6 +148,14 @@ const ItemAcquisitionToast = dynamic(
   () => import('@/components/world-lens/ItemAcquisitionToast'),
   { ssr: false },
 );
+const TutorialCinematic = dynamic(
+  () => import('@/components/world-lens/TutorialCinematic'),
+  { ssr: false },
+);
+const TutorialHighlight = dynamic(
+  () => import('@/components/world-lens/TutorialHighlight'),
+  { ssr: false },
+);
 const AnimationManager = dynamic(() => import('@/components/world-lens/AnimationManager'), {
   ssr: false,
 });
@@ -2005,6 +2013,19 @@ export default function WorldLensPage() {
         targetKilled?: boolean;
         attackerStamina?: number;
       };
+      // Polish: forced-success first-blow. The first time the player lands
+      // a hit in this profile, force isCrit to true client-side so the
+      // tutorial moment lands with the full crit feedback (zoom hit-stop,
+      // big damage number, layered SFX). Server damage is unchanged — this
+      // only juices the local feedback layer.
+      if (data?.ok && typeof data.damage === 'number' && data.damage > 0) {
+        try {
+          if (typeof window !== 'undefined' && !localStorage.getItem('concordia:tutorial:first-combat-blessed')) {
+            data.isCrit = true;
+            localStorage.setItem('concordia:tutorial:first-combat-blessed', '1');
+          }
+        } catch { /* storage best-effort */ }
+      }
       if (!data?.ok) {
         if (data?.error === 'out_of_range') pushCombatLog('Target out of range.', 'info');
         else if (data?.error === 'insufficient_stamina')
@@ -3045,6 +3066,8 @@ export default function WorldLensPage() {
             }))}
           />
           <ItemAcquisitionToast />
+          <TutorialCinematic />
+          <TutorialHighlight />
           <AnimationManager>
             <></>
           </AnimationManager>
@@ -3535,6 +3558,7 @@ export default function WorldLensPage() {
                 key={key}
                 onClick={() => setShowPanel(showPanel === key ? 'none' : key)}
                 className={`flex flex-col items-center gap-0.5 px-2.5 py-1 rounded-lg text-[10px] transition-colors ${showPanel === key ? 'bg-emerald-500/20 text-emerald-300' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                data-tutorial-target={key === 'crafting' ? 'crafting-button' : undefined}
               >
                 <Icon className="w-4 h-4" />
                 {label}

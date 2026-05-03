@@ -13,6 +13,10 @@ interface TutorialStep {
   icon: React.ComponentType<{ className?: string }>;
   instruction: string;
   action: string;
+  /** When true, the Skip button is hidden until this step completes. */
+  mandatory?: boolean;
+  /** Optional UI element token for TutorialHighlight to pulse around. */
+  highlightTarget?: string;
 }
 
 const TUTORIALS: TutorialStep[] = [
@@ -27,10 +31,11 @@ const TUTORIALS: TutorialStep[] = [
   {
     id: 2,
     title: 'Talk to an NPC',
-    description: 'Walk up to any NPC and click on them. They have stories, quests, and trade.',
+    description: 'Walk up to any NPC and click on them. Kael is waiting near the gate.',
     icon: MessageSquare,
-    instruction: 'Approach an NPC and click on them, or press E when nearby.',
+    instruction: 'Approach an NPC and click on them, or press E when nearby. Don\'t skip this — the world starts here.',
     action: 'opened-dialogue',
+    mandatory: true,
   },
   {
     id: 3,
@@ -47,16 +52,19 @@ const TUTORIALS: TutorialStep[] = [
     icon: Hammer,
     instruction: 'Press C to open crafting. Try the Wooden Sword recipe — it needs 5 wood + 2 fiber.',
     action: 'crafted',
+    highlightTarget: 'crafting-button',
   },
   {
     id: 5,
     title: 'Fight a hostile',
-    description: 'Frontier district has wraiths and drift-eaters. Combat awards XP that levels skills.',
+    description: 'Frontier district has wraiths and drift-eaters. Your first hit is guaranteed.',
     icon: Swords,
-    instruction: 'Travel to the frontier, target a hostile creature, attack with left-click.',
+    instruction: 'Travel to the frontier, target a hostile creature, attack with left-click. Aim for the body.',
     action: 'combat-hit',
   },
 ];
+
+const FIRST_COMBAT_KEY = 'concordia:tutorial:first-combat-blessed';
 
 interface OnboardingTutorialProps {
   onComplete: () => void;
@@ -130,15 +138,32 @@ export default function OnboardingTutorial({ onComplete, onDismiss }: Onboarding
 
   const tutorial = TUTORIALS[currentStep];
 
+  // Polish-pass UI highlight: pulse a ring around the relevant interactive
+  // UI element while the matching step is active. Cleared when the tutorial
+  // unmounts or moves to a step without a highlightTarget.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.dispatchEvent(new CustomEvent('concordia:tutorial-highlight', {
+      detail: { token: tutorial?.highlightTarget ?? null },
+    }));
+    return () => {
+      window.dispatchEvent(new CustomEvent('concordia:tutorial-highlight', {
+        detail: { token: null },
+      }));
+    };
+  }, [tutorial?.highlightTarget]);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
       <div className={`${panel} w-full max-w-md p-6`}>
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-bold text-white">Welcome to World Lens</h2>
-          <button onClick={handleSkip} className="text-gray-500 hover:text-white">
-            <X className="w-4 h-4" />
-          </button>
+          {!tutorial.mandatory && (
+            <button onClick={handleSkip} className="text-gray-500 hover:text-white">
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
         <p className="text-xs text-gray-400 mb-4">
@@ -192,12 +217,14 @@ export default function OnboardingTutorial({ onComplete, onDismiss }: Onboarding
 
         {/* Actions */}
         <div className="flex gap-2">
-          <button
-            onClick={handleSkip}
-            className="flex-1 py-2 text-xs text-gray-400 border border-white/10 rounded-lg hover:text-white transition-colors"
-          >
-            Skip Tutorial
-          </button>
+          {!tutorial.mandatory && (
+            <button
+              onClick={handleSkip}
+              className="flex-1 py-2 text-xs text-gray-400 border border-white/10 rounded-lg hover:text-white transition-colors"
+            >
+              Skip Tutorial
+            </button>
+          )}
           <button
             onClick={completeStep}
             className="flex-1 py-2 bg-cyan-500/20 text-cyan-300 rounded-lg text-xs hover:bg-cyan-500/30 transition-colors flex items-center justify-center gap-1"
