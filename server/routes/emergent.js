@@ -477,8 +477,9 @@ export default function createEmergentRouter({ makeCtx, runMacro }) {
   // ── Constitutional Governance ──────────────────────────────────────────────
 
   router.post("/proposals/:id/vote", asyncHandler(async (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
     const { voteType } = req.body;
-    const userId = req.user?.id ?? req.body.userId;
     const result = castVote(req.params.id, userId, voteType);
     return res.json({ ok: true, ...result });
   }));

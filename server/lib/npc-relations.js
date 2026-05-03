@@ -310,8 +310,12 @@ export function seedNPCOpinions(db, worldId) {
     VALUES (?, ?, 'npc', ?, 'npc', ?, ?, ?, 'archetype_affinity_seed', ?)
   `);
 
+  seedPairs(npcs, insert, now);
+}
+
+function seedPairs(npcs, insert, now) {
   let count = 0;
-  outer: for (const npcA of npcs) {
+  for (const npcA of npcs) {
     const affinities = ARCHETYPE_AFFINITIES[npcA.archetype];
     if (!affinities) continue;
     for (const npcB of npcs) {
@@ -321,7 +325,7 @@ export function seedNPCOpinions(db, worldId) {
       const trust = Math.max(0, affinity * 0.5);
       const fear  = Math.max(0, -affinity * 0.3);
       insert.run(crypto.randomUUID(), npcA.id, npcB.id, affinity, trust, fear, now);
-      if (++count >= 200) break outer;
+      if (++count >= 200) return;
     }
   }
 }

@@ -7,7 +7,7 @@ describe("OTel exporter", () => {
   before(() => { clearSpans(); });
   after(() => { clearSpans(); });
 
-  test("disabled by default — no CONCORD_OTEL_ENABLED set", () => {
+  test("disabled by default — no CONCORD_OTEL_ENABLED set", async () => {
     const { otelExporter } = await import("../lib/inference/otel-exporter.js");
     // Default env won't have CONCORD_OTEL_ENABLED=true
     assert.equal(typeof otelExporter.enabled, "boolean");

@@ -12,7 +12,7 @@ import { fileURLToPath } from "node:url";
 const DB_PATH = process.env.DATABASE_PATH || resolve(fileURLToPath(import.meta.url), "../../data/concord.db");
 
 async function sleep(ms) {
-  return new Promise(r => setTimeout(r, ms));
+  return new Promise(r => { setTimeout(r, ms); });
 }
 
 async function main() {

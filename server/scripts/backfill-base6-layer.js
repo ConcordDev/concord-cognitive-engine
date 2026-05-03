@@ -10,7 +10,7 @@ const BATCH_SIZE = 100;
 const RATE_LIMIT_MS = 100; // pause between batches
 
 function sleep(ms) {
-  return new Promise(r => setTimeout(r, ms));
+  return new Promise(r => { setTimeout(r, ms); });
 }
 
 /**

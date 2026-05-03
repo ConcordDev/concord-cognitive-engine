@@ -502,7 +502,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
           description: `${username} has prestiged in ${req.params.worldId} after reaching avg level ${avgLevel.toFixed(1)}.`,
           significance: "prestige",
         });
-      } catch (_) {}
+      } catch { /* lore append best-effort */ }
 
       res.json({ ok: true, prestigedSkills: playerSkills.length, fromAvgLevel: avgLevel.toFixed(1) });
     } catch (e) { res.status(500).json({ error: e.message }); }
@@ -1110,7 +1110,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       // Seed world on first access (idempotent)
       const world = loadWorld(db, worldId);
       if (world) {
-        try { seedWorldContent(db, worldId, world.universe_type || 'standard'); } catch (_) {}
+        try { seedWorldContent(db, worldId, world.universe_type || 'standard'); } catch { /* seed best-effort */ }
       }
 
       let nodes;
@@ -1218,7 +1218,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       // Seed world on first access (idempotent)
       const world = loadWorld(db, worldId);
       if (world) {
-        try { seedWorldContent(db, worldId, world.universe_type || 'standard'); } catch (_) {}
+        try { seedWorldContent(db, worldId, world.universe_type || 'standard'); } catch { /* seed best-effort */ }
       }
       const buildings = db.prepare(
         'SELECT * FROM world_buildings WHERE world_id = ? AND state != ? ORDER BY created_at ASC'

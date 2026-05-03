@@ -6636,7 +6636,7 @@ async function tryInitWebSockets(server) {
                 `).run(nodeId, pos.x || 0, pos.y || 0, pos.z || 0,
                   JSON.stringify(dropped), Date.now(), Date.now() + 300_000, userId);
                 realtimeEmit("world:loot-node", { id: nodeId, x: pos.x, y: pos.y, z: pos.z, itemCount: dropped.length });
-              } catch (_) {}
+              } catch { /* loot emit best-effort */ }
             }
           }
 
@@ -6848,6 +6848,7 @@ async function tryInitWebSockets(server) {
     });
 
     socket.on("disconnect", () => {
+      const userId = socket.data?.userId;
       if (userId) {
         try { cityPresence.removeUser(userId); } catch (_e) { /* ignore */ }
       }
@@ -11476,7 +11477,7 @@ function upsertDTU(dtu, { broadcast = true, federate = false } = {}) {
           }
         }
       }
-    } catch (_) {}
+    } catch { /* skill xp award best-effort */ }
   }
 
   // Broadcast DTU change via WebSocket (local-first realtime)
@@ -19516,7 +19517,7 @@ Rules for tool use:
             const eng = getBrowserEngine();
             const page = await Promise.race([
               eng.fetchRenderedPage(browseUrl, { selector: browseSelector }),
-              new Promise((_, rej) => setTimeout(() => rej(new Error("browse_url timeout")), 15000)),
+              new Promise((_, rej) => { setTimeout(() => rej(new Error("browse_url timeout")), 15000); }),
             ]);
             return {
               tool: call.tool, ok: true,
@@ -26559,7 +26560,7 @@ import "./lib/inference/otel-exporter.js";
 
 // ── Competitive Parity: Span persistence to SQLite ──────────────────────────
 import { wireSpanPersistence } from "./lib/inference/thread-manager.js";
-if (db) { try { wireSpanPersistence(db); } catch {} }
+if (db) { try { wireSpanPersistence(db); } catch { /* span wiring best-effort */ } }
 
 // ── Production Integrity: SLO monitoring ────────────────────────────────────
 import { wireInferenceToSLO, getSLODashboard } from "./lib/monitoring/slo.js";
@@ -26632,7 +26633,7 @@ if (db) {
     // Start hourly crisis watch (auto-expires + auto-triggers knowledge_extinction)
     startCrisisWatch(db, realtimeEmit);
     // Start daily NPC property disrepair clock (dead NPC homes decay over time)
-    setInterval(() => { try { processDisrepairTick(db); } catch (_e) {} }, DISREPAIR_TICK_INTERVAL);
+    setInterval(() => { try { processDisrepairTick(db); } catch { /* disrepair tick best-effort */ } }, DISREPAIR_TICK_INTERVAL);
   } catch (e) { console.warn("[worlds] startup failed:", e.message); }
 }
 
@@ -28634,12 +28635,10 @@ async function governorTick(reason="heartbeat") {
             const visionMod = await import("./lib/vision-inference.js").catch(() => null);
             const atlasMod  = await import("./emergent/atlas-store.js").catch(() => null);
             const guardMod  = await import("./emergent/atlas-write-guard.js").catch(() => null);
-            const callImageGen = async (opts) => {
-              if (typeof _callMultimodalBrain === "function") {
-                return _callMultimodalBrain({ kind: "image", ...opts });
-              }
-              return null;
-            };
+            // Multimodal image gen is not wired in this build. EvoAsset's
+            // refinement passes detect a null callImageGen and skip the
+            // detail-maps pass without crashing.
+            const callImageGen = async () => null;
             const stats = await evoSched.runEvolutionTick(STATE, db, {
               callVision:        visionMod?.callVision,
               callImageGen,
@@ -28662,7 +28661,7 @@ async function governorTick(reason="heartbeat") {
             const cityPresence = await import("./lib/city-presence.js").catch(() => null);
             const npcList = cityPresence?.getAllNPCsForEmergence?.() ?? [];
             for (const npc of npcList.slice(0, 5)) {
-              const newQuests = await questEmergence.detectQuestOpportunities(npc, db, _selectBrain).catch(() => []);
+              const newQuests = await questEmergence.detectQuestOpportunities(npc, db, _selectBrainForNpc).catch(() => []);
               // Realtime-push each new quest to every player currently present
               // in the NPC's world. The quest log already fetches via HTTP on
               // mount; this emit replaces the gap where quests would otherwise
@@ -43415,8 +43414,6 @@ app.post("/api/quests/accept", requireAuth(), asyncHandler(async (req, res) => {
     if (start?.ok) {
       try { REALTIME?.io?.to(`user:${userId}`).emit("quest:accepted", { questId, ts: nowISO() }); }
       catch { /* realtime best-effort */ }
-      try { window?.dispatchEvent?.(new CustomEvent("concordia:tutorial-action", { detail: { action: "accepted-quest" } })); }
-      catch { /* server has no window */ }
       return res.json({ ok: true, quest: start.quest });
     }
     res.status(400).json(start || { ok: false, error: "start_failed" });

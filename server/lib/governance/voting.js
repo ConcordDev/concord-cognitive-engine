@@ -27,7 +27,7 @@ const VOTE_GLYPHS = Object.freeze({
  * @returns {{ proposalId: string, userId: string, weight: number, glyph: string, base6Weight: string, castAt: number }}
  */
 export function castVote(proposalId, userId, voteType) {
-  if (!VOTE_WEIGHTS.hasOwnProperty(voteType)) {
+  if (!Object.prototype.hasOwnProperty.call(VOTE_WEIGHTS, voteType)) {
     throw new Error(`Invalid vote type: "${voteType}". Must be creation, bridge, or refusal.`);
   }
 

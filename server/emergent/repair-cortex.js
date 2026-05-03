@@ -4346,7 +4346,7 @@ export async function repairAgentTick() {
       try {
         const checkWithTimeout = Promise.race([
           monitor.check(),
-          new Promise((_, rej) => setTimeout(() => rej(new Error('monitor_timeout')), _MONITOR_CHECK_TIMEOUT_MS)),
+          new Promise((_, rej) => { setTimeout(() => rej(new Error('monitor_timeout')), _MONITOR_CHECK_TIMEOUT_MS); }),
         ]);
         const result = await checkWithTimeout;
         _guardianStatuses.set(name, { ...result, lastChecked: nowISO() });
