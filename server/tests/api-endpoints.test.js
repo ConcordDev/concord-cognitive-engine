@@ -54,8 +54,8 @@ function setupTestRouter() {
   const router = createMockRouter();
 
   router.register("GET", "/api/brain/status", () => ({
-    ok: true, mode: "three_brain",
-    brains: { conscious: { enabled: true }, subconscious: { enabled: true }, utility: { enabled: true } },
+    ok: true, mode: "five_brain",
+    brains: { conscious: { enabled: true }, subconscious: { enabled: true }, utility: { enabled: true }, repair: { enabled: true }, multimodal: { enabled: true } },
   }));
 
   router.register("GET", "/api/brain/health", () => ({

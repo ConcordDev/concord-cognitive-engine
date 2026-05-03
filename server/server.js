@@ -1367,8 +1367,8 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
 const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL || "https://api.openai.com/v1";
 const OPENAI_MODEL_FAST = process.env.OPENAI_MODEL_FAST || process.env.OPENAI_MODEL || "gpt-4o-mini";
 const OPENAI_MODEL_SMART = process.env.OPENAI_MODEL_SMART || "gpt-4.1";
-let LLM_READY = Boolean(OPENAI_API_KEY); // Only true if OpenAI key is set; Ollama readiness verified by initThreeBrains() probe
-// Also mark LLM ready if conscious brain becomes available (updated in initThreeBrains)
+let LLM_READY = Boolean(OPENAI_API_KEY); // Only true if OpenAI key is set; Ollama readiness verified by initFiveBrains() probe
+// Also mark LLM ready if conscious brain becomes available (updated in initFiveBrains)
 function _refreshLlmReady() {
   LLM_READY = Boolean(OPENAI_API_KEY) || (BRAIN && BRAIN.conscious && BRAIN.conscious.enabled);
 }
@@ -13383,14 +13383,22 @@ const BRAIN = {
     enabled: false,
     stats: { requests: 0, totalMs: 0, dtusGenerated: 0, errors: 0, fixes: 0, sleeping: true, lastCallAt: null },
   },
+  multimodal: {
+    url: BRAIN_CONFIG.multimodal.url,
+    model: BRAIN_CONFIG.multimodal.model,
+    role: BRAIN_CONFIG.multimodal.role,
+    systemPrompt: "",
+    enabled: false,
+    stats: { requests: 0, totalMs: 0, dtusGenerated: 0, errors: 0, lastCallAt: null },
+  },
 };
 
 /**
- * Initialize four-brain architecture.
+ * Initialize five-brain architecture (4 cognitive + 1 multimodal/vision).
  * Probes each brain endpoint; marks as enabled if responsive.
  * Falls back gracefully to single-Ollama if multi-brain isn't deployed.
  */
-async function initThreeBrains() {
+async function initFiveBrains() {
   for (const [name, brain] of Object.entries(BRAIN)) {
     try {
       const r = await fetch(`${brain.url}/api/tags`, { signal: AbortSignal.timeout(15000) });
@@ -13433,18 +13441,18 @@ async function initThreeBrains() {
     try { if (_breakers?.ollama?.reset) _breakers.ollama.reset(); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
   }
 
-  structuredLog("info", "three_brain_init", {
+  structuredLog("info", "five_brain_init", {
     online,
-    mode: online.length >= 3 ? "three_brain" : online.length > 0 ? "partial" : "fallback",
+    mode: online.length >= 4 ? "five_brain" : online.length > 0 ? "partial" : "fallback",
   });
 }
 
 // Initialize brains after a short delay (let Ollama instances start)
-setTimeout(() => initThreeBrains(), 3000);
+setTimeout(() => initFiveBrains(), 3000);
 // Retry brain init after 30s (Ollama containers may still be pulling models)
 // Then preload/warm all models for instant first response
 setTimeout(async () => {
-  await initThreeBrains();
+  await initFiveBrains();
   try {
     const preloadResult = await preloadBrains(structuredLog);
     structuredLog("info", "brain_preload_complete", preloadResult);
@@ -15634,7 +15642,7 @@ function getBrainStatus() {
   const onlineCount = Object.values(BRAIN).filter(b => b.enabled).length;
   return {
     ok: true,
-    mode: onlineCount === 3 ? "three_brain" : onlineCount > 0 ? "partial" : "fallback",
+    mode: onlineCount >= 4 ? "five_brain" : onlineCount > 0 ? "partial" : "fallback",
     onlineCount,
     brains,
     routing: {
