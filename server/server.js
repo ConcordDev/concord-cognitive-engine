@@ -26630,6 +26630,11 @@ app.use("/api/combat-flow", createCombatFlowRouter({ db, requireAuth }));
 import createTrainingMatchRouter from "./routes/training-match.js";
 app.use("/api/training-match", createTrainingMatchRouter({ db, requireAuth, emitToUser }));
 
+// Flow Combat — shared faction-war events (NPCs co-evolving against each
+// other in the background; players join either side and contribute flows)
+import createFactionWarRouter from "./routes/faction-war.js";
+app.use("/api/faction-war", createFactionWarRouter({ db, requireAuth }));
+
 // Plugin gallery + signing: browseable, signature-verified plugin
 // distribution. Author publishes signed package → gallery entry; users
 // list / install / rate.
@@ -28028,6 +28033,17 @@ async function governorTick(reason="heartbeat") {
       // ── Phase 2: Heartbeat Wiring — Bringing Dormant Modules to Life ──
       // ══════════════════════════════════════════════════════════════════════
       const _tick = STATE.__bgTickCounter || 0;
+
+      // 2.0 — Flow Combat: tick active faction wars every 4 heartbeats
+      // (~60s with the default 15s tick). Each tick produces up to 12
+      // engagements per war (6 pairs × 2 directions) which keeps
+      // combat_flows table growth bounded even with many concurrent wars.
+      if (_tick % 4 === 0) {
+        try {
+          const fw = await import("./lib/combat/faction-war.js");
+          fw.tickAllFactionWars(db);
+        } catch (e) { observe(e, "governor_faction_war_tick"); }
+      }
 
       // 2.1 — Entity Economy: UBI, health checks, wealth caps
       const entityEconMod = await import("./emergent/entity-economy.js").catch(() => null);

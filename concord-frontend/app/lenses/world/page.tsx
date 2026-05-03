@@ -2703,6 +2703,55 @@ export default function WorldLensPage() {
     return () => window.removeEventListener('concordia:open-dialogue', handler);
   }, [rawWorldNPCs, openNPCDialogue]);
 
+  // CombatFlowHotbar dispatches concordia:combo-trigger when the player
+  // hits a hotbar slot or completes the suggested chain. Fire the tiered
+  // VFX (particles + hit-stop + shake + audio + cinematic flash on T5) +
+  // emit a series of combat:attack events along the combo's step plan
+  // with a shared chainId so the flow recorder groups them as one chain.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as {
+        comboId?: string;
+        comboName?: string;
+        steps?: Array<{ action: string }>;
+        tier?: number;
+        vfxSeed?: string;
+      } | undefined;
+      if (!detail?.comboId || !detail?.steps?.length) return;
+      const tier = Math.max(1, Math.min(5, Number(detail.tier ?? 1)));
+      // VFX chain
+      import('@/lib/combat/combo-vfx').then((m) => {
+        m.dispatchComboVfx({
+          tier,
+          vfxSeed: detail.vfxSeed,
+          comboName: detail.comboName,
+        });
+      }).catch(() => { /* fallback: no special VFX */ });
+      // Emit a single combat:attack stamped with the combo id + chain.
+      // The flow-recorder records each step as it lands; the suggestion
+      // engine then knows to advance the chain.
+      const target = combatStateRef.current.target;
+      if (target && worldSocket.isConnected) {
+        const chainId = `combo:${detail.comboId}:${Date.now()}`;
+        // Fire just the first attack — the player still has to follow up
+        // manually for the remaining steps. The hotbar surfaces what comes
+        // next via the suggestion pill.
+        worldSocket.emit('combat:attack', {
+          targetId: target.id,
+          baseDamage: (combatStateRef.current.weapon?.damage ?? 10) * (1 + tier * 0.05),
+          range: 3,
+          armorPierce: tier - 1,
+          chainId,
+          stepIndex: 0,
+          heavy: detail.steps[0]?.action === 'attack-heavy',
+          style: 'evolved-combo',
+        });
+      }
+    };
+    window.addEventListener('concordia:combo-trigger', handler);
+    return () => window.removeEventListener('concordia:combo-trigger', handler);
+  }, [worldSocket]);
+
   // PlayerActionMenu (and any other source) dispatches concordia:emote with
   // an emoteId — broadcast it through the same player:move animation field
   // EmoteWheel uses, so other players see us perform the emote.

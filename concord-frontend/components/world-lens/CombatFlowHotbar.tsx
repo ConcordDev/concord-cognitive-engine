@@ -220,7 +220,13 @@ export default function CombatFlowHotbar({
     if (!slot) return;
     if (slot.kind === 'combo') {
       window.dispatchEvent(new CustomEvent('concordia:combo-trigger', {
-        detail: { comboId: slot.combo.id, comboName: slot.combo.name, steps: slot.combo.steps },
+        detail: {
+          comboId: slot.combo.id,
+          comboName: slot.combo.name,
+          steps: slot.combo.steps,
+          tier: slot.combo.tier,
+          vfxSeed: slot.combo.vfxSeed,
+        },
       }));
     } else {
       window.dispatchEvent(new CustomEvent('concordia:spell-cast', {
