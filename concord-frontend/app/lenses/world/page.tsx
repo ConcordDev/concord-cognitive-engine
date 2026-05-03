@@ -141,6 +141,9 @@ const WorldSFXHooks = dynamic(() => import('@/components/world-lens/WorldSFXHook
 const LowHpVignette = dynamic(() => import('@/components/world-lens/LowHpVignette'), {
   ssr: false,
 });
+const NPCBehaviorHooks = dynamic(() => import('@/components/world-lens/NPCBehaviorHooks'), {
+  ssr: false,
+});
 const AnimationManager = dynamic(() => import('@/components/world-lens/AnimationManager'), {
   ssr: false,
 });
@@ -3020,6 +3023,13 @@ export default function WorldLensPage() {
             health={combatState.health}
             maxHealth={combatState.maxHealth}
             isDead={combatState.isDead}
+          />
+          <NPCBehaviorHooks
+            playerPos={playerAvatar.position}
+            npcs={rawWorldNPCs.map((n) => ({
+              id: n.id,
+              position: { x: n.position.x, y: n.position.y, z: n.position.z ?? 0 },
+            }))}
           />
           <AnimationManager>
             <></>

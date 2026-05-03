@@ -1005,6 +1005,23 @@ export default function AvatarSystem3D({
       }
       window.addEventListener('concordia:hit-reaction', handleHitReaction);
 
+      // Polish: NPCs face the player when within 5m. NPCBehaviorHooks ticks
+      // every 250ms and dispatches `concordia:npc-look-at` with the desired
+      // yaw — we update the existing per-NPC targetRot which the frame loop
+      // already smooth-interpolates, so the head turn happens for free.
+      function handleNPCLookAt(e: Event) {
+        const detail = (e as CustomEvent).detail as
+          | { npcId?: string; targetRot?: number }
+          | undefined;
+        if (!detail?.npcId || typeof detail.targetRot !== 'number') return;
+        const npcEntry = npcMeshes.get(detail.npcId) as
+          | { targetRot: number }
+          | undefined;
+        if (!npcEntry) return;
+        npcEntry.targetRot = detail.targetRot;
+      }
+      window.addEventListener('concordia:npc-look-at', handleNPCLookAt);
+
       // Procedural combat clips: build a per-skeleton clip map on first hit
       // and crossfade in for attack-light / heavy / block / parry / dodge /
       // hit-flinch / death animation events.
@@ -1828,6 +1845,7 @@ export default function AvatarSystem3D({
         window.removeEventListener('concordia:hit-reaction', handleHitReaction);
         window.removeEventListener('concordia:combat-anim', handleCombatAnim);
         window.removeEventListener('concordia:death-collapse', handleDeathCollapse);
+        window.removeEventListener('concordia:npc-look-at', handleNPCLookAt);
         for (const t of hitReactionTimers.values()) clearTimeout(t);
         hitReactionTimers.clear();
         for (const arr of dyingTimers.values()) for (const t of arr) clearTimeout(t);
