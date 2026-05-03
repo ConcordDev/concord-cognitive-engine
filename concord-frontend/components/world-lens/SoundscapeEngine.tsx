@@ -37,6 +37,10 @@ interface SoundscapeAPI {
   playSpatialSFX:  (sfxId: string, worldPos: { x: number; y: number; z: number }) => void;
   playMusicTrack:  (url: string) => void;
   stopMusicTrack:  () => void;
+  /** Switch the procedural ambient music to a district-specific loop with crossfade. */
+  setMusicDistrict: (district: string) => void;
+  /** Duck the procedural music during combat. 0 = no duck, 1 = full duck (35% volume). */
+  setMusicCombatIntensity: (intensity: number) => void;
 }
 
 /* ── District ambient config (base freq + texture) ────────────── */
@@ -227,7 +231,78 @@ const SoundscapeContext = createContext<SoundscapeAPI>({
   playSpatialSFX: () => {},
   playMusicTrack: () => {},
   stopMusicTrack: () => {},
+  setMusicDistrict: () => {},
+  setMusicCombatIntensity: () => {},
 });
+
+/* ── Procedural ambient music — per-district loops ─────────────── */
+//
+// Each district maps to a procedural music profile: a key root (Hz), a
+// chord progression (semitone offsets relative to root), an arpeggio
+// pattern, a bass pulse, and a tempo. The "loop" runs by scheduling
+// the next chord every chordMs; a single cycle is ~6–8s and the
+// experience is a 2-min ambient bed before any noticeable repetition.
+
+interface MusicProfile {
+  rootHz:      number;          // base pitch of the key
+  chordsRel:   number[][];      // each entry = semitone offsets for one chord (relative to root)
+  arpRel:      number[];        // semitone offsets for the arpeggio pattern within the current chord
+  bassRel:     number;          // semitone offset of the bass pulse from root
+  chordMs:     number;          // duration each chord plays before next
+  arpMs:       number;          // step duration for the arpeggio
+  voiceType:   OscillatorType;  // chord pad timbre
+  arpType:     OscillatorType;
+  bassType:    OscillatorType;
+  vol:         number;          // base volume 0–1
+  filterHz:    number;          // chord pad lowpass cutoff for warmth
+}
+
+const MUSIC_PROFILES: Record<DistrictName, MusicProfile> = {
+  // Heavy industrial — minor key, low brass-like pad, slow tempo
+  forge:       { rootHz: 110, chordsRel: [[0,3,7], [0,3,7], [-2,1,5], [-4,-1,3]], arpRel: [0,3,7,12], bassRel: -12, chordMs: 2400, arpMs: 600, voiceType: 'sawtooth', arpType: 'triangle', bassType: 'sine', vol: 0.05, filterHz: 800 },
+  industrial:  { rootHz: 110, chordsRel: [[0,3,7], [0,3,7], [-2,1,5], [-4,-1,3]], arpRel: [0,3,7,12], bassRel: -12, chordMs: 2400, arpMs: 600, voiceType: 'sawtooth', arpType: 'triangle', bassType: 'sine', vol: 0.05, filterHz: 800 },
+  // Academic — bright sine pads, major key, light arpeggio
+  academy:     { rootHz: 261, chordsRel: [[0,4,7], [-3,0,4], [2,5,9], [-3,0,4]], arpRel: [0,4,7,12,7,4], bassRel: -12, chordMs: 2000, arpMs: 250, voiceType: 'sine', arpType: 'sine', bassType: 'sine', vol: 0.04, filterHz: 3000 },
+  // Docks — open fifths, slow swells, hint of melancholy
+  docks:       { rootHz: 146, chordsRel: [[0,7], [0,7,12], [-5,2], [-2,5]], arpRel: [0,7,12,7], bassRel: -12, chordMs: 2800, arpMs: 700, voiceType: 'sine', arpType: 'triangle', bassType: 'sine', vol: 0.045, filterHz: 1500 },
+  // Commons — warm major triads, gentle pulse
+  commons:     { rootHz: 220, chordsRel: [[0,4,7], [-5,0,4], [2,7,11], [-3,0,4]], arpRel: [0,4,7,11], bassRel: -12, chordMs: 2200, arpMs: 350, voiceType: 'triangle', arpType: 'sine', bassType: 'sine', vol: 0.04, filterHz: 2200 },
+  // Exchange — busy arpeggio, walking bass, suspended chords
+  exchange:    { rootHz: 196, chordsRel: [[0,5,7], [0,4,7], [2,5,9], [-3,2,5]], arpRel: [0,5,7,12,5,0], bassRel: -12, chordMs: 1800, arpMs: 220, voiceType: 'triangle', arpType: 'square', bassType: 'triangle', vol: 0.04, filterHz: 2500 },
+  market:      { rootHz: 196, chordsRel: [[0,5,7], [0,4,7], [2,5,9], [-3,2,5]], arpRel: [0,5,7,12,5,0], bassRel: -12, chordMs: 1800, arpMs: 220, voiceType: 'triangle', arpType: 'square', bassType: 'triangle', vol: 0.04, filterHz: 2500 },
+  // Observatory / tech — long ethereal pads, sparse high arpeggio
+  observatory: { rootHz: 174, chordsRel: [[0,4,7,11], [-5,0,4,9], [2,7,11], [-3,0,4]], arpRel: [12,16,19,24], bassRel: -12, chordMs: 3200, arpMs: 800, voiceType: 'sine', arpType: 'sine', bassType: 'sine', vol: 0.035, filterHz: 4000 },
+  tech:        { rootHz: 174, chordsRel: [[0,4,7,11], [-5,0,4,9], [2,7,11], [-3,0,4]], arpRel: [12,16,19,24], bassRel: -12, chordMs: 3200, arpMs: 800, voiceType: 'sine', arpType: 'sine', bassType: 'sine', vol: 0.035, filterHz: 4000 },
+  // Grid — square-wave harmonic minor, glitchy fast arp
+  grid:        { rootHz: 130, chordsRel: [[0,3,7], [-1,2,6], [3,7,10], [-2,1,5]], arpRel: [0,3,7,10,7,3], bassRel: -12, chordMs: 1600, arpMs: 180, voiceType: 'square', arpType: 'square', bassType: 'sawtooth', vol: 0.045, filterHz: 1800 },
+  // Arena — dark, tense, low brass + ostinato
+  arena:       { rootHz: 98,  chordsRel: [[0,3,7], [0,3,7], [-2,1,5], [-3,0,4]], arpRel: [0,3,7,3], bassRel: -12, chordMs: 1800, arpMs: 220, voiceType: 'sawtooth', arpType: 'triangle', bassType: 'sine', vol: 0.06, filterHz: 1000 },
+  // Nexus / civic — warm, slow, hopeful
+  nexus:       { rootHz: 196, chordsRel: [[0,4,7], [-2,2,5], [-5,0,4], [-3,0,4]], arpRel: [0,4,7,12], bassRel: -12, chordMs: 2600, arpMs: 400, voiceType: 'triangle', arpType: 'sine', bassType: 'sine', vol: 0.045, filterHz: 2400 },
+  civic:       { rootHz: 196, chordsRel: [[0,4,7], [-2,2,5], [-5,0,4], [-3,0,4]], arpRel: [0,4,7,12], bassRel: -12, chordMs: 2600, arpMs: 400, voiceType: 'triangle', arpType: 'sine', bassType: 'sine', vol: 0.045, filterHz: 2400 },
+  // Frontier — sparse, wide, lonely
+  frontier:    { rootHz: 146, chordsRel: [[0,7], [-5,2], [0,7,12]], arpRel: [0,12,7], bassRel: -12, chordMs: 3600, arpMs: 1200, voiceType: 'sine', arpType: 'sine', bassType: 'sine', vol: 0.035, filterHz: 1500 },
+  // Arts — modal with shifting colour
+  arts:        { rootHz: 220, chordsRel: [[0,4,7,9], [-2,2,5,9], [-5,0,4,7], [-3,0,4,7]], arpRel: [0,4,7,9,4,0], bassRel: -12, chordMs: 2200, arpMs: 280, voiceType: 'triangle', arpType: 'sine', bassType: 'sine', vol: 0.04, filterHz: 2800 },
+  // Silent / hub — no music, just ambience
+  silent:      { rootHz: 0,   chordsRel: [[0]], arpRel: [0], bassRel: 0, chordMs: 9999, arpMs: 9999, voiceType: 'sine', arpType: 'sine', bassType: 'sine', vol: 0, filterHz: 1000 },
+};
+
+interface MusicLayer {
+  oscs:       OscillatorNode[];
+  chordGain:  GainNode;
+  arpGain:    GainNode;
+  bassGain:   GainNode;
+  filter:     BiquadFilterNode;
+  busGain:    GainNode;
+  chordTimer: ReturnType<typeof setInterval> | null;
+  arpTimer:   ReturnType<typeof setInterval> | null;
+  bassTimer:  ReturnType<typeof setInterval> | null;
+  chordIdx:   number;
+  arpIdx:     number;
+  profile:    MusicProfile;
+  district:   DistrictName;
+}
 
 export function useSoundscape(): SoundscapeAPI {
   return useContext(SoundscapeContext);
@@ -633,9 +708,159 @@ export default function SoundscapeEngine({
     musicElRef.current = null;
   }, []);
 
+  // ── Procedural ambient music ────────────────────────────────────────────────
+  const musicLayerRef    = useRef<MusicLayer | null>(null);
+  const musicCombatRef   = useRef<number>(0);  // 0..1 duck intensity
+  const musicCurrentDistrictRef = useRef<DistrictName | null>(null);
+
+  function buildMusicLayer(ctx: AudioContext, master: GainNode, district: DistrictName): MusicLayer | null {
+    const profile = MUSIC_PROFILES[district] ?? MUSIC_PROFILES.silent;
+    if (profile.vol <= 0 || profile.rootHz <= 0) return null;
+    const now = ctx.currentTime;
+
+    // Bus chain: chord/arp/bass → busGain → lowpass filter → master
+    const busGain = ctx.createGain();
+    busGain.gain.setValueAtTime(0, now);
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(profile.filterHz, now);
+    busGain.connect(filter);
+    filter.connect(master);
+
+    const chordGain = ctx.createGain();
+    chordGain.gain.setValueAtTime(profile.vol * 0.6, now);
+    chordGain.connect(busGain);
+    const arpGain = ctx.createGain();
+    arpGain.gain.setValueAtTime(profile.vol * 0.35, now);
+    arpGain.connect(busGain);
+    const bassGain = ctx.createGain();
+    bassGain.gain.setValueAtTime(profile.vol * 0.5, now);
+    bassGain.connect(busGain);
+
+    const layer: MusicLayer = {
+      oscs: [], chordGain, arpGain, bassGain, filter, busGain,
+      chordTimer: null, arpTimer: null, bassTimer: null,
+      chordIdx: 0, arpIdx: 0, profile, district,
+    };
+
+    // Schedule one chord swell — fades in over 1s, holds, fades out before next
+    const playChord = () => {
+      const t = ctx.currentTime;
+      const chord = profile.chordsRel[layer.chordIdx % profile.chordsRel.length];
+      for (const semi of chord) {
+        const osc = ctx.createOscillator();
+        osc.type = profile.voiceType;
+        const f = profile.rootHz * Math.pow(2, semi / 12);
+        osc.frequency.setValueAtTime(f, t);
+        const env = ctx.createGain();
+        env.gain.setValueAtTime(0, t);
+        env.gain.linearRampToValueAtTime(0.4, t + 0.6);
+        env.gain.linearRampToValueAtTime(0, t + (profile.chordMs / 1000));
+        osc.connect(env);
+        env.connect(chordGain);
+        try { osc.start(t); osc.stop(t + (profile.chordMs / 1000) + 0.1); } catch { /* ok */ }
+      }
+      layer.chordIdx++;
+    };
+    const playArp = () => {
+      const t = ctx.currentTime;
+      const chord = profile.chordsRel[(layer.chordIdx - 1 + profile.chordsRel.length) % profile.chordsRel.length] || [0];
+      const noteSemi = profile.arpRel[layer.arpIdx % profile.arpRel.length];
+      // Add the current chord's root semitone offset so the arp tracks the chord change
+      const harmonyRoot = chord[0] ?? 0;
+      const f = profile.rootHz * Math.pow(2, (noteSemi + harmonyRoot) / 12);
+      const osc = ctx.createOscillator();
+      osc.type = profile.arpType;
+      osc.frequency.setValueAtTime(f, t);
+      const env = ctx.createGain();
+      const dur = (profile.arpMs / 1000) * 0.9;
+      env.gain.setValueAtTime(0, t);
+      env.gain.linearRampToValueAtTime(0.5, t + 0.02);
+      env.gain.linearRampToValueAtTime(0, t + dur);
+      osc.connect(env);
+      env.connect(arpGain);
+      try { osc.start(t); osc.stop(t + dur + 0.05); } catch { /* ok */ }
+      layer.arpIdx++;
+    };
+    const playBass = () => {
+      const t = ctx.currentTime;
+      const f = profile.rootHz * Math.pow(2, profile.bassRel / 12);
+      const osc = ctx.createOscillator();
+      osc.type = profile.bassType;
+      osc.frequency.setValueAtTime(f, t);
+      const env = ctx.createGain();
+      const dur = (profile.chordMs / 1000) * 0.5;
+      env.gain.setValueAtTime(0, t);
+      env.gain.linearRampToValueAtTime(0.7, t + 0.05);
+      env.gain.linearRampToValueAtTime(0, t + dur);
+      osc.connect(env);
+      env.connect(bassGain);
+      try { osc.start(t); osc.stop(t + dur + 0.05); } catch { /* ok */ }
+    };
+
+    playChord();
+    playArp();
+    playBass();
+    layer.chordTimer = setInterval(playChord, profile.chordMs);
+    layer.arpTimer = setInterval(playArp, profile.arpMs);
+    layer.bassTimer = setInterval(playBass, profile.chordMs);
+
+    // Fade bus in
+    busGain.gain.linearRampToValueAtTime(1.0, now + 1.5);
+
+    return layer;
+  }
+
+  function disposeMusicLayer(ctx: AudioContext | null, layer: MusicLayer, fadeMs = 1500): void {
+    if (!ctx || ctx.state === 'closed') return;
+    const now = ctx.currentTime;
+    try { layer.busGain.gain.linearRampToValueAtTime(0, now + fadeMs / 1000); } catch { /* ok */ }
+    if (layer.chordTimer) clearInterval(layer.chordTimer);
+    if (layer.arpTimer)   clearInterval(layer.arpTimer);
+    if (layer.bassTimer)  clearInterval(layer.bassTimer);
+    layer.chordTimer = layer.arpTimer = layer.bassTimer = null;
+    setTimeout(() => {
+      try { layer.busGain.disconnect(); } catch { /* ok */ }
+      try { layer.filter.disconnect(); } catch { /* ok */ }
+    }, fadeMs + 100);
+  }
+
+  const setMusicDistrict = useCallback((district: string) => {
+    const ctx = initAudio();
+    if (!ctx || !masterGainRef.current) return;
+    const target = DISTRICT_ALIAS[district.toLowerCase()] ?? 'silent';
+    if (musicCurrentDistrictRef.current === target) return;
+    musicCurrentDistrictRef.current = target;
+
+    const prev = musicLayerRef.current;
+    if (prev) disposeMusicLayer(ctx, prev, 1500);
+
+    const next = buildMusicLayer(ctx, masterGainRef.current, target);
+    musicLayerRef.current = next;
+    // Restore current combat duck so a district switch doesn't undo the duck
+    if (next && musicCombatRef.current > 0) {
+      const target = 1 - 0.65 * musicCombatRef.current;
+      try { next.busGain.gain.linearRampToValueAtTime(target, ctx.currentTime + 0.4); } catch { /* ok */ }
+    }
+  }, [initAudio]);
+
+  const setMusicCombatIntensity = useCallback((intensity: number) => {
+    const clamped = Math.max(0, Math.min(1, intensity));
+    musicCombatRef.current = clamped;
+    const ctx = audioCtxRef.current;
+    const layer = musicLayerRef.current;
+    if (!ctx || !layer || ctx.state === 'closed') return;
+    // 0 → 1.0 (full), 1 → 0.35 (heavy duck)
+    const target = 1 - 0.65 * clamped;
+    try {
+      layer.busGain.gain.linearRampToValueAtTime(target, ctx.currentTime + (clamped > 0 ? 0.25 : 1.5));
+    } catch { /* ok */ }
+  }, []);
+
   const api: SoundscapeAPI = {
     setDistrict, setTimeOfDay, setInterior, setWeather,
     triggerSFX, playSpatialSFX, playMusicTrack, stopMusicTrack,
+    setMusicDistrict, setMusicCombatIntensity,
   };
 
   // Allow any sibling or parent component to call SoundscapeEngine APIs via
@@ -652,6 +877,9 @@ export default function SoundscapeEngine({
       // Phase 14: spatial SFX dispatch from anywhere in the app via the same
       // window event channel. Position is { x, y, z } in world space.
       else if (action === 'playSpatialSFX' && sfxId && position) playSpatialSFX(sfxId, position);
+      // Polish: per-district procedural music with crossfade + combat duck
+      else if (action === 'setMusicDistrict' && district) setMusicDistrict(district);
+      else if (action === 'setMusicCombatIntensity' && typeof intensity === 'number') setMusicCombatIntensity(intensity);
     };
     window.addEventListener('concordia:soundscape-command', handler);
 
@@ -712,7 +940,7 @@ export default function SoundscapeEngine({
       window.removeEventListener('concordia:dialogue-ended', dialogueOffHandler);
       if (duckExpireTimer) clearTimeout(duckExpireTimer);
     };
-  }, [setDistrict, setTimeOfDay, setInterior, setWeather, triggerSFX, playSpatialSFX]);
+  }, [setDistrict, setTimeOfDay, setInterior, setWeather, triggerSFX, playSpatialSFX, setMusicDistrict, setMusicCombatIntensity]);
 
   return (
     <SoundscapeContext.Provider value={api}>

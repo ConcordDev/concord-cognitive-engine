@@ -1280,6 +1280,21 @@ export default function WorldLensPage() {
     update: (delta: number, inCombat: boolean) => void;
     dispose: () => void;
   } | null>(null);
+  // Procedural ambient music duck — pinged on each combat hit. After 4s
+  // of no hits the duck releases and music returns to full volume.
+  const musicDuckTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pingMusicCombatDuck = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    window.dispatchEvent(new CustomEvent('concordia:soundscape-command', {
+      detail: { action: 'setMusicCombatIntensity', intensity: 1 },
+    }));
+    if (musicDuckTimerRef.current) clearTimeout(musicDuckTimerRef.current);
+    musicDuckTimerRef.current = setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('concordia:soundscape-command', {
+        detail: { action: 'setMusicCombatIntensity', intensity: 0 },
+      }));
+    }, 4000);
+  }, []);
   const prevCharStateRef = useRef<CharState | null>(null);
   const inputSeqRef = useRef(0);
   const reconRef = useRef<ReconciliationBuffer | null>(null);
@@ -1544,6 +1559,14 @@ export default function WorldLensPage() {
     window.dispatchEvent(
       new CustomEvent('concordia:soundscape-command', {
         detail: { action: 'setDistrict', district: activeDistrict.id },
+      })
+    );
+    // Polish-pass: also crossfade the procedural ambient music to the
+    // district-appropriate profile (forge=industrial minor, academy=major
+    // pad, docks=lonely fifths, etc.).
+    window.dispatchEvent(
+      new CustomEvent('concordia:soundscape-command', {
+        detail: { action: 'setMusicDistrict', district: activeDistrict.id },
       })
     );
   }, [activeDistrict.id]);
@@ -2016,6 +2039,7 @@ export default function WorldLensPage() {
         'damage-dealt'
       );
       combatMusicRef.current?.onCombatEvent(1.0);
+      pingMusicCombatDuck();
 
       // Physics impact feedback — hit-stop + floating numbers + screen shake + audio
       if (typeof data.damage === 'number' && data.damage > 0) {
@@ -2175,6 +2199,7 @@ export default function WorldLensPage() {
         damageFlash: true,
       }));
       pushCombatLog(`Took ${data.damage} damage${data.isCrit ? ' (crit)' : ''}.`, 'damage-taken');
+      pingMusicCombatDuck();
       // Player-taken hits shake harder than dealt hits (you feel your own pain)
       const incomingShake = data.isCrit
         ? 8
