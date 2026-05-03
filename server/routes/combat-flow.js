@@ -28,6 +28,7 @@ import {
   suggestNextAction,
   listFighterCombos,
 } from "../lib/combat/flow-engine.js";
+import { getLoadout, equipItem } from "../lib/combat/loadout.js";
 
 export default function createCombatFlowRouter({ db, requireAuth }) {
   const router = Router();
@@ -160,6 +161,37 @@ export default function createCombatFlowRouter({ db, requireAuth }) {
         };
       });
       res.json({ ok: true, spells, count: spells.length });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  // ── Dual-hand loadout ────────────────────────────────────────────────────
+  // GET /loadout — caller's right/left/two-hand equipment + inferred class
+  router.get("/loadout", auth, (req, res) => {
+    try {
+      const userId = uidFrom(req);
+      if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
+      const loadout = getLoadout(db, userId);
+      res.json({ ok: true, loadout });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  // POST /equip — { slot: 'right_hand'|'left_hand'|'head'|'body'|'accessory',
+  //                 itemId: string|null }
+  // Two-handed weapons auto-occupy both hand slots regardless of the slot
+  // argument; pass itemId=null to unequip the supplied slot.
+  router.post("/equip", auth, (req, res) => {
+    try {
+      const userId = uidFrom(req);
+      if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
+      const { slot, itemId } = req.body || {};
+      if (!slot) return res.status(400).json({ ok: false, error: "slot_required" });
+      const result = equipItem(db, userId, String(slot), itemId ? String(itemId) : null);
+      if (!result.ok) return res.status(400).json(result);
+      res.json(result);
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
     }

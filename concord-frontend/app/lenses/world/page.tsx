@@ -176,6 +176,14 @@ const CombatInputController = dynamic(
   () => import('@/components/world-lens/CombatInputController'),
   { ssr: false },
 );
+const ControlsMenu = dynamic(
+  () => import('@/components/world-lens/ControlsMenu'),
+  { ssr: false },
+);
+const EquipmentSlotsPanel = dynamic(
+  () => import('@/components/world-lens/EquipmentSlotsPanel'),
+  { ssr: false },
+);
 const AnimationManager = dynamic(() => import('@/components/world-lens/AnimationManager'), {
   ssr: false,
 });
@@ -1300,6 +1308,47 @@ export default function WorldLensPage() {
   // Shift modifier held — the 5th key. Tracked locally so each keypress
   // can consult it without a re-render dependency.
   const modifierHeldRef = useRef(false);
+  // Controls remap menu open/close + Equipment slot panel toggle
+  const [controlsOpen, setControlsOpen] = useState(false);
+  const [equipmentOpen, setEquipmentOpen] = useState(false);
+  // Dual-hand loadout — fetched from /api/combat-flow/loadout on mount and
+  // refreshed whenever equipment changes. Drives Biomutant-style left/right/
+  // two-hand routing in the input controller.
+  const [combatLoadout, setCombatLoadout] = useState<{
+    rightHand: { weaponClass: string | null; handedness: 'right' | 'left' | 'two' | 'either' } | null;
+    leftHand:  { weaponClass: string | null; handedness: 'right' | 'left' | 'two' | 'either' } | null;
+  } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    function refresh() {
+      fetch('/api/combat-flow/loadout', { credentials: 'same-origin' })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j) => {
+          if (cancelled) return;
+          const lo = j?.loadout;
+          if (!lo) { setCombatLoadout(null); return; }
+          setCombatLoadout({
+            rightHand: lo.rightHand ? {
+              weaponClass: lo.rightHand.weapon_class ?? null,
+              handedness: (lo.rightHand.handedness ?? 'either') as 'right' | 'left' | 'two' | 'either',
+            } : null,
+            leftHand: lo.leftHand ? {
+              weaponClass: lo.leftHand.weapon_class ?? null,
+              handedness: (lo.leftHand.handedness ?? 'either') as 'right' | 'left' | 'two' | 'either',
+            } : null,
+          });
+        })
+        .catch(() => {});
+    }
+    refresh();
+    const onEquip = () => refresh();
+    window.addEventListener('concordia:loadout-changed', onEquip);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('concordia:loadout-changed', onEquip);
+    };
+  }, []);
   const [staggered, setStaggered] = useState(false);
   const [limbState, setLimbState] = useState<LimbState>({
     head: 100,
@@ -3287,6 +3336,7 @@ export default function WorldLensPage() {
             playerId={playerAvatar.id}
             worldSocket={worldSocket}
             modifierHeld={modifierHeldRef.current}
+            loadout={combatLoadout}
             onAction={(evt) => {
               setRecentChain((prev) => {
                 const next = [...prev, { action: evt.resolved }];
@@ -3294,6 +3344,12 @@ export default function WorldLensPage() {
               });
             }}
           />
+          <ControlsMenu open={controlsOpen} onClose={() => setControlsOpen(false)} />
+          {equipmentOpen && (
+            <div className="fixed top-20 left-4 z-50">
+              <EquipmentSlotsPanel onClose={() => setEquipmentOpen(false)} />
+            </div>
+          )}
           <AnimationManager>
             <></>
           </AnimationManager>

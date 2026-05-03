@@ -42,15 +42,37 @@
  * the existing combat:attack handler does.
  */
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  type KeyAction,
+  loadActiveProfile,
+  resolveBinding,
+} from '@/lib/concordia/keybindings';
 
 const HOLD_THRESHOLD_MS = 220;
+
+// Map KeyAction (from the keybinding profile) → resolved action token used
+// by the CONTEXT_KEYMAP. The profile only knows about logical actions; the
+// context keymap then picks the contextual variant (light → air-blast in
+// aerial, etc.).
+const ACTION_TO_KEY: Record<KeyAction, 'E' | 'F' | 'R' | 'Q' | 'Shift'> = {
+  light: 'E', heavy: 'E', finisher: 'E',
+  parry: 'F', grab: 'F',
+  kick: 'R',
+  dodge: 'Q',
+  modifier: 'Shift',
+};
 
 type CombatContext = 'ground' | 'aerial' | 'vehicle' | 'hacker' | 'underwater' | 'mixed';
 
 interface SocketLike {
   isConnected: boolean;
   emit: (event: string, payload: unknown) => void;
+}
+
+interface Loadout {
+  rightHand: { weaponClass: string | null; handedness: 'right' | 'left' | 'two' | 'either' } | null;
+  leftHand:  { weaponClass: string | null; handedness: 'right' | 'left' | 'two' | 'either' } | null;
 }
 
 interface Props {
@@ -61,8 +83,14 @@ interface Props {
   playerId: string;
   /** Active world socket — actions are forwarded as socket emits. */
   worldSocket: SocketLike | null;
-  /** When true, Shift modifier is currently held (drives evolved variants). */
+  /** When true, Shift modifier is currently held — switches to LEFT-HAND mode
+      (Biomutant-style). Tapping E with Shift held swings the off-hand. */
   modifierHeld?: boolean;
+  /** Current dual-hand loadout — drives two-hand override and per-hand
+      damage. When rightHand handedness === 'two' (or both slots reference
+      the same item), every E tap routes to a two-hand attack regardless
+      of Shift state. */
+  loadout?: Loadout | null;
   /** Callback fired on every successful action so the world page can update
       combo counters / recentChain / animation state in lock-step. */
   onAction?: (action: ActionEvent) => void;
@@ -70,10 +98,14 @@ interface Props {
 
 export interface ActionEvent {
   key: 'E' | 'F' | 'R' | 'Q' | 'Shift';
-  variant: 'tap' | 'hold';
+  variant: 'tap' | 'hold' | 'double-tap';
   resolved: ResolvedAction;
   context: CombatContext;
   modifier: boolean;
+  /** Dual-hand: which hand actually fired ('right'/'left'/'two'). */
+  hand?: 'right' | 'left' | 'two';
+  /** True for double-tap finishers. */
+  finisher?: boolean;
 }
 
 type ResolvedAction =
@@ -129,11 +161,28 @@ const CONTEXT_KEYMAP: Record<CombatContext, Record<string, { tap: ResolvedAction
                 Shift: { tap: 'modifier-boost' } },
 };
 
-const VALID_KEYS = new Set(['e', 'f', 'r', 'q', 'shift']);
 const COMBAT_MODES = new Set(['combat', 'exploration', 'social']);
 
+/**
+ * Build the live set of bound keys from the active profile so the keydown
+ * filter knows which keys to capture. Recomputed when the profile changes.
+ */
+function buildValidKeySet(): Set<string> {
+  const profile = loadActiveProfile();
+  const keys = new Set<string>();
+  for (const b of Object.values(profile.bindings)) keys.add(b.key);
+  // Always allow the canonical defaults so a partial remap doesn't strand
+  // any context-keymap action that has no profile equivalent (the CONTEXT_KEYMAP
+  // entries assume E/F/R/Q/Shift are at least observable so the system can
+  // route).
+  ['e', 'f', 'r', 'q', 'shift'].forEach((k) => keys.add(k));
+  return keys;
+}
+
+const DOUBLE_TAP_WINDOW_MS = 280;
+
 export default function CombatInputController({
-  inputMode, context, hasTarget, playerId, worldSocket, modifierHeld, onAction,
+  inputMode, context, hasTarget, playerId, worldSocket, modifierHeld, loadout, onAction,
 }: Props) {
   // Track per-key press time to differentiate tap vs hold
   const downAtRef = useRef<Map<string, number>>(new Map());
@@ -142,13 +191,59 @@ export default function CombatInputController({
   // Whether the active key has already fired its hold action (so we don't
   // also fire the tap on keyup)
   const holdFiredRef = useRef<Set<string>>(new Set());
+  // Per-key last-tap time for double-tap detection
+  const lastTapAtRef = useRef<Map<string, number>>(new Map());
 
-  const dispatchAction = useCallback((key: ActionEvent['key'], variant: 'tap' | 'hold') => {
+  // Live valid-key set rebuilt when the profile changes
+  const [validKeys, setValidKeys] = useState<Set<string>>(buildValidKeySet);
+  useEffect(() => {
+    function refresh() { setValidKeys(buildValidKeySet()); }
+    refresh();
+    if (typeof window !== 'undefined') {
+      window.addEventListener('concordia:keybindings-changed', refresh);
+      return () => window.removeEventListener('concordia:keybindings-changed', refresh);
+    }
+  }, []);
+
+  // Resolve which hand is active. Two-handed weapon → 'two' regardless of
+  // modifier state. Otherwise modifier (Shift held) → 'left'; default 'right'.
+  function resolveHand(): 'right' | 'left' | 'two' {
+    const r = loadout?.rightHand;
+    const l = loadout?.leftHand;
+    if (r && l && r === l) return 'two';
+    if (r?.handedness === 'two') return 'two';
+    if (modifierHeld && l) return 'left';
+    return 'right';
+  }
+
+  /**
+   * Translate the raw (key, variant) into the canonical key letter the
+   * CONTEXT_KEYMAP expects. The active profile may have remapped, e.g.,
+   * 'r' → 'parry' (which maps to F in CONTEXT_KEYMAP). When the profile
+   * has no binding for the press, fall back to the literal key.
+   */
+  function profileResolve(rawKey: string, variant: 'tap' | 'hold' | 'double-tap'): {
+    key: 'E' | 'F' | 'R' | 'Q' | 'Shift';
+    action: KeyAction | null;
+  } | null {
+    const k = rawKey.toLowerCase();
+    const action = resolveBinding(k, variant);
+    if (action) return { key: ACTION_TO_KEY[action], action };
+    if (['e', 'f', 'r', 'q', 'shift'].includes(k)) {
+      const upper = k === 'shift' ? 'Shift' : (k.toUpperCase() as 'E' | 'F' | 'R' | 'Q');
+      return { key: upper, action: null };
+    }
+    return null;
+  }
+
+  const dispatchAction = useCallback((key: ActionEvent['key'], variant: 'tap' | 'hold' | 'double-tap') => {
     const map = CONTEXT_KEYMAP[context] ?? CONTEXT_KEYMAP.ground;
     const entry = map[key];
     if (!entry) return;
     const resolved: ResolvedAction = variant === 'hold' && entry.hold ? entry.hold : entry.tap;
-    const evt: ActionEvent = { key, variant, resolved, context, modifier: !!modifierHeld };
+    const hand = resolveHand();
+    const finisher = variant === 'double-tap';
+    const evt: ActionEvent = { key, variant, resolved, context, modifier: !!modifierHeld, hand, finisher };
 
     // Route to the right socket event so the existing flow recorder picks
     // the action up. Each action token maps cleanly:
@@ -171,6 +266,10 @@ export default function CombatInputController({
       return;
     }
     const heavy = variant === 'hold' || resolved.includes('heavy') || resolved.includes('ram') || resolved.includes('dive') || resolved.includes('breach');
+    // Two-hand weapons hit harder + slower. Finishers hit harder still.
+    const baseDamage = heavy ? 18 : 10;
+    const handMul    = hand === 'two' ? 1.4 : hand === 'left' ? 0.85 : 1.0;
+    const finisherMul = finisher ? 1.6 : 1.0;
     switch (resolved) {
       case 'attack-light':
       case 'attack-heavy':
@@ -180,12 +279,14 @@ export default function CombatInputController({
       case 'vehicle-ram':
         worldSocket.emit('combat:attack', {
           targetId: null, // server picks nearest in range when null
-          baseDamage: heavy ? 18 : 10,
+          baseDamage: Math.round(baseDamage * handMul * finisherMul),
           range: 3,
           armorPierce: heavy ? 1 : 0,
           heavy,
           style: resolved,
           modifier: !!modifierHeld,
+          hand,
+          finisher,
         });
         break;
       case 'parry':
@@ -252,7 +353,7 @@ export default function CombatInputController({
       const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
       if (tag === 'input' || tag === 'textarea') return;
       const k = e.key.toLowerCase();
-      if (!VALID_KEYS.has(k)) return;
+      if (!validKeys.has(k)) return;
       // Repeats during a hold should NOT re-stamp downAt — only the first
       // press counts so the hold timing is honest.
       if (downAtRef.current.has(k)) return;
@@ -264,7 +365,7 @@ export default function CombatInputController({
       const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
       if (tag === 'input' || tag === 'textarea') return;
       const k = e.key.toLowerCase();
-      if (!VALID_KEYS.has(k)) return;
+      if (!validKeys.has(k)) return;
       const downAt = downAtRef.current.get(k);
       downAtRef.current.delete(k);
       if (downAt == null) return;
@@ -277,11 +378,41 @@ export default function CombatInputController({
       // If we already fired the hold during the keyhold tick, skip the tap
       if (holdFiredRef.current.has(k)) {
         holdFiredRef.current.delete(k);
+        lastTapAtRef.current.delete(k); // hold breaks any pending double-tap
         return;
       }
+      // Double-tap detection: any key bound to a 'double-tap' action in the
+      // active profile is eligible. By default that's only E (finisher), but
+      // the two_handed_bruiser preset binds R double-tap → kick.
+      const profile = loadActiveProfile();
+      const hasDoubleTapBinding = Object.values(profile.bindings).some(
+        (b) => b.key === k && b.variant === 'double-tap',
+      );
+
+      if (hasDoubleTapBinding && heldMs < HOLD_THRESHOLD_MS) {
+        const lastTap = lastTapAtRef.current.get(k) ?? 0;
+        const now = performance.now();
+        if (lastTap && now - lastTap < DOUBLE_TAP_WINDOW_MS) {
+          lastTapAtRef.current.delete(k);
+          const r = profileResolve(k, 'double-tap');
+          if (r) dispatchAction(r.key, 'double-tap');
+          return;
+        }
+        lastTapAtRef.current.set(k, now);
+        setTimeout(() => {
+          if (lastTapAtRef.current.get(k) === now) {
+            lastTapAtRef.current.delete(k);
+            const r = profileResolve(k, 'tap');
+            if (r) dispatchAction(r.key, 'tap');
+          }
+        }, DOUBLE_TAP_WINDOW_MS + 10);
+        return;
+      }
+
       const variant: 'tap' | 'hold' = heldMs >= HOLD_THRESHOLD_MS ? 'hold' : 'tap';
-      const upper = k === 'shift' ? 'Shift' : (k.toUpperCase() as 'E' | 'F' | 'R' | 'Q');
-      dispatchAction(upper, variant);
+      const r = profileResolve(k, variant);
+      if (!r) return;
+      dispatchAction(r.key, variant);
     }
 
     window.addEventListener('keydown', onDown);
@@ -303,16 +434,18 @@ export default function CombatInputController({
       for (const [k, downAt] of downAtRef.current.entries()) {
         if (holdFiredRef.current.has(k)) continue;
         if (now - downAt < HOLD_THRESHOLD_MS) continue;
-        // Fire hold variant once
-        const upper = k === 'shift' ? 'Shift' : (k.toUpperCase() as 'E' | 'F' | 'R' | 'Q');
+        // Resolve via the active profile first; a remapped hold (e.g.
+        // 'r' hold = grab) lands the right action.
+        const r = profileResolve(k, 'hold');
+        if (!r) continue;
         const map = CONTEXT_KEYMAP[context] ?? CONTEXT_KEYMAP.ground;
-        const entry = map[upper];
+        const entry = map[r.key];
         if (!entry?.hold) continue;
         holdFiredRef.current.add(k);
         const lastFire = lastFireAtRef.current.get(k) ?? 0;
         if (performance.now() - lastFire < 200) continue;
         lastFireAtRef.current.set(k, performance.now());
-        dispatchAction(upper, 'hold');
+        dispatchAction(r.key, 'hold');
       }
     }, 50);
     return () => clearInterval(interval);

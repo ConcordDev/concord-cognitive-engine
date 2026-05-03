@@ -95,13 +95,22 @@ function reconstructChains(flows) {
 // fields, not signature fields.
 
 function chainSignature(chain) {
+  // Loadout-aware: hand + weapon_class become part of the canonical
+  // signature so the same key inputs with different gear produce
+  // distinct combos. sword-right + pistol-left → "swordR + pistolL"
+  // builds a different combo than dual-daggers even when both reach
+  // the same action sequence.
   const sig = chain.steps.map((s) => {
     const meta = s.action_meta || {};
+    const cls  = meta.weaponClass ? `cls:${meta.weaponClass}` : null;
+    const hand = meta.hand ? `h:${meta.hand[0]}` : null;
     const slot = meta.spell_id ? `spell:${meta.spell_id}`
-      : meta.weapon ? `wep:${meta.weapon}`
       : meta.combo_id ? `combo:${meta.combo_id}`
+      : (cls && hand) ? `${cls}/${hand}`
+      : meta.weapon ? `wep:${meta.weapon}`
       : "";
-    return `${s.action}${slot ? `[${slot}]` : ""}`;
+    const finisher = meta.finisher ? "*F" : "";
+    return `${s.action}${slot ? `[${slot}]` : ""}${finisher}`;
   }).join("→");
   return `${chain.context}|${chain.style ?? "mixed"}|${sig}`;
 }

@@ -6484,20 +6484,42 @@ async function tryInitWebSockets(server) {
               hackerMode: !!data.hackerMode,
               grounded:   data.grounded !== false,
             });
-            return import("./lib/combat/flow-recorder.js").then(({ recordCombatFlow }) => {
+            return import("./lib/combat/flow-recorder.js").then(async ({ recordCombatFlow }) => {
               // CombatInputController can pass an explicit actionOverride so
               // grabs/kicks land in the substrate as 'grapple' / 'kick' even
               // though the underlying socket event is combat:attack.
               const resolvedAction = (typeof data.actionOverride === "string" && data.actionOverride.length < 24)
                 ? data.actionOverride
                 : (data.heavy ? "attack-heavy" : "attack-light");
+              // Dual-hand resolution: which hand swung, what's in it.
+              // The flow recorder stamps these so combos derive per-loadout
+              // (sword-right + pistol-left builds different chains than
+              // dual-daggers, even with identical key inputs).
+              let handMeta = { hand: data.hand || "right", weaponClass: null, weaponName: null };
+              try {
+                const lo = await import("./lib/combat/loadout.js");
+                const r = lo.resolveAttackHand(db, userId, data.hand);
+                handMeta = {
+                  hand: r.hand,
+                  weaponClass: r.weaponClass,
+                  weaponName: r.item?.item_name ?? null,
+                };
+              } catch { /* loadout resolution best-effort */ }
               recordCombatFlow(db, {
                 fighterId:  userId,
                 fighterKind:"player",
                 context:    ctx.context,
                 style:      data.style || ctx.styleHints[0] || null,
                 action:     resolvedAction,
-                actionMeta: { weapon: data.weapon || "fist", chain: data.chainId, step: data.stepIndex || 0, modifier: !!data.modifier },
+                actionMeta: {
+                  weapon: handMeta.weaponName || data.weapon || "fist",
+                  weaponClass: handMeta.weaponClass,
+                  hand: handMeta.hand,
+                  chain: data.chainId,
+                  step: data.stepIndex || 0,
+                  modifier: !!data.modifier,
+                  finisher: !!data.finisher,
+                },
                 targetId:   String(data.targetId || ""),
                 hit:        result.damage > 0,
                 damage:     Number(result.damage || 0),
