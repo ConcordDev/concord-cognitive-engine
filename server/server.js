@@ -6485,13 +6485,19 @@ async function tryInitWebSockets(server) {
               grounded:   data.grounded !== false,
             });
             return import("./lib/combat/flow-recorder.js").then(({ recordCombatFlow }) => {
+              // CombatInputController can pass an explicit actionOverride so
+              // grabs/kicks land in the substrate as 'grapple' / 'kick' even
+              // though the underlying socket event is combat:attack.
+              const resolvedAction = (typeof data.actionOverride === "string" && data.actionOverride.length < 24)
+                ? data.actionOverride
+                : (data.heavy ? "attack-heavy" : "attack-light");
               recordCombatFlow(db, {
                 fighterId:  userId,
                 fighterKind:"player",
                 context:    ctx.context,
                 style:      data.style || ctx.styleHints[0] || null,
-                action:     data.heavy ? "attack-heavy" : "attack-light",
-                actionMeta: { weapon: data.weapon || "fist", chain: data.chainId, step: data.stepIndex || 0 },
+                action:     resolvedAction,
+                actionMeta: { weapon: data.weapon || "fist", chain: data.chainId, step: data.stepIndex || 0, modifier: !!data.modifier },
                 targetId:   String(data.targetId || ""),
                 hit:        result.damage > 0,
                 damage:     Number(result.damage || 0),

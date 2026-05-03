@@ -172,6 +172,10 @@ const TrainingMatchPanel = dynamic(
   () => import('@/components/world-lens/TrainingMatchPanel'),
   { ssr: false },
 );
+const CombatInputController = dynamic(
+  () => import('@/components/world-lens/CombatInputController'),
+  { ssr: false },
+);
 const AnimationManager = dynamic(() => import('@/components/world-lens/AnimationManager'), {
   ssr: false,
 });
@@ -1286,6 +1290,16 @@ export default function WorldLensPage() {
   // Flow Combat: most recent action chain feeds CombatFlowHotbar's
   // suggestion endpoint. Last 5 actions kept; older drop off.
   const [recentChain, setRecentChain] = useState<Array<{ action: string }>>([]);
+  // Live combat context for the input controller — mirrors what the hotbar
+  // fetches from /api/combat-flow/context but kept local since the
+  // controller fires every keypress and shouldn't wait on a network round
+  // trip. Updated on player position / vehicle / aerial state change.
+  const [combatContext, setCombatContext] = useState<
+    'ground' | 'aerial' | 'vehicle' | 'hacker' | 'underwater' | 'mixed'
+  >('ground');
+  // Shift modifier held — the 5th key. Tracked locally so each keypress
+  // can consult it without a re-render dependency.
+  const modifierHeldRef = useRef(false);
   const [staggered, setStaggered] = useState(false);
   const [limbState, setLimbState] = useState<LimbState>({
     head: 100,
@@ -1776,6 +1790,34 @@ export default function WorldLensPage() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [portals, playerAvatar.position, nearbyNPC, dialogueNPC]);
+
+  // Shift modifier tracking for Flow Combat. modifierHeldRef is read by
+  // CombatInputController each tap to decide whether to flag the action
+  // as evolved-variant.
+  useEffect(() => {
+    function onShiftDown(e: KeyboardEvent) { if (e.key === 'Shift') modifierHeldRef.current = true; }
+    function onShiftUp(e: KeyboardEvent)   { if (e.key === 'Shift') modifierHeldRef.current = false; }
+    window.addEventListener('keydown', onShiftDown);
+    window.addEventListener('keyup',   onShiftUp);
+    return () => {
+      window.removeEventListener('keydown', onShiftDown);
+      window.removeEventListener('keyup',   onShiftUp);
+    };
+  }, []);
+
+  // Local combat context derivation. Cheap heuristic — the server's
+  // detectCombatContext is authoritative when the hotbar polls it, but for
+  // the input controller we want zero network latency on every keystroke,
+  // so we mirror the same rules client-side. Updates whenever player y /
+  // animation / vehicle state changes.
+  useEffect(() => {
+    const y = playerAvatar.position.y;
+    const inVehicle = inputMode === 'driving';
+    const aerial    = (playerAvatar.currentAnimation as string) === 'jump' || y > 3;
+    if (inVehicle) setCombatContext('vehicle');
+    else if (aerial) setCombatContext('aerial');
+    else setCombatContext('ground');
+  }, [playerAvatar.position.y, playerAvatar.currentAnimation, inputMode]);
 
   // G key: toggle emote wheel in explore mode
   useEffect(() => {
@@ -3211,6 +3253,20 @@ export default function WorldLensPage() {
             }
           />
           <TrainingMatchPanel myUserId={playerAvatar.id} />
+          <CombatInputController
+            inputMode={inputMode}
+            context={combatContext}
+            hasTarget={!!combatState.target}
+            playerId={playerAvatar.id}
+            worldSocket={worldSocket}
+            modifierHeld={modifierHeldRef.current}
+            onAction={(evt) => {
+              setRecentChain((prev) => {
+                const next = [...prev, { action: evt.resolved }];
+                return next.slice(-5);
+              });
+            }}
+          />
           <AnimationManager>
             <></>
           </AnimationManager>

@@ -13,6 +13,8 @@ import logger from "../../logger.js";
 const ACTIONS = new Set([
   "attack-light", "attack-heavy", "parry", "block", "dodge",
   "spell", "combo-step", "ranged", "throw", "grapple",
+  // Phase 4 — keyboard input controller verbs:
+  "kick", "modifier-boost",
 ]);
 
 /**
