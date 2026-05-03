@@ -901,17 +901,41 @@ export default function ConcordiaScene({
         if (hits.length > 0) {
           let obj = hits[0].object as InstanceType<typeof import('three').Object3D>;
           // Walk up to find the avatar root (the group AvatarSystem3D added).
-          while (obj.parent && obj.parent !== avatarsGroup && !(obj.userData as { isNPC?: boolean })?.isNPC) {
+          // Stop when we hit something tagged as either an NPC or another
+          // player so the userData lookup below sees the right tags.
+          while (
+            obj.parent && obj.parent !== avatarsGroup &&
+            !(obj.userData as { isNPC?: boolean; isOtherPlayer?: boolean })?.isNPC &&
+            !(obj.userData as { isNPC?: boolean; isOtherPlayer?: boolean })?.isOtherPlayer
+          ) {
             obj = obj.parent as typeof obj;
           }
-          const npcUd = obj.userData as { isNPC?: boolean; avatarId?: string; name?: string; occupation?: string } | undefined;
-          if (npcUd?.isNPC && npcUd.avatarId) {
+          const ud = obj.userData as
+            | { isNPC?: boolean; isOtherPlayer?: boolean; avatarId?: string; name?: string; occupation?: string }
+            | undefined;
+          if (ud?.isNPC && ud.avatarId) {
             try {
               window.dispatchEvent(new CustomEvent('concordia:open-dialogue', {
                 detail: {
-                  npcId:      npcUd.avatarId,
-                  npcName:    npcUd.name ?? npcUd.avatarId,
-                  occupation: npcUd.occupation ?? null,
+                  npcId:      ud.avatarId,
+                  npcName:    ud.name ?? ud.avatarId,
+                  occupation: ud.occupation ?? null,
+                },
+              }));
+            } catch { /* dispatch best-effort */ }
+            return;
+          }
+          // Other-player click → contextual action menu (Wave / Trade /
+          // Inspect / Invite to Party). Dispatched at viewport coords so
+          // the menu can position itself near the cursor.
+          if (ud?.isOtherPlayer && ud.avatarId) {
+            try {
+              window.dispatchEvent(new CustomEvent('concordia:click-player', {
+                detail: {
+                  playerId:   ud.avatarId,
+                  playerName: ud.name ?? ud.avatarId,
+                  screenX:    e.clientX,
+                  screenY:    e.clientY,
                 },
               }));
             } catch { /* dispatch best-effort */ }

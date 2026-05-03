@@ -160,6 +160,10 @@ const WorldVisualHooks = dynamic(
   () => import('@/components/world-lens/WorldVisualHooks'),
   { ssr: false },
 );
+const PlayerActionMenu = dynamic(
+  () => import('@/components/world-lens/PlayerActionMenu'),
+  { ssr: false },
+);
 const AnimationManager = dynamic(() => import('@/components/world-lens/AnimationManager'), {
   ssr: false,
 });
@@ -1902,7 +1906,20 @@ export default function WorldLensPage() {
                 'celebrate',
                 'craft',
               ]);
-              return (validClips.has(a) ? a : 'idle') as
+              // EmoteWheel ships a broader vocabulary than the renderer
+              // supports (bow/cheer/laugh/dance/shrug/thumbup). Map each
+              // onto the closest valid clip so the emote isn't silently
+              // dropped to idle on remote clients.
+              const emoteAlias: Record<string, string> = {
+                bow:     'inspect',
+                cheer:   'celebrate',
+                laugh:   'celebrate',
+                dance:   'celebrate',
+                shrug:   'point',
+                thumbup: 'celebrate',
+              };
+              const mapped = emoteAlias[a] ?? a;
+              return (validClips.has(mapped) ? mapped : 'idle') as
                 | 'idle'
                 | 'walk'
                 | 'run'
@@ -2667,6 +2684,44 @@ export default function WorldLensPage() {
     return () => window.removeEventListener('concordia:open-dialogue', handler);
   }, [rawWorldNPCs, openNPCDialogue]);
 
+  // PlayerActionMenu (and any other source) dispatches concordia:emote with
+  // an emoteId — broadcast it through the same player:move animation field
+  // EmoteWheel uses, so other players see us perform the emote.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { emoteId?: string } | undefined;
+      const emoteId = detail?.emoteId;
+      if (!emoteId) return;
+      // Local play
+      setPlayerAvatar((prev) => ({
+        ...prev,
+        currentAnimation: (emoteId as typeof prev.currentAnimation),
+      }));
+      // Broadcast
+      if (worldSocket.isConnected) {
+        worldSocket.emit('player:move', {
+          cityId: activeDistrict.id,
+          districtId: activeDistrict.id,
+          x: playerAvatar.position.x,
+          y: playerAvatar.position.y,
+          z: playerAvatar.position.z,
+          rotation: playerAvatar.rotation,
+          direction: playerAvatar.rotation,
+          action: emoteId,
+          currentAnimation: emoteId,
+        });
+      }
+      // Reset to idle after the emote duration so we don't get stuck waving
+      setTimeout(() => {
+        setPlayerAvatar((prev) =>
+          prev.currentAnimation === emoteId ? { ...prev, currentAnimation: 'idle' } : prev
+        );
+      }, 1800);
+    };
+    window.addEventListener('concordia:emote', handler);
+    return () => window.removeEventListener('concordia:emote', handler);
+  }, [activeDistrict.id, playerAvatar.position, playerAvatar.rotation, worldSocket]);
+
   const handleSelectCombatTarget = useCallback(
     (p: { id: string; name: string; type: 'enemy' | 'player' }) => {
       setCombatState((prev) => ({
@@ -3073,6 +3128,7 @@ export default function WorldLensPage() {
           <TutorialCinematic />
           <TutorialHighlight />
           <WorldVisualHooks />
+          <PlayerActionMenu />
           <AnimationManager>
             <></>
           </AnimationManager>
