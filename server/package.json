@@ -4,8 +4,8 @@
   "version": "5.0.0",
   "type": "module",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node --watch server.js",
+    "start": "node --max-old-space-size=32768 server.js",
+    "dev": "node --max-old-space-size=32768 --watch server.js",
     "test": "node --test 'tests/**/*.test.js' 'tests/**/*-tests.js'",
     "test:watch": "node --test --watch 'tests/**/*.test.js' 'tests/**/*-tests.js'",
     "test:coverage": "node --test --experimental-test-coverage 'tests/**/*.test.js' 'tests/**/*-tests.js'",

@@ -196,6 +196,7 @@ const AnimationManager = dynamic(() => import('@/components/world-lens/Animation
   ssr: false,
 });
 const GameJuice = dynamic(() => import('@/components/world-lens/GameJuice'), { ssr: false });
+const ActiveEffectsBar = dynamic(() => import('@/components/concordia/HUD/ActiveEffectsBar'), { ssr: false });
 const PerformanceOverlay = dynamic(
   () => import('@/components/world-lens/PerformanceOverlay'),
   { ssr: false },
@@ -4516,6 +4517,7 @@ export default function WorldLensPage() {
           )}
           {/* Impact feedback — floating damage numbers + screen shake */}
           <ImpactFeedback />
+          <ActiveEffectsBar />
         </div>
       ) : viewMode === 'streams' ? (
         <CityStreamingSection />

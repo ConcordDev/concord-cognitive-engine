@@ -39,7 +39,8 @@ export default function CraftingPage() {
     setLoading(true);
     setError(null);
     try {
-      const r = await api.get('/api/personal-locker/dtus', { params: { lens: 'concordia' } });
+      const avatarId = typeof window !== 'undefined' ? window.localStorage.getItem('concordia:activeAvatarId') : null;
+      const r = await api.get('/api/personal-locker/dtus', { params: { lens: 'concordia', ...(avatarId ? { avatarId } : {}) } });
       const all = (r.data?.dtus ?? []) as Array<RecipeRow>;
       const recipes = all.filter((d) => {
         const t = d.meta?.type ?? d.type;
@@ -57,11 +58,12 @@ export default function CraftingPage() {
     setLoading(true);
     setError(null);
     try {
-      // Existing marketplace listings endpoint, filtered by recipe artifact types.
+      // Multi-type search via the `types` (plural) param the route accepts
+      // as a comma-separated list. Response shape is { items, total }.
       const r = await api.get('/api/marketplace/artifacts', {
-        params: { type: 'fighting_style_recipe,spell_recipe,blueprint' },
+        params: { types: 'fighting_style_recipe,spell_recipe,blueprint' },
       });
-      setMarketRecipes((r.data?.artifacts ?? []) as MarketplaceListing[]);
+      setMarketRecipes((r.data?.items ?? r.data?.artifacts ?? []) as MarketplaceListing[]);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Load failed');
     } finally {
@@ -74,19 +76,62 @@ export default function CraftingPage() {
     if (tab === 'browse') loadMarketplace();
   }, [tab]);
 
-  async function listOnMarketplace(dtuId: string) {
-    const priceStr = window.prompt('Headline price (e.g. 15):', '15');
-    if (!priceStr) return;
-    const price = Number(priceStr);
-    if (!Number.isFinite(price) || price <= 0) {
-      window.alert('Invalid price');
-      return;
+  // Listen for avatar switches so the recipe roster refreshes when the
+  // user activates a different avatar from AvatarSwitcher.
+  useEffect(() => {
+    function onAvatarChanged() {
+      if (tab === 'mine') loadMine();
     }
+    window.addEventListener('concordia:avatar-changed', onAvatarChanged);
+    return () => window.removeEventListener('concordia:avatar-changed', onAvatarChanged);
+  }, [tab]);
+
+  // Inline tier-pricing modal state. Triggered by the "List on
+  // marketplace" button in the My Recipes tab. Replaces the prior
+  // window.prompt flow with a real form that supports the marketplace's
+  // tier-pricing model (e.g. usage / remix / commercial).
+  const [listing, setListing] = useState<null | { dtuId: string }>(null);
+  const [listPrice, setListPrice] = useState('15');
+  const [listUseTiers, setListUseTiers] = useState(false);
+  const [listTierUsage, setListTierUsage] = useState('5');
+  const [listTierRemix, setListTierRemix] = useState('15');
+  const [listTierCommercial, setListTierCommercial] = useState('60');
+  const [listSubmitting, setListSubmitting] = useState(false);
+  const [listError, setListError] = useState<string | null>(null);
+
+  function listOnMarketplace(dtuId: string) {
+    setListing({ dtuId });
+    setListError(null);
+  }
+
+  async function submitListing() {
+    if (!listing) return;
+    setListSubmitting(true);
+    setListError(null);
     try {
-      await api.post(`/api/personal-locker/dtus/${encodeURIComponent(dtuId)}/list-on-marketplace`, { price });
+      const price = Number(listPrice);
+      if (!Number.isFinite(price) || price <= 0) {
+        setListError('Headline price must be a positive number');
+        return;
+      }
+      const body: Record<string, unknown> = { price };
+      if (listUseTiers) {
+        const usage = Number(listTierUsage);
+        const remix = Number(listTierRemix);
+        const commercial = Number(listTierCommercial);
+        if (![usage, remix, commercial].every((n) => Number.isFinite(n) && n >= 0)) {
+          setListError('Each tier price must be a non-negative number');
+          return;
+        }
+        body.tierPrices = { usage, remix, commercial };
+      }
+      await api.post(`/api/personal-locker/dtus/${encodeURIComponent(listing.dtuId)}/list-on-marketplace`, body);
+      setListing(null);
       await loadMine();
     } catch (e: unknown) {
-      window.alert(`List failed: ${e instanceof Error ? e.message : 'unknown'}`);
+      setListError(e instanceof Error ? e.message : 'List failed');
+    } finally {
+      setListSubmitting(false);
     }
   }
 
@@ -159,6 +204,56 @@ export default function CraftingPage() {
         <section className="flex justify-center">
           <RecipeAuthorPanel onPublished={() => setTab('mine')} />
         </section>
+      )}
+
+      {listing && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => !listSubmitting && setListing(null)}>
+          <div className="bg-black/95 border border-amber-500/30 rounded-2xl p-5 w-full max-w-md text-white" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-bold">List on marketplace</h3>
+              <button onClick={() => !listSubmitting && setListing(null)} className="text-white/50 hover:text-white text-sm">close</button>
+            </div>
+
+            <label className="block text-xs text-white/70 mb-1">Headline price (sparks)</label>
+            <input
+              type="number" min={1}
+              value={listPrice}
+              onChange={(e) => setListPrice(e.target.value)}
+              className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-sm mb-3 outline-none focus:border-amber-500/40"
+            />
+
+            <label className="flex items-center gap-2 text-xs text-white/70 mb-3">
+              <input type="checkbox" checked={listUseTiers} onChange={(e) => setListUseTiers(e.target.checked)} />
+              Tier pricing (usage / remix / commercial)
+            </label>
+
+            {listUseTiers && (
+              <div className="grid grid-cols-3 gap-2 mb-3">
+                <div>
+                  <label className="block text-[11px] text-white/60 mb-1">Usage</label>
+                  <input type="number" min={0} value={listTierUsage} onChange={(e) => setListTierUsage(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-md px-2 py-2 text-sm" />
+                </div>
+                <div>
+                  <label className="block text-[11px] text-white/60 mb-1">Remix</label>
+                  <input type="number" min={0} value={listTierRemix} onChange={(e) => setListTierRemix(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-md px-2 py-2 text-sm" />
+                </div>
+                <div>
+                  <label className="block text-[11px] text-white/60 mb-1">Commercial</label>
+                  <input type="number" min={0} value={listTierCommercial} onChange={(e) => setListTierCommercial(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-md px-2 py-2 text-sm" />
+                </div>
+              </div>
+            )}
+
+            {listError && <p className="text-xs text-red-400 mb-3">{listError}</p>}
+
+            <div className="flex justify-end gap-2 pt-3 border-t border-white/10">
+              <button onClick={() => setListing(null)} disabled={listSubmitting} className="px-3 py-1.5 text-xs bg-white/5 border border-white/10 rounded">Cancel</button>
+              <button onClick={submitListing} disabled={listSubmitting} className="px-4 py-1.5 text-xs font-semibold bg-amber-500/20 border border-amber-500/40 rounded hover:bg-amber-500/30 disabled:opacity-50">
+                {listSubmitting ? 'Listing…' : 'List'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </main>
   );

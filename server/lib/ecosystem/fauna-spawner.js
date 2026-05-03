@@ -14,7 +14,10 @@ import crypto from "node:crypto";
 import { speciesForBiome } from "./loot-tables.js";
 
 const BIOMES = ["plains", "forest", "highland", "mountain", "water"];
-const BATCH_LIMIT = 60; // hard cap per tick across all worlds
+// Bumped from 60 → 500 for 32GB-heap deployments. Per-tick cap on creature
+// spawns across all worlds; large value lets thinly-populated worlds
+// recover their target populations within a single tick.
+const BATCH_LIMIT = Number(process.env.CONCORD_FAUNA_SPAWN_BATCH) || 500;
 
 function biomeBoundsForWorld(_worldId) {
   // We don't have per-world biome geometry yet (it's elevation-derived in

@@ -69,7 +69,57 @@ export function applyTemporaryRefusal(state, worldId, kind, opts = {}) {
   };
   list.push(entry);
   map.set(worldId, list);
+
+  // Persist to refusal_fields table so the field survives a process
+  // restart. Best-effort — persistence failure does not block the
+  // in-memory entry, since live gameplay queries hit memory first.
+  if (state.db) {
+    try {
+      state.db.prepare(`
+        INSERT INTO refusal_fields (id, world_id, kind, reason, glyph_hint, glyph_json, expires_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        entry.id, worldId, entry.kind, entry.reason,
+        entry.glyphHint ?? null,
+        entry.glyph != null ? JSON.stringify(entry.glyph) : null,
+        Math.floor(entry.expiresAt / 1000),
+      );
+    } catch { /* persistence best-effort — table may not exist on minimal builds */ }
+  }
   return entry;
+}
+
+/**
+ * Load any non-expired refusal_fields rows back into STATE on startup.
+ * Should be called once after STATE.db is set, before the heartbeat
+ * sweep runs.
+ */
+export function loadPersistedRefusalFields(state) {
+  if (!state?.db) return { ok: false, reason: "no_db" };
+  let rows;
+  try {
+    rows = state.db.prepare(`
+      SELECT id, world_id, kind, reason, glyph_hint, glyph_json, expires_at
+      FROM refusal_fields WHERE expires_at > unixepoch()
+    `).all();
+  } catch { return { ok: false, reason: "table_missing" }; }
+
+  const map = ensureMap(state);
+  for (const row of rows) {
+    let glyph = null;
+    try { glyph = row.glyph_json ? JSON.parse(row.glyph_json) : null; } catch { /* ignore */ }
+    const list = map.get(row.world_id) ?? [];
+    list.push({
+      id: row.id,
+      kind: row.kind,
+      expiresAt: row.expires_at * 1000,
+      reason: row.reason ?? "",
+      glyphHint: row.glyph_hint ?? null,
+      glyph,
+    });
+    map.set(row.world_id, list);
+  }
+  return { ok: true, loaded: rows.length };
 }
 
 /** Active fields for a world (auto-prunes expired). */
@@ -91,8 +141,14 @@ export function isRefused(state, worldId, kind) {
   return activeFields(state, worldId).some((e) => e.kind === kind);
 }
 
-/** Heartbeat sweep — cheap, just calls activeFields() to prune. */
+/** Heartbeat sweep — calls activeFields() to prune memory, also deletes
+ * expired rows from the persistent table so on next restart we don't
+ * reload stale entries. */
 export function runRefusalFieldSweep({ state }) {
+  if (state?.db) {
+    try { state.db.prepare(`DELETE FROM refusal_fields WHERE expires_at < unixepoch()`).run(); }
+    catch { /* table may not exist on minimal builds */ }
+  }
   if (!state?.refusalFields) return { ok: true, pruned: 0 };
   let pruned = 0;
   for (const worldId of state.refusalFields.keys()) {

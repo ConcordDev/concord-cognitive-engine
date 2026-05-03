@@ -24,7 +24,9 @@ function tagsToRoles(tags) {
 }
 
 const SUMMARY_MAX_CHARS = 240;
-const BATCH_LIMIT = 100;
+// Bumped from 100 → 1000 for 32GB-heap deployments. Per-tick cap on how many
+// medical/research/engineering DTUs we mirror into npc_knowledge in one pass.
+const BATCH_LIMIT = Number(process.env.CONCORD_NPC_KNOWLEDGE_BATCH) || 1000;
 
 /**
  * Run one pass: scan recent DTUs tagged medical/research/engineering and

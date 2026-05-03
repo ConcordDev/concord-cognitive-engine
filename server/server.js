@@ -97,6 +97,20 @@ registerHeartbeat("refusal-field-sweep", {
   frequency: 1,
   handler: runRefusalFieldSweep,
 });
+
+// EvoEcosystem W2: prune expired creature corpses so the table doesn't
+// grow monotonically. Every 10 ticks (~10 minutes); corpses default to
+// 30-min TTL so the cleanup cadence is conservative.
+registerHeartbeat("corpse-cleanup", {
+  frequency: 10,
+  handler: ({ db: ctxDb }) => {
+    if (!ctxDb) return { ok: false };
+    try {
+      const r = ctxDb.prepare(`DELETE FROM creature_corpses WHERE expires_at < unixepoch() AND claimed = 0`).run();
+      return { ok: true, pruned: r.changes };
+    } catch { return { ok: false, reason: "table_missing" }; }
+  },
+});
 import { ConcordError } from "./lib/errors.js";
 import { asyncHandler } from "./lib/async-handler.js";
 import { init as initGRC, formatAndValidate as grcFormatAndValidate, getGRCSystemPrompt } from "./grc/index.js";
@@ -3717,6 +3731,21 @@ if (db) {
   } catch (e) {
     console.error("[Concord] Migration failed:", e.message);
   }
+
+  // Make db available to systems that read STATE.db directly (e.g. the
+  // refusal-field persistence layer). Modules that already capture `db`
+  // via closure are unaffected.
+  STATE.db = db;
+
+  // Reload any non-expired Refusal Field declarations so a deploy mid-
+  // quest doesn't lose the Sovereign's active gates.
+  try {
+    const { loadPersistedRefusalFields } = await import("./lib/refusal-field.js");
+    const r = loadPersistedRefusalFields(STATE);
+    if (r?.ok) structuredLog("info", "refusal_fields_reloaded", { loaded: r.loaded });
+  } catch (e) {
+    console.warn("[Concord] Refusal field reload skipped:", e.message);
+  }
 }
 
 // ---- DTU Write-Through Store (persistent-first) ----
@@ -6506,9 +6535,48 @@ async function tryInitWebSockets(server) {
         }).modifiers;
       } catch { /* fall through to default */ }
 
+      // Mass Raid friendly-fire immunity: while inside a Sovereign mass
+      // raid instance, attacks between participants pass through harmlessly
+      // (per The Great Refusal canon — players can't damage each other in
+      // the raid; they're all focused on the Sovereign).
+      const _ffTargetId = String(data.targetId || "").slice(0, 128);
+      try {
+        const { isFriendlyFireImmune } = await import("./lib/sovereign/raid-event.js");
+        if (isFriendlyFireImmune(STATE, userId, _ffTargetId)) {
+          socket.emit("combat:attack:ack", {
+            ok: true, immune: true, reason: "raid_friendly_fire", damage: 0,
+          });
+          return;
+        }
+      } catch { /* raid module unavailable — continue with normal damage */ }
+
+      // Refusal Field: Sovereign-targeted attacks during the eternal raid
+      // phase cannot land — he literally refuses victory by numbers.
+      // Same gate applies to any kind of refused-death suspension.
+      try {
+        const { isRefused } = await import("./lib/refusal-field.js");
+        const _attackerWorld = STATE?.activeSovereignRaid?.worldId
+          ?? cityPresence.getPlayerWorld?.(userId)
+          ?? "concordia-hub";
+        const targetIsSovereign = _ffTargetId.startsWith("sovereign_") ||
+          _ffTargetId === "sovereign_first_refusal";
+        if (targetIsSovereign && isRefused(STATE, _attackerWorld, "win_refused")) {
+          socket.emit("combat:attack:ack", {
+            ok: true, refused: true, reason: "win_refused", damage: 0,
+          });
+          return;
+        }
+        if (isRefused(STATE, _attackerWorld, "death_suspended") && Number(data.expectedKill) === 1) {
+          socket.emit("combat:attack:ack", {
+            ok: true, refused: true, reason: "death_suspended", damage: 0,
+          });
+          return;
+        }
+      } catch { /* refusal-field unavailable — continue normally */ }
+
       const result = cityPresence.applyAttack({
         attackerId: userId,
-        targetId: String(data.targetId || "").slice(0, 128),
+        targetId: _ffTargetId,
         baseDamage: Number(data.baseDamage) || 10,
         range: Number(data.range) || 3,
         armorPierce: Number(data.armorPierce) || 0,
@@ -6806,7 +6874,16 @@ async function tryInitWebSockets(server) {
       if (!userId || !dtuId) return;
 
       const skill = db.prepare("SELECT * FROM dtus WHERE id = ?").get(dtuId);
-      if (!skill || skill.type !== "skill") return;
+      if (!skill) return;
+      // Accept legacy 'skill' typed rows AND v2.0 hotbar combat skills.
+      // Combat skill DTUs from concord-frontend/lib/concordia/combat/hotbar.ts
+      // are created with meta.type='combat_skill' and tagged 'combat_skill'.
+      // Without this widening, combat-skill uses bypassed XP awards AND the
+      // Sovereign Refusal Archive entirely.
+      const isSkillLike = skill.type === "skill"
+        || (typeof skill.tags_json === "string" && skill.tags_json.includes("combat_skill"))
+        || (typeof skill.body_json === "string" && skill.body_json.includes('"combat_skill"'));
+      if (!isSkillLike) return;
 
       const { awardExperience, getMasteryMarkers } = await import("./lib/skill-progression.js");
       const prevBadge = getMasteryMarkers(skill).badge;
@@ -26980,6 +27057,38 @@ app.get("/api/world/weather/:worldId", (req, res) => {
   res.json({ ok: true, weather: getWorldWeather(req.params.worldId) });
 });
 
+// v2.0 instantiation: stream a music DTU's audio bytes for the
+// SoundscapeEngine. We deliberately serve via this route (not the
+// generic /api/dtus/:id/asset path) so we can scope CORS + cache headers
+// to soundscape consumption and apply opt-in checks (must be tagged
+// 'soundscape', visibility != private). Cross-origin allowed because
+// the audio is intentionally public-by-author.
+app.get("/api/world/soundscape/track/:dtuId/audio", (req, res) => {
+  try {
+    const dtu = STATE?.dtus?.get?.(req.params.dtuId);
+    if (!dtu) return res.status(404).json({ ok: false, error: "dtu_not_found" });
+    const tags = Array.isArray(dtu.tags) ? dtu.tags : [];
+    if (!tags.includes("soundscape")) return res.status(403).json({ ok: false, error: "not_soundscape_opt_in" });
+    const visibility = dtu.meta?.visibility ?? dtu.visibility ?? "private";
+    if (visibility === "private") return res.status(403).json({ ok: false, error: "private_visibility" });
+    const ref = dtu.artifact;
+    if (!ref?.diskPath) return res.status(404).json({ ok: false, error: "no_audio_artifact" });
+
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+    res.setHeader("Cache-Control", "public, max-age=3600");
+    if (ref.mimeType) res.setHeader("Content-Type", ref.mimeType);
+    import("./lib/artifact-store.js").then(({ retrieveArtifactStream }) => {
+      const stream = retrieveArtifactStream(ref);
+      if (!stream) return res.status(404).end();
+      stream.on("error", () => { try { res.status(500).end(); } catch { /* already sent */ } });
+      stream.pipe(res);
+    }).catch(() => res.status(500).json({ ok: false, error: "stream_failed" }));
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
 // v2.0 instantiation: community music DTUs for a district. Frontend
 // SoundscapeEngine cycles these alongside the procedural ambient stems.
 app.get("/api/world/soundscape/:districtId/tracks", async (req, res) => {
@@ -27028,6 +27137,30 @@ app.post("/api/world/buildings/spawn", requireAuth, (req, res) => {
       return res.status(403).json({ ok: false, error: "blueprint_not_accessible" });
     }
 
+    // Bounding-box overlap check: a blueprint declares dimensions in its
+    // body; reject the spawn if the would-be footprint overlaps an
+    // existing building's footprint at this position.
+    const dims = body?.meta?.dimensions ?? body?.dimensions ?? null;
+    if (dims && Number.isFinite(dims.x) && Number.isFinite(dims.z)) {
+      const halfX = Math.abs(dims.x) / 2;
+      const halfZ = Math.abs(dims.z) / 2;
+      // Approximate worst-case neighbor footprint (12m / side) to avoid
+      // joining the existing buildings table to its blueprint dims at
+      // every spawn. Treats the new placement as a rectangle and
+      // existing buildings as 12m squares.
+      const PAD = 6;
+      const overlap = db.prepare(`
+        SELECT id FROM world_buildings
+        WHERE world_id = ?
+          AND ABS(x - ?) < ?
+          AND ABS(z - ?) < ?
+        LIMIT 1
+      `).get(worldId, position.x, halfX + PAD, position.z, halfZ + PAD);
+      if (overlap) {
+        return res.status(409).json({ ok: false, error: "overlap_with_existing_building", existingId: overlap.id });
+      }
+    }
+
     const id = `wb_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     db.prepare(`
       INSERT INTO world_buildings
@@ -27056,6 +27189,25 @@ app.get("/api/world/buildings/:worldId", (req, res) => {
       ORDER BY created_at ASC
     `).all(req.params.worldId);
     res.json({ ok: true, buildings: rows });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// Delete a spawned building (owner-only). Realtime-emits so renderers
+// remove the structure without a refresh.
+app.delete("/api/world/buildings/:id", requireAuth, (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
+    const row = db.prepare(`SELECT * FROM world_buildings WHERE id = ?`).get(req.params.id);
+    if (!row) return res.status(404).json({ ok: false, error: "building_not_found" });
+    if (row.spawned_by_user_id !== userId) return res.status(403).json({ ok: false, error: "not_owner" });
+    db.prepare(`DELETE FROM world_buildings WHERE id = ?`).run(row.id);
+    try {
+      REALTIME?.io?.to(`world:${row.world_id}`).emit("world:building-removed", { id: row.id, worldId: row.world_id });
+    } catch { /* realtime best-effort */ }
+    res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
@@ -27104,6 +27256,17 @@ app.post("/api/world/consume/:dtuId", requireAuth, (req, res) => {
     if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
     const result = applyConsumable(db, userId, req.params.dtuId);
     if (!result.ok) return res.status(422).json(result);
+    // Realtime push so the player's HUD updates without waiting for a
+    // poll. Each effect is an independent moodlet; clients merge them
+    // into the active-effects bar.
+    try {
+      for (const eff of result.applied ?? []) {
+        REALTIME?.io?.to(`user:${userId}`).emit("player:effect-applied", {
+          userId,
+          effect: { ...eff, source_dtu_id: req.params.dtuId },
+        });
+      }
+    } catch { /* realtime emit best-effort */ }
     res.json(result);
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
@@ -27151,11 +27314,22 @@ app.get("/api/world/effects/me", requireAuth, (req, res) => {
 });
 
 // v2.0 Workstream 6b: federation export — peers in the trust graph pull
-// public social shadows from this instance via this endpoint. No auth
-// required since the data is intentionally public (mirrors what the NPC
-// bridge already broadcasts in-world).
-app.get("/api/world/social-shadows", (_req, res) => {
+// public social shadows from this instance via this endpoint.
+//
+// When CONCORD_FEDERATION_TOKEN is set, requests must carry the matching
+// Bearer token. When unset (research / development), the endpoint stays
+// open. The data is intentionally public-author-consented; auth is for
+// rate-limiting / abuse control, not secrecy.
+app.get("/api/world/social-shadows", (req, res) => {
   try {
+    const expected = process.env.CONCORD_FEDERATION_TOKEN;
+    if (expected) {
+      const auth = req.headers?.authorization ?? "";
+      const m = /^Bearer\s+(.+)$/i.exec(auth);
+      if (!m || m[1] !== expected) {
+        return res.status(401).json({ ok: false, error: "federation_auth_required" });
+      }
+    }
     const shadows = STATE?.shadowDtus ? Array.from(STATE.shadowDtus.values()) : [];
     const recent = shadows
       .filter((s) => Array.isArray(s.tags) && s.tags.includes("social_awareness"))

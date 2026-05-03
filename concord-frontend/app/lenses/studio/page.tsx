@@ -466,8 +466,15 @@ export default function StudioLensPage() {
     // slot can play this DAW project as the player walks around. Best-effort.
     const unsubMusic = transportRef.current.on('playStateChange', (data: { playing?: boolean }) => {
       try {
+        // World-scope the event: the SoundscapeEngine only ducks when the
+        // listener world matches the studio world (same player walking
+        // around). The active avatar's world is read from the same
+        // localStorage hint AvatarSwitcher writes; falls back to
+        // 'concordia-hub' when unknown.
+        const worldId = (typeof window !== 'undefined' && window.localStorage.getItem('concordia:activeWorldId'))
+          || 'concordia-hub';
         window.dispatchEvent(new CustomEvent('concordia:daw-playback', {
-          detail: { playing: !!data.playing, projectName: projectRef.current?.title ?? 'studio_session' },
+          detail: { playing: !!data.playing, projectName: projectRef.current?.title ?? 'studio_session', worldId },
         }));
       } catch { /* dispatch best-effort */ }
     });

@@ -83,13 +83,31 @@ export default function createPersonalLockerRouter({ db, getLockerKey, requireAu
 
   router.get("/dtus", (req, res) => {
     try {
-      const { lens } = req.query;
-      let rows;
-      if (lens) {
-        rows = db.prepare("SELECT id, user_id, created_at, lens_domain, content_type, title FROM personal_dtus WHERE user_id = ? AND lens_domain = ? ORDER BY created_at DESC").all(req.user.id, lens);
-      } else {
-        rows = db.prepare("SELECT id, user_id, created_at, lens_domain, content_type, title FROM personal_dtus WHERE user_id = ? ORDER BY created_at DESC").all(req.user.id);
+      const { lens, avatarId } = req.query;
+      // Multi-avatar (Workstream 6a): when an avatarId is supplied, return
+      // only rows that match it OR are unscoped (avatar_id IS NULL —
+      // legacy rows belong to the user's primary avatar). Without an
+      // avatarId we return everything for backwards compatibility with
+      // single-avatar callers.
+      const wantsAvatar = typeof avatarId === "string" && avatarId.length > 0;
+      let sql = "SELECT id, user_id, created_at, lens_domain, content_type, title";
+      // The avatar_id column was added in migration 093 — use a try block
+      // so if migrations haven't applied the SELECT still succeeds.
+      let hasAvatarCol = false;
+      try {
+        const cols = db.prepare("PRAGMA table_info(personal_dtus)").all().map((r) => r.name);
+        hasAvatarCol = cols.includes("avatar_id");
+      } catch { /* fallback below */ }
+      if (hasAvatarCol) sql += ", avatar_id";
+      sql += " FROM personal_dtus WHERE user_id = ?";
+      const params = [req.user.id];
+      if (lens) { sql += " AND lens_domain = ?"; params.push(lens); }
+      if (wantsAvatar && hasAvatarCol) {
+        sql += " AND (avatar_id IS NULL OR avatar_id = ?)";
+        params.push(avatarId);
       }
+      sql += " ORDER BY created_at DESC";
+      const rows = db.prepare(sql).all(...params);
       return res.json({ ok: true, dtus: rows });
     } catch (err) {
       return res.status(500).json({ ok: false, error: err?.message });

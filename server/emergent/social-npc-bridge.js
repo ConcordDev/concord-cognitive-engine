@@ -27,7 +27,9 @@
 // each post individually so a single malformed row can't stop the batch.
 
 const SUMMARY_MAX_CHARS = 280;
-const BATCH_LIMIT = 200; // hard cap per tick — protects shadow store
+// Bumped from 200 → 2000 for 32GB-heap deployments. Per-tick cap on how
+// many public timeline DTUs we wrap as social_awareness shadows in one pass.
+const BATCH_LIMIT = Number(process.env.CONCORD_SOCIAL_BRIDGE_BATCH) || 2000;
 
 /**
  * Run one pass of the social → NPC bridge.
@@ -151,9 +153,16 @@ async function importFederatedShadows(state, peers) {
     try {
       const ctrl = new AbortController();
       const t = setTimeout(() => ctrl.abort(), FEDERATION_FETCH_TIMEOUT_MS);
+      // Per-peer auth: peers carry an optional `token` field. We send it
+      // as a Bearer header so the exporting instance can verify against
+      // its own CONCORD_FEDERATION_TOKEN before disclosing shadows. Peers
+      // without a token are still accepted (research-peer back-compat) but
+      // tagged so narrative-bridge can de-prioritise them.
+      const headers = { accept: "application/json" };
+      if (peer.token) headers.authorization = `Bearer ${peer.token}`;
       const res = await fetch(`${peer.url.replace(/\/$/, "")}/api/world/social-shadows`, {
         signal: ctrl.signal,
-        headers: { accept: "application/json" },
+        headers,
       }).finally(() => clearTimeout(t));
       if (!res.ok) continue;
       const body = await res.json().catch(() => null);

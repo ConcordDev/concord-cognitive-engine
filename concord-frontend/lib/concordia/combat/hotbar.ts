@@ -133,10 +133,14 @@ export async function loadHotbarFromSubstrate(
 ): Promise<HotbarState> {
   try {
     // v2.0: scope by active avatar so a user with multiple avatars sees
-    // each one's distinct combat skills. Backwards-compat: if avatarId
-    // isn't passed, the backend returns all the user's skills.
+    // each one's distinct combat skills. If the caller didn't pass an
+    // explicit avatarId, fall back to the active avatar id stored in
+    // localStorage by AvatarSwitcher. Backwards-compat: when neither is
+    // present, the backend returns all the user's skills (legacy mode).
+    const resolvedAvatarId = avatarId
+      ?? (typeof window !== 'undefined' ? window.localStorage.getItem('concordia:activeAvatarId') : null);
     const params = new URLSearchParams({ lens: 'game' });
-    if (avatarId) params.set('avatarId', avatarId);
+    if (resolvedAvatarId) params.set('avatarId', resolvedAvatarId);
     const res = await api.get(`/api/personal-locker/dtus?${params.toString()}`);
     const dtus: Array<{
       id: string;

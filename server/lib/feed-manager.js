@@ -24,8 +24,12 @@ import { browserEngine } from "./browser-engine.js";
 // CONSTANTS & LIMITS
 // ══════════════════════════════════════════════════════════════════════════════
 
-const MAX_ACTIVE_FEEDS = 100;
-const MAX_DTUS_PER_HOUR = 1000;
+// Bumped from 100 → 1000 active feeds for 32GB-heap deployments.
+const MAX_ACTIVE_FEEDS = Number(process.env.CONCORD_MAX_ACTIVE_FEEDS) || 1000;
+// Bumped from 1000 → 10000/hour for 32GB-heap deployments. Hourly
+// rate-limit on inbound feed DTUs so a misbehaving source can't flood
+// the substrate. Override via env CONCORD_FEED_DTUS_PER_HOUR.
+const MAX_DTUS_PER_HOUR = Number(process.env.CONCORD_FEED_DTUS_PER_HOUR) || 10000;
 const STALE_THRESHOLD = 5; // consecutive failures before auto-disable
 const FETCH_TIMEOUT = 10000;
 const DEFAULT_USER_AGENT = "ConcordOS/2.0 FeedManager";

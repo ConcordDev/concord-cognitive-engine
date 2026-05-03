@@ -15,7 +15,10 @@
 // Authors implicitly consent to in-world playback by adding 'soundscape'
 // tag — we never auto-include private music.
 
-const PLAYLIST_LIMIT = 30; // hard cap so the engine doesn't blow memory
+// Per-district playlist cap. Default 100 with env override; soundscape
+// engine cycles tracks one at a time so memory cost is the row metadata,
+// not active audio.
+const PLAYLIST_LIMIT = Number(process.env.CONCORD_PLAYLIST_LIMIT) || 100;
 
 /**
  * Return a playlist of community music tracks for a district.

@@ -562,7 +562,10 @@ export default function SoundscapeEngine({
           dtuId: t.dtuId,
           title: t.title,
           durationMs: t.durationMs ?? undefined,
-          url: `/api/dtus/${encodeURIComponent(t.dtuId)}/asset`,
+          // Use the dedicated soundscape audio stream so we get the
+          // CORS + opt-in headers (and don't depend on the generic asset
+          // route which may not exist).
+          url: `/api/world/soundscape/track/${encodeURIComponent(t.dtuId)}/audio`,
         }));
         communityIdxRef.current = 0;
       })
@@ -628,8 +631,15 @@ export default function SoundscapeEngine({
   // DAW project plays as foreground music. Restore on playing=false.
   useEffect(() => {
     function onDawPlayback(e: Event) {
-      const detail = (e as CustomEvent).detail as { playing?: boolean } | undefined;
+      const detail = (e as CustomEvent).detail as { playing?: boolean; worldId?: string } | undefined;
       const playing = !!detail?.playing;
+      // World-scope: only duck when the DAW event's worldId matches the
+      // listener's active world. Without a worldId on the event we honour
+      // it (back-compat with older studio dispatches).
+      if (detail?.worldId && typeof window !== 'undefined') {
+        const myWorld = window.localStorage.getItem('concordia:activeWorldId') || 'concordia-hub';
+        if (detail.worldId !== myWorld) return;
+      }
       if (communityAudioRef.current) {
         // Pause community tracks while DAW project is playing — author's
         // composition takes the foreground slot.

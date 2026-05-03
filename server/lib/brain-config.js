@@ -51,15 +51,32 @@ export const BRAIN_CONFIG = Object.freeze({
     maxTokens: 500,    // GPU: 1.5B can actually articulate error analysis now
   },
   multimodal: {
-    url: process.env.BRAIN_MULTIMODAL_URL || process.env.OLLAMA_URL || process.env.OLLAMA_HOST || "http://ollama-multimodal:11434",
-    model: process.env.OLLAMA_VISION_MODEL || "llava",
+    // Resolution order:
+    //   1. BRAIN_VISION_URL — preferred, set by docker-compose to point
+    //      at the dedicated ollama-vision service.
+    //   2. BRAIN_MULTIMODAL_URL — legacy alias.
+    //   3. OLLAMA_URL / OLLAMA_HOST — single-Ollama deployments.
+    //   4. ollama-vision:11434 — docker-compose default.
+    url: process.env.BRAIN_VISION_URL
+      || process.env.BRAIN_MULTIMODAL_URL
+      || process.env.OLLAMA_URL
+      || process.env.OLLAMA_HOST
+      || "http://ollama-vision:11434",
+    // Default LLaVA 13B v1.6 (vicuna) at q4_K_M ≈ 9GB VRAM. With
+    // OLLAMA_FLASH_ATTENTION + the RTX PRO 4500's 5th-gen tensor cores
+    // this hits ~50 tok/s on a 1024×1024 input.
+    model: process.env.BRAIN_VISION_MODEL || process.env.OLLAMA_VISION_MODEL || "llava:13b-v1.6-vicuna-q4_K_M",
     role: "vision analysis, image understanding, document layout, visual reasoning",
     temperature: 0.1,
-    timeout: 60000,
+    // Vision queries can take longer than chat — bumped 60s → 120s.
+    timeout: Number(process.env.BRAIN_VISION_TIMEOUT_MS) || 120000,
     priority: 2,
-    maxConcurrent: 2,
-    contextWindow: 4096,
-    maxTokens: 1000,
+    // RTX PRO 4500 + 16GB container memory comfortably handles 8 parallel
+    // vision queries; bumped from 2 so the food-vision endpoint and
+    // personal-locker upload pipeline don't serialize.
+    maxConcurrent: Number(process.env.BRAIN_VISION_CONCURRENT) || 8,
+    contextWindow: 8192,
+    maxTokens: 1500,
   },
 });
 

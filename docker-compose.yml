@@ -22,8 +22,9 @@ services:
       - DATA_DIR=/data
       - DB_PATH=/data/db/concord.db
       - STATE_PATH=/data/concord_state.json
-      - NODE_OPTIONS=--max-old-space-size=8192
-      - UV_THREADPOOL_SIZE=8
+      - NODE_OPTIONS=--max-old-space-size=32768
+      - MAX_OLD_SPACE_SIZE=32768
+      - UV_THREADPOOL_SIZE=16
       - OLLAMA_HOST=${OLLAMA_HOST:-http://ollama-conscious:11434}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-https://concord-os.org}
       - FRONTEND_URL=${FRONTEND_URL:-https://concord-os.org}
@@ -32,14 +33,23 @@ services:
       - SHUTDOWN_TIMEOUT_MS=${SHUTDOWN_TIMEOUT_MS:-10000}
       - CONCORD_WS_ENABLED=${CONCORD_WS_ENABLED:-true}
       # Four-Brain Cognitive Architecture
+      # Four-brain models. Defaults bumped for the RTX PRO 4500 (32GB
+      # VRAM): conscious goes 14B → 32B at q4_K_M (~18GB), leaving ~14GB
+      # for the other three brains + KV cache + LLaVA vision. Override
+      # via env if running on smaller hardware.
       - BRAIN_CONSCIOUS_URL=${BRAIN_CONSCIOUS_URL:-http://ollama-conscious:11434}
-      - BRAIN_CONSCIOUS_MODEL=${BRAIN_CONSCIOUS_MODEL:-qwen2.5:14b-q4_K_M}
+      - BRAIN_CONSCIOUS_MODEL=${BRAIN_CONSCIOUS_MODEL:-qwen2.5:32b-instruct-q4_K_M}
       - BRAIN_SUBCONSCIOUS_URL=${BRAIN_SUBCONSCIOUS_URL:-http://ollama-subconscious:11434}
-      - BRAIN_SUBCONSCIOUS_MODEL=${BRAIN_SUBCONSCIOUS_MODEL:-qwen2.5:7b}
+      - BRAIN_SUBCONSCIOUS_MODEL=${BRAIN_SUBCONSCIOUS_MODEL:-qwen2.5:7b-instruct-q5_K_M}
       - BRAIN_UTILITY_URL=${BRAIN_UTILITY_URL:-http://ollama-utility:11434}
-      - BRAIN_UTILITY_MODEL=${BRAIN_UTILITY_MODEL:-qwen2.5:3b}
+      - BRAIN_UTILITY_MODEL=${BRAIN_UTILITY_MODEL:-qwen2.5:3b-instruct-q5_K_M}
       - BRAIN_REPAIR_URL=${BRAIN_REPAIR_URL:-http://ollama-repair:11434}
-      - BRAIN_REPAIR_MODEL=${BRAIN_REPAIR_MODEL:-qwen2.5:1.5b}
+      - BRAIN_REPAIR_MODEL=${BRAIN_REPAIR_MODEL:-qwen2.5:1.5b-instruct-q5_K_M}
+      # Vision (LLaVA) — used by personal-locker upload pipeline + food
+      # vision domain action. New service below; default model is the
+      # 13b LLaVA at q4 to keep alongside the brains.
+      - BRAIN_VISION_URL=${BRAIN_VISION_URL:-http://ollama-vision:11434}
+      - BRAIN_VISION_MODEL=${BRAIN_VISION_MODEL:-llava:13b-v1.6-vicuna-q4_K_M}
       # Auth — MUST set these in .env file
       - JWT_SECRET=${JWT_SECRET}
       - SESSION_SECRET=${SESSION_SECRET:-}
@@ -305,9 +315,17 @@ services:
     container_name: concord-ollama-conscious
     restart: unless-stopped
     environment:
-      - OLLAMA_NUM_PARALLEL=4
+      # Bumped parallelism + tuning flags for the RTX PRO 4500 Blackwell
+      # (32GB GDDR7, 5th-gen tensor cores). FLASH_ATTENTION uses the
+      # tensor cores for a ~30% inference speedup; KV_CACHE_TYPE=q8_0
+      # halves KV memory at near-zero quality cost so we can hold longer
+      # context. GPU_OVERHEAD reserves 1GB headroom for the KV cache.
+      - OLLAMA_NUM_PARALLEL=8
       - OLLAMA_MAX_LOADED_MODELS=2
       - OLLAMA_KEEP_ALIVE=24h
+      - OLLAMA_FLASH_ATTENTION=1
+      - OLLAMA_KV_CACHE_TYPE=q8_0
+      - OLLAMA_GPU_OVERHEAD=1073741824
       - NVIDIA_VISIBLE_DEVICES=all
     volumes:
       - ollama-conscious-data:/root/.ollama
@@ -322,11 +340,11 @@ services:
     deploy:
       resources:
         limits:
-          memory: 10G
-          cpus: '4.0'
+          memory: 24G
+          cpus: '8.0'
         reservations:
-          memory: 6G
-          cpus: '2.0'
+          memory: 16G
+          cpus: '4.0'
           devices:
             - driver: nvidia
               count: 1
@@ -339,9 +357,11 @@ services:
     container_name: concord-ollama-subconscious
     restart: unless-stopped
     environment:
-      - OLLAMA_NUM_PARALLEL=6
+      - OLLAMA_NUM_PARALLEL=12
       - OLLAMA_MAX_LOADED_MODELS=2
       - OLLAMA_KEEP_ALIVE=24h
+      - OLLAMA_FLASH_ATTENTION=1
+      - OLLAMA_KV_CACHE_TYPE=q8_0
       - NVIDIA_VISIBLE_DEVICES=all
     volumes:
       - ollama-subconscious-data:/root/.ollama
@@ -373,9 +393,11 @@ services:
     container_name: concord-ollama-utility
     restart: unless-stopped
     environment:
-      - OLLAMA_NUM_PARALLEL=8
+      - OLLAMA_NUM_PARALLEL=16
       - OLLAMA_MAX_LOADED_MODELS=2
       - OLLAMA_KEEP_ALIVE=24h
+      - OLLAMA_FLASH_ATTENTION=1
+      - OLLAMA_KV_CACHE_TYPE=q8_0
       - NVIDIA_VISIBLE_DEVICES=all
     volumes:
       - ollama-utility-data:/root/.ollama
@@ -407,9 +429,11 @@ services:
     container_name: concord-ollama-repair
     restart: unless-stopped
     environment:
-      - OLLAMA_NUM_PARALLEL=2
+      - OLLAMA_NUM_PARALLEL=4
       - OLLAMA_MAX_LOADED_MODELS=1
       - OLLAMA_KEEP_ALIVE=24h
+      - OLLAMA_FLASH_ATTENTION=1
+      - OLLAMA_KV_CACHE_TYPE=q8_0
       - NVIDIA_VISIBLE_DEVICES=all
     volumes:
       - ollama-repair-data:/root/.ollama
@@ -434,6 +458,45 @@ services:
               count: 1
               capabilities: [gpu]
 
+  # Vision brain — LLaVA 13b (~9GB VRAM at q4_K_M). Used by the personal-
+  # locker upload pipeline (server/lib/personal-locker/pipeline.js
+  # analyzeContent()), the food-vision domain action, and any DTU that
+  # needs image understanding. Separate from the four cognitive brains
+  # so vision queries don't compete with chat for KV cache.
+  ollama-vision:
+    image: ollama/ollama
+    container_name: concord-ollama-vision
+    restart: unless-stopped
+    environment:
+      - OLLAMA_NUM_PARALLEL=4
+      - OLLAMA_MAX_LOADED_MODELS=1
+      - OLLAMA_KEEP_ALIVE=24h
+      - OLLAMA_FLASH_ATTENTION=1
+      - OLLAMA_KV_CACHE_TYPE=q8_0
+      - NVIDIA_VISIBLE_DEVICES=all
+    volumes:
+      - ollama-vision-data:/root/.ollama
+    networks:
+      - concord-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:11434/api/tags || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 16G
+          cpus: '4.0'
+        reservations:
+          memory: 10G
+          cpus: '2.0'
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
 networks:
   concord-network:
     driver: bridge
@@ -446,6 +509,8 @@ volumes:
   qdrant-data:
     driver: local
   ollama-conscious-data:
+    driver: local
+  ollama-vision-data:
     driver: local
   ollama-subconscious-data:
     driver: local

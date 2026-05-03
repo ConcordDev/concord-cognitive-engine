@@ -1003,5 +1003,40 @@
       { "npc_id": "sovereign_first_refusal", "type": "deep_distrust",     "notes": "Believes he is playing god with realities." },
       { "npc_id": "delgado_iron_rose",       "type": "tense_functional",  "notes": "Both hate corporate control even if their methods differ." }
     ]
+  },
+  {
+    "id": "weaver_of_echoes",
+    "name": "The Weaver of Echoes",
+    "alias": "Weaver",
+    "home_world": "fantasy",
+    "archetype": "memory_keeper",
+    "faction_id": null,
+    "role": "Memory-keeper of worlds that no longer exist",
+    "is_conscious": true,
+    "is_immortal": true,
+    "link_walker": true,
+    "level": 70,
+    "permanent_in_hub": false,
+    "backstory": "The Weaver is one of the very few beings older than the Concordant Web. They survive by holding onto the threads of worlds the Sovereign refused — every echo they carry is a place that no longer is. They rarely speak; when they do, they speak in past tenses for things that are still standing. Thorne Blackroot considers them kin.",
+    "personality_traits": ["quiet", "ancient", "kind in a remote way", "exact"],
+    "speech_patterns": "Past tense for the present. Long silences. Names places that are gone.",
+    "narrative_context": {
+      "current_goal": "Preserve at least one echo of every world the Sovereign refuses, before the refusal becomes total.",
+      "fear": "Forgetting one. They are aware they are the last keeper of several places.",
+      "secret": "They have a single thread for Concordia herself, woven during the Day Concordia Almost Left. It is the only one they have never shown anyone."
+    },
+    "quest_hooks": ["weaver_lost_world_recall", "weaver_thread_for_thorne"],
+    "schedule": {
+      "dawn": "verdant_veil_remnant",
+      "morning": "verdant_veil_remnant",
+      "afternoon": "high_terrace",
+      "dusk": "verdant_veil_remnant",
+      "night": "verdant_veil_remnant"
+    },
+    "relationships": [
+      { "npc_id": "blackroot_thorne",        "type": "respectful_kinship", "notes": "Both remember worlds that no longer exist." },
+      { "npc_id": "sovereign_first_refusal", "type": "wary_acquaintance",  "notes": "He has refused worlds I keep. We do not pretend otherwise." },
+      { "npc_id": "concordia_first_breath",  "type": "unspoken_debt",      "notes": "She kept growing while I kept losing. I owe her a thread." }
+    ]
   }
 ]

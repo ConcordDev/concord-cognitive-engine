@@ -72,7 +72,12 @@ export function LensWorkspaceInWorld({
 
   const loadDTUs = useCallback(async () => {
     try {
-      const res = await api.get(`/api/personal-locker/dtus?lens=${lensId}`);
+      // Multi-avatar (Workstream 6a): scope by active avatar so each avatar
+      // sees its own DTUs.
+      const avatarId = typeof window !== 'undefined' ? window.localStorage.getItem('concordia:activeAvatarId') : null;
+      const qs = new URLSearchParams({ lens: lensId });
+      if (avatarId) qs.set('avatarId', avatarId);
+      const res = await api.get(`/api/personal-locker/dtus?${qs.toString()}`);
       const dtus = res.data?.dtus ?? [];
       setRecentDTUs(dtus.slice(0, 5).map((d: { id: string; title?: string }) => ({ id: d.id, title: d.title ?? d.id })));
     } catch { /* silent */ }

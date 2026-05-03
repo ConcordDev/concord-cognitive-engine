@@ -940,7 +940,7 @@ export function getArtifact(db, artifactId) {
  * Search/browse creative artifacts on the marketplace.
  */
 export function searchArtifacts(db, {
-  type, genre, creatorId, federationTier, locationRegional, locationNational,
+  type, types, genre, creatorId, federationTier, locationRegional, locationNational,
   minPrice, maxPrice, minRating, status = "active",
   sortBy = "newest", limit = 50, offset = 0,
 } = {}) {
@@ -948,7 +948,18 @@ export function searchArtifacts(db, {
   const params = [];
 
   if (status) { sql += " AND marketplace_status = ?"; params.push(status); }
-  if (type) { sql += " AND type = ?"; params.push(type); }
+  // Single-type filter (legacy) or multi-type filter via comma-separated
+  // string / array. Both cohabit so existing callers don't break.
+  if (type && !types) { sql += " AND type = ?"; params.push(type); }
+  if (types) {
+    const list = Array.isArray(types)
+      ? types
+      : String(types).split(",").map((s) => s.trim()).filter(Boolean);
+    if (list.length > 0) {
+      sql += ` AND type IN (${list.map(() => "?").join(",")})`;
+      params.push(...list);
+    }
+  }
   if (genre) { sql += " AND genre = ?"; params.push(genre); }
   if (creatorId) { sql += " AND creator_id = ?"; params.push(creatorId); }
   if (federationTier) { sql += " AND federation_tier = ?"; params.push(federationTier); }
