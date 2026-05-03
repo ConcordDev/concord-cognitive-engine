@@ -199,6 +199,13 @@ export default function InventoryPanel({
   const [showStorage, setShowStorage] = useState(false);
   const [fetchedItems, setFetchedItems] = useState<InventoryItem[] | null>(null);
 
+  // Polish-pass SFX: rustle on open
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('concordia:inventory-opened'));
+    }
+  }, []);
+
   // Fetch real inventory on mount; fall back to prop/demo if unavailable
   useEffect(() => {
     fetch('/api/player-inventory')

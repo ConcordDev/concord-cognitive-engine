@@ -103,6 +103,25 @@ const SFX_MAP: Record<string, SFXDef> = {
   'hit-transient':     { freq: 1800, type: 'triangle', duration: 0.04, attack: 0.001, decay: 0.035 },
   'hit-thump-deep':    { freq: 38,   type: 'sawtooth', duration: 0.22, attack: 0.001, decay: 0.20 },
   'bone-crack':        { freq: 360,  type: 'sawtooth', duration: 0.06, attack: 0.001, decay: 0.055, semitones: [0, -3] },
+  // Movement footsteps — quick low-decay percussives. Each surface gets a
+  // different timbre + frequency so the ear distinguishes grass/stone/wood/water.
+  'footstep-grass':    { freq: 180,  type: 'triangle', duration: 0.06, attack: 0.001, decay: 0.055 },
+  'footstep-stone':    { freq: 320,  type: 'square',   duration: 0.05, attack: 0.001, decay: 0.045 },
+  'footstep-wood':     { freq: 260,  type: 'triangle', duration: 0.07, attack: 0.001, decay: 0.065 },
+  'footstep-water':    { freq: 420,  type: 'sine',     duration: 0.10, attack: 0.001, decay: 0.090 },
+  // UI feedback — short, dry, distinct from snap-click so the ear separates
+  // "I clicked a button" from "I placed a thing in the world".
+  'ui-click':          { freq: 1500, type: 'square',   duration: 0.03, attack: 0.001, decay: 0.025 },
+  'ui-hover':          { freq: 900,  type: 'sine',     duration: 0.02, attack: 0.001, decay: 0.018 },
+  // Craft success ding — bright, ascending, shorter than fanfare-short so
+  // it can play on every successful craft without becoming fatiguing.
+  'craft-ding':        { freq: 880,  type: 'sine',     duration: 0.32, attack: 0.005, decay: 0.28, semitones: [0, 4, 7] },
+  // Inventory rustle — papery shuffle for opening pouches/bags.
+  'inventory-rustle':  { freq: 220,  type: 'sawtooth', duration: 0.18, attack: 0.005, decay: 0.16, semitones: [0, 3, -2] },
+  // Sword/weapon swing through air — different from dodge-whoosh (dodge is
+  // higher pitched and shorter; this is the heavy descending blade arc).
+  'sword-swoosh':      { freq: 520,  type: 'triangle', duration: 0.16, attack: 0.001, decay: 0.14, semitones: [0, -7] },
+  'sword-swoosh-heavy':{ freq: 360,  type: 'sawtooth', duration: 0.22, attack: 0.001, decay: 0.20, semitones: [0, -10] },
 };
 
 /**

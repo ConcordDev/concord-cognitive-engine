@@ -135,6 +135,9 @@ const ParticleEffectsComponent = dynamic(() => import('@/components/world-lens/P
 const SoundscapeEngine = dynamic(() => import('@/components/world-lens/SoundscapeEngine'), {
   ssr: false,
 });
+const WorldSFXHooks = dynamic(() => import('@/components/world-lens/WorldSFXHooks'), {
+  ssr: false,
+});
 const AnimationManager = dynamic(() => import('@/components/world-lens/AnimationManager'), {
   ssr: false,
 });
@@ -2624,6 +2627,12 @@ export default function WorldLensPage() {
     window.dispatchEvent(new CustomEvent('concordia:combat-anim', {
       detail: { entityId: playerAvatar.id, animation: heavy ? 'attack-heavy' : 'attack-light' },
     }));
+    // Polish: play the swing SFX immediately on attack input rather than
+    // waiting for the server ack — the swoosh-then-impact rhythm is what
+    // sells the strike. Heavy weapons get the deeper sword-swoosh-heavy.
+    window.dispatchEvent(new CustomEvent('concordia:sword-swing', {
+      detail: { heavy },
+    }));
     worldSocket.emit('combat:attack', {
       targetId: target.id,
       baseDamage: combatStateRef.current.weapon?.damage ?? 10,
@@ -2973,6 +2982,11 @@ export default function WorldLensPage() {
               forwardZ: -Math.cos(playerAvatar.rotation),
             }}
             weatherOverride={weatherData ?? undefined}
+          />
+          <WorldSFXHooks
+            playerPos={playerAvatar.position}
+            districtId={activeDistrict.id}
+            moving={playerAvatar.currentAnimation === 'walk' || playerAvatar.currentAnimation === 'run'}
           />
           <AnimationManager>
             <></>

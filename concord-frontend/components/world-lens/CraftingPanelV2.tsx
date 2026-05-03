@@ -81,6 +81,10 @@ export default function CraftingPanelV2({ worldId, onClose }: CraftingPanelProps
           window.dispatchEvent(new CustomEvent('concordia:tutorial-action', {
             detail: { action: 'crafted' },
           }));
+          // Polish-pass craft-ding SFX (heard by WorldSFXHooks)
+          window.dispatchEvent(new CustomEvent('concordia:craft-success', {
+            detail: { recipeId: recipe.id, output: recipe.output.name },
+          }));
         } catch { /* ok */ }
       } else if (data?.error === 'insufficient_resources') {
         const missing = (data.missing ?? []).map((m: { name: string; required: number; have: number }) =>
