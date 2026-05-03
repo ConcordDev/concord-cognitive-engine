@@ -138,6 +138,9 @@ const SoundscapeEngine = dynamic(() => import('@/components/world-lens/Soundscap
 const WorldSFXHooks = dynamic(() => import('@/components/world-lens/WorldSFXHooks'), {
   ssr: false,
 });
+const LowHpVignette = dynamic(() => import('@/components/world-lens/LowHpVignette'), {
+  ssr: false,
+});
 const AnimationManager = dynamic(() => import('@/components/world-lens/AnimationManager'), {
   ssr: false,
 });
@@ -3012,6 +3015,11 @@ export default function WorldLensPage() {
             playerPos={playerAvatar.position}
             districtId={activeDistrict.id}
             moving={playerAvatar.currentAnimation === 'walk' || playerAvatar.currentAnimation === 'run'}
+          />
+          <LowHpVignette
+            health={combatState.health}
+            maxHealth={combatState.maxHealth}
+            isDead={combatState.isDead}
           />
           <AnimationManager>
             <></>

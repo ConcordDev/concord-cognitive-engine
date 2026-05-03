@@ -126,6 +126,11 @@ const SFX_MAP: Record<string, SFXDef> = {
   // higher pitched and shorter; this is the heavy descending blade arc).
   'sword-swoosh':      { freq: 520,  type: 'triangle', duration: 0.16, attack: 0.001, decay: 0.14, semitones: [0, -7] },
   'sword-swoosh-heavy':{ freq: 360,  type: 'sawtooth', duration: 0.22, attack: 0.001, decay: 0.20, semitones: [0, -10] },
+  // Low-HP heartbeat — deep, short pulse pair (lub-dub). Single tone is the
+  // "lub"; the "dub" is scheduled by HeartbeatHooks at +120ms via a second
+  // trigger so we can keep the SFX defs flat.
+  'heartbeat-lub':     { freq: 65,   type: 'sine',     duration: 0.10, attack: 0.005, decay: 0.09 },
+  'heartbeat-dub':     { freq: 50,   type: 'sine',     duration: 0.14, attack: 0.005, decay: 0.13 },
 };
 
 /**
