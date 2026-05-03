@@ -2548,6 +2548,20 @@ export const LENS_REGISTRY: LensEntry[] = [
     keywords: ['sovereign', 'admin', 'control', 'command', 'center', 'brains', 'repair'],
   },
 
+  // ── Concordia v2.0 ──────────────────────────────────────────────
+  {
+    id: 'crafting',
+    name: 'Crafting',
+    icon: Hammer,
+    description: 'Personal recipes — fighting styles, spells, blueprints. Publish to marketplace.',
+    category: 'creative',
+    showInSidebar: true,
+    showInCommandPalette: true,
+    path: '/lenses/crafting',
+    order: 10,
+    keywords: ['crafting', 'recipes', 'fighting style', 'spell', 'blueprint'],
+  },
+
   // ── System pages ───────────────────────────────────────────────
   {
     id: 'settings',

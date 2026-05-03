@@ -129,9 +129,15 @@ export async function createCombatSkill(
 
 export async function loadHotbarFromSubstrate(
   _playerId: string,
+  avatarId?: string,
 ): Promise<HotbarState> {
   try {
-    const res = await api.get('/api/personal-locker/dtus?lens=game');
+    // v2.0: scope by active avatar so a user with multiple avatars sees
+    // each one's distinct combat skills. Backwards-compat: if avatarId
+    // isn't passed, the backend returns all the user's skills.
+    const params = new URLSearchParams({ lens: 'game' });
+    if (avatarId) params.set('avatarId', avatarId);
+    const res = await api.get(`/api/personal-locker/dtus?${params.toString()}`);
     const dtus: Array<{
       id: string;
       title?: string;

@@ -33,7 +33,7 @@ const BATCH_LIMIT = 200; // hard cap per tick — protects shadow store
  * Run one pass of the social → NPC bridge.
  * @param {{ state: object, db: object, tickCount: number, reason: string }} ctx
  */
-export function runSocialNpcBridge({ state, db, tickCount }) {
+export async function runSocialNpcBridge({ state, db, tickCount }) {
   if (!db) return { ok: false, reason: "no_db" };
   if (!state) return { ok: false, reason: "no_state" };
 
@@ -120,7 +120,65 @@ export function runSocialNpcBridge({ state, db, tickCount }) {
   state._socialNpcBridgeLastTick = tickCount;
   state._socialNpcBridgeLastCount = createdShadows;
 
-  return { ok: true, createdShadows, scanned: rows.length, cursor: lastSeenAt };
+  // v2.0 Workstream 6b: federation pass. Pull public social shadows from
+  // configured peers and import them as 'federated_signal' shadows. The
+  // NPC narrative-bridge weights these lower than local shadows. We
+  // hard-cap import per tick and gracefully ignore unreachable peers.
+  let federatedImports = 0;
+  try {
+    const peers = state.settings?.federationPeers ?? [];
+    if (Array.isArray(peers) && peers.length > 0) {
+      federatedImports = await importFederatedShadows(state, peers);
+    }
+  } catch { /* federation is best-effort — never block local bridge */ }
+
+  return { ok: true, createdShadows, scanned: rows.length, cursor: lastSeenAt, federatedImports };
+}
+
+const FEDERATION_FETCH_TIMEOUT_MS = 3000;
+const FEDERATION_MAX_IMPORT_PER_TICK = 25;
+
+/**
+ * Pull public shadow exports from peers and store them locally as
+ * 'federated_signal' shadows. Each peer gets the same per-tick cap.
+ * Idempotent: repeated imports of the same source shadow are no-ops.
+ */
+async function importFederatedShadows(state, peers) {
+  let imported = 0;
+  for (const peer of peers) {
+    if (imported >= FEDERATION_MAX_IMPORT_PER_TICK) break;
+    if (!peer?.url) continue;
+    try {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), FEDERATION_FETCH_TIMEOUT_MS);
+      const res = await fetch(`${peer.url.replace(/\/$/, "")}/api/world/social-shadows`, {
+        signal: ctrl.signal,
+        headers: { accept: "application/json" },
+      }).finally(() => clearTimeout(t));
+      if (!res.ok) continue;
+      const body = await res.json().catch(() => null);
+      const shadows = body?.shadows ?? [];
+      for (const s of shadows) {
+        if (imported >= FEDERATION_MAX_IMPORT_PER_TICK) break;
+        const id = `shadow_fed_${peer.id ?? "peer"}_${s.id}`;
+        if (state.shadowDtus.has(id)) continue;
+        state.shadowDtus.set(id, {
+          id,
+          kind: "shadow",
+          tags: ["federated_signal", "social_awareness"],
+          core: { summary: (s.summary ?? "").toString().slice(0, SUMMARY_MAX_CHARS) },
+          authorHandle: s.authorHandle ?? "federated",
+          sourceDtuId: s.id,
+          sourcePeer: peer.id ?? peer.url,
+          targetWorldId: s.targetWorldId ?? null,
+          createdAt: typeof s.createdAt === "number" ? s.createdAt : Date.now(),
+          weight: 0.5, // narrative-bridge weights federated lower than local
+        });
+        imported++;
+      }
+    } catch { /* one bad peer can't break the bridge */ }
+  }
+  return imported;
 }
 
 function safeJSON(s) {

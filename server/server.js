@@ -17352,6 +17352,23 @@ async function pipelineCommitDTU(ctx, dtu, opts={}) {
     realtimeEmit("dtu:created", {
       id: dtu.id, title: dtu.title, tier: dtu.tier, tags: dtu.tags, updatedAt: dtu.updatedAt,
     });
+    // v2.0 Workstream 6c: realtime fast-path for public timeline posts so
+    // they appear instantly in other players' feeds (and so the
+    // social-npc-bridge worker can pick them up without waiting for the
+    // every-5-tick batch). Privacy gate is intentionally strict: only
+    // posts the author explicitly marked 'public' broadcast.
+    try {
+      const tagsArr = Array.isArray(dtu.tags) ? dtu.tags : [];
+      const privacy = dtu.body?.privacy ?? dtu.meta?.privacy ?? null;
+      if (tagsArr.includes("timeline") && privacy === "public") {
+        realtimeEmit("timeline:post", {
+          dtuId: dtu.id,
+          authorId: dtu.ownerUserId ?? null,
+          summary: (dtu.body?.content ?? dtu.title ?? "").toString().slice(0, 280),
+          createdAt: dtu.createdAt ?? new Date().toISOString(),
+        });
+      }
+    } catch { /* realtime emit best-effort */ }
     // Graph lens realtime — same payload shape as upsertDTU's
     // broadcast so graph visualizers hot-patch their node cache
     // whether the write came through the legacy upsert path or the
@@ -26624,6 +26641,9 @@ app.use("/api/worlds", createWorldsRouter({ requireAuth, db }));
 import createCityAssetsRouter from "./routes/city-assets.js";
 app.use("/api/city-assets", createCityAssetsRouter({ requireAuth }));
 
+import createAvatarsRouter from "./routes/avatars.js";
+app.use("/api/avatars", createAvatarsRouter({ db, requireAuth }));
+
 if (db) {
   try {
     seedWorlds(db);
@@ -26988,6 +27008,30 @@ app.get("/api/world/buildings/:worldId", (req, res) => {
       ORDER BY created_at ASC
     `).all(req.params.worldId);
     res.json({ ok: true, buildings: rows });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// v2.0 Workstream 6b: federation export — peers in the trust graph pull
+// public social shadows from this instance via this endpoint. No auth
+// required since the data is intentionally public (mirrors what the NPC
+// bridge already broadcasts in-world).
+app.get("/api/world/social-shadows", (_req, res) => {
+  try {
+    const shadows = STATE?.shadowDtus ? Array.from(STATE.shadowDtus.values()) : [];
+    const recent = shadows
+      .filter((s) => Array.isArray(s.tags) && s.tags.includes("social_awareness"))
+      .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))
+      .slice(0, 50)
+      .map((s) => ({
+        id: s.id,
+        summary: s.core?.summary ?? s.summary ?? "",
+        authorHandle: s.authorHandle ?? "anon",
+        targetWorldId: s.targetWorldId ?? null,
+        createdAt: s.createdAt ?? null,
+      }));
+    res.json({ ok: true, shadows: recent });
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
   }

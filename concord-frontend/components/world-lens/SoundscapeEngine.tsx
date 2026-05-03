@@ -622,6 +622,34 @@ export default function SoundscapeEngine({
     }
   }, []);
 
+  // v2.0 Workstream 6d: DAW → soundscape layering. When the studio lens
+  // dispatches concordia:daw-playback with playing=true, duck both the
+  // procedural drone and the community track layer so the player's own
+  // DAW project plays as foreground music. Restore on playing=false.
+  useEffect(() => {
+    function onDawPlayback(e: Event) {
+      const detail = (e as CustomEvent).detail as { playing?: boolean } | undefined;
+      const playing = !!detail?.playing;
+      if (communityAudioRef.current) {
+        // Pause community tracks while DAW project is playing — author's
+        // composition takes the foreground slot.
+        try {
+          if (playing) communityAudioRef.current.pause();
+          else { void communityAudioRef.current.play().catch(() => { /* user gesture lost */ }); }
+        } catch { /* noop */ }
+      }
+      const ctx = audioCtxRef.current;
+      if (ctx && masterGainRef.current) {
+        try {
+          const target = playing ? 0.25 : 0.6; // duck procedural ambient by ~58%
+          masterGainRef.current.gain.linearRampToValueAtTime(target, ctx.currentTime + 0.4);
+        } catch { /* gain ramp best-effort */ }
+      }
+    }
+    window.addEventListener('concordia:daw-playback', onDawPlayback);
+    return () => window.removeEventListener('concordia:daw-playback', onDawPlayback);
+  }, []);
+
   // Weather audio bridge: rain hiss + storm rumble + ducks district drone & music.
   // Storm/rain partially drown the district ambience; clear/wind reset to baseline.
   useEffect(() => {
