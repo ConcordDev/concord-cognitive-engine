@@ -169,7 +169,9 @@ export default function FractalLensPage() {
     requestAnimationFrame(renderChunk);
 
     return () => {
-      // Cancel by bumping the render id (already done in next effect)
+      // Bump the latest render id to invalidate any in-flight chunked render.
+      // Reading the latest ref value here is intentional, not a stale-closure bug.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       renderIdRef.current++;
     };
   }, [fractalCenter, fractalZoom, fractalIterations]);

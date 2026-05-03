@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Mic, MicOff, Volume2, VolumeX, Phone, PhoneOff, Loader2, Radio } from 'lucide-react';
+import { Mic, Volume2, VolumeX, PhoneOff, Loader2, Radio } from 'lucide-react';
 import { api } from '@/lib/api/client';
 
 type SessionState = 'idle' | 'connecting' | 'listening' | 'processing' | 'speaking' | 'error';
@@ -30,43 +30,6 @@ export function VoiceChat() {
   // VAD silence detection — send audio after 1.2s of silence
   const VAD_SILENCE_MS = 1200;
 
-  const startSession = useCallback(async () => {
-    setState('connecting');
-    setError(null);
-    try {
-      const res = await api.post('/api/voice/session/create');
-      if (!res.data?.ok) throw new Error(res.data?.error || 'session_create_failed');
-      setSessionId(res.data.sessionId);
-      await startListening(res.data.sessionId);
-    } catch (err: unknown) {
-      setState('error');
-      setError(err instanceof Error ? err.message : 'Failed to start voice session');
-    }
-  }, []);
-
-  const startListening = useCallback(async (sid: string) => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
-      streamRef.current = stream;
-      const recorder = new MediaRecorder(stream, { mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm' });
-      mediaRecorderRef.current = recorder;
-      audioChunksRef.current = [];
-
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) audioChunksRef.current.push(e.data);
-        // VAD: reset silence timer on each chunk
-        if (vadTimeoutRef.current) clearTimeout(vadTimeoutRef.current);
-        vadTimeoutRef.current = setTimeout(() => sendAudio(sid), VAD_SILENCE_MS);
-      };
-
-      recorder.start(200); // collect in 200ms chunks
-      setState('listening');
-    } catch (err: unknown) {
-      setState('error');
-      setError('Microphone access denied');
-    }
-  }, []);
-
   const sendAudio = useCallback(async (sid: string) => {
     if (!mediaRecorderRef.current || audioChunksRef.current.length === 0) return;
     if (mediaRecorderRef.current.state === 'recording') {
@@ -92,7 +55,7 @@ export function VoiceChat() {
         return;
       }
 
-      const { transcript, responseText, audioBase64, latencyMs, interrupted } = res.data;
+      const { transcript, responseText, audioBase64, latencyMs } = res.data;
       setLastLatency(latencyMs);
 
       if (transcript || responseText) {
@@ -125,6 +88,42 @@ export function VoiceChat() {
     }
   }, [isMuted]);
 
+  const startListening = useCallback(async (sid: string) => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+      streamRef.current = stream;
+      const recorder = new MediaRecorder(stream, { mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm' });
+      mediaRecorderRef.current = recorder;
+      audioChunksRef.current = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+        if (vadTimeoutRef.current) clearTimeout(vadTimeoutRef.current);
+        vadTimeoutRef.current = setTimeout(() => sendAudio(sid), VAD_SILENCE_MS);
+      };
+
+      recorder.start(200);
+      setState('listening');
+    } catch {
+      setState('error');
+      setError('Microphone access denied');
+    }
+  }, [sendAudio]);
+
+  const startSession = useCallback(async () => {
+    setState('connecting');
+    setError(null);
+    try {
+      const res = await api.post('/api/voice/session/create');
+      if (!res.data?.ok) throw new Error(res.data?.error || 'session_create_failed');
+      setSessionId(res.data.sessionId);
+      await startListening(res.data.sessionId);
+    } catch (err: unknown) {
+      setState('error');
+      setError(err instanceof Error ? err.message : 'Failed to start voice session');
+    }
+  }, [startListening]);
+
   const handleBargeIn = useCallback(async () => {
     if (state !== 'speaking' || !sessionId) return;
     // Stop audio playback
@@ -149,7 +148,13 @@ export function VoiceChat() {
     setError(null);
   }, [sessionId]);
 
-  useEffect(() => () => { if (sessionId) endSession(); }, []);
+  // Mirror the latest endSession + sessionId in refs so the unmount cleanup
+  // can fire exactly once without re-running on every sessionId change.
+  const endSessionRef = useRef(endSession);
+  const sessionIdRef = useRef(sessionId);
+  useEffect(() => { endSessionRef.current = endSession; }, [endSession]);
+  useEffect(() => { sessionIdRef.current = sessionId; }, [sessionId]);
+  useEffect(() => () => { if (sessionIdRef.current) endSessionRef.current(); }, []);
 
   const stateColor = {
     idle: 'text-white/40',

@@ -38,7 +38,7 @@ interface CraftingPanelProps {
 
 const PANEL = 'rounded-lg border border-amber-500/30 bg-black/85 backdrop-blur-sm';
 
-export default function CraftingPanelV2({ worldId, onClose }: CraftingPanelProps) {
+export default function CraftingPanelV2({ worldId: _worldId, onClose }: CraftingPanelProps) {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [inventory, setInventory] = useState<InventoryRow[]>([]);
   const [crafting, setCrafting] = useState<string | null>(null);
@@ -106,13 +106,11 @@ export default function CraftingPanelV2({ worldId, onClose }: CraftingPanelProps
       } else {
         showToast('err', data?.error ?? 'Craft failed');
       }
-    } catch (e) {
+    } catch {
       showToast('err', 'Network error');
     } finally {
       setCrafting(null);
     }
-  // worldId no longer used — starter crafting is global, not world-scoped.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showToast, refresh]);
 
   return (

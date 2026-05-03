@@ -390,7 +390,7 @@ export default function SoundscapeEngine({
     if (!weatherOverride) return;
     const mapped = WEATHER_TYPE_MAP[weatherOverride.type] ?? 'clear';
     setState(prev => ({ ...prev, weather: mapped, weatherIntensity: weatherOverride.intensity }));
-  }, [weatherOverride?.type, weatherOverride?.intensity]);
+  }, [weatherOverride, weatherOverride?.type, weatherOverride?.intensity]);
 
   const crossfadeTimer  = useRef<ReturnType<typeof setTimeout> | null>(null);
   const audioCtxRef     = useRef<AudioContext | null>(null);

@@ -62,7 +62,7 @@ export default function NPCBehaviorHooks({ playerPos, npcs, enabled = true }: Pr
   const npcsRef = useRef<NPCInfo[]>(npcs);
 
   // Keep refs current so the interval/timer callbacks see fresh data.
-  useEffect(() => { playerPosRef.current = playerPos; }, [playerPos.x, playerPos.y, playerPos.z]);
+  useEffect(() => { playerPosRef.current = playerPos; }, [playerPos, playerPos.x, playerPos.y, playerPos.z]);
   useEffect(() => { npcsRef.current = npcs; }, [npcs]);
 
   // ── Periodic look-at + greet detection ──────────────────────────────────────

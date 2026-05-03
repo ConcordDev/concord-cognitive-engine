@@ -125,7 +125,6 @@ export default function PhotographyPage() {
     if (!capturedImage) return;
     const blob = await (await fetch(capturedImage)).blob();
     const file = new File([blob], `capture-${Date.now()}.png`, { type: 'image/png' });
-    const formData = new FormData();
     const arrayBuffer = await file.arrayBuffer();
     const base64Data = btoa(new Uint8Array(arrayBuffer).reduce((d, byte) => d + String.fromCharCode(byte), ''));
     const mediaResp = await api.post('/api/media/upload', {
@@ -590,7 +589,6 @@ export default function PhotographyPage() {
             ) : (
               <div className="space-y-3">
                 <div className="relative rounded-lg overflow-hidden border border-white/10 bg-black">
-                  {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
                   <video ref={cameraVideoRef} autoPlay playsInline muted className="w-full rounded-lg" />
                 </div>
                 <div className="flex gap-2">

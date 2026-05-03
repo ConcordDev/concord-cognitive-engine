@@ -163,7 +163,7 @@ export default function GameJuice({ children, enabled = true, intensity: initial
       // Auto-remove after duration
       setTimeout(() => removeOverlay(id), scaledDuration);
     },
-    [enabled, intensityValue, removeOverlay],
+    [enabled, intensityValue, removeOverlay, soundscape],
   );
 
   const setIntensity = useCallback((value: number) => {

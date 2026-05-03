@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, Briefcase, CheckCircle, Clock, Zap } from 'lucide-react';
+import { X, Briefcase, CheckCircle, Zap } from 'lucide-react';
 
 interface Job {
   id: string;
@@ -24,7 +24,7 @@ interface JobsBoardPanelProps {
   onClose?: () => void;
 }
 
-export function JobsBoardPanel({ playerId, onClose }: JobsBoardPanelProps) {
+export function JobsBoardPanel({ playerId: _playerId, onClose }: JobsBoardPanelProps) {
   const [tab, setTab] = useState<'available' | 'mine'>('available');
   const [jobs, setJobs] = useState<Job[]>([]);
   const [myJobs, setMyJobs] = useState<Job[]>([]);

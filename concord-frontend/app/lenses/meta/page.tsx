@@ -30,7 +30,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import {
-  LENS_MANIFESTS,
   getLensManifests,
   getManifestCount,
   getLensesMissingMacro,
@@ -38,7 +37,6 @@ import {
   getLensStatusSummary,
   getProductLenses,
   getDeprecatedLenses,
-  getLensesByStatus,
   LENS_MERGE_GROUPS,
   getMergeReductionCount,
   POST_MERGE_STANDALONE_LENSES,

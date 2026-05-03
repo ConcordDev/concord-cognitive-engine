@@ -36,10 +36,7 @@ function slotPosition(index: number, total: number, radius: number) {
   };
 }
 
-export function EmoteWheel({ onEmote, holdKey = 'KeyZ', onClose }: EmoteWheelProps) {
-  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-  void onClose; // legacy prop — kept for compatibility with parent panels that pass it
-
+export function EmoteWheel({ onEmote, holdKey = 'KeyZ', onClose: _onClose }: EmoteWheelProps) {
   const [open, setOpen] = useState(false);
   const [hovered, setHovered] = useState<EmoteId | null>(null);
 

@@ -66,7 +66,6 @@ interface Particle {
 const NEON_CYAN = '#22d3ee';
 const NEON_PURPLE = '#a855f7';
 const NODE_FILL = '#0d1117';
-const NODE_STROKE_DEFAULT = '#374151';
 const NODE_STROKE_SELECTED = '#facc15';
 const EDGE_BASE_ALPHA = 0.35;
 const PARTICLE_GLOW = 12;
@@ -398,7 +397,7 @@ export default function RoyaltyCascadeViz({ citations: citationsProp, selectedDt
     const node = getNodeAt(mx, my);
     setHoveredNode(node);
     if (canvasRef.current) canvasRef.current.style.cursor = node ? 'pointer' : 'grab';
-  }, [getNodeAt, panOffset]);
+  }, [getNodeAt]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     const rect = canvasRef.current?.getBoundingClientRect();

@@ -99,6 +99,17 @@ export const NORMAL_OVERRIDE_MATERIAL = new THREE.ShaderMaterial({
   fragmentShader: GBUFFER_NORMAL_FRAG,
 });
 
+/** Override material for albedo G-buffer pass — feeds the SSGI tAlbedo input. */
+export const ALBEDO_OVERRIDE_MATERIAL = new THREE.ShaderMaterial({
+  vertexShader:   GBUFFER_ALBEDO_VERT,
+  fragmentShader: GBUFFER_ALBEDO_FRAG,
+  uniforms: {
+    map:    { value: null as THREE.Texture | null },
+    color:  { value: new THREE.Color(0xffffff) },
+    hasMap: { value: false },
+  },
+});
+
 // ── SSGI shader ───────────────────────────────────────────────────────────────
 // Runs as a post-process pass over the G-buffer to compute one-bounce GI.
 

@@ -9,9 +9,7 @@
  *  - step(dt) advances the simulation each game-loop frame
  */
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type RapierType = typeof import('@dimforge/rapier3d-compat');
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type WorldType   = InstanceType<RapierType['World']>;
 type CharCtrl    = ReturnType<WorldType['createCharacterController']>;
 type RigidBody   = ReturnType<WorldType['createRigidBody']>;

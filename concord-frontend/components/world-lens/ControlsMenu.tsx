@@ -60,6 +60,18 @@ export default function ControlsMenu({ open, onClose }: Props) {
     if (open) setProfile(loadActiveProfile());
   }, [open]);
 
+  const applyBinding = useCallback((action: KeyAction, b: KeyBinding) => {
+    const next: KeyProfile = {
+      ...profile,
+      id: 'custom',
+      name: 'Custom',
+      bindings: { ...profile.bindings, [action]: b },
+    };
+    setProfile(next);
+    saveActiveProfile(next);
+    setCapturing(null);
+  }, [profile]);
+
   useEffect(() => {
     if (!capturing) return;
     function onDown(e: KeyboardEvent) {
@@ -101,19 +113,7 @@ export default function ControlsMenu({ open, onClose }: Props) {
       window.removeEventListener('keydown', onDown);
       window.removeEventListener('keyup', onUp);
     };
-  }, [capturing]);
-
-  const applyBinding = useCallback((action: KeyAction, b: KeyBinding) => {
-    const next: KeyProfile = {
-      ...profile,
-      id: 'custom',
-      name: 'Custom',
-      bindings: { ...profile.bindings, [action]: b },
-    };
-    setProfile(next);
-    saveActiveProfile(next);
-    setCapturing(null);
-  }, [profile]);
+  }, [capturing, applyBinding]);
 
   const loadPreset = useCallback((id: string) => {
     const p = PRESETS.find((x) => x.id === id);

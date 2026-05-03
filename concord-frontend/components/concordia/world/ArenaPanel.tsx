@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, Swords, Clock, Users, Trophy } from 'lucide-react';
+import { X, Swords, Users, Trophy } from 'lucide-react';
 
 interface ArenaMatch {
   id: string;

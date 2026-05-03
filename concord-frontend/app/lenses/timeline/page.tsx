@@ -132,8 +132,9 @@ export default function TimelineLensPage() {
     queryFn: () => apiHelpers.dtus.paginated({ limit, offset: 0, tags: 'timeline' }).then(r => r.data),
   });
 
-  const posts =
-    postsData?.items?.map((dtu: Record<string, unknown>) => ({
+  const posts = useMemo(
+    () =>
+      postsData?.items?.map((dtu: Record<string, unknown>) => ({
         id: dtu.id,
         author: {
           id: dtu.authorId || 'user',
@@ -151,8 +152,10 @@ export default function TimelineLensPage() {
         },
         comments: (dtu.comments as number) || 0,
         shares: (dtu.shares as number) || 0,
-        dtuId: dtu.id
-      })) || [];
+        dtuId: dtu.id,
+      })) || [],
+    [postsData],
+  );
 
 
   const { data: friends, isError: isError2, error: error2, refetch: refetch2,} = useQuery({

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
+import { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 
 /* ── Types ──────────────────────────────────────────────────────── */
 
@@ -204,7 +204,6 @@ const QuestMarker3D = forwardRef<QuestMarker3DAPI, QuestMarker3DProps>(function 
     }
 
     syncMarkers();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [objectives]);
 
   /* ── Imperative API ────────────────────────────────────────────── */

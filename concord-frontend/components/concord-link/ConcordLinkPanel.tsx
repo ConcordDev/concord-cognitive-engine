@@ -85,7 +85,7 @@ const fmtTime = (epochSec: number) => {
   return d.toLocaleDateString();
 };
 
-export function ConcordLinkPanel({ myUserId }: { myUserId: string }) {
+export function ConcordLinkPanel({ myUserId: _myUserId }: { myUserId: string }) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<'inbox' | 'compose' | 'anchors' | 'walkers'>('inbox');
   const [inbox, setInbox] = useState<InboxMessage[]>([]);

@@ -9,7 +9,7 @@ import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
-  Glasses, Camera, Scan, Settings2, Layers, Eye, Plus,
+  Glasses, Camera, Settings2, Layers, Eye, Plus,
   Search, Trash2, X, BarChart3, Zap, ChevronDown, Box,
   MapPin, Globe, Monitor,
 } from 'lucide-react';

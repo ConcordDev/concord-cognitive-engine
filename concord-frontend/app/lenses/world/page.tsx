@@ -2857,7 +2857,7 @@ export default function WorldLensPage() {
     };
     window.addEventListener('concordia:combo-trigger', handler);
     return () => window.removeEventListener('concordia:combo-trigger', handler);
-  }, [worldSocket]);
+  }, [worldSocket, playerAvatar.id]);
 
   // PlayerActionMenu (and any other source) dispatches concordia:emote with
   // an emoteId — broadcast it through the same player:move animation field
@@ -2971,21 +2971,6 @@ export default function WorldLensPage() {
       setCombatState((prev) => ({ ...prev, coverBonus: 0 }));
     }, 2000);
   }, [pushCombatLog, playerAvatar.id]);
-
-  const handleDodge = useCallback((direction: 'left' | 'right' | 'back' = 'back') => {
-    if (combatStateRef.current.stamina < 15) {
-      pushCombatLog('Too tired to dodge.', 'info');
-      return;
-    }
-    setCombatState((prev) => ({ ...prev, stamina: Math.max(0, prev.stamina - 15) }));
-    const anim = direction === 'left' ? 'dodge-left' : direction === 'right' ? 'dodge-right' : 'dodge-back';
-    window.dispatchEvent(new CustomEvent('concordia:combat-anim', {
-      detail: { entityId: playerAvatar.id, animation: anim },
-    }));
-    if (worldSocket.isConnected) {
-      worldSocket.emit('combat:dodge', { direction });
-    }
-  }, [worldSocket, pushCombatLog, playerAvatar.id]);
 
   const handleRespawn = useCallback(() => {
     if (!worldSocket.isConnected) return;

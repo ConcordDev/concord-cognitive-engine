@@ -14,7 +14,7 @@ interface CraftingBenchProps {
   onClose: () => void;
 }
 
-export function CraftingBench({ playerId, toolTier, toolQuality, skillLevel, onClose }: CraftingBenchProps) {
+export function CraftingBench({ playerId, toolTier, toolQuality: _toolQuality, skillLevel, onClose }: CraftingBenchProps) {
   const [tab, setTab] = useState<Tab>('blueprints');
 
   return (

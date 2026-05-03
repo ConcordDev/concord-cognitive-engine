@@ -73,7 +73,7 @@ export function GatheringMinigame({ toolTier, resourceName, onComplete, onCancel
       if (newHits === TOTAL_CLICKS) triggerSFX('gather-full');
       setTimeout(() => onComplete(newHits), 700);
     }
-  }, [done, hits, clicks, zonePos, zoneWidth, repositionZone, onComplete]);
+  }, [done, hits, clicks, zonePos, zoneWidth, repositionZone, onComplete, triggerSFX]);
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-50">

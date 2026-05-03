@@ -182,7 +182,7 @@ function buildValidKeySet(): Set<string> {
 const DOUBLE_TAP_WINDOW_MS = 280;
 
 export default function CombatInputController({
-  inputMode, context, hasTarget, playerId, worldSocket, modifierHeld, loadout, onAction,
+  inputMode, context, hasTarget: _hasTarget, playerId: _playerId, worldSocket, modifierHeld, loadout, onAction,
 }: Props) {
   // Track per-key press time to differentiate tap vs hold
   const downAtRef = useRef<Map<string, number>>(new Map());
@@ -207,14 +207,14 @@ export default function CombatInputController({
 
   // Resolve which hand is active. Two-handed weapon → 'two' regardless of
   // modifier state. Otherwise modifier (Shift held) → 'left'; default 'right'.
-  function resolveHand(): 'right' | 'left' | 'two' {
+  const resolveHand = useCallback((): 'right' | 'left' | 'two' => {
     const r = loadout?.rightHand;
     const l = loadout?.leftHand;
     if (r && l && r === l) return 'two';
     if (r?.handedness === 'two') return 'two';
     if (modifierHeld && l) return 'left';
     return 'right';
-  }
+  }, [loadout, modifierHeld]);
 
   /**
    * Translate the raw (key, variant) into the canonical key letter the
@@ -343,7 +343,7 @@ export default function CombatInputController({
         break;
     }
     onAction?.(evt);
-  }, [context, modifierHeld, worldSocket, onAction]);
+  }, [context, modifierHeld, worldSocket, onAction, loadout, resolveHand]);
 
   // Keydown: stamp the time, schedule the hold-fire timer.
   useEffect(() => {
@@ -421,7 +421,7 @@ export default function CombatInputController({
       window.removeEventListener('keydown', onDown);
       window.removeEventListener('keyup', onUp);
     };
-  }, [inputMode, dispatchAction]);
+  }, [inputMode, dispatchAction, validKeys]);
 
   // Hold-fire timer: while a key is held past HOLD_THRESHOLD_MS, fire the
   // hold action immediately (don't wait for keyup). This is the genuine

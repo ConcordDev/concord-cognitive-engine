@@ -70,7 +70,7 @@ export async function resolveAssetReference(ref: AssetReference): Promise<string
  *
  * @returns The parsed Three.js scene root (Group), or null on failure.
  */
-export async function loadGLTF(url: string, THREE: typeof import("three")): Promise<unknown | null> {
+export async function loadGLTF(url: string, _THREE: typeof import("three")): Promise<unknown | null> {
   if (sceneCache.has(url)) return sceneCache.get(url)!.scene;
   if (inflight.has(url)) return inflight.get(url)!;
 
@@ -130,7 +130,7 @@ export async function instanceFromCache(url: string, THREE: typeof import("three
   return cloneScene(cached.scene, THREE);
 }
 
-function cloneScene(root: unknown, THREE: typeof import("three")): unknown {
+function cloneScene(root: unknown, _THREE: typeof import("three")): unknown {
   // Three.js SkinnedMesh clones are tricky — use SkeletonUtils when available.
   // For static meshes the default .clone(true) is fine.
   const r = root as { clone: (recursive: boolean) => unknown; type?: string };

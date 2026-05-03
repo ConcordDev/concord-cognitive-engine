@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 /**
  * LowHpVignette — full-screen red vignette pulse + heartbeat SFX when the

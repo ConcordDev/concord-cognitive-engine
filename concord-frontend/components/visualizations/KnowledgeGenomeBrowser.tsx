@@ -113,7 +113,6 @@ function layoutDTUs(dtus: GenomeDTU[]): { items: LayoutItem[]; width: number; he
     const x = PADDING + col * COLUMN_GAP + COLUMN_GAP / 2;
     const spacing = radius * 2.8;
 
-    const totalHeight = bucket.length * spacing;
     const startY = PADDING + 40;
 
     bucket.forEach((dtu, i) => {

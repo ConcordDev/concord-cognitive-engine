@@ -73,30 +73,6 @@ const VOICE_PROFILES: Record<string, VoiceProfile> = {
 
 const TTS_SUPPORTED = typeof window !== 'undefined' && 'speechSynthesis' in window;
 
-function pickVoice(profile: VoiceProfile): SpeechSynthesisVoice | null {
-  if (!TTS_SUPPORTED) return null;
-  const voices = window.speechSynthesis.getVoices();
-  const enVoices = voices.filter((v) => v.lang.startsWith('en'));
-  if (enVoices.length === 0) return null;
-
-  if (profile.preferFemale === true) {
-    const female = enVoices.find(
-      (v) =>
-        /female|woman|girl/i.test(v.name) ||
-        /zira|samantha|victoria|karen|moira|fiona|tessa|veena|ava/i.test(v.name)
-    );
-    if (female) return female;
-  }
-  if (profile.preferFemale === false) {
-    const male = enVoices.find(
-      (v) =>
-        /male|man|guy/i.test(v.name) || /david|mark|daniel|alex|fred|tom|rishi|james/i.test(v.name)
-    );
-    if (male) return male;
-  }
-  return enVoices[0] ?? null;
-}
-
 // ── SVG Face ───────────────────────────────────────────────────────────────────
 
 interface FaceExpressionConfig {

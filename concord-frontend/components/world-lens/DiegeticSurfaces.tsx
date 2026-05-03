@@ -95,7 +95,7 @@ export default function DiegeticSurfaces({
     }
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [playerPosition, proximityRadius]);
+  }, [playerPosition, proximityRadius, surfaces]);
 
   // E key → open the closest in-range surface.
   const handleKey = useCallback((e: KeyboardEvent) => {

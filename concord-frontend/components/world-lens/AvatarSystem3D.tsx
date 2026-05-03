@@ -1942,6 +1942,7 @@ export default function AvatarSystem3D({
     createAnimationClips,
     onStaminaChange,
     quality,
+    cameraMode,
   ]);
 
   return (
