@@ -728,7 +728,7 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
 
   router.post("/sim/materials", auth, wrap((req, res) => {
     const id = `mat-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-    const material = { id, ...req.body, creator: req.user?.id || 'anonymous', citations: 0, validationStatus: 'experimental' };
+    const material = { id, ...req.body, creator: req.user.id, citations: 0, validationStatus: 'experimental' };
     simMaterials.set(id, material);
     res.json({ ok: true, material });
   }));
@@ -785,7 +785,7 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
 
   router.post("/sim/buildings", auth, wrap((req, res) => {
     const id = `bldg-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-    const building = { id, ...req.body, creator: req.user?.id || 'anonymous', citations: 0, createdAt: new Date().toISOString() };
+    const building = { id, ...req.body, creator: req.user.id, citations: 0, createdAt: new Date().toISOString() };
     simBuildingDTUs.set(id, building);
     res.json({ ok: true, building });
   }));
@@ -815,7 +815,7 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
 
   router.post("/sim/marketplace", auth, wrap((req, res) => {
     const id = `mkt-${Date.now()}`;
-    const entry = { dtuId: id, ...req.body, creator: req.user?.id || 'anonymous', citationCount: 0, publishedAt: new Date().toISOString() };
+    const entry = { dtuId: id, ...req.body, creator: req.user.id, citationCount: 0, publishedAt: new Date().toISOString() };
     simMarketplace.set(id, entry);
     res.json({ ok: true, entry });
   }));
@@ -886,7 +886,7 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
   }));
 
   router.post("/sim/avatar", auth, wrap((req, res) => {
-    const userId = req.user?.id || 'anonymous';
+    const userId = req.user.id;
     const avatar = {
       id: `avatar-${userId}`,
       userId,
@@ -911,8 +911,8 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
     const id = `firm-${Date.now()}`;
     const firm = {
       id, ...req.body,
-      founder: req.user?.id || 'anonymous',
-      members: [{ userId: req.user?.id || 'anonymous', role: 'founder', joinedAt: new Date().toISOString(), contributions: 0 }],
+      founder: req.user.id,
+      members: [{ userId: req.user.id, role: 'founder', joinedAt: new Date().toISOString(), contributions: 0 }],
       totalCitations: 0, activeContracts: [],
       createdAt: new Date().toISOString(),
     };
@@ -923,7 +923,7 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
   router.post("/sim/firms/:id/join", auth, wrap((req, res) => {
     const firm = simFirms.get(req.params.id);
     if (!firm) return res.status(404).json({ ok: false, error: "Firm not found" });
-    firm.members.push({ userId: req.user?.id || 'anonymous', role: req.body.role || 'associate', joinedAt: new Date().toISOString(), contributions: 0 });
+    firm.members.push({ userId: req.user.id, role: req.body.role || 'associate', joinedAt: new Date().toISOString(), contributions: 0 });
     res.json({ ok: true, firm });
   }));
 
@@ -938,7 +938,7 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
     const id = `world-${Date.now()}`;
     const world = {
       id, ...req.body,
-      owner: req.user?.id || 'anonymous',
+      owner: req.user.id,
       districts: [], playerCount: 1,
       createdAt: new Date().toISOString(),
     };
@@ -959,8 +959,8 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
     const id = `event-${Date.now()}`;
     const event = {
       id, ...req.body,
-      organizerId: req.user?.id || 'anonymous',
-      participants: [req.user?.id || 'anonymous'],
+      organizerId: req.user.id,
+      participants: [req.user.id],
       status: 'scheduled',
       createdAt: new Date().toISOString(),
     };
@@ -971,7 +971,7 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
   router.post("/sim/events/:id/join", auth, wrap((req, res) => {
     const event = simEvents.get(req.params.id);
     if (!event) return res.status(404).json({ ok: false, error: "Event not found" });
-    const userId = req.user?.id || 'anonymous';
+    const userId = req.user.id;
     if (!event.participants.includes(userId)) event.participants.push(userId);
     res.json({ ok: true, event });
   }));
@@ -1258,7 +1258,7 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
     if (station && station.currentJob) return res.status(400).json({ ok: false, error: 'Station busy' });
     const result = {
       success: true,
-      outputItem: { id: `crafted-${Date.now()}`, ...recipe.output, craftedAt: new Date().toISOString(), craftedBy: req.user?.id || 'anonymous' },
+      outputItem: { id: `crafted-${Date.now()}`, ...recipe.output, craftedAt: new Date().toISOString(), craftedBy: req.user.id },
       qualityBonus: Math.random() > 0.7 ? Math.floor(Math.random() * 15) + 5 : 0,
       byproducts: [],
     };
@@ -1276,7 +1276,7 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
 
   router.post("/sim/quests", auth, wrap((req, res) => {
     const id = `quest-${Date.now()}`;
-    const quest = { id, ...req.body, creator: req.user?.id || 'anonymous', status: 'available', createdAt: new Date().toISOString() };
+    const quest = { id, ...req.body, creator: req.user.id, status: 'available', createdAt: new Date().toISOString() };
     simQuests.set(id, quest);
     res.json({ ok: true, quest });
   }));
@@ -1291,7 +1291,7 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
     const quest = simQuests.get(req.params.id);
     if (!quest) return res.status(404).json({ ok: false, error: 'Quest not found' });
     quest.status = 'active';
-    quest.acceptedBy = req.user?.id || 'anonymous';
+    quest.acceptedBy = req.user.id;
     quest.acceptedAt = new Date().toISOString();
     res.json({ ok: true, quest });
   }));
@@ -1390,7 +1390,7 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
 
   router.post("/sim/reports", auth, wrap((req, res) => {
     const report = {
-      id: `report-${Date.now()}`, reporterId: req.user?.id || 'anonymous',
+      id: `report-${Date.now()}`, reporterId: req.user.id,
       ...req.body, status: 'pending', timestamp: new Date().toISOString(),
     };
     simReports.set(report.id, report);
@@ -1445,7 +1445,7 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
   }));
 
   router.post("/sim/presence/update", auth, wrap((req, res) => {
-    const userId = req.user?.id || 'anonymous';
+    const userId = req.user.id;
     const presence = {
       userId, ...req.body, isOnline: true,
       lastSeen: new Date().toISOString(),
@@ -1455,7 +1455,7 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
   }));
 
   router.post("/sim/presence/offline", auth, wrap((req, res) => {
-    const userId = req.user?.id || 'anonymous';
+    const userId = req.user.id;
     const p = simPresence.get(userId);
     if (p) { p.isOnline = false; p.lastSeen = new Date().toISOString(); }
     res.json({ ok: true });
@@ -1474,7 +1474,7 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
     if (!simMessages.has(channelId)) simMessages.set(channelId, []);
     const msg = {
       id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
-      channelId, senderId: req.user?.id || 'anonymous',
+      channelId, senderId: req.user.id,
       ...req.body, timestamp: new Date().toISOString(),
     };
     simMessages.get(channelId).push(msg);
@@ -1506,13 +1506,13 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
       arrived: true, timestamp: new Date().toISOString(),
     };
     // Log visitor
-    simVisitorLogs.push({ worldId: destWorldId, visitorId: req.user?.id || 'anonymous', enteredAt: new Date().toISOString() });
+    simVisitorLogs.push({ worldId: destWorldId, visitorId: req.user.id, enteredAt: new Date().toISOString() });
     res.json({ ok: true, transition });
   }));
 
   router.post("/sim/travel/invite", auth, wrap((req, res) => {
     const invite = {
-      id: `invite-${Date.now()}`, fromUserId: req.user?.id || 'anonymous',
+      id: `invite-${Date.now()}`, fromUserId: req.user.id,
       ...req.body, status: 'pending', timestamp: new Date().toISOString(),
     };
     res.json({ ok: true, invite });
@@ -1530,7 +1530,7 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
 
   router.post("/sim/templates/snap-build", auth, wrap((req, res) => {
     const id = `snap-${Date.now()}`;
-    const template = { id, ...req.body, creator: req.user?.id || 'anonymous', citations: 0, validationStatus: 'validated', createdAt: new Date().toISOString() };
+    const template = { id, ...req.body, creator: req.user.id, citations: 0, validationStatus: 'validated', createdAt: new Date().toISOString() };
     simSnapTemplates.set(id, template);
     res.json({ ok: true, template });
   }));
@@ -1556,14 +1556,14 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
   }));
 
   router.post("/sim/projects/:boardId/tasks/:taskId/claim", auth, wrap((req, res) => {
-    res.json({ ok: true, taskId: req.params.taskId, claimedBy: req.user?.id || 'anonymous', status: 'claimed' });
+    res.json({ ok: true, taskId: req.params.taskId, claimedBy: req.user.id, status: 'claimed' });
   }));
 
   // ── Design Review API ────────────────────────────────────────────
 
   router.post("/sim/reviews", auth, wrap((req, res) => {
     const review = {
-      id: `review-${Date.now()}`, reviewerId: req.user?.id || 'anonymous',
+      id: `review-${Date.now()}`, reviewerId: req.user.id,
       ...req.body, verdict: 'pending', createdAt: new Date().toISOString(),
     };
     res.json({ ok: true, review });
@@ -1652,7 +1652,7 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
 
   router.post("/sim/replays", auth, wrap((req, res) => {
     const id = `replay-${Date.now()}`;
-    const replay = { id, ...req.body, creatorId: req.user?.id || 'anonymous', createdAt: new Date().toISOString() };
+    const replay = { id, ...req.body, creatorId: req.user.id, createdAt: new Date().toISOString() };
     simReplays.set(id, replay);
     res.json({ ok: true, replay });
   }));
@@ -1758,7 +1758,7 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
   const voiceHistory = new Map(); // userId -> command[]
 
   router.post("/sim/voice/command", auth, wrap((req, res) => {
-    const userId = req.user?.id || 'anonymous';
+    const userId = req.user.id;
     const { transcript, engine } = req.body;
     // Parse intent from transcript
     const intents = ['build', 'navigate', 'inspect', 'search', 'social', 'system'];
@@ -1813,8 +1813,8 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
     const session = {
       id,
       dtuId: req.body.dtuId,
-      host: req.user?.id || 'anonymous',
-      participants: [{ userId: req.user?.id || 'anonymous', color: '#3B82F6', joinedAt: new Date().toISOString() }],
+      host: req.user.id,
+      participants: [{ userId: req.user.id, color: '#3B82F6', joinedAt: new Date().toISOString() }],
       edits: [],
       conflicts: [],
       versions: [],
@@ -1829,7 +1829,7 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
     if (!session) return res.status(404).json({ ok: false, error: "Session not found" });
     const colors = ['#EF4444', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899'];
     session.participants.push({
-      userId: req.user?.id || 'anonymous',
+      userId: req.user.id,
       color: colors[session.participants.length % colors.length],
       joinedAt: new Date().toISOString(),
     });
@@ -1841,7 +1841,7 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
     if (!session) return res.status(404).json({ ok: false, error: "Session not found" });
     const edit = {
       id: `edit-${Date.now()}`,
-      userId: req.user?.id || 'anonymous',
+      userId: req.user.id,
       field: req.body.field,
       oldValue: req.body.oldValue,
       newValue: req.body.newValue,
@@ -1958,7 +1958,7 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
   }));
 
   router.post("/sim/plugins/install", auth, wrap((req, res) => {
-    const userId = req.user?.id || 'anonymous';
+    const userId = req.user.id;
     const { pluginId } = req.body;
     if (!pluginCatalog.find(p => p.id === pluginId)) return res.status(404).json({ ok: false, error: "Plugin not found" });
     if (!installedPlugins.has(userId)) installedPlugins.set(userId, []);
@@ -1967,7 +1967,7 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
   }));
 
   router.post("/sim/plugins/uninstall", auth, wrap((req, res) => {
-    const userId = req.user?.id || 'anonymous';
+    const userId = req.user.id;
     const { pluginId } = req.body;
     if (installedPlugins.has(userId)) {
       installedPlugins.set(userId, installedPlugins.get(userId).filter(id => id !== pluginId));

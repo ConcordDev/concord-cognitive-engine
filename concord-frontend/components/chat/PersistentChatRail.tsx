@@ -166,7 +166,13 @@ interface PersistentChatRailProps {
   onLensNavigate?: (domain: string) => void;
 }
 
-type ChatStatus = 'idle' | 'thinking' | 'searching' | 'responding';
+type ChatStatus = 'idle' | 'thinking' | 'searching' | 'responding' | 'queued';
+
+interface QueueStatus {
+  position: number;
+  estimatedWaitMs: number;
+  pressure?: number;
+}
 
 // ── DTU Sources Section (expandable context sources below assistant messages) ──
 
@@ -270,6 +276,9 @@ export function PersistentChatRail({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [chatStatus, setChatStatus] = useState<ChatStatus>('idle');
+  // When the LLM queue is under load, the server tells us our position +
+  // estimated wait. Cleared when status leaves 'queued'.
+  const [queueStatus, setQueueStatus] = useState<QueueStatus | null>(null);
   const [streamingText, setStreamingText] = useState('');
   const [webResults, setWebResults] = useState<WebResult[]>([]);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -424,9 +433,16 @@ export function PersistentChatRail({
 
   useEffect(() => {
     const handleStatus = (data: unknown) => {
-      const d = data as { sessionId?: string; status?: ChatStatus };
+      const d = data as { sessionId?: string; status?: ChatStatus; queue?: QueueStatus };
       if (d.sessionId === sessionId) {
         setChatStatus(d.status || 'idle');
+        // Queued under load — surface position/ETA. Any non-queued status
+        // resets the indicator so it doesn't linger on the next message.
+        if (d.status === 'queued' && d.queue) {
+          setQueueStatus(d.queue);
+        } else {
+          setQueueStatus(null);
+        }
       }
     };
 
@@ -1095,6 +1111,22 @@ export function PersistentChatRail({
             </Fragment>
           );
         })}
+
+        {/* Queue indicator — server tells us our position + ETA when the
+            LLM queue is under load (e.g. multiple users on the conscious
+            brain at once). Renders before the regular "Thinking…" so the
+            user knows why it's slow. */}
+        {chatStatus === 'queued' && queueStatus && (
+          <div className="flex items-center gap-2 text-sm text-amber-400/90 px-2 py-1">
+            <Brain className="w-4 h-4 animate-pulse" />
+            <span>
+              You&apos;re #{queueStatus.position} in queue
+              {queueStatus.estimatedWaitMs > 0 && (
+                <> · ~{Math.max(1, Math.round(queueStatus.estimatedWaitMs / 1000))}s wait</>
+              )}
+            </span>
+          </div>
+        )}
 
         {/* Status indicators — typing animation */}
         {chatStatus === 'thinking' && (

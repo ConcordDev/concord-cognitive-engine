@@ -11,6 +11,9 @@ import crypto from "crypto";
 import { asyncHandler } from "../lib/async-handler.js";
 import logger from '../logger.js';
 
+// See server/routes/sovereign.js — sovereign role is god-mode and must
+// not be assignable by simply registering a default username. The prod
+// guard lives there; we mirror the default here for the dev path only.
 const SOVEREIGN_USERNAME = process.env.SOVEREIGN_USERNAME || "dutch";
 
 function uid(prefix = "id") {

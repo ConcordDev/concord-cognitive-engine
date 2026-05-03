@@ -25,7 +25,11 @@ import logger from './logger.js';
 const EMBEDDING_MODEL = process.env.EMBEDDING_MODEL || "nomic-embed-text";
 const EMBEDDING_FALLBACK_MODEL = "all-minilm";
 const EMBEDDING_DIMENSION = 768; // nomic-embed-text default
-const MAX_IN_MEMORY = 150_000;   // GPU can handle larger in-memory sets
+// In-memory embedding cache cap. At ~3KB per Float32Array (768 dims) the
+// default 150k entries occupy ~450MB. Operators on smaller boxes can shrink
+// via CONCORD_EMBEDDING_CACHE_MAX. SQLite remains the source of truth;
+// over-cap embeddings fall through to disk lookup.
+const MAX_IN_MEMORY = Number(process.env.CONCORD_EMBEDDING_CACHE_MAX) || 150_000;
 const BACKFILL_BATCH_SIZE = 50;   // Smaller batches to limit RSS growth
 const EMBED_TIMEOUT_MS = 5_000;  // GPU embeds are much faster
 
@@ -331,10 +335,15 @@ export async function findCrossDomainConnections(dtuId, allDTUs, limit = 5) {
 export function storeEmbedding(dtuId, vec) {
   if (!dtuId || !vec) return;
 
-  // In-memory cache (respect limit)
-  if (embeddingCache.size < MAX_IN_MEMORY) {
-    embeddingCache.set(dtuId, vec);
+  // In-memory cache (respect limit, evict oldest on overflow). Insertion
+  // order = approximate LRU because Map preserves it; evicting the first
+  // key drops the coldest entry. SQLite persistence below means evicted
+  // entries can still be loaded back on demand.
+  if (embeddingCache.size >= MAX_IN_MEMORY) {
+    const oldestKey = embeddingCache.keys().next().value;
+    if (oldestKey !== undefined) embeddingCache.delete(oldestKey);
   }
+  embeddingCache.set(dtuId, vec);
 
   // SQLite persistence (dedicated embedding_cache table)
   if (_db) {

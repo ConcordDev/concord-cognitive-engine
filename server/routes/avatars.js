@@ -35,7 +35,18 @@ export default function createAvatarsRouter({ db, requireAuth }) {
       if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
       ensurePrimary(userId);
       const rows = db.prepare(`SELECT id, user_id, name, slug, is_primary, created_at FROM avatars WHERE user_id = ? ORDER BY is_primary DESC, created_at ASC`).all(userId);
-      const activeId = req.session?.activeAvatarId || rows.find((r) => r.is_primary)?.id || rows[0]?.id;
+      // Validate the session's active avatar is one this user actually owns.
+      // Sessions can persist across logout/login on shared browsers, so a
+      // stale activeAvatarId from a previous user must not be returned.
+      const sessionActiveId = req.session?.activeAvatarId;
+      const sessionAvatarBelongs = sessionActiveId && rows.some(r => r.id === sessionActiveId);
+      const activeId = sessionAvatarBelongs
+        ? sessionActiveId
+        : (rows.find((r) => r.is_primary)?.id || rows[0]?.id);
+      // If the session pointed at a foreign avatar, scrub it.
+      if (sessionActiveId && !sessionAvatarBelongs && req.session) {
+        req.session.activeAvatarId = activeId || null;
+      }
       res.json({ ok: true, avatars: rows, activeId });
     } catch (e) {
       res.status(500).json({ ok: false, error: String(e?.message || e) });

@@ -1346,6 +1346,15 @@ if (AUTH_MODE_RAW && !AUTH_MODE_VALUES.has(AUTH_MODE_RAW)) {
   console.warn(`[Auth] Invalid AUTH_MODE='${AUTH_MODE_RAW}'. Falling back to 'hybrid'. Allowed: public|apikey|jwt|hybrid.`);
 }
 
+// Production deploy guard: AUTH_MODE='public' silently disables auth on
+// every gated route. That's fine for local solo dev and explicit demos,
+// but in production it would expose every authenticated endpoint. Refuse
+// to start if the operator hasn't set a real auth mode in prod.
+if (NODE_ENV === "production" && AUTH_MODE === "public") {
+  console.error("[Auth] FATAL: AUTH_MODE='public' is not allowed in production. Set AUTH_MODE=jwt or AUTH_MODE=hybrid (and JWT_SECRET) before starting.");
+  process.exit(1);
+}
+
 // SECURITY: JWT_SECRET must be set in production
 const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString("hex");
 if (!process.env.JWT_SECRET && NODE_ENV === "production" && AUTH_USES_JWT) {
@@ -6236,7 +6245,11 @@ async function tryInitWebSockets(server) {
       methods: ["GET", "POST"],
       credentials: true
     },
-    transports: ["websocket", "polling"],
+    // In production, restrict to WebSocket only. Long-polling fallback at
+    // scale (1000+ clients) creates a flood of HTTP requests on flaky
+    // networks (1-5s polling × 1000 clients = 200-1000 req/s overhead).
+    // Dev keeps polling for local dev tools and proxy interop.
+    transports: NODE_ENV === "production" ? ["websocket"] : ["websocket", "polling"],
     pingTimeout: 60000,
     pingInterval: 25000
   });
@@ -6268,13 +6281,6 @@ async function tryInitWebSockets(server) {
 
     const _token = cookieToken || socket.handshake.auth?.token || socket.handshake.headers?.authorization?.replace("Bearer ", "");
     const apiKey = socket.handshake.auth?.apiKey || socket.handshake.headers?.["x-api-key"];
-
-    // In development, allow unauthenticated connections
-    if (NODE_ENV !== "production") {
-      socket.data.userId = null;
-      socket.data.authenticated = false;
-      return next();
-    }
 
     // 1. Try httpOnly cookie token first (most secure for browsers)
     if (cookieToken) {
@@ -6324,7 +6330,16 @@ async function tryInitWebSockets(server) {
       }
     }
 
-    // In production, reject unauthenticated connections
+    // No valid auth credentials presented. In production, reject. In
+    // dev (NODE_ENV !== 'production') allow an anonymous socket so local
+    // browser sessions without a token still work, but mark the socket
+    // explicitly anonymous so server-side gates can refuse sensitive ops.
+    if (NODE_ENV !== "production") {
+      socket.data.userId = null;
+      socket.data.authenticated = false;
+      socket.data.authMethod = "anonymous_dev";
+      return next();
+    }
     return next(new Error("Authentication required"));
   });
 
@@ -27330,6 +27345,27 @@ app.get("/api/world/me/metrics", requireAuth, (req, res) => {
   }
 });
 
+// World-access helper. System worlds (concordia-hub and other seeded
+// sub-worlds in content/world/) have created_by IS NULL and are open
+// to every authenticated user. User-created worlds belong to their
+// creator. Multi-player shared worlds will add a join table later;
+// for now sole-creator ownership is the rule.
+function assertWorldAccessible(db, userId, worldId) {
+  if (!worldId || !userId) return false;
+  try {
+    const row = db.prepare(
+      "SELECT created_by FROM worlds WHERE id = ? AND status = 'active'"
+    ).get(worldId);
+    if (!row) return false;
+    if (row.created_by === null || row.created_by === undefined) return true; // system world
+    return row.created_by === userId;
+  } catch {
+    // Worlds table may not exist on minimal dev builds — fall through to
+    // the historical permissive behavior so local-dev still works.
+    return true;
+  }
+}
+
 // EvoEcosystem W3: cooking. Wraps craft-engine for food recipe DTUs.
 // Output is a consumable food DTU with effects[] and shelfLifeHours.
 app.post("/api/world/cook", requireAuth, async (req, res) => {
@@ -27338,12 +27374,16 @@ app.post("/api/world/cook", requireAuth, async (req, res) => {
     if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
     const { recipeId, worldId, qualityMultiplier } = req.body || {};
     if (!recipeId) return res.status(400).json({ ok: false, error: "recipeId_required" });
-    const result = await cookRecipe(db, userId, String(worldId || "concordia-hub"), recipeId, {
+    const resolvedWorldId = String(worldId || "concordia-hub");
+    if (!assertWorldAccessible(db, userId, resolvedWorldId)) {
+      return res.status(403).json({ ok: false, error: "world_not_accessible" });
+    }
+    const result = await cookRecipe(db, userId, resolvedWorldId, recipeId, {
       qualityMultiplier: typeof qualityMultiplier === "number" ? qualityMultiplier : undefined,
     });
     if (!result.ok) return res.status(422).json(result);
     // Cooking is creative — bumps concordia_alignment by a small amount.
-    try { adjustEcoMetrics(db, userId, String(worldId || "concordia-hub"), { concordia_alignment: 0.5 }); }
+    try { adjustEcoMetrics(db, userId, resolvedWorldId, { concordia_alignment: 0.5 }); }
     catch { /* metrics best-effort */ }
     res.json(result);
   } catch (e) {
@@ -32702,11 +32742,27 @@ app.get("/api/context/metrics", asyncHandler(async (req, res) => {
 // ── Lens Integration API ──────────────────────────────────────────────────────
 
 app.get("/api/dtus/:id/context", asyncHandler(async (req, res) => {
+  // Don't expose context for DTUs the viewer cannot see. Membership in
+  // the visibility-filtered pool is the gate; on miss return 404 so we
+  // don't leak the existence of private DTUs by id.
+  const viewerId = req.user?.id || null;
+  const visibleIds = new Set(userVisibleDTUs(viewerId).map(d => d.id));
+  if (!visibleIds.has(req.params.id)) {
+    return res.status(404).json({ ok: false, error: "dtu_not_found" });
+  }
   const result = buildDTUConversationContext(STATE, req.params.id, { sessionId: req.query.sessionId });
   res.json(result);
 }));
 
 app.get("/api/dtus/:id/artifact", asyncHandler(async (req, res) => {
+  // Same visibility gate as /:id/context — artifacts (audio, image, code,
+  // PDF) are the heaviest privacy surface; never serve private artifacts
+  // to a viewer who can't see the parent DTU.
+  const viewerId = req.user?.id || null;
+  const visibleIds = new Set(userVisibleDTUs(viewerId).map(d => d.id));
+  if (!visibleIds.has(req.params.id)) {
+    return res.status(404).json({ ok: false, error: "dtu_not_found" });
+  }
   res.json(getDTUArtifact(STATE, req.params.id));
 }));
 
@@ -39633,6 +39689,31 @@ function initChatSocketHandlers(io) {
           ack?.({ ok: false, error: "sessionId and prompt required" });
           return;
         }
+
+        // Queue-aware UX. Under load (e.g. multiple concurrent chatters
+        // saturating the conscious brain's 8 GPU slots), tell the user
+        // their position + ETA instead of leaving them watching a
+        // silent spinner. The threshold uses queuePressure rather than
+        // raw queue depth so the UI only narrates when the wait is
+        // actually noticeable.
+        try {
+          const pressure = _llmQueue?.queuePressure?.() ?? 0;
+          if (pressure > 0.20 && _llmQueue?.estimatePosition) {
+            const est = _llmQueue.estimatePosition();
+            if (est?.position > 1 || est?.estimatedWaitMs > 1500) {
+              socket.emit("chat:status", {
+                sessionId,
+                status: "queued",
+                lens,
+                queue: {
+                  position: est.position,
+                  estimatedWaitMs: est.estimatedWaitMs,
+                  pressure: Math.round(est.pressure * 100) / 100,
+                },
+              });
+            }
+          }
+        } catch { /* queue introspection is best-effort */ }
 
         // Emit: thinking started
         socket.emit("chat:status", { sessionId, status: "thinking", lens });
@@ -47011,7 +47092,11 @@ app.get("/api/dtus/search/semantic", asyncHandler(async (req, res) => {
   if (!q) return res.status(400).json({ ok: false, error: "q (query) is required" });
 
   const topK = Math.min(Number(limit) || 10, 100);
-  const all = dtusArray();
+  // Honor the personal_dtus_never_leak invariant: filter the candidate
+  // pool by viewer visibility before similarity ranking, so personal/
+  // private DTUs from other users never appear in semantic results.
+  const viewerId = req.user?.id || null;
+  const all = userVisibleDTUs(viewerId);
   const results = await semanticSearch(String(q), all, { lens: lens || null, topK });
 
   // Enrich results with DTU data
@@ -47035,8 +47120,15 @@ app.get("/api/dtus/search/semantic", asyncHandler(async (req, res) => {
 app.get("/api/dtus/:id/connections", asyncHandler(async (req, res) => {
   const { id } = req.params;
   const limit = Math.min(Number(req.query.limit) || 5, 20);
-  const all = dtusArray();
-
+  // Visibility-filtered candidate pool — connections cannot surface DTUs
+  // the viewer isn't allowed to see. Source DTU itself must also be
+  // visible to the viewer; if it's not, return 404 rather than leak the
+  // existence of a private DTU by id.
+  const viewerId = req.user?.id || null;
+  const all = userVisibleDTUs(viewerId);
+  if (!all.some(d => d.id === id)) {
+    return res.status(404).json({ ok: false, error: "dtu_not_found" });
+  }
   const connections = await findCrossDomainConnections(id, all, limit);
   res.json({ ok: true, dtuId: id, connections });
 }));
