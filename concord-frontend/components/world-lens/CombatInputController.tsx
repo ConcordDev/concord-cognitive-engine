@@ -343,7 +343,7 @@ export default function CombatInputController({
         break;
     }
     onAction?.(evt);
-  }, [context, modifierHeld, worldSocket, onAction, loadout, resolveHand]);
+  }, [context, modifierHeld, worldSocket, onAction, resolveHand]);
 
   // Keydown: stamp the time, schedule the hold-fire timer.
   useEffect(() => {

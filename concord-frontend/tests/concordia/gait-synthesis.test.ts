@@ -38,10 +38,9 @@ describe('synthesizeGait — idle pose', () => {
 });
 
 describe('synthesizeGait — locomotion', () => {
-  it('at phase=0 left leg is forward, right leg is back', () => {
-    const pose = synthesizeGait(baseParams({ speed: 5 }), 0);
-    // sin(0) = 0 → thighs at 0, but knee flex differs by phase
-    // phase=0.25 → sin(π/2) = 1 → left leg full forward
+  it('at phase=0.25 left leg is forward, right leg is back', () => {
+    // sin(0) = 0 → thighs at 0 at phase=0; knee flex differs by phase.
+    // phase=0.25 → sin(π/2) = 1 → left leg full forward.
     const poseQ = synthesizeGait(baseParams({ speed: 5 }), 0.25);
     expect(poseQ.leftUpperLeg.x).toBeGreaterThan(0);
     expect(poseQ.rightUpperLeg.x).toBeLessThan(0);

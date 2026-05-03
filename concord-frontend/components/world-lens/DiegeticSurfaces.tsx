@@ -18,7 +18,7 @@
  * — this just changes how it's invoked.
  */
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 
 interface PlayerPos { x: number; y: number; z: number }
 interface DiegeticSurfacesProps {
@@ -53,11 +53,11 @@ export default function DiegeticSurfaces({
   const [screenPositions, setScreenPositions] = useState<Map<string, { x: number; y: number; visible: boolean }>>(new Map());
   const [withinRange, setWithinRange] = useState<Set<string>>(new Set());
 
-  const surfaces: Surface[] = [
+  const surfaces: Surface[] = useMemo(() => [
     { id: 'map',       label: 'Map Pedestal',     hint: 'E to read',     pos: { x: 600, y: 30, z: 600 }, open: () => onOpenMap?.() },
     { id: 'sheet',     label: 'Character Mirror', hint: 'E to inspect',  pos: { x: 580, y: 30, z: 620 }, open: () => onOpenSheet?.() },
     { id: 'inventory', label: 'Storage Chest',    hint: 'E to open',     pos: { x: 620, y: 30, z: 620 }, open: () => onOpenInventory?.() },
-  ];
+  ], [onOpenMap, onOpenSheet, onOpenInventory]);
 
   // Listen for projector readiness.
   useEffect(() => {
