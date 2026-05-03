@@ -283,6 +283,16 @@ export type SocketEvent =
   // Combat netcode
   | 'combat:dodge:ack'
   | 'combat:block:ack'
+  // Flow Combat — procedural emergent combat
+  | 'combat:combo-evolved'
+  | 'combat:npc-combo-evolved'
+  // PvP Training Match
+  | 'training:challenge'
+  | 'training:start'
+  | 'training:safe-reset'
+  | 'training:resume'
+  | 'training:round-end'
+  | 'training:end'
   // World scheduler
   | 'world:event:scheduled'
   // Tier 3 deferral 12: faction event scheduler

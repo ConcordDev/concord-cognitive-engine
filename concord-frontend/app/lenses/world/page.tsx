@@ -168,6 +168,10 @@ const CombatFlowHotbar = dynamic(
   () => import('@/components/world-lens/CombatFlowHotbar'),
   { ssr: false },
 );
+const TrainingMatchPanel = dynamic(
+  () => import('@/components/world-lens/TrainingMatchPanel'),
+  { ssr: false },
+);
 const AnimationManager = dynamic(() => import('@/components/world-lens/AnimationManager'), {
   ssr: false,
 });
@@ -3157,6 +3161,7 @@ export default function WorldLensPage() {
                 : null
             }
           />
+          <TrainingMatchPanel myUserId={playerAvatar.id} />
           <AnimationManager>
             <></>
           </AnimationManager>

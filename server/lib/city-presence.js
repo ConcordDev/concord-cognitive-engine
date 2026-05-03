@@ -401,6 +401,24 @@ export function getUserPosition(userId) {
 }
 
 /**
+ * Restore a player's resource bars to full. Used by the PvP training match
+ * Safe Reset between rounds. No-op if the player has no live presence.
+ * Returns true if the bars were touched.
+ */
+export function restorePlayerBars(userId) {
+  const p = _userPositions.get(userId);
+  if (!p) return false;
+  p.health      = p.maxHealth ?? 100;
+  p.stamina     = p.maxStamina ?? 100;
+  p.mana        = p.maxMana ?? 100;
+  p.bioPower    = p.maxBioPower ?? 100;
+  p.perception  = p.maxPerception ?? 100;
+  // Reset any per-zone armor too so the next round starts clean
+  p.limbArmor = { head: 100, torso: 100, left_arm: 100, right_arm: 100, left_leg: 100, right_leg: 100 };
+  return true;
+}
+
+/**
  * Authoritative vehicle mount / dismount. The route handler MUST verify
  * vehicle ownership against the vehicles table before calling this — the
  * presence layer trusts whatever it is given, by design. Callers pass

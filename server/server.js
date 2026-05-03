@@ -6531,6 +6531,60 @@ async function tryInitWebSockets(server) {
             targetId: data.targetId,
           });
 
+          // PvP training match round end. If attacker + target are both in
+          // an active training match together, record the round and let the
+          // client decide whether to auto-trigger Safe Reset for the next
+          // round. Death stakes (loot drop) are skipped inside training
+          // matches — that's the whole point of the safe-reset loop.
+          try {
+            const tid = String(data.targetId || "");
+            const m = db.prepare(`
+              SELECT id, initiator_id, opponent_id, rounds_played, max_rounds
+              FROM training_matches
+              WHERE status IN ('active', 'reset')
+                AND ((initiator_id = ? AND opponent_id = ?) OR (initiator_id = ? AND opponent_id = ?))
+              LIMIT 1
+            `).get(userId, tid, tid, userId);
+            if (m) {
+              const rid = crypto.randomUUID
+                ? crypto.randomUUID()
+                : Math.random().toString(36).slice(2);
+              const newRoundNumber = m.rounds_played + 1;
+              const winnerCol = userId === m.initiator_id ? "initiator_wins" : "opponent_wins";
+              db.prepare(`
+                INSERT INTO training_match_rounds
+                  (id, match_id, round_number, winner_id, duration_ms)
+                VALUES (?, ?, ?, ?, 0)
+              `).run(rid, m.id, newRoundNumber, userId);
+              db.prepare(`
+                UPDATE training_matches
+                SET rounds_played = rounds_played + 1, ${winnerCol} = ${winnerCol} + 1
+                WHERE id = ?
+              `).run(m.id);
+              realtimeEmit("training:round-end", {
+                matchId: m.id, winnerId: userId, roundNumber: newRoundNumber,
+              });
+              if (newRoundNumber >= m.max_rounds) {
+                db.prepare(`
+                  UPDATE training_matches
+                  SET status = 'ended', ended_reason = 'cap', ended_at = unixepoch()
+                  WHERE id = ?
+                `).run(m.id);
+                realtimeEmit("training:end", { matchId: m.id, reason: "cap" });
+              }
+              // Skip death stakes inside a training match
+              throw new Error("__TRAINING_MATCH_SKIP_LOOT__");
+            }
+          } catch (e) {
+            if (e?.message === "__TRAINING_MATCH_SKIP_LOOT__") {
+              // Intentional skip — fall through past the loot block by
+              // jumping to the closing brace via continue-of-callback.
+              return;
+            }
+            // Real error — log silently and proceed to loot drop
+            logger.debug?.("server", "training_match_check_failed", { error: e?.message });
+          }
+
           // Death stakes: drop 20% of the killed player's gathered materials
           const targetUserId = db.prepare("SELECT id FROM users WHERE id = ?").get(String(data.targetId || ""))?.id;
           if (targetUserId) {
@@ -26571,6 +26625,10 @@ app.use("/api/player-trade", createPlayerTradeRouter({ requireAuth, db, emitToUs
 // Flow Combat — context engine + Combat Flow DTUs + procedural combo evolution
 import createCombatFlowRouter from "./routes/combat-flow.js";
 app.use("/api/combat-flow", createCombatFlowRouter({ db, requireAuth }));
+
+// Flow Combat — PvP training match (queue/challenge + safe reset between rounds)
+import createTrainingMatchRouter from "./routes/training-match.js";
+app.use("/api/training-match", createTrainingMatchRouter({ db, requireAuth, emitToUser }));
 
 // Plugin gallery + signing: browseable, signature-verified plugin
 // distribution. Author publishes signed package → gallery entry; users
