@@ -16,7 +16,7 @@
 import logger from "../logger.js";
 import { synthesizeLore, generateQuestChain, writeDialogueTree } from "./oracle-brain.js";
 import { getTimeline } from "../emergent/history-engine.js";
-import { getAuthoredNPC, getAuthoredFaction, getQuestsForNPC } from "./content-seeder.js";
+import { getAuthoredNPC, getAuthoredFaction, getQuestsForNPC, getAuthoredDialogue } from "./content-seeder.js";
 import { getFactionPolicyState } from "./council-world-bridge.js";
 
 const DIALOGUE_TTL_MS   = 5 * 60 * 1000;   // 5 minutes
@@ -161,7 +161,25 @@ function buildQuestContext(npcId, questId) {
  * @param {string} playerRelationship  - "stranger" | "ally" | "enemy" | "neutral"
  * @returns {Promise<{ ok: boolean, dialogueTree?: object, authored: boolean, error?: string }>}
  */
-export async function generateAuthoredDialogue(npcId, questId = null, playerRelationship = "neutral", db = null) {
+export async function generateAuthoredDialogue(npcId, questId = null, playerRelationship = "neutral", db = null, phase = null) {
+  // Hand-authored dialogue takes precedence over LLM generation. The seeder
+  // loads trees from content/dialogues/ keyed by `${npcId}:${questId}:${phase}`.
+  // Returning the authored tree directly bypasses the LLM and any caching —
+  // these trees are immutable per release and don't need TTL invalidation.
+  const authoredTree = getAuthoredDialogue(npcId, questId, phase);
+  if (authoredTree) {
+    return {
+      ok: true,
+      authored: true,
+      handAuthored: true,
+      dialogueTree: {
+        npcId,
+        generatedAt: new Date().toISOString(),
+        ...authoredTree,
+      },
+    };
+  }
+
   // Cache-bust on policy timestamp so a fresh referendum invalidates stale dialogue.
   const npcForKey = getAuthoredNPC(npcId);
   let policyKey = "0";

@@ -1,0 +1,61 @@
+[
+  {
+    "id": "kael_torchlight",
+    "title": "A Light for the Quiet Streets",
+    "description": "Kael caught you in the market with that look they get when they have one foot already moving. They've been told the alley behind the cooper's shop swallows lamps — every torch they've planted there has gone out by morning. Three nights running. They want to try again with proper bound torches and a pair of eyes that isn't theirs. You'll need three lengths of plant fiber, a torch made from them, and a return trip to the corner where Kael will be waiting.",
+    "giver_npc_id": "wanderer_kael",
+    "difficulty": "beginner",
+    "domain": "concordia_main",
+    "estimated_time": "12m",
+    "objectives": [
+      {
+        "id": "obj_torchlight_1",
+        "type": "gather",
+        "target": "fiber",
+        "required_count": 3,
+        "description": "Gather 3 lengths of plant fiber (the reed beds at the canal edge are easiest)"
+      },
+      {
+        "id": "obj_torchlight_2",
+        "type": "craft",
+        "target": "recipe_torch",
+        "required_count": 1,
+        "description": "Bind a torch from your fiber and a piece of wood at any workbench"
+      },
+      {
+        "id": "obj_torchlight_3",
+        "type": "talk_to",
+        "target": "wanderer_kael",
+        "required_count": 1,
+        "description": "Return to Kael at the cooper's corner with your finished torch"
+      }
+    ],
+    "rewards": {
+      "xp": 50,
+      "gold": 50,
+      "skill_xp": {"crafting": 25, "exploration": 15},
+      "named_items": [
+        {
+          "id": "kael_reading_lamp",
+          "name": "Kael's Reading Lamp",
+          "type": "tool",
+          "quality": "tier_2",
+          "tags": ["lamp", "named", "kael_gift"],
+          "description": "A small brass-cased lamp Kael bought from a peddler and polished obsessively for two weeks. It throws a steadier light than a torch and never smokes. Kael insists you keep it. They will not be talked out of this.",
+          "quantity": 1
+        }
+      ]
+    },
+    "breadcrumbs": [
+      {
+        "id": "bc_torchlight_1",
+        "content": "Kael said the alley swallows lamps. They didn't say what it gives back. When you handed them the new torch they tested it against the wind from the canal and watched it burn. Then they said, almost to themself: 'There's a draft from below. There shouldn't be.' You didn't ask what they meant.",
+        "unlocks_after": "obj_torchlight_3",
+        "release_mode": "on_completion"
+      }
+    ],
+    "follow_up_quest_ids": [],
+    "prerequisites": ["the_arrival"],
+    "tags": ["tutorial", "onboarding", "concordia_main", "kael", "hand_authored"]
+  }
+]
