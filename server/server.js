@@ -6822,6 +6822,15 @@ async function tryInitWebSockets(server) {
 
       socket.emit("skill:xp-awarded", { dtuId, ...result, mastery, leveledUp });
 
+      // Sovereign Refusal Archive: record this power into the Sovereign's
+      // shadow collection so the existing EvoAsset evolution scheduler
+      // can refine it and the Sovereign can manifest a fused, limit-
+      // refused form during raid encounters. Best-effort.
+      try {
+        const { recordPlayerPowerForArchive } = await import("./lib/sovereign/refusal-archive.js");
+        recordPlayerPowerForArchive(STATE, updated, userId);
+      } catch { /* archive recording is best-effort */ }
+
       if (leveledUp && mastery.badge !== prevBadge) {
         realtimeEmit("world:notification", {
           userId,

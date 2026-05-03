@@ -23,6 +23,12 @@ const FIELD_KINDS = Object.freeze({
   harvest_disabled:   { label: "Harvest is refused", glyphHint: "withdrawal" },
   hostility_paused:   { label: "Violence is refused", glyphHint: "bridge" },
   consequence_held:   { label: "Consequence is refused", glyphHint: "void" },
+  // Mass-Raid kinds — used during The Great Refusal raid event.
+  // Each is a phase mechanic the Sovereign declares against the raid
+  // as a whole. See server/lib/sovereign/raid-event.js.
+  numbers_refused:    { label: "Numbers are refused", glyphHint: "inversion" },
+  dome_collapse:      { label: "The arena is refused", glyphHint: "shrinking" },
+  win_refused:        { label: "Victory is refused", glyphHint: "eternal" },
 });
 
 /** state.refusalFields : Map<worldId, Array<{ id, kind, expiresAt, reason, glyph }>> */

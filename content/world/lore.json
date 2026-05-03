@@ -156,6 +156,24 @@
       "description": "The battle ended not with a winner but with a new order. The Coalition was disbanded. Many members — the Enforcer, the Luminary among them — chose to remain in Concordia, having made peace with the Sovereign (some still hold grudges, but they respect the truce). The three pillars all chose to reside here permanently. The Concord Link became the backbone of all inter-world travel and communication. Every traveler, every walker, every quiet message between worlds passes through it without realizing its origin.",
       "significance": "founding",
       "tags": ["great_refusal", "concord_link", "truce", "hub"]
+    },
+    {
+      "id": "lore_concordant_law",
+      "title": "The Concordant Law",
+      "type": "great_refusal",
+      "era": "The Great Refusal",
+      "description": "After the Great Refusal, the Sovereign, Concord, and Concordia bound themselves to a single law: 'Concordia shall be the heart of all realities — a place of trade, diplomacy, and uneasy peace. No single faction may claim it. All may come, but none may conquer.' This made the hub the only true neutral zone in existence — a massive, bustling world-city where players buy property, NPCs from every world live permanently, factions maintain embassies, and trade, politics, espionage, and culture flow through the Concord Link. Only the three pillars hold permanent god-like authority. Everyone else, no matter how powerful, is technically a guest.",
+      "significance": "founding",
+      "tags": ["great_refusal", "concordant_law", "neutral_zone", "hub"]
+    },
+    {
+      "id": "lore_concordant_web",
+      "title": "The Concordant Web",
+      "type": "current_state",
+      "era": "Year 91 (Present)",
+      "description": "Today the hub is shaped by the eight major figures who pass through its embassies: Elias Voss (the Enforcer) leading the Anti-Sovereign Movement; Vesper Kane (the Luminary) building a quiet empire under a hero's face; Thorne Blackroot tending dying forests and dreaming of vengeance; Lady Seraphine Voss running the Crimson Court's intelligence apparatus; Jax Rivera moving silently between worlds for whoever pays; Mama 'Iron Rose' Delgado holding her syndicate together across realities; Kael 'Zero' Nakamura studying the Sovereign's refusal mechanic; and Nyx 'Blackout' Torres organizing the resistance against him. They have rivalries, flirtations, debts, and ideological wars layered on top of each other. The three pillars watch — the Sovereign amused, Concord cataloging, Concordia wishing for more silence and less politics.",
+      "significance": "major",
+      "tags": ["concordant_web", "hub", "politics"]
     }
   ]
 }

@@ -1,0 +1,90 @@
+{
+  "rivera_jax:idle:default": {
+    "npcId": "rivera_jax",
+    "questId": "idle",
+    "phase": "default",
+    "greeting": "He's leaning in a doorway you didn't see. The light at the end of the alley flickers like it knows him.",
+    "nodes": [
+      {
+        "id": "node_open",
+        "npcText": "You're not the work. State your business and don't waste the air between us.",
+        "playerOptions": [
+          { "text": "I'm looking for a contract.", "leadsTo": "node_contract" },
+          { "text": "Who do you work for?", "leadsTo": "node_employer" },
+          { "text": "What do you think of Kael Nakamura?", "leadsTo": "node_zero" },
+          { "text": "Just passing.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_contract",
+        "npcText": "I don't take work in the hub. House rules. Find me at the link anchor after dark. Bring half the payment in hand. I'll listen.",
+        "playerOptions": [
+          { "text": "Understood.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_employer",
+        "npcText": "Whoever pays. Mostly the Iron Rose. Sometimes the Luminary. Once, the Enforcer, when a job happened to align with his honour and my rent. I am not a loyal man, but I am consistent.",
+        "playerOptions": [
+          { "text": "Goodbye.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_zero",
+        "npcText": "I don't talk about him. Move on.",
+        "playerOptions": [
+          { "text": "Understood.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_close",
+        "npcText": "Don't follow.",
+        "isTerminal": true
+      }
+    ]
+  },
+  "delgado_iron_rose:idle:default": {
+    "npcId": "delgado_iron_rose",
+    "questId": "idle",
+    "phase": "default",
+    "greeting": "She's at the head of a small table in a back room of one of her safe houses. Tea, not wine. She looks up and smiles like she's been waiting for you.",
+    "nodes": [
+      {
+        "id": "node_open",
+        "npcText": "Mija. Come, sit. The tea is real. The room is mine. The hour belongs to neither of us. Talk to me.",
+        "playerOptions": [
+          { "text": "Tell me about the syndicate.", "leadsTo": "node_syndicate" },
+          { "text": "Tell me about the Sovereign.", "leadsTo": "node_sovereign" },
+          { "text": "Tell me about Jax.", "leadsTo": "node_jax" },
+          { "text": "Just paying my respects.", "leadsTo": "node_close_warm" }
+        ]
+      },
+      {
+        "id": "node_syndicate",
+        "npcText": "The Iron Rose feeds children, finishes contracts, and outlasts its enemies. The order is on purpose. Don't ask which children and which contracts. You don't need both answers.",
+        "playerOptions": [
+          { "text": "Goodbye.", "leadsTo": "node_close_warm" }
+        ]
+      },
+      {
+        "id": "node_sovereign",
+        "npcText": "He laughs around me. I don't tell people that. They get strange ideas. I tell you because you asked nicely. Don't make me regret it.",
+        "playerOptions": [
+          { "text": "Goodbye.", "leadsTo": "node_close_warm" }
+        ]
+      },
+      {
+        "id": "node_jax",
+        "npcText": "Jax is the sharpest knife I know that I do not own. We have an arrangement. He keeps it. So do I. Don't try to recruit him out from under me, mija. Several have tried. None of them came back to ask why.",
+        "playerOptions": [
+          { "text": "Understood.", "leadsTo": "node_close_warm" }
+        ]
+      },
+      {
+        "id": "node_close_warm",
+        "npcText": "Walk well, mija.",
+        "isTerminal": true
+      }
+    ]
+  }
+}

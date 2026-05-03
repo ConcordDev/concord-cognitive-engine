@@ -120,6 +120,8 @@ function buildNPCTraits(npcId, db = null) {
   return {
     id:          npc.id,
     name:        npc.name,
+    alias:       npc.alias ?? null,
+    homeWorld:   npc.home_world ?? null,
     role:        npc.role,
     personality: npc.personality_traits?.join(", ") ?? "reserved",
     speechStyle: npc.speech_patterns ?? "",
@@ -137,8 +139,38 @@ function buildNPCTraits(npcId, db = null) {
     // to this NPC's role. Doctors/scholars/engineers reference real human
     // research in their dialogue.
     professionalKnowledge: buildProfessionalKnowledge(npc, db),
+    // Concordant Web: this NPC's view of every other major character —
+    // resolved to short summaries so the oracle prompt can answer
+    // "what do you think of X?" in-character without the LLM inventing
+    // a stance. Capped at 8 entries to keep prompts tight.
+    relationshipWeb: buildRelationshipWeb(npc),
     // Deliberately exclude secrets from LLM context — those are for human authors only
   };
+}
+
+/**
+ * Resolve this NPC's `relationships[]` array against the authored NPC
+ * registry. Each entry becomes a short string the oracle can read like
+ * a personal cheat-sheet.
+ *
+ * Output shape: [{ id, name, alias, homeWorld, type, notes }]
+ */
+function buildRelationshipWeb(npc) {
+  if (!npc?.relationships || !Array.isArray(npc.relationships)) return [];
+  const out = [];
+  for (const rel of npc.relationships.slice(0, 8)) {
+    if (!rel?.npc_id || !rel?.type) continue;
+    const target = getAuthoredNPC(rel.npc_id);
+    out.push({
+      id:        rel.npc_id,
+      name:      target?.name ?? rel.npc_id,
+      alias:     target?.alias ?? null,
+      homeWorld: target?.home_world ?? null,
+      type:      rel.type,
+      notes:     (rel.notes ?? "").slice(0, 200),
+    });
+  }
+  return out;
 }
 
 /**
