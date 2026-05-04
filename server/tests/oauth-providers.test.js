@@ -240,15 +240,21 @@ describe("oauth-providers", () => {
   // ── Provider availability graceful degradation ─────────────────────
 
   describe("graceful degradation", () => {
+    // Redirect URI must resolve for both providers. Test sets PUBLIC_URL so the
+    // _resolveProviderRedirectUri helper has a fallback. Production hardening
+    // (oauth-providers.js:_assertSafeRedirectUri) refuses to emit an empty or
+    // localhost URI in production NODE_ENV — this test runs in default env, so
+    // the http://test.example fallback is accepted.
     it("getGoogleAuthUrl works even with undefined client ID (produces URL)", () => {
       delete process.env.GOOGLE_CLIENT_ID;
-      // Should still produce a URL, even if the client_id is undefined
+      process.env.PUBLIC_URL = "http://test.example";
       const url = getGoogleAuthUrl("state");
       assert.ok(url.startsWith("https://accounts.google.com"));
     });
 
     it("getAppleAuthUrl works even with undefined client ID", () => {
       delete process.env.APPLE_CLIENT_ID;
+      process.env.PUBLIC_URL = "http://test.example";
       const url = getAppleAuthUrl("state");
       assert.ok(url.startsWith("https://appleid.apple.com"));
     });

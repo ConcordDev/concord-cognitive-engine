@@ -149,23 +149,31 @@ export function scheduleEventsForWorld({ worldId, now = Date.now() }) {
     const startTime = new Date(now + 30 * 60 * 1000).toISOString(); // start 30 min from now
     const host = pickHost(eventType);
     const reward = computeReward(eventType, def);
-    const e = createEvent({
-      type: eventType,
-      title: flavorTitle(eventType),
-      description: `${def.name} in ${districtId}. Hosted by ${host.name}. Attend to earn ${reward.cc} CC + ${reward.skillXp} skill XP.`,
-      worldId,
-      districtId,
-      startTime,
-      duration: def.defaultDuration,
-      maxPlayers: def.maxPlayers,
-      hostId: host.id,
-      hostName: host.name,
-      reward,
-      location: { x: 0, y: 0, z: 0, districtId },
-      createdAt: new Date(now).toISOString(),
-    });
-    if (e?.ok && e.event?.id) {
-      created.push({ id: e.event.id, type: eventType, districtId, hostId: host.id, reward });
+    // Param names must match createEvent's destructuring (server/lib/world-events.js:44).
+    // The previous form passed `title`/`worldId`/`maxPlayers`/`reward` which
+    // were silently ignored, then `cityId is required` threw and the missing
+    // try-block dropped the whole scheduler pass — every tick produced zero
+    // events.
+    let e;
+    try {
+      e = createEvent({
+        type: eventType,
+        name: flavorTitle(eventType),
+        description: `${def.name} in ${districtId}. Hosted by ${host.name}. Attend to earn ${reward.cc} CC + ${reward.skillXp} skill XP.`,
+        cityId: worldId,
+        districtId,
+        startTime,
+        duration: def.defaultDuration,
+        maxAttendees: def.maxPlayers,
+        hostId: host.id,
+        rewards: [reward],
+      });
+    } catch {
+      // One malformed spec must never stop the whole scheduler tick.
+      continue;
+    }
+    if (e?.id) {
+      created.push({ id: e.id, type: eventType, districtId, hostId: host.id, reward });
       _lastGeneratedAt.set(k, now);
     }
   }

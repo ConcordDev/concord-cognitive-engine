@@ -359,7 +359,8 @@ describe('SUMMARY_CONSTANTS', () => {
   });
 
   it('exports correct max archived', () => {
-    assert.strictEqual(SUMMARY_CONSTANTS.MAX_ARCHIVED_SUMMARIES, 20);
+    // Bumped 20 → 200 for multi-tenant deployments. Override via CONCORD_ARCHIVED_SUMMARIES.
+    assert.strictEqual(SUMMARY_CONSTANTS.MAX_ARCHIVED_SUMMARIES, 200);
   });
 
   it('exports correct max tokens', () => {

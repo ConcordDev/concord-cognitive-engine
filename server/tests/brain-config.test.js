@@ -185,7 +185,7 @@ describe("SYSTEM_TO_BRAIN", () => {
   });
 
   it("all values are valid brain names", () => {
-    const validBrains = new Set(["conscious", "subconscious", "utility", "repair"]);
+    const validBrains = new Set(["conscious", "subconscious", "utility", "repair", "multimodal"]);
     for (const [system, brain] of Object.entries(SYSTEM_TO_BRAIN)) {
       assert.ok(validBrains.has(brain), `System "${system}" maps to invalid brain "${brain}"`);
     }
@@ -205,11 +205,12 @@ describe("BRAIN_PRIORITY", () => {
     assert.ok(Object.isFrozen(BRAIN_PRIORITY));
   });
 
-  it("defines priority for all four brains", () => {
+  it("defines priority for all five brains (4 cognitive + multimodal/vision)", () => {
     assert.equal(typeof BRAIN_PRIORITY.repair, "number");
     assert.equal(typeof BRAIN_PRIORITY.conscious, "number");
     assert.equal(typeof BRAIN_PRIORITY.subconscious, "number");
     assert.equal(typeof BRAIN_PRIORITY.utility, "number");
+    assert.equal(typeof BRAIN_PRIORITY.multimodal, "number");
   });
 
   it("repair has highest priority (lowest number)", () => {

@@ -900,7 +900,7 @@ export const EXTENDED_FEATURES = {
 
   defense: {
     lensId: "defense",
-    lensNumber: 101,
+    lensNumber: 113,
     category: "SPECIALIZED",
     features: [
       f("ops_planning", "Operations Planning", "Mission planning with DTU-backed intelligence feeds", "planning", ["dtu"]),
@@ -914,7 +914,7 @@ export const EXTENDED_FEATURES = {
 
   space: {
     lensId: "space",
-    lensNumber: 103,
+    lensNumber: 114,
     category: "SPECIALIZED",
     features: [
       f("mission_control", "Mission Control", "Real-time mission tracking with telemetry dashboards", "infrastructure", []),
@@ -928,7 +928,7 @@ export const EXTENDED_FEATURES = {
 
   ocean: {
     lensId: "ocean",
-    lensNumber: 104,
+    lensNumber: 115,
     category: "SPECIALIZED",
     features: [
       f("vessel_tracking", "Vessel Tracking", "Real-time maritime vessel position and status monitoring", "infrastructure", []),
@@ -942,7 +942,7 @@ export const EXTENDED_FEATURES = {
 
   desert: {
     lensId: "desert",
-    lensNumber: 105,
+    lensNumber: 116,
     category: "SPECIALIZED",
     features: [
       f("expedition_planning", "Expedition Planning", "Desert expedition logistics with water supply tracking", "planning", []),
@@ -955,7 +955,7 @@ export const EXTENDED_FEATURES = {
 
   "urban-planning": {
     lensId: "urban-planning",
-    lensNumber: 106,
+    lensNumber: 117,
     category: "SPECIALIZED",
     features: [
       f("zoning_management", "Zoning Management", "Zoning map management with variance tracking", "management", []),
@@ -969,7 +969,7 @@ export const EXTENDED_FEATURES = {
 
   telecommunications: {
     lensId: "telecommunications",
-    lensNumber: 108,
+    lensNumber: 118,
     category: "SPECIALIZED",
     features: [
       f("network_monitoring", "Network Monitoring", "Real-time network health and performance monitoring", "infrastructure", []),
@@ -983,7 +983,7 @@ export const EXTENDED_FEATURES = {
 
   mining: {
     lensId: "mining",
-    lensNumber: 109,
+    lensNumber: 119,
     category: "SPECIALIZED",
     features: [
       f("site_management", "Mine Site Management", "Active mine site operations and production tracking", "management", []),
@@ -997,7 +997,7 @@ export const EXTENDED_FEATURES = {
 
   forestry: {
     lensId: "forestry",
-    lensNumber: 110,
+    lensNumber: 120,
     category: "SPECIALIZED",
     features: [
       f("stand_inventory", "Stand Inventory", "Timber stand mapping with volume and species tracking", "management", []),
@@ -1011,7 +1011,7 @@ export const EXTENDED_FEATURES = {
 
   veterinary: {
     lensId: "veterinary",
-    lensNumber: 111,
+    lensNumber: 121,
     category: "SPECIALIZED",
     features: [
       f("patient_records", "Patient Records", "Complete animal medical records with species-specific templates", "management", ["dtu"]),
@@ -1025,7 +1025,7 @@ export const EXTENDED_FEATURES = {
 
   "law-enforcement": {
     lensId: "law-enforcement",
-    lensNumber: 112,
+    lensNumber: 122,
     category: "SPECIALIZED",
     features: [
       f("case_management", "Case Management", "Criminal and civil case tracking with evidence chain of custody", "management", ["concord_shield"]),
@@ -1039,7 +1039,7 @@ export const EXTENDED_FEATURES = {
 
   "emergency-services": {
     lensId: "emergency-services",
-    lensNumber: 113,
+    lensNumber: 123,
     category: "SPECIALIZED",
     features: [
       f("cad_dispatch", "CAD Dispatch", "Computer-aided dispatch with priority-based unit assignment", "infrastructure", []),

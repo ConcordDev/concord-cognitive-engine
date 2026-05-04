@@ -195,14 +195,14 @@ describe("accumulate — domain signals", () => {
     assert.equal(acc.turnCount, 1);
   });
 
-  it("caps domain signals at MAX_DOMAIN_SIGNALS (50)", () => {
+  it("caps domain signals at MAX_DOMAIN_SIGNALS (500, multi-tenant default)", () => {
     const sid = uniqueSessionId("signals-overflow");
-    // Add 60 unique signals in one turn
-    const signals = Array.from({ length: 60 }, (_, i) => `domain-${i}`);
+    // Add 600 unique signals in one turn to exercise the cap
+    const signals = Array.from({ length: 600 }, (_, i) => `domain-${i}`);
     accumulate(sid, routePlan({ domainSignals: signals }), "msg");
 
     const acc = getAccumulator(sid);
-    assert.ok(acc.domainSignals.size <= 50);
+    assert.ok(acc.domainSignals.size <= 500);
   });
 });
 
@@ -291,13 +291,13 @@ describe("accumulate — active lenses", () => {
     assert.equal(acc2.activeLenses[0], "a");
   });
 
-  it("caps active lenses at MAX_ACTIVE_LENSES (15)", () => {
+  it("caps active lenses at MAX_ACTIVE_LENSES (175, every lens in principle)", () => {
     const sid = uniqueSessionId("lenses-overflow");
-    const lenses = Array.from({ length: 20 }, (_, i) => `lens-${i}`);
+    const lenses = Array.from({ length: 200 }, (_, i) => `lens-${i}`);
     accumulate(sid, routePlan({ lenses }), "msg");
 
     const acc = getAccumulator(sid);
-    assert.ok(acc.activeLenses.length <= 15);
+    assert.ok(acc.activeLenses.length <= 175);
   });
 
   it("handles null/undefined routePlan.lenses gracefully", () => {
@@ -338,16 +338,16 @@ describe("accumulate — action history", () => {
     assert.equal(acc.actionHistory.length, 0);
   });
 
-  it("caps action history at MAX_SESSION_HISTORY (30)", () => {
+  it("caps action history at MAX_SESSION_HISTORY (300, multi-tenant default)", () => {
     const sid = uniqueSessionId("action-overflow");
-    for (let i = 0; i < 35; i++) {
+    for (let i = 0; i < 350; i++) {
       accumulate(sid, routePlan({ actionType: "QUERY" }), `msg${i}`);
     }
 
     const acc = getAccumulator(sid);
-    assert.ok(acc.actionHistory.length <= 30);
+    assert.ok(acc.actionHistory.length <= 300);
     // Should keep the most recent ones (sliced from the end)
-    assert.equal(acc.actionHistory[acc.actionHistory.length - 1].turn, 35);
+    assert.equal(acc.actionHistory[acc.actionHistory.length - 1].turn, 350);
   });
 });
 
@@ -381,16 +381,16 @@ describe("accumulate — topic thread", () => {
     assert.equal(acc.topicThread[0].snippet.length, 200);
   });
 
-  it("caps topic thread at MAX_SESSION_HISTORY (30)", () => {
+  it("caps topic thread at MAX_SESSION_HISTORY (300, multi-tenant default)", () => {
     const sid = uniqueSessionId("topic-overflow");
-    for (let i = 0; i < 35; i++) {
+    for (let i = 0; i < 350; i++) {
       accumulate(sid, routePlan(), `msg${i}`);
     }
 
     const acc = getAccumulator(sid);
-    assert.ok(acc.topicThread.length <= 30);
+    assert.ok(acc.topicThread.length <= 300);
     // Most recent should be last
-    assert.ok(acc.topicThread[acc.topicThread.length - 1].snippet.includes("msg34"));
+    assert.ok(acc.topicThread[acc.topicThread.length - 1].snippet.includes("msg349"));
   });
 
   it("skips topic thread entry when message is falsy", () => {
@@ -996,12 +996,12 @@ describe("edge cases", () => {
     for (let i = 0; i < 5; i++) {
       accumulate(sid, routePlan({ domainSignals: ["important"] }), `msg${i}`);
     }
-    // Now flood with 55 new signals in one go
-    const flood = Array.from({ length: 55 }, (_, i) => `flood-${i}`);
+    // Now flood with 600 new signals in one go to exercise the 500 cap
+    const flood = Array.from({ length: 600 }, (_, i) => `flood-${i}`);
     accumulate(sid, routePlan({ domainSignals: flood }), "flood msg");
 
     const acc = getAccumulator(sid);
-    assert.ok(acc.domainSignals.size <= 50);
+    assert.ok(acc.domainSignals.size <= 500);
     // "important" should survive because it has the highest weight
     assert.ok(acc.domainSignals.has("important"), "High-weight signal should survive cap");
   });

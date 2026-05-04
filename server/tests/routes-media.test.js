@@ -201,8 +201,8 @@ describe("routes/media", () => {
   describe("POST /upload", () => {
     it("creates a media DTU with valid data", async () => {
       const res = await router.call("post", "/upload", {
+        user: { id: "user1" },
         body: {
-          authorId: "user1",
           title: "My Video",
           mediaType: "video",
           mimeType: "video/mp4",
@@ -217,18 +217,21 @@ describe("routes/media", () => {
       assert.ok(res.body.mediaDTU.id.startsWith("media-"));
     });
 
-    it("returns 400 when authorId is missing", async () => {
+    it("returns 401 when unauthenticated (no req.user)", async () => {
+      // SECURITY: authorId comes from authenticated session, never request body.
+      // Anonymous uploads must return 401 — see routes/media.js:152.
       const res = await router.call("post", "/upload", {
-        body: { title: "No Author", mediaType: "video" },
+        body: { title: "No Auth", mediaType: "video" },
       });
 
-      assert.equal(res.status, 400);
+      assert.equal(res.status, 401);
       assert.equal(res.body.ok, false);
     });
 
     it("returns 400 when title is missing", async () => {
       const res = await router.call("post", "/upload", {
-        body: { authorId: "user1", mediaType: "video" },
+        user: { id: "user1" },
+        body: { mediaType: "video" },
       });
 
       assert.equal(res.status, 400);
@@ -236,8 +239,8 @@ describe("routes/media", () => {
 
     it("auto-detects mediaType from mimeType", async () => {
       const res = await router.call("post", "/upload", {
+        user: { id: "user1" },
         body: {
-          authorId: "user1",
           title: "Audio",
           mimeType: "audio/mpeg",
         },
@@ -249,7 +252,8 @@ describe("routes/media", () => {
 
     it("returns 400 when neither mediaType nor mimeType provided", async () => {
       const res = await router.call("post", "/upload", {
-        body: { authorId: "user1", title: "Typeless" },
+        user: { id: "user1" },
+        body: { title: "Typeless" },
       });
 
       assert.equal(res.status, 400);
@@ -261,8 +265,8 @@ describe("routes/media", () => {
   describe("GET /:id/stream", () => {
     it("returns stream metadata", async () => {
       const upload = await router.call("post", "/upload", {
+        user: { id: "user1" },
         body: {
-          authorId: "user1",
           title: "Streamable",
           mediaType: "video",
           mimeType: "video/mp4",
@@ -284,8 +288,8 @@ describe("routes/media", () => {
 
     it("handles range header for partial content", async () => {
       const upload = await router.call("post", "/upload", {
+        user: { id: "user1" },
         body: {
-          authorId: "user1",
           title: "Range",
           mediaType: "video",
           mimeType: "video/mp4",
@@ -318,16 +322,16 @@ describe("routes/media", () => {
   describe("GET /feed", () => {
     it("returns media feed", async () => {
       await router.call("post", "/upload", {
+        user: { id: "user1" },
         body: {
-          authorId: "user1",
           title: "Feed Item 1",
           mediaType: "video",
           mimeType: "video/mp4",
         },
       });
       await router.call("post", "/upload", {
+        user: { id: "user2" },
         body: {
-          authorId: "user2",
           title: "Feed Item 2",
           mediaType: "audio",
           mimeType: "audio/mpeg",
@@ -348,8 +352,8 @@ describe("routes/media", () => {
   describe("POST /:id/like", () => {
     it("likes media", async () => {
       const upload = await router.call("post", "/upload", {
+        user: { id: "user1" },
         body: {
-          authorId: "user1",
           title: "Likeable",
           mediaType: "image",
           mimeType: "image/jpeg",
@@ -358,8 +362,9 @@ describe("routes/media", () => {
       const mediaId = upload.body.mediaDTU.id;
 
       const res = await router.call("post", "/:id/like", {
+        user: { id: "liker1" },
         params: { id: mediaId },
-        body: { userId: "liker1" },
+        body: {},
       });
 
       assert.equal(res.body.ok, true);
@@ -369,8 +374,8 @@ describe("routes/media", () => {
 
     it("unlikes on second toggle", async () => {
       const upload = await router.call("post", "/upload", {
+        user: { id: "user1" },
         body: {
-          authorId: "user1",
           title: "Unlikeable",
           mediaType: "image",
           mimeType: "image/jpeg",
@@ -379,23 +384,25 @@ describe("routes/media", () => {
       const mediaId = upload.body.mediaDTU.id;
 
       await router.call("post", "/:id/like", {
+        user: { id: "liker1" },
         params: { id: mediaId },
-        body: { userId: "liker1" },
+        body: {},
       });
 
       const res = await router.call("post", "/:id/like", {
+        user: { id: "liker1" },
         params: { id: mediaId },
-        body: { userId: "liker1" },
+        body: {},
       });
 
       assert.equal(res.body.liked, false);
       assert.equal(res.body.likes, 0);
     });
 
-    it("returns 400 when userId missing", async () => {
+    it("returns 401 when no authenticated user", async () => {
       const upload = await router.call("post", "/upload", {
+        user: { id: "user1" },
         body: {
-          authorId: "user1",
           title: "No Liker",
           mediaType: "image",
           mimeType: "image/jpeg",
@@ -407,7 +414,7 @@ describe("routes/media", () => {
         body: {},
       });
 
-      assert.equal(res.status, 400);
+      assert.equal(res.status, 401);
     });
   });
 
@@ -416,8 +423,8 @@ describe("routes/media", () => {
   describe("POST /:id/comment and GET /:id/comments", () => {
     it("adds a comment", async () => {
       const upload = await router.call("post", "/upload", {
+        user: { id: "user1" },
         body: {
-          authorId: "user1",
           title: "Commentable",
           mediaType: "video",
           mimeType: "video/mp4",
@@ -426,8 +433,9 @@ describe("routes/media", () => {
       const mediaId = upload.body.mediaDTU.id;
 
       const res = await router.call("post", "/:id/comment", {
+        user: { id: "commenter1" },
         params: { id: mediaId },
-        body: { userId: "commenter1", text: "Great video!" },
+        body: { text: "Great video!" },
       });
 
       assert.equal(res.status, 201);
@@ -437,8 +445,8 @@ describe("routes/media", () => {
 
     it("returns 400 when comment text is missing", async () => {
       const upload = await router.call("post", "/upload", {
+        user: { id: "user1" },
         body: {
-          authorId: "user1",
           title: "Empty Comment",
           mediaType: "video",
           mimeType: "video/mp4",
@@ -446,8 +454,9 @@ describe("routes/media", () => {
       });
 
       const res = await router.call("post", "/:id/comment", {
+        user: { id: "user1" },
         params: { id: upload.body.mediaDTU.id },
-        body: { userId: "user1" },
+        body: {},
       });
 
       assert.equal(res.status, 400);
@@ -455,8 +464,8 @@ describe("routes/media", () => {
 
     it("retrieves comments", async () => {
       const upload = await router.call("post", "/upload", {
+        user: { id: "user1" },
         body: {
-          authorId: "user1",
           title: "Comments",
           mediaType: "video",
           mimeType: "video/mp4",
@@ -465,12 +474,14 @@ describe("routes/media", () => {
       const mediaId = upload.body.mediaDTU.id;
 
       await router.call("post", "/:id/comment", {
+        user: { id: "u1" },
         params: { id: mediaId },
-        body: { userId: "u1", text: "First" },
+        body: { text: "First" },
       });
       await router.call("post", "/:id/comment", {
+        user: { id: "u2" },
         params: { id: mediaId },
-        body: { userId: "u2", text: "Second" },
+        body: { text: "Second" },
       });
 
       const res = await router.call("get", "/:id/comments", {
@@ -488,8 +499,8 @@ describe("routes/media", () => {
   describe("DELETE /:id", () => {
     it("deletes media when authorized", async () => {
       const upload = await router.call("post", "/upload", {
+        user: { id: "owner1" },
         body: {
-          authorId: "owner1",
           title: "Deletable",
           mediaType: "image",
           mimeType: "image/png",
@@ -497,8 +508,8 @@ describe("routes/media", () => {
       });
 
       const res = await router.call("delete", "/:id", {
+        user: { id: "owner1" },
         params: { id: upload.body.mediaDTU.id },
-        body: { authorId: "owner1" },
       });
 
       assert.equal(res.body.ok, true);

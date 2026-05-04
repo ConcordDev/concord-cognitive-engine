@@ -251,10 +251,10 @@ describe("UNIVERSAL_FEATURES", () => {
 // ═════════════════════════════════════════════════════════════════════════════
 
 describe("EXTENDED_FEATURES — structural invariants", () => {
-  it("is a plain object with 47 lens entries", () => {
+  it("is a plain object with 58 lens entries", () => {
     assert.equal(typeof EXTENDED_FEATURES, "object");
     assert.ok(!Array.isArray(EXTENDED_FEATURES));
-    assert.equal(ALL_LENS_KEYS.length, 47);
+    assert.equal(ALL_LENS_KEYS.length, 58);
   });
 
   it("every entry has the standard lens shape", () => {
@@ -288,10 +288,10 @@ describe("EXTENDED_FEATURES — structural invariants", () => {
     assert.equal(new Set(numbers).size, numbers.length, "duplicate lens numbers");
   });
 
-  it("lens numbers span 66 to 112", () => {
+  it("lens numbers span 66 to 123", () => {
     const numbers = ALL_LENS_KEYS.map((k) => EXTENDED_FEATURES[k].lensNumber);
     assert.equal(Math.min(...numbers), 66);
-    assert.equal(Math.max(...numbers), 112);
+    assert.equal(Math.max(...numbers), 123);
   });
 
   it("all lens numbers are contiguous (no gaps)", () => {
@@ -320,12 +320,12 @@ describe("EXTENDED_FEATURES — structural invariants", () => {
     }
   });
 
-  it("total extended features equal 220", () => {
+  it("total extended features equal 274", () => {
     let total = 0;
     for (const key of ALL_LENS_KEYS) {
       total += EXTENDED_FEATURES[key].features.length;
     }
-    assert.equal(total, 220);
+    assert.equal(total, 274);
   });
 
   it("every category is one of the expected values", () => {
@@ -337,6 +337,7 @@ describe("EXTENDED_FEATURES — structural invariants", () => {
       "SPECIALIZED_EXT",
       "BRIDGE",
       "CREATIVE",
+      "SPECIALIZED",
     ]);
     for (const key of ALL_LENS_KEYS) {
       assert.ok(
@@ -485,10 +486,10 @@ describe("EXTENDED_FEATURES — access flags", () => {
     }
   });
 
-  it("lenses without emergent access are exactly ext_finance, legacy, organ", () => {
+  it("lenses without emergent access are the documented set", () => {
     const noEmergent = ALL_LENS_KEYS.filter((k) => !EXTENDED_FEATURES[k].emergentAccess);
     noEmergent.sort();
-    assert.deepEqual(noEmergent, ["ext_finance", "legacy", "organ"]);
+    assert.deepEqual(noEmergent, ["defense", "ext_finance", "law-enforcement", "legacy", "organ"]);
   });
 
   it("lenses without bot access are the expected set", () => {
@@ -1719,7 +1720,17 @@ describe("Cross-cutting feature coverage", () => {
       "bridge",
       "crypto",
       "custom",
+      "defense",
+      "emergency-services",
       "film_studios",
+      "forestry",
+      "law-enforcement",
+      "mining",
+      "ocean",
+      "space",
+      "telecommunications",
+      "urban-planning",
+      "veterinary",
     ]);
   });
 
@@ -1800,9 +1811,9 @@ describe("Edge cases", () => {
     assert.equal(EXTENDED_FEATURES.nonexistent_lens, undefined);
   });
 
-  it("each lens ID is a valid JS identifier or contains only valid chars", () => {
+  it("each lens ID is a valid identifier (lowercase letters, digits, underscore, hyphen)", () => {
     for (const key of ALL_LENS_KEYS) {
-      assert.ok(/^[a-z][a-z0-9_]*$/.test(key), `${key} should be a valid identifier`);
+      assert.ok(/^[a-z][a-z0-9_-]*$/.test(key), `${key} should be a valid identifier`);
     }
   });
 

@@ -22,9 +22,9 @@ export function createThread(db, { userId, agentId, sandboxId, brainRole = "cons
 
   db.prepare(`
     INSERT INTO agent_threads
-    (id, user_id, agent_id, sandbox_id, brain_role, intent, status, created_at, last_checkpoint_at)
-    VALUES (?, ?, ?, ?, ?, ?, 'running', ?, ?)
-  `).run(id, userId, agentId || null, sandboxId || null, brainRole, intent, now, now);
+    (id, user_id, agent_id, sandbox_id, brain_role, intent, status, accumulated_state_json, created_at, last_checkpoint_at)
+    VALUES (?, ?, ?, ?, ?, ?, 'running', ?, ?, ?)
+  `).run(id, userId, agentId || null, sandboxId || null, brainRole, intent, "{}", now, now);
 
   return { threadId: id };
 }
@@ -65,16 +65,19 @@ export function listThreads(db, userId, { status, limit = 20 } = {}) {
 /**
  * Save a checkpoint for a thread step.
  */
-export function saveCheckpoint(db, threadId, stepIndex, { messages, toolCalls, tokensIn, tokensOut }) {
+export function saveCheckpoint(db, threadId, stepIndex, { messages, toolCalls, tokensIn, tokensOut, nodeId }) {
   const id = `cp_${crypto.randomBytes(8).toString("hex")}`;
   const now = new Date().toISOString();
+  // node_id identifies which agent-graph node produced this checkpoint.
+  // When not supplied (e.g. simple linear runs), fall back to a step-derived id.
+  const nodeIdValue = nodeId || `step:${stepIndex}`;
 
   db.prepare(`
     INSERT INTO agent_thread_checkpoints
-    (id, thread_id, step_index, messages_json, tool_calls_json, tokens_in, tokens_out, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    (id, thread_id, step_index, node_id, messages_json, tool_calls_json, tokens_in, tokens_out, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
-    id, threadId, stepIndex,
+    id, threadId, stepIndex, nodeIdValue,
     JSON.stringify(messages || []),
     JSON.stringify(toolCalls || []),
     tokensIn || 0, tokensOut || 0,

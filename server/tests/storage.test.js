@@ -163,11 +163,13 @@ describe("Storage Invariant Constants", () => {
     assert.equal(BANDWIDTH_MANAGEMENT.downloadModel.persistentConnection, false);
   });
 
-  it("has correct storage constants", () => {
+  it("has correct storage constants (32GB-heap deployment)", () => {
     assert.equal(STORAGE_CONSTANTS.VAULT_HASH_ALGORITHM, "sha256");
     assert.equal(STORAGE_CONSTANTS.VAULT_CLEANUP_TICK, 1000);
     assert.equal(STORAGE_CONSTANTS.VAULT_GRACE_PERIOD_DAYS, 30);
-    assert.equal(STORAGE_CONSTANTS.MAX_CONCURRENT_DOWNLOADS_PER_USER, 5);
+    // Concurrent downloads cap was bumped 5 → 25 for multi-tenant deployments.
+    // Override via CONCORD_DOWNLOADS_PER_USER.
+    assert.equal(STORAGE_CONSTANTS.MAX_CONCURRENT_DOWNLOADS_PER_USER, 25);
     assert.equal(STORAGE_CONSTANTS.UPLOAD_MAX_SIZE_MB, 5000);
     assert.equal(STORAGE_CONSTANTS.LICENSE_RECORD_BYTES, 200);
   });

@@ -5587,8 +5587,8 @@ async function initMetrics() {
 
     // Heartbeat liveness — incremented every governorTick. If the rate of
     // this counter drops to 0 the heartbeat has died and every emergent
-    // system is silently frozen. The Prometheus alert rule is in
-    // monitoring/prometheus/alerts/heartbeat.yml.
+    // system is silently frozen. The Prometheus alert rule
+    // `ConcordHeartbeatStopped` is in monitoring/prometheus/alerts.yml.
     METRICS.counters.heartbeatTicks = new prom.Counter({
       name: "concord_heartbeat_ticks_total",
       help: "Total governor heartbeat ticks executed",
@@ -8643,6 +8643,15 @@ async function runMacro(domain, name, input, ctx) {
     "/api/messaging", "/api/sandbox",
     // Production integrity
     "/api/inference/slos", "/api/audit/provenance",
+    // Three-gate sync: paths added to Gate 1 (publicReadPaths) need to land
+    // here too so unauthenticated reads don't get blocked by the Chicken2
+    // safeReadBypass check. Test: tests/three-gate-consistency.test.js.
+    "/api/openapi.json", "/api/openapi.yaml", "/api/docs",
+    "/api/creator/leaderboard", "/api/creator/trending-citations", "/api/creator/influence-drift",
+    "/api/world/clock", "/api/world/npc-behavior", "/api/world/npc-archetypes",
+    "/api/world/weather", "/api/world/bazaar", "/api/world/perf-telemetry",
+    "/api/combat/state",
+    "/api/concord-link", "/api/black-market", "/api/creature", "/api/emergent-skills",
   ];
   // Safe POST paths: chat and brain endpoints that must bypass Chicken2 for unauthenticated users
   const _safePostPaths = ["/api/chat", "/api/brain/conscious", "/api/repair", "/api/creative/registry", "/api/lens", "/api/forge", "/api/ask", "/api/dtus", "/api/social", "/api/economy", "/api/marketplace", "/api/collab", "/api/goals", "/api/media",
@@ -42556,68 +42565,20 @@ app.post("/api/onboarding/complete", (req, res) => {
 // first_cycle_commune), all defined in content/quests/onboarding.json.
 // Returns the current phase + per-objective progress so the wizard can
 // render the right prompts and voice lines without hardcoding the script.
-app.get("/api/tutorial/first-cycle", (req, res) => {
+//
+// Logic lives in lib/tutorial-first-cycle.js so the E2E test can exercise
+// the same derivation without booting the whole server.
+app.get("/api/tutorial/first-cycle", async (req, res) => {
   try {
     const userId = req.user?.id || `anon-${req.ip}`;
     const worldId = String(req.query.worldId || "concordia-hub");
-    const FIRST_CYCLE_QUEST_IDS = [
-      "first_cycle_cook",
-      "first_cycle_eat",
-      "first_cycle_fight",
-      "first_cycle_commune",
-    ];
-    const PHASE_BY_QUEST = {
-      first_cycle_cook:    "cook",
-      first_cycle_eat:     "eat",
-      first_cycle_fight:   "fight",
-      first_cycle_commune: "commune",
-    };
 
-    let questEngine;
-    try { questEngine = require("./emergent/quest-engine.js"); }
-    catch { /* loader varies between builds; fall back to inline progress lookup */ }
+    let questEngine = null;
+    try { questEngine = await import("./emergent/quest-engine.js"); }
+    catch { /* loader varies between builds; helper handles the missing-engine path */ }
 
-    const phases = [];
-    let currentPhase = "cook";
-    let allComplete = true;
-
-    for (const questId of FIRST_CYCLE_QUEST_IDS) {
-      let progress = null;
-      try {
-        if (questEngine?.getQuestProgress) {
-          progress = questEngine.getQuestProgress(db, userId, worldId, questId);
-        } else {
-          // Fallback path: read directly from quest_progress + quest_objectives.
-          const row = db.prepare(`
-            SELECT status, completed_at FROM quest_progress
-             WHERE user_id = ? AND world_id = ? AND quest_id = ?
-          `).get(userId, worldId, questId);
-          progress = row ? { status: row.status, completedAt: row.completed_at } : null;
-        }
-      } catch { /* quest tables may not exist on minimal builds */ }
-
-      const status = progress?.status ?? "not_started";
-      const isComplete = status === "complete" || status === "completed";
-      phases.push({
-        questId,
-        phase: PHASE_BY_QUEST[questId],
-        status,
-        complete: isComplete,
-        progress: progress ?? null,
-      });
-      if (!isComplete && allComplete) {
-        allComplete = false;
-        currentPhase = PHASE_BY_QUEST[questId];
-      }
-    }
-
-    res.json({
-      ok: true,
-      tutorial: "first_cycle",
-      currentPhase: allComplete ? "complete" : currentPhase,
-      complete: allComplete,
-      phases,
-    });
+    const { deriveFirstCycleProgress } = await import("./lib/tutorial-first-cycle.js");
+    res.json(deriveFirstCycleProgress({ db, userId, worldId, questEngine }));
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
