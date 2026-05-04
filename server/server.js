@@ -8748,12 +8748,26 @@ async function runMacro(domain, name, input, ctx) {
   try {
     result = await m.fn(ctx, input ?? {});
   } catch (macroErr) {
-    // Avoidance learning: record macro failures for pattern learning
+    // Avoidance learning: record macro failures for pattern learning.
     try {
       const painMod = await import("./emergent/avoidance-learning.js").catch(() => null);
       if (painMod?.recordPain) painMod.recordPain({ domain, name, error: String(macroErr?.message || macroErr) });
     } catch (e) { observe(e, "macro_failure_pain_recording"); }
-    throw macroErr;
+    // Contract: runMacro never throws — every caller treats the response
+    // as an `{ ok: boolean, ... }` envelope. A handler that throws on bad
+    // input would force every caller to add try/catch and lose the pain-
+    // learning hook above. Convert to structured failure instead.
+    structuredLog("warn", "macro_uncaught_throw", {
+      domain, name,
+      error: String(macroErr?.message || macroErr),
+    });
+    return {
+      ok: false,
+      error: "macro_uncaught_throw",
+      message: String(macroErr?.message || macroErr),
+      domain,
+      name,
+    };
   }
   try { fireHook(STATE, "macro:afterExecute", { domain, name, result }); } catch (e) { observe(e, "macro_hook_after_execute_main"); }
 
@@ -21038,7 +21052,10 @@ register("cortex", "anomalies", (ctx, input) => {
 }, { description: "Retrieve detected signal anomalies." });
 
 register("cortex", "classify", (ctx, input) => {
-  return cortexClassifySignal(input);
+  // Wrap so the macro contract holds — cortexClassifySignal returns the
+  // raw signal record, not the {ok, ...} envelope every other macro uses.
+  const signal = cortexClassifySignal(input);
+  return { ok: true, signal };
 }, { description: "Submit a signal for 5-property classification." });
 
 register("cortex", "spectrum", (ctx, input) => {
@@ -65523,6 +65540,11 @@ export const __TEST__ = Object.freeze({
   _defaultOrganState,
   register,
   runMacro,
+  // Behavioral test harness (tests/lens-behavior-smoke.test.js) needs
+  // these to enumerate every (domain, action) macro and invoke it with
+  // an internal/owner-scoped ctx that bypasses auth gates.
+  makeInternalCtx,
+  makeCtx,
   MACROS,
   COUNCIL_GATES,
   ROYALTY_RATES,

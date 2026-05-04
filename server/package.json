@@ -6,10 +6,11 @@
   "scripts": {
     "start": "node --max-old-space-size=32768 server.js",
     "dev": "node --max-old-space-size=32768 --watch server.js",
-    "test": "node --test --test-force-exit --test-timeout=30000 'tests/**/*.test.js' 'tests/**/*-tests.js'",
+    "test": "node --test --test-force-exit --test-timeout=30000 'tests/**/*.test.js' 'tests/**/*-tests.js' && npm run test:behavior",
     "test:watch": "node --test --watch --test-timeout=30000 'tests/**/*.test.js' 'tests/**/*-tests.js'",
     "test:coverage": "node --test --test-force-exit --test-timeout=30000 --experimental-test-coverage 'tests/**/*.test.js' 'tests/**/*-tests.js'",
     "test:e2e": "node --test --test-force-exit --test-timeout=30000 'tests/e2e/**/*.test.js'",
+    "test:behavior": "node --test --test-force-exit --test-timeout=120000 tests/behavior/lens-behavior-smoke.behavior.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit",

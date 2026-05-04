@@ -24,13 +24,14 @@ describe("BRAIN_CONFIG", () => {
     assert.ok(Object.isFrozen(BRAIN_CONFIG));
   });
 
-  it("defines exactly four brains", () => {
+  it("defines all five brains (4 cognitive + 1 multimodal/vision)", () => {
     const brains = Object.keys(BRAIN_CONFIG);
-    assert.equal(brains.length, 4);
+    assert.equal(brains.length, 5);
     assert.ok(brains.includes("conscious"));
     assert.ok(brains.includes("subconscious"));
     assert.ok(brains.includes("utility"));
     assert.ok(brains.includes("repair"));
+    assert.ok(brains.includes("multimodal"));
   });
 
   it("each brain has required configuration fields", () => {
