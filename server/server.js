@@ -5400,6 +5400,19 @@ if (z) {
 // Validation middleware factory
 function validate(schemaName, source = "body") {
   return (req, res, next) => {
+    // Defensive null-body guard. If the route's schema expects an object
+    // but the caller sent JSON `null`, an empty body, or an array, we
+    // return 400 here even if zod/the named schema isn't loaded — so
+    // bad input is always 400, never 500.
+    if (source === "body") {
+      if (req.body === null || req.body === undefined || typeof req.body !== "object" || Array.isArray(req.body)) {
+        return res.status(400).json({
+          ok: false,
+          error: "invalid_body",
+          message: "Request body must be a JSON object.",
+        });
+      }
+    }
     if (!z || !schemas[schemaName]) {
       structuredLog("warn", "validation_skip", { schema: schemaName, reason: !z ? "zod_missing" : "schema_missing" });
       return next();
@@ -5822,10 +5835,16 @@ if (rateLimit) {
 // Applied AFTER authMiddleware so req.user is already populated.
 let unauthRateLimiter = null;
 if (rateLimit) {
+  // Health probes (/health, /ready, /metrics, /api/health/*) must always
+  // respond — orchestrators (k8s, load balancers, monitoring) hit them at
+  // far higher than 30 rpm and would mark the pod unhealthy on 429. They
+  // also pre-authenticate from the orchestrator side (private network),
+  // not the user auth flow we're rate-limiting on.
+  const _HEALTH_PROBE_RE = /^\/(health|ready|metrics)(\b|\/)|^\/api\/health(\b|\/)/;
   unauthRateLimiter = rateLimit({
     windowMs: 60000,
     max: 30,
-    skip: (req) => !!req.user?.id,
+    skip: (req) => !!req.user?.id || _HEALTH_PROBE_RE.test(req.path),
     keyGenerator: (req) => req.ip,
     message: { ok: false, error: "Rate limit exceeded. Authenticate for higher limits.", code: "ANON_RATE_LIMIT" },
     standardHeaders: true,
@@ -54130,7 +54149,20 @@ if (globalThis.__sentry) {
   app.use(globalThis.__sentry.Handlers.errorHandler());
 }
 
-const SHOULD_LISTEN = (String(process.env.CONCORD_NO_LISTEN || "").toLowerCase() !== "true") && (String(process.env.NODE_ENV || "").toLowerCase() !== "test");
+// Listen-suppression for tests. NODE_ENV=test (in-process unit tests
+// importing server.js directly) and CONCORD_NO_LISTEN=true both skip
+// app.listen so the test runner doesn't leak a TCP listener. The
+// CONCORD_FORCE_LISTEN escape hatch lets out-of-process integration
+// tests (storage-parity, adversarial-critical-endpoints, edge-cases-
+// critical-paths, error-paths) spawn the server as a subprocess with
+// NODE_ENV=test for storage isolation while still binding a port for
+// HTTP probing. Without this override those tests hang forever waiting
+// on /health.
+const _FORCE_LISTEN = String(process.env.CONCORD_FORCE_LISTEN || "").toLowerCase() === "true";
+const SHOULD_LISTEN = _FORCE_LISTEN || (
+  (String(process.env.CONCORD_NO_LISTEN || "").toLowerCase() !== "true") &&
+  (String(process.env.NODE_ENV || "").toLowerCase() !== "test")
+);
 
 const server = SHOULD_LISTEN ? app.listen(PORT, () => {
   structuredLog("info", "server_listening", { url: `http://localhost:${PORT}`, statusUrl: `http://localhost:${PORT}/api/status` });

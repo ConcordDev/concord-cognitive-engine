@@ -340,8 +340,10 @@ describe("LICENSE_TYPES", () => {
     assertImmutable(LICENSE_TYPES, "LICENSE_TYPES");
   });
 
-  it("has standard, exclusive, and custom", () => {
-    assert.deepStrictEqual(Object.keys(LICENSE_TYPES).sort(), ["custom", "exclusive", "standard"]);
+  it("has standard, exclusive, custom, and personal-use", () => {
+    // personal-use was added when the recipe substrate adopted scope='personal'
+    // by default (see CLAUDE.md "personal_dtus_never_leak" invariant).
+    assert.deepStrictEqual(Object.keys(LICENSE_TYPES).sort(), ["custom", "exclusive", "personal-use", "standard"]);
   });
 
   it("standard license allows commercial use and derivatives", () => {
