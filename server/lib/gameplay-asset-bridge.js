@@ -43,6 +43,21 @@ function _safe(fn) {
 
 /* ── Creature events ──────────────────────────────────────────────── */
 
+// Gameplay-derived assets are virtual blueprints, not files. We synthesize
+// a deterministic "gameplay://kind/sourceId" path so the registry's
+// local_path-or-(source,source_id) dedup still works after migration 100
+// relaxed local_path to nullable.
+function _gameplayPath(kind, sourceId) {
+  return `gameplay://${kind}/${sourceId}`;
+}
+
+// recordInteraction expects an actor object {kind, id} per registry.js:73.
+// Bridge callers pass plain ids; wrap them as 'system' actors so the
+// interaction log gets a valid row.
+function _systemActor(id) {
+  return { kind: "system", id: id ?? null };
+}
+
 /**
  * Register a freshly spawned creature blueprint as an asset. Each unique
  * (worldId, baselineId, topology) tuple becomes a single asset that
@@ -60,11 +75,10 @@ export function onCreatureSpawned(db, blueprint) {
       kind:     ASSET_KIND.CREATURE,
       source:   "concordia",
       sourceId,
-      label:    blueprint.provenance?.description ?? "creature",
-      payload:  JSON.stringify(blueprint),
+      localPath: _gameplayPath(ASSET_KIND.CREATURE, sourceId),
       qualityLevel: 0,
     });
-    if (r?.assetId) recordInteraction(db, r.assetId, blueprint.id, "spawn", 0.5);
+    if (r?.id) recordInteraction(db, r.id, _systemActor(blueprint.id), "spawn", 0.5);
     return r;
   });
 }
@@ -88,15 +102,14 @@ export function onHybridBirth(db, { hybrid, stability, generation, crossWorld, p
       kind,
       source:   "concordia",
       sourceId,
-      label:    hybrid.provenance?.description ?? "hybrid",
-      payload:  JSON.stringify({ blueprint: hybrid, stability, generation, crossWorld, parents }),
+      localPath: _gameplayPath(kind, sourceId),
       // Cross-world hybrids start at higher quality because they're rarer and more distinct.
       qualityLevel: crossWorld ? 2 : 1,
     });
-    if (r?.assetId) {
-      recordInteraction(db, r.assetId, hybrid.id, "born", crossWorld ? 1.5 : 1.0);
+    if (r?.id) {
+      recordInteraction(db, r.id, _systemActor(hybrid.id), "born", crossWorld ? 1.5 : 1.0);
       // Bonus: stable lineage = recompute score immediately so it surfaces in resolveCurrentBest.
-      if (isSpecies) recomputeEvolutionScore(db, r.assetId);
+      if (isSpecies) recomputeEvolutionScore(db, r.id);
     }
     return r;
   });
@@ -107,15 +120,15 @@ export function onHybridBirth(db, { hybrid, stability, generation, crossWorld, p
 export function onPlayerCraft(db, { userId, recipeId, itemId, label, payload, quality = 0 }) {
   if (!db || !itemId) return null;
   return _safe(() => {
+    const sourceId = `craft:${userId ?? "unknown"}:${recipeId ?? "freeform"}:${itemId}`;
     const r = registerAsset(db, {
       kind:    ASSET_KIND.CRAFT,
       source:  "concordia",
-      sourceId: `craft:${userId ?? "unknown"}:${recipeId ?? "freeform"}:${itemId}`,
-      label:   label ?? "crafted item",
-      payload: typeof payload === "string" ? payload : JSON.stringify(payload ?? {}),
+      sourceId,
+      localPath: _gameplayPath(ASSET_KIND.CRAFT, sourceId),
       qualityLevel: quality,
     });
-    if (r?.assetId) recordInteraction(db, r.assetId, userId, "craft", 1.2);
+    if (r?.id) recordInteraction(db, r.id, { kind: "user", id: userId ?? null }, "craft", 1.2);
     return r;
   });
 }
@@ -123,15 +136,15 @@ export function onPlayerCraft(db, { userId, recipeId, itemId, label, payload, qu
 export function onLootDropped(db, { lootId, killerId, victimId, label, payload }) {
   if (!db || !lootId) return null;
   return _safe(() => {
+    const sourceId = `loot:${victimId ?? "unknown"}:${lootId}`;
     const r = registerAsset(db, {
       kind:     ASSET_KIND.DROP,
       source:   "concordia",
-      sourceId: `loot:${victimId ?? "unknown"}:${lootId}`,
-      label:    label ?? "loot drop",
-      payload:  typeof payload === "string" ? payload : JSON.stringify(payload ?? {}),
+      sourceId,
+      localPath: _gameplayPath(ASSET_KIND.DROP, sourceId),
       qualityLevel: 0,
     });
-    if (r?.assetId) recordInteraction(db, r.assetId, killerId, "drop", 1.0);
+    if (r?.id) recordInteraction(db, r.id, _systemActor(killerId), "drop", 1.0);
     return r;
   });
 }
@@ -142,7 +155,7 @@ export function onCombatHit(db, { attackerId, victimId, weapon, damage, isCrit }
     // Each weapon used in combat earns interaction weight scaling with
     // damage + crit. Frequently-used weapons evolve into refined versions.
     const weight = (damage / 50) * (isCrit ? 1.5 : 1.0);
-    return recordInteraction(db, weapon.id, attackerId, "combat_hit", weight);
+    return recordInteraction(db, weapon.id, { kind: "user", id: attackerId ?? null }, "combat_hit", weight);
   });
 }
 
@@ -151,15 +164,15 @@ export function onCombatHit(db, { attackerId, victimId, weapon, damage, isCrit }
 export function onSkillAuthored(db, { skill, origin }) {
   if (!db || !skill?.id) return null;
   return _safe(() => {
+    const sourceId = `skill:${skill.id}`;
     const r = registerAsset(db, {
       kind:     ASSET_KIND.SKILL,
       source:   "concordia",
-      sourceId: `skill:${skill.id}`,
-      label:    skill.name ?? "emergent skill",
-      payload:  JSON.stringify(skill),
+      sourceId,
+      localPath: _gameplayPath(ASSET_KIND.SKILL, sourceId),
       qualityLevel: skill.provenance?.parentId ? 1 : 0, // derivative skills start a bit higher
     });
-    if (r?.assetId) recordInteraction(db, r.assetId, origin ?? skill.provenance?.origin ?? "emergent", "authored", 1.0);
+    if (r?.id) recordInteraction(db, r.id, _systemActor(origin ?? skill.provenance?.origin ?? "emergent"), "authored", 1.0);
     return r;
   });
 }
@@ -168,10 +181,34 @@ export function onSkillAuthored(db, { skill, origin }) {
  * Skill use during play: bumps interaction weight on the skill asset, and
  * also bumps the actor's "mastery" pseudo-asset which drives skill
  * derivatives over time.
+ *
+ * Resolves the registered asset id by (source='concordia', source_id='skill:<skillId>')
+ * before recording — onSkillAuthored uses that source_id convention and
+ * registerAsset returns a UUID, so the per-skill UUID has to be looked up.
+ * If the skill was never authored, auto-register it so the use still counts.
  */
 export function onSkillUsed(db, { skillId, actorId, isHit = true }) {
   if (!db || !skillId) return null;
   return _safe(() => {
-    return recordInteraction(db, `skill:${skillId}`, actorId, isHit ? "use_hit" : "use_miss", isHit ? 1.0 : 0.3);
+    const sourceId = `skill:${skillId}`;
+    let row;
+    try {
+      row = db.prepare(
+        `SELECT id FROM evo_assets WHERE source = 'concordia' AND source_id = ?`
+      ).get(sourceId);
+    } catch { /* table may not exist yet — let auto-register surface it */ }
+    let assetId = row?.id;
+    if (!assetId) {
+      const r = registerAsset(db, {
+        kind:     ASSET_KIND.SKILL,
+        source:   "concordia",
+        sourceId,
+        localPath: _gameplayPath(ASSET_KIND.SKILL, sourceId),
+        qualityLevel: 0,
+      });
+      assetId = r?.id;
+    }
+    if (!assetId) return null;
+    return recordInteraction(db, assetId, { kind: "user", id: actorId ?? null }, isHit ? "use_hit" : "use_miss", isHit ? 1.0 : 0.3);
   });
 }

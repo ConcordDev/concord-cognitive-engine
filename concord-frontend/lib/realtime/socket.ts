@@ -275,6 +275,10 @@ export type SocketEvent =
   | 'coop:build:edit'
   | 'coop:stash:withdraw'
   | 'reputation:badge-earned'
+  // Refusal Field — Sovereign / quest beats / Mass Raid declare gates per world
+  | 'world:refusal-field'
+  // EvoAsset evolution scheduler — promoted version notification
+  | 'evo:asset-promoted'
   // Council Live Theater stream
   | 'council:theater:scheduled'
   | 'council:theater:started'

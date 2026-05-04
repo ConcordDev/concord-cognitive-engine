@@ -445,3 +445,78 @@ Mounted at `/api/emergent-skills/*` to avoid colliding with the existing `/api/s
 | `combat:death` | `{ victimId, killerId, position, ts }` | On `/api/combat/death` |
 | `social:ping` | `{ from, type, position, cityId, target, text, ts }` | On `/api/social/ping` |
 | `quest:new` | `{ questId, worldId, title, description, giverNpcId, rewardJson, ts }` | Quest emergence per heartbeat |
+
+---
+
+## Onboarding + First Cycle Tutorial
+
+The first-hour onboarding routes the new player from `/register` into the cook → eat → fight → commune flow defined in `content/quests/onboarding.json`. The wizard is mounted in `AppShell.tsx`; these endpoints back its state.
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET  | `/api/onboarding`                  | no  | Read the player's onboarding state. Returns `{ ok, state }` with completed step ids. |
+| POST | `/api/onboarding/start`            | yes | Mark onboarding as started for the authenticated user. |
+| POST | `/api/onboarding/complete`         | yes | Record completion of an onboarding step. Body: `{ stepId }`. |
+| GET  | `/api/onboarding/wizard-status`    | yes | Server-confirmed first-visit completion: `{ ok, completed, completedAt }`. |
+| POST | `/api/onboarding/wizard-complete`  | yes | Mark the wizard complete on the server (survives device/login changes). |
+| GET  | `/api/tutorial/first-cycle?worldId=` | no | Player progress through the four First-Cycle quests. Returns `{ ok, tutorial:'first_cycle', currentPhase, complete, phases:[{questId, phase, status, complete, progress}] }`. `currentPhase` is one of `cook`/`eat`/`fight`/`commune`/`complete`. Logic shared with E2E test via `lib/tutorial-first-cycle.js`. |
+
+---
+
+## Creator Economy
+
+Surfaces creator-facing analytics for the marketplace lens.
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | `/api/creator/leaderboard`         | no  | Top creators by influence-weighted earnings. Optional `?limit=`, `?window=` (24h/7d/30d/all). |
+| GET | `/api/creator/trending-citations`  | no  | DTUs whose citation rate is rising fastest in the recent window. |
+| GET | `/api/creator/influence-drift`     | no  | Creator influence score deltas (rising / falling list). |
+| GET | `/api/creator/badges`              | yes | Badges earned by the authenticated creator. |
+| GET | `/api/creator/badges/:userId`      | no  | Public badge wall for any user. |
+| GET | `/api/creator/listings`            | yes | The authenticated user's marketplace listings. |
+| GET | `/api/creator/dashboard`           | yes | Aggregate dashboard: earnings, royalty cascade snapshot, listing health. |
+
+---
+
+## OpenAPI Spec + API Docs
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | `/api/openapi.json`        | no | Live OpenAPI 3.1 spec (machine-readable). |
+| GET | `/api/openapi.yaml`        | no | Same spec in YAML. |
+| GET | `/api/docs`                | no | Renders an HTML viewer for the spec. |
+| GET | `/api/docs/openapi.json`   | no | Spec under the docs prefix (alias). |
+| GET | `/api/docs/openapi.yaml`   | no | YAML alias under docs prefix. |
+
+---
+
+## Concord Link (cross-world messaging)
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| POST | `/api/concord-link/send`     | yes | Dispatch a message from world A → world B via walker journey. Body: `{ toWorld, payload, prefer? }`. Returns `{ messageId, walkers, etaSec }`. |
+| GET  | `/api/concord-link/status/:messageId` | no | Lookup walker journey progress: `{ status, hops, lastHopAt }`. |
+| GET  | `/api/concord-link/inbox`    | yes | Messages addressed to the authenticated player. |
+
+The `concord-link:delivered` socket event fires when the final hop succeeds (also documented above).
+
+---
+
+## Black Market (intercepted-message economy)
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET  | `/api/black-market/listings`  | no  | Active intercepted-message listings. Filterable by topic and price band. |
+| POST | `/api/black-market/intercept` | yes | Record a Sovereign-authorized message interception. Body: `{ messageId, evidenceTier }`. |
+| POST | `/api/black-market/buy`       | yes | Purchase intercepted intel. Body: `{ listingId }`. Burns CC; transfers payload to buyer. |
+
+---
+
+## World Bazaar + Performance Telemetry
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET  | `/api/world/bazaar`           | no  | Aggregate marketplace surface for a world: trending recipes, top creators, hot DTUs. Used by the bazaar district overlay. |
+| POST | `/api/world/perf-telemetry`   | no  | Client → server telemetry beacon (FPS, draw calls, GPU memory). Capped at 8kb body. |
+| GET  | `/api/world/perf-telemetry`   | no  | Aggregated client-perf snapshot for ops monitoring. |

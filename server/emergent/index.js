@@ -1328,7 +1328,13 @@ function init({ register, STATE, helpers }) {
   // ══════════════════════════════════════════════════════════════════════════
 
   register("emergent", "entity.detect", (_ctx, input = {}) => {
-    return detectEntityEmergence(STATE, input.emergentId);
+    // Macro contract: every macro returns {ok: boolean, ...}. The underlying
+    // detectEntityEmergence helper returns {emerged, error} or {emerged, ...
+    // entity}; wrap so callers can rely on the shared envelope shape.
+    const result = detectEntityEmergence(STATE, input.emergentId);
+    if (result && typeof result === "object" && "ok" in result) return result;
+    if (result?.error) return { ok: false, error: result.error, ...result };
+    return { ok: true, ...result };
   }, { description: "Detect entity emergence for an emergent", public: true });
 
   register("emergent", "entity.scan", (_ctx) => {
@@ -2009,7 +2015,10 @@ function init({ register, STATE, helpers }) {
   }, { description: "Get current attention budget status", public: true });
 
   register("emergent", "scheduler.checkBudget", (_ctx, input = {}) => {
-    return checkBudget(STATE, input.userId);
+    // Wrap to honor the macro contract — checkBudget returns
+    // {allowed, remaining}, not the {ok, ...} envelope.
+    const r = checkBudget(STATE, input.userId);
+    return { ok: true, ...r };
   }, { description: "Check if budget allows new work", public: true });
 
   register("emergent", "scheduler.updateBudget", (_ctx, input = {}) => {
@@ -2404,11 +2413,14 @@ function init({ register, STATE, helpers }) {
   }, { description: "Bulk register route cost tiers", public: false });
 
   register("emergent", "threat.checkRate", (_ctx, input = {}) => {
-    return checkRateLimit(STATE, input.userId, input.macroName);
+    // Wrap to honor the macro contract.
+    const r = checkRateLimit(STATE, input.userId, input.macroName);
+    return { ok: true, ...r };
   }, { description: "Check tiered rate limit", public: true });
 
   register("emergent", "threat.checkCost", (_ctx, input = {}) => {
-    return checkCostBudget(STATE, input.userId, input.macroName);
+    const r = checkCostBudget(STATE, input.userId, input.macroName);
+    return { ok: true, ...r };
   }, { description: "Check cost budget", public: true });
 
   register("emergent", "threat.audit", (_ctx) => {
@@ -3031,7 +3043,10 @@ function init({ register, STATE, helpers }) {
 
   register("emergent", "repair.prophet", async (_ctx, input = {}) => {
     const projectRoot = input.projectRoot || process.cwd();
-    return runProphet(projectRoot);
+    // Wrap to honor the macro contract — runProphet returns the raw
+    // {phase, timestamp, checks[], ...} report, not the {ok, ...} envelope.
+    const report = await runProphet(projectRoot);
+    return { ok: true, report };
   }, { description: "Run pre-build prophet scan", public: false });
 
   let _lastLatticeAudit = 0;

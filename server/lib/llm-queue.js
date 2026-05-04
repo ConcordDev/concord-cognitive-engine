@@ -236,5 +236,41 @@ export function createLLMQueue(opts = {}) {
     return { allowed: true };
   }
 
-  return { enqueue, wrap, getMetrics, drain, queuePressure, checkPressure, PRIORITY };
+  /**
+   * Estimate where a freshly-enqueued request would land in the queue
+   * + how long it would wait. Used for queue-aware UX so the chat UI
+   * can render "You're #4 in queue, ~18s wait" instead of staring at
+   * a silent spinner under load.
+   *
+   * @param {number} [priority=PRIORITY.NORMAL]
+   * @returns {{ position: number, estimatedWaitMs: number, pressure: number, inflight: number }}
+   */
+  function estimatePosition(priority = PRIORITY.NORMAL) {
+    // Position counts items ahead of this one in the same or higher
+    // priority bucket — lower numeric priority drains first, so a
+    // NORMAL request is held behind every CRITICAL + HIGH item.
+    let ahead = 0;
+    for (let p = 0; p <= priority; p++) {
+      ahead += buckets[p].length;
+    }
+    const completedAcross = metrics.completed.reduce((s, n) => s + n, 0);
+    const totalLatency = metrics.totalLatencyMs.reduce((s, n) => s + n, 0);
+    const avgLatencyMs = completedAcross > 0
+      ? Math.round(totalLatency / completedAcross)
+      : 2000; // sensible default before any sample lands
+    // Effective throughput = concurrency × (1000 / avgLatency) requests/sec.
+    // Wait time = (ahead + inflight) / concurrency × avgLatency.
+    const estimatedWaitMs = Math.max(
+      0,
+      Math.round(((ahead + inflight) / Math.max(1, concurrency)) * avgLatencyMs)
+    );
+    return {
+      position: ahead + 1,
+      estimatedWaitMs,
+      pressure: queuePressure(),
+      inflight,
+    };
+  }
+
+  return { enqueue, wrap, getMetrics, drain, queuePressure, checkPressure, estimatePosition, PRIORITY };
 }

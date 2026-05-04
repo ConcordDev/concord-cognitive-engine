@@ -211,7 +211,7 @@ function setupTestDb() {
 }
 
 function seedUser(userId, amount) {
-  recordTransaction(db, {
+  const { id } = recordTransaction(db, {
     type: "TOKEN_PURCHASE",
     from: null,
     to: userId,
@@ -221,6 +221,13 @@ function seedUser(userId, amount) {
     status: "complete",
     metadata: { source: "test_seed" },
   });
+  // Backdate the seeded credit past the 48-hour withdrawal hold so the
+  // requestWithdrawal settled-balance gate (economy/withdrawals.js:38) treats
+  // it as eligible. Without this, withdraw tests fail by design — the hold
+  // is the anti-refund-exploit gate, not a bug.
+  db.prepare(
+    `UPDATE economy_ledger SET created_at = datetime('now', '-72 hours') WHERE id = ?`
+  ).run(id);
 }
 
 

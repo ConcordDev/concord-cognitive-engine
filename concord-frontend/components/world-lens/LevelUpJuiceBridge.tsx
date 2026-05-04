@@ -138,6 +138,31 @@ export function LevelUpJuiceBridge() {
       },
     );
 
+    // EvoAsset evolution promoted — "manifested fused power" notification.
+    // Fired from server/lib/evo-asset/scheduler.js after a refinement pass
+    // verifies through the Atlas 5-stage gate and the version row gets
+    // promoted (asset's quality_level bumps).
+    const offEvoAsset = subscribe<{
+      assetId: string;
+      versionId: string;
+      passKind: string;
+      diffSummary?: string | null;
+    }>(
+      'evo:asset-promoted',
+      (msg) => {
+        addToast({
+          type: 'success',
+          message: `Manifested fused power: ${msg.passKind}`,
+          duration: 6000,
+        });
+        try {
+          window.dispatchEvent(new CustomEvent('concordia:game-juice', {
+            detail: { trigger: 'fanfare', opts: { value: msg.passKind } },
+          }));
+        } catch { /* ok */ }
+      },
+    );
+
     return () => {
       offLevelUp();
       offQualityApproved();
@@ -148,6 +173,7 @@ export function LevelUpJuiceBridge() {
       offRaid();
       offLineageQuest();
       offBadge();
+      offEvoAsset();
     };
   }, []);
 

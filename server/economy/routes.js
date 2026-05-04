@@ -43,6 +43,7 @@ import { runTreasuryReconciliation, getReconciliationHistory } from "./treasury-
 import { getSystemBalanceSummary } from "./balances.js";
 import { getDescendants } from "./royalty-cascade.js";
 import { initReservesSchema, allocateFromFee, getReserveHealth } from "./reserves.js";
+import { getUserStorage } from "../lib/storage-quota.js";
 
 /**
  * Register all economy + Stripe routes on the Express app.
@@ -1960,6 +1961,51 @@ export function registerEconomyRoutes(app, db, opts = {}) {
     } catch (err) {
       log("error", "reserves_health_fetch_failed", { error: err.message });
       res.status(500).json({ ok: false, error: "reserves_health_fetch_failed" });
+    }
+  });
+
+  // ── Storage Quota Status (user) ───────────────────────────────────────────
+  // Reads users.storage_bytes_used / storage_bytes_quota plus the storage_audit
+  // ledger to surface "5 GiB used of 7 GiB" + the earned-storage history. The
+  // 413 quota_exceeded payload returned by the upload endpoint is the
+  // primary feedback channel; this route exists so the wallet/profile UI
+  // can render a meter without forcing a failed upload first.
+  app.get("/api/wallet/storage", authRequired, (req, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
+      const storage = getUserStorage(db, userId);
+      // Earned-storage breakdown by reason (last 50 events for the UI).
+      let earnedSources = { earned_royalty: 0, earned_mega: 0, earned_sale: 0 };
+      let recentEvents = [];
+      try {
+        const breakdown = db.prepare(`
+          SELECT reason, COALESCE(SUM(delta_bytes), 0) AS total
+            FROM storage_audit
+           WHERE user_id = ? AND reason LIKE 'earned_%'
+           GROUP BY reason
+        `).all(userId);
+        for (const row of breakdown) earnedSources[row.reason] = Number(row.total) || 0;
+        recentEvents = db.prepare(`
+          SELECT delta_bytes, reason, artifact_id, occurred_at
+            FROM storage_audit
+           WHERE user_id = ?
+           ORDER BY occurred_at DESC
+           LIMIT 50
+        `).all(userId);
+      } catch { /* schema may not exist on minimal builds */ }
+      res.json({
+        ok: true,
+        storage: {
+          ...storage,
+          earnedSources,
+          recentEvents,
+          earnPaths: ["royalty_payouts", "mega_promotions", "marketplace_sales"],
+        },
+      });
+    } catch (err) {
+      log("error", "storage_status_fetch_failed", { error: err.message });
+      res.status(500).json({ ok: false, error: "storage_status_fetch_failed" });
     }
   });
 

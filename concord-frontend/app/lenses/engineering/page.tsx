@@ -76,8 +76,8 @@ const MATERIALS: Record<string, { E: number; allowable: number; density: number;
 const TABS = ['Model', 'Loads', 'Materials', 'Analysis', 'Results'] as const;
 type Tab = (typeof TABS)[number];
 
-// ── Seed model (simple portal frame) ─────────────────────────────────────────
-const SEED_MODEL: FEAModel = {
+// ── Default FEA template (simple portal frame) ───────────────────────────────
+const DEFAULT_FEA_MODEL: FEAModel = {
   nodes: [
     { id: 'N1', x: 0, y: 0, z: 0 },
     { id: 'N2', x: 0, y: 12, z: 0 },
@@ -130,7 +130,7 @@ const SEED_MODEL: FEAModel = {
 
 export default function EngineeringPage() {
   const [tab, setTab] = useState<Tab>('Model');
-  const [model, setModel] = useState<FEAModel>(SEED_MODEL);
+  const [model, setModel] = useState<FEAModel>(DEFAULT_FEA_MODEL);
   const [feaResult, setFeaResult] = useState<Record<string, unknown> | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
   const [running, setRunning] = useState(false);

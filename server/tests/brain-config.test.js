@@ -24,13 +24,14 @@ describe("BRAIN_CONFIG", () => {
     assert.ok(Object.isFrozen(BRAIN_CONFIG));
   });
 
-  it("defines exactly four brains", () => {
+  it("defines all five brains (4 cognitive + 1 multimodal/vision)", () => {
     const brains = Object.keys(BRAIN_CONFIG);
-    assert.equal(brains.length, 4);
+    assert.equal(brains.length, 5);
     assert.ok(brains.includes("conscious"));
     assert.ok(brains.includes("subconscious"));
     assert.ok(brains.includes("utility"));
     assert.ok(brains.includes("repair"));
+    assert.ok(brains.includes("multimodal"));
   });
 
   it("each brain has required configuration fields", () => {
@@ -184,7 +185,7 @@ describe("SYSTEM_TO_BRAIN", () => {
   });
 
   it("all values are valid brain names", () => {
-    const validBrains = new Set(["conscious", "subconscious", "utility", "repair"]);
+    const validBrains = new Set(["conscious", "subconscious", "utility", "repair", "multimodal"]);
     for (const [system, brain] of Object.entries(SYSTEM_TO_BRAIN)) {
       assert.ok(validBrains.has(brain), `System "${system}" maps to invalid brain "${brain}"`);
     }
@@ -204,11 +205,12 @@ describe("BRAIN_PRIORITY", () => {
     assert.ok(Object.isFrozen(BRAIN_PRIORITY));
   });
 
-  it("defines priority for all four brains", () => {
+  it("defines priority for all five brains (4 cognitive + multimodal/vision)", () => {
     assert.equal(typeof BRAIN_PRIORITY.repair, "number");
     assert.equal(typeof BRAIN_PRIORITY.conscious, "number");
     assert.equal(typeof BRAIN_PRIORITY.subconscious, "number");
     assert.equal(typeof BRAIN_PRIORITY.utility, "number");
+    assert.equal(typeof BRAIN_PRIORITY.multimodal, "number");
   });
 
   it("repair has highest priority (lowest number)", () => {

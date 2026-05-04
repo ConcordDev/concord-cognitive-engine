@@ -43,7 +43,8 @@ export default function registerShieldRoutes(app, {
   // GET /api/shield/status — User's security status and score
   app.get("/api/shield/status", asyncHandler(async (req, res) => {
     try {
-      const userId = req.user?.id || "anonymous";
+      const userId = req.user?.id;
+      if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
       const out = await runMacro("shield", "status", { userId }, makeCtx(req));
       return res.json(out);
     } catch (e) {

@@ -32,7 +32,14 @@ import { createInitiativeEngine } from "../lib/initiative-engine.js";
  * @returns {string}
  */
 function _getUserId(req) {
-  return req.user?.id || "anonymous";
+  // The "anonymous" fallback used to live here so this helper would
+  // never return undefined. With auth middleware enforced on every
+  // initiative route, that fallback only fires when something is
+  // misconfigured — and a phantom "anonymous" record is worse than a
+  // 500. Surface the missing user explicitly.
+  const id = req.user?.id;
+  if (!id) throw new Error("auth_required");
+  return id;
 }
 
 /**

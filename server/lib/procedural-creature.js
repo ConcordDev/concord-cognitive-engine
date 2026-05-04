@@ -461,13 +461,30 @@ export function generateCreature(seed) {
   let validation = validateCreaturePhysics({ topology, massKg, parts });
   let rescaled = false;
 
-  // One auto-fix pass: if the body is undersized vs declared mass, rescale
-  // mass downward to the supportable maximum.
-  if (!validation.ok && validation.fix?.suggestedMassKg) {
-    massKg = validation.fix.suggestedMassKg * 0.95;
-    parts = _partsFor(topology, massKg, heightM, rng);
+  // Auto-fix pass: handle both fix shapes returned by validateCreaturePhysics:
+  //   • suggestedMassKg — wing/leg checks: declared mass exceeds what the
+  //     body can support; rescale mass downward to the supportable maximum.
+  //   • rescale         — part-mass drift: sum of part masses ≠ declared
+  //     mass within 5%; align declared mass to the actual sum.
+  // Up to eight passes — fixing one constraint can reveal another (e.g.,
+  // shrinking wings cascades into a leg-thickness check, then a part-mass
+  // drift check). For colossal creatures the chain can be long.
+  for (let pass = 0; pass < 8 && !validation.ok; pass++) {
+    if (validation.fix?.suggestedMassKg) {
+      // 15% safety margin: rebuilt parts can fall short of the suggested
+      // ceiling by a few percent, so undershoot to converge in fewer passes.
+      massKg = validation.fix.suggestedMassKg * 0.85;
+      parts = _partsFor(topology, massKg, heightM, rng);
+      rescaled = true;
+    } else if (validation.fix?.rescale) {
+      // Reconcile by aligning declared mass to summed part mass.
+      const summed = parts.reduce((s, p) => s + p.massKg, 0);
+      massKg = summed;
+      rescaled = true;
+    } else {
+      break;
+    }
     validation = validateCreaturePhysics({ topology, massKg, parts });
-    rescaled = true;
   }
 
   const gait = buildGait(topology, massKg, heightM, rng);

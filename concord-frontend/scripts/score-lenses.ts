@@ -49,9 +49,13 @@ interface CapabilityResult {
 }
 
 function readLensPageSource(lensId: string): string | null {
+  // Standard location: app/lenses/<id>/page.tsx
   const pagePath = join(LENSES_DIR, lensId, 'page.tsx');
-  if (!existsSync(pagePath)) return null;
-  return readFileSync(pagePath, 'utf-8');
+  if (existsSync(pagePath)) return readFileSync(pagePath, 'utf-8');
+  // Fallback: top-level app/<id>/page.tsx (used by hub, settings-style routes)
+  const topLevelPath = join(LENSES_DIR, '..', lensId, 'page.tsx');
+  if (existsSync(topLevelPath)) return readFileSync(topLevelPath, 'utf-8');
+  return null;
 }
 
 function checkCapabilities(lensId: string): CapabilityResult {
@@ -72,8 +76,8 @@ function checkCapabilities(lensId: string): CapabilityResult {
   // 3. Editor/workspace: page has forms, editors, or interactive components
   let editor_workspace = false;
   if (pageSource) {
-    const hasEditor = /form|Form|editor|Editor|input|Input|textarea|Textarea|onSubmit|handleCreate|handleSave|ContentEditable|Tiptap|monaco/.test(pageSource);
-    const hasInteractive = /onClick.*create|onClick.*add|onClick.*save|Dialog|Modal|Sheet/.test(pageSource);
+    const hasEditor = /form|Form|editor|Editor|input|Input|textarea|Textarea|onSubmit|handleCreate|handleSave|ContentEditable|Tiptap|monaco|Slider|Selector|Picker/.test(pageSource);
+    const hasInteractive = /onClick=|<button|<Button|Dialog|Modal|Sheet|Popover|Drawer/.test(pageSource);
     editor_workspace = hasEditor || hasInteractive;
   }
 

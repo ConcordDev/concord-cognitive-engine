@@ -47,6 +47,8 @@ before(async () => {
       PORT: port,
       NODE_ENV: "test",
       AUTH_MODE: "",
+      // Out-of-process integration test — spawned server must bind a port.
+      CONCORD_FORCE_LISTEN: "true",
       // Point brain to unreachable localhost port to test degraded mode
       BRAIN_CONSCIOUS_URL: "http://127.0.0.1:19999",
       BRAIN_SUBCONSCIOUS_URL: "http://127.0.0.1:19999",

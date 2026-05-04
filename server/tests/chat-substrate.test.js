@@ -34,9 +34,9 @@ describe("Brain Routing", () => {
     ({ resolveBrain } = await import(path.join(serverRoot, "lib/brain-router.js")));
   });
 
-  it("defines exactly 4 brain types", () => {
+  it("defines all five brain types (4 cognitive + multimodal/vision)", () => {
     const names = Object.keys(BRAIN_CONFIG);
-    assert.deepStrictEqual(names.sort(), ["conscious", "repair", "subconscious", "utility"]);
+    assert.deepStrictEqual(names.sort(), ["conscious", "multimodal", "repair", "subconscious", "utility"]);
   });
 
   it("routes chat to conscious brain", () => {

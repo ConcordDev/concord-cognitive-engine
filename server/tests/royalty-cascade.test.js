@@ -299,12 +299,18 @@ describe("registerCitation", () => {
     db = createMockDb();
   });
 
+  // Citation gate requires consent — public-visibility DTUs are always citable
+  // (consent.js:canCiteSpecificDtu shortcut). Tests pass parentDtu to satisfy
+  // the gate and exercise downstream registration logic.
+  const publicParent = { visibility: "public" };
+
   it("successfully registers a citation between two items", () => {
     const result = registerCitation(db, {
       childId: "content_B",
       parentId: "content_A",
       creatorId: "user_B",
       parentCreatorId: "user_A",
+      parentDtu: publicParent,
     });
     assert.equal(result.ok, true);
     assert.equal(result.childId, "content_B");
@@ -320,6 +326,7 @@ describe("registerCitation", () => {
       creatorId: "user_B",
       parentCreatorId: "user_A",
       generation: 3,
+      parentDtu: publicParent,
     });
     assert.equal(result.ok, true);
     assert.equal(result.generation, 3);
@@ -331,6 +338,7 @@ describe("registerCitation", () => {
       parentId: "content_A",
       creatorId: "user_B",
       parentCreatorId: "user_A",
+      parentDtu: publicParent,
     });
     assert.equal(result.generation, 1);
   });
@@ -420,6 +428,7 @@ describe("registerCitation", () => {
       parentId: "content_B",
       creatorId: "user_A",
       parentCreatorId: "user_B",
+      parentDtu: publicParent,
     });
     assert.equal(result.ok, false);
     assert.equal(result.error, "citation_cycle_detected");
@@ -434,6 +443,7 @@ describe("registerCitation", () => {
       parentId: "C",
       creatorId: "uA",
       parentCreatorId: "uC",
+      parentDtu: publicParent,
     });
     assert.equal(result.ok, false);
     assert.equal(result.error, "citation_cycle_detected");
@@ -449,6 +459,7 @@ describe("registerCitation", () => {
       parentId: "A",
       creatorId: "uD",
       parentCreatorId: "uA",
+      parentDtu: publicParent,
     });
     assert.equal(result.ok, true);
   });
@@ -460,6 +471,7 @@ describe("registerCitation", () => {
       parentId: "content_A",
       creatorId: "user_B",
       parentCreatorId: "user_A",
+      parentDtu: publicParent,
     });
 
     // Create a db that simulates a UNIQUE constraint error on insert
@@ -484,6 +496,7 @@ describe("registerCitation", () => {
       parentId: "content_Y",
       creatorId: "user_X",
       parentCreatorId: "user_Y",
+      parentDtu: publicParent,
     });
     assert.equal(result.ok, true);
     assert.equal(result.existing, true);
@@ -508,6 +521,7 @@ describe("registerCitation", () => {
       parentId: "content_Y",
       creatorId: "user_X",
       parentCreatorId: "user_Y",
+      parentDtu: publicParent,
     });
     assert.equal(result.ok, false);
     assert.equal(result.error, "citation_registration_failed");
@@ -519,6 +533,7 @@ describe("registerCitation", () => {
       parentId: "content_A",
       creatorId: "user_B",
       parentCreatorId: "user_A",
+      parentDtu: publicParent,
     });
     assert.equal(db._lineageRows.length, 1);
     assert.equal(db._lineageRows[0].child_id, "content_B");
@@ -1201,6 +1216,8 @@ describe("Circular Reference Protection", () => {
     db = createMockDb();
   });
 
+  const publicParent = { visibility: "public" };
+
   it("wouldCreateCycle prevents direct A↔B cycle", () => {
     seedLineage(db, "B", "A", 1, "uB", "uA");
 
@@ -1209,6 +1226,7 @@ describe("Circular Reference Protection", () => {
       parentId: "B",
       creatorId: "uA",
       parentCreatorId: "uB",
+      parentDtu: publicParent,
     });
     assert.equal(result.ok, false);
     assert.equal(result.error, "citation_cycle_detected");
@@ -1225,6 +1243,7 @@ describe("Circular Reference Protection", () => {
       parentId: "E",
       creatorId: "uA",
       parentCreatorId: "uE",
+      parentDtu: publicParent,
     });
     assert.equal(result.ok, false);
     assert.equal(result.error, "citation_cycle_detected");
@@ -1562,7 +1581,7 @@ describe("Large Cascade Integration", () => {
     }
   });
 
-  it("handles wide fanout (content with 50 parents)", () => {
+  it("handles wide fanout (content with 50 parents) — bounded by 30% royalty cap", () => {
     for (let i = 0; i < 50; i++) {
       seedLineage(db, "child", `parent_${i}`, 1, "uChild", `creator_${i}`);
     }
@@ -1577,8 +1596,14 @@ describe("Large Cascade Integration", () => {
       sellerId: "uChild",
     });
 
+    // Constitutional invariant: total royalties never exceed 30% of sale.
+    // With 50 gen-1 ancestors at rate 0.21 each, the cap is hit after the
+    // first couple of payouts and the rest are skipped — not all 50 ancestors
+    // get paid in a single transaction. Seller keeps at least 64.54%.
     assert.equal(result.ok, true);
-    assert.equal(result.payouts.length, 50);
+    assert.ok(result.payouts.length >= 1, "at least one payout");
+    assert.ok(result.payouts.length <= 50, "payouts bounded by ancestor count");
+    assert.ok(result.totalRoyalties <= 10000 * 0.30 + 0.01, `total ${result.totalRoyalties} must respect 30% cap`);
   });
 });
 

@@ -129,13 +129,15 @@ describe("schema constants", () => {
     assert.deepEqual(TIER_THRESHOLDS.hyper, { minResonance: 0.8, minCoherence: 0.8, minApprovals: 3 });
   });
 
-  it("SESSION_LIMITS has correct default values", () => {
+  it("SESSION_LIMITS has correct default values (32GB-heap deployment)", () => {
     assert.ok(Object.isFrozen(SESSION_LIMITS));
     assert.equal(SESSION_LIMITS.MAX_TURNS, 50);
     assert.equal(SESSION_LIMITS.MAX_TURNS_NO_NOVELTY, 10);
     assert.equal(SESSION_LIMITS.NOVELTY_FLOOR, 0.15);
     assert.equal(SESSION_LIMITS.MIN_CRITIQUE_RATIO, 0.2);
-    assert.equal(SESSION_LIMITS.MAX_CONCURRENT, 5);
+    // MAX_CONCURRENT was bumped from 5 → 50 for the 32GB-heap deployment.
+    // Override via CONCORD_DIALOGUE_MAX_CONCURRENT.
+    assert.equal(SESSION_LIMITS.MAX_CONCURRENT, 50);
     assert.equal(SESSION_LIMITS.SUMMARY_INTERVAL, 10);
   });
 

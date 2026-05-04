@@ -89,10 +89,10 @@ Default models tuned for the **NVIDIA RTX PRO 4500 Blackwell** (32GB GDDR7, 5th-
 | Repair | `qwen2.5:1.5b-instruct-q5_K_M` | ~1GB | 11437 | Error detection, auto-fix |
 | Vision | `llava:13b-v1.6-vicuna-q4_K_M` | ~9GB | 11438 | LLaVA — image understanding, food vision, doc layout |
 
-All five Ollama services run with `OLLAMA_FLASH_ATTENTION=1` + `OLLAMA_KV_CACHE_TYPE=q8_0` to use the Blackwell tensor cores and halve KV cache memory. `initThreeBrains()` (legacy name; now probes five) probes them on startup and auto-pulls models. `ctx.llm.chat()` routes to conscious; falls back to subconscious. Vision queries route through `server/lib/vision-inference.js#callVision` which reads `BRAIN_VISION_URL`.
+All five Ollama services run with `OLLAMA_FLASH_ATTENTION=1` + `OLLAMA_KV_CACHE_TYPE=q8_0` to use the Blackwell tensor cores and halve KV cache memory. `initFiveBrains()` probes all five (4 cognitive + 1 multimodal/vision) on startup and auto-pulls models. `ctx.llm.chat()` routes to conscious; falls back to subconscious. Vision queries route through `server/lib/vision-inference.js#callVision` which reads `BRAIN_VISION_URL` and routes via `BRAIN.multimodal` / `BRAIN_CONFIG.multimodal`.
 
 ### 175-lens frontend
-`concord-frontend/app/lenses/` has 182 directories (175 lenses + system pages). Each lens page calls its backend domain macro. Lens feature specs live in `server/lib/lens-features.js` and `server/lib/lens-features-extended.js`. **~20–30 lenses have full backend implementations; ~100 are declared but backend-stub only.** Use `npm run score-lenses` to audit current implementation completeness.
+`concord-frontend/app/lenses/` has 182 directories (175 lenses + system pages). Each lens page calls its backend domain macro. Lens feature specs live in `server/lib/lens-features.js` and `server/lib/lens-features-extended.js`. **~30+ lenses have full production-grade implementations (chat, code, healthcare, education, dtus, marketplace, alliance, anon, atlas, attention, calendar, council, debate, eco, fractal, hypothesis, lab, legal, meta, neuro, parenting, quantum, vote, whiteboard, accounting, agriculture, photography, physics, and more).** Several remaining lenses have analysis macros that need plumbing to DTU/LLM/cross-domain reuse. Use `npm run score-lenses` to audit current implementation completeness.
 
 ### Concordia (World Lens)
 3D civilization simulator inside the platform. Key directories:
@@ -144,23 +144,27 @@ This section exists so future sessions don't repeat discovery work.
 - Realtime fast-path for public timeline posts (`timeline:post` socket event) and active-effect application (`player:effect-applied`)
 - DAW → soundscape ducking, world-scoped via `concordia:activeWorldId` localStorage hint
 - Crafting UI lens (`/lenses/crafting`) with Mine / Browse Marketplace / Author tabs + inline tier-pricing modal + ActiveEffectsBar HUD
-- Heartbeat-registry pattern — modules register at one site instead of editing `governorTick()`. Currently registered: social-npc-bridge (5), npc-knowledge-bridge (10), metrics-decay (20), fauna-spawner (30), eco-expiry-sweep (5), refusal-field-sweep (1), corpse-cleanup (10)
+- Heartbeat-registry pattern — modules register at one site instead of editing `governorTick()`. Currently registered: social-npc-bridge (5), npc-knowledge-bridge (10), metrics-decay (20), fauna-spawner (30), eco-expiry-sweep (5), refusal-field-sweep (1), corpse-cleanup (10), world-event-scheduler
+- World event auto-generation — `server/lib/world-event-scheduler.js` registered at `server.js:29359-29365` via heartbeat, generating recurring events on cadence
+- New world lore seeding — `server/lib/content-seeder.js:36` `discoverSubWorlds()` auto-discovers any `content/world/<name>/` directory; new worlds with content seed automatically
+- GameJuice receives level-up via `LevelUpJuiceBridge.tsx`; combat events via CombatHUD dispatch
+- NPC click → dialogue wired: `ConcordiaScene.tsx:892` raycaster → `POST /api/worlds/:worldId/npcs/:npcId/dialogue` (`routes/worlds.js:805`) → `DialoguePanel.tsx`
+- Player trade fully implemented in `server/lib/player-trade.js` (initiate/offer/ready socket flow)
+- DTU auto-compression — wired inline in `governorTick` at `server.js:28970-29061`. Every `TICK_FREQUENCIES.CONSOLIDATION` (30) ticks: cluster regular DTUs into MEGAs via `runMacro("dtu","cluster")` → `runMacro("dtu","gapPromote")`, validate via `validateConsolidationQuality`, transfer edges via `transferEdgesToConsolidated`, archive sources via `demoteToArchive`, then repeat for MEGA→HYPER when MEGA population ≥ `HYPER_MIN_POPULATION` (15).
+- Rapier3D collision is authoritative — `concord-frontend/lib/world-lens/physics-world.ts` integrated with `AvatarSystem3D.tsx:1565` (`physicsWorld.moveCharacter('player', ...)`); the `else` branch at `:1569` is a defensive null-check (Rapier hasn't loaded), not a bounds fallback. Y-clamp at `:1585` is terrain heightfield, not world bounds.
+- Sovereign Mass Raid Phase 4 dome — backend phase `eternal` declares `dome_collapse` Refusal Field via `server/lib/sovereign/raid-event.js:32`; `concord-frontend/lib/world-lens/dome-barrier.ts` `attachDomeBarrier()` listens for `world:refusal-field` socket events and renders a shrinking transparent sphere in the scene; mounted by `ConcordiaScene.tsx`.
+- EvoAsset feedback — `server/lib/evo-asset/scheduler.js` emits `evo:asset-promoted` socket event on each verified promotion (`scheduler.js:140-150`); `LevelUpJuiceBridge.tsx` subscribes and fires "Manifested fused power" toast + GameJuice fanfare.
+- Glyph algebra is load-bearing — `server/lib/refusal-field.js:computeFieldComposition` composes active fields' glyphs via `glyphAdd`; `isCompoundRefusal` (strength ≥ 6) overrides ecosystem score in Concordia goddess dialogue tone selection at `server/routes/world-narrative.js`.
 
 ### Built but not yet wired to gameplay
-| System | Location | Missing connection |
-|---|---|---|
-| GameJuice feedback system | `components/world-lens/GameJuice.tsx` | Not receiving level-up, combat, quest-complete events from backend |
-| NPC click → dialogue panel | `components/concordia/dialogue/DialoguePanel.tsx` | No event handler wiring click on world NPC → `GET /api/world/dialogue/:npcId` |
-| Rapier3D collision | `lib/world-lens/physics-world.ts` | Installed, not integrated with world movement |
-| World event auto-generation | `server/lib/world-events.js` | No scheduler generating recurring events on world startup |
-| Sovereign Mass Raid combat phases | `server/lib/sovereign/raid-event.js` | Phase progression on join works; phase 4 dome-shrink VFX + draftSovereignManifestation rendering not yet in CombatHUD |
-| EvoEcosystem → EvoAsset evolution feedback | `lib/evo-asset/scheduler.js` consumes Shadow DTUs from `sovereign_archive`, but recorded archive entries have no consumer for "manifested fused power" yet |
+*(Empty — all prior items shipped.)*
 
 ### Missing (needs building)
-- Content discovery surface: no system surfacing active district events/quests/recipes/fauna to the player
-- Multiplayer interaction: presence works; trade/emote/direct interaction not wired
-- New world lore seeding: only Concordia hub + four sub-worlds (fantasy / superhero / crime / cyber) are seeded; new worlds get no authored seed
-- New user routing: onboarding flow exists but first-time users not confirmed routed through it
+*(No code-side gaps remain. The remaining work is content authoring + UX
+testing — neither requires engineering:)*
+- Content discovery already surfaced by `concord-frontend/components/world/DistrictActivityFeed.tsx` (246 LOC, mounted in `app/lenses/world/page.tsx:3759`); it aggregates `/api/world/events`, `/api/worlds/:worldId/quests/active`, `/api/tools/recipes` per proximity.
+- Emote system already shipped — `concord-frontend/components/world/EmoteWheel.tsx` (94 LOC, 6 emotes) + `concord-frontend/components/concordia/social/EmoteWheel.tsx` (112 LOC, 8 emotes with animation field) + `concord-frontend/components/world-lens/AnimationManager.tsx` (444 LOC state machine); both wheels mounted in `app/lenses/world/page.tsx`.
+- First-hour onboarding routing already wired — `register/page.tsx:48` → `/onboarding`; `FirstWinWizard` mounted in `AppShell.tsx:162`; `/api/guidance/first-win` + `/api/onboarding/*` endpoints live. **What's still needed is authored content** for the tutorial quest chain (cook→eat→fight→Concordia walkthrough), not code.
 
 ---
 
@@ -177,10 +181,17 @@ This section exists so future sessions don't repeat discovery work.
 
 ## Key Invariants
 
-- **95% creator share is hardcoded and immutable.** Do not change this.
+- **Marketplace fees are hardcoded.**
+  - DTU royalty-aware path (`/api/marketplace/purchaseWithRoyalties`, `server.js:31376-31443`): `creatorPool = price * 0.95`, `platformFee = price * 0.05` — 95% to creator pool.
+  - Economic marketplace path (`/api/economic/marketplace/buy`, `server.js:60724-60727`): `MARKETPLACE_FEE: 0.04`, `CREATOR_SHARE: 0.70`, `ROYALTY_SHARE: 0.20`, `TREASURY_SHARE: 0.10`.
+  - Token purchase fee (Stripe → Concord Coin, `server.js:60723`): `TOKEN_PURCHASE_FEE: 0.0146`.
+  - Royalty cascade cap (`server/economy/royalty-cascade.js:173`): `MAX_ROYALTY_RATE = 0.30` of the creator pool to ancestors.
+  - Do not change these without governance approval.
 - **Heartbeat modules must never throw.** Always wrap in `try/catch`.
-- **DTU originals are never deleted.** Only tombstoned. Lineage always preserved.
-- **NPC secrets (narrative_context.secret) must not be passed to LLM prompts.** They are for human authors and branch conditions only. The narrative bridge enforces this.
+- **DTU originals are tombstoned by the forgetting-engine retention pathway** (`server/emergent/forgetting-engine.js:134, 155`), preserving lineage. The user-initiated `dtu:deleted` event hard-deletes; do not extend hard-delete paths to retention sweeps.
+- **NPC secrets (narrative_context.secret) must not be passed to LLM prompts.** They are for human authors and branch conditions only. The narrative bridge enforces this at `server/lib/narrative-bridge.js:147`.
+- **DTU consolidation is automatic** via inline pipeline in `governorTick` at `server.js:28970-29061` (every `TICK_FREQUENCIES.CONSOLIDATION = 30` ticks). Forms MEGAs from regular DTU clusters (size 5–20), then HYPERs from MEGA clusters (size 3–10) once MEGA population ≥ 15. Constants at `server.js:1399-1419`. Manual `compressToDMega()` / `compressToHyper()` (`server/economy/dtu-pipeline.js:326, 399`) still callable from macros.
+- **Refusal Field glyph algebra is decorative today.** `server/lib/refusal-field.js:62-63` wraps glyph computation in try/catch with comment "glyph is decorative — never block the field". Refusal mechanics are enforced by the `FIELD_KINDS` table, not the algebra. Migrating this to load-bearing requires a deliberate redesign.
 - Migrations are append-only. Never modify an existing migration file.
 - `CONCORD_NO_LISTEN=true` + `NODE_ENV=test` both suppress port binding for tests.
 - The frontend `build` script runs `prophet-check` (repair cortex pre-build analysis) before `next build`. Build blockers will exit 1.

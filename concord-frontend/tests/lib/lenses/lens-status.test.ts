@@ -165,7 +165,10 @@ describe('getLensesMergingInto', () => {
   });
 
   it('returns empty array for lens with no merge sources', () => {
-    const merging = getLensesMergingInto('chat');
+    // Wallet is a leaf product lens — no other lens declares it as a
+    // mergeTarget. (chat used to satisfy this but now hosts the
+    // answers oracle as a hybrid mode.)
+    const merging = getLensesMergingInto('wallet');
     expect(merging).toEqual([]);
   });
 

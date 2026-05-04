@@ -132,6 +132,7 @@ export const BRAIN_PRIORITY = Object.freeze({
   repair: 0,       // CRITICAL
   conscious: 1,    // HIGH
   subconscious: 2, // NORMAL
+  multimodal: 2,   // NORMAL — vision queries piggyback on subconscious priority
   utility: 3,      // LOW
 });
 

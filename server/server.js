@@ -100,6 +100,17 @@ registerHeartbeat("eco-expiry-sweep", {
 // EvoEcosystem W6: prune expired Refusal Field entries every tick so
 // world systems consulting isRefused(...) get fresh state.
 import { runRefusalFieldSweep, activeFields as activeRefusalFields, applyTemporaryRefusal, isRefused } from "./lib/refusal-field.js";
+import {
+  getUserStorage,
+  assertHasSpaceFor,
+  recordStorageDelta,
+  grantEarnedStorage,
+  countTriggersSinceLastGrant,
+  STORAGE_EARN_PER_MEGA_BYTES,
+  STORAGE_EARN_PER_SALE_BATCH_BYTES,
+  SALE_BATCH_SIZE,
+  STORAGE_REASONS,
+} from "./lib/storage-quota.js";
 registerHeartbeat("refusal-field-sweep", {
   frequency: 1,
   handler: runRefusalFieldSweep,
@@ -1346,6 +1357,15 @@ if (AUTH_MODE_RAW && !AUTH_MODE_VALUES.has(AUTH_MODE_RAW)) {
   console.warn(`[Auth] Invalid AUTH_MODE='${AUTH_MODE_RAW}'. Falling back to 'hybrid'. Allowed: public|apikey|jwt|hybrid.`);
 }
 
+// Production deploy guard: AUTH_MODE='public' silently disables auth on
+// every gated route. That's fine for local solo dev and explicit demos,
+// but in production it would expose every authenticated endpoint. Refuse
+// to start if the operator hasn't set a real auth mode in prod.
+if (NODE_ENV === "production" && AUTH_MODE === "public") {
+  console.error("[Auth] FATAL: AUTH_MODE='public' is not allowed in production. Set AUTH_MODE=jwt or AUTH_MODE=hybrid (and JWT_SECRET) before starting.");
+  process.exit(1);
+}
+
 // SECURITY: JWT_SECRET must be set in production
 const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString("hex");
 if (!process.env.JWT_SECRET && NODE_ENV === "production" && AUTH_USES_JWT) {
@@ -1367,8 +1387,8 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
 const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL || "https://api.openai.com/v1";
 const OPENAI_MODEL_FAST = process.env.OPENAI_MODEL_FAST || process.env.OPENAI_MODEL || "gpt-4o-mini";
 const OPENAI_MODEL_SMART = process.env.OPENAI_MODEL_SMART || "gpt-4.1";
-let LLM_READY = Boolean(OPENAI_API_KEY); // Only true if OpenAI key is set; Ollama readiness verified by initThreeBrains() probe
-// Also mark LLM ready if conscious brain becomes available (updated in initThreeBrains)
+let LLM_READY = Boolean(OPENAI_API_KEY); // Only true if OpenAI key is set; Ollama readiness verified by initFiveBrains() probe
+// Also mark LLM ready if conscious brain becomes available (updated in initFiveBrains)
 function _refreshLlmReady() {
   LLM_READY = Boolean(OPENAI_API_KEY) || (BRAIN && BRAIN.conscious && BRAIN.conscious.enabled);
 }
@@ -4918,7 +4938,7 @@ function authMiddleware(req, res, next) {
     "/api/webhooks", "/api/webhooks-metrics", "/api/whiteboard",
     "/api/whiteboards", "/api/queue", "/api/jobs",
     // Learning & review
-    "/api/srs", "/api/skill", "/api/onboarding",
+    "/api/srs", "/api/skill", "/api/onboarding", "/api/tutorial",
     // Import/export
     "/api/obsidian", "/api/notion",
     // RBAC & compliance
@@ -5380,6 +5400,19 @@ if (z) {
 // Validation middleware factory
 function validate(schemaName, source = "body") {
   return (req, res, next) => {
+    // Defensive null-body guard. If the route's schema expects an object
+    // but the caller sent JSON `null`, an empty body, or an array, we
+    // return 400 here even if zod/the named schema isn't loaded — so
+    // bad input is always 400, never 500.
+    if (source === "body") {
+      if (req.body === null || req.body === undefined || typeof req.body !== "object" || Array.isArray(req.body)) {
+        return res.status(400).json({
+          ok: false,
+          error: "invalid_body",
+          message: "Request body must be a JSON object.",
+        });
+      }
+    }
     if (!z || !schemas[schemaName]) {
       structuredLog("warn", "validation_skip", { schema: schemaName, reason: !z ? "zod_missing" : "schema_missing" });
       return next();
@@ -5554,8 +5587,8 @@ async function initMetrics() {
 
     // Heartbeat liveness — incremented every governorTick. If the rate of
     // this counter drops to 0 the heartbeat has died and every emergent
-    // system is silently frozen. The Prometheus alert rule is in
-    // monitoring/prometheus/alerts/heartbeat.yml.
+    // system is silently frozen. The Prometheus alert rule
+    // `ConcordHeartbeatStopped` is in monitoring/prometheus/alerts.yml.
     METRICS.counters.heartbeatTicks = new prom.Counter({
       name: "concord_heartbeat_ticks_total",
       help: "Total governor heartbeat ticks executed",
@@ -5802,10 +5835,16 @@ if (rateLimit) {
 // Applied AFTER authMiddleware so req.user is already populated.
 let unauthRateLimiter = null;
 if (rateLimit) {
+  // Health probes (/health, /ready, /metrics, /api/health/*) must always
+  // respond — orchestrators (k8s, load balancers, monitoring) hit them at
+  // far higher than 30 rpm and would mark the pod unhealthy on 429. They
+  // also pre-authenticate from the orchestrator side (private network),
+  // not the user auth flow we're rate-limiting on.
+  const _HEALTH_PROBE_RE = /^\/(health|ready|metrics)(\b|\/)|^\/api\/health(\b|\/)/;
   unauthRateLimiter = rateLimit({
     windowMs: 60000,
     max: 30,
-    skip: (req) => !!req.user?.id,
+    skip: (req) => !!req.user?.id || _HEALTH_PROBE_RE.test(req.path),
     keyGenerator: (req) => req.ip,
     message: { ok: false, error: "Rate limit exceeded. Authenticate for higher limits.", code: "ANON_RATE_LIMIT" },
     standardHeaders: true,
@@ -6236,7 +6275,11 @@ async function tryInitWebSockets(server) {
       methods: ["GET", "POST"],
       credentials: true
     },
-    transports: ["websocket", "polling"],
+    // In production, restrict to WebSocket only. Long-polling fallback at
+    // scale (1000+ clients) creates a flood of HTTP requests on flaky
+    // networks (1-5s polling × 1000 clients = 200-1000 req/s overhead).
+    // Dev keeps polling for local dev tools and proxy interop.
+    transports: NODE_ENV === "production" ? ["websocket"] : ["websocket", "polling"],
     pingTimeout: 60000,
     pingInterval: 25000
   });
@@ -6268,13 +6311,6 @@ async function tryInitWebSockets(server) {
 
     const _token = cookieToken || socket.handshake.auth?.token || socket.handshake.headers?.authorization?.replace("Bearer ", "");
     const apiKey = socket.handshake.auth?.apiKey || socket.handshake.headers?.["x-api-key"];
-
-    // In development, allow unauthenticated connections
-    if (NODE_ENV !== "production") {
-      socket.data.userId = null;
-      socket.data.authenticated = false;
-      return next();
-    }
 
     // 1. Try httpOnly cookie token first (most secure for browsers)
     if (cookieToken) {
@@ -6324,7 +6360,16 @@ async function tryInitWebSockets(server) {
       }
     }
 
-    // In production, reject unauthenticated connections
+    // No valid auth credentials presented. In production, reject. In
+    // dev (NODE_ENV !== 'production') allow an anonymous socket so local
+    // browser sessions without a token still work, but mark the socket
+    // explicitly anonymous so server-side gates can refuse sensitive ops.
+    if (NODE_ENV !== "production") {
+      socket.data.userId = null;
+      socket.data.authenticated = false;
+      socket.data.authMethod = "anonymous_dev";
+      return next();
+    }
     return next(new Error("Authentication required"));
   });
 
@@ -8543,7 +8588,7 @@ async function runMacro(domain, name, input, ctx) {
     "/api/collab", "/api/social", "/api/economy", "/api/marketplace", "/api/credits",
     "/api/hive", "/api/heal", "/api/grounding", "/api/commonsense", "/api/explanation",
     "/api/ingest", "/api/jobs", "/api/queue", "/api/cache", "/api/cognitive",
-    "/api/onboarding", "/api/srs", "/api/skill", "/api/schema", "/api/daily",
+    "/api/onboarding", "/api/tutorial", "/api/srs", "/api/skill", "/api/schema", "/api/daily",
     "/api/digest", "/api/entity-growth", "/api/entity-exploration",
     "/api/artifacts", "/api/notifications", "/api/reminders", "/api/webhooks",
     "/api/whiteboard", "/api/whiteboards", "/api/mobile", "/api/global",
@@ -8598,6 +8643,15 @@ async function runMacro(domain, name, input, ctx) {
     "/api/messaging", "/api/sandbox",
     // Production integrity
     "/api/inference/slos", "/api/audit/provenance",
+    // Three-gate sync: paths added to Gate 1 (publicReadPaths) need to land
+    // here too so unauthenticated reads don't get blocked by the Chicken2
+    // safeReadBypass check. Test: tests/three-gate-consistency.test.js.
+    "/api/openapi.json", "/api/openapi.yaml", "/api/docs",
+    "/api/creator/leaderboard", "/api/creator/trending-citations", "/api/creator/influence-drift",
+    "/api/world/clock", "/api/world/npc-behavior", "/api/world/npc-archetypes",
+    "/api/world/weather", "/api/world/bazaar", "/api/world/perf-telemetry",
+    "/api/combat/state",
+    "/api/concord-link", "/api/black-market", "/api/creature", "/api/emergent-skills",
   ];
   // Safe POST paths: chat and brain endpoints that must bypass Chicken2 for unauthenticated users
   const _safePostPaths = ["/api/chat", "/api/brain/conscious", "/api/repair", "/api/creative/registry", "/api/lens", "/api/forge", "/api/ask", "/api/dtus", "/api/social", "/api/economy", "/api/marketplace", "/api/collab", "/api/goals", "/api/media",
@@ -8703,12 +8757,26 @@ async function runMacro(domain, name, input, ctx) {
   try {
     result = await m.fn(ctx, input ?? {});
   } catch (macroErr) {
-    // Avoidance learning: record macro failures for pattern learning
+    // Avoidance learning: record macro failures for pattern learning.
     try {
       const painMod = await import("./emergent/avoidance-learning.js").catch(() => null);
       if (painMod?.recordPain) painMod.recordPain({ domain, name, error: String(macroErr?.message || macroErr) });
     } catch (e) { observe(e, "macro_failure_pain_recording"); }
-    throw macroErr;
+    // Contract: runMacro never throws — every caller treats the response
+    // as an `{ ok: boolean, ... }` envelope. A handler that throws on bad
+    // input would force every caller to add try/catch and lose the pain-
+    // learning hook above. Convert to structured failure instead.
+    structuredLog("warn", "macro_uncaught_throw", {
+      domain, name,
+      error: String(macroErr?.message || macroErr),
+    });
+    return {
+      ok: false,
+      error: "macro_uncaught_throw",
+      message: String(macroErr?.message || macroErr),
+      domain,
+      name,
+    };
   }
   try { fireHook(STATE, "macro:afterExecute", { domain, name, result }); } catch (e) { observe(e, "macro_hook_after_execute_main"); }
 
@@ -11421,6 +11489,48 @@ const _SYSTEM_DTU_SOURCES = new Set([
 function dtusArray() { return typeof STATE.dtus?.values === "function" ? Array.from(STATE.dtus.values()) : []; }
 
 /**
+ * Defense-in-depth: refuse a session lookup if the requester doesn't
+ * own (or isn't a participant of) the session. The implicit gate today
+ * is "you must know the sessionId" — UUIDs are unguessable in practice,
+ * but a leaked sessionId via logs/sharing should not grant access.
+ *
+ * Sessions created before commit d15cc1c won't have ownerId — for
+ * those we fall back to permissive (legacy) behavior so existing chats
+ * keep working. New sessions all carry ownerId.
+ */
+function assertSessionAccessible(sess, userId) {
+  if (!sess) return false;
+  if (!sess.ownerId) return true; // legacy session — pre-ownership-tracking
+  if (!userId) return false;
+  if (sess.ownerId === userId) return true;
+  if (sess.participantIds?.has?.(userId)) return true;
+  return false;
+}
+
+/**
+ * Find the user's most recent active session. Replaces the wrong-key
+ * lookup `STATE.sessions.get(userId)` which always returned undefined
+ * because sessions are keyed by sessionId, not userId. Returns the
+ * session with the latest message timestamp, or null if the user has
+ * no sessions.
+ */
+function getMostRecentSessionForUser(userId) {
+  if (!userId || !STATE.sessions) return null;
+  let mostRecent = null;
+  let mostRecentTs = 0;
+  for (const sess of STATE.sessions.values()) {
+    if (sess?.ownerId !== userId) continue;
+    const lastMsg = sess.messages?.[sess.messages.length - 1];
+    const ts = lastMsg?.ts ? new Date(lastMsg.ts).getTime() : 0;
+    if (ts > mostRecentTs) {
+      mostRecentTs = ts;
+      mostRecent = sess;
+    }
+  }
+  return mostRecent;
+}
+
+/**
  * User-visible DTUs only: filters out repair cortex, system internals,
  * internal-scope DTUs, and (when `viewerId` is passed) any private /
  * user-scoped content not owned by the viewer.
@@ -13383,14 +13493,22 @@ const BRAIN = {
     enabled: false,
     stats: { requests: 0, totalMs: 0, dtusGenerated: 0, errors: 0, fixes: 0, sleeping: true, lastCallAt: null },
   },
+  multimodal: {
+    url: BRAIN_CONFIG.multimodal.url,
+    model: BRAIN_CONFIG.multimodal.model,
+    role: BRAIN_CONFIG.multimodal.role,
+    systemPrompt: "",
+    enabled: false,
+    stats: { requests: 0, totalMs: 0, dtusGenerated: 0, errors: 0, lastCallAt: null },
+  },
 };
 
 /**
- * Initialize four-brain architecture.
+ * Initialize five-brain architecture (4 cognitive + 1 multimodal/vision).
  * Probes each brain endpoint; marks as enabled if responsive.
  * Falls back gracefully to single-Ollama if multi-brain isn't deployed.
  */
-async function initThreeBrains() {
+async function initFiveBrains() {
   for (const [name, brain] of Object.entries(BRAIN)) {
     try {
       const r = await fetch(`${brain.url}/api/tags`, { signal: AbortSignal.timeout(15000) });
@@ -13433,18 +13551,18 @@ async function initThreeBrains() {
     try { if (_breakers?.ollama?.reset) _breakers.ollama.reset(); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
   }
 
-  structuredLog("info", "three_brain_init", {
+  structuredLog("info", "five_brain_init", {
     online,
-    mode: online.length >= 3 ? "three_brain" : online.length > 0 ? "partial" : "fallback",
+    mode: online.length >= 4 ? "five_brain" : online.length > 0 ? "partial" : "fallback",
   });
 }
 
 // Initialize brains after a short delay (let Ollama instances start)
-setTimeout(() => initThreeBrains(), 3000);
+setTimeout(() => initFiveBrains(), 3000);
 // Retry brain init after 30s (Ollama containers may still be pulling models)
 // Then preload/warm all models for instant first response
 setTimeout(async () => {
-  await initThreeBrains();
+  await initFiveBrains();
   try {
     const preloadResult = await preloadBrains(structuredLog);
     structuredLog("info", "brain_preload_complete", preloadResult);
@@ -15634,7 +15752,7 @@ function getBrainStatus() {
   const onlineCount = Object.values(BRAIN).filter(b => b.enabled).length;
   return {
     ok: true,
-    mode: onlineCount === 3 ? "three_brain" : onlineCount > 0 ? "partial" : "fallback",
+    mode: onlineCount >= 4 ? "five_brain" : onlineCount > 0 ? "partial" : "fallback",
     onlineCount,
     brains,
     routing: {
@@ -18587,7 +18705,14 @@ const _mentionsSelf = Array.from(_selfTokens).some(t => _pLow.includes(t));
   const baseSettings = (ctx?.state?.settings) ? ctx.state.settings : (STATE.settings || {});
 
   if (!STATE.sessions.has(sessionId)) {
+    // ownerId enables defense-in-depth: assertSessionAccessible() refuses
+    // session reads from anyone other than the owner (or a participant
+    // for shared-session flows). participantIds starts as just the owner;
+    // shared-session join handlers add additional userIds.
+    const _ownerId = ctx?.actor?.userId || input?.userId || null;
     STATE.sessions.set(sessionId, {
+      ownerId: _ownerId,
+      participantIds: _ownerId ? new Set([_ownerId]) : new Set(),
       createdAt: nowISO(),
       messages: [],
       currentLens: null,
@@ -20936,7 +21061,10 @@ register("cortex", "anomalies", (ctx, input) => {
 }, { description: "Retrieve detected signal anomalies." });
 
 register("cortex", "classify", (ctx, input) => {
-  return cortexClassifySignal(input);
+  // Wrap so the macro contract holds — cortexClassifySignal returns the
+  // raw signal record, not the {ok, ...} envelope every other macro uses.
+  const signal = cortexClassifySignal(input);
+  return { ok: true, signal };
 }, { description: "Submit a signal for 5-property classification." });
 
 register("cortex", "spectrum", (ctx, input) => {
@@ -27322,6 +27450,27 @@ app.get("/api/world/me/metrics", requireAuth, (req, res) => {
   }
 });
 
+// World-access helper. System worlds (concordia-hub and other seeded
+// sub-worlds in content/world/) have created_by IS NULL and are open
+// to every authenticated user. User-created worlds belong to their
+// creator. Multi-player shared worlds will add a join table later;
+// for now sole-creator ownership is the rule.
+function assertWorldAccessible(db, userId, worldId) {
+  if (!worldId || !userId) return false;
+  try {
+    const row = db.prepare(
+      "SELECT created_by FROM worlds WHERE id = ? AND status = 'active'"
+    ).get(worldId);
+    if (!row) return false;
+    if (row.created_by === null || row.created_by === undefined) return true; // system world
+    return row.created_by === userId;
+  } catch {
+    // Worlds table may not exist on minimal dev builds — fall through to
+    // the historical permissive behavior so local-dev still works.
+    return true;
+  }
+}
+
 // EvoEcosystem W3: cooking. Wraps craft-engine for food recipe DTUs.
 // Output is a consumable food DTU with effects[] and shelfLifeHours.
 app.post("/api/world/cook", requireAuth, async (req, res) => {
@@ -27330,12 +27479,16 @@ app.post("/api/world/cook", requireAuth, async (req, res) => {
     if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
     const { recipeId, worldId, qualityMultiplier } = req.body || {};
     if (!recipeId) return res.status(400).json({ ok: false, error: "recipeId_required" });
-    const result = await cookRecipe(db, userId, String(worldId || "concordia-hub"), recipeId, {
+    const resolvedWorldId = String(worldId || "concordia-hub");
+    if (!assertWorldAccessible(db, userId, resolvedWorldId)) {
+      return res.status(403).json({ ok: false, error: "world_not_accessible" });
+    }
+    const result = await cookRecipe(db, userId, resolvedWorldId, recipeId, {
       qualityMultiplier: typeof qualityMultiplier === "number" ? qualityMultiplier : undefined,
     });
     if (!result.ok) return res.status(422).json(result);
     // Cooking is creative — bumps concordia_alignment by a small amount.
-    try { adjustEcoMetrics(db, userId, String(worldId || "concordia-hub"), { concordia_alignment: 0.5 }); }
+    try { adjustEcoMetrics(db, userId, resolvedWorldId, { concordia_alignment: 0.5 }); }
     catch { /* metrics best-effort */ }
     res.json(result);
   } catch (e) {
@@ -27885,7 +28038,14 @@ if (db) {
           // Check each trigger type
           for (const triggerType of ["check_in", "pending_work", "reflective_followup", "substrate_discovery"]) {
             try {
-              const lastMsg = STATE.sessions.get(userId)?.messages?.slice(-1)[0];
+              // BUGFIX: STATE.sessions is keyed by sessionId, not userId,
+              // so the prior `.get(userId)` always returned undefined and
+              // idleMinutes always landed at 999 — meaning every trigger
+              // type would always fire for every active user. Use the
+              // ownerId-aware helper to find the user's most recent
+              // session correctly.
+              const _userSess = getMostRecentSessionForUser(userId);
+              const lastMsg = _userSess?.messages?.slice(-1)[0];
               const idleMinutes = lastMsg?.ts ? Math.round((Date.now() - new Date(lastMsg.ts).getTime()) / 60000) : 999;
 
               // Only trigger if user has been idle long enough
@@ -29007,6 +29167,23 @@ async function governorTick(reason="heartbeat") {
                         }
                       }
                     }
+                    // Earned-storage hook — every MEGA owned by a creator
+                    // grants STORAGE_EARN_PER_MEGA_BYTES (default 512 MiB).
+                    // The MEGA owner is the creator most-cited in the cluster
+                    // (its meta.createdBy); we grant once per MEGA, idempotent
+                    // by the MEGA's id.
+                    try {
+                      const megaOwner = mega.dtu?.meta?.createdBy;
+                      if (megaOwner) {
+                        grantEarnedStorage(
+                          db,
+                          megaOwner,
+                          STORAGE_REASONS.EARNED_MEGA,
+                          STORAGE_EARN_PER_MEGA_BYTES,
+                          `mega:${mega.dtu.id}`,
+                        );
+                      }
+                    } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
                   }
                 } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
               }
@@ -29266,6 +29443,10 @@ async function governorTick(reason="heartbeat") {
               createAtlasDtu:    atlasMod?.createAtlasDtu,
               promoteAtlasDtu:   atlasMod?.promoteAtlasDtu,
               runAutoPromoteGate: guardMod?.runAutoPromoteGate,
+              // EvoAsset feedback consumer: scheduler emits this on each
+              // verified promotion so the LevelUpJuiceBridge frontend
+              // surfaces a "manifested fused power" toast + GameJuice fanfare.
+              realtimeEmit,
             });
             if (stats.evolved > 0 || stats.errors > 0) {
               structuredLog("info", "evo_asset_tick", stats);
@@ -32690,11 +32871,27 @@ app.get("/api/context/metrics", asyncHandler(async (req, res) => {
 // ── Lens Integration API ──────────────────────────────────────────────────────
 
 app.get("/api/dtus/:id/context", asyncHandler(async (req, res) => {
+  // Don't expose context for DTUs the viewer cannot see. Membership in
+  // the visibility-filtered pool is the gate; on miss return 404 so we
+  // don't leak the existence of private DTUs by id.
+  const viewerId = req.user?.id || null;
+  const visibleIds = new Set(userVisibleDTUs(viewerId).map(d => d.id));
+  if (!visibleIds.has(req.params.id)) {
+    return res.status(404).json({ ok: false, error: "dtu_not_found" });
+  }
   const result = buildDTUConversationContext(STATE, req.params.id, { sessionId: req.query.sessionId });
   res.json(result);
 }));
 
 app.get("/api/dtus/:id/artifact", asyncHandler(async (req, res) => {
+  // Same visibility gate as /:id/context — artifacts (audio, image, code,
+  // PDF) are the heaviest privacy surface; never serve private artifacts
+  // to a viewer who can't see the parent DTU.
+  const viewerId = req.user?.id || null;
+  const visibleIds = new Set(userVisibleDTUs(viewerId).map(d => d.id));
+  if (!visibleIds.has(req.params.id)) {
+    return res.status(404).json({ ok: false, error: "dtu_not_found" });
+  }
   res.json(getDTUArtifact(STATE, req.params.id));
 }));
 
@@ -32761,6 +32958,14 @@ app.get("/api/feedback-review", asyncHandler(async (req, res) => {
 // ── Artifact API Endpoints ──
 app.post("/api/artifact/upload", async (req, res) => {
   try {
+    // Storage quota gate. Artifact uploads are the byte-heavy path —
+    // cooking and combat DTUs are tiny, but a single audio/video can
+    // be hundreds of MB. The 5 GiB baseline + earned expansion is
+    // enforced here. Anonymous uploads are not permitted (no user to
+    // bill bytes against).
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
+
     const artifactMod = await import("./lib/artifact-store.js").catch(() => null);
     if (!artifactMod) return res.status(500).json({ ok: false, error: "artifact_store_unavailable" });
 
@@ -32768,6 +32973,16 @@ app.post("/api/artifact/upload", async (req, res) => {
     const chunks = [];
     for await (const chunk of req) chunks.push(chunk);
     const buffer = Buffer.concat(chunks);
+
+    // Quota check before write. Must come AFTER reading the body so we
+    // know the actual byte count, but BEFORE storeArtifact so we don't
+    // commit to disk just to fail.
+    try {
+      assertHasSpaceFor(db, userId, buffer.length);
+    } catch (e) {
+      if (e?.code === "quota_exceeded") return res.status(413).json(e.payload);
+      throw e;
+    }
 
     const contentType = req.headers["content-type"] || "application/octet-stream";
     const filename = req.headers["x-filename"] || `upload_${Date.now()}`;
@@ -32792,10 +33007,13 @@ app.post("/api/artifact/upload", async (req, res) => {
       artifact: artifactRef,
       lineage: { parents: [], children: [] },
       authority: { score: 0.5 },
-      meta: { createdBy: req.user?.id || "anonymous", lens: domain, type: artifactMod.inferKindFromType(contentType), tags: [domain], createdAt: new Date().toISOString() },
+      meta: { createdBy: userId, lens: domain, type: artifactMod.inferKindFromType(contentType), tags: [domain], createdAt: new Date().toISOString() },
     };
 
     STATE.dtus.set(dtuId, dtu);
+    // Record byte delta for the user. Best-effort — counter drift won't
+    // crash the upload pipeline if it happens.
+    recordStorageDelta(db, userId, artifactRef.sizeBytes || buffer.length, STORAGE_REASONS.UPLOAD, dtuId);
     res.json({ ok: true, dtuId, artifact: { type: artifactRef.type, sizeBytes: artifactRef.sizeBytes } });
   } catch (err) {
     res.status(500).json({ ok: false, error: String(err?.message || err) });
@@ -33127,6 +33345,10 @@ app.delete("/api/plugins/:pluginId", asyncHandler(async (req, res) => {
 
 // ── Global Query API ────────────────────────────────────────────────────────
 
+// Global pool only — no per-user scoping needed. queryGlobalFallback
+// pulls exclusively from the public/global DTU pool (scope='global'
+// or visibility='public'), so cache contents are safe to share across
+// users by design. Audited in commit d15cc1c.
 const _globalQueryCache = new Map(); // queryKey → { result, cachedAt }
 const GLOBAL_QUERY_CACHE_MS = 300_000; // 5 minutes — aligned with global tick
 
@@ -39622,6 +39844,31 @@ function initChatSocketHandlers(io) {
           return;
         }
 
+        // Queue-aware UX. Under load (e.g. multiple concurrent chatters
+        // saturating the conscious brain's 8 GPU slots), tell the user
+        // their position + ETA instead of leaving them watching a
+        // silent spinner. The threshold uses queuePressure rather than
+        // raw queue depth so the UI only narrates when the wait is
+        // actually noticeable.
+        try {
+          const pressure = _llmQueue?.queuePressure?.() ?? 0;
+          if (pressure > 0.20 && _llmQueue?.estimatePosition) {
+            const est = _llmQueue.estimatePosition();
+            if (est?.position > 1 || est?.estimatedWaitMs > 1500) {
+              socket.emit("chat:status", {
+                sessionId,
+                status: "queued",
+                lens,
+                queue: {
+                  position: est.position,
+                  estimatedWaitMs: est.estimatedWaitMs,
+                  pressure: Math.round(est.pressure * 100) / 100,
+                },
+              });
+            }
+          }
+        } catch { /* queue introspection is best-effort */ }
+
         // Emit: thinking started
         socket.emit("chat:status", { sessionId, status: "thinking", lens });
 
@@ -39636,9 +39883,14 @@ function initChatSocketHandlers(io) {
 
         if (_streamBrainUrl) {
           try {
-            // Ensure session exists
+            // Ensure session exists. Capture ownerId from the socket auth
+            // metadata (set by the io.use middleware in initRealtime) so
+            // assertSessionAccessible can later refuse cross-user reads.
             if (!STATE.sessions.has(sessionId)) {
+              const _ownerId = socket.data?.userId || null;
               STATE.sessions.set(sessionId, {
+                ownerId: _ownerId,
+                participantIds: _ownerId ? new Set([_ownerId]) : new Set(),
                 createdAt: nowISO(),
                 messages: [],
                 currentLens: null,
@@ -42302,6 +42554,31 @@ app.post("/api/onboarding/complete", (req, res) => {
     const userId = req.user?.id || `anon-${req.ip}`;
     const result = completeOnboardingStep(userId, req.body.stepId);
     res.json(result);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// First Cycle tutorial — drives the FirstWinWizard's mechanic-onboarding
+// surface. Reads the player's progress on the four authored quests
+// (first_cycle_cook → first_cycle_eat → first_cycle_fight →
+// first_cycle_commune), all defined in content/quests/onboarding.json.
+// Returns the current phase + per-objective progress so the wizard can
+// render the right prompts and voice lines without hardcoding the script.
+//
+// Logic lives in lib/tutorial-first-cycle.js so the E2E test can exercise
+// the same derivation without booting the whole server.
+app.get("/api/tutorial/first-cycle", async (req, res) => {
+  try {
+    const userId = req.user?.id || `anon-${req.ip}`;
+    const worldId = String(req.query.worldId || "concordia-hub");
+
+    let questEngine = null;
+    try { questEngine = await import("./emergent/quest-engine.js"); }
+    catch { /* loader varies between builds; helper handles the missing-engine path */ }
+
+    const { deriveFirstCycleProgress } = await import("./lib/tutorial-first-cycle.js");
+    res.json(deriveFirstCycleProgress({ db, userId, worldId, questEngine }));
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
@@ -46926,7 +47203,11 @@ app.get("/api/dtus/search/semantic", asyncHandler(async (req, res) => {
   if (!q) return res.status(400).json({ ok: false, error: "q (query) is required" });
 
   const topK = Math.min(Number(limit) || 10, 100);
-  const all = dtusArray();
+  // Honor the personal_dtus_never_leak invariant: filter the candidate
+  // pool by viewer visibility before similarity ranking, so personal/
+  // private DTUs from other users never appear in semantic results.
+  const viewerId = req.user?.id || null;
+  const all = userVisibleDTUs(viewerId);
   const results = await semanticSearch(String(q), all, { lens: lens || null, topK });
 
   // Enrich results with DTU data
@@ -46950,8 +47231,15 @@ app.get("/api/dtus/search/semantic", asyncHandler(async (req, res) => {
 app.get("/api/dtus/:id/connections", asyncHandler(async (req, res) => {
   const { id } = req.params;
   const limit = Math.min(Number(req.query.limit) || 5, 20);
-  const all = dtusArray();
-
+  // Visibility-filtered candidate pool — connections cannot surface DTUs
+  // the viewer isn't allowed to see. Source DTU itself must also be
+  // visible to the viewer; if it's not, return 404 rather than leak the
+  // existence of a private DTU by id.
+  const viewerId = req.user?.id || null;
+  const all = userVisibleDTUs(viewerId);
+  if (!all.some(d => d.id === id)) {
+    return res.status(404).json({ ok: false, error: "dtu_not_found" });
+  }
   const connections = await findCrossDomainConnections(id, all, limit);
   res.json({ ok: true, dtuId: id, connections });
 }));
@@ -53839,7 +54127,20 @@ if (globalThis.__sentry) {
   app.use(globalThis.__sentry.Handlers.errorHandler());
 }
 
-const SHOULD_LISTEN = (String(process.env.CONCORD_NO_LISTEN || "").toLowerCase() !== "true") && (String(process.env.NODE_ENV || "").toLowerCase() !== "test");
+// Listen-suppression for tests. NODE_ENV=test (in-process unit tests
+// importing server.js directly) and CONCORD_NO_LISTEN=true both skip
+// app.listen so the test runner doesn't leak a TCP listener. The
+// CONCORD_FORCE_LISTEN escape hatch lets out-of-process integration
+// tests (storage-parity, adversarial-critical-endpoints, edge-cases-
+// critical-paths, error-paths) spawn the server as a subprocess with
+// NODE_ENV=test for storage isolation while still binding a port for
+// HTTP probing. Without this override those tests hang forever waiting
+// on /health.
+const _FORCE_LISTEN = String(process.env.CONCORD_FORCE_LISTEN || "").toLowerCase() === "true";
+const SHOULD_LISTEN = _FORCE_LISTEN || (
+  (String(process.env.CONCORD_NO_LISTEN || "").toLowerCase() !== "true") &&
+  (String(process.env.NODE_ENV || "").toLowerCase() !== "test")
+);
 
 const server = SHOULD_LISTEN ? app.listen(PORT, () => {
   structuredLog("info", "server_listening", { url: `http://localhost:${PORT}`, statusUrl: `http://localhost:${PORT}/api/status` });
@@ -55914,8 +56215,14 @@ function ensureSemanticEngine() {
   if (!STATE.semantic) {
     STATE.semantic = {
       embeddings: new Map(),            // DTU ID -> embedding vector
-      intentCache: new Map(),           // Recent intent classifications
-      entityCache: new Map(),           // Extracted entities cache
+      // intentCache + entityCache: reserved for future intent/entity
+      // classification caching. Currently unused — no reads or writes
+      // in the codebase as of commit d15cc1c. If you wire these up,
+      // key them by `${userId}:${input}` to honor the
+      // personal_dtus_never_leak invariant; intent classification on a
+      // user's free-text input may surface PII in the cache key.
+      intentCache: new Map(),           // (reserved — see comment above)
+      entityCache: new Map(),           // (reserved — see comment above)
       vocabulary: new Map(),            // Term frequency for local TF-IDF
       stats: {
         embeddingsComputed: 0,
@@ -61323,6 +61630,26 @@ app.post('/api/economic/marketplace/buy', (req, res) => {
     // Update listing
     listing.sales += 1;
 
+    // Earned-storage hook — every SALE_BATCH_SIZE sales by a single seller
+    // grants STORAGE_EARN_PER_SALE_BATCH_BYTES (default 1 GiB per 10 sales).
+    // Idempotent via the (seller, salesCount) grant key so re-tries can't
+    // double-count.
+    try {
+      if (listing.seller && db) {
+        const grantsAlreadyMade = countTriggersSinceLastGrant(db, listing.seller, STORAGE_REASONS.EARNED_SALE);
+        const targetGrants = Math.floor(listing.sales / SALE_BATCH_SIZE);
+        for (let g = grantsAlreadyMade + 1; g <= targetGrants; g++) {
+          grantEarnedStorage(
+            db,
+            listing.seller,
+            STORAGE_REASONS.EARNED_SALE,
+            STORAGE_EARN_PER_SALE_BATCH_BYTES,
+            `sale_batch:${listing.seller}:${g}`,
+          );
+        }
+      }
+    } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+
     // Record purchase for buyer (so they can access the asset)
     const purchaseRecord = {
       id: `purchase_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
@@ -65174,6 +65501,11 @@ export const __TEST__ = Object.freeze({
   _defaultOrganState,
   register,
   runMacro,
+  // Behavioral test harness (tests/lens-behavior-smoke.test.js) needs
+  // these to enumerate every (domain, action) macro and invoke it with
+  // an internal/owner-scoped ctx that bypasses auth gates.
+  makeInternalCtx,
+  makeCtx,
   MACROS,
   COUNCIL_GATES,
   ROYALTY_RATES,

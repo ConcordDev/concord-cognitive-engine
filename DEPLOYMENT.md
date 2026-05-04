@@ -54,7 +54,7 @@ ollama pull llava:7b
 ollama pull nomic-embed-text
 ```
 
-Concord will also auto-pull missing models on startup via `initThreeBrains()` if Ollama is reachable.
+Concord will also auto-pull missing models on startup via `initFiveBrains()` if Ollama is reachable.
 
 ### Minimal Setup (No GPU)
 

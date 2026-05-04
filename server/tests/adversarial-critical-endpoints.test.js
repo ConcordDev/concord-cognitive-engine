@@ -38,7 +38,7 @@ before(async () => {
 
   serverProcess = spawn("node", ["server.js"], {
     cwd: serverDir,
-    env: { ...process.env, PORT: port, NODE_ENV: "test", AUTH_MODE: "" },
+    env: { ...process.env, PORT: port, NODE_ENV: "test", AUTH_MODE: "", CONCORD_FORCE_LISTEN: "true" },
     stdio: ["ignore", "ignore", "inherit"],
   });
   serverProcess.on("error", (err) => { process.stderr.write(`Server error: ${err.message}\n`); });

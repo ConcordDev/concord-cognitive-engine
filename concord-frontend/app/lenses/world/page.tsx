@@ -497,7 +497,7 @@ import { useVehicleState } from '@/hooks/useVehicleState';
 import { useDialogue } from '@/hooks/useDialogue';
 import type { HUDMode } from '@/components/world-lens/HUDOverlay';
 
-import { SEED_MATERIALS } from '@/lib/world-lens/material-seed';
+import { MATERIALS_CATALOG } from '@/lib/world-lens/material-seed';
 import { cacheMaterials } from '@/lib/world-lens/validation-engine';
 import type {
   District,
@@ -1548,7 +1548,7 @@ export default function WorldLensPage() {
   const [citations, setCitations] = useState<Citation[]>([]);
 
   // Materials
-  const [materials] = useState<MaterialDTU[]>(SEED_MATERIALS);
+  const [materials] = useState<MaterialDTU[]>(MATERIALS_CATALOG);
 
   // Cache materials for validation engine
   useEffect(() => {

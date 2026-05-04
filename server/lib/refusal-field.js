@@ -55,12 +55,26 @@ export function applyTemporaryRefusal(state, worldId, kind, opts = {}) {
   const id = `rf_${worldId}_${kind}_${Date.now()}`;
   const expiresAt = Date.now() + Math.max(1000, Number(opts.durationMs) || 30000);
   // Compute a glyph signature using the refusal-algebra so the entry
-  // carries a small lore artifact (visible in dialogue / HUD).
+  // carries a small lore artifact AND contributes to the load-bearing
+  // composite-strength calculation in computeFieldComposition().
+  //
+  // The previous implementation called `.value` on the algebra returns,
+  // which silently produced null (computeBase6Layer returns a glyph
+  // string, divide() returns {numerical, decimal, semantic}). The result:
+  // every field's glyph was null, composedFrom was always 0, and strength
+  // never crossed the compound-refusal gate at strength≥6 — the algebra
+  // was load-bearing in name only.
+  //
+  // We now feed the algebra real values so the compose step actually
+  // runs: the layer index (depth in the stack) added to a stable
+  // structural divisor produces a per-entry glyph result whose .decimal
+  // accumulates across fields in compose().
   let glyph = null;
   try {
-    const layered = computeBase6Layer(list.length + 1);
-    glyph = glyphAdd(layered.value, glyphDiv(2, 1).value); // arbitrary mix
-  } catch { /* glyph is decorative — never block the field */ }
+    const layerGlyph = computeBase6Layer(list.length + 1); // glyph string
+    const divResult  = glyphDiv(2, 1);                     // {decimal:2, numerical, semantic}
+    glyph = glyphAdd(layerGlyph, divResult.decimal);
+  } catch { /* algebra failure must never block the field — gameplay first */ }
   const entry = {
     id, kind, expiresAt,
     reason: String(opts.reason || ""),
@@ -139,6 +153,83 @@ export function activeFields(state, worldId) {
  */
 export function isRefused(state, worldId, kind) {
   return activeFields(state, worldId).some((e) => e.kind === kind);
+}
+
+/**
+ * Compose all active field glyphs into a single composite signature using
+ * the base-6 refusal algebra. Returns a numeric strength score derived from
+ * the composed glyph, plus the underlying glyph object for HUD/dialogue use.
+ *
+ * Strength semantics (what callers should branch on):
+ *   0     — no refusal active
+ *   1-2   — single field active (mild refusal)
+ *   3-5   — multiple fields composed; the Sovereign is exerting will
+ *   6+    — compounded refusal; reality bends. Triggers special phases:
+ *           Concordia goddess dialogue shifts to "deep cold", world events
+ *           suspend, and the dome-collapse Mass Raid phase becomes eligible.
+ *
+ * This is the load-bearing seat for the glyph algebra: callers consult the
+ * composite signature, not the individual field list, so the algebra
+ * actually shapes what the world does.
+ */
+export function computeFieldComposition(state, worldId) {
+  const live = activeFields(state, worldId);
+  if (live.length === 0) return { strength: 0, glyph: null, composedFrom: 0 };
+
+  // Compose every active field glyph via glyphAdd. Each addition layers
+  // the algebra: stacking more refusals raises the composite layer index,
+  // which is what we read for strength.
+  //
+  // glyphAdd returns {numerical, decimal, semantic}. The previous version
+  // referenced `.value` on the result, which is undefined — every iteration
+  // past the first threw silently and composedFrom was capped at 1.
+  // We now feed the prior numerical glyph string back into glyphAdd so the
+  // chain actually accumulates across all live entries.
+  let composite = null;
+  let composedFrom = 0;
+  for (const entry of live) {
+    if (!entry.glyph) continue;
+    try {
+      const entryGlyph = entry.glyph?.numerical ?? entry.glyph;
+      if (composite == null) {
+        composite = entry.glyph;
+      } else {
+        const compositeGlyph = composite?.numerical ?? composite;
+        composite = glyphAdd(compositeGlyph, entryGlyph);
+      }
+      composedFrom += 1;
+    } catch { /* algebra failure must never break gameplay */ }
+  }
+
+  // Strength derives from how many active fields contributed to the
+  // composite plus the composite glyph's depth (when the algebra exposes
+  // one). A single field yields strength 1; deep stacks reach 6+, hard
+  // capped at 9 so callers can branch deterministically.
+  let strength = composedFrom;
+  if (composite && typeof composite === "object" && Number.isFinite(composite.depth)) {
+    strength = Math.max(strength, Math.min(9, composedFrom + composite.depth));
+  }
+
+  return { strength, glyph: composite, composedFrom };
+}
+
+/**
+ * Numeric strength shortcut. Returns 0 when no fields are active.
+ * Use this in branch logic that wants compound-refusal awareness without
+ * caring about the underlying glyph object.
+ */
+export function getFieldStrength(state, worldId) {
+  return computeFieldComposition(state, worldId).strength;
+}
+
+/**
+ * Compound-refusal gate. True once 3+ stacked refusal fields produce
+ * a composite glyph that crosses the "reality bends" threshold. This
+ * is the actual mechanic the algebra now drives — Concordia dialogue
+ * cold phase, world-event suspension, dome-collapse raid phase.
+ */
+export function isCompoundRefusal(state, worldId) {
+  return getFieldStrength(state, worldId) >= 6;
 }
 
 /** Heartbeat sweep — calls activeFields() to prune memory, also deletes

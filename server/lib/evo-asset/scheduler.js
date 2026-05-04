@@ -137,6 +137,21 @@ export async function runEvolutionTick(STATE, db, deps = {}) {
             .run(gateResult.dtuId, asset.id);
         }
         stats.evolved += 1;
+
+        // Notify clients so LevelUpJuiceBridge can fire the "manifested
+        // fused power" toast + fanfare. Emit is best-effort — heartbeat
+        // must never crash if the realtime layer is unavailable.
+        if (typeof deps.realtimeEmit === "function") {
+          try {
+            deps.realtimeEmit("evo:asset-promoted", {
+              assetId: asset.id,
+              versionId,
+              passKind: result.passKind,
+              diffSummary: result.diffSummary ?? null,
+              dtuId: gateResult.dtuId ?? null,
+            });
+          } catch { /* non-fatal */ }
+        }
       }
     } catch {
       stats.errors += 1;

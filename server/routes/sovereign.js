@@ -13,6 +13,17 @@ import vm from "node:vm";
 import { asyncHandler } from "../lib/async-handler.js";
 import logger from '../logger.js';
 
+// SECURITY: the sovereign role is god-mode (god decree, sovereign override,
+// arbitrary state mutation). The username that maps to it MUST be set
+// explicitly per deployment. A baked-in default would let any user who
+// registers that username gain sovereign privileges. In dev we keep
+// "dutch" as the historical default for convenience; in production the
+// env var is required.
+const _NODE_ENV = process.env.NODE_ENV || "development";
+if (_NODE_ENV === "production" && !process.env.SOVEREIGN_USERNAME) {
+  console.error("[Sovereign] FATAL: SOVEREIGN_USERNAME env var must be set in production. There is no default.");
+  process.exit(1);
+}
 const SOVEREIGN_USERNAME = process.env.SOVEREIGN_USERNAME || "dutch";
 
 /**
