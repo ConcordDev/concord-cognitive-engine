@@ -567,11 +567,16 @@ export function purchaseArtifact(db, { buyerId, artifactId, tier, requestId, ip 
       requestId, ip,
     });
 
-    // 3. Cascade royalty payments
+    // 3. Cascade royalty payments.
+    // Type MUST be "ROYALTY_PAYOUT" — economy_ledger CHECK constraint
+    // (migration 002) only accepts the canonical enum. The previous
+    // "ROYALTY" value silently failed every cascade write at the CHECK
+    // boundary; auditors can still distinguish creative-marketplace
+    // royalties via metadata.role = "creative_royalty_cascade".
     for (const payment of cascadePayments) {
       entries.push({
         id: generateTxId(),
-        type: "ROYALTY",
+        type: "ROYALTY_PAYOUT",
         from: PLATFORM_ACCOUNT_ID,
         to: payment.recipientId,
         amount: payment.amount,
@@ -590,11 +595,13 @@ export function purchaseArtifact(db, { buyerId, artifactId, tier, requestId, ip 
       });
     }
 
-    // 3b. Concord keeps (9% of sale for emergent-created content)
+    // 3b. Concord keeps (9% of sale for emergent-created content).
+    // Same canonical enum requirement; auditors distinguish via
+    // metadata.role = "concord_keeps".
     if (concordSplit && concordSplit.concordKeeps > 0) {
       entries.push({
         id: generateTxId(),
-        type: "CONCORD_ROYALTY",
+        type: "ROYALTY_PAYOUT",
         from: PLATFORM_ACCOUNT_ID,
         to: "__CONCORD__",
         amount: concordSplit.concordKeeps,
