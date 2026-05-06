@@ -119,14 +119,24 @@ export async function runEvolutionTick(STATE, db, deps = {}) {
         parentDtuId: asset.canonical_dtu_id,
       }, deps);
 
-      // Record the gate verdict on the version row.
+      // Record the gate verdict on the version row. This persistence is
+      // load-bearing: the next refinement loop reads gate_verdict to skip
+      // already-verified versions. A silent failure here means the same
+      // version gets re-submitted to the gate every cycle, eating quota
+      // and never advancing canonical_dtu_id.
       try {
         db.prepare(`
           UPDATE evo_asset_versions
              SET gate_dtu_id = ?, gate_verdict = ?
            WHERE id = ?
         `).run(gateResult.dtuId ?? null, gateResult.verdict, versionId);
-      } catch { /* non-fatal */ }
+      } catch (err) {
+        // Log + skip promotion — promoting without the persisted verdict
+        // would orphan the canonical pointer from the version metadata.
+        if (typeof deps.log === "function") deps.log("warn", "evo_gate_persist_failed", { versionId, err: err?.message });
+        else if (typeof console !== "undefined") console.warn("[evo-asset] gate verdict persist failed", versionId, err?.message);
+        continue;
+      }
 
       if (gateResult.verdict === "verified") {
         promoteVersion(db, versionId);

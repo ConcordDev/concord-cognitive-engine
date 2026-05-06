@@ -1,11 +1,11 @@
 # Backend Module Wiring Spec — Concord Cognitive Engine
 
-> **Status**: Partially applied. See commit history for what's wired.
+> **Status (2026-05-06)**: All 33 inline per-entity modules + 19 singleton/wrapped heartbeat modules listed below are wired and verified. Verification: heartbeat audit in May 2026 audit pass confirmed every registered handler fires. The world-event-scheduler (item 33's analogue) was the lone exception — it had been silently dropping every tick due to wrong field names to `createEvent`; that's now fixed in `server/lib/world-event-scheduler.js`.
 
 ## CONTEXT
 
 Concord has 108 emergent modules in `server/emergent/`. Most are fully implemented
-but were NOT wired into the runtime. This spec documents the wiring pattern.
+and wired into the runtime per this spec. Use it as the canonical wiring map.
 
 ## WIRING PATTERN
 

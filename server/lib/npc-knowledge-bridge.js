@@ -79,11 +79,21 @@ export function runNpcKnowledgeBridge({ state, db }) {
 
       for (const role of roles) {
         const id = `nk_${role}_${row.id}`;
-        const r = insert.run(id, worldId, role, row.id, summary, domain);
-        if (r.changes > 0) inserted++;
+        try {
+          const r = insert.run(id, worldId, role, row.id, summary, domain);
+          if (r.changes > 0) inserted++;
+        } catch (insertErr) {
+          // Surface per-row insert failures so a bad fixture or migration
+          // drift doesn't silently strand whole role/world combinations.
+          // The previous outer-only catch swallowed CHECK / UNIQUE / NOT
+          // NULL errors and returned ok:true, which made it look like the
+          // bridge was working when no NPCs were getting knowledge.
+          if (typeof console !== "undefined") console.warn("[npc-knowledge-bridge] insert failed", { id, role, err: insertErr?.message });
+        }
       }
       lastSeenAt = row.created_at;
-    } catch {
+    } catch (rowErr) {
+      if (typeof console !== "undefined") console.warn("[npc-knowledge-bridge] row failed", { rowId: row?.id, err: rowErr?.message });
       lastSeenAt = row.created_at || lastSeenAt;
     }
   }

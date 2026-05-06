@@ -73,7 +73,11 @@ Every frontend API call passes three gates in `server.js`:
 Frontend calls `POST /api/lens/run` with `{ domain, name, input }`. This routes to `runMacro(domain, name, input, ctx)` in `server.js`. All 175 lenses expose their functionality as domain macros (e.g., `runMacro("chat", "respond", {...})`). Domain logic lives in `server/domains/<domain>.js`.
 
 ### Heartbeat tick (every 15s)
-`governorTick()` in `server.js` drives all emergent simulation: 33 wired modules in `server/emergent/` running at varying frequencies (every tick, every 5th, every 20th, etc.). Always wrap new heartbeat additions in `try/catch` — a module crash must never stop the tick.
+`governorTick()` in `server.js` drives all emergent simulation. Two registration patterns coexist:
+- **Per-entity inline ticks** (33+ modules in `server/emergent/`) running at varying frequencies (every tick, every 5th, every 20th, etc.). See `WIRING_SPEC.md` for the full table.
+- **Singleton periodic modules** (7 registered + 12 wrapped via `runHeartbeatModule`) for system-wide work — social-npc-bridge (5 ticks), npc-knowledge-bridge (10), metrics-decay (20), fauna-spawner (30), eco-expiry-sweep (5), refusal-field-sweep (1), corpse-cleanup (10), plus the wrapped ones (walker-journey, creature-bond-decay, combat-state-tick, weather-advance, npc-schedule-replan, news-log-pull, council-theater-tick, reputation-badge-sweep, citation-quest-bridge-tick, concord-link-walker-tick, world-event-scheduler-tick @ 40, world-event-finalize-tick @ 4).
+
+Always wrap new heartbeat additions in `try/catch` — a module crash must never stop the tick. Counter `concord_heartbeat_ticks_total` (server.js:5592, alert `ConcordHeartbeatStopped` in `monitoring/prometheus/alerts.yml:60`) increments per tick; rate==0 for >60s indicates the loop has frozen. Skipped ticks (when a previous tick is still running) are NOT counted — observable gap.
 
 ### DTU substrate
 Discrete Thought Units are the atomic knowledge format. Four layers: `human` (readable summary), `core` (structured claims/definitions), `machine` (tags, embeddings, verifier), `artifact` (optional binary at `./data/artifacts/{dtuId}/`). Regular DTUs consolidate into MEGA (5–20 originals) then HYPER (50–200) at 33:1 compression every 30 ticks. There is **no hard DTU ceiling**; memory pressure is governed by `server/lib/memory-pressure.js` against `MAX_OLD_SPACE_SIZE`. With the 32GB-heap default the substrate comfortably holds ~1.5M DTUs.
@@ -92,7 +96,7 @@ Default models tuned for the **NVIDIA RTX PRO 4500 Blackwell** (32GB GDDR7, 5th-
 All five Ollama services run with `OLLAMA_FLASH_ATTENTION=1` + `OLLAMA_KV_CACHE_TYPE=q8_0` to use the Blackwell tensor cores and halve KV cache memory. `initFiveBrains()` probes all five (4 cognitive + 1 multimodal/vision) on startup and auto-pulls models. `ctx.llm.chat()` routes to conscious; falls back to subconscious. Vision queries route through `server/lib/vision-inference.js#callVision` which reads `BRAIN_VISION_URL` and routes via `BRAIN.multimodal` / `BRAIN_CONFIG.multimodal`.
 
 ### 175-lens frontend
-`concord-frontend/app/lenses/` has 182 directories (175 lenses + system pages). Each lens page calls its backend domain macro. Lens feature specs live in `server/lib/lens-features.js` and `server/lib/lens-features-extended.js`. **~30+ lenses have full production-grade implementations (chat, code, healthcare, education, dtus, marketplace, alliance, anon, atlas, attention, calendar, council, debate, eco, fractal, hypothesis, lab, legal, meta, neuro, parenting, quantum, vote, whiteboard, accounting, agriculture, photography, physics, and more).** Several remaining lenses have analysis macros that need plumbing to DTU/LLM/cross-domain reuse. Use `npm run score-lenses` to audit current implementation completeness.
+`concord-frontend/app/lenses/` has 185 directories (175 lenses + system pages). Each lens page calls its backend domain macro. Lens feature specs live in `server/lib/lens-features.js` (20 universal features) and `server/lib/lens-features-extended.js` (**58 lens entries spanning lensNumber 66–123, contiguous, no duplicates** — verified by `tests/lens-features-extended.test.js`). Categories: GOVERNANCE_EXT (8), SCIENCE_EXT (6), AI_EXT (7), AI_COGNITION (10), SPECIALIZED_EXT (13), BRIDGE (1), CREATIVE (2), SPECIALIZED (11). **~30+ lenses have full production-grade implementations (chat, code, healthcare, education, dtus, marketplace, alliance, anon, atlas, attention, calendar, council, debate, eco, fractal, hypothesis, lab, legal, meta, neuro, parenting, quantum, vote, whiteboard, accounting, agriculture, photography, physics, and more).** Several remaining lenses have analysis macros that need plumbing to DTU/LLM/cross-domain reuse. Use `npm run score-lenses` to audit current implementation completeness.
 
 ### Concordia (World Lens)
 3D civilization simulator inside the platform. Key directories:
@@ -109,7 +113,7 @@ All five Ollama services run with `OLLAMA_FLASH_ATTENTION=1` + `OLLAMA_KV_CACHE_
 - `content/quests/` — Authored quest chains (onboarding, 7-quest main arc, 8 faction quests)
 
 ### Database
-SQLite via `better-sqlite3`. Synchronous, in-process, no ORM. Migrations in `server/migrations/` (068 migrations as of last audit), run automatically at startup and manually via `npm run migrate`. Schema version tracked in `schema_version` table.
+SQLite via `better-sqlite3` (in `dependencies`, not optional — the server hard-requires it). Synchronous, in-process, no ORM. Migrations in `server/migrations/` (**100 migrations through `100_evo_assets_gameplay_kinds.js`**), run automatically at startup and manually via `npm run migrate`. Schema version tracked in `schema_version` table. Migration 100 (the most recent) extended `evo_assets` CHECK constraints to admit gameplay-derived kinds (`creature`, `craft`, `skill`, `drop`, `species`) — required for the gameplay-asset-bridge to actually persist events.
 
 ### Mobile
 `concord-mobile/` — React Native + Expo v52. Real native app with BLE, WiFi P2P, geolocation, NFC, SQLite local store, wallet/marketplace. Not a web wrapper. Secure storage uses `expo-secure-store` (iOS Keychain / Android Keystore) on native and `WebCrypto` AES-GCM with a non-extractable key in IndexedDB on web — selected by `createSecureStorageForPlatform(Platform)` in `App.tsx`.
@@ -160,11 +164,10 @@ This section exists so future sessions don't repeat discovery work.
 *(Empty — all prior items shipped.)*
 
 ### Missing (needs building)
-*(No code-side gaps remain. The remaining work is content authoring + UX
-testing — neither requires engineering:)*
-- Content discovery already surfaced by `concord-frontend/components/world/DistrictActivityFeed.tsx` (246 LOC, mounted in `app/lenses/world/page.tsx:3759`); it aggregates `/api/world/events`, `/api/worlds/:worldId/quests/active`, `/api/tools/recipes` per proximity.
-- Emote system already shipped — `concord-frontend/components/world/EmoteWheel.tsx` (94 LOC, 6 emotes) + `concord-frontend/components/concordia/social/EmoteWheel.tsx` (112 LOC, 8 emotes with animation field) + `concord-frontend/components/world-lens/AnimationManager.tsx` (444 LOC state machine); both wheels mounted in `app/lenses/world/page.tsx`.
-- First-hour onboarding routing already wired — `register/page.tsx:48` → `/onboarding`; `FirstWinWizard` mounted in `AppShell.tsx:162`; `/api/guidance/first-win` + `/api/onboarding/*` endpoints live. **What's still needed is authored content** for the tutorial quest chain (cook→eat→fight→Concordia walkthrough), not code.
+*(No code-side gaps remain. The remaining work is content authoring + UX testing — neither requires engineering.)*
+- Content discovery surfaced by `concord-frontend/components/world/DistrictActivityFeed.tsx` (mounted in `app/lenses/world/page.tsx`); it aggregates `/api/world/events`, `/api/worlds/:worldId/quests/active`, `/api/tools/recipes` per proximity.
+- Emote system shipped — `concord-frontend/components/world/EmoteWheel.tsx` (6 emotes) + `concord-frontend/components/concordia/social/EmoteWheel.tsx` (8 emotes with animation field) + `concord-frontend/components/world-lens/AnimationManager.tsx` (444 LOC state machine); both wheels mounted in `app/lenses/world/page.tsx`.
+- First-hour onboarding shipped — `register/page.tsx` → `/onboarding`; `FirstWinWizard` mounted in `AppShell.tsx`; `/api/guidance/first-win` + `/api/onboarding/*` + `/api/tutorial/first-cycle` endpoints live; tutorial chain (cook → eat → fight → commune) authored in `content/quests/onboarding.json`. End-to-end journey covered by `server/tests/e2e/first-cycle-journey.test.js` (Tier-3 integration test).
 
 ---
 
@@ -172,6 +175,7 @@ testing — neither requires engineering:)*
 
 | Commit | What landed |
 |---|---|
+| Production Audit (May 2026) | Migration 100 (`evo_assets` CHECK extended for gameplay kinds); 4 load-bearing bugs **made actually load-bearing** — refusal-field glyph algebra (was decorative-by-bug, now strength≥6 truly gates compound-refusal phases), world-event scheduler (silently created 0 events due to wrong field names to `createEvent`), gameplay-asset-bridge (every event silently dropped — schema CHECK + missing `localPath`), lens manifest (10 duplicate `lensNumber` collisions, renumbered to 113–123 contiguous); heartbeat counter alert path comment fixed; quest-engine `require()` → `await import()` at server.js:42591; `agent_threads.accumulated_state_json` and `agent_thread_checkpoints.node_id` NOT NULL bugs in thread-manager; promoted `better-sqlite3` from optional to required; full route-inventory updates to API.md (onboarding, tutorial, creator-economy, openapi/docs, concord-link, black-market, world bazaar/perf-telemetry); Three-Gate sync (17 missing routes added to Gate 3); +6 new test files (Tier-2 contract: dtu-quality-scoring, refusal-algebra/strength-gating, world-event-scheduler, gameplay-asset-bridge, npc-schedules; Tier-3 E2E: first-cycle-journey); 56 pre-existing assertion failures resolved (brain-routing 5-brain inventory, lens-features 58/220→58/274 update, accumulator multi-tenant caps, citation consent, storage/session limits, oauth, openapi coverage threshold, social-pings rate test, economy 48h withdrawal hold, physics validation rescale loop, routes/media auth shape) |
 | Concordant Web | 8 cross-world authored major characters + 3 factions + Concordant Law + Sovereign Refusal Archive + Mass Raid scaffold + Refusal Field new kinds (numbers/dome/win refused) |
 | EvoEcosystem | Migrations 094–096; fauna spawner; loot tables; butcher route; cooking pipeline (raw→cooked→buff); active-effects table; Concordia neutral-zone middleware; Refusal Field; Three Pillars seed |
 | v2.0 Bidirectional Creative OS | Heartbeat registry; recipe substrate; social-NPC bridge; music/blueprint/medical instantiation; multi-avatar; federation; realtime; DAW layering |
@@ -182,19 +186,48 @@ testing — neither requires engineering:)*
 ## Key Invariants
 
 - **Marketplace fees are hardcoded.**
-  - DTU royalty-aware path (`/api/marketplace/purchaseWithRoyalties`, `server.js:31376-31443`): `creatorPool = price * 0.95`, `platformFee = price * 0.05` — 95% to creator pool.
-  - Economic marketplace path (`/api/economic/marketplace/buy`, `server.js:60724-60727`): `MARKETPLACE_FEE: 0.04`, `CREATOR_SHARE: 0.70`, `ROYALTY_SHARE: 0.20`, `TREASURY_SHARE: 0.10`.
-  - Token purchase fee (Stripe → Concord Coin, `server.js:60723`): `TOKEN_PURCHASE_FEE: 0.0146`.
-  - Royalty cascade cap (`server/economy/royalty-cascade.js:173`): `MAX_ROYALTY_RATE = 0.30` of the creator pool to ancestors.
-  - Do not change these without governance approval.
+  - DTU royalty-aware path (`/api/marketplace/purchaseWithRoyalties`): `creatorPool = price * 0.95`, `platformFee = price * 0.05` — 95% to creator pool.
+  - Economic marketplace path (`/api/economic/marketplace/buy`): `MARKETPLACE_FEE: 0.04`, `CREATOR_SHARE: 0.70`, `ROYALTY_SHARE: 0.20`, `TREASURY_SHARE: 0.10`.
+  - Token purchase fee (Stripe → Concord Coin): `TOKEN_PURCHASE_FEE: 0.0146`.
+  - Creative marketplace constants (`server/lib/creative-marketplace-constants.js:422-440`): `PLATFORM_FEE_RATE 0.0146`, `MARKETPLACE_FEE_RATE 0.04`, `INITIAL_ROYALTY_RATE 0.21`, `ROYALTY_HALVING 2`, `ROYALTY_FLOOR 0.0005`, `MAX_CASCADE_DEPTH 50`.
+  - Royalty cascade cap (`server/economy/royalty-cascade.js:180`): `MAX_ROYALTY_RATE = 0.30` of the sale price to ancestors. Seller always keeps ≥64.54% (100% − 5.46% fees − 30% royalty cap). Tested in `tests/royalty-cascade.test.js`.
+  - **Do not change any of the above without governance approval.** They are constitutional invariants.
+- **48-hour withdrawal hold.** `server/economy/withdrawals.js:23` — only credits older than `WITHDRAWAL_HOLD_HOURS = 48` are withdrawal-eligible. This is the anti-refund-exploit gate (sell → withdraw instantly → buyer refund → funds gone). Tests must seed credits with backdated `created_at` to exercise the withdrawal path.
+- **Citation requires consent.** `server/economy/royalty-cascade.js:registerCitation` short-circuits with `citation_consent_not_granted` unless one of: parent DTU is public/published/global-scoped, parent creator toggled `allow_citation`, OR caller holds a purchased usage license. Tests must pass `parentDtu: { visibility: "public" }` or `hasPurchasedLicense: true` to exercise downstream cycle/persistence logic.
 - **Heartbeat modules must never throw.** Always wrap in `try/catch`.
 - **DTU originals are tombstoned by the forgetting-engine retention pathway** (`server/emergent/forgetting-engine.js:134, 155`), preserving lineage. The user-initiated `dtu:deleted` event hard-deletes; do not extend hard-delete paths to retention sweeps.
 - **NPC secrets (narrative_context.secret) must not be passed to LLM prompts.** They are for human authors and branch conditions only. The narrative bridge enforces this at `server/lib/narrative-bridge.js:147`.
 - **DTU consolidation is automatic** via inline pipeline in `governorTick` at `server.js:28970-29061` (every `TICK_FREQUENCIES.CONSOLIDATION = 30` ticks). Forms MEGAs from regular DTU clusters (size 5–20), then HYPERs from MEGA clusters (size 3–10) once MEGA population ≥ 15. Constants at `server.js:1399-1419`. Manual `compressToDMega()` / `compressToHyper()` (`server/economy/dtu-pipeline.js:326, 399`) still callable from macros.
-- **Refusal Field glyph algebra is decorative today.** `server/lib/refusal-field.js:62-63` wraps glyph computation in try/catch with comment "glyph is decorative — never block the field". Refusal mechanics are enforced by the `FIELD_KINDS` table, not the algebra. Migrating this to load-bearing requires a deliberate redesign.
+- **Refusal Field glyph algebra is load-bearing.** `server/lib/refusal-field.js:applyTemporaryRefusal` (lines 59–76) computes a real per-entry glyph from `computeBase6Layer` + `glyphDiv`; `computeFieldComposition` accumulates them via `glyphAdd` (lines 175–222) and returns a `strength` numeric. Callers MUST branch on `strength >= 6` (`isCompoundRefusal`) for compound-refusal mechanics: Concordia goddess "deep cold" dialogue tone (`server/routes/world-narrative.js`), world-event suspension, and the dome-collapse Mass Raid phase (`server/lib/sovereign/raid-event.js`). Strength is hard-capped at 9. The May 2026 audit fixed two latent bugs that had silently kept `composedFrom` at 0 (calls to `.value` on objects that don't have one); regression tests live at `tests/refusal-algebra/strength-gating.test.js`. Time-bounded gates from the `FIELD_KINDS` table (death/harvest/hostility/consequence/numbers/dome/win) ALSO still enforce per-kind blocks via `isRefused()`.
 - Migrations are append-only. Never modify an existing migration file.
 - `CONCORD_NO_LISTEN=true` + `NODE_ENV=test` both suppress port binding for tests.
 - The frontend `build` script runs `prophet-check` (repair cortex pre-build analysis) before `next build`. Build blockers will exit 1.
+
+---
+
+## Multi-tenant cap defaults (lifted from single-user pre-deploy)
+
+Several caps were intentionally raised before multi-tenant deploy. If you find a test asserting the old value, the test is stale — update to the new default.
+
+| Constant | Old | New | Env override |
+|---|---|---|---|
+| `MAX_DOMAIN_SIGNALS` (`server/lib/session-context-accumulator.js:29`) | 50 | **500** | `CONCORD_DOMAIN_SIGNALS` |
+| `MAX_ACTIVE_LENSES` (same file:30) | 15 | **175** | `CONCORD_ACTIVE_LENSES` |
+| `MAX_SESSION_HISTORY` (same file:28) | 30 | **300** | `CONCORD_SESSION_HISTORY` |
+| `MAX_CONCURRENT_DOWNLOADS_PER_USER` (`server/lib/storage-constants.js:210`) | 5 | **25** | `CONCORD_DOWNLOADS_PER_USER` |
+| `SESSION_LIMITS.MAX_CONCURRENT` (`server/emergent/schema.js:98`) | 5 | **50** | `CONCORD_DIALOGUE_MAX_CONCURRENT` |
+| `MAX_ARCHIVED_SUMMARIES` (`server/lib/conversation-summarizer.js:26`) | 20 | **200** | `CONCORD_ARCHIVED_SUMMARIES` |
+
+---
+
+## Test suite
+
+- `npm test` runs `node --test --test-force-exit --test-timeout=30000 'tests/**/*.test.js' 'tests/**/*-tests.js' && npm run test:behavior`
+- Current state (May 2026 audit pass): **9498 main + 1223 behavior = 10,721 passing, 0 failing.**
+- Tier-1 behavior harness (`tests/behavior/lens-behavior-smoke.behavior.js`) auto-derives one test per (domain, macro) from the live `MACROS` map; skips LLM-hint and destructive-hint macros (run with `CONCORD_BEHAVIOR_TEST_LLM=true` to include).
+- Tier-2 contract tests pin load-bearing math (royalty cascade, DTU quality scoring, refusal-field strength gating, world-event scheduler cadence).
+- Tier-3 E2E covers the cook → eat → fight → commune onboarding journey (`tests/e2e/first-cycle-journey.test.js`).
+- `npm install` in `server/` is mandatory before first run — the codebase hard-requires `better-sqlite3`, `express`, `jsonwebtoken`, `yaml`, `uuid`. All declared in `package.json`; no native build dependencies on RTX-class boxes.
 
 ---
 
