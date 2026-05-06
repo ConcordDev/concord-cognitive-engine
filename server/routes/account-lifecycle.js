@@ -13,6 +13,11 @@ import express from "express";
 import { readFileSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
+// jsonwebtoken at the top so we don't bare-`require()` it in route
+// handlers below (ESM file → bare require throws ReferenceError, which
+// the surrounding try/catch silently turns into a 401, killing account
+// merge entirely).
+import jwt from "jsonwebtoken";
 import {
   requestAccountDeletion,
   cancelAccountDeletion,
@@ -135,7 +140,6 @@ export default function createAccountLifecycleRouter({ db, requireAuth, adminOnl
     // re-authenticated). Token payload: { sourceUserId, exp }.
     let tokenPayload;
     try {
-      const jwt = require("jsonwebtoken");
       tokenPayload = jwt.verify(mergeToken, process.env.JWT_SECRET || "dev_secret");
     } catch {
       return res.status(401).json({ ok: false, error: "invalid_merge_token" });
@@ -159,7 +163,6 @@ export default function createAccountLifecycleRouter({ db, requireAuth, adminOnl
     const sourceUserId = req.user?.id;
     if (!sourceUserId) return res.status(401).json({ ok: false, error: "unauthorized" });
     try {
-      const jwt = require("jsonwebtoken");
       const token = jwt.sign(
         { sourceUserId, kind: "account_merge", exp: Math.floor(Date.now() / 1000) + 600 },
         process.env.JWT_SECRET || "dev_secret",
