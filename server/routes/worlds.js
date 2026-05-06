@@ -1709,12 +1709,15 @@ export default function createWorldsRouter({ requireAuth, db }) {
         }
       } catch { /* non-critical */ }
 
-      // Track kill quest objectives when NPC dies
+      // Track kill / defeat quest objectives when NPC dies. Some authored
+      // content uses "defeat" for tonal reasons (onboarding fight quest);
+      // some uses "kill". Fire both so either authoring style works.
       if (kill) {
         try {
           const killedNpc = db.prepare("SELECT archetype FROM world_npcs WHERE id = ?").get(npcId);
           const archetype = killedNpc?.archetype || 'enemy';
           recordObjectiveProgress(db, userId, worldId, null, 'kill', archetype, 1);
+          recordObjectiveProgress(db, userId, worldId, null, 'defeat', archetype, 1);
         } catch { /* non-fatal */ }
       }
 

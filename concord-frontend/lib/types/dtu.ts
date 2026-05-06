@@ -2,6 +2,70 @@
 
 export type DTUTier = 'regular' | 'mega' | 'hyper' | 'shadow' | 'archive';
 
+/**
+ * The four documented layers a DTU can carry (CLAUDE.md "DTU substrate"):
+ *   - human    — readable summary (TLDR, bullets, narrative for UI)
+ *   - core     — structured claims/definitions/invariants for retrieval
+ *   - machine  — tags, embeddings, verifier hashes for indexing
+ *   - artifact — optional binary metadata (the bytes live at ./data/artifacts/{dtuId}/)
+ *   - creti    — Composition / Resonance / Engagement / Trust / Influence
+ *                scores produced by the resonance engine.
+ *   - cretiHuman — natural-language explanation of the CRETI score for UI display.
+ *
+ * Every layer is OPTIONAL — older DTUs predate one or more layers; consumers
+ * must null-check before reading. Producers (server/economy/dtu-pipeline.js,
+ * server/lib/forge.js) populate them as data becomes available.
+ *
+ * Layer fields use index-signature `[key: string]: unknown` so server-side
+ * additions don't require a TS update for non-load-bearing fields. The
+ * documented fields are typed strictly; everything else is escape-hatched.
+ */
+export interface DTUHumanLayer {
+  summary?: string;
+  tldr?: string;
+  bullets?: string[];
+  narrative?: string;
+  question?: string;
+  answer?: string;
+  [key: string]: unknown;
+}
+
+export interface DTUCoreLayer {
+  claims?: string[];
+  // Definitions: server emits an array of definition strings
+  // (each "term: meaning"); leaving as string[] matches the wire shape.
+  definitions?: string[];
+  invariants?: string[];
+  contradictions?: string[];
+  examples?: string[];
+  [key: string]: unknown;
+}
+
+export interface DTUMachineLayer {
+  tags?: string[];
+  embedding?: number[];
+  verifier?: string;
+  [key: string]: unknown;
+}
+
+export interface DTUArtifactLayer {
+  mimeType?: string;
+  sizeBytes?: number;
+  sha256?: string;
+  storageUri?: string;
+  [key: string]: unknown;
+}
+
+export interface DTUCretiScores {
+  composition?: number;
+  resonance?: number;
+  engagement?: number;
+  trust?: number;
+  influence?: number;
+  total?: number;
+  [key: string]: unknown;
+}
+
 export interface DTU {
   id: string;
   tier: DTUTier;
@@ -9,6 +73,19 @@ export interface DTU {
   summary: string;
   timestamp: string;
   updatedAt?: string;
+
+  // Four-layer substrate (see types above). Each is optional — a freshly
+  // forged DTU may only have `human`; a fully-processed one has all four
+  // plus creti scoring.
+  human?: DTUHumanLayer;
+  core?: DTUCoreLayer;
+  machine?: DTUMachineLayer;
+  artifact?: DTUArtifactLayer;
+  creti?: DTUCretiScores;
+  cretiHuman?: string;
+
+  // Display helper populated server-side for some queries.
+  primaryType?: string;
 
   // Relationships
   parentId?: string;

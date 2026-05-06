@@ -1355,14 +1355,17 @@ export default function AvatarSystem3D({
 
       // ── Facial controller: player ───────────────────────────
       {
+        // The lookup returns Object3D | undefined; we narrow to Mesh by
+        // checking morphTargetDictionary (only Mesh carries it). The
+        // intersection-typed local already satisfies FacialController's
+        // THREE.Mesh constructor param — no `as any` needed.
         const headMesh = playerMesh.getObjectByName('head') as
           | (InstanceType<typeof import('three').Mesh> & {
               morphTargetDictionary?: Record<string, number>;
             })
           | undefined;
         if (headMesh?.morphTargetDictionary) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          facialControllersRef.current.set('player', new FacialController(headMesh as any));
+          facialControllersRef.current.set('player', new FacialController(headMesh));
         }
       }
 
@@ -1460,14 +1463,16 @@ export default function AvatarSystem3D({
 
         // NPC facial controller
         {
+          // Same narrowing pattern as the player head above. Intersection-
+          // typed local is structurally compatible with FacialController's
+          // THREE.Mesh param without an `as any` escape.
           const npcHead = mesh.getObjectByName('head') as
             | (InstanceType<typeof import('three').Mesh> & {
                 morphTargetDictionary?: Record<string, number>;
               })
             | undefined;
           if (npcHead?.morphTargetDictionary) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            facialControllersRef.current.set(npc.id, new FacialController(npcHead as any));
+            facialControllersRef.current.set(npc.id, new FacialController(npcHead));
           }
         }
 

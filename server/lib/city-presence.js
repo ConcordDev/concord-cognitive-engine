@@ -552,6 +552,33 @@ export function removeUser(userId) {
   }
 }
 
+// Default stale threshold — entries with `lastUpdate` older than this are
+// presumed-disconnected and pruned. Override via env. Disconnect handlers
+// (server.js:7112,7120) handle the happy path; this sweep covers the
+// crash-recovery / never-cleanly-disconnected cases.
+const STALE_PRESENCE_MS = Number(process.env.CONCORD_PRESENCE_STALE_MS) || 10 * 60 * 1000;
+
+/**
+ * Periodic stale-entry sweep. Removes any user position whose `lastUpdate`
+ * is older than STALE_PRESENCE_MS. Returns { ok, pruned, scanned }.
+ *
+ * Wire from a heartbeat module — see server.js registerHeartbeat
+ * "presence-stale-sweep" at frequency 20 (≈5 min at 15s ticks).
+ */
+export function sweepStalePresence(now = Date.now()) {
+  let pruned = 0;
+  const scanned = _userPositions.size;
+  for (const [userId, pos] of _userPositions.entries()) {
+    if ((now - (pos.lastUpdate || 0)) > STALE_PRESENCE_MS) {
+      // Reuse removeUser for consistency: same chunk-removal + flush path
+      // happy-path disconnect uses.
+      try { removeUser(userId); pruned++; }
+      catch (err) { logger.warn?.({ userId, err: err?.message }, "city_presence_sweep_remove_failed"); }
+    }
+  }
+  return { ok: true, pruned, scanned };
+}
+
 /**
  * Get the set of user IDs in a specific chunk.
  * @param {string} cityId

@@ -129,6 +129,29 @@ registerHeartbeat("corpse-cleanup", {
     } catch { return { ok: false, reason: "table_missing" }; }
   },
 });
+
+// Presence stale-entry sweep. Socket disconnect handlers
+// (server.js:7112, 7120) prune `_userPositions` on the happy path, but
+// crash-recovery / never-cleanly-disconnected sockets leave entries
+// behind that grow the map indefinitely. Every 20 ticks (~5min) we
+// remove any entry whose lastUpdate is older than CONCORD_PRESENCE_STALE_MS
+// (default 10 min). Implemented in lib/city-presence.js#sweepStalePresence.
+registerHeartbeat("presence-stale-sweep", {
+  frequency: 20,
+  handler: async () => {
+    try {
+      const cp = await import("./lib/city-presence.js").catch((err) => {
+        structuredLog("warn", "presence_sweep_module_unavailable", { error: err?.message });
+        return null;
+      });
+      if (!cp?.sweepStalePresence) return { ok: false, reason: "no_sweep_export" };
+      return cp.sweepStalePresence();
+    } catch (err) {
+      structuredLog("warn", "presence_sweep_failed", { error: err?.message });
+      return { ok: false, reason: "exception" };
+    }
+  },
+});
 import { ConcordError } from "./lib/errors.js";
 import { asyncHandler } from "./lib/async-handler.js";
 import { init as initGRC, formatAndValidate as grcFormatAndValidate, getGRCSystemPrompt } from "./grc/index.js";
@@ -27570,6 +27593,17 @@ app.post("/api/world/cook", requireAuth, async (req, res) => {
     // Cooking is creative — bumps concordia_alignment by a small amount.
     try { adjustEcoMetrics(db, userId, resolvedWorldId, { concordia_alignment: 0.5 }); }
     catch { /* metrics best-effort */ }
+    // Quest objective progress: any active quest with type='cook' targeting
+    // this recipe (or the generic "first_cycle_recipe" alias) advances.
+    // Without this hook, the First Cycle "cook" objective could never
+    // advance — the play loop was dead-wired here.
+    try {
+      const qe = await import("./lib/quests/quest-engine.js");
+      qe.recordObjectiveProgress(db, userId, resolvedWorldId, null, "cook", recipeId, 1);
+      // Also fire against the generic onboarding target so authored
+      // first-cycle quests (which target "first_cycle_recipe") advance.
+      qe.recordObjectiveProgress(db, userId, resolvedWorldId, null, "cook", "first_cycle_recipe", 1);
+    } catch { /* objective tracking is best-effort */ }
     res.json(result);
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
@@ -27578,7 +27612,7 @@ app.post("/api/world/cook", requireAuth, async (req, res) => {
 
 // EvoEcosystem W3: consume a food DTU — applies its effects[] as
 // time-limited buffs/debuffs. Deducts a single inventory unit.
-app.post("/api/world/consume/:dtuId", requireAuth, (req, res) => {
+app.post("/api/world/consume/:dtuId", requireAuth, async (req, res) => {
   try {
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
@@ -27595,7 +27629,39 @@ app.post("/api/world/consume/:dtuId", requireAuth, (req, res) => {
         });
       }
     } catch { /* realtime emit best-effort */ }
+    // Quest objective progress: any active quest with type='consume'
+    // targeting this DTU (or the generic onboarding "first_cycle_recipe"
+    // alias) advances. The First Cycle "eat" objective requires this.
+    try {
+      const qe = await import("./lib/quests/quest-engine.js");
+      const worldId = String(req.body?.worldId || "concordia-hub");
+      qe.recordObjectiveProgress(db, userId, worldId, null, "consume", req.params.dtuId, 1);
+      qe.recordObjectiveProgress(db, userId, worldId, null, "consume", "first_cycle_recipe", 1);
+    } catch { /* objective tracking is best-effort */ }
     res.json(result);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// Quest objective: reach a named location. Frontend self-reports via this
+// endpoint when the player enters the radius of an authored location
+// (first_cycle_glade, training_hollow, east_gate, etc.). The First Cycle
+// onboarding journey (cook → eat → fight → commune) and the main-arc
+// quest chain both depend on this — without it, every reach_location
+// objective was stuck forever.
+app.post("/api/world/reach-location", requireAuth, async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
+    const { locationId, worldId } = req.body || {};
+    if (!locationId || typeof locationId !== "string") {
+      return res.status(400).json({ ok: false, error: "locationId_required" });
+    }
+    const resolvedWorldId = String(worldId || "concordia-hub");
+    const qe = await import("./lib/quests/quest-engine.js");
+    qe.recordObjectiveProgress(db, userId, resolvedWorldId, null, "reach_location", locationId, 1);
+    res.json({ ok: true, locationId, worldId: resolvedWorldId });
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
   }

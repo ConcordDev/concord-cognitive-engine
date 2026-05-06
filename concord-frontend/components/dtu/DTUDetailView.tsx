@@ -287,9 +287,10 @@ function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps) {
     }
   };
 
-  // Determine primaryType for artifact rendering
-  const primaryType = (dtu?.meta?.primaryType ||
-    (dtu as unknown as Record<string, unknown>)?.primaryType) as string | undefined;
+  // Determine primaryType for artifact rendering. The DTU type now declares
+  // `primaryType?: string` directly (lib/types/dtu.ts) so the cast tower
+  // is no longer needed.
+  const primaryType = (dtu?.meta?.primaryType || dtu?.primaryType) as string | undefined;
   const artifactRef = (dtu?.artifact || dtu?.meta?.artifactId) as string | undefined;
 
   const primaryTypeIcon: Record<string, typeof Music> = {
@@ -433,65 +434,48 @@ function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps) {
                     </div>
                   )}
 
-                  {/* Human-readable summary from human layer */}
-                  {!!(dtu as unknown as Record<string, unknown>).human &&
-                    typeof (dtu as unknown as Record<string, unknown>).human === 'object' && (
-                      <div>
-                        {!!(dtu as unknown as Record<string, Record<string, unknown>>).human
-                          ?.summary && (
-                          <div className="mb-3">
-                            <h3 className="text-sm font-medium text-gray-400 mb-1">
-                              Human Summary
-                            </h3>
-                            <p className="text-gray-200">
-                              {String(
-                                (dtu as unknown as Record<string, Record<string, unknown>>).human
-                                  .summary
-                              )}
-                            </p>
-                          </div>
-                        )}
-                        {Array.isArray(
-                          (dtu as unknown as Record<string, Record<string, unknown[]>>).human
-                            ?.bullets
-                        ) &&
-                          (dtu as unknown as Record<string, Record<string, string[]>>).human.bullets
-                            .length > 0 && (
-                            <div>
-                              <h3 className="text-sm font-medium text-gray-400 mb-1">Key Points</h3>
-                              <ul className="list-disc list-inside space-y-1 text-gray-200 text-sm">
-                                {(
-                                  dtu as unknown as Record<string, Record<string, string[]>>
-                                ).human.bullets.map((b: string, i: number) => (
-                                  <li key={i}>{b}</li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-                      </div>
-                    )}
+                  {/* Human-readable summary from the typed `human` layer.
+                      The DTU type now declares this directly; previously
+                      this block had ~6 cast-towers because the type didn't. */}
+                  {dtu.human && typeof dtu.human === 'object' && (
+                    <div>
+                      {dtu.human.summary && (
+                        <div className="mb-3">
+                          <h3 className="text-sm font-medium text-gray-400 mb-1">
+                            Human Summary
+                          </h3>
+                          <p className="text-gray-200">{String(dtu.human.summary)}</p>
+                        </div>
+                      )}
+                      {Array.isArray(dtu.human.bullets) && dtu.human.bullets.length > 0 && (
+                        <div>
+                          <h3 className="text-sm font-medium text-gray-400 mb-1">Key Points</h3>
+                          <ul className="list-disc list-inside space-y-1 text-gray-200 text-sm">
+                            {dtu.human.bullets.map((b: string, i: number) => (
+                              <li key={i}>{b}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
-                  {/* CRETI content (the main knowledge text) */}
-                  {!!(
-                    (dtu as unknown as Record<string, unknown>).creti ||
-                    (dtu as unknown as Record<string, unknown>).cretiHuman
-                  ) && (
+                  {/* CRETI content (the main knowledge text) — typed shape
+                      lives at DTUCretiScores in lib/types/dtu.ts. */}
+                  {!!(dtu.creti || dtu.cretiHuman) && (
                     <div>
                       <h3 className="text-sm font-medium text-gray-400 mb-2">CRETI Content</h3>
                       <div className="bg-lattice-deep p-4 rounded-lg">
-                        {typeof (dtu as unknown as Record<string, unknown>).cretiHuman ===
-                          'string' && (
+                        {typeof dtu.cretiHuman === 'string' && (
                           <p className="text-gray-200 whitespace-pre-wrap text-sm mb-2">
-                            {String((dtu as unknown as Record<string, unknown>).cretiHuman)}
+                            {dtu.cretiHuman}
                           </p>
                         )}
-                        {typeof (dtu as unknown as Record<string, unknown>).creti === 'object' &&
-                          !Array.isArray((dtu as unknown as Record<string, unknown>).creti) &&
-                          (dtu as unknown as Record<string, unknown>).creti !== null && (
+                        {typeof dtu.creti === 'object' &&
+                          dtu.creti !== null &&
+                          !Array.isArray(dtu.creti) && (
                             <div className="space-y-2">
-                              {Object.entries(
-                                (dtu as unknown as Record<string, Record<string, number>>).creti
-                              ).map(([key, val]) => (
+                              {Object.entries(dtu.creti as Record<string, unknown>).map(([key, val]) => (
                                 <div key={key} className="flex items-center gap-3">
                                   <span className="text-xs text-gray-400 uppercase w-24 flex-shrink-0">
                                     {key}
@@ -515,79 +499,57 @@ function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps) {
                     </div>
                   )}
 
-                  {/* Core structured data (definitions, claims, examples) */}
-                  {!!(dtu as unknown as Record<string, unknown>).core &&
-                    typeof (dtu as unknown as Record<string, unknown>).core === 'object' && (
-                      <div className="space-y-3">
-                        {Array.isArray(
-                          (dtu as unknown as Record<string, Record<string, unknown[]>>).core
-                            ?.definitions
-                        ) &&
-                          (dtu as unknown as Record<string, Record<string, string[]>>).core
-                            .definitions.length > 0 && (
-                            <div>
-                              <h3 className="text-sm font-medium text-gray-400 mb-1">
-                                Definitions
-                              </h3>
-                              <ul className="space-y-1">
-                                {(
-                                  dtu as unknown as Record<string, Record<string, string[]>>
-                                ).core.definitions.map((def: string, i: number) => (
-                                  <li
-                                    key={i}
-                                    className="text-sm text-gray-200 pl-3 border-l-2 border-neon-blue/40"
-                                  >
-                                    {typeof def === 'string' ? def : JSON.stringify(def)}
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-                        {Array.isArray(
-                          (dtu as unknown as Record<string, Record<string, unknown[]>>).core?.claims
-                        ) &&
-                          (dtu as unknown as Record<string, Record<string, string[]>>).core.claims
-                            .length > 0 && (
-                            <div>
-                              <h3 className="text-sm font-medium text-gray-400 mb-1">Claims</h3>
-                              <ul className="space-y-1">
-                                {(
-                                  dtu as unknown as Record<string, Record<string, string[]>>
-                                ).core.claims.map((claim: string, i: number) => (
-                                  <li
-                                    key={i}
-                                    className="text-sm text-gray-200 pl-3 border-l-2 border-neon-purple/40"
-                                  >
-                                    {typeof claim === 'string' ? claim : JSON.stringify(claim)}
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-                        {Array.isArray(
-                          (dtu as unknown as Record<string, Record<string, unknown[]>>).core
-                            ?.examples
-                        ) &&
-                          (dtu as unknown as Record<string, Record<string, string[]>>).core.examples
-                            .length > 0 && (
-                            <div>
-                              <h3 className="text-sm font-medium text-gray-400 mb-1">Examples</h3>
-                              <ul className="space-y-1">
-                                {(
-                                  dtu as unknown as Record<string, Record<string, string[]>>
-                                ).core.examples.map((ex: string, i: number) => (
-                                  <li
-                                    key={i}
-                                    className="text-sm text-gray-200 pl-3 border-l-2 border-neon-cyan/40"
-                                  >
-                                    {typeof ex === 'string' ? ex : JSON.stringify(ex)}
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-                      </div>
-                    )}
+                  {/* Core structured data — definitions, claims, examples.
+                      Typed at DTUCoreLayer in lib/types/dtu.ts. */}
+                  {dtu.core && typeof dtu.core === 'object' && (
+                    <div className="space-y-3">
+                      {Array.isArray(dtu.core.definitions) && dtu.core.definitions.length > 0 && (
+                        <div>
+                          <h3 className="text-sm font-medium text-gray-400 mb-1">Definitions</h3>
+                          <ul className="space-y-1">
+                            {dtu.core.definitions.map((def: string, i: number) => (
+                              <li
+                                key={i}
+                                className="text-sm text-gray-200 pl-3 border-l-2 border-neon-blue/40"
+                              >
+                                {typeof def === 'string' ? def : JSON.stringify(def)}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {Array.isArray(dtu.core.claims) && dtu.core.claims.length > 0 && (
+                        <div>
+                          <h3 className="text-sm font-medium text-gray-400 mb-1">Claims</h3>
+                          <ul className="space-y-1">
+                            {dtu.core.claims.map((claim: string, i: number) => (
+                              <li
+                                key={i}
+                                className="text-sm text-gray-200 pl-3 border-l-2 border-neon-purple/40"
+                              >
+                                {typeof claim === 'string' ? claim : JSON.stringify(claim)}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {Array.isArray(dtu.core.examples) && dtu.core.examples.length > 0 && (
+                        <div>
+                          <h3 className="text-sm font-medium text-gray-400 mb-1">Examples</h3>
+                          <ul className="space-y-1">
+                            {dtu.core.examples.map((ex: string, i: number) => (
+                              <li
+                                key={i}
+                                className="text-sm text-gray-200 pl-3 border-l-2 border-neon-cyan/40"
+                              >
+                                {typeof ex === 'string' ? ex : JSON.stringify(ex)}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* Full content */}
                   <div>

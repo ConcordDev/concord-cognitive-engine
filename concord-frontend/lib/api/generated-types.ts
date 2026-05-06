@@ -104,6 +104,47 @@ export interface CreateApiKeyResponse {
 
 export type DTUTier = 'regular' | 'mega' | 'hyper' | 'shadow' | 'archive';
 
+/**
+ * Four-layer DTU substrate per CLAUDE.md: human / core / machine / artifact,
+ * plus the CRETI scoring layer the resonance engine attaches.
+ *
+ * Each layer is OPTIONAL — older DTUs predate one or more layers; consumers
+ * MUST null-check before reading. Producers populate fields as data becomes
+ * available (server/economy/dtu-pipeline.js, server/lib/forge.js).
+ *
+ * Both layers use index-signature `[key: string]: unknown` so server-side
+ * additions don't require a TS update for non-load-bearing fields.
+ */
+export interface DTUHumanLayer {
+  summary?: string;
+  tldr?: string;
+  bullets?: string[];
+  narrative?: string;
+  question?: string;
+  answer?: string;
+  [key: string]: unknown;
+}
+
+export interface DTUCoreLayer {
+  claims?: string[];
+  // Definitions: server emits an array of "term: meaning" strings.
+  definitions?: string[];
+  invariants?: string[];
+  contradictions?: string[];
+  examples?: string[];
+  [key: string]: unknown;
+}
+
+export interface DTUCretiScores {
+  composition?: number;
+  resonance?: number;
+  engagement?: number;
+  trust?: number;
+  influence?: number;
+  total?: number;
+  [key: string]: unknown;
+}
+
 export interface DTU {
   id: string;
   title: string;
@@ -137,7 +178,14 @@ export interface DTU {
     hasThumbnail?: boolean;
     hasPreview?: boolean;
   };
-  human?: { summary?: string };
+  // Four-layer substrate fields. All optional. Replaces the long-standing
+  // pattern of casting through `as unknown as Record<string, ...>` to
+  // access these in components like DTUDetailView.tsx.
+  human?: DTUHumanLayer;
+  core?: DTUCoreLayer;
+  creti?: DTUCretiScores;
+  cretiHuman?: string;
+  primaryType?: string;
 }
 
 export interface DTUPermissions {
