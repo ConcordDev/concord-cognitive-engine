@@ -7106,10 +7106,48 @@ async function tryInitWebSockets(server) {
       if (to && candidate) io.to(to).emit("screen-share:ice-candidate", { from: socket.id, candidate });
     });
 
+    // ── Proximity voice chat WebRTC signaling ───────────────────────────────
+    // The frontend (ProximityVoiceChat.ts) emits `voice:join` to enter a
+    // shared room, then exchanges WebRTC offers/answers/ICE candidates
+    // through this server, which acts as a pure relay. Audio media never
+    // touches the server — peers connect directly via the negotiated
+    // session. Without these handlers (the original state) the frontend
+    // sat in "joining" forever and no peer connections ever formed.
+    socket.on("voice:join", () => {
+      const room = "voice";
+      socket.join(room);
+      // Tell existing peers a new one arrived
+      socket.to(room).emit("voice:peer-joined", { peerId: socket.id });
+      // Tell the joining peer who's already here
+      const peers = [...(io.sockets.adapter.rooms.get(room) || [])].filter((id) => id !== socket.id);
+      socket.emit("voice:room-state", { peers });
+    });
+    socket.on("voice:offer", ({ to, sdp }) => {
+      if (to && sdp) io.to(to).emit("voice:offer", { from: socket.id, sdp });
+    });
+    socket.on("voice:answer", ({ to, sdp }) => {
+      if (to && sdp) io.to(to).emit("voice:answer", { from: socket.id, sdp });
+    });
+    socket.on("voice:ice-candidate", ({ to, candidate }) => {
+      if (to && candidate) io.to(to).emit("voice:ice-candidate", { from: socket.id, candidate });
+    });
+    socket.on("voice:leave", () => {
+      const room = "voice";
+      if (socket.rooms.has(room)) {
+        socket.to(room).emit("voice:peer-left", { peerId: socket.id });
+        socket.leave(room);
+      }
+    });
+
     socket.on("disconnect", () => {
       const userId = socket.data?.userId;
       if (userId) {
         try { cityPresence.removeUser(userId); } catch (_e) { /* ignore */ }
+      }
+      // Voice room cleanup so peers don't keep stale ICE candidates
+      // and peer-list broadcasts.
+      if (socket.rooms?.has?.("voice")) {
+        try { socket.to("voice").emit("voice:peer-left", { peerId: socket.id }); } catch (_e) { /* ignore */ }
       }
       REALTIME.clients.delete(clientId);
     });
@@ -7118,6 +7156,9 @@ async function tryInitWebSockets(server) {
       const userId = socket.data?.userId;
       if (userId) {
         try { cityPresence.removeUser(userId); } catch (_e) { /* ignore */ }
+      }
+      if (socket.rooms?.has?.("voice")) {
+        try { socket.to("voice").emit("voice:peer-left", { peerId: socket.id }); } catch (_e) { /* ignore */ }
       }
       REALTIME.clients.delete(clientId);
     });
@@ -29501,10 +29542,22 @@ async function governorTick(reason="heartbeat") {
 
       // Quest emergence: scan active NPCs for quest opportunities (every 20 ticks)
       if ((STATE.__bgTickCounter || 0) % 20 === 0) {
-        const questEmergence = await import("./lib/quest-emergence.js").catch(() => null);
+        const questEmergence = await import("./lib/quest-emergence.js").catch((err) => {
+          structuredLog("warn", "quest_emergence_module_unavailable", { error: err?.message });
+          return null;
+        });
         if (questEmergence?.detectQuestOpportunities) {
           try {
-            const cityPresence = await import("./lib/city-presence.js").catch(() => null);
+            const cityPresence = await import("./lib/city-presence.js").catch((err) => {
+              structuredLog("warn", "city_presence_module_unavailable", { error: err?.message });
+              return null;
+            });
+            // Empty list silently means "no NPCs to scan" — log the
+            // module-missing case explicitly so a broken bridge doesn't
+            // present as "world feels dead, no quests appearing."
+            if (!cityPresence?.getAllNPCsForEmergence) {
+              structuredLog("warn", "quest_emergence_no_npc_source", { reason: "city-presence missing getAllNPCsForEmergence export" });
+            }
             const npcList = cityPresence?.getAllNPCsForEmergence?.() ?? [];
             for (const npc of npcList.slice(0, 5)) {
               const newQuests = await questEmergence.detectQuestOpportunities(npc, db, _selectBrainForNpc).catch(() => []);
@@ -37175,8 +37228,13 @@ try {
 }
 
 // ── Initialize Foundation Sovereignty Modules ───────────────────────────────
+// Use allSettled (not all) so a single module's rejection doesn't drop the
+// partial-success log — we want to know exactly which modules came up and
+// which failed. Promise.all here would short-circuit on first reject and
+// the .then() never runs, so the structured init log silently disappears
+// while the .catch() shows only the first failure.
 try {
-  Promise.all([
+  Promise.allSettled([
     initializeSense(STATE),
     initializeIdentity(STATE),
     initializeEnergy(STATE),
@@ -37190,14 +37248,17 @@ try {
     initializeIntelligence(STATE),
     initializeAtlas(STATE),
     initializeCortex(STATE),
-  ]).then(results => {
+  ]).then(settled => {
+    const results = settled.map(s => s.status === "fulfilled" ? (s.value ?? { ok: false }) : { ok: false, error: s.reason?.message });
     const initialized = results.filter(r => r.ok).length;
     structuredLog("info", "foundation_initialized", {
-      modules: initialized, total: 12,
+      modules: initialized, total: 13,
       sense: results[0]?.ok, identity: results[1]?.ok, energy: results[2]?.ok,
       spectrum: results[3]?.ok, emergency: results[4]?.ok, market: results[5]?.ok,
       archive: results[6]?.ok, synthesis: results[7]?.ok, neural: results[8]?.ok,
       protocol: results[9]?.ok, intelligence: results[10]?.ok, atlas: results[11]?.ok,
+      cortex: results[12]?.ok,
+      failedReasons: results.filter(r => !r.ok && r.error).map(r => r.error).slice(0, 5),
     });
   }).catch(e => {
     structuredLog("warn", "foundation_init_failed", { error: e?.message });
@@ -41509,7 +41570,17 @@ app.get("/api/search/ranked", asyncHandler(async (req, res) => {
   const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 20));
   const requestedDomain = req.query.domain ? String(req.query.domain) : null;
 
-  const semantic = await runMacro("search", "semantic", { q, limit: limit * 2 }, makeCtx(req)).catch(() => null);
+  // If runMacro itself throws or returns no `results`, log a structured
+  // warn so the silent-empty-results case is observable. The previous
+  // `?? []` chain made a broken search look identical to "no matches"
+  // in the response, hiding outages from operators and users alike.
+  const semantic = await runMacro("search", "semantic", { q, limit: limit * 2 }, makeCtx(req)).catch((err) => {
+    structuredLog("warn", "search_ranked_macro_failed", { error: err?.message, q: q.slice(0, 80) });
+    return null;
+  });
+  if (!semantic?.results) {
+    structuredLog("warn", "search_ranked_no_results_payload", { q: q.slice(0, 80), reason: semantic?.reason || "missing_results_field" });
+  }
   const raw = semantic?.results ?? [];
 
   const ranking = await import("./lib/search-ranking.js");

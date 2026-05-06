@@ -863,6 +863,10 @@ export function registerDurableEndpoints(app, db) {
           const versionId = uid("artv");
           const now = nowISO();
           const pendingBuf = Buffer.alloc(1024); // Stub artifact — replaced when real audio worker processes the job
+          // The promise rejection path MUST be handled — the surrounding
+          // try/catch only catches sync throws. Without .catch(), a storage
+          // failure leaves the job in 'running' forever and never writes
+          // the artifact rows (or worse: writes them with bogus data).
           storage.put(`renders/${artifactId}/v1/render.${format}`, pendingBuf, format === "mp3" ? "audio/mpeg" : "audio/wav").then((putResult) => {
             const tx = db.transaction(() => {
               db.prepare(
@@ -879,6 +883,9 @@ export function registerDurableEndpoints(app, db) {
               db.prepare("UPDATE studio_renders SET status = 'completed' WHERE id = ?").run(renderId);
             });
             tx();
+          }).catch((err) => {
+            failJob(jobId, `storage.put failed: ${err?.message || err}`);
+            try { db.prepare("UPDATE studio_renders SET status = 'failed' WHERE id = ?").run(renderId); } catch { /* job is already failed; render row is best-effort */ }
           });
         } catch (e) {
           failJob(jobId, e.message);
@@ -927,6 +934,11 @@ export function registerDurableEndpoints(app, db) {
           completeJob(jobId, { artifactId, analysis: analysisResult });
         });
         tx();
+      }).catch((err) => {
+        // Storage rejection is silently lost without this — the
+        // surrounding try/catch only catches sync throws. Job stays
+        // in 'running' forever and analysis never persists.
+        failJob(jobId, `storage.put failed: ${err?.message || err}`);
       });
 
       res.json({ ok: true, job_id: jobId, analysis: analysisResult });
@@ -962,6 +974,8 @@ export function registerDurableEndpoints(app, db) {
           completeJob(jobId, { artifactId });
         });
         tx();
+      }).catch((err) => {
+        failJob(jobId, `storage.put failed: ${err?.message || err}`);
       });
 
       res.json({ ok: true, job_id: jobId });
@@ -996,6 +1010,8 @@ export function registerDurableEndpoints(app, db) {
           completeJob(jobId, { artifactId, lufs: target_lufs });
         });
         tx();
+      }).catch((err) => {
+        failJob(jobId, `storage.put failed: ${err?.message || err}`);
       });
 
       res.json({ ok: true, job_id: jobId });
