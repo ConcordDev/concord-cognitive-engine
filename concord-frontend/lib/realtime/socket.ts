@@ -309,7 +309,10 @@ export type SocketEvent =
   // The Concord Link cross-world messaging
   | 'concord-link:message'
   // World travel
-  | 'world:traveled';
+  | 'world:traveled'
+  // World crisis (world-crisis.js emits these from server-side governor tick)
+  | 'world:crisis'
+  | 'world:crisis-resolved';
 
 // ---- Enriched Event Payload (Category 2+5: Concurrency + Observability) ----
 interface EnrichedPayload {

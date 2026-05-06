@@ -67,6 +67,13 @@ const DistrictActivityFeed = dynamic(
     })),
   { ssr: false }
 );
+const EmergentEventFeed = dynamic(
+  () =>
+    import('@/components/world/EmergentEventFeed').then((m) => ({
+      default: m.EmergentEventFeed,
+    })),
+  { ssr: false }
+);
 const EmoteWheelLegacy = dynamic(
   () => import('@/components/world/EmoteWheel').then((m) => ({ default: m.EmoteWheel })),
   { ssr: false }
@@ -3754,6 +3761,11 @@ export default function WorldLensPage() {
           />
           {/* Tutorial overlay — always present, shows ? button */}
           <TutorialOverlay />
+
+          {/* Emergent simulation feed — surfaces world-tick activity that
+              previously fired silently (NPC death, evo-promotion, refusal
+              fields, weather rolls, agent insights, etc.) */}
+          <EmergentEventFeed />
 
           {/* District activity feed — live quests/events/NPC discovery */}
           <DistrictActivityFeed
