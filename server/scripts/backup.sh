@@ -65,14 +65,16 @@ fi
 echo "[Backup] Pruning old backups (keeping $RETAIN_COUNT most recent)..."
 cd "$BACKUP_DIR"
 
-# Prune compressed DB backups
-ls -t concord-*.db.gz 2>/dev/null | tail -n +$((RETAIN_COUNT + 1)) | xargs -r rm -f
+# Prune compressed DB backups. `|| true` swallows the exit-2 that ls
+# returns when the glob doesn't match (no .db.gz files yet) — `set -e`
+# + `pipefail` would otherwise abort here on first-run / fresh-deploy.
+ls -t concord-*.db.gz 2>/dev/null | tail -n +$((RETAIN_COUNT + 1)) | xargs -r rm -f || true
 
 # Prune uncompressed DB backups (legacy)
-ls -t concord-*.db 2>/dev/null | tail -n +$((RETAIN_COUNT + 1)) | xargs -r rm -f
+ls -t concord-*.db 2>/dev/null | tail -n +$((RETAIN_COUNT + 1)) | xargs -r rm -f || true
 
 # Prune artifact archives
-ls -t artifacts-*.tar.gz 2>/dev/null | tail -n +$((RETAIN_COUNT + 1)) | xargs -r rm -f
+ls -t artifacts-*.tar.gz 2>/dev/null | tail -n +$((RETAIN_COUNT + 1)) | xargs -r rm -f || true
 
 echo "[Backup] $TIMESTAMP — OK ($COMPRESSED_SIZE)"
 echo "[Backup] Done. Backups in $BACKUP_DIR:"

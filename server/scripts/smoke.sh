@@ -22,10 +22,15 @@ check() {
   local body="${4:-}"
   local expected_status="${5:-200}"
 
+  # Use a non-curl User-Agent so the server's bot guard
+  # (server.js:_BOT_UA_RE at ~5870) doesn't 403 every smoke request.
+  # Authenticated smoke via API key is documented in DEPLOYMENT.md;
+  # this script covers the public-read surface only.
+  local UA="Concord-Smoke/1.0"
   if [ "$method" = "GET" ]; then
-    STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$BASE_URL$url" 2>/dev/null || echo "000")
+    STATUS=$(curl -s -A "$UA" -o /dev/null -w "%{http_code}" "$BASE_URL$url" 2>/dev/null || echo "000")
   else
-    STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X "$method" "$BASE_URL$url" \
+    STATUS=$(curl -s -A "$UA" -o /dev/null -w "%{http_code}" -X "$method" "$BASE_URL$url" \
       -H "Content-Type: application/json" \
       -d "$body" 2>/dev/null || echo "000")
   fi
@@ -44,7 +49,7 @@ check_json() {
   local url="$2"
   local jq_expr="$3"
 
-  BODY=$(curl -s "$BASE_URL$url" 2>/dev/null || echo "{}")
+  BODY=$(curl -s -A "Concord-Smoke/1.0" "$BASE_URL$url" 2>/dev/null || echo "{}")
   RESULT=$(echo "$BODY" | node -e "
     let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{
       try{const o=JSON.parse(d);const v=o$jq_expr;if(v!==undefined&&v!==null)process.stdout.write(String(v));else process.stdout.write('PARSE_ERROR')}

@@ -159,6 +159,20 @@ export function distributeRoyalties(db, { contentId, transactionAmount, sourceTx
     return { ok: false, error: "invalid_royalty_params" };
   }
 
+  // Idempotency: if any royalty_payouts row already exists for this
+  // sourceTxId, this distribution has already been made. Webhook retries
+  // and at-least-once delivery semantics demand this — the unique partial
+  // index in migration 004 only guards `role='debit'` rows, not the
+  // `role='royalty'` rows we write here.
+  if (sourceTxId) {
+    try {
+      const prior = db.prepare(`SELECT COUNT(*) AS n FROM royalty_payouts WHERE source_tx_id = ?`).get(sourceTxId);
+      if ((prior?.n ?? 0) > 0) {
+        return { ok: true, idempotent: true, totalRoyalties: 0, payouts: [], message: "already_distributed" };
+      }
+    } catch { /* royalty_payouts may not exist on minimal builds — proceed */ }
+  }
+
   // Get the ancestor chain
   const ancestors = getAncestorChain(db, contentId);
   if (ancestors.length === 0) {
@@ -231,10 +245,17 @@ export function distributeRoyalties(db, { contentId, transactionAmount, sourceTx
     for (const payout of payouts) {
       const txId = generateTxId();
 
-      // Ledger entry: royalty payment (fee-free)
+      // Ledger entry: royalty payment (fee-free).
+      // Type MUST be "ROYALTY_PAYOUT" — the economy_ledger CHECK constraint
+      // (migration 002) enumerates exactly these values:
+      // TOKEN_PURCHASE / TRANSFER / MARKETPLACE_PURCHASE / ROYALTY_PAYOUT /
+      // WITHDRAWAL / FEE / REVERSAL. Inserting any other string silently
+      // fails the whole transaction (CHECK constraint failed); the only
+      // observable symptom is "[economy] royalty_distribution_failed" in
+      // logs while every cascade silently produces zero ledger rows.
       ledgerEntries.push({
         id: txId,
-        type: "ROYALTY",
+        type: "ROYALTY_PAYOUT",
         from: sellerId || PLATFORM_ACCOUNT_ID,
         to: payout.recipientId,
         amount: payout.amount,

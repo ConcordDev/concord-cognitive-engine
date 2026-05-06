@@ -5604,6 +5604,18 @@ async function initMetrics() {
       registers: [METRICS.registry]
     });
 
+    // Heartbeat overrun observability — incremented when governorTick fires
+    // but a previous tick is still running (`_governorTickRunning` guard).
+    // Sustained overrun means a tick block (DTU consolidation, fauna spawn,
+    // etc.) is taking longer than the 15s heartbeat interval and starving
+    // every subsequent tick. Alert: `ConcordHeartbeatOverrun` in
+    // monitoring/prometheus/alerts.yml.
+    METRICS.counters.heartbeatSkipped = new prom.Counter({
+      name: "concord_heartbeat_skipped_total",
+      help: "Heartbeat ticks skipped because a prior tick was still running",
+      registers: [METRICS.registry]
+    });
+
     structuredLog("info", "metrics_initialized", { provider: "prometheus" });
   } catch (e) {
     structuredLog("error", "metrics_init_failed", { error: e.message });
@@ -6165,6 +6177,16 @@ const _LLM_BUDGET = {
 // ---- Correlation ID Propagation (Category 5: Observability) ----
 let _eventSeqCounter = 0;
 
+// Lazy-initialized event-shape validator (lib/event-shapes.js). Loaded
+// once at first realtimeEmit call; failed import leaves it null and
+// silently disables shape checking. Production skips even the import.
+let _eventShapesValidator = null;
+if (process.env.NODE_ENV !== "production") {
+  import("./lib/event-shapes.js")
+    .then(m => { _eventShapesValidator = m.validateEvent; })
+    .catch(() => { /* validator is optional; never block startup */ });
+}
+
 // ---- realtime (Socket.IO for frontend compatibility) ----
 // Thin transport only: mirrors state changes (no new logic).
 const REALTIME = {
@@ -6202,6 +6224,23 @@ function realtimeEmit(event, payload, { sessionId = "", orgId = "", requestId = 
     _rid: requestId || undefined,        // Correlation ID from originating HTTP request
     _evt: event,                         // Event name for client-side reordering
   };
+
+  // Dev/test-mode shape validation against the EVENT_SHAPES registry
+  // (lib/event-shapes.js). Production skips this for zero runtime cost.
+  // The registry only covers the top-20 highest-traffic events; unknown
+  // event names pass through silently (registry is intentionally partial).
+  if (process.env.NODE_ENV !== "production" && _eventShapesValidator) {
+    try {
+      const v = _eventShapesValidator(event, payload || {});
+      if (v.ok === false && !v.unregistered) {
+        if (typeof structuredLog === "function") {
+          structuredLog("warn", "ws_event_shape_violation", {
+            event, missing: v.missing, unknown: v.unknown,
+          });
+        }
+      }
+    } catch { /* validator must never block emits */ }
+  }
 
   // Try Socket.IO first (primary transport)
   if (REALTIME.ready && REALTIME.io) {
@@ -28648,7 +28687,12 @@ async function runHeartbeatModule(name, fn) {
 
 let _governorTickRunning = false;
 async function governorTick(reason="heartbeat") {
-  if (_governorTickRunning) return { ok: false, reason: "tick_already_running" };
+  if (_governorTickRunning) {
+    // Heartbeat overrun — a prior tick is still in flight. Bump the
+    // observability counter so Prom can alert on sustained overrun.
+    try { METRICS?.counters?.heartbeatSkipped?.inc(); } catch { /* metrics best-effort */ }
+    return { ok: false, reason: "tick_already_running" };
+  }
   _governorTickRunning = true;
   // Heartbeat liveness: bump the counter so Prometheus can detect a frozen
   // tick loop via `rate(concord_heartbeat_ticks_total[1m]) == 0` for 60s+.
