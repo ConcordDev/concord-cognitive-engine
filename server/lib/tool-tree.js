@@ -215,7 +215,7 @@ export function getBestToolQuality(db, userId, tier) {
  * Validates: tool tier requirement, skill level, and materials in inventory.
  * Returns { ok, tool } or { ok: false, error }.
  */
-export function craftTool(db, userId, recipeId) {
+export function craftTool(db, userId, recipeId, worldId = "concordia-hub") {
   const recipe = db.prepare(`SELECT * FROM tool_recipes WHERE id = ?`).get(recipeId);
   if (!recipe) return { ok: false, error: "recipe_not_found" };
 
@@ -243,13 +243,15 @@ export function craftTool(db, userId, recipeId) {
     }
   }
 
-  // Check inventory materials
+  // Check inventory materials. World-scoped since migration 101 — a
+  // crafting attempt in world A must not consume world B's inventory.
   const materials = JSON.parse(recipe.materials_json);
   if (materials.length > 0) {
     for (const mat of materials) {
       const inv = db.prepare(`
-        SELECT SUM(quantity) AS qty FROM player_inventory WHERE user_id = ? AND item_id = ?
-      `).get(userId, mat.id);
+        SELECT SUM(quantity) AS qty FROM player_inventory
+        WHERE user_id = ? AND world_id = ? AND item_id = ?
+      `).get(userId, worldId, mat.id);
       if ((inv?.qty ?? 0) < mat.quantity) {
         return { ok: false, error: "missing_material", material: mat.id, needed: mat.quantity, have: inv?.qty ?? 0 };
       }
@@ -259,9 +261,9 @@ export function craftTool(db, userId, recipeId) {
     for (const mat of materials) {
       db.prepare(`
         UPDATE player_inventory SET quantity = quantity - ?
-        WHERE user_id = ? AND item_id = ?
-      `).run(mat.quantity, userId, mat.id);
-      db.prepare(`DELETE FROM player_inventory WHERE user_id = ? AND item_id = ? AND quantity <= 0`).run(userId, mat.id);
+        WHERE user_id = ? AND world_id = ? AND item_id = ?
+      `).run(mat.quantity, userId, worldId, mat.id);
+      db.prepare(`DELETE FROM player_inventory WHERE user_id = ? AND world_id = ? AND item_id = ? AND quantity <= 0`).run(userId, worldId, mat.id);
     }
   }
 

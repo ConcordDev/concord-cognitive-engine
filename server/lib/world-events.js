@@ -154,7 +154,7 @@ export function startEvent(eventId, userId = null) {
 /**
  * End an event (transition to completed).
  */
-export function endEvent(eventId, userId = null) {
+export async function endEvent(eventId, userId = null) {
   const event = events.get(eventId);
   if (!event) throw new Error("Event not found");
   if (userId && event.hostId !== userId) throw new Error("Only the host can end this event");
@@ -164,26 +164,44 @@ export function endEvent(eventId, userId = null) {
   event.endedAt = new Date().toISOString();
   event.updatedAt = new Date().toISOString();
 
-  // Reward distribution to attendees. The reward field is set by the world-
-  // event-scheduler at creation; if it's missing (manual events), nothing
-  // happens here. Each attendee gets a CC payout via realtime emit so the
-  // CurrencyHUD updates; skill XP recorded via realtimeEmit("skill:xp-awarded").
+  // Reward distribution to attendees. Pre-this-fix, only realtime "you
+  // got rewards" toasts fired — the CC was never actually minted to the
+  // user's balance, so the wallet stayed flat and the toast was a lie.
+  // Now: real ledger mint per attendee, refId-based idempotency keeps
+  // a re-run of endEvent from double-paying.
   try {
-    if (event.reward && event.attendees && globalThis._concordREALTIME?.io) {
-      const io = globalThis._concordREALTIME.io;
-      for (const userId of event.attendees) {
-        io.to(`user:${userId}`).emit("event:reward", {
-          eventId,
-          eventTitle: event.title,
-          cc: event.reward.cc,
-          skillXp: event.reward.skillXp,
-        });
-        io.to(`user:${userId}`).emit("skill:xp-awarded", {
-          dtuId: `event_${event.type}`,
-          action: "event",
-          xp: event.reward.skillXp,
-          leveledUp: false,
-        });
+    if (event.reward && event.attendees) {
+      const io = globalThis._concordREALTIME?.io;
+      const db = globalThis._concordSTATE?.db;
+      let mintCoins = null;
+      if (db) {
+        try { ({ mintCoins } = await import("../economy/coin-service.js")); }
+        catch { /* coin-service unavailable on minimal builds */ }
+      }
+      for (const [userId] of event.attendees) {
+        // Real ledger credit. refId is event-scoped + user-scoped, so
+        // a re-end of the event won't double-mint to the same attendee.
+        if (mintCoins && db && Number(event.reward.cc) > 0) {
+          try { mintCoins(db, { amount: Number(event.reward.cc), userId, refId: `event_reward:${eventId}:${userId}` }); }
+          catch (err) { /* mint failures shouldn't poison the rest of the loop */
+            if (typeof console !== "undefined") console.warn("[world-events] mint failed", { eventId, userId, err: err?.message });
+          }
+        }
+        // Realtime toast so the HUD updates without waiting for a poll.
+        if (io) {
+          io.to(`user:${userId}`).emit("event:reward", {
+            eventId,
+            eventTitle: event.title,
+            cc: event.reward.cc,
+            skillXp: event.reward.skillXp,
+          });
+          io.to(`user:${userId}`).emit("skill:xp-awarded", {
+            dtuId: `event_${event.type}`,
+            action: "event",
+            xp: event.reward.skillXp,
+            leveledUp: false,
+          });
+        }
       }
     }
   } catch { /* reward distribution best-effort */ }
@@ -210,7 +228,12 @@ export function tick() {
     if (!Number.isFinite(startMs) || !Number.isFinite(durationMs)) continue;
     if (now - startMs >= durationMs) {
       try {
-        endEvent(event.id);
+        // endEvent is async (now mints real CC to attendees) — but tick
+        // is called from heartbeat without awaiting. Fire-and-forget is
+        // fine here: any mint failure is logged inside endEvent.
+        endEvent(event.id).catch((err) => {
+          if (typeof console !== "undefined") console.warn("[world-events] tick endEvent failed", { id: event.id, err: err?.message });
+        });
         ended++;
       } catch { /* end best-effort */ }
     }

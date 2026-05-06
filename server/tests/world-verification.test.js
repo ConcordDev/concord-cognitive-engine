@@ -622,7 +622,7 @@ describe("Test 6: Events — Lifecycle & Calendar", () => {
     record("6a", "Event types defined", "PASS", `${Object.keys(EVENT_TYPES).length} event types`);
   });
 
-  it("6b: Create event and full lifecycle", () => {
+  it("6b: Create event and full lifecycle", async () => {
     const event = createEvent({
       cityId: "city-event-1", hostId: "user-event-1",
       type: "concert", name: "Test Concert",
@@ -636,8 +636,9 @@ describe("Test 6: Events — Lifecycle & Calendar", () => {
     const started = startEvent(event.id, "user-event-1");
     assert.equal(started.status, "active");
 
-    // End
-    const ended = endEvent(event.id, "user-event-1");
+    // End — endEvent is async since the reward-mint pass added in
+    // routes/world.js needs the ledger import; tests must await.
+    const ended = await endEvent(event.id, "user-event-1");
     assert.equal(ended.status, "completed");
     record("6b", "Event lifecycle", "PASS", `event=${event.id}: scheduled→active→completed`);
   });
