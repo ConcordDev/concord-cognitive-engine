@@ -340,17 +340,7 @@ function getVitalArcColor(key: string, value: number): string {
 }
 
 /** SVG mini-gauge for vital signs (~60px) */
-function VitalGauge({
-  value,
-  vitalKey,
-  label,
-  unit,
-}: {
-  value: number;
-  vitalKey: string;
-  label: string;
-  unit: string;
-}) {
+function VitalGauge({ value, vitalKey, label, unit }: { value: number; vitalKey: string; label: string; unit: string }) {
   const range = VITAL_RANGES[vitalKey];
   if (!range) return null;
   const fullMin = range.critLow - (range.high - range.low) * 0.2;
@@ -369,19 +359,12 @@ function VitalGauge({
   const filledLength = arcLength * pct;
   return (
     <div className="flex flex-col items-center">
-      <div
-        className="relative"
-        style={critical ? { animation: 'pulse-critical 2s ease-in-out infinite' } : undefined}
-      >
+      <div className="relative" style={critical ? { animation: 'pulse-critical 2s ease-in-out infinite' } : undefined}>
         <svg width="60" height="60" viewBox="0 0 60 60">
           {/* Background arc */}
           <circle
-            cx={cx}
-            cy={cy}
-            r={r}
-            fill="none"
-            stroke="#374151"
-            strokeWidth="5"
+            cx={cx} cy={cy} r={r}
+            fill="none" stroke="#374151" strokeWidth="5"
             strokeDasharray={`${arcLength} ${circumference}`}
             strokeDashoffset={0}
             strokeLinecap="round"
@@ -389,12 +372,8 @@ function VitalGauge({
           />
           {/* Filled arc */}
           <circle
-            cx={cx}
-            cy={cy}
-            r={r}
-            fill="none"
-            stroke={color}
-            strokeWidth="5"
+            cx={cx} cy={cy} r={r}
+            fill="none" stroke={color} strokeWidth="5"
             strokeDasharray={`${filledLength} ${circumference}`}
             strokeDashoffset={0}
             strokeLinecap="round"
@@ -402,27 +381,10 @@ function VitalGauge({
             style={{ transition: 'stroke-dasharray 0.5s ease' }}
           />
           {/* Center value */}
-          <text
-            x={cx}
-            y={cy - 2}
-            textAnchor="middle"
-            dominantBaseline="middle"
-            fill={color}
-            fontSize="13"
-            fontWeight="bold"
-          >
-            {value}
-          </text>
-          <text
-            x={cx}
-            y={cy + 10}
-            textAnchor="middle"
-            dominantBaseline="middle"
-            fill="#9ca3af"
-            fontSize="7"
-          >
-            {unit}
-          </text>
+          <text x={cx} y={cy - 2} textAnchor="middle" dominantBaseline="middle"
+            fill={color} fontSize="13" fontWeight="bold">{value}</text>
+          <text x={cx} y={cy + 10} textAnchor="middle" dominantBaseline="middle"
+            fill="#9ca3af" fontSize="7">{unit}</text>
         </svg>
       </div>
       <span className="text-[10px] text-gray-400 mt-0.5">{label}</span>
@@ -432,61 +394,23 @@ function VitalGauge({
 
 /** Enhanced status badge with distinct background tints */
 function StatusBadge({ status }: { status: Status }) {
-  const baseColor = STATUS_COLORS[status] || 'gray-400';
   const config: Record<Status, { bg: string; text: string; border: string; label: string }> = {
-    active: {
-      bg: `bg-${baseColor}/15`,
-      text: `text-${baseColor}`,
-      border: `border-${baseColor}/30`,
-      label: 'Active',
-    },
-    scheduled: {
-      bg: `bg-${baseColor}/15`,
-      text: `text-${baseColor}`,
-      border: `border-${baseColor}/30`,
-      label: 'Scheduled',
-    },
-    completed: {
-      bg: `bg-${baseColor}/15`,
-      text: `text-${baseColor}`,
-      border: `border-${baseColor}/30`,
-      label: 'Completed',
-    },
-    cancelled: {
-      bg: `bg-${baseColor}/15`,
-      text: `text-${baseColor}`,
-      border: `border-${baseColor}/30`,
-      label: 'Cancelled',
-    },
-    archived: {
-      bg: `bg-${baseColor}/15`,
-      text: `text-${baseColor}`,
-      border: `border-${baseColor}/30`,
-      label: 'Archived',
-    },
+    active: { bg: 'bg-green-500/15', text: 'text-green-400', border: 'border-green-500/30', label: 'Active' },
+    scheduled: { bg: 'bg-blue-500/15', text: 'text-blue-400', border: 'border-blue-500/30', label: 'Scheduled' },
+    completed: { bg: 'bg-cyan-500/15', text: 'text-cyan-400', border: 'border-cyan-500/30', label: 'Completed' },
+    cancelled: { bg: 'bg-red-500/15', text: 'text-red-400', border: 'border-red-500/30', label: 'Cancelled' },
+    archived: { bg: 'bg-gray-500/15', text: 'text-gray-400', border: 'border-gray-500/30', label: 'Archived' },
   };
   const c = config[status] || config.archived;
   return (
-    <span
-      className={cn(
-        'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border',
-        c.bg,
-        c.text,
-        c.border
-      )}
-    >
-      {status === 'active' && (
-        <span className={`w-1.5 h-1.5 rounded-full bg-${baseColor} animate-pulse`} />
-      )}
+    <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border', c.bg, c.text, c.border)}>
+      {status === 'active' && <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />}
       {c.label}
     </span>
   );
 }
 
-function calculateBMI(
-  weightLbs: number,
-  heightIn: number
-): { value: number; category: string; color: string } {
+function calculateBMI(weightLbs: number, heightIn: number): { value: number; category: string; color: string } {
   if (!weightLbs || !heightIn) return { value: 0, category: 'N/A', color: 'text-gray-400' };
   const bmi = (weightLbs / (heightIn * heightIn)) * 703;
   if (bmi < 18.5)
@@ -558,6 +482,11 @@ export default function HealthcareLensPage() {
   const [generateResult, setGenerateResult] = useState<{ content: string; title: string } | null>(
     null
   );
+  const [generateError, setGenerateError] = useState<string | null>(null);
+
+  /* ---------- generate care plan state ---------- */
+  const [generateLoading, setGenerateLoading] = useState(false);
+  const [generateResult, setGenerateResult] = useState<{ content: string; title: string } | null>(null);
   const [generateError, setGenerateError] = useState<string | null>(null);
 
   /* ---------- patient detail drawer ---------- */
@@ -976,15 +905,11 @@ export default function HealthcareLensPage() {
   };
 
   const handleGenerateCarePlan = useCallback(async () => {
-    const symptomItems = items.filter(
-      (i) => (i.data as unknown as HealthcareArtifact).artifactType === 'Symptom'
-    );
-    const symptoms = symptomItems
-      .map((i) => {
-        const d = i.data as unknown as HealthcareArtifact;
-        return `${d.symptomName || i.title} (severity: ${d.severity ?? 'unknown'}, category: ${d.symptomCategory || 'General'})`;
-      })
-      .join('; ');
+    const symptomItems = items.filter(i => (i.data as unknown as HealthcareArtifact).artifactType === 'Symptom');
+    const symptoms = symptomItems.map(i => {
+      const d = i.data as unknown as HealthcareArtifact;
+      return `${d.symptomName || i.title} (severity: ${d.severity ?? 'unknown'}, category: ${d.symptomCategory || 'General'})`;
+    }).join('; ');
     if (!symptoms) return;
     setGenerateLoading(true);
     setGenerateError(null);
@@ -996,12 +921,11 @@ export default function HealthcareLensPage() {
         input: { symptoms, type: 'care-plan' },
       });
       const data = res.data;
-      const content =
-        typeof data?.result === 'string'
-          ? data.result
-          : typeof data?.result?.content === 'string'
-            ? data.result.content
-            : JSON.stringify(data?.result ?? data, null, 2);
+      const content = typeof data?.result === 'string'
+        ? data.result
+        : typeof data?.result?.content === 'string'
+          ? data.result.content
+          : JSON.stringify(data?.result ?? data, null, 2);
       setGenerateResult({
         content,
         title: data?.result?.title || 'Generated Care Plan',
@@ -1068,7 +992,7 @@ export default function HealthcareLensPage() {
         className={cn(
           'rounded-lg border p-3 flex items-center gap-3',
           value ? getVitalBg(vitalKey, value) : 'bg-gray-500/10 border-lattice-border',
-          critical && 'pulse-critical-glow'
+          critical && 'pulse-critical-glow',
         )}
       >
         {/* SVG Gauge */}
@@ -1082,27 +1006,15 @@ export default function HealthcareLensPage() {
         {/* Label + range */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
-            <Icon
-              className={cn(
-                'w-3.5 h-3.5',
-                value ? getVitalColor(vitalKey, value) : 'text-gray-500'
-              )}
-            />
+            <Icon className={cn('w-3.5 h-3.5', value ? getVitalColor(vitalKey, value) : 'text-gray-500')} />
             <span className={cn(ds.textMuted, 'text-xs')}>{label}</span>
           </div>
-          <p
-            className={cn(
-              'text-lg font-bold',
-              value ? getVitalColor(vitalKey, value) : 'text-gray-500'
-            )}
-          >
+          <p className={cn('text-lg font-bold', value ? getVitalColor(vitalKey, value) : 'text-gray-500')}>
             {value ?? '--'}
             <span className="text-xs font-normal ml-1">{displayUnit}</span>
           </p>
           {range && (
-            <p className="text-[10px] text-gray-500">
-              {range.low}-{range.high} {displayUnit}
-            </p>
+            <p className="text-[10px] text-gray-500">{range.low}-{range.high} {displayUnit}</p>
           )}
         </div>
       </div>
@@ -1276,10 +1188,7 @@ export default function HealthcareLensPage() {
     const outOfRange = isOutOfRange(d.resultValue || '', d.referenceRange || '');
     const trend = getTrend(d.resultValue, d.previousValue);
     return (
-      <div
-        className={cn(ds.panelHover, d.isCritical && 'border-red-500/50 pulse-critical-glow')}
-        onClick={() => openEditEditor(item)}
-      >
+      <div className={cn(ds.panelHover, d.isCritical && 'border-red-500/50 pulse-critical-glow')} onClick={() => openEditEditor(item)}>
         <div className="flex items-start justify-between mb-2">
           <div className="flex-1">
             <div className="flex items-center gap-2">
@@ -1298,13 +1207,7 @@ export default function HealthcareLensPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
           <div>
             <span className="text-gray-500 block">Result</span>
-            <span
-              className={cn(
-                'font-bold text-sm',
-                outOfRange ? 'text-red-400' : 'text-green-400',
-                outOfRange && 'pulse-critical-glow rounded px-1'
-              )}
-            >
+            <span className={cn('font-bold text-sm', outOfRange ? 'text-red-400' : 'text-green-400', outOfRange && 'pulse-critical-glow rounded px-1')}>
               {d.resultValue || '--'} {d.unit || ''}
             </span>
           </div>
@@ -1449,10 +1352,7 @@ export default function HealthcareLensPage() {
   };
 
   return (
-    <div
-      data-lens-theme="healthcare"
-      className="p-6 space-y-6 bg-gradient-to-b from-blue-950/20 to-transparent"
-    >
+    <div data-lens-theme="healthcare" className="p-6 space-y-6 bg-gradient-to-b from-blue-950/20 to-transparent">
       {/* Critical pulse animation */}
       <style>{`
         @keyframes pulse-critical {
@@ -1463,8 +1363,6 @@ export default function HealthcareLensPage() {
           animation: pulse-critical 2s ease-in-out infinite;
         }
       `}</style>
-      {/* Sub-Lenses */}
-      <SubLensQuickNav lensId="healthcare" />
       {/* ============================================================ */}
       {/* Compliance Banner                                            */}
       {/* ============================================================ */}
@@ -1472,20 +1370,11 @@ export default function HealthcareLensPage() {
         <AlertTriangle className="w-5 h-5 text-blue-400 mt-0.5 shrink-0" />
         <div className="flex-1">
           <p className="text-sm text-blue-200">
-            Not medical advice. This tool assists with record organization only. It is not a
-            certified EHR and should not be used for clinical decision-making. Always consult a
-            qualified healthcare provider. Consult applicable regulations (HIPAA, etc.) for your
-            jurisdiction.
+            Not medical advice. This tool assists with record organization only. It is not a certified EHR and should not be used for clinical decision-making. Always consult a qualified healthcare provider. Consult applicable regulations (HIPAA, etc.) for your jurisdiction.
           </p>
           <div className="flex items-center gap-3 mt-1">
-            <span className="flex items-center gap-1 text-xs text-blue-400/70">
-              <ShieldCheck className="w-3 h-3" />
-              HIPAA Aware
-            </span>
-            <span className="flex items-center gap-1 text-xs text-blue-400/70">
-              <BadgeCheck className="w-3 h-3" />
-              Audit Trail
-            </span>
+            <span className="flex items-center gap-1 text-xs text-blue-400/70"><ShieldCheck className="w-3 h-3" />HIPAA Aware</span>
+            <span className="flex items-center gap-1 text-xs text-blue-400/70"><BadgeCheck className="w-3 h-3" />Audit Trail</span>
           </div>
         </div>
       </div>
@@ -1564,6 +1453,24 @@ export default function HealthcareLensPage() {
         ))}
       </div>
 
+      {/* Quick Stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: 'Patients', value: items.filter(i => (i.data as unknown as HealthcareArtifact).type === 'patient').length || items.length, icon: Users },
+          { label: 'Appointments', value: items.filter(i => (i.data as unknown as HealthcareArtifact).type === 'appointment').length, icon: Calendar },
+          { label: 'Vitals Tracked', value: items.filter(i => (i.data as unknown as HealthcareArtifact).type === 'vitals').length, icon: Activity },
+          { label: 'Active', value: items.filter(i => i.meta?.status === 'active').length, icon: Heart },
+        ].map((stat) => (
+          <div key={stat.label} className={ds.panel + ' flex items-center gap-3 p-3'}>
+            <stat.icon className="w-5 h-5 text-blue-400 shrink-0" />
+            <div>
+              <p className="text-xs text-gray-400">{stat.label}</p>
+              <p className="text-lg font-bold text-white">{stat.value}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
       {/* AI Actions */}
       <UniversalActions domain="healthcare" artifactId={items[0]?.id} compact />
       <RealtimeDataPanel
@@ -1579,37 +1486,20 @@ export default function HealthcareLensPage() {
         domain="healthcare"
         prompt="Analyze this medical image. Describe visible findings, suggest relevant clinical tags, and note anything that may warrant further review. IMPORTANT: This is AI-assisted and must be verified by a licensed healthcare professional."
         onResult={(res) => {
-          setFormDescription((prev) =>
-            prev
-              ? `${prev}\n\n[Vision Analysis - NOT a clinical diagnosis]\n${res.analysis}`
-              : `[Vision Analysis - NOT a clinical diagnosis]\n${res.analysis}`
-          );
-          if (res.suggestedTags?.length)
-            setFormNotes((prev) =>
-              prev
-                ? `${prev}\nSuggested tags: ${res.suggestedTags!.join(', ')}`
-                : `Suggested tags: ${res.suggestedTags!.join(', ')}`
-            );
+          setFormDescription(prev => prev ? `${prev}\n\n[Vision Analysis - NOT a clinical diagnosis]\n${res.analysis}` : `[Vision Analysis - NOT a clinical diagnosis]\n${res.analysis}`);
+          if (res.suggestedTags?.length) setFormNotes(prev => prev ? `${prev}\nSuggested tags: ${res.suggestedTags!.join(', ')}` : `Suggested tags: ${res.suggestedTags!.join(', ')}`);
         }}
         className="inline-flex"
       />
       {/* ============================================================ */}
       {/* Mode Tabs                                                    */}
       {/* ============================================================ */}
-      <nav className="flex items-center gap-1 border-b border-blue-900/20 pb-3 flex-wrap">
-        {MODE_TABS.map((tab) => (
+      <nav className="flex items-center gap-1 border-b border-blue-900/20 pb-3 overflow-x-auto">
+        {MODE_TABS.map(tab => (
           <button
             key={tab.id}
-            onClick={() => {
-              setActiveTab(tab.id);
-              setFilterStatus('all');
-              setFilterType('all');
-            }}
-            className={cn(
-              ds.btnGhost,
-              'whitespace-nowrap rounded-lg',
-              activeTab === tab.id && 'bg-blue-500/15 text-blue-400 border-blue-400/20'
-            )}
+            onClick={() => { setActiveTab(tab.id); setFilterStatus('all'); setFilterType('all'); }}
+            className={cn(ds.btnGhost, 'whitespace-nowrap rounded-lg', activeTab === tab.id && 'bg-blue-500/15 text-blue-400 border-blue-400/20')}
           >
             <tab.icon className="w-4 h-4" />
             {tab.id}
@@ -1751,172 +1641,24 @@ export default function HealthcareLensPage() {
             <h3 className={ds.heading3}>Action Result</h3>
             <div className="flex items-center gap-2">
               <button
-                onClick={() =>
-                  handleDownloadResult(
-                    typeof actionResult === 'object'
-                      ? JSON.stringify(actionResult, null, 2)
-                      : String(actionResult),
-                    'healthcare-result.txt'
-                  )
-                }
+                onClick={() => handleDownloadResult(
+                  typeof actionResult === 'object' ? JSON.stringify(actionResult, null, 2) : String(actionResult),
+                  'healthcare-result.txt'
+                )}
                 className={cn(ds.btnGhost, 'text-xs')}
               >
                 <Download className="w-3.5 h-3.5 mr-1" /> Download
               </button>
-              <button onClick={() => setActionResult(null)} className={ds.btnGhost}>
-                <X className="w-4 h-4" />
-              </button>
+              <button onClick={() => setActionResult(null)} className={ds.btnGhost}><X className="w-4 h-4" /></button>
             </div>
           </div>
           {typeof actionResult === 'object' && 'content' in actionResult && actionResult.content ? (
             <div className="prose prose-invert prose-sm max-w-none">
-              {actionResult.title ? (
-                <h4 className="text-sm font-semibold text-neon-cyan mb-2">
-                  {String(actionResult.title)}
-                </h4>
-              ) : null}
-              <div className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">
-                {String(actionResult.content)}
-              </div>
+              {actionResult.title ? <h4 className="text-sm font-semibold text-neon-cyan mb-2">{String(actionResult.title)}</h4> : null}
+              <div className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">{String(actionResult.content)}</div>
             </div>
           ) : (
-            <div className="space-y-3">
-              {/* checkInteractions */}
-              {actionResult.interactionsFound !== undefined && (
-                <div className="space-y-2">
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="p-2 bg-lattice-surface rounded text-center">
-                      <p className="text-sm font-bold text-neon-cyan">
-                        {String(actionResult.totalChecked)}
-                      </p>
-                      <p className="text-[10px] text-gray-500">Prescriptions</p>
-                    </div>
-                    <div className="p-2 bg-lattice-surface rounded text-center">
-                      <p
-                        className={`text-sm font-bold ${Number(actionResult.interactionsFound) > 0 ? 'text-red-400' : 'text-green-400'}`}
-                      >
-                        {String(actionResult.interactionsFound)}
-                      </p>
-                      <p className="text-[10px] text-gray-500">Interactions</p>
-                    </div>
-                    <div className="p-2 bg-lattice-surface rounded text-center">
-                      <p
-                        className={`text-sm font-bold ${actionResult.hasCritical ? 'text-red-400' : 'text-green-400'}`}
-                      >
-                        {actionResult.hasCritical ? 'Critical' : 'Safe'}
-                      </p>
-                      <p className="text-[10px] text-gray-500">Risk Level</p>
-                    </div>
-                  </div>
-                  {Array.isArray(actionResult.interactions) &&
-                    (
-                      actionResult.interactions as {
-                        drugs: string[];
-                        severity: string;
-                        description: string;
-                      }[]
-                    ).map((ix, i) => (
-                      <div key={i} className="p-2 bg-lattice-surface rounded">
-                        <p className="text-xs font-semibold text-white">{ix.drugs.join(' + ')}</p>
-                        <p
-                          className={`text-[10px] font-semibold ${ix.severity === 'critical' ? 'text-red-400' : ix.severity === 'major' ? 'text-orange-400' : 'text-amber-400'}`}
-                        >
-                          {ix.severity.toUpperCase()}
-                        </p>
-                        {ix.description && (
-                          <p className="text-[10px] text-gray-400 mt-0.5">{ix.description}</p>
-                        )}
-                      </div>
-                    ))}
-                </div>
-              )}
-              {/* protocolMatch */}
-              {actionResult.conditionsEvaluated !== undefined && (
-                <div className="space-y-2">
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="p-2 bg-lattice-surface rounded text-center">
-                      <p className="text-sm font-bold text-neon-cyan">
-                        {String(actionResult.conditionsEvaluated)}
-                      </p>
-                      <p className="text-[10px] text-gray-500">Conditions</p>
-                    </div>
-                    <div className="p-2 bg-lattice-surface rounded text-center">
-                      <p className="text-sm font-bold text-green-400">
-                        {Array.isArray(actionResult.matched)
-                          ? (actionResult.matched as unknown[]).length
-                          : 0}
-                      </p>
-                      <p className="text-[10px] text-gray-500">Full Matches</p>
-                    </div>
-                    <div className="p-2 bg-lattice-surface rounded text-center">
-                      <p className="text-sm font-bold text-amber-400">
-                        {Array.isArray(actionResult.partial)
-                          ? (actionResult.partial as unknown[]).length
-                          : 0}
-                      </p>
-                      <p className="text-[10px] text-gray-500">Partial</p>
-                    </div>
-                  </div>
-                  {Array.isArray(actionResult.matched) &&
-                    (actionResult.matched as { name: string }[]).map((m, i) => (
-                      <div
-                        key={i}
-                        className="flex items-center gap-2 p-2 bg-lattice-surface rounded"
-                      >
-                        <span className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0" />
-                        <p className="text-xs text-white">{m.name}</p>
-                      </div>
-                    ))}
-                </div>
-              )}
-              {/* generateSummary */}
-              {actionResult.periodDays !== undefined &&
-                actionResult.encounterSummary !== undefined && (
-                  <div className="space-y-2">
-                    <p className="text-xs text-gray-400">
-                      {String(actionResult.patientName)} &bull; Last{' '}
-                      {String(actionResult.periodDays)} days
-                    </p>
-                    <div className="grid grid-cols-3 gap-2">
-                      <div className="p-2 bg-lattice-surface rounded text-center">
-                        <p className="text-sm font-bold text-neon-cyan">
-                          {String((actionResult.encounterSummary as { total: number }).total)}
-                        </p>
-                        <p className="text-[10px] text-gray-500">Encounters</p>
-                      </div>
-                      <div className="p-2 bg-lattice-surface rounded text-center">
-                        <p className="text-sm font-bold text-neon-cyan">
-                          {String((actionResult.labSummary as { totalTests: number }).totalTests)}
-                        </p>
-                        <p className="text-[10px] text-gray-500">Lab Tests</p>
-                      </div>
-                      <div className="p-2 bg-lattice-surface rounded text-center">
-                        <p
-                          className={`text-sm font-bold ${Number((actionResult.labSummary as { abnormalCount: number }).abnormalCount) > 0 ? 'text-amber-400' : 'text-green-400'}`}
-                        >
-                          {String(
-                            (actionResult.labSummary as { abnormalCount: number }).abnormalCount
-                          )}
-                        </p>
-                        <p className="text-[10px] text-gray-500">Abnormal Labs</p>
-                      </div>
-                    </div>
-                    {Array.isArray(actionResult.activeConditions) &&
-                      (actionResult.activeConditions as string[]).length > 0 && (
-                        <div className="flex flex-wrap gap-1">
-                          {(actionResult.activeConditions as string[]).map((c, i) => (
-                            <span
-                              key={i}
-                              className="px-1.5 py-0.5 bg-neon-blue/10 text-neon-blue text-[10px] rounded"
-                            >
-                              {c}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                  </div>
-                )}
-            </div>
+            <pre className={cn(ds.textMono, 'text-xs overflow-auto max-h-48')}>{JSON.stringify(actionResult, null, 2)}</pre>
           )}
         </div>
       )}
@@ -2031,13 +1773,7 @@ export default function HealthcareLensPage() {
               {activeTab === 'Patients' && patientViewMode === 'timeline' && (
                 <div className="space-y-0">
                   {filtered.map((item, index) => (
-                    <motion.div
-                      key={item.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.05 }}
-                      className="mb-4"
-                    >
+                    <motion.div key={item.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }} className="mb-4">
                       <div
                         className={cn(ds.panelHover, 'mb-2')}
                         onClick={() => openDetailDrawer(item)}
@@ -2053,9 +1789,7 @@ export default function HealthcareLensPage() {
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <StatusBadge
-                              status={(item.data as unknown as HealthcareArtifact).status}
-                            />
+                            <StatusBadge status={(item.data as unknown as HealthcareArtifact).status} />
                             <ChevronRight className="w-4 h-4 text-gray-500" />
                           </div>
                         </div>
@@ -2096,9 +1830,7 @@ export default function HealthcareLensPage() {
                         onClick={() => openDetailDrawer(item)}
                       >
                         <div className="flex items-start justify-between mb-2">
-                          <h3 className={cn(ds.heading3, 'text-base truncate flex-1')}>
-                            {item.title}
-                          </h3>
+                          <h3 className={cn(ds.heading3, 'text-base truncate flex-1')}>{item.title}</h3>
                           <StatusBadge status={d.status} />
                         </div>
                         <p className={cn(ds.textMuted, 'line-clamp-2 mb-3')}>{d.description}</p>
@@ -2106,31 +1838,16 @@ export default function HealthcareLensPage() {
                         {(d.heartRate || d.bpSystolic) && (
                           <div className="flex items-center gap-2 mb-2">
                             {d.heartRate && (
-                              <VitalGauge
-                                value={d.heartRate}
-                                vitalKey="heartRate"
-                                label="HR"
-                                unit="bpm"
-                              />
+                              <VitalGauge value={d.heartRate} vitalKey="heartRate" label="HR" unit="bpm" />
                             )}
                             {d.bpSystolic && (
-                              <VitalGauge
-                                value={d.bpSystolic}
-                                vitalKey="bpSystolic"
-                                label="SBP"
-                                unit="mmHg"
-                              />
+                              <VitalGauge value={d.bpSystolic} vitalKey="bpSystolic" label="SBP" unit="mmHg" />
                             )}
                             {d.o2Sat && (
                               <VitalGauge value={d.o2Sat} vitalKey="o2Sat" label="SpO2" unit="%" />
                             )}
                             {d.temperature && (
-                              <VitalGauge
-                                value={d.temperature}
-                                vitalKey="temperature"
-                                label="Temp"
-                                unit="F"
-                              />
+                              <VitalGauge value={d.temperature} vitalKey="temperature" label="Temp" unit="F" />
                             )}
                           </div>
                         )}
@@ -2174,9 +1891,7 @@ export default function HealthcareLensPage() {
                         onClick={() => openEditEditor(item)}
                       >
                         <div className="flex items-start justify-between mb-2">
-                          <h3 className={cn(ds.heading3, 'text-base truncate flex-1')}>
-                            {item.title}
-                          </h3>
+                          <h3 className={cn(ds.heading3, 'text-base truncate flex-1')}>{item.title}</h3>
                           <StatusBadge status={d.status} />
                         </div>
                         <p className={cn(ds.textMuted, 'line-clamp-2 mb-2')}>{d.description}</p>
@@ -2228,9 +1943,7 @@ export default function HealthcareLensPage() {
                         onClick={() => openEditEditor(item)}
                       >
                         <div className="flex items-start justify-between mb-2">
-                          <h3 className={cn(ds.heading3, 'text-base truncate flex-1')}>
-                            {item.title}
-                          </h3>
+                          <h3 className={cn(ds.heading3, 'text-base truncate flex-1')}>{item.title}</h3>
                           <StatusBadge status={d.status} />
                         </div>
                         <p className={cn(ds.textMuted, 'line-clamp-2 mb-3')}>{d.description}</p>
@@ -2309,58 +2022,29 @@ export default function HealthcareLensPage() {
               {activeTab === 'Symptoms' && (
                 <div className="space-y-4">
                   {/* Severity trend chart */}
-                  {filtered.length >= 2 &&
-                    (() => {
-                      const sorted = [...filtered].sort((a, b) => {
-                        const da =
-                          (a.data as unknown as HealthcareArtifact).symptomDate || a.createdAt;
-                        const db =
-                          (b.data as unknown as HealthcareArtifact).symptomDate || b.createdAt;
-                        return da.localeCompare(db);
-                      });
-                      return (
-                        <div className={cn(ds.panel, 'space-y-3')}>
-                          <h3 className={ds.heading3}>Symptom Severity Trend</h3>
-                          <div className="flex items-end gap-1 h-24">
-                            {sorted.map((item, _i) => {
-                              const d = item.data as unknown as HealthcareArtifact;
-                              const sev = d.severity ?? 5;
-                              const pct = (sev / 10) * 100;
-                              const barColor =
-                                sev >= 8
-                                  ? 'bg-red-400'
-                                  : sev >= 5
-                                    ? 'bg-yellow-400'
-                                    : 'bg-green-400';
-                              return (
-                                <div
-                                  key={item.id}
-                                  className="flex-1 flex flex-col items-center justify-end"
-                                  title={`${item.title}: ${sev}/10 on ${d.symptomDate || 'N/A'}`}
-                                >
-                                  <span className="text-[9px] text-gray-400 mb-0.5">{sev}</span>
-                                  <div
-                                    className={cn('w-full rounded-t', barColor)}
-                                    style={{ height: `${Math.max(8, pct)}%` }}
-                                  />
-                                  <span className="text-[8px] text-gray-500 mt-0.5 truncate w-full text-center">
-                                    {(d.symptomDate || '').slice(5)}
-                                  </span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                          <div className="flex items-center gap-4 text-xs">
-                            <span className="flex items-center gap-1">
-                              <span className="w-2 h-2 rounded-full bg-green-400" /> Mild (1-4)
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <span className="w-2 h-2 rounded-full bg-yellow-400" /> Moderate (5-7)
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <span className="w-2 h-2 rounded-full bg-red-400" /> Severe (8-10)
-                            </span>
-                          </div>
+                  {filtered.length >= 2 && (() => {
+                    const sorted = [...filtered].sort((a, b) => {
+                      const da = (a.data as unknown as HealthcareArtifact).symptomDate || a.createdAt;
+                      const db = (b.data as unknown as HealthcareArtifact).symptomDate || b.createdAt;
+                      return da.localeCompare(db);
+                    });
+                    return (
+                      <div className={cn(ds.panel, 'space-y-3')}>
+                        <h3 className={ds.heading3}>Symptom Severity Trend</h3>
+                        <div className="flex items-end gap-1 h-24">
+                          {sorted.map((item, _i) => {
+                            const d = item.data as unknown as HealthcareArtifact;
+                            const sev = d.severity ?? 5;
+                            const pct = (sev / 10) * 100;
+                            const barColor = sev >= 8 ? 'bg-red-400' : sev >= 5 ? 'bg-yellow-400' : 'bg-green-400';
+                            return (
+                              <div key={item.id} className="flex-1 flex flex-col items-center justify-end" title={`${item.title}: ${sev}/10 on ${d.symptomDate || 'N/A'}`}>
+                                <span className="text-[9px] text-gray-400 mb-0.5">{sev}</span>
+                                <div className={cn('w-full rounded-t', barColor)} style={{ height: `${Math.max(8, pct)}%` }} />
+                                <span className="text-[8px] text-gray-500 mt-0.5 truncate w-full text-center">{(d.symptomDate || '').slice(5)}</span>
+                              </div>
+                            );
+                          })}
                         </div>
                       );
                     })()}
@@ -2463,21 +2147,14 @@ export default function HealthcareLensPage() {
                     {generateResult && (
                       <div className="space-y-3">
                         <div className="p-4 rounded-lg bg-lattice-deep border border-lattice-border">
-                          <h4 className="text-sm font-semibold text-neon-cyan mb-2">
-                            {generateResult.title}
-                          </h4>
+                          <h4 className="text-sm font-semibold text-neon-cyan mb-2">{generateResult.title}</h4>
                           <div className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed max-h-64 overflow-auto">
                             {generateResult.content}
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
                           <button
-                            onClick={() =>
-                              handleDownloadResult(
-                                generateResult.content,
-                                `${generateResult.title.replace(/\s+/g, '-').toLowerCase()}.txt`
-                              )
-                            }
+                            onClick={() => handleDownloadResult(generateResult.content, `${generateResult.title.replace(/\s+/g, '-').toLowerCase()}.txt`)}
                             className="flex items-center gap-1.5 px-3 py-1.5 bg-neon-cyan/10 text-neon-cyan rounded-lg text-xs hover:bg-neon-cyan/20"
                           >
                             <Download className="w-3.5 h-3.5" /> Download
@@ -2691,25 +2368,204 @@ export default function HealthcareLensPage() {
                         </span>
                       </div>
                     </div>
-                  );
-                })()}
+                    {dd.notes && (
+                      <div>
+                        <span className="text-xs text-gray-500 font-medium">Notes</span>
+                        <p className="text-sm text-gray-300 mt-1">{dd.notes}</p>
+                      </div>
+                    )}
+                    <div>
+                      <span className="text-xs text-gray-500 font-medium">Recent Activity</span>
+                      <div className="mt-1 space-y-1">
+                        {linked.slice(0, 5).map(l => {
+                          const ld = l.data as unknown as HealthcareArtifact;
+                          return (
+                            <div key={l.id} className="flex items-center justify-between text-xs p-2 rounded bg-lattice-surface hover:bg-lattice-elevated cursor-pointer" onClick={() => openEditEditor(l)}>
+                              <span className="text-gray-300 truncate flex-1">{l.title}</span>
+                              <StatusBadge status={ld.status} />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    <button onClick={() => openEditEditor(drawerItem)} className={cn(ds.btnSecondary, 'w-full text-sm')}>
+                      <FileText className="w-4 h-4" /> Edit Patient Record
+                    </button>
+                  </div>
+                );
+              })()}
+
+              {/* ---------- Vitals Sub-tab ---------- */}
+              {detailSubTab === 'Vitals' && (() => {
+                const dd = drawerItem.data as unknown as HealthcareArtifact;
+                const bmi = calculateBMI(dd.weight || 0, dd.height || 0);
+                return (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-2">
+                      <VitalCard label="Heart Rate" value={dd.heartRate} vitalKey="heartRate" icon={Activity} />
+                      <VitalCard label="O2 Sat" value={dd.o2Sat} vitalKey="o2Sat" icon={Wind} />
+                      <VitalCard label="BP (Sys)" value={dd.bpSystolic} vitalKey="bpSystolic" icon={Droplets} />
+                      <VitalCard label="BP (Dia)" value={dd.bpDiastolic} vitalKey="bpDiastolic" icon={Droplets} />
+                      <VitalCard label="Temp" value={dd.temperature} vitalKey="temperature" icon={Thermometer} />
+                      <VitalCard label="Resp Rate" value={dd.respiratoryRate} vitalKey="respiratoryRate" icon={Wind} />
+                    </div>
+                    {/* Weight and BMI */}
+                    <div className={cn(ds.panel, 'p-3')}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Weight className="w-4 h-4 text-gray-400" />
+                        <span className={ds.textMuted}>Weight & BMI</span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                        <div>
+                          <span className="text-gray-500 block">Weight</span>
+                          <span className="text-sm font-bold text-white">{dd.weight ?? '--'} lbs</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500 block">Height</span>
+                          <span className="text-sm font-bold text-white">{dd.height ?? '--'} in</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500 block">BMI</span>
+                          <span className={cn('text-sm font-bold', bmi.color)}>{bmi.value || '--'}</span>
+                          {bmi.category !== 'N/A' && (
+                            <span className={cn('block text-xs', bmi.color)}>{bmi.category}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    {/* Vital ranges legend */}
+                    <div className="flex items-center gap-3 text-xs">
+                      <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-green-400" /> Normal</span>
+                      <span className="flex items-center gap-1"><AlertCircle className="w-3 h-3 text-yellow-400" /> Borderline</span>
+                      <span className="flex items-center gap-1"><AlertTriangle className="w-3 h-3 text-red-400" /> Critical</span>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* ---------- Medications Sub-tab ---------- */}
-              {detailSubTab === 'Medications' &&
-                (() => {
-                  const linkedMeds = getPatientLinked(drawerItem.id).filter(
-                    (i) => (i.data as unknown as HealthcareArtifact).artifactType === 'Prescription'
-                  );
-                  return (
-                    <div className="space-y-2">
-                      {linkedMeds.length === 0 ? (
-                        <p className={cn(ds.textMuted, 'text-center py-4')}>
-                          No medications linked
-                        </p>
-                      ) : (
-                        linkedMeds.map((med) => {
-                          const md = med.data as unknown as HealthcareArtifact;
-                          const daysLeft = calculateDaysRemaining(md.endDate);
+              {detailSubTab === 'Medications' && (() => {
+                const linkedMeds = getPatientLinked(drawerItem.id).filter(i => (i.data as unknown as HealthcareArtifact).artifactType === 'Prescription');
+                return (
+                  <div className="space-y-2">
+                    {linkedMeds.length === 0 ? (
+                      <p className={cn(ds.textMuted, 'text-center py-4')}>No medications linked</p>
+                    ) : linkedMeds.map(med => {
+                      const md = med.data as unknown as HealthcareArtifact;
+                      const daysLeft = calculateDaysRemaining(md.endDate);
+                      return (
+                        <div key={med.id} className="p-2 rounded bg-lattice-surface hover:bg-lattice-elevated cursor-pointer text-xs" onClick={() => openEditEditor(med)}>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-gray-200 font-medium">{med.title}</span>
+                            {md.isPRN && <span className={ds.badge('neon-blue')}>PRN</span>}
+                          </div>
+                          <div className="flex items-center gap-2 text-gray-500">
+                            {md.dosage && <span>{md.dosage}</span>}
+                            {md.frequency && <span>- {md.frequency}</span>}
+                          </div>
+                          {daysLeft >= 0 && daysLeft <= 7 && (
+                            <p className="text-red-400 mt-1">Refill in {daysLeft} days</p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+
+              {/* ---------- Labs Sub-tab ---------- */}
+              {detailSubTab === 'Labs' && (() => {
+                const linkedLabs = getPatientLinked(drawerItem.id).filter(i => (i.data as unknown as HealthcareArtifact).artifactType === 'LabResult');
+                return (
+                  <div className="space-y-2">
+                    {linkedLabs.length === 0 ? (
+                      <p className={cn(ds.textMuted, 'text-center py-4')}>No lab results linked</p>
+                    ) : linkedLabs.map(lab => {
+                      const ld = lab.data as unknown as HealthcareArtifact;
+                      const outOfRange = isOutOfRange(ld.resultValue || '', ld.referenceRange || '');
+                      return (
+                        <div key={lab.id} className={cn('p-2 rounded cursor-pointer text-xs', ld.isCritical ? 'bg-red-500/10 border border-red-500/30 pulse-critical-glow' : 'bg-lattice-surface hover:bg-lattice-elevated')} onClick={() => openEditEditor(lab)}>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-gray-200 font-medium">{lab.title}</span>
+                            {ld.isCritical && <span className={cn(ds.badge('red-400'), 'text-[10px] animate-pulse')}>CRITICAL</span>}
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className={cn(outOfRange ? 'text-red-400 font-bold' : 'text-green-400', outOfRange && 'pulse-critical-glow rounded px-1')}>
+                              {ld.resultValue || '--'} {ld.unit || ''}
+                            </span>
+                            <span className="text-gray-500">Ref: {ld.referenceRange || '--'}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+
+              {/* ---------- History Sub-tab ---------- */}
+              {detailSubTab === 'History' && (() => {
+                const linked = getPatientLinked(drawerItem.id);
+                return (
+                  <div className="space-y-0">
+                    {linked.length === 0 ? (
+                      <p className={cn(ds.textMuted, 'text-center py-4')}>No history records</p>
+                    ) : linked.map(item => (
+                      <TimelineItem key={item.id} item={item} />
+                    ))}
+                  </div>
+                );
+              })()}
+
+              {/* ---------- Appointments Sub-tab ---------- */}
+              {detailSubTab === 'Appointments' && (() => {
+                const dd = drawerItem.data as unknown as HealthcareArtifact;
+                const linkedEncounters = getPatientLinked(drawerItem.id)
+                  .filter(i => {
+                    const d = i.data as unknown as HealthcareArtifact;
+                    return d.artifactType === 'Encounter' && d.status === 'scheduled';
+                  })
+                  .sort((a, b) => {
+                    const da = (a.data as unknown as HealthcareArtifact).date || '';
+                    const db = (b.data as unknown as HealthcareArtifact).date || '';
+                    return da.localeCompare(db);
+                  });
+                return (
+                  <div className="space-y-3">
+                    {/* Patient's own appointment info */}
+                    {(dd.appointmentDate || dd.appointmentType) && (
+                      <div className={cn(ds.panel, 'p-3 space-y-2')}>
+                        <div className="flex items-center gap-2">
+                          <CalendarCheck className="w-4 h-4 text-neon-blue" />
+                          <span className="text-sm font-medium text-white">Next Appointment</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div>
+                            <span className="text-gray-500 block">Date</span>
+                            <span className="text-gray-200 font-medium">{dd.appointmentDate || '--'}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 block">Time</span>
+                            <span className="text-gray-200 font-medium">{dd.appointmentTime || '--'}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 block">Type</span>
+                            <span className="text-gray-200 font-medium">{dd.appointmentType || '--'}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 block">Location</span>
+                            <span className="text-gray-200 font-medium">{dd.appointmentLocation || '--'}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    {/* Scheduled encounters */}
+                    <div>
+                      <span className="text-xs text-gray-500 font-medium">Scheduled Visits</span>
+                      <div className="mt-1 space-y-1">
+                        {linkedEncounters.length === 0 ? (
+                          <p className={cn(ds.textMuted, 'text-center py-4')}>No upcoming appointments</p>
+                        ) : linkedEncounters.map(enc => {
+                          const ed = enc.data as unknown as HealthcareArtifact;
                           return (
                             <div
                               key={med.id}
@@ -3924,8 +3780,7 @@ export default function HealthcareLensPage() {
       <div className="sticky bottom-0 bg-blue-950/90 backdrop-blur-sm border-t border-blue-400/10 px-4 py-2 text-center">
         <p className="text-xs text-blue-400/50">
           <ShieldCheck className="w-3 h-3 inline mr-1" />
-          This tool is for organizational purposes only. Not a substitute for professional medical
-          advice, diagnosis, or treatment.
+          This tool is for organizational purposes only. Not a substitute for professional medical advice, diagnosis, or treatment.
         </p>
       </div>
     </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -10,9 +10,9 @@ import { cn } from '@/lib/utils';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   Truck, Package, Warehouse, Globe, BarChart3, Users,
-  Plus, Search, X, Trash2, DollarSign,
-  AlertTriangle, CheckCircle2,
-  Layers, ChevronDown, Ship, Factory, Route, Zap,
+  Plus, Search, X, Trash2, Clock, DollarSign,
+  AlertTriangle, CheckCircle2, MapPin, ArrowRight,
+  Layers, ChevronDown, Ship, Factory, Route, Timer, CircleCheck,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -61,7 +61,7 @@ export default function SupplyChainLensPage() {
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<LensItem<SupplyChainArtifact> | null>(null);
   const [showDashboard, setShowDashboard] = useState(false);
-  const [showFeatures, setShowFeatures] = useState(true);
+  const [showFeatures, setShowFeatures] = useState(false);
 
   const [formName, setFormName] = useState('');
   const [formDescription, setFormDescription] = useState('');
@@ -85,16 +85,6 @@ export default function SupplyChainLensPage() {
     if (filterStatus !== 'all') result = result.filter(i => (i.data as unknown as SupplyChainArtifact).status === filterStatus);
     return result;
   }, [items, searchQuery, filterStatus]);
-
-  const handleAction = useCallback(async (action: string, artifactId?: string) => {
-    const targetId = artifactId || filtered[0]?.id;
-    if (!targetId) return;
-    try {
-      await runAction.mutateAsync({ id: targetId, action });
-    } catch (err) {
-      console.error('Action failed:', err);
-    }
-  }, [filtered, runAction]);
 
   const openCreate = () => { setEditingItem(null); setFormName(''); setFormDescription(''); setFormStatus('pending'); setFormNotes(''); setFormSupplier(''); setFormQuantity(''); setFormUnitCost(''); setFormOrigin(''); setFormDestination(''); setFormSku(''); setFormTrackingNumber(''); setEditorOpen(true); };
   const openEdit = (item: LensItem<SupplyChainArtifact>) => { const d = item.data as unknown as SupplyChainArtifact; setEditingItem(item); setFormName(d.name || ''); setFormDescription(d.description || ''); setFormStatus(d.status || 'pending'); setFormNotes(d.notes || ''); setFormSupplier(d.supplier || ''); setFormQuantity(d.quantity?.toString() || ''); setFormUnitCost(d.unitCost?.toString() || ''); setFormOrigin(d.origin || ''); setFormDestination(d.destination || ''); setFormSku(d.sku || ''); setFormTrackingNumber(d.trackingNumber || ''); setEditorOpen(true); };
@@ -169,7 +159,6 @@ export default function SupplyChainLensPage() {
               <div className="flex items-center gap-2">
                 {d.totalCost && <span className="text-xs text-green-400">${d.totalCost.toLocaleString()}</span>}
                 <span className={`text-xs px-2 py-0.5 rounded-full bg-${sc.color}/20 text-${sc.color}`}>{sc.label}</span>
-                <button onClick={e => { e.stopPropagation(); handleAction('analyze', item.id); }} className={ds.btnGhost}><Zap className="w-4 h-4 text-neon-cyan" /></button>
                 <button onClick={e => { e.stopPropagation(); remove(item.id); }} className={ds.btnGhost}><Trash2 className="w-4 h-4 text-red-400" /></button>
               </div>
             </div>
@@ -186,7 +175,7 @@ export default function SupplyChainLensPage() {
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center"><Truck className="w-5 h-5 text-white" /></div>
           <div><div className="flex items-center gap-2"><h1 className={ds.heading1}>Supply Chain</h1><LiveIndicator isLive={isLive} lastUpdated={lastUpdated} /></div><p className={ds.textMuted}>Orders, suppliers, inventory, shipments, and procurement</p></div>
         </div>
-        <div className="flex items-center gap-2">{runAction.isPending && <span className="text-xs text-neon-cyan animate-pulse">AI processing...</span>}<DTUExportButton domain="supplychain" data={{}} compact /><button onClick={() => setShowDashboard(!showDashboard)} className={cn(showDashboard ? ds.btnPrimary : ds.btnSecondary)}><BarChart3 className="w-4 h-4" /> Dashboard</button></div>
+        <div className="flex items-center gap-2"><DTUExportButton domain="supplychain" data={{}} compact /><button onClick={() => setShowDashboard(!showDashboard)} className={cn(showDashboard ? ds.btnPrimary : ds.btnSecondary)}><BarChart3 className="w-4 h-4" /> Dashboard</button></div>
       </header>
       <RealtimeDataPanel domain="supplychain" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
       <UniversalActions domain="supplychain" artifactId={items[0]?.id} compact />
@@ -196,15 +185,15 @@ export default function SupplyChainLensPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className={ds.panel}><Globe className="w-5 h-5 text-teal-400 mb-2" /><p className={ds.textMuted}>Nodes</p><p className="text-xl font-bold text-white">{[...new Set(all.map(a => a.supplier).filter(Boolean))].length + [...new Set(all.map(a => a.destination).filter(Boolean))].length}</p></div>
           <div className={ds.panel}><Ship className="w-5 h-5 text-blue-400 mb-2" /><p className={ds.textMuted}>Active Shipments</p><p className="text-xl font-bold text-white">{inTransit}</p></div>
-          <div className={ds.panel}><CheckCircle2 className="w-5 h-5 text-green-400 mb-2" /><p className={ds.textMuted}>On-Time Rate</p><p className="text-xl font-bold text-white">{onTimeRate}%</p></div>
+          <div className={ds.panel}><CircleCheck className="w-5 h-5 text-green-400 mb-2" /><p className={ds.textMuted}>On-Time Rate</p><p className="text-xl font-bold text-white">{onTimeRate}%</p></div>
           <div className={ds.panel}><DollarSign className="w-5 h-5 text-yellow-400 mb-2" /><p className={ds.textMuted}>Total Value</p><p className="text-xl font-bold text-white">${all.reduce((s, e) => s + (e.totalCost || 0), 0).toLocaleString()}</p></div>
         </div>
       ); })()}
-      <nav className="flex items-center gap-2 border-b border-lattice-border pb-4 flex-wrap">{MODE_TABS.map(tab => (<button key={tab.id} onClick={() => { setActiveTab(tab.id); setShowDashboard(false); }} className={cn('flex items-center gap-2 px-4 py-2 rounded-lg transition-colors whitespace-nowrap', activeTab === tab.id && !showDashboard ? 'bg-neon-blue/20 text-neon-blue' : 'text-gray-400 hover:text-white hover:bg-lattice-elevated')}><tab.icon className="w-4 h-4" />{tab.label}</button>))}</nav>
+      <nav className="flex items-center gap-2 border-b border-lattice-border pb-4 overflow-x-auto">{MODE_TABS.map(tab => (<button key={tab.id} onClick={() => { setActiveTab(tab.id); setShowDashboard(false); }} className={cn('flex items-center gap-2 px-4 py-2 rounded-lg transition-colors whitespace-nowrap', activeTab === tab.id && !showDashboard ? 'bg-neon-blue/20 text-neon-blue' : 'text-gray-400 hover:text-white hover:bg-lattice-elevated')}><tab.icon className="w-4 h-4" />{tab.label}</button>))}</nav>
       {showDashboard ? renderDashboard() : renderLibrary()}
       {renderEditor()}
       <div className="border-t border-white/10">
-        <button onClick={() => setShowFeatures(!showFeatures)} className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"><span className="flex items-center gap-2"><Layers className="w-4 h-4" />Lens Features & Capabilities</span><ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} /></button>
+        <button onClick={() => setShowFeatures(!showFeatures)} className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-400 hover:text-white transition-colors"><span className="flex items-center gap-2"><Layers className="w-4 h-4" />Lens Features & Capabilities</span><ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} /></button>
         {showFeatures && <div className="px-4 pb-4"><LensFeaturePanel lensId="supplychain" /></div>}
       </div>
     </div>

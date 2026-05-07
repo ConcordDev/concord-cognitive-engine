@@ -16,15 +16,8 @@ import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import {
-  Activity,
-  Cpu,
-  Zap,
-  AlertTriangle,
-  CheckCircle,
-  BarChart3,
-  RefreshCw,
-  Server,
-  Gauge,
+  Activity, Cpu, Zap, AlertTriangle, CheckCircle, BarChart3,
+  RefreshCw, Server, Gauge
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -69,24 +62,14 @@ function parsePrometheusText(text: string): MetricEntry[] {
 // ── Sub-components ─────────────────────────────────────────────────────────
 
 function MetricCard({
-  icon: Icon,
-  label,
-  value,
-  subValue,
-  status,
+  icon: Icon, label, value, subValue, status,
 }: {
-  icon: React.ElementType;
-  label: string;
-  value: string | number;
-  subValue?: string;
+  icon: React.ElementType; label: string; value: string | number; subValue?: string;
   status?: 'ok' | 'warning' | 'error';
 }) {
-  const statusColor =
-    status === 'error'
-      ? 'border-red-500/40 bg-red-500/5'
-      : status === 'warning'
-        ? 'border-yellow-500/40 bg-yellow-500/5'
-        : 'border-lattice-border bg-lattice-surface';
+  const statusColor = status === 'error' ? 'border-red-500/40 bg-red-500/5'
+    : status === 'warning' ? 'border-yellow-500/40 bg-yellow-500/5'
+    : 'border-lattice-border bg-lattice-surface';
 
   return (
     <div className={cn('rounded-lg border p-4 space-y-1', statusColor)}>
@@ -102,21 +85,9 @@ function MetricCard({
 
 function BreakerBadge({ breaker }: { breaker: CircuitBreakerState }) {
   const stateConfig = {
-    closed: {
-      color: 'bg-green-500/20 text-green-400 border-green-500/30',
-      icon: CheckCircle,
-      label: 'Closed',
-    },
-    open: {
-      color: 'bg-red-500/20 text-red-400 border-red-500/30',
-      icon: AlertTriangle,
-      label: 'Open',
-    },
-    half_open: {
-      color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-      icon: RefreshCw,
-      label: 'Half-Open',
-    },
+    closed: { color: 'bg-green-500/20 text-green-400 border-green-500/30', icon: CheckCircle, label: 'Closed' },
+    open: { color: 'bg-red-500/20 text-red-400 border-red-500/30', icon: AlertTriangle, label: 'Open' },
+    half_open: { color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30', icon: RefreshCw, label: 'Half-Open' },
   };
 
   const cfg = stateConfig[breaker.state] || stateConfig.closed;
@@ -138,15 +109,7 @@ function BreakerBadge({ breaker }: { breaker: CircuitBreakerState }) {
   );
 }
 
-function MiniSparkBar({
-  values,
-  max,
-  color = 'bg-neon-cyan',
-}: {
-  values: number[];
-  max: number;
-  color?: string;
-}) {
+function MiniSparkBar({ values, max, color = 'bg-neon-cyan' }: { values: number[]; max: number; color?: string }) {
   if (values.length === 0) return null;
   return (
     <div className="flex items-end gap-px h-8">
@@ -154,10 +117,7 @@ function MiniSparkBar({
         <div
           key={i}
           className={cn('rounded-sm w-1.5 transition-all', color)}
-          style={{
-            height: `${Math.max(2, (v / (max || 1)) * 100)}%`,
-            opacity: 0.4 + (i / values.length) * 0.6,
-          }}
+          style={{ height: `${Math.max(2, (v / (max || 1)) * 100)}%`, opacity: 0.4 + (i / values.length) * 0.6 }}
         />
       ))}
     </div>
@@ -166,7 +126,7 @@ function MiniSparkBar({
 
 // ── Main Component ─────────────────────────────────────────────────────────
 
-function MonitoringPanel() {
+export function MonitoringPanel() {
   const [historyLen] = useState(20);
 
   // Fetch Prometheus-format metrics from /metrics
@@ -206,52 +166,39 @@ function MonitoringPanel() {
   }, [rawMetrics]);
 
   // Extract key metrics
-  const totalRequests = metrics.find((m) => m.name === 'concord_brain_requests_total')?.value || 0;
-  const totalErrors = metrics.find((m) => m.name === 'concord_brain_errors_total')?.value || 0;
+  const totalRequests = metrics.find(m => m.name === 'concord_brain_requests_total')?.value || 0;
+  const totalErrors = metrics.find(m => m.name === 'concord_brain_errors_total')?.value || 0;
   const errorRate = totalRequests > 0 ? ((totalErrors / totalRequests) * 100).toFixed(2) : '0.00';
 
-  const memRss =
-    metrics.find((m) => m.name === 'concord_process_memory_bytes' && m.labels?.type === 'rss')
-      ?.value || 0;
-  const memHeapUsed =
-    metrics.find((m) => m.name === 'concord_process_memory_bytes' && m.labels?.type === 'heapUsed')
-      ?.value || 0;
-  const memHeapTotal =
-    metrics.find((m) => m.name === 'concord_process_memory_bytes' && m.labels?.type === 'heapTotal')
-      ?.value || 0;
+  const memRss = metrics.find(m => m.name === 'concord_process_memory_bytes' && m.labels?.type === 'rss')?.value || 0;
+  const memHeapUsed = metrics.find(m => m.name === 'concord_process_memory_bytes' && m.labels?.type === 'heapUsed')?.value || 0;
+  const memHeapTotal = metrics.find(m => m.name === 'concord_process_memory_bytes' && m.labels?.type === 'heapTotal')?.value || 0;
 
-  const uptimeSeconds = metrics.find((m) => m.name === 'concord_uptime_seconds')?.value || 0;
-  const sessions = metrics.find((m) => m.name === 'concord_sessions_total')?.value || 0;
-  const dtuCount =
-    metrics.find((m) => m.name === 'concord_dtus_total' && m.labels?.scope === 'all')?.value || 0;
-  const heartbeatTicks = metrics.find((m) => m.name === 'concord_heartbeat_tick_total')?.value || 0;
+  const uptimeSeconds = metrics.find(m => m.name === 'concord_uptime_seconds')?.value || 0;
+  const sessions = metrics.find(m => m.name === 'concord_sessions_total')?.value || 0;
+  const dtuCount = metrics.find(m => m.name === 'concord_dtus_total' && m.labels?.scope === 'all')?.value || 0;
+  const heartbeatTicks = metrics.find(m => m.name === 'concord_heartbeat_tick_total')?.value || 0;
 
   // Brain-specific metrics (latency, enabled status)
-  const brainMetrics = metrics.filter((m) => m.name === 'concord_brain_avg_latency_ms');
-  const brainEnabled = metrics.filter((m) => m.name === 'concord_brain_enabled');
-  const avgLatency =
-    brainMetrics.length > 0
-      ? Math.round(brainMetrics.reduce((sum, m) => sum + m.value, 0) / brainMetrics.length)
-      : 0;
+  const brainMetrics = metrics.filter(m => m.name === 'concord_brain_avg_latency_ms');
+  const brainEnabled = metrics.filter(m => m.name === 'concord_brain_enabled');
+  const avgLatency = brainMetrics.length > 0
+    ? Math.round(brainMetrics.reduce((sum, m) => sum + m.value, 0) / brainMetrics.length)
+    : 0;
 
   // Circuit breaker states (from brain enabled/disabled status)
-  const circuitBreakers: CircuitBreakerState[] = brainEnabled.map((m) => {
+  const circuitBreakers: CircuitBreakerState[] = brainEnabled.map(m => {
     const name = m.labels?.brain || 'unknown';
-    const brainReqs =
-      metrics.find((me) => me.name === 'concord_brain_requests_total' && me.labels?.brain === name)
-        ?.value || 0;
-    const brainErrs =
-      metrics.find((me) => me.name === 'concord_brain_errors_total' && me.labels?.brain === name)
-        ?.value || 0;
+    const brainReqs = metrics.find(
+      me => me.name === 'concord_brain_requests_total' && me.labels?.brain === name
+    )?.value || 0;
+    const brainErrs = metrics.find(
+      me => me.name === 'concord_brain_errors_total' && me.labels?.brain === name
+    )?.value || 0;
 
     return {
       name,
-      state:
-        m.value === 0
-          ? ('open' as const)
-          : brainErrs > brainReqs * 0.5
-            ? ('half_open' as const)
-            : ('closed' as const),
+      state: m.value === 0 ? 'open' as const : (brainErrs > brainReqs * 0.5 ? 'half_open' as const : 'closed' as const),
       failures: brainErrs,
       totalCalls: brainReqs,
       totalFailures: brainErrs,
@@ -303,14 +250,12 @@ function MonitoringPanel() {
           <h2 className="font-semibold">System Monitoring</h2>
           <p className="text-xs text-gray-500">Live metrics from /metrics endpoint</p>
         </div>
-        <span
-          className={cn(
-            'ml-auto px-2 py-0.5 rounded-full text-xs border',
-            healthStatus === 'healthy'
-              ? 'bg-green-500/20 text-green-400 border-green-500/30'
-              : 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
-          )}
-        >
+        <span className={cn(
+          'ml-auto px-2 py-0.5 rounded-full text-xs border',
+          healthStatus === 'healthy'
+            ? 'bg-green-500/20 text-green-400 border-green-500/30'
+            : 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
+        )}>
           {healthStatus}
         </span>
       </div>
@@ -335,9 +280,7 @@ function MonitoringPanel() {
           label="Error Rate"
           value={`${errorRate}%`}
           subValue={`${totalErrors} total errors`}
-          status={
-            parseFloat(errorRate) > 5 ? 'error' : parseFloat(errorRate) > 1 ? 'warning' : 'ok'
-          }
+          status={parseFloat(errorRate) > 5 ? 'error' : parseFloat(errorRate) > 1 ? 'warning' : 'ok'}
         />
         <MetricCard
           icon={Server}
@@ -354,13 +297,7 @@ function MonitoringPanel() {
           label="Heap Used"
           value={formatBytes(memHeapUsed)}
           subValue={`of ${formatBytes(memHeapTotal)}`}
-          status={
-            memHeapUsed > memHeapTotal * 0.9
-              ? 'error'
-              : memHeapUsed > memHeapTotal * 0.7
-                ? 'warning'
-                : 'ok'
-          }
+          status={memHeapUsed > memHeapTotal * 0.9 ? 'error' : memHeapUsed > memHeapTotal * 0.7 ? 'warning' : 'ok'}
         />
         <MetricCard
           icon={Cpu}
@@ -395,13 +332,10 @@ function MonitoringPanel() {
                 key={key}
                 className={cn(
                   'px-3 py-2 rounded-lg text-xs border',
-                  value === 'ok'
-                    ? 'bg-green-500/10 border-green-500/20 text-green-400'
-                    : value === 'warning'
-                      ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400'
-                      : value === 'disabled'
-                        ? 'bg-gray-500/10 border-gray-500/20 text-gray-400'
-                        : 'bg-red-500/10 border-red-500/20 text-red-400'
+                  value === 'ok' ? 'bg-green-500/10 border-green-500/20 text-green-400'
+                  : value === 'warning' ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400'
+                  : value === 'disabled' ? 'bg-gray-500/10 border-gray-500/20 text-gray-400'
+                  : 'bg-red-500/10 border-red-500/20 text-red-400'
                 )}
               >
                 <span className="font-medium">{key}</span>: {String(value)}
@@ -419,7 +353,7 @@ function MonitoringPanel() {
             Circuit Breaker States
           </h3>
           <div className="space-y-2">
-            {circuitBreakers.map((cb) => (
+            {circuitBreakers.map(cb => (
               <BreakerBadge key={cb.name} breaker={cb} />
             ))}
           </div>
@@ -432,45 +366,28 @@ function MonitoringPanel() {
           <h3 className="text-sm font-medium text-gray-300 mb-3 flex items-center gap-2">
             <Gauge className="w-4 h-4 text-neon-cyan" />
             Brain Latency Breakdown
-            <span className="ml-auto text-xs text-gray-500">last {historyLen} samples</span>
           </h3>
           <div className="space-y-2">
-            {brainMetrics.map((m) => {
+            {brainMetrics.map(m => {
               const name = m.labels?.brain || 'unknown';
-              const enabled = brainEnabled.find((b) => b.labels?.brain === name)?.value === 1;
+              const enabled = brainEnabled.find(b => b.labels?.brain === name)?.value === 1;
               return (
                 <div key={name} className="flex items-center gap-3 text-sm">
-                  <span
-                    className={cn('w-2 h-2 rounded-full', enabled ? 'bg-green-400' : 'bg-red-400')}
-                  />
+                  <span className={cn(
+                    'w-2 h-2 rounded-full',
+                    enabled ? 'bg-green-400' : 'bg-red-400'
+                  )} />
                   <span className="text-gray-300 font-mono text-xs w-32 truncate">{name}</span>
                   <div className="flex-1 h-2 bg-lattice-elevated rounded-full overflow-hidden">
                     <div
                       className={cn(
                         'h-full rounded-full transition-all',
-                        m.value > 5000
-                          ? 'bg-red-400'
-                          : m.value > 2000
-                            ? 'bg-yellow-400'
-                            : 'bg-neon-cyan'
+                        m.value > 5000 ? 'bg-red-400' : m.value > 2000 ? 'bg-yellow-400' : 'bg-neon-cyan'
                       )}
                       style={{ width: `${Math.min(100, (m.value / 10000) * 100)}%` }}
                     />
                   </div>
-                  <MiniSparkBar
-                    values={[m.value]}
-                    max={10000}
-                    color={
-                      m.value > 5000
-                        ? 'bg-red-400'
-                        : m.value > 2000
-                          ? 'bg-yellow-400'
-                          : 'bg-neon-cyan'
-                    }
-                  />
-                  <span className="text-xs text-gray-400 w-16 text-right">
-                    {Math.round(m.value)}ms
-                  </span>
+                  <span className="text-xs text-gray-400 w-16 text-right">{Math.round(m.value)}ms</span>
                 </div>
               );
             })}
@@ -480,7 +397,3 @@ function MonitoringPanel() {
     </div>
   );
 }
-
-import { withErrorBoundary } from '@/components/common/ErrorBoundary';
-const _WrappedMonitoringPanel = withErrorBoundary(MonitoringPanel);
-export { _WrappedMonitoringPanel as MonitoringPanel };

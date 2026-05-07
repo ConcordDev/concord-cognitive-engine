@@ -1,26 +1,20 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useLensNav } from '@/hooks/useLensNav';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { apiHelpers } from '@/lib/api/client';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { ds } from '@/lib/design-system';
-import { cn } from '@/lib/utils';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   Clock,
   Calendar,
   Timer,
   GitBranch,
   Play,
-  Plus,
-  Search,
-  Trash2,
-  X,
-  BarChart3,
-  Zap,
+  Layers,
+  Timer,
+  GitBranch,
   ScanLine,
-  History,
 } from 'lucide-react';
 import { LensPageShell } from '@/components/lens/LensPageShell';
 
@@ -269,26 +263,66 @@ export default function TemporalLensPage() {
     const runningSimulations = all.filter((a) => a.status === 'running').length;
     const patterns = all.filter((a) => a.frequency).length;
     return (
+      <div className="flex items-center justify-center h-full p-8">
+        <div className="text-center space-y-3">
+          <div className="w-8 h-8 border-2 border-neon-cyan border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-sm text-gray-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex items-center justify-center h-full p-8">
+        <ErrorState error={error?.message} onRetry={refetch} />
+      </div>
+    );
+  }
+  return (
+    <div data-lens-theme="temporal" className="p-6 space-y-6">
+      <header className="flex items-center gap-3">
+        <span className="text-2xl">⏳</span>
+        <div>
+          <h1 className="text-xl font-bold">Temporal Lens</h1>
+          <p className="text-sm text-gray-400">
+            Temporal reasoning — time frames, simulations, recency scoring
+          </p>
+        </div>
+
+      {/* Real-time Enhancement Toolbar */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+        <DTUExportButton domain="temporal" data={realtimeData || {}} compact />
+        {realtimeAlerts.length > 0 && (
+          <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
+            {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
+          </span>
+        )}
+      </div>
+      </header>
+
+      {/* Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className={ds.panel}>
-          <Clock className="w-5 h-5 text-neon-cyan mb-2" />
-          <p className={ds.textMuted}>Active Frames</p>
-          <p className="text-xl font-bold text-white">{activeFrames}</p>
+        <div className="lens-card">
+          <Timer className="w-5 h-5 text-neon-cyan mb-2" />
+          <p className="text-2xl font-bold">{Array.isArray(framesList) ? framesList.length : 0}</p>
+          <p className="text-sm text-gray-400">Events Tracked</p>
         </div>
-        <div className={ds.panel}>
-          <Play className="w-5 h-5 text-neon-purple mb-2" />
-          <p className={ds.textMuted}>Simulations</p>
-          <p className="text-xl font-bold text-white">{runningSimulations}</p>
-        </div>
-        <div className={ds.panel}>
-          <ScanLine className="w-5 h-5 text-neon-green mb-2" />
-          <p className={ds.textMuted}>Patterns</p>
-          <p className="text-xl font-bold text-white">{patterns}</p>
-        </div>
-        <div className={ds.panel}>
+        <div className="lens-card">
           <GitBranch className="w-5 h-5 text-neon-blue mb-2" />
-          <p className={ds.textMuted}>Timelines</p>
-          <p className="text-xl font-bold text-white">{all.filter((a) => a.branch).length}</p>
+          <p className="text-2xl font-bold">{Array.isArray(framesList) ? framesList.length : 0}</p>
+          <p className="text-sm text-gray-400">Timelines</p>
+        </div>
+        <div className="lens-card">
+          <ScanLine className="w-5 h-5 text-neon-purple mb-2" />
+          <p className="text-2xl font-bold">{results ? '1' : '0'}</p>
+          <p className="text-sm text-gray-400">Pattern Count</p>
+        </div>
+        <div className="lens-card">
+          <Calendar className="w-5 h-5 text-neon-green mb-2" />
+          <p className="text-2xl font-bold">{results ? '1' : '0'}</p>
+          <p className="text-sm text-gray-400">Simulations</p>
         </div>
       </div>
     );
@@ -356,263 +390,18 @@ export default function TemporalLensPage() {
               </div>
             </div>
 
-            {activeArtifactType === 'TimeFrame' && (
-              <>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className={ds.label}>Start</label>
-                    <input
-                      type="date"
-                      className={ds.input}
-                      value={formStartDate}
-                      onChange={(e) => setFormStartDate(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label className={ds.label}>End</label>
-                    <input
-                      type="date"
-                      className={ds.input}
-                      value={formEndDate}
-                      onChange={(e) => setFormEndDate(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className={ds.label}>Duration</label>
-                  <input
-                    className={ds.input}
-                    value={formDuration}
-                    onChange={(e) => setFormDuration(e.target.value)}
-                    placeholder="e.g. 3 months"
-                  />
-                </div>
-              </>
-            )}
-
-            {activeArtifactType === 'Event' && (
-              <>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className={ds.label}>Event Date</label>
-                    <input
-                      type="date"
-                      className={ds.input}
-                      value={formEventDate}
-                      onChange={(e) => setFormEventDate(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label className={ds.label}>Type</label>
-                    <select
-                      className={ds.select}
-                      value={formEventType}
-                      onChange={(e) => setFormEventType(e.target.value)}
-                    >
-                      {EVENT_TYPES.map((t) => (
-                        <option key={t} value={t}>
-                          {t}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className={ds.label}>Impact</label>
-                    <select
-                      className={ds.select}
-                      value={formImpact}
-                      onChange={(e) => setFormImpact(e.target.value)}
-                    >
-                      {IMPACT_LEVELS.map((l) => (
-                        <option key={l} value={l}>
-                          {l}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className={ds.label}>Recurrence</label>
-                    <select
-                      className={ds.select}
-                      value={formRecurrence}
-                      onChange={(e) => setFormRecurrence(e.target.value)}
-                    >
-                      {RECURRENCE_OPTIONS.map((r) => (
-                        <option key={r} value={r}>
-                          {r}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </>
-            )}
-
-            {activeArtifactType === 'Simulation' && (
-              <>
-                <div>
-                  <label className={ds.label}>Scenario</label>
-                  <textarea
-                    className={ds.textarea}
-                    rows={3}
-                    value={formScenario}
-                    onChange={(e) => setFormScenario(e.target.value)}
-                    placeholder="Describe the scenario to simulate..."
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className={ds.label}>Timespan</label>
-                    <select
-                      className={ds.select}
-                      value={formTimespan}
-                      onChange={(e) => setFormTimespan(e.target.value)}
-                    >
-                      {TIMESPAN_OPTIONS.map((t) => (
-                        <option key={t} value={t}>
-                          {t}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className={ds.label}>Confidence</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      className={ds.input}
-                      value={formConfidence}
-                      onChange={(e) => setFormConfidence(e.target.value)}
-                      placeholder="0.0 - 1.0"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className={ds.label}>Result</label>
-                  <textarea
-                    className={ds.textarea}
-                    rows={2}
-                    value={formResult}
-                    onChange={(e) => setFormResult(e.target.value)}
-                  />
-                </div>
-              </>
-            )}
-
-            {activeArtifactType === 'Timeline' && (
-              <>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className={ds.label}>Branch Name</label>
-                    <input
-                      className={ds.input}
-                      value={formBranch}
-                      onChange={(e) => setFormBranch(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label className={ds.label}>Divergence Point</label>
-                    <input
-                      type="date"
-                      className={ds.input}
-                      value={formDivergencePoint}
-                      onChange={(e) => setFormDivergencePoint(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className={ds.label}>Start</label>
-                    <input
-                      type="date"
-                      className={ds.input}
-                      value={formStartDate}
-                      onChange={(e) => setFormStartDate(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label className={ds.label}>End</label>
-                    <input
-                      type="date"
-                      className={ds.input}
-                      value={formEndDate}
-                      onChange={(e) => setFormEndDate(e.target.value)}
-                    />
-                  </div>
-                </div>
-              </>
-            )}
-
-            {activeArtifactType === 'Pattern' && (
-              <>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className={ds.label}>Frequency</label>
-                    <input
-                      className={ds.input}
-                      value={formFrequency}
-                      onChange={(e) => setFormFrequency(e.target.value)}
-                      placeholder="e.g. every 3 days"
-                    />
-                  </div>
-                  <div>
-                    <label className={ds.label}>Confidence</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      className={ds.input}
-                      value={formConfidence}
-                      onChange={(e) => setFormConfidence(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className={ds.label}>Last Seen</label>
-                    <input
-                      type="date"
-                      className={ds.input}
-                      value={formLastOccurrence}
-                      onChange={(e) => setFormLastOccurrence(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label className={ds.label}>Next Predicted</label>
-                    <input
-                      type="date"
-                      className={ds.input}
-                      value={formNextPredicted}
-                      onChange={(e) => setFormNextPredicted(e.target.value)}
-                    />
-                  </div>
-                </div>
-              </>
-            )}
-
-            {activeArtifactType === 'Snapshot' && (
-              <>
-                <div>
-                  <label className={ds.label}>Snapshot Date</label>
-                  <input
-                    type="date"
-                    className={ds.input}
-                    value={formStartDate}
-                    onChange={(e) => setFormStartDate(e.target.value)}
-                  />
-                </div>
-              </>
-            )}
-
-            <div>
-              <label className={ds.label}>Notes</label>
-              <textarea
-                className={ds.textarea}
-                rows={2}
-                value={formNotes}
-                onChange={(e) => setFormNotes(e.target.value)}
-              />
+          <div className="panel p-4">
+            <h2 className="font-semibold mb-3">Time Frames</h2>
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {Array.isArray(framesList) && framesList.map((f: Record<string, unknown>, i: number) => (
+                <motion.div key={i} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="lens-card text-xs">
+                  <p className="font-medium">{f.name as string}</p>
+                  <p className="text-gray-400">{f.start as string} → {f.end as string}</p>
+                </motion.div>
+              ))}
+              {(!Array.isArray(framesList) || framesList.length === 0) && (
+                <p className="text-center py-4 text-gray-500 text-sm">No time frames</p>
+              )}
             </div>
           </div>
           <div className="flex justify-end gap-2 mt-4">

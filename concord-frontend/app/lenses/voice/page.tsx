@@ -129,7 +129,7 @@ export default function VoiceLensPage() {
 
   // Takes
   const [takes, setTakes] = useState<Take[]>([]);
-  const { isLoading, isError: isError, error: error, refetch: refetch, items: takeItems, create: createTake } = useLensData<Take>('voice', 'take', {
+  const { isLoading, isError: isError, error: error, refetch: refetch, items: _takeItems, create: _createTake } = useLensData<Take>('voice', 'take', {
     seed: INITIAL_TAKES.map(t => ({ title: t.name, data: t as unknown as Record<string, unknown> })),
   });
   const [activeTakeId, setActiveTakeId] = useState<string | null>(null);
@@ -157,35 +157,12 @@ export default function VoiceLensPage() {
   const [levelL, setLevelL] = useState(0);
   const [levelR, setLevelR] = useState(0);
 
-  const runVoiceAction = useRunArtifact('voice');
-  const [voiceActionResult, setVoiceActionResult] = useState<{ action: string; result: Record<string, unknown> } | null>(null);
-  const [voiceActiveAction, setVoiceActiveAction] = useState<string | null>(null);
-
-  const handleVoiceAction = useCallback(async (action: string) => {
-    const id = takeItems[0]?.id;
-    if (!id) return;
-    setVoiceActiveAction(action);
-    try {
-      const res = await runVoiceAction.mutateAsync({ id, action });
-      if (res.ok) setVoiceActionResult({ action, result: res.result as Record<string, unknown> });
-    } finally {
-      setVoiceActiveAction(null);
-    }
-  }, [takeItems, runVoiceAction]);
-
   // Real recording refs
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
   const takeBlobsRef = useRef<Map<string, Blob>>(new Map());
   const playbackAudioRef = useRef<HTMLAudioElement | null>(null);
-
-  // Sync backend take items into local state
-  useEffect(() => {
-    if (takeItems.length > 0 && takes.length === 0) {
-      setTakes(takeItems.map(i => ({ ...(i.data as unknown as Take), id: i.id })));
-    }
-  }, [takeItems, takes.length]);
 
   const activeTake = takes.find((t) => t.id === activeTakeId) || null;
 
@@ -310,7 +287,6 @@ export default function VoiceLensPage() {
         };
         setTakes((prev) => [...prev, newTake]);
         setActiveTakeId(takeId);
-        createTake({ title: `Take ${takeNum}`, data: newTake as unknown as Record<string, unknown> });
         setStatus('ready');
       };
       recorder.stop();

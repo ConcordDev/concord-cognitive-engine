@@ -33,45 +33,32 @@ After setup, configure your `.env` file (see Environment Configuration below), t
 
 ## Ollama Model Requirements
 
-Concord uses a five-brain cognitive architecture (4 cognitive + 1 multimodal/vision). Defaults are tuned for **NVIDIA RTX PRO 4500 Blackwell** (32GB GDDR7).
+Concord uses a four-brain cognitive architecture. Each brain runs a separate Ollama model:
 
-| Brain | Default Model | Download Size | VRAM | Port |
-|---|---|---|---|---|
-| Conscious | `qwen2.5:32b-instruct-q4_K_M` | ~18GB | ~11GB | 11434 |
-| Subconscious | `qwen2.5:7b-instruct-q5_K_M` | ~5GB | ~3GB | 11435 |
-| Utility | `qwen2.5:3b-instruct-q5_K_M` | ~2GB | ~1.2GB | 11436 |
-| Repair | `qwen2.5:1.5b-instruct-q5_K_M` | ~1GB | ~0.7GB | 11437 |
-| Vision | `llava:13b-v1.6-vicuna-q4_K_M` | ~9GB | ~5GB | 11438 |
-| `nomic-embed-text` (embeddings) | semantic search & DTU similarity | ~275MB | ~300MB | (CPU) |
-
-All five Ollama services should run with `OLLAMA_FLASH_ATTENTION=1` and `OLLAMA_KV_CACHE_TYPE=q8_0` to use Blackwell tensor cores and halve KV-cache memory.
+| Model | Role | Download Size | VRAM Required |
+|---|---|---|---|
+| `qwen2.5:14b-instruct-q4_K_M` | Conscious brain -- chat, deep reasoning, council deliberation | ~9GB | ~5.5GB |
+| `qwen2.5:7b-instruct-q4_K_M` | Subconscious -- autogen, dream, evolution, synthesis | ~5GB | ~4.5GB |
+| `qwen2.5:3b` | Utility -- lens interactions, entity actions, quick tasks | ~2GB | ~2GB |
+| `llava:7b` | Vision -- image analysis and multimodal understanding | ~5GB | ~4GB |
+| `nomic-embed-text` | Embeddings -- semantic search and DTU similarity | ~275MB | ~300MB |
 
 ### Pulling Models
 
 ```bash
-ollama pull qwen2.5:32b-instruct-q4_K_M
-ollama pull qwen2.5:7b-instruct-q5_K_M
-ollama pull qwen2.5:3b-instruct-q5_K_M
-ollama pull qwen2.5:1.5b-instruct-q5_K_M
-ollama pull llava:13b-v1.6-vicuna-q4_K_M
+# Pull all required models
+ollama pull qwen2.5:14b-instruct-q4_K_M
+ollama pull qwen2.5:7b-instruct-q4_K_M
+ollama pull qwen2.5:3b
+ollama pull llava:7b
 ollama pull nomic-embed-text
 ```
 
-Concord auto-pulls missing models on startup via `initFiveBrains()` if Ollama is reachable.
+Concord will also auto-pull missing models on startup via `initThreeBrains()` if Ollama is reachable.
 
-### Smaller-GPU Setup (16GB-class card)
+### Minimal Setup (No GPU)
 
-If you don't have the RTX PRO 4500's 32GB, drop Conscious one tier and shrink the rest:
-
-| Brain | Reduced Model | VRAM |
-|---|---|---|
-| Conscious | `qwen2.5:14b-instruct-q4_K_M` | ~9GB |
-| Subconscious | `qwen2.5:7b-instruct-q4_K_M` | ~4.5GB |
-| Utility | `qwen2.5:3b` | ~2GB |
-| Repair | `qwen2.5:1.5b-instruct-q4_K_M` | ~1GB |
-| Vision | `llava:7b` | ~4GB |
-
-### CPU-Only / Minimal Setup
+For CPU-only or limited hardware, you can run smaller models:
 
 | Brain | Minimal Model | VRAM |
 |---|---|---|
@@ -80,7 +67,7 @@ If you don't have the RTX PRO 4500's 32GB, drop Conscious one tier and shrink th
 | Utility | `qwen2.5:3b` | ~2GB |
 | Repair | `qwen2.5:0.5b` | ~0.5GB |
 
-Set the model names in your `.env` via `BRAIN_CONSCIOUS_MODEL`, `BRAIN_SUBCONSCIOUS_MODEL`, `BRAIN_UTILITY_MODEL`, `BRAIN_REPAIR_MODEL`, `BRAIN_VISION_MODEL`. The brain-router falls back from conscious to OpenAI (if `OPENAI_API_KEY` is set) — NOT to subconscious.
+Set the model names in your `.env` via `BRAIN_CONSCIOUS_MODEL`, `BRAIN_SUBCONSCIOUS_MODEL`, etc.
 
 ---
 
@@ -94,11 +81,10 @@ The project includes a full `docker-compose.yml` with the following services:
 | `frontend` | Next.js frontend | 3000 (internal) |
 | `nginx` | Reverse proxy + TLS termination | 80, 443 |
 | `certbot` | Automatic SSL certificate renewal | -- |
-| `ollama-conscious` | Conscious brain (32B q4_K_M default) | 11434 (internal) |
-| `ollama-subconscious` | Subconscious brain (7B q5_K_M default) | 11435 (internal) |
-| `ollama-utility` | Utility brain (3B q5_K_M default) | 11436 (internal) |
-| `ollama-repair` | Repair brain (1.5B q5_K_M default) | 11437 (internal) |
-| `ollama-vision` | Vision brain (LLaVA 13B v1.6) | 11438 (internal) |
+| `ollama-conscious` | Conscious brain (14B model) | 11434 (internal) |
+| `ollama-subconscious` | Subconscious brain (7B model) | 11435 (internal) |
+| `ollama-utility` | Utility brain (3B model) | 11436 (internal) |
+| `ollama-repair` | Repair brain (1.5B model) | 11437 (internal) |
 | `prometheus` | Metrics collection | 9090 (internal) |
 | `grafana` | Monitoring dashboards | 3001 (internal) |
 

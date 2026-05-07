@@ -2,13 +2,11 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, apiHelpers } from '@/lib/api/client';
-import { useLensData } from '@/lib/hooks/use-lens-data';
-import type { CreateWebhookRequest } from '@/lib/api/generated-types';
+import { apiHelpers } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Plug, Webhook, Zap, Code, FileText, Plus, Trash2, Play, ToggleLeft, ToggleRight, Layers, ChevronDown, Link, AlertCircle, Loader2, Activity, CheckCircle, Send, Clock, Filter } from 'lucide-react';
+import { Plug, Webhook, Zap, Code, FileText, Plus, Trash2, Play, ToggleLeft, ToggleRight, Layers, ChevronDown, Link, AlertCircle } from 'lucide-react';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -168,11 +166,11 @@ export default function IntegrationsLensPage() {
       <div className="grid grid-cols-4 gap-4">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }} className="panel p-3 flex items-center gap-3">
           <Link className="w-5 h-5 text-neon-green" />
-          <div><p className="text-lg font-bold">{integrationItems?.length || 0}</p><p className="text-xs text-gray-400">Connected</p></div>
+          <div><p className="text-lg font-bold">{integrations?.integrations?.length || 0}</p><p className="text-xs text-gray-400">Connected</p></div>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="panel p-3 flex items-center gap-3">
           <Zap className="w-5 h-5 text-neon-cyan" />
-          <div><p className="text-lg font-bold">{automationItems?.length || 0}</p><p className="text-xs text-gray-400">Active Syncs</p></div>
+          <div><p className="text-lg font-bold">{automations?.automations?.length || 0}</p><p className="text-xs text-gray-400">Active Syncs</p></div>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="panel p-3 flex items-center gap-3">
           <Webhook className="w-5 h-5 text-neon-purple" />
@@ -217,8 +215,7 @@ export default function IntegrationsLensPage() {
             <EmptyState icon={<Webhook />} message="No webhooks configured" />
           ) : (
             webhooks?.webhooks?.map((wh: Record<string, unknown>, index: number) => (
-              <motion.div key={wh.id as string} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }} className="panel p-4">
-                <div className="flex items-center justify-between">
+              <motion.div key={wh.id as string} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }} className="panel p-4 flex items-center justify-between">
                 <div>
                   <h3 className="font-semibold">{String(wh.name)}</h3>
                   <p className="text-xs text-gray-400 truncate max-w-md">{String(wh.url)}</p>
@@ -262,41 +259,6 @@ export default function IntegrationsLensPage() {
                     <Trash2 className="w-5 h-5" />
                   </button>
                 </div>
-                </div>
-                {webhookTestResults[wh.id as string] && (
-                  <div className={`mt-2 text-xs px-3 py-1.5 rounded ${
-                    webhookTestResults[wh.id as string].status === 'success' ? 'bg-green-500/10 text-green-400' :
-                    webhookTestResults[wh.id as string].status === 'error' ? 'bg-red-500/10 text-red-400' :
-                    'bg-blue-500/10 text-blue-400'
-                  }`}>
-                    {webhookTestResults[wh.id as string].status === 'success' && <CheckCircle className="w-3 h-3 inline mr-1" />}
-                    {webhookTestResults[wh.id as string].status === 'error' && <AlertCircle className="w-3 h-3 inline mr-1" />}
-                    {webhookTestResults[wh.id as string].message}
-                  </div>
-                )}
-                {showDeliveryLog === (wh.id as string) && (
-                  <div className="mt-3 border-t border-lattice-border pt-3">
-                    <h4 className="text-xs font-semibold text-gray-300 mb-2 flex items-center gap-1">
-                      <Clock className="w-3 h-3" /> Recent Deliveries
-                    </h4>
-                    {!deliveryLog || (Array.isArray(deliveryLog) && deliveryLog.length === 0) ? (
-                      <p className="text-xs text-gray-500">No deliveries recorded yet.</p>
-                    ) : (
-                      <div className="space-y-1 max-h-48 overflow-y-auto">
-                        {(Array.isArray(deliveryLog) ? deliveryLog : (deliveryLog as Record<string, unknown>)?.deliveries as Record<string, unknown>[] || []).slice(0, 20).map((d: Record<string, unknown>, i: number) => (
-                          <div key={i} className="flex items-center justify-between bg-lattice-surface rounded px-2 py-1.5 text-xs">
-                            <span className="text-gray-400 font-mono">{String(d.event || d.type || 'delivery')}</span>
-                            <span className={`${Number(d.statusCode || d.status) >= 200 && Number(d.statusCode || d.status) < 300 ? 'text-green-400' : 'text-red-400'}`}>
-                              {String(d.statusCode || d.status || '—')}
-                            </span>
-                            <span className="text-gray-500">{d.timestamp ? new Date(String(d.timestamp)).toLocaleString() : d.createdAt ? new Date(String(d.createdAt)).toLocaleString() : '—'}</span>
-                            <span className="text-gray-500">{d.duration ? `${d.duration}ms` : '—'}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
               </motion.div>
             ))
           )}
@@ -377,107 +339,6 @@ export default function IntegrationsLensPage() {
       )}
 
       <RealtimeDataPanel data={realtimeInsights} />
-
-      {/* Backend Action Panel */}
-      <div className="panel p-4 space-y-3">
-        <h2 className="font-semibold flex items-center gap-2">
-          <Activity className="w-4 h-4 text-neon-green" />
-          Integration Analysis
-        </h2>
-        <div className="flex flex-wrap gap-2">
-          {['apiHealthCheck', 'dataFlowMapping', 'compatibilityCheck'].map((action) => (
-            <button
-              key={action}
-              onClick={() => handleAction(action)}
-              disabled={!!isRunning || !actionItems[0]}
-              className="btn-secondary text-sm flex items-center gap-1 disabled:opacity-50"
-            >
-              {isRunning === action ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
-              {action === 'apiHealthCheck' ? 'API Health Check' : action === 'dataFlowMapping' ? 'Data Flow Map' : 'Compatibility Check'}
-            </button>
-          ))}
-        </div>
-        {!actionItems[0] && <p className="text-xs text-gray-500">Create an integration artifact to run analysis actions.</p>}
-        {actionResult && (
-          <div className="bg-lattice-deep rounded-lg p-4 space-y-3 text-sm">
-            {'overallStatus' in actionResult && (
-              <>
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4 text-neon-green" />
-                  <span className="font-semibold">Overall Status: <span className={String(actionResult.overallStatus) === 'healthy' ? 'text-neon-green' : 'text-yellow-400'}>{String(actionResult.overallStatus)}</span></span>
-                  <span className="text-gray-400">Score: {String(actionResult.overallHealthScore)}</span>
-                </div>
-                {actionResult.summary && (
-                  <div className="grid grid-cols-4 gap-2 text-xs">
-                    {Object.entries(actionResult.summary as Record<string,unknown>).map(([k,v]) => (
-                      <div key={k} className="bg-lattice-surface rounded p-2 text-center">
-                        <div className="font-bold">{String(v)}</div>
-                        <div className="text-gray-400 capitalize">{k}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {Array.isArray(actionResult.endpoints) && (
-                  <div className="space-y-1">
-                    {(actionResult.endpoints as Record<string,unknown>[]).slice(0,5).map((ep, i) => (
-                      <div key={i} className="flex items-center justify-between bg-lattice-surface rounded p-2 text-xs">
-                        <span className="font-mono">{String(ep.name)}</span>
-                        <span className={String(ep.status) === 'healthy' ? 'text-neon-green' : 'text-yellow-400'}>{String(ep.status)}</span>
-                        <span className="text-gray-400">Score: {String(ep.healthScore)}</span>
-                        <span className="text-gray-400">Avail: {String(ep.availability)}%</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-            {'nodes' in actionResult && Array.isArray(actionResult.nodes) && (
-              <>
-                <div className="font-semibold text-neon-cyan">Data Flow Analysis</div>
-                {actionResult.metrics && (
-                  <div className="grid grid-cols-3 gap-2 text-xs">
-                    {Object.entries(actionResult.metrics as Record<string,unknown>).map(([k,v]) => (
-                      <div key={k} className="bg-lattice-surface rounded p-2">
-                        <div className="text-gray-400 capitalize">{k.replace(/([A-Z])/g,' $1').toLowerCase()}</div>
-                        <div className="font-bold">{String(v)}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {Array.isArray(actionResult.bottlenecks) && actionResult.bottlenecks.length > 0 && (
-                  <div>
-                    <div className="text-xs text-yellow-400 font-semibold mb-1">Bottlenecks:</div>
-                    {(actionResult.bottlenecks as Record<string,unknown>[]).map((b, i) => (
-                      <div key={i} className="text-xs text-gray-300">{String(b.node)} — score: {String(b.bottleneckScore)}</div>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-            {'apis' in actionResult && Array.isArray(actionResult.apis) && (
-              <>
-                <div className="font-semibold text-neon-cyan">Compatibility Report</div>
-                {actionResult.summary && (
-                  <div className="text-xs text-gray-400">
-                    {String((actionResult.summary as Record<string,unknown>).totalApis)} APIs · {String((actionResult.summary as Record<string,unknown>).compatible)} compatible · {String((actionResult.summary as Record<string,unknown>).totalEstimatedHours)}h estimated migration
-                  </div>
-                )}
-                <div className="space-y-1">
-                  {(actionResult.apis as Record<string,unknown>[]).map((api, i) => (
-                    <div key={i} className="flex items-center justify-between bg-lattice-surface rounded p-2 text-xs">
-                      <span>{String(api.name)}</span>
-                      <span className="text-gray-400">{String(api.currentVersion)} → {String(api.targetVersion)}</span>
-                      <span className={api.backwardCompatible ? 'text-neon-green' : 'text-red-400'}>{api.backwardCompatible ? 'Compatible' : 'Breaking'}</span>
-                      <span className="text-gray-400">{String((api.migration as Record<string,unknown>)?.level)}</span>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-            {'message' in actionResult && <p className="text-gray-400">{String(actionResult.message)}</p>}
-          </div>
-        )}
-      </div>
 
       {/* Lens Features */}
       <div className="border-t border-white/10">
@@ -568,7 +429,7 @@ function WebhookIngestInfo() {
   );
 }
 
-function CreateWebhookModal({ onClose, onCreate, creating }: { onClose: () => void; onCreate: (data: CreateWebhookRequest) => void; creating: boolean }) {
+function CreateWebhookModal({ onClose, onCreate, creating }: { onClose: () => void; onCreate: (data: Record<string, unknown>) => void; creating: boolean }) {
   const [form, setForm] = useState({ name: '', url: '', events: 'dtu.created' });
 
   return (

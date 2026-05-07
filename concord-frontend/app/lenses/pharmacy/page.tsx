@@ -5,7 +5,7 @@ import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Pill, AlertTriangle, Plus, Trash2, Clock, ShieldCheck, Layers, ChevronDown, AlertCircle, Package, Search, Loader2, Activity, CheckCircle2 } from 'lucide-react';
+import { Pill, AlertTriangle, Search, Plus, Trash2, ClipboardList, Clock, ShieldCheck, Layers, ChevronDown, X, AlertCircle, Package, Activity } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -36,7 +36,7 @@ export default function PharmacyLensPage() {
   useLensNav('pharmacy');
 
   const [activeTab, setActiveTab] = useState<'medications' | 'interactions' | 'refills'>('medications');
-  const [showFeatures, setShowFeatures] = useState(true);
+  const [showFeatures, setShowFeatures] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('pharmacy');
 
@@ -44,35 +44,10 @@ export default function PharmacyLensPage() {
   const { items: interactionItems, create: createInteraction } = useLensData<Record<string, unknown>>('pharmacy', 'interaction', { seed: [] });
   const runAction = useRunArtifact('pharmacy');
 
-  const allMedications = medItems.map(i => ({ id: i.id, title: i.title, ...(i.data || {}) })) as unknown as (Medication & { id: string; title: string })[];
-  const medications = searchQuery.trim()
-    ? allMedications.filter(m => (m.name || m.title || '').toLowerCase().includes(searchQuery.toLowerCase()))
-    : allMedications;
+  const medications = medItems.map(i => ({ id: i.id, title: i.title, ...(i.data || {}) })) as unknown as (Medication & { id: string; title: string })[];
   const interactions = interactionItems.map(i => ({ id: i.id, ...(i.data || {}) })) as unknown as (InteractionCheck & { id: string })[];
 
   const [newMed, setNewMed] = useState({ name: '', dosage: '', frequency: 'daily', route: 'oral' });
-
-  // --- Domain action state ---
-  const [pharmActionRunning, setPharmActionRunning] = useState<string | null>(null);
-  const [interactionResult, setInteractionResult] = useState<Record<string, unknown> | null>(null);
-  const [dosageResult, setDosageResult] = useState<Record<string, unknown> | null>(null);
-  const [inventoryResult, setInventoryResult] = useState<Record<string, unknown> | null>(null);
-  const [formularyResult, setFormularyResult] = useState<Record<string, unknown> | null>(null);
-
-  const handlePharmAction = async (
-    action: string,
-    setter: (val: Record<string, unknown> | null) => void
-  ) => {
-    setPharmActionRunning(action);
-    try {
-      const artifactId = medItems[0]?.id || 'pharmacy';
-      const res = await runAction.mutateAsync({ id: artifactId, action });
-      if (res.ok === false) { setter({ message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` } as Record<string, unknown>); } else { setter((res.result as Record<string, unknown>) || null); }
-    } catch (e) {
-      console.error(`Pharmacy action ${action} failed:`, e);
-    }
-    setPharmActionRunning(null);
-  };
 
   const addMedication = () => {
     if (!newMed.name.trim()) return;
@@ -94,9 +69,9 @@ export default function PharmacyLensPage() {
     const activeNames = medications.filter(m => m.status === 'active').map(m => m.name || m.title);
     if (activeNames.length < 2) return;
     try {
-      await runAction.mutateAsync({ id: medItems[0]?.id || 'pharmacy-default', action: 'drugInteractionCheck', params: { medications: activeNames } });
+      await runAction.mutateAsync({ id: medItems[0]?.id || 'check', action: 'checkInteractions', params: { medications: activeNames } });
       refetch();
-    } catch (e) { console.error('Drug interaction check failed:', e); }
+    } catch { /* handled by UI */ }
   };
 
   if (isLoading) {
@@ -220,235 +195,8 @@ export default function PharmacyLensPage() {
       </motion.div>
 
       <RealtimeDataPanel domain="pharmacy" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
-
-      {/* ── Pharmacy Domain Action Panel ── */}
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="panel space-y-4 p-4">
-        <div className="flex items-center gap-2 mb-1">
-          <Pill className="w-4 h-4 text-neon-green" />
-          <h2 className="font-semibold text-sm">Pharmacy Analysis Engine</h2>
-          <span className="text-xs text-gray-500 ml-auto">Interactions · Dosage · Inventory · Formulary</span>
-        </div>
-        <div className="bg-amber-500/10 border border-amber-500/20 rounded p-2 flex items-center gap-2 text-xs text-amber-400">
-          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-          Informational only — always verify with a licensed pharmacist or physician.
-        </div>
-
-        {/* Buttons */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          {[
-            { action: 'drugInteractionCheck', label: 'Interaction Check', setter: setInteractionResult, icon: AlertCircle, color: 'text-red-400' },
-            { action: 'dosageCalculator', label: 'Dosage Calc', setter: setDosageResult, icon: Activity, color: 'text-neon-cyan' },
-            { action: 'inventoryAlert', label: 'Inventory Alert', setter: setInventoryResult, icon: Package, color: 'text-yellow-400' },
-            { action: 'formularySearch', label: 'Formulary Search', setter: setFormularyResult, icon: Search, color: 'text-neon-green' },
-          ].map(({ action, label, setter, icon: Icon, color }) => (
-            <button
-              key={action}
-              onClick={() => handlePharmAction(action, setter)}
-              disabled={pharmActionRunning !== null}
-              className={`px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-xs flex items-center gap-1.5 justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed`}
-            >
-              {pharmActionRunning === action
-                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                : <Icon className={`w-3.5 h-3.5 ${color}`} />}
-              {pharmActionRunning === action ? 'Running…' : label}
-            </button>
-          ))}
-        </div>
-
-        {/* Results */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-
-          {/* Drug Interaction Result */}
-          {interactionResult && (
-            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-lg border border-red-500/20 bg-red-500/5 p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-red-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <AlertCircle className="w-3.5 h-3.5" /> Drug Interactions
-                </span>
-                {'severity' in interactionResult && (
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                    String(interactionResult.severity) === 'critical' ? 'bg-red-600/30 text-red-300' :
-                    String(interactionResult.severity) === 'high' ? 'bg-orange-500/20 text-orange-400' :
-                    String(interactionResult.severity) === 'moderate' ? 'bg-yellow-500/20 text-yellow-400' :
-                    'bg-green-500/20 text-green-400'
-                  }`}>
-                    {String(interactionResult.severity)}
-                  </span>
-                )}
-              </div>
-              {'message' in interactionResult ? (
-                <p className="text-xs text-gray-400">{String(interactionResult.message)}</p>
-              ) : (
-                <>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="lens-card text-center">
-                      <p className="text-xs text-gray-500">Checked</p>
-                      <p className="text-sm font-bold text-white">{String(interactionResult.medicationsChecked ?? 0)}</p>
-                    </div>
-                    <div className="lens-card text-center">
-                      <p className="text-xs text-gray-500">Interactions</p>
-                      <p className={`text-sm font-bold ${Number(interactionResult.interactionsFound) > 0 ? 'text-red-400' : 'text-green-400'}`}>
-                        {String(interactionResult.interactionsFound ?? 0)}
-                      </p>
-                    </div>
-                  </div>
-                  {Array.isArray(interactionResult.interactions) && (interactionResult.interactions as Array<Record<string, unknown>>).length > 0 && (
-                    <div className="space-y-2">
-                      {(interactionResult.interactions as Array<Record<string, unknown>>).map((ix, i) => (
-                        <div key={i} className="rounded bg-white/5 p-2 space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-mono text-red-300">{String(ix.drug1)}</span>
-                            <span className="text-gray-600">+</span>
-                            <span className="text-xs font-mono text-red-300">{String(ix.drug2)}</span>
-                            <span className={`ml-auto text-[10px] px-1.5 py-0.5 rounded-full ${
-                              String(ix.severity) === 'critical' ? 'bg-red-600/30 text-red-300' :
-                              String(ix.severity) === 'high' ? 'bg-orange-500/20 text-orange-400' :
-                              'bg-yellow-500/20 text-yellow-400'
-                            }`}>{String(ix.severity)}</span>
-                          </div>
-                          <p className="text-xs text-gray-400">{String(ix.effect)}</p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {Number(interactionResult.interactionsFound) === 0 && (
-                    <div className="flex items-center gap-2 text-xs text-green-400">
-                      <CheckCircle2 className="w-4 h-4" /> No known interactions found
-                    </div>
-                  )}
-                </>
-              )}
-            </motion.div>
-          )}
-
-          {/* Dosage Calculator Result */}
-          {dosageResult && (
-            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-4 space-y-3">
-              <span className="text-xs font-semibold text-neon-cyan uppercase tracking-wider flex items-center gap-1.5">
-                <Activity className="w-3.5 h-3.5" /> Dosage Calculator
-              </span>
-              {'message' in dosageResult ? (
-                <p className="text-xs text-gray-400">{String(dosageResult.message)}</p>
-              ) : (
-                <>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      { label: 'Weight', value: `${String(dosageResult.weightKg)} kg` },
-                      { label: 'Dose/kg', value: `${String(dosageResult.dosePerKg)} mg/kg` },
-                      { label: 'Single Dose', value: String(dosageResult.singleDose) },
-                      { label: 'Frequency', value: String(dosageResult.frequency) },
-                    ].map(({ label, value }) => (
-                      <div key={label} className="lens-card">
-                        <p className="text-xs text-gray-500">{label}</p>
-                        <p className="text-sm font-mono font-bold text-white">{value}</p>
-                      </div>
-                    ))}
-                  </div>
-                  <div className={`rounded-lg p-3 flex items-center justify-between ${dosageResult.capped ? 'bg-orange-500/15 border border-orange-500/20' : 'bg-neon-cyan/10 border border-neon-cyan/20'}`}>
-                    <span className="text-xs text-gray-400">Daily Total</span>
-                    <span className={`text-base font-bold font-mono ${dosageResult.capped ? 'text-orange-400' : 'text-neon-cyan'}`}>
-                      {String(dosageResult.dailyDose)}
-                      {!!dosageResult.capped && <span className="text-xs ml-1 text-orange-300">(capped)</span>}
-                    </span>
-                  </div>
-                  {'disclaimer' in dosageResult && (
-                    <p className="text-[10px] text-gray-500 italic">{String(dosageResult.disclaimer)}</p>
-                  )}
-                </>
-              )}
-            </motion.div>
-          )}
-
-          {/* Inventory Alert Result */}
-          {inventoryResult && (
-            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-yellow-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <Package className="w-3.5 h-3.5" /> Inventory Alerts
-                </span>
-                {'allClear' in inventoryResult && (
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${inventoryResult.allClear ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                    {inventoryResult.allClear ? 'All Clear' : 'Action Needed'}
-                  </span>
-                )}
-              </div>
-              {'message' in inventoryResult ? (
-                <p className="text-xs text-gray-400">{String(inventoryResult.message)}</p>
-              ) : (
-                <>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { label: 'Low Stock', value: String(inventoryResult.lowStock ?? 0), color: 'text-amber-400' },
-                      { label: 'Expired', value: String(inventoryResult.expired ?? 0), color: 'text-red-400' },
-                      { label: 'Near Expiry', value: String(inventoryResult.nearExpiry ?? 0), color: 'text-orange-400' },
-                    ].map(({ label, value, color }) => (
-                      <div key={label} className="lens-card text-center">
-                        <p className="text-xs text-gray-500">{label}</p>
-                        <p className={`text-sm font-bold ${color}`}>{value}</p>
-                      </div>
-                    ))}
-                  </div>
-                  {Array.isArray(inventoryResult.alerts) && (inventoryResult.alerts as Array<Record<string, unknown>>).length > 0 && (
-                    <div className="space-y-1.5">
-                      {(inventoryResult.alerts as Array<Record<string, unknown>>).map((alert, i) => (
-                        <div key={i} className="flex items-center gap-2 text-xs bg-white/5 rounded p-2">
-                          <Package className="w-3 h-3 text-yellow-400 shrink-0" />
-                          <span className="flex-1 text-gray-300">{String(alert.name)}</span>
-                          {!!alert.expired && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-500/20 text-red-400">Expired</span>}
-                          {!!alert.nearExpiry && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-orange-500/20 text-orange-400">{String(alert.daysToExpiry)}d</span>}
-                          {!!alert.lowStock && !alert.expired && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400">Low ({String(alert.quantity)})</span>}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </>
-              )}
-            </motion.div>
-          )}
-
-          {/* Formulary Search Result */}
-          {formularyResult && (
-            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-lg border border-green-500/20 bg-green-500/5 p-4 space-y-3">
-              <span className="text-xs font-semibold text-neon-green uppercase tracking-wider flex items-center gap-1.5">
-                <Search className="w-3.5 h-3.5" /> Formulary Search
-              </span>
-              {'message' in formularyResult ? (
-                <p className="text-xs text-gray-400">{String(formularyResult.message)}</p>
-              ) : (
-                <>
-                  <div className="flex items-center gap-2 text-xs text-gray-500">
-                    <span>Query: <span className="text-white font-mono">{String(formularyResult.query)}</span></span>
-                    <span className="ml-auto">{String(formularyResult.found)} / {String(formularyResult.formularySize)} found</span>
-                  </div>
-                  {Array.isArray(formularyResult.matches) && (formularyResult.matches as Array<Record<string, unknown>>).length > 0 ? (
-                    <div className="space-y-1.5">
-                      {(formularyResult.matches as Array<Record<string, unknown>>).slice(0, 10).map((m, i) => (
-                        <div key={i} className="flex items-center gap-2 text-xs bg-white/5 rounded p-2">
-                          <ShieldCheck className={`w-3 h-3 shrink-0 ${m.covered ? 'text-green-400' : 'text-red-400'}`} />
-                          <span className="flex-1 text-gray-300">{String(m.generic)}{m.brand ? ` (${String(m.brand)})` : ''}</span>
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-500/20 text-gray-400">Tier {String(m.tier)}</span>
-                          {!!m.priorAuth && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400">PA</span>}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-gray-500">No formulary matches found.</p>
-                  )}
-                </>
-              )}
-            </motion.div>
-          )}
-        </div>
-      </motion.div>
-
       <UniversalActions domain="pharmacy" artifactId={undefined} compact />
       <DTUExportButton domain="pharmacy" data={{}} compact />
-
-      {/* Search */}
-      <div className="relative">
-        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-        <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search medications..." className="w-full bg-black/30 border border-white/10 rounded-lg pl-9 pr-3 py-2 text-sm" />
-      </div>
 
       {/* Tab Navigation */}
       <div className="flex gap-2 border-b border-white/10 pb-2">
@@ -506,7 +254,6 @@ export default function PharmacyLensPage() {
                     </div>
                     <p className="text-xs text-gray-400 mt-1">{med.dosage} - {med.frequency} - {med.route}</p>
                   </div>
-                  <button onClick={() => update(med.id, { data: { status: med.status === 'active' ? 'discontinued' : 'active' } })} className="text-xs px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-gray-400 mr-2">{med.status === 'active' ? 'Discontinue' : 'Reactivate'}</button>
                   <button onClick={() => remove(med.id)} className="text-gray-500 hover:text-red-400"><Trash2 className="w-4 h-4" /></button>
                 </motion.div>
               ))}
@@ -519,19 +266,9 @@ export default function PharmacyLensPage() {
       {/* Interactions Tab */}
       {activeTab === 'interactions' && (
         <div className="space-y-4">
-          <div className="flex gap-2">
-            <button onClick={checkInteractions} className="px-4 py-2 bg-amber-500/20 text-amber-400 rounded-lg text-sm hover:bg-amber-500/30">
-              <AlertTriangle className="w-4 h-4 inline mr-1" /> Check Interactions
-            </button>
-            <button onClick={() => {
-              const activeNames = medications.filter(m => m.status === 'active').map(m => m.name || m.title);
-              if (activeNames.length >= 2) {
-                createInteraction({ title: activeNames.join(' + '), data: { drugs: activeNames, severity: 'unknown', description: 'Manual interaction note - please verify with pharmacist' } });
-              }
-            }} className="px-4 py-2 bg-white/5 text-gray-400 rounded-lg text-sm hover:bg-white/10">
-              <Plus className="w-4 h-4 inline mr-1" /> Add Note
-            </button>
-          </div>
+          <button onClick={checkInteractions} className="px-4 py-2 bg-amber-500/20 text-amber-400 rounded-lg text-sm hover:bg-amber-500/30">
+            <AlertTriangle className="w-4 h-4 inline mr-1" /> Check Interactions
+          </button>
           <div className="panel p-4">
             <h3 className="font-semibold mb-3">Known Interactions</h3>
             {interactions.length === 0 ? (
@@ -580,7 +317,7 @@ export default function PharmacyLensPage() {
       <div className="border-t border-white/10">
         <button
           onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
+          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-400 hover:text-white transition-colors"
         >
           <span className="flex items-center gap-2"><Layers className="w-4 h-4" /> Lens Features & Capabilities</span>
           <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />

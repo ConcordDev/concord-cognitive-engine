@@ -3,25 +3,8 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { use70Lock } from '@/hooks/use70Lock';
 import { useState } from 'react';
-import {
-  Lock,
-  Unlock,
-  Shield,
-  Eye,
-  AlertTriangle,
-  Check,
-  Key,
-  Loader2,
-  Layers,
-  ChevronDown,
-  Gauge,
-  ShieldAlert,
-  Ban,
-  Activity,
-  Play,
-} from 'lucide-react';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { motion } from 'framer-motion';
+import { Lock, Unlock, Shield, Eye, AlertTriangle, Check, Key, Loader2, Layers, ChevronDown, Gauge, ShieldAlert, Ban, Activity } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { apiHelpers } from '@/lib/api/client';
 import { useMutation } from '@tanstack/react-query';
@@ -275,6 +258,55 @@ export default function LockLensPage() {
         />
       </motion.div>
 
+      {/* Stat Cards Row */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="lens-card text-center">
+          <Lock className="w-5 h-5 text-neon-cyan mx-auto mb-2" />
+          <p className="text-2xl font-bold text-neon-cyan">{invariants.length}</p>
+          <p className="text-sm text-gray-400">Total Invariants</p>
+        </motion.div>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="lens-card text-center">
+          <Key className="w-5 h-5 text-neon-purple mx-auto mb-2" />
+          <p className="text-2xl font-bold text-neon-purple">{lockHistory.length}</p>
+          <p className="text-sm text-gray-400">Audit Events</p>
+        </motion.div>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="lens-card text-center">
+          <Shield className="w-5 h-5 text-neon-green mx-auto mb-2" />
+          <p className="text-2xl font-bold text-neon-green">100%</p>
+          <p className="text-sm text-gray-400">Enforcement Rate</p>
+        </motion.div>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="lens-card text-center">
+          {isLocked ? <Lock className="w-5 h-5 text-neon-green mx-auto mb-2" /> : <Unlock className="w-5 h-5 text-neon-pink mx-auto mb-2" />}
+          <p className={`text-2xl font-bold ${isLocked ? 'text-neon-green' : 'text-neon-pink'}`}>{isLocked ? 'Locked' : 'Open'}</p>
+          <p className="text-sm text-gray-400">Lock State</p>
+        </motion.div>
+      </div>
+
+      {/* Lock Status Indicator */}
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.25 }}
+        className={`panel p-4 flex items-center gap-4 border-l-4 ${
+          isLocked ? 'border-l-green-500 bg-green-500/5' : lockPercentage >= 50 ? 'border-l-amber-500 bg-amber-500/5' : 'border-l-red-500 bg-red-500/5'
+        }`}
+      >
+        <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+          isLocked ? 'bg-green-500/20' : lockPercentage >= 50 ? 'bg-amber-500/20' : 'bg-red-500/20'
+        }`}>
+          {isLocked ? <Lock className="w-6 h-6 text-green-400" /> : <Unlock className="w-6 h-6 text-amber-400" />}
+        </div>
+        <div className="flex-1">
+          <p className="font-semibold">{isLocked ? 'Sovereignty Locked' : 'Sovereignty Unlocked'}</p>
+          <p className="text-xs text-gray-400">
+            {isLocked
+              ? 'All sovereignty invariants are enforced. System is protected.'
+              : `Lock percentage at ${lockPercentage}% -- below 70% threshold. Action required.`
+            }
+          </p>
+        </div>
+        <span className={`w-3 h-3 rounded-full animate-pulse ${
+          isLocked ? 'bg-green-500' : lockPercentage >= 50 ? 'bg-amber-500' : 'bg-red-500'
+        }`} />
+      </motion.div>
+
       {/* AI Actions */}
       <UniversalActions domain="lock" artifactId={historyItems[0]?.id} compact />
       {/* Lock Gauge */}
@@ -300,32 +332,17 @@ export default function LockLensPage() {
 
       {/* Invariant Summary */}
       <div className="grid grid-cols-3 gap-4">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="lens-card text-center"
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="lens-card text-center">
           <Check className="w-6 h-6 text-neon-green mx-auto mb-2" />
           <p className="text-2xl font-bold text-neon-green">{invariantSummary.enforced}</p>
           <p className="text-sm text-gray-400">Enforced</p>
         </motion.div>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.35 }}
-          className="lens-card text-center"
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="lens-card text-center">
           <AlertTriangle className="w-6 h-6 text-yellow-500 mx-auto mb-2" />
           <p className="text-2xl font-bold text-yellow-500">{invariantSummary.warning}</p>
           <p className="text-sm text-gray-400">Warning</p>
         </motion.div>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="lens-card text-center"
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="lens-card text-center">
           <AlertTriangle className="w-6 h-6 text-neon-pink mx-auto mb-2" />
           <p className="text-2xl font-bold text-neon-pink">{invariantSummary.violated}</p>
           <p className="text-sm text-gray-400">Violated</p>
@@ -340,22 +357,11 @@ export default function LockLensPage() {
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {invariants.map((inv, idx) => (
-            <motion.div
-              key={inv.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx * 0.05 }}
-              className="flex items-center gap-3 p-3 bg-lattice-deep rounded-lg"
-            >
-              <span
-                className={`w-3 h-3 rounded-full ${
-                  inv.status === 'enforced'
-                    ? 'bg-neon-green'
-                    : inv.status === 'warning'
-                      ? 'bg-yellow-500'
-                      : 'bg-neon-pink'
-                }`}
-              />
+            <motion.div key={inv.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }} className="flex items-center gap-3 p-3 bg-lattice-deep rounded-lg">
+              <span className={`w-3 h-3 rounded-full ${
+                inv.status === 'enforced' ? 'bg-neon-green' :
+                inv.status === 'warning' ? 'bg-yellow-500' : 'bg-neon-pink'
+              }`} />
               <div className="flex-1">
                 <p className="font-mono text-sm">{inv.name}</p>
                 <p className="text-xs text-gray-500">{inv.description}</p>
@@ -398,11 +404,7 @@ export default function LockLensPage() {
         ) : (
           <div className="space-y-2">
             {lockHistory.map((entry, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.05 }}
+              <motion.div key={i} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
                 className="flex items-center justify-between p-3 bg-lattice-deep rounded-lg relative"
               >
                 {/* Audit log timeline connector */}

@@ -11,7 +11,7 @@
  * - Earnings summary for creators
  */
 
-import { useState, useCallback, useRef, useMemo, useEffect, Suspense } from 'react';
+import { useState, useCallback, useRef, useMemo, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -779,6 +779,21 @@ function WalletPageInner() {
         )}
       </AnimatePresence>
 
+      {/* Transfer Modal */}
+      <AnimatePresence>
+        {showTransfer && (
+          <TransferFlow
+            balance={balance}
+            onClose={() => setShowTransfer(false)}
+            onSuccess={() => {
+              queryClient.invalidateQueries({ queryKey: ['wallet-balance'] });
+              queryClient.invalidateQueries({ queryKey: ['wallet-transactions'] });
+              queryClient.invalidateQueries({ queryKey: ['economy-balance'] });
+            }}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Wallet Actions Panel */}
       <div className="p-4 border-t border-lattice-border bg-lattice-surface/30">
         <div className="flex items-center justify-between mb-3">
@@ -1126,12 +1141,6 @@ function TransferFlow({
   const [amount, setAmount] = useState('');
   const [step, setStep] = useState<'input' | 'confirm' | 'loading' | 'success' | 'error'>('input');
   const [errorMessage, setErrorMessage] = useState('');
-  const transferAbortRef = useRef<AbortController | null>(null);
-
-  // Abort in-flight transfer on unmount (e.g. navigation away)
-  useEffect(() => {
-    return () => { transferAbortRef.current?.abort(); };
-  }, []);
 
   const TRANSFER_FEE_RATE = 0.0146; // 1.46% transfer fee
   const parsedAmount = parseInt(amount, 10) || 0;
@@ -1141,15 +1150,12 @@ function TransferFlow({
 
   const handleTransfer = async () => {
     if (!isValid) return;
-    transferAbortRef.current?.abort();
-    const abortController = new AbortController();
-    transferAbortRef.current = abortController;
     setStep('loading');
     try {
       const res = await api.post('/api/economy/transfer', {
         to: recipientId.trim(),
         amount: parsedAmount,
-      }, { signal: abortController.signal });
+      });
       const data = res.data as { ok?: boolean; error?: string };
       if (data.ok) {
         setStep('success');

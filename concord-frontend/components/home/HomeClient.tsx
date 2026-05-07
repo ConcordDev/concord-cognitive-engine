@@ -45,22 +45,9 @@ import { InspectorDrawer } from '@/components/guidance/InspectorDrawer';
 import { useUIStore } from '@/store/ui';
 import { CORE_LENSES } from '@/lib/lens-registry';
 import {
-  Activity,
-  Zap,
-  Compass,
-  TrendingUp,
-  Heart,
-  Globe,
-  MessageSquare,
-  Layout,
-  Share2,
-  Code,
-  Music,
-  Crown,
-  Ghost,
-  Archive,
-  Layers,
-  Moon,
+  Activity, Zap, Compass, TrendingUp, Heart, Globe,
+  MessageSquare, Layout, Share2, Code, Music,
+  Crown, Ghost, Archive, Layers, Moon,
 } from 'lucide-react';
 import { use70Lock } from '@/hooks/use70Lock';
 import { MorningBrief } from '@/components/brief/MorningBrief';
@@ -194,30 +181,19 @@ function HomeClient() {
 function DreamForgettingIndicators() {
   const { data: dreamData } = useQuery({
     queryKey: ['dream-topics'],
-    queryFn: () =>
-      api
-        .get('/api/dream/history', { params: { limit: 5 } })
-        .then((r) => r.data)
-        .catch(() => null),
+    queryFn: () => api.get('/api/dream/history', { params: { limit: 5 } }).then(r => r.data).catch(() => null),
     refetchInterval: 60000,
     retry: false,
   });
   const { data: forgettingData } = useQuery({
     queryKey: ['forgetting-status-home'],
-    queryFn: () =>
-      api
-        .get('/api/admin/forgetting/status')
-        .then((r) => r.data)
-        .catch(() => null),
+    queryFn: () => api.get('/api/admin/forgetting/status').then(r => r.data).catch(() => null),
     refetchInterval: 60000,
     retry: false,
   });
 
   const dreams = (dreamData?.dreams || []) as Array<{ title?: string; tags?: string[] }>;
-  const dreamTopics = dreams
-    .slice(0, 3)
-    .map((d) => d.title || d.tags?.[0] || 'unknown')
-    .filter(Boolean);
+  const dreamTopics = dreams.slice(0, 3).map(d => d.title || d.tags?.[0] || 'unknown').filter(Boolean);
   const forgottenCount = forgettingData?.lifetimeForgotten || 0;
   const threshold = forgettingData?.threshold || 0;
 
@@ -328,11 +304,7 @@ function DashboardPage() {
   // DTU tier stats (Feature 10)
   const { data: dtuStats, isLoading: dtuStatsLoading } = useQuery({
     queryKey: ['dtu-tier-stats'],
-    queryFn: () =>
-      apiHelpers.dtus
-        .stats()
-        .then((r) => r.data)
-        .catch(() => null),
+    queryFn: () => apiHelpers.dtus.stats().then((r) => r.data).catch(() => null),
     refetchInterval: 30_000,
     retry: 1,
     staleTime: 15_000,
@@ -353,11 +325,7 @@ function DashboardPage() {
   // Also fetch graph visual data as fallback (uses /api/graph/visual)
   const { data: rawGraphVisualData } = useQuery({
     queryKey: ['graph-visual-home'],
-    queryFn: () =>
-      apiHelpers.graph
-        .visual({ limit: 200 })
-        .then((r) => r.data)
-        .catch(() => null),
+    queryFn: () => apiHelpers.graph.visual({ limit: 200 }).then((r) => r.data).catch(() => null),
     retry: 1,
     staleTime: 30000,
     enabled: !rawGraphData?.nodes?.length,
@@ -554,37 +522,37 @@ function DashboardPage() {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-7 gap-2">
             <TierStatCard
               label="Total"
-              value={dtuStatsLoading ? '...' : (dtuStats.totalCount ?? 0)}
+              value={dtuStatsLoading ? '...' : dtuStats.totalCount ?? 0}
               icon={<Layers className="w-4 h-4" />}
               color="cyan"
             />
             <TierStatCard
               label="Shadow"
-              value={dtuStatsLoading ? '...' : (dtuStats.shadowCount ?? 0)}
+              value={dtuStatsLoading ? '...' : dtuStats.shadowCount ?? 0}
               icon={<Ghost className="w-4 h-4" />}
               color="gray"
             />
             <TierStatCard
               label="Regular"
-              value={dtuStatsLoading ? '...' : (dtuStats.regularCount ?? 0)}
+              value={dtuStatsLoading ? '...' : dtuStats.regularCount ?? 0}
               icon={<Zap className="w-4 h-4" />}
               color="blue"
             />
             <TierStatCard
               label="MEGA"
-              value={dtuStatsLoading ? '...' : (dtuStats.megaCount ?? 0)}
+              value={dtuStatsLoading ? '...' : dtuStats.megaCount ?? 0}
               icon={<Crown className="w-4 h-4" />}
               color="purple"
             />
             <TierStatCard
               label="HYPER"
-              value={dtuStatsLoading ? '...' : (dtuStats.hyperCount ?? 0)}
+              value={dtuStatsLoading ? '...' : dtuStats.hyperCount ?? 0}
               icon={<Zap className="w-4 h-4" />}
               color="pink"
             />
             <TierStatCard
               label="Archived"
-              value={dtuStatsLoading ? '...' : (dtuStats.archivedCount ?? 0)}
+              value={dtuStatsLoading ? '...' : dtuStats.archivedCount ?? 0}
               icon={<Archive className="w-4 h-4" />}
               color="gray"
             />
@@ -765,24 +733,9 @@ function DashboardPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {dtus
-              .slice(0, 6)
-              .map(
-                (dtu: {
-                  id: string;
-                  tier: 'regular' | 'mega' | 'hyper' | 'shadow';
-                  summary: string;
-                  timestamp: string;
-                  resonance?: number;
-                  tags?: string[];
-                }) => (
-                  <DTUEmpireCard
-                    key={dtu.id}
-                    dtu={dtu}
-                    onClick={(d) => setInspecting({ type: 'dtu', id: d.id })}
-                  />
-                )
-              )}
+            {dtus.slice(0, 6).map((dtu: { id: string; tier: 'regular' | 'mega' | 'hyper' | 'shadow'; summary: string; timestamp: string; resonance?: number; tags?: string[] }) => (
+              <DTUEmpireCard key={dtu.id} dtu={dtu} onClick={(d) => setInspecting({ type: 'dtu', id: d.id })} />
+            ))}
             {dtus.length === 0 && (
               <div className="col-span-full text-center py-10">
                 <p className="text-gray-400 mb-1">No DTUs yet</p>
@@ -801,21 +754,11 @@ function DashboardPage() {
             Suggestions
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {guidanceData.suggestions
-              .slice(0, 4)
-              .map(
-                (
-                  s: { id?: string; title?: string; message?: string; action?: string },
-                  i: number
-                ) => (
-                  <div
-                    key={s.id || i}
-                    className="p-3 rounded-lg bg-lattice-deep border border-lattice-border/50 text-sm text-gray-300"
-                  >
-                    {s.title || s.message || s.action || 'Suggestion'}
-                  </div>
-                )
-              )}
+            {guidanceData.suggestions.slice(0, 4).map((s: { id?: string; title?: string; message?: string; action?: string }, i: number) => (
+              <div key={s.id || i} className="p-3 rounded-lg bg-lattice-deep border border-lattice-border/50 text-sm text-gray-300">
+                {s.title || s.message || s.action || 'Suggestion'}
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -898,37 +841,15 @@ function MetricCard({
   );
 }
 
-function QueueStatsRow({
-  status,
-  statusLoading,
-}: {
-  status: Record<string, unknown> | null | undefined;
-  statusLoading: boolean;
-}) {
+function QueueStatsRow({ status, statusLoading }: { status: Record<string, unknown> | null | undefined; statusLoading: boolean }) {
   const [expanded, setExpanded] = useState(false);
   const queues = [
-    {
-      label: 'Ingest Queue',
-      value: ((status?.queues as Record<string, unknown>)?.ingest as number) || 0,
-      color: 'blue' as const,
-    },
-    {
-      label: 'Autocrawl',
-      value: ((status?.queues as Record<string, unknown>)?.autocrawl as number) || 0,
-      color: 'purple' as const,
-    },
-    {
-      label: 'Domains',
-      value: (((status?.macro as Record<string, unknown>)?.domains as unknown[]) || []).length || 0,
-      color: 'cyan' as const,
-    },
-    {
-      label: 'Wallets',
-      value: ((status?.counts as Record<string, unknown>)?.wallets as number) || 0,
-      color: 'green' as const,
-    },
+    { label: 'Ingest Queue', value: (status?.queues as Record<string, unknown>)?.ingest as number || 0, color: 'blue' as const },
+    { label: 'Autocrawl', value: (status?.queues as Record<string, unknown>)?.autocrawl as number || 0, color: 'purple' as const },
+    { label: 'Domains', value: ((status?.macro as Record<string, unknown>)?.domains as unknown[] || []).length || 0, color: 'cyan' as const },
+    { label: 'Wallets', value: (status?.counts as Record<string, unknown>)?.wallets as number || 0, color: 'green' as const },
   ];
-  const allZero = !statusLoading && queues.every((q) => q.value === 0);
+  const allZero = !statusLoading && queues.every(q => q.value === 0);
 
   if (allZero && !expanded) {
     return (
@@ -944,6 +865,17 @@ function QueueStatsRow({
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+      {queues.map(q => (
+        <QueueCard key={q.label} label={q.label} value={q.value} color={q.color} loading={statusLoading} />
+      ))}
+    </div>
+  );
+}
+
+function QueueCard({ label, value, color, loading }: { label: string; value: number; color: 'blue' | 'purple' | 'cyan' | 'green'; loading?: boolean }) {
+  const colorClasses = { blue: 'text-neon-blue', purple: 'text-neon-purple', cyan: 'text-neon-cyan', green: 'text-neon-green' };
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
       {queues.map((q) => (
         <QueueCard
           key={q.label}
@@ -957,42 +889,10 @@ function QueueStatsRow({
   );
 }
 
-function QueueCard({
-  label,
-  value,
-  color,
-  loading,
-}: {
-  label: string;
-  value: number;
-  color: 'blue' | 'purple' | 'cyan' | 'green';
-  loading?: boolean;
-}) {
-  const colorClasses = {
-    blue: 'text-neon-blue',
-    purple: 'text-neon-purple',
-    cyan: 'text-neon-cyan',
-    green: 'text-neon-green',
-  };
-  return (
-    <div className="rounded-lg border border-lattice-border bg-lattice-surface/30 p-3">
-      <p className="text-xs text-gray-500">{label}</p>
-      <p className={`text-lg font-bold font-mono ${colorClasses[color]}`}>
-        {loading ? <span className="animate-pulse">...</span> : value}
-      </p>
-    </div>
-  );
-}
-
 function TierStatCard({
-  label,
-  value,
-  icon,
-  color,
+  label, value, icon, color,
 }: {
-  label: string;
-  value: string | number;
-  icon?: React.ReactNode;
+  label: string; value: string | number; icon?: React.ReactNode;
   color: 'blue' | 'purple' | 'pink' | 'green' | 'cyan' | 'gray';
 }) {
   const colorMap = {
@@ -1015,7 +915,3 @@ function TierStatCard({
     </div>
   );
 }
-
-import { withErrorBoundary } from '@/components/common/ErrorBoundary';
-const _WrappedHomeClient = withErrorBoundary(HomeClient);
-export { _WrappedHomeClient as HomeClient };

@@ -1,19 +1,20 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
-import { useLensData } from '@/lib/hooks/use-lens-data';
+import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import {
-  Shield, Plus, Search, Trash2,
-  BarChart3, AlertTriangle,
+  Shield, Plus, Search, X, Edit3, Trash2, Filter,
+  BarChart3, AlertTriangle, CheckCircle2, ChevronRight,
   Layers, ChevronDown, MapPin, Users, Radio,
-  Target, Crosshair, Lock, Eye, ShieldCheck, Activity, Zap,
+  Target, Crosshair, Radar, Siren, Lock,
+  FileText, Clock, Eye, ShieldCheck, Activity,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -118,7 +119,7 @@ export default function DefenseLensPage() {
 
   const [activeMode, setActiveMode] = useState<ModeTab>('Dashboard');
   const [searchQuery, setSearchQuery] = useState('');
-  const [showFeatures, setShowFeatures] = useState(true);
+  const [showFeatures, setShowFeatures] = useState(false);
   const [showEditor, setShowEditor] = useState(false);
 
   const currentType = getTypeForTab(activeMode);
@@ -134,30 +135,6 @@ export default function DefenseLensPage() {
   const { items: intel } = useLensData<IntelData>('defense', 'Intel', { seed: [] });
 
   const runAction = useRunArtifact('defense');
-
-  const [actionError, setActionError] = useState<string | null>(null);
-
-  const handleAction = useCallback((artifactId: string) => {
-    setActionError(null);
-    runAction.mutate(
-      { id: artifactId, action: 'analyze' },
-      {
-        onError: (e) => {
-          console.error('Action failed:', e);
-          setActionError(`Action failed: ${e instanceof Error ? e.message : 'Unknown error'}`);
-        },
-      }
-    );
-  }, [runAction]);
-
-  const handleCreate = useCallback(() => {
-    create({ title: `New ${currentType}`, data: {} as ArtifactDataUnion });
-    setShowEditor(false);
-  }, [create, currentType]);
-
-  const handleUpdate = useCallback((id: string, data: ArtifactDataUnion) => {
-    update(id, { data });
-  }, [update]);
 
   // Dashboard stats
   const stats = useMemo(() => ({
@@ -208,15 +185,8 @@ export default function DefenseLensPage() {
         </div>
       </header>
 
-      {actionError && (
-        <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-2 text-sm text-red-400 flex items-center justify-between">
-          <span>{actionError}</span>
-          <button onClick={() => setActionError(null)} className="text-red-400 hover:text-red-300 ml-2">&times;</button>
-        </div>
-      )}
-
       {/* Tabs */}
-      <div className="flex gap-1 bg-zinc-900 rounded-lg p-1 flex-wrap">
+      <div className="flex gap-1 bg-zinc-900 rounded-lg p-1 overflow-x-auto">
         {MODE_TABS.map(({ key, label, icon: Icon }) => (
           <button key={key} onClick={() => setActiveMode(key)}
             className={cn('flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors',
@@ -259,18 +229,6 @@ export default function DefenseLensPage() {
         </button>
       </div>
 
-      {/* Editor Panel */}
-      {showEditor && (
-        <div className="p-4 bg-zinc-900 rounded-lg border border-zinc-800 space-y-3">
-          <h3 className="text-sm font-semibold text-white">Create {currentType}</h3>
-          <p className="text-xs text-gray-400">This will create a new {currentType.toLowerCase()} entry.</p>
-          <div className="flex gap-2">
-            <button onClick={handleCreate} className="px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-lg text-sm">Create</button>
-            <button onClick={() => setShowEditor(false)} className="px-3 py-1.5 text-gray-400 hover:text-white text-sm">Cancel</button>
-          </div>
-        </div>
-      )}
-
       {/* Dashboard */}
       {activeMode === 'Dashboard' && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -300,12 +258,6 @@ export default function DefenseLensPage() {
                 )}
               </div>
               <div className="flex items-center gap-1">
-                <button onClick={() => handleAction(item.id)} className="p-1.5 hover:bg-zinc-800 rounded text-gray-500 hover:text-cyan-400" title="Run AI analysis">
-                  <Zap className="w-3.5 h-3.5" />
-                </button>
-                <button onClick={() => handleUpdate(item.id, item.data as ArtifactDataUnion)} className="p-1.5 hover:bg-zinc-800 rounded text-gray-500 hover:text-blue-400" title="Update">
-                  <Eye className="w-3.5 h-3.5" />
-                </button>
                 <button onClick={() => remove(item.id)} className="p-1.5 hover:bg-zinc-800 rounded text-gray-500 hover:text-red-400">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
@@ -336,7 +288,7 @@ export default function DefenseLensPage() {
       {/* Lens Features */}
       <div className="border-t border-white/10">
         <button onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg">
+          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-400 hover:text-white transition-colors">
           <span className="flex items-center gap-2"><Layers className="w-4 h-4" /> Lens Features</span>
           <ChevronDown className={cn('w-4 h-4 transition-transform', showFeatures && 'rotate-180')} />
         </button>

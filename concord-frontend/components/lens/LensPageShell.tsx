@@ -141,11 +141,7 @@ export function LensPageShell({
   }
 
   return (
-    <div
-      data-testid="lens-shell"
-      data-lens-theme={domain}
-      className={`px-3 py-4 sm:p-6 space-y-4 sm:space-y-6 ${className ?? ''}`}
-    >
+    <div data-lens-theme={domain} className={`px-3 py-4 sm:p-6 space-y-4 sm:space-y-6 ${className ?? ''}`}>
       {/* Header */}
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">

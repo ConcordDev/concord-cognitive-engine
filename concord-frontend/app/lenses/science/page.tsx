@@ -45,7 +45,7 @@ import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
-import { LensFeedPanel } from '@/components/feeds/LensFeedPanel';
+import { CodeEngineStatus } from '@/components/admin/CodeEngineStatus';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -1785,54 +1785,28 @@ export default function ScienceLensPage() {
 
       {/* Quick Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0 * 0.05 }}
-          className="panel p-3 flex items-center gap-3"
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 * 0.05 }} className="panel p-3 flex items-center gap-3">
           <FlaskConical className="w-5 h-5 text-neon-purple" />
           <div>
             <p className="text-lg font-bold">{experiments.length}</p>
             <p className="text-xs text-gray-500">Experiments</p>
           </div>
         </motion.div>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1 * 0.05 }}
-          className="panel p-3 flex items-center gap-3"
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1 * 0.05 }} className="panel p-3 flex items-center gap-3">
           <BookOpen className="w-5 h-5 text-neon-green" />
           <div>
             <p className="text-lg font-bold">{publications.length}</p>
             <p className="text-xs text-gray-500">Published</p>
           </div>
         </motion.div>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 2 * 0.05 }}
-          className="panel p-3 flex items-center gap-3"
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 2 * 0.05 }} className="panel p-3 flex items-center gap-3">
           <FileText className="w-5 h-5 text-neon-blue" />
           <div>
-            <p className="text-lg font-bold">
-              {publications.reduce(
-                (s, p) =>
-                  s + (((p.data as unknown as Record<string, unknown>)?.citations as number) || 0),
-                0
-              )}
-            </p>
+            <p className="text-lg font-bold">{publications.reduce((s, p) => s + ((p.data as Record<string, unknown>)?.citations as number || 0), 0)}</p>
             <p className="text-xs text-gray-500">Citations</p>
           </div>
         </motion.div>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 3 * 0.05 }}
-          className="panel p-3 flex items-center gap-3"
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 3 * 0.05 }} className="panel p-3 flex items-center gap-3">
           <TestTubes className="w-5 h-5 text-neon-cyan" />
           <div>
             <p className="text-lg font-bold">{samples.length}</p>

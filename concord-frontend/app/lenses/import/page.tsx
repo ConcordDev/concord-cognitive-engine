@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
-import { Upload, FileJson, Database, Check, AlertTriangle, Loader2, FileText, Archive, RefreshCw, Layers, ChevronDown, Clock, CheckCircle2, Download, BarChart3, Map, Search, GitMerge } from 'lucide-react';
+import { Upload, FileJson, Database, Check, AlertTriangle, Loader2, FileText, Archive, RefreshCw, Layers, ChevronDown, Clock, CheckCircle2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -776,20 +776,10 @@ export default function ImportLens() {
                   </div>
                 )}
 
-                <div className="flex items-center justify-between mt-2">
-                  <p className="text-void-500 text-xs">
-                    Started: {new Date(job.started_at).toLocaleString()}
-                    {job.completed_at && ` | Completed: ${new Date(job.completed_at).toLocaleString()}`}
-                  </p>
-                  {(job.status === 'importing' || job.status === 'pending') && (
-                    <button
-                      onClick={() => updateJob(job.id, { data: { ...job, status: 'completed', progress: 100, completed_at: new Date().toISOString() } as unknown as Record<string, unknown> })}
-                      className="text-xs px-2 py-1 bg-neon-green/10 text-neon-green rounded hover:bg-neon-green/20 transition-colors"
-                    >
-                      Mark Complete
-                    </button>
-                  )}
-                </div>
+                <p className="text-void-500 text-xs mt-2">
+                  Started: {new Date(job.started_at).toLocaleString()}
+                  {job.completed_at && ` | Completed: ${new Date(job.completed_at).toLocaleString()}`}
+                </p>
               </motion.div>
             ))}
           </div>

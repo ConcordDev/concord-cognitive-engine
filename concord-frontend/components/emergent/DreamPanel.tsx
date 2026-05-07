@@ -25,29 +25,17 @@ function DreamPanel() {
   );
 
   useEffect(() => {
-    apiHelpers.dream
-      .history(10)
-      .then((resp) => {
-        setDreams(resp.data?.dreams || []);
-      })
-      .catch((err) => {
-        console.error('[Dream] Failed to load history:', err);
-        showToast('error', 'Failed to load dream history');
-      });
+    apiHelpers.dream.history(10).then((resp) => {
+      setDreams(resp.data?.dreams || []);
+    }).catch(err => console.error('[Dream] Failed to load history:', err));
 
     const socket = getSocket();
     const handler = (data: { id: string; title: string; convergence: boolean }) => {
       setLastCapture({ convergence: data.convergence, title: data.title });
       // Refresh list
-      apiHelpers.dream
-        .history(10)
-        .then((resp) => {
-          setDreams(resp.data?.dreams || []);
-        })
-        .catch((err) => {
-          console.error('[Dream] Failed to refresh history:', err);
-          showToast('error', 'Failed to load dream history');
-        });
+      apiHelpers.dream.history(10).then((resp) => {
+        setDreams(resp.data?.dreams || []);
+      }).catch(err => console.error('[Dream] Failed to refresh history:', err));
     };
     socket.on('dream:captured', handler);
     return () => {

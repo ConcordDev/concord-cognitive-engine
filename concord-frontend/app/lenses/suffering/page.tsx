@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { AlertTriangle, Heart, Brain, Zap, TrendingDown, Shield, Layers, ChevronDown, Activity, Compass, Plus, Trash2, Loader2 } from 'lucide-react';
+import { AlertTriangle, Heart, Brain, Zap, TrendingDown, Shield, Layers, ChevronDown, Activity, Compass } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -51,13 +51,16 @@ export default function SufferingLensPage() {
     remove(id);
   }, [remove]);
 
+  const { items: wellbeingItems, isLoading, isError: isError, error: error, refetch: refetch, create, update, remove } = useLensData<Record<string, unknown>>('suffering', 'metric', { seed: [] });
+  const runAction = useRunArtifact('suffering');
+
   // Backend: GET /api/status
-  const { data: status } = useQuery({
-    queryKey: ['backend-status'],
+  const { data: _status } = useQuery({
+    queryKey: ['_status'],
     queryFn: () => api.get('/api/status').then((r) => r.data),
   });
 
-  // Chicken2 metrics (derived from backend status or defaults)
+  // Chicken2 metrics (derived from wellbeing artifacts or defaults)
   const metrics = {
     suffering: status?.suffering ?? 0.15,
     homeostasis: status?.homeostasis ?? 0.82,
@@ -138,35 +141,6 @@ export default function SufferingLensPage() {
 
       {/* AI Actions */}
       <UniversalActions domain="suffering" artifactId={undefined} compact />
-
-      {/* Wellbeing Items CRUD */}
-      <div className="panel p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="font-semibold flex items-center gap-2">
-            <Activity className="w-4 h-4 text-neon-cyan" /> Tracked Wellbeing Items
-            {runAction.isPending && <Loader2 className="w-4 h-4 animate-spin text-neon-cyan" />}
-          </h3>
-          <button onClick={handleCreate} className="flex items-center gap-1.5 px-3 py-1.5 bg-neon-cyan/20 text-neon-cyan rounded-lg text-sm hover:bg-neon-cyan/30">
-            <Plus className="w-4 h-4" /> Add Item
-          </button>
-        </div>
-        {wellbeingItems.length === 0 ? (
-          <p className="text-gray-500 text-sm text-center py-4">No wellbeing items tracked yet.</p>
-        ) : (
-          <div className="space-y-2">
-            {wellbeingItems.map(item => (
-              <div key={item.id} className="flex items-center justify-between p-2 rounded-lg bg-white/5">
-                <span className="text-sm">{item.title}</span>
-                <div className="flex items-center gap-2">
-                  <button onClick={() => handleAction(item.id)} className="text-gray-500 hover:text-neon-cyan" title="Run AI analysis"><Zap className="w-4 h-4" /></button>
-                  <button onClick={() => handleUpdate(item.id, { ...(item.data || {}), lastReviewed: new Date().toISOString() })} className="text-gray-500 hover:text-neon-blue" title="Update"><Activity className="w-4 h-4" /></button>
-                  <button onClick={() => handleRemove(item.id)} className="text-gray-500 hover:text-red-400" title="Delete"><Trash2 className="w-4 h-4" /></button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
 
       {/* Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

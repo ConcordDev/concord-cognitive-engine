@@ -10,50 +10,15 @@ import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
-  CalendarDays,
-  MapPin,
-  Plus,
-  Search,
-  Filter,
-  X,
-  Edit2,
-  Trash2,
-  Ticket,
-  Star,
-  DollarSign,
-  Users,
-  Clock,
-  CheckCircle2,
-  AlertTriangle,
-  Building2,
-  Utensils,
-  Speaker,
-  Palette,
-  Camera,
-  Shield,
-  BarChart3,
-  FileText,
-  Play,
-  MessageCircle,
-  ListChecks,
-  PieChart,
-  ArrowUpRight,
-  ArrowDownRight,
-  Crown,
-  Gift,
-  ClipboardList,
-  Sparkles,
-  Phone,
-  Mail,
-  PartyPopper,
-  Briefcase,
-  Heart,
-  Theater,
-  School,
-  UtensilsCrossed,
-  Armchair,
-  Layers,
-  ChevronDown,
+  CalendarDays, MapPin, Plus, Search, Filter, X, Edit2, Trash2,
+  Ticket, Star, DollarSign, Users, Clock, CheckCircle2, AlertTriangle,
+  Building2, Utensils, Speaker, Palette, Camera, Shield, Music,
+  BarChart3, FileText, Play, MessageCircle,
+  ListChecks, PieChart, ArrowUpRight,
+  ArrowDownRight, Crown, Gift, ClipboardList, Sparkles,
+  Phone, Mail, PartyPopper, Briefcase, Heart,
+  Theater, School, UtensilsCrossed, Armchair,
+  Layers, ChevronDown,
 } from 'lucide-react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -412,7 +377,7 @@ export default function EventsLensPage() {
       const updatedAttendees = [...attendees, userId];
       await updateEvent(eventItem.id, {
         title: eventItem.title,
-        data: { ...d, attendees: updatedAttendees, registered: Number(d.registered || 0) + 1 },
+        data: { ...d, attendees: updatedAttendees, registered: (Number(d.registered || 0)) + 1 },
         meta: eventItem.meta,
       });
       // Create calendar event via calendar lens
@@ -432,9 +397,7 @@ export default function EventsLensPage() {
           },
           meta: { status: 'confirmed' },
         });
-      } catch (e) {
-        console.warn('Calendar sync failed (optional):', e);
-      }
+      } catch { /* calendar sync optional */ }
       // Announce event RSVP via social post
       try {
         const { api: apiClient } = await import('@/lib/api/client');
@@ -443,9 +406,7 @@ export default function EventsLensPage() {
           mediaType: 'text',
           tags: ['event', 'rsvp'],
         });
-      } catch (e) {
-        console.warn('Social post failed (optional):', e);
-      }
+      } catch { /* social post optional */ }
       setRsvpSuccess(eventItem.id);
     } catch (err) {
       console.error('RSVP failed:', err);
@@ -469,14 +430,7 @@ export default function EventsLensPage() {
     return map[mode] || [];
   }, [mode, events, venues, vendors, guests, runofshows, budgets, tickets]);
 
-  const isLoading =
-    eventsLoading ||
-    venuesLoading ||
-    vendorsLoading ||
-    guestsLoading ||
-    rosLoading ||
-    budgetLoading ||
-    ticketsLoading;
+  const isLoading = eventsLoading || venuesLoading || vendorsLoading || guestsLoading || rosLoading || budgetLoading || ticketsLoading;
 
   // Filtering
   const filtered = useMemo(() => {
@@ -501,23 +455,14 @@ export default function EventsLensPage() {
   // CRUD helpers
   const getCrud = () => {
     switch (mode) {
-      case 'events':
-      case 'dashboard':
-        return { create: createEvent, update: updateEvent, remove: removeEvent };
-      case 'venues':
-        return { create: createVenue, update: updateVenue, remove: removeVenue };
-      case 'vendors':
-        return { create: createVendor, update: updateVendor, remove: removeVendor };
-      case 'guests':
-        return { create: createGuest, update: updateGuest, remove: removeGuest };
-      case 'runofshow':
-        return { create: createROS, update: updateROS, remove: removeROS };
-      case 'budget':
-        return { create: createBudget, update: updateBudget, remove: removeBudget };
-      case 'tickets':
-        return { create: createTicket, update: updateTicket, remove: removeTicket };
-      default:
-        return { create: createEvent, update: updateEvent, remove: removeEvent };
+      case 'events': case 'dashboard': return { create: createEvent, update: updateEvent, remove: removeEvent };
+      case 'venues': return { create: createVenue, update: updateVenue, remove: removeVenue };
+      case 'vendors': return { create: createVendor, update: updateVendor, remove: removeVendor };
+      case 'guests': return { create: createGuest, update: updateGuest, remove: removeGuest };
+      case 'runofshow': return { create: createROS, update: updateROS, remove: removeROS };
+      case 'budget': return { create: createBudget, update: updateBudget, remove: removeBudget };
+      case 'tickets': return { create: createTicket, update: updateTicket, remove: removeTicket };
+      default: return { create: createEvent, update: updateEvent, remove: removeEvent };
     }
   };
 
@@ -592,9 +537,7 @@ export default function EventsLensPage() {
             mediaType: 'text',
             tags: ['event', 'new-event', String(data.eventType || 'social')],
           });
-        } catch (e) {
-          console.warn('Social announcement failed (optional):', e);
-        }
+        } catch { /* social announcement optional */ }
       }
     }
     resetForm();
@@ -682,114 +625,75 @@ export default function EventsLensPage() {
     options?: string[];
   }> => {
     switch (mode) {
-      case 'events':
-      case 'dashboard':
-        return [
-          {
-            key: 'eventType',
-            label: 'Event Type',
-            type: 'select',
-            options: EVENT_TYPES.map((t) => t.id),
-          },
-          { key: 'date', label: 'Start Date', type: 'date' },
-          { key: 'endDate', label: 'End Date', type: 'date' },
-          { key: 'time', label: 'Start Time' },
-          { key: 'venue', label: 'Venue' },
-          { key: 'location', label: 'Location / Address' },
-          { key: 'capacity', label: 'Capacity' },
-          { key: 'ticketPrice', label: 'Ticket Price in CC (0 = free)' },
-          { key: 'description', label: 'Description', type: 'textarea' },
-          { key: 'ticketTiers', label: 'Ticket Tiers (comma-separated)' },
-        ];
-      case 'venues':
-        return [
-          { key: 'address', label: 'Address' },
-          { key: 'capacity', label: 'Max Capacity' },
-          { key: 'rooms', label: 'Rooms / Areas (comma-separated)' },
-          {
-            key: 'setupOptions',
-            label: 'Setup Options',
-            type: 'select',
-            options: VENUE_SETUPS.map((s) => s.id),
-          },
-          { key: 'rentalCost', label: 'Rental Cost ($)' },
-          { key: 'amenities', label: 'Included Amenities' },
-          { key: 'restrictions', label: 'Restrictions', type: 'textarea' },
-          { key: 'contactPhone', label: 'Contact Phone' },
-          { key: 'contactEmail', label: 'Contact Email' },
-        ];
-      case 'vendors':
-        return [
-          {
-            key: 'category',
-            label: 'Category',
-            type: 'select',
-            options: VENDOR_CATEGORIES.map((c) => c.id),
-          },
-          { key: 'contactName', label: 'Contact Name' },
-          { key: 'phone', label: 'Phone' },
-          { key: 'email', label: 'Email' },
-          { key: 'contractCost', label: 'Contract Cost ($)' },
-          {
-            key: 'paymentStatus',
-            label: 'Payment Status',
-            type: 'select',
-            options: ['pending', 'partial', 'paid', 'overdue'],
-          },
-          { key: 'paidAmount', label: 'Amount Paid ($)' },
-          { key: 'setupTime', label: 'Setup Time' },
-          { key: 'teardownTime', label: 'Teardown Time' },
-          {
-            key: 'insuranceVerified',
-            label: 'Insurance Verified',
-            type: 'select',
-            options: ['true', 'false'],
-          },
-          { key: 'assignedEvent', label: 'Assigned Event' },
-          { key: 'notes', label: 'Notes', type: 'textarea' },
-        ];
-      case 'guests':
-        return [
-          { key: 'email', label: 'Email' },
-          { key: 'phone', label: 'Phone' },
-          { key: 'eventName', label: 'Event' },
-          {
-            key: 'rsvpStatus',
-            label: 'RSVP Status',
-            type: 'select',
-            options: ['confirmed', 'pending', 'declined'],
-          },
-          { key: 'tableAssignment', label: 'Table Assignment' },
-          { key: 'dietaryRestrictions', label: 'Dietary Restrictions' },
-          { key: 'notes', label: 'Notes', type: 'textarea' },
-        ];
-      case 'runofshow':
-        return [
-          { key: 'eventName', label: 'Event Name' },
-          { key: 'date', label: 'Date', type: 'date' },
-        ];
-      case 'budget':
-        return [
-          { key: 'eventName', label: 'Event Name' },
-          { key: 'totalBudget', label: 'Total Budget ($)' },
-          { key: 'attendeeCount', label: 'Expected Attendees' },
-        ];
-      case 'tickets':
-        return [
-          { key: 'eventName', label: 'Event Name' },
-          { key: 'tierName', label: 'Tier Name' },
-          { key: 'price', label: 'Price ($)' },
-          { key: 'totalAvailable', label: 'Total Available' },
-          { key: 'sold', label: 'Sold' },
-          { key: 'waitlist', label: 'Waitlist Count' },
-          { key: 'compTickets', label: 'Comp Tickets' },
-          { key: 'saleStart', label: 'Sale Start', type: 'date' },
-          { key: 'saleEnd', label: 'Sale End', type: 'date' },
-          { key: 'description', label: 'Description' },
-          { key: 'perks', label: 'Perks / Includes' },
-        ];
-      default:
-        return [];
+      case 'events': case 'dashboard': return [
+        { key: 'eventType', label: 'Event Type', type: 'select', options: EVENT_TYPES.map(t => t.id) },
+        { key: 'date', label: 'Start Date', type: 'date' },
+        { key: 'endDate', label: 'End Date', type: 'date' },
+        { key: 'time', label: 'Start Time' },
+        { key: 'venue', label: 'Venue' },
+        { key: 'location', label: 'Location / Address' },
+        { key: 'capacity', label: 'Capacity' },
+        { key: 'ticketPrice', label: 'Ticket Price in CC (0 = free)' },
+        { key: 'description', label: 'Description', type: 'textarea' },
+        { key: 'ticketTiers', label: 'Ticket Tiers (comma-separated)' },
+      ];
+      case 'venues': return [
+        { key: 'address', label: 'Address' },
+        { key: 'capacity', label: 'Max Capacity' },
+        { key: 'rooms', label: 'Rooms / Areas (comma-separated)' },
+        { key: 'setupOptions', label: 'Setup Options', type: 'select', options: VENUE_SETUPS.map(s => s.id) },
+        { key: 'rentalCost', label: 'Rental Cost ($)' },
+        { key: 'amenities', label: 'Included Amenities' },
+        { key: 'restrictions', label: 'Restrictions', type: 'textarea' },
+        { key: 'contactPhone', label: 'Contact Phone' },
+        { key: 'contactEmail', label: 'Contact Email' },
+      ];
+      case 'vendors': return [
+        { key: 'category', label: 'Category', type: 'select', options: VENDOR_CATEGORIES.map(c => c.id) },
+        { key: 'contactName', label: 'Contact Name' },
+        { key: 'phone', label: 'Phone' },
+        { key: 'email', label: 'Email' },
+        { key: 'contractCost', label: 'Contract Cost ($)' },
+        { key: 'paymentStatus', label: 'Payment Status', type: 'select', options: ['pending', 'partial', 'paid', 'overdue'] },
+        { key: 'paidAmount', label: 'Amount Paid ($)' },
+        { key: 'setupTime', label: 'Setup Time' },
+        { key: 'teardownTime', label: 'Teardown Time' },
+        { key: 'insuranceVerified', label: 'Insurance Verified', type: 'select', options: ['true', 'false'] },
+        { key: 'assignedEvent', label: 'Assigned Event' },
+        { key: 'notes', label: 'Notes', type: 'textarea' },
+      ];
+      case 'guests': return [
+        { key: 'email', label: 'Email' },
+        { key: 'phone', label: 'Phone' },
+        { key: 'eventName', label: 'Event' },
+        { key: 'rsvpStatus', label: 'RSVP Status', type: 'select', options: ['confirmed', 'pending', 'declined'] },
+        { key: 'tableAssignment', label: 'Table Assignment' },
+        { key: 'dietaryRestrictions', label: 'Dietary Restrictions' },
+        { key: 'notes', label: 'Notes', type: 'textarea' },
+      ];
+      case 'runofshow': return [
+        { key: 'eventName', label: 'Event Name' },
+        { key: 'date', label: 'Date', type: 'date' },
+      ];
+      case 'budget': return [
+        { key: 'eventName', label: 'Event Name' },
+        { key: 'totalBudget', label: 'Total Budget ($)' },
+        { key: 'attendeeCount', label: 'Expected Attendees' },
+      ];
+      case 'tickets': return [
+        { key: 'eventName', label: 'Event Name' },
+        { key: 'tierName', label: 'Tier Name' },
+        { key: 'price', label: 'Price ($)' },
+        { key: 'totalAvailable', label: 'Total Available' },
+        { key: 'sold', label: 'Sold' },
+        { key: 'waitlist', label: 'Waitlist Count' },
+        { key: 'compTickets', label: 'Comp Tickets' },
+        { key: 'saleStart', label: 'Sale Start', type: 'date' },
+        { key: 'saleEnd', label: 'Sale End', type: 'date' },
+        { key: 'description', label: 'Description' },
+        { key: 'perks', label: 'Perks / Includes' },
+      ];
+      default: return [];
     }
   };
 
@@ -1083,14 +987,7 @@ export default function EventsLensPage() {
             const evtType = EVENT_TYPES.find((t) => t.id === d.eventType);
             const EvtIcon = evtType?.icon || CalendarDays;
             return (
-              <motion.div
-                key={item.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className={ds.panelHover}
-                onClick={() => setDetailId(item.id)}
-              >
+              <motion.div key={item.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }} className={ds.panelHover} onClick={() => setDetailId(item.id)}>
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex items-center gap-2 min-w-0">
                     <EvtIcon className="w-5 h-5 text-neon-pink shrink-0" />
@@ -1128,6 +1025,17 @@ export default function EventsLensPage() {
                       <MapPin className="w-3 h-3 text-gray-500 ml-1" />
                       <span className="text-xs text-gray-500 truncate">{String(d.location)}</span>
                     </>
+                  )}
+                </div>
+                <ProgressBar value={Number(d.registered || 0)} max={Number(d.capacity || 1)} color="neon-pink" />
+                {/* Ticket price indicator */}
+                <div className="flex items-center gap-2 mt-2">
+                  <Ticket className="w-3.5 h-3.5 text-neon-green" />
+                  <span className="text-xs text-neon-green font-medium">
+                    {Number(d.ticketPrice || 0) === 0 ? 'Free' : `${Number(d.ticketPrice)} CC`}
+                  </span>
+                  {Boolean(d.location) && (
+                    <><MapPin className="w-3 h-3 text-gray-500 ml-1" /><span className="text-xs text-gray-500 truncate">{String(d.location)}</span></>
                   )}
                 </div>
                 <div className="flex items-center justify-between pt-2 mt-2 border-t border-lattice-border">
@@ -1251,9 +1159,7 @@ export default function EventsLensPage() {
               <div className="flex items-center gap-2">
                 <Ticket className="w-5 h-5 text-neon-green" />
                 <span className="font-semibold text-sm">
-                  {Number(d.ticketPrice || 0) === 0
-                    ? 'Free Event'
-                    : `${Number(d.ticketPrice)} CC per ticket`}
+                  {Number(d.ticketPrice || 0) === 0 ? 'Free Event' : `${Number(d.ticketPrice)} CC per ticket`}
                 </span>
               </div>
               {((): React.ReactNode => {
@@ -1263,39 +1169,25 @@ export default function EventsLensPage() {
                 const alreadyRSVP = attendees.includes('current-user');
                 return (
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleRSVP(item);
-                    }}
+                    onClick={(e) => { e.stopPropagation(); handleRSVP(item); }}
                     disabled={!!rsvpLoading || isFull || alreadyRSVP}
                     className={cn(
                       'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all',
-                      alreadyRSVP
-                        ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                        : isFull
-                          ? 'bg-red-500/15 text-red-400 border border-red-500/30 cursor-not-allowed'
-                          : 'bg-neon-green/15 text-neon-green border border-neon-green/30 hover:bg-neon-green/25'
+                      alreadyRSVP ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
+                      isFull ? 'bg-red-500/15 text-red-400 border border-red-500/30 cursor-not-allowed' :
+                      'bg-neon-green/15 text-neon-green border border-neon-green/30 hover:bg-neon-green/25'
                     )}
                   >
                     {rsvpLoading === item.id ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-neon-green border-t-transparent rounded-full animate-spin" />{' '}
-                        Processing...
-                      </>
+                      <><div className="w-4 h-4 border-2 border-neon-green border-t-transparent rounded-full animate-spin" /> Processing...</>
                     ) : alreadyRSVP ? (
-                      <>
-                        <CheckCircle2 className="w-4 h-4" /> You&apos;re Going!
-                      </>
+                      <><CheckCircle2 className="w-4 h-4" /> You&apos;re Going!</>
                     ) : isFull ? (
                       'Sold Out'
                     ) : Number(d.ticketPrice || 0) === 0 ? (
-                      <>
-                        <Users className="w-4 h-4" /> RSVP (Free)
-                      </>
+                      <><Users className="w-4 h-4" /> RSVP (Free)</>
                     ) : (
-                      <>
-                        <Ticket className="w-4 h-4" /> Get Ticket ({Number(d.ticketPrice)} CC)
-                      </>
+                      <><Ticket className="w-4 h-4" /> Get Ticket ({Number(d.ticketPrice)} CC)</>
                     )}
                   </button>
                 );
@@ -1303,8 +1195,7 @@ export default function EventsLensPage() {
             </div>
             {rsvpSuccess === item.id && (
               <div className="flex items-center gap-2 p-3 mb-3 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400 text-sm">
-                <CheckCircle2 className="w-4 h-4" /> Ticket confirmed! A calendar event has been
-                created and your RSVP was posted.
+                <CheckCircle2 className="w-4 h-4" /> Ticket confirmed! A calendar event has been created and your RSVP was posted.
               </div>
             )}
             {/* Attendee count & list */}
@@ -1312,21 +1203,12 @@ export default function EventsLensPage() {
               const attendees = parseJsonSafe<string[]>(d.attendees, []);
               return attendees.length > 0 ? (
                 <div>
-                  <p className={cn(ds.textMuted, 'mb-2')}>
-                    {attendees.length} attendee{attendees.length !== 1 ? 's' : ''}
-                  </p>
+                  <p className={cn(ds.textMuted, 'mb-2')}>{attendees.length} attendee{attendees.length !== 1 ? 's' : ''}</p>
                   <div className="flex flex-wrap gap-1">
                     {attendees.slice(0, 20).map((a, i) => (
-                      <span
-                        key={i}
-                        className="text-xs px-2 py-1 rounded-full bg-lattice-elevated text-gray-300"
-                      >
-                        {a}
-                      </span>
+                      <span key={i} className="text-xs px-2 py-1 rounded-full bg-lattice-elevated text-gray-300">{a}</span>
                     ))}
-                    {attendees.length > 20 && (
-                      <span className="text-xs text-gray-500">+{attendees.length - 20} more</span>
-                    )}
+                    {attendees.length > 20 && <span className="text-xs text-gray-500">+{attendees.length - 20} more</span>}
                   </div>
                 </div>
               ) : (
@@ -1357,9 +1239,7 @@ export default function EventsLensPage() {
                   </div>
                   <div className="p-2 bg-lattice-elevated rounded-lg text-center">
                     <p className="text-xs text-gray-500">Remaining</p>
-                    <p className="text-lg font-bold">
-                      {Math.max(0, Number(d.capacity || 0) - attendees.length)}
-                    </p>
+                    <p className="text-lg font-bold">{Math.max(0, Number(d.capacity || 0) - attendees.length)}</p>
                   </div>
                 </div>
               </div>
@@ -2398,13 +2278,11 @@ export default function EventsLensPage() {
         <div className="text-center py-12">
           <ClipboardList className="w-10 h-10 text-gray-600 mx-auto mb-3" />
           <p className={ds.textMuted}>No guests found</p>
-          <button onClick={openCreate} className={cn(ds.btnGhost, 'mt-3')}>
-            <Plus className="w-4 h-4" /> Add Guest
-          </button>
+          <button onClick={openCreate} className={cn(ds.btnGhost, 'mt-3')}><Plus className="w-4 h-4" /> Add Guest</button>
         </div>
       ) : (
         <div className={ds.grid3}>
-          {filtered.map((item) => {
+          {filtered.map(item => {
             const d = item.data as Record<string, unknown>;
             const st = item.meta?.status as string;
             return (
@@ -2419,35 +2297,13 @@ export default function EventsLensPage() {
                 <div className="space-y-1 mb-3">
                   {Boolean(d.email) && <p className={ds.textMuted}>{String(d.email)}</p>}
                   {Boolean(d.phone) && <p className="text-xs text-gray-500">{String(d.phone)}</p>}
-                  {Boolean(d.dietaryRestrictions) && (
-                    <p className="text-xs text-amber-400">{String(d.dietaryRestrictions)}</p>
-                  )}
-                  {Boolean(d.tableAssignment) && (
-                    <p className="text-xs text-gray-400">Table: {String(d.tableAssignment)}</p>
-                  )}
-                  {Boolean(d.plusOne) && (
-                    <p className="text-xs text-neon-purple">+1: {String(d.plusOneName || 'Yes')}</p>
-                  )}
+                  {Boolean(d.dietaryRestrictions) && <p className="text-xs text-amber-400">{String(d.dietaryRestrictions)}</p>}
+                  {Boolean(d.tableAssignment) && <p className="text-xs text-gray-400">Table: {String(d.tableAssignment)}</p>}
+                  {Boolean(d.plusOne) && <p className="text-xs text-neon-purple">+1: {String(d.plusOneName || 'Yes')}</p>}
                 </div>
                 <div className="flex items-center justify-end gap-1 pt-2 border-t border-lattice-border mt-2">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openEdit(item.id);
-                    }}
-                    className={ds.btnGhost}
-                  >
-                    <Edit2 className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeGuest(item.id);
-                    }}
-                    className={cn(ds.btnGhost, 'hover:text-red-400')}
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  <button onClick={e => { e.stopPropagation(); openEdit(item.id); }} className={ds.btnGhost}><Edit2 className="w-3.5 h-3.5" /></button>
+                  <button onClick={e => { e.stopPropagation(); removeGuest(item.id); }} className={cn(ds.btnGhost, 'hover:text-red-400')}><Trash2 className="w-3.5 h-3.5" /></button>
                 </div>
               </div>
             );
@@ -2462,24 +2318,15 @@ export default function EventsLensPage() {
   // ---------------------------------------------------------------------------
   const renderContent = () => {
     switch (mode) {
-      case 'dashboard':
-        return renderDashboard();
-      case 'events':
-        return renderEventsList();
-      case 'venues':
-        return renderVenues();
-      case 'vendors':
-        return renderVendors();
-      case 'runofshow':
-        return renderRunOfShow();
-      case 'budget':
-        return renderBudget();
-      case 'tickets':
-        return renderTickets();
-      case 'guests':
-        return renderGuests();
-      default:
-        return null;
+      case 'dashboard': return renderDashboard();
+      case 'events': return renderEventsList();
+      case 'venues': return renderVenues();
+      case 'vendors': return renderVendors();
+      case 'runofshow': return renderRunOfShow();
+      case 'budget': return renderBudget();
+      case 'tickets': return renderTickets();
+      case 'guests': return renderGuests();
+      default: return null;
     }
   };
 
@@ -2536,6 +2383,32 @@ export default function EventsLensPage() {
             (s, e) => s + Number((e.data as Record<string, unknown>).registered || 0),
             0
           );
+          const rsvpRate = totalCap > 0 ? Math.round((totalReg / totalCap) * 100) : 0;
+          return [
+            { label: 'Upcoming', value: upcoming, icon: CalendarDays },
+            { label: 'Past Events', value: past, icon: CheckCircle2 },
+            { label: 'RSVP Rate', value: `${rsvpRate}%`, icon: Users },
+            { label: 'Total Events', value: allEvts.length, icon: Sparkles },
+          ].map((stat) => (
+            <div key={stat.label} className={ds.panel + ' flex items-center gap-3 p-3'}>
+              <stat.icon className="w-5 h-5 text-neon-pink shrink-0" />
+              <div>
+                <p className="text-xs text-gray-400">{stat.label}</p>
+                <p className="text-lg font-bold text-white">{stat.value}</p>
+              </div>
+            </div>
+          ));
+        })()}
+      </div>
+
+      {/* Quick Stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {(() => {
+          const allEvts = events;
+          const upcoming = allEvts.filter(e => e.meta?.status === 'planning' || e.meta?.status === 'confirmed').length;
+          const past = allEvts.filter(e => e.meta?.status === 'completed').length;
+          const totalCap = allEvts.reduce((s, e) => s + Number((e.data as Record<string, unknown>).capacity || 0), 0);
+          const totalReg = allEvts.reduce((s, e) => s + Number((e.data as Record<string, unknown>).registered || 0), 0);
           const rsvpRate = totalCap > 0 ? Math.round((totalReg / totalCap) * 100) : 0;
           return [
             { label: 'Upcoming', value: upcoming, icon: CalendarDays },
@@ -2699,52 +2572,14 @@ export default function EventsLensPage() {
                 </div>
                 <div>
                   <label className={ds.label}>Status</label>
-                  <select
-                    value={formStatus}
-                    onChange={(e) => setFormStatus(e.target.value)}
-                    className={ds.select}
-                  >
-                    {EVENT_STATUSES.map((s) => (
-                      <option key={s} value={s}>
-                        {s}
-                      </option>
-                    ))}
-                    {mode === 'guests' &&
-                      ['confirmed', 'pending', 'declined'].map((s) => (
-                        <option key={`g-${s}`} value={s}>
-                          {s}
-                        </option>
-                      ))}
-                    {mode === 'vendors' &&
-                      ['pending', 'partial', 'paid', 'overdue'].map((s) => (
-                        <option key={`v-${s}`} value={s}>
-                          {s}
-                        </option>
-                      ))}
-                    {mode === 'venues' &&
-                      ['available', 'booked', 'maintenance'].map((s) => (
-                        <option key={`ve-${s}`} value={s}>
-                          {s}
-                        </option>
-                      ))}
-                    {mode === 'runofshow' &&
-                      ['draft', 'finalized'].map((s) => (
-                        <option key={`r-${s}`} value={s}>
-                          {s}
-                        </option>
-                      ))}
-                    {mode === 'budget' &&
-                      ['active', 'draft', 'finalized'].map((s) => (
-                        <option key={`b-${s}`} value={s}>
-                          {s}
-                        </option>
-                      ))}
-                    {mode === 'tickets' &&
-                      ['active', 'completed', 'cancelled'].map((s) => (
-                        <option key={`t-${s}`} value={s}>
-                          {s}
-                        </option>
-                      ))}
+                  <select value={formStatus} onChange={e => setFormStatus(e.target.value)} className={ds.select}>
+                    {EVENT_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                    {mode === 'guests' && ['confirmed', 'pending', 'declined'].map(s => <option key={`g-${s}`} value={s}>{s}</option>)}
+                    {mode === 'vendors' && ['pending', 'partial', 'paid', 'overdue'].map(s => <option key={`v-${s}`} value={s}>{s}</option>)}
+                    {mode === 'venues' && ['available', 'booked', 'maintenance'].map(s => <option key={`ve-${s}`} value={s}>{s}</option>)}
+                    {mode === 'runofshow' && ['draft', 'finalized'].map(s => <option key={`r-${s}`} value={s}>{s}</option>)}
+                    {mode === 'budget' && ['active', 'draft', 'finalized'].map(s => <option key={`b-${s}`} value={s}>{s}</option>)}
+                    {mode === 'tickets' && ['active', 'completed', 'cancelled'].map(s => <option key={`t-${s}`} value={s}>{s}</option>)}
                   </select>
                 </div>
                 {getFormConfig().map((field) => (

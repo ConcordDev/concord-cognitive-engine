@@ -42,8 +42,6 @@ import { distributeFee, getFeeSplitBalances, getFeeDistributions } from "./fee-s
 import { runTreasuryReconciliation, getReconciliationHistory } from "./treasury-reconciliation.js";
 import { getSystemBalanceSummary } from "./balances.js";
 import { getDescendants } from "./royalty-cascade.js";
-import { initReservesSchema, allocateFromFee, getReserveHealth } from "./reserves.js";
-import { getUserStorage } from "../lib/storage-quota.js";
 
 /**
  * Register all economy + Stripe routes on the Express app.
@@ -1289,7 +1287,7 @@ export function registerEconomyRoutes(app, db, opts = {}) {
         citations = db.prepare(
           "SELECT COUNT(*) as c FROM royalty_lineage WHERE parent_creator = ?"
         ).get(userId)?.c || 0;
-      } catch (err) { console.warn('[economy/routes] reputation: could not count citations', { userId, err: err.message }); }
+      } catch { /* table may not exist */ }
 
       // Sales: count completed marketplace purchases as seller
       let sales = 0;
@@ -1298,7 +1296,7 @@ export function registerEconomyRoutes(app, db, opts = {}) {
           SELECT COUNT(*) as c FROM economy_ledger
           WHERE from_user_id != ? AND to_user_id = ? AND type = 'MARKETPLACE_PURCHASE' AND status = 'complete'
         `).get(userId, userId)?.c || 0;
-      } catch (err) { console.warn('[economy/routes] reputation: could not count sales', { userId, err: err.message }); }
+      } catch { /* no ledger yet */ }
 
       // Royalties: total royalty income
       let royalties = 0;
@@ -1306,7 +1304,7 @@ export function registerEconomyRoutes(app, db, opts = {}) {
         royalties = db.prepare(
           "SELECT COALESCE(SUM(amount), 0) as total FROM royalty_payouts WHERE recipient_id = ?"
         ).get(userId)?.total || 0;
-      } catch (err) { console.warn('[economy/routes] reputation: could not sum royalties', { userId, err: err.message }); }
+      } catch { /* table may not exist */ }
 
       // Community activity: posts, comments, follows (approximate from ledger + social tables)
       let community = 0;
@@ -1316,7 +1314,7 @@ export function registerEconomyRoutes(app, db, opts = {}) {
           "SELECT COUNT(*) as c FROM economy_ledger WHERE from_user_id = ? AND type IN ('TRANSFER', 'MARKETPLACE_PURCHASE') AND status = 'complete'"
         ).get(userId)?.c || 0;
         community = transfers;
-      } catch (err) { console.warn('[economy/routes] reputation: could not count community activity', { userId, err: err.message }); }
+      } catch { /* */ }
 
       // Score formula: weighted sum, capped at 1000
       const citationScore = Math.min(citations * 5, 250);
@@ -1651,10 +1649,12 @@ export function registerEconomyRoutes(app, db, opts = {}) {
   // KNOWLEDGE PACKS (bundled DTU collections)
   // ═══════════════════════════════════════════════════════════════════════════
 
-  app.post("/api/marketplace/pack", authRequired, (req, res) => {
+  app.post("/api/marketplace/pack", (req, res) => {
     try {
-      const sellerId = req.user.id;
+      const sellerId = req.body.seller_id || req.user?.id;
       const { name, description, dtu_ids, price } = req.body;
+
+      if (!sellerId) return res.status(400).json({ ok: false, error: "missing_seller_id" });
       if (!name || !name.trim()) return res.status(400).json({ ok: false, error: "missing_pack_name" });
       if (!Array.isArray(dtu_ids) || dtu_ids.length === 0) return res.status(400).json({ ok: false, error: "missing_dtu_ids" });
       if (!price || price <= 0) return res.status(400).json({ ok: false, error: "invalid_price" });

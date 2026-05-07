@@ -9,7 +9,7 @@ import { PublicDTUView } from './PublicDTUView';
  * Server-side data fetch for SEO + generateMetadata.
  */
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5050';
 
 async function fetchDTU(id: string) {
   try {
@@ -41,10 +41,8 @@ export async function generateMetadata({
 
   const title = dtu.title || dtu.name || 'Untitled DTU';
   const description =
-    (typeof dtu.content === 'string' ? dtu.content : dtu.summary || dtu.description || '').slice(
-      0,
-      200
-    ) || 'A thought unit on Concord OS';
+    (typeof dtu.content === 'string' ? dtu.content : dtu.summary || dtu.description || '')
+      .slice(0, 200) || 'A thought unit on Concord OS';
   const tierLabel = dtu.tier ? `${dtu.tier.toUpperCase()} DTU` : 'DTU';
 
   return {
@@ -73,20 +71,13 @@ export async function generateMetadata({
   };
 }
 
-export default async function PublicDTUPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function PublicDTUPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = await params;
-
-  let dtu = null;
-  let fetchError: string | null = null;
-  try {
-    dtu = await fetchDTU(id);
-  } catch (err) {
-    fetchError = err instanceof Error ? err.message : 'Failed to load';
-  }
-
-  if (fetchError) {
-    return <div className="p-8 text-center text-red-400">Error: {fetchError}</div>;
-  }
+  const dtu = await fetchDTU(id);
 
   return <PublicDTUView dtu={dtu} dtuId={id} />;
 }

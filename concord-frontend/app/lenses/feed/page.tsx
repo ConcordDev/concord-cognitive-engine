@@ -57,22 +57,9 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { VisionAnalyzeButton } from '@/components/common/VisionAnalyzeButton';
 import { ProvenanceBadge } from '@/components/dtu/ProvenanceBadge';
-import { ReportButton } from '@/components/common/ReportButton';
 import { StoriesBar } from '@/components/social/StoriesBar';
 import { SuggestedFollows } from '@/components/social/SuggestedFollows';
-import { PresenceIndicator } from '@/components/social/PresenceIndicator';
 import { SocialCommerceTag } from '@/components/social/SocialCommerceTag';
-import { CrossPostExternal } from '@/components/social/CrossPostExternal';
-import { Discovery } from '@/components/social/Discovery';
-import { PostScheduler } from '@/components/social/PostScheduler';
-import { TrendingTopics } from '@/components/social/TrendingTopics';
-import { UserProfile } from '@/components/social/UserProfile';
-import { PullToSubstrate } from '@/components/lens/PullToSubstrate';
-import { FeedBanner } from '@/components/lens/FeedBanner';
-import { StreakIndicator } from '@/components/social/StreakIndicator';
-import { NotificationCenter } from '@/components/social/NotificationCenter';
-import { DMIndicator } from '@/components/social/DMIndicator';
-import { GroupCard, GroupData } from '@/components/social/GroupCard';
 import { ShoppingBag, Tag } from 'lucide-react';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -137,13 +124,7 @@ interface FeedPost {
   dtuId?: string;
   dtuSource?: string;
   dtuMeta?: Record<string, unknown>;
-  taggedProducts?: {
-    listingId: string;
-    title: string;
-    price: number;
-    imageUrl?: string;
-    sellerId?: string;
-  }[];
+  taggedProducts?: { listingId: string; title: string; price: number; imageUrl?: string; sellerId?: string }[];
   linkedDTUs?: { dtuId: string; title: string; type?: string }[];
 }
 
@@ -343,16 +324,10 @@ function ArtGallery({ images }: { images: ArtAttachment['images'] }) {
 function CollabCard({ collab }: { collab: CollabAttachment }) {
   const spotsLeft = collab.maxParticipants - collab.participants;
   const joinMutation = useMutation({
-    mutationFn: () =>
-      apiHelpers.artistry.collab.sessions.join(collab.sessionName, { userId: 'current-user' }),
-    onSuccess: () =>
-      useUIStore
-        .getState()
-        .addToast({ type: 'success', message: `Joined "${collab.sessionName}"` }),
+    mutationFn: () => apiHelpers.artistry.collab.sessions.join(collab.sessionName, { userId: 'current-user' }),
+    onSuccess: () => useUIStore.getState().addToast({ type: 'success', message: `Joined "${collab.sessionName}"` }),
     onError: () => {
-      useUIStore
-        .getState()
-        .addToast({ type: 'error', message: 'Operation failed. Please try again.' });
+      useUIStore.getState().addToast({ type: 'error', message: 'Operation failed. Please try again.' });
     },
   });
   return (
@@ -461,9 +436,7 @@ export default function FeedLensPage() {
   // Product tagging state for compose
   const [showProductPicker, setShowProductPicker] = useState(false);
   const [productSearch, setProductSearch] = useState('');
-  const [taggedProducts, setTaggedProducts] = useState<
-    { listingId: string; title: string; price: number; imageUrl?: string; sellerId?: string }[]
-  >([]);
+  const [taggedProducts, setTaggedProducts] = useState<{ listingId: string; title: string; price: number; imageUrl?: string; sellerId?: string }[]>([]);
   const [purchaseLoading, setPurchaseLoading] = useState<string | null>(null);
   const [purchaseSuccess, setPurchaseSuccess] = useState<string | null>(null);
 
@@ -471,20 +444,13 @@ export default function FeedLensPage() {
   const { data: marketplaceListings } = useQuery({
     queryKey: ['marketplace-listings-picker', productSearch],
     queryFn: async () => {
-      const res = await api
-        .get('/api/marketplace-lens-registry/search', { params: { q: productSearch || 'all' } })
-        .catch(() => null);
+      const res = await api.get('/api/marketplace-lens-registry/search', { params: { q: productSearch || 'all' } }).catch(() => null);
       return res?.data?.results || [];
     },
     enabled: showProductPicker,
   });
 
-  const handleInlinePurchase = async (product: {
-    listingId: string;
-    title: string;
-    price: number;
-    sellerId?: string;
-  }) => {
+  const handleInlinePurchase = async (product: { listingId: string; title: string; price: number; sellerId?: string }) => {
     setPurchaseLoading(product.listingId);
     setPurchaseSuccess(null);
     try {
@@ -503,124 +469,55 @@ export default function FeedLensPage() {
     }
   };
 
-  const {
-    isError: isError,
-    error: error,
-    refetch: refetch,
-    items: postLensItems,
-    create: createLensPost,
-  } = useLensData<Record<string, unknown>>('feed', 'post', {
-    seed: INITIAL_POSTS.map((p) => ({
-      title: p.content?.slice(0, 80) || p.id,
-      data: p as unknown as Record<string, unknown>,
-    })),
+  const { isError: isError, error: error, refetch: refetch, items: postLensItems, create: createLensPost } = useLensData<Record<string, unknown>>('feed', 'post', {
+    seed: INITIAL_POSTS.map(p => ({ title: p.content?.slice(0, 80) || p.id, data: p as unknown as Record<string, unknown> })),
   });
 
-  // Fetch feed from social API with infinite scrolling + DTU fallback
-  const PAGE_SIZE = 20;
-  const {
-    data: feedPages,
-    isLoading,
-    isError: isError2,
-    error: error2,
-    refetch: refetch2,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = useInfiniteQuery<FeedPost[]>({
+  // Fetch feed from social API with DTU fallback
+  const { data: feedPosts, isLoading, isError: isError2, error: error2, refetch: refetch2,} = useQuery<FeedPost[]>({
     queryKey: ['feed-posts', activeTab],
-    initialPageParam: 0,
-    queryFn: async ({ pageParam }) => {
-      const offset = pageParam as number;
+    queryFn: async () => {
       try {
-        const endpoint =
-          activeTab === 'following'
-            ? '/api/social/feed/following'
-            : activeTab === 'trending'
-              ? '/api/social/feed/explore'
-              : '/api/social/feed/foryou';
-        const socialRes = await api
-          .get(endpoint, { params: { limit: PAGE_SIZE, offset } })
-          .catch(() => null);
+        const endpoint = activeTab === 'following' ? '/api/social/feed/following'
+          : activeTab === 'trending' ? '/api/social/feed/explore'
+          : '/api/social/feed/foryou';
+        const socialRes = await api.get(endpoint, { params: { limit: 50, offset: 0 } }).catch(() => null);
         const socialPosts = socialRes?.data?.posts || socialRes?.data || [];
         if (Array.isArray(socialPosts) && socialPosts.length > 0) {
           return socialPosts.map((p: Record<string, unknown>, i: number) => ({
-            id: (p.id as string) || `sp-${offset + i}`,
+            id: (p.id as string) || `sp-${i}`,
             type: ((p.mediaType as string) || 'text') as PostType,
-            author: {
-              id: (p.userId as string) || 'user',
-              name: (p.displayName as string) || 'User',
-              handle: (p.userId as string) || 'user',
-              gradient: pickGrad(offset + i),
-              verified: false,
-            },
+            author: { id: (p.userId as string) || 'user', name: (p.displayName as string) || 'User', handle: (p.userId as string) || 'user', gradient: pickGrad(i), verified: false },
             content: (p.content as string) || (p.title as string) || '',
             createdAt: (p.createdAt as string) || new Date().toISOString(),
-            likes: (p.reactionCount as number) || 0,
-            comments: (p.commentCount as number) || 0,
-            reposts: (p.shareCount as number) || 0,
-            shares: (p.shareCount as number) || 0,
-            views: (p.viewCount as number) || 0,
-            liked: false,
-            reposted: false,
-            bookmarked: false,
-            tags: (p.tags as string[]) || [],
-            dtuId: p.id as string,
+            likes: (p.reactionCount as number) || 0, comments: (p.commentCount as number) || 0,
+            reposts: (p.shareCount as number) || 0, shares: (p.shareCount as number) || 0, views: (p.viewCount as number) || 0,
+            liked: false, reposted: false, bookmarked: false,
+            tags: (p.tags as string[]) || [], dtuId: (p.id as string),
             taggedProducts: (p.taggedProducts as FeedPost['taggedProducts']) || [],
             linkedDTUs: (p.linkedDTUs as FeedPost['linkedDTUs']) || [],
           }));
         }
-        // Fallback: DTUs as posts (only on first page)
-        if (offset === 0) {
-          const dtuRes = await apiHelpers.dtus
-            .paginated({ limit: PAGE_SIZE })
-            .catch(() => ({ data: { dtus: [] } }));
-          if (dtuRes?.data?.dtus?.length) {
-            return dtuRes.data.dtus.map((dtu: Record<string, unknown>, i: number) => ({
-              id: dtu.id as string,
-              type: 'text' as PostType,
-              author: {
-                id: (dtu.authorId as string) || 'user',
-                name: (dtu.authorName as string) || 'User',
-                handle: (dtu.authorHandle as string) || 'user',
-                gradient: pickGrad(i),
-                verified: false,
-              },
-              content: (dtu.content as string)?.slice(0, 400) || (dtu.title as string) || '',
-              createdAt: (dtu.createdAt as string) || new Date().toISOString(),
-              likes: 0,
-              comments: 0,
-              reposts: 0,
-              shares: 0,
-              views: 0,
-              liked: false,
-              reposted: false,
-              bookmarked: false,
-              dtuId: dtu.id as string,
-              dtuSource: dtu.source as string | undefined,
-              dtuMeta: dtu.meta as Record<string, unknown> | undefined,
-            }));
-          }
-          return postLensItems.length > 0
-            ? postLensItems.map(
-                (li) =>
-                  ({ id: li.id, ...(li.data as Record<string, unknown>) }) as unknown as FeedPost
-              )
-            : [];
+        // Fallback: DTUs as posts
+        const dtuRes = await apiHelpers.dtus.paginated({ limit: 50 }).catch(() => ({ data: { dtus: [] } }));
+        if (dtuRes?.data?.dtus?.length) {
+          return dtuRes.data.dtus.map((dtu: Record<string, unknown>, i: number) => ({
+            id: dtu.id as string, type: 'text' as PostType,
+            author: { id: (dtu.authorId as string) || 'user', name: (dtu.authorName as string) || 'User', handle: (dtu.authorHandle as string) || 'user', gradient: pickGrad(i), verified: false },
+            content: (dtu.content as string)?.slice(0, 400) || (dtu.title as string) || '',
+            createdAt: (dtu.createdAt as string) || new Date().toISOString(),
+            likes: 0, comments: 0, reposts: 0, shares: 0, views: 0,
+            liked: false, reposted: false, bookmarked: false, dtuId: dtu.id as string,
+            dtuSource: dtu.source as string | undefined,
+            dtuMeta: dtu.meta as Record<string, unknown> | undefined,
+          }));
         }
-        return [];
+        return postLensItems.length > 0
+          ? postLensItems.map(li => ({ id: li.id, ...(li.data as Record<string, unknown>) } as unknown as FeedPost)) : [];
       } catch {
-        if (offset === 0 && postLensItems.length > 0) {
-          return postLensItems.map(
-            (li) => ({ id: li.id, ...(li.data as Record<string, unknown>) }) as unknown as FeedPost
-          );
-        }
-        return [];
+        return postLensItems.length > 0
+          ? postLensItems.map(li => ({ id: li.id, ...(li.data as Record<string, unknown>) } as unknown as FeedPost)) : [];
       }
-    },
-    getNextPageParam: (lastPage, allPages) => {
-      if (lastPage.length < PAGE_SIZE) return undefined;
-      return allPages.reduce((sum, page) => sum + page.length, 0);
     },
   });
   const feedPosts = useMemo(() => feedPages?.pages.flat() ?? [], [feedPages]);
@@ -634,33 +531,23 @@ export default function FeedLensPage() {
     queryKey: ['trending-topics'],
     queryFn: async () => {
       try {
-        const r = await api
-          .get('/api/social/topics/trending', { params: { limit: 10 } })
-          .catch(() => null);
+        const r = await api.get('/api/social/topics/trending', { params: { limit: 10 } }).catch(() => null);
         const topics = r?.data?.topics || r?.data || [];
         if (Array.isArray(topics) && topics.length > 0) {
           return topics.map((t: Record<string, unknown>, i: number) => ({
             id: `t-${i}`,
             tag: `#${(t.tag as string) || (t.topic as string) || ''}`,
-            category:
-              (t.category as string) || ['News', 'Tech', 'Community', 'Creative', 'Science'][i % 5],
+            category: (t.category as string) || ['Music', 'Production', 'Community', 'Tech', 'Visual'][i % 5],
             posts: (t.count as number) || (t.posts as number) || 0,
           }));
         }
         // Fallback: derive from DTU tags
         const dtuR = await apiHelpers.dtus.list().catch(() => ({ data: { dtus: [] } }));
         const allTags = new Set<string>();
-        (dtuR.data?.dtus || []).forEach((d: Record<string, unknown>) =>
-          ((d.tags as string[]) || []).forEach((t) => allTags.add(t))
-        );
-        return Array.from(allTags)
-          .slice(0, 5)
-          .map((tag, i) => ({
-            id: `t-${i}`,
-            tag: `#${tag}`,
-            category: ['News', 'Tech', 'Community', 'Creative', 'Science'][i % 5],
-            posts: 0,
-          }));
+        (dtuR.data?.dtus || []).forEach((d: Record<string, unknown>) => ((d.tags as string[]) || []).forEach(t => allTags.add(t)));
+        return Array.from(allTags).slice(0, 5).map((tag, i) => ({
+          id: `t-${i}`, tag: `#${tag}`, category: ['Music', 'Production', 'Community', 'Tech', 'Visual'][i % 5], posts: 0,
+        }));
       } catch {
         return [];
       }
@@ -668,32 +555,13 @@ export default function FeedLensPage() {
   });
 
   const postMutation = useMutation({
-    mutationFn: (content: string) =>
-      api.post('/api/social/post', {
-        content,
-        mediaType: 'text',
-        tags: [],
-        taggedProducts: taggedProducts.length > 0 ? taggedProducts : undefined,
-      }),
+    mutationFn: (content: string) => api.post('/api/social/post', {
+      content, mediaType: 'text', tags: [],
+      taggedProducts: taggedProducts.length > 0 ? taggedProducts : undefined,
+    }),
     onSuccess: (_data, content) => {
       queryClient.invalidateQueries({ queryKey: ['feed-posts'] });
-      createLensPost({
-        title: content.slice(0, 80),
-        data: {
-          content,
-          type: 'text',
-          taggedProducts,
-          createdAt: new Date().toISOString(),
-          likes: 0,
-          comments: 0,
-          reposts: 0,
-          shares: 0,
-          views: 0,
-          liked: false,
-          reposted: false,
-          bookmarked: false,
-        },
-      });
+      createLensPost({ title: content.slice(0, 80), data: { content, type: 'text', taggedProducts, createdAt: new Date().toISOString(), likes: 0, comments: 0, reposts: 0, shares: 0, views: 0, liked: false, reposted: false, bookmarked: false } });
       setTaggedProducts([]);
       setNewPost('');
     },
@@ -706,9 +574,7 @@ export default function FeedLensPage() {
     mutationFn: (postId: string) => api.post('/api/social/react', { postId, type: 'like' }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['feed-posts'] }),
     onError: () => {
-      useUIStore
-        .getState()
-        .addToast({ type: 'error', message: 'Operation failed. Please try again.' });
+      useUIStore.getState().addToast({ type: 'error', message: 'Operation failed. Please try again.' });
     },
   });
 
@@ -719,9 +585,7 @@ export default function FeedLensPage() {
       useUIStore.getState().addToast({ type: 'success', message: 'Reposted!' });
     },
     onError: () => {
-      useUIStore
-        .getState()
-        .addToast({ type: 'error', message: 'Operation failed. Please try again.' });
+      useUIStore.getState().addToast({ type: 'error', message: 'Operation failed. Please try again.' });
     },
   });
 
@@ -729,9 +593,7 @@ export default function FeedLensPage() {
     mutationFn: (postId: string) => api.post('/api/social/bookmark', { postId }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['feed-posts'] }),
     onError: () => {
-      useUIStore
-        .getState()
-        .addToast({ type: 'error', message: 'Operation failed. Please try again.' });
+      useUIStore.getState().addToast({ type: 'error', message: 'Operation failed. Please try again.' });
     },
   });
 
@@ -748,41 +610,7 @@ export default function FeedLensPage() {
       }
     },
     onError: () => {
-      useUIStore
-        .getState()
-        .addToast({ type: 'error', message: 'Operation failed. Please try again.' });
-    },
-  });
-
-  // Comment & post options state
-  const [expandedComments, setExpandedComments] = useState<string | null>(null);
-  const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
-  const [postComments, setPostComments] = useState<
-    Record<
-      string,
-      { id: string; userId: string; content: string; createdAt: string; replies?: unknown[] }[]
-    >
-  >({});
-  const [postMenuOpen, setPostMenuOpen] = useState<string | null>(null);
-
-  const commentMutation = useMutation({
-    mutationFn: ({ postId, content }: { postId: string; content: string }) =>
-      api.post('/api/social/comment', { postId, content }),
-    onSuccess: (_data, { postId }) => {
-      setCommentInputs((prev) => ({ ...prev, [postId]: '' }));
-      queryClient.invalidateQueries({ queryKey: ['feed-posts'] });
-      // Refetch comments for this post
-      api
-        .get(`/api/social/comments/${postId}`)
-        .then((res) => {
-          setPostComments((prev) => ({ ...prev, [postId]: res.data?.comments || [] }));
-        })
-        .catch((e) => {
-          console.warn('Failed to refetch comments:', e);
-        });
-    },
-    onError: () => {
-      useUIStore.getState().addToast({ type: 'error', message: 'Failed to add comment' });
+      useUIStore.getState().addToast({ type: 'error', message: 'Operation failed. Please try again.' });
     },
   });
 
@@ -869,50 +697,13 @@ export default function FeedLensPage() {
   ];
 
   const sidebarNav = [
-    {
-      icon: Home,
-      label: 'Home',
-      active: activeTab === 'for-you',
-      action: () => setActiveTab('for-you'),
-    },
-    {
-      icon: Search,
-      label: 'Explore',
-      active: activeTab === 'trending',
-      action: () => setActiveTab('trending'),
-    },
-    {
-      icon: Bell,
-      label: 'Notifications',
-      active: activeTab === ('notifications' as string),
-      action: () => setActiveTab('for-you' as FeedTab),
-    },
-    {
-      icon: Mail,
-      label: 'Messages',
-      active: false,
-      action: () => {
-        window.location.href = '/messages';
-      },
-    },
-    {
-      icon: Bookmark,
-      label: 'Bookmarks',
-      active: activeTab === ('bookmarks' as string),
-      action: () => setActiveTab('following' as FeedTab),
-    },
-    {
-      icon: User,
-      label: 'Profile',
-      active: showProfile,
-      action: () => setShowProfile((prev) => !prev),
-    },
-    {
-      icon: Rss,
-      label: 'Media',
-      active: activeTab === 'releases',
-      action: () => setActiveTab('releases'),
-    },
+    { icon: Home, label: 'Home', active: activeTab === 'for-you', action: () => setActiveTab('for-you') },
+    { icon: Search, label: 'Explore', active: activeTab === 'trending', action: () => setActiveTab('trending') },
+    { icon: Bell, label: 'Notifications', active: activeTab === 'notifications' as string, action: () => setActiveTab('for-you' as FeedTab) },
+    { icon: Mail, label: 'Messages', active: false, action: () => useUIStore.getState().addToast({ type: 'info', message: 'Requires direct messaging to be enabled' }) },
+    { icon: Bookmark, label: 'Bookmarks', active: activeTab === 'bookmarks' as string, action: () => setActiveTab('following' as FeedTab) },
+    { icon: User, label: 'Profile', active: false, action: () => { apiHelpers.social.getProfile('me').then(() => useUIStore.getState().addToast({ type: 'success', message: 'Profile loaded' })).catch(() => useUIStore.getState().addToast({ type: 'info', message: 'No profile yet. Create DTUs to build your profile.' })); } },
+    { icon: Music, label: 'Studio', active: activeTab === 'releases', action: () => setActiveTab('releases') },
   ];
 
   if (isError || isError2 || isError3) {
@@ -934,10 +725,8 @@ export default function FeedLensPage() {
       {/* ── Left Sidebar ──────────────────────────────────────────────────── */}
       <aside className="w-20 xl:w-64 border-r border-lattice-border/50 p-2 xl:p-4 flex flex-col items-center xl:items-start sticky top-0 h-screen overflow-y-auto bg-gradient-to-b from-lattice-surface to-lattice-bg">
         <div className="flex items-center gap-2 mb-8 p-3">
-          <Newspaper className="w-8 h-8 text-blue-400" />
-          <span className="hidden xl:inline text-lg font-bold text-white tracking-tight">
-            Concord
-          </span>
+          <Disc3 className="w-8 h-8 text-blue-400" />
+          <span className="hidden xl:inline text-lg font-bold text-white tracking-tight">Concord</span>
         </div>
 
         <nav className="flex flex-col gap-1 w-full">
@@ -988,17 +777,8 @@ export default function FeedLensPage() {
           <div className="flex items-center justify-between px-4 py-3">
             <h1 className="text-xl font-bold text-white">Feed</h1>
             <div className="flex items-center gap-2">
-              <StreakIndicator userId="current-user" className="mr-1" />
-              <DMIndicator userId="current-user" />
-              {dtusLoading && (
-                <span className="w-4 h-4 border-2 border-neon-cyan border-t-transparent rounded-full animate-spin" />
-              )}
-              <button
-                onClick={() => refetchDTUs()}
-                disabled={dtusLoading}
-                className="p-1 rounded hover:bg-lattice-surface/50 disabled:opacity-50 transition-colors"
-                title="Refresh DTUs"
-              >
+              {dtusLoading && <span className="w-4 h-4 border-2 border-neon-cyan border-t-transparent rounded-full animate-spin" />}
+              <button onClick={() => refetchDTUs()} disabled={dtusLoading} className="p-1 rounded hover:bg-lattice-surface/50 disabled:opacity-50 transition-colors" title="Refresh DTUs">
                 <Sparkles className="w-5 h-5 text-neon-cyan" />
               </button>
             </div>
@@ -1035,11 +815,6 @@ export default function FeedLensPage() {
             ))}
           </div>
         </header>
-
-        {/* Feed Banner */}
-        <div className="px-4 py-2 border-b border-lattice-border">
-          <FeedBanner domain="feed" />
-        </div>
 
         {/* Stories Bar — prominent with gradient border */}
         <StoriesBar
@@ -1097,30 +872,17 @@ export default function FeedLensPage() {
                   >
                     <BarChart3 className="w-5 h-5" />
                   </button>
-                  <button
-                    onClick={() => setShowProductPicker(!showProductPicker)}
-                    className={cn(
-                      'p-2 rounded-full hover:bg-neon-green/10 transition-colors',
-                      showProductPicker && 'bg-neon-green/10 text-neon-green'
-                    )}
-                    title="Tag Product"
-                  >
+                  <button onClick={() => setShowProductPicker(!showProductPicker)} className={cn("p-2 rounded-full hover:bg-neon-green/10 transition-colors", showProductPicker && "bg-neon-green/10 text-neon-green")} title="Tag Product">
                     <ShoppingBag className="w-5 h-5" />
                   </button>
-                  <button
-                    onClick={() => handleComposeHint('Link DTU')}
-                    className="p-2 rounded-full hover:bg-neon-purple/10 transition-colors text-neon-purple"
-                    title="Link DTU"
-                  >
+                  <button onClick={() => handleComposeHint('Link DTU')} className="p-2 rounded-full hover:bg-neon-purple/10 transition-colors text-neon-purple" title="Link DTU">
                     <Tag className="w-5 h-5" />
                   </button>
                   <VisionAnalyzeButton
                     domain="feed"
                     prompt="Describe this image for use as alt text in a social media post. Be concise but descriptive. Also suggest relevant hashtags."
                     onResult={(res) => {
-                      setNewPost((prev) =>
-                        prev ? `${prev}\n\n[Alt: ${res.analysis}]` : `[Alt: ${res.analysis}]`
-                      );
+                      setNewPost(prev => prev ? `${prev}\n\n[Alt: ${res.analysis}]` : `[Alt: ${res.analysis}]`);
                     }}
                   />
                 </div>
@@ -1136,21 +898,11 @@ export default function FeedLensPage() {
               {/* Tagged Products Display */}
               {taggedProducts.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {taggedProducts.map((p) => (
-                    <span
-                      key={p.listingId}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-neon-green/10 text-neon-green text-xs font-medium border border-neon-green/20"
-                    >
+                  {taggedProducts.map(p => (
+                    <span key={p.listingId} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-neon-green/10 text-neon-green text-xs font-medium border border-neon-green/20">
                       <ShoppingBag className="w-3 h-3" />
                       {p.title} ({p.price} CC)
-                      <button
-                        onClick={() =>
-                          setTaggedProducts((prev) =>
-                            prev.filter((tp) => tp.listingId !== p.listingId)
-                          )
-                        }
-                        className="ml-0.5 hover:text-red-400"
-                      >
+                      <button onClick={() => setTaggedProducts(prev => prev.filter(tp => tp.listingId !== p.listingId))} className="ml-0.5 hover:text-red-400">
                         <span className="text-xs">x</span>
                       </button>
                     </span>
@@ -1173,74 +925,37 @@ export default function FeedLensPage() {
                     className="w-full px-3 py-2 bg-lattice-surface border border-lattice-border rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-neon-green mb-2"
                   />
                   <div className="max-h-40 overflow-y-auto space-y-1">
-                    {(
-                      (marketplaceListings as {
-                        id: string;
-                        name: string;
-                        lensNumber?: number;
-                        uniqueValue?: string;
-                      }[]) || []
-                    )
-                      .slice(0, 8)
-                      .map(
-                        (item: {
-                          id: string;
-                          name: string;
-                          lensNumber?: number;
-                          uniqueValue?: string;
-                        }) => {
-                          const alreadyTagged = taggedProducts.some((t) => t.listingId === item.id);
-                          return (
-                            <button
-                              key={item.id}
-                              disabled={alreadyTagged}
-                              onClick={() => {
-                                setTaggedProducts((prev) => [
-                                  ...prev,
-                                  {
-                                    listingId: item.id,
-                                    title: item.name,
-                                    price: 10,
-                                    sellerId: 'platform',
-                                  },
-                                ]);
-                              }}
-                              className={cn(
-                                'w-full flex items-center justify-between p-2 rounded-lg text-left text-sm transition-colors',
-                                alreadyTagged
-                                  ? 'opacity-50 cursor-not-allowed bg-lattice-surface'
-                                  : 'hover:bg-lattice-surface'
-                              )}
-                            >
-                              <div className="flex-1 min-w-0">
-                                <p className="text-white font-medium truncate">{item.name}</p>
-                                {item.uniqueValue && (
-                                  <p className="text-xs text-gray-500 truncate">
-                                    {item.uniqueValue}
-                                  </p>
-                                )}
-                              </div>
-                              {alreadyTagged ? (
-                                <span className="text-xs text-neon-green ml-2">Tagged</span>
-                              ) : (
-                                <span className="text-xs text-gray-400 ml-2">+ Tag</span>
-                              )}
-                            </button>
-                          );
-                        }
-                      )}
+                    {(marketplaceListings as { id: string; name: string; lensNumber?: number; uniqueValue?: string }[] || []).slice(0, 8).map((item: { id: string; name: string; lensNumber?: number; uniqueValue?: string }) => {
+                      const alreadyTagged = taggedProducts.some(t => t.listingId === item.id);
+                      return (
+                        <button
+                          key={item.id}
+                          disabled={alreadyTagged}
+                          onClick={() => {
+                            setTaggedProducts(prev => [...prev, { listingId: item.id, title: item.name, price: 10, sellerId: 'platform' }]);
+                          }}
+                          className={cn(
+                            "w-full flex items-center justify-between p-2 rounded-lg text-left text-sm transition-colors",
+                            alreadyTagged ? "opacity-50 cursor-not-allowed bg-lattice-surface" : "hover:bg-lattice-surface"
+                          )}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className="text-white font-medium truncate">{item.name}</p>
+                            {item.uniqueValue && <p className="text-xs text-gray-500 truncate">{item.uniqueValue}</p>}
+                          </div>
+                          {alreadyTagged ? (
+                            <span className="text-xs text-neon-green ml-2">Tagged</span>
+                          ) : (
+                            <span className="text-xs text-gray-400 ml-2">+ Tag</span>
+                          )}
+                        </button>
+                      );
+                    })}
                     {(marketplaceListings || []).length === 0 && (
-                      <p className="text-xs text-gray-500 text-center py-2">
-                        Type to search marketplace listings
-                      </p>
+                      <p className="text-xs text-gray-500 text-center py-2">Type to search marketplace listings</p>
                     )}
                   </div>
-                  <button
-                    onClick={() => setShowProductPicker(false)}
-                    className="mt-2 text-xs text-gray-400 hover:text-white"
-                  >
-                    Close picker
-                  </button>
+                  <button onClick={() => setShowProductPicker(false)} className="mt-2 text-xs text-gray-400 hover:text-white">Close picker</button>
                 </div>
               )}
             </div>
@@ -1342,71 +1057,14 @@ export default function FeedLensPage() {
                           {formatTime(post.createdAt)}
                         </span>
                         {post.dtuSource && (
-                          <ProvenanceBadge
-                            source={post.dtuSource}
-                            model={post.dtuMeta?.model as string}
-                            authority={post.dtuMeta?.authority as string}
-                          />
+                          <ProvenanceBadge source={post.dtuSource} model={post.dtuMeta?.model as string} authority={post.dtuMeta?.authority as string} />
                         )}
-                        <div className="ml-auto relative flex-shrink-0">
-                          <button
-                            onClick={() =>
-                              setPostMenuOpen(postMenuOpen === post.id ? null : post.id)
-                            }
-                            className="p-1 text-gray-600 hover:text-neon-cyan hover:bg-neon-cyan/10 rounded-full transition-colors"
-                          >
-                            <MoreHorizontal className="w-4 h-4" />
-                          </button>
-                          <AnimatePresence>
-                            {postMenuOpen === post.id && (
-                              <motion.div
-                                initial={{ opacity: 0, scale: 0.95, y: -4 }}
-                                animate={{ opacity: 1, scale: 1, y: 0 }}
-                                exit={{ opacity: 0, scale: 0.95, y: -4 }}
-                                className="absolute right-0 top-8 z-20 w-44 bg-lattice-surface border border-lattice-border rounded-xl shadow-lg overflow-hidden"
-                              >
-                                <button
-                                  onClick={() => {
-                                    deletePostMutation.mutate(post.id);
-                                  }}
-                                  className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
-                                >
-                                  <Trash2 className="w-4 h-4" /> Delete Post
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    bookmarkMutation.mutate(post.id);
-                                    setPostMenuOpen(null);
-                                  }}
-                                  className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-gray-300 hover:bg-lattice-deep transition-colors"
-                                >
-                                  <Bookmark className="w-4 h-4" />{' '}
-                                  {post.bookmarked ? 'Remove Bookmark' : 'Bookmark'}
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    shareMutation.mutate(post.id);
-                                    setPostMenuOpen(null);
-                                  }}
-                                  className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-gray-300 hover:bg-lattice-deep transition-colors"
-                                >
-                                  <Share className="w-4 h-4" /> Copy Link
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    useUIStore
-                                      .getState()
-                                      .addToast({ type: 'info', message: 'Post reported' });
-                                    setPostMenuOpen(null);
-                                  }}
-                                  className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-gray-300 hover:bg-lattice-deep transition-colors"
-                                >
-                                  <Flag className="w-4 h-4" /> Report
-                                </button>
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                        </div>
+                        <button
+                          onClick={() => useUIStore.getState().addToast({ type: 'info', message: `Post ${post.id} options` })}
+                          className="ml-auto p-1 text-gray-600 hover:text-neon-cyan hover:bg-neon-cyan/10 rounded-full transition-colors flex-shrink-0"
+                        >
+                          <MoreHorizontal className="w-4 h-4" />
+                        </button>
                       </div>
 
                       {/* Content */}
@@ -1430,12 +1088,7 @@ export default function FeedLensPage() {
 
                       {/* Type-specific Content */}
                       {post.type === 'audio' && post.audio && (
-                        <WaveformPlayer
-                          {...post.audio}
-                          waveform={
-                            post.audio.waveform?.length ? post.audio.waveform : generateWaveform()
-                          }
-                        />
+                        <WaveformPlayer {...post.audio} waveform={post.audio.waveform?.length ? post.audio.waveform : generateWaveform()} />
                       )}
 
                       {post.type === 'release' && post.release && (
@@ -1489,26 +1142,70 @@ export default function FeedLensPage() {
                         </div>
                       )}
 
+                      {/* Inline Social Commerce: Tagged Products */}
+                      {post.taggedProducts && post.taggedProducts.length > 0 && (
+                        <div className="mt-3 space-y-2">
+                          <div className="flex items-center gap-1.5 text-xs text-neon-green/70">
+                            <ShoppingBag className="w-3 h-3" />
+                            <span>Tagged Products</span>
+                          </div>
+                          {post.taggedProducts.map((product) => (
+                            <SocialCommerceTag
+                              key={product.listingId}
+                              listing={{
+                                listingId: product.listingId,
+                                title: product.title,
+                                imageUrl: product.imageUrl,
+                                price: product.price,
+                                currency: 'CC',
+                              }}
+                              onBuy={(listingId) => {
+                                const p = post.taggedProducts?.find(tp => tp.listingId === listingId);
+                                if (p) handleInlinePurchase(p);
+                              }}
+                              onNavigateToListing={(listingId) => {
+                                window.open(`/lenses/marketplace?listing=${listingId}`, '_blank');
+                              }}
+                              className={cn(
+                                purchaseLoading === product.listingId && 'opacity-60 pointer-events-none',
+                                purchaseSuccess === product.listingId && 'border-green-500/50 bg-green-500/5'
+                              )}
+                            />
+                          ))}
+                          {purchaseSuccess && post.taggedProducts.some(p => p.listingId === purchaseSuccess) && (
+                            <p className="text-xs text-green-400 flex items-center gap-1">
+                              <span>Purchase complete!</span>
+                            </p>
+                          )}
+                        </div>
+                      )}
+
                       {/* Engagement Bar */}
                       <div className="flex items-center justify-between mt-3 max-w-md text-gray-500">
                         <button
-                          onClick={() => toggleComments(post.id)}
-                          className={cn(
-                            'flex items-center gap-1.5 group',
-                            expandedComments === post.id && 'text-blue-400'
-                          )}
+                          onClick={() => {
+                            if (post.dtuId) {
+                              apiHelpers.collab.getComments(post.dtuId, true)
+                                .then((res) => {
+                                  const comments = res.data?.comments || [];
+                                  useUIStore.getState().addToast({
+                                    type: 'info',
+                                    message: comments.length > 0
+                                      ? `${comments.length} comment${comments.length === 1 ? '' : 's'} on this post`
+                                      : 'No comments yet',
+                                  });
+                                })
+                                .catch(() => useUIStore.getState().addToast({ type: 'info', message: 'No comments yet' }));
+                            } else {
+                              useUIStore.getState().addToast({ type: 'info', message: 'No comments yet' });
+                            }
+                          }}
+                          className="flex items-center gap-1.5 group"
                         >
                           <div className="p-1.5 rounded-full group-hover:bg-blue-500/15 group-hover:text-blue-400 group-hover:scale-110 transition-all duration-200">
-                            <MessageCircle
-                              className={cn(
-                                'w-4 h-4',
-                                expandedComments === post.id && 'fill-current'
-                              )}
-                            />
+                            <MessageCircle className="w-4 h-4" />
                           </div>
-                          <span className="text-xs group-hover:text-blue-400 transition-colors">
-                            {formatNumber(post.comments)}
-                          </span>
+                          <span className="text-xs group-hover:text-blue-400 transition-colors">{formatNumber(post.comments)}</span>
                         </button>
 
                         <button
@@ -1521,9 +1218,7 @@ export default function FeedLensPage() {
                           <div className="p-1.5 rounded-full group-hover:bg-neon-green/15 group-hover:text-neon-green group-hover:scale-110 transition-all duration-200">
                             <Repeat2 className="w-4 h-4" />
                           </div>
-                          <span className="text-xs group-hover:text-neon-green transition-colors">
-                            {formatNumber(post.reposts)}
-                          </span>
+                          <span className="text-xs group-hover:text-neon-green transition-colors">{formatNumber(post.reposts)}</span>
                         </button>
 
                         <button
@@ -1536,18 +1231,14 @@ export default function FeedLensPage() {
                           <div className="p-1.5 rounded-full group-hover:bg-gradient-to-r group-hover:from-pink-500/15 group-hover:to-rose-500/15 group-hover:text-neon-pink group-hover:scale-110 transition-all duration-200">
                             <Heart className={cn('w-4 h-4', post.liked && 'fill-current')} />
                           </div>
-                          <span className="text-xs group-hover:text-neon-pink transition-colors">
-                            {formatNumber(post.likes)}
-                          </span>
+                          <span className="text-xs group-hover:text-neon-pink transition-colors">{formatNumber(post.likes)}</span>
                         </button>
 
                         <div className="flex items-center gap-1.5 group" title="Views">
                           <div className="p-1.5 rounded-full group-hover:bg-neon-cyan/15 group-hover:text-neon-cyan group-hover:scale-110 transition-all duration-200">
                             <Eye className="w-4 h-4" />
                           </div>
-                          <span className="text-xs group-hover:text-neon-cyan transition-colors">
-                            {formatNumber(post.views)}
-                          </span>
+                          <span className="text-xs group-hover:text-neon-cyan transition-colors">{formatNumber(post.views)}</span>
                         </div>
 
                         <div className="flex items-center gap-0.5">
@@ -1721,7 +1412,7 @@ export default function FeedLensPage() {
             <TrendingUp className="w-4 h-4 text-neon-cyan" />
             <h2 className="text-base font-bold text-white">Trending Now</h2>
           </div>
-          {(trending || TRENDING_TOPICS).map((topic) => (
+          {(trending || TRENDING_TOPICS).map(topic => (
             <button
               key={topic.id}
               onClick={() => setSearchQuery(topic.tag.replace('#', ''))}
@@ -1740,99 +1431,12 @@ export default function FeedLensPage() {
           </button>
         </div>
 
-        {/* Trending Topics — live animated widget */}
-        <div className="bg-lattice-surface rounded-xl border border-lattice-border overflow-hidden p-4">
-          <TrendingTopics onTopicClick={(tag) => setSearchQuery(tag)} />
-        </div>
-
-        {/* Presence — who's currently browsing the feed. Sourced
-            from the realtime lens hook so the avatar stack updates
-            when people join / leave. */}
-        <div className="bg-lattice-surface rounded-xl border border-lattice-border overflow-hidden px-4 py-3">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-              On Feed Now
-            </span>
-          </div>
-          <PresenceIndicator
-            users={(Array.isArray(presenceUsers) ? presenceUsers : []).map(
-              (
-                u: {
-                  id?: string;
-                  userId?: string;
-                  name?: string;
-                  displayName?: string;
-                  avatar?: string;
-                  status?: 'active' | 'idle' | 'viewing';
-                  location?: string;
-                },
-                i: number
-              ) => ({
-                id: u.id || u.userId || `p-${i}`,
-                name: u.name || u.displayName || 'Citizen',
-                avatar: u.avatar,
-                color: ['#06b6d4', '#8b5cf6', '#22c55e', '#f59e0b', '#ec4899'][i % 5],
-                status: (u.status || 'active') as 'active' | 'idle' | 'viewing',
-                location: u.location || 'feed',
-              })
-            )}
-            maxVisible={5}
-          />
-        </div>
-
         {/* Rising Creators */}
         <RisingCreatorsSidebar />
 
         {/* Who to Follow — wired to real discovery data */}
         <div className="bg-lattice-surface rounded-xl border border-lattice-border overflow-hidden p-4">
           <SuggestedFollows currentUserId="current-user" />
-        </div>
-
-        {/* Post Scheduler */}
-        <div className="bg-lattice-surface rounded-xl border border-lattice-border overflow-hidden p-4">
-          <PostScheduler userId="current-user" />
-        </div>
-
-        {/* Notifications */}
-        <div className="bg-lattice-surface rounded-xl border border-lattice-border overflow-hidden p-4">
-          <NotificationCenter userId="current-user" mode="panel" />
-        </div>
-
-        {/* Groups */}
-        <div className="bg-lattice-surface rounded-xl border border-lattice-border overflow-hidden p-4">
-          <h2 className="text-base font-bold text-white mb-3 flex items-center gap-2">
-            <Users className="w-4 h-4 text-neon-purple" />
-            Suggested Groups
-          </h2>
-          <div className="space-y-3">
-            {(
-              [
-                {
-                  groupId: 'g1',
-                  name: 'Sovereignty Builders',
-                  description: 'Build sovereign-first systems together',
-                  memberCount: 842,
-                  tags: ['sovereignty', 'dev'],
-                },
-                {
-                  groupId: 'g2',
-                  name: 'DTU Creators',
-                  description: 'Share and discuss data transfer units',
-                  memberCount: 1203,
-                  tags: ['dtu', 'data'],
-                },
-                {
-                  groupId: 'g3',
-                  name: 'Local-First Advocates',
-                  description: 'Community for local-first software',
-                  memberCount: 567,
-                  tags: ['local-first', 'privacy'],
-                },
-              ] as GroupData[]
-            ).map((group) => (
-              <GroupCard key={group.groupId} group={group} />
-            ))}
-          </div>
         </div>
 
         {/* New Releases Mini */}
@@ -2235,9 +1839,7 @@ function RisingCreatorsSidebar() {
   const { data: creatorsData } = useQuery({
     queryKey: ['trending-creators'],
     queryFn: async () => {
-      const res = await api
-        .get('/api/social/trending/creators', { params: { limit: 5, days: 7 } })
-        .catch(() => null);
+      const res = await api.get('/api/social/trending/creators', { params: { limit: 5, days: 7 } }).catch(() => null);
       return (res?.data?.creators || []) as Array<{
         userId: string;
         displayName: string;
@@ -2270,9 +1872,7 @@ function RisingCreatorsSidebar() {
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium text-white truncate">{creator.displayName}</p>
             <div className="flex items-center gap-2 text-[11px] text-gray-500">
-              <span>
-                <Users className="w-3 h-3 inline" /> {creator.followerCount}
-              </span>
+              <span><Users className="w-3 h-3 inline" /> {creator.followerCount}</span>
               {creator.followerGrowth > 0 && (
                 <span className="text-green-400">+{creator.followerGrowth}</span>
               )}

@@ -1,31 +1,14 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
-import { useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api/client';
-import { useState, useMemo, useCallback } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Wand2, Layout, Code, Eye, Palette, Settings, Loader2, Layers, Link, BarChart } from 'lucide-react';
+import { useLensData } from '@/lib/hooks/use-lens-data';
+import { apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
-import {
-  Layers,
-  Search,
-  FileCode,
-  FolderTree,
-  AlertTriangle,
-  CheckCircle,
-  XCircle,
-  Copy,
-  ChevronDown,
-  ChevronRight,
-  Loader2,
-  BarChart3,
-  GitBranch,
-  Package,
-  Route,
-  Eye,
-  ArrowRight,
-  Cog,
-} from 'lucide-react';
+import { ErrorState } from '@/components/common/EmptyState';
+import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -115,11 +98,20 @@ const cardVariants = {
   }),
 };
 
-const tabContentVariants = {
-  initial: { opacity: 0, x: -20 },
-  animate: { opacity: 1, x: 0 },
-  exit: { opacity: 0, x: 20 },
+const cardVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: (i: number) => ({ opacity: 1, y: 0, transition: { delay: i * 0.05, duration: 0.35, ease: 'easeOut' } }),
 };
+
+export default function MetaLensPage() {
+  useLensNav('meta');
+  const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('meta');
+  const [lensName, setLensName] = useState('');
+  const [lensDescription, setLensDescription] = useState('');
+  const [selectedComponents, setSelectedComponents] = useState<string[]>([]);
+  const [generating, setGenerating] = useState(false);
+  const [generatedCode, setGeneratedCode] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'overview' | 'connections' | 'insights'>('overview');
 
 // ---------------------------------------------------------------------------
 // Domain color map for wiring view
@@ -146,1021 +138,151 @@ function domainColor(domain: string): string {
 // Small helper components
 // ---------------------------------------------------------------------------
 
-function StatCard({
-  icon: Icon,
-  label,
-  value,
-  color,
-  warning,
-  index,
-}: {
-  icon: React.ElementType;
-  label: string;
-  value: number | string;
-  color: string;
-  warning?: boolean;
-  index: number;
-}) {
-  return (
-    <motion.div
-      custom={index}
-      variants={cardVariants}
-      initial="hidden"
-      animate="visible"
-      className={cn('lens-card', warning && 'border-yellow-500/40')}
-    >
-      <Icon className={cn('w-5 h-5 mb-2', color)} />
-      <p className={cn('text-2xl font-bold', warning && 'text-yellow-400')}>{value}</p>
-      <p className="text-sm text-gray-400">{label}</p>
-    </motion.div>
-  );
-}
+  const componentLibrary = componentItems.map(item => ({
+    id: item.id,
+    name: item.data.name || item.title,
+    icon: ICON_MAP[item.data.icon] || Layout,
+  }));
 
-function WiredBadge({ wired }: { wired: boolean }) {
-  return wired ? (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-green-500/20 text-green-400 border border-green-500/30">
-      <CheckCircle className="w-3 h-3" /> Wired
-    </span>
-  ) : (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-red-500/20 text-red-400 border border-red-500/30">
-      <XCircle className="w-3 h-3" /> Orphan
-    </span>
-  );
-}
-
-function SearchBar({
-  value,
-  onChange,
-  placeholder,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  placeholder: string;
-}) {
-  return (
-    <div className="relative">
-      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-      <input
-        type="text"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="input-lattice w-full pl-10"
-      />
-    </div>
-  );
-}
-
-function LoadingSpinner({ message }: { message: string }) {
-  return (
-    <div className="flex items-center justify-center p-12 text-gray-400">
-      <Loader2 className="w-6 h-6 animate-spin mr-2" />
-      {message}
-    </div>
-  );
-}
-
-function EmptyState({ message }: { message: string }) {
-  return (
-    <div className="text-center py-10 text-gray-500 text-sm border border-dashed border-white/10 rounded-lg">
-      {message}
-    </div>
-  );
-}
-
-function copyToClipboard(text: string) {
-  navigator.clipboard.writeText(text).catch(() => {
-    /* fallback: noop */
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Tab: Overview
-// ---------------------------------------------------------------------------
-
-function OverviewTab() {
-  const { data, isLoading } = useQuery<InventoryOverview>({
-    queryKey: ['inventory-overview'],
-    queryFn: () => api.get('/api/inventory').then((r) => r.data),
-  });
-
-  if (isLoading || !data) return <LoadingSpinner message="Loading inventory overview..." />;
-
-  return (
-    <motion.div {...tabContentVariants} transition={{ duration: 0.25 }} className="space-y-6">
-      {/* Stat cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <StatCard icon={Package} label="Components" value={data.totalComponents} color="text-neon-blue" index={0} />
-        <StatCard icon={Eye} label="Lenses" value={data.totalLenses} color="text-neon-purple" index={1} />
-        <StatCard icon={FileCode} label="Server Libs" value={data.totalServerLibs} color="text-neon-green" index={2} />
-        <StatCard icon={Route} label="Routes" value={data.totalRoutes} color="text-neon-cyan" index={3} />
-        <StatCard
-          icon={AlertTriangle}
-          label="Orphaned"
-          value={data.orphanedCount}
-          color={data.orphanedCount > 0 ? 'text-yellow-400' : 'text-green-400'}
-          warning={data.orphanedCount > 0}
-          index={4}
-        />
-      </div>
-
-      {/* Largest files */}
-      <div className="panel p-4">
-        <h2 className="font-semibold mb-4 flex items-center gap-2">
-          <BarChart3 className="w-4 h-4 text-neon-cyan" />
-          Largest Files (Top 10)
-        </h2>
-        <div className="space-y-2">
-          {(data.largestFiles ?? []).map((f, i) => (
-            <motion.div
-              key={f.path}
-              custom={i}
-              variants={cardVariants}
-              initial="hidden"
-              animate="visible"
-              className="flex items-center justify-between p-2 bg-lattice-deep rounded-lg"
-            >
-              <span className="text-sm text-gray-300 font-mono truncate max-w-[70%]">{f.path}</span>
-              <span className="text-xs text-gray-500 font-mono">{f.lines.toLocaleString()} lines</span>
-            </motion.div>
-          ))}
-          {(!data.largestFiles || data.largestFiles.length === 0) && (
-            <EmptyState message="No file data available." />
-          )}
-        </div>
-      </div>
-
-      {/* Most imported */}
-      <div className="panel p-4">
-        <h2 className="font-semibold mb-4 flex items-center gap-2">
-          <GitBranch className="w-4 h-4 text-neon-purple" />
-          Most-Imported Components (Top 10)
-        </h2>
-        <div className="space-y-2">
-          {(data.mostImported ?? []).map((c, i) => (
-            <motion.div
-              key={c.name}
-              custom={i}
-              variants={cardVariants}
-              initial="hidden"
-              animate="visible"
-              className="flex items-center justify-between p-2 bg-lattice-deep rounded-lg"
-            >
-              <span className="text-sm text-gray-300">{c.name}</span>
-              <span className="text-xs px-2 py-0.5 rounded bg-neon-purple/20 text-neon-purple font-mono">
-                {c.importCount} imports
-              </span>
-            </motion.div>
-          ))}
-          {(!data.mostImported || data.mostImported.length === 0) && (
-            <EmptyState message="No import data available." />
-          )}
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Tab: Components
-// ---------------------------------------------------------------------------
-
-function ComponentsTab() {
-  const { data, isLoading } = useQuery<ComponentEntry[]>({
-    queryKey: ['inventory-components'],
-    queryFn: () => api.get('/api/inventory/components').then((r) => r.data),
-  });
-
-  const [search, setSearch] = useState('');
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-
-  const filtered = useMemo(() => {
-    if (!data) return [];
-    if (!search) return data;
-    const q = search.toLowerCase();
-    return data.filter(
-      (c) => c.name.toLowerCase().includes(q) || c.directory.toLowerCase().includes(q),
+  const toggleComponent = (id: string) => {
+    setSelectedComponents((prev) =>
+      prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]
     );
-  }, [data, search]);
+  };
 
-  if (isLoading) return <LoadingSpinner message="Loading components..." />;
+  const handleGenerate = async () => {
+    if (!lensName || selectedComponents.length === 0) return;
 
-  return (
-    <motion.div {...tabContentVariants} transition={{ duration: 0.25 }} className="space-y-4">
-      <SearchBar value={search} onChange={setSearch} placeholder="Search components..." />
+    setGenerating(true);
+    setGeneratedCode(null);
+    try {
+      const componentNames = selectedComponents
+        .map(id => componentLibrary.find(c => c.id === id)?.name || id)
+        .join(', ');
 
-      <p className="text-xs text-gray-500">
-        {filtered.length} component{filtered.length !== 1 ? 's' : ''} shown
-        {search && ` (of ${data?.length ?? 0})`}
-      </p>
+      const prompt = `Generate a Next.js React lens component called "${lensName}" with description: "${lensDescription}". ` +
+        `It should include these components: ${componentNames}. ` +
+        `Use 'use client' directive, Tailwind CSS with neon-* color classes, and lucide-react icons. ` +
+        `Return only the TSX code.`;
 
-      <div className="space-y-1 max-h-[70vh] overflow-y-auto pr-1">
-        {filtered.map((comp, i) => {
-          const key = `${comp.directory}/${comp.name}`;
-          const expanded = expandedId === key;
-          return (
-            <motion.div key={key} custom={i} variants={cardVariants} initial="hidden" animate="visible">
-              <button
-                onClick={() => setExpandedId(expanded ? null : key)}
-                className="w-full flex items-center justify-between p-3 bg-lattice-deep rounded-lg hover:bg-lattice-surface transition-colors text-left"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  {expanded ? (
-                    <ChevronDown className="w-4 h-4 text-gray-500 shrink-0" />
-                  ) : (
-                    <ChevronRight className="w-4 h-4 text-gray-500 shrink-0" />
-                  )}
-                  <span className="text-sm font-medium truncate">{comp.name}</span>
-                  <span className="text-xs text-gray-500 truncate hidden md:inline">{comp.directory}</span>
-                </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  <span className="text-xs text-gray-500 font-mono">{comp.lineCount} lines</span>
-                  <WiredBadge wired={comp.wired} />
-                </div>
-              </button>
-              <AnimatePresence>
-                {expanded && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="p-4 ml-7 border-l border-white/5 space-y-3">
-                      <div>
-                        <p className="text-xs text-gray-500 mb-1">Directory</p>
-                        <p className="text-sm text-gray-300 font-mono">{comp.directory}</p>
-                      </div>
-                      {comp.exports.length > 0 && (
-                        <div>
-                          <p className="text-xs text-gray-500 mb-1">Exports</p>
-                          <div className="flex flex-wrap gap-1">
-                            {comp.exports.map((e) => (
-                              <span
-                                key={e}
-                                className="text-xs px-1.5 py-0.5 bg-lattice-surface rounded text-gray-300 font-mono"
-                              >
-                                {e}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      {comp.importedBy.length > 0 && (
-                        <div>
-                          <p className="text-xs text-gray-500 mb-1">Imported by</p>
-                          <div className="flex flex-wrap gap-1">
-                            {comp.importedBy.map((l) => (
-                              <span
-                                key={l}
-                                className="text-xs px-1.5 py-0.5 bg-neon-purple/10 text-neon-purple rounded"
-                              >
-                                {l}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      {comp.importedBy.length === 0 && (
-                        <p className="text-xs text-yellow-400">Not imported by any lens.</p>
-                      )}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.div>
-          );
-        })}
-        {filtered.length === 0 && <EmptyState message="No components match your search." />}
-      </div>
-    </motion.div>
-  );
-}
+      const response = await apiHelpers.chat.ask(prompt, 'meta');
+      const respData = response.data;
 
-// ---------------------------------------------------------------------------
-// Tab: Lenses
-// ---------------------------------------------------------------------------
+      // Extract the generated code from the response
+      const code = typeof respData === 'string'
+        ? respData
+        : respData?.reply || respData?.answer || respData?.message || respData?.code || JSON.stringify(respData, null, 2);
 
-function LensesTab() {
-  const { data, isLoading } = useQuery<LensEntry[]>({
-    queryKey: ['inventory-lenses'],
-    queryFn: () => api.get('/api/inventory/lenses').then((r) => r.data),
-  });
+      setGeneratedCode(code);
 
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-
-  if (isLoading) return <LoadingSpinner message="Loading lenses..." />;
-
-  return (
-    <motion.div {...tabContentVariants} transition={{ duration: 0.25 }} className="space-y-4">
-      <p className="text-xs text-gray-500">{data?.length ?? 0} lenses</p>
-
-      <div className="space-y-1 max-h-[70vh] overflow-y-auto pr-1">
-        {(data ?? []).map((lens, i) => {
-          const expanded = expandedId === lens.name;
-          return (
-            <motion.div key={lens.name} custom={i} variants={cardVariants} initial="hidden" animate="visible">
-              <button
-                onClick={() => setExpandedId(expanded ? null : lens.name)}
-                className="w-full flex items-center justify-between p-3 bg-lattice-deep rounded-lg hover:bg-lattice-surface transition-colors text-left"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  {expanded ? (
-                    <ChevronDown className="w-4 h-4 text-gray-500 shrink-0" />
-                  ) : (
-                    <ChevronRight className="w-4 h-4 text-gray-500 shrink-0" />
-                  )}
-                  <span className="text-sm font-medium truncate">{lens.name}</span>
-                </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  <span className="text-xs text-gray-500 font-mono">{lens.lineCount} lines</span>
-                  <span className="text-xs px-2 py-0.5 rounded bg-neon-cyan/20 text-neon-cyan font-mono">
-                    {lens.importCount} imports
-                  </span>
-                </div>
-              </button>
-              <AnimatePresence>
-                {expanded && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="p-4 ml-7 border-l border-white/5 space-y-3">
-                      <div>
-                        <p className="text-xs text-gray-500 mb-1">Path</p>
-                        <p className="text-sm text-gray-300 font-mono">{lens.path}</p>
-                      </div>
-                      {lens.imports.length > 0 && (
-                        <div>
-                          <p className="text-xs text-gray-500 mb-1">Imported Components</p>
-                          <div className="flex flex-wrap gap-1">
-                            {lens.imports.map((c) => (
-                              <span
-                                key={c}
-                                className="text-xs px-1.5 py-0.5 bg-neon-blue/10 text-neon-blue rounded font-mono"
-                              >
-                                {c}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      {lens.routes.length > 0 && (
-                        <div>
-                          <p className="text-xs text-gray-500 mb-1">Server Routes</p>
-                          <div className="flex flex-wrap gap-1">
-                            {lens.routes.map((r) => (
-                              <span
-                                key={r}
-                                className="text-xs px-1.5 py-0.5 bg-neon-green/10 text-neon-green rounded font-mono"
-                              >
-                                {r}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.div>
-          );
-        })}
-        {(!data || data.length === 0) && <EmptyState message="No lens data available." />}
-      </div>
-    </motion.div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Tab: Orphans
-// ---------------------------------------------------------------------------
-
-function OrphansTab() {
-  const { data, isLoading } = useQuery<OrphanEntry[]>({
-    queryKey: ['inventory-orphans'],
-    queryFn: () => api.get('/api/inventory/orphans').then((r) => r.data),
-  });
-
-  const [copiedPath, setCopiedPath] = useState<string | null>(null);
-
-  const grouped = useMemo(() => {
-    if (!data) return {};
-    const groups: Record<string, OrphanEntry[]> = {};
-    for (const entry of data) {
-      const dir = entry.directory || 'unknown';
-      if (!groups[dir]) groups[dir] = [];
-      groups[dir].push(entry);
-    }
-    return groups;
-  }, [data]);
-
-  const handleWire = useCallback(
-    (entry: OrphanEntry) => {
-      const importPath = entry.path
-        .replace(/\.tsx?$/, '')
-        .replace(/\/index$/, '');
-      const defaultExport = entry.exports.find((e) => e === 'default');
-      const namedExports = entry.exports.filter((e) => e !== 'default');
-
-      let importStatement = '';
-      if (defaultExport && namedExports.length > 0) {
-        importStatement = `import ${entry.name}, { ${namedExports.join(', ')} } from '${importPath}';`;
-      } else if (defaultExport) {
-        importStatement = `import ${entry.name} from '${importPath}';`;
-      } else if (namedExports.length > 0) {
-        importStatement = `import { ${namedExports.join(', ')} } from '${importPath}';`;
-      } else {
-        importStatement = `import ${entry.name} from '${importPath}';`;
-      }
-
-      copyToClipboard(importStatement);
-      setCopiedPath(entry.path);
-      setTimeout(() => setCopiedPath(null), 2000);
-    },
-    [],
-  );
-
-  if (isLoading) return <LoadingSpinner message="Loading orphaned components..." />;
-
-  const dirs = Object.keys(grouped).sort();
-
-  return (
-    <motion.div {...tabContentVariants} transition={{ duration: 0.25 }} className="space-y-6">
-      {data && data.length > 0 && (
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 text-sm">
-          <AlertTriangle className="w-4 h-4 shrink-0" />
-          {data.length} orphaned component{data.length !== 1 ? 's' : ''} found -- not imported by any lens.
-        </div>
-      )}
-
-      {dirs.map((dir) => (
-        <div key={dir} className="panel p-4">
-          <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
-            <FolderTree className="w-4 h-4 text-neon-cyan" />
-            {dir}
-            <span className="text-xs text-gray-500 font-normal">({grouped[dir].length})</span>
-          </h3>
-          <div className="space-y-2">
-            {grouped[dir].map((entry, i) => (
-              <motion.div
-                key={entry.path}
-                custom={i}
-                variants={cardVariants}
-                initial="hidden"
-                animate="visible"
-                className="flex items-center justify-between p-3 bg-lattice-deep rounded-lg"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium truncate">{entry.name}</p>
-                  <p className="text-xs text-gray-500 font-mono truncate">{entry.path}</p>
-                  {entry.exports.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {entry.exports.map((e) => (
-                        <span
-                          key={e}
-                          className="text-xs px-1.5 py-0.5 bg-lattice-surface rounded text-gray-400 font-mono"
-                        >
-                          {e}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  <p className="text-xs text-gray-500 mt-1">{entry.lineCount} lines</p>
-                </div>
-                <button
-                  onClick={() => handleWire(entry)}
-                  className={cn(
-                    'ml-3 shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all',
-                    copiedPath === entry.path
-                      ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                      : 'bg-neon-purple/20 text-neon-purple border border-neon-purple/30 hover:bg-neon-purple/30',
-                  )}
-                >
-                  <Copy className="w-3 h-3" />
-                  {copiedPath === entry.path ? 'Copied!' : 'Wire this'}
-                </button>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      ))}
-
-      {dirs.length === 0 && (
-        <div className="text-center py-10 text-green-400 text-sm border border-dashed border-green-500/20 rounded-lg">
-          <CheckCircle className="w-6 h-6 mx-auto mb-2" />
-          All components are wired. No orphans detected.
-        </div>
-      )}
-    </motion.div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Tab: Wiring Map
-// ---------------------------------------------------------------------------
-
-function WiringTab() {
-  const { data, isLoading } = useQuery<WiringEntry[]>({
-    queryKey: ['inventory-wiring'],
-    queryFn: () => api.get('/api/inventory/wiring').then((r) => r.data),
-  });
-
-  if (isLoading) return <LoadingSpinner message="Loading wiring map..." />;
-
-  return (
-    <motion.div {...tabContentVariants} transition={{ duration: 0.25 }} className="space-y-3">
-      <p className="text-xs text-gray-500">{data?.length ?? 0} lens wiring entries</p>
-
-      <div className="space-y-2 max-h-[70vh] overflow-y-auto pr-1">
-        {(data ?? []).map((entry, i) => {
-          const dc = domainColor(entry.domain);
-          return (
-            <motion.div
-              key={entry.lens}
-              custom={i}
-              variants={cardVariants}
-              initial="hidden"
-              animate="visible"
-              className="p-3 bg-lattice-deep rounded-lg"
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <span className={cn('text-xs px-2 py-0.5 rounded border font-semibold', dc)}>
-                  {entry.lens}
-                </span>
-                <ArrowRight className="w-3 h-3 text-gray-600" />
-                <span className="text-xs text-gray-500">{entry.domain}</span>
-              </div>
-              <div className="flex flex-wrap gap-1">
-                {entry.components.map((c) => (
-                  <span
-                    key={c}
-                    className="text-xs px-1.5 py-0.5 bg-lattice-surface rounded text-gray-300"
-                  >
-                    {c}
-                  </span>
-                ))}
-                {entry.components.length === 0 && (
-                  <span className="text-xs text-gray-600 italic">No component imports</span>
-                )}
-              </div>
-            </motion.div>
-          );
-        })}
-        {(!data || data.length === 0) && <EmptyState message="No wiring data available." />}
-      </div>
-    </motion.div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Tab: Search
-// ---------------------------------------------------------------------------
-
-function SearchTab() {
-  const [query, setQuery] = useState('');
-  const [debouncedQuery, setDebouncedQuery] = useState('');
-
-  // Simple debounce
-  const handleSearch = useCallback((v: string) => {
-    setQuery(v);
-    const timer = setTimeout(() => setDebouncedQuery(v), 300);
-    return () => clearTimeout(timer);
-  }, []);
-
-  const { data, isLoading, isFetching } = useQuery<SearchResult[]>({
-    queryKey: ['inventory-search', debouncedQuery],
-    queryFn: () =>
-      api.get('/api/inventory/search', { params: { q: debouncedQuery } }).then((r) => r.data),
-    enabled: debouncedQuery.length >= 2,
-  });
-
-  const typeBadge = (type: string) => {
-    switch (type) {
-      case 'component':
-        return (
-          <span className="text-xs px-2 py-0.5 rounded bg-neon-blue/20 text-neon-blue border border-neon-blue/30">
-            Component
-          </span>
-        );
-      case 'lens':
-        return (
-          <span className="text-xs px-2 py-0.5 rounded bg-neon-purple/20 text-neon-purple border border-neon-purple/30">
-            Lens
-          </span>
-        );
-      case 'server-lib':
-        return (
-          <span className="text-xs px-2 py-0.5 rounded bg-neon-green/20 text-neon-green border border-neon-green/30">
-            Server Lib
-          </span>
-        );
-      default:
-        return (
-          <span className="text-xs px-2 py-0.5 rounded bg-gray-500/20 text-gray-400">
-            {type}
-          </span>
-        );
+      // Persist the generated lens
+      await createGeneratedLens({
+        title: lensName,
+        data: {
+          lensName,
+          description: lensDescription,
+          components: selectedComponents.map(id => componentLibrary.find(c => c.id === id)?.name || id),
+          code,
+          generatedAt: new Date().toISOString(),
+        } as unknown as Partial<GeneratedLensData>,
+        meta: { tags: ['generated', 'lens'], status: 'generated' },
+      });
+    } catch {
+      setGeneratedCode('// Error: Failed to generate lens code. Please try again.');
+    } finally {
+      setGenerating(false);
     }
   };
 
-  return (
-    <motion.div {...tabContentVariants} transition={{ duration: 0.25 }} className="space-y-4">
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => handleSearch(e.target.value)}
-          placeholder="Search components, lenses, server libs..."
-          className="input-lattice w-full pl-10 pr-10"
-        />
-        {isFetching && (
-          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 animate-spin" />
-        )}
+  const isLoading = templatesLoading || componentsLoading || generatedLoading;
+
+  // Cross-lens links (synthetic for meta dashboard)
+  const crossLensLinks = [
+    { from: 'attention', to: 'reflection', strength: 85, label: 'Focus analysis feeds reflections' },
+    { from: 'hypothesis', to: 'transfer', strength: 72, label: 'Hypotheses transfer across domains' },
+    { from: 'temporal', to: 'global', strength: 60, label: 'Temporal patterns in global DTUs' },
+    { from: 'fractal', to: 'meta', strength: 90, label: 'Fractal structure powers meta-lens' },
+    { from: 'mentorship', to: 'reflection', strength: 55, label: 'Mentorship insights drive reflection' },
+  ];
+
+  if (isError || isError2 || isError3) {
+    return (
+      <div className="flex items-center justify-center h-full p-8">
+        <ErrorState error={error?.message || error2?.message || error3?.message} onRetry={() => { refetch(); refetch2(); refetch3(); }} />
       </div>
+    );
+  }
 
-      {debouncedQuery.length < 2 && (
-        <p className="text-xs text-gray-500 text-center py-8">
-          Type at least 2 characters to search.
-        </p>
-      )}
-
-      {isLoading && debouncedQuery.length >= 2 && (
-        <LoadingSpinner message="Searching..." />
-      )}
-
-      {data && data.length > 0 && (
-        <div className="space-y-2 max-h-[65vh] overflow-y-auto pr-1">
-          <p className="text-xs text-gray-500">{data.length} result{data.length !== 1 ? 's' : ''}</p>
-          {data.map((result, i) => (
-            <motion.div
-              key={`${result.type}-${result.path}`}
-              custom={i}
-              variants={cardVariants}
-              initial="hidden"
-              animate="visible"
-              className="flex items-center justify-between p-3 bg-lattice-deep rounded-lg"
-            >
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium truncate">{result.name}</p>
-                <p className="text-xs text-gray-500 font-mono truncate">{result.path}</p>
-                {result.matchContext && (
-                  <p className="text-xs text-gray-400 mt-1 truncate">{result.matchContext}</p>
-                )}
-              </div>
-              <div className="ml-3 shrink-0">{typeBadge(result.type)}</div>
-            </motion.div>
-          ))}
-        </div>
-      )}
-
-      {data && data.length === 0 && debouncedQuery.length >= 2 && (
-        <EmptyState message={`No results for "${debouncedQuery}".`} />
-      )}
-    </motion.div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Tab: Lens Infrastructure
-// ---------------------------------------------------------------------------
-
-const STATUS_COLORS: Record<string, string> = {
-  product: 'text-green-400 bg-green-400/10 border-green-400/30',
-  hybrid: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30',
-  viewer: 'text-blue-400 bg-blue-400/10 border-blue-400/30',
-  system: 'text-gray-400 bg-gray-400/10 border-gray-400/30',
-  deprecated: 'text-red-400 bg-red-400/10 border-red-400/30',
-};
-
-function LensInfrastructureTab() {
-  const [infraSection, setInfraSection] = useState<'manifests' | 'status' | 'merge' | 'roadmap' | 'wiring'>('manifests');
-
-  const statusSummary = useMemo(() => getLensStatusSummary(), []);
-  const productLenses = useMemo(() => getProductLenses(), []);
-  const deprecatedLenses = useMemo(() => getDeprecatedLenses(), []);
-  const missingMacro = useMemo(() => getLensesMissingMacro('create'), []);
-  const currentPhase = useMemo(() => getCurrentPhase(), []);
-  const mergeReduction = useMemo(() => getMergeReductionCount(), []);
-  const totalArtifacts = useMemo(() => getTotalArtifactCount(), []);
-  const totalEngines = useMemo(() => getTotalEngineCount(), []);
-  const manifests = useMemo(() => getLensManifests(), []);
-  const wiringCategories = useMemo(() => Object.keys(WIRING_PROFILES), []);
-
-  const infraSections = [
-    { key: 'manifests' as const, label: 'Manifests' },
-    { key: 'status' as const, label: 'Status Taxonomy' },
-    { key: 'merge' as const, label: 'Merge Map' },
-    { key: 'roadmap' as const, label: 'Productization' },
-    { key: 'wiring' as const, label: 'Wiring Profiles' },
+  const tabs = [
+    { key: 'overview' as const, label: 'Overview', icon: Layers },
+    { key: 'connections' as const, label: 'Connections', icon: Link },
+    { key: 'insights' as const, label: 'Insights', icon: BarChart },
   ];
 
   return (
-    <motion.div {...tabContentVariants} transition={{ duration: 0.25 }} className="space-y-6">
-      {/* Summary stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <StatCard icon={Package} label="Manifests" value={getManifestCount()} color="text-neon-purple" index={0} />
-        <StatCard icon={CheckCircle} label="Product Lenses" value={productLenses.length} color="text-green-400" index={1} />
-        <StatCard icon={GitBranch} label="Merge Groups" value={LENS_MERGE_GROUPS.length} color="text-neon-cyan" index={2} />
-        <StatCard icon={Route} label="Total Engines" value={totalEngines} color="text-neon-blue" index={3} />
-        <StatCard icon={AlertTriangle} label="Deprecated" value={deprecatedLenses.length} color="text-yellow-400" warning={deprecatedLenses.length > 0} index={4} />
-      </div>
-
-      {/* Sub-navigation */}
-      <div className="flex gap-1 bg-lattice-void border border-lattice-border rounded-lg p-1 overflow-x-auto">
-        {infraSections.map((sec) => (
-          <button
-            key={sec.key}
-            onClick={() => setInfraSection(sec.key)}
-            className={cn(
-              'px-3 py-1.5 rounded-md text-xs font-medium transition-all whitespace-nowrap',
-              infraSection === sec.key
-                ? 'bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/30'
-                : 'text-gray-400 hover:text-white hover:bg-lattice-surface',
-            )}
-          >
-            {sec.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Manifests section */}
-      {infraSection === 'manifests' && (
-        <div className="panel p-4 space-y-3">
-          <h2 className="font-semibold flex items-center gap-2">
-            <Package className="w-4 h-4 text-neon-purple" />
-            Lens Manifests ({manifests.length})
-          </h2>
-          <div className="space-y-2 max-h-96 overflow-y-auto">
-            {manifests.map((m, i) => (
-              <motion.div
-                key={m.domain}
-                custom={i}
-                variants={cardVariants}
-                initial="hidden"
-                animate="visible"
-                className="flex items-center justify-between p-3 bg-lattice-deep rounded-lg"
-              >
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-white">{m.label}</p>
-                  <p className="text-xs text-gray-500 font-mono">{m.domain} &middot; {m.category}</p>
-                </div>
-                <div className="flex gap-2 items-center">
-                  <span className="text-xs px-2 py-0.5 rounded bg-neon-purple/20 text-neon-purple">{m.artifacts.length} artifacts</span>
-                  <span className="text-xs px-2 py-0.5 rounded bg-neon-blue/20 text-neon-blue">{m.actions.length} actions</span>
-                  <span className="text-xs px-2 py-0.5 rounded bg-neon-green/20 text-neon-green">{m.exports.length} exports</span>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-          {missingMacro.length > 0 && (
-            <div className="mt-3 p-3 border border-yellow-500/30 rounded-lg bg-yellow-500/5">
-              <p className="text-xs text-yellow-400 font-semibold mb-1">Missing Macro Mappings ({missingMacro.length})</p>
-              <p className="text-xs text-gray-400">{missingMacro.join(', ')}</p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Status Taxonomy section */}
-      {infraSection === 'status' && (
-        <div className="panel p-4 space-y-3">
-          <h2 className="font-semibold flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-neon-cyan" />
-            Lens Status Taxonomy
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
-            {Object.entries(statusSummary).map(([status, count]) => (
-              <div key={status} className={cn('p-3 rounded-lg border text-center', STATUS_COLORS[status] || 'text-gray-400 bg-gray-400/10 border-gray-400/30')}>
-                <p className="text-lg font-bold">{count as number}</p>
-                <p className="text-xs capitalize">{status}</p>
-              </div>
-            ))}
-          </div>
-          <div className="space-y-2 max-h-80 overflow-y-auto">
-            {LENS_STATUS_MAP.map((entry, i) => (
-              <motion.div
-                key={entry.id}
-                custom={i}
-                variants={cardVariants}
-                initial="hidden"
-                animate="visible"
-                className="flex items-center justify-between p-2 bg-lattice-deep rounded-lg"
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className={cn('inline-block px-2 py-0.5 rounded-full text-xs border', STATUS_COLORS[entry.status] || '')}>{entry.status}</span>
-                  <span className="text-sm text-gray-300 font-mono">{entry.id}</span>
-                </div>
-                <div className="text-xs text-gray-500 truncate max-w-[40%] text-right">
-                  {entry.mergeTarget ? `-> ${entry.mergeTarget} (${entry.postMergeRole})` : 'standalone'}
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Merge Map section */}
-      {infraSection === 'merge' && (
-        <div className="panel p-4 space-y-3">
-          <h2 className="font-semibold flex items-center gap-2">
-            <GitBranch className="w-4 h-4 text-neon-green" />
-            Lens Merge Map ({LENS_MERGE_GROUPS.length} groups, reduces by {mergeReduction.merged})
-          </h2>
-          <div className="space-y-3 max-h-96 overflow-y-auto">
-            {LENS_MERGE_GROUPS.map((group, i) => (
-              <motion.div
-                key={group.targetId}
-                custom={i}
-                variants={cardVariants}
-                initial="hidden"
-                animate="visible"
-                className="p-3 bg-lattice-deep rounded-lg border border-lattice-border"
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-semibold text-neon-green">{group.targetId}</span>
-                  <span className="text-xs text-gray-500">{group.sources.length} sources merging in</span>
-                </div>
-                <div className="flex flex-wrap gap-1">
-                  {group.sources.map((src) => (
-                    <span key={src.id} className="text-xs px-2 py-0.5 rounded bg-white/5 text-gray-400 border border-white/10">
-                      {src.id} ({src.role})
-                    </span>
-                  ))}
-                </div>
-              </motion.div>
-            ))}
-          </div>
-          {POST_MERGE_STANDALONE_LENSES.length > 0 && (
-            <div className="p-3 border border-neon-cyan/20 rounded-lg bg-neon-cyan/5">
-              <p className="text-xs text-neon-cyan font-semibold mb-1">Post-Merge Standalone ({POST_MERGE_STANDALONE_LENSES.length})</p>
-              <p className="text-xs text-gray-400">{POST_MERGE_STANDALONE_LENSES.join(', ')}</p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Productization Roadmap section */}
-      {infraSection === 'roadmap' && (
-        <div className="panel p-4 space-y-3">
-          <h2 className="font-semibold flex items-center gap-2">
-            <Route className="w-4 h-4 text-neon-blue" />
-            Productization Roadmap ({PRODUCTIZATION_PHASES.length} phases, {totalArtifacts} artifacts)
-          </h2>
-          {currentPhase && (
-            <div className="p-3 border border-neon-blue/30 rounded-lg bg-neon-blue/5 mb-3">
-              <p className="text-xs text-neon-blue font-semibold">Current Phase: {currentPhase.name}</p>
-              <p className="text-xs text-gray-400 mt-1">{currentPhase.rationale}</p>
-            </div>
-          )}
-          <div className="space-y-3 max-h-96 overflow-y-auto">
-            {PRODUCTIZATION_PHASES.map((phase, i) => (
-              <motion.div
-                key={phase.lensId}
-                custom={i}
-                variants={cardVariants}
-                initial="hidden"
-                animate="visible"
-                className="p-3 bg-lattice-deep rounded-lg border border-lattice-border"
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-semibold text-white">{phase.name}</span>
-                  <span className={cn(
-                    'text-xs px-2 py-0.5 rounded-full',
-                    phase.status === 'in_progress' ? 'bg-green-500/20 text-green-400' :
-                    phase.status === 'ready' ? 'bg-yellow-500/20 text-yellow-400' :
-                    'bg-gray-500/20 text-gray-400'
-                  )}>{phase.status}</span>
-                </div>
-                <p className="text-xs text-gray-500 mb-2">{phase.rationale}</p>
-                <div className="flex gap-3 text-xs text-gray-400">
-                  <span>{phase.pipelines.length} pipelines</span>
-                  <span>{phase.engines.length} engines</span>
-                  <span>{phase.artifacts.length} artifacts</span>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Wiring Profiles section */}
-      {infraSection === 'wiring' && (
-        <div className="panel p-4 space-y-3">
-          <h2 className="font-semibold flex items-center gap-2">
-            <Cog className="w-4 h-4 text-neon-purple" />
-            Wiring Profiles ({wiringCategories.length} categories)
-          </h2>
-          <div className="space-y-3 max-h-96 overflow-y-auto">
-            {wiringCategories.map((cat, i) => {
-              const profile = getWiringProfile(cat);
-              const score = getCategoryIntegrationScore(cat);
-              return (
-                <motion.div
-                  key={cat}
-                  custom={i}
-                  variants={cardVariants}
-                  initial="hidden"
-                  animate="visible"
-                  className="p-3 bg-lattice-deep rounded-lg border border-lattice-border"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div>
-                      <span className="text-sm font-semibold text-white">{profile.label}</span>
-                      <span className="text-xs text-gray-500 ml-2">({cat})</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-400">Integration:</span>
-                      <span className={cn(
-                        'text-xs font-mono px-2 py-0.5 rounded',
-                        score >= 80 ? 'bg-green-500/20 text-green-400' :
-                        score >= 50 ? 'bg-yellow-500/20 text-yellow-400' :
-                        'bg-red-500/20 text-red-400'
-                      )}>{score}%</span>
-                    </div>
-                  </div>
-                  <p className="text-xs text-gray-500 mb-2">{profile.description}</p>
-                  <div className="flex flex-wrap gap-3 text-xs text-gray-400">
-                    <span>{profile.enabledHooks.length}/30 hooks</span>
-                    <span>Layout: {profile.defaultLayout}</span>
-                    <span>Analytics: {profile.analyticsLevel}</span>
-                    <span>AI: {profile.aiFeatures.join(', ') || 'none'}</span>
-                  </div>
-                </motion.div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-    </motion.div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Tab definitions
-// ---------------------------------------------------------------------------
-
-type TabKey = 'overview' | 'components' | 'lenses' | 'orphans' | 'wiring' | 'search' | 'lens-infra';
-
-const TABS: { key: TabKey; label: string; icon: React.ElementType }[] = [
-  { key: 'overview', label: 'Overview', icon: Layers },
-  { key: 'components', label: 'Components', icon: Package },
-  { key: 'lenses', label: 'Lenses', icon: Eye },
-  { key: 'orphans', label: 'Orphans', icon: AlertTriangle },
-  { key: 'wiring', label: 'Wiring Map', icon: GitBranch },
-  { key: 'search', label: 'Search', icon: Search },
-  { key: 'lens-infra', label: 'Lens Infrastructure', icon: Cog },
-];
-
-// ---------------------------------------------------------------------------
-// Main Page
-// ---------------------------------------------------------------------------
-
-export default function MetaLensPage() {
-  useLensNav('meta');
-  const { isLive, lastUpdated } = useRealtimeLens('meta');
-  const [activeTab, setActiveTab] = useState<TabKey>('overview');
-
-  return (
     <div data-lens-theme="meta" className="p-6 space-y-6">
-      {/* Header */}
       <motion.header
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-between flex-wrap gap-3"
+        className="flex items-center gap-3"
       >
-        <div className="flex items-center gap-3">
-          <Layers className="w-6 h-6 text-neon-purple" />
-          <div>
-            <h1 className="text-xl font-bold">Codebase Inventory</h1>
-            <p className="text-sm text-gray-400">
-              Components, lenses, wiring, and orphan analysis
-            </p>
-          </div>
+        <Layers className="w-6 h-6 text-neon-purple" />
+        <div>
+          <h1 className="text-xl font-bold">Meta Lens</h1>
+          <p className="text-sm text-gray-400">
+            Builder for custom lenses - extend the lensbuilder/forge
+          </p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-          <DTUExportButton domain="meta" data={{}} compact />
-        </div>
+
+      {/* Real-time Enhancement Toolbar */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+        <DTUExportButton domain="meta" data={realtimeData || {}} compact />
+        {realtimeAlerts.length > 0 && (
+          <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
+            {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
+          </span>
+        )}
+      </div>
       </motion.header>
 
-      {/* Tab bar */}
-      <div className="flex gap-1 bg-lattice-void border border-lattice-border rounded-lg p-1 overflow-x-auto">
-        {TABS.map((tab) => (
+
+      {/* AI Actions */}
+      <UniversalActions domain="meta" artifactId={templateItems[0]?.id} compact />
+
+      {/* Stat Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[
+          { icon: Wand2, color: 'text-neon-purple', value: templates.length, label: 'Templates' },
+          { icon: Layout, color: 'text-neon-blue', value: componentLibrary.length, label: 'Components' },
+          { icon: Code, color: 'text-neon-green', value: generatedItems.length || '0', label: 'Generated Lenses' },
+          { icon: Link, color: 'text-neon-cyan', value: crossLensLinks.length, label: 'Cross-Links' },
+        ].map((stat, i) => (
+          <motion.div
+            key={stat.label}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: i * 0.08, duration: 0.3 }}
+            className="lens-card"
+          >
+            <stat.icon className={`w-5 h-5 ${stat.color} mb-2`} />
+            <p className="text-2xl font-bold">{stat.value}</p>
+            <p className="text-sm text-gray-400">{stat.label}</p>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-1 bg-lattice-void border border-lattice-border rounded-lg p-1">
+        {tabs.map(tab => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
             className={cn(
-              'flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap',
+              'flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all flex-1 justify-center',
               activeTab === tab.key
                 ? 'bg-neon-purple/20 text-neon-purple border border-neon-purple/30'
-                : 'text-gray-400 hover:text-white hover:bg-lattice-surface',
+                : 'text-gray-400 hover:text-white hover:bg-lattice-surface'
             )}
           >
             <tab.icon className="w-4 h-4" />
@@ -1169,24 +291,313 @@ export default function MetaLensPage() {
         ))}
       </div>
 
-      {/* Tab content */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={activeTab}
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: 20 }}
-          transition={{ duration: 0.25 }}
-        >
-          {activeTab === 'overview' && <OverviewTab />}
-          {activeTab === 'components' && <ComponentsTab />}
-          {activeTab === 'lenses' && <LensesTab />}
-          {activeTab === 'orphans' && <OrphansTab />}
-          {activeTab === 'wiring' && <WiringTab />}
-          {activeTab === 'search' && <SearchTab />}
-          {activeTab === 'lens-infra' && <LensInfrastructureTab />}
-        </motion.div>
-      </AnimatePresence>
+      {isLoading ? (
+        <div className="flex items-center justify-center p-12 text-gray-400">
+          <Loader2 className="w-6 h-6 animate-spin mr-2" />
+          Loading meta lens data...
+        </div>
+      ) : (
+        <AnimatePresence mode="wait">
+          {activeTab === 'overview' && (
+            <motion.div
+              key="overview"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.25 }}
+              className="space-y-6"
+            >
+              {/* Lens Builder */}
+              <div className="panel p-4">
+                <h2 className="font-semibold mb-4 flex items-center gap-2">
+                  <Wand2 className="w-4 h-4 text-neon-purple" />
+                  Create New Lens
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="text-sm text-gray-400 block mb-2">Lens Name</label>
+                    <input
+                      type="text"
+                      value={lensName}
+                      onChange={(e) => setLensName(e.target.value)}
+                      placeholder="My Custom Lens"
+                      className="input-lattice w-full"
+                      disabled={generating}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-400 block mb-2">Description</label>
+                    <input
+                      type="text"
+                      value={lensDescription}
+                      onChange={(e) => setLensDescription(e.target.value)}
+                      placeholder="What does this lens do?"
+                      className="input-lattice w-full"
+                      disabled={generating}
+                    />
+                  </div>
+                </div>
+
+                <div className="mb-4">
+                  <label className="text-sm text-gray-400 block mb-2">Select Components</label>
+                  <div className="flex flex-wrap gap-2">
+                    {componentLibrary.map((comp) => {
+                      const Icon = comp.icon;
+                      const selected = selectedComponents.includes(comp.id);
+                      return (
+                        <button
+                          key={comp.id}
+                          onClick={() => toggleComponent(comp.id)}
+                          disabled={generating}
+                          className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
+                            selected
+                              ? 'bg-neon-purple/20 text-neon-purple border border-neon-purple/30'
+                              : 'bg-lattice-surface text-gray-400 hover:text-white'
+                          }`}
+                        >
+                          <Icon className="w-4 h-4" />
+                          {comp.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleGenerate}
+                  disabled={!lensName || selectedComponents.length === 0 || generating}
+                  className="btn-neon purple w-full flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {generating ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Code className="w-4 h-4" />
+                  )}
+                  {generating ? 'Generating...' : 'Generate Lens Code'}
+                </button>
+              </div>
+
+              {/* Generated Code */}
+              <AnimatePresence>
+                {generatedCode && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="panel p-4 overflow-hidden"
+                  >
+                    <h2 className="font-semibold mb-4 flex items-center gap-2">
+                      <Code className="w-4 h-4 text-neon-green" />
+                      Generated Code
+                    </h2>
+                    <pre className="bg-lattice-deep rounded-lg p-4 overflow-x-auto text-sm font-mono text-gray-300 max-h-96 overflow-y-auto">
+                      {generatedCode}
+                    </pre>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Templates */}
+              <div className="panel p-4">
+                <h2 className="font-semibold mb-4 flex items-center gap-2">
+                  <Layout className="w-4 h-4 text-neon-blue" />
+                  Starter Templates
+                </h2>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {templates.map((template, i) => (
+                    <motion.button
+                      key={template.id}
+                      custom={i}
+                      variants={cardVariants}
+                      initial="hidden"
+                      animate="visible"
+                      onClick={() => {
+                        setLensName(template.name);
+                        setLensDescription(template.description);
+                      }}
+                      className="lens-card text-left hover:border-neon-cyan"
+                    >
+                      <p className="font-semibold mb-1">{template.name}</p>
+                      <p className="text-xs text-gray-400 mb-2">{template.description}</p>
+                      <div className="flex flex-wrap gap-1">
+                        {template.components.map((c) => (
+                          <span key={c} className="text-xs px-1.5 py-0.5 bg-lattice-surface rounded">
+                            {c}
+                          </span>
+                        ))}
+                      </div>
+                    </motion.button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Generated Lenses History */}
+              {generatedItems.length > 0 && (
+                <div className="panel p-4">
+                  <h2 className="font-semibold mb-4 flex items-center gap-2">
+                    <Wand2 className="w-4 h-4 text-neon-purple" />
+                    Previously Generated Lenses
+                  </h2>
+                  <div className="space-y-2">
+                    {generatedItems.slice(0, 5).map((item, i) => (
+                      <motion.div
+                        key={item.id}
+                        custom={i}
+                        variants={cardVariants}
+                        initial="hidden"
+                        animate="visible"
+                        className="flex items-center justify-between p-3 bg-lattice-deep rounded-lg cursor-pointer hover:bg-lattice-surface"
+                        onClick={() => {
+                          setLensName(item.data.lensName || item.title);
+                          setLensDescription(item.data.description || '');
+                          setGeneratedCode(item.data.code || null);
+                        }}
+                      >
+                        <div>
+                          <p className="text-sm font-medium">{item.data.lensName || item.title}</p>
+                          <p className="text-xs text-gray-500">
+                            {item.data.components?.join(', ') || 'No components'}
+                          </p>
+                        </div>
+                        <span className="text-xs text-gray-500">
+                          {item.data.generatedAt
+                            ? new Date(item.data.generatedAt).toLocaleDateString()
+                            : new Date(item.createdAt).toLocaleDateString()}
+                        </span>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {activeTab === 'connections' && (
+            <motion.div
+              key="connections"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.25 }}
+              className="panel p-6"
+            >
+              <h2 className="font-semibold mb-4 flex items-center gap-2">
+                <Link className="w-4 h-4 text-neon-cyan" /> Cross-Lens Connections
+              </h2>
+              <p className="text-sm text-gray-400 mb-6">Visualize how lenses interconnect and share knowledge across the cognitive lattice.</p>
+              <div className="space-y-3">
+                {crossLensLinks.map((link, i) => (
+                  <motion.div
+                    key={`${link.from}-${link.to}`}
+                    custom={i}
+                    variants={cardVariants}
+                    initial="hidden"
+                    animate="visible"
+                    className="lens-card"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-0.5 rounded bg-neon-purple/20 text-neon-purple text-xs font-semibold">{link.from}</span>
+                        <Link className="w-3 h-3 text-gray-500" />
+                        <span className="px-2 py-0.5 rounded bg-neon-cyan/20 text-neon-cyan text-xs font-semibold">{link.to}</span>
+                      </div>
+                      <span className="text-xs font-mono text-gray-400">{link.strength}%</span>
+                    </div>
+                    <p className="text-xs text-gray-400">{link.label}</p>
+                    <div className="mt-2 h-1.5 bg-lattice-deep rounded-full overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${link.strength}%` }}
+                        transition={{ duration: 0.8, delay: i * 0.1 }}
+                        className="h-full rounded-full bg-gradient-to-r from-neon-purple to-neon-cyan"
+                      />
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {activeTab === 'insights' && (
+            <motion.div
+              key="insights"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.25 }}
+              className="panel p-6"
+            >
+              <h2 className="font-semibold mb-4 flex items-center gap-2">
+                <BarChart className="w-4 h-4 text-neon-green" /> Meta-Stats Dashboard
+              </h2>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                {[
+                  { label: 'Total Lenses', value: '10+', color: 'text-neon-purple' },
+                  { label: 'Active Connections', value: crossLensLinks.length, color: 'text-neon-cyan' },
+                  { label: 'Templates', value: templates.length, color: 'text-neon-blue' },
+                  { label: 'Generated', value: generatedItems.length, color: 'text-neon-green' },
+                ].map((stat, i) => (
+                  <motion.div
+                    key={stat.label}
+                    custom={i}
+                    variants={cardVariants}
+                    initial="hidden"
+                    animate="visible"
+                    className="text-center p-4 bg-lattice-deep rounded-lg"
+                  >
+                    <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
+                    <p className="text-xs text-gray-500 mt-1">{stat.label}</p>
+                  </motion.div>
+                ))}
+              </div>
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-gray-300">System Health</h3>
+                {[
+                  { label: 'Lens Coverage', value: 95 },
+                  { label: 'Data Freshness', value: 88 },
+                  { label: 'Connection Density', value: 72 },
+                  { label: 'Generation Quality', value: 81 },
+                ].map((metric, i) => (
+                  <motion.div
+                    key={metric.label}
+                    custom={i}
+                    variants={cardVariants}
+                    initial="hidden"
+                    animate="visible"
+                  >
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="text-gray-400">{metric.label}</span>
+                      <span className={metric.value > 80 ? 'text-neon-green' : metric.value > 60 ? 'text-yellow-400' : 'text-red-400'}>
+                        {metric.value}%
+                      </span>
+                    </div>
+                    <div className="h-2 bg-lattice-deep rounded-full overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${metric.value}%` }}
+                        transition={{ duration: 0.8, delay: i * 0.1 }}
+                        className={cn('h-full rounded-full', metric.value > 80 ? 'bg-neon-green' : metric.value > 60 ? 'bg-yellow-400' : 'bg-red-400')}
+                      />
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      )}
+
+      {/* Real-time Data Panel */}
+      {realtimeData && (
+        <RealtimeDataPanel
+          domain="meta"
+          data={realtimeData}
+          isLive={isLive}
+          lastUpdated={lastUpdated}
+          insights={realtimeInsights}
+          compact
+        />
+      )}
     </div>
   );
 }

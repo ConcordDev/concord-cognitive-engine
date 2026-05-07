@@ -105,7 +105,11 @@ function valenceColor(v: number): string {
 
 // ── Component ───────────────────────────────────────────────────────────────
 
-function QualiaSensoryFeed({ entityId, channels, overloadActive = false }: QualiaSensoryFeedProps) {
+export default function QualiaSensoryFeed({
+  entityId: _entityId,
+  channels,
+  overloadActive = false,
+}: QualiaSensoryFeedProps) {
   const channelEntries = Object.entries(channels);
 
   // Compute overall sensation

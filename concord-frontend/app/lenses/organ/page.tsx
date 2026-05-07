@@ -7,11 +7,9 @@ import { useState, useMemo } from 'react';
 import {
   Heart, Activity, Zap, TrendingUp, TrendingDown, RefreshCw,
   AlertTriangle, Clock, Shield, Wrench,
-  ChevronDown, Search, BarChart3, Layers, GitBranch, Play, Loader2,
+  ChevronDown, Search, BarChart3, Layers, GitBranch,
 } from 'lucide-react';
-import { useLensData } from '@/lib/hooks/use-lens-data';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -576,87 +574,6 @@ export default function OrganLensPage() {
       )}
 
       <RealtimeDataPanel data={realtimeInsights} />
-
-      {/* Backend Action Panel */}
-      <div className="panel p-4 space-y-3">
-        <h2 className="font-semibold flex items-center gap-2">
-          <GitBranch className="w-4 h-4 text-neon-cyan" />
-          Org Analysis
-        </h2>
-        <div className="flex flex-wrap gap-2">
-          {[
-            { action: 'orgChart', label: 'Org Chart' },
-            { action: 'teamComposition', label: 'Team Composition' },
-            { action: 'communicationFlow', label: 'Communication Flow' },
-          ].map(({ action, label }) => (
-            <button key={action} onClick={() => handleAction(action)} disabled={!!isRunning}
-              className="btn-secondary text-sm flex items-center gap-1 disabled:opacity-50">
-              {isRunning === action ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
-              {label}
-            </button>
-          ))}
-        </div>
-        {actionResult && (
-          <div className="bg-lattice-deep rounded-lg p-4 space-y-3 text-sm">
-            {'totalEmployees' in actionResult && (
-              <div className="space-y-2">
-                <div className="flex flex-wrap gap-4 text-xs">
-                  <span className="text-gray-400">Employees: <span className="text-neon-cyan font-bold">{String(actionResult.totalEmployees)}</span></span>
-                  <span className="text-gray-400">Managers: <span className="text-neon-cyan">{String(actionResult.totalManagers)}</span></span>
-                  <span className="text-gray-400">Structure: <span className="text-neon-purple">{String(actionResult.flatnessLabel)}</span></span>
-                </div>
-                {'bottleneckManagers' in actionResult && Array.isArray(actionResult.bottleneckManagers) && actionResult.bottleneckManagers.length > 0 && (
-                  <div>
-                    <p className="text-xs text-yellow-400 font-semibold mb-1">Bottleneck Managers</p>
-                    {(actionResult.bottleneckManagers as Array<Record<string, unknown>>).map((m, i) => (
-                      <span key={i} className="text-xs bg-yellow-400/10 border border-yellow-400/20 rounded px-2 py-0.5 mr-1 text-yellow-400">{String(m.name || m.id)}</span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-            {'teamSize' in actionResult && (
-              <div className="space-y-2">
-                <div className="flex flex-wrap gap-4 text-xs">
-                  <span className="text-gray-400">Size: <span className="text-neon-cyan">{String(actionResult.teamSize)}</span></span>
-                  <span className="text-gray-400">Skills: <span className="text-neon-cyan">{String(actionResult.uniqueSkills)}</span></span>
-                </div>
-                {'gaps' in actionResult && Array.isArray(actionResult.gaps) && actionResult.gaps.length > 0 && (
-                  <div>
-                    <p className="text-xs text-red-400 font-semibold mb-1">Skill Gaps</p>
-                    <div className="flex flex-wrap gap-1">
-                      {(actionResult.gaps as string[]).map((g, i) => (
-                        <span key={i} className="text-xs bg-red-400/10 border border-red-400/20 rounded px-2 py-0.5 text-red-400">{g}</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-            {'nodes' in actionResult && 'edges' in actionResult && 'density' in actionResult && (
-              <div className="space-y-2">
-                <div className="flex flex-wrap gap-4 text-xs">
-                  <span className="text-gray-400">Nodes: <span className="text-neon-cyan">{String(actionResult.nodes)}</span></span>
-                  <span className="text-gray-400">Edges: <span className="text-neon-cyan">{String(actionResult.edges)}</span></span>
-                  <span className="text-gray-400">Density: <span className="text-neon-green">{String(actionResult.density)}</span></span>
-                  <span className="text-gray-400">Silos: <span className="text-red-400">{String((actionResult.silos as unknown[])?.length || 0)}</span></span>
-                </div>
-                {'hubs' in actionResult && Array.isArray(actionResult.hubs) && actionResult.hubs.length > 0 && (
-                  <div>
-                    <p className="text-xs text-neon-green font-semibold mb-1">Hubs</p>
-                    <div className="flex flex-wrap gap-1">
-                      {(actionResult.hubs as Array<Record<string, unknown>>).map((h, i) => (
-                        <span key={i} className="text-xs bg-neon-green/10 border border-neon-green/20 rounded px-2 py-0.5 text-neon-green">{String(h.node || h.name || h.id)}</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-            {'message' in actionResult && <p className="text-gray-400">{String(actionResult.message)}</p>}
-          </div>
-        )}
-      </div>
 
       {/* Lens Features */}
       <div className="border-t border-white/10">

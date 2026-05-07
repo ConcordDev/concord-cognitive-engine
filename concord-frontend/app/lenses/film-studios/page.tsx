@@ -3,27 +3,24 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiHelpers } from '@/lib/api/client';
+import { api, apiHelpers } from '@/lib/api/client';
 import { useLensData } from '@/lib/hooks/use-lens-data';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useLensDTUs } from '@/hooks/useLensDTUs';
 import { useUIStore } from '@/store/ui';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Film, Plus, Search, Play, Users, Clock, Eye, TrendingUp, Clapperboard, Camera, Mic,
-  Music, Layers, BarChart3, Share2, X, ChevronRight,
-  Monitor, Globe, Sparkles, Loader2, DollarSign, Calendar,
+  Film, Plus, Search, Play, Users, Star, Clock, Eye,
+  DollarSign, TrendingUp, Clapperboard, Camera, Mic,
+  Music, Layers, BarChart3, Share2, Gift, X, ChevronRight,
+  Monitor, Globe, Award, Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { UniversalActions } from '@/components/lens/UniversalActions';
-import { UniversalPlayer } from '@/components/media/UniversalPlayer';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
-import { showToast } from '@/components/common/Toasts';
 
 type FilmTab = 'discover' | 'my-films' | 'create' | 'analytics' | 'watch-parties';
 
@@ -42,36 +39,15 @@ interface FilmProject {
 export default function FilmStudiosPage() {
   useLensNav('film-studios');
   const queryClient = useQueryClient();
-  const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('film-studios');
+  const { latestData: realtimeData, alerts: _alerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('film-studios');
   const { contextDTUs, isLoading: dtusLoading } = useLensDTUs({ lens: 'film-studios' });
 
   const [tab, setTab] = useState<FilmTab>('discover');
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showFeatures, setShowFeatures] = useState(true);
+  const [showFeatures, setShowFeatures] = useState(false);
   const [partyCode, setPartyCode] = useState('');
   const [partyActive, setPartyActive] = useState(false);
-  const [previewFilm, setPreviewFilm] = useState<FilmProject | null>(null);
-  const [uploadVideoUrl, setUploadVideoUrl] = useState<string | null>(null);
-
-  // My films via useLensData (declared before action wiring to avoid used-before-declaration errors)
-  const { items: myFilmItems, create: createFilmItem, isError: isError2, error: error2, refetch: refetch2 } = useLensData<Record<string, unknown>>('film-studios', 'film', { seed: [] });
-
-  // Backend action wiring
-  const runFilmAction = useRunArtifact('film-studios');
-  const [filmActionResult, setFilmActionResult] = useState<Record<string, unknown> | null>(null);
-  const [filmRunning, setFilmRunning] = useState<string | null>(null);
-
-  const handleFilmAction = useCallback(async (action: string) => {
-    const targetId = myFilmItems[0]?.id;
-    if (!targetId) return;
-    setFilmRunning(action);
-    try {
-      const res = await runFilmAction.mutateAsync({ id: targetId, action });
-      if (res.ok === false) { setFilmActionResult({ _action: action, message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setFilmActionResult({ _action: action, ...(res.result as Record<string, unknown>) }); }
-    } catch (e) { console.error(`Film action ${action} failed:`, e); setFilmActionResult({ message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` }); }
-    setFilmRunning(null);
-  }, [myFilmItems, runFilmAction]);
 
   // Form state
   const [newTitle, setNewTitle] = useState('');
@@ -87,9 +63,12 @@ export default function FilmStudiosPage() {
   // Discover films
   const { data: discoveredFilms, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['film-studio', 'discover', searchQuery],
-    queryFn: () => apiHelpers.filmStudio.discover({ q: searchQuery || undefined }).then(r => r.data?.films || r.data?.items || r.data || []).catch((e) => { console.warn('[FilmStudios] Query failed:', e?.message); return []; }),
+    queryFn: () => apiHelpers.filmStudio.discover({ q: searchQuery || undefined }).then(r => r.data?.films || r.data?.items || r.data || []).catch(() => []),
     initialData: [],
   });
+
+  // My films via useLensData
+  const { items: myFilmItems, create: createFilmItem, isError: isError2, error: error2, refetch: refetch2 } = useLensData<Record<string, unknown>>('film-studios', 'film', { seed: [] });
   const myFilms = useMemo(() => myFilmItems.map(i => ({ ...(i.data as unknown as FilmProject), id: i.id, title: i.title })), [myFilmItems]);
 
   // Create film mutation
@@ -203,11 +182,6 @@ export default function FilmStudiosPage() {
           </div>
           <div className="flex items-center gap-2">
             <DTUExportButton domain="film-studios" data={{}} compact />
-            {realtimeAlerts.length > 0 && (
-              <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
-                {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
-              </span>
-            )}
             <button onClick={() => setShowFeatures(!showFeatures)} className="px-3 py-1.5 text-xs bg-white/5 border border-white/10 rounded-lg hover:bg-white/10">
               Features
             </button>
@@ -219,177 +193,6 @@ export default function FilmStudiosPage() {
 
         {showFeatures && <LensFeaturePanel lensId="film_studios" />}
         <RealtimeDataPanel data={realtimeData} insights={realtimeInsights} />
-      <UniversalActions domain="film-studios" artifactId={null} compact />
-
-        {/* Film Studio Actions */}
-        <div className="panel p-4 space-y-3">
-          <h2 className="font-semibold text-sm flex items-center gap-2">
-            <Clapperboard className="w-4 h-4 text-neon-purple" />
-            Production Actions
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            {[
-              { action: 'budgetBreakdown',       label: 'Budget Breakdown',    icon: DollarSign, color: 'text-neon-green' },
-              { action: 'scheduleShoot',         label: 'Schedule Shoot',      icon: Calendar,   color: 'text-neon-cyan' },
-              { action: 'castAnalysis',          label: 'Cast Analysis',       icon: Users,      color: 'text-neon-purple' },
-              { action: 'postProductionTimeline',label: 'Post Timeline',       icon: Layers,     color: 'text-yellow-400' },
-            ].map(({ action, label, icon: Icon, color }) => (
-              <button
-                key={action}
-                onClick={() => handleFilmAction(action)}
-                disabled={!!filmRunning || !myFilmItems[0]?.id}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm hover:border-neon-purple/30 disabled:opacity-40 transition-colors"
-              >
-                {filmRunning === action ? <Loader2 className="w-4 h-4 animate-spin" /> : <Icon className={`w-4 h-4 ${color}`} />}
-                <span className="truncate text-xs">{label}</span>
-              </button>
-            ))}
-          </div>
-
-          {filmActionResult && (
-            <div className="mt-3 rounded-lg bg-black/30 border border-white/10 p-4 relative">
-              <button onClick={() => setFilmActionResult(null)} className="absolute top-3 right-3 text-gray-500 hover:text-white">
-                <X className="w-4 h-4" />
-              </button>
-
-              {/* budgetBreakdown */}
-              {filmActionResult._action === 'budgetBreakdown' && (
-                <div className="space-y-3">
-                  <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Budget Breakdown</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-white/5 rounded-lg p-3">
-                      <p className="text-xs text-gray-400">Total Budget</p>
-                      <p className="text-xl font-bold text-neon-green">${(filmActionResult.totalBudget as number || 0).toLocaleString()}</p>
-                    </div>
-                    <div className="bg-white/5 rounded-lg p-3">
-                      <p className="text-xs text-gray-400">Tip</p>
-                      <p className="text-xs text-gray-300">{filmActionResult.tip as string}</p>
-                    </div>
-                  </div>
-                  {Array.isArray(filmActionResult.breakdown) && (
-                    <div className="space-y-1.5">
-                      {(filmActionResult.breakdown as {category:string;percentage:number;amount:number}[]).map(b => (
-                        <div key={b.category} className="flex items-center gap-3 text-xs">
-                          <span className="text-gray-400 w-40 capitalize">{b.category}</span>
-                          <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden">
-                            <div className="h-full bg-neon-purple/60 rounded-full" style={{ width: `${b.percentage}%` }} />
-                          </div>
-                          <span className="text-white w-10 text-right">{b.percentage}%</span>
-                          <span className="text-neon-green w-20 text-right font-mono">${b.amount.toLocaleString()}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* scheduleShoot */}
-              {filmActionResult._action === 'scheduleShoot' && (
-                <div className="space-y-3">
-                  <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Shoot Schedule</p>
-                  {(filmActionResult.message as string) ? <p className="text-sm text-gray-400">{filmActionResult.message as string}</p> : (
-                    <>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        {[
-                          { label: 'Total Scenes', value: String(filmActionResult.totalScenes ?? 0), color: 'text-white' },
-                          { label: 'Shoot Days', value: String(filmActionResult.totalShootDays ?? 0), color: 'text-neon-cyan' },
-                          { label: 'Weeks', value: String(filmActionResult.totalWeeks ?? 0), color: 'text-neon-purple' },
-                          { label: 'Scenes/Day', value: String(filmActionResult.avgScenesPerDay ?? 0), color: 'text-neon-green' },
-                        ].map(({ label, value, color }) => (
-                          <div key={label} className="bg-white/5 rounded-lg p-3 text-center">
-                            <p className={`text-lg font-bold ${color}`}>{value}</p>
-                            <p className="text-xs text-gray-400">{label}</p>
-                          </div>
-                        ))}
-                      </div>
-                      {Array.isArray(filmActionResult.locations) && (
-                        <div className="space-y-1">
-                          {(filmActionResult.locations as {location:string;scenes:number;estimatedDays:number}[]).map(loc => (
-                            <div key={loc.location} className="flex items-center gap-3 text-xs px-2 py-1.5 rounded bg-white/5">
-                              <span className="flex-1 text-white">{loc.location}</span>
-                              <span className="text-gray-400">{loc.scenes} scenes</span>
-                              <span className="text-neon-cyan">{loc.estimatedDays} days</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
-
-              {/* castAnalysis */}
-              {filmActionResult._action === 'castAnalysis' && (
-                <div className="space-y-3">
-                  <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Cast Analysis</p>
-                  {(filmActionResult.message as string) ? <p className="text-sm text-gray-400">{filmActionResult.message as string}</p> : (
-                    <>
-                      <div className="grid grid-cols-3 gap-3">
-                        {[
-                          { label: 'Total Cast', value: String(filmActionResult.totalCast ?? 0), color: 'text-white' },
-                          { label: 'Lead Roles', value: String(filmActionResult.leads ?? 0), color: 'text-neon-purple' },
-                          { label: 'Budget', value: `$${(filmActionResult.totalCastBudget as number || 0).toLocaleString()}`, color: 'text-neon-green' },
-                        ].map(({ label, value, color }) => (
-                          <div key={label} className="bg-white/5 rounded-lg p-3 text-center">
-                            <p className={`text-lg font-bold ${color}`}>{value}</p>
-                            <p className="text-xs text-gray-400">{label}</p>
-                          </div>
-                        ))}
-                      </div>
-                      {filmActionResult.topCost && <p className="text-xs text-gray-400">Highest cost: <span className="text-neon-cyan">{filmActionResult.topCost as string}</span></p>}
-                      {Array.isArray(filmActionResult.cast) && (
-                        <div className="space-y-1 max-h-32 overflow-y-auto">
-                          {(filmActionResult.cast as {name:string;role:string;scenes:number;totalCost:number}[]).map(c => (
-                            <div key={c.name} className="flex items-center gap-3 text-xs px-2 py-1 rounded bg-white/5">
-                              <span className="flex-1 text-white">{c.name}</span>
-                              <span className="text-gray-400 capitalize">{c.role}</span>
-                              <span className="text-neon-cyan">{c.scenes} scenes</span>
-                              <span className="text-neon-green font-mono">${c.totalCost.toLocaleString()}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
-
-              {/* postProductionTimeline */}
-              {filmActionResult._action === 'postProductionTimeline' && (
-                <div className="space-y-3">
-                  <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Post-Production Timeline</p>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {[
-                      { label: 'Runtime', value: `${filmActionResult.runtime ?? 0} min`, color: 'text-white' },
-                      { label: 'VFX Shots', value: String(filmActionResult.vfxShots ?? 0), color: 'text-neon-cyan' },
-                      { label: 'Total Weeks', value: String(filmActionResult.totalWeeks ?? 0), color: 'text-neon-green' },
-                    ].map(({ label, value, color }) => (
-                      <div key={label} className="bg-white/5 rounded-lg p-3 text-center">
-                        <p className={`text-lg font-bold ${color}`}>{value}</p>
-                        <p className="text-xs text-gray-400">{label}</p>
-                      </div>
-                    ))}
-                  </div>
-                  {Array.isArray(filmActionResult.phases) && (
-                    <div className="space-y-2">
-                      {(filmActionResult.phases as {phase:string;weeks:number}[]).map(ph => (
-                        <div key={ph.phase} className="flex items-center gap-3 text-xs">
-                          <span className="text-gray-400 w-36">{ph.phase}</span>
-                          <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden">
-                            <div className="h-full bg-neon-purple/60 rounded-full" style={{ width: `${Math.min(100, ph.weeks / ((filmActionResult.totalWeeks as number) || 1) * 100)}%` }} />
-                          </div>
-                          <span className="text-neon-cyan w-16 text-right">{ph.weeks} weeks</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {!!filmActionResult.parallelizable && <p className="text-xs text-gray-500 italic">{String(filmActionResult.parallelizable)}</p>}
-                  {!!filmActionResult.estimatedCompletion && <p className="text-xs text-neon-green">Completion: {String(filmActionResult.estimatedCompletion)}</p>}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
 
         {/* Tabs */}
         <div className="flex gap-1 bg-white/5 p-1 rounded-lg border border-white/10">
@@ -435,8 +238,8 @@ export default function FilmStudiosPage() {
                     )}
                   </div>
                   <div className="flex gap-2 mt-3">
-                    <button onClick={() => setPreviewFilm(film)} className="flex-1 text-xs py-1.5 bg-neon-purple/20 rounded hover:bg-neon-purple/30 flex items-center justify-center gap-1"><Play className="w-3 h-3" /> Preview</button>
-                    <button onClick={() => { navigator.clipboard?.writeText(window.location.href).then(() => showToast('success', 'Link copied to clipboard')).catch(() => showToast('error', 'Failed to copy link')); }} className="text-xs py-1.5 px-2 bg-white/5 rounded hover:bg-white/10"><Share2 className="w-3 h-3" /></button>
+                    <button className="flex-1 text-xs py-1.5 bg-neon-purple/20 rounded hover:bg-neon-purple/30 flex items-center justify-center gap-1"><Play className="w-3 h-3" /> Preview</button>
+                    <button className="text-xs py-1.5 px-2 bg-white/5 rounded hover:bg-white/10"><Share2 className="w-3 h-3" /></button>
                   </div>
                 </motion.div>
               ))}
@@ -496,14 +299,14 @@ export default function FilmStudiosPage() {
 
                       {/* Crew & Components buttons with count badges */}
                       <div className="flex gap-2">
-                        <button onClick={() => { apiHelpers.filmStudio.components(film.id).then(r => { const count = r.data?.length ?? r.data?.components?.length ?? 0; showToast('success', `Loaded ${count} component(s)`); }).catch(() => showToast('error', 'Failed to load components')); }} className="flex-1 text-xs py-1.5 bg-white/5 rounded hover:bg-white/10 flex items-center justify-center gap-1.5 group">
+                        <button className="flex-1 text-xs py-1.5 bg-white/5 rounded hover:bg-white/10 flex items-center justify-center gap-1.5 group">
                           <Layers className="w-3 h-3 text-gray-400 group-hover:text-white transition-colors" />
                           <span>Components</span>
                           {componentCount > 0 && (
                             <span className="ml-auto px-1.5 py-0.5 rounded-full bg-neon-purple/20 text-neon-purple text-[9px] font-bold">{componentCount}</span>
                           )}
                         </button>
-                        <button onClick={() => { apiHelpers.filmStudio.crew(film.id).then(r => { const count = r.data?.length ?? r.data?.crew?.length ?? 0; showToast('success', `Loaded ${count} crew member(s)`); }).catch(() => showToast('error', 'Failed to load crew')); }} className="flex-1 text-xs py-1.5 bg-white/5 rounded hover:bg-white/10 flex items-center justify-center gap-1.5 group">
+                        <button className="flex-1 text-xs py-1.5 bg-white/5 rounded hover:bg-white/10 flex items-center justify-center gap-1.5 group">
                           {film.crew && film.crew.length > 0 ? roleIcon(film.crew[0]?.role) : <Users className="w-3 h-3 text-gray-400 group-hover:text-white transition-colors" />}
                           <span>Crew</span>
                           {crewCount > 0 && (
@@ -530,25 +333,6 @@ export default function FilmStudiosPage() {
             <select value={newResolution} onChange={e => setNewResolution(e.target.value)} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none">
               {(resolutions as string[]).map((r: string) => <option key={r} value={r}>{r}</option>)}
             </select>
-            {/* Video file upload */}
-            <div className="space-y-1.5">
-              <label className="text-xs text-gray-400 flex items-center gap-1.5"><Camera className="w-3 h-3" /> Upload Video</label>
-              <input
-                type="file"
-                accept="video/*"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    if (uploadVideoUrl) URL.revokeObjectURL(uploadVideoUrl);
-                    setUploadVideoUrl(URL.createObjectURL(file));
-                  }
-                }}
-                className="w-full text-xs text-gray-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:bg-neon-purple/20 file:text-neon-purple hover:file:bg-neon-purple/30"
-              />
-              {uploadVideoUrl && (
-                <video src={uploadVideoUrl} controls className="w-full rounded-lg border border-white/10 mt-2" style={{ maxHeight: '200px' }} />
-              )}
-            </div>
             <button onClick={handleCreate} disabled={!newTitle.trim() || createFilmMutation.isPending} className="w-full py-2 bg-neon-purple/20 border border-neon-purple/30 rounded-lg text-sm hover:bg-neon-purple/30 disabled:opacity-50">
               {createFilmMutation.isPending ? 'Creating...' : 'Create Film'}
             </button>
@@ -734,76 +518,6 @@ export default function FilmStudiosPage() {
                   <button onClick={handleCreate} disabled={!newTitle.trim()} className="w-full py-2 bg-neon-purple/20 rounded-lg text-sm hover:bg-neon-purple/30 disabled:opacity-50">
                     {createFilmMutation.isPending ? 'Creating...' : 'Create'}
                   </button>
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Video Preview Modal */}
-        <AnimatePresence>
-          {previewFilm && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-8"
-              onClick={() => setPreviewFilm(null)}
-            >
-              <motion.div
-                initial={{ scale: 0.9 }}
-                animate={{ scale: 1 }}
-                exit={{ scale: 0.9 }}
-                className="bg-gray-900 border border-white/10 rounded-xl w-full max-w-4xl overflow-hidden"
-                onClick={e => e.stopPropagation()}
-              >
-                <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
-                  <div className="flex items-center gap-2">
-                    <Film className="w-4 h-4 text-neon-purple" />
-                    <span className="font-medium text-sm">{previewFilm.title}</span>
-                    {previewFilm.resolution && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-neon-purple/20 text-neon-purple">{previewFilm.resolution}</span>
-                    )}
-                  </div>
-                  <button onClick={() => setPreviewFilm(null)} className="p-1 rounded hover:bg-white/10"><X className="w-4 h-4" /></button>
-                </div>
-                <div className="p-4">
-                  <UniversalPlayer
-                    mediaDTU={{
-                      id: previewFilm.id,
-                      title: previewFilm.title,
-                      mediaType: 'video',
-                      hlsManifest: `/api/film-studio/${previewFilm.id}/stream`,
-                      thumbnail: `/api/film-studio/${previewFilm.id}/thumbnail`,
-                      duration: previewFilm.duration || 0,
-                      resolution: { width: previewFilm.resolution === '4k' ? 3840 : previewFilm.resolution === '1440p' ? 2560 : 1920, height: previewFilm.resolution === '4k' ? 2160 : previewFilm.resolution === '1440p' ? 1440 : 1080 },
-                      engagement: { views: 0, likes: 0, comments: 0, shares: 0 },
-                    }}
-                    autoplay
-                  />
-                </div>
-                {/* Clip Timeline */}
-                <div className="border-t border-white/10 px-4 py-3">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Layers className="w-3.5 h-3.5 text-gray-400" />
-                    <span className="text-xs text-gray-400 font-medium">Timeline</span>
-                  </div>
-                  <div className="relative h-10 bg-white/5 rounded-lg border border-white/10 overflow-hidden">
-                    {/* Time ruler */}
-                    <div className="absolute inset-x-0 top-0 h-3 flex">
-                      {Array.from({ length: 10 }).map((_, i) => (
-                        <div key={i} className="flex-1 border-r border-white/10 px-1">
-                          <span className="text-[8px] text-gray-600">{Math.round(((previewFilm.duration || 120) / 10) * i)}s</span>
-                        </div>
-                      ))}
-                    </div>
-                    {/* Video track */}
-                    <div className="absolute inset-x-1 bottom-1 h-4 bg-gradient-to-r from-neon-purple/40 to-pink-500/40 rounded border border-neon-purple/30">
-                      <div className="absolute inset-0 flex items-center px-2">
-                        <span className="text-[8px] text-white/70 truncate">{previewFilm.title}</span>
-                      </div>
-                    </div>
-                  </div>
                 </div>
               </motion.div>
             </motion.div>

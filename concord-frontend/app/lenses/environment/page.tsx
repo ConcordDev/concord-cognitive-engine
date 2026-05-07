@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
-import { LensPageShell } from '@/components/lens/LensPageShell';
+import { useLensNav } from '@/hooks/useLensNav';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ds } from '@/lib/design-system';
@@ -48,27 +48,23 @@ import {
   Clipboard,
   Minus,
   Zap,
+  Layers,
   Map,
 } from 'lucide-react';
 
 const MapView = dynamic(() => import('@/components/common/MapView'), { ssr: false });
-import { LensFeedPanel } from '@/components/feeds/LensFeedPanel';
+import { ErrorState } from '@/components/common/EmptyState';
+import { useRealtimeLens } from '@/hooks/useRealtimeLens';
+import { LiveIndicator } from '@/components/lens/LiveIndicator';
+import { DTUExportButton } from '@/components/lens/DTUExportButton';
+import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
+import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
-type ModeTab =
-  | 'Sites'
-  | 'Species'
-  | 'Sampling'
-  | 'Trails'
-  | 'Waste'
-  | 'Compliance'
-  | 'Carbon'
-  | 'Resources'
-  | 'Goals'
-  | 'Map';
+type ModeTab = 'Sites' | 'Species' | 'Sampling' | 'Trails' | 'Waste' | 'Compliance' | 'Carbon' | 'Resources' | 'Goals' | 'Map';
 
 type ArtifactType =
   | 'Site'
@@ -643,6 +639,11 @@ export default function EnvironmentLensPage() {
           ) / resourceItems.length
         : 0;
 
+    const totalResources = resourceItems.length;
+    const avgResourceValue = resourceItems.length > 0
+      ? resourceItems.reduce((sum, i) => sum + ((i.data as unknown as ResourceMetric).value || 0), 0) / resourceItems.length
+      : 0;
+
     return {
       activeSites,
       totalSpecies,
@@ -664,17 +665,7 @@ export default function EnvironmentLensPage() {
       totalResources,
       avgResourceValue,
     };
-  }, [
-    siteItems,
-    speciesItems,
-    sampleItems,
-    trailItems,
-    wasteItems,
-    complianceItems,
-    carbonItems,
-    resourceItems,
-    goalItems,
-  ]);
+  }, [siteItems, speciesItems, sampleItems, trailItems, wasteItems, complianceItems, carbonItems, resourceItems, goalItems]);
 
   /* ---- export geojson ---- */
   const exportGeoJSON = () => {
@@ -2521,17 +2512,11 @@ export default function EnvironmentLensPage() {
             <>
               <div className="flex items-center gap-2">
                 {Boolean(d.wasteType) && (
-                  <span
-                    className={ds.badge(
-                      d.wasteType === 'hazardous'
-                        ? 'red-400'
-                        : d.wasteType === 'recycling'
-                          ? 'green-400'
-                          : d.wasteType === 'organic'
-                            ? 'neon-purple'
-                            : 'emerald-500'
-                    )}
-                  >
+                  <span className={ds.badge(
+                    d.wasteType === 'hazardous' ? 'red-400' :
+                    d.wasteType === 'recycling' ? 'green-400' :
+                    d.wasteType === 'organic' ? 'neon-purple' : 'emerald-500'
+                  )}>
                     {(d.wasteType as string).toUpperCase()}
                   </span>
                 )}
@@ -2571,17 +2556,26 @@ export default function EnvironmentLensPage() {
             </>
           )}
 
-          {currentType === 'ComplianceRecord' &&
-            (() => {
-              const score = (d.complianceScore as number) || 0;
-              const isExpired = d.expirationDate
-                ? new Date(d.expirationDate as string) < new Date()
-                : false;
-              return (
-                <>
-                  <div className="flex items-center gap-2">
-                    <span className={cn(ds.textMono, 'text-xs text-gray-500')}>
-                      {d.permitNumber as string}
+          {currentType === 'ComplianceRecord' && (() => {
+            const score = d.complianceScore as number || 0;
+            const isExpired = d.expirationDate ? new Date(d.expirationDate as string) < new Date() : false;
+            return (
+              <>
+                <div className="flex items-center gap-2">
+                  <span className={cn(ds.textMono, 'text-xs text-gray-500')}>{d.permitNumber as string}</span>
+                  {Boolean(d.permitType) && <span className={ds.badge('emerald-500')}>{d.permitType as string}</span>}
+                </div>
+                <p className={ds.textMuted}>Agency: {d.issuingAgency as string || 'N/A'}</p>
+                <div className="flex items-center gap-3">
+                  <div>
+                    <p className={cn(ds.textMuted, 'text-xs')}>Compliance Score</p>
+                    <p className={cn(ds.heading3, score >= 80 ? 'text-green-400' : score >= 60 ? 'text-orange-400' : 'text-red-400')}>
+                      {score}/100
+                    </p>
+                  </div>
+                  {isExpired && (
+                    <span className={cn(ds.badge('red-400'), 'animate-pulse')}>
+                      <AlertOctagon className="w-3 h-3" /> EXPIRED
                     </span>
                     {Boolean(d.permitType) && (
                       <span className={ds.badge('emerald-500')}>{d.permitType as string}</span>
@@ -2681,34 +2675,17 @@ export default function EnvironmentLensPage() {
           {currentType === 'ResourceMetric' && (
             <>
               <div className="flex items-center gap-2 flex-wrap">
-                {Boolean(d.resourceType) && (
-                  <span
-                    className={ds.badge(
-                      d.resourceType === 'Water'
-                        ? 'emerald-500'
-                        : d.resourceType === 'Energy'
-                          ? 'orange-400'
-                          : d.resourceType === 'Waste'
-                            ? 'neon-purple'
-                            : 'neon-cyan'
-                    )}
-                  >
-                    {d.resourceType as string}
-                  </span>
-                )}
-                {Boolean(d.trend) &&
-                  (() => {
-                    const trendInfo = TREND_ICONS[d.trend as PopulationTrend];
-                    if (!trendInfo) return null;
-                    const TrendIcon = trendInfo.icon;
-                    return (
-                      <span
-                        className={cn('inline-flex items-center gap-1 text-xs', trendInfo.color)}
-                      >
-                        <TrendIcon className="w-3.5 h-3.5" /> {d.trend as string}
-                      </span>
-                    );
-                  })()}
+                {Boolean(d.resourceType) && <span className={ds.badge(
+                  d.resourceType === 'Water' ? 'emerald-500' :
+                  d.resourceType === 'Energy' ? 'orange-400' :
+                  d.resourceType === 'Waste' ? 'neon-purple' : 'neon-cyan'
+                )}>{d.resourceType as string}</span>}
+                {Boolean(d.trend) && (() => {
+                  const trendInfo = TREND_ICONS[d.trend as PopulationTrend];
+                  if (!trendInfo) return null;
+                  const TrendIcon = trendInfo.icon;
+                  return <span className={cn('inline-flex items-center gap-1 text-xs', trendInfo.color)}><TrendIcon className="w-3.5 h-3.5" /> {d.trend as string}</span>;
+                })()}
               </div>
               <p className={ds.textMuted}>{(d.metricName as string) || 'N/A'}</p>
               <div className={ds.grid2}>
@@ -3303,6 +3280,25 @@ export default function EnvironmentLensPage() {
   /*  Main Render                                                      */
   /* ================================================================ */
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-full p-8">
+        <div className="text-center space-y-3">
+          <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-sm text-gray-400">Loading ecosystem data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex items-center justify-center h-full p-8">
+        <ErrorState error={error?.message} onRetry={refetch} />
+      </div>
+    );
+  }
+
   return (
     <LensPageShell
       domain="environment"
@@ -3378,12 +3374,7 @@ export default function EnvironmentLensPage() {
           { icon: TreePine, label: 'Sites', value: siteItems.length, color: 'text-green-400' },
           { icon: Bug, label: 'Species', value: speciesItems.length, color: 'text-yellow-400' },
           { icon: Droplets, label: 'Samples', value: sampleItems.length, color: 'text-blue-400' },
-          {
-            icon: Leaf,
-            label: 'Carbon Entries',
-            value: carbonItems.length,
-            color: 'text-emerald-400',
-          },
+          { icon: Leaf, label: 'Carbon Entries', value: carbonItems.length, color: 'text-emerald-400' },
         ].map((stat, i) => (
           <motion.div
             key={stat.label}
@@ -3400,7 +3391,7 @@ export default function EnvironmentLensPage() {
       </div>
 
       {/* Carbon Footprint Tracker */}
-      {carbonItems.length > 0 ? (
+      {carbonItems.length > 0 && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -3423,59 +3414,26 @@ export default function EnvironmentLensPage() {
                   fill="none"
                   stroke="#4ade80"
                   strokeWidth="3"
-                  strokeDasharray={`${Math.min(
-                    100,
-                    (goalItems.filter((g) => {
-                      const d = g.data as unknown as Record<string, unknown>;
-                      return ((d.progress as number) || 0) >= 100;
-                    }).length /
-                      Math.max(1, goalItems.length)) *
-                      100
-                  )}, 100`}
+                  strokeDasharray={`${Math.min(100, (goalItems.filter(g => {
+                    const d = g.data as unknown as Record<string, unknown>;
+                    return (d.progress as number || 0) >= 100;
+                  }).length / Math.max(1, goalItems.length)) * 100)}, 100`}
                   strokeLinecap="round"
                 />
               </svg>
               <span className="absolute inset-0 flex items-center justify-center text-sm font-bold text-green-400">
-                {goalItems.length > 0
-                  ? Math.round(
-                      (goalItems.filter((g) => {
-                        const d = g.data as unknown as Record<string, unknown>;
-                        return ((d.progress as number) || 0) >= 100;
-                      }).length /
-                        goalItems.length) *
-                        100
-                    )
-                  : 0}
-                %
+                {goalItems.length > 0 ? Math.round((goalItems.filter(g => { const d = g.data as unknown as Record<string, unknown>; return (d.progress as number || 0) >= 100; }).length / goalItems.length) * 100) : 0}%
               </span>
             </div>
             <div className="flex-1 space-y-1.5">
               <p className="text-sm text-white">{carbonItems.length} carbon entries tracked</p>
-              <p className="text-xs text-gray-400">
-                {goalItems.length} sustainability goals,{' '}
-                {
-                  goalItems.filter((g) => {
-                    const d = g.data as unknown as Record<string, unknown>;
-                    return ((d.progress as number) || 0) >= 100;
-                  }).length
-                }{' '}
-                completed
-              </p>
+              <p className="text-xs text-gray-400">{goalItems.length} sustainability goals, {goalItems.filter(g => { const d = g.data as unknown as Record<string, unknown>; return (d.progress as number || 0) >= 100; }).length} completed</p>
               <div className="h-2 bg-lattice-deep rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-green-500 to-emerald-400 rounded-full transition-all"
-                  style={{ width: `${Math.min(100, carbonItems.length * 10)}%` }}
-                />
+                <div className="h-full bg-gradient-to-r from-green-500 to-emerald-400 rounded-full transition-all" style={{ width: `${Math.min(100, carbonItems.length * 10)}%` }} />
               </div>
             </div>
           </div>
         </motion.div>
-      ) : (
-        <div className="text-center py-6 text-gray-500 text-sm border border-dashed border-white/10 rounded-lg">
-          <p>
-            No carbon tracking data yet. Add carbon footprint records to see emissions analysis.
-          </p>
-        </div>
       )}
 
       {/* View Content */}
@@ -3650,32 +3608,31 @@ export default function EnvironmentLensPage() {
       {/* ==================== MAP TAB ==================== */}
       {mode === 'Map' && (
         <div className={cn(ds.panel, 'p-4')}>
-          <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-            <Map className="w-4 h-4 text-green-400" /> Monitoring Site Locations
-          </h3>
+          <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2"><Map className="w-4 h-4 text-green-400" /> Monitoring Site Locations</h3>
           <MapView
-            markers={siteItems
-              .filter((i) => {
-                const d = i.data as unknown as Site;
-                return d.lat && d.lon;
-              })
-              .map((i) => {
-                const d = i.data as unknown as Site;
-                return {
-                  lat: d.lat,
-                  lng: d.lon,
-                  label: d.name || i.title,
-                  popup: `${d.siteType || ''} - ${d.regulatoryStatus || ''} (${d.areaAcres || 0} acres)`,
-                };
-              })}
+            markers={siteItems.filter(i => { const d = i.data as unknown as Site; return d.lat && d.lon; }).map(i => { const d = i.data as unknown as Site; return { lat: d.lat, lng: d.lon, label: d.name || i.title, popup: `${d.siteType || ''} - ${d.regulatoryStatus || ''} (${d.areaAcres || 0} acres)` }; })}
             className="h-[500px]"
           />
         </div>
       )}
 
-      {/* Live Web Feed */}
-      <div className="px-4 mb-2">
-        <LensFeedPanel lensId="environment" />
+      {/* Lens Features */}
+      <div className="border-t border-white/10">
+        <button
+          onClick={() => setShowFeatures(!showFeatures)}
+          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-400 hover:text-white transition-colors"
+        >
+          <span className="flex items-center gap-2">
+            <Layers className="w-4 h-4" />
+            Lens Features & Capabilities
+          </span>
+          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
+        </button>
+        {showFeatures && (
+          <div className="px-4 pb-4">
+            <LensFeaturePanel lensId="environment" />
+          </div>
+        )}
       </div>
     </LensPageShell>
   );

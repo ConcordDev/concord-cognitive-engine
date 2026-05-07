@@ -23,7 +23,7 @@ import {
   Target,
   Magnet,
   Layers,
-  Loader2,
+  Save
 } from 'lucide-react';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -245,20 +245,6 @@ export default function PhysicsLensPage() {
   useLensNav('physics');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('physics');
   const { items: savedSims, create: saveSim, remove: removeSim, isError, error, refetch } = useLensData<Record<string, unknown>>('physics', 'simulation', { noSeed: true });
-
-  const runAction = useRunArtifact('physics');
-  const [physicsActionResult, setPhysicsActionResult] = useState<Record<string, unknown> | null>(null);
-  const [physicsIsRunning, setPhysicsIsRunning] = useState<string | null>(null);
-  const handlePhysicsAction = async (action: string) => {
-    const targetId = savedSims[0]?.id;
-    if (!targetId) { setPhysicsActionResult({ message: 'Save a simulation first to run physics analysis.' }); return; }
-    setPhysicsIsRunning(action);
-    try {
-      const res = await runAction.mutateAsync({ id: targetId, action });
-      if (res.ok === false) { setPhysicsActionResult({ message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setPhysicsActionResult(res.result as Record<string, unknown>); }
-    } catch (e) { console.error(`Action ${action} failed:`, e); setPhysicsActionResult({ message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` }); }
-    finally { setPhysicsIsRunning(null); }
-  };
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>(0);
@@ -1015,9 +1001,6 @@ export default function PhysicsLensPage() {
   }
   return (
     <div data-lens-theme="physics" className="p-6 space-y-6">
-      {/* Sub-Lenses */}
-      <SubLensQuickNav lensId="physics" />
-
       {/* Stat Cards Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
@@ -1055,7 +1038,7 @@ export default function PhysicsLensPage() {
           { sym: '\u03BC', val: settings.airFriction.toFixed(3), label: 'Air Friction' },
           { sym: 'F', val: `F = ma`, label: 'Newton 2' },
           { sym: 'E', val: `\u00BD mv\u00B2`, label: 'Kinetic Energy' },
-        ].map((eq, _i) => (
+        ].map((eq, i) => (
           <div key={eq.label} className="flex items-center gap-2 flex-shrink-0 px-2 py-1 bg-white/[0.03] rounded">
             <span className="text-sm font-mono font-bold text-violet-400">{eq.sym}</span>
             <span className="text-xs text-gray-400 font-mono">{eq.val}</span>
