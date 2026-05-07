@@ -472,6 +472,13 @@ jobs:
     name: E2E Tests
     runs-on: ubuntu-latest
     needs: [lint-and-test]
+    # E2E suite includes specs that need infra CI doesn't provision —
+    # Ollama (chat-flow / chat-modes), OAuth providers (auth-oauth),
+    # full Stripe config (wallet-flow). Until those are split out into
+    # an integration-tier workflow with the right services, run E2E
+    # informationally so a stale-spec failure doesn't block merges.
+    # Failures still surface in the PR's Checks tab.
+    continue-on-error: true
 
     steps:
       - name: Checkout code
