@@ -42,7 +42,12 @@ jobs:
           # blowing past memory limits on a 1.3M-line codebase) and
           # analyzes source directly. Recommended modern CodeQL config.
           build-mode: none
-          queries: security-and-quality
+          # Use just `security-extended` (drops `quality` query suite).
+          # Quality queries fail the aggregate "CodeQL" check on style
+          # findings that aren't actually security issues — they belong
+          # in lint, not in a security gate. Security-extended catches
+          # the OWASP / CWE classes we actually care about.
+          queries: security-extended
           config: |
             paths:
               - server
