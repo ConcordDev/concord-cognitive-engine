@@ -29,18 +29,23 @@
 
 export function up(db) {
   // SQLite cannot ALTER a CHECK constraint, so we recreate the table.
-  // Wrap in a transaction so a partial failure doesn't strand the schema.
+  // The migrate.js runner wraps every migration in its own
+  // db.transaction(), so DON'T start one here — nested SQLite
+  // transactions throw "cannot start a transaction within a
+  // transaction". Pre-fix CI failed on clean migrations from scratch.
   //
   // legacy_alter_table=ON stops SQLite from rewriting FK references in
   // child tables (evo_asset_interactions, evo_asset_versions) to point at
   // the renamed evo_assets_v1 — without it, dropping evo_assets_v1 leaves
   // those FKs dangling and every subsequent INSERT into the child table
   // fails with "no such table: main.evo_assets_v1".
+  //
+  // PRAGMAs are preserved across the runner's transaction; restoration
+  // happens in `finally` to leave the connection in its prior state.
   const fkBefore = db.pragma("foreign_keys", { simple: true });
   const altBefore = db.pragma("legacy_alter_table", { simple: true });
   db.pragma("foreign_keys = OFF");
   db.pragma("legacy_alter_table = ON");
-  db.exec("BEGIN");
   try {
     // 1) Rename existing table out of the way
     db.exec("ALTER TABLE evo_assets RENAME TO evo_assets_v1");
@@ -103,13 +108,9 @@ export function up(db) {
     // 6) Re-create the CDN URLs index from migration 084 if its column exists.
     // (084 added cdn_url_json — leave the existing index intact via its own
     // migration's CREATE IF NOT EXISTS pattern.)
-
-    db.exec("COMMIT");
-  } catch (e) {
-    db.exec("ROLLBACK");
-    throw e;
   } finally {
-    // Restore prior pragma state.
+    // Restore prior pragma state. The runner's transaction will commit
+    // (or rollback the whole thing) regardless of these pragma resets.
     db.pragma(`legacy_alter_table = ${altBefore ? "ON" : "OFF"}`);
     db.pragma(`foreign_keys = ${fkBefore ? "ON" : "OFF"}`);
   }
