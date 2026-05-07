@@ -2,16 +2,16 @@ import { defineConfig, devices } from '@playwright/test';
 
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
 
-// Pre-seed localStorage so the first-run onboarding wizard does not open
-// during E2E. The wizard mounts as a modal dialog with `aria-modal="true"`
-// at the root of the app shell and intercepts pointer events under it,
-// causing every click-target test to fail by timeout. Production users
-// see this once and dismiss; in E2E we just skip past it.
+// Pre-seed localStorage so first-run wizards and "always-on" guidance
+// overlays do not open during E2E. Each one auto-mounts at AppShell render
+// time and can intercept pointer events for click-target tests.
 //
 // Keys observed in source:
-//   concord-onboarding-completed  — components/onboarding/OnboardingWizard.tsx
-//   concord_entered               — components/Providers.tsx (gate to socket connect)
-//   concord_first_win_dismissed   — components/guidance/FirstWinWizard.tsx
+//   concord-onboarding-completed     — components/onboarding/OnboardingWizard.tsx
+//   concord_entered                  — components/Providers.tsx (gate to socket connect)
+//   concord_first_win_dismissed      — components/guidance/FirstWinWizard.tsx
+//   concord-system-guide-collapsed   — components/guidance/SystemGuidePanel.tsx
+//   concord-assistant-hidden         — components/common/DomainAssistant.tsx
 const E2E_STORAGE_STATE = {
   cookies: [],
   origins: [
@@ -21,6 +21,8 @@ const E2E_STORAGE_STATE = {
         { name: 'concord-onboarding-completed', value: 'true' },
         { name: 'concord_entered', value: 'true' },
         { name: 'concord_first_win_dismissed', value: 'true' },
+        { name: 'concord-system-guide-collapsed', value: 'true' },
+        { name: 'concord-assistant-hidden', value: 'true' },
       ],
     },
   ],
