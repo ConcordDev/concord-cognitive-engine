@@ -152,6 +152,24 @@ registerHeartbeat("presence-stale-sweep", {
     }
   },
 });
+
+// Scheduled-post processor — promotes posts whose scheduledAt has passed
+// from the queue to the live feed. Pre-this-tick schedulePost() worked
+// but processScheduledPosts() was never invoked, so scheduled posts
+// stayed pending forever. Every 4 ticks (~1 minute).
+registerHeartbeat("scheduled-posts", {
+  frequency: 4,
+  handler: async ({ state }) => {
+    try {
+      const sl = await import("./emergent/social-layer.js").catch(() => null);
+      if (!sl?.processScheduledPosts) return { ok: false, reason: "no_export" };
+      return sl.processScheduledPosts(state);
+    } catch (err) {
+      structuredLog("warn", "scheduled_posts_failed", { error: err?.message });
+      return { ok: false, reason: "exception" };
+    }
+  },
+});
 import { ConcordError } from "./lib/errors.js";
 import { asyncHandler } from "./lib/async-handler.js";
 import { init as initGRC, formatAndValidate as grcFormatAndValidate, getGRCSystemPrompt } from "./grc/index.js";
@@ -28479,6 +28497,19 @@ try { app.use("/api/social", createSocialGroupRoutes({ db, requireAuth })); } ca
 
 import createSocialEngagementRoutes from "./routes/social-engagement.js";
 try { app.use("/api/social", createSocialEngagementRoutes({ db, requireAuth })); } catch (e) { structuredLog("warn", "social_engagement_routes_skip", { error: e.message }); }
+
+// Extended social — wires social-layer.js exports that pre-this-mount were
+// implemented but never routed: trending, pinning, scheduling, streaks,
+// per-post analytics, watch time, listing tagging.
+import createSocialExtendedRouter from "./routes/social-extended.js";
+try { app.use("/api/social-extended", createSocialExtendedRouter({ STATE, requireAuth })); } catch (e) { structuredLog("warn", "social_extended_routes_skip", { error: e.message }); }
+
+// Extended world-orgs — wires world-organizations.js exports that
+// pre-this-mount were implemented but never routed: alliances, treasury
+// contributions, member-role admin, parties, recruitment board,
+// mentorships, org stats.
+import createWorldOrgsExtendedRouter from "./routes/world-orgs-extended.js";
+try { app.use("/api/world-orgs", createWorldOrgsExtendedRouter({ requireAuth })); } catch (e) { structuredLog("warn", "world_orgs_extended_routes_skip", { error: e.message }); }
 
 import createChannelsRouter from "./routes/channels.js";
 try { app.use("/api/channels", createChannelsRouter({ STATE, requireAuth, realtimeEmit })); } catch (e) { structuredLog("warn", "channels_routes_skip", { error: e.message }); }
