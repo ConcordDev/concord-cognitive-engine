@@ -734,6 +734,31 @@ jobs:
             echo "::endgroup::"
           fi
 
+          # Also push the digest to a sibling diagnostics branch
+          # (`ci-diagnostics`) so it's reachable via plain `git fetch`
+          # even if PR-comment posting is blocked. One file per run-id.
+          # This branch is rewritten in place each run; history is via
+          # commit messages naming the run id.
+          DIAG_DIR=/tmp/ci-diag
+          rm -rf "$DIAG_DIR"
+          git clone --depth 1 --branch ci-diagnostics \
+            "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" "$DIAG_DIR" 2>/dev/null \
+            || git clone --depth 1 \
+                 "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" "$DIAG_DIR"
+          cd "$DIAG_DIR"
+          git checkout -B ci-diagnostics
+          # Keep the branch tiny — only the latest digest.
+          find . -maxdepth 1 -name 'e2e-digest-*.md' -delete 2>/dev/null || true
+          cp /tmp/digest.md "e2e-digest-${{ github.run_id }}.md"
+          cp /tmp/digest.md "e2e-digest-latest.md"
+          git -c user.email=actions@github.com -c user.name=ci-bot \
+            add "e2e-digest-${{ github.run_id }}.md" "e2e-digest-latest.md"
+          git -c user.email=actions@github.com -c user.name=ci-bot \
+            commit -m "ci: e2e digest run ${{ github.run_id }}" || true
+          git push --force "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" \
+            ci-diagnostics:ci-diagnostics 2>&1 | tail -5
+          echo "diagnostic branch updated ✓"
+
       - name: Upload test results
         uses: actions/upload-artifact@v6
         if: failure()
