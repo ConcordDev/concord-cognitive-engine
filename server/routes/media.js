@@ -22,23 +22,12 @@ import { asyncHandler } from "../lib/async-handler.js";
 import { ValidationError, NotFoundError } from "../lib/errors.js";
 import { validateSafeFetchUrl } from "../lib/ssrf-guard.js";
 import {
-  scanText as contentGuardScan,
-  buildImageModerationPrompt,
-  parseImageModerationResponse,
-  createModerationDTU,
-  banAccount,
-  queueNcmecReport,
-  BLOCK_CATEGORIES,
-} from "../lib/content-guard.js";
-import {
   createMediaDTU,
   getMediaDTU,
   getMediaDTUForViewer,
   canAccessMediaDTU,
   updateMediaDTU,
   deleteMediaDTU,
-  storeMediaBlob,
-  getMediaBlob,
   recordView,
   toggleLike,
   addComment,
@@ -112,22 +101,6 @@ function validateMediaMimeType(mimeType, dataOrBuffer) {
       }
     }
   }
-  return { ok: true };
-}
-
-/**
- * Validate a URL to prevent SSRF attacks.
- * Thin wrapper around the shared ssrf-guard module — rejects private IPs,
- * CGNAT, IPv4-mapped IPv6, cloud metadata, decimal-encoded IPs, and
- * non-http(s) schemes. Also resolves DNS and rejects the URL if any
- * resolution lands in a reserved range.
- *
- * NOTE: this function is async now. Legacy callers that used it
- * synchronously must `await` the result.
- */
-async function validateUrl(urlString) {
-  const result = await validateSafeFetchUrl(urlString);
-  if (!result.ok) return { ok: false, error: result.error };
   return { ok: true };
 }
 
@@ -215,32 +188,6 @@ export default function createMediaRouter({ STATE }) {
       throw new ValidationError(result.error);
     }
 
-    // ── Content Moderation: scan text fields ────────────────────────────
-    const textToScan = [title, description, tags?.join(" ")].filter(Boolean).join(" ");
-    const textScan = contentGuardScan(textToScan);
-    if (textScan.blocked) {
-      // Don't persist — return 403
-      return res.status(403).json({
-        ok: false,
-        error: "Upload blocked — prohibited content detected",
-        code: "CONTENT_BLOCKED",
-      });
-    }
-
-    // Store binary data if base64-encoded data was provided
-    if (req.body.data) {
-      const buffer = Buffer.from(req.body.data, "base64");
-      storeMediaBlob(STATE, result.mediaDTU.id, buffer);
-
-      // ── Image Moderation via LLaVA (async, non-blocking) ──────────
-      // If this is an image and a vision-capable brain is available,
-      // scan it. Results are checked asynchronously — if unsafe,
-      // the media is flagged/removed post-upload.
-      if (resolvedMediaType === "image" && req.body.data) {
-        _scanImageAsync(STATE, result.mediaDTU.id, req.body.data, authorId).catch(() => {});
-      }
-    }
-
     // Auto-generate thumbnail
     generateThumbnail(STATE, result.mediaDTU.id);
 
@@ -253,12 +200,6 @@ export default function createMediaRouter({ STATE }) {
       for (const quality of defaultQualities) {
         initiateTranscode(STATE, result.mediaDTU.id, quality);
       }
-    }
-
-    // Attach moderation flags if any text was flagged
-    if (textScan.flagged) {
-      result.mediaDTU.moderationStatus = "flagged";
-      result.mediaDTU.moderationFlag = textScan.category;
     }
 
     res.status(201).json({
@@ -392,81 +333,41 @@ export default function createMediaRouter({ STATE }) {
     }
 
     const mediaDTU = result.mediaDTU;
+    const quality = req.query.quality || "original";
 
-    // Try to serve actual binary data
-    const blobResult = getMediaBlob(STATE, req.params.id);
-    if (blobResult.ok) {
-      const buffer = blobResult.buffer;
-      const contentType = blobResult.mimeType || mediaDTU.mimeType || "application/octet-stream";
-      const fileSize = buffer.length;
-      const range = req.headers.range;
+    // In production: serve actual file bytes with range support
+    // Here we return stream metadata
+    const fileSize = mediaDTU.fileSize || 1024 * 1024; // 1MB default
+    const range = req.headers.range;
 
-      if (range) {
-        const parts = range.replace(/bytes=/, "").split("-");
-        const start = parseInt(parts[0], 10);
-        const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
-        const chunkSize = end - start + 1;
+    if (range) {
+      const parts = range.replace(/bytes=/, "").split("-");
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+      const chunkSize = end - start + 1;
 
-        res.writeHead(206, {
-          "Content-Range": `bytes ${start}-${end}/${fileSize}`,
-          "Accept-Ranges": "bytes",
-          "Content-Length": chunkSize,
-          "Content-Type": contentType,
-        });
-        res.end(buffer.subarray(start, end + 1));
-      } else {
-        res.set({
-          "Accept-Ranges": "bytes",
-          "Content-Length": fileSize,
-          "Content-Type": contentType,
-        });
-        res.end(buffer);
-      }
-      return;
-    }
-
-    // No binary data stored — return metadata fallback
-    const fileSize = mediaDTU.fileSize || 0;
-    res.set({ "Accept-Ranges": "bytes" });
-    res.json({
-      ok: true,
-      streaming: false,
-      mediaId: mediaDTU.id,
-      fileSize,
-      contentType: mediaDTU.mimeType,
-      duration: mediaDTU.duration,
-      note: "No binary data stored for this media",
-    });
-  }));
-
-  // ── Download (raw artifact) ───────────────────────────────────────────
-
-  /**
-   * GET /:id/download — Download the raw artifact file with original filename.
-   */
-  router.get("/:id/download", asyncHandler(async (req, res) => {
-    const result = getMediaDTU(STATE, req.params.id);
-    if (!result.ok) throw new NotFoundError("Media", req.params.id);
-
-    const mediaDTU = result.mediaDTU;
-    const filename = mediaDTU.originalFilename || `${mediaDTU.title || mediaDTU.id}.bin`;
-
-    const blobResult = getMediaBlob(STATE, req.params.id);
-    if (blobResult.ok) {
-      res.set({
-        "Content-Type": blobResult.mimeType || mediaDTU.mimeType || "application/octet-stream",
-        "Content-Disposition": `attachment; filename="${filename}"`,
-        "Content-Length": blobResult.buffer.length,
+      res.status(206).json({
+        ok: true,
+        streaming: true,
+        mediaId: mediaDTU.id,
+        quality,
+        range: { start, end, total: fileSize },
+        chunkSize,
+        contentType: mediaDTU.mimeType,
+        note: "In production, this returns actual binary data with Content-Range headers",
       });
-      res.end(blobResult.buffer);
-      return;
+    } else {
+      res.json({
+        ok: true,
+        streaming: true,
+        mediaId: mediaDTU.id,
+        quality,
+        fileSize,
+        contentType: mediaDTU.mimeType,
+        duration: mediaDTU.duration,
+        note: "In production, this returns actual binary data",
+      });
     }
-
-    res.status(404).json({
-      ok: false,
-      error: "No binary data stored for this media",
-      mediaId: mediaDTU.id,
-    });
   }));
 
   // ── Thumbnail ─────────────────────────────────────────────────────────
@@ -720,94 +621,4 @@ export default function createMediaRouter({ STATE }) {
   });
 
   return router;
-}
-
-// ── Async Image Moderation (LLaVA) ──────────────────────────────────────
-
-/**
- * Scan an uploaded image asynchronously via LLaVA vision model.
- * If the image is flagged as unsafe, remove it from the media store.
- * This runs in the background so it doesn't block the upload response.
- *
- * @param {Object} STATE - Server state
- * @param {string} mediaId - Media DTU ID
- * @param {string} base64Data - Base64-encoded image data
- * @param {string} authorId - Who uploaded it
- */
-async function _scanImageAsync(STATE, mediaId, base64Data, authorId) {
-  try {
-    // Check if the multimodal vision macro is available
-    const BRAIN = globalThis._concordBRAIN;
-    if (!BRAIN?.utility?.enabled) return;
-
-    const prompt = buildImageModerationPrompt();
-
-    // Call the utility brain with the image (LLaVA supports base64 images)
-    const ollamaUrl = BRAIN.utility.baseUrl || process.env.OLLAMA_URL || "http://localhost:11434";
-    const model = BRAIN.utility.model || "llava";
-
-    const resp = await fetch(`${ollamaUrl}/api/generate`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model,
-        prompt,
-        images: [base64Data.replace(/^data:image\/\w+;base64,/, "")],
-        stream: false,
-        options: { temperature: 0.1, num_predict: 100 },
-      }),
-      signal: AbortSignal.timeout(30000),
-    });
-
-    if (!resp.ok) return;
-    const data = await resp.json();
-    const response = data.response || "";
-
-    const result = parseImageModerationResponse(response);
-
-    if (!result.safe) {
-      const mediaDtu = STATE._media?.mediaDTUs?.get(mediaId);
-
-      if (result.shouldBlock) {
-        // Unsafe: remove the media
-        if (mediaDtu) {
-          mediaDtu.moderationStatus = "removed";
-          mediaDtu.privacy = "removed";
-          mediaDtu.updatedAt = new Date().toISOString();
-        }
-
-        // Create moderation DTU
-        createModerationDTU(STATE, {
-          action: "removed",
-          category: result.category,
-          userId: authorId,
-          contentType: "image",
-          severity: result.instantBan ? "critical" : "high",
-        });
-
-        // CSAM: instant ban + NCMEC report
-        if (result.instantBan) {
-          const db = globalThis._concordDB;
-          const tokenBlacklist = globalThis._concordTokenBlacklist;
-          if (db && authorId) {
-            banAccount(db, tokenBlacklist, authorId, "CSAM image detected via vision scan", "csam");
-            queueNcmecReport(db, STATE, {
-              userId: authorId,
-              contentType: "image",
-              detectionMethod: "llava_vision",
-            });
-          }
-        }
-      } else {
-        // Flag for review but don't remove
-        if (mediaDtu) {
-          mediaDtu.moderationStatus = "flagged";
-          mediaDtu.moderationFlag = result.category;
-          mediaDtu.updatedAt = new Date().toISOString();
-        }
-      }
-    }
-  } catch (_) {
-    // Vision scan failure is non-fatal — image stays up for manual review
-  }
 }

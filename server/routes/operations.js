@@ -823,6 +823,22 @@ export default function registerOperationRoutes(app, {
     res.json({ ok:true, item, promoted });
   }));
 
+  // DELETE /api/queue/:id — remove a queue item by id (searches all queues)
+  app.delete("/api/queue/:id", (req, res) => {
+    ensureQueues();
+    const targetId = req.params.id;
+    for (const [qName, items] of Object.entries(STATE.queues)) {
+      if (!Array.isArray(items)) continue;
+      const idx = items.findIndex(x => x && x.id === targetId);
+      if (idx !== -1) {
+        items.splice(idx, 1);
+        saveStateDebounced();
+        return res.json({ ok: true, queue: qName, removedId: targetId });
+      }
+    }
+    return res.status(404).json({ ok: false, error: "Queue item not found" });
+  });
+
   // ── Organism Pipeline Status (Feature 47) ────────────────────────────────
   // Unified status view of the proposal-verify-council-commit pipeline,
   // WAL health, snapshot state, and recent commit history.

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -1445,9 +1445,9 @@ export default function AgricultureLensPage() {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className={ds.panel}>
             <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2"><Sun className="w-4 h-4 text-amber-400" /> Crop Health Overview</h3>
             <div className="flex gap-3">
-              <span className="px-3 py-1.5 rounded-lg text-sm font-medium bg-green-500/20 text-green-400">Thriving: {thriving}</span>
-              <span className="px-3 py-1.5 rounded-lg text-sm font-medium bg-amber-500/20 text-amber-400">Stressed: {stressed}</span>
-              <span className="px-3 py-1.5 rounded-lg text-sm font-medium bg-red-500/20 text-red-400">Critical: {critical}</span>
+              <span className="px-3 py-1.5 rounded-lg text-sm font-medium bg-green-500/20 text-green-400 capitalize">{healthMap['low']}: {thriving}</span>
+              <span className="px-3 py-1.5 rounded-lg text-sm font-medium bg-amber-500/20 text-amber-400 capitalize">{healthMap['medium']}: {stressed}</span>
+              <span className="px-3 py-1.5 rounded-lg text-sm font-medium bg-red-500/20 text-red-400 capitalize">{healthMap['high']}: {critical}</span>
             </div>
             {/* Harvest Yield Tracker */}
             {(() => {
@@ -1477,7 +1477,7 @@ export default function AgricultureLensPage() {
         );
       })()}
 
-      <nav className="flex items-center gap-2 border-b border-lattice-border pb-4 overflow-x-auto">
+      <nav className="flex items-center gap-2 border-b border-lattice-border pb-4 flex-wrap">
         {MODE_TABS.map(tab => (
           <button
             key={tab.id}

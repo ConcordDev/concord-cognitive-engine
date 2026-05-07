@@ -78,19 +78,6 @@ export function getMasteryProfile(userId) {
  * @param {string} [opts.source] - source DTU or entity ID
  * @returns {{ xpAwarded: number, newTotal: number, rankUp: boolean, newRank?: object }}
  */
-// Wave 1 deferral 3: optional realtime emitter so a rank-up can fanfare
-// in the player's UI. Set via attachXPEmitter(emitToUser) at server boot;
-// awardXP fires `level:up` to the user room when totalXP crosses a tier.
-let _xpEmitter = null;
-
-/**
- * Attach a realtime emitter to be invoked on rank-up events.
- * Pass the same `emitToUser(userId, event, payload)` helper used elsewhere.
- */
-export function attachXPEmitter(emitToUser) {
-  _xpEmitter = typeof emitToUser === "function" ? emitToUser : null;
-}
-
 export function awardXP(userId, action, { lens = null, multiplier = 1, source = null } = {}) {
   const baseXP = XP_ACTIONS[action];
   if (!baseXP) return { xpAwarded: 0, newTotal: 0, rankUp: false, error: "unknown_action" };
@@ -123,19 +110,6 @@ export function awardXP(userId, action, { lens = null, multiplier = 1, source = 
       rankUp = true;
       newRank = { ...r };
     }
-  }
-
-  // Realtime push on rank-up. Best-effort — never block the XP write.
-  if (rankUp && _xpEmitter && newRank) {
-    try {
-      _xpEmitter(userId, "level:up", {
-        newRank: newRank.rank,
-        title: newRank.title,
-        totalXP: profile.totalXP,
-        xpAwarded: xp,
-        action,
-      });
-    } catch { /* realtime is best-effort */ }
   }
 
   return { xpAwarded: xp, newTotal: profile.totalXP, rankUp, newRank };

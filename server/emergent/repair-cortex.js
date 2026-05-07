@@ -121,26 +121,25 @@ const GENESIS_OVERLAP_THRESHOLD = 0.95;
 // separate timers all hammering concurrently, clogging the event loop.
 // Nothing in a guardian monitor needs sub-minute detection — if the system is
 // down for 5 minutes, the guardian catching it at 4:59 vs 0:15 doesn't matter.
-// Relaxed intervals — long-haul cadence. Network volume matters more than instant detection.
 const GUARDIAN_INTERVALS = Object.freeze({
-  process_health:        15000,   // GPU: 15 seconds — catch problems earlier
-  database_integrity:    300000,  // 5 minutes — stays same
-  state_consistency:     30000,   // GPU: 30 seconds — faster state checks
-  disk_space:            600000,  // 10 minutes — stays same
-  endpoint_health:       30000,   // GPU: 30 seconds — faster endpoint checks
-  ollama_connectivity:   60000,   // GPU: 1 minute — catch GPU brain issues faster
-  autogen_health:        120000,  // GPU: 2 minutes — monitor autogen throughput
-  emergent_vitals:       30000,   // GPU: 30 seconds — entities are active now
-  frontend_health:       60000,   // 1 minute — stays same
-  container_health:      120000,  // 2 minutes — stays same
-  nginx_health:          60000,   // 1 minute — stays same
-  websocket_health:      60000,   // 1 minute — stays same
-  event_loop_lag:        10000,   // GPU: 10 seconds — tighter lag detection
+  process_health:        300000,  // 5 minutes (was 15s)
+  database_integrity:    600000,  // 10 minutes (was 5 min)
+  state_consistency:     300000,  // 5 minutes (was 30s)
+  disk_space:            1800000, // 30 minutes (was 10 min)
+  endpoint_health:       300000,  // 5 minutes (was 30s)
+  ollama_connectivity:   300000,  // 5 minutes (was 1 min)
+  autogen_health:        600000,  // 10 minutes (was 2 min)
+  emergent_vitals:       300000,  // 5 minutes (was 30s)
+  frontend_health:       300000,  // 5 minutes (was 1 min)
+  container_health:      600000,  // 10 minutes (was 2 min)
+  nginx_health:          300000,  // 5 minutes (was 1 min)
+  websocket_health:      300000,  // 5 minutes (was 1 min)
+  event_loop_lag:        120000,  // 2 minutes (was 10s)
   ssl_certificate:       3600000, // 1 hour — stays same
-  database_connection:   120000,  // 2 minutes — stays same
-  lockfile_integrity:    600000,  // 10 minutes — stays same
-  security_signature_freshness: 3600000, // 1 hour — check signature staleness
-  security_scan_backlog:        300000,  // 5 minutes — check security scan queue
+  database_connection:   600000,  // 10 minutes (was 2 min)
+  lockfile_integrity:    1800000, // 30 minutes (was 10 min)
+  security_signature_freshness: 3600000, // 1 hour — stays same
+  security_scan_backlog:        600000,  // 10 minutes (was 5 min)
 });
 
 // ── Repair Memory ───────────────────────────────────────────────────────────
@@ -3371,40 +3370,29 @@ export function startGuardian() {
   try {
     // Delay guardian activation to match repair loop startup delay
     const delayTimer = setTimeout(() => {
-      let stagger = 0;
-      const STAGGER_GAP = 5000; // 5 seconds between each monitor start
-
       for (const [name, monitor] of Object.entries(GUARDIAN_MONITORS)) {
         if (_guardianTimers.has(name)) continue; // Already running
 
-        stagger += STAGGER_GAP;
-        const monitorDelay = stagger;
+        const timer = setInterval(async () => {
+          try {
+            const result = await monitor.check();
+            _guardianStatuses.set(name, {
+              ...result,
+              lastChecked: nowISO(),
+            });
 
-        const startTimer = setTimeout(() => {
-          const timer = setInterval(async () => {
-            // Skip if memory ceiling monitor has paused background tasks
-            if (globalThis.__memoryPaused?.()) return;
-            try {
-              const result = await monitor.check();
-              _guardianStatuses.set(name, {
-                ...result,
-                lastChecked: nowISO(),
-              });
+            if (!result.healthy) {
+              await monitor.repair(result);
+            }
+          } catch (_e) { logger.debug('emergent:repair-cortex', 'silent', { error: _e?.message }); }
+        }, monitor.interval);
 
-              if (!result.healthy) {
-                await monitor.repair(result);
-              }
-            } catch (_e) { logger.debug('emergent:repair-cortex', 'silent', { error: _e?.message }); }
-          }, monitor.interval);
-
-          // Unref so it doesn't prevent process exit
-          if (timer.unref) timer.unref();
-          _guardianTimers.set(name, timer);
-        }, monitorDelay);
-        if (startTimer.unref) startTimer.unref();
+        // Unref so it doesn't prevent process exit
+        if (timer.unref) timer.unref();
+        _guardianTimers.set(name, timer);
       }
 
-      logger.info('emergent:repair-cortex', 'Guardian monitors activating with staggered delays', { monitors: Object.keys(GUARDIAN_MONITORS).length, totalStaggerMs: stagger });
+      logger.info('emergent:repair-cortex', 'Guardian monitors activated after startup delay');
     }, REPAIR_STARTUP_DELAY);
     if (delayTimer.unref) delayTimer.unref();
 
@@ -3484,7 +3472,7 @@ export async function runGuardianCheck(name) {
 // Every fix attempt is tracked. Success rate determines
 // whether a pattern gets reused or deprecated.
 
-const RUNTIME_REPAIR_INTERVAL = 900_000; // 15 minutes — repair is background, let the system breathe.
+const RUNTIME_REPAIR_INTERVAL = 300000; // 5 minutes — repair doesn't need real-time cadence.
 // Was 15s which clogged the event loop with LLM repair brain calls on top of
 // 12 guardian monitors + cognitive pipeline + biological ticks. 5 min gives
 // each repair cycle time to complete and errors time to accumulate into patterns.
@@ -3892,9 +3880,10 @@ For apply_code_patch, set CONTEXT to JSON like:
 Only use apply_code_patch for SyntaxError, ReferenceError, or ERR_MODULE_NOT_FOUND where the fix is a single search-and-replace.`;
 
   try {
-    // Yield to active chat — but don't wait more than 1s
+    // Serialize repair brain calls so they don't compete with chat
+    // Wait for any active chat queue to drain before proceeding
     if (queues.conscious?.active > 0 || queues.utility?.active > 0) {
-      await new Promise(r => { setTimeout(r, 1000); });
+      await new Promise(r => setTimeout(r, 2000)); // yield to active chat
     }
 
     const resp = await fetch(`${BRAIN.repair.url}/api/generate`, {
@@ -4146,14 +4135,11 @@ Artifact data (first 500 chars): ${JSON.stringify(artifact.data).slice(0, 500)}`
 
 const REPAIR_STARTUP_DELAY = 180_000; // 3 minutes — match ghost fleet, let server fully boot
 
-let _repairDelayTimer = null; // tracks the startup delay setTimeout
-
 export function startRepairLoop() {
   if (_repairLoopTimer) return { ok: true, status: "already_running" };
 
   // Delay activation so the server is fully booted before repair systems fire
-  _repairDelayTimer = setTimeout(() => {
-    _repairDelayTimer = null; // delay has fired
+  const delayTimer = setTimeout(() => {
     _repairLoopTimer = setInterval(async () => {
       try {
         await runRepairCycle();
@@ -4165,16 +4151,12 @@ export function startRepairLoop() {
     // Unref so it doesn't prevent process exit
     if (_repairLoopTimer.unref) _repairLoopTimer.unref();
 
-    // Expose guardian status for cascade-recovery.js health checks
-    globalThis._guardianStatus = () => ({ running: true, startedAt: new Date().toISOString() });
-    if (globalThis.STATE) globalThis.STATE._repairGuardian = true;
-
     logger.info('emergent:repair-cortex', 'Repair loop activated after startup delay');
   }, REPAIR_STARTUP_DELAY);
-  if (_repairDelayTimer.unref) _repairDelayTimer.unref();
+  if (delayTimer.unref) delayTimer.unref();
 
-  // Mark as "pending" so we don't double-start (use a truthy sentinel)
-  _repairLoopTimer = { _pending: true };
+  // Mark as "pending" so we don't double-start
+  _repairLoopTimer = delayTimer;
 
   // Also start Guardian monitors (with same delay)
   startGuardian();

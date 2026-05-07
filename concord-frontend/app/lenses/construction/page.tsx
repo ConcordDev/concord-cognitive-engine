@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -10,10 +10,10 @@ import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
-  HardHat, Ruler, ClipboardList, DollarSign, Calendar, Users,
-  Plus, Search, X, Trash2, BarChart3, CheckCircle2,
-  AlertTriangle, MapPin, Truck, FileText, Camera,
-  Layers, ChevronDown, Shield, Wrench, Building2, Map, Percent, Hammer,
+  HardHat, ClipboardList, DollarSign, Users,
+  Plus, Search, X, Trash2, BarChart3,
+  AlertTriangle, Truck, FileText,
+  Layers, ChevronDown, Shield, Building2, Map, Percent, Hammer, Zap,
 } from 'lucide-react';
 
 const MapView = dynamic(() => import('@/components/common/MapView'), { ssr: false });
@@ -80,7 +80,7 @@ export default function ConstructionLensPage() {
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<LensItem<ConstructionArtifact> | null>(null);
   const [showDashboard, setShowDashboard] = useState(false);
-  const [showFeatures, setShowFeatures] = useState(false);
+  const [showFeatures, setShowFeatures] = useState(true);
 
   const [formName, setFormName] = useState('');
   const [formDescription, setFormDescription] = useState('');
@@ -109,6 +109,16 @@ export default function ConstructionLensPage() {
     if (filterStatus !== 'all') result = result.filter(i => (i.data as unknown as ConstructionArtifact).status === filterStatus);
     return result;
   }, [items, searchQuery, filterStatus]);
+
+  const handleAction = useCallback(async (action: string, artifactId?: string) => {
+    const targetId = artifactId || filtered[0]?.id;
+    if (!targetId) return;
+    try {
+      await runAction.mutateAsync({ id: targetId, action });
+    } catch (err) {
+      console.error('Action failed:', err);
+    }
+  }, [filtered, runAction]);
 
   const openCreate = () => { setEditingItem(null); setFormName(''); setFormDescription(''); setFormStatus('planned'); setFormNotes(''); setFormClient(''); setFormAddress(''); setFormStartDate(''); setFormEndDate(''); setFormContractValue(''); setFormProjectType('Residential New'); setFormLaborCost(''); setFormMaterialCost(''); setFormTrade('General'); setFormInspectionType('Foundation'); setFormForeman(''); setFormCrewSize(''); setEditorOpen(true); };
   const openEdit = (item: LensItem<ConstructionArtifact>) => { const d = item.data as unknown as ConstructionArtifact; setEditingItem(item); setFormName(d.name || ''); setFormDescription(d.description || ''); setFormStatus(d.status || 'planned'); setFormNotes(d.notes || ''); setFormClient(d.client || ''); setFormAddress(d.address || ''); setFormStartDate(d.startDate || ''); setFormEndDate(d.endDate || ''); setFormContractValue(d.contractValue?.toString() || ''); setFormProjectType(d.projectType || 'Residential New'); setFormLaborCost(d.laborCost?.toString() || ''); setFormMaterialCost(d.materialCost?.toString() || ''); setFormTrade(d.trade || 'General'); setFormInspectionType(d.inspectionType || 'Foundation'); setFormForeman(d.foreman || ''); setFormCrewSize(d.crewSize?.toString() || ''); setEditorOpen(true); };
@@ -200,6 +210,7 @@ export default function ConstructionLensPage() {
               <div className="flex items-center gap-2">
                 {d.contractValue && <span className="text-xs text-green-400">${d.contractValue.toLocaleString()}</span>}
                 <span className={`text-xs px-2 py-0.5 rounded-full bg-${sc.color}/20 text-${sc.color}`}>{sc.label}</span>
+                <button onClick={e => { e.stopPropagation(); handleAction('analyze', item.id); }} className={ds.btnGhost}><Zap className="w-4 h-4 text-neon-cyan" /></button>
                 <button onClick={e => { e.stopPropagation(); remove(item.id); }} className={ds.btnGhost}><Trash2 className="w-4 h-4 text-red-400" /></button>
               </div>
             </div>
@@ -216,7 +227,7 @@ export default function ConstructionLensPage() {
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center"><HardHat className="w-5 h-5 text-white" /></div>
           <div><div className="flex items-center gap-2"><h1 className={ds.heading1}>Construction</h1><LiveIndicator isLive={isLive} lastUpdated={lastUpdated} /></div><p className={ds.textMuted}>Jobs, estimates, materials, inspections, safety, and crew management</p></div>
         </div>
-        <div className="flex items-center gap-2"><DTUExportButton domain="construction" data={{}} compact /><button onClick={() => setShowDashboard(!showDashboard)} className={cn(showDashboard ? ds.btnPrimary : ds.btnSecondary)}><BarChart3 className="w-4 h-4" /> Dashboard</button></div>
+        <div className="flex items-center gap-2">{runAction.isPending && <span className="text-xs text-neon-cyan animate-pulse">AI processing...</span>}<DTUExportButton domain="construction" data={{}} compact /><button onClick={() => setShowDashboard(!showDashboard)} className={cn(showDashboard ? ds.btnPrimary : ds.btnSecondary)}><BarChart3 className="w-4 h-4" /> Dashboard</button></div>
       </header>
       <RealtimeDataPanel domain="construction" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
 
@@ -246,7 +257,7 @@ export default function ConstructionLensPage() {
       })()}
 
       <UniversalActions domain="construction" artifactId={items[0]?.id} compact />
-      <nav className="flex items-center gap-2 border-b border-lattice-border pb-4 overflow-x-auto">{MODE_TABS.map(tab => (<button key={tab.id} onClick={() => { setActiveTab(tab.id); setShowDashboard(false); }} className={cn('flex items-center gap-2 px-4 py-2 rounded-lg transition-colors whitespace-nowrap', activeTab === tab.id && !showDashboard ? 'bg-neon-blue/20 text-neon-blue' : 'text-gray-400 hover:text-white hover:bg-lattice-elevated')}><tab.icon className="w-4 h-4" />{tab.label}</button>))}</nav>
+      <nav className="flex items-center gap-2 border-b border-lattice-border pb-4 flex-wrap">{MODE_TABS.map(tab => (<button key={tab.id} onClick={() => { setActiveTab(tab.id); setShowDashboard(false); }} className={cn('flex items-center gap-2 px-4 py-2 rounded-lg transition-colors whitespace-nowrap', activeTab === tab.id && !showDashboard ? 'bg-neon-blue/20 text-neon-blue' : 'text-gray-400 hover:text-white hover:bg-lattice-elevated')}><tab.icon className="w-4 h-4" />{tab.label}</button>))}</nav>
       {activeTab === 'map' ? (
         <div className={cn(ds.panel, 'p-4')}>
           <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2"><Map className="w-4 h-4 text-neon-cyan" /> Job Site Locations</h3>
@@ -258,7 +269,7 @@ export default function ConstructionLensPage() {
       ) : showDashboard ? renderDashboard() : renderLibrary()}
       {renderEditor()}
       <div className="border-t border-white/10">
-        <button onClick={() => setShowFeatures(!showFeatures)} className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-400 hover:text-white transition-colors"><span className="flex items-center gap-2"><Layers className="w-4 h-4" />Lens Features & Capabilities</span><ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} /></button>
+        <button onClick={() => setShowFeatures(!showFeatures)} className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"><span className="flex items-center gap-2"><Layers className="w-4 h-4" />Lens Features & Capabilities</span><ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} /></button>
         {showFeatures && <div className="px-4 pb-4"><LensFeaturePanel lensId="trades" /></div>}
       </div>
     </div>

@@ -70,11 +70,6 @@ export function useOfflineFirstDTU(dtuId: string | null) {
   const [source, setSource] = useState<DataSource>('cache');
   const [stale, setStale] = useState(false);
   const mountedRef = useRef(true);
-  const dataRef = useRef(data);
-
-  useEffect(() => {
-    dataRef.current = data;
-  }, [data]);
 
   const fetch_ = useCallback(async () => {
     if (!dtuId) return;
@@ -122,7 +117,7 @@ export function useOfflineFirstDTU(dtuId: string | null) {
     }
 
     // Layer 3: Already have cache data? We're done (stale but available)
-    if (dataRef.current) {
+    if (data) {
       if (mountedRef.current) {
         setStale(true);
         setLoading(false);
@@ -136,7 +131,7 @@ export function useOfflineFirstDTU(dtuId: string | null) {
       setSource('offline');
       setLoading(false);
     }
-  }, [dtuId]);
+  }, [dtuId, data]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -170,12 +165,6 @@ export function useOfflineFirst<T = unknown>(
   const [stale, setStale] = useState(false);
   const mountedRef = useRef(true);
   const fetchingRef = useRef(false);
-  const dataRef = useRef(data);
-  const objectUrlRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    dataRef.current = data;
-  }, [data]);
 
   const doFetch = useCallback(async () => {
     if (!endpoint || fetchingRef.current) return;
@@ -234,13 +223,8 @@ export function useOfflineFirst<T = unknown>(
         try {
           const blob = await downloadArtifact(cloudRef);
           if (blob && mountedRef.current) {
-            // Revoke previous object URL to avoid leaks
-            if (objectUrlRef.current) {
-              URL.revokeObjectURL(objectUrlRef.current);
-            }
             // For binary data, create an object URL
             const url = URL.createObjectURL(blob);
-            objectUrlRef.current = url;
             setData({ url, blob, ref: cloudRef } as unknown as T);
             setSource('cloud');
             setStale(false);
@@ -253,7 +237,7 @@ export function useOfflineFirst<T = unknown>(
       }
 
       // Layer 4: Offline fallback
-      if (!dataRef.current && mountedRef.current) {
+      if (!data && mountedRef.current) {
         setError('offline, data not cached locally');
         setSource('offline');
         setLoading(false);
@@ -261,19 +245,12 @@ export function useOfflineFirst<T = unknown>(
     } finally {
       fetchingRef.current = false;
     }
-  }, [endpoint, key, backgroundRefresh, cloudRef, cacheTTL]);
+  }, [endpoint, key, backgroundRefresh, cloudRef, cacheTTL, data]);
 
   useEffect(() => {
     mountedRef.current = true;
     doFetch();
-    return () => {
-      mountedRef.current = false;
-      // Clean up object URL on unmount
-      if (objectUrlRef.current) {
-        URL.revokeObjectURL(objectUrlRef.current);
-        objectUrlRef.current = null;
-      }
-    };
+    return () => { mountedRef.current = false; };
   }, [doFetch]);
 
   return { data, loading, error, source, stale, refresh: doFetch };

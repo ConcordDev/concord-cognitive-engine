@@ -637,28 +637,6 @@ export default function DatabaseLensPage() {
                   </div>
                 </div>
               )}
-
-              {/* Saved Queries from LensData */}
-              {queryItems.length > 0 && (
-                <div className="panel p-4 space-y-3">
-                  <h2 className="text-sm font-semibold flex items-center gap-2 text-neon-blue">
-                    <FileJson className="w-4 h-4" />
-                    Saved Queries ({queryItems.length})
-                  </h2>
-                  <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                    {queryItems.map(item => (
-                      <button
-                        key={item.id}
-                        onClick={() => { setSql(String((item.data as Record<string, unknown>)?.sql || item.title)); }}
-                        className="w-full text-left bg-lattice-surface border border-lattice-border/50 rounded p-2 hover:bg-lattice-elevated transition-colors"
-                      >
-                        <p className="text-xs font-medium text-white truncate">{item.title}</p>
-                        <p className="text-[11px] text-gray-500 font-mono truncate">{String((item.data as Record<string, unknown>)?.sql || '').slice(0, 60)}</p>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           )}
 
@@ -1231,6 +1209,7 @@ export default function DatabaseLensPage() {
       <UniversalActions domain="database" artifactId={null} compact />
       {realtimeData && (
         <RealtimeDataPanel
+      <UniversalActions domain="database" artifactId={null} compact />
           domain="database"
           data={realtimeData}
           isLive={isLive}

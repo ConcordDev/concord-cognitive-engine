@@ -3,9 +3,9 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { useState, useMemo } from 'react';
+import { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Box, Layers, Plus, Trash2, Search, ChevronDown, Thermometer, Zap, Shield, FlaskConical, Microscope } from 'lucide-react';
+import { Box, Layers, Plus, Trash2, Search, ChevronDown, Thermometer, Zap, Shield, FlaskConical, Microscope, Loader2 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -31,13 +31,17 @@ export default function MaterialsLensPage() {
   useLensNav('materials');
 
   const [activeTab, setActiveTab] = useState<'library' | 'compare' | 'properties'>('library');
-  const [showFeatures, setShowFeatures] = useState(false);
+  const [showFeatures, setShowFeatures] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('materials');
 
   const { items: materialItems, isLoading, isError, error, refetch, create, update, remove } = useLensData<Record<string, unknown>>('materials', 'material', { seed: [] });
   const runAction = useRunArtifact('materials');
+
+  const handleAction = useCallback((artifactId: string) => {
+    runAction.mutate({ id: artifactId, action: 'analyze' });
+  }, [runAction]);
 
   const materials = materialItems.map(i => ({ id: i.id, title: i.title, ...(i.data || {}) })) as unknown as (Material & { id: string; title: string })[];
 
@@ -95,6 +99,7 @@ export default function MaterialsLensPage() {
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-bold">Materials Science Lens</h1>
               <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
+              {runAction.isPending && <Loader2 className="w-4 h-4 animate-spin text-zinc-300" />}
             </div>
             <p className="text-sm text-gray-400">Material properties, comparison, and selection</p>
           </div>
@@ -172,7 +177,11 @@ export default function MaterialsLensPage() {
                       {mat.meltingPoint > 0 && <span>Melting: {mat.meltingPoint}°C</span>}
                     </div>
                   </div>
-                  <button onClick={() => remove(mat.id)} className="text-gray-500 hover:text-red-400"><Trash2 className="w-4 h-4" /></button>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => handleAction(mat.id)} className="text-gray-500 hover:text-neon-cyan" title="Run AI analysis"><Zap className="w-4 h-4" /></button>
+                    <button onClick={() => update(mat.id, { data: { ...mat, lastUpdated: new Date().toISOString() } as unknown as Partial<Record<string, unknown>> })} className="text-gray-500 hover:text-yellow-400" title="Update"><FlaskConical className="w-4 h-4" /></button>
+                    <button onClick={() => remove(mat.id)} className="text-gray-500 hover:text-red-400"><Trash2 className="w-4 h-4" /></button>
+                  </div>
                 </motion.div>
               ))
             )}
@@ -229,7 +238,7 @@ export default function MaterialsLensPage() {
 
       {/* Lens Features */}
       <div className="border-t border-white/10">
-        <button onClick={() => setShowFeatures(!showFeatures)} className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-400 hover:text-white transition-colors">
+        <button onClick={() => setShowFeatures(!showFeatures)} className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg">
           <span className="flex items-center gap-2"><Layers className="w-4 h-4" /> Lens Features & Capabilities</span>
           <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
         </button>

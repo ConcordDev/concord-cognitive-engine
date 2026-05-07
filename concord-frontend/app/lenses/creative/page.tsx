@@ -13,8 +13,6 @@ import type { DTU } from '@/lib/api/generated-types';
 import { LensContextPanel } from '@/components/lens/LensContextPanel';
 import { ArtifactRenderer } from '@/components/artifact/ArtifactRenderer';
 import { ArtifactUploader } from '@/components/artifact/ArtifactUploader';
-import { MediaUpload } from '@/components/media/MediaUpload';
-import { UniversalPlayer } from '@/components/media/UniversalPlayer';
 import { FeedbackWidget } from '@/components/feedback/FeedbackWidget';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import {

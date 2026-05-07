@@ -394,17 +394,18 @@ function VitalGauge({ value, vitalKey, label, unit }: { value: number; vitalKey:
 
 /** Enhanced status badge with distinct background tints */
 function StatusBadge({ status }: { status: Status }) {
+  const baseColor = STATUS_COLORS[status] || 'gray-400';
   const config: Record<Status, { bg: string; text: string; border: string; label: string }> = {
-    active: { bg: 'bg-green-500/15', text: 'text-green-400', border: 'border-green-500/30', label: 'Active' },
-    scheduled: { bg: 'bg-blue-500/15', text: 'text-blue-400', border: 'border-blue-500/30', label: 'Scheduled' },
-    completed: { bg: 'bg-cyan-500/15', text: 'text-cyan-400', border: 'border-cyan-500/30', label: 'Completed' },
-    cancelled: { bg: 'bg-red-500/15', text: 'text-red-400', border: 'border-red-500/30', label: 'Cancelled' },
-    archived: { bg: 'bg-gray-500/15', text: 'text-gray-400', border: 'border-gray-500/30', label: 'Archived' },
+    active: { bg: `bg-${baseColor}/15`, text: `text-${baseColor}`, border: `border-${baseColor}/30`, label: 'Active' },
+    scheduled: { bg: `bg-${baseColor}/15`, text: `text-${baseColor}`, border: `border-${baseColor}/30`, label: 'Scheduled' },
+    completed: { bg: `bg-${baseColor}/15`, text: `text-${baseColor}`, border: `border-${baseColor}/30`, label: 'Completed' },
+    cancelled: { bg: `bg-${baseColor}/15`, text: `text-${baseColor}`, border: `border-${baseColor}/30`, label: 'Cancelled' },
+    archived: { bg: `bg-${baseColor}/15`, text: `text-${baseColor}`, border: `border-${baseColor}/30`, label: 'Archived' },
   };
   const c = config[status] || config.archived;
   return (
     <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border', c.bg, c.text, c.border)}>
-      {status === 'active' && <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />}
+      {status === 'active' && <span className={`w-1.5 h-1.5 rounded-full bg-${baseColor} animate-pulse`} />}
       {c.label}
     </span>
   );
@@ -476,13 +477,6 @@ export default function HealthcareLensPage() {
   const [editingItem, setEditingItem] = useState<LensItem<HealthcareArtifact> | null>(null);
   const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
   const [showFeatures, setShowFeatures] = useState(true);
-
-  /* ---------- generate care plan state ---------- */
-  const [generateLoading, setGenerateLoading] = useState(false);
-  const [generateResult, setGenerateResult] = useState<{ content: string; title: string } | null>(
-    null
-  );
-  const [generateError, setGenerateError] = useState<string | null>(null);
 
   /* ---------- generate care plan state ---------- */
   const [generateLoading, setGenerateLoading] = useState(false);
@@ -1494,7 +1488,7 @@ export default function HealthcareLensPage() {
       {/* ============================================================ */}
       {/* Mode Tabs                                                    */}
       {/* ============================================================ */}
-      <nav className="flex items-center gap-1 border-b border-blue-900/20 pb-3 overflow-x-auto">
+      <nav className="flex items-center gap-1 border-b border-blue-900/20 pb-3 flex-wrap">
         {MODE_TABS.map(tab => (
           <button
             key={tab.id}
@@ -2203,16 +2197,7 @@ export default function HealthcareLensPage() {
               </div>
               {/* Sub-tabs */}
               <div className="flex items-center gap-1 border-b border-lattice-border pb-2 mb-3 flex-wrap">
-                {(
-                  [
-                    'Overview',
-                    'Vitals',
-                    'Medications',
-                    'Labs',
-                    'History',
-                    'Appointments',
-                  ] as DetailSubTab[]
-                ).map((tab) => (
+                {(['Overview', 'Vitals', 'Medications', 'Labs', 'History', 'Appointments'] as DetailSubTab[]).map(tab => (
                   <button
                     key={tab}
                     onClick={() => setDetailSubTab(tab)}

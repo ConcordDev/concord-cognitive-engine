@@ -9,7 +9,7 @@ import {
   AlertTriangle, Clock, Shield, Wrench,
   ChevronDown, Search, BarChart3, Layers, GitBranch,
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -42,21 +42,6 @@ export default function OrganLensPage() {
   const [searchFilter, setSearchFilter] = useState('');
   const [showRepairConfirm, setShowRepairConfirm] = useState<string | null>(null);
   const [showFeatures, setShowFeatures] = useState(true);
-
-  const { items: organItems } = useLensData('organ', 'employee', { noSeed: true });
-  const runAction = useRunArtifact('organ');
-  const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
-  const [isRunning, setIsRunning] = useState<string | null>(null);
-  const handleAction = async (action: string) => {
-    const targetId = organItems[0]?.id;
-    if (!targetId) { setActionResult({ message: 'No org data found. Add employee data first.' }); return; }
-    setIsRunning(action);
-    try {
-      const res = await runAction.mutateAsync({ id: targetId, action });
-      if (res.ok === false) { setActionResult({ message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setActionResult(res.result as Record<string, unknown>); }
-    } catch (e) { console.error(`Action ${action} failed:`, e); setActionResult({ message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` }); }
-    finally { setIsRunning(null); }
-  };
 
   // Backend: GET /api/status for organ registry
   const { data: statusData, isLoading, isError, error, refetch } = useQuery({

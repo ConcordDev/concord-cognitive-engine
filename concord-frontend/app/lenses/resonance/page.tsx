@@ -917,22 +917,6 @@ export default function ResonanceBoundaryPage() {
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [showFeatures, setShowFeatures] = useState(true);
 
-  const { items: resonanceArtifacts } = useLensData('resonance', 'signal', { seed: [] });
-  const runResonanceAction = useRunArtifact('resonance');
-  const [resonanceActionResult, setResonanceActionResult] = useState<Record<string, unknown> | null>(null);
-  const [resonanceActiveAction, setResonanceActiveAction] = useState<string | null>(null);
-
-  const handleResonanceAction = async (action: string) => {
-    const id = resonanceArtifacts[0]?.id;
-    if (!id) return;
-    setResonanceActiveAction(action);
-    try {
-      const res = await runResonanceAction.mutateAsync({ id, action });
-      if (res.ok === false) { setResonanceActionResult({ action, message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setResonanceActionResult({ action, ...(res.result as Record<string, unknown>) }); }
-    } catch (err) { console.error('Resonance action failed:', err); }
-    finally { setResonanceActiveAction(null); }
-  };
-
   // Fetch latest boundary scan
   const { data: scan, isLoading: scanLoading, isError: scanError, error: scanErrorObj, refetch: refetchScan } = useQuery<BoundaryScan>({
     queryKey: ['resonance-boundary'],

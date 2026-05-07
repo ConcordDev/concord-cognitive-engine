@@ -8,14 +8,7 @@
 import { randomUUID } from "crypto";
 import { recordTransactionBatch, generateTxId } from "./ledger.js";
 import { PLATFORM_ACCOUNT_ID } from "./fees.js";
-import { canCiteDtu, canCiteSpecificDtu } from "../lib/consent.js";
-import {
-  grantEarnedStorage,
-  countTriggersSinceLastGrant,
-  STORAGE_EARN_PER_ROYALTY_BATCH_BYTES,
-  ROYALTY_BATCH_SIZE,
-  STORAGE_REASONS,
-} from "../lib/storage-quota.js";
+import { canCiteDtu } from "../lib/consent.js";
 
 function uid(prefix = "roy") {
   return `${prefix}_` + randomUUID().replace(/-/g, "").slice(0, 16);
@@ -65,22 +58,8 @@ export function registerCitation(db, { childId, parentId, creatorId, parentCreat
   if (childId === parentId) return { ok: false, error: "self_citation_not_allowed" };
   if (!creatorId || !parentCreatorId) return { ok: false, error: "missing_creator_ids" };
 
-  // Citation gate, three paths:
-  //   1. Parent is public / published / global-scoped (DTU-aware check)
-  //   2. Parent creator toggled allow_citation globally
-  //   3. Caller holds a purchased usage/remix license on the parent —
-  //      selling usage rights IS consenting to citation by that buyer.
-  //      Otherwise buyers would pay for remix rights and then find
-  //      their derivatives stranded out of the royalty cascade.
-  let cited = false;
-  if (hasPurchasedLicense === true) {
-    cited = true;
-  } else if (parentDtu) {
-    cited = canCiteSpecificDtu(db, parentDtu);
-  } else {
-    cited = canCiteDtu(db, parentCreatorId);
-  }
-  if (!cited) {
+  // Consent gate: parent creator must have opted into citations
+  if (!canCiteDtu(db, parentCreatorId)) {
     return { ok: false, error: "citation_consent_not_granted" };
   }
 

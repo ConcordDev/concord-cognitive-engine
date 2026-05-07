@@ -366,6 +366,7 @@ export function MonitoringPanel() {
           <h3 className="text-sm font-medium text-gray-300 mb-3 flex items-center gap-2">
             <Gauge className="w-4 h-4 text-neon-cyan" />
             Brain Latency Breakdown
+            <span className="ml-auto text-xs text-gray-500">last {historyLen} samples</span>
           </h3>
           <div className="space-y-2">
             {brainMetrics.map(m => {
@@ -387,6 +388,11 @@ export function MonitoringPanel() {
                       style={{ width: `${Math.min(100, (m.value / 10000) * 100)}%` }}
                     />
                   </div>
+                  <MiniSparkBar
+                    values={[m.value]}
+                    max={10000}
+                    color={m.value > 5000 ? 'bg-red-400' : m.value > 2000 ? 'bg-yellow-400' : 'bg-neon-cyan'}
+                  />
                   <span className="text-xs text-gray-400 w-16 text-right">{Math.round(m.value)}ms</span>
                 </div>
               );

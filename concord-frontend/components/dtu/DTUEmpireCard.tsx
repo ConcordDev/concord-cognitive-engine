@@ -124,7 +124,7 @@ function DTUEmpireCardInner({
             <TierIcon className={`w-4 h-4 ${config.color}`} />
           </div>
           <TierBadge tier={dtu.tier} showRegular size="sm" />
-          <ScopeBadge scope={dtu.scope || getDtuScopeDisplay(dtu).label.toLowerCase()} />
+          <ScopeBadge scope={dtu.scope || scopeDisplay.label.toLowerCase()} />
           <ProvenanceBadge source={dtu.source} model={dtu.meta?.model as string} authority={dtu.meta?.authority as string} />
         </div>
         <button className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-white">

@@ -15,7 +15,6 @@ import { CrossDomainConnections } from '@/components/common/CrossDomainConnectio
 import { BrainMonitor } from '@/components/common/BrainMonitor';
 import { SkeletonCard } from '@/components/common/Skeleton';
 import { ContentPublisher } from '@/components/lens/ContentPublisher';
-import { LensStateProvider } from '@/components/lens/LensStateProvider';
 import { useLensIdentity } from '@/hooks/useLensIdentity';
 import {
   isCoreLens,

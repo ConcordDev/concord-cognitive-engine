@@ -5,7 +5,7 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Upload, Settings2, CheckCircle2, AlertTriangle, Loader2, Clock, Database, Layers, ChevronDown, FileUp, FileJson, FileText, Image as ImageIcon, Music, Shield, Gauge, ArrowDownToLine, Zap, Activity } from 'lucide-react';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
 import { cn } from '@/lib/utils';
@@ -41,25 +41,6 @@ export default function IngestLensPage() {
   const [showConfig, setShowConfig] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [showFeatures, setShowFeatures] = useState(true);
-
-  const { items: ingestArtifacts } = useLensData('ingest', 'ingest-job', { seed: [] });
-  const runAction = useRunArtifact('ingest');
-  const [ingestActionResult, setIngestActionResult] = useState<{ action: string; data: unknown } | null>(null);
-
-  const handleIngestAction = useCallback((action: string) => {
-    const artifactId = ingestArtifacts[0]?.id;
-    if (!artifactId) return;
-    runAction.mutate(
-      { id: artifactId, action, params: {} },
-      {
-        onSuccess: (res) => setIngestActionResult({ action, data: res.result }),
-        onError: (e) => {
-          console.error(`Action failed:`, e);
-          setIngestActionResult({ action, data: { error: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` } });
-        },
-      }
-    );
-  }, [ingestArtifacts, runAction]);
 
   // Fetch past ingestions
   const { data: historyData, isLoading, isError, error, refetch } = useQuery({
@@ -195,7 +176,7 @@ export default function IngestLensPage() {
           <Gauge className="w-4 h-4 text-neon-cyan" />
           Ingestion Pipeline Status
         </h3>
-        <div className="flex items-center gap-2 overflow-x-auto py-2">
+        <div className="flex items-center gap-2 flex-wrap py-2">
           {[
             { stage: 'Queued', count: 0, color: 'bg-gray-500', textColor: 'text-gray-400' },
             { stage: 'Processing', count: ingestText.isPending ? 1 : 0, color: 'bg-neon-cyan', textColor: 'text-neon-cyan' },

@@ -274,7 +274,7 @@ export function validateAttribution(dtu) {
  * @param {object} source — Source attribution object (as returned by createAttribution)
  * @returns {string} Formatted attribution line
  */
-function formatAttributionDisplay(source) {
+export function formatAttributionDisplay(source) {
   if (!source) return "";
 
   const licenseEntry = _resolveLicense(source.license);
@@ -303,7 +303,7 @@ function formatAttributionDisplay(source) {
  * @param {object} forkDtu
  * @returns {object} The updated fork DTU
  */
-function preserveAttributionOnFork(originalDtu, forkDtu) {
+export function preserveAttributionOnFork(originalDtu, forkDtu) {
   if (!originalDtu || !forkDtu) return forkDtu;
 
   const originalSource = _extractSource(originalDtu);
@@ -350,7 +350,7 @@ function preserveAttributionOnFork(originalDtu, forkDtu) {
  * @param {object[]} existingDtus — Array of DTU objects to search
  * @returns {{ duplicate: boolean, matchedDtuId?: string, source?: string }}
  */
-function checkContentDuplicate(contentHash, existingDtus = []) {
+export function checkContentDuplicate(contentHash, existingDtus = []) {
   if (!contentHash || !existingDtus.length) {
     return { duplicate: false };
   }
@@ -508,7 +508,7 @@ export function feedAttribution(feedSource, item = {}) {
  * @param {string} domain    — Domain name (e.g. "reuters.com")
  * @returns {object} Attribution record
  */
-function webSearchAttribution(query, resultUrl, domain) {
+export function webSearchAttribution(query, resultUrl, domain) {
   return createAttribution({
     name: domain || "Web",
     url: resultUrl || "",
@@ -525,7 +525,7 @@ function webSearchAttribution(query, resultUrl, domain) {
  * @param {string} userName — Uploading user's display name
  * @returns {object} Attribution record
  */
-function userUploadAttribution(userId, userName) {
+export function userUploadAttribution(userId, userName) {
   return createAttribution({
     name: userName || "User",
     url: "",

@@ -50,7 +50,7 @@ export function requestAccountDeletion(db, userId, { ip, userAgent } = {}) {
     if (pendingWd > 0) {
       return { ok: false, error: "pending_withdrawals", detail: "Complete or cancel pending withdrawals before deleting account." };
     }
-  } catch (err) { console.warn('[account-lifecycle] could not check pending withdrawals (table may not exist)', { userId, err: err.message }); }
+  } catch { /* table may not exist */ }
 
   // Check wallet balance
   let balance = 0;
@@ -62,7 +62,7 @@ export function requestAccountDeletion(db, userId, { ip, userAgent } = {}) {
       "SELECT COALESCE(SUM(CAST(ROUND(amount * 100) AS INTEGER)), 0) as c FROM economy_ledger WHERE from_user_id = ? AND status = 'complete'"
     ).get(userId)?.c || 0;
     balance = (credits - debits) / 100;
-  } catch (err) { console.warn('[account-lifecycle] could not compute wallet balance (economy tables may not exist)', { userId, err: err.message }); }
+  } catch { /* economy tables may not exist */ }
 
   const now = nowISO();
 
@@ -122,7 +122,6 @@ export function executeAccountDeletion(db, userId) {
   const now = nowISO();
   const deletionId = uid("del");
   const stats = { anonymized: 0, deleted: 0 };
-  const errors = [];
 
   const doDelete = db.transaction(() => {
     // 1. Anonymize DTUs that are cited by others (can't delete — others depend on them)
@@ -137,45 +136,44 @@ export function executeAccountDeletion(db, userId) {
         anonymizeAttribution(db, row.dtu_id, userId);
         stats.anonymized++;
       }
-    } catch (err) { console.error('[account-lifecycle] failed to anonymize cited DTUs', { userId, err: err.message }); errors.push({ step: 'anonymize_cited_dtus', err }); }
+    } catch { /* royalty_lineage may not exist */ }
 
     // 2. Delete uncited DTUs
     try {
       const result = db.prepare("DELETE FROM dtus WHERE owner_user_id = ? AND id NOT IN (SELECT DISTINCT parent_id FROM royalty_lineage WHERE parent_creator = ?)").run(userId, userId);
       stats.deleted += result.changes;
-    } catch (err) {
-      console.warn('[account-lifecycle] failed to delete uncited DTUs with lineage check, falling back', { userId, err: err.message });
+    } catch {
       try {
         db.prepare("DELETE FROM dtus WHERE owner_user_id = ?").run(userId);
-      } catch (err2) { console.error('[account-lifecycle] failed to delete DTUs (fallback)', { userId, err: err2.message }); errors.push({ step: 'delete_dtus', err: err2 }); }
+      } catch { /* */ }
     }
 
     // 3. Delist all marketplace listings
     try {
       db.prepare("UPDATE creative_artifacts SET marketplace_status = 'delisted', updated_at = ? WHERE creator_id = ?").run(now, userId);
-    } catch (err) { console.error('[account-lifecycle] failed to delist marketplace listings', { userId, err: err.message }); errors.push({ step: 'delist_marketplace', err }); }
+    } catch { /* */ }
 
     // 4. Delete social content (posts, comments, DMs)
     for (const table of ["social_posts", "social_comments", "direct_messages", "forum_posts"]) {
       try {
         db.prepare(`DELETE FROM ${table} WHERE user_id = ? OR author_id = ? OR sender_id = ?`).run(userId, userId, userId);
-      } catch (err) { console.warn(`[account-lifecycle] failed to delete from ${table}`, { userId, err: err.message }); errors.push({ step: `delete_${table}`, err }); }
+      } catch { /* table may not exist or column names differ */ }
     }
 
     // 5. Revoke all sessions
     try {
       db.prepare("UPDATE sessions SET is_revoked = 1 WHERE user_id = ?").run(userId);
-    } catch (err) { console.error('[account-lifecycle] failed to revoke sessions', { userId, err: err.message }); errors.push({ step: 'revoke_sessions', err }); }
+    } catch { /* */ }
 
     // 6. Delete API keys
     try {
       db.prepare("DELETE FROM api_keys WHERE user_id = ?").run(userId);
-    } catch (err) { console.error('[account-lifecycle] failed to delete API keys', { userId, err: err.message }); errors.push({ step: 'delete_api_keys', err }); }
+    } catch { /* */ }
 
     // 7. Delete consent records
     try {
       db.prepare("DELETE FROM user_consent WHERE user_id = ?").run(userId);
-    } catch (err) { console.error('[account-lifecycle] failed to delete consent records', { userId, err: err.message }); errors.push({ step: 'delete_consent', err }); }
+    } catch { /* */ }
 
     // 8. Anonymize transaction records (retained 7 years per legal requirement)
     // Replace userId with deletion tombstone — keeps ledger integrity
@@ -183,19 +181,19 @@ export function executeAccountDeletion(db, userId) {
     try {
       db.prepare("UPDATE economy_ledger SET from_user_id = ? WHERE from_user_id = ?").run(tombstone, userId);
       db.prepare("UPDATE economy_ledger SET to_user_id = ? WHERE to_user_id = ?").run(tombstone, userId);
-    } catch (err) { console.error('[account-lifecycle] failed to anonymize transaction records', { userId, err: err.message }); errors.push({ step: 'anonymize_transactions', err }); }
+    } catch { /* */ }
 
     // 9. Delete user federation preferences, XP, quest completions
     for (const table of ["user_xp", "quest_completions", "creative_xp"]) {
       try {
         db.prepare(`DELETE FROM ${table} WHERE user_id = ?`).run(userId);
-      } catch (err) { console.warn(`[account-lifecycle] failed to delete from ${table}`, { userId, err: err.message }); errors.push({ step: `delete_${table}`, err }); }
+      } catch { /* */ }
     }
 
     // 10. Remove from leaderboards
     try {
       db.prepare("DELETE FROM leaderboard_entries WHERE user_id = ?").run(userId);
-    } catch (err) { console.warn('[account-lifecycle] failed to remove from leaderboards', { userId, err: err.message }); errors.push({ step: 'delete_leaderboard', err }); }
+    } catch { /* */ }
 
     // 11. Delete the user record itself
     db.prepare("DELETE FROM users WHERE id = ?").run(userId);
@@ -206,19 +204,19 @@ export function executeAccountDeletion(db, userId) {
         INSERT INTO audit_log (id, timestamp, category, action, user_id, details)
         VALUES (?, ?, 'account', 'account_deleted', ?, ?)
       `).run(uid("aud"), now, tombstone, JSON.stringify({ deletionId, anonymized: stats.anonymized, deleted: stats.deleted }));
-    } catch (err) { console.error('[account-lifecycle] failed to write audit log for deletion', { userId, err: err.message }); errors.push({ step: 'audit_log', err }); }
+    } catch { /* */ }
 
     // 13. Mark deletion request as completed
     try {
       db.prepare(
         "UPDATE account_deletion_requests SET status = 'completed', updated_at = ? WHERE user_id = ?"
       ).run(now, userId);
-    } catch (err) { console.warn('[account-lifecycle] failed to mark deletion request as completed', { userId, err: err.message }); errors.push({ step: 'mark_request_completed', err }); }
+    } catch { /* might not have a request record */ }
   });
 
   try {
     doDelete();
-    return { ok: true, deletionId, stats, errors: errors.length > 0 ? errors : undefined };
+    return { ok: true, deletionId, stats };
   } catch (err) {
     console.error("[account] deletion_failed:", err.message);
     return { ok: false, error: "deletion_failed", detail: err.message };
@@ -286,56 +284,56 @@ export function exportUserData(db, userId) {
     data.dtus = db.prepare(
       "SELECT id, title, body_json, tags_json, visibility, tier, created_at, updated_at FROM dtus WHERE owner_user_id = ? ORDER BY created_at DESC"
     ).all(userId);
-  } catch (err) { console.warn('[account-lifecycle] data export: failed to export DTUs', { userId, err: err.message }); }
+  } catch { /* */ }
 
   // Transactions
   try {
     data.transactions = db.prepare(
       "SELECT id, type, from_user_id, to_user_id, amount, fee, net, status, metadata_json, created_at FROM economy_ledger WHERE (from_user_id = ? OR to_user_id = ?) ORDER BY created_at DESC LIMIT 10000"
     ).all(userId, userId);
-  } catch (err) { console.warn('[account-lifecycle] data export: failed to export transactions', { userId, err: err.message }); }
+  } catch { /* */ }
 
   // Marketplace listings
   try {
     data.marketplaceListings = db.prepare(
       "SELECT id, type, title, description, price, license_type, federation_tier, marketplace_status, purchase_count, created_at FROM creative_artifacts WHERE creator_id = ? ORDER BY created_at DESC"
     ).all(userId);
-  } catch (err) { console.warn('[account-lifecycle] data export: failed to export marketplace listings', { userId, err: err.message }); }
+  } catch { /* */ }
 
   // Licenses (purchased)
   try {
     data.licenses = db.prepare(
       "SELECT id, artifact_id, license_type, status, purchase_price, granted_at FROM creative_usage_licenses WHERE licensee_id = ? ORDER BY granted_at DESC"
     ).all(userId);
-  } catch (err) { console.warn('[account-lifecycle] data export: failed to export licenses', { userId, err: err.message }); }
+  } catch { /* */ }
 
   // Consent state
   try {
     data.consents = db.prepare(
       "SELECT action, granted, granted_at, revoked_at, revocable FROM user_consent WHERE user_id = ?"
     ).all(userId);
-  } catch (err) { console.warn('[account-lifecycle] data export: failed to export consents', { userId, err: err.message }); }
+  } catch { /* */ }
 
   // Consent audit log
   try {
     data.consentAuditLog = db.prepare(
       "SELECT action, event, created_at, metadata_json FROM consent_audit_log WHERE user_id = ? ORDER BY created_at DESC LIMIT 500"
     ).all(userId);
-  } catch (err) { console.warn('[account-lifecycle] data export: failed to export consent audit log', { userId, err: err.message }); }
+  } catch { /* */ }
 
   // Direct messages (sent)
   try {
     data.messages = db.prepare(
       "SELECT id, recipient_id, content, created_at FROM direct_messages WHERE sender_id = ? ORDER BY created_at DESC LIMIT 5000"
     ).all(userId);
-  } catch (err) { console.warn('[account-lifecycle] data export: failed to export messages', { userId, err: err.message }); }
+  } catch { /* */ }
 
   // Social posts
   try {
     data.socialPosts = db.prepare(
       "SELECT id, content, created_at FROM social_posts WHERE user_id = ? OR author_id = ? ORDER BY created_at DESC LIMIT 5000"
     ).all(userId, userId);
-  } catch (err) { console.warn('[account-lifecycle] data export: failed to export social posts', { userId, err: err.message }); }
+  } catch { /* */ }
 
   return { ok: true, data };
 }
@@ -351,77 +349,6 @@ export function exportUserData(db, userId) {
 // - Have accepted the ToS
 
 const MIN_ACCOUNT_AGE_HOURS = 48;
-
-/**
- * Merge two accounts. Used when the same human signs in with multiple
- * providers (Google + Apple to the same email). One account becomes the
- * survivor; the other's DTUs, royalties, sessions, listings, and api keys
- * are reassigned to the survivor before the source is tombstoned.
- *
- * Caller must verify both accounts authenticated recently — this function
- * trusts the passed user ids.
- */
-export function mergeAccounts(db, { survivorUserId, sourceUserId, actorId }) {
-  if (!survivorUserId || !sourceUserId) {
-    return { ok: false, error: "missing_user_ids" };
-  }
-  if (survivorUserId === sourceUserId) {
-    return { ok: false, error: "cannot_merge_same_account" };
-  }
-  if (actorId !== survivorUserId && actorId !== sourceUserId) {
-    return { ok: false, error: "actor_must_be_one_of_the_two_accounts" };
-  }
-
-  const survivor = db.prepare("SELECT id FROM users WHERE id = ?").get(survivorUserId);
-  const source   = db.prepare("SELECT id FROM users WHERE id = ?").get(sourceUserId);
-  if (!survivor || !source) {
-    return { ok: false, error: "account_not_found" };
-  }
-
-  const counts = { dtus: 0, listings: 0, sessions: 0, citations: 0, apiKeys: 0 };
-
-  const tx = db.transaction(() => {
-    try {
-      const r = db.prepare("UPDATE dtus SET creator_id = ? WHERE creator_id = ?")
-                  .run(survivorUserId, sourceUserId);
-      counts.dtus = r.changes;
-    } catch { /* dtus table may not exist in some configs */ }
-    try {
-      const r = db.prepare("UPDATE marketplace_listings SET seller_id = ? WHERE seller_id = ?")
-                  .run(survivorUserId, sourceUserId);
-      counts.listings = r.changes;
-    } catch { /* schema variation tolerated */ }
-    try {
-      const r = db.prepare("UPDATE citations SET citing_user_id = ? WHERE citing_user_id = ?")
-                  .run(survivorUserId, sourceUserId);
-      counts.citations = r.changes;
-    } catch { /* schema variation tolerated */ }
-    try {
-      const r = db.prepare("DELETE FROM sessions WHERE user_id = ?")
-                  .run(sourceUserId);
-      counts.sessions = r.changes;
-    } catch { /* schema variation tolerated */ }
-    try {
-      const r = db.prepare("UPDATE api_keys SET user_id = ? WHERE user_id = ?")
-                  .run(survivorUserId, sourceUserId);
-      counts.apiKeys = r.changes;
-    } catch { /* schema variation tolerated */ }
-
-    // Mark source account as merged (audit trail).
-    try {
-      db.prepare(`UPDATE users SET status = 'merged', merged_into = ?, merged_at = ?
-                  WHERE id = ?`).run(survivorUserId, new Date().toISOString(), sourceUserId);
-    } catch {
-      // Fall back: tombstone via existing deletion path.
-      executeAccountDeletion(db, sourceUserId);
-    }
-  });
-
-  try { tx(); }
-  catch (err) { return { ok: false, error: String(err.message || err) }; }
-
-  return { ok: true, survivorUserId, sourceUserId, counts };
-}
 
 /**
  * Check if a user is eligible to sell on the marketplace.
@@ -455,7 +382,7 @@ export function checkSellerEligibility(db, userId) {
     ).get(userId)?.email_verified;
     // If column doesn't exist, we skip this check (pre-migration)
     if (emailVerified === 0) reasons.push("email_not_verified");
-  } catch (err) { console.warn('[account-lifecycle] seller eligibility: could not check email_verified column', { userId, err: err.message }); }
+  } catch { /* column may not exist yet */ }
 
   // 4. ToS must be accepted
   try {
@@ -463,7 +390,7 @@ export function checkSellerEligibility(db, userId) {
       "SELECT tos_accepted_at FROM users WHERE id = ?"
     ).get(userId)?.tos_accepted_at;
     if (!tosAccepted) reasons.push("tos_not_accepted");
-  } catch (err) { console.warn('[account-lifecycle] seller eligibility: could not check tos_accepted_at column', { userId, err: err.message }); }
+  } catch { /* column may not exist yet */ }
 
   // 5. Not banned
   if (user.role === "banned") reasons.push("account_banned");
@@ -527,7 +454,7 @@ export function requestRefund(db, { purchaseId, buyerId, reason }) {
         ORDER BY created_at DESC LIMIT 1
       `).get(`%${purchaseId}%`, buyerId);
     }
-  } catch (err) { console.error('[account-lifecycle] refund: failed to look up purchase', { purchaseId, buyerId, err: err.message }); }
+  } catch { /* */ }
 
   if (!purchase) return { ok: false, error: "purchase_not_found" };
 
@@ -543,7 +470,7 @@ export function requestRefund(db, { purchaseId, buyerId, reason }) {
       "SELECT id FROM marketplace_disputes WHERE purchase_id = ? AND status IN ('open', 'under_review')"
     ).get(purchaseId);
     if (existing) return { ok: false, error: "dispute_already_open" };
-  } catch (err) { console.warn('[account-lifecycle] refund: could not check for existing dispute (table may not exist)', { purchaseId, err: err.message }); }
+  } catch { /* table may not exist */ }
 
   const disputeId = uid("dis");
   const now = nowISO();
@@ -551,7 +478,7 @@ export function requestRefund(db, { purchaseId, buyerId, reason }) {
   let metadata;
   try {
     metadata = purchase.metadata_json ? JSON.parse(purchase.metadata_json) : {};
-  } catch (err) { console.warn('[account-lifecycle] refund: failed to parse purchase metadata', { purchaseId, err: err.message }); metadata = {}; }
+  } catch { metadata = {}; }
 
   const sellerId = metadata.sellerId || purchase.to_user_id;
   const amount = purchase.amount;
@@ -653,8 +580,7 @@ export function getUserDisputes(db, userId, { limit = 50, offset = 0 } = {}) {
     `).all(userId, userId, limit, offset);
 
     return { ok: true, disputes };
-  } catch (err) {
-    console.warn('[account-lifecycle] failed to fetch user disputes', { userId, err: err.message });
+  } catch {
     return { ok: true, disputes: [] };
   }
 }

@@ -55,6 +55,7 @@ import {
 import { cn } from '@/lib/utils';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { formatBytes } from '@/lib/utils';
+import { UniversalActions } from '@/components/lens/UniversalActions';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useLensDTUs } from '@/hooks/useLensDTUs';
 import { LensContextPanel } from '@/components/lens/LensContextPanel';
@@ -66,7 +67,6 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { DTUDetailView } from '@/components/dtu/DTUDetailView';
-import { SharedSessionChat } from '@/components/social/SharedSessionChat';
 
 // ──────────────────────────────────────────────
 // Types
@@ -408,7 +408,7 @@ export default function ChatLensPage() {
   const [chatSidebarOpen, setChatSidebarOpen] = useState(false);
   const [conversationSearch, setConversationSearch] = useState('');
   const [showMoreMenu, setShowMoreMenu] = useState(false);
-  const [showFeatures, setShowFeatures] = useState(false);
+  const [showFeatures, setShowFeatures] = useState(true);
   const [storedConversations, setStoredConversations] = useState<Conversation[]>(() => loadConversations());
 
   // New state — Persona picker
@@ -801,7 +801,7 @@ export default function ChatLensPage() {
       setAttachments([]);
       setQuotedMessage(null);
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5050';
 
       // Abort any previous in-flight request and create a new controller
       chatAbortControllerRef.current?.abort();
@@ -885,7 +885,7 @@ export default function ChatLensPage() {
           sessionId: activeSessionId,
           ...(systemPrompt ? { systemPrompt } : {}),
           ...(attachmentMeta.length > 0 ? { attachments: attachmentMeta } : {}),
-        });
+        }, { signal: abortController.signal });
         return response.data;
       }
     },
@@ -949,15 +949,11 @@ export default function ChatLensPage() {
       const abortController = new AbortController();
       chatAbortControllerRef.current = abortController;
 
-      const response = await api.post(
-        '/api/chat',
-        {
-          message: lastUserContent,
-          mode: aiMode.id,
-          sessionId: selectedConversation,
-        },
-        { signal: abortController.signal }
-      );
+      const response = await api.post('/api/chat', {
+        message: lastUserContent,
+        mode: aiMode.id,
+        sessionId: selectedConversation,
+      }, { signal: abortController.signal });
       return response.data;
     },
     onSuccess: (data) => {
@@ -1399,6 +1395,9 @@ export default function ChatLensPage() {
                 : 'bg-lattice-surface border border-lattice-border text-gray-200 rounded-bl-md hover:border-lattice-border/80 transition-colors'
           )}>
             <p className="whitespace-pre-wrap leading-relaxed">{message.content}</p>
+            {timeStr && (
+              <p className="text-[10px] text-gray-500 mt-1 select-none">{timeStr}</p>
+            )}
 
             {/* Attachment chips on user messages */}
             {message.attachments && message.attachments.length > 0 && (
@@ -1825,14 +1824,7 @@ export default function ChatLensPage() {
           </span>
         )}
       </div>
-      <RealtimeDataPanel
-        domain="chat"
-        data={realtimeData}
-        isLive={isLive}
-        lastUpdated={lastUpdated}
-        insights={realtimeInsights}
-        compact
-      />
+      <RealtimeDataPanel domain="chat" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={realtimeInsights} compact />
       <UniversalActions domain="chat" artifactId={null} compact />
       <div className="flex-1 flex overflow-hidden relative">
       {/* Mobile sidebar backdrop */}
@@ -3248,192 +3240,22 @@ export default function ChatLensPage() {
           )}
         </div>
 
-        {/* Lens Features */}
-        <div className="border-t border-white/10">
-          <button
-            onClick={() => setShowFeatures(!showFeatures)}
-            className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-          >
-            <span className="flex items-center gap-2">
-              <Layers className="w-4 h-4" />
-              Lens Features & Capabilities
-            </span>
-            <ChevronDown
-              className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`}
-            />
-          </button>
-          {showFeatures && (
-            <div className="px-4 pb-4 space-y-4">
-              <LensFeaturePanel lensId="chat" />
-              {/* Lens Recommender — suggest relevant lenses based on chat context */}
-              {lensRecommendations.length > 0 && (
-                <div className="p-3 rounded-lg border border-neon-purple/20 bg-neon-purple/5 space-y-2">
-                  <p className="text-xs font-semibold text-neon-purple flex items-center gap-1.5">
-                    <Layers className="w-3.5 h-3.5" />
-                    Suggested Lenses
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {lensRecommendations.map((rec) => (
-                      <button
-                        key={rec.lensId}
-                        onClick={() => {
-                          recordLensOpened(
-                            lensTelemetry.current,
-                            rec.lensId,
-                            lensSessionCtx.current.currentTurn
-                          );
-                          window.location.href = `/lenses/${rec.lensId}`;
-                        }}
-                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-lattice-surface border border-lattice-border hover:border-neon-purple/50 transition-colors text-left group"
-                      >
-                        <span className="text-xs font-medium text-white group-hover:text-neon-purple transition-colors">
-                          {rec.name}
-                        </span>
-                        <span className="text-[10px] text-gray-500">
-                          {Math.round(rec.score * 100)}%
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                  <p className="text-[10px] text-gray-500">
-                    Based on your current conversation context
-                  </p>
-                </div>
-              )}
-              {/* Atlas Viewer — spatial/material data overview */}
-              <AtlasViewer type="overview" />
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* DTU Detail Overlay -- opened when clicking a DTU reference */}
-      {inspectingDtuId && (
-        <DTUDetailView
-          dtuId={inspectingDtuId}
-          onClose={() => setInspectingDtuId(null)}
-          onNavigate={(id) => setInspectingDtuId(id)}
-        />
-      )}
-
-      {/* Session Sidebar — session management overlay */}
-      <SessionSidebar isOpen={sessionSidebarOpen} onClose={() => setSessionSidebarOpen(false)} />
-
-      {/* Context Overlay — shows working-set DTUs for a response */}
-      <ContextOverlay
-        sessionId={selectedConversation || ''}
-        lens="chat"
-        isOpen={contextOverlayOpen}
-        onClose={() => setContextOverlayOpen(false)}
-      />
-
-      {/* Systems drawer — shield / mesh / intel / privacy / initiatives.
-          Slides in from the right edge; lazy-fetches per-tab. */}
-      <AnimatePresence>
-        {systemsPanelOpen && (
-          <motion.div
-            initial={{ x: 420, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: 420, opacity: 0 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className="fixed top-20 right-4 bottom-4 w-[28rem] z-50 flex flex-col bg-lattice-surface border border-lattice-border rounded-lg shadow-2xl overflow-hidden"
-          >
-            <div className="flex items-center justify-between px-4 py-3 border-b border-lattice-border">
-              <div className="flex items-center gap-2">
-                <Activity className="w-4 h-4 text-neon-purple" />
-                <span className="text-sm font-semibold text-white">Systems</span>
-              </div>
-              <button
-                onClick={() => setSystemsPanelOpen(false)}
-                className="text-gray-400 hover:text-white transition-colors"
-                title="Close"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            {/* Tabs */}
-            <div className="flex gap-1 px-3 py-2 border-b border-lattice-border overflow-x-auto">
-              {(
-                [
-                  { key: 'shield', label: 'Shield' },
-                  { key: 'mesh', label: 'Mesh' },
-                  { key: 'intel', label: 'Intel' },
-                  { key: 'privacy', label: 'Privacy' },
-                  { key: 'initiatives', label: 'Initiatives' },
-                ] as const
-              ).map((t) => (
-                <button
-                  key={t.key}
-                  onClick={() => setSystemsTab(t.key)}
-                  className={cn(
-                    'px-3 py-1 rounded-md text-xs font-medium transition-colors whitespace-nowrap',
-                    systemsTab === t.key
-                      ? 'bg-neon-purple/20 text-neon-purple border border-neon-purple/30'
-                      : 'text-gray-400 hover:text-white hover:bg-lattice-bg'
-                  )}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
-            {/* Tab content */}
-            <div className="flex-1 overflow-y-auto p-3">
-              {systemsTab === 'shield' && (
-                <ShieldCard type="score" securityScore={shieldData as never} />
-              )}
-              {systemsTab === 'mesh' && (
-                <MeshStatusCard type="status" metrics={meshData as never} />
-              )}
-              {systemsTab === 'intel' && (
-                <IntelligenceCard type="overview" metrics={intelData as never} />
-              )}
-              {systemsTab === 'privacy' && (
-                <AtlasPrivacyMonitor data={privacyData as never} loading={!privacyData} />
-              )}
-              {systemsTab === 'initiatives' && (
-                <div className="space-y-2">
-                  {Array.isArray(initiativesData) && initiativesData.length > 0 ? (
-                    initiativesData.slice(0, 8).map((init: Initiative) => (
-                      <InitiativeChip
-                        key={init.id}
-                        initiative={init}
-                        onDismiss={(id: string) => {
-                          try {
-                            api.post(`/api/initiative/${encodeURIComponent(id)}/dismiss`, {});
-                          } catch {
-                            /* non-fatal */
-                          }
-                        }}
-                        onAction={(id: string, action: string) => {
-                          try {
-                            api.post(`/api/initiative/${encodeURIComponent(id)}/respond`, {
-                              response: action || 'acted',
-                            });
-                          } catch {
-                            /* non-fatal */
-                          }
-                        }}
-                        onRespond={(id: string) => {
-                          try {
-                            api.post(`/api/initiative/${encodeURIComponent(id)}/respond`, {
-                              response: 'engaged',
-                            });
-                          } catch {
-                            /* non-fatal */
-                          }
-                        }}
-                      />
-                    ))
-                  ) : (
-                    <p className="text-xs text-gray-500 text-center py-8">
-                      No proactive initiatives right now. Claude will surface them here when
-                      opportunities arise.
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-          </motion.div>
+      {/* Lens Features */}
+      <div className="border-t border-white/10">
+        <button
+          onClick={() => setShowFeatures(!showFeatures)}
+          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
+        >
+          <span className="flex items-center gap-2">
+            <Layers className="w-4 h-4" />
+            Lens Features & Capabilities
+          </span>
+          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
+        </button>
+        {showFeatures && (
+          <div className="px-4 pb-4">
+            <LensFeaturePanel lensId="chat" />
+          </div>
         )}
       </div>
       </div>

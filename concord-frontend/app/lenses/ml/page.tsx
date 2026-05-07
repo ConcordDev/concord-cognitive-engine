@@ -2,7 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { UniversalActions } from '@/components/lens/UniversalActions';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { apiHelpers } from '@/lib/api/client';
 import { useState, useEffect, useMemo, useRef } from 'react';
@@ -904,6 +904,7 @@ export default function MLLensPage() {
       </AnimatePresence>
 
       <RealtimeDataPanel data={realtimeInsights} />
+      <UniversalActions domain="ml" artifactId={null} compact />
 
       {/* Lens Features */}
       <div className="border-t border-white/10">

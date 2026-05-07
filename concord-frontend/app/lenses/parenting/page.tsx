@@ -6,8 +6,7 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
-  Baby, Plus, Search, Trash2, Calendar, Heart,
-  Star, Clock, Users, BookOpen, Layers, ChevronDown, Milestone, NotebookPen,
+  Baby, Plus, Search, Trash2, Calendar, Heart, Clock, Layers, ChevronDown, Milestone, NotebookPen, Loader2, BookOpen,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -43,7 +42,7 @@ export default function ParentingLensPage() {
   const [tab, setTab] = useState<Tab>('milestones');
   const [search, setSearch] = useState('');
   const [showCreate, setShowCreate] = useState(false);
-  const [showFeatures, setShowFeatures] = useState(false);
+  const [showFeatures, setShowFeatures] = useState(true);
   const [newMilestone, setNewMilestone] = useState({ childName: '', title: '', category: 'physical' as 'physical' | 'cognitive' | 'social' | 'language' | 'health', date: '' });
 
   const {
@@ -133,6 +132,22 @@ export default function ParentingLensPage() {
         <div className="lens-card"><Heart className="w-5 h-5 text-red-400 mb-2" /><p className="text-2xl font-bold">{stats.categories}</p><p className="text-sm text-gray-400">Categories</p></div>
       </div>
 
+      {/* Tab Navigation */}
+      <div className="flex gap-1 bg-lattice-surface p-1 rounded-lg border border-lattice-border">
+        {([
+          { key: 'milestones' as Tab, label: 'Milestones', icon: Milestone },
+          { key: 'schedules' as Tab, label: 'Schedules', icon: Clock },
+          { key: 'health' as Tab, label: 'Health', icon: Heart },
+          { key: 'activities' as Tab, label: 'Activities', icon: BookOpen },
+        ]).map(t => (
+          <button key={t.key} onClick={() => setTab(t.key)}
+            className={cn('flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors flex-1 justify-center',
+              tab === t.key ? 'bg-pink-500/20 text-pink-400' : 'text-gray-400 hover:text-white hover:bg-white/5')}>
+            <t.icon className="w-4 h-4" /> {t.label}
+          </button>
+        ))}
+      </div>
+
       <div className="relative">
         <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search milestones..." className="w-full bg-lattice-void border border-lattice-border rounded-lg pl-9 pr-3 py-2 text-sm" />
@@ -155,7 +170,7 @@ export default function ParentingLensPage() {
                 {m.date && <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{m.date}</span>}
               </div>
             </div>
-            <button onClick={() => remove(m.id)} className="text-gray-500 hover:text-red-400 p-1"><Trash2 className="w-4 h-4" /></button>
+            <button onClick={() => remove(m.id)} disabled={deleteMut.isPending} className="text-gray-500 hover:text-red-400 p-1">{deleteMut.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}</button>
           </motion.div>
         ))}
       </div>
@@ -163,7 +178,7 @@ export default function ParentingLensPage() {
       <RealtimeDataPanel domain="parenting" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
 
       <div className="border-t border-white/10">
-        <button onClick={() => setShowFeatures(!showFeatures)} className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-400 hover:text-white transition-colors">
+        <button onClick={() => setShowFeatures(!showFeatures)} className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg">
           <span className="flex items-center gap-2"><Layers className="w-4 h-4" />Lens Features & Capabilities</span>
           <ChevronDown className={cn('w-4 h-4 transition-transform', showFeatures && 'rotate-180')} />
         </button>

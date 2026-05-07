@@ -13,13 +13,13 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { api, apiHelpers } from '@/lib/api/client';
+import { apiHelpers } from '@/lib/api/client';
 import type { DTU } from '@/lib/api/generated-types';
 import { DTUIntegrityBadge } from './DTUIntegrityBadge';
 import { ProvenanceBadge } from './ProvenanceBadge';
 import {
   X, Clock, GitBranch, Tag, FileText, Zap, Crown, Ghost,
-  Copy, ChevronRight, Download, DollarSign, Users,
+  Copy, ChevronRight, Download, DollarSign, Share2,
   Music, Image as ImageIcon, Video, Code, FileType, ArrowUpCircle,
 } from 'lucide-react';
 import { ArtifactRenderer } from '@/components/artifact/ArtifactRenderer';
@@ -179,6 +179,14 @@ export function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps
     navigator.clipboard.writeText(dtuId);
   };
 
+  const [sharecopied, setShareCopied] = useState(false);
+  const handleShareUrl = () => {
+    const publicUrl = `${window.location.origin}/dtu/${dtuId}`;
+    navigator.clipboard.writeText(publicUrl);
+    setShareCopied(true);
+    setTimeout(() => setShareCopied(false), 2000);
+  };
+
   const [downloading, setDownloading] = useState(false);
 
   const handleDownloadDtu = async () => {
@@ -260,6 +268,14 @@ export function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps
             </div>
           )}
           <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              onClick={handleShareUrl}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-neon-purple/10 text-neon-purple hover:bg-neon-purple/20 transition-colors"
+              title="Copy public share URL"
+            >
+              <Share2 className="w-3.5 h-3.5" />
+              {sharecopied ? 'Copied!' : 'Share'}
+            </button>
             <button
               onClick={handleDownloadDtu}
               disabled={downloading || isLoading}

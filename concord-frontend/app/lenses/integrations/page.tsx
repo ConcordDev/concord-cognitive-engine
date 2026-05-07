@@ -22,26 +22,6 @@ export default function IntegrationsLensPage() {
   const [activeTab, setActiveTab] = useState<'webhooks' | 'automations' | 'services'>('webhooks');
   const [showCreate, setShowCreate] = useState(false);
   const [showFeatures, setShowFeatures] = useState(true);
-  const [webhookTestResults, setWebhookTestResults] = useState<Record<string, { status: 'loading' | 'success' | 'error'; message: string }>>({});
-  const [showDeliveryLog, setShowDeliveryLog] = useState<string | null>(null);
-  const [showAutomationBuilder, setShowAutomationBuilder] = useState(false);
-
-  // Action wiring
-  const runAction = useRunArtifact('integrations');
-  const { items: actionItems } = useLensData('integrations', 'integration', { noSeed: true });
-  const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
-  const [isRunning, setIsRunning] = useState<string | null>(null);
-
-  const handleAction = async (action: string) => {
-    const targetId = actionItems[0]?.id;
-    if (!targetId) return;
-    setIsRunning(action);
-    try {
-      const res = await runAction.mutateAsync({ id: targetId, action });
-      if (res.ok === false) { setActionResult({ message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setActionResult(res.result as Record<string, unknown>); }
-    } catch (e) { console.error(`Action ${action} failed:`, e); setActionResult({ message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` }); }
-    finally { setIsRunning(null); }
-  };
 
   const { data: webhooks, isLoading, isError: isError, error: error, refetch: refetch,} = useQuery({
     queryKey: ['webhooks'],

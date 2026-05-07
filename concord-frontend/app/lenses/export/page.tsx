@@ -8,7 +8,7 @@ import { motion } from 'framer-motion';
 import {
   Download, FileJson, FileText, Database, Check, Package, Layers,
   ChevronDown, FileCode, FileSpreadsheet, Hash, ArrowDownToLine,
-  Loader2, FileType, Clock, Archive,
+  Loader2, Clock, Archive,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';

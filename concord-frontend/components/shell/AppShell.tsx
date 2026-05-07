@@ -16,13 +16,11 @@ import { InstallPrompt } from '@/components/pwa/InstallPrompt';
 import { CookieConsent } from '@/components/common/CookieConsent';
 import { ThemeToggle } from '@/components/common/ThemeToggle';
 import { OfflineFallback } from '@/components/pwa/OfflineFallback';
+import SyncIndicator from '@/components/pwa/SyncIndicator';
 import { ConnectionStatus } from '@/components/common/ConnectionStatus';
 import { QuickCapture, useQuickCapture } from '@/components/capture/QuickCapture';
 import { NowPlayingBar } from '@/components/music/NowPlayingBar';
-import { MobileNav } from '@/components/shell/MobileNav';
 import { SessionSidebar } from '@/components/chat/SessionSidebar';
-import { OnboardingWizard, useOnboarding } from '@/components/onboarding/OnboardingWizard';
-import { useRouter } from 'next/navigation';
 import { useSessionStore } from '@/store/sessions';
 
 /** Routes that render their own chrome and should skip the AppShell layout. */
@@ -41,14 +39,8 @@ export function AppShell({ children }: AppShellProps) {
   const [mounted, setMounted] = useState(false);
   const [sessionSidebarOpen, setSessionSidebarOpen] = useState(false);
   const quickCapture = useQuickCapture();
-  const router = useRouter();
-  const {
-    isOpen: onboardingOpen,
-    complete: completeOnboarding,
-    close: dismissOnboarding,
-  } = useOnboarding();
   const activeSessionTitle = useSessionStore((s) => {
-    const active = s.sessions.find((sess) => sess.id === s.activeSessionId);
+    const active = s.sessions.find(sess => sess.id === s.activeSessionId);
     return active?.title || null;
   });
 
@@ -85,7 +77,7 @@ export function AppShell({ children }: AppShellProps) {
       // Ctrl/Cmd+Shift+S: toggle session sidebar
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'S') {
         e.preventDefault();
-        setSessionSidebarOpen((prev) => !prev);
+        setSessionSidebarOpen(prev => !prev);
       }
     };
 
@@ -134,9 +126,7 @@ export function AppShell({ children }: AppShellProps) {
           >
             <span className="text-xs leading-none">&#9776;</span>
             {activeSessionTitle && (
-              <span className="hidden sm:inline truncate max-w-[160px] text-xs">
-                {activeSessionTitle}
-              </span>
+              <span className="hidden sm:inline truncate max-w-[160px] text-xs">{activeSessionTitle}</span>
             )}
           </button>
         </div>

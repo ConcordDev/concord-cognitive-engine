@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
-import { api, apiHelpers } from '@/lib/api/client';
+import { apiHelpers } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
@@ -470,7 +470,7 @@ export default function EducationLensPage() {
   const [filterStatus, setFilterStatus] = useState<Status | 'all'>('all');
   const [showEditor, setShowEditor] = useState(false);
   const [editingItem, setEditingItem] = useState<LensItem<EducationArtifact> | null>(null);
-  const [showFeatures, setShowFeatures] = useState(false);
+  const [showFeatures, setShowFeatures] = useState(true);
   const [showStudyPanel, setShowStudyPanel] = useState(false);
 
   /* ---------- detail views ---------- */
@@ -1273,7 +1273,7 @@ export default function EducationLensPage() {
       <RealtimeDataPanel domain="education" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
 
       {/* Mode Tabs */}
-      <nav className="flex items-center gap-1 border-b border-amber-800/20 pb-3 overflow-x-auto">
+      <nav className="flex items-center gap-1 border-b border-amber-800/20 pb-3 flex-wrap">
         {MODE_TABS.map(tab => (
           <button
             key={tab.id}

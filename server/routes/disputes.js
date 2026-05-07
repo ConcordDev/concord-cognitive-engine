@@ -10,6 +10,7 @@
 import express from "express";
 import { openDispute, updateDisputeStatus, getDispute, getDisputes } from "../economy/legal-liability.js";
 import { executeTransfer } from "../economy/transfer.js";
+import { generateId } from "../lib/id-factory.js";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -109,7 +110,7 @@ export default function createDisputeRouter({ db, requireAuth, adminOnly }) {
       // Auto-escalation: if amount < threshold, schedule auto-refund
       const autoRefundEligible = amount > 0 && amount < AUTO_REFUND_THRESHOLD_CC;
 
-      return res.status(201).json({
+      res.status(201).json({
         ok: true,
         disputeId: result.disputeId,
         status: "open",
@@ -121,7 +122,7 @@ export default function createDisputeRouter({ db, requireAuth, adminOnly }) {
         reviewTime: result.reviewTime,
       });
     } catch (err) {
-      return res.status(500).json({ ok: false, error: "create_dispute_failed" });
+      res.status(500).json({ ok: false, error: "create_dispute_failed", message: err.message });
     }
   });
 
@@ -145,9 +146,9 @@ export default function createDisputeRouter({ db, requireAuth, adminOnly }) {
         canRespond: d.reported_user_id === userId && d.status === "open",
       }));
 
-      return res.json({ ok: true, disputes: enriched, total: enriched.length });
+      res.json({ ok: true, disputes: enriched, total: enriched.length });
     } catch (err) {
-      return res.status(500).json({ ok: false, error: "fetch_disputes_failed" });
+      res.status(500).json({ ok: false, error: "fetch_disputes_failed", message: err.message });
     }
   });
 
@@ -155,10 +156,12 @@ export default function createDisputeRouter({ db, requireAuth, adminOnly }) {
 
   router.get("/queue", (req, res) => {
     try {
-      // Admin check — mandatory for queue access
-      const check = adminCheckSync(req);
-      if (!check.ok) {
-        return res.status(check.status || 403).json({ ok: false, error: check.error || "forbidden" });
+      // Admin check
+      if (typeof adminOnly === "function") {
+        const check = adminCheckSync(req);
+        if (!check.ok) {
+          return res.status(check.status || 403).json({ ok: false, error: check.error || "forbidden" });
+        }
       }
 
       const openDisputes = getDisputes(db, { status: "open" });
@@ -174,9 +177,9 @@ export default function createDisputeRouter({ db, requireAuth, adminOnly }) {
           return (b.opened_at || "").localeCompare(a.opened_at || "");
         });
 
-      return res.json({ ok: true, queue, total: queue.length });
+      res.json({ ok: true, queue, total: queue.length });
     } catch (err) {
-      return res.status(500).json({ ok: false, error: "fetch_queue_failed" });
+      res.status(500).json({ ok: false, error: "fetch_queue_failed", message: err.message });
     }
   });
 
@@ -266,7 +269,7 @@ export default function createDisputeRouter({ db, requireAuth, adminOnly }) {
         }),
       });
 
-      return res.json({
+      res.json({
         ok: true,
         disputeId: req.params.id,
         status: "under_review",
@@ -274,7 +277,7 @@ export default function createDisputeRouter({ db, requireAuth, adminOnly }) {
         ...updateResult,
       });
     } catch (err) {
-      return res.status(500).json({ ok: false, error: "seller_respond_failed" });
+      res.status(500).json({ ok: false, error: "seller_respond_failed", message: err.message });
     }
   });
 
@@ -352,7 +355,7 @@ export default function createDisputeRouter({ db, requireAuth, adminOnly }) {
         }),
       });
 
-      return res.json({
+      res.json({
         ok: true,
         disputeId: req.params.id,
         status: "resolved",
@@ -362,7 +365,7 @@ export default function createDisputeRouter({ db, requireAuth, adminOnly }) {
         ...updateResult,
       });
     } catch (err) {
-      return res.status(500).json({ ok: false, error: "resolve_failed" });
+      res.status(500).json({ ok: false, error: "resolve_failed", message: err.message });
     }
   });
 
@@ -393,7 +396,7 @@ export default function createDisputeRouter({ db, requireAuth, adminOnly }) {
         // Table may not exist
       }
 
-      return res.json({
+      res.json({
         ok: true,
         dispute: {
           ...dispute,
@@ -402,7 +405,7 @@ export default function createDisputeRouter({ db, requireAuth, adminOnly }) {
         },
       });
     } catch (err) {
-      return res.status(500).json({ ok: false, error: "fetch_dispute_failed" });
+      res.status(500).json({ ok: false, error: "fetch_dispute_failed", message: err.message });
     }
   });
 

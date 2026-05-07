@@ -45,7 +45,6 @@ import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
-import { CodeEngineStatus } from '@/components/admin/CodeEngineStatus';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -1802,7 +1801,7 @@ export default function ScienceLensPage() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 2 * 0.05 }} className="panel p-3 flex items-center gap-3">
           <FileText className="w-5 h-5 text-neon-blue" />
           <div>
-            <p className="text-lg font-bold">{publications.reduce((s, p) => s + ((p.data as Record<string, unknown>)?.citations as number || 0), 0)}</p>
+            <p className="text-lg font-bold">{publications.reduce((s, p) => s + ((p.data as unknown as Record<string, unknown>)?.citations as number || 0), 0)}</p>
             <p className="text-xs text-gray-500">Citations</p>
           </div>
         </motion.div>
@@ -1817,7 +1816,7 @@ export default function ScienceLensPage() {
 
       {/* Tabs */}
       <nav className="flex items-center gap-2 border-b border-lattice-border pb-4 flex-wrap">
-        {MODE_TABS.map((tab) => {
+        {MODE_TABS.map(tab => {
           const Icon = tab.icon;
           return (
             <button

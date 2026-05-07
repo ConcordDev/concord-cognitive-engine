@@ -20,8 +20,6 @@ import { PLATFORM_ACCOUNT_ID } from "./fees.js";
 import { distributeFee } from "./fee-split.js";
 import { economyAudit } from "./audit.js";
 import { validateBalance } from "./validators.js";
-import { grantLicense as grantDtuLicense } from "./rights-enforcement.js";
-import { validatePricing as validateTierPricing, getTier as getLicenseTier } from "./license-tiers.js";
 import {
   ARTIFACT_TYPES, CREATIVE_MARKETPLACE, CREATIVE_FEDERATION,
   CREATIVE_QUESTS, CREATIVE_LEADERBOARD, CREATOR_RIGHTS, LICENSE_TYPES,
@@ -115,34 +113,8 @@ export function publishArtifact(db, {
   if (!filePath) return { ok: false, error: isVirtual ? "missing_dtu_ref" : "missing_file_path" };
   if (!fileSize || fileSize <= 0) return { ok: false, error: "invalid_file_size" };
   if (!fileHash) return { ok: false, error: "missing_file_hash" };
-
-  // Per-tier pricing support. Creators can now set separate prices for
-  // each tier (e.g. Music: listen=0, download=3, remix=15, commercial=60).
-  // A single `price` is still accepted for backwards compat — it becomes
-  // the "headline" price and defaults the highest interactive tier.
-  let normalizedTierPrices = null;
-  const tierKey = _tierKeyForType(type);
-  if (tierPrices && typeof tierPrices === "object" && tierKey) {
-    const validation = validateTierPricing(tierKey, tierPrices);
-    if (!validation.valid) {
-      return { ok: false, error: "invalid_tier_pricing", errors: validation.errors };
-    }
-    normalizedTierPrices = { ...tierPrices };
-  }
-
-  // If only a single `price` was passed, we still require it to be valid
-  // so listings have at least one purchase entry point.
-  if (!normalizedTierPrices) {
-    if (!price || price <= 0) return { ok: false, error: "invalid_price" };
-    if (price > 50000) return { ok: false, error: "price_exceeds_maximum", maxPrice: 50000 };
-  } else {
-    // Headline price = max non-zero tier, or fallback to caller-supplied
-    if (!price || price <= 0) {
-      const vals = Object.values(normalizedTierPrices).filter((v) => typeof v === "number" && v > 0);
-      price = vals.length ? Math.max(...vals) : 0;
-    }
-    if (price > 50000) return { ok: false, error: "price_exceeds_maximum", maxPrice: 50000 };
-  }
+  if (!price || price <= 0) return { ok: false, error: "invalid_price" };
+  if (price > 50000) return { ok: false, error: "price_exceeds_maximum", maxPrice: 50000 };
 
   // Validate file size against type limit
   const typeConfig = ARTIFACT_TYPES[type];
@@ -440,8 +412,7 @@ export function purchaseArtifact(db, { buyerId, artifactId, tier, requestId, ip 
   const washCheck = checkWashTrade(db, buyerId, artifact.creator_id, artifactId);
   if (!washCheck.ok) return washCheck;
 
-  const price = tierPrice;
-  if (!price || price < 0) return { ok: false, error: "invalid_price" };
+  const price = artifact.price;
 
   // Validate buyer has sufficient balance before proceeding
   const balanceCheck = validateBalance(db, buyerId, price);
@@ -595,13 +566,11 @@ export function purchaseArtifact(db, { buyerId, artifactId, tier, requestId, ip 
       });
     }
 
-    // 3b. Concord keeps (9% of sale for emergent-created content).
-    // Same canonical enum requirement; auditors distinguish via
-    // metadata.role = "concord_keeps".
+    // 3b. Concord keeps (9% of sale for emergent-created content)
     if (concordSplit && concordSplit.concordKeeps > 0) {
       entries.push({
         id: generateTxId(),
-        type: "ROYALTY_PAYOUT",
+        type: "CONCORD_ROYALTY",
         from: PLATFORM_ACCOUNT_ID,
         to: "__CONCORD__",
         amount: concordSplit.concordKeeps,
@@ -651,25 +620,6 @@ export function purchaseArtifact(db, { buyerId, artifactId, tier, requestId, ip 
         status, purchase_price, purchase_id, granted_at
       ) VALUES (?, ?, ?, ?, 'active', ?, ?, ?)
     `).run(uid("cul"), artifactId, buyerId, resolvedTier, price, purchaseId, now);
-
-    // Mirror into dtu_licenses (the rights-enforcement table). Using the
-    // creative_artifact id as dtu_id here — they are the same identity
-    // in the DTU lattice. content_type is normalized to lowercase to
-    // match the TIER_HIERARCHY map in rights-enforcement.js.
-    try {
-      grantDtuLicense(db, {
-        dtuId: artifactId,
-        userId: buyerId,
-        contentType: String(artifact.type || "").toLowerCase(),
-        licenseTier: resolvedTier,
-        txId: purchaseId,
-        expiresAt: null,
-      });
-    } catch (e) {
-      // Don't roll back the purchase if the mirror write fails —
-      // creative_usage_licenses is still authoritative for this flow.
-      console.error("[economy] grantDtuLicense mirror failed:", e?.message);
-    }
 
     // 6. Update artifact stats + auto-delist exclusive items
     if (artifact.license_type === "exclusive") {

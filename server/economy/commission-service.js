@@ -341,19 +341,13 @@ export function holdEscrow(db, { requestId, clientId, amount }) {
 
   const refId = `escrow_hold:${requestId}`;
 
-  // Transfer from client to escrow account — no fee on the hold itself.
-  // Type MUST be one of economy_ledger's CHECK enum values
-  // (TOKEN_PURCHASE / TRANSFER / MARKETPLACE_PURCHASE / ROYALTY_PAYOUT /
-  // WITHDRAWAL / FEE / REVERSAL — migration 002). The previous "ESCROW_HOLD"
-  // value silently failed the CHECK constraint, broke every commission
-  // request's hold step, and left clients in a stuck OPEN state with no
-  // funds moved. Use TRANSFER + metadata.role for the audit distinction.
+  // Transfer from client to escrow account — no fee on the hold itself
   const result = executeTransfer(db, {
     from: clientId,
     to: ESCROW_ACCOUNT,
     amount,
-    type: "TRANSFER",
-    metadata: { commissionRequestId: requestId, role: "escrow_hold" },
+    type: "ESCROW_HOLD",
+    metadata: { commissionRequestId: requestId },
     refId,
   });
 
@@ -488,17 +482,14 @@ export function resolveDispute(db, { requestId, resolution, resolvedBy }) {
   if (upperRes === "BUYER") {
     assertTransition(req.status, "RESOLVED_BUYER");
 
-    // Refund: transfer escrow back to client (no fee on refunds).
-    // Same CHECK-enum constraint as escrow_hold — use TRANSFER + a
-    // metadata.role marker so the audit trail still distinguishes
-    // refunds from regular transfers.
+    // Refund: transfer escrow back to client (no fee on refunds)
     const refId = `escrow_refund:${requestId}`;
     const result = executeTransfer(db, {
       from: ESCROW_ACCOUNT,
       to: req.client_id,
       amount: req.agreed_price,
-      type: "TRANSFER",
-      metadata: { commissionRequestId: requestId, resolvedBy, resolution: "BUYER", role: "escrow_refund" },
+      type: "ESCROW_REFUND",
+      metadata: { commissionRequestId: requestId, resolvedBy, resolution: "BUYER" },
       refId,
     });
     if (!result.ok) return result;

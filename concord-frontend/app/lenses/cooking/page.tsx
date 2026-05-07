@@ -8,7 +8,7 @@ import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   ChefHat, Plus, Search, Trash2, Clock, Users, Flame,
   Star, UtensilsCrossed, Layers, ChevronDown, Timer,
-  CheckSquare, Square, Minus, Check,
+  CheckSquare, Square, Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -120,7 +120,7 @@ function CookingTimer() {
 // ── Ingredient Checklist ────────────────────────────────────────
 function IngredientChecklist({ ingredients }: { ingredients: string[] }) {
   const [checked, setChecked] = useState<Set<number>>(new Set());
-  const toggle = (i: number) => setChecked(prev => { const s = new Set(prev); s.has(i) ? s.delete(i) : s.add(i); return s; });
+  const toggle = (i: number) => setChecked(prev => { const s = new Set(prev); if (s.has(i)) s.delete(i); else s.add(i); return s; });
   if (!ingredients || ingredients.length === 0) return <p className="text-xs text-gray-500 italic">No ingredients listed.</p>;
   return (
     <ul className="space-y-1.5">
@@ -150,7 +150,7 @@ export default function CookingLensPage() {
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('cooking');
   const [search, setSearch] = useState('');
   const [showCreate, setShowCreate] = useState(false);
-  const [showFeatures, setShowFeatures] = useState(false);
+  const [showFeatures, setShowFeatures] = useState(true);
   const [showTimer, setShowTimer] = useState(false);
   const [expandedRecipe, setExpandedRecipe] = useState<string | null>(null);
   const [servingMultipliers, setServingMultipliers] = useState<Record<string, number>>({});
@@ -268,14 +268,14 @@ export default function CookingLensPage() {
               {/* Title row */}
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-white truncate flex-1 mr-2">{r.name}</h3>
-                <button onClick={() => remove(r.id)} className="text-gray-500 hover:text-red-400 shrink-0"><Trash2 className="w-4 h-4" /></button>
+                <button onClick={() => remove(r.id)} disabled={deleteMut.isPending} className="text-gray-500 hover:text-red-400 shrink-0">{deleteMut.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}</button>
               </div>
 
               {/* Badges row */}
               <div className="flex flex-wrap items-center gap-2 text-xs">
                 {r.cuisine && <span className="px-2 py-0.5 rounded bg-lattice-elevated text-orange-300">{r.cuisine}</span>}
                 {badge && (
-                  <span className={cn('px-2 py-0.5 rounded font-semibold flex items-center gap-1', badge.color)}>
+                  <span className={cn('px-2 py-0.5 rounded font-semibold flex items-center gap-1', badge.color, DIFFICULTY_COLORS[r.difficulty])}>
                     <span className="tracking-tighter">{badge.icon}</span> {badge.label}
                   </span>
                 )}
@@ -345,7 +345,7 @@ export default function CookingLensPage() {
       <RealtimeDataPanel domain="cooking" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
 
       <div className="border-t border-white/10">
-        <button onClick={() => setShowFeatures(!showFeatures)} className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-400 hover:text-white transition-colors">
+        <button onClick={() => setShowFeatures(!showFeatures)} className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg">
           <span className="flex items-center gap-2"><Layers className="w-4 h-4" />Lens Features & Capabilities</span>
           <ChevronDown className={cn('w-4 h-4 transition-transform', showFeatures && 'rotate-180')} />
         </button>

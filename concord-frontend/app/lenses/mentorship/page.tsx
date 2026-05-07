@@ -8,9 +8,8 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
-  BadgeCheck, Plus, Search, Trash2, Users, MessageSquare,
-  Star, Calendar, Target, Clock, Layers, ChevronDown,
-  UserPlus, Send,
+  BadgeCheck, Plus, Search, Users, MessageSquare,
+  Star, Calendar, Target, Clock, Layers, ChevronDown, Send, Trash2, Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -54,7 +53,7 @@ export default function MentorshipLensPage() {
   const [search, setSearch] = useState('');
   const [selectedRelation, setSelectedRelation] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
-  const [showFeatures, setShowFeatures] = useState(false);
+  const [showFeatures, setShowFeatures] = useState(true);
   const [activeTab, setActiveTab] = useState<'mentors' | 'sessions' | 'goals'>('mentors');
   const [newMentorship, setNewMentorship] = useState({ mentorName: '', menteeName: '', topic: '', meetingFrequency: 'weekly' });
   const [newNote, setNewNote] = useState('');
@@ -207,6 +206,21 @@ export default function MentorshipLensPage() {
         )}
       </AnimatePresence>
 
+      {/* Available Mentors from Profiles */}
+      {Array.isArray(profiles) && profiles.length > 0 && (
+        <div className="panel p-4">
+          <h3 className="font-semibold text-sm mb-3 flex items-center gap-2"><Users className="w-4 h-4 text-neon-cyan" /> Available Profiles ({profiles.length})</h3>
+          <div className="flex gap-2 flex-wrap">
+            {profiles.slice(0, 6).map((p: { id?: string; name?: string; displayName?: string }, i: number) => (
+              <span key={p.id || i} className="px-3 py-1 text-xs rounded-full bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/20">
+                {p.displayName || p.name || String(p)}
+              </span>
+            ))}
+            {profiles.length > 6 && <span className="px-3 py-1 text-xs text-gray-500">+{profiles.length - 6} more</span>}
+          </div>
+        </div>
+      )}
+
       {/* Stat Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
@@ -293,9 +307,14 @@ export default function MentorshipLensPage() {
                     </div>
                     <div className="flex items-center justify-between text-xs text-gray-500 mt-1">
                       <span>{r.sessionsCompleted || 0} sessions | {r.meetingFrequency}</span>
-                      <span className="flex items-center gap-1 text-neon-cyan">
-                        <Star className="w-3 h-3" /> {getMatchScore(r.id)}%
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="flex items-center gap-1 text-neon-cyan">
+                          <Star className="w-3 h-3" /> {getMatchScore(r.id)}%
+                        </span>
+                        <button onClick={(e) => { e.stopPropagation(); remove(r.id); }} disabled={deleteMut.isPending} className="text-gray-500 hover:text-red-400">
+                          {deleteMut.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                        </button>
+                      </div>
                     </div>
                   </motion.button>
                 ))}
@@ -472,7 +491,7 @@ export default function MentorshipLensPage() {
       <RealtimeDataPanel domain="mentorship" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
 
       <div className="border-t border-white/10">
-        <button onClick={() => setShowFeatures(!showFeatures)} className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-400 hover:text-white transition-colors">
+        <button onClick={() => setShowFeatures(!showFeatures)} className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg">
           <span className="flex items-center gap-2"><Layers className="w-4 h-4" />Lens Features & Capabilities</span>
           <ChevronDown className={cn('w-4 h-4 transition-transform', showFeatures && 'rotate-180')} />
         </button>

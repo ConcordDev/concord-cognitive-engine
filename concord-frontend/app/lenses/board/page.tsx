@@ -316,33 +316,6 @@ export default function BoardLensPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [showFeatures, setShowFeatures] = useState(true);
 
-  // --- Board AI actions ---
-  const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
-  const [isRunning, setIsRunning] = useState<string | null>(null);
-  const runAction = useRunArtifact('board');
-
-  const handleBoardAction = async (action: string) => {
-    const targetId = lensItems[0]?.id;
-    if (!targetId) return;
-    setIsRunning(action);
-    try {
-      const res = await runAction.mutateAsync({ id: targetId, action });
-      if (res.ok === false) {
-        setActionResult({
-          message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}`,
-        });
-      } else {
-        setActionResult(res.result as Record<string, unknown>);
-      }
-    } catch (e) {
-      console.error(`Action ${action} failed:`, e);
-      setActionResult({
-        message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}`,
-      });
-    }
-    setIsRunning(null);
-  };
-
   // --- Keyboard navigation state ---
   const [focusedCol, setFocusedCol] = useState(0);
   const [focusedCard, setFocusedCard] = useState(0);

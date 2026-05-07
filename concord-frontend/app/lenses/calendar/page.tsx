@@ -1995,6 +1995,7 @@ export default function CalendarLensPage() {
       <UniversalActions domain="calendar" artifactId={null} compact />
       {realtimeData && (
         <RealtimeDataPanel
+      <UniversalActions domain="calendar" artifactId={null} compact />
           domain="calendar"
           data={realtimeData}
           isLive={isLive}

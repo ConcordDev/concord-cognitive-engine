@@ -220,26 +220,6 @@ export default function ExperienceLensPage() {
   const [activeTab, setActiveTab] = useState<TabId>('portfolio');
   const [portfolioFilter, setPortfolioFilter] = useState<PortfolioFilter>('all');
   const [showFeatures, setShowFeatures] = useState(true);
-  const [expActionResult, setExpActionResult] = useState<Record<string, unknown> | null>(null);
-  const [expRunning, setExpRunning] = useState<string | null>(null);
-  const [activeExpAction, setActiveExpAction] = useState<string | null>(null);
-
-  // Backend action runner
-  const runExpAction = useRunArtifact('experience');
-  const { items: expArtifacts } = useLensData<Record<string, unknown>>('experience', 'experience', { seed: [] });
-
-  const handleExpAction = async (action: string) => {
-    const targetId = expArtifacts[0]?.id;
-    if (!targetId) return;
-    setExpRunning(action);
-    setActiveExpAction(action);
-    setExpActionResult(null);
-    try {
-      const res = await runExpAction.mutateAsync({ id: targetId, action });
-      if (res.ok === false) { setExpActionResult({ message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setExpActionResult(res.result as Record<string, unknown>); }
-    } catch (e) { console.error(`Experience action ${action} failed:`, e); setExpActionResult({ message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` }); }
-    setExpRunning(null);
-  };
 
   const { isLoading, isError: isError, error: error, refetch: refetch, items: portfolioItems } = useLensData('experience', 'portfolio', {
     seed: INITIAL_PORTFOLIO.map(p => ({ title: p.title, data: p as unknown as Record<string, unknown> })),
@@ -1064,6 +1044,7 @@ export default function ExperienceLensPage() {
       <UniversalActions domain="experience" artifactId={null} compact />
       {realtimeData && (
         <RealtimeDataPanel
+      <UniversalActions domain="experience" artifactId={null} compact />
           domain="experience"
           data={realtimeData}
           isLive={isLive}

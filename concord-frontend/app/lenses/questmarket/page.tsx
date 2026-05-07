@@ -3,7 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useMutation } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Target, Trophy, Coins, Clock, Users, Layers, ChevronDown, Swords, Award } from 'lucide-react';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
@@ -111,7 +111,7 @@ export default function QuestmarketLensPage() {
   const [showDashboard, setShowDashboard] = useState(false);
 
   const [filter, setFilter] = useState<string>('all');
-  const [showFeatures, setShowFeatures] = useState(false);
+  const [showFeatures, setShowFeatures] = useState(true);
 
   const activeArtifactType = MODE_TABS.find((t) => t.id === activeTab)?.artifactType || 'Quest';
   const { items, isLoading, isError, error, refetch, create, update, remove } =
@@ -471,152 +471,21 @@ export default function QuestmarketLensPage() {
               </>
             )}
 
-            {activeArtifactType === 'Achievement' && (
-              <>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className={ds.label}>Rarity</label>
-                    <select
-                      className={ds.select}
-                      value={formRarity}
-                      onChange={(e) => setFormRarity(e.target.value)}
-                    >
-                      {RARITY_TYPES.map((r) => (
-                        <option key={r} value={r}>
-                          {r}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className={ds.label}>XP Reward</label>
-                    <input
-                      type="number"
-                      className={ds.input}
-                      value={formXpReward}
-                      onChange={(e) => setFormXpReward(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className={ds.label}>Completion Criteria</label>
-                  <textarea
-                    className={ds.textarea}
-                    rows={2}
-                    value={formCompletionCriteria}
-                    onChange={(e) => setFormCompletionCriteria(e.target.value)}
-                  />
-                </div>
-              </>
-            )}
-
-            {activeArtifactType === 'LeaderboardEntry' && (
-              <>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className={ds.label}>Score</label>
-                    <input
-                      type="number"
-                      className={ds.input}
-                      value={formScore}
-                      onChange={(e) => setFormScore(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label className={ds.label}>Category</label>
-                    <select
-                      className={ds.select}
-                      value={formCategory}
-                      onChange={(e) => setFormCategory(e.target.value)}
-                    >
-                      {QUEST_CATEGORIES.map((c) => (
-                        <option key={c} value={c}>
-                          {c}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </>
-            )}
-
-            {activeArtifactType === 'Reward' && (
-              <>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className={ds.label}>Reward Type</label>
-                    <select
-                      className={ds.select}
-                      value={formRewardType}
-                      onChange={(e) => setFormRewardType(e.target.value)}
-                    >
-                      {REWARD_TYPES.map((r) => (
-                        <option key={r} value={r}>
-                          {r}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className={ds.label}>Amount</label>
-                    <input
-                      type="number"
-                      className={ds.input}
-                      value={formRewardAmount}
-                      onChange={(e) => setFormRewardAmount(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className={ds.label}>Rarity</label>
-                  <select
-                    className={ds.select}
-                    value={formRarity}
-                    onChange={(e) => setFormRarity(e.target.value)}
-                  >
-                    {RARITY_TYPES.map((r) => (
-                      <option key={r} value={r}>
-                        {r}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </>
-            )}
-
-            {activeArtifactType === 'Guild' && (
-              <>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className={ds.label}>Guild Name</label>
-                    <input
-                      className={ds.input}
-                      value={formGuildName}
-                      onChange={(e) => setFormGuildName(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label className={ds.label}>Member Count</label>
-                    <input
-                      type="number"
-                      className={ds.input}
-                      value={formMemberCount}
-                      onChange={(e) => setFormMemberCount(e.target.value)}
-                    />
-                  </div>
-                </div>
-              </>
-            )}
-
-            <div>
-              <label className={ds.label}>Notes</label>
-              <textarea
-                className={ds.textarea}
-                rows={2}
-                value={formNotes}
-                onChange={(e) => setFormNotes(e.target.value)}
-              />
-            </div>
+      {/* Lens Features */}
+      <div className="border-t border-white/10">
+        <button
+          onClick={() => setShowFeatures(!showFeatures)}
+          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
+        >
+          <span className="flex items-center gap-2">
+            <Layers className="w-4 h-4" />
+            Lens Features & Capabilities
+          </span>
+          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
+        </button>
+        {showFeatures && (
+          <div className="px-4 pb-4">
+            <LensFeaturePanel lensId="questmarket" />
           </div>
           <div className="flex justify-end gap-2 mt-4">
             <button onClick={() => setEditorOpen(false)} className={ds.btnSecondary}>

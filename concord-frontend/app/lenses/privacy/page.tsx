@@ -1,12 +1,13 @@
 'use client';
 
-import { useLensNav } from '@/hooks/useLensNav';
 import { useState, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Shield,
   Eye,
+  Globe,
+  Users,
   Brain,
   AlertTriangle,
   Loader2,
@@ -22,12 +23,7 @@ import {
   Lock,
   CheckCircle2,
   Info,
-  Zap,
-  X,
 } from 'lucide-react';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { useQuery as useArtifactsQuery } from '@tanstack/react-query';
-import { useState as usePrivacyState, useCallback as usePrivacyCallback } from 'react';
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ds } from '@/lib/design-system';
@@ -387,27 +383,7 @@ function StatsCard({
 // ── Main Page ───────────────────────────────────────────────────────────────
 
 export default function PrivacySharingPage() {
-  useLensNav('privacy');
   const queryClient = useQueryClient();
-  const runAction = useRunArtifact('privacy');
-  const [privacyActionResult, setPrivacyActionResult] = usePrivacyState<Record<string, unknown> | null>(null);
-  const [privacyActiveAction, setPrivacyActiveAction] = usePrivacyState<string | null>(null);
-
-  const { data: privacyArtifacts } = useArtifactsQuery({
-    queryKey: ['lens', 'privacy', 'list', {}],
-    queryFn: async () => { const { api: apiClient } = await import('@/lib/api/client'); const { data } = await apiClient.get('/api/lens/privacy'); return data; },
-  });
-  const firstArtifactId = (privacyArtifacts as {artifacts?: {id: string}[]})?.artifacts?.[0]?.id;
-
-  const handlePrivacyAction = usePrivacyCallback(async (action: string) => {
-    if (!firstArtifactId) return;
-    setPrivacyActiveAction(action);
-    try {
-      const res = await runAction.mutateAsync({ id: firstArtifactId, action });
-      if (res.ok === false) { setPrivacyActionResult({ action, message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setPrivacyActionResult({ action, ...(res.result as Record<string, unknown>) }); }
-    } catch (err) { console.error('Privacy action failed:', err); }
-    finally { setPrivacyActiveAction(null); }
-  }, [firstArtifactId, runAction]);
 
   // Local state mirrors API state for optimistic editing
   const [localConsent, setLocalConsent] = useState<ConsentState>(DEFAULT_CONSENT);
@@ -669,7 +645,6 @@ export default function PrivacySharingPage() {
                       'hover:bg-white/[0.03]',
                       isNonRevocable && checked && 'bg-amber-500/5'
                     )}
-                    style={{ transitionDelay: `${ti * 30}ms` }}
                   >
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
@@ -705,78 +680,6 @@ export default function PrivacySharingPage() {
             </div>
           </motion.div>
         ))}
-      </div>
-
-      {/* Privacy Domain Actions */}
-      <div className="bg-white/3 border border-white/10 rounded-xl p-4 space-y-3">
-        <h3 className="text-sm font-semibold text-neon-blue flex items-center gap-2"><Zap className="w-4 h-4" /> Privacy Analysis</h3>
-        <div className="flex flex-wrap gap-2">
-          {[
-            { action: 'dataInventory', label: 'Data Inventory' },
-            { action: 'consentAudit', label: 'Consent Audit' },
-            { action: 'impactAssessment', label: 'Impact Assessment' },
-            { action: 'breachResponse', label: 'Breach Response' },
-          ].map(({ action, label }) => (
-            <button key={action} onClick={() => handlePrivacyAction(action)} disabled={privacyActiveAction === action || !firstArtifactId}
-              className="px-3 py-1.5 text-xs bg-neon-blue/10 border border-neon-blue/20 rounded-lg hover:bg-neon-blue/20 disabled:opacity-50 flex items-center gap-1.5">
-              {privacyActiveAction === action ? <div className="w-3 h-3 border border-neon-blue border-t-transparent rounded-full animate-spin" /> : <Shield className="w-3 h-3 text-neon-blue" />}
-              {label}
-            </button>
-          ))}
-        </div>
-        {privacyActionResult && (
-          <div className="p-3 bg-black/30 rounded-lg border border-neon-blue/20 text-xs space-y-2">
-            {privacyActionResult.action === 'dataInventory' && (
-              <div className="space-y-1">
-                <div className="flex gap-4 flex-wrap">
-                  <span className="text-gray-400">Total items: <span className="text-white font-mono">{String(privacyActionResult.totalItems ?? 0)}</span></span>
-                  <span className="text-gray-400">Sensitive: <span className={`font-mono ${(privacyActionResult.sensitiveItems as number) > 0 ? 'text-red-400' : 'text-green-400'}`}>{String(privacyActionResult.sensitiveItems ?? 0)}</span></span>
-                  <span className="text-gray-400">Risk: <span className={`font-mono ${privacyActionResult.riskLevel === 'high' ? 'text-red-400' : privacyActionResult.riskLevel === 'moderate' ? 'text-yellow-400' : 'text-green-400'}`}>{String(privacyActionResult.riskLevel ?? '')}</span></span>
-                  {!!privacyActionResult.gdprRelevant && <span className="text-yellow-400">GDPR relevant</span>}
-                </div>
-                {Array.isArray(privacyActionResult.recommendations) && <ul className="space-y-0.5">{(privacyActionResult.recommendations as string[]).map((r, i) => <li key={i} className="text-gray-300">• {r}</li>)}</ul>}
-              </div>
-            )}
-            {privacyActionResult.action === 'consentAudit' && (
-              <div className="space-y-1">
-                <div className="flex gap-4 flex-wrap">
-                  <span className="text-gray-400">Total: <span className="text-white font-mono">{String(privacyActionResult.totalConsents ?? 0)}</span></span>
-                  <span className="text-gray-400">Active: <span className="text-green-400 font-mono">{String(privacyActionResult.active ?? 0)}</span></span>
-                  <span className="text-gray-400">Expired: <span className="text-red-400 font-mono">{String(privacyActionResult.expired ?? 0)}</span></span>
-                  <span className="text-gray-400">Compliance: <span className="text-neon-blue font-mono">{String(privacyActionResult.complianceRate ?? 0)}%</span></span>
-                </div>
-                {privacyActionResult.action && <p className="text-gray-300">{String(privacyActionResult.action)}</p>}
-              </div>
-            )}
-            {privacyActionResult.action === 'impactAssessment' && (
-              <div className="space-y-1">
-                <div className="flex gap-4 flex-wrap">
-                  <span className="text-gray-400">Risk: <span className={`font-mono ${privacyActionResult.riskLevel === 'high' ? 'text-red-400' : privacyActionResult.riskLevel === 'moderate' ? 'text-yellow-400' : 'text-green-400'}`}>{String(privacyActionResult.riskLevel ?? '')}</span></span>
-                  <span className="text-gray-400">DPIA required: <span className={`${privacyActionResult.dpiaRequired ? 'text-red-400' : 'text-green-400'}`}>{privacyActionResult.dpiaRequired ? 'Yes' : 'No'}</span></span>
-                </div>
-                {Array.isArray(privacyActionResult.riskFactors) && privacyActionResult.riskFactors.length > 0 && (
-                  <div className="flex flex-wrap gap-1">{(privacyActionResult.riskFactors as string[]).map(f => <span key={f} className="px-1.5 py-0.5 bg-red-500/10 text-red-300 rounded">{f}</span>)}</div>
-                )}
-              </div>
-            )}
-            {privacyActionResult.action === 'breachResponse' && (
-              <div className="space-y-1">
-                <div className="flex gap-4 flex-wrap">
-                  <span className="text-gray-400">Severity: <span className={`font-mono ${privacyActionResult.severity === 'high' ? 'text-red-400' : privacyActionResult.severity === 'medium' ? 'text-yellow-400' : 'text-green-400'}`}>{String(privacyActionResult.severity ?? '')}</span></span>
-                  <span className="text-gray-400">Affected: <span className="text-white font-mono">{String(privacyActionResult.affectedUsers ?? 0)}</span></span>
-                  <span className="text-gray-400">Deadline: <span className="text-neon-blue">{String(privacyActionResult.regulatoryDeadline ?? '')}</span></span>
-                </div>
-                {Array.isArray(privacyActionResult.priorityActions) && (
-                  <div className="space-y-0.5">
-                    <p className="text-gray-500 font-semibold">Immediate actions:</p>
-                    {(privacyActionResult.priorityActions as string[]).map((a, i) => <p key={i} className="text-gray-300">• {a}</p>)}
-                  </div>
-                )}
-              </div>
-            )}
-            <button onClick={() => setPrivacyActionResult(null)} className="text-gray-600 hover:text-gray-400 text-xs flex items-center gap-1"><X className="w-3 h-3" /> Dismiss</button>
-          </div>
-        )}
       </div>
 
       {/* Footer info */}

@@ -5,8 +5,8 @@
  * into the response pipeline. Import and call from chat/response handlers.
  *
  * Usage in any response handler:
- *   import outputHooks from '../lib/output-hooks.js';
- *   const processed = await outputHooks.processOutput(userId, outputText, { lens, domain });
+ *   import { processOutput } from '../lib/output-hooks.js';
+ *   const processed = await processOutput(userId, outputText, { lens, domain });
  *   // processed.text may be modified, processed.flags may contain warnings
  */
 
@@ -27,7 +27,7 @@ import logger from "../logger.js";
  * @param {string[]} [context.tags]
  * @returns {{ text: string, flags: object[], blocked: boolean, ghostInsights: object[] }}
  */
-async function processOutput(userId, text, context = {}) {
+export async function processOutput(userId, text, context = {}) {
   const flags = [];
   let blocked = false;
   let processedText = text;
@@ -90,7 +90,7 @@ async function processOutput(userId, text, context = {}) {
  * Quick check — just constitution, no fingerprint or ghost threads.
  * For use in streaming responses where you need a fast check.
  */
-function quickConstitutionCheck(userId, text, context = {}) {
+export function quickConstitutionCheck(userId, text, context = {}) {
   try {
     return checkOutput(userId, text, context);
   } catch (_) {

@@ -5,7 +5,7 @@ import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Pill, AlertTriangle, Search, Plus, Trash2, ClipboardList, Clock, ShieldCheck, Layers, ChevronDown, X, AlertCircle, Package, Activity } from 'lucide-react';
+import { Pill, AlertTriangle, Plus, Trash2, Clock, ShieldCheck, Layers, ChevronDown, AlertCircle, Package, Search } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -36,7 +36,7 @@ export default function PharmacyLensPage() {
   useLensNav('pharmacy');
 
   const [activeTab, setActiveTab] = useState<'medications' | 'interactions' | 'refills'>('medications');
-  const [showFeatures, setShowFeatures] = useState(false);
+  const [showFeatures, setShowFeatures] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('pharmacy');
 
@@ -44,7 +44,10 @@ export default function PharmacyLensPage() {
   const { items: interactionItems, create: createInteraction } = useLensData<Record<string, unknown>>('pharmacy', 'interaction', { seed: [] });
   const runAction = useRunArtifact('pharmacy');
 
-  const medications = medItems.map(i => ({ id: i.id, title: i.title, ...(i.data || {}) })) as unknown as (Medication & { id: string; title: string })[];
+  const allMedications = medItems.map(i => ({ id: i.id, title: i.title, ...(i.data || {}) })) as unknown as (Medication & { id: string; title: string })[];
+  const medications = searchQuery.trim()
+    ? allMedications.filter(m => (m.name || m.title || '').toLowerCase().includes(searchQuery.toLowerCase()))
+    : allMedications;
   const interactions = interactionItems.map(i => ({ id: i.id, ...(i.data || {}) })) as unknown as (InteractionCheck & { id: string })[];
 
   const [newMed, setNewMed] = useState({ name: '', dosage: '', frequency: 'daily', route: 'oral' });
@@ -198,6 +201,12 @@ export default function PharmacyLensPage() {
       <UniversalActions domain="pharmacy" artifactId={undefined} compact />
       <DTUExportButton domain="pharmacy" data={{}} compact />
 
+      {/* Search */}
+      <div className="relative">
+        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+        <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search medications..." className="w-full bg-black/30 border border-white/10 rounded-lg pl-9 pr-3 py-2 text-sm" />
+      </div>
+
       {/* Tab Navigation */}
       <div className="flex gap-2 border-b border-white/10 pb-2">
         {(['medications', 'interactions', 'refills'] as const).map(tab => (
@@ -254,6 +263,7 @@ export default function PharmacyLensPage() {
                     </div>
                     <p className="text-xs text-gray-400 mt-1">{med.dosage} - {med.frequency} - {med.route}</p>
                   </div>
+                  <button onClick={() => update(med.id, { data: { status: med.status === 'active' ? 'discontinued' : 'active' } })} className="text-xs px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-gray-400 mr-2">{med.status === 'active' ? 'Discontinue' : 'Reactivate'}</button>
                   <button onClick={() => remove(med.id)} className="text-gray-500 hover:text-red-400"><Trash2 className="w-4 h-4" /></button>
                 </motion.div>
               ))}
@@ -266,9 +276,19 @@ export default function PharmacyLensPage() {
       {/* Interactions Tab */}
       {activeTab === 'interactions' && (
         <div className="space-y-4">
-          <button onClick={checkInteractions} className="px-4 py-2 bg-amber-500/20 text-amber-400 rounded-lg text-sm hover:bg-amber-500/30">
-            <AlertTriangle className="w-4 h-4 inline mr-1" /> Check Interactions
-          </button>
+          <div className="flex gap-2">
+            <button onClick={checkInteractions} className="px-4 py-2 bg-amber-500/20 text-amber-400 rounded-lg text-sm hover:bg-amber-500/30">
+              <AlertTriangle className="w-4 h-4 inline mr-1" /> Check Interactions
+            </button>
+            <button onClick={() => {
+              const activeNames = medications.filter(m => m.status === 'active').map(m => m.name || m.title);
+              if (activeNames.length >= 2) {
+                createInteraction({ title: activeNames.join(' + '), data: { drugs: activeNames, severity: 'unknown', description: 'Manual interaction note - please verify with pharmacist' } });
+              }
+            }} className="px-4 py-2 bg-white/5 text-gray-400 rounded-lg text-sm hover:bg-white/10">
+              <Plus className="w-4 h-4 inline mr-1" /> Add Note
+            </button>
+          </div>
           <div className="panel p-4">
             <h3 className="font-semibold mb-3">Known Interactions</h3>
             {interactions.length === 0 ? (
@@ -317,7 +337,7 @@ export default function PharmacyLensPage() {
       <div className="border-t border-white/10">
         <button
           onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-400 hover:text-white transition-colors"
+          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
         >
           <span className="flex items-center gap-2"><Layers className="w-4 h-4" /> Lens Features & Capabilities</span>
           <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />

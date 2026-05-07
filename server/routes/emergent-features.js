@@ -52,7 +52,6 @@
  */
 
 import { Router } from "express";
-import crypto from "node:crypto";
 import logger from "../logger.js";
 
 // Ghost Threads
@@ -127,9 +126,7 @@ export default function createEmergentFeaturesRouter({ STATE, requireAuth } = {}
   const router = Router();
 
   function _userId(req) {
-    // eslint-disable-next-line no-restricted-syntax
-    // eslint-disable-next-line no-restricted-syntax
-    return req.user?.userId ?? req.actor?.userId ?? req.body?.userId ?? null; // safe: target-identifier
+    return req.user?.userId ?? req.actor?.userId ?? req.body?.userId ?? null;
   }
 
   const auth = (req, res, next) => {
@@ -284,12 +281,12 @@ export default function createEmergentFeaturesRouter({ STATE, requireAuth } = {}
 
   router.post("/fingerprint/query", auth, wrap((req, res) => {
     recordQuery(_userId(req), req.body);
-    res.json({ ok: true, queryId: `id_${crypto.randomBytes(10).toString("hex")}`, recordedAt: new Date().toISOString(), ...req.body });
+    res.json({ ok: true });
   }));
 
   router.post("/fingerprint/prediction", auth, wrap((req, res) => {
     recordPrediction(_userId(req), req.body);
-    res.json({ ok: true, queryId: `id_${crypto.randomBytes(10).toString("hex")}`, recordedAt: new Date().toISOString(), ...req.body });
+    res.json({ ok: true });
   }));
 
   router.delete("/fingerprint", auth, wrap((req, res) => {

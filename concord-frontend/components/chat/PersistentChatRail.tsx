@@ -72,6 +72,7 @@ import { InitiativeList } from './InitiativeChip';
 import type { Initiative } from './InitiativeChip';
 import ChatRouteOverlay from './ChatRouteOverlay';
 import ForgeCard from './ForgeCard';
+import { ConfidenceBadge } from '@/components/common/ConfidenceBadge';
 
 // ── Types ──────────────────────────────────────────────────────
 
@@ -140,6 +141,8 @@ interface ChatMessage {
   route?: RouteMeta | null;
   // Inline forge artifact (when CREATE action produces deliverable)
   forge?: ForgeEnvelope | null;
+  // AI confidence score for this response
+  confidence?: { score: number; level: string; factors?: Record<string, { score: number }> } | null;
 }
 
 interface LensRecommendation {
@@ -554,6 +557,7 @@ export function PersistentChatRail({
         brain?: string;
         route?: RouteMeta | null;
         forge?: ForgeEnvelope | null;
+        confidence?: { score: number; level: string; factors?: Record<string, { score: number }> } | null;
       };
       if (d.sessionId === sessionId) {
         const msg: ChatMessage = {
@@ -570,6 +574,7 @@ export function PersistentChatRail({
           brain: d.brain || undefined,
           route: d.route || null,
           forge: d.forge || null,
+          confidence: d.confidence || null,
         };
         setMessages(prev => [...prev, msg]);
         setStreamingText('');
@@ -684,6 +689,7 @@ export function PersistentChatRail({
           dtuCount: data?.dtuCount ?? 0,
           route: data?.route || null,
           forge: data?.forge || null,
+          confidence: data?.confidence || null,
         };
         setMessages(prev => [...prev, assistantMsg]);
         if (data?.dtuCount != null) setLastDtuCount(data.dtuCount);

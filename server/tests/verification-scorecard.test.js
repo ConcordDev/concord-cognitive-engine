@@ -82,7 +82,7 @@ function record(testNum, testName, status, evidence) {
 let db;
 
 function setupTestDb() {
-  try { fs.unlinkSync(TEST_DB_PATH); } catch (_) { /* intentional */ }
+  try { fs.unlinkSync(TEST_DB_PATH); } catch (_) {}
 
   db = new Database(TEST_DB_PATH);
   db.pragma("journal_mode = WAL");
@@ -211,7 +211,7 @@ function setupTestDb() {
 }
 
 function seedUser(userId, amount) {
-  const { id } = recordTransaction(db, {
+  recordTransaction(db, {
     type: "TOKEN_PURCHASE",
     from: null,
     to: userId,
@@ -221,13 +221,6 @@ function seedUser(userId, amount) {
     status: "complete",
     metadata: { source: "test_seed" },
   });
-  // Backdate the seeded credit past the 48-hour withdrawal hold so the
-  // requestWithdrawal settled-balance gate (economy/withdrawals.js:38) treats
-  // it as eligible. Without this, withdraw tests fail by design — the hold
-  // is the anti-refund-exploit gate, not a bug.
-  db.prepare(
-    `UPDATE economy_ledger SET created_at = datetime('now', '-72 hours') WHERE id = ?`
-  ).run(id);
 }
 
 
@@ -237,7 +230,7 @@ function seedUser(userId, amount) {
 
 describe("Test 1: Economy Invariant", () => {
   before(() => setupTestDb());
-  after(() => { try { db?.close(); } catch (_) { /* intentional */ } });
+  after(() => { try { db?.close(); } catch (_) {} });
 
   it("1a — Deposit $10 via mint, verify 10 CC credited", () => {
     const result = mintCoins(db, { amount: 10, userId: "user_alice", refId: "stripe_test_001" });

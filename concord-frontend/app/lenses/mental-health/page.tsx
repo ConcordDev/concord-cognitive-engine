@@ -4,8 +4,9 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Brain, Heart, Shield, Activity, Smile, Frown, Meh, AlertTriangle, Plus, Search, X, Trash2, Layers, ChevronDown, Calendar, Clock } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Brain, Heart, Shield, Activity, Smile, Frown, Meh, AlertTriangle, Plus, Trash2, Layers, ChevronDown, Calendar, Clock, Sparkles, Search } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -44,7 +45,7 @@ export default function MentalHealthLensPage() {
   useLensNav('mental-health');
 
   const [activeTab, setActiveTab] = useState<'mood' | 'journal' | 'coping' | 'resources'>('mood');
-  const [showFeatures, setShowFeatures] = useState(false);
+  const [showFeatures, setShowFeatures] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('mental-health');
 
@@ -131,7 +132,28 @@ export default function MentalHealthLensPage() {
             <p className="text-sm text-gray-400">Mood tracking, journaling, and coping strategies</p>
           </div>
         </div>
+        <button
+          onClick={() => { runAction.mutate({ id: 'mental-health', action: 'generate-insights' }); }}
+          className="px-3 py-1.5 text-xs bg-neon-purple/20 border border-neon-purple/30 rounded-lg hover:bg-neon-purple/30 flex items-center gap-1"
+        >
+          <Sparkles className="w-3 h-3" /> Insights
+        </button>
       </motion.header>
+
+      {/* Search */}
+      <div className="relative">
+        <input
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          placeholder="Search moods, journals, strategies..."
+          className="w-full bg-black/30 border border-white/10 rounded-lg pl-3 pr-8 py-2 text-sm placeholder:text-gray-500 focus:outline-none focus:border-neon-purple/30"
+        />
+        {searchQuery && (
+          <button onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white">
+            <Plus className="w-4 h-4 rotate-45" />
+          </button>
+        )}
+      </div>
 
       {/* Stat Cards Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -143,8 +165,8 @@ export default function MentalHealthLensPage() {
           return [
             { icon: Activity, label: 'Mood Entries', value: totalEntries, color: 'text-purple-400', bg: 'bg-purple-400/10' },
             { icon: Heart, label: 'Journal Entries', value: journalCount, color: 'text-pink-400', bg: 'bg-pink-400/10' },
-            { icon: Brain, label: 'Avg Wellness', value: avgScore.toFixed(1), color: 'text-cyan-400', bg: 'bg-cyan-400/10' },
-            { icon: Calendar, label: 'Streak', value: `${Math.min(totalEntries, 7)}d`, color: 'text-green-400', bg: 'bg-green-400/10' },
+            { icon: recentMood.icon, label: 'Recent Mood', value: recentMood.label, color: recentMood.color, bg: 'bg-cyan-400/10' },
+            { icon: Calendar, label: 'Avg Score', value: avgScore > 0 ? avgScore.toFixed(1) : '—', color: 'text-green-400', bg: 'bg-green-400/10' },
           ].map((stat, i) => (
             <motion.div key={stat.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08, duration: 0.35 }}
               className="panel p-3 flex items-center gap-3">
@@ -286,7 +308,7 @@ export default function MentalHealthLensPage() {
             {moods.length === 0 ? (
               <p className="text-gray-500 text-sm text-center py-4">No mood entries yet. Log your first mood above.</p>
             ) : (
-              moods.slice(0, 20).map(entry => {
+              moods.filter(e => !searchQuery || (e.notes || '').toLowerCase().includes(searchQuery.toLowerCase()) || (e.mood || '').toLowerCase().includes(searchQuery.toLowerCase())).slice(0, 20).map(entry => {
                 const cfg = MOOD_CONFIG[entry.mood] || MOOD_CONFIG.neutral;
                 const Icon = cfg.icon;
                 return (
@@ -297,6 +319,7 @@ export default function MentalHealthLensPage() {
                       {entry.notes && <p className="text-xs text-gray-400 mt-0.5">{entry.notes}</p>}
                     </div>
                     <span className="text-xs text-gray-500">{entry.date ? new Date(entry.date).toLocaleDateString() : ''}</span>
+                    <button onClick={() => update(entry.id, { data: { ...entry, notes: (entry.notes || '') + ' (updated)' } as unknown as Record<string, unknown> })} className="text-gray-500 hover:text-neon-cyan" title="Edit"><Search className="w-3 h-3" /></button>
                     <button onClick={() => remove(entry.id)} className="text-gray-500 hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
                   </div>
                 );
@@ -322,11 +345,14 @@ export default function MentalHealthLensPage() {
             </button>
           </div>
           <div className="space-y-2">
-            {journals.map(entry => (
+            {journals.filter(e => !searchQuery || (e.content || '').toLowerCase().includes(searchQuery.toLowerCase()) || (e.title || '').toLowerCase().includes(searchQuery.toLowerCase())).map(entry => (
               <div key={entry.id} className="panel p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-medium">{entry.title}</span>
-                  <span className="text-xs text-gray-500">{entry.date ? new Date(entry.date).toLocaleDateString() : ''}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-500">{entry.date ? new Date(entry.date).toLocaleDateString() : ''}</span>
+                    <button onClick={() => removeJournal(entry.id)} className="text-gray-500 hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
+                  </div>
                 </div>
                 <p className="text-sm text-gray-300">{entry.content}</p>
               </div>
@@ -337,16 +363,34 @@ export default function MentalHealthLensPage() {
 
       {/* Coping Tab */}
       {activeTab === 'coping' && (
-        <div className="panel p-4">
-          <h3 className="font-semibold mb-3 flex items-center gap-2"><Shield className="w-4 h-4 text-neon-cyan" /> Coping Strategies</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {['Deep breathing', 'Grounding (5-4-3-2-1)', 'Progressive muscle relaxation', 'Journaling', 'Physical exercise', 'Mindful meditation', 'Social connection', 'Creative expression'].map(strategy => (
-              <div key={strategy} className="lens-card flex items-center gap-2">
-                <Heart className="w-4 h-4 text-neon-pink" />
-                <span className="text-sm">{strategy}</span>
-              </div>
-            ))}
+        <div className="space-y-4">
+          <div className="panel p-4">
+            <h3 className="font-semibold mb-3 flex items-center gap-2"><Shield className="w-4 h-4 text-neon-cyan" /> Coping Strategies</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {['Deep breathing', 'Grounding (5-4-3-2-1)', 'Progressive muscle relaxation', 'Journaling', 'Physical exercise', 'Mindful meditation', 'Social connection', 'Creative expression'].map(strategy => (
+                <button key={strategy} onClick={() => createCoping({ title: strategy, data: { strategy, createdAt: new Date().toISOString() } })} className="lens-card flex items-center gap-2 hover:border-neon-cyan/30 transition-colors text-left">
+                  <Heart className="w-4 h-4 text-neon-pink" />
+                  <span className="text-sm">{strategy}</span>
+                  <Plus className="w-3 h-3 ml-auto text-gray-500" />
+                </button>
+              ))}
+            </div>
           </div>
+          {/* Saved coping strategies */}
+          {copingItems.length > 0 && (
+            <div className="panel p-4">
+              <h3 className="font-semibold mb-3 flex items-center gap-2"><Shield className="w-4 h-4 text-neon-green" /> My Saved Strategies ({copingItems.length})</h3>
+              <div className="space-y-2">
+                {copingItems.map(item => (
+                  <div key={item.id} className="flex items-center gap-2 p-2 rounded-lg bg-white/5">
+                    <Heart className="w-4 h-4 text-neon-cyan" />
+                    <span className="text-sm flex-1">{item.title}</span>
+                    <span className="text-xs text-gray-500">{item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ''}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -374,7 +418,7 @@ export default function MentalHealthLensPage() {
       <div className="border-t border-white/10">
         <button
           onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-400 hover:text-white transition-colors"
+          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
         >
           <span className="flex items-center gap-2"><Layers className="w-4 h-4" /> Lens Features & Capabilities</span>
           <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />

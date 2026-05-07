@@ -8,9 +8,8 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
-  Scale, Plus, Search, Trash2, Users, MessageSquare,
-  ThumbsUp, ThumbsDown, Clock, Layers, ChevronDown, Zap,
-  ChevronUp, Send, Timer, Trophy, BarChart2, TrendingUp,
+  Scale, Plus, Search, Users, MessageSquare,
+  ThumbsUp, ThumbsDown, Layers, ChevronDown, Zap, Send, Timer, Trophy, TrendingUp, Loader2, Trash2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -273,7 +272,7 @@ export default function DebateLensPage() {
   const [search, setSearch] = useState('');
   const [selectedDebate, setSelectedDebate] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
-  const [showFeatures, setShowFeatures] = useState(false);
+  const [showFeatures, setShowFeatures] = useState(true);
   const [showDebateTools, setShowDebateTools] = useState(false);
   const [newDebate, setNewDebate] = useState<{ topic: string; description: string; format: DebateData['format']; timeLimit: number }>({ topic: '', description: '', format: 'open', timeLimit: 30 });
   const [newArgument, setNewArgument] = useState('');
@@ -426,6 +425,20 @@ export default function DebateLensPage() {
         )}
       </AnimatePresence>
 
+      {/* Trending Topics */}
+      {Array.isArray(trendingTopics) && trendingTopics.length > 0 && (
+        <div className="panel p-4">
+          <h3 className="font-semibold text-sm mb-3 flex items-center gap-2"><TrendingUp className="w-4 h-4 text-yellow-400" /> Trending Topics</h3>
+          <div className="flex flex-wrap gap-2">
+            {trendingTopics.slice(0, 8).map((topic: { id?: string; name?: string; title?: string }, i: number) => (
+              <span key={topic.id || i} className="px-3 py-1 text-xs rounded-full bg-yellow-400/10 text-yellow-400 border border-yellow-400/20">
+                {topic.name || topic.title || String(topic)}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="relative">
         <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search debates..." className="w-full bg-lattice-void border border-lattice-border rounded-lg pl-9 pr-3 py-2 text-sm" />
@@ -441,17 +454,22 @@ export default function DebateLensPage() {
             ) : debates.length === 0 ? (
               <p className="text-gray-400 text-center py-4">No debates yet.</p>
             ) : debates.map(d => (
-              <button key={d.id} onClick={() => setSelectedDebate(d.id)} className={cn('w-full text-left lens-card transition-all', selectedDebate === d.id && 'border-neon-purple ring-1 ring-neon-purple')}>
-                <div className="flex items-center justify-between mb-1">
-                  <h3 className="font-semibold text-sm truncate">{d.topic}</h3>
-                  <span className={cn('text-xs px-2 py-0.5 rounded', STATUS_COLORS[d.status || 'open'])}>{d.status}</span>
-                </div>
-                <div className="flex items-center gap-3 text-xs text-gray-400">
-                  <span className="text-neon-green">{d.proArguments?.length || 0} pro</span>
-                  <span className="text-red-400">{d.conArguments?.length || 0} con</span>
-                  <span>{d.format}</span>
-                </div>
-              </button>
+              <div key={d.id} className={cn('w-full text-left lens-card transition-all', selectedDebate === d.id && 'border-neon-purple ring-1 ring-neon-purple')}>
+                <button onClick={() => setSelectedDebate(d.id)} className="w-full text-left">
+                  <div className="flex items-center justify-between mb-1">
+                    <h3 className="font-semibold text-sm truncate">{d.topic}</h3>
+                    <span className={cn('text-xs px-2 py-0.5 rounded', STATUS_COLORS[d.status || 'open'])}>{d.status}</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-gray-400">
+                    <span className="text-neon-green">{d.proArguments?.length || 0} pro</span>
+                    <span className="text-red-400">{d.conArguments?.length || 0} con</span>
+                    <span>{d.format}</span>
+                  </div>
+                </button>
+                <button onClick={() => remove(d.id)} disabled={deleteMut.isPending} className="mt-2 text-gray-500 hover:text-red-400 text-xs flex items-center gap-1">
+                  {deleteMut.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />} Remove
+                </button>
+              </div>
             ))}
           </div>
         </div>
@@ -526,7 +544,7 @@ export default function DebateLensPage() {
       <RealtimeDataPanel domain="debate" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
 
       <div className="border-t border-white/10">
-        <button onClick={() => setShowFeatures(!showFeatures)} className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-400 hover:text-white transition-colors">
+        <button onClick={() => setShowFeatures(!showFeatures)} className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg">
           <span className="flex items-center gap-2"><Layers className="w-4 h-4" />Lens Features & Capabilities</span>
           <ChevronDown className={cn('w-4 h-4 transition-transform', showFeatures && 'rotate-180')} />
         </button>

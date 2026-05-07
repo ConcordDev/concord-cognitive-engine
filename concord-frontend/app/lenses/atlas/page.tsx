@@ -4,9 +4,10 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useLensNav } from '@/hooks/useLensNav';
+import { UniversalActions } from '@/components/lens/UniversalActions';
 import { motion } from 'framer-motion';
 import {
-  Map, Layers, Radio, AlertTriangle, Activity, RefreshCw,
+  Map, Layers, Radio, AlertTriangle, RefreshCw,
   ChevronDown, Compass, Globe, Radar,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
@@ -35,13 +36,13 @@ export default function AtlasLensPage() {
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('atlas');
 
   const [tab, setTab] = useState<Tab>('terrain');
-  const [showFeatures, setShowFeatures] = useState(false);
+  const [showFeatures, setShowFeatures] = useState(true);
   const [queryLat, setQueryLat] = useState('');
   const [queryLng, setQueryLng] = useState('');
 
   // ── Data fetching ──────────────────────────────────────────────────────
 
-  const { data: coverageData, isLoading: coverageLoading } = useQuery({
+  const { data: coverageData, isLoading: coverageLoading, isError: coverageError } = useQuery({
     queryKey: ['atlas-coverage'],
     queryFn: () => apiHelpers.atlasTomography.coverage().then(r => r.data),
     refetchInterval: 30000,
@@ -53,7 +54,7 @@ export default function AtlasLensPage() {
     refetchInterval: 20000,
   });
 
-  const { data: anomalyData, isLoading: anomalyLoading } = useQuery({
+  const { data: anomalyData, isLoading: anomalyLoading, isError: anomalyError } = useQuery({
     queryKey: ['atlas-anomalies'],
     queryFn: () => apiHelpers.atlasTomography.signalsAnomalies(50).then(r => r.data),
     refetchInterval: 15000,
@@ -105,6 +106,13 @@ export default function AtlasLensPage() {
 
   return (
     <div data-lens-theme="atlas" className="min-h-screen bg-zinc-950 text-zinc-100 p-6 space-y-6">
+      {/* Error banner */}
+      {(coverageError || anomalyError) && (
+        <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 flex items-center justify-between">
+          <p className="text-red-400 text-sm">Some data sources failed to load. Showing available data.</p>
+          <button onClick={() => window.location.reload()} className="text-xs text-red-300 hover:text-white">Retry</button>
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -276,6 +284,7 @@ export default function AtlasLensPage() {
       {/* Real-time Data Panel */}
       {realtimeData && (
         <RealtimeDataPanel
+      <UniversalActions domain="atlas" artifactId={null} compact />
           domain="atlas"
           data={realtimeData}
           isLive={isLive}
@@ -289,7 +298,7 @@ export default function AtlasLensPage() {
       <div className="border-t border-white/10">
         <button
           onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-400 hover:text-white transition-colors"
+          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
         >
           <span className="flex items-center gap-2">
             <Layers className="w-4 h-4" />

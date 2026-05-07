@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
@@ -544,148 +544,18 @@ export default function ResearchLensPage() {
         />
         <FeedbackWidget targetType="lens" targetId="research" />
 
-        {/* Real-time Data Panel */}
-        {realtimeData && (
-          <>
-            <UniversalActions domain="research" artifactId={null} compact />
-            <RealtimeDataPanel
-              domain="research"
-              data={realtimeData}
-              isLive={isLive}
-              lastUpdated={lastUpdated}
-              insights={realtimeInsights}
-              compact
-            />
-          </>
-        )}
-      </div>
-
-      {/* Research Domain Actions */}
-      <div className="panel p-4 space-y-3">
-        <h3 className="text-sm font-semibold text-neon-cyan flex items-center gap-2">
-          <Microscope className="w-4 h-4" /> Research Analysis
-        </h3>
-        <div className="flex flex-wrap gap-2">
-          {[
-            { action: 'citationNetwork', label: 'Citation Network' },
-            { action: 'methodologyScore', label: 'Methodology Score' },
-            { action: 'reproducibilityCheck', label: 'Reproducibility Check' },
-          ].map(({ action, label }) => (
-            <button
-              key={action}
-              onClick={() => handleResearchAction(action)}
-              disabled={researchActiveAction === action}
-              className="px-3 py-1.5 text-xs bg-neon-cyan/10 border border-neon-cyan/20 rounded-lg hover:bg-neon-cyan/20 disabled:opacity-50 flex items-center gap-1.5"
-            >
-              {researchActiveAction === action ? (
-                <div className="w-3 h-3 border border-neon-cyan border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <Zap className="w-3 h-3 text-neon-cyan" />
-              )}
-              {label}
-            </button>
-          ))}
-        </div>
-        {researchActionResult && (
-          <div className="p-3 bg-black/40 rounded-lg border border-neon-cyan/20 text-xs space-y-2">
-            {researchActionResult.action === 'citationNetwork' && (
-              <div className="space-y-1">
-                <div className="flex gap-4 flex-wrap">
-                  <span className="text-gray-400">
-                    Papers:{' '}
-                    <span className="text-white font-mono">
-                      {String(researchActionResult.totalPapers ?? '')}
-                    </span>
-                  </span>
-                  <span className="text-gray-400">
-                    Citations:{' '}
-                    <span className="text-neon-cyan font-mono">
-                      {String(researchActionResult.totalCitations ?? '')}
-                    </span>
-                  </span>
-                  <span className="text-gray-400">
-                    H-index:{' '}
-                    <span className="text-neon-blue font-mono">
-                      {String(researchActionResult.hIndex ?? '')}
-                    </span>
-                  </span>
-                </div>
-                {!!researchActionResult.message && (
-                  <p className="text-gray-400 italic">{String(researchActionResult.message)}</p>
-                )}
-              </div>
-            )}
-            {researchActionResult.action === 'methodologyScore' && (
-              <div className="space-y-1">
-                <div className="flex gap-4 flex-wrap">
-                  <span className="text-gray-400">
-                    Score:{' '}
-                    <span
-                      className={`font-mono font-bold ${(researchActionResult.score as number) >= 7 ? 'text-green-400' : (researchActionResult.score as number) >= 4 ? 'text-yellow-400' : 'text-red-400'}`}
-                    >
-                      {String(researchActionResult.score ?? '')}/10
-                    </span>
-                  </span>
-                  <span className="text-gray-400">
-                    Quality:{' '}
-                    <span className="text-white">{String(researchActionResult.quality ?? '')}</span>
-                  </span>
-                </div>
-                {Array.isArray(researchActionResult.strengths) &&
-                  researchActionResult.strengths.length > 0 && (
-                    <div className="space-y-0.5">
-                      {(researchActionResult.strengths as string[]).map((s, i) => (
-                        <p key={i} className="text-green-300">
-                          ✓ {s}
-                        </p>
-                      ))}
-                    </div>
-                  )}
-                {!!researchActionResult.message && (
-                  <p className="text-gray-400 italic">{String(researchActionResult.message)}</p>
-                )}
-              </div>
-            )}
-            {researchActionResult.action === 'reproducibilityCheck' && (
-              <div className="space-y-1">
-                <div className="flex gap-4 flex-wrap">
-                  <span className="text-gray-400">
-                    Score:{' '}
-                    <span
-                      className={`font-mono font-bold ${(researchActionResult.reproducibilityScore as number) >= 7 ? 'text-green-400' : (researchActionResult.reproducibilityScore as number) >= 4 ? 'text-yellow-400' : 'text-red-400'}`}
-                    >
-                      {String(researchActionResult.reproducibilityScore ?? '')}/10
-                    </span>
-                  </span>
-                </div>
-                {Array.isArray(researchActionResult.issues) &&
-                  researchActionResult.issues.length > 0 && (
-                    <div className="space-y-0.5">
-                      {(researchActionResult.issues as string[]).map((s, i) => (
-                        <p key={i} className="text-yellow-300">
-                          ⚠ {s}
-                        </p>
-                      ))}
-                    </div>
-                  )}
-                {!!researchActionResult.message && (
-                  <p className="text-gray-400 italic">{String(researchActionResult.message)}</p>
-                )}
-              </div>
-            )}
-            <button
-              onClick={() => setResearchActionResult(null)}
-              className="text-gray-600 hover:text-gray-400 text-xs flex items-center gap-1"
-            >
-              <X className="w-3 h-3" /> Dismiss
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Live Web Feed — science feeds are relevant to research */}
-      <div className="px-4 mb-2">
-        <LensFeedPanel lensId="science" />
+      {/* Real-time Data Panel */}
+      {realtimeData && (
+        <RealtimeDataPanel
+      <UniversalActions domain="research" artifactId={null} compact />
+          domain="research"
+          data={realtimeData}
+          isLive={isLive}
+          lastUpdated={lastUpdated}
+          insights={realtimeInsights}
+          compact
+        />
+      )}
       </div>
 
       {/* Lens Features */}

@@ -38,10 +38,8 @@ export const WINDOW_THRESHOLD = 50;
 /** Number of oldest messages to compress per cycle */
 export const COMPRESSION_BATCH = 20;
 
-/** Max conversation memory DTUs per session before consolidation.
- *  Bumped 50 → 500 for 32GB-heap deployments — long sessions can keep
- *  more raw memory before consolidating into MEGA tier. */
-export const MAX_MEMORY_DTUS_PER_SESSION = Number(process.env.CONCORD_CONVERSATION_DTUS_PER_SESSION) || 500;
+/** Max conversation memory DTUs per session before consolidation */
+export const MAX_MEMORY_DTUS_PER_SESSION = 50;
 
 /** Minimum conversation memory DTUs on a topic before MEGA promotion */
 export const MEGA_TOPIC_THRESHOLD = 5;

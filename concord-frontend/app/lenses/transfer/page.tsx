@@ -30,23 +30,6 @@ export default function TransferLensPage() {
   const [results, setResults] = useState<unknown>(null);
   const [showFeatures, setShowFeatures] = useState(true);
 
-  const { items: transferItems } = useLensData<Record<string, unknown>>('transfer', 'analogy');
-  const runTransferAction = useRunArtifact('transfer');
-  const [transferActionResult, setTransferActionResult] = useState<{ action: string; result: Record<string, unknown> } | null>(null);
-  const [transferActiveAction, setTransferActiveAction] = useState<string | null>(null);
-
-  const handleTransferAction = useCallback(async (action: string) => {
-    const id = transferItems[0]?.id;
-    if (!id) return;
-    setTransferActiveAction(action);
-    try {
-      const res = await runTransferAction.mutateAsync({ id, action });
-      if (res.ok) setTransferActionResult({ action, result: res.result as Record<string, unknown> });
-    } finally {
-      setTransferActiveAction(null);
-    }
-  }, [transferItems, runTransferAction]);
-
   // --- Lens Bridge ---
   const bridge = useLensBridge('transfer', 'analogy');
 

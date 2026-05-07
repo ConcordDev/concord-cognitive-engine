@@ -92,11 +92,6 @@ export default function AgentsLensPage() {
   const [newMaxTokens, setNewMaxTokens] = useState(4096);
   const [showFeatures, setShowFeatures] = useState(true);
 
-  // Backend action wiring
-  const runAction = useRunArtifact('agents');
-  const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
-  const [isRunning, setIsRunning] = useState<string | null>(null);
-
   // Persist agents via lens data (auto-seeds on first use)
   const { items: lensAgentItems, isLoading, isError, error, isSeeding: _isSeeding, refetch, create: createLensAgent, update: updateLensAgent, remove: removeLensAgent } = useLensData<Record<string, unknown>>('agents', 'agent', {
     seed: INITIAL_AGENTS.map(a => ({ title: a.name, data: a as unknown as Record<string, unknown> })),
@@ -1104,6 +1099,7 @@ export default function AgentsLensPage() {
       <UniversalActions domain="agents" artifactId={null} compact />
       {realtimeData && (
         <RealtimeDataPanel
+      <UniversalActions domain="agents" artifactId={null} compact />
           domain="agents"
           data={realtimeData}
           isLive={isLive}

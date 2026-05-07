@@ -3058,7 +3058,7 @@ export default function LegalLensPage() {
       <DTUExportButton domain="legal" data={{}} compact />
       {/* Mode Tabs */}
       <nav className="flex items-center gap-1 border-b border-lattice-border pb-3 flex-wrap">
-        {MODE_TABS.map((tab) => (
+        {MODE_TABS.map(tab => (
           <button
             key={tab.id}
             onClick={() => {

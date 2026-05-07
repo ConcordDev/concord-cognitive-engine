@@ -2,8 +2,8 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { TrendingUp, Flame, Eye, Heart, MessageSquare, Loader2, Hash } from 'lucide-react';
-import { cn, formatNumber, formatRelativeTime } from '@/lib/utils';
+import { TrendingUp, Flame, Heart, MessageSquare, Loader2, Hash } from 'lucide-react';
+import { cn, formatNumber } from '@/lib/utils';
 import { api } from '@/lib/api/client';
 
 // ── Types ────────────────────────────────────────────────────────────────────

@@ -4,8 +4,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Brain, Network, Activity, Layers, Loader2, ChevronDown, Zap } from 'lucide-react';
+import { Brain, Network, Activity, Layers, Loader2, ChevronDown } from 'lucide-react';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { ErrorState } from '@/components/common/EmptyState';
 import { UniversalActions } from '@/components/lens/UniversalActions';
@@ -58,6 +57,8 @@ const FRAMEWORKS = ['PyTorch', 'TensorFlow', 'JAX', 'Keras', 'ONNX', 'Custom'];
 
 export default function NeuroLensPage() {
   useLensNav('neuro');
+  const [networkType, setNetworkType] = useState('Feedforward');
+  const [showFeatures, setShowFeatures] = useState(true);
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('neuro');
 
   const [activeTab, setActiveTab] = useState<ModeTab>('networks');
@@ -262,55 +263,21 @@ export default function NeuroLensPage() {
               </div>
             </>)}
 
-            {activeArtifactType === 'Neuron' && (<>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className={ds.label}>Type</label><select className={ds.select} value={formNeuronType} onChange={e => setFormNeuronType(e.target.value)}>{NEURON_TYPES.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
-                <div><label className={ds.label}>Layer Index</label><input type="number" className={ds.input} value={formLayerIndex} onChange={e => setFormLayerIndex(e.target.value)} /></div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className={ds.label}>Activation</label><input type="number" step="0.01" className={ds.input} value={formActivation} onChange={e => setFormActivation(e.target.value)} placeholder="0.0 - 1.0" /></div>
-                <div><label className={ds.label}>Connections</label><input type="number" className={ds.input} value={formConnections} onChange={e => setFormConnections(e.target.value)} /></div>
-              </div>
-            </>)}
-
-            {activeArtifactType === 'TrainingRun' && (<>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className={ds.label}>Optimizer</label><select className={ds.select} value={formOptimizer} onChange={e => setFormOptimizer(e.target.value)}>{OPTIMIZERS.map(o => <option key={o} value={o}>{o}</option>)}</select></div>
-                <div><label className={ds.label}>Framework</label><select className={ds.select} value={formFramework} onChange={e => setFormFramework(e.target.value)}>{FRAMEWORKS.map(f => <option key={f} value={f}>{f}</option>)}</select></div>
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div><label className={ds.label}>Learning Rate</label><input type="number" step="0.0001" className={ds.input} value={formLearningRate} onChange={e => setFormLearningRate(e.target.value)} /></div>
-                <div><label className={ds.label}>Batch Size</label><input type="number" className={ds.input} value={formBatchSize} onChange={e => setFormBatchSize(e.target.value)} /></div>
-                <div><label className={ds.label}>Epochs</label><input type="number" className={ds.input} value={formEpochs} onChange={e => setFormEpochs(e.target.value)} /></div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className={ds.label}>Accuracy</label><input type="number" step="0.01" className={ds.input} value={formAccuracy} onChange={e => setFormAccuracy(e.target.value)} /></div>
-                <div><label className={ds.label}>Loss</label><input type="number" step="0.001" className={ds.input} value={formLoss} onChange={e => setFormLoss(e.target.value)} /></div>
-              </div>
-            </>)}
-
-            {activeArtifactType === 'Dataset' && (<>
-              <div className="grid grid-cols-3 gap-3">
-                <div><label className={ds.label}>Samples</label><input type="number" className={ds.input} value={formSamples} onChange={e => setFormSamples(e.target.value)} /></div>
-                <div><label className={ds.label}>Features</label><input type="number" className={ds.input} value={formFeatures} onChange={e => setFormFeatures(e.target.value)} /></div>
-                <div><label className={ds.label}>Classes</label><input type="number" className={ds.input} value={formClasses} onChange={e => setFormClasses(e.target.value)} /></div>
-              </div>
-              <div><label className={ds.label}>Split Ratio (train/val/test)</label><input className={ds.input} value={formSplitRatio} onChange={e => setFormSplitRatio(e.target.value)} placeholder="80/10/10" /></div>
-            </>)}
-
-            {activeArtifactType === 'Experiment' && (<>
-              <div><label className={ds.label}>Hypothesis</label><textarea className={ds.textarea} rows={2} value={formHypothesis} onChange={e => setFormHypothesis(e.target.value)} /></div>
-              <div><label className={ds.label}>Result</label><textarea className={ds.textarea} rows={2} value={formResult} onChange={e => setFormResult(e.target.value)} /></div>
-            </>)}
-
-            {activeArtifactType === 'Metric' && (<>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className={ds.label}>Metric Name</label><input className={ds.input} value={formMetric} onChange={e => setFormMetric(e.target.value)} placeholder="F1, Precision, Recall..." /></div>
-                <div><label className={ds.label}>Value</label><input type="number" step="0.001" className={ds.input} value={formValue} onChange={e => setFormValue(e.target.value)} /></div>
-              </div>
-            </>)}
-
-            <div><label className={ds.label}>Notes</label><textarea className={ds.textarea} rows={2} value={formNotes} onChange={e => setFormNotes(e.target.value)} /></div>
+      {/* Lens Features */}
+      <div className="border-t border-white/10">
+        <button
+          onClick={() => setShowFeatures(!showFeatures)}
+          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
+        >
+          <span className="flex items-center gap-2">
+            <Layers className="w-4 h-4" />
+            Lens Features & Capabilities
+          </span>
+          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
+        </button>
+        {showFeatures && (
+          <div className="px-4 pb-4">
+            <LensFeaturePanel lensId="neuro" />
           </div>
           <div className="flex justify-end gap-2 mt-4"><button onClick={() => setEditorOpen(false)} className={ds.btnSecondary}>Cancel</button><button onClick={handleSave} className={ds.btnPrimary} disabled={!formName.trim()}>Save</button></div>
         </div>

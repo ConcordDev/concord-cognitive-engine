@@ -1,13 +1,14 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useQuery } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Dna, Activity, Heart, Brain, Microscope, Layers, ChevronDown, AlertTriangle, Bug } from 'lucide-react';
+import { Dna, Activity, Heart, Brain, Microscope, Layers, ChevronDown, AlertTriangle, Bug, Zap, Loader2, Plus, Trash2 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -30,12 +31,28 @@ export default function BioLensPage() {
   useLensNav('bio');
 
   const [selectedSystem, setSelectedSystem] = useState('homeostasis');
-  const [showFeatures, setShowFeatures] = useState(false);
+  const [showFeatures, setShowFeatures] = useState(true);
   const [activeTab, setActiveTab] = useState<'organisms' | 'experiments' | 'sequences'>('organisms');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('bio');
 
   const { items: bioItems, isLoading, isError: isError, error: error, refetch: refetch, create, update, remove } = useLensData<Record<string, unknown>>('bio', 'system', { seed: [] });
   const runAction = useRunArtifact('bio');
+
+  const handleAction = useCallback((artifactId: string) => {
+    runAction.mutate({ id: artifactId, action: 'analyze' });
+  }, [runAction]);
+
+  const handleSave = useCallback((id: string, data: Record<string, unknown>) => {
+    update(id, { data });
+  }, [update]);
+
+  const handleCreate = useCallback(() => {
+    create({ title: 'New Organism', data: { type: 'organism' } });
+  }, [create]);
+
+  const handleRemove = useCallback((id: string) => {
+    remove(id);
+  }, [remove]);
 
   const { data: bioData } = useQuery({
     queryKey: ['bio-systems'],
@@ -106,6 +123,29 @@ export default function BioLensPage() {
       <RealtimeDataPanel domain="bio" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
       <UniversalActions domain="bio" artifactId={null} compact />
       <DTUExportButton domain="bio" data={{}} compact />
+
+      {/* CRUD Actions */}
+      <div className="flex items-center gap-2">
+        <button onClick={handleCreate} className="flex items-center gap-1.5 px-3 py-1.5 bg-neon-green/20 text-neon-green rounded-lg text-sm hover:bg-neon-green/30">
+          <Plus className="w-4 h-4" /> Add Organism
+        </button>
+      </div>
+
+      {/* Bio Items */}
+      {bioItems.length > 0 && (
+        <div className="space-y-2">
+          {bioItems.map(item => (
+            <div key={item.id} className="panel p-3 flex items-center justify-between">
+              <span className="text-sm font-medium">{item.title}</span>
+              <div className="flex items-center gap-2">
+                <button onClick={() => handleAction(item.id)} className="text-gray-500 hover:text-neon-cyan" title="Run AI analysis"><Zap className="w-4 h-4" /></button>
+                <button onClick={() => handleSave(item.id, { ...(item.data || {}), lastReviewed: new Date().toISOString() })} className="text-gray-500 hover:text-neon-blue" title="Update"><Activity className="w-4 h-4" /></button>
+                <button onClick={() => handleRemove(item.id)} className="text-gray-500 hover:text-red-400" title="Delete"><Trash2 className="w-4 h-4" /></button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

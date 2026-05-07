@@ -432,7 +432,7 @@ function domainColor(domain: string): string {
               </div>
 
               {/* Generated Lenses History */}
-              {generatedItems.length > 0 && (
+              {generatedItems.length > 0 ? (
                 <div className="panel p-4">
                   <h2 className="font-semibold mb-4 flex items-center gap-2">
                     <Wand2 className="w-4 h-4 text-neon-purple" />
@@ -467,6 +467,10 @@ function domainColor(domain: string): string {
                       </motion.div>
                     ))}
                   </div>
+                </div>
+              ) : (
+                <div className="text-center py-6 text-gray-500 text-sm border border-dashed border-white/10 rounded-lg">
+                  <p>No generated items yet. Use meta-generation tools to create items.</p>
                 </div>
               )}
             </motion.div>

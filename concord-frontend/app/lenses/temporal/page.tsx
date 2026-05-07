@@ -6,12 +6,10 @@ import { apiHelpers } from '@/lib/api/client';
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Clock,
   Calendar,
   Timer,
   GitBranch,
   Play,
-  Layers,
   Timer,
   GitBranch,
   ScanLine,

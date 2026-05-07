@@ -60,10 +60,10 @@ export default function createCityRoutes({ requireAuth } = {}) {
         limit: limit ? parseInt(limit, 10) : undefined,
         offset: offset ? parseInt(offset, 10) : undefined,
       });
-      return res.json({ ok: true, ...result });
+      res.json({ ok: true, ...result });
     } catch (err) {
       logger.warn?.("[city-route] list error:", err.message);
-      return res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
+      res.status(500).json({ ok: false, error: err.message });
     }
   });
 
@@ -76,10 +76,10 @@ export default function createCityRoutes({ requireAuth } = {}) {
       if (!userId) return res.status(401).json({ ok: false, error: "authentication_required" });
 
       const city = getHomeCity(userId);
-      return res.json({ ok: true, city });
+      res.json({ ok: true, city });
     } catch (err) {
       logger.warn?.("[city-route] get home error:", err.message);
-      return res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
+      res.status(500).json({ ok: false, error: err.message });
     }
   });
 
@@ -94,11 +94,11 @@ export default function createCityRoutes({ requireAuth } = {}) {
       if (!cityId) return res.status(400).json({ ok: false, error: "cityId is required" });
 
       const result = setHomeCity(userId, cityId);
-      return res.json({ ok: true, ...result });
+      res.json({ ok: true, ...result });
     } catch (err) {
       logger.warn?.("[city-route] set home error:", err.message);
       const status = err.message.includes("not found") ? 404 : 500;
-      return res.status(status).json({ ok: false, error: err.message });
+      res.status(status).json({ ok: false, error: err.message });
     }
   });
 
@@ -108,10 +108,10 @@ export default function createCityRoutes({ requireAuth } = {}) {
     try {
       const city = getCity(req.params.id);
       if (!city) return res.status(404).json({ ok: false, error: "city_not_found" });
-      return res.json({ ok: true, city });
+      res.json({ ok: true, city });
     } catch (err) {
       logger.warn?.("[city-route] get error:", err.message);
-      return res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
+      res.status(500).json({ ok: false, error: err.message });
     }
   });
 
@@ -123,11 +123,11 @@ export default function createCityRoutes({ requireAuth } = {}) {
       if (!userId) return res.status(401).json({ ok: false, error: "authentication_required" });
 
       const city = createCity({ ...req.body, owner: userId });
-      return res.status(201).json({ ok: true, city });
+      res.status(201).json({ ok: true, city });
     } catch (err) {
       logger.warn?.("[city-route] create error:", err.message);
       const status = err.message.includes("required") || err.message.includes("Invalid") ? 400 : 500;
-      return res.status(status).json({ ok: false, error: err.message });
+      res.status(status).json({ ok: false, error: err.message });
     }
   });
 
@@ -139,14 +139,14 @@ export default function createCityRoutes({ requireAuth } = {}) {
       if (!userId) return res.status(401).json({ ok: false, error: "authentication_required" });
 
       const city = updateCity(req.params.id, req.body, userId);
-      return res.json({ ok: true, city });
+      res.json({ ok: true, city });
     } catch (err) {
       logger.warn?.("[city-route] update error:", err.message);
       const status = err.message.includes("not found") ? 404
         : err.message.includes("owner") ? 403
         : err.message.includes("Invalid") ? 400
         : 500;
-      return res.status(status).json({ ok: false, error: err.message });
+      res.status(status).json({ ok: false, error: err.message });
     }
   });
 
@@ -158,13 +158,13 @@ export default function createCityRoutes({ requireAuth } = {}) {
       if (!userId) return res.status(401).json({ ok: false, error: "authentication_required" });
 
       deleteCity(req.params.id, userId);
-      return res.json({ ok: true, deleted: req.params.id });
+      res.json({ ok: true, deleted: req.params.id });
     } catch (err) {
       logger.warn?.("[city-route] delete error:", err.message);
       const status = err.message.includes("not found") ? 404
         : err.message.includes("owner") || err.message.includes("Cannot delete") ? 403
         : 500;
-      return res.status(status).json({ ok: false, error: err.message });
+      res.status(status).json({ ok: false, error: err.message });
     }
   });
 
@@ -176,11 +176,11 @@ export default function createCityRoutes({ requireAuth } = {}) {
       if (!userId) return res.status(401).json({ ok: false, error: "authentication_required" });
 
       const result = joinCity(req.params.id, userId);
-      return res.json({ ok: true, ...result });
+      res.json({ ok: true, ...result });
     } catch (err) {
       logger.warn?.("[city-route] join error:", err.message);
       const status = err.message.includes("not found") ? 404 : 500;
-      return res.status(status).json({ ok: false, error: err.message });
+      res.status(status).json({ ok: false, error: err.message });
     }
   });
 
@@ -192,11 +192,11 @@ export default function createCityRoutes({ requireAuth } = {}) {
       if (!userId) return res.status(401).json({ ok: false, error: "authentication_required" });
 
       const result = leaveCity(req.params.id, userId);
-      return res.json({ ok: true, ...result });
+      res.json({ ok: true, ...result });
     } catch (err) {
       logger.warn?.("[city-route] leave error:", err.message);
       const status = err.message.includes("not found") ? 404 : 500;
-      return res.status(status).json({ ok: false, error: err.message });
+      res.status(status).json({ ok: false, error: err.message });
     }
   });
 
@@ -205,11 +205,11 @@ export default function createCityRoutes({ requireAuth } = {}) {
   router.get("/:id/players", (req, res) => {
     try {
       const players = getCityPlayers(req.params.id);
-      return res.json({ ok: true, cityId: req.params.id, count: players.length, players });
+      res.json({ ok: true, cityId: req.params.id, count: players.length, players });
     } catch (err) {
       logger.warn?.("[city-route] players error:", err.message);
       const status = err.message.includes("not found") ? 404 : 500;
-      return res.status(status).json({ ok: false, error: err.message });
+      res.status(status).json({ ok: false, error: err.message });
     }
   });
 

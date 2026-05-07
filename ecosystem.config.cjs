@@ -12,10 +12,17 @@ module.exports = {
       exec_mode: 'fork',
       watch: false,
       max_memory_restart: '4G',
+      // Heap limit below PM2's 4GB restart so memory watchdog can intervene before OOM
+      node_args: '--max-old-space-size=3584 --expose-gc',
       env: {
         NODE_ENV: 'production',
         PORT: 5050,
       },
+      // Crash-loop detection: stop restarting after 15 rapid failures
+      max_restarts: 15,
+      min_uptime: '10s',
+      restart_delay: 4000,
+      exp_backoff_restart_delay: 100,  // doubles each restart: 100ms → 200ms → 400ms...
       // Graceful shutdown: give in-flight requests time to finish
       kill_timeout: 10000,
       // Wait for the server to signal ready before marking it online

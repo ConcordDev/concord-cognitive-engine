@@ -8,12 +8,13 @@ import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useLensDTUs } from '@/hooks/useLensDTUs';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Gamepad2, Plus, Search, Edit2, Trash2, X, Save,
-  BookOpen, Target, Users, Swords, Map, Layers,
-  BarChart3, Globe, Sparkles, Cpu, GitBranch,
-  FileText, Zap, Settings, Award,
+  Gamepad2, Plus, Trash2, X, Save,
+  BookOpen, Users, Map,
+  BarChart3, Search, Loader2,
+  FileText, Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { UniversalActions } from '@/components/lens/UniversalActions';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -77,7 +78,7 @@ export default function GameDesignPage() {
 
   const [tab, setTab] = useState<DesignTab>('projects');
   const [searchQuery, setSearchQuery] = useState('');
-  const [showFeatures, setShowFeatures] = useState(false);
+  const [showFeatures, setShowFeatures] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedProject, setSelectedProject] = useState<GameDesignProject | null>(null);
 
@@ -185,6 +186,7 @@ export default function GameDesignPage() {
               <Gamepad2 className="w-6 h-6 text-emerald-400" />
             </div>
             <h1 className="text-2xl font-bold">Game Design</h1>
+            {isLoading && <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />}
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
           </div>
           <div className="flex items-center gap-2">
@@ -198,6 +200,13 @@ export default function GameDesignPage() {
 
         {showFeatures && <LensFeaturePanel lensId="game-design" />}
         <RealtimeDataPanel data={realtimeData} insights={realtimeInsights} />
+      <UniversalActions domain="game-design" artifactId={null} compact />
+
+        {/* Search */}
+        <div className="relative">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+          <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search projects, mechanics..." className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none focus:border-emerald-500/50" />
+        </div>
 
         {/* Tabs */}
         <div className="flex gap-1 bg-white/5 p-1 rounded-lg border border-white/10">
@@ -317,7 +326,10 @@ export default function GameDesignPage() {
                 <div key={mech.id} className="bg-white/5 border border-white/10 rounded-lg p-4">
                   <div className="flex items-start justify-between">
                     <h3 className="font-medium text-sm">{mech.name}</h3>
-                    <span className={cn('text-[10px] px-1.5 py-0.5 rounded', mech.complexity === 'high' ? 'bg-red-500/20 text-red-400' : mech.complexity === 'medium' ? 'bg-amber-500/20 text-amber-400' : 'bg-green-500/20 text-green-400')}>{mech.complexity}</span>
+                    <div className="flex items-center gap-2">
+                      <span className={cn('text-[10px] px-1.5 py-0.5 rounded', mech.complexity === 'high' ? 'bg-red-500/20 text-red-400' : mech.complexity === 'medium' ? 'bg-amber-500/20 text-amber-400' : 'bg-green-500/20 text-green-400')}>{mech.complexity}</span>
+                      <button onClick={() => removeMechanic(mech.id).catch(() => {})} className="p-0.5 hover:text-red-400 text-gray-600 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                    </div>
                   </div>
                   <div className="text-xs text-gray-500 mt-1">{mech.category}</div>
                   {mech.description && <p className="text-xs text-gray-600 mt-1">{mech.description}</p>}

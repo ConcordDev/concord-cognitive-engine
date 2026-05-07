@@ -263,7 +263,7 @@ export default function DebugLensPage() {
       </motion.div>
 
       {/* Tabs */}
-      <div className="flex gap-2 overflow-x-auto no-scrollbar">
+      <div className="flex gap-2 flex-wrap no-scrollbar">
         {(['status', 'events', 'logs', 'inspector', 'context', 'test'] as const).map((tab) => (
           <button
             key={tab}

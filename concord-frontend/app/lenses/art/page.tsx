@@ -41,8 +41,6 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { UniversalActions } from '@/components/lens/UniversalActions';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { useLensData } from '@/lib/hooks/use-lens-data';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useLensDTUs } from '@/hooks/useLensDTUs';
 import type { DTU } from '@/lib/api/generated-types';
@@ -50,8 +48,6 @@ import { LensContextPanel } from '@/components/lens/LensContextPanel';
 
 import { ArtifactRenderer } from '@/components/artifact/ArtifactRenderer';
 import { ArtifactUploader } from '@/components/artifact/ArtifactUploader';
-import { MediaUpload } from '@/components/media/MediaUpload';
-import { UniversalPlayer } from '@/components/media/UniversalPlayer';
 import { FeedbackWidget } from '@/components/feedback/FeedbackWidget';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -104,24 +100,6 @@ export default function ArtLensPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const [showFeatures, setShowFeatures] = useState(true);
-
-  // Backend action wiring
-  const runAction = useRunArtifact('art');
-  const { items: artItems } = useLensData<Record<string, unknown>>('art', 'artwork', { seed: [] });
-  const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
-  const [isRunning, setIsRunning] = useState<string | null>(null);
-
-  const handleArtAction = async (action: string) => {
-    const targetId = artItems[0]?.id;
-    if (!targetId) return;
-    setIsRunning(action);
-    try {
-      const res = await runAction.mutateAsync({ id: targetId, action });
-      if (res.ok === false) { setActionResult({ message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setActionResult(res.result as Record<string, unknown>); }
-    } catch (e) { console.error(`Action ${action} failed:`, e); setActionResult({ message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` }); }
-    setIsRunning(null);
-  };
-
   const [viewMode, setViewMode] = useState<ViewMode>('gallery');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStyle, setSelectedStyle] = useState<string | null>(null);
@@ -767,7 +745,7 @@ export default function ArtLensPage() {
                   }
                 }}
                 onMouseUp={handleCanvasMouseUp}
-                onMouseLeave={(e) => { handleCanvasMouseUp(e); setCursorPos(null); }}
+                onMouseLeave={() => { handleCanvasMouseUp(); setCursorPos(null); }}
                 onMouseEnter={() => setCursorPos({ x: 0, y: 0 })}
               />
               {/* Dynamic brush cursor */}
@@ -1207,6 +1185,7 @@ export default function ArtLensPage() {
       <UniversalActions domain="art" artifactId={null} compact />
       {realtimeData && (
         <RealtimeDataPanel
+      <UniversalActions domain="art" artifactId={null} compact />
           domain="art"
           data={realtimeData}
           isLive={isLive}

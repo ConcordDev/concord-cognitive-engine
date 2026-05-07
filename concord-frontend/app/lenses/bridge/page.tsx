@@ -11,7 +11,6 @@ import {
   Users, Zap, Activity, Layers, Radio, GitMerge,
 } from 'lucide-react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import MeshStatusCard from '@/components/chat/MeshStatusCard';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';

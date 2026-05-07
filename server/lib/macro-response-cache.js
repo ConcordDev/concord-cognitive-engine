@@ -7,10 +7,7 @@
  */
 import { createHash } from "node:crypto";
 
-// Bumped 1000 → 25000 for 32GB-heap deployments. Cache hit means an
-// LLM-driven macro response is served from memory rather than re-rolled
-// — at this size the hit rate climbs sharply on busy worlds.
-const MAX_ENTRIES = Number(process.env.CONCORD_MACRO_CACHE_ENTRIES) || 25_000;
+const MAX_ENTRIES = 1000;
 const READ_TTL_MS = 60 * 60 * 1000;   // 1 hour for read macros
 const WRITE_TTL_MS = 5 * 60 * 1000;    // 5 minutes for write macro results
 

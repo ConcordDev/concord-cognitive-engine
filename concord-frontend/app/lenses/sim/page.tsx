@@ -1530,6 +1530,7 @@ export default function SimLensPage() {
       )}
 
       <RealtimeDataPanel data={realtimeInsights} />
+      <UniversalActions domain="sim" artifactId={null} compact />
 
       {/* ── Import Modal ──────────────────────────────────────────────────── */}
       {showImportModal && (

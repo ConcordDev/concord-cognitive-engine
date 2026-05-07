@@ -11,10 +11,8 @@ import {
   Plus,
   CheckCheck,
   Check,
-  Image as ImageIcon,
   Link2,
   Loader2,
-  User,
   X,
 } from 'lucide-react';
 import { cn, formatRelativeTime } from '@/lib/utils';

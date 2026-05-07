@@ -6,7 +6,7 @@ import { api } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import { useState } from 'react';
 import { Inbox, Play, Trash2, Clock, Zap, Globe, FileText, Layers, ChevronDown, Activity, Bot, Coins, CheckCircle2, AlertCircle, RefreshCw, BarChart3, ListOrdered, Timer } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -30,22 +30,6 @@ export default function QueueLensPage() {
   const queryClient = useQueryClient();
   const [selectedQueue, setSelectedQueue] = useState<'ingest' | 'autocrawl' | 'terminal'>('ingest');
   const [showFeatures, setShowFeatures] = useState(true);
-
-  const { items: queueArtifacts } = useLensData('queue', 'queue', { seed: [] });
-  const runAction = useRunArtifact('queue');
-  const [queueActionResult, setQueueActionResult] = useState<Record<string, unknown> | null>(null);
-  const [queueActiveAction, setQueueActiveAction] = useState<string | null>(null);
-
-  const handleQueueAction = async (action: string) => {
-    const id = queueArtifacts[0]?.id;
-    if (!id) return;
-    setQueueActiveAction(action);
-    try {
-      const res = await runAction.mutateAsync({ id, action });
-      if (res.ok === false) { setQueueActionResult({ action, message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setQueueActionResult({ action, ...(res.result as Record<string, unknown>) }); }
-    } catch (err) { console.error('Queue action failed:', err); }
-    finally { setQueueActiveAction(null); }
-  };
 
   // Backend: GET /api/status for queue counts
   const { data: status, isLoading, isError: isError, error: error, refetch: refetch,} = useQuery({

@@ -1641,7 +1641,7 @@ function OrganismPipelinePanel() {
       {pipeline && (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           <Stat label="Total Proposals" value={pipeline.totalProposals ?? '—'} />
-          <Stat label="Pending" value={pipeline.pending ?? 0} sub={`${health?.proposalBacklog || 'unknown'} backlog`} />
+          <Stat label="Pending" value={pipeline.pending ?? 0} sub={<span className={backlogColor}>{health?.proposalBacklog || 'unknown'} backlog</span>} />
           <Stat label="Verification Queue" value={pipeline.verificationQueue ?? 0} />
           <Stat label="Council Pending" value={pipeline.councilPending ?? 0} />
           <Stat label="Approved" value={pipeline.approved ?? 0} />

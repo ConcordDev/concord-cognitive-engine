@@ -19,7 +19,7 @@ export function useVisionAnalysis() {
     try {
       const base64 = await fileToBase64(imageFile);
       const defaultPrompt = `Analyze this image in the context of ${domain}. Describe what you see and suggest relevant metadata, tags, and any actionable insights.`;
-      const res = await api.post('/api/chat', {
+      const res = await api.post('/api/chat?full=1', {
         message: prompt || defaultPrompt,
         images: [base64],
         model: 'llava:7b',

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -11,9 +11,8 @@ import { UniversalActions } from '@/components/lens/UniversalActions';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import {
   Radio, Plus, Search, Trash2, BarChart3,
-  Layers, ChevronDown, MapPin, Users,
-  Wifi, Signal, Globe, Server, Cable,
-  Eye, AlertTriangle, Activity, Zap, Gauge, Antenna,
+  Layers, ChevronDown, Users,
+  Wifi, Signal, Globe, Cable, AlertTriangle, Activity, Gauge, Antenna, Zap,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -93,7 +92,7 @@ export default function TelecommunicationsLensPage() {
 
   const [activeMode, setActiveMode] = useState<ModeTab>('Dashboard');
   const [searchQuery, setSearchQuery] = useState('');
-  const [showFeatures, setShowFeatures] = useState(false);
+  const [showFeatures, setShowFeatures] = useState(true);
 
   const currentType = getTypeForTab(activeMode);
   const { items, isLoading, isError, error, refetch, create, remove } =
@@ -104,6 +103,16 @@ export default function TelecommunicationsLensPage() {
   const { items: outages } = useLensData<Record<string, unknown>>('telecommunications', 'Outage', { seed: [] });
 
   const runAction = useRunArtifact('telecommunications');
+
+  const handleAction = useCallback(async (action: string, artifactId?: string) => {
+    const targetId = artifactId || items[0]?.id;
+    if (!targetId) return;
+    try {
+      await runAction.mutateAsync({ id: targetId, action });
+    } catch (err) {
+      console.error('Action failed:', err);
+    }
+  }, [items, runAction]);
 
   const stats = useMemo(() => ({
     opNetworks: networks.filter(n => (n.data as NetworkData).status === 'operational').length,
@@ -141,12 +150,13 @@ export default function TelecommunicationsLensPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {runAction.isPending && <span className="text-xs text-neon-cyan animate-pulse">AI processing...</span>}
           <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
           <DTUExportButton domain="telecommunications" data={realtimeData || {}} compact />
         </div>
       </header>
 
-      <div className="flex gap-1 bg-zinc-900 rounded-lg p-1 overflow-x-auto">
+      <div className="flex gap-1 bg-zinc-900 rounded-lg p-1 flex-wrap">
         {MODE_TABS.map(({ key, label, icon: Icon }) => (
           <button key={key} onClick={() => setActiveMode(key)}
             className={cn('flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors',
@@ -220,9 +230,14 @@ export default function TelecommunicationsLensPage() {
                   </span>
                 )}
               </div>
-              <button onClick={() => remove(item.id)} className="p-1.5 hover:bg-zinc-800 rounded text-gray-500 hover:text-red-400">
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              <div className="flex items-center gap-1">
+                <button onClick={() => handleAction('analyze', item.id)} className="p-1.5 hover:bg-zinc-800 rounded text-gray-500 hover:text-neon-cyan">
+                  <Zap className="w-3.5 h-3.5" />
+                </button>
+                <button onClick={() => remove(item.id)} className="p-1.5 hover:bg-zinc-800 rounded text-gray-500 hover:text-red-400">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
           </motion.div>
         ))}
@@ -239,7 +254,7 @@ export default function TelecommunicationsLensPage() {
 
       <div className="border-t border-white/10">
         <button onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-400 hover:text-white transition-colors">
+          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg">
           <span className="flex items-center gap-2"><Layers className="w-4 h-4" /> Lens Features</span>
           <ChevronDown className={cn('w-4 h-4 transition-transform', showFeatures && 'rotate-180')} />
         </button>

@@ -10,7 +10,7 @@ import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
-  FlaskConical, Plus, CheckCircle2, XCircle, Beaker,
+  FlaskConical, Plus, CheckCircle2, Beaker,
   FileText, TrendingUp, ArrowRight, Layers, ChevronDown, Target, Percent,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';

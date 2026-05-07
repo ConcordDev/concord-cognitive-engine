@@ -274,7 +274,7 @@ export function InitiativeChip({
   const handleAction = useCallback((action: string) => {
     onAction(initiative.id, action, initiative.metadata as Record<string, unknown>);
     // Report response to backend
-    fetch(`/api/initiative/respond/${initiative.id}`, { method: 'PUT' }).catch(err => console.error('[Initiative] Failed to respond:', err));
+    fetch(`/api/initiative/${initiative.id}/respond`, { method: 'POST' }).catch(err => console.error('[Initiative] Failed to respond:', err));
     onRespond(initiative.id);
   }, [initiative.id, initiative.metadata, onAction, onRespond]);
 

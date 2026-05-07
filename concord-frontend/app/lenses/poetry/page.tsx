@@ -1,18 +1,18 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useLensDTUs } from '@/hooks/useLensDTUs';
 import { api } from '@/lib/api/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Feather, Plus, Search, Edit2, Trash2, BookOpen,
-  Heart, Share2, Eye, X, Save, Sparkles,
-  AlignLeft, Type, BarChart3, Globe, Clock,
+  Feather, Plus, Search, Edit2, Trash2, BookOpen, X, Save, Sparkles,
+  AlignLeft, Globe,
   Hash, Music, Layers, Moon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { UniversalActions } from '@/components/lens/UniversalActions';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -155,7 +155,7 @@ function SyllableRhymePanel({ content, form }: { content: string; form: string }
             const isHaikuTarget = form === 'haiku' && [5, 7, 5][nonEmptyLines.indexOf(line)] !== undefined;
             const target = form === 'haiku' ? [5, 7, 5][nonEmptyLines.indexOf(line)] : null;
             return (
-              <div key={i} className="flex items-center gap-2">
+              <div key={i} className={cn("flex items-center gap-2", isHaikuTarget && "bg-rose-500/5 rounded px-1 -mx-1")}>
                 <span className="text-xs text-gray-600 w-16 truncate">{line.slice(0, 12)}…</span>
                 <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
                   <div className={cn('h-full rounded-full transition-all', count > 0 ? 'bg-rose-400/60' : '')}
@@ -252,7 +252,7 @@ export default function PoetryPage() {
 
   const [tab, setTab] = useState<PoetryTab>('collection');
   const [searchQuery, setSearchQuery] = useState('');
-  const [showFeatures, setShowFeatures] = useState(false);
+  const [showFeatures, setShowFeatures] = useState(true);
   const [formFilter, setFormFilter] = useState<PoemForm | null>(null);
   const [readingMode, setReadingMode] = useState(false);
   const [showAnalysis, setShowAnalysis] = useState(true);
@@ -356,6 +356,12 @@ export default function PoetryPage() {
           <div className="flex items-center gap-3">
             <Feather className="w-6 h-6 text-rose-400" />
             <h1 className="text-2xl font-bold">Poetry</h1>
+            {isLoading && (
+              <div className="flex items-center gap-1.5 text-xs text-rose-400">
+                <div className="w-3 h-3 border-2 border-rose-400 border-t-transparent rounded-full animate-spin" />
+                Loading...
+              </div>
+            )}
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
           </div>
           <div className="flex items-center gap-2">
@@ -369,6 +375,7 @@ export default function PoetryPage() {
 
         {showFeatures && <LensFeaturePanel lensId="poetry" />}
         <RealtimeDataPanel data={realtimeData} insights={realtimeInsights} />
+      <UniversalActions domain="poetry" artifactId={null} compact />
 
         {/* Tabs */}
         <div className="flex gap-1 bg-white/5 p-1 rounded-lg border border-white/10">

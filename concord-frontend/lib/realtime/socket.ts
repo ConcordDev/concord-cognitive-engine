@@ -225,7 +225,12 @@ export type SocketEvent =
   // Spontaneous initiative events (proactive messages from Concord)
   | 'initiative:new'
   // Chat tool execution results
-  | 'chat:tool_result';
+  | 'chat:tool_result'
+  // Feed Manager real-time DTU events
+  | 'feed:new-dtu'
+  // City / World lens events
+  | 'city:positions' | 'city:stream-started' | 'city:stream-ended'
+  | 'city:stream-dtu-created' | 'city:stream-sale';
 
 // ---- Enriched Event Payload (Category 2+5: Concurrency + Observability) ----
 interface EnrichedPayload {

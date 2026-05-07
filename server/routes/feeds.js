@@ -36,7 +36,7 @@ export default function createFeedRoutes({ requireAuth } = {}) {
       res.json({ ok: true, count: feeds.length, feeds });
     } catch (err) {
       logger.warn?.("[feeds-route] list error:", err.message);
-      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
+      res.status(500).json({ ok: false, error: err.message });
     }
   });
 
@@ -48,7 +48,7 @@ export default function createFeedRoutes({ requireAuth } = {}) {
       res.json({ ok: true, ...dashboard });
     } catch (err) {
       logger.warn?.("[feeds-route] health error:", err.message);
-      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
+      res.status(500).json({ ok: false, error: err.message });
     }
   });
 
@@ -58,7 +58,7 @@ export default function createFeedRoutes({ requireAuth } = {}) {
       if (!fm()) return res.status(503).json({ ok: false, error: "feed_manager_not_initialized" });
       res.json({ ok: true, domains: fm().FEED_DOMAINS || [] });
     } catch (err) {
-      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
+      res.status(500).json({ ok: false, error: err.message });
     }
   });
 
@@ -69,7 +69,7 @@ export default function createFeedRoutes({ requireAuth } = {}) {
       const feeds = fm().listFeedsByDomain(req.params.domain);
       res.json({ ok: true, domain: req.params.domain, count: feeds.length, feeds });
     } catch (err) {
-      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
+      res.status(500).json({ ok: false, error: err.message });
     }
   });
 
@@ -83,7 +83,7 @@ export default function createFeedRoutes({ requireAuth } = {}) {
       res.json(result);
     } catch (err) {
       logger.warn?.("[feeds-route] register error:", err.message);
-      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
+      res.status(500).json({ ok: false, error: err.message });
     }
   });
 
@@ -94,7 +94,7 @@ export default function createFeedRoutes({ requireAuth } = {}) {
       const result = fm().setFeedEnabled(req.params.feedId, true);
       res.json(result);
     } catch (err) {
-      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
+      res.status(500).json({ ok: false, error: err.message });
     }
   });
 
@@ -105,7 +105,7 @@ export default function createFeedRoutes({ requireAuth } = {}) {
       const result = fm().setFeedEnabled(req.params.feedId, false);
       res.json(result);
     } catch (err) {
-      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
+      res.status(500).json({ ok: false, error: err.message });
     }
   });
 
@@ -118,7 +118,7 @@ export default function createFeedRoutes({ requireAuth } = {}) {
       const result = fm().setFeedInterval(req.params.feedId, interval);
       res.json(result);
     } catch (err) {
-      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
+      res.status(500).json({ ok: false, error: err.message });
     }
   });
 
@@ -129,7 +129,7 @@ export default function createFeedRoutes({ requireAuth } = {}) {
       const result = fm().removeFeed(req.params.feedId);
       res.json(result);
     } catch (err) {
-      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
+      res.status(500).json({ ok: false, error: err.message });
     }
   });
 
@@ -140,7 +140,7 @@ export default function createFeedRoutes({ requireAuth } = {}) {
       const result = await fm().testFeedConnectivity(req.params.feedId);
       res.json({ ok: true, ...result });
     } catch (err) {
-      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
+      res.status(500).json({ ok: false, error: err.message });
     }
   });
 
@@ -151,7 +151,7 @@ export default function createFeedRoutes({ requireAuth } = {}) {
       const result = await fm().forceTick(req.params.feedId);
       res.json(result);
     } catch (err) {
-      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
+      res.status(500).json({ ok: false, error: err.message });
     }
   });
 
@@ -164,7 +164,7 @@ export default function createFeedRoutes({ requireAuth } = {}) {
       const result = await fm().testFeedConnectivity(url);
       res.json({ ok: true, ...result });
     } catch (err) {
-      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
+      res.status(500).json({ ok: false, error: err.message });
     }
   });
 

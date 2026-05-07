@@ -9,8 +9,7 @@ import { api } from '@/lib/api/client';
 import { cn, formatNumber, formatRelativeTime } from '@/lib/utils';
 import { ds } from '@/lib/design-system';
 import {
-  Brain, Sparkles, Compass, Zap, Globe,
-  BarChart3, BookOpen, Target, Database,
+  Brain, Sparkles, Compass, Zap, BookOpen, Database,
   Clock, Tag, Users, UserPlus, UserMinus,
   Eye, Quote, Heart, Video, FileText,
   Image as ImageIcon, Music, Pin, Loader2,

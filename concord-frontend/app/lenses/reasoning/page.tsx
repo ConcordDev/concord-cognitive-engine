@@ -2472,17 +2472,15 @@ export default function ReasoningLensPage() {
 
       {/* Real-time Data Panel */}
       {realtimeData && (
-        <>
-          <UniversalActions domain="reasoning" artifactId={null} compact />
-          <RealtimeDataPanel
-            domain="reasoning"
-            data={realtimeData}
-            isLive={isLive}
-            lastUpdated={lastUpdated}
-            insights={realtimeInsights}
-            compact
-          />
-        </>
+        <RealtimeDataPanel
+      <UniversalActions domain="reasoning" artifactId={null} compact />
+          domain="reasoning"
+          data={realtimeData}
+          isLive={isLive}
+          lastUpdated={lastUpdated}
+          insights={realtimeInsights}
+          compact
+        />
       )}
             </div>
           </>
