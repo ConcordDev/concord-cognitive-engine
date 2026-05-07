@@ -1,6 +1,6 @@
 # Gaps & Wire Targets
 
-_Generated 2026-05-07T21:10:32.298Z. Each gap proposes a concrete wire action._
+_Generated 2026-05-07T22:12:00.422Z. Each gap proposes a concrete wire action._
 
 ## Dead tables (24)
 
@@ -39,14 +39,13 @@ _None._
 
 _None — every module either has a heartbeat or is invoked by a macro callsite._
 
-## Headless backend domains (79)
+## Headless backend domains (78)
 
 | Domain | Macro count | Suggested frontend lens dir |
 |---|---:|---|
 | `chicken3` | 4 | `concord-frontend/app/lenses/chicken3/page.tsx` |
 | `multimodal` | 2 | `concord-frontend/app/lenses/multimodal/page.tsx` |
 | `tools` | 1 | `concord-frontend/app/lenses/tools/page.tsx` |
-| `worldmodel` | 16 | `concord-frontend/app/lenses/worldmodel/page.tsx` |
 | `semantic` | 7 | `concord-frontend/app/lenses/semantic/page.tsx` |
 | `explanation` | 4 | `concord-frontend/app/lenses/explanation/page.tsx` |
 | `hlr` | 5 | `concord-frontend/app/lenses/hlr/page.tsx` |
@@ -93,8 +92,9 @@ _None — every module either has a heartbeat or is invoked by a macro callsite.
 | `agent` | 4 | `concord-frontend/app/lenses/agent/page.tsx` |
 | `crawl` | 2 | `concord-frontend/app/lenses/crawl/page.tsx` |
 | `source` | 2 | `concord-frontend/app/lenses/source/page.tsx` |
+| `verify` | 1 | `concord-frontend/app/lenses/verify/page.tsx` |
 
-## Orphan lenses (146)
+## Orphan lenses (151)
 
 | Lens dir | Reason | Action |
 |---|---|---|
@@ -122,6 +122,7 @@ _None — every module either has a heartbeat or is invoked by a macro callsite.
 | `carpentry` | no_matching_backend_domain | wire backend OR remove |
 | `chem` | no_matching_backend_domain | wire backend OR remove |
 | `code` | no_matching_backend_domain | wire backend OR remove |
+| `cognition` | no_matching_backend_domain | wire backend OR remove |
 | `command-center` | no_matching_backend_domain | wire backend OR remove |
 | `construction` | no_matching_backend_domain | wire backend OR remove |
 | `consulting` | no_matching_backend_domain | wire backend OR remove |
@@ -147,8 +148,7 @@ _None — every module either has a heartbeat or is invoked by a macro callsite.
 | `emergency-services` | no_matching_backend_domain | wire backend OR remove |
 | `energy` | no_matching_backend_domain | wire backend OR remove |
 | `engineering` | no_matching_backend_domain | wire backend OR remove |
-| `environment` | no_matching_backend_domain | wire backend OR remove |
-| ... | _+96 more_ | |
+| ... | _+101 more_ | |
 
 ## Unused macros (0)
 
@@ -156,60 +156,9 @@ _None — every module either has a heartbeat or is invoked by a macro callsite.
 
 _None._
 
-## Unshaped socket events (131)
+## Unshaped socket events (0)
 
-| Event | First emitter | Action |
-|---|---|---|
-| `app:created` | server/emergent/app-maker.js:115 | add to event-shapes.js |
-| `app:published` | server/emergent/app-maker.js:195 | add to event-shapes.js |
-| `attention:allocation` | server/emergent/attention-allocator.js:213 | add to event-shapes.js |
-| `pain:wound_created` | server/emergent/avoidance-learning.js:228 | add to event-shapes.js |
-| `pain:avoidance_created` | server/emergent/avoidance-learning.js:335 | add to event-shapes.js |
-| `affect:pain_signal` | server/emergent/avoidance-learning.js:367 | add to event-shapes.js |
-| `pain:recorded` | server/emergent/avoidance-learning.js:460 | add to event-shapes.js |
-| `pain:processed` | server/emergent/avoidance-learning.js:570 | add to event-shapes.js |
-| `pain:wound_healed` | server/emergent/avoidance-learning.js:822 | add to event-shapes.js |
-| `body:instantiated` | server/emergent/body-instantiation.js:468 | add to event-shapes.js |
-| `body:destroyed` | server/emergent/body-instantiation.js:931 | add to event-shapes.js |
-| `entity:death` | server/emergent/death-protocol.js:535 | add to event-shapes.js |
-| `dream:captured` | server/emergent/dream-capture.js:153 | add to event-shapes.js |
-| `emergent:activity` | server/emergent/feed.js:50 | add to event-shapes.js |
-| `forgetting:cycle_complete` | server/emergent/forgetting-engine.js:256 | add to event-shapes.js |
-| `agent:insights` | server/emergent/lens-learning.js:122 | add to event-shapes.js |
-| `lattice:meta:derived` | server/emergent/meta-derivation.js:728 | add to event-shapes.js |
-| `lattice:meta:convergence` | server/emergent/meta-derivation.js:928 | add to event-shapes.js |
-| `promotion:approved` | server/emergent/promotion-pipeline.js:330 | add to event-shapes.js |
-| `quest:completed` | server/emergent/quest-engine.js:393 | add to event-shapes.js |
-| `finance:ticker` | server/emergent/realtime-feeds.js:56 | add to event-shapes.js |
-| `crypto:ticker` | server/emergent/realtime-feeds.js:119 | add to event-shapes.js |
-| `news:update` | server/emergent/realtime-feeds.js:160 | add to event-shapes.js |
-| `weather:update` | server/emergent/realtime-feeds.js:211 | add to event-shapes.js |
-| `research:update` | server/emergent/realtime-feeds.js:253 | add to event-shapes.js |
-| `economy:update` | server/emergent/realtime-feeds.js:299 | add to event-shapes.js |
-| `health:update` | server/emergent/realtime-feeds.js:347 | add to event-shapes.js |
-| `energy:update` | server/emergent/realtime-feeds.js:389 | add to event-shapes.js |
-| `repair:dtu_logged` | server/emergent/repair-cortex.js:446 | add to event-shapes.js |
-| `system:reconnect` | server/emergent/repair-cortex.js:3671 | add to event-shapes.js |
-| `qualia:policy` | server/existential/engine.js:396 | add to event-shapes.js |
-| `city:positions` | server/lib/city-presence.js:644 | add to event-shapes.js |
-| `city:npcs` | server/lib/city-presence.js:854 | add to event-shapes.js |
-| `boss:phase-enter` | server/lib/combat/boss-phases.js:23 | add to event-shapes.js |
-| `faction-war:tick` | server/lib/combat/faction-war.js:214 | add to event-shapes.js |
-| `feed:new-dtu` | server/lib/feed-manager.js:613 | add to event-shapes.js |
-| `world:notification` | server/lib/nemesis.js:89 | add to event-shapes.js |
-| `pipeline:started` | server/lib/pipeline-executor.js:36 | add to event-shapes.js |
-| `pipeline:step_started` | server/lib/pipeline-executor.js:53 | add to event-shapes.js |
-| `pipeline:step_completed` | server/lib/pipeline-executor.js:102 | add to event-shapes.js |
-| `pipeline:completed` | server/lib/pipeline-executor.js:118 | add to event-shapes.js |
-| `skill:xp-awarded` | server/lib/skill-progression.js:210 | add to event-shapes.js |
-| `world:player-arrived` | server/lib/transit.js:60 | add to event-shapes.js |
-| `world:crisis` | server/lib/world-crisis.js:35 | add to event-shapes.js |
-| `world:crisis-resolved` | server/lib/world-crisis.js:75 | add to event-shapes.js |
-| `event:reward` | server/lib/world-events.js:192 | add to event-shapes.js |
-| `channel:inbound` | server/routes/channels.js:92 | add to event-shapes.js |
-| `chat:update` | server/routes/chat.js:140 | add to event-shapes.js |
-| `world:node-update` | server/routes/worlds.js:1281 | add to event-shapes.js |
-| `world:building-placed` | server/routes/worlds.js:1430 | add to event-shapes.js |
+_None — every emit is registered in `event-shapes.js`._
 
 ## Universe-coverage gaps (in-scope categories)
 

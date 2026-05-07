@@ -33,6 +33,7 @@ digraph Concord {
   lens_chat [label="lens/chat", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_chem [label="lens/chem", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_code [label="lens/code", color=green, style=filled, fillcolor="#e0ffe0"];
+  lens_cognition [label="lens/cognition", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_collab [label="lens/collab", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_command_center [label="lens/command-center", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_commonsense [label="lens/commonsense", color=green, style=filled, fillcolor="#e0ffe0"];
@@ -60,5 +61,4 @@ digraph Concord {
   lens_eco [label="lens/eco", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_education [label="lens/education", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_electrical [label="lens/electrical", color=green, style=filled, fillcolor="#e0ffe0"];
-  lens_emergency_services [label="lens/emergency-services", color=green, style=filled, fillcolor="#e0ffe0"];
 }

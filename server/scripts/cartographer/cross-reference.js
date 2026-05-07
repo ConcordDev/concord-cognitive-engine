@@ -120,7 +120,14 @@ export async function crossReferenceAll(repoRoot, staticData, runtimeData) {
   const eventShapes = new Set();
   try {
     const esContent = await readFile(path.join(repoRoot, "server", "lib", "event-shapes.js"), "utf-8");
+    // Strict-shape entries: appear as "event:name": { ... }
     for (const m of esContent.matchAll(/["']([a-z][\w:.-]+)["']\s*:/g)) eventShapes.add(m[1]);
+    // Lenient-registered events: "event:name", in the LENIENT_EVENTS Set
+    // — match the Set body explicitly to capture entries
+    const lenientBlock = esContent.match(/LENIENT_EVENTS\s*=\s*new\s+Set\(\[([\s\S]*?)\]\)/);
+    if (lenientBlock) {
+      for (const m of lenientBlock[1].matchAll(/["']([a-z][\w:.-]+)["']/g)) eventShapes.add(m[1]);
+    }
   } catch { /* event-shapes file may not exist on minimal builds */ }
 
   const eventNames = new Set((staticData.socketEvents || []).map(e => e.event));

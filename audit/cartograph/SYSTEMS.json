@@ -240,7 +240,8 @@
     {
       "category": "dm-encrypted",
       "matchedLensDirs": [
-        "admin"
+        "admin",
+        "worldmodel"
       ],
       "matchedMacroDomains": [
         "worldmodel.status",
@@ -1654,11 +1655,6 @@
         "reason": "no_matching_lens_dir"
       },
       {
-        "domain": "worldmodel",
-        "macroCount": 16,
-        "reason": "no_matching_lens_dir"
-      },
-      {
         "domain": "semantic",
         "macroCount": 7,
         "reason": "no_matching_lens_dir"
@@ -2155,6 +2151,11 @@
         "reason": "no_matching_backend_domain"
       },
       {
+        "frontendDir": "cognition",
+        "pageBytes": 22098,
+        "reason": "no_matching_backend_domain"
+      },
+      {
         "frontendDir": "command-center",
         "pageBytes": 110811,
         "reason": "no_matching_backend_domain"
@@ -2465,6 +2466,11 @@
         "reason": "no_matching_backend_domain"
       },
       {
+        "frontendDir": "maker",
+        "pageBytes": 15061,
+        "reason": "no_matching_backend_domain"
+      },
+      {
         "frontendDir": "manufacturing",
         "pageBytes": 105880,
         "reason": "no_matching_backend_domain"
@@ -2537,6 +2543,11 @@
       {
         "frontendDir": "offline",
         "pageBytes": 22061,
+        "reason": "no_matching_backend_domain"
+      },
+      {
+        "frontendDir": "ops",
+        "pageBytes": 12442,
         "reason": "no_matching_backend_domain"
       },
       {
@@ -2660,8 +2671,18 @@
         "reason": "no_matching_backend_domain"
       },
       {
+        "frontendDir": "sentinel",
+        "pageBytes": 14392,
+        "reason": "no_matching_backend_domain"
+      },
+      {
         "frontendDir": "services",
         "pageBytes": 62131,
+        "reason": "no_matching_backend_domain"
+      },
+      {
+        "frontendDir": "society",
+        "pageBytes": 16146,
         "reason": "no_matching_backend_domain"
       },
       {
@@ -2768,794 +2789,7 @@
     "routesNeverHit": {
       "todo": "requires_prod_traffic_data"
     },
-    "unshapedEvents": [
-      {
-        "emitterFile": "server/emergent/app-maker.js",
-        "emitterLine": 115,
-        "event": "app:created",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/emergent/app-maker.js",
-        "emitterLine": 195,
-        "event": "app:published",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/emergent/attention-allocator.js",
-        "emitterLine": 213,
-        "event": "attention:allocation",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/emergent/avoidance-learning.js",
-        "emitterLine": 228,
-        "event": "pain:wound_created",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/emergent/avoidance-learning.js",
-        "emitterLine": 335,
-        "event": "pain:avoidance_created",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/emergent/avoidance-learning.js",
-        "emitterLine": 367,
-        "event": "affect:pain_signal",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/emergent/avoidance-learning.js",
-        "emitterLine": 460,
-        "event": "pain:recorded",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/emergent/avoidance-learning.js",
-        "emitterLine": 570,
-        "event": "pain:processed",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/emergent/avoidance-learning.js",
-        "emitterLine": 822,
-        "event": "pain:wound_healed",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/emergent/body-instantiation.js",
-        "emitterLine": 468,
-        "event": "body:instantiated",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/emergent/body-instantiation.js",
-        "emitterLine": 931,
-        "event": "body:destroyed",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/emergent/death-protocol.js",
-        "emitterLine": 535,
-        "event": "entity:death",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/emergent/dream-capture.js",
-        "emitterLine": 153,
-        "event": "dream:captured",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/emergent/feed.js",
-        "emitterLine": 50,
-        "event": "emergent:activity",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/emergent/forgetting-engine.js",
-        "emitterLine": 256,
-        "event": "forgetting:cycle_complete",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/emergent/lens-learning.js",
-        "emitterLine": 122,
-        "event": "agent:insights",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/emergent/meta-derivation.js",
-        "emitterLine": 728,
-        "event": "lattice:meta:derived",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/emergent/meta-derivation.js",
-        "emitterLine": 928,
-        "event": "lattice:meta:convergence",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/emergent/promotion-pipeline.js",
-        "emitterLine": 330,
-        "event": "promotion:approved",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/emergent/quest-engine.js",
-        "emitterLine": 393,
-        "event": "quest:completed",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/emergent/realtime-feeds.js",
-        "emitterLine": 56,
-        "event": "finance:ticker",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/emergent/realtime-feeds.js",
-        "emitterLine": 119,
-        "event": "crypto:ticker",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/emergent/realtime-feeds.js",
-        "emitterLine": 160,
-        "event": "news:update",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/emergent/realtime-feeds.js",
-        "emitterLine": 211,
-        "event": "weather:update",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/emergent/realtime-feeds.js",
-        "emitterLine": 253,
-        "event": "research:update",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/emergent/realtime-feeds.js",
-        "emitterLine": 299,
-        "event": "economy:update",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/emergent/realtime-feeds.js",
-        "emitterLine": 347,
-        "event": "health:update",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/emergent/realtime-feeds.js",
-        "emitterLine": 389,
-        "event": "energy:update",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/emergent/repair-cortex.js",
-        "emitterLine": 446,
-        "event": "repair:dtu_logged",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/emergent/repair-cortex.js",
-        "emitterLine": 3671,
-        "event": "system:reconnect",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/existential/engine.js",
-        "emitterLine": 396,
-        "event": "qualia:policy",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/lib/city-presence.js",
-        "emitterLine": 644,
-        "event": "city:positions",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/lib/city-presence.js",
-        "emitterLine": 854,
-        "event": "city:npcs",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/lib/combat/boss-phases.js",
-        "emitterLine": 23,
-        "event": "boss:phase-enter",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/lib/combat/faction-war.js",
-        "emitterLine": 214,
-        "event": "faction-war:tick",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/lib/feed-manager.js",
-        "emitterLine": 613,
-        "event": "feed:new-dtu",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/lib/nemesis.js",
-        "emitterLine": 89,
-        "event": "world:notification",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/lib/pipeline-executor.js",
-        "emitterLine": 36,
-        "event": "pipeline:started",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/lib/pipeline-executor.js",
-        "emitterLine": 53,
-        "event": "pipeline:step_started",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/lib/pipeline-executor.js",
-        "emitterLine": 102,
-        "event": "pipeline:step_completed",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/lib/pipeline-executor.js",
-        "emitterLine": 118,
-        "event": "pipeline:completed",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/lib/skill-progression.js",
-        "emitterLine": 210,
-        "event": "skill:xp-awarded",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/lib/transit.js",
-        "emitterLine": 60,
-        "event": "world:player-arrived",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/lib/world-crisis.js",
-        "emitterLine": 35,
-        "event": "world:crisis",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/lib/world-crisis.js",
-        "emitterLine": 75,
-        "event": "world:crisis-resolved",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/lib/world-events.js",
-        "emitterLine": 192,
-        "event": "event:reward",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/routes/channels.js",
-        "emitterLine": 92,
-        "event": "channel:inbound",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/routes/chat.js",
-        "emitterLine": 140,
-        "event": "chat:update",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/routes/worlds.js",
-        "emitterLine": 1281,
-        "event": "world:node-update",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/routes/worlds.js",
-        "emitterLine": 1430,
-        "event": "world:building-placed",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 6439,
-        "event": "queue:notifications:new",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 7025,
-        "event": "combat:kill",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 7060,
-        "event": "training:round-end",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 7069,
-        "event": "training:end",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 7100,
-        "event": "tournament:complete",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 7106,
-        "event": "tournament:bracket-advanced",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 7149,
-        "event": "world:loot-node",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 7182,
-        "event": "combat:dodge:ack",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 7222,
-        "event": "combat:block:ack",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 7300,
-        "event": "world:legendary-achievement",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 7897,
-        "event": "health:pulse",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 9232,
-        "event": "meta:committed",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 12144,
-        "event": "graph:update",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 16304,
-        "event": "comment:added",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 16469,
-        "event": "activity:new",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 16516,
-        "event": "yjs:update",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 18749,
-        "event": "dtu:deleted",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 24167,
-        "event": "market:listing",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 24663,
-        "event": "beacon:check",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 25014,
-        "event": "resonance:update",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 26457,
-        "event": "heartbeat:tick",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 26465,
-        "event": "platform:activity",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 26548,
-        "event": "user:tick",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 28579,
-        "event": "initiative:new",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 28722,
-        "event": "city:stream-started",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 28731,
-        "event": "city:stream-ended",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 31121,
-        "event": "system:alert",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 31576,
-        "event": "creative_registry:update",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 32215,
-        "event": "city:stream-sale",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 32807,
-        "event": "artifact:rendered",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 32815,
-        "event": "lens:dtu_generated",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 32827,
-        "event": "city:stream-dtu-created",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 38629,
-        "event": "prediction:ready",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 38759,
-        "event": "teaching:promotion_suggestion",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 38810,
-        "event": "collab:invite",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 38826,
-        "event": "collab:accepted",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 39714,
-        "event": "research:started",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 39719,
-        "event": "research:completed",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 39918,
-        "event": "shared-session:invite",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 39952,
-        "event": "shared-session:joined",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 40021,
-        "event": "shared-session:message",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 40065,
-        "event": "shared-session:ai-response",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 40100,
-        "event": "shared-session:dtu-shared",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 40163,
-        "event": "shared-session:artifact-produced",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 40257,
-        "event": "shared-session:ended",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 40660,
-        "event": "collab:session:created",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 40669,
-        "event": "collab:user:joined",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 40682,
-        "event": "collab:change",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 40723,
-        "event": "collab:lock",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 40733,
-        "event": "collab:unlock",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 40768,
-        "event": "whiteboard:updated",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 45868,
-        "event": "music:toggle",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 54794,
-        "event": "world:broadcast",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 54814,
-        "event": "world:action",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 7373,
-        "event": "screen-share:answer",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 7376,
-        "event": "screen-share:ice-candidate",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 7396,
-        "event": "voice:offer",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 7399,
-        "event": "voice:answer",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 7402,
-        "event": "voice:ice-candidate",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 32202,
-        "event": "marketplace:sale",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 38356,
-        "event": "council:proposal",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 38395,
-        "event": "council:vote",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 6600,
-        "event": "hello",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 6609,
-        "event": "error",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 6654,
-        "event": "room:joined",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 6660,
-        "event": "room:left",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 6703,
-        "event": "subscribed",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 6708,
-        "event": "pong",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 6746,
-        "event": "player:move:nack",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 6758,
-        "event": "player:move:ack",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 6775,
-        "event": "player:load:ack",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 6822,
-        "event": "combat:attack:ack",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 7161,
-        "event": "nemesis:defeated",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 7359,
-        "event": "player:respawn:ack",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 7393,
-        "event": "voice:room-state",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 40383,
-        "event": "chat:status",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 40439,
-        "event": "chat:web_results",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 40505,
-        "event": "chat:token",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/server.js",
-        "emitterLine": 40533,
-        "event": "chat:complete",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/tests/invariants/emit-subscribe-pairing.test.js",
-        "emitterLine": 8,
-        "event": "name",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/tests/invariants/emit-subscribe-pairing.test.js",
-        "emitterLine": 104,
-        "event": "event:name",
-        "reason": "not_in_event_shapes_registry"
-      }
-    ],
+    "unshapedEvents": [],
     "unusedMacros": []
   },
   "drift": [
@@ -3567,14 +2801,14 @@
       "line": 13947
     },
     {
-      "actual": 189,
+      "actual": 195,
       "claim": "175 lenses",
-      "delta": 14,
+      "delta": 20,
       "file": "CLAUDE.md",
       "line": 73
     }
   ],
-  "generatedAt": "2026-05-07T21:10:32.298Z",
+  "generatedAt": "2026-05-07T22:12:00.422Z",
   "generatedBy": "cartographer-v22.22.2",
   "novelty": [
     {
@@ -4839,6 +4073,11 @@
       },
       {
         "hasPage": true,
+        "name": "cognition",
+        "pageBytes": 22098
+      },
+      {
+        "hasPage": true,
         "name": "collab",
         "pageBytes": 81860
       },
@@ -5234,6 +4473,11 @@
       },
       {
         "hasPage": true,
+        "name": "maker",
+        "pageBytes": 15061
+      },
+      {
+        "hasPage": true,
         "name": "manufacturing",
         "pageBytes": 105880
       },
@@ -5331,6 +4575,11 @@
         "hasPage": true,
         "name": "offline",
         "pageBytes": 22061
+      },
+      {
+        "hasPage": true,
+        "name": "ops",
+        "pageBytes": 12442
       },
       {
         "hasPage": true,
@@ -5484,6 +4733,11 @@
       },
       {
         "hasPage": true,
+        "name": "sentinel",
+        "pageBytes": 14392
+      },
+      {
+        "hasPage": true,
         "name": "services",
         "pageBytes": 62131
       },
@@ -5496,6 +4750,11 @@
         "hasPage": true,
         "name": "sim",
         "pageBytes": 121629
+      },
+      {
+        "hasPage": true,
+        "name": "society",
+        "pageBytes": 16146
       },
       {
         "hasPage": true,
@@ -5530,7 +4789,7 @@
       {
         "hasPage": true,
         "name": "system",
-        "pageBytes": 23405
+        "pageBytes": 23436
       },
       {
         "hasPage": true,
@@ -5621,6 +4880,11 @@
         "hasPage": false,
         "name": "world-creator",
         "pageBytes": 0
+      },
+      {
+        "hasPage": true,
+        "name": "worldmodel",
+        "pageBytes": 21189
       }
     ],
     "macroCallsites": [
@@ -35865,7 +35129,7 @@
     "deadTableCount": 24,
     "dormantModuleCount": 0,
     "heartbeatCount": 19,
-    "lensCount": 189,
+    "lensCount": 195,
     "macroCount": 600,
     "macroDomainCount": 122,
     "moduleCount": 0,

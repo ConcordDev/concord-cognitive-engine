@@ -2,7 +2,7 @@
 
 _Source for the `Current Wiring Status` section in CLAUDE.md. Human merges; cartographer never auto-rewrites CLAUDE.md._
 
-Generated 2026-05-07T21:10:32.298Z.
+Generated 2026-05-07T22:12:00.422Z.
 
 ## Heartbeat-registered modules
 
@@ -153,12 +153,12 @@ Generated 2026-05-07T21:10:32.298Z.
 
 ## Frontend lens count
 
-- 189 directories under `concord-frontend/app/lenses/`
+- 195 directories under `concord-frontend/app/lenses/`
 
 ## Orphan / Dormant inventory
 
 - Orphan modules: 0
 - Dormant modules: 0
 - Dead tables: 24
-- Headless backends: 79
-- Orphan lenses: 146
+- Headless backends: 78
+- Orphan lenses: 151
