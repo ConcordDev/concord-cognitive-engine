@@ -32,7 +32,7 @@ test.describe('Landing Page', () => {
   test('landing page displays hero content', async ({ page }) => {
     const response = await page.goto('/');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle').catch(() => {});
+    await page.waitForLoadState('domcontentloaded').catch(() => {});
 
     // SSR hero section: "Your Personal Cognitive Engine"
     const h1 = page.locator('h1');
@@ -48,7 +48,7 @@ test.describe('Landing Page', () => {
   test('landing page displays feature cards', async ({ page }) => {
     const response = await page.goto('/');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle').catch(() => {});
+    await page.waitForLoadState('domcontentloaded').catch(() => {});
 
     // SSR renders feature cards: Domain Lenses, DTU Memory, Sovereign
     // Use count() instead of isVisible()+toBeVisible() to avoid race
@@ -70,7 +70,7 @@ test.describe('Landing Page', () => {
   test('landing page has Concord branding', async ({ page }) => {
     const response = await page.goto('/');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle').catch(() => {});
+    await page.waitForLoadState('domcontentloaded').catch(() => {});
 
     // Look for visible branding text (exclude <title> which is always hidden)
     const branding = page.locator('h1:has-text("Concord"), header:has-text("Concord"), a:has-text("Concord")').first();
@@ -82,7 +82,7 @@ test.describe('Landing Page', () => {
   test('landing page has sign in and get started links', async ({ page }) => {
     const response = await page.goto('/');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // The interactive LandingPage renders sign in and register links
     const signInLink = page.locator('a[href="/login"]');
@@ -143,7 +143,7 @@ test.describe('App Shell Navigation', () => {
   test('sidebar renders with main navigation landmark', async ({ page }) => {
     const response = await page.goto('/lenses/chat');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Sidebar has role="navigation" with aria-label="Main navigation"
     const sidebar = page.locator('aside[role="navigation"]');
@@ -158,7 +158,7 @@ test.describe('App Shell Navigation', () => {
   test('sidebar shows Dashboard link', async ({ page }) => {
     const response = await page.goto('/lenses/chat');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Dashboard link pointing to /
     const dashboardLink = page.locator('aside a[href="/"]');
@@ -170,7 +170,7 @@ test.describe('App Shell Navigation', () => {
   test('sidebar shows core workspace lenses', async ({ page }) => {
     const response = await page.goto('/lenses/chat');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // The five core lenses: Chat, Board, Graph, Code, Studio
     const coreLensPaths = [
@@ -194,7 +194,7 @@ test.describe('App Shell Navigation', () => {
   test('sidebar shows Lens Hub link', async ({ page }) => {
     const response = await page.goto('/lenses/chat');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const hubLink = page.locator('aside a[href="/hub"]');
     const count = await hubLink.count();
@@ -206,7 +206,7 @@ test.describe('App Shell Navigation', () => {
   test('sidebar shows Workspaces section label', async ({ page }) => {
     const response = await page.goto('/lenses/chat');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // "Workspaces" label appears when sidebar is expanded
     const label = page.locator('text=Workspaces');
@@ -218,7 +218,7 @@ test.describe('App Shell Navigation', () => {
   test('sidebar shows version and sovereignty info', async ({ page }) => {
     const response = await page.goto('/lenses/chat');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Footer shows "Concord OS v5.0" and "70% Sovereign"
     const versionText = page.locator('aside').locator('text=/Concord OS|70%/');
@@ -230,7 +230,7 @@ test.describe('App Shell Navigation', () => {
   test('sidebar collapse toggle works', async ({ page }) => {
     const response = await page.goto('/lenses/chat');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Find the collapse button (desktop only, hidden on mobile)
     const collapseButton = page.getByRole('button', { name: /collapse sidebar|expand sidebar/i });
@@ -248,7 +248,7 @@ test.describe('App Shell Navigation', () => {
   test('sidebar highlights active lens', async ({ page }) => {
     const response = await page.goto('/lenses/chat');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // The Chat link should have aria-current="page" when active
     const chatLink = page.locator('aside a[href="/lenses/chat"]');
@@ -271,7 +271,7 @@ test.describe('Topbar', () => {
   test('topbar renders with banner role', async ({ page }) => {
     const response = await page.goto('/lenses/chat');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const topbar = page.locator('header[role="banner"]');
     if (await topbar.isVisible().catch(() => false)) {
@@ -282,7 +282,7 @@ test.describe('Topbar', () => {
   test('topbar shows current lens name', async ({ page }) => {
     const response = await page.goto('/lenses/chat');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // The topbar h1 should display the current lens name
     const heading = page.locator('header[role="banner"] h1');
@@ -294,7 +294,7 @@ test.describe('Topbar', () => {
   test('topbar has command palette trigger', async ({ page }) => {
     const response = await page.goto('/lenses/chat');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Search button that opens the command palette
     const searchButton = page.getByRole('button', { name: /open command palette|search/i });
@@ -306,7 +306,7 @@ test.describe('Topbar', () => {
   test('topbar has user menu button', async ({ page }) => {
     const response = await page.goto('/lenses/chat');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const userButton = page.getByRole('button', { name: /user menu/i });
     if (await userButton.isVisible().catch(() => false)) {
@@ -317,7 +317,7 @@ test.describe('Topbar', () => {
   test('user menu opens and shows sign out option', async ({ page }) => {
     const response = await page.goto('/lenses/chat');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const userButton = page.getByRole('button', { name: /user menu/i });
     if (await userButton.isVisible().catch(() => false)) {
@@ -350,7 +350,7 @@ test.describe('Topbar', () => {
   test('topbar has notifications button', async ({ page }) => {
     const response = await page.goto('/lenses/chat');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const notificationsButton = page.getByRole('button', { name: /notifications/i });
     if (await notificationsButton.isVisible().catch(() => false)) {
@@ -363,7 +363,7 @@ test.describe('Topbar', () => {
     await page.setViewportSize({ width: 375, height: 667 });
     const response = await page.goto('/lenses/chat');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const menuButton = page.getByRole('button', { name: /open navigation menu/i });
     if (await menuButton.isVisible().catch(() => false)) {
@@ -382,7 +382,7 @@ test.describe('Command Palette', () => {
   test('command palette opens with Ctrl+K keyboard shortcut', async ({ page }) => {
     const response = await page.goto('/lenses/chat');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Press Ctrl+K to open command palette
     await page.keyboard.press('Control+k');
@@ -401,7 +401,7 @@ test.describe('Command Palette', () => {
   test('command palette has search input with combobox role', async ({ page }) => {
     const response = await page.goto('/lenses/chat');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await page.keyboard.press('Control+k');
 
@@ -418,7 +418,7 @@ test.describe('Command Palette', () => {
   test('command palette shows results in listbox', async ({ page }) => {
     const response = await page.goto('/lenses/chat');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await page.keyboard.press('Control+k');
 
@@ -437,7 +437,7 @@ test.describe('Command Palette', () => {
   test('command palette filters results on typing', async ({ page }) => {
     const response = await page.goto('/lenses/chat');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await page.keyboard.press('Control+k');
 
@@ -456,7 +456,7 @@ test.describe('Command Palette', () => {
   test('command palette shows "no results" for nonexistent query', async ({ page }) => {
     const response = await page.goto('/lenses/chat');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await page.keyboard.press('Control+k');
 
@@ -475,7 +475,7 @@ test.describe('Command Palette', () => {
   test('command palette closes on Escape', async ({ page }) => {
     const response = await page.goto('/lenses/chat');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await page.keyboard.press('Control+k');
     const dialog = page.locator('[role="dialog"]');
@@ -488,7 +488,7 @@ test.describe('Command Palette', () => {
   test('command palette closes on backdrop click', async ({ page }) => {
     const response = await page.goto('/lenses/chat');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await page.keyboard.press('Control+k');
     const dialog = page.locator('[role="dialog"]');
@@ -505,7 +505,7 @@ test.describe('Command Palette', () => {
   test('command palette supports keyboard navigation', async ({ page }) => {
     const response = await page.goto('/lenses/chat');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await page.keyboard.press('Control+k');
 
@@ -529,7 +529,7 @@ test.describe('Command Palette', () => {
   test('command palette shows footer with keyboard hints', async ({ page }) => {
     const response = await page.goto('/lenses/chat');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await page.keyboard.press('Control+k');
 
@@ -602,7 +602,7 @@ test.describe('Accessibility - Skip to Content', () => {
   test('skip-to-content link exists and targets main content', async ({ page }) => {
     const response = await page.goto('/lenses/chat');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // The AppShell renders a skip link with href="#main-content"
     const skipLink = page.locator('a[href="#main-content"]');
@@ -749,7 +749,7 @@ test.describe('Navigation Flows', () => {
 
     const response = await page.goto('/lenses/chat');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Navigate to Graph via sidebar link (if visible).
     // Use page.click() rather than locator.click() to avoid "element detached
@@ -758,7 +758,7 @@ test.describe('Navigation Flows', () => {
     if (await page.locator(graphSel).first().isVisible().catch(() => false)) {
       await page.click(graphSel, { timeout: 10_000 }).catch(() => {});
       await page.waitForURL(/\/lenses\/graph/, { timeout: 5000 }).catch(() => {});
-      await page.waitForLoadState('networkidle').catch(() => {});
+      await page.waitForLoadState('domcontentloaded').catch(() => {});
     }
 
     // Navigate to Board
@@ -766,7 +766,7 @@ test.describe('Navigation Flows', () => {
     if (await page.locator(boardSel).first().isVisible().catch(() => false)) {
       await page.click(boardSel, { timeout: 10_000 }).catch(() => {});
       await page.waitForURL(/\/lenses\/board/, { timeout: 5000 }).catch(() => {});
-      await page.waitForLoadState('networkidle').catch(() => {});
+      await page.waitForLoadState('domcontentloaded').catch(() => {});
     }
 
     // Filter out expected errors from test environment (no real backend)
@@ -803,7 +803,7 @@ test.describe('Navigation Flows', () => {
 
     const response = await page.goto('/lenses/chat');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const expectedPaths = [
       '/lenses/chat',

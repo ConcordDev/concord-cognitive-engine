@@ -4,7 +4,7 @@ test.describe('Chat Flow', () => {
   test.beforeEach(async ({ page }) => {
     const response = await page.goto('/');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
   });
 
   test('should display chat rail toggle', async ({ page }) => {

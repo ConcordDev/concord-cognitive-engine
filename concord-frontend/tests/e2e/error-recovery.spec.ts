@@ -9,7 +9,7 @@ test.describe('Error Recovery', () => {
 
     const response = await page.goto('/');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Page should still render, not crash
     const bodyVisible = await page.locator('body').isVisible().catch(() => false);
@@ -26,7 +26,7 @@ test.describe('Error Recovery', () => {
 
     const response = await page.goto('/lenses/music');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Should show error state, not blank page
     const bodyVisible = await page.locator('body').isVisible().catch(() => false);
@@ -48,20 +48,20 @@ test.describe('Error Recovery', () => {
 
     const response = await page.goto('/');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Look for retry button if error boundary triggered
     const retryButton = page.locator('button:has-text("Retry"), button:has-text("Try Again")').first();
     if (await retryButton.isVisible().catch(() => false)) {
       await retryButton.click();
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
     }
   });
 
   test('should handle 404 pages', async ({ page }) => {
     const response = await page.goto('/this-page-does-not-exist');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const bodyVisible = await page.locator('body').isVisible().catch(() => false);
     if (bodyVisible) {

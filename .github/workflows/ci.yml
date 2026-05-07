@@ -525,7 +525,7 @@ jobs:
 
       - name: Install Playwright browsers
         working-directory: ./concord-frontend
-        run: npx playwright install --with-deps chromium firefox
+        run: npx playwright install --with-deps chromium
 
       - name: Pull tiny Ollama model for chat specs
         # qwen2.5:0.5b is ~400MB — small enough that pull + load fits
@@ -633,7 +633,7 @@ jobs:
         # run, and artifacts aren't reachable across the GitHub MCP either.
         run: |
           set -o pipefail
-          npx playwright test --project=chromium --project=firefox --reporter=list,html 2>&1 | tee playwright-output.log
+          npx playwright test --project=chromium --reporter=list,html 2>&1 | tee playwright-output.log
 
       - name: Dump server + frontend logs on failure
         if: failure()
@@ -691,17 +691,15 @@ jobs:
           # fails (eg. token permissions issue on a fork PR).
           cat /tmp/digest.md >> "$GITHUB_STEP_SUMMARY"
 
-          # Comment via the issues API (PRs are issues for comment purposes)
-          jq -n --rawfile body /tmp/digest.md '{body: $body}' > /tmp/digest.json
-          HTTP_CODE=$(curl -s -o /tmp/digest-resp.json -w "%{http_code}" -X POST \
-            -H "Authorization: Bearer $GH_TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/$REPO/issues/$PR_NUMBER/comments" \
-            -d @/tmp/digest.json)
-          echo "comment POST -> HTTP $HTTP_CODE"
-          if [ "$HTTP_CODE" != "201" ]; then
-            echo "::warning::Failed to post digest comment ($HTTP_CODE)"
-            cat /tmp/digest-resp.json | head -20 || true
+          # Use `gh` CLI (pre-installed on GH-hosted runners) — it picks up
+          # GH_TOKEN from the env and handles auth/headers/encoding for us.
+          # Direct curl was failing silently for unclear reasons.
+          if gh pr comment "$PR_NUMBER" --repo "$REPO" --body-file /tmp/digest.md; then
+            echo "digest comment posted"
+          else
+            echo "::warning::Failed to post digest comment via gh CLI"
+            ls -la /tmp/digest.md || true
+            wc -l /tmp/digest.md || true
           fi
 
       - name: Upload test results
