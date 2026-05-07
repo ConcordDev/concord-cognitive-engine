@@ -27631,7 +27631,7 @@ app.post("/api/world/buildings/spawn", requireAuth, (req, res) => {
       }
     }
 
-    const id = `wb_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const id = `wb_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
     // The world_buildings table from migration 063 requires building_type
     // NOT NULL. We infer it from the blueprint's kind so the row remains
     // valid for downstream renderers + structural-decay logic.
@@ -44750,7 +44750,7 @@ app.post("/api/physics/bodies", (req, res) => {
   try {
     const ps = ensurePhysicsState();
     const { label, mass, position, velocity } = req.body;
-    const id = `body_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const id = `body_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
     const body = {
       id,
       label: label || id,
@@ -44987,7 +44987,7 @@ app.post("/api/ml/train", (req, res) => {
   try {
     const { mlJobs } = ensureMlState();
     const { modelName, datasetId, epochs, learningRate } = req.body || {};
-    const jobId = `ml_job_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const jobId = `ml_job_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
     const job = {
       id: jobId,
       type: "train",
@@ -45614,7 +45614,9 @@ app.post("/api/economy/withdraw", requireAuth(), asyncHandler(async (req, res) =
       }
     } catch (_e) { /* table may not exist yet */ }
     // Create pending withdrawal row
-    const withdrawalId = `wd_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+    // Withdrawal IDs are financial — use crypto.randomBytes so the suffix is
+    // unpredictable. Math.random() with timestamp is enumerable.
+    const withdrawalId = `wd_${Date.now().toString(36)}_${crypto.randomBytes(8).toString("hex")}`;
     db.prepare(
       `INSERT INTO economy_withdrawals (id, user_id, amount, fee, net, status)
        VALUES (?, ?, ?, ?, ?, 'pending')`
@@ -45690,7 +45692,7 @@ app.post("/api/music/playlist", (req, res) => {
   try {
     const { name, tracks, type } = req.body || {};
     if (!name) return res.status(400).json({ ok: false, error: "Playlist name is required" });
-    const id = `user_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const id = `user_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
     const playlist = { id, name, tracks: tracks || [], type: type || "custom", builtin: false, createdAt: new Date().toISOString() };
     STATE.music.userPlaylists.set(id, playlist);
     saveStateDebounced();
@@ -53685,7 +53687,7 @@ if (!STATE._sessionRecordings) STATE._sessionRecordings = [];
 
 function startRecording(userId) {
   const recording = {
-    id: `session-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    id: `session-${Date.now()}-${crypto.randomBytes(4).toString("hex")}`,
     userId: userId || "default",
     startedAt: new Date().toISOString(),
     completedAt: null,
@@ -64115,7 +64117,7 @@ app.post('/api/artistry/collab/sessions', (req, res) => {
   const { projectId, hostId, maxParticipants, mode } = req.body;
   const project = art.projects.get(projectId);
   if (!project) return res.status(404).json({ error: 'Project not found' });
-  const sessionId = `collab_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const sessionId = `collab_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
   art.collabSessions.set(sessionId, {
     id: sessionId, projectId, hostId: hostId || project.ownerId,
     participants: [{ userId: hostId || project.ownerId, role: 'host', joinedAt: Date.now() }],
@@ -64458,7 +64460,7 @@ app.get('/api/artistry/ai/learning/:pathId', (req, res) => {
 app.post('/api/artistry/ai/session', (req, res) => {
   const art = ensureArtistryState();
   const { userId, projectId, question } = req.body;
-  const sessionId = `aisess_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const sessionId = `aisess_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
   const project = projectId ? art.projects.get(projectId) : null;
   const ctx = project ? { bpm: project.bpm, key: project.key, genre: project.genre, trackCount: project.tracks.length } : {};
   const response = {

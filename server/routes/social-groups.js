@@ -532,5 +532,31 @@ export default function createSocialGroupRoutes({ db, requireAuth }) {
     }
   });
 
+  // GET /newsletter-subscribers — admin-only list of opted-in emails.
+  // POST /newsletter-subscribe wrote rows that pre-this-route nobody could
+  // read, so the captured emails were inaccessible. Strict admin gate
+  // because emails are PII.
+  router.get("/newsletter-subscribers", (req, res) => {
+    if (!req.user || (req.user.role !== "owner" && req.user.role !== "admin" && req.user.role !== "sovereign")) {
+      return res.status(403).json({ ok: false, error: "admin_only" });
+    }
+    try {
+      const limit = Math.max(1, Math.min(parseInt(req.query.limit, 10) || 100, 500));
+      const offset = Math.max(0, parseInt(req.query.offset, 10) || 0);
+      const rows = db.prepare(
+        `SELECT id, email, user_id, created_at, confirmed
+           FROM newsletter_subscriptions
+          WHERE confirmed = 1
+          ORDER BY created_at DESC
+          LIMIT ? OFFSET ?`,
+      ).all(limit, offset);
+      const total = db.prepare(`SELECT COUNT(*) as c FROM newsletter_subscriptions WHERE confirmed = 1`).get().c;
+      res.json({ ok: true, subscribers: rows, count: rows.length, total });
+    } catch (err) {
+      console.error("[social-groups] GET /newsletter-subscribers error:", err);
+      res.status(500).json({ ok: false, error: 'An unexpected error occurred' });
+    }
+  });
+
   return router;
 }

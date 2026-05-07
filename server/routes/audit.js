@@ -111,5 +111,102 @@ export default function createAuditRouter({ requireRole, db = null }) {
     }
   });
 
+  // ── Federation audit feeds ────────────────────────────────────────────────
+  // Three federation tables are written for compliance / forensics but had
+  // no read endpoint. Each is admin-gated since they expose cross-region
+  // user/entity movements + DTU promotion lineage that's privacy-sensitive.
+
+  // GET /api/audit/federation/users — user-region/nation change history.
+  router.get("/federation/users", requireRole("owner", "admin"), (req, res) => {
+    if (!db) return res.status(503).json({ ok: false, error: "db_unavailable" });
+    try {
+      const limit = Math.max(1, Math.min(Number(req.query.limit) || 50, 200));
+      const offset = Math.max(0, Number(req.query.offset) || 0);
+      const userId = req.query.userId || null;
+      const sql = userId
+        ? `SELECT id, user_id, regional, national, previous_regional, previous_national, changed_at
+             FROM user_location_history WHERE user_id = ?
+             ORDER BY changed_at DESC LIMIT ? OFFSET ?`
+        : `SELECT id, user_id, regional, national, previous_regional, previous_national, changed_at
+             FROM user_location_history
+             ORDER BY changed_at DESC LIMIT ? OFFSET ?`;
+      const args = userId ? [userId, limit, offset] : [limit, offset];
+      const rows = db.prepare(sql).all(...args);
+      res.json({ ok: true, history: rows, count: rows.length });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e?.message || "user_location_history_failed" });
+    }
+  });
+
+  // GET /api/audit/federation/entities — entity cross-region transfers.
+  router.get("/federation/entities", requireRole("owner", "admin"), (req, res) => {
+    if (!db) return res.status(503).json({ ok: false, error: "db_unavailable" });
+    try {
+      const limit = Math.max(1, Math.min(Number(req.query.limit) || 50, 200));
+      const offset = Math.max(0, Number(req.query.offset) || 0);
+      const entityId = req.query.entityId || null;
+      const sql = entityId
+        ? `SELECT id, entity_id, from_cri, to_cri, from_regional, to_regional, transferred_at
+             FROM entity_transfer_history WHERE entity_id = ?
+             ORDER BY transferred_at DESC LIMIT ? OFFSET ?`
+        : `SELECT id, entity_id, from_cri, to_cri, from_regional, to_regional, transferred_at
+             FROM entity_transfer_history
+             ORDER BY transferred_at DESC LIMIT ? OFFSET ?`;
+      const args = entityId ? [entityId, limit, offset] : [limit, offset];
+      const rows = db.prepare(sql).all(...args);
+      res.json({ ok: true, transfers: rows, count: rows.length });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e?.message || "entity_transfer_history_failed" });
+    }
+  });
+
+  // GET /api/audit/federation/dtus — DTU tier-promotion lineage.
+  router.get("/federation/dtus", requireRole("owner", "admin"), (req, res) => {
+    if (!db) return res.status(503).json({ ok: false, error: "db_unavailable" });
+    try {
+      const limit = Math.max(1, Math.min(Number(req.query.limit) || 50, 200));
+      const offset = Math.max(0, Number(req.query.offset) || 0);
+      const dtuId = req.query.dtuId || null;
+      const sql = dtuId
+        ? `SELECT id, dtu_id, from_tier, to_tier, promoted_at, reason
+             FROM dtu_federation_history WHERE dtu_id = ?
+             ORDER BY promoted_at DESC LIMIT ? OFFSET ?`
+        : `SELECT id, dtu_id, from_tier, to_tier, promoted_at, reason
+             FROM dtu_federation_history
+             ORDER BY promoted_at DESC LIMIT ? OFFSET ?`;
+      const args = dtuId ? [dtuId, limit, offset] : [limit, offset];
+      const rows = db.prepare(sql).all(...args);
+      res.json({ ok: true, promotions: rows, count: rows.length });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e?.message || "dtu_federation_history_failed" });
+    }
+  });
+
+  // GET /api/audit/sandbox/:workspaceId/actions — sandbox tool-call log.
+  // sandbox-manager.js writes every tool invocation; pre-this-route the
+  // log was inaccessible. Workspace owner + admin can read.
+  router.get("/sandbox/:workspaceId/actions", requireRole("owner", "admin", "sovereign"), (req, res) => {
+    if (!db) return res.status(503).json({ ok: false, error: "db_unavailable" });
+    try {
+      const limit = Math.max(1, Math.min(Number(req.query.limit) || 100, 500));
+      const offset = Math.max(0, Number(req.query.offset) || 0);
+      const rows = db.prepare(
+        `SELECT id, workspace_id, action_type, action_args_json, result_json, error, duration_ms, created_at
+           FROM sandbox_actions
+          WHERE workspace_id = ?
+          ORDER BY created_at DESC
+          LIMIT ? OFFSET ?`,
+      ).all(req.params.workspaceId, limit, offset);
+      const parsed = rows.map((r) => ({
+        ...r,
+        args:   (() => { try { return JSON.parse(r.action_args_json); } catch { return null; } })(),
+        result: r.result_json ? (() => { try { return JSON.parse(r.result_json); } catch { return null; } })() : null,
+      }));
+      res.json({ ok: true, workspaceId: req.params.workspaceId, actions: parsed, count: parsed.length });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e?.message || "sandbox_actions_failed" });
+    }
+  });
+
   return router;
 }
