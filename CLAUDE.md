@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-Concord Cognitive Engine is a cognitive operating system — a knowledge platform with 175 domain lenses, four parallel LLM brains, a self-compressing knowledge substrate (DTUs), a creator economy with perpetual royalties, a seven-layer mesh network, and a 3D civilization simulator (Concordia). Live at concord-os.org. 1.3M+ lines, one developer.
+Concord Cognitive Engine is a cognitive operating system — a knowledge platform with 175+ domain lenses (188 frontend directories per latest cartographer run), four parallel LLM brains + LLaVA vision, a self-compressing knowledge substrate (DTUs), a creator economy with perpetual royalties, a seven-layer mesh network, and a 3D civilization simulator (Concordia). Live at concord-os.org. 1.3M+ lines, one developer.
 
 ---
 
@@ -124,6 +124,22 @@ SQLite via `better-sqlite3` (in `dependencies`, not optional — the server hard
 
 This section exists so future sessions don't repeat discovery work.
 
+### Cartographer ground truth (refresh: `npm run cartograph:static`)
+
+The hand-written prose below is a curated narrative; for **machine-truth counts** see `audit/cartograph/SYSTEMS.json` + `SYSTEMS.md` + `CARTOGRAPH_WIRING_STATUS.md`. Latest pass:
+
+- **Tables**: 312 (24 dead — see `audit/cartograph/GAPS.md`)
+- **Routes**: 2976 endpoint registrations across server.js + 127 route files
+- **Macros**: 599 across 122 domains
+- **Heartbeats**: 17 registered (frequency-sorted in `CARTOGRAPH_WIRING_STATUS.md`)
+- **Frontend lenses**: 188 directories under `concord-frontend/app/lenses/`
+- **Headless backend domains**: 80 macro domains have no matching frontend lens dir (Phase 3 wire-the-Lost target list)
+- **Orphan lens dirs**: 146 frontend lens dirs have no matching backend domain or empty page.tsx
+- **Universe-coverage**: 52/73 in-scope categories present (71%)
+- **Drift surfaced**: 2 stale comments (`server.js:13931` "18 dormant modules" → actual 30; `CLAUDE.md:9` "175 lenses" → actual 188)
+
+The hand-prose subsections that follow are accurate for the items they describe; they are NOT a complete inventory. **For complete inventory, query the cartographer.**
+
 ### Fully working end-to-end
 - Auth (JWT + cookie), login/signup
 - Chat system (WebSocket streaming, DTU context, web search, personality persistence)
@@ -148,7 +164,7 @@ This section exists so future sessions don't repeat discovery work.
 - Realtime fast-path for public timeline posts (`timeline:post` socket event) and active-effect application (`player:effect-applied`)
 - DAW → soundscape ducking, world-scoped via `concordia:activeWorldId` localStorage hint
 - Crafting UI lens (`/lenses/crafting`) with Mine / Browse Marketplace / Author tabs + inline tier-pricing modal + ActiveEffectsBar HUD
-- Heartbeat-registry pattern — modules register at one site instead of editing `governorTick()`. Currently registered: social-npc-bridge (5), npc-knowledge-bridge (10), metrics-decay (20), fauna-spawner (30), eco-expiry-sweep (5), refusal-field-sweep (1), corpse-cleanup (10), world-event-scheduler
+- Heartbeat-registry pattern — modules register at one site instead of editing `governorTick()`. **17 heartbeats** registered (per cartographer): refusal-field-sweep (1), scheduled-posts (4), social-npc-bridge (5), eco-expiry-sweep (5), environment-sensor (5), npc-knowledge-bridge (10), corpse-cleanup (10), metrics-decay (20), presence-stale-sweep (20), repair-cycle (20), fauna-spawner (30), lattice-drift-scan (60), embodied-dream-cycle (80), forward-sim-cycle (100), lattice-federation-poll (120), faction-strategy-cycle (200), lattice-breakthrough-pass (240). Refresh via `npm run cartograph:static`.
 - World event auto-generation — `server/lib/world-event-scheduler.js` registered at `server.js:29359-29365` via heartbeat, generating recurring events on cadence
 - New world lore seeding — `server/lib/content-seeder.js:36` `discoverSubWorlds()` auto-discovers any `content/world/<name>/` directory; new worlds with content seed automatically
 - GameJuice receives level-up via `LevelUpJuiceBridge.tsx`; combat events via CombatHUD dispatch
