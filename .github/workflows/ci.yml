@@ -495,7 +495,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [lint-and-test]
     permissions:
-      contents: read
+      contents: write   # push diagnostics to ci-diagnostics branch
       pull-requests: write
       issues: write
     # E2E now runs with Ollama provisioned as a service (qwen2.5:0.5b
@@ -668,10 +668,18 @@ jobs:
           REPO: ${{ github.repository }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
+          echo "::notice::E2E failure-digest step started"
+
           # Disable bash's -e so a single failing line never aborts before
           # the comment is posted — diagnostic output must always reach
           # the PR thread, even if some tail/cat fails.
           set +e
+          set +o pipefail
+
+          echo "[diag] PR_NUMBER=$PR_NUMBER REPO=$REPO event=${{ github.event_name }}"
+          echo "[diag] gh version + auth:"
+          gh --version
+          gh auth status -h github.com 2>&1 | head -10
 
           PW_LOG=concord-frontend/playwright-output.log
           FE_LOG=concord-frontend/frontend.log
