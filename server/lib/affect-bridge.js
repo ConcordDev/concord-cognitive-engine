@@ -140,6 +140,12 @@ export function applyAffectEvent(db, entityId, event, opts = {}) {
       }
     }
 
+    // Layer 4 hand-off: feed the affective state into the existential
+    // qualia engine so emotional_resonance_os / motivation_os reflect
+    // accumulated affect. The qualia channels then influence council
+    // voice biases and chat-context assembly.
+    _crossEmitQualia(entityId, { type: event.type, valence: result.E.v, arousal: result.E.a });
+
     return { ok: true, delta: result.delta, E: result.E };
   } catch (e) {
     return { ok: false, error: e?.message || "exception" };
@@ -208,6 +214,20 @@ function _emitResolverSignal(db, interactionId, outcome, signal) {
       try { emitOutcomeSignal(db, interactionId, outcome, signal); } catch { /* swallow */ }
     })
     .catch(() => { /* module may not exist yet at first boot */ });
+}
+
+/**
+ * Internal: feed the affect event into the existential qualia engine
+ * via hookAffect. Lazy-imported to avoid a startup-order coupling.
+ * Updates emotional_resonance_os.empathy + motivation_os.drive based
+ * on the post-event affective state.
+ */
+function _crossEmitQualia(entityId, affectEvent) {
+  import("../existential/hooks.js")
+    .then(({ hookAffect }) => {
+      try { if (typeof hookAffect === "function") hookAffect(entityId, affectEvent); } catch { /* swallow */ }
+    })
+    .catch(() => { /* hooks module may not be loaded */ });
 }
 
 export const _internal = {

@@ -429,3 +429,174 @@ export function hookEmergentTick(entityId, tickData) {
     engine.batchUpdate(entityId, updates);
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// Layer 4 additions — Discovery / Ecology / BrainTraining / DB persist
+// ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Called when breakthrough-clusters or research-jobs detect novel
+ * insight. Updates discovery_rate (meta_growth_os) + creative_mutation_os
+ * novelty_score so the substrate's self-model reflects "we just learned
+ * something new."
+ *
+ * @param {string} entityId
+ * @param {object} discoveryEvent — { novelty, clusterSize, breakthrough, source }
+ */
+export function hookDiscovery(entityId, discoveryEvent) {
+  const engine = getEngine();
+  if (!engine || !entityId) return;
+  const d = discoveryEvent || {};
+  const updates = {};
+  if (d.novelty !== undefined) {
+    updates["creative_mutation_os.novelty_score"] = clamp01(d.novelty);
+  }
+  if (d.clusterSize !== undefined || d.breakthrough !== undefined) {
+    const score = clamp01((Number(d.clusterSize ?? 0) / 10) + (d.breakthrough ? 0.4 : 0));
+    updates["meta_growth_os.discovery_rate"] = score;
+  }
+  if (Object.keys(updates).length > 0) {
+    engine.batchUpdate(entityId, updates);
+  }
+}
+
+/**
+ * Called by environment-sensor (Layer 7) when world-state generates new
+ * sensory readings at a location. Updates the sensory OS channels for a
+ * world-singleton entity (e.g. "world:concordia-hub") so brain prompts
+ * referring to "the environment" can pull current values.
+ *
+ * @param {string} worldId — used as entity_id "world:<id>"
+ * @param {object} signals — { temperature, light, humidity, pressure, sound, smell, airQuality }
+ */
+export function hookEcology(worldId, signals) {
+  const engine = getEngine();
+  if (!engine || !worldId) return;
+  const s = signals || {};
+  const entityId = `world:${worldId}`;
+  const updates = {};
+  // Temperature → thermal_os normalized to [0,1] over [-40°C, +60°C]
+  if (s.temperature !== undefined) {
+    const t = Number(s.temperature);
+    if (Number.isFinite(t)) {
+      updates["thermal_os.ambient_temp"] = clamp01((t + 40) / 100);
+    }
+  }
+  // Light level → sight_os normalized over [0 lux, 100k lux] (logarithmic)
+  if (s.light !== undefined || s.illumination !== undefined) {
+    const lux = Math.max(1, Number(s.light ?? s.illumination ?? 1));
+    updates["sight_os.illumination"] = clamp01(Math.log10(lux) / 5); // log10(100k) = 5
+  }
+  // Humidity → directly 0-100% / 100
+  if (s.humidity !== undefined) {
+    updates["chemical_os.humidity"] = clamp01(Number(s.humidity) / 100);
+  }
+  // Sound → sonic_os normalized over [0 dB, 120 dB]
+  if (s.sound !== undefined || s.soundDb !== undefined) {
+    const db = Number(s.sound ?? s.soundDb ?? 0);
+    updates["sonic_os.ambient_db"] = clamp01(db / 120);
+  }
+  // Pressure → tactile_force_os
+  if (s.pressure !== undefined) {
+    // Atmospheric pressure normalized around 1013 hPa as 0.5
+    const p = Number(s.pressure);
+    if (Number.isFinite(p)) {
+      updates["tactile_force_os.ambient_pressure"] = clamp01(0.5 + (p - 1013) / 200);
+    }
+  }
+  // Air quality (0=hazardous, 1=pristine)
+  if (s.airQuality !== undefined) {
+    updates["chemical_os.air_quality"] = clamp01(Number(s.airQuality));
+  }
+  if (Object.keys(updates).length > 0) {
+    engine.batchUpdate(entityId, updates);
+  }
+}
+
+/**
+ * Called by the brain-training daily refresh runner after each per-brain
+ * evaluation. Updates self_repair_os.brain_health based on eval score
+ * delta — a degrading score signals the substrate is regressing.
+ *
+ * @param {string} brainId
+ * @param {object} refreshResult — { evalScore, swapped, corpusSize }
+ */
+export function hookBrainTraining(brainId, refreshResult) {
+  const engine = getEngine();
+  if (!engine || !brainId) return;
+  const r = refreshResult || {};
+  const entityId = `brain:${brainId}`;
+  const updates = {};
+  if (r.evalScore !== undefined) {
+    updates["self_repair_os.brain_health"] = clamp01(r.evalScore);
+  }
+  if (r.corpusSize !== undefined) {
+    updates["meta_growth_os.coverage_score"] = clamp01(r.corpusSize / 1000);
+  }
+  if (r.swapped === true) {
+    updates["meta_growth_os.discovery_rate"] = clamp01((updates["meta_growth_os.discovery_rate"] ?? 0) + 0.2);
+  }
+  if (Object.keys(updates).length > 0) {
+    engine.batchUpdate(entityId, updates);
+  }
+}
+
+/**
+ * Persist every dirty channel to the qualia_state table. Called by the
+ * `qualia-persist` heartbeat tick every ~15min. Without this tick the
+ * QualiaEngine state is memory-only and evaporates on restart.
+ *
+ * Reads `engine.snapshot()` (or `engine.dump()`); if neither is available
+ * the function is a graceful no-op and reports the missing capability.
+ *
+ * @param {object} db — better-sqlite3 instance
+ * @returns {{ ok: boolean, persisted: number, logged: number }}
+ */
+export function persistQualiaState(db) {
+  if (!db) return { ok: false, persisted: 0, logged: 0 };
+  const engine = getEngine();
+  if (!engine) return { ok: false, persisted: 0, logged: 0, reason: "no_engine" };
+  let persisted = 0;
+  let logged = 0;
+  try {
+    const snapshot =
+      (typeof engine.snapshot === "function" && engine.snapshot()) ||
+      (typeof engine.dump === "function" && engine.dump()) ||
+      null;
+    if (!snapshot || typeof snapshot !== "object") {
+      return { ok: true, persisted: 0, logged: 0, reason: "no_snapshot_export" };
+    }
+    const logStmt = db.prepare(
+      `INSERT INTO qualia_log (id, entity_id, channel, prev_value, new_value, delta, source)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    );
+    for (const entityId of Object.keys(snapshot)) {
+      const channels = snapshot[entityId];
+      if (!channels || typeof channels !== "object") continue;
+      for (const channel of Object.keys(channels)) {
+        const value = Number(channels[channel]);
+        if (!Number.isFinite(value)) continue;
+        try {
+          const prevRow = db.prepare(
+            `SELECT value FROM qualia_state WHERE entity_id = ? AND channel = ?`,
+          ).get(entityId, channel);
+          const prevValue = prevRow?.value;
+          db.prepare(
+            `INSERT INTO qualia_state (entity_id, channel, value, last_updated_at)
+             VALUES (?, ?, ?, unixepoch())
+             ON CONFLICT(entity_id, channel) DO UPDATE SET value = excluded.value, last_updated_at = excluded.last_updated_at`,
+          ).run(entityId, channel, value);
+          persisted++;
+          if (prevValue !== undefined && Math.abs(value - prevValue) >= 0.05) {
+            const id = `ql_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
+            logStmt.run(id, entityId, channel, prevValue, value, value - prevValue, "qualia-persist-tick");
+            logged++;
+          }
+        } catch { /* per-channel failure is non-fatal */ }
+      }
+    }
+    return { ok: true, persisted, logged };
+  } catch (e) {
+    return { ok: false, persisted, logged, error: e?.message };
+  }
+}

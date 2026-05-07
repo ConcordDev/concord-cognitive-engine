@@ -229,6 +229,25 @@ registerHeartbeat("affect-tick", {
     }
   },
 });
+
+// Layer 4: Qualia persistence — flushes the in-memory QualiaEngine
+// channels to qualia_state every 60 ticks (~15 min). Without this
+// tick the existential OS state evaporates on every restart and
+// Concord's accumulated self-model context (drift, integrity,
+// burnout, alignment, novelty) starts fresh on every reboot.
+registerHeartbeat("qualia-persist", {
+  frequency: 60,
+  handler: async ({ db: ctxDb }) => {
+    if (!ctxDb) return { ok: false, reason: "no_db" };
+    try {
+      const { persistQualiaState } = await import("./existential/hooks.js");
+      return persistQualiaState(ctxDb);
+    } catch (err) {
+      structuredLog("warn", "qualia_persist_failed", { error: err?.message });
+      return { ok: false, reason: "exception" };
+    }
+  },
+});
 import { ConcordError } from "./lib/errors.js";
 import { asyncHandler } from "./lib/async-handler.js";
 import { init as initGRC, formatAndValidate as grcFormatAndValidate, getGRCSystemPrompt } from "./grc/index.js";
