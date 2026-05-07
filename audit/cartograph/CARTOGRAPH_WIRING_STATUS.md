@@ -2,7 +2,7 @@
 
 _Source for the `Current Wiring Status` section in CLAUDE.md. Human merges; cartographer never auto-rewrites CLAUDE.md._
 
-Generated 2026-05-07T20:54:49.826Z.
+Generated 2026-05-07T21:10:32.298Z.
 
 ## Heartbeat-registered modules
 
@@ -21,8 +21,10 @@ Generated 2026-05-07T20:54:49.826Z.
 - `embodied-dream-cycle` (frequency 80)
 - `forward-sim-cycle` (frequency 100)
 - `lattice-federation-poll` (frequency 120)
+- `culture-drift-pass` (frequency 120)
 - `faction-strategy-cycle` (frequency 200)
 - `lattice-breakthrough-pass` (frequency 240)
+- `forgetting-health-check` (frequency 480)
 
 ## Macro domains with macro counts
 
@@ -54,12 +56,12 @@ Generated 2026-05-07T20:54:49.826Z.
 - `metalearning` — 8 macros
 - `physical` — 8 macros
 - `intel` — 8 macros
+- `system` — 8 macros
 - `semantic` — 7 macros
 - `transfer` — 7 macros
 - `reasoning` — 7 macros
 - `breakthrough` — 7 macros
 - `forgetting` — 7 macros
-- `system` — 7 macros
 - `lens` — 7 macros
 - `experience` — 6 macros
 - `attention` — 6 macros
@@ -151,12 +153,12 @@ Generated 2026-05-07T20:54:49.826Z.
 
 ## Frontend lens count
 
-- 188 directories under `concord-frontend/app/lenses/`
+- 189 directories under `concord-frontend/app/lenses/`
 
 ## Orphan / Dormant inventory
 
 - Orphan modules: 0
 - Dormant modules: 0
 - Dead tables: 24
-- Headless backends: 80
+- Headless backends: 79
 - Orphan lenses: 146

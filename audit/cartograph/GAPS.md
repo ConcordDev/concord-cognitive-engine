@@ -1,6 +1,6 @@
 # Gaps & Wire Targets
 
-_Generated 2026-05-07T20:54:49.826Z. Each gap proposes a concrete wire action._
+_Generated 2026-05-07T21:10:32.298Z. Each gap proposes a concrete wire action._
 
 ## Dead tables (24)
 
@@ -39,7 +39,7 @@ _None._
 
 _None — every module either has a heartbeat or is invoked by a macro callsite._
 
-## Headless backend domains (80)
+## Headless backend domains (79)
 
 | Domain | Macro count | Suggested frontend lens dir |
 |---|---:|---|
@@ -80,7 +80,6 @@ _None — every module either has a heartbeat or is invoked by a macro callsite.
 | `layer` | 3 | `concord-frontend/app/lenses/layer/page.tsx` |
 | `persona` | 9 | `concord-frontend/app/lenses/persona/page.tsx` |
 | `quality` | 2 | `concord-frontend/app/lenses/quality/page.tsx` |
-| `system` | 7 | `concord-frontend/app/lenses/system/page.tsx` |
 | `experiment` | 1 | `concord-frontend/app/lenses/experiment/page.tsx` |
 | `context` | 1 | `concord-frontend/app/lenses/context/page.tsx` |
 | `interface` | 1 | `concord-frontend/app/lenses/interface/page.tsx` |
@@ -93,6 +92,7 @@ _None — every module either has a heartbeat or is invoked by a macro callsite.
 | `jobs` | 3 | `concord-frontend/app/lenses/jobs/page.tsx` |
 | `agent` | 4 | `concord-frontend/app/lenses/agent/page.tsx` |
 | `crawl` | 2 | `concord-frontend/app/lenses/crawl/page.tsx` |
+| `source` | 2 | `concord-frontend/app/lenses/source/page.tsx` |
 
 ## Orphan lenses (146)
 
