@@ -311,7 +311,7 @@ export function ExplorePanel({ currentLens, onSendMessage }: ModePanelProps) {
 
 // ── Connect Panel ───────────────────────────────────────────────
 
-export function ConnectPanel({ currentLens: _currentLens, onSendMessage }: ModePanelProps) {
+export function ConnectPanel({ currentLens, onSendMessage }: ModePanelProps) {
   return (
     <div className="px-3 py-4 space-y-4">
       {/* Mode header */}
@@ -377,7 +377,7 @@ export function ConnectPanel({ currentLens: _currentLens, onSendMessage }: ModeP
 
 // ── Chat Panel (minimal) ────────────────────────────────────────
 
-export function ChatPanel({ currentLens: _currentLens }: ModePanelProps) {
+export function ChatPanel({ currentLens }: ModePanelProps) {
   // The chat panel is intentionally minimal — it's the legacy default mode.
   // It only shows when there are 0 messages and the mode is explicitly 'chat'.
   if (!currentLens) return null;

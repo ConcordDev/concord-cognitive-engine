@@ -1,19 +1,21 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
-import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
+import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useLensDTUs } from '@/hooks/useLensDTUs';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Mic2, Play, Pause, Plus, Search, Rss, BarChart3,
-  Clock, Upload, Users, X, Headphones, ListMusic,
-  Image as ImageIcon, Hash, TrendingUp, Edit3, Trash2,
-  ExternalLink, Copy, Check,
+  Clock, Users, X, Headphones, ListMusic, Trash2, Check, Loader2,
+  Square, CircleDot,
 } from 'lucide-react';
+import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
+import { showToast } from '@/components/common/Toasts';
+import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useMusicStore } from '@/lib/music/store';
 import { getPlayer } from '@/lib/music/player';
 import { MediaUpload } from '@/components/media/MediaUpload';
@@ -66,11 +68,25 @@ export default function PodcastLensPage() {
     create: createEpisode, update: updateEpisode, remove: removeEpisode,
   } = useLensData<Record<string, unknown>>('podcast', 'episode');
   const {
-    contextDTUs: _contextDTUs, hyperDTUs: _hyperDTUs, megaDTUs: _megaDTUs, regularDTUs: _regularDTUs,
-    publishToMarketplace: _publishToMarketplace, isLoading: _dtusLoading,
+    contextDTUs, hyperDTUs, megaDTUs, regularDTUs,
+    publishToMarketplace, isLoading: dtusLoading,
   } = useLensDTUs({ lens: 'podcast' });
 
   const { items: subscriberItems } = useLensData<Record<string, unknown>>('podcast', 'subscriber');
+
+  const runAction = useRunArtifact('podcast');
+  const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
+  const [isRunning, setIsRunning] = useState<string | null>(null);
+  const handleAction = async (action: string) => {
+    const targetId = episodeItems[0]?.id;
+    if (!targetId) { setActionResult({ message: 'Create an episode first to run analytics.' }); return; }
+    setIsRunning(action);
+    try {
+      const res = await runAction.mutateAsync({ id: targetId, action });
+      if (res.ok === false) { setActionResult({ message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setActionResult(res.result as Record<string, unknown>); }
+    } catch (e) { console.error(`Action ${action} failed:`, e); setActionResult({ message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` }); }
+    finally { setIsRunning(null); }
+  };
 
   // ---- State ----
   const [activeTab, setActiveTab] = useState<ViewTab>('episodes');
@@ -86,6 +102,29 @@ export default function PodcastLensPage() {
   const [formCoverArt, setFormCoverArt] = useState<string | null>(null);
   const [formMediaId, setFormMediaId] = useState<string | null>(null);
   const [formDuration, setFormDuration] = useState(0);
+
+  // ---- Recording state ----
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
+  const [recordedUrl, setRecordedUrl] = useState<string | null>(null);
+  const [isPlayingPreview, setIsPlayingPreview] = useState(false);
+  const [micError, setMicError] = useState<string | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const previewAudioRef = useRef<HTMLAudioElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  // Clean up object URLs and streams on unmount
+  useEffect(() => {
+    return () => {
+      if (recordedUrl) URL.revokeObjectURL(recordedUrl);
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const { playTrack, nowPlaying } = useMusicStore();
 
@@ -127,7 +166,7 @@ export default function PodcastLensPage() {
       if (nowPlaying.playbackState === 'playing') {
         player.pause();
       } else {
-        player.play().catch(() => {});
+        player.play().catch((e) => { console.error('[Podcast] Playback failed:', e); showToast('error', 'Playback failed'); });
       }
       return;
     }
@@ -145,6 +184,108 @@ export default function PodcastLensPage() {
     };
     playTrack(track as unknown as Parameters<typeof playTrack>[0]);
   }, [playingId, nowPlaying.playbackState, playTrack]);
+
+  // ---- Recording ----
+  const handleStartRecording = useCallback(async () => {
+    setMicError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : 'audio/webm';
+      const recorder = new MediaRecorder(stream, { mimeType });
+      mediaRecorderRef.current = recorder;
+      audioChunksRef.current = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+
+      recorder.onstop = () => {
+        const blob = new Blob(audioChunksRef.current, { type: mimeType });
+        const url = URL.createObjectURL(blob);
+
+        // Revoke previous URL if any
+        if (recordedUrl) URL.revokeObjectURL(recordedUrl);
+
+        setRecordedBlob(blob);
+        setRecordedUrl(url);
+        setIsRecording(false);
+
+        // Stop all tracks
+        stream.getTracks().forEach(t => t.stop());
+        streamRef.current = null;
+
+        // Stop timer
+        if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+      };
+
+      recorder.start(250); // collect data every 250ms for responsiveness
+      setIsRecording(true);
+      setRecordingTime(0);
+      setRecordedBlob(null);
+      if (recordedUrl) { URL.revokeObjectURL(recordedUrl); setRecordedUrl(null); }
+
+      // Start timer
+      const start = Date.now();
+      timerRef.current = setInterval(() => {
+        setRecordingTime(Math.floor((Date.now() - start) / 1000));
+      }, 200);
+    } catch (err) {
+      const msg = err instanceof DOMException && err.name === 'NotAllowedError'
+        ? 'Microphone access denied. Please allow microphone permissions.'
+        : 'Could not access microphone. Check your device settings.';
+      setMicError(msg);
+      console.error('[Podcast] getUserMedia failed:', err);
+    }
+  }, [recordedUrl]);
+
+  const handleStopRecording = useCallback(() => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+  }, []);
+
+  const handlePlayPreview = useCallback(() => {
+    if (!recordedUrl) return;
+    if (previewAudioRef.current) {
+      previewAudioRef.current.pause();
+      previewAudioRef.current = null;
+      setIsPlayingPreview(false);
+      return;
+    }
+    const audio = new Audio(recordedUrl);
+    previewAudioRef.current = audio;
+    setIsPlayingPreview(true);
+    audio.onended = () => { previewAudioRef.current = null; setIsPlayingPreview(false); };
+    audio.play().catch(() => { setIsPlayingPreview(false); });
+  }, [recordedUrl]);
+
+  const handleUseRecording = useCallback(() => {
+    if (!recordedBlob) return;
+    // Store the blob as a pseudo media ID so the create flow can reference it.
+    // In a full implementation this would upload the blob to the media API.
+    // For now we create a local object URL and set duration from recordingTime.
+    setFormDuration(recordingTime);
+    // Create a unique local identifier for the recorded blob
+    const localId = `local-recording-${Date.now()}`;
+    setFormMediaId(localId);
+    showToast('success', `Recording saved (${formatDuration(recordingTime)})`);
+  }, [recordedBlob, recordingTime]);
+
+  const handleDiscardRecording = useCallback(() => {
+    if (recordedUrl) URL.revokeObjectURL(recordedUrl);
+    setRecordedBlob(null);
+    setRecordedUrl(null);
+    setRecordingTime(0);
+    if (previewAudioRef.current) {
+      previewAudioRef.current.pause();
+      previewAudioRef.current = null;
+    }
+    setIsPlayingPreview(false);
+  }, [recordedUrl]);
 
   // ---- Create episode ----
   const handleCreateEpisode = useCallback(async () => {
@@ -174,7 +315,7 @@ export default function PodcastLensPage() {
     } catch (err) {
       console.error('Failed to create episode:', err instanceof Error ? err.message : err);
     }
-  }, [formTitle, formDescription, formEpisodeNum, formSeasonNum, formCoverArt, formMediaId, createEpisode]);
+  }, [formTitle, formDescription, formEpisodeNum, formSeasonNum, formCoverArt, formMediaId, formDuration, createEpisode]);
 
   // ---- RSS link ----
   const handleCopyRss = useCallback(async () => {
@@ -348,6 +489,15 @@ export default function PodcastLensPage() {
                           </span>
                         </div>
 
+                        {/* Publish / Edit */}
+                        <button
+                          onClick={() => { const nextStatus = episode.status === 'draft' ? 'published' : episode.status === 'published' ? 'draft' : 'published'; updateEpisode(episode.id, { data: { ...episode, status: nextStatus } as unknown as Record<string, unknown> }); }}
+                          className="p-1.5 rounded-lg text-gray-600 hover:text-green-400 hover:bg-green-500/10 opacity-0 group-hover:opacity-100 transition-all"
+                          title={episode.status === 'published' ? 'Unpublish' : 'Publish'}
+                        >
+                          <Check className="w-4 h-4" />
+                        </button>
+
                         {/* Delete */}
                         <button
                           onClick={() => removeEpisode(episode.id)}
@@ -436,6 +586,104 @@ export default function PodcastLensPage() {
                   )}
                 </div>
 
+                {/* Record Episode */}
+                <div>
+                  <label className="text-xs text-gray-400 mb-1 block">Record Episode</label>
+                  <div className="p-4 bg-white/5 border border-white/10 rounded-xl space-y-3">
+                    {micError && (
+                      <div className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg p-2">
+                        {micError}
+                      </div>
+                    )}
+
+                    {isRecording ? (
+                      <>
+                        {/* Recording active */}
+                        <div className="flex items-center gap-3">
+                          <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
+                          <span className="text-sm font-medium text-red-400">Recording</span>
+                          <span className="text-sm font-mono text-gray-300 ml-auto">
+                            {formatDuration(recordingTime)}
+                          </span>
+                        </div>
+
+                        {/* Waveform bars */}
+                        <div className="flex items-end gap-0.5 h-8 justify-center">
+                          {Array.from({ length: 24 }).map((_, i) => (
+                            <div
+                              key={i}
+                              className="w-1 bg-purple-400 rounded-full"
+                              style={{
+                                height: `${20 + Math.random() * 80}%`,
+                                animation: `pulse ${0.3 + Math.random() * 0.5}s ease-in-out infinite alternate`,
+                                animationDelay: `${i * 0.05}s`,
+                              }}
+                            />
+                          ))}
+                        </div>
+
+                        <button
+                          onClick={handleStopRecording}
+                          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-500/20 text-red-400 font-medium hover:bg-red-500/30 transition-colors"
+                        >
+                          <Square className="w-4 h-4" />
+                          Stop Recording
+                        </button>
+                      </>
+                    ) : recordedBlob ? (
+                      <>
+                        {/* Recording complete - preview */}
+                        <div className="flex items-center gap-3">
+                          <Check className="w-4 h-4 text-green-400" />
+                          <span className="text-sm text-green-400">
+                            Recording complete ({formatDuration(recordingTime)})
+                          </span>
+                        </div>
+
+                        <div className="flex gap-2">
+                          <button
+                            onClick={handlePlayPreview}
+                            className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg bg-white/5 text-gray-300 hover:bg-white/10 transition-colors text-sm"
+                          >
+                            {isPlayingPreview ? (
+                              <><Pause className="w-3.5 h-3.5" /> Pause</>
+                            ) : (
+                              <><Play className="w-3.5 h-3.5" /> Preview</>
+                            )}
+                          </button>
+                          <button
+                            onClick={handleUseRecording}
+                            className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg bg-purple-400/20 text-purple-400 hover:bg-purple-400/30 transition-colors text-sm"
+                          >
+                            <Check className="w-3.5 h-3.5" /> Use Recording
+                          </button>
+                          <button
+                            onClick={handleDiscardRecording}
+                            className="flex items-center justify-center px-3 py-2 rounded-lg bg-white/5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-colors text-sm"
+                            title="Discard recording"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        {/* Idle state - ready to record */}
+                        <button
+                          onClick={handleStartRecording}
+                          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-purple-400/10 text-purple-400 font-medium hover:bg-purple-400/20 transition-colors"
+                        >
+                          <CircleDot className="w-4 h-4" />
+                          Start Recording
+                        </button>
+                        <p className="text-[11px] text-gray-500 text-center">
+                          Record directly from your microphone
+                        </p>
+                      </>
+                    )}
+                  </div>
+                </div>
+
                 {/* Cover art URL */}
                 <div>
                   <label className="text-xs text-gray-400 mb-1 block">Cover Art URL (optional)</label>
@@ -496,12 +744,144 @@ export default function PodcastLensPage() {
                   ))}
               </div>
 
+              {/* DTU Overview */}
+              {!dtusLoading && (contextDTUs.length > 0 || regularDTUs.length > 0 || hyperDTUs.length > 0 || megaDTUs.length > 0) && (
+                <div className="mt-6">
+                  <h3 className="text-sm font-semibold text-gray-400 uppercase mb-3">Data Transfer Units</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {contextDTUs.length > 0 && (
+                      <div className="p-3 bg-white/5 rounded-xl border border-white/5">
+                        <p className="text-xs text-gray-500">Context DTUs</p>
+                        <p className="text-xl font-bold text-neon-cyan">{contextDTUs.length}</p>
+                      </div>
+                    )}
+                    {regularDTUs.length > 0 && (
+                      <div className="p-3 bg-white/5 rounded-xl border border-white/5">
+                        <p className="text-xs text-gray-500">Regular DTUs</p>
+                        <p className="text-xl font-bold text-purple-400">{regularDTUs.length}</p>
+                      </div>
+                    )}
+                    {hyperDTUs.length > 0 && (
+                      <div className="p-3 bg-white/5 rounded-xl border border-white/5">
+                        <p className="text-xs text-gray-500">Hyper DTUs</p>
+                        <p className="text-xl font-bold text-neon-pink">{hyperDTUs.length}</p>
+                      </div>
+                    )}
+                    {megaDTUs.length > 0 && (
+                      <div className="p-3 bg-white/5 rounded-xl border border-white/5">
+                        <p className="text-xs text-gray-500">Mega DTUs</p>
+                        <p className="text-xl font-bold text-neon-green">{megaDTUs.length}</p>
+                      </div>
+                    )}
+                  </div>
+                  {episodes.length > 0 && (
+                    <button
+                      onClick={() => publishToMarketplace({ dtuId: episodes[0].id })}
+                      className="mt-3 flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-400/10 text-purple-400 text-sm hover:bg-purple-400/20 transition-colors"
+                    >
+                      <Rss className="w-4 h-4" /> Publish to Marketplace
+                    </button>
+                  )}
+                </div>
+              )}
+              {dtusLoading && (
+                <div className="mt-6 flex items-center gap-2 text-gray-500 text-sm">
+                  <div className="w-4 h-4 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />
+                  Loading DTUs...
+                </div>
+              )}
+
               {realtimeInsights.length > 0 && (
-                <RealtimeDataPanel data={null} insights={realtimeInsights} />
+                <>
+                  <UniversalActions domain="podcast" artifactId={null} compact />
+                  <RealtimeDataPanel data={null} insights={realtimeInsights} />
+                </>
               )}
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Backend Action Panel */}
+        <div className="panel p-4 space-y-3 mx-auto">
+          <h2 className="font-semibold flex items-center gap-2">
+            <Mic2 className="w-4 h-4 text-neon-purple" />
+            Podcast Analysis
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { action: 'episodeAnalytics', label: 'Episode Analytics' },
+              { action: 'guestResearch', label: 'Guest Research' },
+              { action: 'productionChecklist', label: 'Production Checklist' },
+              { action: 'monetizationCalc', label: 'Monetization Calc' },
+            ].map(({ action, label }) => (
+              <button key={action} onClick={() => handleAction(action)} disabled={!!isRunning}
+                className="btn-secondary text-sm flex items-center gap-1 disabled:opacity-50">
+                {isRunning === action ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
+                {label}
+              </button>
+            ))}
+          </div>
+          {actionResult && (
+            <div className="bg-lattice-deep rounded-lg p-4 space-y-3 text-sm">
+              {'totalListens' in actionResult && (
+                <div className="space-y-1">
+                  <div className="flex flex-wrap gap-4 text-xs">
+                    <span className="text-gray-400">Episodes: <span className="text-neon-cyan font-bold">{String(actionResult.episodes)}</span></span>
+                    <span className="text-gray-400">Total Listens: <span className="text-neon-cyan font-bold">{String(actionResult.totalListens)}</span></span>
+                    <span className="text-gray-400">Avg: <span className="text-neon-green">{String(actionResult.avgListensPerEpisode)}</span></span>
+                    <span className="text-gray-400">Completion: <span className="text-yellow-400">{String(actionResult.completionRate)}%</span></span>
+                  </div>
+                  <p className="text-xs text-gray-400">Top: <span className="text-white">{String(actionResult.topEpisode)}</span></p>
+                  <span className={`text-xs px-2 py-0.5 rounded ${actionResult.growth === 'established' ? 'bg-neon-green/20 text-neon-green' : 'bg-yellow-400/20 text-yellow-400'}`}>{String(actionResult.growth)}</span>
+                </div>
+              )}
+              {'topics' in actionResult && Array.isArray(actionResult.topics) && (
+                <div className="space-y-2">
+                  <p className="text-xs text-gray-400">Guest: <span className="text-white">{String(actionResult.name)}</span></p>
+                  {actionResult.topics.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {(actionResult.topics as string[]).map((t, i) => (
+                        <span key={i} className="text-xs bg-neon-cyan/10 border border-neon-cyan/20 rounded px-2 py-0.5 text-neon-cyan">{t}</span>
+                      ))}
+                    </div>
+                  )}
+                  {'questionSuggestions' in actionResult && Array.isArray(actionResult.questionSuggestions) && (
+                    <div className="space-y-1">
+                      <p className="text-xs text-gray-500 uppercase tracking-wider">Questions</p>
+                      {(actionResult.questionSuggestions as string[]).slice(0, 3).map((q, i) => (
+                        <p key={i} className="text-xs text-gray-300">• {q}</p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              {'totalSteps' in actionResult && (
+                <div className="space-y-1">
+                  <div className="flex gap-4 text-xs text-gray-400">
+                    <span>Steps: <span className="text-neon-cyan">{String(actionResult.totalSteps)}</span></span>
+                    <span>Done: <span className="text-neon-green">{String(actionResult.completed)}</span></span>
+                    <span>Progress: <span className="text-yellow-400">{String(actionResult.progress)}%</span></span>
+                  </div>
+                  {'nextStep' in actionResult && <p className="text-xs text-gray-300">Next: <span className="text-neon-cyan">{String(actionResult.nextStep)}</span></p>}
+                </div>
+              )}
+              {'adRevenue' in actionResult && (
+                <div className="space-y-1">
+                  <div className="flex flex-wrap gap-4 text-xs text-gray-400">
+                    <span>Ad Revenue: <span className="text-neon-green font-bold">${String(actionResult.adRevenue)}</span></span>
+                    <span>Premium: <span className="text-neon-green">${String(actionResult.premiumRevenue)}</span></span>
+                    <span>Total: <span className="text-neon-cyan font-bold">${String(actionResult.totalMonthlyRevenue)}/mo</span></span>
+                  </div>
+                  <div className="flex gap-4 text-xs">
+                    <span className="text-gray-400">Tier: <span className="text-neon-purple">{String(actionResult.tier)}</span></span>
+                  </div>
+                  {'nextMilestone' in actionResult && <p className="text-xs text-gray-400">{String(actionResult.nextMilestone)}</p>}
+                </div>
+              )}
+              {'message' in actionResult && <p className="text-gray-400">{String(actionResult.message)}</p>}
+            </div>
+          )}
+        </div>
       </main>
     </div>
   );

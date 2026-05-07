@@ -58,10 +58,22 @@ function computeTimeFreshness(dateStr: string): number {
   const ageMs = Date.now() - new Date(dateStr).getTime();
   const ageDays = ageMs / (1000 * 60 * 60 * 24);
   const halfLife = 30;
-  return Math.max(0, Math.min(1, Math.exp(-0.693 * ageDays / halfLife)));
+  return Math.max(0, Math.min(1, Math.exp((-0.693 * ageDays) / halfLife)));
 }
 
-function DTUCard({ dtu }: { dtu: { id: string; title: string; scope?: string; tier?: string; tags?: string[]; createdAt?: string; updatedAt?: string } }) {
+function DTUCard({
+  dtu,
+}: {
+  dtu: {
+    id: string;
+    title: string;
+    scope?: string;
+    tier?: string;
+    tags?: string[];
+    createdAt?: string;
+    updatedAt?: string;
+  };
+}) {
   const queryClient = useQueryClient();
 
   const promoteMutation = useMutation({

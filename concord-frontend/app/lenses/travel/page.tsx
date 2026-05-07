@@ -3,14 +3,14 @@
 import { useState, useMemo, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { useLensNav } from '@/hooks/useLensNav';
-import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
+import { useLensData } from '@/lib/hooks/use-lens-data';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Compass, MapPin, Plane, Hotel, Calendar, Plus, Search, X,
-  Edit2, Trash2, DollarSign, Clock, Star, Globe, Layers, ChevronDown, Map,
-  Users, CheckSquare, Square, Luggage, ArrowRight,
+  Compass, MapPin, Plane, Hotel, Calendar, Plus, Search, X, Trash2, DollarSign, Clock, Star, Globe, Layers, ChevronDown, Map,
+  Users, CheckSquare, Square, Luggage, Zap,
 } from 'lucide-react';
+import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 
 const MapView = dynamic(() => import('@/components/common/MapView'), { ssr: false });
 import { cn } from '@/lib/utils';
@@ -59,7 +59,7 @@ export default function TravelLensPage() {
   const [tab, setTab] = useState<ModeTab>('trips');
   const [search, setSearch] = useState('');
   const [showCreate, setShowCreate] = useState(false);
-  const [showFeatures, setShowFeatures] = useState(false);
+  const [showFeatures, setShowFeatures] = useState(true);
   const [newTrip, setNewTrip] = useState({ name: '', destination: '', startDate: '', endDate: '', budget: 0, lat: '', lng: '' });
 
   // Packing list state
@@ -107,6 +107,22 @@ export default function TravelLensPage() {
     { id: 'bookings', label: 'Bookings', icon: Hotel },
     { id: 'map', label: 'Map', icon: Map },
   ];
+
+  const runTravelAction = useRunArtifact('travel');
+  const [travelActionResult, setTravelActionResult] = useState<{ action: string; result: Record<string, unknown> } | null>(null);
+  const [travelActiveAction, setTravelActiveAction] = useState<string | null>(null);
+
+  const handleTravelAction = useCallback(async (action: string) => {
+    const id = items[0]?.id;
+    if (!id) return;
+    setTravelActiveAction(action);
+    try {
+      const res = await runTravelAction.mutateAsync({ id, action });
+      if (res.ok) setTravelActionResult({ action, result: res.result as Record<string, unknown> });
+    } finally {
+      setTravelActiveAction(null);
+    }
+  }, [items, runTravelAction]);
 
   const handleCreate = useCallback(async () => {
     if (!newTrip.name.trim()) return;
@@ -285,9 +301,14 @@ export default function TravelLensPage() {
                         {trip.activities?.length > 0 && <span className="flex items-center gap-1"><Star className="w-3 h-3" />{trip.activities.length} activities</span>}
                       </div>
                     </div>
-                    <button onClick={() => remove(trip.id)} disabled={deleteMut.isPending} className="text-gray-500 hover:text-red-400 p-1 ml-2">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-1 ml-2">
+                      <button onClick={() => { const nextStatus = trip.status === 'planning' ? 'booked' : trip.status === 'booked' ? 'in-progress' : trip.status === 'in-progress' ? 'completed' : 'planning'; update(trip.id, { data: { ...trip, status: nextStatus } as unknown as Partial<TripData> }); }} className="text-gray-500 hover:text-neon-cyan p-1" title="Advance status">
+                        <CheckSquare className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => remove(trip.id)} disabled={deleteMut.isPending} className="text-gray-500 hover:text-red-400 p-1">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                   {/* Budget progress bar */}
                   {trip.budget > 0 && (
@@ -407,8 +428,132 @@ export default function TravelLensPage() {
 
       <RealtimeDataPanel domain="travel" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
 
+      {/* Travel Actions Panel */}
+      <div className="p-4 border-t border-white/10">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold text-gray-300 flex items-center gap-2">
+            <Zap className="w-4 h-4 text-neon-cyan" />
+            Travel Actions
+          </h3>
+          {travelActionResult && (
+            <button onClick={() => setTravelActionResult(null)} className="p-1 rounded hover:bg-white/5 text-gray-400">
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-2 mb-3">
+          {(['tripBudget', 'packingList', 'jetlagCalc', 'visaCheck'] as const).map((action) => (
+            <button
+              key={action}
+              onClick={() => handleTravelAction(action)}
+              disabled={!items[0]?.id || travelActiveAction !== null}
+              className="px-3 py-1.5 text-sm rounded-lg bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/30 hover:bg-neon-cyan/20 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {travelActiveAction === action ? (
+                <div className="w-3 h-3 border border-neon-cyan border-t-transparent rounded-full animate-spin" />
+              ) : null}
+              {action === 'tripBudget' ? 'Trip Budget' : action === 'packingList' ? 'Packing List' : action === 'jetlagCalc' ? 'Jetlag Calc' : 'Visa Check'}
+            </button>
+          ))}
+        </div>
+        {travelActionResult && (
+          <div className="panel p-3 space-y-2 text-sm">
+            {travelActionResult.action === 'tripBudget' && (() => {
+              const r = travelActionResult.result;
+              const breakdown = r.breakdown as Record<string, unknown> | undefined;
+              return (
+                <div className="space-y-2">
+                  <div className="flex gap-4 text-xs">
+                    <span className="text-gray-400">Destination: <span className="text-white">{String(r.destination ?? '-')}</span></span>
+                    <span className="text-gray-400">Days: <span className="text-white">{String(r.days ?? 0)}</span></span>
+                    <span className="text-gray-400">Style: <span className="text-white capitalize">{String(r.style ?? '-')}</span></span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-400 text-xs">Total:</span>
+                    <span className="text-neon-green font-bold text-lg">${String(r.totalEstimate ?? 0)}</span>
+                    <span className="text-gray-400 text-xs ml-2">${String(r.perDay ?? 0)}/day</span>
+                  </div>
+                  {breakdown && (
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                      {Object.entries(breakdown).map(([key, val]) => (
+                        <div key={key} className="bg-lattice-elevated px-2 py-1 rounded">
+                          <span className="text-gray-400 capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}: </span>
+                          <span className="text-white">${String(val)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+            {travelActionResult.action === 'packingList' && (() => {
+              const r = travelActionResult.result;
+              const essentials = Array.isArray(r.essentials) ? r.essentials as string[] : [];
+              const clothing = Array.isArray(r.clothing) ? r.clothing as string[] : [];
+              const purposeSpecific = Array.isArray(r.purposeSpecific) ? r.purposeSpecific as string[] : [];
+              return (
+                <div className="space-y-2">
+                  <div className="text-xs text-gray-400">Total Items: <span className="text-white font-medium">{String(r.totalItems ?? 0)}</span></div>
+                  <div className="grid grid-cols-3 gap-2 text-xs">
+                    <div>
+                      <p className="text-gray-500 mb-1">Essentials</p>
+                      {essentials.slice(0, 4).map((i, idx) => <div key={idx} className="text-gray-300">• {i}</div>)}
+                    </div>
+                    <div>
+                      <p className="text-gray-500 mb-1">Clothing</p>
+                      {clothing.slice(0, 4).map((i, idx) => <div key={idx} className="text-gray-300">• {i}</div>)}
+                    </div>
+                    <div>
+                      <p className="text-gray-500 mb-1">Purpose</p>
+                      {purposeSpecific.slice(0, 4).map((i, idx) => <div key={idx} className="text-gray-300">• {i}</div>)}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+            {travelActionResult.action === 'jetlagCalc' && (() => {
+              const r = travelActionResult.result;
+              const severity = String(r.severity ?? 'mild');
+              const sevColor = severity === 'severe' ? 'text-red-400' : severity === 'moderate' ? 'text-yellow-400' : 'text-neon-green';
+              const tips = Array.isArray(r.tips) ? r.tips as string[] : [];
+              return (
+                <div className="space-y-2">
+                  <div className="flex gap-4 text-xs">
+                    <span className="text-gray-400">Shift: <span className="text-white">{String(r.timezoneShift ?? '-')}</span></span>
+                    <span className="text-gray-400">Recovery: <span className="text-white">{String(r.recoveryDays ?? 0)} days</span></span>
+                    <span className="text-gray-400">Severity: <span className={`font-medium ${sevColor}`}>{severity}</span></span>
+                  </div>
+                  <div className="text-xs text-gray-400 space-y-0.5">
+                    {tips.slice(0, 3).map((tip, i) => <div key={i} className="text-gray-300">• {tip}</div>)}
+                  </div>
+                </div>
+              );
+            })()}
+            {travelActionResult.action === 'visaCheck' && (() => {
+              const r = travelActionResult.result;
+              const required = r.visaRequired as boolean;
+              return (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3 text-xs">
+                    <span className="text-gray-400">{String(r.passport ?? '-')} → {String(r.destination ?? '-')}</span>
+                    <span className={`font-semibold px-2 py-0.5 rounded text-xs ${required ? 'bg-red-500/20 text-red-400' : 'bg-neon-green/20 text-neon-green'}`}>
+                      {required ? 'Visa Required' : 'Visa Free'}
+                    </span>
+                  </div>
+                  <div className="text-xs text-gray-400">
+                    Type: <span className="text-white">{String(r.type ?? '-').replace(/-/g, ' ')}</span>
+                    {!required && <span className="ml-3">Max stay: <span className="text-white">{String(r.maxVisaFreeStay ?? '-')}</span></span>}
+                  </div>
+                  <div className="text-xs text-gray-500 italic">{String(r.disclaimer ?? '')}</div>
+                </div>
+              );
+            })()}
+          </div>
+        )}
+      </div>
+
       <div className="border-t border-white/10">
-        <button onClick={() => setShowFeatures(!showFeatures)} className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-400 hover:text-white transition-colors">
+        <button onClick={() => setShowFeatures(!showFeatures)} className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg">
           <span className="flex items-center gap-2"><Layers className="w-4 h-4" />Lens Features & Capabilities</span>
           <ChevronDown className={cn('w-4 h-4 transition-transform', showFeatures && 'rotate-180')} />
         </button>

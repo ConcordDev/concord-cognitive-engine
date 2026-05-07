@@ -5,14 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
-import {
-  Network,
-  X,
-  ChevronRight,
-  Loader2,
-  RefreshCw,
-  AlertCircle,
-} from 'lucide-react';
+import { Network, X, ChevronRight, Loader2, RefreshCw, AlertCircle } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
 // ---------------------------------------------------------------------------

@@ -3,12 +3,12 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensData } from '@/lib/hooks/use-lens-data';
+import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Shirt, Plus, Search, Trash2, Star, Tag, Palette,
-  Calendar, DollarSign, Layers, ChevronDown, X,
-  Heart, Eye, Sparkles, Grid3X3, List,
+  Shirt, Plus, Search, Trash2, Star, Tag, Palette, DollarSign, Layers, ChevronDown, X,
+  Heart, Eye, Sparkles, Grid3X3, List, Loader2, Zap, TrendingUp, BarChart3,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -71,7 +71,7 @@ export default function FashionLensPage() {
   const [search, setSearch] = useState('');
   const [catFilter, setCatFilter] = useState('');
   const [showCreate, setShowCreate] = useState(false);
-  const [showFeatures, setShowFeatures] = useState(false);
+  const [showFeatures, setShowFeatures] = useState(true);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [newItem, setNewItem] = useState({ name: '', category: 'Tops', color: '', brand: '', price: 0, season: 'All Season', size: '' });
 
@@ -90,6 +90,21 @@ export default function FashionLensPage() {
     items, isLoading, isError, error, refetch,
     create, createMut, remove, deleteMut,
   } = useLensData<FashionItem>('fashion', 'garment', { seed: [] });
+
+  const runAction = useRunArtifact('fashion');
+  const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
+  const [isRunning, setIsRunning] = useState<string | null>(null);
+
+  const handleFashionAction = useCallback(async (action: string) => {
+    const targetId = items[0]?.id;
+    if (!targetId) return;
+    setIsRunning(action);
+    try {
+      const res = await runAction.mutateAsync({ id: targetId, action });
+      if (res.ok === false) { setActionResult({ _action: action, message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setActionResult({ _action: action, ...(res.result as Record<string, unknown>) }); }
+    } catch (e) { console.error(`Action ${action} failed:`, e); setActionResult({ message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` }); }
+    setIsRunning(null);
+  }, [items, runAction]);
 
   const garments = useMemo(() =>
     items.map(item => ({ id: item.id, ...item.data, name: item.title || item.data?.name || 'Untitled' }))
@@ -126,7 +141,7 @@ export default function FashionLensPage() {
   const toggleFavorite = useCallback((id: string) => {
     setFavorites(prev => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
   }, []);
@@ -159,6 +174,181 @@ export default function FashionLensPage() {
       </header>
 
       <UniversalActions domain="fashion" artifactId={items[0]?.id} compact />
+
+      {/* Action Panel */}
+      <div className="panel p-4 space-y-3">
+        <h2 className="font-semibold text-sm flex items-center gap-2">
+          <Zap className="w-4 h-4 text-neon-purple" />
+          Fashion Actions
+        </h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          {[
+            { action: 'styleProfile',  label: 'Style Profile',   icon: Shirt,      color: 'text-neon-purple' },
+            { action: 'outfitSuggest', label: 'Outfit Suggest',  icon: Sparkles,   color: 'text-pink-400' },
+            { action: 'trendAnalysis', label: 'Trend Analysis',  icon: TrendingUp, color: 'text-neon-cyan' },
+            { action: 'costPerWear',   label: 'Cost Per Wear',   icon: BarChart3,  color: 'text-neon-green' },
+          ].map(({ action, label, icon: Icon, color }) => (
+            <button
+              key={action}
+              onClick={() => handleFashionAction(action)}
+              disabled={!!isRunning || !items[0]?.id}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-lattice-deep border border-lattice-border text-sm hover:border-white/20 disabled:opacity-40 transition-colors"
+            >
+              {isRunning === action ? <Loader2 className="w-4 h-4 animate-spin" /> : <Icon className={`w-4 h-4 ${color}`} />}
+              <span className="truncate">{label}</span>
+            </button>
+          ))}
+        </div>
+
+        {actionResult && (
+          <div className="mt-3 rounded-lg bg-black/30 border border-white/10 p-4 relative">
+            <button onClick={() => setActionResult(null)} className="absolute top-3 right-3 text-gray-500 hover:text-white">
+              <X className="w-4 h-4" />
+            </button>
+
+            {/* styleProfile */}
+            {actionResult._action === 'styleProfile' && (
+              <div className="space-y-3">
+                <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Style Profile</p>
+                {(actionResult.message as string) ? (
+                  <p className="text-sm text-gray-400">{actionResult.message as string}</p>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {[
+                        { label: 'Items', value: String(actionResult.wardrobeSize ?? 0) },
+                        { label: 'Style', value: String(actionResult.style ?? '—') },
+                        { label: 'Season', value: String(actionResult.season ?? '—') },
+                        { label: 'Budget', value: String(actionResult.budget ?? '—') },
+                      ].map(({ label, value }) => (
+                        <div key={label} className="bg-white/5 rounded-lg p-3 text-center">
+                          <p className="text-sm font-bold text-white capitalize">{value}</p>
+                          <p className="text-xs text-gray-400">{label}</p>
+                        </div>
+                      ))}
+                    </div>
+                    {Array.isArray(actionResult.dominantColors) && (actionResult.dominantColors as {color:string;count:number}[]).length > 0 && (
+                      <div>
+                        <p className="text-xs text-gray-500 mb-2">Dominant Colors</p>
+                        <div className="flex flex-wrap gap-2">
+                          {(actionResult.dominantColors as {color:string;count:number}[]).map(c => (
+                            <span key={c.color} className="text-xs px-2 py-1 rounded bg-purple-500/10 border border-purple-500/20 text-purple-300 capitalize">{c.color} ×{c.count}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* outfitSuggest */}
+            {actionResult._action === 'outfitSuggest' && (
+              <div className="space-y-3">
+                <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Outfit Suggestions</p>
+                <div className="flex gap-3 text-xs text-gray-400">
+                  <span>Occasion: <span className="text-white capitalize">{actionResult.occasion as string}</span></span>
+                  <span>Season: <span className="text-white capitalize">{actionResult.season as string}</span></span>
+                </div>
+                {Array.isArray(actionResult.suggestions) && (actionResult.suggestions as Record<string,string>[]).length > 0 ? (
+                  <div className="space-y-2">
+                    {(actionResult.suggestions as Record<string,string>[]).map((s, i) => (
+                      <div key={i} className="bg-white/5 rounded-lg p-3 text-sm">
+                        {s.note ? <p className="text-gray-400 italic">{s.note}</p> : (
+                          <div className="flex flex-wrap gap-3">
+                            {s.top && <span className="text-white">Top: <span className="text-neon-purple">{s.top}</span></span>}
+                            {s.bottom && <span className="text-white">Bottom: <span className="text-neon-cyan">{s.bottom}</span></span>}
+                            {s.outerwear && <span className="text-white">Outerwear: <span className="text-yellow-400">{s.outerwear}</span></span>}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-400">No suggestions available — add wardrobe items.</p>
+                )}
+              </div>
+            )}
+
+            {/* trendAnalysis */}
+            {actionResult._action === 'trendAnalysis' && (
+              <div className="space-y-3">
+                <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Trend Analysis</p>
+                {(actionResult.message as string) ? (
+                  <p className="text-sm text-gray-400">{actionResult.message as string}</p>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-3 gap-3">
+                      {[
+                        { label: 'Total Trends', value: String(actionResult.totalTrends ?? 0), color: 'text-white' },
+                        { label: 'Categories', value: String(actionResult.categories ?? 0), color: 'text-neon-cyan' },
+                        { label: 'Hottest', value: String(actionResult.hottest ?? '—'), color: 'text-pink-400' },
+                      ].map(({ label, value, color }) => (
+                        <div key={label} className="bg-white/5 rounded-lg p-3 text-center">
+                          <p className={`text-sm font-bold ${color} capitalize`}>{value}</p>
+                          <p className="text-xs text-gray-400">{label}</p>
+                        </div>
+                      ))}
+                    </div>
+                    {Array.isArray(actionResult.byCategory) && (
+                      <div className="space-y-1">
+                        {(actionResult.byCategory as {category:string;count:number;trending:number}[]).map(c => (
+                          <div key={c.category} className="flex items-center gap-3 text-xs">
+                            <span className="text-gray-400 w-24 capitalize truncate">{c.category}</span>
+                            <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
+                              <div className="h-full bg-neon-purple/60 rounded-full" style={{ width: `${Math.min(100,(c.count/((actionResult.totalTrends as number)||1))*100)}%` }} />
+                            </div>
+                            <span className="text-white w-6 text-right">{c.count}</span>
+                            <span className="text-neon-green w-12 text-right">{c.trending} trending</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* costPerWear */}
+            {actionResult._action === 'costPerWear' && (
+              <div className="space-y-3">
+                <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Cost Per Wear</p>
+                {(actionResult.message as string) ? (
+                  <p className="text-sm text-gray-400">{actionResult.message as string}</p>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-3 gap-3">
+                      {[
+                        { label: 'Best Value', value: String(actionResult.bestValue ?? '—'), color: 'text-neon-green' },
+                        { label: 'Worst Value', value: String(actionResult.worstValue ?? '—'), color: 'text-red-400' },
+                        { label: 'Avg $/Wear', value: `$${actionResult.avgCostPerWear ?? 0}`, color: 'text-neon-cyan' },
+                      ].map(({ label, value, color }) => (
+                        <div key={label} className="bg-white/5 rounded-lg p-3 text-center">
+                          <p className={`text-sm font-bold ${color}`}>{value}</p>
+                          <p className="text-xs text-gray-400">{label}</p>
+                        </div>
+                      ))}
+                    </div>
+                    {Array.isArray(actionResult.items) && (
+                      <div className="space-y-1 max-h-36 overflow-y-auto">
+                        {(actionResult.items as {name:string;costPerWear:number;wears:number;value:string}[]).map(item => (
+                          <div key={item.name} className="flex items-center gap-3 text-xs px-2 py-1 rounded bg-white/5">
+                            <span className="flex-1 text-white truncate">{item.name}</span>
+                            <span className="text-gray-400">{item.wears}× worn</span>
+                            <span className="text-neon-green font-mono">${item.costPerWear}/wear</span>
+                            <span className={`px-1.5 py-0.5 rounded text-[10px] ${item.value === 'excellent' ? 'bg-neon-green/20 text-neon-green' : item.value === 'good' ? 'bg-neon-cyan/20 text-neon-cyan' : item.value === 'moderate' ? 'bg-yellow-400/20 text-yellow-400' : 'bg-red-400/20 text-red-400'}`}>{item.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {actionResult.tip && <p className="text-xs text-gray-500 italic">{actionResult.tip as string}</p>}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       <AnimatePresence>
         {showCreate && (
@@ -269,7 +459,7 @@ export default function FashionLensPage() {
                       <button onClick={() => toggleFavorite(g.id)} className="p-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <Heart className={cn('w-4 h-4', favorites.has(g.id) ? 'fill-pink-500 text-pink-500' : 'text-gray-500')} />
                       </button>
-                      <button onClick={() => remove(g.id)} className="p-1 opacity-0 group-hover:opacity-100 transition-opacity text-gray-500 hover:text-red-400"><Trash2 className="w-4 h-4" /></button>
+                      <button onClick={() => remove(g.id)} disabled={deleteMut.isPending} className="p-1 opacity-0 group-hover:opacity-100 transition-opacity text-gray-500 hover:text-red-400">{deleteMut.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}</button>
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-1.5 text-xs mb-2">
@@ -312,7 +502,7 @@ export default function FashionLensPage() {
                   <div className="flex items-center gap-3">
                     {g.condition && <span className={cn('text-[10px] px-2 py-0.5 rounded border', CONDITION_COLORS[g.condition])}>{g.condition}</span>}
                     {g.price > 0 && <span className="text-sm font-medium text-neon-green">${g.price}</span>}
-                    <button onClick={() => remove(g.id)} className="p-1 opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => remove(g.id)} disabled={deleteMut.isPending} className="p-1 opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-400">{deleteMut.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}</button>
                   </div>
                 </motion.div>
               ))}
@@ -408,7 +598,7 @@ export default function FashionLensPage() {
       <RealtimeDataPanel domain="fashion" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
 
       <div className="border-t border-white/10">
-        <button onClick={() => setShowFeatures(!showFeatures)} className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-400 hover:text-white transition-colors">
+        <button onClick={() => setShowFeatures(!showFeatures)} className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg">
           <span className="flex items-center gap-2"><Layers className="w-4 h-4" />Lens Features & Capabilities</span>
           <ChevronDown className={cn('w-4 h-4 transition-transform', showFeatures && 'rotate-180')} />
         </button>

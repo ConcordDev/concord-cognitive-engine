@@ -225,7 +225,122 @@ export type SocketEvent =
   // Spontaneous initiative events (proactive messages from Concord)
   | 'initiative:new'
   // Chat tool execution results
-  | 'chat:tool_result';
+  | 'chat:tool_result'
+  // Feed Manager real-time DTU events
+  | 'feed:new-dtu'
+  // City / World lens events
+  | 'city:positions'
+  | 'city:stream-started'
+  | 'city:stream-ended'
+  | 'city:stream-dtu-created'
+  | 'city:stream-sale'
+  // Comments
+  | 'comment:added'
+  // Activity feed
+  | 'activity:new'
+  // Collaborative editing (Yjs)
+  | 'yjs:update'
+  // Server health checks
+  | 'health:pulse'
+  // Platform presence
+  | 'platform:activity'
+  // Quest realtime push (emergent quests)
+  | 'quest:new'
+  // Phase 8: player-to-player trade
+  | 'trade:request'
+  | 'trade:offer_updated'
+  | 'trade:other_ready'
+  | 'trade:complete'
+  | 'trade:cancelled'
+  // Phase 9: party / group system
+  | 'party:invite'
+  | 'party:invite_declined'
+  | 'party:member_joined'
+  | 'party:member_left'
+  | 'party:leader_changed'
+  | 'party:kicked'
+  | 'party:chat'
+  // Phase 19: retention hooks
+  | 'daily:login_recorded'
+  // Wave 1 deferral 3: level-up rank crossing
+  | 'level:up'
+  // GameJuice event mesh — fanfare/coin-clink/badge triggers from server
+  | 'quest:completed'
+  | 'quest:lineage-quest'
+  | 'marketplace:purchase'
+  | 'marketplace:sale'
+  | 'skill:xp-awarded'
+  | 'coop:raid:progress'
+  | 'coop:raid:completed'
+  | 'coop:build:edit'
+  | 'coop:stash:withdraw'
+  | 'reputation:badge-earned'
+  // Refusal Field — Sovereign / quest beats / Mass Raid declare gates per world
+  | 'world:refusal-field'
+  // EvoAsset evolution scheduler — promoted version notification
+  | 'evo:asset-promoted'
+  // Council Live Theater stream
+  | 'council:theater:scheduled'
+  | 'council:theater:started'
+  | 'council:theater:voice'
+  | 'council:theater:complete'
+  // Combat netcode
+  | 'combat:dodge:ack'
+  | 'combat:block:ack'
+  // Flow Combat — procedural emergent combat
+  | 'combat:combo-evolved'
+  | 'combat:npc-combo-evolved'
+  // PvP Training Match
+  | 'training:challenge'
+  | 'training:start'
+  | 'training:safe-reset'
+  | 'training:resume'
+  | 'training:round-end'
+  | 'training:end'
+  // Faction wars (NPCs evolving in background; players can join either side)
+  | 'faction-war:tick'
+  | 'faction-war:kill'
+  | 'faction-war:end'
+  // World scheduler
+  | 'world:event:scheduled'
+  // Tier 3 deferral 12: faction event scheduler
+  | 'faction:event_started'
+  | 'faction:event_ended'
+  // The Concord Link cross-world messaging
+  | 'concord-link:message'
+  // World travel
+  | 'world:traveled'
+  // World crisis (world-crisis.js emits these from server-side governor tick)
+  | 'world:crisis'
+  | 'world:crisis-resolved'
+  // Combat telegraph — fires immediately before applyAttack resolves so
+  // clients can render anticipation pose / weapon glow / stance shift.
+  | 'combat:telegraph'
+  // Combat hit + kill — server broadcasts on damage applied.
+  | 'combat:hit'
+  | 'combat:kill'
+  // Combat combo evolution — server emits when flow-engine derives a new branch.
+  | 'combat:combo-evolved'
+  // Companions (pet/tame system) — Phase A of pre-playtest sprint.
+  | 'companion:tame-success'
+  | 'companion:deployed'
+  | 'companion:level-up'
+  // Stealth perception (Phase B) — fires when high-perception observer
+  // breaks a hidden actor's cover.
+  | 'stealth:detected'
+  // Kingdoms (Phase C)
+  | 'kingdom:founded'
+  | 'kingdom:decree-enacted'
+  | 'kingdom:contested'
+  | 'kingdom:fallen'
+  // Fishing (Phase D)
+  | 'fishing:cast'
+  | 'fishing:bite'
+  | 'fishing:caught'
+  // Minigames (Phase E)
+  | 'minigame:started'
+  | 'minigame:scored'
+  | 'minigame:complete';
 
 // ---- Enriched Event Payload (Category 2+5: Concurrency + Observability) ----
 interface EnrichedPayload {

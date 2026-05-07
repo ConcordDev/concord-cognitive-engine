@@ -1,9 +1,9 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Search, ChevronsLeft, ChevronsRight, RefreshCw, Globe, TrendingUp, Map } from 'lucide-react';
+import { Search, ChevronsLeft, ChevronsRight, RefreshCw, Globe, TrendingUp, Map, Loader2, BarChart3, Network, GitBranch } from 'lucide-react';
 import { apiHelpers } from '@/lib/api/client';
 import { useLensNav } from '@/hooks/useLensNav';
 import { getCommandPaletteLenses } from '@/lib/lens-registry';
@@ -32,13 +32,36 @@ const REGIONS = [
   { name: 'Africa', flag: '\u{1F1F3}\u{1F1EC}', index: 48, trend: 'up' as const, color: 'text-amber-400' },
 ];
 
+// ---- Action result types ----
+interface CrossDomainResult {
+  query: string; matchCount: number; totalCandidates: number; sourcesSearched: number;
+  diversityLabel: string; diversityScore: number;
+  results: { id: string; title?: string; text?: string; domain: string; relevanceScore: number; tags?: string[] }[];
+  sourceDistribution: Record<string, number>;
+  deduplication: { duplicatesFound: number; uniqueResults: number };
+}
+interface DashboardResult {
+  totalMetrics: number; domains: number; normalization: string; overallComposite: number; overallGrade: string;
+  rankings: { domain: string; compositeScore: number; grade: string; rank: number }[];
+  strengths: { domain: string; metric: string; score: number }[];
+  weaknesses: { domain: string; metric: string; score: number }[];
+}
+interface CorrelationResult {
+  variables: number; observations: number; method: string;
+  significantCount: number;
+  significantCorrelations: { var1: string; var2: string; pearson: number; spearman: number; strength: string; direction: string; pValue: number }[];
+  unexpectedRelationships: { var1: string; var2: string; strength: string; direction: string }[];
+  collinearGroups: string[][];
+  variableStatistics: { name: string; domain: string; mean: number; std: number }[];
+}
+
 export default function GlobalLensPage() {
   useLensNav('global');
   const queryClient = useQueryClient();
   const [query, setQuery] = useState('');
   const [tags, setTags] = useState('');
   const [offset, setOffset] = useState(0);
-  const [activeTab, setActiveTab] = useState<'regions' | 'trends' | 'indicators'>('regions');
+  const [activeTab, setActiveTab] = useState<'regions' | 'trends' | 'indicators' | 'actions'>('regions');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('global');
 
   // --- Action wiring ---
@@ -120,6 +143,7 @@ export default function GlobalLensPage() {
     { key: 'regions' as const, label: 'Regions', icon: Globe },
     { key: 'trends' as const, label: 'Trends', icon: TrendingUp },
     { key: 'indicators' as const, label: 'Indicators', icon: Map },
+    { key: 'actions' as const, label: 'Actions', icon: BarChart3 },
   ];
 
   return (
@@ -391,6 +415,252 @@ export default function GlobalLensPage() {
                 </motion.div>
               ))}
             </div>
+          </motion.div>
+        )}
+
+        {activeTab === 'actions' && (
+          <motion.div
+            key="actions"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            transition={{ duration: 0.25 }}
+            className="space-y-4"
+          >
+            {/* Action Buttons */}
+            <div className="panel p-4">
+              <h2 className="font-semibold mb-4 flex items-center gap-2">
+                <Network className="w-4 h-4 text-neon-cyan" /> Global Domain Actions
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {[
+                  { action: 'crossDomainSearch', label: 'Cross-Domain Search', icon: Search, color: 'neon-cyan', desc: 'Merge results with relevance scoring across all sources' },
+                  { action: 'aggregateDashboard', label: 'Aggregate Dashboard', icon: BarChart3, color: 'neon-green', desc: 'Normalize metrics and compute composite indices per domain' },
+                  { action: 'correlationMatrix', label: 'Correlation Matrix', icon: GitBranch, color: 'neon-purple', desc: 'Pearson & Spearman correlations, unexpected relationships' },
+                ].map(({ action, label, icon: Icon, color, desc }) => (
+                  <button
+                    key={action}
+                    onClick={() => handleRunAction(action)}
+                    disabled={runAction.isPending || !globalArtifacts[0]?.id}
+                    className={cn(
+                      'p-4 rounded-lg border text-left transition-all disabled:opacity-50 disabled:cursor-not-allowed',
+                      `bg-${color}/5 border-${color}/20 hover:bg-${color}/10 hover:border-${color}/40`
+                    )}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      {runAction.isPending && actionResult === null ? (
+                        <Loader2 className={`w-4 h-4 text-${color} animate-spin`} />
+                      ) : (
+                        <Icon className={`w-4 h-4 text-${color}`} />
+                      )}
+                      <span className="text-sm font-semibold text-white">{label}</span>
+                    </div>
+                    <p className="text-xs text-gray-400">{desc}</p>
+                  </button>
+                ))}
+              </div>
+              {!globalArtifacts[0]?.id && (
+                <p className="text-xs text-gray-500 mt-3 text-center">Create a global-dataset artifact first to run actions.</p>
+              )}
+            </div>
+
+            {/* Result Display */}
+            {runAction.isPending && (
+              <div className="panel p-6 flex items-center justify-center gap-3">
+                <Loader2 className="w-5 h-5 text-neon-cyan animate-spin" />
+                <span className="text-sm text-gray-400">Running action...</span>
+              </div>
+            )}
+
+            {actionResult && !runAction.isPending && (() => {
+              if (actionResult.action === 'crossDomainSearch') {
+                const r = actionResult.data as CrossDomainResult;
+                return (
+                  <div className="panel p-4 space-y-4">
+                    <h3 className="font-semibold text-neon-cyan flex items-center gap-2"><Search className="w-4 h-4" /> Cross-Domain Search Results</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {[
+                        { label: 'Query', value: `"${r.query}"` },
+                        { label: 'Matches', value: r.matchCount },
+                        { label: 'Candidates', value: r.totalCandidates },
+                        { label: 'Sources Searched', value: r.sourcesSearched },
+                      ].map(({ label, value }) => (
+                        <div key={label} className="lens-card text-center">
+                          <p className="text-lg font-bold text-white truncate">{value}</p>
+                          <p className="text-xs text-gray-400">{label}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-gray-500">Diversity:</span>
+                      <span className={cn('text-xs px-2 py-0.5 rounded font-medium',
+                        r.diversityScore > 0.7 ? 'bg-neon-green/10 text-neon-green' :
+                        r.diversityScore > 0.4 ? 'bg-yellow-400/10 text-yellow-400' : 'bg-red-400/10 text-red-400'
+                      )}>{r.diversityLabel}</span>
+                      <span className="text-xs text-gray-400">Duplicates removed: {r.deduplication.duplicatesFound}</span>
+                    </div>
+                    {r.results.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-xs text-gray-500 uppercase tracking-wider">Top Results</p>
+                        {r.results.slice(0, 5).map((item, i) => (
+                          <div key={i} className="lens-card flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-white truncate">{item.title || item.id}</p>
+                              {item.text && <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">{item.text}</p>}
+                              <span className="text-xs text-gray-500 mt-1 inline-block">{item.domain}</span>
+                            </div>
+                            <span className="text-xs font-mono text-neon-cyan shrink-0">score: {item.relevanceScore}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {Object.keys(r.sourceDistribution).length > 0 && (
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Source Distribution</p>
+                        <div className="flex flex-wrap gap-2">
+                          {Object.entries(r.sourceDistribution).map(([src, cnt]) => (
+                            <span key={src} className="text-xs px-2 py-1 rounded bg-neon-cyan/10 text-neon-cyan">{src}: {cnt}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+              if (actionResult.action === 'aggregateDashboard') {
+                const r = actionResult.data as DashboardResult;
+                return (
+                  <div className="panel p-4 space-y-4">
+                    <h3 className="font-semibold text-neon-green flex items-center gap-2"><BarChart3 className="w-4 h-4" /> Aggregate Dashboard</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <div className="lens-card text-center">
+                        <p className="text-2xl font-bold text-neon-green">{r.overallComposite}</p>
+                        <p className="text-xs text-gray-400">Overall Score</p>
+                      </div>
+                      <div className="lens-card text-center">
+                        <p className={cn('text-2xl font-bold', r.overallGrade === 'A+' || r.overallGrade === 'A' ? 'text-neon-green' : r.overallGrade === 'B' ? 'text-neon-cyan' : 'text-yellow-400')}>{r.overallGrade}</p>
+                        <p className="text-xs text-gray-400">Grade</p>
+                      </div>
+                      <div className="lens-card text-center">
+                        <p className="text-2xl font-bold text-white">{r.domains}</p>
+                        <p className="text-xs text-gray-400">Domains</p>
+                      </div>
+                      <div className="lens-card text-center">
+                        <p className="text-2xl font-bold text-white">{r.totalMetrics}</p>
+                        <p className="text-xs text-gray-400">Metrics</p>
+                      </div>
+                    </div>
+                    {r.rankings.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-xs text-gray-500 uppercase tracking-wider">Domain Rankings</p>
+                        {r.rankings.map((rank) => (
+                          <div key={rank.domain} className="lens-card flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <span className="text-sm font-bold text-gray-500 w-5">#{rank.rank}</span>
+                              <span className="text-sm text-white">{rank.domain}</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <div className="w-24 h-2 bg-lattice-deep rounded-full overflow-hidden">
+                                <div className="h-full bg-neon-green rounded-full" style={{ width: `${rank.compositeScore * 100}%` }} />
+                              </div>
+                              <span className="text-xs font-mono text-gray-300 w-8">{rank.compositeScore}</span>
+                              <span className={cn('text-xs px-1.5 py-0.5 rounded font-bold',
+                                rank.grade === 'A+' || rank.grade === 'A' ? 'bg-neon-green/20 text-neon-green' :
+                                rank.grade === 'B' ? 'bg-neon-cyan/20 text-neon-cyan' :
+                                rank.grade === 'C' ? 'bg-yellow-400/20 text-yellow-400' : 'bg-red-400/20 text-red-400'
+                              )}>{rank.grade}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {r.strengths.length > 0 && (
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-xs text-neon-green uppercase tracking-wider mb-2">Top Strengths</p>
+                          {r.strengths.map((s, i) => (
+                            <div key={i} className="text-xs flex justify-between py-1 border-b border-white/5">
+                              <span className="text-gray-300">{s.domain} / {s.metric}</span>
+                              <span className="text-neon-green font-mono">{s.score}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <div>
+                          <p className="text-xs text-red-400 uppercase tracking-wider mb-2">Weaknesses</p>
+                          {r.weaknesses.map((w, i) => (
+                            <div key={i} className="text-xs flex justify-between py-1 border-b border-white/5">
+                              <span className="text-gray-300">{w.domain} / {w.metric}</span>
+                              <span className="text-red-400 font-mono">{w.score}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+              if (actionResult.action === 'correlationMatrix') {
+                const r = actionResult.data as CorrelationResult;
+                return (
+                  <div className="panel p-4 space-y-4">
+                    <h3 className="font-semibold text-neon-purple flex items-center gap-2"><GitBranch className="w-4 h-4" /> Correlation Matrix</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <div className="lens-card text-center">
+                        <p className="text-2xl font-bold text-white">{r.variables}</p>
+                        <p className="text-xs text-gray-400">Variables</p>
+                      </div>
+                      <div className="lens-card text-center">
+                        <p className="text-2xl font-bold text-white">{r.observations}</p>
+                        <p className="text-xs text-gray-400">Observations</p>
+                      </div>
+                      <div className="lens-card text-center">
+                        <p className="text-2xl font-bold text-neon-cyan">{r.significantCount}</p>
+                        <p className="text-xs text-gray-400">Significant Pairs</p>
+                      </div>
+                      <div className="lens-card text-center">
+                        <p className="text-2xl font-bold text-yellow-400">{r.collinearGroups.length}</p>
+                        <p className="text-xs text-gray-400">Collinear Groups</p>
+                      </div>
+                    </div>
+                    {r.significantCorrelations.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-xs text-gray-500 uppercase tracking-wider">Top Significant Correlations</p>
+                        {r.significantCorrelations.slice(0, 6).map((pair, i) => (
+                          <div key={i} className="lens-card flex items-center justify-between gap-3">
+                            <span className="text-sm text-white">{pair.var1} — {pair.var2}</span>
+                            <div className="flex items-center gap-2">
+                              <span className={cn('text-xs px-1.5 py-0.5 rounded',
+                                pair.direction === 'positive' ? 'bg-neon-green/10 text-neon-green' : 'bg-red-400/10 text-red-400'
+                              )}>{pair.direction}</span>
+                              <span className="text-xs text-gray-400">{pair.strength}</span>
+                              <span className="text-xs font-mono text-neon-purple">r={pair.pearson}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {r.variableStatistics.length > 0 && (
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Variable Statistics</p>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                          {r.variableStatistics.map((v, i) => (
+                            <div key={i} className="lens-card text-xs">
+                              <p className="font-medium text-white">{v.name}</p>
+                              <p className="text-gray-500">{v.domain}</p>
+                              <div className="flex justify-between mt-1">
+                                <span className="text-gray-400">mean: <span className="text-white">{v.mean}</span></span>
+                                <span className="text-gray-400">std: <span className="text-white">{v.std}</span></span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+              return null;
+            })()}
           </motion.div>
         )}
       </AnimatePresence>

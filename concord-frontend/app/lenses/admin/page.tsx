@@ -2,9 +2,10 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { useQuery } from '@tanstack/react-query';
-import { apiHelpers } from '@/lib/api/client';
-import { useState, useMemo } from 'react';
-import { motion } from 'framer-motion';
+import { api, apiHelpers } from '@/lib/api/client';
+import { useState, useMemo, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useRunArtifact, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import {
   Activity,
   Database,
@@ -38,7 +39,24 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { NervousSystem } from '@/components/nervous/NervousSystem';
 import { MonitoringPanel } from '@/components/admin/MonitoringPanel';
-import { Download, Globe, DollarSign, PieChart, BarChart3, Search, Power, Trash2 } from 'lucide-react';
+import { BackupHealth } from '@/components/admin/BackupHealth';
+import { CDNStatus } from '@/components/admin/CDNStatus';
+import { CodeEngineStatus } from '@/components/admin/CodeEngineStatus';
+import { RepairDashboard } from '@/components/admin/RepairDashboard';
+import {
+  Download,
+  Globe,
+  DollarSign,
+  PieChart,
+  BarChart3,
+  Search,
+  Power,
+  Key,
+  Building,
+  Shield,
+  Code2,
+  Wrench,
+} from 'lucide-react';
 
 interface DashboardData {
   ok: boolean;
@@ -237,10 +255,37 @@ export default function AdminDashboardPage() {
     lastUpdated,
   } = useRealtimeLens('admin');
   const [autoRefresh, setAutoRefresh] = useState(true);
-  const [showFeatures, setShowFeatures] = useState(false);
+  const [showFeatures, setShowFeatures] = useState(true);
   const [showTreasury, setShowTreasury] = useState(false);
   const [showPlugins, setShowPlugins] = useState(false);
   const [showMacros, setShowMacros] = useState(false);
+  const [showApiKeys, setShowApiKeys] = useState(false);
+  const [showOrgs, setShowOrgs] = useState(false);
+  const [showQuality, setShowQuality] = useState(false);
+  const [showAuditLog, setShowAuditLog] = useState(false);
+  const [showPermMatrix, setShowPermMatrix] = useState(false);
+  const [showSysHealth, setShowSysHealth] = useState(false);
+  const [showBackupHealth, setShowBackupHealth] = useState(false);
+  const [showCDNStatus, setShowCDNStatus] = useState(false);
+  const [showCodeEngine, setShowCodeEngine] = useState(false);
+  const [showRepairDashboard, setShowRepairDashboard] = useState(false);
+
+  // Backend action hooks
+  const runAction = useRunArtifact('admin');
+  const createArtifact = useCreateArtifact('admin');
+
+  // Action results
+  const [auditLogResult, setAuditLogResult] = useState<Record<string, unknown> | null>(null);
+  const [auditLogLoading, setAuditLogLoading] = useState(false);
+  const [auditLogError, setAuditLogError] = useState<string | null>(null);
+
+  const [permMatrixResult, setPermMatrixResult] = useState<Record<string, unknown> | null>(null);
+  const [permMatrixLoading, setPermMatrixLoading] = useState(false);
+  const [permMatrixError, setPermMatrixError] = useState<string | null>(null);
+
+  const [sysHealthResult, setSysHealthResult] = useState<Record<string, unknown> | null>(null);
+  const [sysHealthLoading, setSysHealthLoading] = useState(false);
+  const [sysHealthError, setSysHealthError] = useState<string | null>(null);
 
   const {
     data: dashboard,
@@ -276,23 +321,205 @@ export default function AdminDashboardPage() {
     refetchInterval: autoRefresh ? 10000 : false,
   });
 
+  // -- Audit Log action handler --
+  const handleRunAuditLog = useCallback(async () => {
+    setAuditLogLoading(true);
+    setAuditLogError(null);
+    try {
+      // Create a temporary artifact seeded with recent log entries
+      const entries = (logs?.logs || []).map((log: Record<string, unknown>) => ({
+        timestamp: String(log.at || new Date().toISOString()),
+        userId: String(log.userId || log.user || 'system'),
+        action: String(log.type || 'unknown'),
+        resource: String(log.resource || log.message || ''),
+        ip: String(log.ip || '127.0.0.1'),
+        success: log.success !== false,
+      }));
+      const created = await createArtifact.mutateAsync({
+        type: 'AuditSnapshot',
+        title: `Audit Log Analysis ${new Date().toLocaleString()}`,
+        data: { entries } as Record<string, unknown>,
+      });
+      const res = await runAction.mutateAsync({
+        id: created.artifact.id,
+        action: 'auditLog',
+        params: { windowMinutes: 60, stdDevThreshold: 2 },
+      });
+      if (res.ok === false) {
+        setAuditLogResult({
+          message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}`,
+        });
+      } else {
+        setAuditLogResult(res.result as Record<string, unknown>);
+      }
+    } catch (e) {
+      console.error('[Admin] Audit log action failed:', e);
+      setAuditLogError(e instanceof Error ? e.message : 'Audit log analysis failed');
+    } finally {
+      setAuditLogLoading(false);
+    }
+  }, [logs, createArtifact, runAction]);
+
+  // -- Permission Matrix action handler --
+  // Fetches the REAL role + user + SoD rules from
+  // /api/admin/permission-matrix/data so the analysis runs against
+  // live org data instead of the hardcoded seed arrays that used to
+  // live here.
+  const handleRunPermMatrix = useCallback(async () => {
+    setPermMatrixLoading(true);
+    setPermMatrixError(null);
+    try {
+      const live = await api
+        .get<{
+          ok: boolean;
+          roles: Array<{ name: string; permissions: string[] }>;
+          users: Array<{ userId: string; roles: string[] }>;
+          sodRules: Array<{ name: string; conflicting: string[] }>;
+        }>('/api/admin/permission-matrix/data')
+        .then((r) => r.data);
+      if (!live?.ok) {
+        throw new Error('Failed to load permission matrix data');
+      }
+      const created = await createArtifact.mutateAsync({
+        type: 'PermSnapshot',
+        title: `Permission Matrix ${new Date().toLocaleString()}`,
+        data: { roles: live.roles, users: live.users, sodRules: live.sodRules } as Record<
+          string,
+          unknown
+        >,
+      });
+      const res = await runAction.mutateAsync({
+        id: created.artifact.id,
+        action: 'permissionMatrix',
+      });
+      if (res.ok === false) {
+        setPermMatrixResult({
+          message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}`,
+        });
+      } else {
+        setPermMatrixResult(res.result as Record<string, unknown>);
+      }
+    } catch (e) {
+      console.error('[Admin] Permission matrix action failed:', e);
+      setPermMatrixError(e instanceof Error ? e.message : 'Permission matrix analysis failed');
+    } finally {
+      setPermMatrixLoading(false);
+    }
+  }, [createArtifact, runAction]);
+
+  // -- System Health action handler --
+  // Pulls the REAL 20-point time series from
+  // /api/admin/system-health/series which is backed by a 1-minute
+  // ring buffer on the server (CPU via process.cpuUsage delta, heap
+  // via process.memoryUsage, latency from the observability ring,
+  // error rate from the log ring). No randomized values.
+  const handleRunSysHealth = useCallback(async () => {
+    setSysHealthLoading(true);
+    setSysHealthError(null);
+    try {
+      const live = await api
+        .get<{
+          ok: boolean;
+          series: Array<{
+            timestamp: string;
+            cpu: number;
+            memory: number;
+            disk: number;
+            latencyMs: number;
+            errorRate: number;
+          }>;
+        }>('/api/admin/system-health/series?points=20')
+        .then((r) => r.data);
+      if (!live?.ok || !Array.isArray(live.series)) {
+        throw new Error('Failed to load health time series');
+      }
+      const created = await createArtifact.mutateAsync({
+        type: 'HealthSnapshot',
+        title: `System Health Check ${new Date().toLocaleString()}`,
+        data: { metrics: live.series } as Record<string, unknown>,
+      });
+      const res = await runAction.mutateAsync({
+        id: created.artifact.id,
+        action: 'systemHealth',
+      });
+      if (res.ok === false) {
+        setSysHealthResult({
+          message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}`,
+        });
+      } else {
+        setSysHealthResult(res.result as Record<string, unknown>);
+      }
+    } catch (e) {
+      console.error('[Admin] System health action failed:', e);
+      setSysHealthError(e instanceof Error ? e.message : 'System health analysis failed');
+    } finally {
+      setSysHealthLoading(false);
+    }
+  }, [createArtifact, runAction]);
+
+  // Quality thresholds
+  const { data: qualityData } = useQuery({
+    queryKey: ['admin-quality-thresholds'],
+    queryFn: () => api.get('/api/quality/thresholds').then((r) => r.data),
+    refetchInterval: autoRefresh ? 30000 : false,
+  });
+
+  // Flywheel metrics & history
+  const { data: flywheelData } = useQuery({
+    queryKey: ['admin-flywheel'],
+    queryFn: () => api.get('/api/flywheel/metrics').then((r) => r.data),
+    refetchInterval: autoRefresh ? 30000 : false,
+  });
+
+  const { data: flywheelHistoryData } = useQuery({
+    queryKey: ['admin-flywheel-history'],
+    queryFn: () => api.get('/api/flywheel/history').then((r) => r.data),
+    refetchInterval: autoRefresh ? 60000 : false,
+  });
+
+  // Organizations
+  const { data: orgsData } = useQuery({
+    queryKey: ['admin-orgs'],
+    queryFn: () => api.get('/api/org/list').then((r) => r.data),
+    refetchInterval: autoRefresh ? 60000 : false,
+    retry: false,
+  });
+
+  // Pipeline executions
+  const { data: pipelineExecsData } = useQuery({
+    queryKey: ['admin-pipeline-executions'],
+    queryFn: () => api.get('/api/pipeline/executions').then((r) => r.data),
+    refetchInterval: autoRefresh ? 30000 : false,
+  });
+
   // Treasury dashboard data (admin only)
   const { data: treasuryData } = useQuery({
     queryKey: ['admin-treasury'],
-    queryFn: () => apiHelpers.economy.adminTreasury().then((r) => r.data as {
-      ok: boolean;
-      totalBalance: number;
-      reserve80: number;
-      operating10: number;
-      payroll10: number;
-      platformBalance: number;
-      revenueHistory: Array<{ date: string; totalFees: number; reserves: number; operating: number; payroll: number; txCount: number }>;
-      feeCollectionRate: number;
-      recentFees: number;
-      priorFees: number;
-      totalDistributed: number;
-      distributionCount: number;
-    }),
+    queryFn: () =>
+      apiHelpers.economy.adminTreasury().then(
+        (r) =>
+          r.data as {
+            ok: boolean;
+            totalBalance: number;
+            reserve80: number;
+            operating10: number;
+            payroll10: number;
+            platformBalance: number;
+            revenueHistory: Array<{
+              date: string;
+              totalFees: number;
+              reserves: number;
+              operating: number;
+              payroll: number;
+              txCount: number;
+            }>;
+            feeCollectionRate: number;
+            recentFees: number;
+            priorFees: number;
+            totalDistributed: number;
+            distributionCount: number;
+          }
+      ),
     enabled: showTreasury,
     retry: false,
     refetchInterval: showTreasury && autoRefresh ? 30000 : false,
@@ -304,9 +531,7 @@ export default function AdminDashboardPage() {
   };
 
   const systemHealth =
-    dashboard?.llm.ollamaReady || dashboard?.llm.ollamaEnabled
-      ? 'healthy'
-      : 'warning';
+    dashboard?.llm.ollamaReady || dashboard?.llm.ollamaEnabled ? 'healthy' : 'warning';
   const organHealth =
     (dashboard?.organs.healthy || 0) / (dashboard?.organs.total || 1) > 0.7 ? 'healthy' : 'warning';
 
@@ -423,45 +648,6 @@ export default function AdminDashboardPage() {
         </div>
       </motion.div>
 
-      {/* System Health Gauge */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.5 }}
-        className="relative overflow-hidden rounded-xl bg-gradient-to-r from-neon-purple/5 via-neon-blue/5 to-neon-green/5 border border-lattice-border p-4"
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="relative w-16 h-16">
-              <svg viewBox="0 0 36 36" className="w-16 h-16 -rotate-90">
-                <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="3" />
-                <motion.path
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  fill="none"
-                  stroke={systemHealth === 'healthy' ? '#22c55e' : '#eab308'}
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                  initial={{ strokeDasharray: '0, 100' }}
-                  animate={{ strokeDasharray: `${systemHealth === 'healthy' ? 92 : 60}, 100` }}
-                  transition={{ duration: 1.2, ease: 'easeOut' }}
-                />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <Activity className={`w-5 h-5 ${systemHealth === 'healthy' ? 'text-green-400' : 'text-yellow-400'}`} />
-              </div>
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-white">System Health</p>
-              <p className="text-xs text-gray-500">All subsystems monitored in real-time</p>
-            </div>
-          </div>
-          <div className="flex gap-4">
-            <StatusBadge status={systemHealth} />
-            <StatusBadge status={organHealth} />
-          </div>
-        </div>
-      </motion.div>
-
       {/* Status Overview */}
       <div className="flex gap-4 sr-only">
         <StatusBadge status={systemHealth} />
@@ -529,7 +715,8 @@ export default function AdminDashboardPage() {
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
-          className="panel p-6">
+          className="panel p-6"
+        >
           <h2 className="font-semibold mb-4 flex items-center gap-2">
             <Activity className="w-5 h-5 text-neon-cyan" />
             Reality Guard (Chicken2)
@@ -567,7 +754,8 @@ export default function AdminDashboardPage() {
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5, delay: 0.3 }}
-          className="panel p-6">
+          className="panel p-6"
+        >
           <h2 className="font-semibold mb-4 flex items-center gap-2">
             <TrendingUp className="w-5 h-5 text-neon-green" />
             Growth OS
@@ -611,7 +799,12 @@ export default function AdminDashboardPage() {
 
       {/* System Resources */}
       <div className="grid md:grid-cols-3 gap-6">
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="panel p-6">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.35 }}
+          className="panel p-6"
+        >
           <h2 className="font-semibold mb-4 flex items-center gap-2">
             <Cpu className="w-5 h-5 text-neon-blue" />
             Memory
@@ -632,7 +825,12 @@ export default function AdminDashboardPage() {
           </div>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="panel p-6">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="panel p-6"
+        >
           <h2 className="font-semibold mb-4 flex items-center gap-2">
             <HardDrive className="w-5 h-5 text-neon-purple" />
             LLM Status
@@ -640,11 +838,7 @@ export default function AdminDashboardPage() {
           <div className="space-y-2">
             <div className="flex justify-between items-center text-sm">
               <span className="text-gray-400">Ollama</span>
-              <span
-                className={`status-dot ${
-                  dashboard?.llm.ollamaReady ? 'success' : 'error'
-                }`}
-              />
+              <span className={`status-dot ${dashboard?.llm.ollamaReady ? 'success' : 'error'}`} />
             </div>
             <div className="flex justify-between items-center text-sm">
               <span className="text-gray-400">Ollama</span>
@@ -659,7 +853,12 @@ export default function AdminDashboardPage() {
           </div>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }} className="panel p-6">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.45 }}
+          className="panel p-6"
+        >
           <h2 className="font-semibold mb-4 flex items-center gap-2">
             <Clock className="w-5 h-5 text-neon-green" />
             Queues
@@ -1251,87 +1450,6 @@ export default function AdminDashboardPage() {
         </AnimatePresence>
       </div>
 
-      {/* System Monitoring — request rate, latency, error rate, circuit breakers */}
-      <MonitoringPanel />
-
-      {/* Nervous System — live brain/circuit/event/trace/integrity monitoring */}
-      <NervousSystem />
-
-      {/* Browser Extension */}
-      <div className="panel p-6">
-        <h2 className="font-semibold mb-3 flex items-center gap-2">
-          <Globe className="w-5 h-5 text-neon-cyan" />
-          Browser Extension
-        </h2>
-        <p className="text-sm text-gray-400 mb-3">
-          Install the Concord Lens browser extension to get structural truth overlays on any website.
-          The extension injects a content script that connects to your local Concord instance.
-        </p>
-        <div className="flex items-center gap-3">
-          <a
-            href="/extension"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 px-4 py-2 bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/30 rounded-lg hover:bg-neon-cyan/20 transition-colors text-sm"
-          >
-            <Download className="w-4 h-4" />
-            Install Concord Browser Extension
-          </a>
-          <span className="text-xs text-gray-500">
-            v0.1.0 — Chrome / Firefox (Manifest V3)
-          </span>
-        </div>
-      </div>
-
-      {/* Treasury Dashboard (Admin Only) */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowTreasury(!showTreasury)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-400 hover:text-white transition-colors"
-        >
-          <span className="flex items-center gap-2">
-            <DollarSign className="w-4 h-4" />
-            Treasury Dashboard
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showTreasury ? 'rotate-180' : ''}`} />
-        </button>
-        {showTreasury && (
-          <div className="px-4 pb-4">
-            <TreasuryDashboard data={treasuryData} />
-          </div>
-        )}
-      </div>
-
-      {/* Feature 45: Plugin Manager */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowPlugins(!showPlugins)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-400 hover:text-white transition-colors"
-        >
-          <span className="flex items-center gap-2">
-            <Box className="w-4 h-4" />
-            Plugin Manager
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showPlugins ? 'rotate-180' : ''}`} />
-        </button>
-        {showPlugins && <PluginManagerPanel />}
-      </div>
-
-      {/* Feature 46: Macro Explorer */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowMacros(!showMacros)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-400 hover:text-white transition-colors"
-        >
-          <span className="flex items-center gap-2">
-            <Zap className="w-4 h-4" />
-            Macro Explorer
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showMacros ? 'rotate-180' : ''}`} />
-        </button>
-        {showMacros && <MacroExplorerPanel />}
-      </div>
-
       {/* Lens Features */}
       <div className="border-t border-white/10">
         <button
@@ -1365,7 +1483,14 @@ interface TreasuryData {
   operating10: number;
   payroll10: number;
   platformBalance: number;
-  revenueHistory: Array<{ date: string; totalFees: number; reserves: number; operating: number; payroll: number; txCount: number }>;
+  revenueHistory: Array<{
+    date: string;
+    totalFees: number;
+    reserves: number;
+    operating: number;
+    payroll: number;
+    txCount: number;
+  }>;
   feeCollectionRate: number;
   recentFees: number;
   priorFees: number;
@@ -1389,7 +1514,7 @@ function TreasuryDashboard({ data }: { data?: TreasuryData }) {
   const payrollPct = totalSplit > 0 ? (data.payroll10 / totalSplit) * 100 : 10;
 
   // Revenue chart: max value for scaling
-  const maxFee = Math.max(...data.revenueHistory.map(d => d.totalFees), 1);
+  const maxFee = Math.max(...data.revenueHistory.map((d) => d.totalFees), 1);
 
   return (
     <div className="space-y-6">
@@ -1429,8 +1554,11 @@ function TreasuryDashboard({ data }: { data?: TreasuryData }) {
           <div className="mt-4">
             <p className="dashboard-stat">${data.recentFees.toLocaleString()}</p>
             <p className="dashboard-label">Fees (30d)</p>
-            <p className={`text-xs mt-1 ${data.feeCollectionRate >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-              {data.feeCollectionRate >= 0 ? '+' : ''}{data.feeCollectionRate}% vs prior 30d
+            <p
+              className={`text-xs mt-1 ${data.feeCollectionRate >= 0 ? 'text-green-400' : 'text-red-400'}`}
+            >
+              {data.feeCollectionRate >= 0 ? '+' : ''}
+              {data.feeCollectionRate}% vs prior 30d
             </p>
           </div>
         </div>
@@ -1458,7 +1586,9 @@ function TreasuryDashboard({ data }: { data?: TreasuryData }) {
           <div>
             <div className="flex justify-between text-sm mb-1">
               <span className="text-gray-400">Reserves (80%)</span>
-              <span className="text-white font-mono">${data.reserve80.toLocaleString()} ({reservePct.toFixed(1)}%)</span>
+              <span className="text-white font-mono">
+                ${data.reserve80.toLocaleString()} ({reservePct.toFixed(1)}%)
+              </span>
             </div>
             <div className="progress-bar">
               <div className="progress-fill bg-neon-green" style={{ width: `${reservePct}%` }} />
@@ -1467,7 +1597,9 @@ function TreasuryDashboard({ data }: { data?: TreasuryData }) {
           <div>
             <div className="flex justify-between text-sm mb-1">
               <span className="text-gray-400">Operating (10%)</span>
-              <span className="text-white font-mono">${data.operating10.toLocaleString()} ({operatingPct.toFixed(1)}%)</span>
+              <span className="text-white font-mono">
+                ${data.operating10.toLocaleString()} ({operatingPct.toFixed(1)}%)
+              </span>
             </div>
             <div className="progress-bar">
               <div className="progress-fill bg-neon-blue" style={{ width: `${operatingPct}%` }} />
@@ -1476,7 +1608,9 @@ function TreasuryDashboard({ data }: { data?: TreasuryData }) {
           <div>
             <div className="flex justify-between text-sm mb-1">
               <span className="text-gray-400">Payroll (10%)</span>
-              <span className="text-white font-mono">${data.payroll10.toLocaleString()} ({payrollPct.toFixed(1)}%)</span>
+              <span className="text-white font-mono">
+                ${data.payroll10.toLocaleString()} ({payrollPct.toFixed(1)}%)
+              </span>
             </div>
             <div className="progress-bar">
               <div className="progress-fill bg-neon-purple" style={{ width: `${payrollPct}%` }} />
@@ -1514,7 +1648,9 @@ function TreasuryDashboard({ data }: { data?: TreasuryData }) {
             })}
           </div>
           <div className="flex justify-between text-xs text-gray-500 mt-2">
-            <span>{data.revenueHistory[Math.max(0, data.revenueHistory.length - 30)]?.date || ''}</span>
+            <span>
+              {data.revenueHistory[Math.max(0, data.revenueHistory.length - 30)]?.date || ''}
+            </span>
             <span>{data.revenueHistory[data.revenueHistory.length - 1]?.date || ''}</span>
           </div>
         </div>
@@ -1528,12 +1664,12 @@ function TreasuryDashboard({ data }: { data?: TreasuryData }) {
 function PluginManagerPanel() {
   const { data: pluginData, isLoading } = useQuery({
     queryKey: ['admin-plugins'],
-    queryFn: () => apiHelpers.plugins.list().then(r => r.data),
+    queryFn: () => apiHelpers.plugins.list().then((r) => r.data),
   });
 
   const { data: metricsData } = useQuery({
     queryKey: ['admin-plugins-metrics'],
-    queryFn: () => apiHelpers.plugins.metrics().then(r => r.data),
+    queryFn: () => apiHelpers.plugins.metrics().then((r) => r.data),
     retry: false,
   });
 
@@ -1553,15 +1689,21 @@ function PluginManagerPanel() {
           <p className="text-xs text-gray-400">Loaded</p>
         </div>
         <div className="p-3 rounded-lg bg-lattice-deep border border-white/5 text-center">
-          <p className="text-xl font-bold text-neon-purple">{metrics?.pendingGovernanceCount ?? 0}</p>
+          <p className="text-xl font-bold text-neon-purple">
+            {metrics?.pendingGovernanceCount ?? 0}
+          </p>
           <p className="text-xs text-gray-400">Pending</p>
         </div>
         <div className="p-3 rounded-lg bg-lattice-deep border border-white/5 text-center">
-          <p className="text-xl font-bold text-green-400">{metrics?.metrics?.totalHookCalls ?? 0}</p>
+          <p className="text-xl font-bold text-green-400">
+            {metrics?.metrics?.totalHookCalls ?? 0}
+          </p>
           <p className="text-xs text-gray-400">Hook Calls</p>
         </div>
         <div className="p-3 rounded-lg bg-lattice-deep border border-white/5 text-center">
-          <p className="text-xl font-bold text-neon-cyan">{metrics?.metrics?.totalMacroCalls ?? 0}</p>
+          <p className="text-xl font-bold text-neon-cyan">
+            {metrics?.metrics?.totalMacroCalls ?? 0}
+          </p>
           <p className="text-xs text-gray-400">Macro Calls</p>
         </div>
       </div>
@@ -1571,21 +1713,48 @@ function PluginManagerPanel() {
         <p className="text-sm text-gray-500 text-center py-4">No plugins installed</p>
       ) : (
         <div className="space-y-2">
-          {plugins.map((plugin: { id: string; name: string; version?: string; description?: string; author?: string; isEmergentGen?: boolean; macros?: string[]; hooks?: string[]; hasTick?: boolean; loadedAt?: string }) => (
-            <div key={plugin.id} className="p-3 rounded-lg bg-lattice-deep border border-white/5 flex items-center justify-between">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-white truncate">{plugin.name || plugin.id}</span>
-                  {plugin.version && <span className="text-xs text-gray-500">v{plugin.version}</span>}
-                  {plugin.isEmergentGen && <span className="text-xs px-1.5 py-0.5 bg-neon-purple/20 text-neon-purple rounded">emergent</span>}
+          {plugins.map(
+            (plugin: {
+              id: string;
+              name: string;
+              version?: string;
+              description?: string;
+              author?: string;
+              isEmergentGen?: boolean;
+              macros?: string[];
+              hooks?: string[];
+              hasTick?: boolean;
+              loadedAt?: string;
+            }) => (
+              <div
+                key={plugin.id}
+                className="p-3 rounded-lg bg-lattice-deep border border-white/5 flex items-center justify-between"
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-white truncate">
+                      {plugin.name || plugin.id}
+                    </span>
+                    {plugin.version && (
+                      <span className="text-xs text-gray-500">v{plugin.version}</span>
+                    )}
+                    {plugin.isEmergentGen && (
+                      <span className="text-xs px-1.5 py-0.5 bg-neon-purple/20 text-neon-purple rounded">
+                        emergent
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-500 truncate">
+                    {plugin.description ||
+                      `${(plugin.macros || []).length} macros, ${(plugin.hooks || []).length} hooks`}
+                  </p>
                 </div>
-                <p className="text-xs text-gray-500 truncate">{plugin.description || `${(plugin.macros || []).length} macros, ${(plugin.hooks || []).length} hooks`}</p>
+                <div className="flex items-center gap-2">
+                  <Power className="w-4 h-4 text-green-400" />
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Power className="w-4 h-4 text-green-400" />
-              </div>
-            </div>
-          ))}
+            )
+          )}
         </div>
       )}
     </div>
@@ -1599,20 +1768,33 @@ function MacroExplorerPanel() {
 
   const { data: macroData, isLoading } = useQuery({
     queryKey: ['admin-macros-all'],
-    queryFn: () => apiHelpers.adminMacros.all().then(r => r.data),
+    queryFn: () => apiHelpers.adminMacros.all().then((r) => r.data),
   });
 
-  const macros = macroData?.macros || [];
+  const macros = useMemo(() => macroData?.macros || [], [macroData?.macros]);
   const domainCount = macroData?.domainCount || 0;
   const totalMacros = macroData?.totalMacros || macros.length;
 
   // Group by domain, filter by search
   const grouped = useMemo(() => {
     const searchLower = macroSearch.toLowerCase();
-    const filtered = macros.filter((m: { name: string; domain: string; description?: string }) =>
-      !macroSearch || m.name.toLowerCase().includes(searchLower) || m.domain.toLowerCase().includes(searchLower) || (m.description || '').toLowerCase().includes(searchLower)
+    const filtered = macros.filter(
+      (m: { name: string; domain: string; description?: string }) =>
+        !macroSearch ||
+        m.name.toLowerCase().includes(searchLower) ||
+        m.domain.toLowerCase().includes(searchLower) ||
+        (m.description || '').toLowerCase().includes(searchLower)
     );
-    const groups: Record<string, Array<{ name: string; domain: string; description?: string; public?: boolean; plugin?: string | null }>> = {};
+    const groups: Record<
+      string,
+      Array<{
+        name: string;
+        domain: string;
+        description?: string;
+        public?: boolean;
+        plugin?: string | null;
+      }>
+    > = {};
     for (const m of filtered) {
       if (!groups[m.domain]) groups[m.domain] = [];
       groups[m.domain].push(m);
@@ -1628,7 +1810,9 @@ function MacroExplorerPanel() {
     <div data-lens-theme="admin" className="px-4 pb-4 space-y-4">
       {/* Header with stats */}
       <div className="flex items-center justify-between">
-        <p className="text-xs text-gray-400">{totalMacros} macros across {domainCount} domains</p>
+        <p className="text-xs text-gray-400">
+          {totalMacros} macros across {domainCount} domains
+        </p>
       </div>
 
       {/* Search */}
@@ -1637,7 +1821,7 @@ function MacroExplorerPanel() {
         <input
           type="text"
           value={macroSearch}
-          onChange={e => setMacroSearch(e.target.value)}
+          onChange={(e) => setMacroSearch(e.target.value)}
           placeholder="Search macros by name, domain, or description..."
           className="w-full pl-10 pr-4 py-2 text-sm bg-lattice-deep border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-neon-cyan/50"
         />
@@ -1652,19 +1836,34 @@ function MacroExplorerPanel() {
             <div key={domain}>
               <div className="flex items-center gap-2 mb-1.5">
                 <Zap className="w-3.5 h-3.5 text-neon-cyan" />
-                <span className="text-xs font-medium text-neon-cyan uppercase tracking-wider">{domain}</span>
+                <span className="text-xs font-medium text-neon-cyan uppercase tracking-wider">
+                  {domain}
+                </span>
                 <span className="text-xs text-gray-600">({domainMacros.length})</span>
               </div>
               <div className="space-y-1 ml-5">
-                {domainMacros.map(m => (
-                  <div key={`${m.domain}.${m.name}`} className="flex items-center justify-between py-1.5 px-2 rounded bg-lattice-deep/50 hover:bg-lattice-deep transition-colors">
+                {domainMacros.map((m) => (
+                  <div
+                    key={`${m.domain}.${m.name}`}
+                    className="flex items-center justify-between py-1.5 px-2 rounded bg-lattice-deep/50 hover:bg-lattice-deep transition-colors"
+                  >
                     <div className="flex-1 min-w-0">
                       <span className="text-sm text-white font-mono">{m.name}</span>
-                      {m.description && <span className="text-xs text-gray-500 ml-2 truncate">{m.description}</span>}
+                      {m.description && (
+                        <span className="text-xs text-gray-500 ml-2 truncate">{m.description}</span>
+                      )}
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      {m.plugin && <span className="text-xs px-1.5 py-0.5 bg-neon-purple/10 text-neon-purple rounded">plugin</span>}
-                      {m.public && <span className="text-xs px-1.5 py-0.5 bg-green-500/10 text-green-400 rounded">public</span>}
+                      {m.plugin && (
+                        <span className="text-xs px-1.5 py-0.5 bg-neon-purple/10 text-neon-purple rounded">
+                          plugin
+                        </span>
+                      )}
+                      {m.public && (
+                        <span className="text-xs px-1.5 py-0.5 bg-green-500/10 text-green-400 rounded">
+                          public
+                        </span>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -1674,5 +1873,758 @@ function MacroExplorerPanel() {
         )}
       </div>
     </div>
+  );
+}
+
+function ApiKeysPanel() {
+  const [newKeyName, setNewKeyName] = useState('');
+  const [createdKey, setCreatedKey] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+
+  const { data: keysData, refetch } = useQuery({
+    queryKey: ['admin-api-keys'],
+    queryFn: () => api.get('/api/v1/keys').then((r) => r.data),
+  });
+
+  const handleCreate = useCallback(async () => {
+    if (!newKeyName.trim()) return;
+    setCreating(true);
+    try {
+      const data = await api
+        .post('/api/v1/keys/create', { name: newKeyName.trim() })
+        .then((r) => r.data);
+      setCreatedKey(data?.key || data?.apiKey || null);
+      setNewKeyName('');
+      refetch();
+    } catch (e) {
+      console.error('[Admin] Failed to create API key:', e);
+      useUIStore.getState().addToast({ type: 'error', message: 'Failed to create API key' });
+    } finally {
+      setCreating(false);
+    }
+  }, [newKeyName, refetch]);
+
+  const handleRevoke = useCallback(
+    async (keyId: string) => {
+      await api.delete(`/api/v1/keys/${keyId}`).then((r) => r.data);
+      refetch();
+    },
+    [refetch]
+  );
+
+  const keys = keysData?.keys || [];
+
+  return (
+    <div className="px-4 pb-4 space-y-3">
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={newKeyName}
+          onChange={(e) => setNewKeyName(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
+          placeholder="Key name..."
+          className="flex-1 px-3 py-2 text-sm bg-black/30 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-neon-cyan/50"
+        />
+        <button
+          onClick={handleCreate}
+          disabled={creating || !newKeyName.trim()}
+          className="px-4 py-2 text-sm bg-neon-cyan/20 text-neon-cyan rounded-lg hover:bg-neon-cyan/30 disabled:opacity-50 transition-colors"
+        >
+          Create
+        </button>
+      </div>
+
+      {createdKey && (
+        <div className="p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
+          <p className="text-xs text-green-400 mb-1">New API key (copy now):</p>
+          <code className="text-sm text-white break-all">{createdKey}</code>
+        </div>
+      )}
+
+      {keys.length > 0 ? (
+        <div className="space-y-2">
+          {keys.map((k: { id: string; name: string; prefix?: string }) => (
+            <div
+              key={k.id}
+              className="flex items-center justify-between p-3 bg-black/30 rounded-lg border border-white/5"
+            >
+              <div>
+                <p className="text-sm text-white font-medium">{k.name}</p>
+                <p className="text-xs text-gray-500">
+                  {k.prefix ? `${k.prefix}...` : k.id.slice(0, 8)}
+                </p>
+              </div>
+              <button
+                onClick={() => handleRevoke(k.id)}
+                className="text-xs px-2 py-1 bg-red-500/10 text-red-400 rounded hover:bg-red-500/20 transition-colors"
+              >
+                Revoke
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm text-gray-500">No API keys yet.</p>
+      )}
+    </div>
+  );
+}
+
+// ── Audit Log Result Panel ────────────────────────────────────────────────
+
+function AuditLogResultPanel({ result }: { result: Record<string, unknown> }) {
+  const summary = (result.summary || {}) as Record<string, number>;
+  const anomalies = (result.anomalies || []) as Array<Record<string, unknown>>;
+  const failedAccessAlerts = (result.failedAccessAlerts || []) as Array<Record<string, unknown>>;
+  const ipAlerts = (result.ipAlerts || []) as Array<Record<string, unknown>>;
+  const timeSpan = result.timeSpan as { from: string; to: string } | null;
+
+  const severityColor = (type: string) => {
+    switch (type) {
+      case 'rapid-fire':
+        return 'text-red-400 bg-red-500/10 border-red-500/20';
+      case 'frequency-spike':
+        return 'text-orange-400 bg-orange-500/10 border-orange-500/20';
+      case 'long-dormancy-then-active':
+        return 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20';
+      default:
+        return 'text-gray-400 bg-gray-500/10 border-gray-500/20';
+    }
+  };
+
+  const typeLabel = (type: string) => {
+    switch (type) {
+      case 'rapid-fire':
+        return 'Rapid-Fire Burst';
+      case 'frequency-spike':
+        return 'Frequency Spike';
+      case 'long-dormancy-then-active':
+        return 'Dormancy Alert';
+      default:
+        return type;
+    }
+  };
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+      {/* Summary Header */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="p-3 rounded-lg bg-lattice-deep border border-white/5 text-center">
+          <p className="text-xl font-bold text-white">{result.totalEntries as number}</p>
+          <p className="text-xs text-gray-400">Entries Analyzed</p>
+        </div>
+        <div className="p-3 rounded-lg bg-lattice-deep border border-white/5 text-center">
+          <p className="text-xl font-bold text-white">{result.uniqueUsers as number}</p>
+          <p className="text-xs text-gray-400">Unique Users</p>
+        </div>
+        <div className="p-3 rounded-lg bg-lattice-deep border border-white/5 text-center">
+          <p
+            className={`text-xl font-bold ${(summary.totalAnomalies || 0) > 0 ? 'text-red-400' : 'text-green-400'}`}
+          >
+            {summary.totalAnomalies || 0}
+          </p>
+          <p className="text-xs text-gray-400">Anomalies Found</p>
+        </div>
+        <div className="p-3 rounded-lg bg-lattice-deep border border-white/5 text-center">
+          <p
+            className={`text-xl font-bold ${(summary.failedAccessAlertCount || 0) > 0 ? 'text-orange-400' : 'text-green-400'}`}
+          >
+            {summary.failedAccessAlertCount || 0}
+          </p>
+          <p className="text-xs text-gray-400">Failed Access Alerts</p>
+        </div>
+      </div>
+
+      {/* Time Span */}
+      {timeSpan && (
+        <div className="flex items-center gap-2 text-xs text-gray-500">
+          <Clock className="w-3 h-3" />
+          <span>
+            Analysis window: {new Date(timeSpan.from).toLocaleString()} to{' '}
+            {new Date(timeSpan.to).toLocaleString()}
+          </span>
+        </div>
+      )}
+
+      {/* Severity Breakdown */}
+      <div className="p-4 rounded-lg bg-black/30 border border-white/5">
+        <p className="text-xs font-medium text-gray-400 mb-3">Severity Breakdown</p>
+        <div className="flex gap-4 flex-wrap">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-red-400" />
+            <span className="text-xs text-gray-300">Rapid-Fire: {summary.rapidFireCount || 0}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-orange-400" />
+            <span className="text-xs text-gray-300">
+              Frequency Spikes: {summary.frequencySpikeCount || 0}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-yellow-400" />
+            <span className="text-xs text-gray-300">
+              Dormancy Alerts: {summary.dormancyAlertCount || 0}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-purple-400" />
+            <span className="text-xs text-gray-300">
+              Suspicious IPs: {summary.suspiciousIpCount || 0}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Anomaly Timeline */}
+      {anomalies.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-gray-400">Anomaly Events</p>
+          <div className="space-y-1.5 max-h-60 overflow-y-auto">
+            {anomalies.map((a, i) => (
+              <div
+                key={i}
+                className={`flex items-start gap-3 p-2.5 rounded-lg border ${severityColor(a.type as string)}`}
+              >
+                <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-medium">{typeLabel(a.type as string)}</span>
+                    <span className="text-xs opacity-70">User: {String(a.userId)}</span>
+                    {!!a.timestamp && (
+                      <span className="text-xs opacity-50">
+                        {new Date(a.timestamp as string).toLocaleTimeString()}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex gap-3 mt-1 text-xs opacity-70">
+                    {a.zScore !== undefined && <span>z-score: {String(a.zScore)}</span>}
+                    {a.gapMs !== undefined && (
+                      <span>gap: {Math.round(Number(a.gapMs) / 1000)}s</span>
+                    )}
+                    {a.actionsInWindow !== undefined && (
+                      <span>{String(a.actionsInWindow)} actions/window</span>
+                    )}
+                    {!!a.action && <span>action: {String(a.action)}</span>}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Failed Access Alerts */}
+      {failedAccessAlerts.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-gray-400">Failed Access Patterns</p>
+          <div className="space-y-1.5">
+            {failedAccessAlerts.map((fa, i) => (
+              <div
+                key={i}
+                className="flex items-center justify-between p-2.5 rounded-lg bg-red-500/5 border border-red-500/15"
+              >
+                <div className="flex items-center gap-2">
+                  <XCircle className="w-4 h-4 text-red-400" />
+                  <span className="text-sm text-white">{fa.userId as string}</span>
+                </div>
+                <div className="flex items-center gap-3 text-xs text-gray-400">
+                  <span>
+                    {fa.failedAttempts as number}/{fa.totalAttempts as number} failed
+                  </span>
+                  <span className="text-red-400 font-medium">
+                    {fa.failureRate as number}% failure rate
+                  </span>
+                  <span className="text-gray-500">
+                    Resources: {((fa.resources as string[]) || []).join(', ')}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* IP Diversity Alerts */}
+      {ipAlerts.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-gray-400">Suspicious IP Diversity</p>
+          <div className="space-y-1.5">
+            {ipAlerts.map((ip, i) => (
+              <div
+                key={i}
+                className="flex items-center justify-between p-2.5 rounded-lg bg-purple-500/5 border border-purple-500/15"
+              >
+                <div className="flex items-center gap-2">
+                  <Globe className="w-4 h-4 text-purple-400" />
+                  <span className="text-sm text-white">{ip.userId as string}</span>
+                </div>
+                <span className="text-xs text-purple-400">{ip.uniqueIps as number} unique IPs</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Clean bill of health */}
+      {anomalies.length === 0 && failedAccessAlerts.length === 0 && ipAlerts.length === 0 && (
+        <div className="flex items-center gap-3 p-4 rounded-lg bg-green-500/5 border border-green-500/20">
+          <CheckCircle className="w-5 h-5 text-green-400" />
+          <div>
+            <p className="text-sm text-green-400 font-medium">No anomalies detected</p>
+            <p className="text-xs text-gray-500">
+              All access patterns are within normal parameters.
+            </p>
+          </div>
+        </div>
+      )}
+
+      <p className="text-xs text-gray-600">
+        Analyzed at{' '}
+        {result.analyzedAt ? new Date(result.analyzedAt as string).toLocaleString() : 'unknown'}
+      </p>
+    </motion.div>
+  );
+}
+
+// ── Permission Matrix Result Panel ────────────────────────────────────────
+
+function PermissionMatrixResultPanel({ result }: { result: Record<string, unknown> }) {
+  const matrix = (result.matrix || {}) as Record<string, Record<string, boolean>>;
+  const summary = (result.summary || {}) as Record<string, number>;
+  const overPrivilegedRoles = (result.overPrivilegedRoles || []) as Array<Record<string, unknown>>;
+  const redundantRoles = (result.redundantRoles || []) as Array<Record<string, unknown>>;
+  const sodViolations = (result.sodViolations || []) as Array<Record<string, unknown>>;
+  const unknownRoles = (result.unknownRoles || []) as Array<Record<string, unknown>>;
+  const usersWithNoRoles = (result.usersWithNoRoles || []) as string[];
+
+  const roleNames = Object.keys(matrix);
+  const permNames = roleNames.length > 0 ? Object.keys(matrix[roleNames[0]]) : [];
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+      {/* Summary Counts */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="p-3 rounded-lg bg-lattice-deep border border-white/5 text-center">
+          <p className="text-xl font-bold text-white">{result.totalRoles as number}</p>
+          <p className="text-xs text-gray-400">Roles</p>
+        </div>
+        <div className="p-3 rounded-lg bg-lattice-deep border border-white/5 text-center">
+          <p className="text-xl font-bold text-white">{result.totalPermissions as number}</p>
+          <p className="text-xs text-gray-400">Permissions</p>
+        </div>
+        <div className="p-3 rounded-lg bg-lattice-deep border border-white/5 text-center">
+          <p
+            className={`text-xl font-bold ${(summary.overPrivilegedCount || 0) > 0 ? 'text-orange-400' : 'text-green-400'}`}
+          >
+            {summary.overPrivilegedCount || 0}
+          </p>
+          <p className="text-xs text-gray-400">Over-Privileged</p>
+        </div>
+        <div className="p-3 rounded-lg bg-lattice-deep border border-white/5 text-center">
+          <p
+            className={`text-xl font-bold ${(summary.sodViolationCount || 0) > 0 ? 'text-red-400' : 'text-green-400'}`}
+          >
+            {summary.sodViolationCount || 0}
+          </p>
+          <p className="text-xs text-gray-400">SoD Violations</p>
+        </div>
+        <div className="p-3 rounded-lg bg-lattice-deep border border-white/5 text-center">
+          <p className="text-xl font-bold text-white">{result.totalUsers as number}</p>
+          <p className="text-xs text-gray-400">Users</p>
+        </div>
+      </div>
+
+      {/* Visual Permission Matrix */}
+      {roleNames.length > 0 && permNames.length > 0 && (
+        <div className="p-4 rounded-lg bg-black/30 border border-white/5 overflow-x-auto">
+          <p className="text-xs font-medium text-gray-400 mb-3">Role x Permission Matrix</p>
+          <table className="w-full text-xs">
+            <thead>
+              <tr>
+                <th className="text-left p-1.5 text-gray-500 font-medium sticky left-0 bg-black/30">
+                  Role
+                </th>
+                {permNames.map((p) => (
+                  <th
+                    key={p}
+                    className="p-1.5 text-gray-500 font-medium text-center whitespace-nowrap"
+                  >
+                    <span className="inline-block -rotate-45 origin-bottom-left translate-y-1">
+                      {p}
+                    </span>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {roleNames.map((role) => (
+                <tr key={role} className="border-t border-white/5">
+                  <td className="p-1.5 text-white font-medium sticky left-0 bg-black/30 whitespace-nowrap">
+                    {role}
+                  </td>
+                  {permNames.map((perm) => (
+                    <td key={perm} className="p-1.5 text-center">
+                      {matrix[role][perm] ? (
+                        <span className="inline-block w-5 h-5 rounded bg-neon-purple/30 border border-neon-purple/50 leading-5 text-neon-purple font-bold">
+                          &#10003;
+                        </span>
+                      ) : (
+                        <span className="inline-block w-5 h-5 rounded bg-white/5 border border-white/10 leading-5 text-gray-700">
+                          -
+                        </span>
+                      )}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Over-Privileged Roles */}
+      {overPrivilegedRoles.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-gray-400">
+            Over-Privileged Roles (&gt;70% of permissions)
+          </p>
+          {overPrivilegedRoles.map((r, i) => (
+            <div
+              key={i}
+              className="flex items-center justify-between p-2.5 rounded-lg bg-orange-500/5 border border-orange-500/15"
+            >
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-orange-400" />
+                <span className="text-sm text-white font-medium">{r.role as string}</span>
+              </div>
+              <div className="flex items-center gap-3 text-xs">
+                <span className="text-gray-400">{r.permCount as number} permissions</span>
+                <span className="text-orange-400 font-medium">{r.ratio as number}% coverage</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Redundant Roles */}
+      {redundantRoles.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-gray-400">
+            Redundant Role Pairs (subset/superset)
+          </p>
+          {redundantRoles.map((r, i) => (
+            <div
+              key={i}
+              className="flex items-center gap-3 p-2.5 rounded-lg bg-yellow-500/5 border border-yellow-500/15 text-xs"
+            >
+              <span className="text-white font-medium">{r.subset as string}</span>
+              <ChevronRight className="w-3 h-3 text-gray-500" />
+              <span className="text-white font-medium">{r.superset as string}</span>
+              <span className="text-gray-500 ml-auto">
+                {r.subsetSize as number} vs {r.supersetSize as number} perms
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* SoD Violations */}
+      {sodViolations.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-gray-400">Separation of Duty Violations</p>
+          {sodViolations.map((v, i) => (
+            <div
+              key={i}
+              className="flex items-center justify-between p-2.5 rounded-lg bg-red-500/5 border border-red-500/15"
+            >
+              <div className="flex items-center gap-2">
+                <XCircle className="w-4 h-4 text-red-400" />
+                <span className="text-sm text-white">{v.userId as string}</span>
+                <span className="text-xs text-gray-500">Rule: {v.rule as string}</span>
+              </div>
+              <span className="text-xs text-red-400 font-mono">
+                {((v.conflictingPermissions as string[]) || []).join(' + ')}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Unknown Roles + Users with No Roles */}
+      <div className="flex gap-4 flex-wrap">
+        {unknownRoles.length > 0 && (
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-yellow-500/5 border border-yellow-500/15 text-xs text-yellow-400">
+            <AlertCircle className="w-3 h-3" />
+            {unknownRoles.length} unknown role reference{unknownRoles.length !== 1 ? 's' : ''}
+          </div>
+        )}
+        {usersWithNoRoles.length > 0 && (
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-500/5 border border-gray-500/15 text-xs text-gray-400">
+            <Users className="w-3 h-3" />
+            {usersWithNoRoles.length} user{usersWithNoRoles.length !== 1 ? 's' : ''} with no roles
+          </div>
+        )}
+      </div>
+
+      {/* Clean bill */}
+      {overPrivilegedRoles.length === 0 &&
+        sodViolations.length === 0 &&
+        redundantRoles.length === 0 &&
+        unknownRoles.length === 0 && (
+          <div className="flex items-center gap-3 p-4 rounded-lg bg-green-500/5 border border-green-500/20">
+            <CheckCircle className="w-5 h-5 text-green-400" />
+            <div>
+              <p className="text-sm text-green-400 font-medium">Permission model is clean</p>
+              <p className="text-xs text-gray-500">
+                No over-privileged roles, redundancies, or SoD violations detected.
+              </p>
+            </div>
+          </div>
+        )}
+
+      <p className="text-xs text-gray-600">
+        Analyzed at{' '}
+        {result.analyzedAt ? new Date(result.analyzedAt as string).toLocaleString() : 'unknown'}
+      </p>
+    </motion.div>
+  );
+}
+
+// ── System Health Result Panel ────────────────────────────────────────────
+
+function SystemHealthResultPanel({ result }: { result: Record<string, unknown> }) {
+  const compositeScore = result.compositeScore as number | null;
+  const healthStatus = result.healthStatus as string;
+  const currentValues = (result.currentValues || {}) as Record<string, number | null>;
+  const componentScores = (result.componentScores || {}) as Record<string, number | null>;
+  const trends = (result.trends || {}) as Record<
+    string,
+    { slope: number; direction: string; concern: string } | null
+  >;
+  const alerts = (result.alerts || []) as Array<{
+    metric: string;
+    value: number;
+    threshold: number;
+    severity: string;
+  }>;
+  const weights = (result.weights || {}) as Record<string, number>;
+
+  const statusColor = (status: string) => {
+    switch (status) {
+      case 'healthy':
+        return 'text-green-400';
+      case 'degraded':
+        return 'text-yellow-400';
+      case 'unhealthy':
+        return 'text-orange-400';
+      case 'critical':
+        return 'text-red-400';
+      default:
+        return 'text-gray-400';
+    }
+  };
+
+  const statusBg = (status: string) => {
+    switch (status) {
+      case 'healthy':
+        return 'bg-green-500/10 border-green-500/20';
+      case 'degraded':
+        return 'bg-yellow-500/10 border-yellow-500/20';
+      case 'unhealthy':
+        return 'bg-orange-500/10 border-orange-500/20';
+      case 'critical':
+        return 'bg-red-500/10 border-red-500/20';
+      default:
+        return 'bg-gray-500/10 border-gray-500/20';
+    }
+  };
+
+  const trendIcon = (direction: string) => {
+    switch (direction) {
+      case 'increasing':
+        return '\u2191';
+      case 'decreasing':
+        return '\u2193';
+      default:
+        return '\u2192';
+    }
+  };
+
+  const concernColor = (concern: string) => {
+    return concern === 'degrading'
+      ? 'text-red-400'
+      : concern === 'improving'
+        ? 'text-green-400'
+        : 'text-gray-400';
+  };
+
+  const metricLabels: Record<string, { label: string; unit: string; icon: React.ElementType }> = {
+    cpu: { label: 'CPU', unit: '%', icon: Cpu },
+    memory: { label: 'Memory', unit: '%', icon: Database },
+    disk: { label: 'Disk', unit: '%', icon: HardDrive },
+    latency: { label: 'Latency', unit: 'ms', icon: Clock },
+    errorRate: { label: 'Error Rate', unit: '%', icon: AlertCircle },
+  };
+
+  const scoreBarColor = (score: number | null) => {
+    if (score === null) return 'bg-gray-600';
+    if (score >= 80) return 'bg-green-500';
+    if (score >= 60) return 'bg-yellow-500';
+    if (score >= 30) return 'bg-orange-500';
+    return 'bg-red-500';
+  };
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+      {/* Composite Score Hero */}
+      <div className={`flex items-center gap-6 p-5 rounded-xl border ${statusBg(healthStatus)}`}>
+        <div className="relative w-20 h-20 flex-shrink-0">
+          <svg viewBox="0 0 36 36" className="w-20 h-20 -rotate-90">
+            <path
+              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+              fill="none"
+              stroke="rgba(255,255,255,0.05)"
+              strokeWidth="3"
+            />
+            <motion.path
+              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+              fill="none"
+              stroke={
+                healthStatus === 'healthy'
+                  ? '#22c55e'
+                  : healthStatus === 'degraded'
+                    ? '#eab308'
+                    : healthStatus === 'unhealthy'
+                      ? '#f97316'
+                      : '#ef4444'
+              }
+              strokeWidth="3"
+              strokeLinecap="round"
+              initial={{ strokeDasharray: '0, 100' }}
+              animate={{ strokeDasharray: `${compositeScore ?? 0}, 100` }}
+              transition={{ duration: 1.2, ease: 'easeOut' }}
+            />
+          </svg>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className={`text-lg font-bold ${statusColor(healthStatus)}`}>
+              {compositeScore !== null ? Math.round(compositeScore) : '--'}
+            </span>
+          </div>
+        </div>
+        <div>
+          <p className={`text-xl font-bold capitalize ${statusColor(healthStatus)}`}>
+            {healthStatus}
+          </p>
+          <p className="text-xs text-gray-500 mt-1">
+            Composite health score based on {result.dataPoints as number} data points
+          </p>
+        </div>
+      </div>
+
+      {/* Per-Metric Breakdown */}
+      <div className="space-y-3">
+        <p className="text-xs font-medium text-gray-400">Component Health Scores</p>
+        {['cpu', 'memory', 'disk', 'latency', 'errorRate'].map((key) => {
+          const meta = metricLabels[key];
+          const MetricIcon = meta.icon;
+          const scoreVal = componentScores[key];
+          const currentVal = key === 'latency' ? currentValues.latencyMs : currentValues[key];
+          const trend = trends[key];
+          const weight = weights[key];
+
+          return (
+            <div key={key} className="p-3 rounded-lg bg-lattice-deep border border-white/5">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <MetricIcon className="w-4 h-4 text-gray-400" />
+                  <span className="text-sm text-white font-medium">{meta.label}</span>
+                  <span className="text-xs text-gray-600">
+                    weight: {((weight || 0) * 100).toFixed(0)}%
+                  </span>
+                </div>
+                <div className="flex items-center gap-3 text-xs">
+                  {currentVal !== null && currentVal !== undefined && (
+                    <span className="text-white font-mono">
+                      {typeof currentVal === 'number' ? currentVal.toFixed(1) : currentVal}
+                      {meta.unit}
+                    </span>
+                  )}
+                  {trend && (
+                    <span className={`flex items-center gap-0.5 ${concernColor(trend.concern)}`}>
+                      {trendIcon(trend.direction)} {trend.direction}
+                    </span>
+                  )}
+                  <span
+                    className={`font-bold ${scoreVal !== null && scoreVal !== undefined ? (scoreVal >= 80 ? 'text-green-400' : scoreVal >= 60 ? 'text-yellow-400' : scoreVal >= 30 ? 'text-orange-400' : 'text-red-400') : 'text-gray-500'}`}
+                  >
+                    {scoreVal !== null && scoreVal !== undefined ? scoreVal.toFixed(1) : 'N/A'}
+                  </span>
+                </div>
+              </div>
+              <div className="h-2 rounded-full bg-white/5 overflow-hidden">
+                <motion.div
+                  className={`h-full rounded-full ${scoreBarColor(scoreVal ?? null)}`}
+                  initial={{ width: 0 }}
+                  animate={{ width: `${scoreVal ?? 0}%` }}
+                  transition={{ duration: 0.8, ease: 'easeOut' }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Alerts */}
+      {alerts.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-gray-400">Active Alerts</p>
+          {alerts.map((alert, i) => (
+            <div
+              key={i}
+              className={`flex items-center justify-between p-2.5 rounded-lg border ${
+                alert.severity === 'critical'
+                  ? 'bg-red-500/5 border-red-500/15 text-red-400'
+                  : 'bg-yellow-500/5 border-yellow-500/15 text-yellow-400'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                {alert.severity === 'critical' ? (
+                  <XCircle className="w-4 h-4" />
+                ) : (
+                  <AlertCircle className="w-4 h-4" />
+                )}
+                <span className="text-sm font-medium capitalize">{alert.metric}</span>
+                <span
+                  className={`text-xs px-1.5 py-0.5 rounded uppercase font-medium ${
+                    alert.severity === 'critical' ? 'bg-red-500/20' : 'bg-yellow-500/20'
+                  }`}
+                >
+                  {alert.severity}
+                </span>
+              </div>
+              <span className="text-xs font-mono">
+                {alert.value.toFixed(1)} / {alert.threshold}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* No alerts */}
+      {alerts.length === 0 && (
+        <div className="flex items-center gap-3 p-4 rounded-lg bg-green-500/5 border border-green-500/20">
+          <CheckCircle className="w-5 h-5 text-green-400" />
+          <div>
+            <p className="text-sm text-green-400 font-medium">No active alerts</p>
+            <p className="text-xs text-gray-500">All metrics are within configured thresholds.</p>
+          </div>
+        </div>
+      )}
+
+      <p className="text-xs text-gray-600">
+        Analyzed at{' '}
+        {result.analyzedAt ? new Date(result.analyzedAt as string).toLocaleString() : 'unknown'}
+      </p>
+    </motion.div>
   );
 }

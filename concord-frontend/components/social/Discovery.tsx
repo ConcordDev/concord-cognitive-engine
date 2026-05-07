@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -437,9 +437,10 @@ function Discovery({
   // ── Search handler ───────────────────────────────────────────────────
 
   const handleSearchChange = useMemo(
-    () => debounce((value: string) => {
-      setSearchQuery(value);
-    }, 300),
+    () =>
+      debounce((value: string) => {
+        setSearchQuery(value);
+      }, 300),
     []
   );
 

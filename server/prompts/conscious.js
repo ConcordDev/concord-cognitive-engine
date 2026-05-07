@@ -39,6 +39,7 @@ export function buildConsciousPrompt(ctx = {}) {
     entityStateBlock = "",
     affectGuidance = "",
     grcPrompt = "",
+    styleHints = "",
   } = ctx;
 
   const parts = [];
@@ -150,6 +151,11 @@ Don't fake knowledge: "I don't know, but let me search for that" is always bette
   // ── AFFECT GUIDANCE ──────────────────────────────────────────
   if (affectGuidance) {
     parts.push(`TONE GUIDANCE: ${affectGuidance}`);
+  }
+
+  // ── STYLE PREFERENCES (learned from conversation patterns) ──
+  if (styleHints) {
+    parts.push(`COMMUNICATION STYLE:\n${styleHints}`);
   }
 
   // ── EVIDENCE ──────────────────────────────────────────────────

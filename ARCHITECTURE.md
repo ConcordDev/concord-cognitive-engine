@@ -12,8 +12,9 @@ Concord runs five Ollama instances tuned for the **NVIDIA RTX PRO 4500 Blackwell
 | Repair | `qwen2.5:1.5b-instruct-q5_K_M` | ~1GB | 11437 | Error detection, auto-fix, runtime repair |
 | Vision (multimodal) | `llava:13b-v1.6-vicuna-q4_K_M` | ~9GB | 11438 | Image understanding, food vision, doc layout |
 
-`ctx.llm.chat()` routes to the conscious brain via Ollama. If conscious fails, subconscious brain serves as emergency fallback.
-`initThreeBrains()` probes each brain on startup and auto-pulls models if missing.
+All five Ollama services run with `OLLAMA_FLASH_ATTENTION=1` + `OLLAMA_KV_CACHE_TYPE=q8_0` for tensor-core acceleration and halved KV cache.
+
+`ctx.llm.chat()` routes to the conscious brain (Ollama-first sovereignty principle). If conscious fails AND `OPENAI_API_KEY` is configured, OpenAI serves as emergency cloud fallback (`server.js:11157-11210`); subconscious does NOT serve as the chat fallback path. `initFiveBrains()` probes all five on startup and auto-pulls missing models. Vision queries route through `server/lib/vision-inference.js#callVision` reading `BRAIN_VISION_URL`. `BRAIN_PRIORITY` (`server/lib/brain-config.js:131`) — `repair: 0, conscious: 1, subconscious: 2, multimodal: 2, utility: 3` — feeds the LLM queue priority.
 
 ## DTU Lifecycle
 

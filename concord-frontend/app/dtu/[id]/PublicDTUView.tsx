@@ -12,8 +12,18 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import Link from 'next/link';
 import {
-  Zap, Crown, Ghost, GitBranch, User, ExternalLink,
-  Clock, Tag, Copy, ChevronRight, Shield, Sparkles,
+  Zap,
+  Crown,
+  Ghost,
+  GitBranch,
+  User,
+  ExternalLink,
+  Clock,
+  Tag,
+  Copy,
+  ChevronRight,
+  Shield,
+  Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -79,11 +89,13 @@ function SimplifiedLineageTree({ nodes }: { nodes: LineageNode[] }) {
             {node.title || node.id}
           </Link>
           {node.tier && (
-            <span className={cn(
-              'text-[10px] px-1.5 py-0.5 rounded-full',
-              tierConfig[node.tier]?.bg || 'bg-gray-500/10',
-              tierConfig[node.tier]?.color || 'text-gray-400',
-            )}>
+            <span
+              className={cn(
+                'text-[10px] px-1.5 py-0.5 rounded-full',
+                tierConfig[node.tier]?.bg || 'bg-gray-500/10',
+                tierConfig[node.tier]?.color || 'text-gray-400'
+              )}
+            >
               {node.tier}
             </span>
           )}
@@ -100,7 +112,11 @@ function SimplifiedLineageTree({ nodes }: { nodes: LineageNode[] }) {
 
 export function PublicDTUView({ dtu, dtuId }: PublicDTUViewProps) {
   // Fetch lineage client-side (optional enhancement)
-  const { data: lineageData } = useQuery({
+  const {
+    data: lineageData,
+    isLoading: lineageLoading,
+    isError: lineageError,
+  } = useQuery({
     queryKey: ['dtu-lineage-public', dtuId],
     queryFn: async () => {
       const res = await api.get(`/api/dtus/${dtuId}/lineage`);
@@ -132,6 +148,40 @@ export function PublicDTUView({ dtu, dtuId }: PublicDTUViewProps) {
     );
   }
 
+  if (lineageLoading) {
+    return (
+      <div className="min-h-screen bg-lattice-void">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-6 animate-pulse">
+          <div className="h-8 bg-lattice-surface rounded-lg w-1/3" />
+          <div className="h-12 bg-lattice-surface rounded-lg w-2/3" />
+          <div className="h-48 bg-lattice-surface rounded-xl" />
+          <div className="h-24 bg-lattice-surface rounded-xl" />
+        </div>
+      </div>
+    );
+  }
+
+  if (lineageError) {
+    return (
+      <div className="min-h-screen bg-lattice-void flex items-center justify-center">
+        <div className="text-center space-y-4 max-w-md px-6">
+          <Ghost className="w-16 h-16 text-red-500 mx-auto" />
+          <h1 className="text-2xl font-bold text-white">Failed to Load Lineage</h1>
+          <p className="text-gray-400">
+            Could not fetch lineage data for this DTU. Please try again later.
+          </p>
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-neon-cyan/20 text-neon-cyan rounded-lg hover:bg-neon-cyan/30 transition-colors"
+          >
+            Go to Concord OS
+            <ExternalLink className="w-4 h-4" />
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   const id = dtu.id || dtu._id || dtuId;
   const title = dtu.title || dtu.name || 'Untitled DTU';
   const content = dtu.content || dtu.summary || dtu.description || '';
@@ -140,11 +190,16 @@ export function PublicDTUView({ dtu, dtuId }: PublicDTUViewProps) {
   const TierIcon = tierCfg.icon;
   const tags = dtu.tags || [];
   const creator = dtu.creator || dtu.creatorId;
-  const createdAt = dtu.createdAt ? new Date(dtu.createdAt).toLocaleDateString('en-US', {
-    year: 'numeric', month: 'long', day: 'numeric',
-  }) : null;
+  const createdAt = dtu.createdAt
+    ? new Date(dtu.createdAt).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      })
+    : null;
 
-  const lineageNodes: LineageNode[] = lineageData?.lineage?.ancestors ||
+  const lineageNodes: LineageNode[] =
+    lineageData?.lineage?.ancestors ||
     lineageData?.lineage?.children ||
     lineageData?.ancestors ||
     lineageData?.children ||
@@ -157,7 +212,10 @@ export function PublicDTUView({ dtu, dtuId }: PublicDTUViewProps) {
       {/* Top navigation bar */}
       <header className="sticky top-0 z-30 bg-lattice-surface/80 backdrop-blur-sm border-b border-lattice-border">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 text-white hover:text-neon-cyan transition-colors">
+          <Link
+            href="/"
+            className="flex items-center gap-2 text-white hover:text-neon-cyan transition-colors"
+          >
             <Sparkles className="w-5 h-5" />
             <span className="font-semibold text-sm">Concord OS</span>
           </Link>
@@ -183,10 +241,13 @@ export function PublicDTUView({ dtu, dtuId }: PublicDTUViewProps) {
         {/* Title + Tier Badge */}
         <div className="space-y-3">
           <div className="flex items-center gap-3 flex-wrap">
-            <span className={cn(
-              'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium',
-              tierCfg.bg, tierCfg.color,
-            )}>
+            <span
+              className={cn(
+                'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium',
+                tierCfg.bg,
+                tierCfg.color
+              )}
+            >
               <TierIcon className="w-3.5 h-3.5" />
               {tierCfg.label}
             </span>
@@ -203,9 +264,7 @@ export function PublicDTUView({ dtu, dtuId }: PublicDTUViewProps) {
             )}
           </div>
 
-          <h1 className="text-3xl font-bold text-white leading-tight">
-            {title}
-          </h1>
+          <h1 className="text-3xl font-bold text-white leading-tight">{title}</h1>
 
           {/* Meta row */}
           <div className="flex items-center gap-4 text-sm text-gray-400 flex-wrap">
@@ -225,9 +284,7 @@ export function PublicDTUView({ dtu, dtuId }: PublicDTUViewProps) {
               </span>
             )}
             {dtu.type && (
-              <span className="text-xs bg-lattice-elevated px-2 py-0.5 rounded">
-                {dtu.type}
-              </span>
+              <span className="text-xs bg-lattice-elevated px-2 py-0.5 rounded">{dtu.type}</span>
             )}
           </div>
         </div>
@@ -287,8 +344,8 @@ export function PublicDTUView({ dtu, dtuId }: PublicDTUViewProps) {
             Shared from{' '}
             <Link href="/" className="text-neon-cyan hover:underline">
               Concord OS
-            </Link>
-            {' '}&mdash; Sovereign Cognitive Engine
+            </Link>{' '}
+            &mdash; Sovereign Cognitive Engine
           </p>
         </footer>
       </main>

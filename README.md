@@ -259,11 +259,9 @@ Launches 6 containers: backend, frontend, and four Ollama brain instances. Auto-
 
 ## Stack
 
-# Brain models (defaults work, but configurable)
-BRAIN_CONSCIOUS_MODEL=qwen2.5:14b-q4_K_M
-BRAIN_SUBCONSCIOUS_MODEL=qwen2.5:7b
-BRAIN_UTILITY_MODEL=qwen2.5:3b
-BRAIN_REPAIR_MODEL=qwen2.5:1.5b
+**Backend:** Node.js 18+ (ESM), Express, better-sqlite3, four Ollama instances, 948+ API routes
+
+**Frontend:** Next.js 15, React 18, TypeScript (strict), Zustand, TanStack Query, Tailwind CSS
 
 **Mobile:** React Native with native mesh networking (BLE, NFC, LoRa bridge, peer manager, relay system) — 40K+ lines
 

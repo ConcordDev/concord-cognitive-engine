@@ -48,6 +48,7 @@ function _getUserId(req) {
  * @param {import('express').Express} app - Express application
  * @param {object} deps - Dependencies from server wiring
  * @param {import('better-sqlite3').Database} deps.db - SQLite database
+ * @param {Function} [deps.requireAuth] - Auth middleware
  * @param {Function} [deps.realtimeEmit] - WebSocket broadcast function (optional)
  */
 export default function registerInitiativeRoutes(app, deps) {

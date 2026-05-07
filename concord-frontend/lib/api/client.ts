@@ -738,8 +738,8 @@ export const apiHelpers = {
 
   // Graph Queries
   graph: {
-    query: (dsl: string) => api.post('/api/graph/query', { dsl }),
-    visual: (params?: { tier?: string; limit?: number; includeShadow?: boolean }) =>
+    query: (dsl: string) => api.post('/api/graph/query', { dsl } satisfies GraphQueryRequest),
+    visual: (params?: GraphVisualParams & { includeShadow?: boolean }) =>
       api.get('/api/graph/visual', { params }),
     force: (params?: GraphForceParams) =>
       api.get('/api/graph/force', { params }),

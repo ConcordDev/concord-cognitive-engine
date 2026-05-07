@@ -48,7 +48,7 @@ export function useBookmarks(domain: string) {
     },
   });
 
-  const items = data?.items || [];
+  const items = useMemo(() => data?.items || [], [data?.items]);
   const bookmarkedIds = useMemo(() => new Set(items.map(b => b.targetId)), [items]);
 
   const toggleBookmark = useCallback((targetId: string, targetType = 'item', metadata?: Record<string, unknown>) => {

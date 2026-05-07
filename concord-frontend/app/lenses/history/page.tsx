@@ -1,15 +1,15 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useMemo, useCallback } from 'react';
+import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
-import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
+import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { cn } from '@/lib/utils';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
-  Clock, Plus, Search, X, Trash2, Eye, Layers, ChevronDown,
-  Globe, BookOpen, Users, Flag, MapPin, ArrowRight, Scroll, Calendar,
+  Clock, Plus, Search, Trash2, Eye, Layers, ChevronDown,
+  Globe, BookOpen, Users, Flag, MapPin, ArrowRight, Scroll, Calendar, Zap, Loader2,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -81,7 +81,7 @@ export default function HistoryLensPage() {
   const [regionFilter, setRegionFilter] = useState<Region | ''>('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
-  const [showFeatures, setShowFeatures] = useState(false);
+  const [showFeatures, setShowFeatures] = useState(true);
 
   // Form state
   const [formTitle, setFormTitle] = useState('');
@@ -104,6 +104,10 @@ export default function HistoryLensPage() {
   const { items: sources } = useLensData<HistoryArtifact>('history', 'Source', { seed: [] });
 
   const runArtifact = useRunArtifact('history');
+
+  const handleAction = useCallback((artifactId: string) => {
+    runArtifact.mutate({ id: artifactId, action: 'analyze' });
+  }, [runArtifact]);
 
   // Filtering
   const filtered = useMemo(() => {
@@ -169,6 +173,7 @@ export default function HistoryLensPage() {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap ml-auto">
+          {runArtifact.isPending && <Loader2 className="w-4 h-4 animate-spin text-neon-cyan" />}
           <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
           <DTUExportButton domain="history" data={realtimeData || {}} compact />
           {realtimeAlerts.length > 0 && (
@@ -181,7 +186,7 @@ export default function HistoryLensPage() {
       </header>
 
       {/* Tabs */}
-      <div className="flex gap-1 overflow-x-auto pb-1">
+      <div className="flex gap-1 flex-wrap pb-1">
         {MODE_TABS.map(tab => (
           <button
             key={tab.id}
@@ -473,9 +478,13 @@ export default function HistoryLensPage() {
                 <>
                   <div className="flex items-center justify-between">
                     <h2 className="font-semibold text-white">{selected.title}</h2>
-                    <button onClick={() => remove(selected.id)} className="text-red-400 hover:text-red-300">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => handleAction(selected.id)} className="text-gray-500 hover:text-neon-cyan" title="Run AI analysis"><Zap className="w-4 h-4" /></button>
+                      <button onClick={() => update(selected.id, { data: { ...selected.data, lastReviewed: new Date().toISOString() } as unknown as Partial<HistoryArtifact> })} className="text-gray-500 hover:text-blue-400" title="Update"><Eye className="w-4 h-4" /></button>
+                      <button onClick={() => remove(selected.id)} className="text-red-400 hover:text-red-300">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
                     {selected.data.date && <span className="text-xs font-mono text-neon-cyan">{selected.data.date}</span>}
@@ -573,7 +582,7 @@ export default function HistoryLensPage() {
       <div className="border-t border-white/10">
         <button
           onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-400 hover:text-white transition-colors"
+          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
         >
           <span className="flex items-center gap-2">
             <Layers className="w-4 h-4" />

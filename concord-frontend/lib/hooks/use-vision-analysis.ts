@@ -19,16 +19,18 @@ export function useVisionAnalysis() {
     try {
       const base64 = await fileToBase64(imageFile);
       const defaultPrompt = `Analyze this image in the context of ${domain}. Describe what you see and suggest relevant metadata, tags, and any actionable insights.`;
-      const res = await api.post('/api/chat', {
+      const res = await api.post('/api/chat?full=1', {
         message: prompt || defaultPrompt,
         images: [base64],
-        model: 'llava:7b',
         mode: 'vision',
+        // model resolved server-side from OLLAMA_VISION_MODEL env var
       });
       const content = res.data?.reply || res.data?.content || res.data?.message || '';
       // Extract tags from response if present
       const tagMatch = content.match(/tags?:\s*(.+)/i);
-      const suggestedTags = tagMatch ? tagMatch[1].split(',').map((t: string) => t.trim().toLowerCase()) : [];
+      const suggestedTags = tagMatch
+        ? tagMatch[1].split(',').map((t: string) => t.trim().toLowerCase())
+        : [];
       setResult({ analysis: content, suggestedTags, metadata: { domain } });
       return { analysis: content, suggestedTags, metadata: { domain } };
     } catch (err) {
@@ -40,7 +42,16 @@ export function useVisionAnalysis() {
     }
   };
 
-  return { analyzeImage, isAnalyzing, result, error, reset: () => { setResult(null); setError(null); } };
+  return {
+    analyzeImage,
+    isAnalyzing,
+    result,
+    error,
+    reset: () => {
+      setResult(null);
+      setError(null);
+    },
+  };
 }
 
 function fileToBase64(file: File): Promise<string> {

@@ -108,29 +108,31 @@ export function Topbar() {
           <Search className="w-5 h-5" />
         </button>
 
-        {/* System Pulse Indicator */}
-        <div
-          className="flex items-center gap-1.5 px-2 py-1"
-          title={systemDegraded ? 'System degraded' : 'System healthy'}
-        >
-          <Activity
-            className={`w-3.5 h-3.5 ${
-              systemDegraded
-                ? 'text-amber-400'
-                : systemHealthy
-                  ? 'text-green-400'
-                  : 'text-gray-500 animate-pulse'
-            }`}
-          />
-          <span className={`hidden lg:inline text-xs ${
-            systemDegraded ? 'text-amber-400' : systemHealthy ? 'text-green-400' : 'text-gray-500'
-          }`}>
-            {systemDegraded ? 'Degraded' : systemHealthy ? 'Healthy' : 'Checking'}
-          </span>
-        </div>
+        {/* System Pulse Indicator (Power Mode only) */}
+        {powerMode && (
+          <div
+            className="flex items-center gap-1.5 px-2 py-1"
+            title={systemDegraded ? 'System degraded' : 'System healthy'}
+          >
+            <Activity
+              className={`w-3.5 h-3.5 ${
+                systemDegraded
+                  ? 'text-amber-400'
+                  : systemHealthy
+                    ? 'text-green-400'
+                    : 'text-gray-500 animate-pulse'
+              }`}
+            />
+            <span className={`hidden lg:inline text-xs ${
+              systemDegraded ? 'text-amber-400' : systemHealthy ? 'text-green-400' : 'text-gray-500'
+            }`}>
+              {systemDegraded ? 'Degraded' : systemHealthy ? 'Healthy' : 'Checking'}
+            </span>
+          </div>
+        )}
 
-        {/* Affect mood indicator */}
-        {affectLabel && (
+        {/* Affect mood indicator (Power Mode only) */}
+        {powerMode && affectLabel && (
           <div
             className="hidden md:flex items-center gap-1.5 px-2 py-1"
             title={affectSummary || `Current mood: ${affectLabel}`}
@@ -177,7 +179,7 @@ export function Topbar() {
             </span>
           )}
           <div className="relative">
-            <UserMenu />
+            <UserMenu powerMode={powerMode} onTogglePowerMode={togglePowerMode} />
             {/* Online status indicator */}
             {isOnline && (
               <span

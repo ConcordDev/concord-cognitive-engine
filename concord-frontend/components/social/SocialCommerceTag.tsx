@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import {
   ShoppingBag,
@@ -56,9 +57,11 @@ export function SocialCommerceTag({
       {/* Item image / placeholder */}
       <div className="w-14 h-14 rounded-lg bg-lattice-surface border border-lattice-border flex-shrink-0 overflow-hidden">
         {listing.imageUrl ? (
-          <img
+          <Image
             src={listing.imageUrl}
             alt={listing.title}
+            width={56}
+            height={56}
             className="w-full h-full object-cover"
           />
         ) : (

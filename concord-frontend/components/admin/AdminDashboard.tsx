@@ -290,7 +290,9 @@ function AdminDashboard({ stats, auditLogs, onRefresh, className }: AdminDashboa
             </div>
             <div className="bg-lattice-surface border border-lattice-border rounded-lg p-4 mt-4">
               <p className="text-sm text-gray-400 mb-2">DTUs per User (avg)</p>
-              <p className="text-xl font-semibold text-white">{stats.dtus.averagePerUser.toFixed(1)}</p>
+              <p className="text-xl font-semibold text-white">
+                {stats.dtus.averagePerUser.toFixed(1)}
+              </p>
             </div>
           </div>
         )}
@@ -304,14 +306,24 @@ function AdminDashboard({ stats, auditLogs, onRefresh, className }: AdminDashboa
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-lattice-surface border border-lattice-border rounded-lg p-4">
                 <p className="text-sm text-gray-400">Storage Used</p>
-                <p className="text-lg font-semibold text-white">{formatBytes(stats.storage.used)} / {formatBytes(stats.storage.total)}</p>
+                <p className="text-lg font-semibold text-white">
+                  {formatBytes(stats.storage.used)} / {formatBytes(stats.storage.total)}
+                </p>
                 <div className="w-full bg-lattice-bg rounded-full h-2 mt-2">
-                  <div className={cn('h-2 rounded-full', storagePercent > 80 ? 'bg-red-500' : 'bg-neon-cyan')} style={{ width: `${Math.min(storagePercent, 100)}%` }} />
+                  <div
+                    className={cn(
+                      'h-2 rounded-full',
+                      storagePercent > 80 ? 'bg-red-500' : 'bg-neon-cyan'
+                    )}
+                    style={{ width: `${Math.min(storagePercent, 100)}%` }}
+                  />
                 </div>
               </div>
               <div className="bg-lattice-surface border border-lattice-border rounded-lg p-4">
                 <p className="text-sm text-gray-400">API Requests Today</p>
-                <p className="text-lg font-semibold text-white">{stats.api.requestsToday.toLocaleString()}</p>
+                <p className="text-lg font-semibold text-white">
+                  {stats.api.requestsToday.toLocaleString()}
+                </p>
               </div>
               <div className="bg-lattice-surface border border-lattice-border rounded-lg p-4">
                 <p className="text-sm text-gray-400">Avg Latency</p>
@@ -319,12 +331,21 @@ function AdminDashboard({ stats, auditLogs, onRefresh, className }: AdminDashboa
               </div>
               <div className="bg-lattice-surface border border-lattice-border rounded-lg p-4">
                 <p className="text-sm text-gray-400">Error Rate</p>
-                <p className={cn('text-lg font-semibold', stats.api.errorRate > 5 ? 'text-red-400' : 'text-neon-green')}>{stats.api.errorRate}%</p>
+                <p
+                  className={cn(
+                    'text-lg font-semibold',
+                    stats.api.errorRate > 5 ? 'text-red-400' : 'text-neon-green'
+                  )}
+                >
+                  {stats.api.errorRate}%
+                </p>
               </div>
             </div>
             <div className="bg-lattice-surface border border-lattice-border rounded-lg p-4">
               <p className="text-sm text-gray-400">Attachments</p>
-              <p className="text-lg font-semibold text-white">{stats.storage.attachments.toLocaleString()} files</p>
+              <p className="text-lg font-semibold text-white">
+                {stats.storage.attachments.toLocaleString()} files
+              </p>
             </div>
           </div>
         )}

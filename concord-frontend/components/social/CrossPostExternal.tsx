@@ -27,7 +27,7 @@ interface Platform {
   name: string;
   icon: React.ReactNode;
   color: string;
-  format: (data: { title: string; content: string; url: string; tags: string[] }) => string;
+  format: (data: { title: string; content: string; url: string; tags: string[]; authorName?: string }) => string;
   shareUrl?: (data: { text: string; url: string }) => string;
 }
 
@@ -65,10 +65,11 @@ const PLATFORMS: Platform[] = [
     name: 'X / Twitter',
     icon: <XIcon className="w-4 h-4" />,
     color: 'hover:bg-white/10 hover:text-white',
-    format: ({ title, url, tags }) => {
+    format: ({ title, url, tags, authorName }) => {
+      const byLine = authorName ? ` by ${authorName}` : '';
       const hashtags = tags.slice(0, 3).map((t) => `#${t}`).join(' ');
-      const text = `${title}${hashtags ? `\n\n${hashtags}` : ''}\n\n${url}`;
-      return text.length > 280 ? `${truncate(title, 200)}\n\n${url}` : text;
+      const text = `${title}${byLine}${hashtags ? `\n\n${hashtags}` : ''}\n\n${url}`;
+      return text.length > 280 ? `${truncate(title, 200)}${byLine}\n\n${url}` : text;
     },
     shareUrl: ({ text }) =>
       `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`,
@@ -78,9 +79,10 @@ const PLATFORMS: Platform[] = [
     name: 'Instagram Caption',
     icon: <InstagramIcon className="w-4 h-4" />,
     color: 'hover:bg-pink-500/10 hover:text-pink-400',
-    format: ({ title, content, tags }) => {
+    format: ({ title, content, tags, authorName }) => {
+      const byLine = authorName ? `\nby ${authorName}` : '';
       const hashtags = tags.map((t) => `#${t}`).join(' ');
-      return `${title}\n\n${truncate(content, 1500)}\n\n${hashtags}\n\nLink in bio`;
+      return `${title}${byLine}\n\n${truncate(content, 1500)}\n\n${hashtags}\n\nLink in bio`;
     },
   },
   {
@@ -88,9 +90,10 @@ const PLATFORMS: Platform[] = [
     name: 'LinkedIn',
     icon: <LinkedInIcon className="w-4 h-4" />,
     color: 'hover:bg-blue-500/10 hover:text-blue-400',
-    format: ({ title, content, url, tags }) => {
+    format: ({ title, content, url, tags, authorName }) => {
+      const byLine = authorName ? `\nby ${authorName}` : '';
       const hashtags = tags.slice(0, 5).map((t) => `#${t}`).join(' ');
-      return `${title}\n\n${truncate(content, 1000)}\n\n${hashtags}\n\n${url}`;
+      return `${title}${byLine}\n\n${truncate(content, 1000)}\n\n${hashtags}\n\n${url}`;
     },
     shareUrl: ({ text, url }) =>
       `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}&summary=${encodeURIComponent(text)}`,
@@ -111,7 +114,7 @@ export function CrossPostExternal({
   title,
   content,
   tags = [],
-  authorName: _authorName,
+  authorName,
   className,
 }: CrossPostExternalProps) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -120,7 +123,7 @@ export function CrossPostExternal({
   const shareUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/post/${postId}`;
 
   const handleShare = async (platform: Platform) => {
-    const formatted = platform.format({ title, content, url: shareUrl, tags });
+    const formatted = platform.format({ title, content, url: shareUrl, tags, authorName });
 
     if (platform.id === 'link') {
       await navigator.clipboard.writeText(shareUrl);

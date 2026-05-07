@@ -59,6 +59,16 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { ProvenanceBadge } from '@/components/dtu/ProvenanceBadge';
+import { PullToSubstrate } from '@/components/lens/PullToSubstrate';
+import { FeedBanner } from '@/components/lens/FeedBanner';
+import { ArtifactDetailModal } from '@/components/market/ArtifactDetailModal';
+import { RoyaltyDashboard } from '@/components/market/RoyaltyDashboard';
+import { MarketplaceTab } from '@/components/lens/MarketplaceTab';
+import RoyaltyCascadeViz from '@/components/visualizations/RoyaltyCascadeViz';
+import SocialProofFeed from '@/components/world-lens/SocialProofFeed';
+import { TrendingDomains } from '@/components/social/TrendingDomains';
+import { ActivityBadge } from '@/components/platform/ActivityBadge';
+import { useEvent } from '@/lib/realtime/event-bus';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -460,7 +470,11 @@ function ItemCard({
   }
 
   return (
-    <motion.div layout className="panel p-0 overflow-hidden hover:border-amber-500/40 hover:shadow-lg hover:shadow-amber-500/5 transition-all duration-200 cursor-pointer group">
+    <motion.div
+      layout
+      onClick={() => onSelect?.(item)}
+      className="panel p-0 overflow-hidden hover:border-amber-500/40 hover:shadow-lg hover:shadow-amber-500/5 transition-all duration-200 cursor-pointer group"
+    >
       {/* Thumbnail */}
       <div className="relative h-36 bg-lattice-deep flex items-center justify-center">
         {audio ? (
@@ -521,11 +535,36 @@ function ItemCard({
           </div>
         )}
         <div className="flex items-center justify-between pt-2 border-t border-lattice-border">
-          <span className="text-amber-400 font-bold text-sm">From {formatPrice(item.prices.basic)}</span>
-          <button onClick={(e) => { e.stopPropagation(); onAddToCart(item); }}
-            className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-400 border border-amber-500/30 hover:from-amber-500/30 hover:to-orange-500/30 transition-all text-xs font-medium flex items-center gap-1">
-            <ShoppingCart className="w-3 h-3" /> Buy
-          </button>
+          <div className="flex items-center gap-1.5">
+            <span className="text-amber-400 font-bold text-sm">
+              From {formatPrice(item.prices.basic)}
+            </span>
+            {item.sales > 0 && onRoyaltyClick && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRoyaltyClick(item.id);
+                }}
+                className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-neon-cyan/10 border border-neon-cyan/20 text-[10px] text-neon-cyan hover:bg-neon-cyan/20 transition-colors"
+                title="View royalty cascade"
+              >
+                <GitBranch className="w-2.5 h-2.5" />
+                {item.sales}
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5">
+            <PullToSubstrate domain="marketplace" artifactId={item.id} compact />
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onAddToCart(item);
+              }}
+              className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-400 border border-amber-500/30 hover:from-amber-500/30 hover:to-orange-500/30 transition-all text-xs font-medium flex items-center gap-1"
+            >
+              <ShoppingCart className="w-3 h-3" /> Buy
+            </button>
+          </div>
         </div>
       </div>
     </motion.div>
@@ -607,8 +646,9 @@ export default function MarketplaceLensPage() {
   const [showNewListing, setShowNewListing] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
-  const [showFeatures, setShowFeatures] = useState(false);
+  const [showFeatures, setShowFeatures] = useState(true);
   const [showCheckoutConfirm, setShowCheckoutConfirm] = useState(false);
+  const [selectedArtifactId, setSelectedArtifactId] = useState<string | null>(null);
 
   // New listing form state
   const [newListingForm, setNewListingForm] = useState({
@@ -632,7 +672,50 @@ export default function MarketplaceLensPage() {
   const [packSubmitting, setPackSubmitting] = useState(false);
   const [packError, setPackError] = useState<string | null>(null);
 
-  const { isLoading, isError: isError, error: error, refetch: refetch } = useLensData('marketplace', 'listing', {
+  const runAction = useRunArtifact('marketplace');
+  const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
+  const [isRunning, setIsRunning] = useState<string | null>(null);
+  // Live activity feed state
+  const [recentTrades, setRecentTrades] = useState<
+    Array<{ dtuId: string; title?: string; price: number; ts: string }>
+  >([]);
+  const [recentListings, setRecentListings] = useState<
+    Array<{ dtuId: string; title?: string; ts: string }>
+  >([]);
+  const [royaltyVizDtuId, setRoyaltyVizDtuId] = useState<string | null>(null);
+  const handleAction = async (action: string) => {
+    const targetId = listingItems[0]?.id;
+    if (!targetId) {
+      setActionResult({ message: 'No listings found. Add a listing first to run analysis.' });
+      return;
+    }
+    setIsRunning(action);
+    try {
+      const res = await runAction.mutateAsync({ id: targetId, action });
+      if (res.ok === false) {
+        setActionResult({
+          message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}`,
+        });
+      } else {
+        setActionResult(res.result as Record<string, unknown>);
+      }
+    } catch (e) {
+      console.error(`Action ${action} failed:`, e);
+      setActionResult({
+        message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}`,
+      });
+    } finally {
+      setIsRunning(null);
+    }
+  };
+
+  const {
+    items: listingItems,
+    isLoading,
+    isError: isError,
+    error: error,
+    refetch: refetch,
+  } = useLensData('marketplace', 'listing', {
     noSeed: true,
   });
   const {
@@ -1018,14 +1101,14 @@ export default function MarketplaceLensPage() {
     }
 
     if (completed.length > 0) {
-      setPurchases(prev => [...completed, ...prev]);
-      setCart(prev => prev.filter(c => !completed.some(p => p.item.id === c.item.id)));
+      setPurchases((prev) => [...completed, ...prev]);
+      setCart((prev) => prev.filter((c) => !completed.some((p) => p.item.id === c.item.id)));
       // Refresh balance, listings, and purchase data after successful checkout
       queryClient.invalidateQueries({ queryKey: ['economy-balance'] });
       queryClient.invalidateQueries({ queryKey: ['wallet-balance'] });
-      queryClient.invalidateQueries({ queryKey: ['artistry-beats'] });
-      queryClient.invalidateQueries({ queryKey: ['artistry-stems'] });
-      queryClient.invalidateQueries({ queryKey: ['artistry-samples'] });
+      queryClient.invalidateQueries({ queryKey: ['marketplace-templates'] });
+      queryClient.invalidateQueries({ queryKey: ['marketplace-components'] });
+      queryClient.invalidateQueries({ queryKey: ['marketplace-datasets'] });
       queryClient.invalidateQueries({ queryKey: ['artistry-art'] });
       queryClient.invalidateQueries({ queryKey: ['artistry-purchases'] });
     }
@@ -1119,7 +1202,9 @@ export default function MarketplaceLensPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Store className="w-6 h-6 text-amber-400" />
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent">Creative Marketplace</h1>
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent">
+            Creative Marketplace
+          </h1>
         </div>
 
         {/* Real-time Enhancement Toolbar */}
@@ -1291,54 +1376,21 @@ export default function MarketplaceLensPage() {
               </div>
             )}
 
-          {/* Category Pills */}
-          <div className="flex items-center gap-2 flex-wrap">
-            {CATEGORIES.map(c => (
-              <button key={c.id} onClick={() => setCategory(c.id)}
-                className={cn('px-3 py-1.5 rounded-full text-sm font-medium flex items-center gap-1.5 transition-colors border',
-                  category === c.id ? 'bg-amber-500/20 border-amber-500/50 text-amber-400' : 'bg-lattice-surface border-lattice-border text-gray-400 hover:text-white hover:border-amber-500/30')}>
-                <c.icon className="w-3.5 h-3.5" /> {c.name}
-              </button>
-            ))}
-          </div>
-
-          {/* Search + Filters */}
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="relative flex-1 min-w-[220px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search beats, samples, artwork..."
-                className="w-full pl-10 pr-4 py-2 bg-lattice-surface border border-lattice-border rounded-lg focus:border-neon-purple outline-none text-sm" />
-            </div>
-            <select value={genreFilter} onChange={e => setGenreFilter(e.target.value)}
-              className="px-3 py-2 bg-lattice-surface border border-lattice-border rounded-lg text-sm">
-              {GENRE_OPTIONS.map(g => <option key={g} value={g}>{g}</option>)}
-            </select>
-            <select value={sortBy} onChange={e => setSortBy(e.target.value as SortOption)}
-              className="px-3 py-2 bg-lattice-surface border border-lattice-border rounded-lg text-sm">
-              {SORT_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-            </select>
-            <div className="flex items-center bg-lattice-surface border border-lattice-border rounded-lg">
-              <button onClick={() => setViewMode('grid')}
-                className={cn('p-2 rounded-l-lg transition-colors', viewMode === 'grid' ? 'bg-neon-purple/20 text-neon-purple' : 'text-gray-500 hover:text-white')}>
-                <Grid3X3 className="w-4 h-4" />
-              </button>
-              <button onClick={() => setViewMode('list')}
-                className={cn('p-2 rounded-r-lg transition-colors', viewMode === 'list' ? 'bg-neon-purple/20 text-neon-purple' : 'text-gray-500 hover:text-white')}>
-                <List className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-
-          {/* Results count */}
-          <p className="text-xs text-gray-500">{filteredItems.length} item{filteredItems.length !== 1 ? 's' : ''} found</p>
-
-          {/* Item Grid / List */}
-          <div className={cn(viewMode === 'grid' ? 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4' : 'space-y-2')}>
-            <AnimatePresence>
-              {filteredItems.map(item => (
-                <ItemCard key={item.id} item={item} viewMode={viewMode}
-                  isPlaying={previewItem?.id === item.id && isPlaying}
-                  onPlay={handlePlay} onAddToCart={addToCart} />
+            {/* Category Pills */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {CATEGORIES.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => setCategory(c.id)}
+                  className={cn(
+                    'px-3 py-1.5 rounded-full text-sm font-medium flex items-center gap-1.5 transition-colors border',
+                    category === c.id
+                      ? 'bg-amber-500/20 border-amber-500/50 text-amber-400'
+                      : 'bg-lattice-surface border-lattice-border text-gray-400 hover:text-white hover:border-amber-500/30'
+                  )}
+                >
+                  <c.icon className="w-3.5 h-3.5" /> {c.name}
+                </button>
               ))}
             </div>
 
@@ -1538,10 +1590,16 @@ export default function MarketplaceLensPage() {
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold">Your Listings</h2>
             <div className="flex items-center gap-2">
-              <button onClick={() => setShowPackBuilder(true)} className="btn-neon flex items-center gap-2 text-sm">
+              <button
+                onClick={() => setShowPackBuilder(true)}
+                className="btn-neon flex items-center gap-2 text-sm"
+              >
                 <Package className="w-4 h-4" /> Create Pack
               </button>
-              <button onClick={() => setShowNewListing(true)} className="btn-neon purple flex items-center gap-2 text-sm">
+              <button
+                onClick={() => setShowNewListing(true)}
+                className="btn-neon purple flex items-center gap-2 text-sm"
+              >
                 <Plus className="w-4 h-4" /> New Listing
               </button>
             </div>
@@ -1719,32 +1777,58 @@ export default function MarketplaceLensPage() {
           {/* Knowledge Pack Builder Modal */}
           <AnimatePresence>
             {showPackBuilder && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
                 className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-                onClick={() => setShowPackBuilder(false)}>
-                <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+                onClick={() => setShowPackBuilder(false)}
+              >
+                <motion.div
+                  initial={{ scale: 0.95, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.95, opacity: 0 }}
                   className="bg-lattice-bg border border-lattice-border rounded-xl w-full max-w-lg p-6 space-y-4 max-h-[80vh] overflow-y-auto"
-                  onClick={e => e.stopPropagation()}>
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <div className="flex items-center justify-between">
                     <h3 className="text-lg font-bold flex items-center gap-2">
                       <Package className="w-5 h-5 text-neon-cyan" />
                       Create Knowledge Pack
                     </h3>
-                    <button onClick={() => setShowPackBuilder(false)} className="text-gray-400 hover:text-white"><X className="w-5 h-5" /></button>
+                    <button
+                      onClick={() => setShowPackBuilder(false)}
+                      className="text-gray-400 hover:text-white"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
                   </div>
-                  <p className="text-xs text-gray-400">Bundle DTUs into a collection and list it on the marketplace.</p>
+                  <p className="text-xs text-gray-400">
+                    Bundle DTUs into a collection and list it on the marketplace.
+                  </p>
                   <div className="space-y-3">
-                    <input placeholder="Pack Name" value={packForm.name}
-                      onChange={e => setPackForm(f => ({ ...f, name: e.target.value }))}
-                      className="w-full px-3 py-2 bg-lattice-surface border border-lattice-border rounded-lg text-sm focus:border-neon-cyan outline-none" />
-                    <textarea placeholder="Description" rows={2} value={packForm.description}
-                      onChange={e => setPackForm(f => ({ ...f, description: e.target.value }))}
-                      className="w-full px-3 py-2 bg-lattice-surface border border-lattice-border rounded-lg text-sm focus:border-neon-cyan outline-none resize-none" />
+                    <input
+                      placeholder="Pack Name"
+                      value={packForm.name}
+                      onChange={(e) => setPackForm((f) => ({ ...f, name: e.target.value }))}
+                      className="w-full px-3 py-2 bg-lattice-surface border border-lattice-border rounded-lg text-sm focus:border-neon-cyan outline-none"
+                    />
+                    <textarea
+                      placeholder="Description"
+                      rows={2}
+                      value={packForm.description}
+                      onChange={(e) => setPackForm((f) => ({ ...f, description: e.target.value }))}
+                      className="w-full px-3 py-2 bg-lattice-surface border border-lattice-border rounded-lg text-sm focus:border-neon-cyan outline-none resize-none"
+                    />
                     <div>
                       <label className="text-xs text-gray-400 mb-1 block">Price (CC)</label>
-                      <input type="number" placeholder="10" value={packForm.price}
-                        onChange={e => setPackForm(f => ({ ...f, price: e.target.value }))}
-                        className="w-full px-3 py-2 bg-lattice-surface border border-lattice-border rounded-lg text-sm focus:border-neon-cyan outline-none" />
+                      <input
+                        type="number"
+                        placeholder="10"
+                        value={packForm.price}
+                        onChange={(e) => setPackForm((f) => ({ ...f, price: e.target.value }))}
+                        className="w-full px-3 py-2 bg-lattice-surface border border-lattice-border rounded-lg text-sm focus:border-neon-cyan outline-none"
+                      />
                     </div>
                     <div>
                       <label className="text-xs text-gray-400 mb-2 block">
@@ -1752,30 +1836,42 @@ export default function MarketplaceLensPage() {
                       </label>
                       <div className="max-h-48 overflow-y-auto border border-lattice-border rounded-lg divide-y divide-lattice-border">
                         {marketDTUs.length === 0 && (
-                          <p className="text-xs text-gray-500 p-3 text-center">No DTUs available. Ingest content first.</p>
+                          <p className="text-xs text-gray-500 p-3 text-center">
+                            No DTUs available. Ingest content first.
+                          </p>
                         )}
                         {marketDTUs.map((dtu: DTU) => {
                           const isSelected = packSelectedDTUs.includes(dtu.id);
                           return (
-                            <button key={dtu.id}
+                            <button
+                              key={dtu.id}
                               onClick={() => {
-                                setPackSelectedDTUs(prev =>
-                                  isSelected ? prev.filter(id => id !== dtu.id) : [...prev, dtu.id]
+                                setPackSelectedDTUs((prev) =>
+                                  isSelected
+                                    ? prev.filter((id) => id !== dtu.id)
+                                    : [...prev, dtu.id]
                                 );
                               }}
                               className={cn(
                                 'w-full flex items-center gap-3 px-3 py-2 text-left text-sm hover:bg-lattice-elevated transition-colors',
                                 isSelected && 'bg-neon-cyan/5'
-                              )}>
-                              <span className={cn(
-                                'w-4 h-4 rounded border flex items-center justify-center shrink-0',
-                                isSelected ? 'bg-neon-cyan border-neon-cyan' : 'border-gray-600'
-                              )}>
+                              )}
+                            >
+                              <span
+                                className={cn(
+                                  'w-4 h-4 rounded border flex items-center justify-center shrink-0',
+                                  isSelected ? 'bg-neon-cyan border-neon-cyan' : 'border-gray-600'
+                                )}
+                              >
                                 {isSelected && <Check className="w-3 h-3 text-white" />}
                               </span>
-                              <span className="truncate flex-1 text-gray-300">{dtu.title || dtu.id.slice(0, 12)}</span>
+                              <span className="truncate flex-1 text-gray-300">
+                                {dtu.title || dtu.id.slice(0, 12)}
+                              </span>
                               {dtu.tier && dtu.tier !== 'regular' && (
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-neon-purple/20 text-neon-purple">{dtu.tier}</span>
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-neon-purple/20 text-neon-purple">
+                                  {dtu.tier}
+                                </span>
                               )}
                             </button>
                           );
@@ -1784,18 +1880,41 @@ export default function MarketplaceLensPage() {
                     </div>
                   </div>
                   {packError && (
-                    <p className="text-xs text-red-400 bg-red-400/10 rounded-lg px-3 py-2">{packError}</p>
+                    <p className="text-xs text-red-400 bg-red-400/10 rounded-lg px-3 py-2">
+                      {packError}
+                    </p>
                   )}
                   <div className="flex items-center justify-between pt-2">
                     <span className="text-xs text-gray-500">
-                      {packSelectedDTUs.length} DTU{packSelectedDTUs.length !== 1 ? 's' : ''} in pack
+                      {packSelectedDTUs.length} DTU{packSelectedDTUs.length !== 1 ? 's' : ''} in
+                      pack
                     </span>
                     <div className="flex items-center gap-2">
-                      <button onClick={() => { setShowPackBuilder(false); setPackError(null); }} className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors">Cancel</button>
-                      <button onClick={handleCreatePack}
-                        disabled={!packForm.name.trim() || packSelectedDTUs.length === 0 || packSubmitting}
-                        className={cn('btn-neon text-sm', (!packForm.name.trim() || packSelectedDTUs.length === 0 || packSubmitting) && 'opacity-50 cursor-not-allowed')}>
-                        {packSubmitting ? 'Creating...' : `Create Pack (${packSelectedDTUs.length} DTUs)`}
+                      <button
+                        onClick={() => {
+                          setShowPackBuilder(false);
+                          setPackError(null);
+                        }}
+                        className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleCreatePack}
+                        disabled={
+                          !packForm.name.trim() || packSelectedDTUs.length === 0 || packSubmitting
+                        }
+                        className={cn(
+                          'btn-neon text-sm',
+                          (!packForm.name.trim() ||
+                            packSelectedDTUs.length === 0 ||
+                            packSubmitting) &&
+                            'opacity-50 cursor-not-allowed'
+                        )}
+                      >
+                        {packSubmitting
+                          ? 'Creating...'
+                          : `Create Pack (${packSelectedDTUs.length} DTUs)`}
                       </button>
                     </div>
                   </div>
@@ -1890,9 +2009,14 @@ export default function MarketplaceLensPage() {
                     {checkoutError}
                   </p>
                 )}
-                <button onClick={() => setShowCheckoutConfirm(true)} disabled={checkoutLoading || cart.length === 0 || userBalance < cartTotal}
-                  className={cn('btn-neon purple w-full py-3 text-sm font-semibold flex items-center justify-center gap-2',
-                    (checkoutLoading || userBalance < cartTotal) && 'opacity-50 cursor-not-allowed')}>
+                <button
+                  onClick={() => setShowCheckoutConfirm(true)}
+                  disabled={checkoutLoading || cart.length === 0 || userBalance < cartTotal}
+                  className={cn(
+                    'btn-neon purple w-full py-3 text-sm font-semibold flex items-center justify-center gap-2',
+                    (checkoutLoading || userBalance < cartTotal) && 'opacity-50 cursor-not-allowed'
+                  )}
+                >
                   {checkoutLoading ? (
                     <>
                       <span className="animate-spin">⟳</span> Processing...
@@ -1909,24 +2033,40 @@ export default function MarketplaceLensPage() {
                 {/* Checkout Confirmation Dialog */}
                 <AnimatePresence>
                   {showCheckoutConfirm && (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
                       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-                      onClick={() => setShowCheckoutConfirm(false)}>
-                      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+                      onClick={() => setShowCheckoutConfirm(false)}
+                    >
+                      <motion.div
+                        initial={{ scale: 0.95, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0.95, opacity: 0 }}
                         className="bg-lattice-bg border border-lattice-border rounded-xl w-full max-w-md p-6 space-y-4"
-                        onClick={e => e.stopPropagation()}>
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <h3 className="text-lg font-bold">Confirm Purchase</h3>
                         <div className="space-y-2 text-sm text-gray-400">
-                          {cart.map(ci => (
+                          {cart.map((ci) => (
                             <div key={ci.item.id} className="flex items-center justify-between">
-                              <span className="truncate">{ci.item.title} ({ci.license})</span>
-                              <span className="text-neon-green font-mono">{formatPrice(ci.price)}</span>
+                              <span className="truncate">
+                                {ci.item.title} ({ci.license})
+                              </span>
+                              <span className="text-neon-green font-mono">
+                                {formatPrice(ci.price)}
+                              </span>
                             </div>
                           ))}
                           <div className="border-t border-lattice-border pt-2 space-y-1">
                             <div className="flex items-center justify-between text-gray-400 text-xs">
                               <span>Platform fee ({(marketplaceFeeRate * 100).toFixed(0)}%)</span>
-                              <span>{formatPrice(Math.round(cartTotal * marketplaceFeeRate * 100) / 100)}</span>
+                              <span>
+                                {formatPrice(
+                                  Math.round(cartTotal * marketplaceFeeRate * 100) / 100
+                                )}
+                              </span>
                             </div>
                             <div className="flex items-center justify-between font-bold text-white">
                               <span>Total</span>
@@ -1935,13 +2075,31 @@ export default function MarketplaceLensPage() {
                           </div>
                         </div>
                         {checkoutError && (
-                          <p className="text-xs text-red-400 bg-red-400/10 rounded-lg px-3 py-2">{checkoutError}</p>
+                          <p className="text-xs text-red-400 bg-red-400/10 rounded-lg px-3 py-2">
+                            {checkoutError}
+                          </p>
                         )}
                         <div className="flex items-center justify-end gap-2 pt-2">
-                          <button onClick={() => { setShowCheckoutConfirm(false); setCheckoutError(null); }}
-                            className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors">Cancel</button>
-                          <button onClick={() => { setShowCheckoutConfirm(false); handleCheckout(); }} disabled={checkoutLoading}
-                            className={cn('btn-neon purple text-sm', checkoutLoading && 'opacity-50 cursor-not-allowed')}>
+                          <button
+                            onClick={() => {
+                              setShowCheckoutConfirm(false);
+                              setCheckoutError(null);
+                            }}
+                            className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={() => {
+                              setShowCheckoutConfirm(false);
+                              handleCheckout();
+                            }}
+                            disabled={checkoutLoading}
+                            className={cn(
+                              'btn-neon purple text-sm',
+                              checkoutLoading && 'opacity-50 cursor-not-allowed'
+                            )}
+                          >
                             {checkoutLoading ? 'Processing...' : 'Confirm Purchase'}
                           </button>
                         </div>
@@ -2180,10 +2338,19 @@ export default function MarketplaceLensPage() {
               <h3 className="text-lg font-bold">DTU Artifacts</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {marketArtifacts.slice(0, 6).map((dtu: DTU) => (
-                  <div key={dtu.id} className="p-3 rounded-lg bg-lattice-surface border border-lattice-border space-y-2">
+                  <div
+                    key={dtu.id}
+                    className="p-3 rounded-lg bg-lattice-surface border border-lattice-border space-y-2"
+                  >
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium truncate flex-1">{dtu.title || dtu.human?.summary || 'Untitled'}</p>
-                      <ProvenanceBadge source={dtu.source} model={dtu.meta?.model as string} authority={dtu.meta?.authority as string} />
+                      <p className="text-sm font-medium truncate flex-1">
+                        {dtu.title || dtu.human?.summary || 'Untitled'}
+                      </p>
+                      <ProvenanceBadge
+                        source={dtu.source}
+                        model={dtu.meta?.model as string}
+                        authority={dtu.meta?.authority as string}
+                      />
                     </div>
                     <ArtifactRenderer dtuId={dtu.id} artifact={dtu.artifact!} mode="thumbnail" />
                     <FeedbackWidget targetType="dtu" targetId={dtu.id} />

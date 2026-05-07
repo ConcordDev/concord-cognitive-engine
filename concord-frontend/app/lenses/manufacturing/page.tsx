@@ -1,21 +1,52 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useLensNav } from '@/hooks/useLensNav';
+import { motion } from 'framer-motion';
+import { LensPageShell } from '@/components/lens/LensPageShell';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
-  ClipboardList, Layers, ShieldCheck, Cog, HardHat, Box,
-  Plus, Search, Filter, X, Edit2, Trash2, AlertTriangle,
-  Gauge, Calendar, ChevronRight, ChevronDown, Activity,
-  Clock, Target, Wrench, TrendingUp, BarChart3, CheckCircle2,
-  XCircle, FileText, Zap, Settings, Timer,
-  Eye, PackageCheck, Truck, Factory, Package,
-  Calculator, CircleDot, ListChecks, Shield,
+  ClipboardList,
+  Layers,
+  ShieldCheck,
+  Cog,
+  HardHat,
+  Box,
+  Plus,
+  Search,
+  Filter,
+  X,
+  Edit2,
+  Trash2,
+  AlertTriangle,
+  Gauge,
+  Calendar,
+  ChevronRight,
+  ChevronDown,
+  Activity,
+  Clock,
+  Target,
+  Wrench,
+  TrendingUp,
+  BarChart3,
+  CheckCircle2,
+  XCircle,
+  FileText,
+  Zap,
+  Settings,
+  Timer,
+  Eye,
+  PackageCheck,
+  Truck,
+  Factory,
+  Package,
+  Calculator,
+  CircleDot,
+  ListChecks,
+  Shield,
 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
@@ -43,13 +74,33 @@ const GENERAL_STATUSES = ['active', 'inactive', 'draft', 'pending', 'review'] as
 const MACHINE_STATUSES: MachineStatus[] = ['running', 'idle', 'maintenance', 'down'];
 
 const STATUS_COLORS: Record<string, string> = {
-  planned: 'gray-400', released: 'neon-blue', in_progress: 'orange-500',
-  qc: 'amber-400', complete: 'green-400', shipped: 'neon-purple',
-  reported: 'red-400', investigating: 'amber-400', corrective_action: 'neon-blue', closed: 'green-400',
-  active: 'green-400', inactive: 'gray-500', draft: 'gray-400', pending: 'neon-blue', review: 'amber-400',
-  running: 'green-400', idle: 'amber-400', maintenance: 'neon-blue', down: 'red-400',
-  accept: 'green-400', reject: 'red-400', hold: 'amber-400', rework: 'neon-purple',
-  low: 'green-400', medium: 'amber-400', high: 'red-400', critical: 'red-500',
+  planned: 'gray-400',
+  released: 'neon-blue',
+  in_progress: 'orange-500',
+  qc: 'amber-400',
+  complete: 'green-400',
+  shipped: 'neon-purple',
+  reported: 'red-400',
+  investigating: 'amber-400',
+  corrective_action: 'neon-blue',
+  closed: 'green-400',
+  active: 'green-400',
+  inactive: 'gray-500',
+  draft: 'gray-400',
+  pending: 'neon-blue',
+  review: 'amber-400',
+  running: 'green-400',
+  idle: 'amber-400',
+  maintenance: 'neon-blue',
+  down: 'red-400',
+  accept: 'green-400',
+  reject: 'red-400',
+  hold: 'amber-400',
+  rework: 'neon-purple',
+  low: 'green-400',
+  medium: 'amber-400',
+  high: 'red-400',
+  critical: 'red-500',
 };
 
 const MODE_TABS: { id: ModeTab; label: string; icon: typeof ClipboardList }[] = [
@@ -192,7 +243,9 @@ function BOMTreeNode({ node, depth = 0 }: { node: BOMNode; depth?: number }) {
         </span>
         <span className={cn(ds.textMono, 'text-xs text-gray-500 w-20')}>{node.partNumber}</span>
         <span className="text-xs text-gray-400 w-12 text-right">{node.qtyPer}x</span>
-        <span className="text-xs text-orange-500 w-20 text-right font-mono">${rollupCost.toFixed(2)}</span>
+        <span className="text-xs text-orange-500 w-20 text-right font-mono">
+          ${rollupCost.toFixed(2)}
+        </span>
       </div>
       {expanded &&
         hasChildren &&
@@ -257,7 +310,13 @@ function OEEGauge({
 // Schedule Timeline mini-component
 // ---------------------------------------------------------------------------
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
-const DAY_COLORS = ['bg-neon-blue/40', 'bg-orange-500/40', 'bg-neon-purple/40', 'bg-green-400/40', 'bg-amber-400/40'];
+const DAY_COLORS = [
+  'bg-neon-blue/40',
+  'bg-orange-500/40',
+  'bg-neon-purple/40',
+  'bg-green-400/40',
+  'bg-amber-400/40',
+];
 
 function ScheduleTimeline({ schedule }: { schedule: LensItem }) {
   const data = schedule.data as Record<string, unknown>;
@@ -599,25 +658,6 @@ export default function ManufacturingLensPage() {
     return totalSamples > 0 ? (totalPass / totalSamples) * 100 : 0;
   }, []);
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-full p-8">
-        <div className="text-center space-y-3">
-          <div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-sm text-gray-400">Loading production data...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <div className="flex items-center justify-center h-full p-8">
-        <ErrorState error={error?.message} onRetry={refetch} />
-      </div>
-    );
-  }
-
   // ---------------------------------------------------------------------------
   // Render: Dashboard
   // ---------------------------------------------------------------------------
@@ -625,28 +665,64 @@ export default function ManufacturingLensPage() {
     <div className="space-y-6">
       {/* Production Line Status */}
       <div className={ds.panel}>
-        <h3 className={ds.heading3 + ' mb-3 flex items-center gap-2'}><Factory className="w-4 h-4 text-orange-500" /> Production Line Status</h3>
+        <h3 className={ds.heading3 + ' mb-3 flex items-center gap-2'}>
+          <Factory className="w-4 h-4 text-orange-500" /> Production Line Status
+        </h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {[
             { line: 'Line A', status: 'running' as const, product: 'Assembly Unit X1', uptime: 96 },
-            { line: 'Line B', status: 'idle' as const, product: 'Waiting for materials', uptime: 78 },
+            {
+              line: 'Line B',
+              status: 'idle' as const,
+              product: 'Waiting for materials',
+              uptime: 78,
+            },
             { line: 'Line C', status: 'maintenance' as const, product: 'Scheduled PM', uptime: 45 },
           ].map((line, i) => {
-            const statusConfig = { running: { color: 'bg-green-500', text: 'text-green-400', label: 'Running', pulse: true }, idle: { color: 'bg-amber-500', text: 'text-amber-400', label: 'Idle', pulse: false }, maintenance: { color: 'bg-blue-500', text: 'text-blue-400', label: 'Maintenance', pulse: false } };
+            const statusConfig = {
+              running: {
+                color: 'bg-green-500',
+                text: 'text-green-400',
+                label: 'Running',
+                pulse: true,
+              },
+              idle: { color: 'bg-amber-500', text: 'text-amber-400', label: 'Idle', pulse: false },
+              maintenance: {
+                color: 'bg-blue-500',
+                text: 'text-blue-400',
+                label: 'Maintenance',
+                pulse: false,
+              },
+            };
             const cfg = statusConfig[line.status];
             return (
-              <motion.div key={line.line} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.1 }} className="p-3 bg-lattice-elevated/30 rounded-lg border border-lattice-border">
+              <motion.div
+                key={line.line}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: i * 0.1 }}
+                className="p-3 bg-lattice-elevated/30 rounded-lg border border-lattice-border"
+              >
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-semibold text-white">{line.line}</span>
                   <span className="flex items-center gap-1.5">
-                    <span className={cn('w-2 h-2 rounded-full', cfg.color, cfg.pulse && 'animate-pulse')} />
+                    <span
+                      className={cn(
+                        'w-2 h-2 rounded-full',
+                        cfg.color,
+                        cfg.pulse && 'animate-pulse'
+                      )}
+                    />
                     <span className={cn('text-xs font-medium', cfg.text)}>{cfg.label}</span>
                   </span>
                 </div>
                 <p className="text-xs text-gray-400 mb-2">{line.product}</p>
                 <div className="flex items-center gap-2">
                   <div className="flex-1 h-1.5 bg-lattice-elevated rounded-full overflow-hidden">
-                    <div className={cn('h-full rounded-full', cfg.color)} style={{ width: `${line.uptime}%` }} />
+                    <div
+                      className={cn('h-full rounded-full', cfg.color)}
+                      style={{ width: `${line.uptime}%` }}
+                    />
                   </div>
                   <span className="text-xs text-gray-500">{line.uptime}%</span>
                 </div>
@@ -659,12 +735,54 @@ export default function ManufacturingLensPage() {
       {/* Defect Rate Gauge */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { label: 'Defect Rate', value: metrics.qcPassRate > 0 ? (100 - metrics.qcPassRate).toFixed(2) + '%' : '0%', desc: 'Current batch', icon: Package, color: metrics.qcPassRate >= 98 ? 'text-green-400' : metrics.qcPassRate >= 95 ? 'text-amber-400' : 'text-red-400' },
-          { label: 'First Pass Yield', value: firstPassYield.toFixed(1) + '%', desc: 'Without rework', icon: Gauge, color: firstPassYield >= 95 ? 'text-green-400' : 'text-amber-400' },
-          { label: 'Scrap Cost', value: '$' + (dashWOs.reduce((s, w) => s + (((w.data as Record<string, unknown>).scrapQty as number) || 0), 0) * 12).toLocaleString(), desc: 'Month to date', icon: Trash2, color: 'text-red-400' },
-          { label: 'Throughput', value: metrics.unitsToday + ' /hr', desc: 'All lines combined', icon: TrendingUp, color: 'text-orange-500' },
+          {
+            label: 'Defect Rate',
+            value: metrics.qcPassRate > 0 ? (100 - metrics.qcPassRate).toFixed(2) + '%' : '0%',
+            desc: 'Current batch',
+            icon: Package,
+            color:
+              metrics.qcPassRate >= 98
+                ? 'text-green-400'
+                : metrics.qcPassRate >= 95
+                  ? 'text-amber-400'
+                  : 'text-red-400',
+          },
+          {
+            label: 'First Pass Yield',
+            value: firstPassYield.toFixed(1) + '%',
+            desc: 'Without rework',
+            icon: Gauge,
+            color: firstPassYield >= 95 ? 'text-green-400' : 'text-amber-400',
+          },
+          {
+            label: 'Scrap Cost',
+            value:
+              '$' +
+              (
+                dashWOs.reduce(
+                  (s, w) => s + (((w.data as Record<string, unknown>).scrapQty as number) || 0),
+                  0
+                ) * 12
+              ).toLocaleString(),
+            desc: 'Month to date',
+            icon: Trash2,
+            color: 'text-red-400',
+          },
+          {
+            label: 'Throughput',
+            value: metrics.unitsToday + ' /hr',
+            desc: 'All lines combined',
+            icon: TrendingUp,
+            color: 'text-orange-500',
+          },
         ].map((card, i) => (
-          <motion.div key={card.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }} className={ds.panel}>
+          <motion.div
+            key={card.label}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.08 }}
+            className={ds.panel}
+          >
             <card.icon className={cn('w-4 h-4 mb-1', card.color)} />
             <p className={cn('text-2xl font-bold', card.color)}>{card.value}</p>
             <p className="text-xs text-gray-400">{card.label}</p>
@@ -675,7 +793,12 @@ export default function ManufacturingLensPage() {
 
       {/* KPI Cards */}
       <div className={ds.grid4}>
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }} className={ds.panel}>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0 }}
+          className={ds.panel}
+        >
           <div className="flex items-center gap-2 mb-1">
             <PackageCheck className="w-4 h-4 text-orange-500" />
             <span className={ds.textMuted}>Units Produced</span>
@@ -683,7 +806,12 @@ export default function ManufacturingLensPage() {
           <p className="text-2xl font-bold text-white">{metrics.unitsToday.toLocaleString()}</p>
           <p className="text-xs text-green-400 mt-1">+12% vs yesterday</p>
         </motion.div>
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className={ds.panel}>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className={ds.panel}
+        >
           <div className="flex items-center gap-2 mb-1">
             <Gauge className="w-4 h-4 text-green-400" />
             <span className={ds.textMuted}>Avg OEE</span>
@@ -825,7 +953,10 @@ export default function ManufacturingLensPage() {
                   {d.rate}%
                 </span>
                 <div
-                  className={cn('w-full rounded-t transition-all', d.rate < 95 ? 'bg-red-400' : 'bg-orange-500/60')}
+                  className={cn(
+                    'w-full rounded-t transition-all',
+                    d.rate < 95 ? 'bg-red-400' : 'bg-orange-500/60'
+                  )}
                   style={{ height: `${(d.rate - 90) * 10}%` }}
                 />
                 <span className="text-[10px] text-gray-600">{d.day}</span>
@@ -882,7 +1013,10 @@ export default function ManufacturingLensPage() {
                 const status = wo.meta.status as string;
                 const priority = wo.data.priority as string;
                 return (
-                  <tr key={wo.title} className="border-b border-lattice-border/50 hover:bg-lattice-elevated/30">
+                  <tr
+                    key={wo.title}
+                    className="border-b border-lattice-border/50 hover:bg-lattice-elevated/30"
+                  >
                     <td className="py-2 pr-4 font-mono text-orange-500">{wo.title}</td>
                     <td className="py-2 pr-4 text-gray-300">{wo.data.product as string}</td>
                     <td className="py-2 pr-4">
@@ -893,7 +1027,10 @@ export default function ManufacturingLensPage() {
                     <td className="py-2 pr-4">
                       <div className="flex items-center gap-2">
                         <div className="w-24 h-1.5 bg-lattice-elevated rounded-full overflow-hidden">
-                          <div className="h-full bg-orange-500 rounded-full" style={{ width: `${Math.min(100, pct)}%` }} />
+                          <div
+                            className="h-full bg-orange-500 rounded-full"
+                            style={{ width: `${Math.min(100, pct)}%` }}
+                          />
                         </div>
                         <span className="text-xs text-gray-400">{pct.toFixed(0)}%</span>
                       </div>
@@ -946,8 +1083,14 @@ export default function ManufacturingLensPage() {
           const isDetail = detailItem === item.id;
 
           return (
-            <div key={item.id} className={cn(ds.panel, 'hover:border-orange-500/30 transition-colors')}>
-              <div className="flex items-start justify-between mb-3 cursor-pointer" onClick={() => setDetailItem(isDetail ? null : item.id)}>
+            <div
+              key={item.id}
+              className={cn(ds.panel, 'hover:border-orange-500/30 transition-colors')}
+            >
+              <div
+                className="flex items-start justify-between mb-3 cursor-pointer"
+                onClick={() => setDetailItem(isDetail ? null : item.id)}
+              >
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-1">
                     <h3 className={ds.heading3}>{item.title}</h3>
@@ -995,7 +1138,13 @@ export default function ManufacturingLensPage() {
                   <span className="font-mono">{pct.toFixed(1)}%</span>
                 </div>
                 <div className="w-full h-2.5 bg-lattice-elevated rounded-full overflow-hidden">
-                  <div className={cn('h-full rounded-full transition-all', status === 'complete' ? 'bg-green-400' : 'bg-orange-500')} style={{ width: `${Math.min(100, pct)}%` }} />
+                  <div
+                    className={cn(
+                      'h-full rounded-full transition-all',
+                      status === 'complete' ? 'bg-green-400' : 'bg-orange-500'
+                    )}
+                    style={{ width: `${Math.min(100, pct)}%` }}
+                  />
                 </div>
               </div>
 
@@ -1035,13 +1184,24 @@ export default function ManufacturingLensPage() {
                       const isCurrent = idx === currentStep;
                       return (
                         <div key={idx} className="flex items-center gap-1">
-                          <div className={cn(
-                            'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors',
-                            isComplete && 'bg-green-400/20 border-green-400/40 text-green-400',
-                            isCurrent && 'bg-orange-500/20 border-orange-500/40 text-orange-500 animate-pulse',
-                            !isComplete && !isCurrent && 'bg-lattice-elevated border-lattice-border text-gray-500'
-                          )}>
-                            {isComplete ? <CheckCircle2 className="w-3 h-3" /> : isCurrent ? <Activity className="w-3 h-3" /> : <CircleDot className="w-3 h-3" />}
+                          <div
+                            className={cn(
+                              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors',
+                              isComplete && 'bg-green-400/20 border-green-400/40 text-green-400',
+                              isCurrent &&
+                                'bg-orange-500/20 border-orange-500/40 text-orange-500 animate-pulse',
+                              !isComplete &&
+                                !isCurrent &&
+                                'bg-lattice-elevated border-lattice-border text-gray-500'
+                            )}
+                          >
+                            {isComplete ? (
+                              <CheckCircle2 className="w-3 h-3" />
+                            ) : isCurrent ? (
+                              <Activity className="w-3 h-3" />
+                            ) : (
+                              <CircleDot className="w-3 h-3" />
+                            )}
                             {step}
                           </div>
                           {idx < steps.length - 1 && (
@@ -1114,7 +1274,9 @@ export default function ManufacturingLensPage() {
                 ))}
                 <div className="mt-3 pt-3 border-t border-lattice-border flex items-center justify-between px-2">
                   <span className="text-sm font-semibold text-white">Total BOM Cost</span>
-                  <span className="text-lg font-bold text-orange-500 font-mono">${calcBOMCost(BOM_TREE[0]).toFixed(2)}</span>
+                  <span className="text-lg font-bold text-orange-500 font-mono">
+                    ${calcBOMCost(BOM_TREE[0]).toFixed(2)}
+                  </span>
                 </div>
               </>
             )}
@@ -1209,11 +1371,28 @@ export default function ManufacturingLensPage() {
                 </span>
               </div>
               <div className="space-y-1 text-sm">
-                <p className={ds.textMuted}>Product: <span className="text-gray-300">{d.product as string}</span></p>
-                <p className={ds.textMuted}>Revision: <span className="text-white font-mono">{d.revision as string}</span> {d.prevRevision !== '-' && <span className="text-gray-600">(prev: {d.prevRevision as string})</span>}</p>
-                <p className={ds.textMuted}>Components: <span className="text-white">{String(d.components)}</span> across <span className="text-white">{String(d.levels)}</span> levels</p>
-                <p className={ds.textMuted}>Cost: <span className="text-orange-500 font-mono">${(d.totalCost as number).toFixed(2)}</span></p>
-                <p className={ds.textMuted}>Approved: <span className="text-gray-300">{d.approvedBy as string}</span></p>
+                <p className={ds.textMuted}>
+                  Product: <span className="text-gray-300">{d.product as string}</span>
+                </p>
+                <p className={ds.textMuted}>
+                  Revision: <span className="text-white font-mono">{d.revision as string}</span>{' '}
+                  {d.prevRevision !== '-' && (
+                    <span className="text-gray-600">(prev: {d.prevRevision as string})</span>
+                  )}
+                </p>
+                <p className={ds.textMuted}>
+                  Components: <span className="text-white">{String(d.components)}</span> across{' '}
+                  <span className="text-white">{String(d.levels)}</span> levels
+                </p>
+                <p className={ds.textMuted}>
+                  Cost:{' '}
+                  <span className="text-orange-500 font-mono">
+                    ${(d.totalCost as number).toFixed(2)}
+                  </span>
+                </p>
+                <p className={ds.textMuted}>
+                  Approved: <span className="text-gray-300">{d.approvedBy as string}</span>
+                </p>
               </div>
               {Boolean(d.changeNote) && (
                 <div className="mt-2 p-2 bg-lattice-elevated/50 rounded text-xs text-gray-400">
@@ -1643,8 +1822,14 @@ export default function ManufacturingLensPage() {
         const totalDowntime = downtimeLog.reduce((s, e) => s + (e.duration as number), 0);
 
         return (
-          <div key={item.id} className={cn(ds.panel, 'hover:border-orange-500/30 transition-colors')}>
-            <div className="flex items-start justify-between mb-3 cursor-pointer" onClick={() => setDetailItem(isDetail ? null : item.id)}>
+          <div
+            key={item.id}
+            className={cn(ds.panel, 'hover:border-orange-500/30 transition-colors')}
+          >
+            <div
+              className="flex items-start justify-between mb-3 cursor-pointer"
+              onClick={() => setDetailItem(isDetail ? null : item.id)}
+            >
               <div className="flex items-center gap-3">
                 <div
                   className={cn(
@@ -1779,10 +1964,15 @@ export default function ManufacturingLensPage() {
   const renderSafety = () => {
     const safetyItems = SEED.SafetyItem;
     const totalIncidents = safetyItems.length;
-    const oshaRecordables = safetyItems.filter(s => s.data.oshaRecordable === true).length;
-    const nearMisses = safetyItems.filter(s => (s.data.incidentType as string) === 'near_miss').length;
-    const openItems = safetyItems.filter(s => s.meta.status !== 'closed').length;
-    const totalHours = safetyItems.reduce((s, item) => s + ((item.data.employeeHours as number) || 0), 0);
+    const oshaRecordables = safetyItems.filter((s) => s.data.oshaRecordable === true).length;
+    const nearMisses = safetyItems.filter(
+      (s) => (s.data.incidentType as string) === 'near_miss'
+    ).length;
+    const openItems = safetyItems.filter((s) => s.meta.status !== 'closed').length;
+    const totalHours = safetyItems.reduce(
+      (s, item) => s + ((item.data.employeeHours as number) || 0),
+      0
+    );
     const oshaRate = totalHours > 0 ? ((oshaRecordables * 200000) / totalHours).toFixed(2) : '--';
 
     return (
@@ -1973,8 +2163,14 @@ export default function ManufacturingLensPage() {
           const isDetail = detailItem === item.id;
 
           return (
-            <div key={item.id} className={cn(ds.panel, 'hover:border-orange-500/30 transition-colors')}>
-              <div className="flex items-start justify-between mb-2 cursor-pointer" onClick={() => setDetailItem(isDetail ? null : item.id)}>
+            <div
+              key={item.id}
+              className={cn(ds.panel, 'hover:border-orange-500/30 transition-colors')}
+            >
+              <div
+                className="flex items-start justify-between mb-2 cursor-pointer"
+                onClick={() => setDetailItem(isDetail ? null : item.id)}
+              >
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <h3 className={ds.heading3}>{item.title}</h3>

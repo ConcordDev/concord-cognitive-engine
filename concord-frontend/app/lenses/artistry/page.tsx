@@ -1,23 +1,30 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useCallback } from 'react';
+import dynamic from 'next/dynamic';
+
+const Excalidraw = dynamic(
+  () => import('@excalidraw/excalidraw').then(mod => ({ default: mod.Excalidraw })),
+  { ssr: false },
+);
 import { useLensNav } from '@/hooks/useLensNav';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, apiHelpers } from '@/lib/api/client';
+import { apiHelpers } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
-import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useLensDTUs } from '@/hooks/useLensDTUs';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Palette, Plus, Search, Upload, Heart, Share2, Filter,
-  Eye, ShoppingBag, DollarSign, TrendingUp, Sparkles,
-  Music, Image as ImageIcon, Video, Mic2, X,
-  BarChart3, Users, Globe, Layers,
+  Palette, Search, Upload,
+  Eye, ShoppingBag, DollarSign, Sparkles,
+  Paintbrush, X,
+  BarChart3, Globe, Layers,
+  Loader2, XCircle, Zap, Ruler, Tag,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { UniversalActions } from '@/components/lens/UniversalActions';
+import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
+import { useLensData } from '@/lib/hooks/use-lens-data';
 import { ErrorState } from '@/components/common/EmptyState';
-import { ArtistryFeed } from '@/components/artistry/ArtistryFeed';
-import { PreviewCard } from '@/components/artistry/PreviewCard';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -33,42 +40,59 @@ export default function ArtistryLensPage() {
   const { latestData: realtimeData, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('artistry');
   const { contextDTUs, isLoading: dtusLoading } = useLensDTUs({ lens: 'artistry' });
 
+  // Backend action wiring
+  const runAction = useRunArtifact('artistry');
+  const { items: artistryItems } = useLensData<Record<string, unknown>>('artistry', 'artwork', { seed: [] });
+  const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
+  const [isRunning, setIsRunning] = useState<string | null>(null);
+
+  const handleArtistryAction = async (action: string) => {
+    const targetId = artistryItems[0]?.id;
+    if (!targetId) return;
+    setIsRunning(action);
+    try {
+      const res = await runAction.mutateAsync({ id: targetId, action });
+      if (res.ok === false) { setActionResult({ message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setActionResult(res.result as Record<string, unknown>); }
+    } catch (e) { console.error(`Action ${action} failed:`, e); setActionResult({ message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` }); }
+    setIsRunning(null);
+  };
+
   const [tab, setTab] = useState<ArtistryTab>('feed');
   const [searchQuery, setSearchQuery] = useState('');
-  const [showFeatures, setShowFeatures] = useState(false);
+  const [showFeatures, setShowFeatures] = useState(true);
   const [showUpload, setShowUpload] = useState(false);
   const [feedMode, setFeedMode] = useState<FeedMode>('chronological');
 
   // Upload form
   const [uploadTitle, setUploadTitle] = useState('');
-  const [uploadType, setUploadType] = useState('track');
+  const [uploadType, setUploadType] = useState('illustration');
   const [uploadTags, setUploadTags] = useState('');
 
   // Assets from API
   const { data: assets, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['artistry', 'assets', searchQuery],
-    queryFn: () => apiHelpers.artistry.assets.list({ search: searchQuery || undefined }).then(r => r.data?.assets || []).catch(() => []),
+    queryFn: () => apiHelpers.artistry.assets.list({ search: searchQuery || undefined }).then(r => r.data?.assets || []).catch((e) => { console.warn('[Artistry] Query failed:', e?.message); return []; }),
     initialData: [],
   });
 
-  // Genres
-  const { data: genres } = useQuery({
-    queryKey: ['artistry', 'genres'],
-    queryFn: () => apiHelpers.artistry.genres().then(r => r.data?.genres || []).catch(() => []),
+  // Styles / Mediums
+  const { data: styles } = useQuery({
+    queryKey: ['artistry', 'styles'],
+    queryFn: () => apiHelpers.artistry.genres().then(r => r.data?.genres || []).catch((e) => { console.warn('[Artistry] Query failed:', e?.message); return []; }),
     initialData: [],
   });
 
   // Asset types
   const { data: assetTypes } = useQuery({
     queryKey: ['artistry', 'asset-types'],
-    queryFn: () => apiHelpers.artistry.assetTypes().then(r => r.data?.types || []).catch(() => []),
+    queryFn: () => apiHelpers.artistry.assetTypes().then(r => r.data?.types || []).catch((e) => { console.warn('[Artistry] Query failed:', e?.message); return []; }),
     initialData: [],
   });
 
-  // Marketplace beats
-  const { data: marketplaceBeats } = useQuery({
-    queryKey: ['artistry', 'marketplace', 'beats'],
-    queryFn: () => apiHelpers.artistry.marketplace.beats.list().then(r => r.data?.beats || []).catch(() => []),
+  // Marketplace artworks
+  const { data: marketplaceArt } = useQuery({
+    queryKey: ['artistry', 'marketplace', 'art'],
+    queryFn: () => apiHelpers.artistry.marketplace.art.list().then(r => r.data?.art || r.data?.items || []).catch((e) => { console.warn('[Artistry] Query failed:', e?.message); return []; }),
     initialData: [],
     enabled: tab === 'marketplace',
   });
@@ -76,7 +100,7 @@ export default function ArtistryLensPage() {
   // Studio projects
   const { data: studioProjects } = useQuery({
     queryKey: ['artistry', 'studio', 'projects'],
-    queryFn: () => apiHelpers.artistry.studio.projects.list().then(r => r.data?.projects || []).catch(() => []),
+    queryFn: () => apiHelpers.artistry.studio.projects.list().then(r => r.data?.projects || []).catch((e) => { console.warn('[Artistry] Query failed:', e?.message); return []; }),
     initialData: [],
     enabled: tab === 'studio',
   });
@@ -107,7 +131,7 @@ export default function ArtistryLensPage() {
     { id: 'feed', label: 'Feed', icon: Globe },
     { id: 'assets', label: 'Assets', icon: Layers },
     { id: 'marketplace', label: 'Marketplace', icon: ShoppingBag },
-    { id: 'studio', label: 'Studio', icon: Music },
+    { id: 'studio', label: 'Studio', icon: Paintbrush },
     { id: 'stats', label: 'Stats', icon: BarChart3 },
   ];
 
@@ -132,14 +156,81 @@ export default function ArtistryLensPage() {
 
         {showFeatures && <LensFeaturePanel lensId="artistry" />}
         <RealtimeDataPanel data={realtimeData} insights={realtimeInsights} />
+      <UniversalActions domain="artistry" artifactId={null} compact />
+
+        {/* ── Backend Action Panels ── */}
+        <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><Zap className="w-4 h-4 text-neon-pink" /> Artistry Compute Actions</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <button onClick={() => handleArtistryAction('colorPaletteAnalysis')} disabled={isRunning !== null} className="flex flex-col items-center gap-2 p-3 bg-white/5 rounded-lg border border-white/10 hover:border-neon-pink/50 transition-colors disabled:opacity-50">
+              {isRunning === 'colorPaletteAnalysis' ? <Loader2 className="w-5 h-5 text-neon-pink animate-spin" /> : <Palette className="w-5 h-5 text-neon-pink" />}
+              <span className="text-xs text-gray-300">Color Palette</span>
+            </button>
+            <button onClick={() => handleArtistryAction('compositionScore')} disabled={isRunning !== null} className="flex flex-col items-center gap-2 p-3 bg-white/5 rounded-lg border border-white/10 hover:border-neon-cyan/50 transition-colors disabled:opacity-50">
+              {isRunning === 'compositionScore' ? <Loader2 className="w-5 h-5 text-neon-cyan animate-spin" /> : <Ruler className="w-5 h-5 text-neon-cyan" />}
+              <span className="text-xs text-gray-300">Composition Score</span>
+            </button>
+            <button onClick={() => handleArtistryAction('styleClassify')} disabled={isRunning !== null} className="flex flex-col items-center gap-2 p-3 bg-white/5 rounded-lg border border-white/10 hover:border-purple-400/50 transition-colors disabled:opacity-50">
+              {isRunning === 'styleClassify' ? <Loader2 className="w-5 h-5 text-purple-400 animate-spin" /> : <Eye className="w-5 h-5 text-purple-400" />}
+              <span className="text-xs text-gray-300">Style Classify</span>
+            </button>
+            <button onClick={() => handleArtistryAction('mediaInventory')} disabled={isRunning !== null} className="flex flex-col items-center gap-2 p-3 bg-white/5 rounded-lg border border-white/10 hover:border-yellow-400/50 transition-colors disabled:opacity-50">
+              {isRunning === 'mediaInventory' ? <Loader2 className="w-5 h-5 text-yellow-400 animate-spin" /> : <Tag className="w-5 h-5 text-yellow-400" />}
+              <span className="text-xs text-gray-300">Media Inventory</span>
+            </button>
+          </div>
+          {actionResult && (
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-4 p-3 bg-white/5 rounded-lg border border-white/10">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-semibold flex items-center gap-2"><BarChart3 className="w-4 h-4 text-neon-pink" /> Result</h4>
+                <button onClick={() => setActionResult(null)} className="text-gray-400 hover:text-white"><XCircle className="w-4 h-4" /></button>
+              </div>
+              {/* Color Palette Analysis */}
+              {actionResult.harmonyScore !== undefined && actionResult.dominantHue !== undefined && (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="p-2 bg-white/5 rounded text-center"><p className="text-sm font-bold text-neon-pink">{actionResult.harmonyScore as number}</p><p className="text-[10px] text-gray-500">Harmony</p></div>
+                    <div className="p-2 bg-white/5 rounded text-center"><p className="text-sm font-bold text-neon-cyan capitalize">{actionResult.dominantHue as string}</p><p className="text-[10px] text-gray-500">Dominant</p></div>
+                    <div className="p-2 bg-white/5 rounded text-center"><p className="text-sm font-bold text-yellow-400">{actionResult.contrastRange as number}</p><p className="text-[10px] text-gray-500">Contrast</p></div>
+                  </div>
+                  {(actionResult.colors as Array<{ hex: string }>)?.slice(0, 8).map((c, i) => (
+                    <span key={i} className="inline-block w-6 h-6 rounded-sm border border-white/20 mr-1" style={{ backgroundColor: c.hex }} title={c.hex} />
+                  ))}
+                </div>
+              )}
+              {/* Composition Score */}
+              {actionResult.overallScore !== undefined && !actionResult.dominantHue && (
+                <div className="text-3xl font-bold text-neon-cyan">{actionResult.overallScore as number}<span className="text-sm text-gray-400">/100</span></div>
+              )}
+              {/* Style Classify */}
+              {actionResult.classification !== undefined && (
+                <div className="flex items-center gap-3"><span className="text-xl font-bold text-purple-400 capitalize">{actionResult.classification as string}</span>{!!actionResult.confidence && <span className="text-xs text-gray-400">{actionResult.confidence as number}%</span>}</div>
+              )}
+              {/* Media Inventory */}
+              {actionResult.totalItems !== undefined && actionResult.categoryBreakdown !== undefined && (
+                <div className="space-y-2">
+                  <div className="text-lg font-bold text-yellow-400">{actionResult.totalItems as number} items</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(actionResult.categoryBreakdown as Array<{ category: string; itemCount: number }>).map((entry) => (
+                      <div key={entry.category} className="p-2 bg-white/5 rounded flex justify-between text-xs"><span className="text-white capitalize">{entry.category}</span><span className="text-gray-400">{entry.itemCount}</span></div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {!!actionResult.message && !actionResult.harmonyScore && !actionResult.overallScore && !actionResult.classification && !actionResult.totalItems && (
+                <p className="text-sm text-gray-400">{actionResult.message as string}</p>
+              )}
+            </motion.div>
+          )}
+        </div>
 
         {/* Stat Cards — creative palette feel */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
             { label: 'Assets', value: (assets as unknown[]).length, icon: Layers, color: 'text-neon-pink' },
             { label: 'Artistry DTUs', value: contextDTUs.length, icon: Sparkles, color: 'text-purple-400' },
-            { label: 'Genres', value: (genres as unknown[]).length, icon: Music, color: 'text-cyan-400' },
-            { label: 'Marketplace', value: (marketplaceBeats as unknown[]).length, icon: ShoppingBag, color: 'text-yellow-400' },
+            { label: 'Styles', value: (styles as unknown[]).length, icon: Paintbrush, color: 'text-cyan-400' },
+            { label: 'Marketplace', value: (marketplaceArt as unknown[]).length, icon: ShoppingBag, color: 'text-yellow-400' },
           ].map((stat, i) => (
             <motion.div key={stat.label} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.07 }} className="bg-white/5 border border-white/10 rounded-lg p-3 hover:border-neon-pink/30 transition-colors group">
               <stat.icon className={cn('w-4 h-4 mb-1 group-hover:scale-110 transition-transform', stat.color)} />
@@ -224,39 +315,59 @@ export default function ArtistryLensPage() {
         {/* Marketplace */}
         {tab === 'marketplace' && (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold flex items-center gap-2"><ShoppingBag className="w-5 h-5" /> Beat Marketplace</h2>
+            <h2 className="text-lg font-semibold flex items-center gap-2"><ShoppingBag className="w-5 h-5" /> Asset Marketplace</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {(marketplaceBeats as Record<string, unknown>[]).map((beat: Record<string, unknown>) => (
-                <div key={beat.id as string} className="bg-white/5 border border-white/10 rounded-lg p-4">
-                  <h3 className="font-medium text-sm">{beat.title as string}</h3>
-                  <div className="flex items-center gap-2 mt-2 text-xs text-gray-500">
-                    <DollarSign className="w-3 h-3" /> {beat.price as number || 0}
-                    <Music className="w-3 h-3 ml-2" /> {beat.bpm as number || 120} BPM
+              {(marketplaceArt as Record<string, unknown>[]).map((item: Record<string, unknown>) => (
+                <div key={item.id as string} className="bg-white/5 border border-white/10 rounded-lg p-4 hover:border-neon-pink/30 transition-colors">
+                  <h3 className="font-medium text-sm">{item.title as string}</h3>
+                  <div className="text-xs text-gray-500 mt-1">{item.medium as string || item.type as string || 'Mixed Media'}</div>
+                  <div className="flex items-center justify-between mt-2">
+                    <div className="flex items-center gap-1 text-xs text-gray-500">
+                      <Eye className="w-3 h-3" /> {(item.views as number) || 0}
+                    </div>
+                    <div className="flex items-center gap-1 text-xs text-neon-pink">
+                      <DollarSign className="w-3 h-3" /> {(item.price as number) || 0}
+                    </div>
                   </div>
                 </div>
               ))}
-              {(marketplaceBeats as Record<string, unknown>[]).length === 0 && (
-                <div className="col-span-full text-center py-12 text-gray-500 text-sm">No beats listed yet.</div>
+              {(marketplaceArt as Record<string, unknown>[]).length === 0 && (
+                <div className="col-span-full text-center py-12 text-gray-500 text-sm">No artworks listed yet. Share your creations.</div>
               )}
             </div>
           </div>
         )}
 
-        {/* Studio */}
+        {/* Studio — Canvas + Projects */}
         {tab === 'studio' && (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold flex items-center gap-2"><Music className="w-5 h-5" /> Studio Projects</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {(studioProjects as Record<string, unknown>[]).map((proj: Record<string, unknown>) => (
-                <div key={proj.id as string} className="bg-white/5 border border-white/10 rounded-lg p-4">
-                  <h3 className="font-medium text-sm">{proj.title as string}</h3>
-                  <div className="text-xs text-gray-500 mt-1">{proj.bpm as number || 120} BPM - {proj.key as string || 'C'}</div>
-                </div>
-              ))}
-              {(studioProjects as Record<string, unknown>[]).length === 0 && (
-                <div className="col-span-full text-center py-12 text-gray-500 text-sm">No studio projects. Create one in the Studio lens.</div>
-              )}
+            <h2 className="text-lg font-semibold flex items-center gap-2"><Paintbrush className="w-5 h-5" /> Creative Canvas</h2>
+            {/* Excalidraw Drawing Canvas */}
+            <div className="w-full rounded-lg border border-white/10 overflow-hidden" style={{ height: '65vh' }}>
+              <Excalidraw
+                theme="dark"
+                UIOptions={{
+                  canvasActions: {
+                    saveToActiveFile: false,
+                    loadScene: false,
+                  },
+                }}
+              />
             </div>
+            {/* Projects list below canvas */}
+            {(studioProjects as Record<string, unknown>[]).length > 0 && (
+              <div className="space-y-2">
+                <h3 className="text-sm font-semibold text-gray-400">Recent Projects</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {(studioProjects as Record<string, unknown>[]).map((proj: Record<string, unknown>) => (
+                    <div key={proj.id as string} className="bg-white/5 border border-white/10 rounded-lg p-3 hover:border-neon-pink/30 transition-colors">
+                      <h4 className="font-medium text-sm">{proj.title as string || 'Untitled Project'}</h4>
+                      <div className="text-xs text-gray-500 mt-1">{proj.medium as string || proj.status as string || 'In Progress'}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -272,8 +383,8 @@ export default function ArtistryLensPage() {
               <div className="text-2xl font-bold">{contextDTUs.length}</div>
             </div>
             <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-              <div className="text-xs text-gray-500 mb-1">Genres</div>
-              <div className="text-2xl font-bold">{(genres as unknown[]).length}</div>
+              <div className="text-xs text-gray-500 mb-1">Styles</div>
+              <div className="text-2xl font-bold">{(styles as unknown[]).length}</div>
             </div>
           </div>
         )}
@@ -292,10 +403,12 @@ export default function ArtistryLensPage() {
                   <select value={uploadType} onChange={e => setUploadType(e.target.value)} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm">
                     {(assetTypes as string[]).length > 0 ? (assetTypes as string[]).map((t: string) => <option key={t} value={t}>{t}</option>) : (
                       <>
-                        <option value="track">Track</option>
-                        <option value="beat">Beat</option>
-                        <option value="artwork">Artwork</option>
-                        <option value="video">Video</option>
+                        <option value="illustration">Illustration</option>
+                        <option value="painting">Painting</option>
+                        <option value="photography">Photography</option>
+                        <option value="digital">Digital Art</option>
+                        <option value="sculpture">Sculpture</option>
+                        <option value="mixed-media">Mixed Media</option>
                       </>
                     )}
                   </select>

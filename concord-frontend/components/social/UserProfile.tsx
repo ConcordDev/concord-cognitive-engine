@@ -451,7 +451,13 @@ function UserProfile({ userId, currentUserId, onNavigateToUser, className }: Use
             )}
           >
             {profile.avatar ? (
-              <Image src={profile.avatar} alt={profile.displayName} fill className="rounded-full object-cover" unoptimized />
+              <Image
+                src={profile.avatar}
+                alt={profile.displayName}
+                fill
+                className="rounded-full object-cover"
+                unoptimized
+              />
             ) : (
               profile.displayName.charAt(0).toUpperCase()
             )}

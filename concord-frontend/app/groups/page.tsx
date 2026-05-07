@@ -13,7 +13,7 @@ import {
   Shield,
   Tag,
 } from 'lucide-react';
-import { cn, debounce } from '@/lib/utils';
+import { debounce } from '@/lib/utils';
 import { api } from '@/lib/api/client';
 import { GroupCard } from '@/components/social/GroupCard';
 import type { GroupData } from '@/components/social/GroupCard';

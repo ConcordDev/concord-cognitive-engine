@@ -44,6 +44,19 @@ function withDefaults(t: Omit<LensTheme, 'layout' | 'darkPreference' | 'emptySta
 }
 
 export const lensThemes: Record<string, LensTheme> = {
+  // ── World Lens (3D City) ────────────────────────────────────────
+  world: {
+    id: 'world',
+    accent: 'cyan-400',
+    accentBg: 'bg-cyan-400/10',
+    accentBorder: 'border-cyan-500/30',
+    accentText: 'text-cyan-400',
+    darkMode: true,
+    layout: 'canvas',
+    darkPreference: true,
+    emptyStateIcon: 'globe',
+    emptyStateMessage: 'Concord City is loading. Explore the 3D world of your knowledge.',
+  },
   // ── Priority A ──────────────────────────────────────────────────
   music: {
     id: 'music',

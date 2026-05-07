@@ -23,7 +23,7 @@ interface DTUQuickCreateProps {
   defaultTags?: string[];
 }
 
-export function DTUQuickCreate({ onClose, onSuccess, source, defaultTags }: DTUQuickCreateProps) {
+function DTUQuickCreate({ onClose, onSuccess, source, defaultTags }: DTUQuickCreateProps) {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [tagsInput, setTagsInput] = useState(defaultTags?.join(', ') || '');
@@ -37,7 +37,7 @@ export function DTUQuickCreate({ onClose, onSuccess, source, defaultTags }: DTUQ
     mutationFn: async () => {
       const tags = tagsInput
         .split(',')
-        .map(t => t.trim())
+        .map((t) => t.trim())
         .filter(Boolean);
 
       return apiHelpers.dtus.create({
@@ -189,3 +189,7 @@ export function DTUQuickCreate({ onClose, onSuccess, source, defaultTags }: DTUQ
     </div>
   );
 }
+
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedDTUQuickCreate = withErrorBoundary(DTUQuickCreate);
+export { _WrappedDTUQuickCreate as DTUQuickCreate };

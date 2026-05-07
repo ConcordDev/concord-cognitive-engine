@@ -4,10 +4,14 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useLensNav } from '@/hooks/useLensNav';
+import { UniversalActions } from '@/components/lens/UniversalActions';
+import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
+import { useLensData } from '@/lib/hooks/use-lens-data';
 import { motion } from 'framer-motion';
 import {
-  Map, Layers, Radio, AlertTriangle, Activity, RefreshCw,
+  Map, Layers, Radio, AlertTriangle, RefreshCw,
   ChevronDown, Compass, Globe, Radar,
+  Loader2, XCircle, Zap, MapPin, BarChart3, Route, Navigation,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import type { MapMarker } from '@/components/common/MapView';
@@ -34,14 +38,31 @@ export default function AtlasLensPage() {
   useLensNav('atlas');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('atlas');
 
+  // Backend action wiring
+  const runAction = useRunArtifact('atlas');
+  const { items: atlasItems } = useLensData<Record<string, unknown>>('atlas', 'location', { seed: [] });
+  const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
+  const [isRunning, setIsRunning] = useState<string | null>(null);
+
+  const handleAtlasAction = async (action: string) => {
+    const targetId = atlasItems[0]?.id;
+    if (!targetId) return;
+    setIsRunning(action);
+    try {
+      const res = await runAction.mutateAsync({ id: targetId, action });
+      if (res.ok === false) { setActionResult({ message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setActionResult(res.result as Record<string, unknown>); }
+    } catch (e) { console.error(`Action ${action} failed:`, e); setActionResult({ message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` }); }
+    setIsRunning(null);
+  };
+
   const [tab, setTab] = useState<Tab>('terrain');
-  const [showFeatures, setShowFeatures] = useState(false);
+  const [showFeatures, setShowFeatures] = useState(true);
   const [queryLat, setQueryLat] = useState('');
   const [queryLng, setQueryLng] = useState('');
 
   // ── Data fetching ──────────────────────────────────────────────────────
 
-  const { data: coverageData, isLoading: coverageLoading } = useQuery({
+  const { data: coverageData, isLoading: coverageLoading, isError: coverageError } = useQuery({
     queryKey: ['atlas-coverage'],
     queryFn: () => apiHelpers.atlasTomography.coverage().then(r => r.data),
     refetchInterval: 30000,
@@ -53,7 +74,7 @@ export default function AtlasLensPage() {
     refetchInterval: 20000,
   });
 
-  const { data: anomalyData, isLoading: anomalyLoading } = useQuery({
+  const { data: anomalyData, isLoading: anomalyLoading, isError: anomalyError } = useQuery({
     queryKey: ['atlas-anomalies'],
     queryFn: () => apiHelpers.atlasTomography.signalsAnomalies(50).then(r => r.data),
     refetchInterval: 15000,
@@ -105,6 +126,13 @@ export default function AtlasLensPage() {
 
   return (
     <div data-lens-theme="atlas" className="min-h-screen bg-zinc-950 text-zinc-100 p-6 space-y-6">
+      {/* Error banner */}
+      {(coverageError || anomalyError) && (
+        <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 flex items-center justify-between">
+          <p className="text-red-400 text-sm">Some data sources failed to load. Showing available data.</p>
+          <button onClick={() => window.location.reload()} className="text-xs text-red-300 hover:text-white">Retry</button>
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -273,7 +301,101 @@ export default function AtlasLensPage() {
         )}
       </div>
 
+      {/* ── Backend Action Panels ── */}
+      <div className="panel p-4">
+        <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><Zap className="w-4 h-4 text-neon-cyan" /> Atlas Compute Actions</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <button onClick={() => handleAtlasAction('geocode')} disabled={isRunning !== null} className="flex flex-col items-center gap-2 p-3 bg-lattice-deep rounded-lg border border-lattice-border hover:border-neon-cyan/50 transition-colors disabled:opacity-50">
+            {isRunning === 'geocode' ? <Loader2 className="w-5 h-5 text-neon-cyan animate-spin" /> : <MapPin className="w-5 h-5 text-neon-cyan" />}
+            <span className="text-xs text-gray-300">Geocode</span>
+          </button>
+          <button onClick={() => handleAtlasAction('distanceMatrix')} disabled={isRunning !== null} className="flex flex-col items-center gap-2 p-3 bg-lattice-deep rounded-lg border border-lattice-border hover:border-neon-purple/50 transition-colors disabled:opacity-50">
+            {isRunning === 'distanceMatrix' ? <Loader2 className="w-5 h-5 text-neon-purple animate-spin" /> : <Navigation className="w-5 h-5 text-neon-purple" />}
+            <span className="text-xs text-gray-300">Distance Matrix</span>
+          </button>
+          <button onClick={() => handleAtlasAction('regionStats')} disabled={isRunning !== null} className="flex flex-col items-center gap-2 p-3 bg-lattice-deep rounded-lg border border-lattice-border hover:border-green-400/50 transition-colors disabled:opacity-50">
+            {isRunning === 'regionStats' ? <Loader2 className="w-5 h-5 text-green-400 animate-spin" /> : <BarChart3 className="w-5 h-5 text-green-400" />}
+            <span className="text-xs text-gray-300">Region Stats</span>
+          </button>
+          <button onClick={() => handleAtlasAction('routeOptimize')} disabled={isRunning !== null} className="flex flex-col items-center gap-2 p-3 bg-lattice-deep rounded-lg border border-lattice-border hover:border-orange-400/50 transition-colors disabled:opacity-50">
+            {isRunning === 'routeOptimize' ? <Loader2 className="w-5 h-5 text-orange-400 animate-spin" /> : <Route className="w-5 h-5 text-orange-400" />}
+            <span className="text-xs text-gray-300">Route Optimize</span>
+          </button>
+        </div>
+        {actionResult && (
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-4 p-3 bg-lattice-deep rounded-lg border border-lattice-border">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-sm font-semibold flex items-center gap-2"><Globe className="w-4 h-4 text-neon-cyan" /> Result</h4>
+              <button onClick={() => setActionResult(null)} className="text-gray-400 hover:text-white"><XCircle className="w-4 h-4" /></button>
+            </div>
+            {/* Geocode */}
+            {actionResult.resolved !== undefined && actionResult.count !== undefined && (
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="p-2 bg-lattice-surface rounded text-center"><p className="text-sm font-bold text-neon-cyan">{actionResult.resolvedCount as number || 0}</p><p className="text-[10px] text-gray-500">Resolved</p></div>
+                  <div className="p-2 bg-lattice-surface rounded text-center"><p className="text-sm font-bold text-red-400">{actionResult.unresolvedCount as number || 0}</p><p className="text-[10px] text-gray-500">Unresolved</p></div>
+                </div>
+                {(actionResult.resolved as Array<{ name: string; lat: number; lon: number; distanceFromOriginKm?: number }>)?.slice(0, 5).map((p, i) => (
+                  <div key={i} className="flex items-center justify-between text-xs p-1.5 bg-lattice-surface rounded">
+                    <span className="text-white">{p.name}</span>
+                    <span className="text-gray-400">{p.lat?.toFixed(2)}, {p.lon?.toFixed(2)}</span>
+                    {p.distanceFromOriginKm !== undefined && <span className="text-neon-cyan">{p.distanceFromOriginKm}km</span>}
+                  </div>
+                ))}
+              </div>
+            )}
+            {/* Distance Matrix */}
+            {actionResult.matrix !== undefined && (
+              <div className="space-y-2">
+                <div className="text-xs text-gray-400">{actionResult.pointCount as number} points, {(actionResult.stats as Record<string, unknown>)?.totalPairs as number} pairs</div>
+                {(actionResult.stats as Record<string, unknown>)?.minDistancePair ? <div className="text-xs text-neon-green">Closest: {((actionResult.stats as Record<string, unknown>).minDistancePair as string[])?.join(' - ')} ({(actionResult.stats as Record<string, unknown>).minDistanceKm as number}km)</div> : null}
+                {(actionResult.stats as Record<string, unknown>)?.maxDistancePair ? <div className="text-xs text-red-400">Farthest: {((actionResult.stats as Record<string, unknown>).maxDistancePair as string[])?.join(' - ')} ({(actionResult.stats as Record<string, unknown>).maxDistanceKm as number}km)</div> : null}
+              </div>
+            )}
+            {/* Region Stats */}
+            {actionResult.totals !== undefined && actionResult.rankings !== undefined && (
+              <div className="space-y-2">
+                <div className="text-lg font-bold text-green-400">{actionResult.regionCount as number} Regions</div>
+                <div className="grid grid-cols-2 gap-2">
+                  {Object.entries(actionResult.totals as Record<string, unknown>).map(([key, val]) => (
+                    <div key={`total-${key}`} className="p-2 bg-lattice-surface rounded"><p className="text-[10px] text-gray-500 capitalize">Total {key.replace(/([A-Z])/g, ' $1')}</p><p className="text-sm font-bold text-white">{String(val)}</p></div>
+                  ))}
+                  {Object.entries(actionResult.averages as Record<string, unknown>).map(([key, val]) => (
+                    <div key={`avg-${key}`} className="p-2 bg-lattice-surface rounded"><p className="text-[10px] text-gray-500 capitalize">Avg {key.replace(/([A-Z])/g, ' $1')}</p><p className="text-sm font-bold text-white">{String(val)}</p></div>
+                  ))}
+                </div>
+                {actionResult.distribution ? (
+                  <div className="p-2 bg-lattice-surface rounded">
+                    <p className="text-[10px] text-gray-500">Distribution</p>
+                    <p className="text-sm font-bold text-white">{String((actionResult.distribution as Record<string, unknown>).concentration)}</p>
+                  </div>
+                ) : null}
+              </div>
+            )}
+            {/* Route Optimize */}
+            {actionResult.optimizedRoute !== undefined && actionResult.totalDistanceKm !== undefined && (
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="p-2 bg-lattice-surface rounded text-center"><p className="text-sm font-bold text-orange-400">{actionResult.totalDistanceKm as number}km</p><p className="text-[10px] text-gray-500">Total Distance</p></div>
+                  <div className="p-2 bg-lattice-surface rounded text-center"><p className="text-sm font-bold text-neon-cyan">{(actionResult.optimizedRoute as unknown[])?.length || 0}</p><p className="text-[10px] text-gray-500">Stops</p></div>
+                </div>
+                {(actionResult.optimizedRoute as Array<{ name: string; step: number }>)?.map((s, i) => (
+                  <div key={i} className="flex items-center gap-2 text-xs p-1.5 bg-lattice-surface rounded">
+                    <span className="text-orange-400 font-bold w-5 text-center">{s.step}</span>
+                    <span className="text-white">{s.name}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {!!actionResult.message && !actionResult.resolved && !actionResult.matrix && !actionResult.totals && !actionResult.optimizedRoute && (
+              <p className="text-sm text-gray-400">{actionResult.message as string}</p>
+            )}
+          </motion.div>
+        )}
+      </div>
+
       {/* Real-time Data Panel */}
+      <UniversalActions domain="atlas" artifactId={null} compact />
       {realtimeData && (
         <RealtimeDataPanel
           domain="atlas"
@@ -289,7 +411,7 @@ export default function AtlasLensPage() {
       <div className="border-t border-white/10">
         <button
           onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-400 hover:text-white transition-colors"
+          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
         >
           <span className="flex items-center gap-2">
             <Layers className="w-4 h-4" />

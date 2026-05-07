@@ -11,7 +11,8 @@ import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   Eye, Plus, Play, CheckCircle2, Layers, Clock, BarChart3,
   Sliders, Focus, Pause, AlertTriangle, ArrowUpDown,
-  RefreshCw, Activity, Target, Cpu, ChevronDown, Brain, Gauge
+  RefreshCw, Activity, Target, Cpu, ChevronDown, Brain, Gauge,
+  Loader2, XCircle, Zap
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -245,6 +246,224 @@ export default function AttentionLensPage() {
 
       {/* AI Actions */}
       <UniversalActions domain="attention" artifactId={bridge.selectedId} compact />
+
+      {/* Computational Actions */}
+      <div className="panel p-4">
+        <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
+          <Zap className="w-4 h-4 text-neon-yellow" /> Computational Actions
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <button
+            onClick={() => handleAttentionAction('focusScore')}
+            disabled={isRunning !== null || attentionItems.length === 0}
+            className="flex flex-col items-center gap-2 p-3 bg-lattice-bg rounded-lg border border-lattice-border hover:border-neon-cyan/50 transition-colors disabled:opacity-50"
+          >
+            {isRunning === 'focusScore' ? <Loader2 className="w-5 h-5 text-neon-cyan animate-spin" /> : <Focus className="w-5 h-5 text-neon-cyan" />}
+            <span className="text-xs text-gray-300">Focus Score</span>
+          </button>
+          <button
+            onClick={() => handleAttentionAction('priorityMatrix')}
+            disabled={isRunning !== null || attentionItems.length === 0}
+            className="flex flex-col items-center gap-2 p-3 bg-lattice-bg rounded-lg border border-lattice-border hover:border-neon-purple/50 transition-colors disabled:opacity-50"
+          >
+            {isRunning === 'priorityMatrix' ? <Loader2 className="w-5 h-5 text-neon-purple animate-spin" /> : <Target className="w-5 h-5 text-neon-purple" />}
+            <span className="text-xs text-gray-300">Priority Matrix</span>
+          </button>
+          <button
+            onClick={() => handleAttentionAction('attentionBudget')}
+            disabled={isRunning !== null || attentionItems.length === 0}
+            className="flex flex-col items-center gap-2 p-3 bg-lattice-bg rounded-lg border border-lattice-border hover:border-neon-green/50 transition-colors disabled:opacity-50"
+          >
+            {isRunning === 'attentionBudget' ? <Loader2 className="w-5 h-5 text-neon-green animate-spin" /> : <Gauge className="w-5 h-5 text-neon-green" />}
+            <span className="text-xs text-gray-300">Attention Budget</span>
+          </button>
+        </div>
+        {attentionItems.length === 0 && (
+          <p className="text-xs text-gray-500 mt-3 text-center">Add cognitive threads above to enable computational actions.</p>
+        )}
+      </div>
+
+      {/* Action Result Display */}
+      {actionResult && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="panel p-4"
+        >
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-white flex items-center gap-2">
+              <BarChart3 className="w-4 h-4 text-neon-cyan" /> Action Result
+            </h3>
+            <button onClick={() => setActionResult(null)} className="text-gray-400 hover:text-white">
+              <XCircle className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Focus Score Result */}
+          {actionResult.focusScore !== undefined && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="text-4xl font-bold text-neon-cyan">{actionResult.focusScore as number}</div>
+                <div>
+                  <span className={`text-sm font-medium px-2 py-0.5 rounded capitalize ${
+                    (actionResult.focusLevel as string) === 'excellent' ? 'bg-green-500/20 text-green-400' :
+                    (actionResult.focusLevel as string) === 'good' ? 'bg-blue-500/20 text-blue-400' :
+                    (actionResult.focusLevel as string) === 'moderate' ? 'bg-yellow-500/20 text-yellow-400' :
+                    'bg-red-500/20 text-red-400'
+                  }`}>
+                    {actionResult.focusLevel as string}
+                  </span>
+                  <p className="text-xs text-gray-400 mt-1">{actionResult.sessionCount as number} sessions analyzed</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                <div className="p-2 bg-lattice-bg rounded text-center">
+                  <p className="text-sm font-bold text-neon-green">{(actionResult.deepWork as Record<string, unknown>)?.ratio as number}%</p>
+                  <p className="text-[10px] text-gray-500">Deep Work Ratio</p>
+                </div>
+                <div className="p-2 bg-lattice-bg rounded text-center">
+                  <p className="text-sm font-bold text-neon-blue">{(actionResult.interruptions as Record<string, unknown>)?.perHour as number}/hr</p>
+                  <p className="text-[10px] text-gray-500">Interruptions</p>
+                </div>
+                <div className="p-2 bg-lattice-bg rounded text-center">
+                  <p className="text-sm font-bold text-neon-purple">{(actionResult.contextSwitching as Record<string, unknown>)?.switches as number}</p>
+                  <p className="text-[10px] text-gray-500">Context Switches</p>
+                </div>
+                <div className="p-2 bg-lattice-bg rounded text-center">
+                  <p className="text-sm font-bold text-neon-yellow">{actionResult.longestUninterruptedStreak as number}m</p>
+                  <p className="text-[10px] text-gray-500">Longest Streak</p>
+                </div>
+              </div>
+              {(actionResult.componentScores as Record<string, number>) && (
+                <div className="pt-2 border-t border-lattice-border">
+                  <p className="text-xs text-gray-500 mb-2">Component Scores</p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    {Object.entries(actionResult.componentScores as Record<string, number>).map(([key, val]) => (
+                      <div key={key} className="text-center">
+                        <p className="text-sm font-bold text-gray-200">{val}</p>
+                        <p className="text-[10px] text-gray-500 capitalize">{key.replace(/Score$/, '').replace(/([A-Z])/g, ' $1').trim()}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Priority Matrix Result */}
+          {actionResult.quadrants !== undefined && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-300">{actionResult.taskCount as number} tasks ranked</span>
+                <span className="text-xs text-gray-500">Eisenhower Matrix</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {(['do-first', 'schedule', 'delegate', 'eliminate'] as const).map((q) => {
+                  const quad = (actionResult.quadrants as Record<string, { count: number; tasks: Array<{ name: string; priorityScore: number }> }>)[q];
+                  const colors: Record<string, string> = {
+                    'do-first': 'border-red-500/40 bg-red-500/5',
+                    'schedule': 'border-blue-500/40 bg-blue-500/5',
+                    'delegate': 'border-yellow-500/40 bg-yellow-500/5',
+                    'eliminate': 'border-gray-500/40 bg-gray-500/5',
+                  };
+                  const labels: Record<string, string> = {
+                    'do-first': 'Do First',
+                    'schedule': 'Schedule',
+                    'delegate': 'Delegate',
+                    'eliminate': 'Eliminate',
+                  };
+                  return (
+                    <div key={q} className={`p-2 rounded-lg border ${colors[q]}`}>
+                      <p className="text-xs font-medium text-gray-300 mb-1">{labels[q]} <span className="text-gray-500">({quad.count})</span></p>
+                      {quad.tasks.slice(0, 2).map((t) => (
+                        <div key={t.name} className="flex justify-between text-[10px] text-gray-400">
+                          <span className="truncate max-w-[80px]">{t.name}</span>
+                          <span className="text-neon-cyan">{t.priorityScore}</span>
+                        </div>
+                      ))}
+                      {quad.count > 2 && <p className="text-[10px] text-gray-600 mt-0.5">+{quad.count - 2} more</p>}
+                    </div>
+                  );
+                })}
+              </div>
+              {(actionResult.optimalOrder as Array<{ name: string; priorityScore: number }>)?.slice(0, 5).length > 0 && (
+                <div className="pt-2 border-t border-lattice-border">
+                  <p className="text-xs text-gray-500 mb-2">Optimal Order (top 5)</p>
+                  <div className="space-y-1">
+                    {(actionResult.optimalOrder as Array<{ name: string; priorityScore: number }>).slice(0, 5).map((t, i) => (
+                      <div key={i} className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-600 w-4">{i + 1}.</span>
+                          <span className="text-gray-300">{t.name}</span>
+                        </div>
+                        <span className="text-neon-purple font-mono">{t.priorityScore}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Attention Budget Result */}
+          {actionResult.schedule !== undefined && actionResult.efficiency !== undefined && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="text-3xl font-bold text-neon-green">{actionResult.efficiency as number}%</div>
+                <div>
+                  <p className="text-sm text-gray-300">Allocation Efficiency</p>
+                  <p className="text-xs text-gray-500">{actionResult.scheduledTasks as number}/{actionResult.totalTasks as number} tasks scheduled</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                <div className="p-2 bg-lattice-bg rounded text-center">
+                  <p className="text-sm font-bold text-neon-cyan">{actionResult.totalAllocatedMinutes as number}m</p>
+                  <p className="text-[10px] text-gray-500">Allocated</p>
+                </div>
+                <div className="p-2 bg-lattice-bg rounded text-center">
+                  <p className="text-sm font-bold text-neon-yellow">{actionResult.remainingMinutes as number}m</p>
+                  <p className="text-[10px] text-gray-500">Remaining</p>
+                </div>
+                <div className="p-2 bg-lattice-bg rounded text-center">
+                  <p className="text-sm font-bold text-neon-purple">{actionResult.avgCognitiveLoad as number}</p>
+                  <p className="text-[10px] text-gray-500">Avg Cog Load</p>
+                </div>
+              </div>
+              {(actionResult.schedule as Array<{ name: string; startMinute: number; allocatedMinutes: number; cognitiveLoad: number; partial?: boolean }>).slice(0, 4).length > 0 && (
+                <div className="pt-2 border-t border-lattice-border">
+                  <p className="text-xs text-gray-500 mb-2">Schedule Preview</p>
+                  <div className="space-y-1">
+                    {(actionResult.schedule as Array<{ name: string; startMinute: number; allocatedMinutes: number; cognitiveLoad: number; partial?: boolean }>).slice(0, 4).map((s, i) => (
+                      <div key={i} className="flex items-center justify-between p-2 bg-lattice-bg rounded text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-500 font-mono w-12">{Math.floor(s.startMinute / 60)}h{s.startMinute % 60}m</span>
+                          <span className="text-gray-300">{s.name}</span>
+                          {s.partial && <span className="text-yellow-400 text-[10px]">partial</span>}
+                        </div>
+                        <div className="flex items-center gap-3 text-gray-400">
+                          <span>Load: {s.cognitiveLoad}</span>
+                          <span className="text-neon-green">{s.allocatedMinutes}m</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {(actionResult.unscheduledTasks as unknown[])?.length > 0 && (
+                <div className="flex items-center gap-2 p-2 rounded-lg bg-yellow-400/5 border border-yellow-400/20">
+                  <AlertTriangle className="w-4 h-4 text-yellow-400 flex-shrink-0" />
+                  <p className="text-xs text-yellow-400">{(actionResult.unscheduledTasks as unknown[]).length} task(s) could not be scheduled within the available time budget.</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Fallback: message-only result */}
+          {!!actionResult.message && actionResult.focusScore === undefined && actionResult.quadrants === undefined && actionResult.schedule === undefined && (
+            <p className="text-sm text-gray-400">{actionResult.message as string}</p>
+          )}
+        </motion.div>
+      )}
 
       {/* Quick Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

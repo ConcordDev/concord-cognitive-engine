@@ -1415,8 +1415,6 @@ export default function BoardLensPage() {
 
       <RealtimeDataPanel data={realtimeInsights} />
 
-      <RealtimeDataPanel data={realtimeInsights} />
-
       {/* Lens Features */}
       <div className="border-t border-white/10">
         <button

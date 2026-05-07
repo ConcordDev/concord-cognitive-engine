@@ -18,7 +18,7 @@ const sourceIcons: Record<string, typeof User> = {
   synthesis: Sparkles,
 };
 
-export function ActivityTimeline({ domain }: ActivityTimelineProps) {
+function ActivityTimeline({ domain }: ActivityTimelineProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [filter, setFilter] = useState<'all' | 'user' | 'system'>('all');
 

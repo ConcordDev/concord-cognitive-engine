@@ -53,9 +53,17 @@ function ActivityFeed() {
     const handler = () => {
       queryClient.invalidateQueries({ queryKey: ['activity-feed'] });
     };
-    const events = ['dtu:created', 'dtu:updated', 'dtu:deleted', 'system:alert', 'lens:dtu_generated'];
-    events.forEach(e => on(e, handler));
-    return () => { events.forEach(e => off(e, handler)); };
+    const events = [
+      'dtu:created',
+      'dtu:updated',
+      'dtu:deleted',
+      'system:alert',
+      'lens:dtu_generated',
+    ];
+    events.forEach((e) => on(e, handler));
+    return () => {
+      events.forEach((e) => off(e, handler));
+    };
   }, [isConnected, on, off, queryClient]);
 
   const { data, isLoading, refetch } = useQuery<EventsResponse>({

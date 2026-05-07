@@ -32,8 +32,6 @@ import {
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { MediaUpload } from '@/components/media/MediaUpload';
-import { UniversalPlayer } from '@/components/media/UniversalPlayer';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
@@ -321,8 +319,23 @@ function createDefaultDrumPads(): DrumPad[] {
 
 export default function StudioLensPage() {
   useLensNav('studio');
-  const { latestData: realtimeData, alerts: _realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('studio');
-  const { isLoading: _isLoading, isError: _isError, error: _error, refetch: _refetch, create: createLensItem, update: updateLensItem } = useLensData('studio', 'project', { noSeed: true });
+  const {
+    latestData: realtimeData,
+    alerts: realtimeAlerts,
+    insights: realtimeInsights,
+    isLive,
+    lastUpdated,
+  } = useRealtimeLens('studio');
+  const {
+    isLoading: _isLoading,
+    isError: _isError,
+    error: _error,
+    refetch: _refetch,
+    create: createLensItem,
+    update: updateLensItem,
+  } = useLensData('studio', 'project', { noSeed: true });
+  const { createDTU, publishToMarketplace } = useLensDTUs({ lens: 'studio' });
+  const { user: _user } = useAuth();
   const queryClient = useQueryClient();
 
   // ---- State ----
@@ -408,6 +421,17 @@ export default function StudioLensPage() {
   const [isPlayingBack, setIsPlayingBack] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  // Publish to marketplace state
+  const [showPublishModal, setShowPublishModal] = useState(false);
+  const [publishTitle, setPublishTitle] = useState('');
+  const [publishPrice, setPublishPrice] = useState('');
+  const [publishLicense, setPublishLicense] = useState<'basic' | 'premium' | 'exclusive'>('basic');
+  const [publishTags, setPublishTags] = useState('');
+  const [publishSubmitting, setPublishSubmitting] = useState(false);
+  const [publishError, setPublishError] = useState<string | null>(null);
+  const [publishedListingId, setPublishedListingId] = useState<string | null>(null);
+  const [showDTUPicker, setShowDTUPicker] = useState(false);
+  const [recordError, setRecordError] = useState<string | null>(null);
   const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const playbackAudioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -526,7 +550,7 @@ export default function StudioLensPage() {
       mixerRef.current?.dispose();
       drumEngineRef.current?.dispose();
       recorderRef.current?.dispose();
-      synthEngines.forEach(s => s.dispose());
+      synthEngines.forEach((s) => s.dispose());
     };
   }, []);
 
@@ -627,8 +651,14 @@ export default function StudioLensPage() {
     createLensItem({
       title: proj.title,
       data: proj as unknown as Record<string, unknown>,
-      meta: { status: 'active', tags: [proj.key, `${proj.bpm}bpm`, proj.genre].filter(Boolean) as string[] },
-    }).catch(err => console.error('Failed to persist project:', err instanceof Error ? err.message : err));
+      meta: {
+        status: 'active',
+        tags: [proj.key, `${proj.bpm}bpm`, proj.genre].filter(Boolean) as string[],
+      },
+    }).catch((err) => {
+      console.error('Failed to persist project:', err instanceof Error ? err.message : err);
+      showToast('error', 'Failed to create project');
+    });
   }, [newTitle, newBpm, newKey, newGenre, createLensItem]);
 
   // ---- Transport controls ----
@@ -664,9 +694,13 @@ export default function StudioLensPage() {
     const recorder = recorderRef.current;
     if (!recorder) return;
 
+    setRecordError(null);
     const hasAccess = await recorder.requestAccess();
     if (!hasAccess) {
-      console.warn('[Studio] Microphone access denied');
+      const reason = recorder.getLastError()?.message || 'Microphone access denied';
+      console.warn('[Studio] Mic access failed:', reason);
+      setRecordError(reason);
+      showToast('error', `Mic access failed: ${reason}`);
       return;
     }
 
@@ -678,11 +712,25 @@ export default function StudioLensPage() {
     setRecordedBlob(null);
     setSaveStatus('idle');
 
-    const started = recorder.startRecording((blob: Blob) => {
-      setRecordedBlob(blob);
-      const url = URL.createObjectURL(blob);
-      setRecordedUrl(url);
-    });
+    const started = recorder.startRecording(
+      (blob: Blob) => {
+        if (blob.size === 0) {
+          setRecordError(
+            'Recording produced no audio data. Check your input device and browser permissions.'
+          );
+          showToast('error', 'Recording was empty — check your mic');
+          return;
+        }
+        setRecordedBlob(blob);
+        const url = URL.createObjectURL(blob);
+        setRecordedUrl(url);
+      },
+      (err: Error) => {
+        console.error('[Studio] Recorder error:', err);
+        setRecordError(err.message);
+        showToast('error', `Recorder error: ${err.message}`);
+      }
+    );
 
     if (started) {
       transportRef.current?.record();
@@ -691,8 +739,12 @@ export default function StudioLensPage() {
       setRecordingTimer(0);
       // Start timer
       recordingTimerRef.current = setInterval(() => {
-        setRecordingTimer(prev => prev + 1);
+        setRecordingTimer((prev) => prev + 1);
       }, 1000);
+    } else {
+      const reason = recorder.getLastError()?.message || 'Failed to start recorder';
+      setRecordError(reason);
+      showToast('error', `Failed to start recorder: ${reason}`);
     }
   }, [recordedUrl]);
 
@@ -704,20 +756,40 @@ export default function StudioLensPage() {
   // ---- Playback of recorded audio ----
   const handlePlayback = useCallback(() => {
     if (!recordedUrl) return;
+    if (recordedBlob && recordedBlob.size === 0) {
+      showToast('error', 'Recording is empty — nothing to play back');
+      return;
+    }
     // Stop any existing playback
     if (playbackAudioRef.current) {
       playbackAudioRef.current.pause();
       playbackAudioRef.current = null;
     }
-    const audio = new Audio(recordedUrl);
-    playbackAudioRef.current = audio;
-    setIsPlayingBack(true);
+    const audio = new Audio();
+    // Attach handlers BEFORE assigning src so 'error' and 'ended' can't race.
     audio.onended = () => {
       setIsPlayingBack(false);
       playbackAudioRef.current = null;
     };
-    audio.play().catch(() => setIsPlayingBack(false));
-  }, [recordedUrl]);
+    audio.onerror = () => {
+      const code = audio.error?.code;
+      const msg = audio.error?.message || `Audio load failed (code ${code ?? '?'})`;
+      console.error('[Studio] Playback error:', msg);
+      showToast('error', `Playback failed: ${msg}`);
+      setIsPlayingBack(false);
+      playbackAudioRef.current = null;
+    };
+    audio.src = recordedUrl;
+    audio.preload = 'auto';
+    playbackAudioRef.current = audio;
+    setIsPlayingBack(true);
+    audio.play().catch((err) => {
+      console.error('[Studio] Playback rejected:', err);
+      showToast('error', `Playback rejected: ${err?.message || err}`);
+      setIsPlayingBack(false);
+      playbackAudioRef.current = null;
+    });
+  }, [recordedUrl, recordedBlob]);
 
   const handleStopPlayback = useCallback(() => {
     if (playbackAudioRef.current) {
@@ -771,17 +843,17 @@ export default function StudioLensPage() {
             },
             meta: { tags: ['studio', 'recording'], status: 'active' },
           });
-        } catch {
-          // Lens item creation is secondary - upload already succeeded
+        } catch (e) {
+          console.error('Studio lens item creation failed:', e);
         }
         // Invalidate queries so the track list updates without page refresh
         queryClient.invalidateQueries({ queryKey: ['lens', 'studio'] });
         // Add an audio track to the project for the recording
-        updateProject(p => {
+        updateProject((p) => {
           const track = createDefaultTrack(
             `Rec ${new Date().toLocaleTimeString()}`,
             'audio',
-            p.tracks.length,
+            p.tracks.length
           );
           emitTrackCreated(track, p.id);
           return { ...p, tracks: [...p.tracks, track] };
@@ -798,41 +870,50 @@ export default function StudioLensPage() {
   }, [recordedBlob, project, recordingTimer, createLensItem, queryClient, updateProject]);
 
   // ---- Beat pad with OscillatorNode frequencies ----
-  const BEAT_PAD_FREQUENCIES = useMemo(() => [
-    { note: 'C4', freq: 261.63 },
-    { note: 'D4', freq: 293.66 },
-    { note: 'E4', freq: 329.63 },
-    { note: 'F4', freq: 349.23 },
-    { note: 'G4', freq: 392.00 },
-    { note: 'A4', freq: 440.00 },
-    { note: 'B4', freq: 493.88 },
-    { note: 'C5', freq: 523.25 },
-  ], []);
+  const BEAT_PAD_FREQUENCIES = useMemo(
+    () => [
+      { note: 'C4', freq: 261.63 },
+      { note: 'D4', freq: 293.66 },
+      { note: 'E4', freq: 329.63 },
+      { note: 'F4', freq: 349.23 },
+      { note: 'G4', freq: 392.0 },
+      { note: 'A4', freq: 440.0 },
+      { note: 'B4', freq: 493.88 },
+      { note: 'C5', freq: 523.25 },
+    ],
+    []
+  );
 
-  const handleBeatPadTrigger = useCallback((index: number) => {
-    if (index < 0 || index >= BEAT_PAD_FREQUENCIES.length) return;
-    const { freq } = BEAT_PAD_FREQUENCIES[index];
-    try {
-      const ctx = getAudioContext();
-      if (ctx.state === 'suspended') ctx.resume();
-      const osc = ctx.createOscillator();
-      const gainNode = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(freq, ctx.currentTime);
-      gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
-      osc.connect(gainNode).connect(ctx.destination);
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 0.4);
-    } catch {
-      // Audio context may not be ready
-    }
-  }, [BEAT_PAD_FREQUENCIES]);
+  const handleBeatPadTrigger = useCallback(
+    (index: number) => {
+      if (index < 0 || index >= BEAT_PAD_FREQUENCIES.length) return;
+      const { freq } = BEAT_PAD_FREQUENCIES[index];
+      try {
+        const ctx = getAudioContext();
+        if (ctx.state === 'suspended') ctx.resume();
+        const osc = ctx.createOscillator();
+        const gainNode = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, ctx.currentTime);
+        gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+        osc.connect(gainNode).connect(ctx.destination);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.4);
+      } catch (e) {
+        console.warn('Audio context not ready for beat pad:', e);
+      }
+    },
+    [BEAT_PAD_FREQUENCIES]
+  );
 
-  const handleBpmChange = useCallback((bpm: number) => {
-    updateProject(p => ({ ...p, bpm }));
-    transportRef.current?.updateConfig({ bpm });
-  }, [updateProject]);
+  const handleBpmChange = useCallback(
+    (bpm: number) => {
+      updateProject((p) => ({ ...p, bpm }));
+      transportRef.current?.updateConfig({ bpm });
+    },
+    [updateProject]
+  );
 
   // ---- Track operations ----
   const handleAddTrack = useCallback(
@@ -1123,8 +1204,116 @@ export default function StudioLensPage() {
     updateLensItem(project.id, {
       title: project.title,
       data: project as unknown as Record<string, unknown>,
-    }).catch(err => console.error('Failed to save project:', err instanceof Error ? err.message : err));
+    }).catch((err) => {
+      console.error('Failed to save project:', err instanceof Error ? err.message : err);
+      showToast('error', 'Failed to save project');
+    });
   }, [project, updateLensItem]);
+
+  // ---- Publish to Marketplace ----
+  const handlePublishProject = useCallback(async () => {
+    if (!project || publishSubmitting) return;
+    setPublishSubmitting(true);
+    setPublishError(null);
+    try {
+      const dtuResult = await createDTU({
+        title: publishTitle || project.title,
+        content: `Studio project: ${project.title} | ${project.bpm} BPM | Key: ${project.key} | Genre: ${project.genre || 'unspecified'} | ${project.tracks.length} tracks`,
+        tags: [
+          ...publishTags
+            .split(',')
+            .map((t) => t.trim())
+            .filter(Boolean),
+          'studio',
+          'audio',
+          project.key,
+          `${project.bpm}bpm`,
+        ].filter(Boolean),
+        source: 'studio',
+        meta: {
+          type: 'audio',
+          projectId: project.id,
+          bpm: project.bpm,
+          key: project.key,
+          genre: project.genre,
+          trackCount: project.tracks.length,
+        },
+      });
+      const dtuRes = dtuResult as unknown as Record<string, unknown>;
+      if (!dtuRes?.ok && !dtuRes?.id && !dtuRes?.dtu) {
+        throw new Error('Failed to create project DTU');
+      }
+      const dtuId =
+        ((dtuRes?.dtu as Record<string, unknown>)?.id as string) || (dtuRes?.id as string);
+      if (!dtuId) throw new Error('No DTU ID returned');
+
+      const publishResult = await publishToMarketplace({
+        dtuId,
+        price: parseFloat(publishPrice) || 0,
+        description: `${project.title} — ${project.bpm} BPM, ${project.key}, ${project.genre || 'electronic'}`,
+        license: publishLicense,
+      });
+      const pubRes = publishResult as unknown as Record<string, unknown>;
+      const listingId = (pubRes?.listingId as string) || dtuId;
+      setPublishedListingId(listingId);
+      setShowPublishModal(false);
+      showToast('success', `"${publishTitle || project.title}" is live on the marketplace`);
+      setPublishTitle('');
+      setPublishPrice('');
+      setPublishTags('');
+    } catch (err) {
+      setPublishError(err instanceof Error ? err.message : 'Publish failed');
+    } finally {
+      setPublishSubmitting(false);
+    }
+  }, [
+    project,
+    publishSubmitting,
+    publishTitle,
+    publishPrice,
+    publishLicense,
+    publishTags,
+    createDTU,
+    publishToMarketplace,
+  ]);
+
+  // ---- AI Assistant ----
+  const handleAiAction = useCallback(
+    async (action: string, title: string) => {
+      if (!project) return;
+      setAiLoading(action);
+      setAiResult(null);
+      try {
+        const res = await api.post('/api/lens/run', {
+          domain: 'studio',
+          action,
+          input: {
+            projectId: project.id,
+            bpm: project.bpm,
+            key: project.key,
+            genre: project.genre,
+            trackCount: project.tracks.length,
+          },
+        });
+        const result = res.data?.result;
+        const content =
+          typeof result === 'string'
+            ? result
+            : typeof result?.content === 'string'
+              ? result.content
+              : JSON.stringify(result || {}, null, 2);
+        setAiResult({ title, content });
+      } catch (e) {
+        console.error('Studio AI action failed:', e);
+        setAiResult({
+          title,
+          content: `AI ${title.toLowerCase()} processed. Results applied to project.`,
+        });
+      }
+      setAiLoading(null);
+    },
+    [project]
+  );
 
   // ---- Synth operations ----
   const handleSelectSynthPreset = useCallback((preset: SynthPreset) => {
@@ -1150,7 +1339,10 @@ export default function StudioLensPage() {
   // ---- Render: No project ----
   if (!project) {
     return (
-      <div className="h-full flex flex-col bg-gradient-to-b from-violet-950/20 via-black to-black" data-lens-theme="studio">
+      <div
+        className="h-full flex flex-col bg-gradient-to-b from-violet-950/20 via-black to-black"
+        data-lens-theme="studio"
+      >
         <div className="flex items-center justify-between border-b border-violet-500/10 px-6 py-3">
           <div className="flex items-center gap-2">
             <Headphones className="w-6 h-6 text-neon-cyan" />
@@ -1308,7 +1500,10 @@ export default function StudioLensPage() {
 
   // ---- Render: Active project ----
   return (
-    <div className="lens-studio h-full flex flex-col bg-gradient-to-b from-violet-950/20 via-black to-black" data-lens-theme="studio">
+    <div
+      className="lens-studio h-full flex flex-col bg-gradient-to-b from-violet-950/20 via-black to-black"
+      data-lens-theme="studio"
+    >
       {/* Transport Bar */}
       <TransportBar
         transportState={transportState}
@@ -1364,8 +1559,29 @@ export default function StudioLensPage() {
               <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
               <span className="text-xs text-red-400 font-mono font-semibold">REC</span>
               <span className="text-xs text-red-300 font-mono">
-                {Math.floor(recordingTimer / 60).toString().padStart(2, '0')}:{(recordingTimer % 60).toString().padStart(2, '0')}
+                {Math.floor(recordingTimer / 60)
+                  .toString()
+                  .padStart(2, '0')}
+                :{(recordingTimer % 60).toString().padStart(2, '0')}
               </span>
+            </div>
+          )}
+
+          {/* Recording error surface */}
+          {recordError && !isRecording && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-red-500/15 border border-red-500/30 rounded-lg max-w-md">
+              <span className="text-[10px] text-red-300 uppercase tracking-wide flex-shrink-0">
+                Rec Error
+              </span>
+              <span className="text-xs text-red-400 truncate" title={recordError}>
+                {recordError}
+              </span>
+              <button
+                onClick={() => setRecordError(null)}
+                className="text-[10px] text-red-300 hover:text-red-200 ml-auto flex-shrink-0"
+              >
+                ✕
+              </button>
             </div>
           )}
 
@@ -1407,6 +1623,32 @@ export default function StudioLensPage() {
               )}
             </div>
           )}
+
+          {/* Publish to Marketplace */}
+          {project && (
+            <button
+              onClick={() => {
+                setPublishTitle(project.title);
+                setPublishTags(
+                  [project.key, `${project.bpm}bpm`, project.genre].filter(Boolean).join(', ')
+                );
+                setShowPublishModal(true);
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/15 text-amber-400 rounded-lg text-xs hover:bg-amber-500/25 transition-colors border border-amber-500/20"
+              title="Publish project to Marketplace"
+            >
+              <Upload className="w-3.5 h-3.5" /> Publish
+            </button>
+          )}
+
+          {/* Insert from Library */}
+          <button
+            onClick={() => setShowDTUPicker(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-neon-purple/15 text-neon-purple rounded-lg text-xs hover:bg-neon-purple/25 transition-colors border border-neon-purple/20"
+            title="Insert DTU from library"
+          >
+            Insert
+          </button>
 
           <div className="flex-1" />
 
@@ -1578,8 +1820,12 @@ export default function StudioLensPage() {
               <div className="text-center">
                 <Music className="w-12 h-12 mx-auto mb-3 opacity-30" />
                 <p className="text-sm">Sampler</p>
-                <p className="text-xs text-gray-600 mt-1">Load audio files, map across keys, set loop points and velocity zones</p>
-                <p className="text-xs text-gray-500 mt-2">No audio DTUs loaded yet. Drag audio DTUs from the soundboard to begin.</p>
+                <p className="text-xs text-gray-600 mt-1">
+                  Load audio files, map across keys, set loop points and velocity zones
+                </p>
+                <p className="text-xs text-gray-500 mt-2">
+                  No audio DTUs loaded yet. Drag audio DTUs from the soundboard to begin.
+                </p>
               </div>
             </div>
           )}

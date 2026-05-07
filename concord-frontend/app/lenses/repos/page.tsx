@@ -27,7 +27,9 @@ import {
   BarChart3,
   Play,
   Hash,
-  Activity
+  Activity,
+  Zap,
+  X,
 } from 'lucide-react';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useLensData } from '@/lib/hooks/use-lens-data';

@@ -3,12 +3,12 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useLensBridge } from '@/lib/hooks/use-lens-bridge';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
-  Shuffle, Search, ArrowRight, History, Layers, GitCompare, ChevronDown, Network, Globe, BookOpen, Cpu, Zap, Link2, SendHorizontal, CheckCircle2,
+  Shuffle, Search, ArrowRight, History, Layers, GitCompare, ChevronDown, Network, Globe, BookOpen, Cpu, Zap, Link2, SendHorizontal, CheckCircle2, X,
 } from 'lucide-react';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';

@@ -3,23 +3,27 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensData } from '@/lib/hooks/use-lens-data';
+import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useLensDTUs } from '@/hooks/useLensDTUs';
 import { useUIStore } from '@/store/ui';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   BookOpen, Plus, Search, FileText, Edit2, Trash2,
-  Clock, Eye, TrendingUp, Sparkles, X, Save,
-  ChevronRight, Layers, BarChart3, Globe, Filter,
-  AlignLeft, Type, PenTool, Check, Zap, Users, Star,
-  Maximize2, Minimize2, Shuffle,
+  Clock, Sparkles, Save, BarChart3, Globe,
+  AlignLeft, PenTool, Check, Zap, Users, Star,
+  Maximize2, Minimize2, Shuffle, Loader2, XCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { UniversalActions } from '@/components/lens/UniversalActions';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
+import dynamic from 'next/dynamic';
+
+const BlockEditor = dynamic(() => import('@/components/editor/BlockEditor'), { ssr: false, loading: () => <div className="animate-pulse bg-white/5 rounded-lg h-64" /> });
 
 type WritingTab = 'works' | 'editor' | 'prompts' | 'workshop';
 type WritingGenre = 'fiction' | 'nonfiction' | 'screenplay' | 'short-story' | 'novel' | 'essay' | 'blog' | 'other';
@@ -46,13 +50,8 @@ const GENRES: { id: WritingGenre; label: string }[] = [
   { id: 'other', label: 'Other' },
 ];
 
-const WRITING_PROMPTS: { text: string; genres: WritingGenre[] }[] = [
-  { text: 'A stranger arrives in a town where everyone shares the same recurring dream.', genres: ['fiction', 'short-story'] },
-  { text: 'Write a story that begins with the last sentence.', genres: ['fiction', 'novel'] },
-  { text: 'Two characters who speak different languages must solve a puzzle together.', genres: ['fiction', 'short-story', 'screenplay'] },
-  { text: 'An object gains sentience during an ordinary day.', genres: ['fiction', 'short-story'] },
-  { text: 'Describe a world where music is the primary currency.', genres: ['fiction', 'novel', 'essay'] },
-];
+// Prompts are loaded from the backend via useLensData; empty until real data exists
+const FALLBACK_PROMPTS: { text: string; genres: WritingGenre[] }[] = [];
 
 const WORD_COUNT_GOAL = 1000;
 
@@ -81,9 +80,38 @@ export default function CreativeWritingPage() {
   const { items: workItems, isLoading, isError, error, refetch, create: createWork, update: updateWork, remove: removeWork } = useLensData<WritingWork>('creative-writing', 'work', { seed: [] });
   const works = useMemo(() => workItems.map(i => ({ ...(i.data as unknown as WritingWork), id: i.id, title: i.title })), [workItems]);
 
+  const { items: promptItems } = useLensData<{ text: string; genres: string[] }>('creative-writing', 'prompt', { noSeed: true });
+  const WRITING_PROMPTS = useMemo(() => {
+    if (promptItems.length > 0) return promptItems.map(i => ({ text: i.data.text || i.title, genres: (i.data.genres || []) as WritingGenre[] }));
+    return FALLBACK_PROMPTS;
+  }, [promptItems]);
+
+  const runAction = useRunArtifact('creative-writing');
+  const [actionResult, setActionResult] = useState<{ action: string; result: unknown } | null>(null);
+  const [isRunning, setIsRunning] = useState(false);
+
+  const handleAction = useCallback(async (action: string) => {
+    const targetId = workItems[0]?.id ?? null;
+    if (!targetId) return;
+    setIsRunning(true);
+    setActionResult(null);
+    try {
+      const res = await runAction.mutateAsync({ id: targetId, action });
+      if (res.ok === false) {
+        setActionResult({ action, result: { message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` } });
+      } else {
+        setActionResult({ action, result: res.result });
+      }
+    } catch (err) {
+      setActionResult({ action, result: `Error: ${err instanceof Error ? err.message : String(err)}` });
+    } finally {
+      setIsRunning(false);
+    }
+  }, [workItems, runAction]);
+
   const [tab, setTab] = useState<WritingTab>('works');
   const [searchQuery, setSearchQuery] = useState('');
-  const [showFeatures, setShowFeatures] = useState(false);
+  const [showFeatures, setShowFeatures] = useState(true);
   const [genreFilter, setGenreFilter] = useState<WritingGenre | null>(null);
 
   // Editor state
@@ -151,8 +179,8 @@ export default function CreativeWritingPage() {
         refetch();
         setAutoSaved(true);
         setTimeout(() => setAutoSaved(false), 2000);
-      } catch {
-        // silent auto-save failure
+      } catch (e) {
+        console.error('[CreativeWriting] Auto-save failed:', e);
       }
     }, 5000);
     return () => {
@@ -217,7 +245,7 @@ export default function CreativeWritingPage() {
   const pickRandomPrompt = useCallback(() => {
     const idx = Math.floor(Math.random() * WRITING_PROMPTS.length);
     setHighlightedPrompt(idx);
-  }, []);
+  }, [WRITING_PROMPTS.length]);
 
   const totalWordsWritten = useMemo(() => works.reduce((sum, w) => sum + (w.wordCount || 0), 0), [works]);
   const avgWordCount = works.length > 0 ? Math.round(totalWordsWritten / works.length) : 0;
@@ -267,6 +295,242 @@ export default function CreativeWritingPage() {
 
             {showFeatures && <LensFeaturePanel lensId="creative-writing" />}
             <RealtimeDataPanel data={realtimeData} insights={realtimeInsights} />
+      <UniversalActions domain="creative-writing" artifactId={null} compact />
+
+            {/* ── Creative Writing Backend Actions ── */}
+            <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-3">
+              <h3 className="text-sm font-semibold flex items-center gap-2">
+                <BookOpen className="w-4 h-4 text-amber-400" /> Manuscript Actions
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { action: 'manuscriptAnalysis', label: 'Analyze Manuscript' },
+                  { action: 'characterProfile', label: 'Character Profile' },
+                  { action: 'plotStructure', label: 'Plot Structure' },
+                  { action: 'dialogueCheck', label: 'Dialogue Check' },
+                ].map(({ action, label }) => (
+                  <button
+                    key={action}
+                    onClick={() => handleAction(action)}
+                    disabled={isRunning || !workItems[0]?.id}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-300 hover:bg-amber-500/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {isRunning && actionResult === null ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : null}
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {isRunning && (
+                <div className="flex items-center gap-2 text-xs text-gray-400">
+                  <Loader2 className="w-3 h-3 animate-spin text-amber-400" />
+                  Running action…
+                </div>
+              )}
+              {actionResult && !isRunning && (() => {
+                const r = actionResult.result as Record<string, unknown> | null;
+                return (
+                  <div className="rounded-lg bg-black/30 border border-amber-500/20 p-3 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-amber-300 font-medium capitalize">{actionResult.action}</span>
+                      <button onClick={() => setActionResult(null)} className="text-gray-500 hover:text-gray-300">
+                        <XCircle className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    {/* manuscriptAnalysis */}
+                    {actionResult.action === 'manuscriptAnalysis' && r && !r.message && (
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-[11px]">
+                          {[
+                            { label: 'Words', value: r.wordCount as number, color: 'text-amber-300' },
+                            { label: 'Sentences', value: r.sentenceCount as number, color: 'text-amber-300' },
+                            { label: 'Paragraphs', value: r.paragraphCount as number, color: 'text-amber-300' },
+                            { label: 'Read Time', value: r.estimatedReadTime as string, color: 'text-amber-300' },
+                          ].map(stat => (
+                            <div key={stat.label} className="bg-white/5 rounded p-2">
+                              <p className={`font-bold ${stat.color}`}>{stat.value}</p>
+                              <p className="text-gray-500">{stat.label}</p>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 text-center text-[11px]">
+                          <div className="bg-white/5 rounded p-2">
+                            <p className="font-bold text-amber-300">{r.avgWordsPerSentence as number}</p>
+                            <p className="text-gray-500">Avg Words/Sentence</p>
+                          </div>
+                          <div className="bg-white/5 rounded p-2">
+                            <p className="font-bold text-amber-300">{r.vocabularyRichness as number}%</p>
+                            <p className="text-gray-500">Vocabulary Richness</p>
+                          </div>
+                          <div className="bg-white/5 rounded p-2">
+                            <p className="font-bold text-amber-300">{r.dialoguePercent as number}%</p>
+                            <p className="text-gray-500">Dialogue</p>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {[
+                            { label: 'Reading Level', value: r.readingLevel as string },
+                            { label: 'Pacing', value: r.pacing as string },
+                          ].map(badge => (
+                            <span key={badge.label} className="text-[10px] px-2 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400">
+                              {badge.label}: <span className="font-semibold capitalize">{badge.value}</span>
+                            </span>
+                          ))}
+                        </div>
+                        <div>
+                          <div className="flex justify-between text-[10px] text-gray-500 mb-1">
+                            <span>Vocabulary richness</span><span>{r.vocabularyRichness as number}%</span>
+                          </div>
+                          <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+                            <div className="h-full bg-amber-500/60 rounded-full" style={{ width: `${r.vocabularyRichness as number}%` }} />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* characterProfile */}
+                    {actionResult.action === 'characterProfile' && r && !r.message && (
+                      <div className="space-y-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <p className="text-sm font-semibold text-amber-300">{r.name as string}</p>
+                            <p className="text-[11px] text-gray-500 capitalize">{r.role as string}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-bold text-amber-400">{r.complexityScore as number}</p>
+                            <p className="text-[10px] text-gray-500">Complexity</p>
+                          </div>
+                        </div>
+                        <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
+                          <div className={`h-full rounded-full transition-all ${(r.complexityScore as number) >= 60 ? 'bg-amber-400/70' : (r.complexityScore as number) >= 30 ? 'bg-amber-500/50' : 'bg-gray-500/50'}`}
+                            style={{ width: `${r.complexityScore as number}%` }} />
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {[
+                            { label: 'Arc', value: r.arcType as string },
+                            { label: 'Dimensionality', value: r.dimensionality as string },
+                          ].map(badge => (
+                            <span key={badge.label} className="text-[10px] px-2 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 capitalize">
+                              {badge.label}: <span className="font-semibold">{badge.value}</span>
+                            </span>
+                          ))}
+                        </div>
+                        {[(r.traits as string[]), (r.motivations as string[]), (r.flaws as string[])].map((list, idx) => {
+                          const labels = ['Traits', 'Motivations', 'Flaws'];
+                          if (!list || list.length === 0) return null;
+                          return (
+                            <div key={idx}>
+                              <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wide mb-1">{labels[idx]}</p>
+                              <div className="flex flex-wrap gap-1">
+                                {list.map((item, i) => (
+                                  <span key={i} className="text-[10px] px-1.5 py-0.5 bg-white/5 border border-white/10 rounded text-gray-300">{item}</span>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {(r.suggestions as string[]).length > 0 && (
+                          <div className="flex items-center gap-2 text-[11px] bg-amber-500/10 border border-amber-500/20 rounded px-2 py-1.5 text-amber-300">
+                            <Sparkles className="w-3 h-3 shrink-0" />
+                            {(r.suggestions as string[])[0]}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* plotStructure */}
+                    {actionResult.action === 'plotStructure' && r && !r.message && (
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between text-[11px]">
+                          <span className="text-amber-400 font-semibold capitalize">{(r.structure as string).replace(/-/g, ' ')}</span>
+                          <span className="text-gray-400">{r.totalPlotPoints as number} plot points</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-[11px]">
+                          <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
+                            <div className="h-full bg-amber-500/60 rounded-full transition-all" style={{ width: `${r.coveragePercent as number}%` }} />
+                          </div>
+                          <span className="text-amber-300 font-bold w-10 text-right">{r.coveragePercent as number}%</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-1">
+                          {(r.beats as { beat: string; covered: boolean }[]).map((b, i) => (
+                            <div key={i} className={`flex items-center gap-1.5 text-[10px] px-2 py-1 rounded ${b.covered ? 'text-neon-green' : 'text-gray-600'}`}>
+                              {b.covered
+                                ? <Check className="w-2.5 h-2.5 text-neon-green shrink-0" />
+                                : <span className="w-2.5 h-2.5 rounded-full border border-gray-600 shrink-0" />
+                              }
+                              {b.beat}
+                            </div>
+                          ))}
+                        </div>
+                        {(r.missingBeats as string[]).length > 0 && (
+                          <div>
+                            <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wide mb-1">Missing Beats</p>
+                            <div className="flex flex-wrap gap-1">
+                              {(r.missingBeats as string[]).map((b, i) => (
+                                <span key={i} className="text-[10px] px-1.5 py-0.5 bg-amber-500/10 border border-amber-500/20 rounded text-amber-400">{b}</span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* dialogueCheck */}
+                    {actionResult.action === 'dialogueCheck' && r && !r.message && (
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-3 gap-2 text-center text-[11px]">
+                          <div className="bg-white/5 rounded p-2">
+                            <p className="font-bold text-amber-300">{r.totalLines as number}</p>
+                            <p className="text-gray-500">Lines</p>
+                          </div>
+                          <div className="bg-white/5 rounded p-2">
+                            <p className="font-bold text-amber-300">{r.speakerCount as number}</p>
+                            <p className="text-gray-500">Speakers</p>
+                          </div>
+                          <div className="bg-white/5 rounded p-2">
+                            <p className="font-bold text-amber-300">{r.avgLineLength as number}</p>
+                            <p className="text-gray-500">Avg Length</p>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {[
+                            { label: 'Balance', value: r.balance as string },
+                            { label: 'Pacing', value: r.pacing as string },
+                          ].map(badge => (
+                            <span key={badge.label} className="text-[10px] px-2 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 capitalize">
+                              {badge.label}: <span className="font-semibold">{badge.value?.replace(/-/g, ' ')}</span>
+                            </span>
+                          ))}
+                        </div>
+                        {(r.speakers as { name: string; lines: number; percent: number }[]).length > 0 && (
+                          <div className="space-y-1.5">
+                            <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wide">Speaker Breakdown</p>
+                            {(r.speakers as { name: string; lines: number; percent: number }[]).map((sp, i) => (
+                              <div key={i} className="space-y-0.5">
+                                <div className="flex justify-between text-[10px]">
+                                  <span className="text-gray-300">{sp.name}</span>
+                                  <span className="text-gray-500">{sp.lines} lines ({sp.percent}%)</span>
+                                </div>
+                                <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+                                  <div className="h-full bg-amber-500/50 rounded-full" style={{ width: `${sp.percent}%` }} />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Fallback */}
+                    {(r?.message || typeof actionResult.result === 'string') && (
+                      <p className="text-xs text-gray-400">{(r?.message as string) || (actionResult.result as string)}</p>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
 
             {/* Tabs */}
             <div className="flex gap-1 bg-white/5 p-1 rounded-lg border border-white/10">
@@ -277,6 +541,13 @@ export default function CreativeWritingPage() {
               ))}
             </div>
           </>
+        )}
+
+        {(isLoading || dtusLoading) && (
+          <div className="flex items-center justify-center py-4">
+            <div className="w-5 h-5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+            <span className="ml-2 text-xs text-gray-400">Loading...</span>
+          </div>
         )}
 
         {isError && <ErrorState error={error?.message} onRetry={refetch} />}
@@ -413,16 +684,18 @@ export default function CreativeWritingPage() {
               </div>
             )}
 
-            <textarea
-              value={editorContent}
-              onChange={e => setEditorContent(e.target.value)}
+            <BlockEditor
+              content={editorContent}
+              onChange={(html: string) => setEditorContent(html)}
+              onSave={(html: string) => { setEditorContent(html); saveWork(); }}
               placeholder="Begin writing..."
+              editable
+              autoFocus
               className={cn(
-                'w-full px-6 py-4 border border-white/10 rounded-lg leading-relaxed focus:outline-none focus:border-amber-500/30 resize-none font-mono transition-all',
-                focusMode
-                  ? 'h-[80vh] bg-black/80 text-base text-gray-200'
-                  : 'h-[60vh] bg-white/5 text-sm'
+                'border border-white/10 rounded-lg focus-within:border-amber-500/30 transition-all',
+                focusMode ? 'bg-black/80' : 'bg-white/5'
               )}
+              minHeight={focusMode ? '80vh' : '60vh'}
             />
           </div>
         )}
@@ -512,9 +785,9 @@ export default function CreativeWritingPage() {
               <h3 className="text-sm font-medium mb-3 text-gray-400">Recent Activity</h3>
               <div className="space-y-2">
                 {[
-                  { text: 'Workshop opens for beta writers next month', icon: Star },
-                  { text: 'Peer review matching coming soon', icon: Users },
-                  { text: 'Collaborative editing in development', icon: Edit2 },
+                  { text: 'Share your work for community feedback and grow together', icon: Star },
+                  { text: 'Peer reviews help improve craft through diverse perspectives', icon: Users },
+                  { text: 'Collaborate with other writers on shared manuscripts', icon: Edit2 },
                 ].map((item, i) => (
                   <motion.div
                     key={i}

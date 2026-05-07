@@ -95,10 +95,7 @@ function WithdrawFlow({
   // Fetch balance if not provided
   const { data: balanceData } = useQuery({
     queryKey: ['wallet-balance'],
-    queryFn: () =>
-      api
-        .get('/api/economy/balance')
-        .then((r) => r.data as { balance: number }),
+    queryFn: () => api.get('/api/economy/balance').then((r) => r.data as { balance: number }),
     enabled: externalBalance === undefined,
     retry: false,
   });
@@ -107,15 +104,13 @@ function WithdrawFlow({
   const { data: withdrawalsData } = useQuery({
     queryKey: ['wallet-withdrawals'],
     queryFn: () =>
-      api
-        .get('/api/economy/withdrawals')
-        .then(
-          (r) =>
-            r.data as {
-              withdrawals?: Withdrawal[];
-              items?: Withdrawal[];
-            }
-        ),
+      api.get('/api/economy/withdrawals').then(
+        (r) =>
+          r.data as {
+            withdrawals?: Withdrawal[];
+            items?: Withdrawal[];
+          }
+      ),
     retry: false,
   });
 

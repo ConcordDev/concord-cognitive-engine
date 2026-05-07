@@ -264,6 +264,7 @@ export function MediaUpload({
 
       try {
         // Convert file to base64 for binary storage
+        if (!uploadFile.file) throw new Error('File data is missing');
         const arrayBuffer = await uploadFile.file.arrayBuffer();
         const base64Data = btoa(
           new Uint8Array(arrayBuffer).reduce((d, byte) => d + String.fromCharCode(byte), '')

@@ -11,8 +11,9 @@ import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   Check, X, Users, Scale, Plus, Clock, MessageSquare,
   ThumbsUp, ThumbsDown, Minus, BarChart3, ChevronDown,
-  ChevronUp, Send, AlertCircle, Vote, Layers, TrendingUp, Percent,
+  ChevronUp, Send, AlertCircle, Vote, Layers, TrendingUp, Percent, Zap,
 } from 'lucide-react';
+import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { motion } from 'framer-motion';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { ErrorState } from '@/components/common/EmptyState';

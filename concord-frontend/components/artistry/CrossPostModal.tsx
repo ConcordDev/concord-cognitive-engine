@@ -2,10 +2,7 @@
 
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import {
-  X, ArrowRight,
-  Eye, Tag, Clock, Info, Loader2, Check, ShoppingBag,
-} from 'lucide-react';
+import { X, ArrowRight, Eye, Tag, Clock, Info, Loader2, Check, ShoppingBag } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/api/client';
 import type { ArtistryContentType } from '@/lib/artistry/types';
@@ -250,7 +247,9 @@ function CrossPostModal({
                 className="w-4 h-4 rounded border-white/20 bg-white/5 text-neon-cyan focus:ring-neon-cyan/50"
               />
               <ShoppingBag className="w-3.5 h-3.5 text-neon-green" />
-              <span className="text-xs text-gray-300">Tag marketplace listing for social commerce</span>
+              <span className="text-xs text-gray-300">
+                Tag marketplace listing for social commerce
+              </span>
             </label>
           </div>
         )}
@@ -259,7 +258,9 @@ function CrossPostModal({
         <div className="flex items-center justify-between px-5 py-4 border-t border-white/5 bg-white/[0.02]">
           <span className="text-[10px] text-gray-500">Free to post · No cost to browse</span>
           <div className="flex items-center gap-2">
-            <button onClick={onClose} className="px-4 py-2 text-sm text-gray-400 hover:text-white">Cancel</button>
+            <button onClick={onClose} className="px-4 py-2 text-sm text-gray-400 hover:text-white">
+              Cancel
+            </button>
             {posted ? (
               <div className="flex items-center gap-2 px-5 py-2 rounded-lg bg-green-500/15 text-green-400 text-sm font-semibold">
                 <Check className="w-4 h-4" />

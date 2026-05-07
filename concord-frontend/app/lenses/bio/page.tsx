@@ -3,11 +3,12 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useQuery } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
+import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { useState } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Dna, Activity, Heart, Brain, Microscope, Layers, ChevronDown, AlertTriangle, Bug } from 'lucide-react';
+import { Dna, Activity, Heart, Brain, Microscope, Layers, ChevronDown, AlertTriangle, Bug, Zap, Loader2, Plus, Trash2 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -30,17 +31,49 @@ export default function BioLensPage() {
   useLensNav('bio');
 
   const [selectedSystem, setSelectedSystem] = useState('homeostasis');
-  const [showFeatures, setShowFeatures] = useState(false);
+  const [showFeatures, setShowFeatures] = useState(true);
   const [activeTab, setActiveTab] = useState<'organisms' | 'experiments' | 'sequences'>('organisms');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('bio');
 
   const { items: bioItems, isLoading, isError: isError, error: error, refetch: refetch, create, update, remove } = useLensData<Record<string, unknown>>('bio', 'system', { seed: [] });
+  const bioData = useMemo(() => {
+    if (!bioItems.length) return undefined;
+    // Reconstruct the shape that templates expect from the raw API response
+    const result: Record<string, unknown> = {};
+    for (const item of bioItems) {
+      const d = item.data as Record<string, unknown> | undefined;
+      if (d) Object.assign(result, d);
+    }
+    return result as Record<string, unknown>;
+  }, [bioItems]);
   const runAction = useRunArtifact('bio');
 
-  const { data: bioData } = useQuery({
-    queryKey: ['bio-systems'],
-    queryFn: () => apiHelpers.lens.list('bio', { type: 'system' }).then((r) => r.data),
-  });
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  const handleAction = useCallback((artifactId: string) => {
+    setActionError(null);
+    runAction.mutate(
+      { id: artifactId, action: 'analyze' },
+      {
+        onError: (e) => {
+          console.error('Action failed:', e);
+          setActionError(`Action failed: ${e instanceof Error ? e.message : 'Unknown error'}`);
+        },
+      }
+    );
+  }, [runAction]);
+
+  const handleSave = useCallback((id: string, data: Record<string, unknown>) => {
+    update(id, { data });
+  }, [update]);
+
+  const handleCreate = useCallback(() => {
+    create({ title: 'New Organism', data: { type: 'organism' } });
+  }, [create]);
+
+  const handleRemove = useCallback((id: string) => {
+    remove(id);
+  }, [remove]);
 
   const { data: growthData, isError: isError2, error: error2, refetch: refetch2,} = useQuery({
     queryKey: ['growth-status'],
@@ -106,6 +139,29 @@ export default function BioLensPage() {
       <RealtimeDataPanel domain="bio" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
       <UniversalActions domain="bio" artifactId={null} compact />
       <DTUExportButton domain="bio" data={{}} compact />
+
+      {/* CRUD Actions */}
+      <div className="flex items-center gap-2">
+        <button onClick={handleCreate} className="flex items-center gap-1.5 px-3 py-1.5 bg-neon-green/20 text-neon-green rounded-lg text-sm hover:bg-neon-green/30">
+          <Plus className="w-4 h-4" /> Add Organism
+        </button>
+      </div>
+
+      {/* Bio Items */}
+      {bioItems.length > 0 && (
+        <div className="space-y-2">
+          {bioItems.map(item => (
+            <div key={item.id} className="panel p-3 flex items-center justify-between">
+              <span className="text-sm font-medium">{item.title}</span>
+              <div className="flex items-center gap-2">
+                <button onClick={() => handleAction(item.id)} className="text-gray-500 hover:text-neon-cyan" title="Run AI analysis"><Zap className="w-4 h-4" /></button>
+                <button onClick={() => handleSave(item.id, { ...(item.data || {}), lastReviewed: new Date().toISOString() })} className="text-gray-500 hover:text-neon-blue" title="Update"><Activity className="w-4 h-4" /></button>
+                <button onClick={() => handleRemove(item.id)} className="text-gray-500 hover:text-red-400" title="Delete"><Trash2 className="w-4 h-4" /></button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

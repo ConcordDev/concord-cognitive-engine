@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
@@ -14,12 +15,13 @@ import {
   Users, UserPlus, Eye, Quote, Heart,
   Video, FileText, Image as ImageIcon, Music,
   Bookmark, BarChart2, Pin, Loader2,
-  Calendar, Link2, Award, DollarSign, Star,
+  Calendar, Link2, Award, DollarSign, Settings,
 } from 'lucide-react';
 import type { DTU } from '@/lib/api/generated-types';
 import { DTUDetailView } from '@/components/dtu/DTUDetailView';
 import { CreatorAnalytics } from '@/components/social/CreatorAnalytics';
 import { StreakIndicator } from '@/components/social/StreakIndicator';
+import { UniverseSettings } from '@/components/settings/UniverseSettings';
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -61,7 +63,7 @@ interface SocialPost {
   };
 }
 
-type TabId = 'posts' | 'media' | 'dtus' | 'bookmarks' | 'analytics';
+type TabId = 'posts' | 'media' | 'dtus' | 'bookmarks' | 'analytics' | 'settings';
 
 // ── Constants ───────────────────────────────────────────────────────────────
 
@@ -202,7 +204,7 @@ export default function ProfilePage() {
   }, []);
 
   const personality = personalityData?.personality;
-  const _stats = statsData?.universe || statsData;
+  const stats = statsData?.universe || statsData;
   const profile = profileData;
   const pinnedPosts = pinnedData || [];
 
@@ -214,6 +216,7 @@ export default function ProfilePage() {
     { id: 'dtus', label: 'DTUs', icon: <Database className="w-4 h-4" /> },
     { id: 'bookmarks', label: 'Bookmarks', icon: <Bookmark className="w-4 h-4" /> },
     { id: 'analytics', label: 'Analytics', icon: <BarChart2 className="w-4 h-4" /> },
+    { id: 'settings', label: 'Settings', icon: <Settings className="w-4 h-4" /> },
   ];
 
   return (
@@ -447,17 +450,53 @@ export default function ProfilePage() {
         {activeTab === 'analytics' && profile && (
           <div className="space-y-6">
             {personality && <CognitiveCard personality={personality} />}
+            {stats && (
+              <div className={cn(ds.panel, 'space-y-3')}>
+                <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                  <BarChart2 className="w-4 h-4 text-neon-purple" /> Universe Stats
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {stats.totalDTUs !== undefined && (
+                    <div className="text-center p-3 rounded-lg bg-lattice-deep/50 border border-lattice-border/50">
+                      <p className="text-lg font-bold text-white">{formatNumber(stats.totalDTUs)}</p>
+                      <p className="text-xs text-gray-400">Total DTUs</p>
+                    </div>
+                  )}
+                  {stats.totalPersonas !== undefined && (
+                    <div className="text-center p-3 rounded-lg bg-lattice-deep/50 border border-lattice-border/50">
+                      <p className="text-lg font-bold text-white">{formatNumber(stats.totalPersonas)}</p>
+                      <p className="text-xs text-gray-400">Personas</p>
+                    </div>
+                  )}
+                  {stats.totalLenses !== undefined && (
+                    <div className="text-center p-3 rounded-lg bg-lattice-deep/50 border border-lattice-border/50">
+                      <p className="text-lg font-bold text-white">{formatNumber(stats.totalLenses)}</p>
+                      <p className="text-xs text-gray-400">Lenses</p>
+                    </div>
+                  )}
+                  {stats.totalUsers !== undefined && (
+                    <div className="text-center p-3 rounded-lg bg-lattice-deep/50 border border-lattice-border/50">
+                      <p className="text-lg font-bold text-white">{formatNumber(stats.totalUsers)}</p>
+                      <p className="text-xs text-gray-400">Users</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
             <div className="flex justify-end">
-              <a
+              <Link
                 href="/lenses/analytics"
                 className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-neon-cyan/10 text-neon-cyan text-sm font-medium hover:bg-neon-cyan/20 transition-colors"
               >
                 <BarChart2 className="w-4 h-4" />
                 Full Analytics Dashboard
-              </a>
+              </Link>
             </div>
             <CreatorAnalytics userId={profile.userId} />
           </div>
+        )}
+        {activeTab === 'settings' && (
+          <UniverseSettings />
         )}
       </main>
     </div>
@@ -971,7 +1010,7 @@ function MeritScoreCard({
           </div>
           <div>
             <h3 className="text-sm font-semibold text-gray-300">Merit Credit Score</h3>
-            <span className={cn('text-xs font-medium capitalize', LEVEL_COLORS[level] || 'text-gray-400')}>
+            <span className={cn('text-xs font-medium capitalize px-2 py-0.5 rounded', LEVEL_COLORS[level] || 'text-gray-400', LEVEL_BG[level] || 'bg-gray-400/10')}>
               {level}
             </span>
           </div>

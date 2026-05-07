@@ -20,6 +20,10 @@ import { cn } from '@/lib/utils';
 interface FreshnessBadgeProps {
   /** ISO date string of the last update */
   updatedAt: string | undefined | null;
+  /** Server-computed freshness score (0.0-1.0). When provided, uses this instead of local time calc. */
+  freshnessScore?: number | null;
+  /** Server-computed freshness label */
+  freshnessLabel?: string | null;
   /** Also show text label */
   showLabel?: boolean;
   /** Size variant */
@@ -51,17 +55,30 @@ function freshnessLevel(ageDays: number): { color: string; label: string; dotCol
   return { color: 'text-red-400', label: 'Stale', dotColor: 'bg-red-400' };
 }
 
+function freshnessFromScore(score: number): { color: string; label: string; dotColor: string } {
+  if (score >= 0.8) return { color: 'text-green-400', label: 'Fresh', dotColor: 'bg-green-400' };
+  if (score >= 0.5) return { color: 'text-cyan-400', label: 'Warm', dotColor: 'bg-cyan-400' };
+  if (score >= 0.2) return { color: 'text-yellow-400', label: 'Cooling', dotColor: 'bg-yellow-400' };
+  return { color: 'text-red-400', label: 'Stale', dotColor: 'bg-red-400' };
+}
+
 export function FreshnessBadge({
   updatedAt,
+  freshnessScore,
+  freshnessLabel: serverLabel,
   showLabel = false,
   size = 'sm',
   className,
 }: FreshnessBadgeProps) {
-  if (!updatedAt) return null;
+  if (!updatedAt && freshnessScore == null) return null;
 
-  const ageDays = getAgeDays(updatedAt);
-  const { color, label, dotColor } = freshnessLevel(ageDays);
-  const timeAgo = formatTimeAgo(updatedAt);
+  // Prefer server-computed score when available
+  const useServerScore = freshnessScore != null && freshnessScore >= 0;
+  const { color, label, dotColor } = useServerScore
+    ? freshnessFromScore(freshnessScore!)
+    : freshnessLevel(getAgeDays(updatedAt!));
+  const displayLabel = serverLabel || label;
+  const timeAgo = updatedAt ? formatTimeAgo(updatedAt) : `${Math.round((freshnessScore ?? 0) * 100)}%`;
 
   const dotSize = size === 'lg' ? 'w-3 h-3' : size === 'md' ? 'w-2.5 h-2.5' : 'w-2 h-2';
   const textSize = size === 'lg' ? 'text-sm' : size === 'md' ? 'text-xs' : 'text-[11px]';
@@ -69,7 +86,7 @@ export function FreshnessBadge({
   return (
     <span
       className={cn('inline-flex items-center gap-1.5', className)}
-      title={`Last updated ${timeAgo} (${label})`}
+      title={useServerScore ? `Freshness: ${Math.round(freshnessScore! * 100)}% (${displayLabel})` : `Last updated ${timeAgo} (${displayLabel})`}
     >
       <span className={cn(dotSize, 'rounded-full', dotColor)} />
       {showLabel && <span className={cn(textSize, color)}>{timeAgo}</span>}

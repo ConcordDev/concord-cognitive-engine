@@ -3,11 +3,10 @@
 import { useState, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Brain, Network, Activity, Layers, Loader2, ChevronDown, Zap } from 'lucide-react';
-import { useLensData } from '@/lib/hooks/use-lens-data';
-import { ErrorState } from '@/components/common/EmptyState';
+import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
+import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
+import { ds } from '@/lib/design-system';
+import { cn } from '@/lib/utils';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   Brain, Network, Layers, Plus, Search, Trash2, X,
@@ -192,40 +191,6 @@ export default function NeuroLensPage() {
       ? all.filter(n => n.accuracy).reduce((s, n) => s + (n.accuracy || 0), 0) / all.filter(n => n.accuracy).length : 0;
     const trainingRuns = all.filter(n => n.status === 'training' || n.status === 'running').length;
     return (
-      <div className="p-6 flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-neon-pink" />
-        <span className="ml-3 text-gray-400">Loading neural networks...</span>
-      </div>
-    );
-  }
-
-
-  if (isError || isError2) {
-    return (
-      <div className="flex items-center justify-center h-full p-8">
-        <ErrorState error={error?.message || error2?.message} onRetry={() => { refetch(); refetch2(); }} />
-      </div>
-    );
-  }
-  return (
-    <div data-lens-theme="neuro" className="p-6 space-y-6">
-      <header className="flex items-center gap-3">
-        <span className="text-2xl">🧠</span>
-        <div>
-          <h1 className="text-xl font-bold">Neuro Lens</h1>
-          <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
-          <p className="text-sm text-gray-400">
-            Neural network models with DTUs as neurons
-          </p>
-        </div>
-      </header>
-
-
-      <RealtimeDataPanel domain="neuro" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
-      <DTUExportButton domain="neuro" data={{}} compact />
-
-      {/* AI Actions */}
-      <UniversalActions domain="neuro" artifactId={networkItems[0]?.id} compact />
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className={ds.panel}><Brain className="w-5 h-5 text-neon-pink mb-2" /><p className={ds.textMuted}>Total Neurons</p><p className="text-xl font-bold text-white">{totalNeurons.toLocaleString()}</p></div>
         <div className={ds.panel}><Network className="w-5 h-5 text-neon-blue mb-2" /><p className={ds.textMuted}>Connections</p><p className="text-xl font-bold text-white">{totalConnections.toLocaleString()}</p></div>

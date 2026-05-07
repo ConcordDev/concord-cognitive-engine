@@ -6,6 +6,63 @@ import express from "express";
 import crypto from "crypto";
 import logger from '../logger.js';
 import { isEmailBanned, scanUsername as scanUsernameGuard } from "../lib/content-guard.js";
+import { deriveLockerKey, generateLockerSalt } from "../lib/personal-locker/crypto.js";
+
+// ── Auth rate limiters (defense-in-depth) ────────────────────────────────────
+// Two independent buckets:
+//   • Per-IP (_loginAttempts)     — stops a single attacker from spraying.
+//   • Per-account (_accountAttempts) — stops a distributed attacker from
+//     brute-forcing one account across many IPs. NAT/carrier-grade NAT
+//     share IPs among legitimate users, so the per-IP bucket alone is
+//     easy to evade with a botnet. Per-account lockout closes that gap.
+const _loginAttempts = new Map();     // ip -> { count, resetAt }
+const _accountAttempts = new Map();   // username|email -> { count, resetAt }
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const LOGIN_MAX_PER_IP = 20;       // was 10 — NAT/CGNAT carriers share IPs
+const LOGIN_MAX_PER_ACCOUNT = 10;  // was 6 — legitimate users typo passwords
+
+function checkLoginRateLimit(ip) {
+  const now = Date.now();
+  const entry = _loginAttempts.get(ip);
+  if (!entry || now > entry.resetAt) {
+    _loginAttempts.set(ip, { count: 1, resetAt: now + LOGIN_WINDOW_MS });
+    return true;
+  }
+  entry.count++;
+  if (entry.count > LOGIN_MAX_PER_IP) return false;
+  return true;
+}
+
+function checkAccountRateLimit(identifier) {
+  if (!identifier) return true;
+  const key = String(identifier).toLowerCase();
+  const now = Date.now();
+  const entry = _accountAttempts.get(key);
+  if (!entry || now > entry.resetAt) {
+    _accountAttempts.set(key, { count: 1, resetAt: now + LOGIN_WINDOW_MS });
+    return true;
+  }
+  entry.count++;
+  if (entry.count > LOGIN_MAX_PER_ACCOUNT) return false;
+  return true;
+}
+
+function clearAccountRateLimit(identifier) {
+  if (!identifier) return;
+  _accountAttempts.delete(String(identifier).toLowerCase());
+}
+
+// Cleanup stale entries every 30 minutes to prevent memory leak
+const _loginRateLimitCleanup = setInterval(() => {
+  const now = Date.now();
+  for (const [ip, entry] of _loginAttempts) {
+    if (now > entry.resetAt) _loginAttempts.delete(ip);
+  }
+  for (const [k, entry] of _accountAttempts) {
+    if (now > entry.resetAt) _accountAttempts.delete(k);
+  }
+}, 30 * 60 * 1000);
+_loginRateLimitCleanup.unref();
 
 export default function createAuthRouter({
   AuthDB,
@@ -96,6 +153,18 @@ export default function createAuthRouter({
         return res.status(400).json({ ok: false, error: "Username not permitted" });
       }
     } catch (_) { /* content-guard may not be available yet */ }
+
+    // ── Bot prevention: disposable email domain blocking ────────────
+    const emailDomain = email.split("@")[1]?.toLowerCase();
+    const DISPOSABLE_DOMAINS = new Set([
+      "mailinator.com", "guerrillamail.com", "tempmail.com", "throwaway.email",
+      "yopmail.com", "sharklasers.com", "guerrillamailblock.com", "grr.la",
+      "dispostable.com", "maildrop.cc", "temp-mail.org", "fakeinbox.com",
+      "trashmail.com", "getnada.com", "10minutemail.com", "minutemail.com",
+    ]);
+    if (DISPOSABLE_DOMAINS.has(emailDomain)) {
+      return res.status(400).json({ ok: false, error: "Please use a permanent email address" });
+    }
 
     // Check for existing user
     if (AuthDB.getUserByUsername(username)) {

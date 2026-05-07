@@ -3240,24 +3240,6 @@ export default function GovernmentLensPage() {
         ))}
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {[
-          { label: 'Legislation', value: items.length, icon: Landmark },
-          { label: 'Enacted Rate', value: `${items.length > 0 ? Math.round((items.filter(i => i.meta?.status === 'approved' || i.meta?.status === 'completed').length / items.length) * 100) : 0}%`, icon: FileCheck },
-          { label: 'Pending Votes', value: items.filter(i => i.meta?.status === 'pending' || i.meta?.status === 'submitted').length, icon: Gavel },
-          { label: 'Open Permits', value: items.filter(i => i.meta?.status === 'open' || i.meta?.status === 'in_progress').length, icon: ClipboardList },
-        ].map((stat) => (
-          <div key={stat.label} className={ds.panel + ' flex items-center gap-3 p-3'}>
-            <stat.icon className="w-5 h-5 text-neon-cyan shrink-0" />
-            <div>
-              <p className="text-xs text-gray-400">{stat.label}</p>
-              <p className="text-lg font-bold text-white">{stat.value}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-
       {/* AI Actions */}
       <UniversalActions domain="government" artifactId={items[0]?.id} compact />
       <RealtimeDataPanel
@@ -3392,11 +3374,18 @@ export default function GovernmentLensPage() {
               </button>
             </div>
           ) : (
-            <div className={ds.grid3}>{filtered.map((item, index) => (
-              <motion.div key={item.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}>
-                {renderCard(item)}
-              </motion.div>
-            ))}</div>
+            <div className={ds.grid3}>
+              {filtered.map((item, index) => (
+                <motion.div
+                  key={item.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                >
+                  {renderCard(item)}
+                </motion.div>
+              ))}
+            </div>
           )}
         </>
       )}

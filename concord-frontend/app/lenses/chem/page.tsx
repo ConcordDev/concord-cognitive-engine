@@ -6,7 +6,7 @@ import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Atom, Beaker, FlaskConical, Sparkles, Zap, Layers, ChevronDown, AlertTriangle, TestTube2 } from 'lucide-react';
+import { Atom, Beaker, FlaskConical, Sparkles, Zap, Layers, ChevronDown, AlertTriangle, TestTube2, Loader2, XCircle, BarChart3 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -36,7 +36,7 @@ export default function ChemLensPage() {
 
   const [selectedCompound, setSelectedCompound] = useState<string | null>(null);
   const [reactionInput, setReactionInput] = useState('');
-  const [showFeatures, setShowFeatures] = useState(false);
+  const [showFeatures, setShowFeatures] = useState(true);
   const [activeTab, setActiveTab] = useState<'elements' | 'reactions' | 'compounds'>('reactions');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('chem');
 
@@ -100,6 +100,9 @@ export default function ChemLensPage() {
   }
   return (
     <div data-lens-theme="chem" className="p-6 space-y-6">
+      {/* Sub-Lenses */}
+      <SubLensQuickNav lensId="chem" />
+
       {/* Safety Disclaimer */}
       <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-start gap-3">
         <AlertTriangle className="w-5 h-5 text-amber-400 mt-0.5 shrink-0" />
@@ -406,6 +409,177 @@ export default function ChemLensPage() {
         </motion.div>
       )}
       </AnimatePresence>
+
+      {/* Backend Computational Actions */}
+      <div className="panel p-4 space-y-4">
+        <h3 className="font-semibold text-white flex items-center gap-2">
+          <Zap className="w-4 h-4 text-neon-cyan" /> Computational Actions
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <button
+            onClick={() => handleChemAction('molecularAnalysis')}
+            disabled={isRunning !== null}
+            className="flex flex-col items-center gap-2 p-3 bg-lattice-bg rounded-lg border border-lattice-border hover:border-neon-cyan/50 transition-colors disabled:opacity-50"
+          >
+            {isRunning === 'molecularAnalysis'
+              ? <Loader2 className="w-5 h-5 text-neon-cyan animate-spin" />
+              : <Atom className="w-5 h-5 text-neon-cyan" />}
+            <span className="text-xs text-gray-300">Molecular Analysis</span>
+          </button>
+          <button
+            onClick={() => handleChemAction('balanceReaction')}
+            disabled={isRunning !== null}
+            className="flex flex-col items-center gap-2 p-3 bg-lattice-bg rounded-lg border border-lattice-border hover:border-neon-purple/50 transition-colors disabled:opacity-50"
+          >
+            {isRunning === 'balanceReaction'
+              ? <Loader2 className="w-5 h-5 text-neon-purple animate-spin" />
+              : <FlaskConical className="w-5 h-5 text-neon-purple" />}
+            <span className="text-xs text-gray-300">Balance Reaction</span>
+          </button>
+          <button
+            onClick={() => handleChemAction('solutionChemistry')}
+            disabled={isRunning !== null}
+            className="flex flex-col items-center gap-2 p-3 bg-lattice-bg rounded-lg border border-lattice-border hover:border-neon-green/50 transition-colors disabled:opacity-50"
+          >
+            {isRunning === 'solutionChemistry'
+              ? <Loader2 className="w-5 h-5 text-neon-green animate-spin" />
+              : <Beaker className="w-5 h-5 text-neon-green" />}
+            <span className="text-xs text-gray-300">Solution Chemistry</span>
+          </button>
+        </div>
+
+        {/* Action Result Display */}
+        {actionResult && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-3 p-4 bg-black/30 rounded-lg border border-white/10"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="font-semibold text-white flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-neon-cyan" /> Action Result
+              </h4>
+              <button onClick={() => setActionResult(null)} className="text-gray-400 hover:text-white transition-colors">
+                <XCircle className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Molecular Analysis Result */}
+            {actionResult.formula !== undefined && actionResult.molecularWeight !== undefined && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className="font-mono text-lg font-bold text-neon-cyan">{actionResult.formula as string}</span>
+                  <span className="text-sm text-gray-300">MW: <span className="font-bold text-white">{actionResult.molarMass as string}</span></span>
+                  {actionResult.degreeOfUnsaturation !== null && actionResult.degreeOfUnsaturation !== undefined && (
+                    <span className="text-xs px-2 py-0.5 rounded bg-neon-purple/20 text-neon-purple">DoU: {actionResult.degreeOfUnsaturation as number}</span>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  <div className="p-2 bg-lattice-bg rounded text-center">
+                    <p className="text-sm font-bold text-neon-green">{actionResult.totalAtoms as number}</p>
+                    <p className="text-[10px] text-gray-500">Total Atoms</p>
+                  </div>
+                  <div className="p-2 bg-lattice-bg rounded text-center">
+                    <p className="text-sm font-bold text-neon-blue">{actionResult.empiricalFormula as string}</p>
+                    <p className="text-[10px] text-gray-500">Empirical Formula</p>
+                  </div>
+                  <div className="p-2 bg-lattice-bg rounded text-center">
+                    <p className="text-sm font-bold text-neon-purple">{actionResult.formulaToEmpiricalRatio as number}×</p>
+                    <p className="text-[10px] text-gray-500">Formula Ratio</p>
+                  </div>
+                  <div className="p-2 bg-lattice-bg rounded text-center">
+                    <p className="text-sm font-bold text-neon-cyan">{actionResult.molesPerGram as number}</p>
+                    <p className="text-[10px] text-gray-500">mol/g</p>
+                  </div>
+                </div>
+                {(actionResult.elements as Array<{ element: string; count: number; massPercent: number }>)?.length > 0 && (
+                  <div className="space-y-1">
+                    {(actionResult.elements as Array<{ element: string; count: number; massPercent: number }>).map(el => (
+                      <div key={el.element} className="flex items-center gap-2 text-xs">
+                        <span className="w-6 font-mono text-gray-300">{el.element}</span>
+                        <div className="flex-1 h-1.5 bg-lattice-deep rounded overflow-hidden">
+                          <div className="h-full bg-neon-cyan rounded" style={{ width: `${el.massPercent}%` }} />
+                        </div>
+                        <span className="text-gray-400 w-10 text-right">{el.massPercent}%</span>
+                        <span className="text-gray-500 w-8 text-right">×{el.count}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Balance Reaction Result */}
+            {actionResult.equation !== undefined && actionResult.coefficients !== undefined && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs px-2 py-0.5 rounded font-medium ${(actionResult.balanced as boolean) ? 'bg-neon-green/20 text-neon-green' : 'bg-neon-pink/20 text-neon-pink'}`}>
+                    {(actionResult.balanced as boolean) ? 'Balanced' : 'Unbalanced'}
+                  </span>
+                </div>
+                <p className="font-mono text-sm text-neon-cyan p-2 bg-black/30 rounded">{actionResult.equation as string}</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Reactants</p>
+                    {(actionResult.reactants as Array<{ formula: string; coefficient: number }>)?.map(r => (
+                      <div key={r.formula} className="flex items-center gap-2 text-xs py-0.5">
+                        <span className="font-bold text-neon-blue w-6">{r.coefficient}</span>
+                        <span className="font-mono text-gray-300">{r.formula}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Products</p>
+                    {(actionResult.products as Array<{ formula: string; coefficient: number }>)?.map(p => (
+                      <div key={p.formula} className="flex items-center gap-2 text-xs py-0.5">
+                        <span className="font-bold text-neon-green w-6">{p.coefficient}</span>
+                        <span className="font-mono text-gray-300">{p.formula}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Solution Chemistry Result */}
+            {actionResult.pH !== undefined && actionResult.nature !== undefined && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="text-3xl font-bold text-neon-cyan">{actionResult.pH as number}</div>
+                  <div>
+                    <span className={`text-sm font-medium px-2 py-0.5 rounded ${
+                      (actionResult.nature as string) === 'acidic' ? 'bg-red-500/20 text-red-400' :
+                      (actionResult.nature as string) === 'basic' ? 'bg-blue-500/20 text-blue-400' :
+                      'bg-gray-500/20 text-gray-400'
+                    }`}>
+                      {(actionResult.nature as string).charAt(0).toUpperCase() + (actionResult.nature as string).slice(1)}
+                    </span>
+                    <p className="text-xs text-gray-400 mt-1">{actionResult.type as string} · {actionResult.concentration as number} mol/L</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="p-2 bg-lattice-bg rounded text-center">
+                    <p className="text-sm font-bold text-neon-green">{actionResult.pOH as number}</p>
+                    <p className="text-[10px] text-gray-500">pOH</p>
+                  </div>
+                  <div className="p-2 bg-lattice-bg rounded text-center">
+                    <p className="text-sm font-bold text-neon-blue">{actionResult.hydrogenIonConc as number}</p>
+                    <p className="text-[10px] text-gray-500">[H⁺] mol/L</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Fallback: generic JSON display */}
+            {actionResult.formula === undefined && actionResult.equation === undefined && actionResult.pH === undefined && !!actionResult.message && (
+              <p className="text-sm text-gray-400">{actionResult.message as string}</p>
+            )}
+            {actionResult.formula === undefined && actionResult.equation === undefined && actionResult.pH === undefined && !actionResult.message && (
+              <pre className="text-xs font-mono text-gray-400 overflow-auto max-h-48">{JSON.stringify(actionResult, null, 2)}</pre>
+            )}
+          </motion.div>
+        )}
+      </div>
 
       {/* Lens Features */}
       <div className="border-t border-white/10">

@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
-import { Clock, Target, TrendingUp, Calendar, Milestone, Rocket, Loader2, Layers, ChevronDown, Database, Server, HardDrive, Cloud, RefreshCw, Archive, GitMerge } from 'lucide-react';
+import { Clock, Target, TrendingUp, Calendar, Milestone, Rocket, Loader2, Layers, ChevronDown, Database, Server, HardDrive, Cloud, RefreshCw, Archive, GitMerge, Play } from 'lucide-react';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ErrorState } from '@/components/common/EmptyState';

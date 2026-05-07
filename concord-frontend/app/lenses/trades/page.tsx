@@ -426,6 +426,10 @@ export default function TradesLensPage() {
     if (!targetId) return;
     try {
       const result = await runAction.mutateAsync({ id: targetId, action });
+      if (result.ok === false) {
+        setActionResult({ message: `Action failed: ${(result as Record<string, unknown>).error || 'Unknown error'}` });
+        return;
+      }
       const actionData = result.result as Record<string, unknown>;
       setActionResult(actionData);
 
@@ -449,6 +453,7 @@ export default function TradesLensPage() {
           });
         } catch (invoiceErr) {
           console.error('Invoice DTU creation failed:', invoiceErr);
+          showToast('error', 'Invoice creation failed');
         }
       }
     } catch (err) {
@@ -2068,6 +2073,7 @@ export default function TradesLensPage() {
         setInvNotes('');
       } catch (err) {
         console.error('Invoice creation failed:', err);
+        showToast('error', 'Invoice creation failed');
       } finally {
         setInvCreating(false);
       }

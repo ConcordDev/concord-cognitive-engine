@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, X, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/api/client';
 
@@ -53,20 +54,11 @@ function pickGradient(str: string): string {
 
 // ── Story Circle ─────────────────────────────────────────────────────────────
 
-function StoryCircle({
-  user,
-  onClick,
-}: {
-  user: UserStory;
-  onClick: () => void;
-}) {
+function StoryCircle({ user, onClick }: { user: UserStory; onClick: () => void }) {
   const gradient = pickGradient(user.userId);
 
   return (
-    <button
-      onClick={onClick}
-      className="flex flex-col items-center gap-1 flex-shrink-0 w-[72px]"
-    >
+    <button onClick={onClick} className="flex flex-col items-center gap-1 flex-shrink-0 w-[72px]">
       <div
         className={cn(
           'w-16 h-16 rounded-full p-[2.5px]',
@@ -83,9 +75,11 @@ function StoryCircle({
             )}
           >
             {user.avatarUrl ? (
-              <img
+              <Image
                 src={user.avatarUrl}
                 alt={user.displayName}
+                width={56}
+                height={56}
                 className="w-full h-full rounded-full object-cover"
               />
             ) : (
@@ -219,19 +213,11 @@ function StoryViewer({
         {/* Progress bars */}
         <div className="absolute top-0 left-0 right-0 z-10 flex gap-1 p-3">
           {currentUser.stories.map((_, idx) => (
-            <div
-              key={idx}
-              className="flex-1 h-0.5 bg-white/20 rounded-full overflow-hidden"
-            >
+            <div key={idx} className="flex-1 h-0.5 bg-white/20 rounded-full overflow-hidden">
               <div
                 className="h-full bg-white rounded-full transition-[width] duration-75 ease-linear"
                 style={{
-                  width:
-                    idx < storyIdx
-                      ? '100%'
-                      : idx === storyIdx
-                        ? `${progress * 100}%`
-                        : '0%',
+                  width: idx < storyIdx ? '100%' : idx === storyIdx ? `${progress * 100}%` : '0%',
                 }}
               />
             </div>
@@ -247,9 +233,11 @@ function StoryViewer({
             )}
           >
             {currentUser.avatarUrl ? (
-              <img
+              <Image
                 src={currentUser.avatarUrl}
                 alt={currentUser.displayName}
+                width={32}
+                height={32}
                 className="w-full h-full rounded-full object-cover"
               />
             ) : (
@@ -261,7 +249,7 @@ function StoryViewer({
 
         {/* Story content */}
         <div
-          className="w-full h-full flex items-center justify-center"
+          className="w-full h-full flex items-center justify-center relative"
           onClick={(e) => {
             const rect = e.currentTarget.getBoundingClientRect();
             const x = e.clientX - rect.left;
@@ -270,11 +258,7 @@ function StoryViewer({
           }}
         >
           {currentStory.imageUrl ? (
-            <img
-              src={currentStory.imageUrl}
-              alt=""
-              className="w-full h-full object-cover"
-            />
+            <Image src={currentStory.imageUrl} alt="" fill className="object-cover" />
           ) : currentStory.content ? (
             <div className="p-8 text-center">
               <p className="text-white text-lg">{currentStory.content}</p>
@@ -290,7 +274,7 @@ function StoryViewer({
 
 // ── Main Component ───────────────────────────────────────────────────────────
 
-export function StoriesBar({ currentUserId, onCreateStory, className }: StoriesBarProps) {
+function StoriesBar({ currentUserId, onCreateStory, className }: StoriesBarProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerUserIdx, setViewerUserIdx] = useState(0);
@@ -384,11 +368,7 @@ export function StoriesBar({ currentUserId, onCreateStory, className }: StoriesB
 
           {/* Other users' stories */}
           {(stories || []).map((user, idx) => (
-            <StoryCircle
-              key={user.userId}
-              user={user}
-              onClick={() => handleOpenStory(idx)}
-            />
+            <StoryCircle key={user.userId} user={user} onClick={() => handleOpenStory(idx)} />
           ))}
         </div>
       </div>
@@ -407,4 +387,7 @@ export function StoriesBar({ currentUserId, onCreateStory, className }: StoriesB
   );
 }
 
-export default StoriesBar;
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedStoriesBar = withErrorBoundary(StoriesBar);
+export { _WrappedStoriesBar as StoriesBar };
+export default _WrappedStoriesBar;

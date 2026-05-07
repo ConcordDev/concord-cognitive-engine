@@ -3,9 +3,10 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useMutation } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
+import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Shield, Send, RefreshCw, Eye, EyeOff, Lock, Timer, ShieldCheck } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Shield, Send, RefreshCw, Eye, EyeOff, Lock, Timer, ShieldCheck, Loader2, XCircle, Zap, BarChart3, AlertTriangle, CheckCircle, Fingerprint, ShieldAlert, Waves } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -42,10 +43,6 @@ export default function AnonLensPage() {
     const sec = s % 60;
     return `${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
   };
-
-  // Anonymity level based on identity rotation and message count
-  const anonymityLevel = identity ? (identityItems.length > 0 && (identity as Record<string, unknown>).rotatedAt ? 'high' : 'medium') : 'low';
-  const anonymityColors = { low: 'text-red-400 bg-red-400/20', medium: 'text-amber-400 bg-amber-400/20', high: 'text-neon-green bg-neon-green/20' };
 
   const { items: messageItems, isLoading, isError: isError, error: error, refetch: refetch, create: createMessage } = useLensData<Record<string, unknown>>('anon', 'message', { seed: [] });
   const messages = messageItems.map(i => ({ id: i.id, ...(i.data || {}) })) as unknown as AnonMessage[];
@@ -146,6 +143,109 @@ export default function AnonLensPage() {
 
       {/* AI Actions */}
       <UniversalActions domain="anon" artifactId={messageItems[0]?.id} compact />
+
+      {/* ── Backend Action Panels ── */}
+      <div className="panel p-4">
+        <h3 className="font-semibold mb-3 flex items-center gap-2">
+          <Zap className="w-4 h-4 text-neon-green" />
+          Privacy Compute Actions
+        </h3>
+        <div className="grid grid-cols-3 gap-3">
+          <button onClick={() => handleAnonAction('anonymize')} disabled={isRunning !== null} className="flex flex-col items-center gap-2 p-3 bg-lattice-deep rounded-lg border border-lattice-border hover:border-neon-green/50 transition-colors disabled:opacity-50">
+            {isRunning === 'anonymize' ? <Loader2 className="w-5 h-5 text-neon-green animate-spin" /> : <Fingerprint className="w-5 h-5 text-neon-green" />}
+            <span className="text-xs text-gray-300">Anonymize Data</span>
+          </button>
+          <button onClick={() => handleAnonAction('privacyRisk')} disabled={isRunning !== null} className="flex flex-col items-center gap-2 p-3 bg-lattice-deep rounded-lg border border-lattice-border hover:border-red-400/50 transition-colors disabled:opacity-50">
+            {isRunning === 'privacyRisk' ? <Loader2 className="w-5 h-5 text-red-400 animate-spin" /> : <ShieldAlert className="w-5 h-5 text-red-400" />}
+            <span className="text-xs text-gray-300">Privacy Risk</span>
+          </button>
+          <button onClick={() => handleAnonAction('differentialPrivacy')} disabled={isRunning !== null} className="flex flex-col items-center gap-2 p-3 bg-lattice-deep rounded-lg border border-lattice-border hover:border-neon-purple/50 transition-colors disabled:opacity-50">
+            {isRunning === 'differentialPrivacy' ? <Loader2 className="w-5 h-5 text-neon-purple animate-spin" /> : <Waves className="w-5 h-5 text-neon-purple" />}
+            <span className="text-xs text-gray-300">Differential Privacy</span>
+          </button>
+        </div>
+
+        {/* Action Result Display */}
+        {actionResult && (
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-4 p-3 bg-lattice-deep rounded-lg border border-lattice-border">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-sm font-semibold text-white flex items-center gap-2"><BarChart3 className="w-4 h-4 text-neon-green" /> Result</h4>
+              <button onClick={() => setActionResult(null)} className="text-gray-400 hover:text-white"><XCircle className="w-4 h-4" /></button>
+            </div>
+
+            {/* Anonymize Result */}
+            {actionResult.k !== undefined && actionResult.generalizationLevel !== undefined && (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  <div className="p-2 bg-lattice-surface rounded text-center"><p className="text-sm font-bold text-neon-green">{actionResult.k as number}</p><p className="text-[10px] text-gray-500">K-Anonymity</p></div>
+                  <div className="p-2 bg-lattice-surface rounded text-center"><p className="text-sm font-bold text-neon-cyan">{actionResult.generalizationLevel as number}</p><p className="text-[10px] text-gray-500">Gen Level</p></div>
+                  <div className="p-2 bg-lattice-surface rounded text-center"><p className="text-sm font-bold text-neon-purple">{actionResult.equivalenceClasses as number}</p><p className="text-[10px] text-gray-500">Equiv Classes</p></div>
+                  <div className="p-2 bg-lattice-surface rounded text-center"><p className="text-sm font-bold text-white">{(actionResult.informationLoss as number).toFixed(1)}%</p><p className="text-[10px] text-gray-500">Info Loss</p></div>
+                </div>
+                {(actionResult.quasiIdentifiers as string[])?.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {(actionResult.quasiIdentifiers as string[]).map((qi) => (
+                      <span key={qi} className="text-[10px] px-1.5 py-0.5 bg-neon-green/10 text-neon-green rounded">{qi}</span>
+                    ))}
+                  </div>
+                )}
+                <div className="flex items-center gap-2 text-xs">
+                  {(actionResult.kAchieved as boolean)
+                    ? <span className="flex items-center gap-1 text-neon-green"><CheckCircle className="w-3 h-3" /> K-anonymity satisfied</span>
+                    : <span className="flex items-center gap-1 text-red-400"><AlertTriangle className="w-3 h-3" /> K-anonymity NOT satisfied</span>
+                  }
+                </div>
+              </div>
+            )}
+
+            {/* Privacy Risk Result */}
+            {actionResult.overallRiskLevel !== undefined && actionResult.attackModels !== undefined && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className={`text-3xl font-bold ${(actionResult.overallRiskLevel as string) === 'critical' || (actionResult.overallRiskLevel as string) === 'high' ? 'text-red-400' : (actionResult.overallRiskLevel as string) === 'moderate' ? 'text-yellow-400' : 'text-green-400'}`}>
+                    {(actionResult.attackModels as Record<string, Record<string, unknown>>)?.prosecutor?.risk as number}%
+                  </div>
+                  <div>
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded uppercase ${(actionResult.overallRiskLevel as string) === 'critical' || (actionResult.overallRiskLevel as string) === 'high' ? 'bg-red-500/20 text-red-400' : (actionResult.overallRiskLevel as string) === 'moderate' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-green-500/20 text-green-400'}`}>
+                      {actionResult.overallRiskLevel as string} risk
+                    </span>
+                    <p className="text-xs text-gray-400 mt-1">Prosecutor risk: {(actionResult.attackModels as Record<string, Record<string, unknown>>)?.prosecutor?.risk as number}%</p>
+                  </div>
+                </div>
+                {(actionResult.recommendations as string[])?.length > 0 && (
+                  <div className="space-y-1">
+                    {(actionResult.recommendations as string[]).map((v, i) => (
+                      <div key={i} className="flex items-center gap-2 text-xs text-red-400 bg-red-500/10 p-1.5 rounded">
+                        <AlertTriangle className="w-3 h-3 flex-shrink-0" /> {v}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Differential Privacy Result */}
+            {(actionResult.privacyParameters as Record<string, unknown>)?.epsilon !== undefined && (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  <div className="p-2 bg-lattice-surface rounded text-center"><p className="text-sm font-bold text-neon-purple">{(actionResult.privacyParameters as Record<string, unknown>)?.epsilon as number}</p><p className="text-[10px] text-gray-500">Epsilon (ε)</p></div>
+                  <div className="p-2 bg-lattice-surface rounded text-center"><p className="text-sm font-bold text-neon-cyan">{(actionResult.privacyParameters as Record<string, unknown>)?.privacyLevel as string}</p><p className="text-[10px] text-gray-500">Privacy Level</p></div>
+                  <div className="p-2 bg-lattice-surface rounded text-center"><p className="text-sm font-bold text-neon-green">{(actionResult.budgetTracking as Record<string, unknown>)?.cumulative as number}</p><p className="text-[10px] text-gray-500">Budget Used</p></div>
+                  <div className="p-2 bg-lattice-surface rounded text-center"><p className="text-sm font-bold text-white">{(actionResult.privacyParameters as Record<string, unknown>)?.queriesProcessed as number}</p><p className="text-[10px] text-gray-500">Queries</p></div>
+                </div>
+                <div className="text-xs text-gray-400">
+                  Privacy guarantee: {((actionResult.privacyParameters as Record<string, unknown>)?.privacyLevel as string) || 'standard'}
+                </div>
+              </div>
+            )}
+
+            {/* Fallback */}
+            {!!actionResult.message && !actionResult.k && !actionResult.overallRiskLevel && !(actionResult.privacyParameters as Record<string, unknown>)?.epsilon && (
+              <p className="text-sm text-gray-400">{actionResult.message as string}</p>
+            )}
+          </motion.div>
+        )}
+      </div>
 
       {/* Stat Cards Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

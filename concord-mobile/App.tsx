@@ -43,24 +43,22 @@ function LoadingScreen({ phase }: { phase: BootPhase }) {
   );
 }
 
-// ── Placeholder Secure Storage ───────────────────────────────────────────────
-// SECURITY WARNING: This implementation stores the device identity keypair in
-// plain JavaScript heap memory. Data is NOT persisted across app restarts, and
-// is NOT protected by the OS secure enclave (iOS Keychain / Android Keystore).
+// ── Secure Storage ───────────────────────────────────────────────────────────
 //
-// To fix this properly, add one of the following to package.json and wire it:
-//   • expo-secure-store  — Expo-managed Keychain/Keystore wrapper (recommended)
-//   • react-native-keychain — bare React Native Keychain/Keystore wrapper
+// Production secure storage for the device identity keypair. Pick the
+// platform-appropriate backend exactly once at module init so the rest of the
+// app sees a stable handle:
+//   • iOS / Android → expo-secure-store (Keychain / Keystore, encrypted at
+//     rest, scoped to this app, WHEN_UNLOCKED_THIS_DEVICE_ONLY).
+//   • Web wrapper   → WebCrypto AES-GCM with a non-extractable key in
+//     IndexedDB. Strictly weaker than Keychain but stronger than naked
+//     localStorage and resilient to XSS exfil of the master key.
+//   • Anything else → in-memory (e.g. the Jest test environment); the
+//     identity manager handles the regenerate-on-cold-start case gracefully.
 //
-// Neither package is currently installed (checked package.json). Until one is
-// added, the identity keypair is ephemeral — it regenerates on every cold
-// start — and must NOT be used for production signing or authentication.
-
-console.warn(
-  '[SecureStorage] Using in-memory placeholder — identity keypair is NOT ' +
-  'persisted and NOT protected by the OS secure enclave. ' +
-  'Install expo-secure-store or react-native-keychain to fix this.'
-);
+// createSecureStorageForPlatform returns an in-memory backend rather than
+// throwing when the native module isn't available, which keeps Metro/Jest
+// from crashing during dev. Failures during real boot are logged below.
 
 let secureStorage: ReturnType<typeof createSecureStorageForPlatform>;
 try {

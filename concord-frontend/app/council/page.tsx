@@ -721,23 +721,7 @@ function HeatmapTab() {
         agreement.
       </p>
 
-      {cells.length === 0 && (
-        <CouncilEmptyState message="No governance decisions yet" />
-      )}
-
-      {cells.length > 0 && <div className={ds.panel}>
-        {/* Legend */}
-        <div className="flex items-center gap-3 mb-4 text-xs text-gray-400">
-          <span>Low Agreement</span>
-          <div className="flex gap-0.5">
-            <div className="w-5 h-3 rounded-sm bg-red-500/25" />
-            <div className="w-5 h-3 rounded-sm bg-orange-500/25" />
-            <div className="w-5 h-3 rounded-sm bg-yellow-500/25" />
-            <div className="w-5 h-3 rounded-sm bg-green-500/30" />
-            <div className="w-5 h-3 rounded-sm bg-green-500/60" />
-          </div>
-          <span>High Agreement</span>
-        </div>
+      {cells.length === 0 && <CouncilEmptyState message="No governance decisions yet" />}
 
       {cells.length > 0 && (
         <div className={ds.panel}>
@@ -808,7 +792,7 @@ function HeatmapTab() {
             </table>
           </div>
         </div>
-      </div>}
+      )}
 
       {/* Key Insights */}
       <div className={ds.panel}>
@@ -945,7 +929,8 @@ function EvaluateTab() {
         <div className={cn(ds.panel, 'border-yellow-500/30')}>
           <p className="text-yellow-400 text-sm flex items-center gap-2">
             <AlertTriangle className="w-4 h-4" />
-            The council did not return a decision for this DTU. It may not exist or may not be eligible for evaluation.
+            The council did not return a decision for this DTU. It may not exist or may not be
+            eligible for evaluation.
           </p>
         </div>
       )}

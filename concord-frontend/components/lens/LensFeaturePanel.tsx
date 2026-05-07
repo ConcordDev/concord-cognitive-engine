@@ -267,7 +267,12 @@ function LensFeaturePanel({ lensId, className, compact = false }: LensFeaturePan
                     <p className="text-[11px] text-gray-500 truncate">{feature.description}</p>
                   )}
                 </div>
-                <span className={cn('px-1.5 py-0.5 rounded text-[9px] font-medium flex-shrink-0 inline-flex items-center gap-0.5', statusCfg.color)}>
+                <span
+                  className={cn(
+                    'px-1.5 py-0.5 rounded text-[9px] font-medium flex-shrink-0 inline-flex items-center gap-0.5',
+                    statusCfg.color
+                  )}
+                >
                   <StatusIcon className="w-2.5 h-2.5" />
                   {statusCfg.label}
                 </span>

@@ -10,7 +10,7 @@ import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   Lightbulb, Plus, Search, Database, ArrowRight, Brain,
-  X, RefreshCw, ChevronDown,
+  X, RefreshCw, ChevronDown, Loader2, XCircle,
   Tag, Copy, BarChart3, Network, Eye, Layers, CheckCircle2, Shield,
 } from 'lucide-react';
 import { motion } from 'framer-motion';

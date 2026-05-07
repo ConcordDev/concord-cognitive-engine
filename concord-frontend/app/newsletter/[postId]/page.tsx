@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import Link from 'next/link';
 
 /* ------------------------------------------------------------------ */
 /*  Newsletter Public View                                             */
@@ -14,7 +15,7 @@ interface NewsletterPageProps {
 export async function generateMetadata({ params }: NewsletterPageProps): Promise<Metadata> {
   const { postId } = await params;
   // Fetch post metadata for OG tags
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
   let title = 'Newsletter';
   let description = 'A newsletter post from Concord';
 
@@ -49,7 +50,7 @@ export async function generateMetadata({ params }: NewsletterPageProps): Promise
 }
 
 async function getPost(postId: string) {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
   try {
     const res = await fetch(`${baseUrl}/api/social/post/${postId}`, {
       next: { revalidate: 60 },
@@ -64,7 +65,18 @@ async function getPost(postId: string) {
 
 export default async function NewsletterPage({ params }: NewsletterPageProps) {
   const { postId } = await params;
-  const post = await getPost(postId);
+
+  let post = null;
+  let fetchError: string | null = null;
+  try {
+    post = await getPost(postId);
+  } catch (err) {
+    fetchError = err instanceof Error ? err.message : 'Failed to load';
+  }
+
+  if (fetchError) {
+    return <div className="p-8 text-center text-red-400">Error: {fetchError}</div>;
+  }
 
   if (!post) {
     return (
@@ -81,7 +93,9 @@ export default async function NewsletterPage({ params }: NewsletterPageProps) {
 
   const publishDate = post.createdAt
     ? new Date(post.createdAt).toLocaleDateString('en-US', {
-        year: 'numeric', month: 'long', day: 'numeric',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
       })
     : null;
 
@@ -108,7 +122,10 @@ export default async function NewsletterPage({ params }: NewsletterPageProps) {
           {post.tags?.length > 0 && (
             <div className="flex flex-wrap justify-center gap-2 mt-4">
               {post.tags.map((tag: string) => (
-                <span key={tag} className="px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-600 text-xs">
+                <span
+                  key={tag}
+                  className="px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-600 text-xs"
+                >
                   {tag}
                 </span>
               ))}
@@ -134,9 +151,9 @@ export default async function NewsletterPage({ params }: NewsletterPageProps) {
         <div className="max-w-2xl mx-auto px-6 py-6 text-center text-xs text-gray-400">
           <p>Published via Concord Cognitive Engine</p>
           <p className="mt-1">
-            <a href="/" className="text-indigo-500 hover:text-indigo-600">
+            <Link href="/" className="text-indigo-500 hover:text-indigo-600">
               Visit Concord
-            </a>
+            </Link>
           </p>
         </div>
       </footer>

@@ -1,11 +1,31 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
-import { Search, Filter, ArrowRight, BookOpen, Tag, Calendar, Layers, ChevronDown, RefreshCw, Beaker, Download, X, AlertCircle, Zap, Save, FileText, Microscope, CheckCircle } from 'lucide-react';
+import {
+  Search,
+  Filter,
+  ArrowRight,
+  BookOpen,
+  Tag,
+  Calendar,
+  Layers,
+  ChevronDown,
+  RefreshCw,
+  Beaker,
+  Download,
+  X,
+  AlertCircle,
+  Zap,
+  Save,
+  FileText,
+  Microscope,
+  CheckCircle,
+} from 'lucide-react';
+import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { cn } from '@/lib/utils';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -18,7 +38,10 @@ import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
+import { LensFeedPanel } from '@/components/feeds/LensFeedPanel';
 import { VisionAnalyzeButton } from '@/components/common/VisionAnalyzeButton';
+import { PullToSubstrate } from '@/components/lens/PullToSubstrate';
+import { FeedBanner } from '@/components/lens/FeedBanner';
 
 interface DTUResult {
   id: string;
@@ -59,12 +82,73 @@ export default function ResearchLensPage() {
   const [selectedDtu, setSelectedDtu] = useState<DTUResult | null>(null);
   const [showFeatures, setShowFeatures] = useState(true);
 
+  /* ---------- domain actions ---------- */
+  const runResearchAction = useRunArtifact('research');
+  const [researchActionResult, setResearchActionResult] = useState<Record<string, unknown> | null>(
+    null
+  );
+  const [researchActiveAction, setResearchActiveAction] = useState<string | null>(null);
+
+  const handleResearchAction = useCallback(
+    async (action: string) => {
+      const all = [...hyperDTUs, ...megaDTUs, ...regularDTUs];
+      const id = all[0]?.id;
+      if (!id) return;
+      setResearchActiveAction(action);
+      try {
+        const res = await runResearchAction.mutateAsync({ id, action });
+        if (res.ok === false) {
+          setResearchActionResult({
+            action,
+            message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}`,
+          });
+        } else {
+          setResearchActionResult({ action, ...(res.result as Record<string, unknown>) });
+        }
+      } catch (err) {
+        console.error('Research action failed:', err);
+      } finally {
+        setResearchActiveAction(null);
+      }
+    },
+    [hyperDTUs, megaDTUs, regularDTUs, runResearchAction]
+  );
+
   /* ---------- hypothesis / generate ---------- */
   const [hypothesis, setHypothesis] = useState('');
   const [generateLoading, setGenerateLoading] = useState(false);
-  const [generateResult, setGenerateResult] = useState<{ content: string; title: string } | null>(null);
+  const [generateResult, setGenerateResult] = useState<{ content: string; title: string } | null>(
+    null
+  );
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [savingDTU, setSavingDTU] = useState(false);
+  const [deepResearchLoading, setDeepResearchLoading] = useState(false);
+
+  const handleDeepResearch = useCallback(async () => {
+    if (!hypothesis.trim()) return;
+    setDeepResearchLoading(true);
+    setGenerateError(null);
+    setGenerateResult(null);
+    try {
+      const data = await api
+        .post('/api/research/conduct', { topic: hypothesis.trim() })
+        .then((r) => r.data);
+      const content =
+        typeof data?.result === 'string'
+          ? data.result
+          : typeof data?.content === 'string'
+            ? data.content
+            : JSON.stringify(data, null, 2);
+      setGenerateResult({
+        content,
+        title: data?.title || 'Deep Research Result',
+      });
+    } catch (err) {
+      setGenerateError(err instanceof Error ? err.message : 'Deep research failed');
+    } finally {
+      setDeepResearchLoading(false);
+    }
+  }, [hypothesis]);
 
   const handleRunAnalysis = useCallback(async () => {
     if (!hypothesis.trim()) return;
@@ -78,11 +162,12 @@ export default function ResearchLensPage() {
         input: { hypothesis: hypothesis.trim(), type: 'analysis' },
       });
       const data = res.data;
-      const content = typeof data?.result === 'string'
-        ? data.result
-        : typeof data?.result?.content === 'string'
-          ? data.result.content
-          : JSON.stringify(data?.result ?? data, null, 2);
+      const content =
+        typeof data?.result === 'string'
+          ? data.result
+          : typeof data?.result?.content === 'string'
+            ? data.result.content
+            : JSON.stringify(data?.result ?? data, null, 2);
       setGenerateResult({
         content,
         title: data?.result?.title || 'Research Analysis',
@@ -104,7 +189,13 @@ export default function ResearchLensPage() {
     URL.revokeObjectURL(url);
   }, []);
 
-  const { data: dtusData, isLoading, isError, error, refetch } = useQuery({
+  const {
+    data: dtusData,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: ['research-dtus'],
     queryFn: () =>
       api
@@ -126,7 +217,9 @@ export default function ResearchLensPage() {
       setSavingDTU(false);
       refetch();
       refetchDTUs();
-    } catch {
+    } catch (e) {
+      console.error('Failed to save research DTU:', e);
+      useUIStore.getState().addToast({ type: 'error', message: 'Failed to save research result' });
       setSavingDTU(false);
     }
   }, [generateResult, refetch, refetchDTUs]);
@@ -208,34 +301,64 @@ export default function ResearchLensPage() {
           </p>
         </div>
 
-      {/* Real-time Enhancement Toolbar */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-        <DTUExportButton domain="research" data={realtimeData || {}} compact />
-        <VisionAnalyzeButton
-          domain="research"
-          prompt="Analyze this research image (chart, graph, diagram, figure, data visualization, etc.). Extract key findings, describe the data shown, and suggest relevant research tags and domain classification."
-          onResult={(res) => {
-            setSelectedDtu({ id: `vision-${Date.now()}`, title: 'Vision Analysis', content: res.analysis, summary: res.analysis.slice(0, 200), domain: 'research', tags: res.suggestedTags || [], createdAt: new Date().toISOString() });
-          }}
-        />
-        <button onClick={() => refetchDTUs()} disabled={dtusLoading} className="p-1 rounded hover:bg-lattice-surface/50 disabled:opacity-50 transition-colors" title="Refresh DTUs">
-          {dtusLoading ? <span className="w-4 h-4 border-2 border-neon-cyan border-t-transparent rounded-full animate-spin inline-block" /> : <RefreshCw className="w-4 h-4 text-gray-400" />}
-        </button>
-        {realtimeAlerts.length > 0 && (
-          <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
-            {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
-          </span>
-        )}
-      </div>
+        {/* Real-time Enhancement Toolbar */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+          <DTUExportButton domain="research" data={realtimeData || {}} compact />
+          <VisionAnalyzeButton
+            domain="research"
+            prompt="Analyze this research image (chart, graph, diagram, figure, data visualization, etc.). Extract key findings, describe the data shown, and suggest relevant research tags and domain classification."
+            onResult={(res) => {
+              setSelectedDtu({
+                id: `vision-${Date.now()}`,
+                title: 'Vision Analysis',
+                content: res.analysis,
+                summary: res.analysis.slice(0, 200),
+                domain: 'research',
+                tags: res.suggestedTags || [],
+                createdAt: new Date().toISOString(),
+              });
+            }}
+          />
+          <button
+            onClick={() => refetchDTUs()}
+            disabled={dtusLoading}
+            className="p-1 rounded hover:bg-lattice-surface/50 disabled:opacity-50 transition-colors"
+            title="Refresh DTUs"
+          >
+            {dtusLoading ? (
+              <span className="w-4 h-4 border-2 border-neon-cyan border-t-transparent rounded-full animate-spin inline-block" />
+            ) : (
+              <RefreshCw className="w-4 h-4 text-gray-400" />
+            )}
+          </button>
+          {realtimeAlerts.length > 0 && (
+            <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
+              {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
+      </header>
+
+      <FeedBanner domain="research" />
 
       {/* Quick Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { icon: FileText, label: 'Total DTUs', value: dtus.length, color: 'text-neon-cyan' },
-          { icon: Microscope, label: 'Hyper Tier', value: dtus.filter(d => d.tier === 'hyper').length, color: 'text-pink-400' },
+          {
+            icon: Microscope,
+            label: 'Hyper Tier',
+            value: dtus.filter((d) => d.tier === 'hyper').length,
+            color: 'text-pink-400',
+          },
           { icon: BookOpen, label: 'Domains', value: domains.length, color: 'text-purple-400' },
-          { icon: Tag, label: 'Tagged', value: dtus.filter(d => (d.tags || []).length > 0).length, color: 'text-green-400' },
+          {
+            icon: Tag,
+            label: 'Tagged',
+            value: dtus.filter((d) => (d.tags || []).length > 0).length,
+            color: 'text-green-400',
+          },
         ].map((stat, i) => (
           <motion.div
             key={stat.label}
@@ -268,7 +391,7 @@ export default function ResearchLensPage() {
           />
           <button
             onClick={handleRunAnalysis}
-            disabled={generateLoading || !hypothesis.trim()}
+            disabled={generateLoading || deepResearchLoading || !hypothesis.trim()}
             className="flex items-center gap-2 px-5 py-2.5 bg-neon-cyan/20 text-neon-cyan rounded-lg text-sm font-medium hover:bg-neon-cyan/30 disabled:opacity-50 transition-colors whitespace-nowrap"
           >
             {generateLoading ? (
@@ -277,6 +400,18 @@ export default function ResearchLensPage() {
               <Zap className="w-4 h-4" />
             )}
             {generateLoading ? 'Analyzing...' : 'Analyze'}
+          </button>
+          <button
+            onClick={handleDeepResearch}
+            disabled={deepResearchLoading || generateLoading || !hypothesis.trim()}
+            className="flex items-center gap-2 px-5 py-2.5 bg-purple-500/20 text-purple-400 rounded-lg text-sm font-medium hover:bg-purple-500/30 disabled:opacity-50 transition-colors whitespace-nowrap"
+          >
+            {deepResearchLoading ? (
+              <span className="w-4 h-4 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Microscope className="w-4 h-4" />
+            )}
+            {deepResearchLoading ? 'Researching...' : 'Deep Research'}
           </button>
         </div>
         {generateError && (
@@ -295,7 +430,12 @@ export default function ResearchLensPage() {
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => handleDownloadResult(generateResult.content, `${generateResult.title.replace(/\s+/g, '-').toLowerCase()}.txt`)}
+                onClick={() =>
+                  handleDownloadResult(
+                    generateResult.content,
+                    `${generateResult.title.replace(/\s+/g, '-').toLowerCase()}.txt`
+                  )
+                }
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-neon-cyan/10 text-neon-cyan rounded-lg text-xs hover:bg-neon-cyan/20"
               >
                 <Download className="w-3.5 h-3.5" /> Download
@@ -443,8 +583,10 @@ export default function ResearchLensPage() {
                           <CheckCircle className="w-3 h-3" /> Verified
                         </span>
                       )}
-                      {(dtu.tags || []).slice(0, 3).map(tag => (
-                        <span key={tag} className="text-xs text-gray-500">#{tag}</span>
+                      {(dtu.tags || []).slice(0, 3).map((tag) => (
+                        <span key={tag} className="text-xs text-gray-500">
+                          #{tag}
+                        </span>
                       ))}
                     </div>
                   </div>

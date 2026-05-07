@@ -3,14 +3,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Calendar,
-  Clock,
-  Trash2,
-  Loader2,
-  FileText,
-  AlertCircle,
-} from 'lucide-react';
+import { Calendar, Clock, Trash2, Loader2, FileText, AlertCircle } from 'lucide-react';
 import { cn, formatRelativeTime, truncate } from '@/lib/utils';
 import { api } from '@/lib/api/client';
 
@@ -32,7 +25,7 @@ interface PostSchedulerProps {
 
 // ── Main Component ───────────────────────────────────────────────────────────
 
-export function PostScheduler({ userId, onSchedulePost, className }: PostSchedulerProps) {
+function PostScheduler({ userId, onSchedulePost, className }: PostSchedulerProps) {
   const queryClient = useQueryClient();
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('12:00');
@@ -235,4 +228,7 @@ export function PostScheduler({ userId, onSchedulePost, className }: PostSchedul
   );
 }
 
-export default PostScheduler;
+import { withErrorBoundary } from '@/components/common/ErrorBoundary';
+const _WrappedPostScheduler = withErrorBoundary(PostScheduler);
+export { _WrappedPostScheduler as PostScheduler };
+export default _WrappedPostScheduler;

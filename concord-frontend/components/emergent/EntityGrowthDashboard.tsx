@@ -19,6 +19,7 @@ import {
   Radio,
 } from 'lucide-react';
 import QualiaSensoryFeed from './QualiaSensoryFeed';
+import { resolveEntityName } from '@/lib/entity-naming';
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -191,7 +192,12 @@ function EntityGrowthCard({ entity }: { entity: GrowthEntity }) {
       <div className="space-y-1 mb-2">
         <Gauge label="Curiosity" value={entity.curiosity} icon={Sparkles} color="text-yellow-400" />
         <Gauge label="Energy" value={entity.energy} icon={Zap} color="text-neon-green" />
-        <Gauge label="Vitality" value={(entity.curiosity + entity.energy) / 2} icon={Heart} color="text-red-400" />
+        <Gauge
+          label="Vitality"
+          value={(entity.curiosity + entity.energy) / 2}
+          icon={Heart}
+          color="text-red-400"
+        />
         <Gauge label="Confidence" value={entity.confidence} icon={Target} color="text-neon-blue" />
         <Gauge label="Insight" value={entity.insightQuality} icon={Eye} color="text-neon-cyan" />
       </div>
@@ -399,7 +405,7 @@ function ExplorationSection({ metrics }: { metrics: ExplorationMetrics }) {
 function EntityQualiaSection({ entityId }: { entityId: string }) {
   const { data } = useQuery({
     queryKey: ['qualia-channels', entityId],
-    queryFn: () => api.get(`/api/qualia/senses/channels/${entityId}`).then(r => r.data),
+    queryFn: () => api.get(`/api/qualia/senses/channels/${entityId}`).then((r) => r.data),
     retry: false,
     staleTime: 30000,
   });
@@ -410,10 +416,7 @@ function EntityQualiaSection({ entityId }: { entityId: string }) {
   return (
     <div>
       <h4 className="text-[10px] uppercase text-gray-500 mb-1">Qualia Sensory Feed</h4>
-      <QualiaSensoryFeed
-        entityId={entityId}
-        channels={channels}
-      />
+      <QualiaSensoryFeed entityId={entityId} channels={channels} />
     </div>
   );
 }

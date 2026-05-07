@@ -9,8 +9,10 @@ import { MarketEmpireListing } from '@/components/market/MarketEmpireListing';
 import {
   Store, TrendingUp, Package, Coins, Search, Filter, X,
   ShoppingCart, Tag, ArrowUpRight, ArrowDownRight,
-  RefreshCw, Layers, ChevronDown, DollarSign, BarChart3,
+  RefreshCw, Layers, ChevronDown, DollarSign, BarChart3, Play, Loader2,
 } from 'lucide-react';
+import { useLensData } from '@/lib/hooks/use-lens-data';
+import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { motion } from 'framer-motion';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { ErrorState } from '@/components/common/EmptyState';

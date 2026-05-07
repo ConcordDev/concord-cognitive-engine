@@ -159,6 +159,22 @@ const FORWARDED_EVENTS: SocketEvent[] = [
   'initiative:new',
   // Chat tool execution results
   'chat:tool_result',
+  // Feed Manager real-time DTU events
+  'feed:new-dtu',
+  // City / World lens events
+  'city:positions',
+  'city:stream-started',
+  'city:stream-ended',
+  'city:stream-dtu-created',
+  'city:stream-sale',
+  // Comments
+  'comment:added',
+  // Activity feed
+  'activity:new',
+  // Collaborative editing (Yjs)
+  'yjs:update',
+  // Server health checks
+  'health:pulse',
 ];
 
 interface UseSocketOptions {
@@ -411,17 +427,6 @@ function routeToStores(event: SocketEvent, data: unknown, qc: QueryClient) {
               discoveredAt: string;
             }>
           );
-      }
-      break;
-
-    // Per-user tick → lattice store
-    case 'user:tick':
-      if (d) {
-        useLatticeStore.getState().setUserTickInfo({
-          tickCount: d.tickCount as number,
-          dtuCount: d.dtuCount as number,
-          lastTick: d.ts as string,
-        });
       }
       break;
 

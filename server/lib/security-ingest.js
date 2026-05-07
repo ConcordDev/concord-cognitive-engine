@@ -221,7 +221,7 @@ function parseDiff(diffText) {
  * @param {Array<{hash: string, message: string, diff: string}>} commits
  * @returns {{ patternsExtracted: number, fixesExtracted: number }}
  */
-export function extractSecurityFixes(db, codebaseId, commits) {
+function extractSecurityFixes(db, codebaseId, commits) {
   const s = stmts(db);
   let patternsExtracted = 0;
   let fixesExtracted = 0;
@@ -301,7 +301,7 @@ export function extractSecurityFixes(db, codebaseId, commits) {
  * @param {string} [opts.repoId] - Link to code_repositories table
  * @returns {{ ok: boolean, codebaseId?: string, error?: string }}
  */
-export function registerSecurityCodebase(db, opts = {}) {
+function registerSecurityCodebase(db, opts = {}) {
   const s = stmts(db);
 
   if (!opts.repoUrl || !opts.name) {
@@ -340,7 +340,7 @@ export function registerSecurityCodebase(db, opts = {}) {
  * @param {string} [sourceUrl] - Source URL for provenance
  * @returns {Array<{name: string, description: string, pattern: string, severity: string, metadata: Object}>}
  */
-export function parseYaraRules(content) {
+function parseYaraRules(content) {
   const rules = [];
   // Match YARA rule blocks: rule NAME { ... }
   const ruleRegex = /rule\s+(\w+)(?:\s*:\s*[\w\s]+)?\s*\{([^}]*(?:\{[^}]*\}[^}]*)*)\}/gs;
@@ -399,7 +399,7 @@ export function parseYaraRules(content) {
  * @param {string} [sourceUrl] - Source URL for provenance
  * @returns {Promise<{ingested: number, skipped: number, errors: string[]}>}
  */
-export async function ingestYaraDirectory(db, dirPath, sourceUrl) {
+async function ingestYaraDirectory(db, dirPath, sourceUrl) {
   const s = stmts(db);
   let ingested = 0;
   let skipped = 0;
@@ -455,7 +455,7 @@ export async function ingestYaraDirectory(db, dirPath, sourceUrl) {
  * @param {string} format - 'ndb' or 'hdb'
  * @returns {Array<{name: string, pattern: string, signatureType: string}>}
  */
-export function parseClamavSignatures(content, format = "ndb") {
+function parseClamavSignatures(content, format = "ndb") {
   const signatures = [];
   const lines = content.split("\n").filter(l => l.trim() && !l.startsWith("#"));
 
@@ -490,7 +490,7 @@ export function parseClamavSignatures(content, format = "ndb") {
  * @param {string} [format='ndb'] - Signature format
  * @returns {Promise<{ingested: number, skipped: number}>}
  */
-export async function ingestClamavFile(db, filePath, format = "ndb") {
+async function ingestClamavFile(db, filePath, format = "ndb") {
   const s = stmts(db);
   let ingested = 0;
   let skipped = 0;
@@ -538,7 +538,7 @@ export async function ingestClamavFile(db, filePath, format = "ndb") {
  * @param {Object} feedData - NVD API response object
  * @returns {Array<{cveId, description, severity, cvss, cweId, affectedProducts, published}>}
  */
-export function parseCveFeed(feedData) {
+function parseCveFeed(feedData) {
   const entries = [];
   const vulnerabilities = feedData?.vulnerabilities || feedData?.CVE_Items || [];
 
@@ -605,7 +605,7 @@ export function parseCveFeed(feedData) {
  * @param {Array} cveEntries - Parsed CVE entries from parseCveFeed()
  * @returns {{ ingested: number, skipped: number }}
  */
-export function ingestCveEntries(db, cveEntries) {
+function ingestCveEntries(db, cveEntries) {
   const s = stmts(db);
   let ingested = 0;
   let skipped = 0;
@@ -663,7 +663,7 @@ export function ingestCveEntries(db, cveEntries) {
  * @param {Object} [details={}] - Additional details
  * @param {string} [sessionId] - Session ID
  */
-export function logSecurityEvent(db, eventType, signatureId, fixId, target, targetType, severity, result, details = {}, sessionId = null) {
+function logSecurityEvent(db, eventType, signatureId, fixId, target, targetType, severity, result, details = {}, sessionId = null) {
   const s = stmts(db);
   try {
     s.insertEvent.run(
@@ -687,7 +687,7 @@ export function logSecurityEvent(db, eventType, signatureId, fixId, target, targ
  * @param {string} signatureId - Signature ID
  * @param {boolean} falsePositive - Whether this was a false positive
  */
-export function recordSignatureOutcome(db, signatureId, falsePositive = false) {
+function recordSignatureOutcome(db, signatureId, falsePositive = false) {
   const s = stmts(db);
   const sig = s.getSignatureById.get(signatureId);
   if (!sig) return;
@@ -719,7 +719,7 @@ export function recordSignatureOutcome(db, signatureId, falsePositive = false) {
  * @param {string} fixId - Fix ID
  * @param {boolean} success - Whether the fix was successful
  */
-export function recordFixOutcome(db, fixId, success = true) {
+function recordFixOutcome(db, fixId, success = true) {
   const s = stmts(db);
 
   const updateCol = success ? "success_count" : "failure_count";
@@ -745,7 +745,7 @@ export function recordFixOutcome(db, fixId, success = true) {
  * @param {Object} db - Database handle
  * @returns {Object} Statistics summary
  */
-export function getSecurityStats(db) {
+function getSecurityStats(db) {
   const s = stmts(db);
   return {
     signatures: {

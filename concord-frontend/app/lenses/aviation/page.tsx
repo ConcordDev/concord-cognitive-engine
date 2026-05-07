@@ -1664,7 +1664,7 @@ export default function AviationLensPage() {
           { label: 'On-Time Rate', value: `${flights.length > 0 ? Math.round((completedFlights / flights.length) * 100) : 0}%`, icon: CheckCircle },
           { label: 'Active Routes', value: activeFlights, icon: Navigation },
           { label: 'Fleet Ready', value: airworthyAircraft, icon: Shield },
-        ].map((stat, i) => (
+        ].map((stat, _i) => (
           <div key={stat.label} className={ds.panel + ' flex items-center gap-3 p-3'}>
             <stat.icon className="w-5 h-5 text-sky-400 shrink-0" />
             <div>

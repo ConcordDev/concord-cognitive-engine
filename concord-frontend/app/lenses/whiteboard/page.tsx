@@ -43,6 +43,8 @@ import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { DTUDetailView } from '@/components/dtu/DTUDetailView';
+import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
+import { Zap } from 'lucide-react';
 
 /* ---------- types ---------- */
 type BoardMode = 'canvas' | 'moodboard' | 'arrangement';
@@ -1492,15 +1494,6 @@ export default function WhiteboardLensPage() {
           </div>
         )}
       </div>
-
-      {/* DTU Detail View modal (opened by double-clicking a DTU element on canvas) */}
-      {viewingDtuId && (
-        <DTUDetailView
-          dtuId={viewingDtuId}
-          onClose={() => setViewingDtuId(null)}
-          onNavigate={(id) => setViewingDtuId(id)}
-        />
-      )}
 
       {/* DTU Detail View modal (opened by double-clicking a DTU element on canvas) */}
       {viewingDtuId && (

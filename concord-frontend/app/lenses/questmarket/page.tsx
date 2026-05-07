@@ -1,13 +1,11 @@
 'use client';
 
-import { useLensNav } from '@/hooks/useLensNav';
-import { useMutation } from '@tanstack/react-query';
-import { useLensData } from '@/lib/hooks/use-lens-data';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Target, Trophy, Coins, Clock, Users, Layers, ChevronDown, Swords, Award } from 'lucide-react';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
-import { ErrorState } from '@/components/common/EmptyState';
+import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
+import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
+import { ds } from '@/lib/design-system';
+import { cn } from '@/lib/utils';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   Target,
@@ -110,8 +108,25 @@ export default function QuestmarketLensPage() {
   const [editingItem, setEditingItem] = useState<LensItem<QuestArtifact> | null>(null);
   const [showDashboard, setShowDashboard] = useState(false);
 
-  const [filter, setFilter] = useState<string>('all');
-  const [showFeatures, setShowFeatures] = useState(false);
+  const [formName, setFormName] = useState('');
+  const [formDescription, setFormDescription] = useState('');
+  const [formStatus, setFormStatus] = useState<Status>('open');
+  const [formNotes, setFormNotes] = useState('');
+  const [formReward, setFormReward] = useState('');
+  const [formDifficulty, setFormDifficulty] = useState<Difficulty>('medium');
+  const [formDeadline, setFormDeadline] = useState('');
+  const [formCategory, setFormCategory] = useState(QUEST_CATEGORIES[0]);
+  const [formXpReward, setFormXpReward] = useState('');
+  const [formPrerequisites, setFormPrerequisites] = useState('');
+  const [formCompletionCriteria, setFormCompletionCriteria] = useState('');
+  const [formMaxParticipants, setFormMaxParticipants] = useState('');
+  const [formMinLevel, setFormMinLevel] = useState('');
+  const [formGuildName, setFormGuildName] = useState('');
+  const [formMemberCount, setFormMemberCount] = useState('');
+  const [formRarity, setFormRarity] = useState(RARITY_TYPES[0]);
+  const [formScore, setFormScore] = useState('');
+  const [formRewardType, setFormRewardType] = useState(REWARD_TYPES[0]);
+  const [formRewardAmount, setFormRewardAmount] = useState('');
 
   const activeArtifactType = MODE_TABS.find((t) => t.id === activeTab)?.artifactType || 'Quest';
   const { items, isLoading, isError, error, refetch, create, update, remove } =
@@ -272,92 +287,47 @@ export default function QuestmarketLensPage() {
   const renderEditor = () => {
     if (!editorOpen) return null;
     return (
-      <div className="flex items-center justify-center h-full p-8">
-        <ErrorState error={error?.message || error2?.message} onRetry={() => { refetch(); refetch2(); }} />
-      </div>
-    );
-  }
-  return (
-    <div data-lens-theme="questmarket" className="p-6 space-y-6">
-      <header className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <span className="text-2xl">🎯</span>
-          <div>
-            <h1 className="text-xl font-bold">Questmarket Lens</h1>
-            <p className="text-sm text-gray-400">
-              Bounty board for DTU tasks and challenges
-            </p>
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+        onClick={() => setEditorOpen(false)}
+      >
+        <div
+          className={cn(ds.panel, 'w-full max-w-lg max-h-[85vh] overflow-y-auto')}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h3 className={ds.heading3}>
+              {editingItem ? 'Edit' : 'New'} {activeArtifactType}
+            </h3>
+            <button onClick={() => setEditorOpen(false)} className={ds.btnGhost}>
+              <X className="w-4 h-4" />
+            </button>
           </div>
-
-      {/* Real-time Enhancement Toolbar */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-        <DTUExportButton domain="questmarket" data={realtimeData || {}} compact />
-        {realtimeAlerts.length > 0 && (
-          <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
-            {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
-          </span>
-        )}
-      </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Trophy className="w-5 h-5 text-neon-green" />
-          <span className="font-bold">{myQuests?.filter((q: Record<string, unknown>) => q.status === 'completed').length || 0}</span>
-          <span className="text-gray-400 text-sm">completed</span>
-        </div>
-      </header>
-
-
-      {/* AI Actions */}
-      <UniversalActions domain="questmarket" artifactId={questItems[0]?.id} compact />
-
-      {/* Stats Row */}
-      {(() => { const available = quests.filter(q => q.status === 'open').length; const completed = quests.filter(q => q.status === 'completed').length; const totalReward = quests.reduce((s, q) => s + (q.reward || 0), 0); return (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="lens-card"><Swords className="w-5 h-5 text-neon-purple mb-2" /><p className="text-2xl font-bold">{available}</p><p className="text-sm text-gray-400">Quests Available</p></div>
-          <div className="lens-card"><Trophy className="w-5 h-5 text-neon-green mb-2" /><p className="text-2xl font-bold">{completed}</p><p className="text-sm text-gray-400">Completed</p></div>
-          <div className="lens-card"><Coins className="w-5 h-5 text-yellow-400 mb-2" /><p className="text-2xl font-bold">{totalReward.toLocaleString()}</p><p className="text-sm text-gray-400">Reward Total</p></div>
-          <div className="lens-card"><Award className="w-5 h-5 text-neon-cyan mb-2" /><p className="text-2xl font-bold">{quests.filter(q => q.difficulty === 'legendary').length}</p><p className="text-sm text-gray-400">Legendary</p></div>
-        </div>
-      ); })()}
-
-      {/* Filter Tabs */}
-      <div className="flex gap-2">
-        {['all', 'open', 'in_progress', 'completed'].map((status) => (
-          <button
-            key={status}
-            onClick={() => setFilter(status)}
-            className={`px-4 py-2 rounded-lg text-sm transition-colors ${
-              filter === status
-                ? 'bg-neon-blue/20 text-neon-blue border border-neon-blue/30'
-                : 'bg-lattice-surface text-gray-400 hover:text-white'
-            }`}
-          >
-            {status.replace('_', ' ').charAt(0).toUpperCase() +
-              status.replace('_', ' ').slice(1)}
-          </button>
-        ))}
-      </div>
-
-      {/* Quest Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {quests?.length === 0 ? (
-          <p className="col-span-full text-center py-12 text-gray-500">
-            No quests available. Check back later!
-          </p>
-        ) : (
-          quests?.map((quest: Quest, index: number) => (
-            <motion.div
-              key={quest.id}
-              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}
-              className="lens-card hover:glow-purple relative overflow-hidden"
-            >
-              {/* Difficulty Badge */}
-              <div className="absolute top-2 right-2">
-                <span
-                  className={`text-xs px-2 py-1 rounded border ${
-                    difficultyColors[quest.difficulty]
-                  }`}
+          <div className="space-y-3">
+            <div>
+              <label className={ds.label}>Name</label>
+              <input
+                className={ds.input}
+                value={formName}
+                onChange={(e) => setFormName(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className={ds.label}>Description</label>
+              <textarea
+                className={ds.textarea}
+                rows={2}
+                value={formDescription}
+                onChange={(e) => setFormDescription(e.target.value)}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={ds.label}>Status</label>
+                <select
+                  className={ds.select}
+                  value={formStatus}
+                  onChange={(e) => setFormStatus(e.target.value as Status)}
                 >
                   {Object.entries(STATUS_CONFIG).map(([k, v]) => (
                     <option key={k} value={k}>
@@ -380,9 +350,7 @@ export default function QuestmarketLensPage() {
                   ))}
                 </select>
               </div>
-            </motion.div>
-          ))
-        )}
+            </div>
 
             {(activeArtifactType === 'Quest' || activeArtifactType === 'Bounty') && (
               <>

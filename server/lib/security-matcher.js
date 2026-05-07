@@ -22,7 +22,7 @@ import { createHash } from "crypto";
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
-export const MATCH_ACTIONS = Object.freeze({
+const MATCH_ACTIONS = Object.freeze({
   BLOCK:      "blocked",
   QUARANTINE: "quarantined",
   REPAIR:     "repaired",
@@ -43,8 +43,10 @@ const OVERLAP_MIN_MATCH       = 0.3;   // Below this, no match
 // Embedding similarity threshold
 const EMBEDDING_SIMILARITY_THRESHOLD = 0.75;
 
-// Max regex patterns to keep in memory
-const MAX_CACHED_PATTERNS = 2000;
+// Max regex patterns to keep in memory. Bumped 2000 → 25000 for 32GB
+// deployments — the security matcher caches CVE / IOC / malware-family
+// patterns; with the larger cache fewer security-feed pulls per minute.
+const MAX_CACHED_PATTERNS = Number(process.env.CONCORD_SECURITY_PATTERNS) || 25_000;
 
 // ── Token Overlap (local implementation) ───────────────────────────────────
 

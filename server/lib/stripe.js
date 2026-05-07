@@ -7,7 +7,7 @@
  * rather than constructing their own Stripe instance.
  *
  * Usage:
- *   import { getStripe, STRIPE_ENABLED, CC_TO_USD } from "../lib/stripe.js";
+ *   import { getStripe, STRIPE_ENABLED } from "../lib/stripe.js";
  *   const stripe = await getStripe();
  */
 
@@ -25,7 +25,7 @@ export const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || "";
  * Override with the TOKENS_PER_USD env var (tokens you get per $1).
  */
 export const TOKENS_PER_USD = Number(process.env.TOKENS_PER_USD) || 100;
-export const CC_TO_USD = 1 / TOKENS_PER_USD; // 0.01
+const CC_TO_USD = 1 / TOKENS_PER_USD; // 0.01
 
 // ── Singleton ──────────────────────────────────────────────────────────────────
 

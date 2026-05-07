@@ -50,8 +50,6 @@ import { LensContextPanel } from '@/components/lens/LensContextPanel';
 
 import { ArtifactRenderer } from '@/components/artifact/ArtifactRenderer';
 import { ArtifactUploader } from '@/components/artifact/ArtifactUploader';
-import { MediaUpload } from '@/components/media/MediaUpload';
-import { UniversalPlayer } from '@/components/media/UniversalPlayer';
 import { FeedbackWidget } from '@/components/feedback/FeedbackWidget';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -59,6 +57,8 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { VisionAnalyzeButton } from '@/components/common/VisionAnalyzeButton';
+import { PullToSubstrate } from '@/components/lens/PullToSubstrate';
+import { FeedBanner } from '@/components/lens/FeedBanner';
 
 type ViewMode = 'gallery' | 'canvas' | 'marketplace' | 'my-art';
 type CanvasTool = 'brush' | 'eraser' | 'fill' | 'text' | 'shape-rect' | 'shape-circle' | 'eyedropper' | 'move' | 'pen' | 'rectangle' | 'circle' | 'line';
@@ -622,7 +622,10 @@ export default function ArtLensPage() {
 
       {/* Featured Section */}
       <section>
-        <h2 className="text-lg font-bold mb-4">Featured Artwork</h2>
+        <div className="flex items-center gap-2 mb-4">
+          <h2 className="text-lg font-bold">Featured Artwork</h2>
+          {assetsLoading && <span className="w-4 h-4 border-2 border-neon-pink border-t-transparent rounded-full animate-spin inline-block" />}
+        </div>
         <div className="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
           {(artAssets as ArtAsset[]).length > 0 ? (artAssets as ArtAsset[]).map((art: ArtAsset) => (
             <motion.div
@@ -767,7 +770,7 @@ export default function ArtLensPage() {
                   }
                 }}
                 onMouseUp={handleCanvasMouseUp}
-                onMouseLeave={(e) => { handleCanvasMouseUp(e); setCursorPos(null); }}
+                onMouseLeave={() => { handleCanvasMouseUp(); setCursorPos(null); }}
                 onMouseEnter={() => setCursorPos({ x: 0, y: 0 })}
               />
               {/* Dynamic brush cursor */}

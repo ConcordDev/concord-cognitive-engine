@@ -30,7 +30,6 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { VisionAnalyzeButton } from '@/components/common/VisionAnalyzeButton';
-import { CodeEngineStatus } from '@/components/admin/CodeEngineStatus';
 
 interface FileNode {
   id: string;
@@ -484,12 +483,10 @@ export default function CodeLensPage() {
   const [showApiRef, setShowApiRef] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [outputTab, setOutputTab] = useState<'output' | 'console'>('output');
-  const [showFeatures, setShowFeatures] = useState(false);
+  const [showFeatures, setShowFeatures] = useState(true);
   const [showForge, setShowForge] = useState(false);
   const [forgePrompt, setForgePrompt] = useState('');
   const [forgeResult, setForgeResult] = useState<string | null>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
   const activeTab = tabs.find((t) => t.id === activeTabId) || tabs[0];
 
   // Forge App Generation mutation
@@ -519,7 +516,7 @@ export default function CodeLensPage() {
         language: 'javascript',
         content,
         isDirty: true,
-        scriptType: 'macro',
+        scriptType: 'project',
       };
       setTabs(prev => [...prev, newTab]);
       setActiveTabId(id);
@@ -531,6 +528,11 @@ export default function CodeLensPage() {
   });
 
   const [savingOutputDTU, setSavingOutputDTU] = useState(false);
+
+  // Backend action wiring
+  const runCodeAction = useRunArtifact('code');
+  const [codeActionResult, setCodeActionResult] = useState<Record<string, unknown> | null>(null);
+  const [runningCodeAction, setRunningCodeAction] = useState<string | null>(null);
 
   const runScriptMutation = useMutation({
     mutationFn: async () => {
@@ -760,8 +762,8 @@ export default function CodeLensPage() {
         <div className="flex items-center gap-3">
           <Terminal className="w-6 h-6 text-green-400" />
           <div>
-            <h1 className="text-lg font-bold text-green-300 font-mono tracking-tight">Script Studio</h1>
-            <p className="text-xs text-green-600 font-mono">MIDI scripting, automation & macros</p>
+            <h1 className="text-lg font-bold text-green-300 font-mono tracking-tight">Code Workspace</h1>
+            <p className="text-xs text-green-600 font-mono">Write, run & share code</p>
           </div>
 
       {/* Real-time Enhancement Toolbar */}
@@ -817,15 +819,6 @@ export default function CodeLensPage() {
               <Play className="w-4 h-4 fill-current" />
             )}
             Run
-          </button>
-
-          <button
-            onClick={() => setShowForge(!showForge)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-colors ${showForge ? 'bg-purple-600/20 text-purple-400 border border-purple-600/30' : 'bg-lattice-elevated text-gray-300 hover:text-white'}`}
-            title="Generate Forge App"
-          >
-            <Sparkles className="w-4 h-4" />
-            Forge App
           </button>
 
           <button
