@@ -19,7 +19,11 @@
     "migrate:status": "node migrate.js --status",
     "smoke": "bash scripts/smoke.sh",
     "backup": "bash scripts/backup.sh",
-    "restore": "bash scripts/restore.sh"
+    "restore": "bash scripts/restore.sh",
+    "cartograph": "node scripts/cartograph.js",
+    "cartograph:static": "node scripts/cartograph.js --static",
+    "cartograph:diff": "node scripts/cartograph.js --static --diff",
+    "cartograph:graph": "node scripts/cartograph.js --static && (which dot >/dev/null 2>&1 && dot -Tsvg ../audit/cartograph/systems-graph.dot -o ../audit/cartograph/systems-graph.svg && echo 'systems-graph.svg rendered' || echo 'graphviz dot not on PATH; .dot source committed')"
   },
   "dependencies": {
     "@sentry/node": "^10.50.0",

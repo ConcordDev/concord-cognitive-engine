@@ -8768,6 +8768,14 @@ function listMacros(domain) {
   return Array.from(d.values()).map(x => x.spec);
 }
 
+// Layer 12.5 (cartographer): expose the macro registry on globalThis so the
+// runtime-introspect child process can dump it without re-binding HTTP. The
+// attachment is read-only intent — the cartographer never mutates it. Cost
+// is one globalThis property; production never reads it.
+globalThis.__CARTOGRAPHER__ = Object.assign(globalThis.__CARTOGRAPHER__ || {}, {
+  MACROS, listDomains, listMacros,
+});
+
 async function runMacro(domain, name, input, ctx) {
   // v3: permissioned cognition (macro-level ACL).
   //
@@ -13892,18 +13900,23 @@ async function initFiveBrains() {
 }
 
 // Initialize brains after a short delay (let Ollama instances start)
-setTimeout(() => initFiveBrains(), 3000);
-// Retry brain init after 30s (Ollama containers may still be pulling models)
-// Then preload/warm all models for instant first response
-setTimeout(async () => {
-  await initFiveBrains();
-  try {
-    const preloadResult = await preloadBrains(structuredLog);
-    structuredLog("info", "brain_preload_complete", preloadResult);
-  } catch (e) {
-    structuredLog("warn", "brain_preload_failed", { error: e.message });
-  }
-}, 30000);
+// Layer 12.5 (cartographer): CONCORD_DISABLE_BRAINS short-circuits brain init
+// so cartographer's runtime-introspect child can boot server.js without
+// requiring Ollama. Production never sets this.
+if (process.env.CONCORD_DISABLE_BRAINS !== "true") {
+  setTimeout(() => initFiveBrains(), 3000);
+  // Retry brain init after 30s (Ollama containers may still be pulling models)
+  // Then preload/warm all models for instant first response
+  setTimeout(async () => {
+    await initFiveBrains();
+    try {
+      const preloadResult = await preloadBrains(structuredLog);
+      structuredLog("info", "brain_preload_complete", preloadResult);
+    } catch (e) {
+      structuredLog("warn", "brain_preload_failed", { error: e.message });
+    }
+  }, 30000);
+}
 
 // ── Repair Cortex Runtime Loop ────────────────────────────────────────────
 // Expose MACROS, BRAIN, STATE globally so repair cortex executors can access them.
@@ -13924,6 +13937,12 @@ const GHOST_FLEET_STATUS = {
   totalLoaded: 0,
   totalFailed: 0,
 };
+
+// Layer 12.5 (cartographer): expose ghost-fleet status on globalThis for
+// runtime-introspect dumps.
+globalThis.__CARTOGRAPHER__ = Object.assign(globalThis.__CARTOGRAPHER__ || {}, {
+  GHOST_FLEET_STATUS,
+});
 
 const _ghostFleetYield = () => new Promise(r => { setTimeout(r, 2000); }); // 2s gap between modules
 
@@ -14639,11 +14658,15 @@ async function initGhostFleet() {
 
 // Stagger: ghost fleet at T+225s (5th autonomous task, 45s after repair loop)
 // Modules load one-at-a-time with 2s gaps between each.
-setTimeout(() => {
-  initGhostFleet().catch(err => {
-    structuredLog("error", "ghost_fleet_init_error", { error: err.message });
-  });
-}, 225_000);
+// Layer 12.5 (cartographer): CONCORD_DISABLE_GHOST_FLEET=true skips this so
+// runtime-introspect doesn't wait ~52s for staggered module loads.
+if (process.env.CONCORD_DISABLE_GHOST_FLEET !== "true") {
+  setTimeout(() => {
+    initGhostFleet().catch(err => {
+      structuredLog("error", "ghost_fleet_init_error", { error: err.message });
+    });
+  }, 225_000);
+}
 
 // ── Artifact Garbage Collection Timer (weekly) ──────────────────────────
 // Starts after a short delay so STATE and db are fully ready
@@ -30112,6 +30135,9 @@ async function governorTick(reason="heartbeat") {
 function _startGovernorHeartbeat() {
   try {
     if (__governorTimer) return { ok:true, already:true };
+    // Layer 12.5 (cartographer): CONCORD_DISABLE_HEARTBEAT=true short-circuits
+    // so runtime-introspect doesn't fire ticks during boot.
+    if (process.env.CONCORD_DISABLE_HEARTBEAT === "true") return { ok:false, reason:"heartbeat_disabled_env" };
     const s = STATE.settings || {};
     const ms = clamp(Number(s.heartbeatMs ?? 60000), 15000, 10*60*1000);
     if (s.heartbeatEnabled === false) return { ok:false, reason:"heartbeat_disabled" };
