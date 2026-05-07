@@ -153,6 +153,18 @@ registerHeartbeat("presence-stale-sweep", {
   },
 });
 
+// Layer 10: forward-sim anticipation cycle. Every 100 ticks (~25 min)
+// generates speculative predictions for offline players about active
+// quests, recently-met NPCs, and factions. Throttled by
+// MIN_PASS_INTERVAL_S (default 4h); same subject not re-predicted while
+// an active non-realised prediction exists. LLM enhancement opt-in via
+// CONCORD_FORWARD_SIM_LLM=true.
+import { runForwardSimCycle } from "./emergent/forward-sim-cycle.js";
+registerHeartbeat("forward-sim-cycle", {
+  frequency: 100,
+  handler: runForwardSimCycle,
+});
+
 // Layer 9: embodied-dream-cycle. Every 80 ticks (~20 min) the offline
 // branch runs: discovers users with recent activity who are NOT currently
 // in a world, calls tryComposeForUser() which throttles by
