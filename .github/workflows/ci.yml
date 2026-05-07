@@ -16,10 +16,12 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
-# Default workflow permissions to read-only; the e2e-test job overrides to
-# allow posting a failure-digest PR comment via the issues API.
-permissions:
-  contents: read
+# NOTE: Intentionally no workflow-level `permissions:` block. Setting one
+# replaces the entire default token grant (incl. `actions: write` which
+# setup-node@v6 needs for npm cache read/write), and the lint-and-test
+# job started failing in 1m15s — well before npm ci could even try —
+# right after a workflow-level `contents: read` lock-down. Per-job
+# permissions are still set on e2e-test where they're needed.
 
 jobs:
   lint-and-test:
