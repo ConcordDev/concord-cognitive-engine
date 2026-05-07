@@ -347,6 +347,10 @@ jobs:
           JWT_SECRET: test-secret-for-ci-only-do-not-use-in-production
           ADMIN_PASSWORD: testpassword123
           AUTH_MODE: public
+          # CI runner fires parallel probes from one IP — without this,
+          # smoke/integration trip the 30 RPM unauth scrape gate before
+          # reaching the asserted 401. Production never sets this var.
+          CONCORD_RATE_LIMIT_BYPASS: '1'
         run: |
           node server.js > server.log 2>&1 &
           echo $! > server.pid
@@ -411,6 +415,7 @@ jobs:
           JWT_SECRET: test-secret-for-ci-only-do-not-use-in-production
           ADMIN_PASSWORD: testpassword123
           REDIS_URL: redis://localhost:6379
+          CONCORD_RATE_LIMIT_BYPASS: '1'
         run: |
           node server.js > server.log 2>&1 &
           echo $! > server.pid
@@ -493,6 +498,7 @@ jobs:
           PORT: 5050
           JWT_SECRET: test-secret-for-ci-only-do-not-use-in-production
           ADMIN_PASSWORD: testpassword123
+          CONCORD_RATE_LIMIT_BYPASS: '1'
         run: |
           node server.js > server.log 2>&1 &
           echo $! > server.pid

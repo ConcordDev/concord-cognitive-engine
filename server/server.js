@@ -5876,12 +5876,11 @@ if (rateLimit) {
   // also pre-authenticate from the orchestrator side (private network),
   // not the user auth flow we're rate-limiting on.
   const _HEALTH_PROBE_RE = /^\/(health|ready|metrics)(\b|\/)|^\/api\/health(\b|\/)/;
-  // CI / test runs fire many parallel unauth requests from a single IP
-  // (127.0.0.1) — adversarial-critical-endpoints + edge-cases-critical-paths
-  // burn through 30/min in a few seconds and get 429 instead of the 401
-  // they're asserting. Skip the throttle when NODE_ENV is ci or test;
-  // production stays at 30/min anti-scrape.
-  const _RATE_LIMIT_BYPASS_ENV = process.env.NODE_ENV === "ci" || process.env.NODE_ENV === "test";
+  // Integration/smoke/e2e CI jobs set CONCORD_RATE_LIMIT_BYPASS=1 to
+  // relax this throttle (parallel unauth requests from the runner IP
+  // would otherwise 429 before the auth middleware can return 401).
+  // Unit tests don't set the var; production never sets the var.
+  const _RATE_LIMIT_BYPASS_ENV = process.env.CONCORD_RATE_LIMIT_BYPASS === "1";
   unauthRateLimiter = rateLimit({
     windowMs: 60000,
     max: 30,

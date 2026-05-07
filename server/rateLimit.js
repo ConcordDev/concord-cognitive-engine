@@ -32,15 +32,16 @@ const LIMITS = {
  * @param {string} endpoint - Endpoint category name
  * @returns {{ allowed: boolean, remaining: number, retryAfter?: number }}
  */
-// CI / unit tests fire many parallel unauth requests from a single IP
-// (127.0.0.1 in workflow runners), which trips per-IP buckets in seconds.
-// adversarial-critical-endpoints + edge-cases-critical-paths assert 401
-// from auth middleware but get 429 from rate limiting first. Bypass in
-// NODE_ENV=ci or test; production still gets full throttle.
-const _RATE_LIMIT_BYPASS = process.env.NODE_ENV === "ci" || process.env.NODE_ENV === "test";
+// Integration/smoke/e2e jobs fire many parallel unauth requests from one
+// CI runner IP and burn through per-IP buckets in seconds, getting 429s
+// instead of the asserted 401s from the auth middleware. The integration
+// test workflow sets CONCORD_RATE_LIMIT_BYPASS=1 to relax the HTTP
+// middlewares for the duration of those jobs only. Unit tests of the
+// middleware itself (rate-limit.test.js) don't set the var, so the
+// middleware logic is still exercised. Production never sets the var.
+const _RATE_LIMIT_BYPASS = process.env.CONCORD_RATE_LIMIT_BYPASS === "1";
 
 function checkRateLimit(userId, endpoint) {
-  if (_RATE_LIMIT_BYPASS) return { allowed: true, remaining: 999999 };
   const limit = LIMITS[endpoint] || LIMITS.default;
   const key = `${userId}:${endpoint}`;
 
@@ -79,6 +80,7 @@ function checkRateLimit(userId, endpoint) {
  */
 function rateLimitMiddleware(endpoint) {
   return (req, res, next) => {
+    if (_RATE_LIMIT_BYPASS) return next();
     const userId = req.user?.id || req.user?.userId || req.ip;
     const result = checkRateLimit(userId, endpoint);
 
@@ -139,6 +141,7 @@ function classifyWriteEndpoint(req) {
  * Designed for pre-launch: open write endpoints get per-IP rate limiting.
  */
 function writeRateLimitMiddleware(req, res, next) {
+  if (_RATE_LIMIT_BYPASS) return next();
   const bucket = classifyWriteEndpoint(req);
   if (!bucket) return next(); // GETs pass through
 
@@ -165,6 +168,7 @@ function writeRateLimitMiddleware(req, res, next) {
  * Express middleware: rate limit open GET routes.
  */
 function readRateLimitMiddleware(req, res, next) {
+  if (_RATE_LIMIT_BYPASS) return next();
   if (req.method !== "GET") return next();
 
   const key = req.user?.id || req.ip;
