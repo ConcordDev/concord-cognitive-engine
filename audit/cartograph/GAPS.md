@@ -1,12 +1,13 @@
 # Gaps & Wire Targets
 
-_Generated 2026-05-07T22:32:43.706Z. Each gap proposes a concrete wire action._
+_Generated 2026-05-07T23:28:11.714Z. Each gap proposes a concrete wire action._
 
-## Dead tables (24)
+## Dead tables (25)
 
 | Table | Migration | Wire option | Archive option |
 |---|---|---|---|
 | `dtu_embeddings` | server/migrations/006_embedding_column.js | `analytics.dtu_embeddingsStats` macro | // REPLACED_BY: migration_NN |
+| `preserved` | server/migrations/009_brain_want_engine.js | `analytics.preservedStats` macro | // REPLACED_BY: migration_NN |
 | `personality_state` | server/migrations/009_brain_want_engine.js | `analytics.personality_stateStats` macro | // REPLACED_BY: migration_NN |
 | `personality_evolution_log` | server/migrations/009_brain_want_engine.js | `analytics.personality_evolution_logStats` macro | // REPLACED_BY: migration_NN |
 | `wants` | server/migrations/009_brain_want_engine.js | `analytics.wantsStats` macro | // REPLACED_BY: migration_NN |
@@ -39,7 +40,7 @@ _None._
 
 _None — every module either has a heartbeat or is invoked by a macro callsite._
 
-## Headless backend domains (76)
+## Headless backend domains (78)
 
 | Domain | Macro count | Suggested frontend lens dir |
 |---|---:|---|
@@ -77,6 +78,9 @@ _None — every module either has a heartbeat or is invoked by a macro callsite.
 | `layer` | 3 | `concord-frontend/app/lenses/layer/page.tsx` |
 | `persona` | 9 | `concord-frontend/app/lenses/persona/page.tsx` |
 | `quality` | 2 | `concord-frontend/app/lenses/quality/page.tsx` |
+| `spreadsheet` | 1 | `concord-frontend/app/lenses/spreadsheet/page.tsx` |
+| `slides` | 1 | `concord-frontend/app/lenses/slides/page.tsx` |
+| `compile` | 1 | `concord-frontend/app/lenses/compile/page.tsx` |
 | `experiment` | 1 | `concord-frontend/app/lenses/experiment/page.tsx` |
 | `context` | 1 | `concord-frontend/app/lenses/context/page.tsx` |
 | `interface` | 1 | `concord-frontend/app/lenses/interface/page.tsx` |
@@ -90,11 +94,8 @@ _None — every module either has a heartbeat or is invoked by a macro callsite.
 | `agent` | 4 | `concord-frontend/app/lenses/agent/page.tsx` |
 | `crawl` | 2 | `concord-frontend/app/lenses/crawl/page.tsx` |
 | `source` | 2 | `concord-frontend/app/lenses/source/page.tsx` |
-| `verify` | 1 | `concord-frontend/app/lenses/verify/page.tsx` |
-| `lattice` | 3 | `concord-frontend/app/lenses/lattice/page.tsx` |
-| `skill` | 1 | `concord-frontend/app/lenses/skill/page.tsx` |
 
-## Orphan lenses (153)
+## Orphan lenses (152)
 
 | Lens dir | Reason | Action |
 |---|---|---|
@@ -148,7 +149,7 @@ _None — every module either has a heartbeat or is invoked by a macro callsite.
 | `emergency-services` | no_matching_backend_domain | wire backend OR remove |
 | `energy` | no_matching_backend_domain | wire backend OR remove |
 | `engineering` | no_matching_backend_domain | wire backend OR remove |
-| ... | _+103 more_ | |
+| ... | _+102 more_ | |
 
 ## Unused macros (0)
 
@@ -164,13 +165,12 @@ _None — every emit is registered in `event-shapes.js`._
 
 | # | Category | Status | Target lens |
 |---:|---|---|---|
-| **3** | `spreadsheet` | 🟡 partial | lenses/spreadsheet |
 | **4** | `mind-map` | ❌ missing | lenses/whiteboard |
 | **5** | `diagram` | ❌ missing | lenses/whiteboard |
 | **6** | `unified-self` | ❌ missing | lenses/self |
 | **12** | `brain-training` | ❌ missing | lenses/lattice |
 | - | `mathematics` | 🟡 partial | lenses/math |
-| - | `slides` | ❌ missing | lenses/slides |
+| - | `slides` | 🟡 partial | lenses/slides |
 | - | `wiki` | ❌ missing | lenses/docs |
 | - | `screen-share` | ❌ missing | lenses/voice |
 | - | `meditation` | ❌ missing | lenses/mental-health |
