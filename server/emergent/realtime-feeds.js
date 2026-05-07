@@ -1,3 +1,4 @@
+import { createHash } from "crypto";
 import logger from '../logger.js';
 // server/emergent/realtime-feeds.js
 // Centralized real-time data fetching service — runs on heartbeat ticks,
@@ -8,11 +9,97 @@ import logger from '../logger.js';
 // Each feed tick now also fires individual items through bridgeEvent()
 // to convert live feed data into scoped, CRETI-scored DTUs in the substrate.
 // Feed data streams to the frontend AND persists as knowledge simultaneously.
+//
+// Deduplication: bridge events are fingerprinted BEFORE being sent to the
+// event-to-DTU bridge. This prevents the same article from Reuters/BBC/NPR
+// from creating 3 separate DTUs, and prevents financial tickers from
+// creating new DTUs when the price hasn't meaningfully changed.
 
 const FEED_CACHE = new Map();
 const FEED_ERRORS = new Map();
 const MAX_RETRIES = 2;
 const FETCH_TIMEOUT = 8000;
+
+// ── Bridge-Level Deduplication ──────────────────────────────────────────────
+// Persistent across ticks (survives until server restart).
+// Keyed by content fingerprint → timestamp of first seen.
+const _bridgeSeenHashes = new Map();
+const BRIDGE_DEDUP_MAX_SIZE = 10_000;
+const BRIDGE_DEDUP_MAX_AGE = 6 * 3600_000; // 6 hours — survives multiple tick cycles
+
+// Last bridged values for ticker feeds (finance/crypto) to detect meaningful changes
+const _lastBridgedTickers = new Map(); // symbol → { price, bridgedAt }
+const TICKER_CHANGE_THRESHOLD = 0.005; // 0.5% — don't bridge unless price moved this much
+
+function bridgeFingerprint(str) {
+  return createHash("sha256").update(str).digest("hex").slice(0, 20);
+}
+
+/**
+ * Check if a bridge event is a duplicate. Returns true if already seen.
+ * Marks the event as seen if it's new.
+ */
+function isBridgeDuplicate(fingerprint) {
+  // Clean old entries periodically
+  if (_bridgeSeenHashes.size > BRIDGE_DEDUP_MAX_SIZE) {
+    const cutoff = Date.now() - BRIDGE_DEDUP_MAX_AGE;
+    for (const [h, ts] of _bridgeSeenHashes) {
+      if (ts < cutoff) _bridgeSeenHashes.delete(h);
+    }
+  }
+  if (_bridgeSeenHashes.has(fingerprint)) return true;
+  _bridgeSeenHashes.set(fingerprint, Date.now());
+  return false;
+}
+
+/**
+ * Normalize a URL by stripping tracking parameters and fragments.
+ */
+function normalizeUrl(url) {
+  if (!url) return "";
+  try {
+    const u = new URL(url);
+    // Strip common tracking params
+    for (const p of ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "ref", "fbclid", "gclid"]) {
+      u.searchParams.delete(p);
+    }
+    u.hash = "";
+    return u.toString();
+  } catch {
+    return url.trim();
+  }
+}
+
+/**
+ * Safe bridge: dedup-checks before firing the bridge event.
+ * Returns false if the event was suppressed as duplicate.
+ */
+function safeBridgeEvent(event, dedupKey) {
+  if (!_bridgeEvent) return false;
+  const fp = bridgeFingerprint(dedupKey);
+  if (isBridgeDuplicate(fp)) return false;
+  _bridgeEvent(event).catch(err =>
+    logger.warn?.("[realtime-feeds] bridge event failed:", err?.message || err)
+  );
+  return true;
+}
+
+/**
+ * Bridge a ticker event only if the price changed meaningfully.
+ */
+function safeBridgeTickerEvent(event, symbol, price) {
+  if (!_bridgeEvent) return false;
+  const last = _lastBridgedTickers.get(symbol);
+  if (last) {
+    const pctChange = Math.abs((price - last.price) / last.price);
+    if (pctChange < TICKER_CHANGE_THRESHOLD) return false; // price barely moved
+  }
+  _lastBridgedTickers.set(symbol, { price, bridgedAt: Date.now() });
+  _bridgeEvent(event).catch(err =>
+    logger.warn?.("[realtime-feeds] bridge event failed:", err?.message || err)
+  );
+  return true;
+}
 
 // Event-to-DTU bridge callback — set by tickRealTimeFeeds when bridge is available.
 // Each tick function checks this and fires individual feed items through the bridge.
@@ -94,16 +181,15 @@ async function tickFinancialFeeds(STATE, realtimeEmit, callBrain) {
       cacheSet(cacheKey, payload);
       realtimeEmit("finance:ticker", payload);
 
-      // Bridge: each market quote → scoped event DTU
-      if (_bridgeEvent) {
-        for (const q of quotes) {
-          _bridgeEvent({
-            type: "market:trade",
-            data: { title: `${q.symbol} ${q.changePercent > 0 ? "+" : ""}${q.changePercent}%`, symbol: q.symbol, price: q.price, change: q.change, changePercent: q.changePercent, status: payload.marketStatus },
-            source: "yahoo_finance",
-            timestamp: payload.fetchedAt,
-          }).catch(err => logger.warn?.("[realtime-feeds] bridge event failed:", err?.message || err));
-        }
+      // Bridge: each market quote → scoped event DTU (only if price moved meaningfully)
+      for (const q of quotes) {
+        safeBridgeTickerEvent({
+          type: "market:trade",
+          data: { title: `${q.symbol} ${q.changePercent > 0 ? "+" : ""}${q.changePercent}%`, symbol: q.symbol, price: q.price, change: q.change, changePercent: q.changePercent, status: payload.marketStatus },
+          sourceUrl: `yahoo:${q.symbol}`,
+          source: "yahoo_finance",
+          timestamp: payload.fetchedAt,
+        }, q.symbol, q.price);
       }
     }
   } catch (e) {
@@ -135,16 +221,15 @@ async function tickCryptoFeeds(STATE, realtimeEmit) {
       cacheSet(cacheKey, payload);
       realtimeEmit("crypto:ticker", payload);
 
-      // Bridge: each crypto quote → scoped event DTU
-      if (_bridgeEvent) {
-        for (const c of coins) {
-          _bridgeEvent({
-            type: "market:crypto",
-            data: { title: `${c.id} $${c.price}`, coin: c.id, price: c.price, change24h: c.change24h, marketCap: c.marketCap },
-            source: "coingecko",
-            timestamp: payload.fetchedAt,
-          }).catch(err => logger.warn?.("[realtime-feeds] bridge event failed:", err?.message || err));
-        }
+      // Bridge: each crypto quote → scoped event DTU (only if price moved meaningfully)
+      for (const c of coins) {
+        safeBridgeTickerEvent({
+          type: "market:crypto",
+          data: { title: `${c.id} $${c.price}`, coin: c.id, price: c.price, change24h: c.change24h, marketCap: c.marketCap },
+          sourceUrl: `coingecko:${c.id}`,
+          source: "coingecko",
+          timestamp: payload.fetchedAt,
+        }, `crypto:${c.id}`, c.price);
       }
     }
   } catch (e) {
@@ -188,17 +273,18 @@ async function tickNewsFeeds(STATE, realtimeEmit) {
     cacheSet(cacheKey, payload);
     realtimeEmit("news:update", payload);
 
-    // Bridge: each news article → scoped event DTU
+    // Bridge: each news article → scoped event DTU (deduped by normalized title)
     // RSS articles are 'reported' — the source said it happened, Concord didn't witness it
-    if (_bridgeEvent) {
-      for (const article of payload.articles) {
-        _bridgeEvent({
-          type: "news:politics", // generic news — classifier will determine actual domain
-          data: { title: article.title, source: article.source, link: article.link, pubDate: article.pubDate },
-          source: article.source?.toLowerCase().replace(/\s/g, "_") || "rss",
-          timestamp: article.pubDate ? new Date(article.pubDate).toISOString() : payload.fetchedAt,
-        }).catch(err => logger.warn?.("[realtime-feeds] bridge event failed:", err?.message || err));
-      }
+    // Cross-source dedup: normalize title so Reuters "Market Drops" and BBC "Market Drops" → one DTU
+    for (const article of payload.articles) {
+      const dedupKey = `news:${(article.title || "").toLowerCase().trim()}`;
+      safeBridgeEvent({
+        type: "news:politics", // generic news — classifier will determine actual domain
+        data: { title: article.title, source: article.source, link: article.link, pubDate: article.pubDate },
+        sourceUrl: normalizeUrl(article.link),
+        source: article.source?.toLowerCase().replace(/\s/g, "_") || "rss",
+        timestamp: article.pubDate ? new Date(article.pubDate).toISOString() : payload.fetchedAt,
+      }, dedupKey);
     }
   }
 }
@@ -230,15 +316,15 @@ async function tickWeatherFeeds(STATE, realtimeEmit) {
       cacheSet(cacheKey, payload);
       realtimeEmit("weather:update", payload);
 
-      // Bridge: weather update → scoped event DTU
-      if (_bridgeEvent) {
-        _bridgeEvent({
-          type: "weather:forecast",
-          data: { title: `Weather ${lat},${lon}: ${data.current?.temperature_2m}°`, current: data.current, location: { lat, lon } },
-          source: "open_meteo",
-          timestamp: payload.fetchedAt,
-        }).catch(err => logger.warn?.("[realtime-feeds] bridge event failed:", err?.message || err));
-      }
+      // Bridge: weather update → scoped event DTU (deduped by location + hour)
+      const weatherHour = new Date().toISOString().slice(0, 13); // YYYY-MM-DDTHH
+      safeBridgeEvent({
+        type: "weather:forecast",
+        data: { title: `Weather ${lat},${lon}: ${data.current?.temperature_2m}°`, current: data.current, location: { lat, lon } },
+        sourceUrl: `weather:${lat},${lon}:${weatherHour}`,
+        source: "open_meteo",
+        timestamp: payload.fetchedAt,
+      }, `weather:${lat},${lon}:${weatherHour}`);
     }
   } catch (e) {
     recordError("weather", e);
@@ -277,16 +363,16 @@ async function tickResearchFeeds(STATE, realtimeEmit) {
     cacheSet(cacheKey, payload);
     realtimeEmit("research:update", payload);
 
-    // Bridge: each research paper → scoped event DTU
-    if (_bridgeEvent) {
-      for (const paper of payload.papers) {
-        _bridgeEvent({
-          type: "research:paper",
-          data: { title: paper.title, summary: paper.summary, category: paper.category, arxivId: paper.id, published: paper.published },
-          source: "arxiv",
-          timestamp: paper.published || payload.fetchedAt,
-        }).catch(err => logger.warn?.("[realtime-feeds] bridge event failed:", err?.message || err));
-      }
+    // Bridge: each research paper → scoped event DTU (deduped by arXiv ID)
+    for (const paper of payload.papers) {
+      const dedupKey = paper.id || `arxiv:${(paper.title || "").toLowerCase().trim()}`;
+      safeBridgeEvent({
+        type: "research:paper",
+        data: { title: paper.title, summary: paper.summary, category: paper.category, arxivId: paper.id, published: paper.published },
+        sourceUrl: paper.id,
+        source: "arxiv",
+        timestamp: paper.published || payload.fetchedAt,
+      }, dedupKey);
     }
   }
 }
@@ -322,16 +408,16 @@ async function tickEconomyFeeds(STATE, realtimeEmit) {
       cacheSet(cacheKey, payload);
       realtimeEmit("economy:update", payload);
 
-      // Bridge: economic indicators → scoped event DTU
-      if (_bridgeEvent) {
-        for (const ind of data) {
-          _bridgeEvent({
-            type: "news:economics",
-            data: { title: `${ind.indicator}: ${ind.values?.[0]?.value || "N/A"} (${ind.values?.[0]?.year || "?"})`, indicator: ind.indicator, code: ind.code, values: ind.values },
-            source: "world_bank",
-            timestamp: payload.fetchedAt,
-          }).catch(err => logger.warn?.("[realtime-feeds] bridge event failed:", err?.message || err));
-        }
+      // Bridge: economic indicators → scoped event DTU (deduped by indicator + latest year)
+      for (const ind of data) {
+        const dedupKey = `econ:${ind.code}:${ind.values?.[0]?.year || "?"}:${ind.values?.[0]?.value || "?"}`;
+        safeBridgeEvent({
+          type: "news:economics",
+          data: { title: `${ind.indicator}: ${ind.values?.[0]?.value || "N/A"} (${ind.values?.[0]?.year || "?"})`, indicator: ind.indicator, code: ind.code, values: ind.values },
+          sourceUrl: `worldbank:${ind.code}:${ind.values?.[0]?.year || "?"}`,
+          source: "world_bank",
+          timestamp: payload.fetchedAt,
+        }, dedupKey);
       }
     }
   } catch (e) {
@@ -363,16 +449,16 @@ async function tickHealthFeeds(STATE, realtimeEmit) {
         cacheSet(cacheKey, payload);
         realtimeEmit("health:update", payload);
 
-        // Bridge: each health alert → scoped event DTU
-        if (_bridgeEvent) {
-          for (const alert of alerts) {
-            _bridgeEvent({
-              type: "health:alert",
-              data: { title: alert.title, link: alert.link, pubDate: alert.pubDate },
-              source: "who",
-              timestamp: alert.pubDate ? new Date(alert.pubDate).toISOString() : payload.fetchedAt,
-            }).catch(err => logger.warn?.("[realtime-feeds] bridge event failed:", err?.message || err));
-          }
+        // Bridge: each health alert → scoped event DTU (deduped by URL or title)
+        for (const alert of alerts) {
+          const dedupKey = normalizeUrl(alert.link) || `health:${(alert.title || "").toLowerCase().trim()}`;
+          safeBridgeEvent({
+            type: "health:alert",
+            data: { title: alert.title, link: alert.link, pubDate: alert.pubDate },
+            sourceUrl: normalizeUrl(alert.link),
+            source: "who",
+            timestamp: alert.pubDate ? new Date(alert.pubDate).toISOString() : payload.fetchedAt,
+          }, dedupKey);
         }
       }
     }
@@ -406,39 +492,47 @@ export async function tickRealTimeFeeds(STATE, tickCount, realtimeEmit, callBrai
 
   const tasks = [];
 
-  // Financial + Crypto — every 5th tick (~75s)
-  if (tickCount % 5 === 0) {
+  // NOTE: This function is called from the governor tick every REALTIME_DATA ticks (5),
+  // so tickCount is always a multiple of 5 (0, 5, 10, 15, 20, ...).
+  // We use (tickCount / 5) as the "call count" for internal staggering.
+  const callCount = Math.floor(tickCount / 5);
+
+  // Financial — every call (~10 min at 120s heartbeat)
+  if (callCount % 2 === 0) {
     tasks.push(tickFinancialFeeds(STATE, realtimeEmit, callBrain).catch(e => recordError("finance", e)));
+  }
+  // Crypto — alternates with finance (~10 min, offset by 1 call)
+  if (callCount % 2 === 1) {
     tasks.push(tickCryptoFeeds(STATE, realtimeEmit).catch(e => recordError("crypto", e)));
   }
 
-  // News — every 10th tick (~150s)
-  if (tickCount % 10 === 0) {
+  // News — every 4th call (~40 min at 120s heartbeat)
+  if (callCount % 4 === 0) {
     tasks.push(tickNewsFeeds(STATE, realtimeEmit).catch(e => recordError("news", e)));
   }
 
-  // Weather — every 20th tick (~5 min)
-  if (tickCount % 20 === 0) {
+  // Weather — every 6th call (~1 hour at 120s heartbeat), offset from news
+  if (callCount % 6 === 3) {
     tasks.push(tickWeatherFeeds(STATE, realtimeEmit).catch(e => recordError("weather", e)));
   }
 
-  // Research — every 100th tick (~25 min)
-  if (tickCount % 100 === 0) {
+  // Research — every 10th call (~100 min at 120s heartbeat)
+  if (callCount % 10 === 5) {
     tasks.push(tickResearchFeeds(STATE, realtimeEmit).catch(e => recordError("research", e)));
   }
 
-  // Economy — every 200th tick (~50 min)
-  if (tickCount % 200 === 0) {
+  // Economy — every 20th call (~3.3 hours at 120s heartbeat)
+  if (callCount % 20 === 7) {
     tasks.push(tickEconomyFeeds(STATE, realtimeEmit).catch(e => recordError("economy", e)));
   }
 
-  // Health — every 100th tick
-  if (tickCount % 100 === 0) {
+  // Health — every 10th call (~100 min at 120s heartbeat), offset from research
+  if (callCount % 10 === 9) {
     tasks.push(tickHealthFeeds(STATE, realtimeEmit).catch(e => recordError("health", e)));
   }
 
-  // Energy — every 200th tick
-  if (tickCount % 200 === 0) {
+  // Energy — every 20th call (~3.3 hours), offset from economy
+  if (callCount % 20 === 13) {
     tasks.push(tickEnergyFeeds(STATE, realtimeEmit).catch(e => recordError("energy", e)));
   }
 
@@ -461,6 +555,10 @@ export function getRealtimeFeedStatus() {
     errors: Object.fromEntries(FEED_ERRORS),
     feeds: ["finance", "crypto", "news", "weather", "research", "economy", "health", "energy"],
     feedManager: feedManagerStatus,
+    dedup: {
+      bridgeSeenHashes: _bridgeSeenHashes.size,
+      trackedTickers: _lastBridgedTickers.size,
+    },
   };
 }
 
