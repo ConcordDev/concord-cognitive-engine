@@ -38,8 +38,11 @@ ENV CI_SKIP_TYPECHECK=$CI_SKIP_TYPECHECK
 ENV CI_SKIP_LINT_IN_BUILD=$CI_SKIP_LINT_IN_BUILD
 
 # Build Next.js app
-# Skip prophet-check (requires ../server which isn't in the Docker context)
-RUN npx next build
+# Skip prophet-check (requires ../server which isn't in the Docker context).
+# Bump Node heap to 6GB — default ~3.8GB OOMs on the full 1.3M-line
+# codebase + 175 lenses + Sentry webpack passes. Same fix as ci.yml's
+# direct-node build step.
+RUN NODE_OPTIONS="--max-old-space-size=6144" npx next build
 
 # Production image, copy all the files and run next
 FROM base AS runner

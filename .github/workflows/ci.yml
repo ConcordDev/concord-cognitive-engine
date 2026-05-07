@@ -81,6 +81,13 @@ jobs:
 
       - name: Build frontend
         working-directory: ./concord-frontend
+        env:
+          # Default Node heap (~3.8GB) OOMs during Next.js production
+          # compile of the full 1.3M-line codebase + 175 lenses + Sentry
+          # webpack passes. Standard GitHub Actions runners have 7GB
+          # available; allocate 6GB to leave headroom for the OS + npm.
+          # Local dev boxes typically have more RAM and don't hit this.
+          NODE_OPTIONS: --max-old-space-size=6144
         run: npm run build
 
       - name: Run frontend unit tests with coverage (thresholds enforced)
