@@ -63749,22 +63749,6 @@ function autoClassifyDTU(dtu) {
     matched.sort((a, b) => b.score - a.score);
     const domains = matched.slice(0, 5).map(m => m.domain);
 
-    // Fallback: also match any ALL_LENS_DOMAINS entry that appears as a
-    // word in the DTU text. This covers the ~85 lens domains that don't
-    // have explicit keyword lists (crypto, quantum, education, legal, etc.)
-    if (domains.length < 5) {
-      for (const d of ALL_LENS_DOMAINS) {
-        if (domains.length >= 5) break;
-        if (domains.includes(d)) continue;
-        // Match as whole word (or hyphenated variant) to avoid false positives
-        // e.g. "code" shouldn't match "encode", but "crypto" should match
-        const pattern = d.length >= 4 ? d : `\\b${d}\\b`;
-        if (d.length >= 4 ? text.includes(d) : new RegExp(pattern).test(text)) {
-          domains.push(d);
-        }
-      }
-    }
-
     // Tier-based bonus domains
     if (dtu.tier === "mega" || dtu.tier === "hyper") {
       if (!domains.includes("theory")) domains.push("theory");
@@ -63798,33 +63782,11 @@ function applyAutoTagging(dtu) {
 /**
  * Sync a single DTU into lens artifacts based on its domain tags.
  * Creates lens artifacts for each domain tag the DTU has.
- * Accepts tags matching LENS_DOMAIN_KEYWORDS *or* ALL_LENS_DOMAINS.
  */
-// Build a fast lookup Set from ALL_LENS_DOMAINS for O(1) tag matching.
-// Includes normalized variants (underscores ↔ hyphens) so tags like
-// "real_estate" match the "realestate" domain and vice versa.
-const _allLensDomainSet = new Set();
-for (const d of ALL_LENS_DOMAINS) {
-  _allLensDomainSet.add(d);
-  _allLensDomainSet.add(d.replace(/-/g, "_"));
-  _allLensDomainSet.add(d.replace(/_/g, "-"));
-  _allLensDomainSet.add(d.replace(/[-_]/g, ""));
-}
-// Also add LENS_DOMAIN_KEYWORDS keys (they may differ in naming)
-for (const k of Object.keys(LENS_DOMAIN_KEYWORDS)) {
-  _allLensDomainSet.add(k);
-  _allLensDomainSet.add(k.replace(/-/g, "_"));
-  _allLensDomainSet.add(k.replace(/_/g, "-"));
-}
-
-function _isLensDomain(tag) {
-  return _allLensDomainSet.has(tag) || _allLensDomainSet.has(tag.replace(/-/g, "_")) || _allLensDomainSet.has(tag.replace(/_/g, "-"));
-}
-
 function syncDTUToLensArtifacts(dtu) {
   try {
     if (!dtu || !dtu.id) return 0;
-    const domains = (dtu.tags || []).filter(t => _isLensDomain(t));
+    const domains = (dtu.tags || []).filter(t => LENS_DOMAIN_KEYWORDS[t]);
     let synced = 0;
     for (const domain of domains) {
       const key = `dtu_lens_${domain}_${dtu.id}`;
