@@ -668,45 +668,70 @@ jobs:
           REPO: ${{ github.repository }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
+          # Disable bash's -e so a single failing line never aborts before
+          # the comment is posted — diagnostic output must always reach
+          # the PR thread, even if some tail/cat fails.
+          set +e
+
           PW_LOG=concord-frontend/playwright-output.log
           FE_LOG=concord-frontend/frontend.log
           SV_LOG=server/server.log
+
+          # Strip ANSI color codes from playwright tee'd output so the
+          # markdown body stays under GitHub's 65535-char comment limit
+          # and the digest is readable.
+          if [ -f "$PW_LOG" ]; then
+            sed -i 's/\x1b\[[0-9;]*m//g; s/\x1b\[[0-9;]*[A-Za-z]//g' "$PW_LOG" 2>/dev/null
+          fi
 
           {
             echo "## E2E failure digest (run ${{ github.run_id }})"
             echo ""
             echo "[full run]($RUN_URL)"
             echo ""
-            echo "### Playwright (last 120 lines)"
+            echo "### Playwright tail (last 200 lines)"
             echo '```'
-            tail -120 "$PW_LOG" 2>/dev/null || echo "(no playwright-output.log)"
-            echo '```'
-            echo ""
-            echo "### Frontend log (last 60 lines)"
-            echo '```'
-            tail -60 "$FE_LOG" 2>/dev/null || echo "(no frontend.log)"
+            tail -200 "$PW_LOG" 2>/dev/null || echo "(no playwright-output.log)"
             echo '```'
             echo ""
-            echo "### Server log (last 40 lines)"
+            echo "### Frontend log tail (last 40 lines)"
             echo '```'
-            tail -40 "$SV_LOG" 2>/dev/null || echo "(no server.log)"
+            tail -40 "$FE_LOG" 2>/dev/null || echo "(no frontend.log)"
+            echo '```'
+            echo ""
+            echo "### Server log tail (last 30 lines)"
+            echo '```'
+            tail -30 "$SV_LOG" 2>/dev/null || echo "(no server.log)"
             echo '```'
           } > /tmp/digest.md
 
-          # Always also write the digest to the workflow's Step Summary —
-          # that surface persists in the run page even if comment posting
-          # fails (eg. token permissions issue on a fork PR).
+          # Cap body size — GitHub rejects PR comments above 65535 chars.
+          # Truncate from the head so the failure summary at the end stays
+          # intact (playwright prints the summary block last).
+          MAX_BYTES=60000
+          if [ "$(wc -c < /tmp/digest.md)" -gt "$MAX_BYTES" ]; then
+            echo "(digest truncated — original size $(wc -c < /tmp/digest.md) bytes)" > /tmp/digest-trim.md
+            tail -c "$MAX_BYTES" /tmp/digest.md >> /tmp/digest-trim.md
+            mv /tmp/digest-trim.md /tmp/digest.md
+          fi
+
+          echo "digest size: $(wc -c < /tmp/digest.md) bytes"
+
+          # Always write to Step Summary first (cheap, can't fail the comment).
           cat /tmp/digest.md >> "$GITHUB_STEP_SUMMARY"
 
-          # Use `gh` CLI (pre-installed on GH-hosted runners) — it picks up
-          # GH_TOKEN from the env and handles auth/headers/encoding for us.
-          # Direct curl was failing silently for unclear reasons.
-          if gh pr comment "$PR_NUMBER" --repo "$REPO" --body-file /tmp/digest.md; then
-            echo "digest comment posted"
+          # Post the comment via gh CLI. Capture stderr so we can see why if it fails.
+          if gh pr comment "$PR_NUMBER" --repo "$REPO" --body-file /tmp/digest.md 2>/tmp/gh-stderr; then
+            echo "digest comment posted ✓"
           else
-            echo "::warning::Failed to post digest comment via gh CLI"
-            ls -la /tmp/digest.md || true
-            wc -l /tmp/digest.md || true
+            echo "::warning::gh pr comment exited non-zero"
+            echo "::group::gh CLI stderr"
+            cat /tmp/gh-stderr || true
+            echo "::endgroup::"
+            echo "::group::gh CLI version + auth"
+            gh --version || true
+            gh auth status -h github.com || true
+            echo "::endgroup::"
           fi
 
       - name: Upload test results
