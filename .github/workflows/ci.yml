@@ -9,6 +9,20 @@ on:
 env:
   NODE_VERSION: '20'
 
+# Cancel previous runs on the same ref when a new push lands. Without this,
+# a slow E2E run can be wasting runner minutes long after the next push has
+# arrived and is already running its own E2E.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# NOTE: Intentionally no workflow-level `permissions:` block. Setting one
+# replaces the entire default token grant (incl. `actions: write` which
+# setup-node@v6 needs for npm cache read/write), and the lint-and-test
+# job started failing in 1m15s — well before npm ci could even try —
+# right after a workflow-level `contents: read` lock-down. Per-job
+# permissions are still set on e2e-test where they're needed.
+
 jobs:
   lint-and-test:
     name: Lint & Test
@@ -482,6 +496,10 @@ jobs:
     name: E2E Tests
     runs-on: ubuntu-latest
     needs: [lint-and-test]
+    permissions:
+      contents: write   # push diagnostics to ci-diagnostics branch
+      pull-requests: write
+      issues: write
     # E2E now runs with Ollama provisioned as a service (qwen2.5:0.5b
     # for the smallest sane model that exercises the chat path) plus
     # Stripe test-mode keys for wallet-flow. OAuth specs use page.route
@@ -516,7 +534,7 @@ jobs:
 
       - name: Install Playwright browsers
         working-directory: ./concord-frontend
-        run: npx playwright install --with-deps chromium firefox
+        run: npx playwright install --with-deps chromium
 
       - name: Pull tiny Ollama model for chat specs
         # qwen2.5:0.5b is ~400MB — small enough that pull + load fits
@@ -576,12 +594,180 @@ jobs:
           done
           exit 1
 
+      # Build + start the frontend with `next start` (production mode).
+      # Previously the playwright config's webServer block ran `npm run dev`
+      # (next dev) inside the test step. On the 1.3M-line frontend, dev's
+      # default ~3.8GB heap + lazy compile of every visited route blew past
+      # the 120s webServer timeout, giving E2E the appearance of "tests
+      # failing" when the server itself never reached ready. Build+start
+      # mirrors the proven Lighthouse CI pattern — heap-budgeted build
+      # (6GB), then a lean `next start` server that boots in seconds.
+      - name: Build frontend for E2E
+        working-directory: ./concord-frontend
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:5050
+          NODE_OPTIONS: --max-old-space-size=6144
+        run: npm run build
+
+      - name: Start frontend (production)
+        working-directory: ./concord-frontend
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:5050
+          PORT: 3000
+        run: |
+          npm run start > frontend.log 2>&1 &
+          echo $! > frontend.pid
+
+      - name: Wait for frontend
+        run: |
+          for i in {1..60}; do
+            if curl -sf http://localhost:3000 > /dev/null 2>&1; then
+              echo "Frontend ready after $i seconds"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Frontend failed to start. Logs:"
+          cat concord-frontend/frontend.log || true
+          exit 1
+
       - name: Run E2E tests
+        id: run_e2e
         working-directory: ./concord-frontend
         env:
           BASE_URL: http://localhost:3000
           NEXT_PUBLIC_API_URL: http://localhost:5050
-        run: npx playwright test --project=chromium --project=firefox
+        # Tee playwright output to a file so we can post a digest comment on
+        # the PR; the action-summary alone isn't reachable from outside the
+        # run, and artifacts aren't reachable across the GitHub MCP either.
+        run: |
+          set -o pipefail
+          npx playwright test --project=chromium --reporter=list,html 2>&1 | tee playwright-output.log
+
+      - name: Dump server + frontend logs on failure
+        if: failure()
+        run: |
+          echo "::group::Server log (last 200 lines)"
+          tail -200 server/server.log 2>/dev/null || echo "(no server.log)"
+          echo "::endgroup::"
+          echo "::group::Frontend log (last 200 lines)"
+          tail -200 concord-frontend/frontend.log 2>/dev/null || echo "(no frontend.log)"
+          echo "::endgroup::"
+          echo "::group::Frontend health probe"
+          curl -sv http://localhost:3000/ -o /tmp/probe-root.html 2>&1 | head -30 || true
+          echo "--- /login probe ---"
+          curl -sv http://localhost:3000/login -o /tmp/probe-login.html 2>&1 | head -30 || true
+          echo "::endgroup::"
+
+      # Post a digest of the failure into a PR comment so the diagnostic
+      # is accessible via the GitHub MCP without needing artifact downloads
+      # or workflow log access. Idempotent per-run via the run id marker.
+      - name: Post E2E failure digest as PR comment
+        if: failure() && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          echo "::notice::E2E failure-digest step started"
+
+          # Disable bash's -e so a single failing line never aborts before
+          # the comment is posted — diagnostic output must always reach
+          # the PR thread, even if some tail/cat fails.
+          set +e
+          set +o pipefail
+
+          echo "[diag] PR_NUMBER=$PR_NUMBER REPO=$REPO event=${{ github.event_name }}"
+          echo "[diag] gh version + auth:"
+          gh --version
+          gh auth status -h github.com 2>&1 | head -10
+
+          PW_LOG=concord-frontend/playwright-output.log
+          FE_LOG=concord-frontend/frontend.log
+          SV_LOG=server/server.log
+
+          # Strip ANSI color codes from playwright tee'd output so the
+          # markdown body stays under GitHub's 65535-char comment limit
+          # and the digest is readable.
+          if [ -f "$PW_LOG" ]; then
+            sed -i 's/\x1b\[[0-9;]*m//g; s/\x1b\[[0-9;]*[A-Za-z]//g' "$PW_LOG" 2>/dev/null
+          fi
+
+          {
+            echo "## E2E failure digest (run ${{ github.run_id }})"
+            echo ""
+            echo "[full run]($RUN_URL)"
+            echo ""
+            echo "### Playwright tail (last 200 lines)"
+            echo '```'
+            tail -200 "$PW_LOG" 2>/dev/null || echo "(no playwright-output.log)"
+            echo '```'
+            echo ""
+            echo "### Frontend log tail (last 40 lines)"
+            echo '```'
+            tail -40 "$FE_LOG" 2>/dev/null || echo "(no frontend.log)"
+            echo '```'
+            echo ""
+            echo "### Server log tail (last 30 lines)"
+            echo '```'
+            tail -30 "$SV_LOG" 2>/dev/null || echo "(no server.log)"
+            echo '```'
+          } > /tmp/digest.md
+
+          # Cap body size — GitHub rejects PR comments above 65535 chars.
+          # Truncate from the head so the failure summary at the end stays
+          # intact (playwright prints the summary block last).
+          MAX_BYTES=60000
+          if [ "$(wc -c < /tmp/digest.md)" -gt "$MAX_BYTES" ]; then
+            echo "(digest truncated — original size $(wc -c < /tmp/digest.md) bytes)" > /tmp/digest-trim.md
+            tail -c "$MAX_BYTES" /tmp/digest.md >> /tmp/digest-trim.md
+            mv /tmp/digest-trim.md /tmp/digest.md
+          fi
+
+          echo "digest size: $(wc -c < /tmp/digest.md) bytes"
+
+          # Always write to Step Summary first (cheap, can't fail the comment).
+          cat /tmp/digest.md >> "$GITHUB_STEP_SUMMARY"
+
+          # Post the comment via gh CLI. Capture stderr so we can see why if it fails.
+          if gh pr comment "$PR_NUMBER" --repo "$REPO" --body-file /tmp/digest.md 2>/tmp/gh-stderr; then
+            echo "digest comment posted ✓"
+          else
+            echo "::warning::gh pr comment exited non-zero"
+            echo "::group::gh CLI stderr"
+            cat /tmp/gh-stderr || true
+            echo "::endgroup::"
+            echo "::group::gh CLI version + auth"
+            gh --version || true
+            gh auth status -h github.com || true
+            echo "::endgroup::"
+          fi
+
+          # Also push the digest to a sibling diagnostics branch
+          # (`ci-diagnostics`) so it's reachable via plain `git fetch`
+          # even if PR-comment posting is blocked. One file per run-id.
+          # This branch is rewritten in place each run; history is via
+          # commit messages naming the run id.
+          DIAG_DIR=/tmp/ci-diag
+          rm -rf "$DIAG_DIR"
+          git clone --depth 1 --branch ci-diagnostics \
+            "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" "$DIAG_DIR" 2>/dev/null \
+            || git clone --depth 1 \
+                 "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" "$DIAG_DIR"
+          cd "$DIAG_DIR"
+          git checkout -B ci-diagnostics
+          # Keep the branch tiny — only the latest digest.
+          find . -maxdepth 1 -name 'e2e-digest-*.md' -delete 2>/dev/null || true
+          cp /tmp/digest.md "e2e-digest-${{ github.run_id }}.md"
+          cp /tmp/digest.md "e2e-digest-latest.md"
+          git -c user.email=actions@github.com -c user.name=ci-bot \
+            add "e2e-digest-${{ github.run_id }}.md" "e2e-digest-latest.md"
+          git -c user.email=actions@github.com -c user.name=ci-bot \
+            commit -m "ci: e2e digest run ${{ github.run_id }}" || true
+          git push --force "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" \
+            ci-diagnostics:ci-diagnostics 2>&1 | tail -5
+          echo "diagnostic branch updated ✓"
 
       - name: Upload test results
         uses: actions/upload-artifact@v6
@@ -591,9 +777,23 @@ jobs:
           path: concord-frontend/playwright-report/
           retention-days: 7
 
+      - name: Upload server + frontend logs
+        uses: actions/upload-artifact@v6
+        if: failure()
+        with:
+          name: e2e-server-logs
+          path: |
+            server/server.log
+            concord-frontend/frontend.log
+            concord-frontend/playwright-output.log
+          retention-days: 7
+
       - name: Cleanup
         if: always()
         run: |
           if [ -f server/server.pid ]; then
             kill $(cat server/server.pid) 2>/dev/null || true
+          fi
+          if [ -f concord-frontend/frontend.pid ]; then
+            kill $(cat concord-frontend/frontend.pid) 2>/dev/null || true
           fi

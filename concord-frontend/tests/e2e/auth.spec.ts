@@ -103,7 +103,7 @@ test.describe('Authentication Flow', () => {
 
   test('login page username field is autofocused', async ({ page }) => {
     const response = await page.goto('/login');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     expect(response?.status()).toBeLessThan(500);
 

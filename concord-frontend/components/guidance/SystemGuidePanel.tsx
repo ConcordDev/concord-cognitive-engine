@@ -68,7 +68,23 @@ interface EventItem {
 }
 
 function SystemGuidePanel() {
-  const [collapsed, setCollapsed] = useState(false);
+  // Persist collapsed state across navigations + reloads. Reading lazily
+  // from localStorage so SSR returns the safe default.
+  const [collapsed, setCollapsed] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('concord-system-guide-collapsed') === 'true';
+  });
+
+  // Sync to localStorage whenever the user toggles. Wrapped in a try/catch
+  // so storage exceptions (private mode, full quota) never break render.
+  const setCollapsedPersisted = (next: boolean) => {
+    setCollapsed(next);
+    try {
+      localStorage.setItem('concord-system-guide-collapsed', String(next));
+    } catch {
+      /* ignore — storage unavailable */
+    }
+  };
 
   const { data: health } = useQuery<HealthData>({
     queryKey: ['system-health'],
@@ -102,7 +118,7 @@ function SystemGuidePanel() {
   if (collapsed) {
     return (
       <button
-        onClick={() => setCollapsed(false)}
+        onClick={() => setCollapsedPersisted(false)}
         className="fixed top-20 right-4 z-30 p-2 rounded-lg bg-lattice-surface border border-lattice-border hover:bg-lattice-border/50 transition-colors"
         title="Expand Guide"
       >
@@ -120,7 +136,7 @@ function SystemGuidePanel() {
           Guide
         </span>
         <button
-          onClick={() => setCollapsed(true)}
+          onClick={() => setCollapsedPersisted(true)}
           className="text-gray-500 hover:text-white"
           aria-label="Collapse guide panel"
         >

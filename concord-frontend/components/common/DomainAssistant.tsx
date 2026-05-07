@@ -31,6 +31,14 @@ interface Message {
 
 export default function DomainAssistant({ domain, domainLabel }: DomainAssistantProps) {
   const [open, setOpen] = useState(false);
+  const [hidden, setHidden] = useState(() => {
+    // Allow users (and E2E) to fully hide the floating trigger button.
+    // Localstorage flag `concord-assistant-hidden=true` removes the
+    // trigger so it doesn't intercept pointer events near the
+    // bottom-right corner of any lens page.
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('concord-assistant-hidden') === 'true';
+  });
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -143,6 +151,15 @@ export default function DomainAssistant({ domain, domainLabel }: DomainAssistant
     typeof navigator !== 'undefined' && navigator.platform.includes('Mac')
       ? '\u2318'
       : 'Ctrl';
+
+  // When hidden via localStorage, render nothing — the keyboard shortcut
+  // (Cmd/Ctrl + /) still works to open the panel for power users.
+  if (hidden) {
+    return null;
+  }
+
+  // (silence unused-setter warning; setHidden may be exposed via settings UI later)
+  void setHidden;
 
   return (
     <>
