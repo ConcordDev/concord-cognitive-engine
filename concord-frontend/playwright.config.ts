@@ -1,5 +1,31 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
+
+// Pre-seed localStorage so the first-run onboarding wizard does not open
+// during E2E. The wizard mounts as a modal dialog with `aria-modal="true"`
+// at the root of the app shell and intercepts pointer events under it,
+// causing every click-target test to fail by timeout. Production users
+// see this once and dismiss; in E2E we just skip past it.
+//
+// Keys observed in source:
+//   concord-onboarding-completed  — components/onboarding/OnboardingWizard.tsx
+//   concord_entered               — components/Providers.tsx (gate to socket connect)
+//   concord_first_win_dismissed   — components/guidance/FirstWinWizard.tsx
+const E2E_STORAGE_STATE = {
+  cookies: [],
+  origins: [
+    {
+      origin: BASE_URL,
+      localStorage: [
+        { name: 'concord-onboarding-completed', value: 'true' },
+        { name: 'concord_entered', value: 'true' },
+        { name: 'concord_first_win_dismissed', value: 'true' },
+      ],
+    },
+  ],
+};
+
 export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: true,
@@ -9,10 +35,11 @@ export default defineConfig({
   reporter: 'html',
 
   use: {
-    baseURL: process.env.BASE_URL || 'http://localhost:3000',
+    baseURL: BASE_URL,
     headless: true,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
+    storageState: E2E_STORAGE_STATE,
   },
 
   projects: [
