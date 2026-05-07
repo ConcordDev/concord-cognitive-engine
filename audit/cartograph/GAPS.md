@@ -1,6 +1,6 @@
 # Gaps & Wire Targets
 
-_Generated 2026-05-07T22:12:00.422Z. Each gap proposes a concrete wire action._
+_Generated 2026-05-07T22:32:43.706Z. Each gap proposes a concrete wire action._
 
 ## Dead tables (24)
 
@@ -39,13 +39,12 @@ _None._
 
 _None — every module either has a heartbeat or is invoked by a macro callsite._
 
-## Headless backend domains (78)
+## Headless backend domains (76)
 
 | Domain | Macro count | Suggested frontend lens dir |
 |---|---:|---|
 | `chicken3` | 4 | `concord-frontend/app/lenses/chicken3/page.tsx` |
 | `multimodal` | 2 | `concord-frontend/app/lenses/multimodal/page.tsx` |
-| `tools` | 1 | `concord-frontend/app/lenses/tools/page.tsx` |
 | `semantic` | 7 | `concord-frontend/app/lenses/semantic/page.tsx` |
 | `explanation` | 4 | `concord-frontend/app/lenses/explanation/page.tsx` |
 | `hlr` | 5 | `concord-frontend/app/lenses/hlr/page.tsx` |
@@ -67,7 +66,6 @@ _None — every module either has a heartbeat or is invoked by a macro callsite.
 | `dream` | 5 | `concord-frontend/app/lenses/dream/page.tsx` |
 | `dtu` | 9 | `concord-frontend/app/lenses/dtu/page.tsx` |
 | `shield` | 11 | `concord-frontend/app/lenses/shield/page.tsx` |
-| `mesh` | 10 | `concord-frontend/app/lenses/mesh/page.tsx` |
 | `foundation` | 1 | `concord-frontend/app/lenses/foundation/page.tsx` |
 | `intel` | 8 | `concord-frontend/app/lenses/intel/page.tsx` |
 | `cortex` | 6 | `concord-frontend/app/lenses/cortex/page.tsx` |
@@ -93,8 +91,10 @@ _None — every module either has a heartbeat or is invoked by a macro callsite.
 | `crawl` | 2 | `concord-frontend/app/lenses/crawl/page.tsx` |
 | `source` | 2 | `concord-frontend/app/lenses/source/page.tsx` |
 | `verify` | 1 | `concord-frontend/app/lenses/verify/page.tsx` |
+| `lattice` | 3 | `concord-frontend/app/lenses/lattice/page.tsx` |
+| `skill` | 1 | `concord-frontend/app/lenses/skill/page.tsx` |
 
-## Orphan lenses (151)
+## Orphan lenses (153)
 
 | Lens dir | Reason | Action |
 |---|---|---|
@@ -148,7 +148,7 @@ _None — every module either has a heartbeat or is invoked by a macro callsite.
 | `emergency-services` | no_matching_backend_domain | wire backend OR remove |
 | `energy` | no_matching_backend_domain | wire backend OR remove |
 | `engineering` | no_matching_backend_domain | wire backend OR remove |
-| ... | _+101 more_ | |
+| ... | _+103 more_ | |
 
 ## Unused macros (0)
 

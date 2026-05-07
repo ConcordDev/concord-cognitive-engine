@@ -1249,7 +1249,9 @@
     },
     {
       "category": "3d-model",
-      "matchedLensDirs": [],
+      "matchedLensDirs": [
+        "mesh"
+      ],
       "matchedMacroDomains": [
         "mesh.status",
         "mesh.topology",
@@ -1399,7 +1401,9 @@
     },
     {
       "category": "mesh-network",
-      "matchedLensDirs": [],
+      "matchedLensDirs": [
+        "mesh"
+      ],
       "matchedMacroDomains": [
         "mesh.status",
         "mesh.topology",
@@ -1650,11 +1654,6 @@
         "reason": "no_matching_lens_dir"
       },
       {
-        "domain": "tools",
-        "macroCount": 1,
-        "reason": "no_matching_lens_dir"
-      },
-      {
         "domain": "semantic",
         "macroCount": 7,
         "reason": "no_matching_lens_dir"
@@ -1757,11 +1756,6 @@
       {
         "domain": "shield",
         "macroCount": 11,
-        "reason": "no_matching_lens_dir"
-      },
-      {
-        "domain": "mesh",
-        "macroCount": 10,
         "reason": "no_matching_lens_dir"
       },
       {
@@ -2611,6 +2605,11 @@
         "reason": "no_matching_backend_domain"
       },
       {
+        "frontendDir": "productivity",
+        "pageBytes": 12137,
+        "reason": "no_matching_backend_domain"
+      },
+      {
         "frontendDir": "projects",
         "pageBytes": 35068,
         "reason": "no_matching_backend_domain"
@@ -2668,6 +2667,11 @@
       {
         "frontendDir": "security",
         "pageBytes": 68624,
+        "reason": "no_matching_backend_domain"
+      },
+      {
+        "frontendDir": "self",
+        "pageBytes": 10410,
         "reason": "no_matching_backend_domain"
       },
       {
@@ -2801,14 +2805,14 @@
       "line": 13947
     },
     {
-      "actual": 195,
+      "actual": 199,
       "claim": "175 lenses",
-      "delta": 20,
+      "delta": 24,
       "file": "CLAUDE.md",
       "line": 73
     }
   ],
-  "generatedAt": "2026-05-07T22:12:00.422Z",
+  "generatedAt": "2026-05-07T22:32:43.706Z",
   "generatedBy": "cartographer-v22.22.2",
   "novelty": [
     {
@@ -3785,6 +3789,19 @@
         ]
       },
       {
+        "name": "CONCORD_LENS_PARITY_STRICT",
+        "refs": [
+          {
+            "file": "server/tests/e2e/all-lenses-walk.test.js",
+            "line": 79
+          },
+          {
+            "file": "server/tests/e2e/all-lenses-walk.test.js",
+            "line": 112
+          }
+        ]
+      },
+      {
         "name": "CONCORD_WORKER_CORES",
         "refs": [
           {
@@ -4523,6 +4540,11 @@
       },
       {
         "hasPage": true,
+        "name": "mesh",
+        "pageBytes": 12353
+      },
+      {
+        "hasPage": true,
         "name": "meta",
         "pageBytes": 47031
       },
@@ -4648,6 +4670,11 @@
       },
       {
         "hasPage": true,
+        "name": "productivity",
+        "pageBytes": 12137
+      },
+      {
+        "hasPage": true,
         "name": "projects",
         "pageBytes": 35068
       },
@@ -4733,6 +4760,11 @@
       },
       {
         "hasPage": true,
+        "name": "self",
+        "pageBytes": 10410
+      },
+      {
+        "hasPage": true,
         "name": "sentinel",
         "pageBytes": 14392
       },
@@ -4815,6 +4847,11 @@
         "hasPage": true,
         "name": "timeline",
         "pageBytes": 55940
+      },
+      {
+        "hasPage": true,
+        "name": "tools",
+        "pageBytes": 12086
       },
       {
         "hasPage": true,
@@ -35129,7 +35166,7 @@
     "deadTableCount": 24,
     "dormantModuleCount": 0,
     "heartbeatCount": 19,
-    "lensCount": 195,
+    "lensCount": 199,
     "macroCount": 600,
     "macroDomainCount": 122,
     "moduleCount": 0,
