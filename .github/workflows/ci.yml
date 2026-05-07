@@ -614,11 +614,17 @@ jobs:
           exit 1
 
       - name: Run E2E tests
+        id: run_e2e
         working-directory: ./concord-frontend
         env:
           BASE_URL: http://localhost:3000
           NEXT_PUBLIC_API_URL: http://localhost:5050
-        run: npx playwright test --project=chromium --project=firefox --reporter=list,html
+        # Tee playwright output to a file so we can post a digest comment on
+        # the PR; the action-summary alone isn't reachable from outside the
+        # run, and artifacts aren't reachable across the GitHub MCP either.
+        run: |
+          set -o pipefail
+          npx playwright test --project=chromium --project=firefox --reporter=list,html 2>&1 | tee playwright-output.log
 
       - name: Dump server + frontend logs on failure
         if: failure()
@@ -634,6 +640,52 @@ jobs:
           echo "--- /login probe ---"
           curl -sv http://localhost:3000/login -o /tmp/probe-login.html 2>&1 | head -30 || true
           echo "::endgroup::"
+
+      # Post a digest of the failure into a PR comment so the diagnostic
+      # is accessible via the GitHub MCP without needing artifact downloads
+      # or workflow log access. Idempotent per-run via the run id marker.
+      - name: Post E2E failure digest as PR comment
+        if: failure() && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          PW_LOG=concord-frontend/playwright-output.log
+          FE_LOG=concord-frontend/frontend.log
+          SV_LOG=server/server.log
+
+          {
+            echo "## E2E failure digest (run ${{ github.run_id }})"
+            echo ""
+            echo "[full run]($RUN_URL)"
+            echo ""
+            echo "### Playwright (last 120 lines)"
+            echo '```'
+            tail -120 "$PW_LOG" 2>/dev/null || echo "(no playwright-output.log)"
+            echo '```'
+            echo ""
+            echo "### Frontend log (last 60 lines)"
+            echo '```'
+            tail -60 "$FE_LOG" 2>/dev/null || echo "(no frontend.log)"
+            echo '```'
+            echo ""
+            echo "### Server log (last 40 lines)"
+            echo '```'
+            tail -40 "$SV_LOG" 2>/dev/null || echo "(no server.log)"
+            echo '```'
+          } > /tmp/digest.md
+
+          # Comment via the issues API (PRs are issues for comment purposes)
+          jq -n --rawfile body /tmp/digest.md '{body: $body}' > /tmp/digest.json
+          curl -sf -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$REPO/issues/$PR_NUMBER/comments" \
+            -d @/tmp/digest.json \
+            && echo "digest comment posted" \
+            || echo "failed to post digest comment (non-fatal)"
 
       - name: Upload test results
         uses: actions/upload-artifact@v6
@@ -651,6 +703,7 @@ jobs:
           path: |
             server/server.log
             concord-frontend/frontend.log
+            concord-frontend/playwright-output.log
           retention-days: 7
 
       - name: Cleanup
