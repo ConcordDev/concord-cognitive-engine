@@ -1,5 +1,14 @@
 // server/migrations/107_evo_assets_fk_repair.js
 //
+// NOTE (Phase 3.5.5 archival, May 2026):
+//   The `evo_asset_interactions_fix` and `evo_asset_versions_fix` tables
+//   created here are STAGING tables — they're renamed back to the
+//   live names (`evo_asset_interactions`, `evo_asset_versions`) within
+//   the same migration. Cartographer flags them as "dead" because no
+//   SELECT references the *_fix names; that's correct and intentional.
+//   These are not dead tables; they're transient.
+//   STAGING_NOT_DEAD: rename happens at DROP+ALTER inside this migration.
+//
 // Repair dangling FK references on evo_asset_interactions and
 // evo_asset_versions left over from migration 100.
 //

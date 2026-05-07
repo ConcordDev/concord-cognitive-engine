@@ -1,5 +1,11 @@
 // server/migrations/052_guild_persistence.js
 // Persist guilds/organizations from in-memory to DB.
+//
+// NOTE (Phase 3.5.5 archival, May 2026):
+//   `guilds` and `guild_members` are superseded by the orgs substrate
+//   (organizations + faction subsystem). Zero SELECT references found
+//   by cartographer. Idempotent CREATE preserved.
+//   REPLACED_BY: orgs/factions tables (later migrations)
 export function up(db) {
   try {
     db.exec(`

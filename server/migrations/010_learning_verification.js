@@ -2,6 +2,16 @@
 // Learning Verification & Substrate Integrity schema additions.
 // Tables for: DTU classification, citation tracking, novelty audit,
 // helpfulness scoring, generation quotas, pruning history.
+//
+// NOTE (Phase 3.5.5 archival, May 2026):
+//   The 7 tables in this migration (dtu_citations, dtu_helpfulness,
+//   retrieval_metrics, novelty_daily, dedup_audits, pruning_history,
+//   generation_quotas) are all superseded by the citation cascade
+//   royalty system (server/economy/royalty-cascade.js + economy_ledger)
+//   and the drift-monitor. Cartographer pass-1 confirmed zero SELECT
+//   references. CREATE TABLE IF NOT EXISTS preserved for idempotency.
+//   REPLACED_BY: economy/royalty-cascade.js + drift-monitor.js +
+//                forgetting-engine.js + dtu-pipeline.js
 
 export function up(db) {
   db.exec(`

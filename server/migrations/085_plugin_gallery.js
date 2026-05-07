@@ -1,6 +1,12 @@
 // server/migrations/085_plugin_gallery.js
 // Plugin signing trusted-key registry + plugin gallery (browseable
 // distribution surface backed by signed packages).
+//
+// NOTE (Phase 3.5.5 archival, May 2026):
+//   `plugin_installs` has zero SELECT references — plugin install
+//   tracking now flows through the apps/app-maker substrate.
+//   Idempotent CREATE preserved.
+//   REPLACED_BY: apps domain (app-maker) + plugin loader runtime state
 
 export function up(db) {
   try {

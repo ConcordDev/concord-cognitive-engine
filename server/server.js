@@ -22082,6 +22082,203 @@ register("system", "cartograph", async (_ctx, input = {}) => {
   }
 }, { description: "Returns the latest cartographer SYSTEMS.json (input: { section?: 'static'|'runtime'|'crossRef'|'coverage'|'stats', statsOnly?: boolean })" });
 
+// ===================== Phase 4 backend macros (close-the-gaps) =====================
+// Five macros backing the Productivity + Tools lens scaffolds shipped in
+// Phase 4. Each is a small, dependency-light implementation; lenses
+// were already calling these names with graceful "not registered"
+// fallbacks. Registering them flips the scaffolds to live features.
+
+// ── spreadsheet.eval ─────────────────────────────────────────────────────
+// Evaluates a 2D grid of cells. Cells starting with "=" are formulas.
+// Supports: =SUM(A1:B3), =AVG(A1:A10), =IF(cond, then, else), =VLOOKUP(key, range, col).
+// Cell references: A1, B2, etc. (column letter + 1-indexed row).
+// Inputs: { cells: string[][] } → outputs { values: any[][], errors?: string[] }
+register("spreadsheet", "eval", (_ctx, input = {}) => {
+  const grid = Array.isArray(input.cells) ? input.cells : [];
+  if (grid.length === 0) return { ok: true, values: [], errors: [] };
+  const rows = grid.length, cols = Math.max(...grid.map(r => r.length));
+  const values = grid.map(r => r.slice());
+  const errors = [];
+  const cellAt = (col, row) => {
+    if (row < 0 || row >= rows || col < 0 || col >= cols) return null;
+    const v = values[row][col];
+    if (typeof v === "string" && v.startsWith("=")) return null; // unresolved formula
+    const n = Number(v);
+    return Number.isFinite(n) ? n : v;
+  };
+  const colIdx = (letter) => letter.toUpperCase().charCodeAt(0) - 65;
+  const parseRef = (ref) => {
+    const m = /^([A-Z])(\d+)$/.exec(ref.trim());
+    if (!m) return null;
+    return { col: colIdx(m[1]), row: parseInt(m[2], 10) - 1 };
+  };
+  const parseRange = (range) => {
+    const [a, b] = range.split(":").map(s => s.trim());
+    const start = parseRef(a), end = parseRef(b ?? a);
+    if (!start || !end) return [];
+    const cells = [];
+    for (let r = start.row; r <= end.row; r++) {
+      for (let c = start.col; c <= end.col; c++) {
+        cells.push(cellAt(c, r));
+      }
+    }
+    return cells;
+  };
+  const evalFormula = (formula, depth = 0) => {
+    if (depth > 16) return "#CYCLE";
+    const expr = formula.slice(1).trim();
+    const sumM = /^SUM\(([^)]+)\)$/i.exec(expr);
+    if (sumM) return parseRange(sumM[1]).reduce((s, v) => s + (Number(v) || 0), 0);
+    const avgM = /^(AVG|AVERAGE)\(([^)]+)\)$/i.exec(expr);
+    if (avgM) {
+      const cells = parseRange(avgM[2]).map(v => Number(v) || 0);
+      return cells.length ? cells.reduce((s, v) => s + v, 0) / cells.length : 0;
+    }
+    const ifM = /^IF\((.+),(.+),(.+)\)$/i.exec(expr);
+    if (ifM) return Number(ifM[1].trim()) ? ifM[2].trim() : ifM[3].trim();
+    const vlookupM = /^VLOOKUP\(([^,]+),([^,]+),([^,]+)\)$/i.exec(expr);
+    if (vlookupM) {
+      const key = String(values[parseRef(vlookupM[1].trim())?.row ?? -1]?.[parseRef(vlookupM[1].trim())?.col ?? -1] ?? "");
+      const range = parseRange(vlookupM[2].trim());
+      const col = parseInt(vlookupM[3].trim(), 10);
+      const idx = range.indexOf(key);
+      return idx >= 0 ? range[idx + col - 1] ?? "#N/A" : "#N/A";
+    }
+    // Simple arithmetic: A1+B2, A1-B2, A1*B2, A1/B2 with cell refs or numbers
+    const arithM = /^\s*([A-Z]\d+|-?\d+(?:\.\d+)?)\s*([+\-*/])\s*([A-Z]\d+|-?\d+(?:\.\d+)?)\s*$/.exec(expr);
+    if (arithM) {
+      const lookup = (tok) => {
+        const ref = parseRef(tok);
+        if (ref) return Number(cellAt(ref.col, ref.row)) || 0;
+        return Number(tok) || 0;
+      };
+      const a = lookup(arithM[1]), b = lookup(arithM[3]);
+      switch (arithM[2]) {
+        case "+": return a + b;
+        case "-": return a - b;
+        case "*": return a * b;
+        case "/": return b === 0 ? "#DIV/0" : a / b;
+      }
+    }
+    return "#NAME?";
+  };
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const v = values[r][c];
+      if (typeof v === "string" && v.startsWith("=")) {
+        try { values[r][c] = evalFormula(v); }
+        catch (e) { errors.push(`R${r+1}C${c+1}: ${e?.message ?? "eval error"}`); values[r][c] = "#ERR"; }
+      }
+    }
+  }
+  return { ok: true, values, errors };
+}, { description: "Evaluate a 2D spreadsheet grid; supports SUM, AVG, IF, VLOOKUP, and basic arithmetic" });
+
+// ── slides.compile ───────────────────────────────────────────────────────
+// Composes a presentation deck from an array of slide-source DTUs.
+// Each input slide: { title, body, layout?, theme? }. Returns an artifact
+// bundle structure ready for the DTU pipeline to render to SVG.
+register("slides", "compile", (_ctx, input = {}) => {
+  const slides = Array.isArray(input.slides) ? input.slides : [];
+  const theme = input.theme ?? "default";
+  const compiled = slides.map((s, i) => ({
+    index: i,
+    title: String(s.title ?? `Slide ${i + 1}`).slice(0, 100),
+    body: String(s.body ?? "").slice(0, 2000),
+    layout: s.layout ?? "title-body",
+    theme: s.theme ?? theme,
+    artifact: { kind: "slide", svgPath: null, renderedAt: null },
+  }));
+  return {
+    ok: true,
+    deckId: `deck_${Date.now().toString(36)}`,
+    slideCount: compiled.length,
+    theme,
+    slides: compiled,
+    note: "compiled deck spec — render-engine.js renders to SVG via the artifact pipeline",
+  };
+}, { description: "Compile a presentation deck spec from slide DTUs" });
+
+// ── tools.web_search ─────────────────────────────────────────────────────
+// Surfaces the chat-web-search infrastructure as a one-shot macro for
+// any lens. Falls back to documenting the fetch path if the chat web
+// adapter isn't loaded.
+register("tools", "web_search", async (_ctx, input = {}) => {
+  const query = String(input.query ?? "").slice(0, 500);
+  if (!query) return { ok: false, error: "query required" };
+  // Try existing web-search infra
+  try {
+    const mod = await import("./lib/web-search.js").catch(() => null);
+    if (mod?.searchWeb) {
+      const results = await mod.searchWeb(query, { limit: input.limit ?? 5 });
+      return { ok: true, query, results };
+    }
+  } catch (_e) { /* fall through */ }
+  // Fallback: return query + hint so the lens can still show something
+  return {
+    ok: true, query, results: [],
+    note: "web-search adapter not available on this build; chat lens emits chat:web_results socket events directly",
+  };
+}, { description: "One-shot web search returning DTU-ingestible results" });
+
+// ── compile.transpile ────────────────────────────────────────────────────
+// TypeScript / modern-JS transpile via esbuild if available. Falls back
+// to a stripped-types pass for dev-only use.
+register("compile", "transpile", async (_ctx, input = {}) => {
+  const source = String(input.source ?? "");
+  const target = String(input.target ?? "esnext");
+  if (!source) return { ok: false, error: "source required" };
+  try {
+    const esbuild = await import("esbuild").catch(() => null);
+    if (esbuild?.transform) {
+      const r = await esbuild.transform(source, {
+        loader: "ts", target, format: input.format ?? "esm",
+      });
+      return { ok: true, code: r.code, warnings: r.warnings, target };
+    }
+  } catch (_e) { /* fall through */ }
+  // Naive fallback: strip TS-only syntax
+  const stripped = source
+    .replace(/:\s*[A-Za-z_<>[\]|&,?\s]+(?=[=,)\]\s])/g, "")
+    .replace(/<[A-Z][^>]*>/g, "")
+    .replace(/\binterface\s+\w+\s*\{[^}]*\}/g, "")
+    .replace(/\btype\s+\w+\s*=\s*[^;\n]+;?/g, "");
+  return {
+    ok: true, code: stripped, target, fallback: "strip-types",
+    note: "esbuild not available; returned best-effort strip-types output",
+  };
+}, { description: "Transpile TypeScript / modern JS to a target output" });
+
+// ── legal.sign ───────────────────────────────────────────────────────────
+// Sign a DTU's machine-layer JSON with a platform-derived key. v1 uses
+// HMAC-SHA256 over the DTU id + machine layer (deterministic, reversible
+// given the same secret). Production should swap to RSA via a KMS-backed
+// key; the interface here is forward-compatible.
+register("legal", "sign", (ctx, input = {}) => {
+  const dtuId = String(input.dtuId ?? "");
+  if (!dtuId) return { ok: false, error: "dtuId required" };
+  const dtu = STATE.dtus?.get?.(dtuId);
+  if (!dtu) return { ok: false, error: "dtu not found" };
+  const machine = dtu.machine ?? dtu.data?.machine ?? {};
+  const subject = ctx?.actor?.userId || ctx?.actor?.id || "anonymous";
+  const payload = {
+    dtuId,
+    subject,
+    issuedAt: new Date().toISOString(),
+    machineHash: crypto.createHash("sha256").update(JSON.stringify(machine)).digest("hex"),
+  };
+  const secret = process.env.JWT_SECRET || "concord-default-signing";
+  const token = crypto
+    .createHmac("sha256", secret)
+    .update(JSON.stringify(payload))
+    .digest("base64url");
+  return {
+    ok: true,
+    signature: { alg: "HS256", token, payload },
+    note: "v1 uses HMAC; production swap to RSA via KMS preserves the same signature shape",
+  };
+}, { description: "Sign a DTU's machine-layer with a platform key (HMAC v1; RSA-via-KMS in prod)" });
+
 // ===================== System Status =====================
 // Returns live system metrics consumed by dashboard, header bar, and status cards
 register("system", "status", (_ctx, _input) => {

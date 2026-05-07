@@ -1,6 +1,17 @@
 // migrations/009_brain_want_engine.js
 // Brain Prompts & Want Engine schema additions.
 // Tables for: personality evolution, want engine state, spontaneous messages.
+//
+// NOTE (Phase 3.5.5 archival, May 2026):
+//   The 8 tables in this migration (personality_state,
+//   personality_evolution_log, wants, want_audit_log, want_suppressions,
+//   spontaneous_queue, spontaneous_user_prefs, want_actions) are all
+//   superseded by the persona + affect substrate. Cartographer pass-1
+//   confirmed zero SELECT references in any .js file outside this
+//   migration. CREATE TABLE IF NOT EXISTS preserved for idempotency on
+//   existing DBs; new installs allocate but never read/write.
+//   REPLACED_BY: persona domain (9 macros) + affect/engine.js (7-dim)
+//                + persona macro substrate
 
 export function up(db) {
   db.exec(`
