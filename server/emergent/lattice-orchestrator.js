@@ -120,6 +120,64 @@ export async function runBreakthroughResearchPass({ db: _db, state: _state, tick
   return { ok: true, clusters: clusters.length, advanced };
 }
 
+// ── Culture-layer drift pass ───────────────────────────────────────────────
+// Phase 3 wire-the-Lost #4: culture-layer was loaded into Ghost Fleet with
+// 16 macros registered but never tick-scheduled. checkTraditionEmergence
+// + getCulturalGuidance run periodically so cultural drift accumulates
+// in the substrate even when nobody's looking.
+
+export async function runCultureDriftPass({ db: _db, state: _state, tickCount: _t } = {}) {
+  let mod;
+  try { mod = await import("./culture-layer.js"); }
+  catch (err) { return { ok: false, reason: "culture_layer_unavailable", error: err?.message }; }
+
+  let emergence = null;
+  let cohort = null;
+  try {
+    if (typeof mod.checkTraditionEmergence === "function") {
+      emergence = mod.checkTraditionEmergence();
+    }
+  } catch (err) {
+    try { logger.warn("lattice-orchestrator", "culture_emergence_failed", { error: err?.message }); } catch { /* ignore */ }
+  }
+  try {
+    if (typeof mod.listTraditions === "function") {
+      cohort = mod.listTraditions({ status: "active" });
+    }
+  } catch { /* non-fatal */ }
+  return {
+    ok: true,
+    emergedTraditions: emergence?.emerged?.length ?? 0,
+    activeTraditions: cohort?.length ?? 0,
+  };
+}
+
+// ── Forgetting-engine cadence pass ─────────────────────────────────────────
+// Phase 3 wire-the-Lost #1: forgetting-engine has 7 macros registered and
+// already runs inside governorTick on TICK_FREQUENCIES.FORGETTING. Adding
+// it to the lattice-orchestrator heartbeat as well gives a frontend-visible
+// "memory pass" event with reportable counts (candidates, forgotten, history).
+
+export async function runForgettingHealthCheck({ db: _db, state: _state, tickCount: _t } = {}) {
+  let mod;
+  try { mod = await import("./forgetting-engine.js"); }
+  catch (err) { return { ok: false, reason: "forgetting_engine_unavailable", error: err?.message }; }
+
+  try {
+    const status = mod.getStatus?.() ?? null;
+    const candidates = mod.getCandidates?.() ?? null;
+    return {
+      ok: true,
+      candidateCount: Array.isArray(candidates) ? candidates.length : 0,
+      lastRunAt: status?.lastRunAt ?? null,
+      threshold: status?.threshold ?? null,
+    };
+  } catch (err) {
+    try { logger.warn("lattice-orchestrator", "forgetting_status_failed", { error: err?.message }); } catch { /* ignore */ }
+    return { ok: false, reason: "status_threw", error: err?.message };
+  }
+}
+
 // ── Federation poll ────────────────────────────────────────────────────────
 
 export async function runFederationPoll({ db: _db, state: _state, tickCount: _t } = {}) {

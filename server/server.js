@@ -166,6 +166,8 @@ import {
   runPeriodicDriftScan,
   runBreakthroughResearchPass,
   runFederationPoll,
+  runCultureDriftPass,
+  runForgettingHealthCheck,
 } from "./emergent/lattice-orchestrator.js";
 registerHeartbeat("lattice-drift-scan", {
   frequency: 60,
@@ -178,6 +180,20 @@ registerHeartbeat("lattice-breakthrough-pass", {
 registerHeartbeat("lattice-federation-poll", {
   frequency: 120,
   handler: runFederationPoll,
+});
+// Phase 3 wire-the-Lost: culture-layer drift pass (frequency 120, ~30 min).
+// 16 macros were registered via Ghost Fleet but never tick-scheduled.
+registerHeartbeat("culture-drift-pass", {
+  frequency: 120,
+  handler: runCultureDriftPass,
+});
+// Phase 3 wire-the-Lost: forgetting-engine health-check pass. The engine
+// already runs inline in governorTick on TICK_FREQUENCIES.FORGETTING; this
+// heartbeat surfaces status + candidates count so the memory-health UI
+// has a reactive event stream every 480 ticks (~2h).
+registerHeartbeat("forgetting-health-check", {
+  frequency: 480,
+  handler: runForgettingHealthCheck,
 });
 
 // Layer 11: faction emergent strategy. Every 200 ticks (~50 min) advances
@@ -22046,6 +22062,25 @@ register("quality", "preview", (_ctx, input) => {
     projectionRules: CRETI_PROJECTION_RULES[intent] || CRETI_PROJECTION_RULES.default
   };
 }, { description: "Preview which quality pipeline patterns would apply to a query" });
+
+// Phase 3 wire-the-Lost: surface the cartographer's latest SYSTEMS.json
+// to any frontend lens via runMacro. Falls back to { stale: true } if the
+// cartographer hasn't been run yet. The frontend "System" lens consumes
+// this; the Lattice / Audit / dashboard lenses can also browse it.
+register("system", "cartograph", async (_ctx, input = {}) => {
+  const { readFile } = await import("node:fs/promises");
+  const path = await import("node:path");
+  try {
+    const p = path.resolve(import.meta.dirname || ".", "..", "audit", "cartograph", "SYSTEMS.json");
+    const raw = await readFile(p, "utf-8");
+    const systems = JSON.parse(raw);
+    if (input.section && systems[input.section] != null) return { ok: true, section: input.section, data: systems[input.section] };
+    if (input.statsOnly) return { ok: true, stats: systems.stats, generatedAt: systems.generatedAt };
+    return { ok: true, systems };
+  } catch (err) {
+    return { ok: false, reason: "cartograph_not_run", hint: "run `npm run cartograph:static` to generate audit/cartograph/SYSTEMS.json", error: err?.message };
+  }
+}, { description: "Returns the latest cartographer SYSTEMS.json (input: { section?: 'static'|'runtime'|'crossRef'|'coverage'|'stats', statsOnly?: boolean })" });
 
 // ===================== System Status =====================
 // Returns live system metrics consumed by dashboard, header bar, and status cards
