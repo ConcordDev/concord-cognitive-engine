@@ -31,6 +31,16 @@ export const EVENT_SHAPES = Object.freeze({
   "combat:miss":   { required: ["attackerId", "victimId"], optional: ["missed"] },
   "combat:death":  { required: ["victimId"], optional: ["killerId", "position"] },
 
+  // ── Combat presentation ───────────────────────────────────────────
+  // Telegraph fires immediately before applyAttack resolves so clients
+  // can render anticipation pose / weapon glow / stance shift before
+  // the damage lands. anticipationMs mirrors the biomechanics ladder.
+  "combat:telegraph": { required: ["attackerId", "anticipationMs", "severity"], optional: ["targetId", "style", "tier"] },
+  // Combo evolution surfaces a procedurally-derived combo with an
+  // LLM-selected name; client raises a slow-mo + audio sting + hotbar
+  // icon. `evolved` is the array from flow-engine.evolveFighterCombos.
+  "combat:combo-evolved": { required: ["userId", "evolved"], optional: ["worldId"] },
+
   // ── Social ────────────────────────────────────────────────────────
   "social:ping":   { required: ["from", "type", "position"], optional: ["cityId", "target", "text"] },
 

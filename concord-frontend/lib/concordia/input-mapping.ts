@@ -10,7 +10,7 @@ import { InputMode } from './modes';
 
 // ── Types ────────────────────────────────────────────────────────────
 
-export type ControllerType = 'keyboard' | 'xbox' | 'ps5' | 'switch' | 'generic';
+export type ControllerType = 'keyboard' | 'xbox' | 'ps5' | 'switch' | 'steamdeck' | 'generic';
 
 export type ActionId =
   | 'move_forward' | 'move_back' | 'move_left' | 'move_right'
@@ -161,12 +161,21 @@ const XBOX_DEFAULTS: CACSProfile = {
 
 // ── Profile registry ─────────────────────────────────────────────────
 
+// Steam Deck profile — same physical layout as Xbox (the Deck reports
+// itself as a generic Xinput-style gamepad through navigator.getGamepads).
+// Bindings are identical to XBOX_DEFAULTS, with two adjustments noted in
+// CLAUDE.md: trackpad-as-mouse for camera_look in conversation mode (the
+// Deck's right trackpad maps cleanly), and gyro reserved for fine-aim
+// in firearm modes (planned, not yet wired).
+const STEAMDECK_DEFAULTS: CACSProfile = XBOX_DEFAULTS;
+
 const BUILT_IN_PROFILES: Record<ControllerType, CACSProfile> = {
-  keyboard: KEYBOARD_DEFAULTS,
-  xbox:     XBOX_DEFAULTS,
-  ps5:      XBOX_DEFAULTS,     // same button positions, re-label display only
-  switch:   XBOX_DEFAULTS,
-  generic:  KEYBOARD_DEFAULTS,
+  keyboard:  KEYBOARD_DEFAULTS,
+  xbox:      XBOX_DEFAULTS,
+  ps5:       XBOX_DEFAULTS,     // same button positions, re-label display only
+  switch:    XBOX_DEFAULTS,
+  steamdeck: STEAMDECK_DEFAULTS,
+  generic:   KEYBOARD_DEFAULTS,
 };
 
 const STORAGE_KEY = 'concordia:cacs:custom';
@@ -225,12 +234,21 @@ export class CACSystem {
 
   private _detectController() {
     if (typeof navigator === 'undefined') return;
+    // Steam Deck identifies its OS in the user agent (SteamOS / SteamDeck).
+    // Detect first so the gamepad fallback below doesn't mis-classify the
+    // Deck's Xinput controller as a generic Xbox pad.
+    const ua = (navigator.userAgent || '').toLowerCase();
+    if (ua.includes('steamdeck') || ua.includes('steam deck') || ua.includes('valve')) {
+      this._controller = 'steamdeck';
+      return;
+    }
     const pads = navigator.getGamepads?.();
     if (!pads) return;
     for (const pad of pads) {
       if (!pad) continue;
       const id = pad.id.toLowerCase();
-      if (id.includes('xbox') || id.includes('045e')) this._controller = 'xbox';
+      if (id.includes('steam') || id.includes('valve') || id.includes('28de')) this._controller = 'steamdeck';
+      else if (id.includes('xbox') || id.includes('045e')) this._controller = 'xbox';
       else if (id.includes('dualshock') || id.includes('054c')) this._controller = 'ps5';
       else if (id.includes('switch') || id.includes('057e')) this._controller = 'switch';
       else this._controller = 'generic';

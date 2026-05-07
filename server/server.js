@@ -6805,6 +6805,28 @@ async function tryInitWebSockets(server) {
           }).catch(() => { /* flow record best-effort */ });
         } catch { /* dynamic import guard */ }
 
+        // Body-language telegraph: emit the windup AFTER applyAttack
+        // returns ok (so cheat attempts that fail reach/damage
+        // validation don't broadcast intent). Mirrors
+        // combat-biomechanics.anticipationMs ladder. Heavy attacks
+        // bias longer — "wind-up = power."
+        try {
+          const _heavy = !!data.heavy;
+          const _tier  = Math.max(1, Math.min(5, Number(data.tier) || 2));
+          const _antLadder = [220, 180, 140, 110, 80];
+          const _anticipationMs = _heavy
+            ? Math.round(_antLadder[_tier - 1] * 1.45)
+            : _antLadder[_tier - 1];
+          realtimeEmit("combat:telegraph", {
+            attackerId: userId,
+            targetId:   data.targetId,
+            severity:   _heavy ? "heavy" : "light",
+            anticipationMs: _anticipationMs,
+            style:      data.style || null,
+            tier:       _tier,
+          });
+        } catch { /* telegraph is best-effort presentation */ }
+
         // Broadcast the hit event so everyone in the attacker's
         // chunk sees it — damage numbers, blood, etc.
         realtimeEmit("combat:hit", {
@@ -6863,6 +6885,49 @@ async function tryInitWebSockets(server) {
                   WHERE id = ?
                 `).run(m.id);
                 realtimeEmit("training:end", { matchId: m.id, reason: "cap" });
+                // Mint chronicle DTU for the encounter so the bout
+                // becomes retellable lore. Best-effort: any failure
+                // is logged but never blocks the training-match end.
+                // If the match is part of a tournament bracket, also
+                // advance the bracket and chain into completeTournament
+                // when this is the championship bout.
+                try {
+                  import("./lib/combat/match-chronicle.js").then(({ mintMatchChronicle }) => {
+                    const winnerId = userId;
+                    const loserId  = userId === m.initiator_id ? m.opponent_id : m.initiator_id;
+                    const chronicle = mintMatchChronicle(db, {
+                      matchId: m.id,
+                      winnerId, loserId,
+                      endedReason: "kill",
+                      worldId: cityPresence?.getPlayerWorld?.(userId) || "concordia-hub",
+                    });
+                    // Tournament bracket advance — only fires if the
+                    // match's tournament_bracket_id is set.
+                    try {
+                      const tmRow = db.prepare(`SELECT tournament_bracket_id FROM training_matches WHERE id = ?`).get(m.id);
+                      const bracketId = tmRow?.tournament_bracket_id;
+                      if (bracketId) {
+                        import("./lib/tournament.js").then(({ completeBracket, completeTournament }) => {
+                          const advance = completeBracket(db, bracketId, winnerId, chronicle?.chronicleId || null);
+                          if (advance?.championId) {
+                            // Tournament champion declared — payout +
+                            // mint top-level chronicle citing this bout's.
+                            const br = db.prepare(`SELECT tournament_id FROM tournament_brackets WHERE id = ?`).get(bracketId);
+                            if (br?.tournament_id) {
+                              completeTournament(db, br.tournament_id, advance.championId, chronicle?.chronicleId || null);
+                              realtimeEmit("tournament:complete", {
+                                tournamentId: br.tournament_id,
+                                championId: advance.championId,
+                              });
+                            }
+                          } else if (advance?.ok) {
+                            realtimeEmit("tournament:bracket-advanced", { bracketId, winnerId });
+                          }
+                        }).catch(() => { /* tournament advance is best-effort */ });
+                      }
+                    } catch { /* bracket lookup guard */ }
+                  }).catch(() => { /* chronicle is best-effort */ });
+                } catch { /* dynamic import guard */ }
               }
               // Skip death stakes inside a training match
               throw new Error("__TRAINING_MATCH_SKIP_LOOT__");
@@ -27145,6 +27210,14 @@ app.use("/api/combat-flow", createCombatFlowRouter({ db, requireAuth }));
 import createTrainingMatchRouter from "./routes/training-match.js";
 app.use("/api/training-match", createTrainingMatchRouter({ db, requireAuth, emitToUser }));
 
+// Tournament toolkit — player-organized brackets with rule-set
+// enforcement (control-scheme lock, hp cap, prize-pool escrow).
+// Bouts run via training-match; the match-end handler calls
+// completeBracket() so the bracket advances when its tournament_bracket_id
+// is set.
+import createTournamentRouter from "./routes/tournaments.js";
+app.use("/api/tournaments", createTournamentRouter({ db, requireAuth }));
+
 // Flow Combat — shared faction-war events (NPCs co-evolving against each
 // other in the background; players join either side and contribute flows)
 import createFactionWarRouter from "./routes/faction-war.js";
@@ -27735,17 +27808,33 @@ app.get("/api/world/effects/me", requireAuth, (req, res) => {
 // v2.0 Workstream 6b: federation export — peers in the trust graph pull
 // public social shadows from this instance via this endpoint.
 //
-// When CONCORD_FEDERATION_TOKEN is set, requests must carry the matching
-// Bearer token. When unset (research / development), the endpoint stays
-// open. The data is intentionally public-author-consented; auth is for
-// rate-limiting / abuse control, not secrecy.
+// In production, the Bearer token is REQUIRED — an unset
+// CONCORD_FEDERATION_TOKEN in production is treated as a misconfig
+// and the endpoint refuses (lets ops notice the missing secret rather
+// than silently leaking the data). In dev / test the endpoint stays
+// open if the token is unset, which keeps the dev loop friction-free.
 app.get("/api/world/social-shadows", (req, res) => {
   try {
     const expected = process.env.CONCORD_FEDERATION_TOKEN;
+    const isProd = process.env.NODE_ENV === "production";
+    if (isProd && !expected) {
+      return res.status(503).json({
+        ok: false,
+        error: "federation_disabled",
+        reason: "CONCORD_FEDERATION_TOKEN unset in production — set the secret to enable federation peering.",
+      });
+    }
     if (expected) {
       const auth = req.headers?.authorization ?? "";
       const m = /^Bearer\s+(.+)$/i.exec(auth);
-      if (!m || m[1] !== expected) {
+      // Timing-safe equality so an attacker can't probe the token a
+      // byte at a time via response-latency differences. crypto's
+      // timingSafeEqual requires equal-length buffers — short-circuit
+      // on length mismatch first, then compare.
+      const presented = m ? m[1] : "";
+      const ok = presented.length === expected.length &&
+        crypto.timingSafeEqual(Buffer.from(presented), Buffer.from(expected));
+      if (!ok) {
         return res.status(401).json({ ok: false, error: "federation_auth_required" });
       }
     }

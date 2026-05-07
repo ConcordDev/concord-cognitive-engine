@@ -19,6 +19,7 @@ import { getTimeline } from "../emergent/history-engine.js";
 import { getAuthoredNPC, getAuthoredFaction, getQuestsForNPC, getAuthoredDialogue } from "./content-seeder.js";
 import { getFactionPolicyState } from "./council-world-bridge.js";
 import { getKnowledgeForRole } from "./npc-knowledge-bridge.js";
+import { recentFacts as _recentWorldFacts } from "./world-facts.js";
 
 const DIALOGUE_TTL_MS   = 5 * 60 * 1000;   // 5 minutes
 const QUEST_TTL_MS      = 10 * 60 * 1000;  // 10 minutes
@@ -157,6 +158,11 @@ export function buildNPCTraits(npcId, db = null) {
     // "what do you think of X?" in-character without the LLM inventing
     // a stance. Capped at 8 entries to keep prompts tight.
     relationshipWeb: buildRelationshipWeb(npc),
+    // Cross-NPC shared facts: recent world_facts (migration 102) so
+    // every NPC's dialogue is rooted in the same truth about what
+    // happened recently. Pre-this, NPC A and NPC B could independently
+    // generate contradictory claims about the same event.
+    worldFacts: buildWorldFacts(npc, db),
     // Deliberately exclude secrets from LLM context — those are for human authors only
   };
 
@@ -203,6 +209,29 @@ function buildRelationshipWeb(npc) {
     });
   }
   return out;
+}
+
+/**
+ * Pull recent world_facts (migration 102) for this NPC's world / faction
+ * so the oracle prompt grounds dialogue in shared truth. Best-effort: a
+ * missing world_facts table or query failure returns an empty array.
+ */
+function buildWorldFacts(npc, db) {
+  if (!db || !npc) return [];
+  try {
+    const worldId = npc.home_world ?? "concordia-hub";
+    const rows = _recentWorldFacts(db, worldId, {
+      limit: 5,
+      factionId: npc.faction_id ?? null,
+    });
+    return rows.map((r) => ({
+      kind: r.fact_kind,
+      text: String(r.fact_text || "").slice(0, 200),
+      district: r.district_id ?? null,
+    }));
+  } catch {
+    return [];
+  }
 }
 
 /**

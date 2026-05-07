@@ -150,6 +150,15 @@ export default function createTrainingMatchRouter({ db, requireAuth, emitToUser 
 
   // POST /:id/round-end — fires from server-internal combat handler when
   // a kill lands while both fighters are in the same match.
+  //
+  // SECURITY: pre-this-fix the body's `winnerId` was trusted as long as
+  // it named a participant — meaning either fighter could POST
+  // `winnerId: <self>` and falsely claim every round, eventually
+  // triggering auto-end + chronicle mint + (once tournaments wire) the
+  // prize payout. Hardened here to require winnerId === caller. The
+  // socket-side combat:kill handler in server.js writes round records
+  // directly without going through this route, so client callers don't
+  // need a permissive winnerId path.
   router.post("/:id/round-end", auth, (req, res) => {
     try {
       const userId = uidFrom(req);
@@ -159,6 +168,12 @@ export default function createTrainingMatchRouter({ db, requireAuth, emitToUser 
       const { winnerId, durationMs, initiatorChain = "", opponentChain = "" } = req.body || {};
       if (winnerId && !isParticipant(match, winnerId)) {
         return res.status(400).json({ ok: false, error: "winner_not_participant" });
+      }
+      // Lock down: caller may only declare themselves the winner. Cross-
+      // declaration ("the opponent won") is rejected because that's
+      // indistinguishable from impersonation.
+      if (winnerId && winnerId !== userId) {
+        return res.status(403).json({ ok: false, error: "winner_must_be_caller" });
       }
 
       const roundNumber = match.rounds_played + 1;
@@ -188,6 +203,23 @@ export default function createTrainingMatchRouter({ db, requireAuth, emitToUser 
           SET status = 'ended', ended_reason = 'cap', ended_at = unixepoch()
           WHERE id = ?
         `).run(match.id);
+        // Mint the chronicle DTU so this fight becomes retellable lore.
+        // Best-effort: a missing chronicle never blocks the end-of-match
+        // socket emit. The cap-reason chronicle has no clear winner — we
+        // pass the leading initiator/opponent by score, falling back to
+        // initiator on tie. Real PvP win semantics are richer; cap just
+        // means "ran out of time."
+        try {
+          import("../lib/combat/match-chronicle.js").then(({ mintMatchChronicle }) => {
+            mintMatchChronicle(db, {
+              matchId: match.id,
+              winnerId: match.initiator_id,
+              loserId:  match.opponent_id,
+              endedReason: "cap",
+              worldId:  match.world_id || "concordia-hub",
+            });
+          }).catch(() => { /* chronicle is best-effort */ });
+        } catch { /* dynamic import guard */ }
         emit(match.initiator_id, "training:end", { matchId: match.id, reason: "cap", final: updated });
         emit(match.opponent_id,  "training:end", { matchId: match.id, reason: "cap", final: updated });
       }
@@ -214,6 +246,18 @@ export default function createTrainingMatchRouter({ db, requireAuth, emitToUser 
       `).run(match.id);
 
       const reason = userId === match.initiator_id ? "initiator_forfeit" : "opponent_forfeit";
+      // Mint chronicle on forfeit. Winner = the non-forfeiting party.
+      try {
+        const winnerId = userId === match.initiator_id ? match.opponent_id : match.initiator_id;
+        const loserId  = userId;
+        import("../lib/combat/match-chronicle.js").then(({ mintMatchChronicle }) => {
+          mintMatchChronicle(db, {
+            matchId: match.id, winnerId, loserId,
+            endedReason: "forfeit",
+            worldId: match.world_id || "concordia-hub",
+          });
+        }).catch(() => { /* chronicle is best-effort */ });
+      } catch { /* dynamic import guard */ }
       emit(match.initiator_id, "training:end", { matchId: match.id, reason });
       emit(match.opponent_id,  "training:end", { matchId: match.id, reason });
       res.json({ ok: true });

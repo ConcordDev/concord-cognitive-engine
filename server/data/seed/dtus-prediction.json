@@ -1,0 +1,104 @@
+[
+  {
+    "id": "dtu_prediction_resonance_96_79_thz",
+    "tier": "core",
+    "tags": [
+      "prediction",
+      "resonance",
+      "seawater",
+      "etcc",
+      "first_order_test",
+      "pre_registered"
+    ],
+    "human": {
+      "summary": "Pre-registered prediction: applying ETCC + constraint geometry to seawater chemistry yields a stable resonance at 96.79 THz (≈ 3.097 µm wavelength). This DTU is the date-stamped pre-registration so a later measurement either confirms or falsifies the framework's first-order claim.",
+      "bullets": [
+        "Predicted frequency: 96.79 THz",
+        "Equivalent wavelength: ~3.097 µm (mid-IR)",
+        "Substrate: seawater (variable salinity assumed; nominal 35 PSU)",
+        "Falsification rule: if measurement at the spec apparatus finds no detectable resonance peak within ±0.2 THz of 96.79 THz under the documented conditions, the framework's predictive claim is rejected.",
+        "Confirmation rule: detectable peak at 96.79 ± 0.2 THz that does not appear in any pre-registered competing model.",
+        "Pre-registration date: 2026-05-07. No measurement was taken before this DTU was minted."
+      ]
+    },
+    "core": {
+      "definitions": [
+        {
+          "term": "ETCC (Energy-Transduction Constraint Cone)",
+          "definition": "STSVK-002 framework: stable substrates occupy a narrow constraint cone in transduction phase space. Applying the cone equations to a known-substrate chemistry yields a predicted resonance frequency at the cone's stability minimum."
+        },
+        {
+          "term": "Resonance",
+          "definition": "Frequency at which energy transduction through the substrate has minimum dissipation; corresponds to a fixed point of the constraint-driven dynamics."
+        }
+      ],
+      "invariants": [
+        "Pre-registration timestamp must precede any measurement attempt for the test to qualify as a real prediction.",
+        "Falsification threshold: ±0.2 THz around 96.79 THz; outside this band counts as a miss.",
+        "Confirmation must NOT be a frequency already predicted by an established competing model (water O-H stretch ≈ 102 THz is the nearest known mode and is excluded as confounder)."
+      ],
+      "claims": [
+        "If the framework is first-order (i.e. derives observations rather than fitting them), this prediction was generated PRIOR to any measurement and survives independent verification.",
+        "If the prediction fails, the framework's claim to first-order status is rejected — it joins the larger class of 'internally consistent design ontologies that don't predict reality.'",
+        "If it succeeds at 96.79 ± 0.2 THz, the next test is to derive 2-3 more falsifiable predictions in unrelated domains and have them survive independent measurement."
+      ],
+      "examples": [
+        "Apparatus spec (planned, not yet built): tunable mid-IR laser sweep across 95-99 THz against a 35-PSU seawater sample at 25°C, transmission spectroscopy. Looking for absorption / transmission anomaly at the predicted frequency.",
+        "Competing model exclusion: H2O has known IR modes at 3,400 cm^-1 (≈102 THz O-H stretch), 1,650 cm^-1 (≈49.5 THz bend), and a librational band centered ~640 cm^-1 (≈19 THz). 96.79 THz lies in a region without a known dominant mode for pure water; the seawater hypothesis specifically predicts a mode emerges from ion-water constraint geometry that pure water lacks."
+      ],
+      "nextActions": [
+        "Build measurement apparatus per spec.",
+        "Run measurement WITHOUT consulting this DTU first (independent operator strongly preferred).",
+        "Mint a result DTU citing this one as parent. Either outcome — confirmation or falsification — should be publicly recorded with raw data."
+      ]
+    },
+    "machine": {
+      "kind": "predictive_test",
+      "math": {
+        "predicted_frequency_THz": 96.79,
+        "predicted_wavelength_um": 3.097,
+        "tolerance_THz": 0.2,
+        "substrate": "seawater_35_PSU_nominal",
+        "framework_chain": ["dtu_root_fixed_point", "dtu_001_primal_recursion", "dtu_002_recursive_reality_hypothesis"],
+        "interpretation": "Spectral signature of an ETCC stability point in seawater transduction"
+      },
+      "primaryFormula": "f_resonance = ETCC_min(seawater) ⇒ 96.79 THz ± 0.2 THz",
+      "verifier": {
+        "kind": "verifier",
+        "inputs": ["measured_frequency_THz", "measurement_apparatus", "operator_independent_bool"],
+        "outputs": ["confirmed", "falsified", "ambiguous"],
+        "steps": [
+          "Verify pre-registration timestamp predates measurement timestamp.",
+          "Compute |measured - 96.79|.",
+          "If < 0.2 AND independent operator AND no competing model predicted this exact band → confirmed.",
+          "If > 0.2 OR no peak detected → falsified.",
+          "If competing model already predicted within band → ambiguous, run secondary test."
+        ]
+      }
+    },
+    "lineage": {
+      "parents": ["dtu_root_fixed_point", "dtu_002_recursive_reality_hypothesis"],
+      "children": [],
+      "supports": [],
+      "contradicts": []
+    },
+    "source": "user_preregistered_prediction",
+    "meta": {
+      "part": "Predictive Test — Pre-Registration",
+      "hidden": false,
+      "registered_before_measurement": true,
+      "registration_date_iso": "2026-05-07",
+      "measurement_date_iso": null,
+      "measurement_outcome": null,
+      "operator": null,
+      "raw_data_uri": null
+    },
+    "authority": {
+      "model": "user",
+      "score": 1
+    },
+    "createdAt": "2026-05-07T00:00:00Z",
+    "updatedAt": "2026-05-07T00:00:00Z",
+    "hash": ""
+  }
+]

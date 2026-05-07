@@ -25,6 +25,7 @@ const TRACKED_EVENTS: { name: SocketEvent; channel: EmergentChannel; label: stri
   { name: 'lattice:meta:convergence',    channel: 'agent',   label: 'Meta-convergence' },
   { name: 'attention:allocation',        channel: 'agent',   label: 'Attention shifted' },
   { name: 'evo:asset-promoted',          channel: 'evo',     label: 'Evo-asset promoted' },
+  { name: 'combat:combo-evolved',        channel: 'evo',     label: 'Combo evolved' },
   { name: 'world:refusal-field',         channel: 'world',   label: 'Refusal field' },
   { name: 'world:crisis',                channel: 'crisis',  label: 'World crisis' },
   { name: 'world:crisis-resolved',       channel: 'crisis',  label: 'Crisis resolved' },

@@ -74,6 +74,20 @@ const EmergentEventFeed = dynamic(
     })),
   { ssr: false }
 );
+const LockOnController = dynamic(
+  () =>
+    import('@/components/world-lens/LockOnController').then((m) => ({
+      default: m.LockOnController,
+    })),
+  { ssr: false }
+);
+const BodyLanguageOverlay = dynamic(
+  () =>
+    import('@/components/world-lens/BodyLanguageOverlay').then((m) => ({
+      default: m.BodyLanguageOverlay,
+    })),
+  { ssr: false }
+);
 const EmoteWheelLegacy = dynamic(
   () => import('@/components/world/EmoteWheel').then((m) => ({ default: m.EmoteWheel })),
   { ssr: false }
@@ -235,6 +249,14 @@ const CurrencyHUD = dynamic(
 const PostTutorialHints = dynamic(
   () => import('@/components/world-lens/PostTutorialHints'),
   { ssr: false },
+);
+const ComboEvolvedBridge = dynamic(
+  () => import('@/components/world-lens/ComboEvolvedBridge').then((m) => ({ default: m.ComboEvolvedBridge })),
+  { ssr: false }
+);
+const CinematicCaptureBootstrap = dynamic(
+  () => import('@/components/world-lens/CinematicCaptureBootstrap').then((m) => ({ default: m.CinematicCaptureBootstrap })),
+  { ssr: false }
 );
 const LevelUpJuiceBridge = dynamic(
   () => import('@/components/world-lens/LevelUpJuiceBridge').then((m) => ({ default: m.LevelUpJuiceBridge })),
@@ -3368,6 +3390,8 @@ export default function WorldLensPage() {
             <></>
           </GameJuice>
           <LevelUpJuiceBridge />
+          <ComboEvolvedBridge />
+          <CinematicCaptureBootstrap />
           <PerformanceOverlay />
           <BazaarLayer worldId="concordia" />
           <CurrencyHUD onClick={() => setShowPanel('profile')} />
@@ -3766,6 +3790,24 @@ export default function WorldLensPage() {
               previously fired silently (NPC death, evo-promotion, refusal
               fields, weather rolls, agent insights, etc.) */}
           <EmergentEventFeed />
+
+          {/* Body-language overlay — surfaces combat:telegraph (server
+              fires immediately before applyAttack resolves) so the player
+              can read attacker intent during the anticipation window. */}
+          <BodyLanguageOverlay />
+
+          {/* Lock-on controller — Tab cycles soft lock on nearest enemy
+              in the facing cone, KeyT toggles hard lock, Escape clears.
+              Combat input controller defaults to lockedTargetId when set. */}
+          <LockOnController
+            playerPosition={{ x: playerAvatar.position.x, y: playerAvatar.position.y, z: playerAvatar.position.z }}
+            cameraYaw={playerAvatar.rotation}
+            lockables={rawWorldNPCs.map((n) => ({
+              id: n.id,
+              name: n.name,
+              position: { x: n.position.x, y: n.position.y, z: n.position.z },
+            }))}
+          />
 
           {/* District activity feed — live quests/events/NPC discovery */}
           <DistrictActivityFeed

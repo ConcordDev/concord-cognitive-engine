@@ -312,7 +312,15 @@ export type SocketEvent =
   | 'world:traveled'
   // World crisis (world-crisis.js emits these from server-side governor tick)
   | 'world:crisis'
-  | 'world:crisis-resolved';
+  | 'world:crisis-resolved'
+  // Combat telegraph — fires immediately before applyAttack resolves so
+  // clients can render anticipation pose / weapon glow / stance shift.
+  | 'combat:telegraph'
+  // Combat hit + kill — server broadcasts on damage applied.
+  | 'combat:hit'
+  | 'combat:kill'
+  // Combat combo evolution — server emits when flow-engine derives a new branch.
+  | 'combat:combo-evolved';
 
 // ---- Enriched Event Payload (Category 2+5: Concurrency + Observability) ----
 interface EnrichedPayload {
