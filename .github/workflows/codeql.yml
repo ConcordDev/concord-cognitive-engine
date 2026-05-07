@@ -16,6 +16,13 @@ jobs:
       security-events: write
       contents: read
 
+    # CodeQL autobuild + analyze on a 1.3M-line codebase OOMs on the
+    # default 3.8GB Node heap. Match the ci.yml + lighthouse.yml +
+    # Dockerfile heap bump so CodeQL's TypeScript compilation pass
+    # doesn't core-dump.
+    env:
+      NODE_OPTIONS: --max-old-space-size=6144
+
     strategy:
       fail-fast: false
       matrix:
