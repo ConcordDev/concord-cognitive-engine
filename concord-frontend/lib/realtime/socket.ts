@@ -309,7 +309,38 @@ export type SocketEvent =
   // The Concord Link cross-world messaging
   | 'concord-link:message'
   // World travel
-  | 'world:traveled';
+  | 'world:traveled'
+  // World crisis (world-crisis.js emits these from server-side governor tick)
+  | 'world:crisis'
+  | 'world:crisis-resolved'
+  // Combat telegraph — fires immediately before applyAttack resolves so
+  // clients can render anticipation pose / weapon glow / stance shift.
+  | 'combat:telegraph'
+  // Combat hit + kill — server broadcasts on damage applied.
+  | 'combat:hit'
+  | 'combat:kill'
+  // Combat combo evolution — server emits when flow-engine derives a new branch.
+  | 'combat:combo-evolved'
+  // Companions (pet/tame system) — Phase A of pre-playtest sprint.
+  | 'companion:tame-success'
+  | 'companion:deployed'
+  | 'companion:level-up'
+  // Stealth perception (Phase B) — fires when high-perception observer
+  // breaks a hidden actor's cover.
+  | 'stealth:detected'
+  // Kingdoms (Phase C)
+  | 'kingdom:founded'
+  | 'kingdom:decree-enacted'
+  | 'kingdom:contested'
+  | 'kingdom:fallen'
+  // Fishing (Phase D)
+  | 'fishing:cast'
+  | 'fishing:bite'
+  | 'fishing:caught'
+  // Minigames (Phase E)
+  | 'minigame:started'
+  | 'minigame:scored'
+  | 'minigame:complete';
 
 // ---- Enriched Event Payload (Category 2+5: Concurrency + Observability) ----
 interface EnrichedPayload {

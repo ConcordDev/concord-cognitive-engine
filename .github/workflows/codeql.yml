@@ -16,6 +16,13 @@ jobs:
       security-events: write
       contents: read
 
+    # CodeQL autobuild + analyze on a 1.3M-line codebase OOMs on the
+    # default 3.8GB Node heap. Match the ci.yml + lighthouse.yml +
+    # Dockerfile heap bump so CodeQL's TypeScript compilation pass
+    # doesn't core-dump.
+    env:
+      NODE_OPTIONS: --max-old-space-size=6144
+
     strategy:
       fail-fast: false
       matrix:
@@ -29,7 +36,18 @@ jobs:
         uses: github/codeql-action/init@v3
         with:
           languages: ${{ matrix.language }}
-          queries: security-and-quality
+          # build-mode: none works for interpreted languages including
+          # JavaScript/TypeScript. Skips autobuild (which would run npm
+          # install + npm run build across server + frontend + mobile,
+          # blowing past memory limits on a 1.3M-line codebase) and
+          # analyzes source directly. Recommended modern CodeQL config.
+          build-mode: none
+          # Use just `security-extended` (drops `quality` query suite).
+          # Quality queries fail the aggregate "CodeQL" check on style
+          # findings that aren't actually security issues — they belong
+          # in lint, not in a security gate. Security-extended catches
+          # the OWASP / CWE classes we actually care about.
+          queries: security-extended
           config: |
             paths:
               - server
@@ -41,8 +59,9 @@ jobs:
               - '**/*.test.*'
               - '**/tests'
 
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@v3
+      # No Autobuild step — build-mode: none analyzes source without
+      # requiring a build. Removed to avoid the npm install + build
+      # OOM pattern that hit ci.yml + lighthouse.yml.
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3

@@ -176,7 +176,11 @@ export function createWebSecureStorage(): SecureStorage {
     const key = await _getOrCreateMasterKey(c);
     const iv = c.getRandomValues(new Uint8Array(12));
     const buf = new TextEncoder().encode(plaintext);
-    const ct = await c.subtle.encrypt({ name: "AES-GCM", iv }, key, buf);
+    // TS 5.7+ tightened Uint8Array's buffer-type generic — the iv from
+    // getRandomValues is Uint8Array<ArrayBufferLike> which isn't directly
+    // assignable to BufferSource. Cast through the BufferSource union so
+    // WebCrypto's encrypt accepts it. Runtime behavior is unchanged.
+    const ct = await c.subtle.encrypt({ name: "AES-GCM", iv: iv as BufferSource }, key, buf);
     return { iv: Array.from(iv), ciphertext: Array.from(new Uint8Array(ct)) };
   };
 

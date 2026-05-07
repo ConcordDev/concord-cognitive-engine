@@ -129,6 +129,47 @@ registerHeartbeat("corpse-cleanup", {
     } catch { return { ok: false, reason: "table_missing" }; }
   },
 });
+
+// Presence stale-entry sweep. Socket disconnect handlers
+// (server.js:7112, 7120) prune `_userPositions` on the happy path, but
+// crash-recovery / never-cleanly-disconnected sockets leave entries
+// behind that grow the map indefinitely. Every 20 ticks (~5min) we
+// remove any entry whose lastUpdate is older than CONCORD_PRESENCE_STALE_MS
+// (default 10 min). Implemented in lib/city-presence.js#sweepStalePresence.
+registerHeartbeat("presence-stale-sweep", {
+  frequency: 20,
+  handler: async () => {
+    try {
+      const cp = await import("./lib/city-presence.js").catch((err) => {
+        structuredLog("warn", "presence_sweep_module_unavailable", { error: err?.message });
+        return null;
+      });
+      if (!cp?.sweepStalePresence) return { ok: false, reason: "no_sweep_export" };
+      return cp.sweepStalePresence();
+    } catch (err) {
+      structuredLog("warn", "presence_sweep_failed", { error: err?.message });
+      return { ok: false, reason: "exception" };
+    }
+  },
+});
+
+// Scheduled-post processor — promotes posts whose scheduledAt has passed
+// from the queue to the live feed. Pre-this-tick schedulePost() worked
+// but processScheduledPosts() was never invoked, so scheduled posts
+// stayed pending forever. Every 4 ticks (~1 minute).
+registerHeartbeat("scheduled-posts", {
+  frequency: 4,
+  handler: async ({ state }) => {
+    try {
+      const sl = await import("./emergent/social-layer.js").catch(() => null);
+      if (!sl?.processScheduledPosts) return { ok: false, reason: "no_export" };
+      return sl.processScheduledPosts(state);
+    } catch (err) {
+      structuredLog("warn", "scheduled_posts_failed", { error: err?.message });
+      return { ok: false, reason: "exception" };
+    }
+  },
+});
 import { ConcordError } from "./lib/errors.js";
 import { asyncHandler } from "./lib/async-handler.js";
 import { init as initGRC, formatAndValidate as grcFormatAndValidate, getGRCSystemPrompt } from "./grc/index.js";
@@ -5107,12 +5148,28 @@ function authMiddleware(req, res, next) {
 }
 
 // Require authentication helper (returns middleware)
-function requireAuth() {
-  return (req, res, next) => {
+// Polymorphic auth gate — works both as factory (`requireAuth()`) and as
+// direct middleware (`requireAuth`). Older routers call it as a factory
+// (~19 files); newer / port-from-elsewhere routers pass it directly
+// as middleware (~46 files). When passed directly, Express invokes
+// requireAuth(req, res, next) and the prior factory-only signature
+// silently returned a discarded inner middleware — every direct-pattern
+// route hung for 30s before the request-timeout middleware bailed.
+//
+// Detect by argument shape: real middleware invocation has (req, res, next)
+// with next as a function. Anything else is treated as factory-mode.
+function requireAuth(...args) {
+  const handle = (req, res, next) => {
     if (AUTH_MODE === "public") return next();
     if (!req.user) return res.status(401).json({ ok: false, error: "Unauthorized" });
     return next();
   };
+  // Direct-middleware pattern: Express calls (req, res, next).
+  if (args.length >= 3 && typeof args[2] === "function" && args[0] && typeof args[0] === "object" && "headers" in args[0]) {
+    return handle(args[0], args[1], args[2]);
+  }
+  // Factory pattern: return a middleware closure.
+  return handle;
 }
 
 // Permission check helper — simplified 4-role model:
@@ -5604,6 +5661,18 @@ async function initMetrics() {
       registers: [METRICS.registry]
     });
 
+    // Heartbeat overrun observability — incremented when governorTick fires
+    // but a previous tick is still running (`_governorTickRunning` guard).
+    // Sustained overrun means a tick block (DTU consolidation, fauna spawn,
+    // etc.) is taking longer than the 15s heartbeat interval and starving
+    // every subsequent tick. Alert: `ConcordHeartbeatOverrun` in
+    // monitoring/prometheus/alerts.yml.
+    METRICS.counters.heartbeatSkipped = new prom.Counter({
+      name: "concord_heartbeat_skipped_total",
+      help: "Heartbeat ticks skipped because a prior tick was still running",
+      registers: [METRICS.registry]
+    });
+
     structuredLog("info", "metrics_initialized", { provider: "prometheus" });
   } catch (e) {
     structuredLog("error", "metrics_init_failed", { error: e.message });
@@ -5841,10 +5910,15 @@ if (rateLimit) {
   // also pre-authenticate from the orchestrator side (private network),
   // not the user auth flow we're rate-limiting on.
   const _HEALTH_PROBE_RE = /^\/(health|ready|metrics)(\b|\/)|^\/api\/health(\b|\/)/;
+  // Integration/smoke/e2e CI jobs set CONCORD_RATE_LIMIT_BYPASS=1 to
+  // relax this throttle (parallel unauth requests from the runner IP
+  // would otherwise 429 before the auth middleware can return 401).
+  // Unit tests don't set the var; production never sets the var.
+  const _RATE_LIMIT_BYPASS_ENV = process.env.CONCORD_RATE_LIMIT_BYPASS === "1";
   unauthRateLimiter = rateLimit({
     windowMs: 60000,
     max: 30,
-    skip: (req) => !!req.user?.id || _HEALTH_PROBE_RE.test(req.path),
+    skip: (req) => _RATE_LIMIT_BYPASS_ENV || !!req.user?.id || _HEALTH_PROBE_RE.test(req.path),
     keyGenerator: (req) => req.ip,
     message: { ok: false, error: "Rate limit exceeded. Authenticate for higher limits.", code: "ANON_RATE_LIMIT" },
     standardHeaders: true,
@@ -6165,6 +6239,16 @@ const _LLM_BUDGET = {
 // ---- Correlation ID Propagation (Category 5: Observability) ----
 let _eventSeqCounter = 0;
 
+// Lazy-initialized event-shape validator (lib/event-shapes.js). Loaded
+// once at first realtimeEmit call; failed import leaves it null and
+// silently disables shape checking. Production skips even the import.
+let _eventShapesValidator = null;
+if (process.env.NODE_ENV !== "production") {
+  import("./lib/event-shapes.js")
+    .then(m => { _eventShapesValidator = m.validateEvent; })
+    .catch(() => { /* validator is optional; never block startup */ });
+}
+
 // ---- realtime (Socket.IO for frontend compatibility) ----
 // Thin transport only: mirrors state changes (no new logic).
 const REALTIME = {
@@ -6202,6 +6286,23 @@ function realtimeEmit(event, payload, { sessionId = "", orgId = "", requestId = 
     _rid: requestId || undefined,        // Correlation ID from originating HTTP request
     _evt: event,                         // Event name for client-side reordering
   };
+
+  // Dev/test-mode shape validation against the EVENT_SHAPES registry
+  // (lib/event-shapes.js). Production skips this for zero runtime cost.
+  // The registry only covers the top-20 highest-traffic events; unknown
+  // event names pass through silently (registry is intentionally partial).
+  if (process.env.NODE_ENV !== "production" && _eventShapesValidator) {
+    try {
+      const v = _eventShapesValidator(event, payload || {});
+      if (v.ok === false && !v.unregistered) {
+        if (typeof structuredLog === "function") {
+          structuredLog("warn", "ws_event_shape_violation", {
+            event, missing: v.missing, unknown: v.unknown,
+          });
+        }
+      }
+    } catch { /* validator must never block emits */ }
+  }
 
   // Try Socket.IO first (primary transport)
   if (REALTIME.ready && REALTIME.io) {
@@ -6620,6 +6721,30 @@ async function tryInitWebSockets(server) {
         }
       } catch { /* raid module unavailable — continue with normal damage */ }
 
+      // Stealth perception gate (Phase B): backstab style attacks
+      // require the attacker's stealth to clear the victim's perception.
+      // If the victim has high perception they sense the attack and the
+      // backstab degrades to a regular attack with awareness penalty —
+      // we emit `stealth:detected` so the would-be sneak knows they
+      // were spotted (instead of silently failing).
+      if (data?.style === 'backstab' || data?.style === 'takedown_silent') {
+        try {
+          const { assertCanBackstab } = await import("./lib/stealth-perception.js");
+          const r = assertCanBackstab(db, userId, _ffTargetId);
+          if (!r.ok) {
+            realtimeEmit("stealth:detected", {
+              detectorId: _ffTargetId, hiddenId: userId,
+              confidence: r.victimPerception - r.attackerStealth,
+            });
+            // Force the attack to be treated as light and lose the
+            // backstab multiplier by stripping the style. The combat
+            // resolves below with reduced damage.
+            data.style = 'attack-light';
+            data.heavy = false;
+          }
+        } catch { /* stealth gate unavailable — allow */ }
+      }
+
       // Refusal Field: Sovereign-targeted attacks during the eternal raid
       // phase cannot land — he literally refuses victory by numbers.
       // Same gate applies to any kind of refused-death suspension.
@@ -6743,6 +6868,28 @@ async function tryInitWebSockets(server) {
           }).catch(() => { /* flow record best-effort */ });
         } catch { /* dynamic import guard */ }
 
+        // Body-language telegraph: emit the windup AFTER applyAttack
+        // returns ok (so cheat attempts that fail reach/damage
+        // validation don't broadcast intent). Mirrors
+        // combat-biomechanics.anticipationMs ladder. Heavy attacks
+        // bias longer — "wind-up = power."
+        try {
+          const _heavy = !!data.heavy;
+          const _tier  = Math.max(1, Math.min(5, Number(data.tier) || 2));
+          const _antLadder = [220, 180, 140, 110, 80];
+          const _anticipationMs = _heavy
+            ? Math.round(_antLadder[_tier - 1] * 1.45)
+            : _antLadder[_tier - 1];
+          realtimeEmit("combat:telegraph", {
+            attackerId: userId,
+            targetId:   data.targetId,
+            severity:   _heavy ? "heavy" : "light",
+            anticipationMs: _anticipationMs,
+            style:      data.style || null,
+            tier:       _tier,
+          });
+        } catch { /* telegraph is best-effort presentation */ }
+
         // Broadcast the hit event so everyone in the attacker's
         // chunk sees it — damage numbers, blood, etc.
         realtimeEmit("combat:hit", {
@@ -6754,6 +6901,20 @@ async function tryInitWebSockets(server) {
           targetMaxHealth: result.targetMaxHealth,
           targetKilled: result.targetKilled,
         });
+
+        // Companion assist XP: deployed companions of the attacker get
+        // assist XP (and kill XP if it was a kill). Best-effort import +
+        // emit so a companion module load failure never blocks combat.
+        try {
+          import("./lib/companions.js").then(({ awardAssistXP }) => {
+            const grants = awardAssistXP(db, userId, { kill: !!result.targetKilled, assist: true });
+            for (const g of grants) {
+              if (g.leveledUp) {
+                realtimeEmit("companion:level-up", { companionId: g.companionId, newLevel: g.newLevel });
+              }
+            }
+          }).catch(() => { /* companion XP best-effort */ });
+        } catch { /* dynamic import guard */ }
 
         if (result.targetKilled) {
           realtimeEmit("combat:kill", {
@@ -6801,6 +6962,49 @@ async function tryInitWebSockets(server) {
                   WHERE id = ?
                 `).run(m.id);
                 realtimeEmit("training:end", { matchId: m.id, reason: "cap" });
+                // Mint chronicle DTU for the encounter so the bout
+                // becomes retellable lore. Best-effort: any failure
+                // is logged but never blocks the training-match end.
+                // If the match is part of a tournament bracket, also
+                // advance the bracket and chain into completeTournament
+                // when this is the championship bout.
+                try {
+                  import("./lib/combat/match-chronicle.js").then(({ mintMatchChronicle }) => {
+                    const winnerId = userId;
+                    const loserId  = userId === m.initiator_id ? m.opponent_id : m.initiator_id;
+                    const chronicle = mintMatchChronicle(db, {
+                      matchId: m.id,
+                      winnerId, loserId,
+                      endedReason: "kill",
+                      worldId: cityPresence?.getPlayerWorld?.(userId) || "concordia-hub",
+                    });
+                    // Tournament bracket advance — only fires if the
+                    // match's tournament_bracket_id is set.
+                    try {
+                      const tmRow = db.prepare(`SELECT tournament_bracket_id FROM training_matches WHERE id = ?`).get(m.id);
+                      const bracketId = tmRow?.tournament_bracket_id;
+                      if (bracketId) {
+                        import("./lib/tournament.js").then(({ completeBracket, completeTournament }) => {
+                          const advance = completeBracket(db, bracketId, winnerId, chronicle?.chronicleId || null);
+                          if (advance?.championId) {
+                            // Tournament champion declared — payout +
+                            // mint top-level chronicle citing this bout's.
+                            const br = db.prepare(`SELECT tournament_id FROM tournament_brackets WHERE id = ?`).get(bracketId);
+                            if (br?.tournament_id) {
+                              completeTournament(db, br.tournament_id, advance.championId, chronicle?.chronicleId || null);
+                              realtimeEmit("tournament:complete", {
+                                tournamentId: br.tournament_id,
+                                championId: advance.championId,
+                              });
+                            }
+                          } else if (advance?.ok) {
+                            realtimeEmit("tournament:bracket-advanced", { bracketId, winnerId });
+                          }
+                        }).catch(() => { /* tournament advance is best-effort */ });
+                      }
+                    } catch { /* bracket lookup guard */ }
+                  }).catch(() => { /* chronicle is best-effort */ });
+                } catch { /* dynamic import guard */ }
               }
               // Skip death stakes inside a training match
               throw new Error("__TRAINING_MATCH_SKIP_LOOT__");
@@ -7067,10 +7271,48 @@ async function tryInitWebSockets(server) {
       if (to && candidate) io.to(to).emit("screen-share:ice-candidate", { from: socket.id, candidate });
     });
 
+    // ── Proximity voice chat WebRTC signaling ───────────────────────────────
+    // The frontend (ProximityVoiceChat.ts) emits `voice:join` to enter a
+    // shared room, then exchanges WebRTC offers/answers/ICE candidates
+    // through this server, which acts as a pure relay. Audio media never
+    // touches the server — peers connect directly via the negotiated
+    // session. Without these handlers (the original state) the frontend
+    // sat in "joining" forever and no peer connections ever formed.
+    socket.on("voice:join", () => {
+      const room = "voice";
+      socket.join(room);
+      // Tell existing peers a new one arrived
+      socket.to(room).emit("voice:peer-joined", { peerId: socket.id });
+      // Tell the joining peer who's already here
+      const peers = [...(io.sockets.adapter.rooms.get(room) || [])].filter((id) => id !== socket.id);
+      socket.emit("voice:room-state", { peers });
+    });
+    socket.on("voice:offer", ({ to, sdp }) => {
+      if (to && sdp) io.to(to).emit("voice:offer", { from: socket.id, sdp });
+    });
+    socket.on("voice:answer", ({ to, sdp }) => {
+      if (to && sdp) io.to(to).emit("voice:answer", { from: socket.id, sdp });
+    });
+    socket.on("voice:ice-candidate", ({ to, candidate }) => {
+      if (to && candidate) io.to(to).emit("voice:ice-candidate", { from: socket.id, candidate });
+    });
+    socket.on("voice:leave", () => {
+      const room = "voice";
+      if (socket.rooms.has(room)) {
+        socket.to(room).emit("voice:peer-left", { peerId: socket.id });
+        socket.leave(room);
+      }
+    });
+
     socket.on("disconnect", () => {
       const userId = socket.data?.userId;
       if (userId) {
         try { cityPresence.removeUser(userId); } catch (_e) { /* ignore */ }
+      }
+      // Voice room cleanup so peers don't keep stale ICE candidates
+      // and peer-list broadcasts.
+      if (socket.rooms?.has?.("voice")) {
+        try { socket.to("voice").emit("voice:peer-left", { peerId: socket.id }); } catch (_e) { /* ignore */ }
       }
       REALTIME.clients.delete(clientId);
     });
@@ -7079,6 +7321,9 @@ async function tryInitWebSockets(server) {
       const userId = socket.data?.userId;
       if (userId) {
         try { cityPresence.removeUser(userId); } catch (_e) { /* ignore */ }
+      }
+      if (socket.rooms?.has?.("voice")) {
+        try { socket.to("voice").emit("voice:peer-left", { peerId: socket.id }); } catch (_e) { /* ignore */ }
       }
       REALTIME.clients.delete(clientId);
     });
@@ -25161,7 +25406,7 @@ registerSystemRoutes(app, {
 });
 
 // ---- Audit Log Endpoints (extracted to routes/audit.js) ----
-app.use("/api/audit", createAuditRouter({ requireRole }));
+app.use("/api/audit", createAuditRouter({ requireRole, db }));
 
 // ---- Auth Endpoints (extracted to routes/auth.js) ----
 app.use("/api/auth", createAuthRouter({
@@ -27042,6 +27287,39 @@ app.use("/api/combat-flow", createCombatFlowRouter({ db, requireAuth }));
 import createTrainingMatchRouter from "./routes/training-match.js";
 app.use("/api/training-match", createTrainingMatchRouter({ db, requireAuth, emitToUser }));
 
+// Tournament toolkit — player-organized brackets with rule-set
+// enforcement (control-scheme lock, hp cap, prize-pool escrow).
+// Bouts run via training-match; the match-end handler calls
+// completeBracket() so the bracket advances when its tournament_bracket_id
+// is set.
+import createTournamentRouter from "./routes/tournaments.js";
+app.use("/api/tournaments", createTournamentRouter({ db, requireAuth }));
+
+// Companions (pet / tame) — player-owned creatures bonded through
+// co-location encounters. Distinct from creature_bonds (breeding) —
+// player_companions tracks allegiance from creature to owner. See
+// lib/companions.js for the tame roll + bond gate.
+import createCompanionsRouter from "./routes/companions.js";
+app.use("/api/companions", createCompanionsRouter({ db, requireAuth, realtimeEmit }));
+
+// Kingdoms — Crusader Kings × 3D × MMO regional governance. Rulers
+// enact decrees, coherence-check gates activation by world-storyline
+// alignment. Aligned decrees activate as refusal-field gates on
+// visitors; misaligned ones stack as exploitable tension.
+import createKingdomsRouter from "./routes/kingdoms.js";
+app.use("/api/kingdoms", createKingdomsRouter({ db, requireAuth, state: STATE, realtimeEmit }));
+
+// Fishing minigame — cast / reel / mint catch into player_inventory
+// for the existing cooking pipeline. World-scoped via fauna content.
+import createFishingRouter from "./routes/fishing.js";
+app.use("/api/fishing", createFishingRouter({ db, requireAuth, realtimeEmit }));
+
+// Sports minigames — basketball + vehicle racing. Generic
+// minigame_matches table backs both. Tournament toolkit reuses the
+// rule-set enforcement pattern for ranked play.
+import createMinigamesRouter from "./routes/minigames.js";
+app.use("/api/minigames", createMinigamesRouter({ db, requireAuth, realtimeEmit }));
+
 // Flow Combat — shared faction-war events (NPCs co-evolving against each
 // other in the background; players join either side and contribute flows)
 import createFactionWarRouter from "./routes/faction-war.js";
@@ -27371,7 +27649,7 @@ app.post("/api/world/buildings/spawn", requireAuth, (req, res) => {
       }
     }
 
-    const id = `wb_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const id = `wb_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
     // The world_buildings table from migration 063 requires building_type
     // NOT NULL. We infer it from the blueprint's kind so the row remains
     // valid for downstream renderers + structural-decay logic.
@@ -27490,6 +27768,17 @@ app.post("/api/world/cook", requireAuth, async (req, res) => {
     // Cooking is creative — bumps concordia_alignment by a small amount.
     try { adjustEcoMetrics(db, userId, resolvedWorldId, { concordia_alignment: 0.5 }); }
     catch { /* metrics best-effort */ }
+    // Quest objective progress: any active quest with type='cook' targeting
+    // this recipe (or the generic "first_cycle_recipe" alias) advances.
+    // Without this hook, the First Cycle "cook" objective could never
+    // advance — the play loop was dead-wired here.
+    try {
+      const qe = await import("./lib/quests/quest-engine.js");
+      qe.recordObjectiveProgress(db, userId, resolvedWorldId, null, "cook", recipeId, 1);
+      // Also fire against the generic onboarding target so authored
+      // first-cycle quests (which target "first_cycle_recipe") advance.
+      qe.recordObjectiveProgress(db, userId, resolvedWorldId, null, "cook", "first_cycle_recipe", 1);
+    } catch { /* objective tracking is best-effort */ }
     res.json(result);
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
@@ -27498,7 +27787,7 @@ app.post("/api/world/cook", requireAuth, async (req, res) => {
 
 // EvoEcosystem W3: consume a food DTU — applies its effects[] as
 // time-limited buffs/debuffs. Deducts a single inventory unit.
-app.post("/api/world/consume/:dtuId", requireAuth, (req, res) => {
+app.post("/api/world/consume/:dtuId", requireAuth, async (req, res) => {
   try {
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
@@ -27515,7 +27804,39 @@ app.post("/api/world/consume/:dtuId", requireAuth, (req, res) => {
         });
       }
     } catch { /* realtime emit best-effort */ }
+    // Quest objective progress: any active quest with type='consume'
+    // targeting this DTU (or the generic onboarding "first_cycle_recipe"
+    // alias) advances. The First Cycle "eat" objective requires this.
+    try {
+      const qe = await import("./lib/quests/quest-engine.js");
+      const worldId = String(req.body?.worldId || "concordia-hub");
+      qe.recordObjectiveProgress(db, userId, worldId, null, "consume", req.params.dtuId, 1);
+      qe.recordObjectiveProgress(db, userId, worldId, null, "consume", "first_cycle_recipe", 1);
+    } catch { /* objective tracking is best-effort */ }
     res.json(result);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// Quest objective: reach a named location. Frontend self-reports via this
+// endpoint when the player enters the radius of an authored location
+// (first_cycle_glade, training_hollow, east_gate, etc.). The First Cycle
+// onboarding journey (cook → eat → fight → commune) and the main-arc
+// quest chain both depend on this — without it, every reach_location
+// objective was stuck forever.
+app.post("/api/world/reach-location", requireAuth, async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
+    const { locationId, worldId } = req.body || {};
+    if (!locationId || typeof locationId !== "string") {
+      return res.status(400).json({ ok: false, error: "locationId_required" });
+    }
+    const resolvedWorldId = String(worldId || "concordia-hub");
+    const qe = await import("./lib/quests/quest-engine.js");
+    qe.recordObjectiveProgress(db, userId, resolvedWorldId, null, "reach_location", locationId, 1);
+    res.json({ ok: true, locationId, worldId: resolvedWorldId });
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
@@ -27589,17 +27910,33 @@ app.get("/api/world/effects/me", requireAuth, (req, res) => {
 // v2.0 Workstream 6b: federation export — peers in the trust graph pull
 // public social shadows from this instance via this endpoint.
 //
-// When CONCORD_FEDERATION_TOKEN is set, requests must carry the matching
-// Bearer token. When unset (research / development), the endpoint stays
-// open. The data is intentionally public-author-consented; auth is for
-// rate-limiting / abuse control, not secrecy.
+// In production, the Bearer token is REQUIRED — an unset
+// CONCORD_FEDERATION_TOKEN in production is treated as a misconfig
+// and the endpoint refuses (lets ops notice the missing secret rather
+// than silently leaking the data). In dev / test the endpoint stays
+// open if the token is unset, which keeps the dev loop friction-free.
 app.get("/api/world/social-shadows", (req, res) => {
   try {
     const expected = process.env.CONCORD_FEDERATION_TOKEN;
+    const isProd = process.env.NODE_ENV === "production";
+    if (isProd && !expected) {
+      return res.status(503).json({
+        ok: false,
+        error: "federation_disabled",
+        reason: "CONCORD_FEDERATION_TOKEN unset in production — set the secret to enable federation peering.",
+      });
+    }
     if (expected) {
       const auth = req.headers?.authorization ?? "";
       const m = /^Bearer\s+(.+)$/i.exec(auth);
-      if (!m || m[1] !== expected) {
+      // Timing-safe equality so an attacker can't probe the token a
+      // byte at a time via response-latency differences. crypto's
+      // timingSafeEqual requires equal-length buffers — short-circuit
+      // on length mismatch first, then compare.
+      const presented = m ? m[1] : "";
+      const ok = presented.length === expected.length &&
+        crypto.timingSafeEqual(Buffer.from(presented), Buffer.from(expected));
+      if (!ok) {
         return res.status(401).json({ ok: false, error: "federation_auth_required" });
       }
     }
@@ -28161,6 +28498,19 @@ try { app.use("/api/social", createSocialGroupRoutes({ db, requireAuth })); } ca
 import createSocialEngagementRoutes from "./routes/social-engagement.js";
 try { app.use("/api/social", createSocialEngagementRoutes({ db, requireAuth })); } catch (e) { structuredLog("warn", "social_engagement_routes_skip", { error: e.message }); }
 
+// Extended social — wires social-layer.js exports that pre-this-mount were
+// implemented but never routed: trending, pinning, scheduling, streaks,
+// per-post analytics, watch time, listing tagging.
+import createSocialExtendedRouter from "./routes/social-extended.js";
+try { app.use("/api/social-extended", createSocialExtendedRouter({ STATE, requireAuth })); } catch (e) { structuredLog("warn", "social_extended_routes_skip", { error: e.message }); }
+
+// Extended world-orgs — wires world-organizations.js exports that
+// pre-this-mount were implemented but never routed: alliances, treasury
+// contributions, member-role admin, parties, recruitment board,
+// mentorships, org stats.
+import createWorldOrgsExtendedRouter from "./routes/world-orgs-extended.js";
+try { app.use("/api/world-orgs", createWorldOrgsExtendedRouter({ requireAuth })); } catch (e) { structuredLog("warn", "world_orgs_extended_routes_skip", { error: e.message }); }
+
 import createChannelsRouter from "./routes/channels.js";
 try { app.use("/api/channels", createChannelsRouter({ STATE, requireAuth, realtimeEmit })); } catch (e) { structuredLog("warn", "channels_routes_skip", { error: e.message }); }
 
@@ -28648,7 +28998,12 @@ async function runHeartbeatModule(name, fn) {
 
 let _governorTickRunning = false;
 async function governorTick(reason="heartbeat") {
-  if (_governorTickRunning) return { ok: false, reason: "tick_already_running" };
+  if (_governorTickRunning) {
+    // Heartbeat overrun — a prior tick is still in flight. Bump the
+    // observability counter so Prom can alert on sustained overrun.
+    try { METRICS?.counters?.heartbeatSkipped?.inc(); } catch { /* metrics best-effort */ }
+    return { ok: false, reason: "tick_already_running" };
+  }
   _governorTickRunning = true;
   // Heartbeat liveness: bump the counter so Prometheus can detect a frozen
   // tick loop via `rate(concord_heartbeat_ticks_total[1m]) == 0` for 60s+.
@@ -29457,10 +29812,22 @@ async function governorTick(reason="heartbeat") {
 
       // Quest emergence: scan active NPCs for quest opportunities (every 20 ticks)
       if ((STATE.__bgTickCounter || 0) % 20 === 0) {
-        const questEmergence = await import("./lib/quest-emergence.js").catch(() => null);
+        const questEmergence = await import("./lib/quest-emergence.js").catch((err) => {
+          structuredLog("warn", "quest_emergence_module_unavailable", { error: err?.message });
+          return null;
+        });
         if (questEmergence?.detectQuestOpportunities) {
           try {
-            const cityPresence = await import("./lib/city-presence.js").catch(() => null);
+            const cityPresence = await import("./lib/city-presence.js").catch((err) => {
+              structuredLog("warn", "city_presence_module_unavailable", { error: err?.message });
+              return null;
+            });
+            // Empty list silently means "no NPCs to scan" — log the
+            // module-missing case explicitly so a broken bridge doesn't
+            // present as "world feels dead, no quests appearing."
+            if (!cityPresence?.getAllNPCsForEmergence) {
+              structuredLog("warn", "quest_emergence_no_npc_source", { reason: "city-presence missing getAllNPCsForEmergence export" });
+            }
             const npcList = cityPresence?.getAllNPCsForEmergence?.() ?? [];
             for (const npc of npcList.slice(0, 5)) {
               const newQuests = await questEmergence.detectQuestOpportunities(npc, db, _selectBrainForNpc).catch(() => []);
@@ -37131,8 +37498,13 @@ try {
 }
 
 // ── Initialize Foundation Sovereignty Modules ───────────────────────────────
+// Use allSettled (not all) so a single module's rejection doesn't drop the
+// partial-success log — we want to know exactly which modules came up and
+// which failed. Promise.all here would short-circuit on first reject and
+// the .then() never runs, so the structured init log silently disappears
+// while the .catch() shows only the first failure.
 try {
-  Promise.all([
+  Promise.allSettled([
     initializeSense(STATE),
     initializeIdentity(STATE),
     initializeEnergy(STATE),
@@ -37146,14 +37518,17 @@ try {
     initializeIntelligence(STATE),
     initializeAtlas(STATE),
     initializeCortex(STATE),
-  ]).then(results => {
+  ]).then(settled => {
+    const results = settled.map(s => s.status === "fulfilled" ? (s.value ?? { ok: false }) : { ok: false, error: s.reason?.message });
     const initialized = results.filter(r => r.ok).length;
     structuredLog("info", "foundation_initialized", {
-      modules: initialized, total: 12,
+      modules: initialized, total: 13,
       sense: results[0]?.ok, identity: results[1]?.ok, energy: results[2]?.ok,
       spectrum: results[3]?.ok, emergency: results[4]?.ok, market: results[5]?.ok,
       archive: results[6]?.ok, synthesis: results[7]?.ok, neural: results[8]?.ok,
       protocol: results[9]?.ok, intelligence: results[10]?.ok, atlas: results[11]?.ok,
+      cortex: results[12]?.ok,
+      failedReasons: results.filter(r => !r.ok && r.error).map(r => r.error).slice(0, 5),
     });
   }).catch(e => {
     structuredLog("warn", "foundation_init_failed", { error: e?.message });
@@ -41465,7 +41840,17 @@ app.get("/api/search/ranked", asyncHandler(async (req, res) => {
   const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 20));
   const requestedDomain = req.query.domain ? String(req.query.domain) : null;
 
-  const semantic = await runMacro("search", "semantic", { q, limit: limit * 2 }, makeCtx(req)).catch(() => null);
+  // If runMacro itself throws or returns no `results`, log a structured
+  // warn so the silent-empty-results case is observable. The previous
+  // `?? []` chain made a broken search look identical to "no matches"
+  // in the response, hiding outages from operators and users alike.
+  const semantic = await runMacro("search", "semantic", { q, limit: limit * 2 }, makeCtx(req)).catch((err) => {
+    structuredLog("warn", "search_ranked_macro_failed", { error: err?.message, q: q.slice(0, 80) });
+    return null;
+  });
+  if (!semantic?.results) {
+    structuredLog("warn", "search_ranked_no_results_payload", { q: q.slice(0, 80), reason: semantic?.reason || "missing_results_field" });
+  }
   const raw = semantic?.results ?? [];
 
   const ranking = await import("./lib/search-ranking.js");
@@ -44396,7 +44781,7 @@ app.post("/api/physics/bodies", (req, res) => {
   try {
     const ps = ensurePhysicsState();
     const { label, mass, position, velocity } = req.body;
-    const id = `body_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const id = `body_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
     const body = {
       id,
       label: label || id,
@@ -44633,7 +45018,7 @@ app.post("/api/ml/train", (req, res) => {
   try {
     const { mlJobs } = ensureMlState();
     const { modelName, datasetId, epochs, learningRate } = req.body || {};
-    const jobId = `ml_job_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const jobId = `ml_job_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
     const job = {
       id: jobId,
       type: "train",
@@ -45260,7 +45645,9 @@ app.post("/api/economy/withdraw", requireAuth(), asyncHandler(async (req, res) =
       }
     } catch (_e) { /* table may not exist yet */ }
     // Create pending withdrawal row
-    const withdrawalId = `wd_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+    // Withdrawal IDs are financial — use crypto.randomBytes so the suffix is
+    // unpredictable. Math.random() with timestamp is enumerable.
+    const withdrawalId = `wd_${Date.now().toString(36)}_${crypto.randomBytes(8).toString("hex")}`;
     db.prepare(
       `INSERT INTO economy_withdrawals (id, user_id, amount, fee, net, status)
        VALUES (?, ?, ?, ?, ?, 'pending')`
@@ -45336,7 +45723,7 @@ app.post("/api/music/playlist", (req, res) => {
   try {
     const { name, tracks, type } = req.body || {};
     if (!name) return res.status(400).json({ ok: false, error: "Playlist name is required" });
-    const id = `user_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const id = `user_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
     const playlist = { id, name, tracks: tracks || [], type: type || "custom", builtin: false, createdAt: new Date().toISOString() };
     STATE.music.userPlaylists.set(id, playlist);
     saveStateDebounced();
@@ -53331,7 +53718,7 @@ if (!STATE._sessionRecordings) STATE._sessionRecordings = [];
 
 function startRecording(userId) {
   const recording = {
-    id: `session-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    id: `session-${Date.now()}-${crypto.randomBytes(4).toString("hex")}`,
     userId: userId || "default",
     startedAt: new Date().toISOString(),
     completedAt: null,
@@ -63761,7 +64148,7 @@ app.post('/api/artistry/collab/sessions', (req, res) => {
   const { projectId, hostId, maxParticipants, mode } = req.body;
   const project = art.projects.get(projectId);
   if (!project) return res.status(404).json({ error: 'Project not found' });
-  const sessionId = `collab_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const sessionId = `collab_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
   art.collabSessions.set(sessionId, {
     id: sessionId, projectId, hostId: hostId || project.ownerId,
     participants: [{ userId: hostId || project.ownerId, role: 'host', joinedAt: Date.now() }],
@@ -64104,7 +64491,7 @@ app.get('/api/artistry/ai/learning/:pathId', (req, res) => {
 app.post('/api/artistry/ai/session', (req, res) => {
   const art = ensureArtistryState();
   const { userId, projectId, question } = req.body;
-  const sessionId = `aisess_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const sessionId = `aisess_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
   const project = projectId ? art.projects.get(projectId) : null;
   const ctx = project ? { bpm: project.bpm, key: project.key, genre: project.genre, trackCount: project.tracks.length } : {};
   const response = {

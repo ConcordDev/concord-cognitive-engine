@@ -217,9 +217,17 @@ export function cdnCacheHeaders(defaultMaxAge = 86400) {
  * @returns {import('express').RequestHandler}
  */
 export function cdnCorsHeaders() {
-  // Allowed origins — in production, this would be configurable
+  // Allowed origins. In production we REQUIRE CONCORD_FRONTEND_URL to be set —
+  // a localhost default in prod becomes an unintended CORS allow-list entry
+  // and a quiet wrong-domain bug. Dev uses localhost only when NODE_ENV !== "production".
+  const isProd = process.env.NODE_ENV === "production";
+  const frontendUrl = process.env.CONCORD_FRONTEND_URL
+    || (isProd ? null : "http://localhost:3000");
+  if (isProd && !frontendUrl) {
+    throw new Error("CONCORD_FRONTEND_URL must be set in production (cdn-middleware.cdnCorsHeaders)");
+  }
   const allowedOrigins = new Set([
-    process.env.CONCORD_FRONTEND_URL || "http://localhost:3000",
+    frontendUrl,
     process.env.CONCORD_CDN_BASE_URL || "",
   ].filter(Boolean));
 

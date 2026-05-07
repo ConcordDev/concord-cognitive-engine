@@ -243,5 +243,29 @@ export default function createLensCultureRouter({ db, requireAuth }) {
     res.json({ ok: true, lens });
   });
 
+  // GET /:cultureDtuId/resonance — listing of who has resonated with a culture DTU.
+  // economy/lens-culture.js#resonateCulture writes culture_resonance rows but
+  // pre-this-route nothing read them back. Used by culture-DTU author surfaces
+  // (who liked this) and the recommendation engine (find similar resonators).
+  router.get("/:cultureDtuId/resonance", (req, res) => {
+    try {
+      const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 100, 1), 500);
+      const offset = Math.max(0, parseInt(req.query.offset, 10) || 0);
+      const rows = db.prepare(
+        `SELECT user_id, created_at
+           FROM culture_resonance
+          WHERE culture_dtu_id = ?
+          ORDER BY created_at DESC
+          LIMIT ? OFFSET ?`,
+      ).all(req.params.cultureDtuId, limit, offset);
+      const total = db.prepare(
+        `SELECT COUNT(*) as c FROM culture_resonance WHERE culture_dtu_id = ?`,
+      ).get(req.params.cultureDtuId).c;
+      res.json({ ok: true, cultureDtuId: req.params.cultureDtuId, resonators: rows, count: rows.length, total });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e?.message || "resonance_query_failed" });
+    }
+  });
+
   return router;
 }

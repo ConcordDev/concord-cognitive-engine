@@ -51,12 +51,17 @@ export async function processInboundMessage({ adapter, normalized, db, infer, cr
     } catch { /* content guard errors are non-fatal */ }
   }
 
-  // 2b. Cross-reality routing — check if message targets a virtual world
+  // 2b. Cross-reality routing — check if message targets a virtual world.
+  // worldExecute=null is intentional: routeToWorldOrChat (cross-reality-bridge.js:48)
+  // falls through to a chat-only response when worldExecute or worldId are
+  // missing. When the messaging caller wants real world-action execution,
+  // it should pass `worldExecute` (and a real `worldId`) into this pipeline
+  // — the pipeline will forward both verbatim. Until then chat fallback is
+  // the correct behavior.
   const worldIntent = parseWorldIntent(normalized.text ?? '');
   if (worldIntent) {
-    // TODO: wire infer and worldExecute when available in this scope for full routing
     await routeToWorldOrChat({ text: normalized.text, userId: binding.user_id, worldId: null, infer, worldExecute: null }).catch(err => logger?.debug?.('[inbound] world routing failed', { err: err?.message }));
-    return; // handled by world routing
+    return; // handled by world routing (or its chat fallback)
   }
 
   // 3. Record inbound message

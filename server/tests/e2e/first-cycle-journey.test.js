@@ -77,7 +77,8 @@ describe("First Cycle E2E journey — cook → eat → fight → commune", () =>
     assert.equal(r.tutorial, "first_cycle");
     assert.equal(r.currentPhase, "cook");
     assert.equal(r.complete, false);
-    assert.equal(r.phases.length, 4);
+    // Phase F extended FIRST_CYCLE_QUEST_IDS from 4 → 8 beats.
+    assert.equal(r.phases.length, FIRST_CYCLE_QUEST_IDS.length);
     assert.equal(r.phases[0].status, "not_started");
   });
 
@@ -117,15 +118,38 @@ describe("First Cycle E2E journey — cook → eat → fight → commune", () =>
     assert.equal(r.phases[3].complete, false);
   });
 
-  it("lands on currentPhase 'complete' after all four quests finish", () => {
-    completeQuest("first_cycle_cook");
-    completeQuest("first_cycle_eat");
-    completeQuest("first_cycle_fight");
-    completeQuest("first_cycle_commune");
+  it("lands on currentPhase 'complete' after all eight quests finish", () => {
+    for (const q of FIRST_CYCLE_QUEST_IDS) completeQuest(q);
     const r = progress();
     assert.equal(r.currentPhase, "complete");
     assert.equal(r.complete, true);
     for (const p of r.phases) assert.equal(p.complete, true, `${p.questId} must be complete`);
+  });
+
+  it("advances commune → befriend → sneak → kingdom_visit → play (Phase F additions)", () => {
+    completeQuest("first_cycle_cook");
+    completeQuest("first_cycle_eat");
+    completeQuest("first_cycle_fight");
+    completeQuest("first_cycle_commune");
+    let r = progress();
+    assert.equal(r.currentPhase, "befriend", "after commune, befriend is next");
+
+    completeQuest("first_cycle_befriend");
+    r = progress();
+    assert.equal(r.currentPhase, "sneak");
+
+    completeQuest("first_cycle_sneak");
+    r = progress();
+    assert.equal(r.currentPhase, "kingdom_visit");
+
+    completeQuest("first_cycle_kingdom_visit");
+    r = progress();
+    assert.equal(r.currentPhase, "play");
+
+    completeQuest("first_cycle_play");
+    r = progress();
+    assert.equal(r.currentPhase, "complete");
+    assert.equal(r.complete, true);
   });
 
   it("accepts both 'complete' and 'completed' status strings", () => {
@@ -138,17 +162,27 @@ describe("First Cycle E2E journey — cook → eat → fight → commune", () =>
     assert.equal(r.currentPhase, "eat");
   });
 
-  it("constants table covers all four phases in order", () => {
+  it("constants table covers all eight phases in order", () => {
+    // Phase F extended the cycle. Order matters — onboarding voice
+    // lines reference these in sequence.
     assert.deepStrictEqual([...FIRST_CYCLE_QUEST_IDS], [
       "first_cycle_cook",
       "first_cycle_eat",
       "first_cycle_fight",
       "first_cycle_commune",
+      "first_cycle_befriend",
+      "first_cycle_sneak",
+      "first_cycle_kingdom_visit",
+      "first_cycle_play",
     ]);
-    assert.equal(FIRST_CYCLE_PHASE_BY_QUEST.first_cycle_cook,    "cook");
-    assert.equal(FIRST_CYCLE_PHASE_BY_QUEST.first_cycle_eat,     "eat");
-    assert.equal(FIRST_CYCLE_PHASE_BY_QUEST.first_cycle_fight,   "fight");
-    assert.equal(FIRST_CYCLE_PHASE_BY_QUEST.first_cycle_commune, "commune");
+    assert.equal(FIRST_CYCLE_PHASE_BY_QUEST.first_cycle_cook,           "cook");
+    assert.equal(FIRST_CYCLE_PHASE_BY_QUEST.first_cycle_eat,            "eat");
+    assert.equal(FIRST_CYCLE_PHASE_BY_QUEST.first_cycle_fight,          "fight");
+    assert.equal(FIRST_CYCLE_PHASE_BY_QUEST.first_cycle_commune,        "commune");
+    assert.equal(FIRST_CYCLE_PHASE_BY_QUEST.first_cycle_befriend,       "befriend");
+    assert.equal(FIRST_CYCLE_PHASE_BY_QUEST.first_cycle_sneak,          "sneak");
+    assert.equal(FIRST_CYCLE_PHASE_BY_QUEST.first_cycle_kingdom_visit,  "kingdom_visit");
+    assert.equal(FIRST_CYCLE_PHASE_BY_QUEST.first_cycle_play,           "play");
   });
 });
 

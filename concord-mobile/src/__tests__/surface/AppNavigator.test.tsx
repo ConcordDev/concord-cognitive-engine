@@ -75,6 +75,19 @@ jest.mock('@react-navigation/native', () => {
     NavigationContainer: ({ children }: { children: React.ReactNode }) => (
       <>{children}</>
     ),
+    // createNavigationContainerRef lives in @react-navigation/core and is
+    // re-exported by /native; under jest-expo the re-export sometimes
+    // doesn't resolve. Stub the surface AppNavigator.tsx uses (line 117
+    // exports navigationRef = createNavigationContainerRef<...>()).
+    createNavigationContainerRef: () => ({
+      isReady: () => true,
+      navigate: jest.fn(),
+      goBack: jest.fn(),
+      getCurrentRoute: () => null,
+      getRootState: () => null,
+    }),
+    useNavigation: () => ({ navigate: jest.fn(), goBack: jest.fn() }),
+    useRoute: () => ({ params: {} }),
   };
 });
 

@@ -1,7 +1,17 @@
 # NEXT SESSION SPEC — Premium Lens Engines + Full Lens Audit
 
-**Branch:** `claude/audit-lenses-fix-warnings-HdWQ4`
-**Status:** READY TO IMPLEMENT
+> **STATUS — HISTORICAL (as of 2026-05-06).** This spec is from a much earlier
+> session. The branch `claude/audit-lenses-fix-warnings-HdWQ4` is no longer
+> active (current branch is `claude/production-audit-macros-1alt5`). Most of
+> the work described below has been completed: ~30+ lenses now have full
+> production-grade implementations (CLAUDE.md), Monaco editor + react-markdown
+> + Excalidraw + the music player are wired, the DAW engine is connected to
+> its UI, etc. Test count of "1958 tests" is also stale — current is ~10,721
+> passing. Keep this file as a record of the lens-engine remediation
+> roadmap; do NOT use it as a current task list.
+
+**Branch:** `claude/audit-lenses-fix-warnings-HdWQ4` (HISTORICAL)
+**Status:** SUPERSEDED — most items completed
 
 ---
 

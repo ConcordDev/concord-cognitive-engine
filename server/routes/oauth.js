@@ -60,7 +60,18 @@ export default function registerOAuthRoutes(app, {
   jwt,
   _REFRESH_FAMILIES,
 }) {
-  const FRONTEND_URL = process.env.FRONTEND_URL || process.env.NEXT_PUBLIC_FRONTEND_URL || "http://localhost:3000";
+  // Resolve the frontend URL OAuth redirects against. In production we
+  // require an explicit FRONTEND_URL — silently sending OAuth callbacks
+  // to localhost would either fail (browser refuses cross-origin redirect)
+  // or worse, redirect production users to a dev box. Dev only falls back
+  // when NODE_ENV !== "production".
+  const _isProd = process.env.NODE_ENV === "production";
+  const FRONTEND_URL = process.env.FRONTEND_URL
+    || process.env.NEXT_PUBLIC_FRONTEND_URL
+    || (_isProd ? null : "http://localhost:3000");
+  if (_isProd && !FRONTEND_URL) {
+    throw new Error("FRONTEND_URL or NEXT_PUBLIC_FRONTEND_URL must be set in production (oauth routes)");
+  }
 
   // ── Helpers ─────────────────────────────────────────────────────────────
 

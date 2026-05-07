@@ -74,6 +74,15 @@ groups:
           summary: "Heartbeat module {{ $labels.module }} is throwing errors"
           description: "Module is averaging > 0.1 errors/sec for 5+ minutes. The runHeartbeatModule wrapper is catching them, but the underlying bug should be fixed."
 
+      - alert: ConcordHeartbeatOverrun
+        expr: rate(concord_heartbeat_skipped_total[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Concord heartbeat is overrunning its 15s interval"
+          description: "Skipped ticks > 0/sec for 5+ minutes — a prior governorTick is still running when the next tick fires. A heavy tick block (DTU consolidation, fauna spawn, world-event scheduler) is starving subsequent ticks. Investigate the slowest module via runHeartbeatModule timings."
+
       - alert: ConcordSyntheticCheckFailing
         expr: concord_synthetic_check_pass == 0
         for: 2m

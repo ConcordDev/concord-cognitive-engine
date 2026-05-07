@@ -582,8 +582,10 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
     res.json({ ok: true, event: result });
   }));
 
-  router.post("/events/:id/end", auth, wrap((req, res) => {
-    const result = endEvent(req.params.id, _userId(req));
+  router.post("/events/:id/end", auth, wrap(async (req, res) => {
+    // endEvent is now async: it mints real CC to attendees on close
+    // (was previously emit-only; rewards never landed on the wallet).
+    const result = await endEvent(req.params.id, _userId(req));
     res.json({ ok: true, ...result });
   }));
 

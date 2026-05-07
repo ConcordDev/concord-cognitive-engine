@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -443,6 +443,13 @@ function Discovery({
       }, 300),
     []
   );
+
+  // Cancel pending debounce on unmount — without this, a queued
+  // setSearchQuery call can fire after the component is gone (and in
+  // tests, after jsdom's window is torn down), throwing ReferenceError.
+  useEffect(() => {
+    return () => handleSearchChange.cancel();
+  }, [handleSearchChange]);
 
   // ── Tabs ──────────────────────────────────────────────────────────────
 

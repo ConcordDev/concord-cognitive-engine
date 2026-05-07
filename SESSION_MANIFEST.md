@@ -1,10 +1,15 @@
 # Concord Session Manifest — 2026-02-24
 
-> **Purpose**: This manifest documents all changes made to the live server that
-> are not yet fully reflected in the GitHub repository. Claude Code (or any
-> developer) should apply ALL of these changes to `server/server.js` before
-> doing anything else. The repo on GitHub is **STALE** — these changes are live
-> on the production server but not pushed.
+> **STATUS — HISTORICAL (as of 2026-05-06).** Every change documented in this
+> manifest has long since been committed to the repo. Do NOT re-apply these
+> patches; they are already live in `server/server.js`. Treat this file as
+> documentation of *what was changed in the Feb 2026 session*, not as a
+> pending task list. The line numbers below are also stale (server.js has
+> grown from ~6k to 62k LOC since this was written).
+>
+> For the current state of the codebase, read `CLAUDE.md` and `WIRING_SPEC.md`.
+> The most recent meaningful audit is described in CLAUDE.md's "Recent
+> shipped work" table under "Production Audit (May 2026)."
 
 ---
 

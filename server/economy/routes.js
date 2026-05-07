@@ -680,8 +680,13 @@ export function registerEconomyRoutes(app, db, opts = {}) {
 
   app.get("/api/stripe/connect/status", authRequired, (req, res) => {
     try {
-      const userId = req.user.id;
-
+      const userId = req.user?.id;
+      // AUTH_MODE=public lets authRequired pass through anonymous probes;
+      // smoke + dev hit this without a session. Return a 200 with
+      // configured=false instead of throwing on req.user.id.
+      if (!userId) {
+        return res.json({ ok: true, userId: null, configured: false, anonymous: true });
+      }
       const result = getConnectStatus(db, userId);
       res.json({ ok: true, userId, ...result });
     } catch (err) {

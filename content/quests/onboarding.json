@@ -410,5 +410,118 @@
     "follow_up_quest_ids": ["cracks_in_the_compact"],
     "prerequisites": ["first_contact"],
     "tags": ["tutorial", "onboarding", "concordia_main", "moral_choice", "factions"]
+  },
+  {
+    "id": "first_cycle_befriend",
+    "title": "The First Cycle — Befriend",
+    "description": "Concordia speaks again: 'There are creatures here that don't fear you yet. Don't catch them — they aren't yours to take. Stay near. Fight beside them. Trust grows on its own time.' Find a wild creature whose temperament suits you, build bond by sharing space and threats, then attempt to tame.",
+    "giver_npc_id": "concordia_first_breath",
+    "difficulty": "beginner",
+    "domain": "first_cycle",
+    "estimated_time": "10m",
+    "objectives": [
+      { "id": "obj_fc_befriend_1", "type": "reach_location", "target": "wilds_edge", "required_count": 1, "description": "Walk to where the wild creatures live" },
+      { "id": "obj_fc_befriend_2", "type": "interact", "target": "any_wild_creature", "required_count": 5, "description": "Spend time near a creature (bond builds with proximity)" },
+      { "id": "obj_fc_befriend_3", "type": "tame", "target": "any_wild_creature", "required_count": 1, "description": "When bond is high enough, attempt the tame (press J)" }
+    ],
+    "rewards": {
+      "skill_xp": { "tame_skill": 25, "courage": 15 },
+      "creates_companion_seed_dtu": "first_cycle_companion_seed"
+    },
+    "breadcrumbs": [
+      {
+        "id": "bc_fc_befriend_1",
+        "content": "Your first companion's name and bond history are saved as a personal Companion DTU. Even if they fall in battle, the bond remains; you can rebuild it next cycle.",
+        "unlocks_after": "obj_fc_befriend_3",
+        "release_mode": "on_completion"
+      }
+    ],
+    "follow_up_quest_ids": ["first_cycle_sneak"],
+    "prerequisites": ["first_cycle_commune"],
+    "tags": ["tutorial", "first_cycle", "companion", "tame", "bond"]
+  },
+  {
+    "id": "first_cycle_sneak",
+    "title": "The First Cycle — Sneak",
+    "description": "Concordia teaches: 'Not every problem is solved by being seen. Crouch. Move slow. The world rewards those who watch as much as those who act.' Approach the patrol from cover and reach the marker without being detected.",
+    "giver_npc_id": "concordia_first_breath",
+    "difficulty": "beginner",
+    "domain": "first_cycle",
+    "estimated_time": "8m",
+    "objectives": [
+      { "id": "obj_fc_sneak_1", "type": "reach_location", "target": "patrol_route_overlook", "required_count": 1, "description": "Find a position above the patrol" },
+      { "id": "obj_fc_sneak_2", "type": "stealth_traverse", "target": "marker_beyond_patrol", "required_count": 1, "description": "Reach the marker without triggering detection" }
+    ],
+    "rewards": {
+      "skill_xp": { "stealth": 30, "perception": 10 }
+    },
+    "breadcrumbs": [
+      {
+        "id": "bc_fc_sneak_1",
+        "content": "Stealth and perception are matched skills. The harder you train one, the more legible the other becomes. A high-perception observer sees a low-stealth rogue clearly. A low-perception observer sees a master rogue as a silhouette only.",
+        "unlocks_after": "obj_fc_sneak_2",
+        "release_mode": "on_completion"
+      }
+    ],
+    "follow_up_quest_ids": ["first_cycle_kingdom_visit"],
+    "prerequisites": ["first_cycle_befriend"],
+    "tags": ["tutorial", "first_cycle", "stealth", "perception"]
+  },
+  {
+    "id": "first_cycle_kingdom_visit",
+    "title": "The First Cycle — Visit a Kingdom",
+    "description": "There is no kingdom in the hub yet. But the wider worlds have rulers — players, factions, NPCs — and some have decreed laws that bind visitors. Cross a kingdom border, observe the active decrees, and choose: obey, resist, or contest.",
+    "giver_npc_id": "concordia_first_breath",
+    "difficulty": "beginner",
+    "domain": "first_cycle",
+    "estimated_time": "12m",
+    "objectives": [
+      { "id": "obj_fc_kingdom_1", "type": "reach_location", "target": "any_kingdom_border", "required_count": 1, "description": "Cross into a kingdom; the border banner will name it" },
+      { "id": "obj_fc_kingdom_2", "type": "observe", "target": "active_decree", "required_count": 1, "description": "Read at least one decree on the kingdoms lens" }
+    ],
+    "rewards": {
+      "skill_xp": { "diplomacy": 15, "governance": 10 }
+    },
+    "breadcrumbs": [
+      {
+        "id": "bc_fc_kingdom_1",
+        "content": "Decrees only enforce when they align with the world's storyline. A misaligned decree stacks as 'tension' — visible to other players, exploitable as a contest opportunity. A ruler who declares unjust laws breeds rebellions.",
+        "unlocks_after": "obj_fc_kingdom_2",
+        "release_mode": "on_completion"
+      }
+    ],
+    "follow_up_quest_ids": ["first_cycle_play"],
+    "prerequisites": ["first_cycle_sneak"],
+    "tags": ["tutorial", "first_cycle", "kingdom", "governance"]
+  },
+  {
+    "id": "first_cycle_play",
+    "title": "The First Cycle — Play",
+    "description": "Concordia smiles for the first time: 'Living here is more than fighting and ruling. Cast a line at the river. Shoot hoops with someone. Race a friend. Joy is the receipt that all of this was worth building.' Choose one: fish, basketball, or race.",
+    "giver_npc_id": "concordia_first_breath",
+    "difficulty": "beginner",
+    "domain": "first_cycle",
+    "estimated_time": "8m",
+    "objectives": [
+      { "id": "obj_fc_play_branch", "type": "any_of", "branches": [
+        { "type": "fishing_caught", "target": "any_fish", "required_count": 1, "description": "Catch a fish (press F at a water tile)" },
+        { "type": "minigame_complete", "target": "basketball", "required_count": 1, "description": "Finish a basketball match" },
+        { "type": "minigame_complete", "target": "racing", "required_count": 1, "description": "Finish a vehicle race" }
+      ], "required_count": 1, "description": "Pick one and complete it" }
+    ],
+    "rewards": {
+      "skill_xp": { "fishing": 20, "athletics": 15 }
+    },
+    "breadcrumbs": [
+      {
+        "id": "bc_fc_play_1",
+        "content": "Every minigame mints a chronicle DTU — your personal record of the moment. Other players can read it, cite it, learn from your style. Joy in Concordia is creator-economy material.",
+        "unlocks_after": "obj_fc_play_branch",
+        "release_mode": "on_completion"
+      }
+    ],
+    "follow_up_quest_ids": [],
+    "prerequisites": ["first_cycle_kingdom_visit"],
+    "tags": ["tutorial", "first_cycle", "fishing", "sports", "play"]
   }
 ]

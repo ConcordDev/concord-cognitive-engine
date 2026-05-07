@@ -19,6 +19,7 @@ import { getTimeline } from "../emergent/history-engine.js";
 import { getAuthoredNPC, getAuthoredFaction, getQuestsForNPC, getAuthoredDialogue } from "./content-seeder.js";
 import { getFactionPolicyState } from "./council-world-bridge.js";
 import { getKnowledgeForRole } from "./npc-knowledge-bridge.js";
+import { recentFacts as _recentWorldFacts } from "./world-facts.js";
 
 const DIALOGUE_TTL_MS   = 5 * 60 * 1000;   // 5 minutes
 const QUEST_TTL_MS      = 10 * 60 * 1000;  // 10 minutes
@@ -92,7 +93,20 @@ function buildSocialSignals(npcId, _db = null, maxBytes = 1024, maxItems = 5) {
   return out;
 }
 
-function buildNPCTraits(npcId, db = null) {
+/**
+ * Build the npcTraits object that gets passed to oracle-brain LLM calls.
+ *
+ * INVARIANT: `npc.narrative_context.secret` MUST NEVER appear in the
+ * returned object. Secrets are for human authors and quest-branch
+ * conditions; the LLM has no business knowing them. The structural guard
+ * below explicitly omits the field; the strict-mode canary scan at the
+ * end is defense-in-depth so a future field-list mistake gets caught
+ * before it ships.
+ *
+ * Exported so the secret-leakage contract test can call it directly
+ * with a fixture NPC instead of having to seed the authored registry.
+ */
+export function buildNPCTraits(npcId, db = null) {
   const npc = getAuthoredNPC(npcId);
   if (!npc) {
     return {
@@ -117,7 +131,7 @@ function buildNPCTraits(npcId, db = null) {
     } catch { /* policy is best-effort context, never blocks dialogue */ }
   }
 
-  return {
+  const traits = {
     id:          npc.id,
     name:        npc.name,
     alias:       npc.alias ?? null,
@@ -144,8 +158,32 @@ function buildNPCTraits(npcId, db = null) {
     // "what do you think of X?" in-character without the LLM inventing
     // a stance. Capped at 8 entries to keep prompts tight.
     relationshipWeb: buildRelationshipWeb(npc),
+    // Cross-NPC shared facts: recent world_facts (migration 102) so
+    // every NPC's dialogue is rooted in the same truth about what
+    // happened recently. Pre-this, NPC A and NPC B could independently
+    // generate contradictory claims about the same event.
+    worldFacts: buildWorldFacts(npc, db),
     // Deliberately exclude secrets from LLM context — those are for human authors only
   };
+
+  // Defense-in-depth: scan the materialized traits for the secret canary.
+  // If the secret string ever sneaks into the output (via a future field
+  // change, a relationship note, or an LLM-vetted backstory that quoted
+  // it), log a structured warn so the leak is observable. We intentionally
+  // run this check in all environments — the cost (one stringify per
+  // dialogue call) is negligible vs. the cost of leaking authored secrets.
+  const secret = npc.narrative_context?.secret;
+  if (secret && typeof secret === "string" && secret.length > 4) {
+    try {
+      const serialized = JSON.stringify(traits);
+      if (serialized.includes(secret)) {
+        logger?.warn?.({ npcId, secretPreview: secret.slice(0, 8) + "..." },
+                      "narrative_bridge_secret_leak_detected");
+      }
+    } catch { /* stringify can fail on cycles — never block dialogue */ }
+  }
+
+  return traits;
 }
 
 /**
@@ -171,6 +209,29 @@ function buildRelationshipWeb(npc) {
     });
   }
   return out;
+}
+
+/**
+ * Pull recent world_facts (migration 102) for this NPC's world / faction
+ * so the oracle prompt grounds dialogue in shared truth. Best-effort: a
+ * missing world_facts table or query failure returns an empty array.
+ */
+function buildWorldFacts(npc, db) {
+  if (!db || !npc) return [];
+  try {
+    const worldId = npc.home_world ?? "concordia-hub";
+    const rows = _recentWorldFacts(db, worldId, {
+      limit: 5,
+      factionId: npc.faction_id ?? null,
+    });
+    return rows.map((r) => ({
+      kind: r.fact_kind,
+      text: String(r.fact_text || "").slice(0, 200),
+      district: r.district_id ?? null,
+    }));
+  } catch {
+    return [];
+  }
 }
 
 /**

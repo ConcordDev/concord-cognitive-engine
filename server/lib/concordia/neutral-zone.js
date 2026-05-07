@@ -5,8 +5,13 @@
 // enforce that here as a single function used by combat / hostile-action
 // endpoints. Any world where this returns false rejects the action.
 //
-// Concordia can grant per-player exemptions (currently a placeholder —
-// the dialogue system doesn't yet write to the exemptions set).
+// Concordia can grant per-player exemptions via grantExemption(); the
+// gate (checkHostilityAllowed) consumes them. Wiring is end-to-end.
+// What's still unwired is the AUTHORED DIALOGUE PATH — no goddess
+// dialogue tree currently calls grantExemption() in response to player
+// behavior. That's a content-authoring gap, not a code gap; once
+// content/dialogues/concordia_*.json adds an "exempt:user" outcome the
+// mechanic activates without further code changes.
 
 const HUB_WORLD_IDS = new Set(["concordia-hub", "concordia"]);
 

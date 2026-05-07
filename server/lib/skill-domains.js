@@ -33,6 +33,9 @@ export const SKILL_DOMAINS = Object.freeze([
   "stealth",
   "lockpicking",
   "infiltration",
+  "observation",        // counter-stealth: spot hidden actors
+  "perception",         // general awareness; stacks with observation
+  "governance",         // kingdom founding + decree enactment
   // Tech
   "hacking",
   "tech",

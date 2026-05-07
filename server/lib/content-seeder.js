@@ -70,11 +70,68 @@ function readJSON(relPath) {
   }
 }
 
+// ── Schema Validators ────────────────────────────────────────────────────────
+//
+// Plain runtime guards (no Zod dependency to keep startup lean). Each
+// validator returns { ok: boolean, reason?: string }. Seeders skip
+// invalid records with a structured warn rather than crashing — a single
+// malformed JSON file should not stop every authored character / faction
+// from loading.
+//
+// Exported so tests can exercise them directly with deliberately-malformed
+// fixtures.
+
+export function validateFaction(obj) {
+  if (!obj || typeof obj !== "object" || Array.isArray(obj)) return { ok: false, reason: "not_object" };
+  if (typeof obj.id !== "string" || !obj.id) return { ok: false, reason: "missing_id" };
+  if (typeof obj.name !== "string" || !obj.name) return { ok: false, reason: "missing_name" };
+  return { ok: true };
+}
+
+export function validateNpc(obj) {
+  if (!obj || typeof obj !== "object" || Array.isArray(obj)) return { ok: false, reason: "not_object" };
+  if (typeof obj.id !== "string" || !obj.id) return { ok: false, reason: "missing_id" };
+  if (typeof obj.name !== "string" || !obj.name) return { ok: false, reason: "missing_name" };
+  if (obj.faction_id !== undefined && obj.faction_id !== null && typeof obj.faction_id !== "string") {
+    return { ok: false, reason: "invalid_faction_id" };
+  }
+  if (obj.narrative_context !== undefined && (typeof obj.narrative_context !== "object" || Array.isArray(obj.narrative_context))) {
+    return { ok: false, reason: "invalid_narrative_context" };
+  }
+  return { ok: true };
+}
+
+export function validateQuest(obj) {
+  if (!obj || typeof obj !== "object" || Array.isArray(obj)) return { ok: false, reason: "not_object" };
+  if (typeof obj.id !== "string" || !obj.id) return { ok: false, reason: "missing_id" };
+  if (typeof obj.title !== "string" || !obj.title) return { ok: false, reason: "missing_title" };
+  if (obj.objectives !== undefined) {
+    if (!Array.isArray(obj.objectives)) return { ok: false, reason: "objectives_not_array" };
+    for (const o of obj.objectives) {
+      if (typeof o?.id !== "string" || !o.id)   return { ok: false, reason: "objective_missing_id" };
+      if (typeof o?.type !== "string" || !o.type) return { ok: false, reason: "objective_missing_type" };
+    }
+  }
+  return { ok: true };
+}
+
+export function validateLoreEvent(obj) {
+  if (!obj || typeof obj !== "object" || Array.isArray(obj)) return { ok: false, reason: "not_object" };
+  if (typeof obj.id !== "string" || !obj.id) return { ok: false, reason: "missing_id" };
+  if (typeof obj.title !== "string" || !obj.title) return { ok: false, reason: "missing_title" };
+  return { ok: true };
+}
+
 // ── Faction Seeding ──────────────────────────────────────────────────────────
 
 function seedFactions(factions) {
   let count = 0;
   for (const faction of factions) {
+    const v = validateFaction(faction);
+    if (!v.ok) {
+      logger.warn({ reason: v.reason, faction }, "content_seeder_faction_invalid_skipped");
+      continue;
+    }
     _authoredFactions.set(faction.id, faction);
     count++;
   }
@@ -86,14 +143,24 @@ function seedFactions(factions) {
 function seedNPCs(npcs) {
   let count = 0;
   for (const npc of npcs) {
+    const v = validateNpc(npc);
+    if (!v.ok) {
+      logger.warn({ reason: v.reason, npcId: npc?.id }, "content_seeder_npc_invalid_skipped");
+      continue;
+    }
     _authoredNPCs.set(npc.id, npc);
     // Apply authored per-NPC schedule overrides via npc-schedules.
+    // Surface failures: a hand-authored schedule that doesn't load means
+    // the NPC silently falls back to the procedural archetype default,
+    // which contradicts the authored-skeleton + LLM-muscle design.
     if (npc.schedule && typeof npc.schedule === "object") {
-      try {
-        // Lazy import — npc-schedules is ESM, top-level import would fight
-        // content-seeder's mixed cjs/esm context.
-        import("./npc-schedules.js").then(m => m.setNPCSchedule(npc.id, npc.schedule)).catch(() => {});
-      } catch { /* schedule application is best-effort */ }
+      // Lazy import — npc-schedules is ESM, top-level import would fight
+      // content-seeder's mixed cjs/esm context.
+      import("./npc-schedules.js")
+        .then(m => m.setNPCSchedule(npc.id, npc.schedule))
+        .catch(err => {
+          if (typeof console !== "undefined") console.warn("[content-seeder] schedule apply failed", { npcId: npc.id, err: err?.message });
+        });
     }
     count++;
   }
@@ -107,6 +174,11 @@ function seedLore(loreData) {
   let count = 0;
 
   for (const event of events) {
+    const v = validateLoreEvent(event);
+    if (!v.ok) {
+      logger.warn({ reason: v.reason, eventId: event?.id }, "content_seeder_lore_invalid_skipped");
+      continue;
+    }
     try {
       recordEvent(EVENT_TYPES.CUSTOM, {
         title:       event.title,
@@ -182,6 +254,11 @@ function seedQuestFile(quests) {
   let count = 0;
 
   for (const quest of quests) {
+    const v = validateQuest(quest);
+    if (!v.ok) {
+      logger.warn({ reason: v.reason, questId: quest?.id }, "content_seeder_quest_invalid_skipped");
+      continue;
+    }
     try {
       const steps       = buildQuestSteps(quest.objectives ?? []);
       const breadcrumbs = buildBreadcrumbs(quest.breadcrumbs ?? []);

@@ -1,0 +1,16 @@
+{
+  "id": "coastal-loop",
+  "name": "Coastal Loop",
+  "world_id": "concordia-hub",
+  "district_id": "harbor",
+  "lap_count": 3,
+  "allowed_vehicle_classes": ["car", "glider"],
+  "checkpoints": [
+    { "idx": 0, "x": 0,    "z": 0,    "label": "Start / Finish" },
+    { "idx": 1, "x": 200,  "z": 50,   "label": "Cliff Bend" },
+    { "idx": 2, "x": 400,  "z": -50,  "label": "Lighthouse Sweep" },
+    { "idx": 3, "x": 250,  "z": -200, "label": "Tidewall Straight" },
+    { "idx": 4, "x": 50,   "z": -150, "label": "Harbor Approach" }
+  ],
+  "description": "A 3-lap coastal circuit. Glider class allowed for thrill-seekers — short cuts over the bay are possible if you can stay airborne."
+}

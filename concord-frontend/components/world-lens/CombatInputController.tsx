@@ -48,6 +48,14 @@ import {
   loadActiveProfile,
   resolveBinding,
 } from '@/lib/concordia/keybindings';
+import { cameraLookState } from '@/lib/world-lens/camera-look-state';
+
+// Lock-on read helper. Returns the active locked-target id if the player
+// has soft- or hard-locked an enemy via LockOnController. Falls back to
+// null so the server picks nearest-in-range as before.
+function _lockedTargetId(): string | null {
+  return cameraLookState.lockedTargetId ?? null;
+}
 
 const HOLD_THRESHOLD_MS = 220;
 
@@ -278,7 +286,7 @@ export default function CombatInputController({
       case 'mounted-shot':
       case 'vehicle-ram':
         worldSocket.emit('combat:attack', {
-          targetId: null, // server picks nearest in range when null
+          targetId: _lockedTargetId(), // null → server picks nearest; locked → respect player choice
           baseDamage: Math.round(baseDamage * handMul * finisherMul),
           range: 3,
           armorPierce: heavy ? 1 : 0,
@@ -315,7 +323,7 @@ export default function CombatInputController({
         // server hook tags the action 'grapple' when style starts with
         // 'grab'/'aerial-grab', otherwise 'attack-heavy'.
         worldSocket.emit('combat:attack', {
-          targetId: null,
+          targetId: _lockedTargetId(),
           baseDamage: 12,
           range: 2,
           armorPierce: 0,
@@ -327,7 +335,7 @@ export default function CombatInputController({
       case 'kick':
       case 'dismount-kick':
         worldSocket.emit('combat:attack', {
-          targetId: null,
+          targetId: _lockedTargetId(),
           baseDamage: 14,
           range: 3,
           armorPierce: 0,

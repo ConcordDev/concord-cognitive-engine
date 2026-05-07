@@ -105,5 +105,31 @@ export default function createLensPortalsRouter({ requireAuth, db }) {
     res.json({ ok: true, lensId: portal.lens_id, xpResult });
   });
 
+  // GET /:portalId/entries — traversal feed for a portal.
+  // POST /:id/enter writes lens_portal_entries on every player traversal
+  // but pre-this-route nothing read them. Admin / portal-owner surfaces
+  // (popularity heatmap, churn detection) consume this. Auth-gated since
+  // traversal carries privacy weight (reveals which user visited which lens).
+  router.get("/:portalId/entries", requireAuth, (req, res) => {
+    try {
+      const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 50, 1), 500);
+      const sinceTs = req.query.sinceTs ? Number(req.query.sinceTs) : null;
+      const where = ["portal_id = ?"];
+      const args = [req.params.portalId];
+      if (sinceTs) { where.push("entered_at >= ?"); args.push(sinceTs); }
+      args.push(limit);
+      const rows = db.prepare(
+        `SELECT id, portal_id, user_id, entered_at
+           FROM lens_portal_entries
+          WHERE ${where.join(" AND ")}
+          ORDER BY entered_at DESC
+          LIMIT ?`,
+      ).all(...args);
+      res.json({ ok: true, portalId: req.params.portalId, entries: rows, count: rows.length });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
   return router;
 }

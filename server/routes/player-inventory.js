@@ -9,13 +9,18 @@ import { getItemEffectiveness, effectivenessLabel, listPlayerKnowledge, learnSch
 export default function createPlayerInventoryRouter({ requireAuth, db }) {
   const router = Router();
 
-  // GET /api/player-inventory  — list current player's items with knowledge & effectiveness
+  // GET /api/player-inventory?worldId=… — list current player's items in
+  // a specific world. world_id was added to player_inventory in
+  // migration 101 so a player's inventory follows them per world rather
+  // than spilling across all worlds. Defaults to the canonical hub when
+  // the caller doesn't specify (legacy clients).
   router.get("/", requireAuth, (req, res) => {
     try {
       const userId = req.user.id;
+      const worldId = String(req.query.worldId || "concordia-hub");
       const items  = db.prepare(
-        'SELECT * FROM player_inventory WHERE user_id = ? ORDER BY acquired_at DESC'
-      ).all(userId);
+        'SELECT * FROM player_inventory WHERE user_id = ? AND world_id = ? ORDER BY acquired_at DESC'
+      ).all(userId, worldId);
 
       const playerSkills = _getPlayerSkills(db, userId);
       const enriched = items.map(item => {
@@ -28,19 +33,22 @@ export default function createPlayerInventoryRouter({ requireAuth, db }) {
         };
       });
 
-      res.json({ ok: true, items: enriched });
+      res.json({ ok: true, items: enriched, worldId });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }
   });
 
-  // GET /api/player-inventory/:userId  — admin/debug: another player's items
+  // GET /api/player-inventory/:userId?worldId=…  — admin/debug: another
+  // player's items. World scope optional; without it, returns ALL of
+  // their items across worlds (admin debugging).
   router.get("/:userId", requireAuth, (req, res) => {
     try {
-      const items = db.prepare(
-        'SELECT * FROM player_inventory WHERE user_id = ? ORDER BY acquired_at DESC'
-      ).all(req.params.userId);
-      res.json({ ok: true, items });
+      const worldId = req.query.worldId ? String(req.query.worldId) : null;
+      const items = worldId
+        ? db.prepare('SELECT * FROM player_inventory WHERE user_id = ? AND world_id = ? ORDER BY acquired_at DESC').all(req.params.userId, worldId)
+        : db.prepare('SELECT * FROM player_inventory WHERE user_id = ? ORDER BY acquired_at DESC').all(req.params.userId);
+      res.json({ ok: true, items, worldId: worldId || null });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }

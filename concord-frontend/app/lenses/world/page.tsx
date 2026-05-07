@@ -67,6 +67,62 @@ const DistrictActivityFeed = dynamic(
     })),
   { ssr: false }
 );
+const EmergentEventFeed = dynamic(
+  () =>
+    import('@/components/world/EmergentEventFeed').then((m) => ({
+      default: m.EmergentEventFeed,
+    })),
+  { ssr: false }
+);
+const LockOnController = dynamic(
+  () =>
+    import('@/components/world-lens/LockOnController').then((m) => ({
+      default: m.LockOnController,
+    })),
+  { ssr: false }
+);
+const BodyLanguageOverlay = dynamic(
+  () =>
+    import('@/components/world-lens/BodyLanguageOverlay').then((m) => ({
+      default: m.BodyLanguageOverlay,
+    })),
+  { ssr: false }
+);
+const CompanionRosterPanel = dynamic(
+  () =>
+    import('@/components/world-lens/CompanionRosterPanel').then((m) => ({
+      default: m.CompanionRosterPanel,
+    })),
+  { ssr: false }
+);
+const TameAttemptOverlay = dynamic(
+  () =>
+    import('@/components/world-lens/TameAttemptOverlay').then((m) => ({
+      default: m.TameAttemptOverlay,
+    })),
+  { ssr: false }
+);
+const StealthDetectedOverlay = dynamic(
+  () =>
+    import('@/components/world-lens/StealthDetectedOverlay').then((m) => ({
+      default: m.StealthDetectedOverlay,
+    })),
+  { ssr: false }
+);
+const KingdomBorderOverlay = dynamic(
+  () =>
+    import('@/components/world-lens/KingdomBorderOverlay').then((m) => ({
+      default: m.KingdomBorderOverlay,
+    })),
+  { ssr: false }
+);
+const FishingMinigameOverlay = dynamic(
+  () =>
+    import('@/components/world-lens/FishingMinigameOverlay').then((m) => ({
+      default: m.FishingMinigameOverlay,
+    })),
+  { ssr: false }
+);
 const EmoteWheelLegacy = dynamic(
   () => import('@/components/world/EmoteWheel').then((m) => ({ default: m.EmoteWheel })),
   { ssr: false }
@@ -228,6 +284,14 @@ const CurrencyHUD = dynamic(
 const PostTutorialHints = dynamic(
   () => import('@/components/world-lens/PostTutorialHints'),
   { ssr: false },
+);
+const ComboEvolvedBridge = dynamic(
+  () => import('@/components/world-lens/ComboEvolvedBridge').then((m) => ({ default: m.ComboEvolvedBridge })),
+  { ssr: false }
+);
+const CinematicCaptureBootstrap = dynamic(
+  () => import('@/components/world-lens/CinematicCaptureBootstrap').then((m) => ({ default: m.CinematicCaptureBootstrap })),
+  { ssr: false }
 );
 const LevelUpJuiceBridge = dynamic(
   () => import('@/components/world-lens/LevelUpJuiceBridge').then((m) => ({ default: m.LevelUpJuiceBridge })),
@@ -1520,6 +1584,13 @@ export default function WorldLensPage() {
 
   // Emote wheel toggle
   const [showEmoteWheel, setShowEmoteWheel] = useState(false);
+  // Tame attempt overlay — opens when player presses KeyJ near a tameable
+  // creature (nearbyNPC of `creature` archetype). The bond + threshold
+  // are passed in so the overlay can show progress + gate the attempt.
+  const [tameTarget, setTameTarget] = useState<{ id: string; name: string; worldId: string; bond: number; threshold: number } | null>(null);
+  // Fishing minigame open state. Activated by KeyF in exploration mode.
+  // For v1 the player can fish anywhere — water-tile gating ships in v1.1.
+  const [fishingOpen, setFishingOpen] = useState(false);
 
   // World quests — loaded from server for QuestLog panel
   const [worldQuests, setWorldQuests] = useState<
@@ -1891,6 +1962,62 @@ export default function WorldLensPage() {
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [inputMode]);
+
+  // F key: open fishing minigame in exploration mode. v1 doesn't gate
+  // by water-tile presence (any spot is fishable for the demo); v1.1
+  // adds spatial check via DistrictViewport's water-tile registry.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== 'f' && e.key !== 'F') return;
+      if (inputMode !== 'exploration') return;
+      // Avoid conflict with combat parry (which uses KeyF in combat mode)
+      if (fishingOpen) return;
+      setFishingOpen(true);
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [inputMode, fishingOpen]);
+
+  // J key: open tame attempt overlay if a tameable creature is nearby.
+  // The "tameable" detection in v1 just uses the nearestNPC tracker —
+  // we ask the server what bond level we have with that creature
+  // and surface the overlay regardless of bond level (the overlay
+  // shows the bond progress so the player knows whether they can tame
+  // or just need to spend more time near it).
+  useEffect(() => {
+    const handler = async (e: KeyboardEvent) => {
+      if (e.key !== 'j' && e.key !== 'J') return;
+      if (inputMode !== 'exploration') return;
+      if (!nearbyNPC) return;
+      // Best-effort: fetch the bond. If the endpoint doesn't yet return
+      // a bond row, default to 0 with the standard threshold so the
+      // overlay can still surface and motivate the player.
+      try {
+        const r = await fetch(
+          `/api/companions/bond?creatureId=${encodeURIComponent(nearbyNPC.id)}`,
+          { credentials: 'same-origin' },
+        );
+        const j = r.ok ? await r.json() : null;
+        setTameTarget({
+          id: nearbyNPC.id,
+          name: nearbyNPC.name,
+          worldId: activeDistrict?.id || 'concordia-hub',
+          bond: j?.bond ?? 0,
+          threshold: j?.threshold ?? 100,
+        });
+      } catch {
+        setTameTarget({
+          id: nearbyNPC.id,
+          name: nearbyNPC.name,
+          worldId: activeDistrict?.id || 'concordia-hub',
+          bond: 0,
+          threshold: 100,
+        });
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [inputMode, nearbyNPC, activeDistrict]);
 
   // World quests — fetch for QuestLog panel, refresh every 45s
   useEffect(() => {
@@ -3361,6 +3488,8 @@ export default function WorldLensPage() {
             <></>
           </GameJuice>
           <LevelUpJuiceBridge />
+          <ComboEvolvedBridge />
+          <CinematicCaptureBootstrap />
           <PerformanceOverlay />
           <BazaarLayer worldId="concordia" />
           <CurrencyHUD onClick={() => setShowPanel('profile')} />
@@ -3754,6 +3883,60 @@ export default function WorldLensPage() {
           />
           {/* Tutorial overlay — always present, shows ? button */}
           <TutorialOverlay />
+
+          {/* Emergent simulation feed — surfaces world-tick activity that
+              previously fired silently (NPC death, evo-promotion, refusal
+              fields, weather rolls, agent insights, etc.) */}
+          <EmergentEventFeed />
+
+          {/* Body-language overlay — surfaces combat:telegraph (server
+              fires immediately before applyAttack resolves) so the player
+              can read attacker intent during the anticipation window. */}
+          <BodyLanguageOverlay />
+
+          {/* Companion roster — pet HUD (Phase A). Mounted bottom-right;
+              opens on click. Lists owned creatures, deploy/dismiss/rename. */}
+          <CompanionRosterPanel worldId={activeDistrict?.id || 'concordia-hub'} />
+
+          {/* Tame attempt overlay — opens on KeyJ press near a creature.
+              Shows current bond progress vs threshold + lure selector. */}
+          <TameAttemptOverlay
+            eligibleCreature={tameTarget}
+            onClose={() => setTameTarget(null)}
+          />
+
+          {/* Stealth detection — fires when a high-perception observer
+              breaks a hidden actor's cover (failed backstab).
+              Surfaces a brief banner. */}
+          <StealthDetectedOverlay />
+
+          {/* Kingdom border overlay — shows banner when player crosses
+              a kingdom border with active decrees listed. */}
+          <KingdomBorderOverlay
+            worldId={activeDistrict?.id || 'concordia-hub'}
+            playerPosition={{ x: playerAvatar.position.x, y: playerAvatar.position.y, z: playerAvatar.position.z }}
+          />
+
+          {/* Fishing minigame — KeyF opens. Cast → bite → reel. */}
+          <FishingMinigameOverlay
+            open={fishingOpen}
+            worldId={activeDistrict?.id || 'concordia-hub'}
+            position={{ x: playerAvatar.position.x, z: playerAvatar.position.y }}
+            onClose={() => setFishingOpen(false)}
+          />
+
+          {/* Lock-on controller — Tab cycles soft lock on nearest enemy
+              in the facing cone, KeyT toggles hard lock, Escape clears.
+              Combat input controller defaults to lockedTargetId when set. */}
+          <LockOnController
+            playerPosition={{ x: playerAvatar.position.x, y: playerAvatar.position.y, z: playerAvatar.position.z }}
+            cameraYaw={playerAvatar.rotation}
+            lockables={rawWorldNPCs.map((n) => ({
+              id: n.id,
+              name: n.name,
+              position: { x: n.position.x, y: n.position.y, z: n.position.z },
+            }))}
+          />
 
           {/* District activity feed — live quests/events/NPC discovery */}
           <DistrictActivityFeed

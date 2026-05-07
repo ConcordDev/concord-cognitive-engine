@@ -22,10 +22,15 @@ check() {
   local body="${4:-}"
   local expected_status="${5:-200}"
 
+  # Use a non-curl User-Agent so the server's bot guard
+  # (server.js:_BOT_UA_RE at ~5870) doesn't 403 every smoke request.
+  # Authenticated smoke via API key is documented in DEPLOYMENT.md;
+  # this script covers the public-read surface only.
+  local UA="Concord-Smoke/1.0"
   if [ "$method" = "GET" ]; then
-    STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$BASE_URL$url" 2>/dev/null || echo "000")
+    STATUS=$(curl -s -A "$UA" -o /dev/null -w "%{http_code}" "$BASE_URL$url" 2>/dev/null || echo "000")
   else
-    STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X "$method" "$BASE_URL$url" \
+    STATUS=$(curl -s -A "$UA" -o /dev/null -w "%{http_code}" -X "$method" "$BASE_URL$url" \
       -H "Content-Type: application/json" \
       -d "$body" 2>/dev/null || echo "000")
   fi
@@ -44,7 +49,7 @@ check_json() {
   local url="$2"
   local jq_expr="$3"
 
-  BODY=$(curl -s "$BASE_URL$url" 2>/dev/null || echo "{}")
+  BODY=$(curl -s -A "Concord-Smoke/1.0" "$BASE_URL$url" 2>/dev/null || echo "{}")
   RESULT=$(echo "$BODY" | node -e "
     let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{
       try{const o=JSON.parse(d);const v=o$jq_expr;if(v!==undefined&&v!==null)process.stdout.write(String(v));else process.stdout.write('PARSE_ERROR')}
@@ -74,17 +79,23 @@ check_json "Status returns ok" "/api/status" "['ok']"
 check "Schema version" "/api/schema/version"
 
 # ── Paginated Endpoints ──────────────────────────────────
+# /api/artifacts/paginated and /api/artifacts/upload are durable.js
+# endpoints shadowed by routes/artifacts.js (mounted earlier; its /:id
+# captures "paginated" → 404, its /upload requires auth → 401).
+# The newer /api/artifacts list endpoint is the live read path.
 echo ""
 echo "--- Paginated Endpoints ---"
 check "DTUs paginated" "/api/dtus/paginated?limit=5"
-check "Artifacts paginated" "/api/artifacts/paginated?limit=5"
+check "Artifacts (list)" "/api/artifacts?limit=5"
 check "Jobs paginated" "/api/jobs/paginated?limit=5"
 check "Marketplace paginated" "/api/marketplace/paginated?limit=5"
 
 # ── Artifact Upload ──────────────────────────────────────
+# routes/artifacts.js requireAuth allows AUTH_MODE=public anonymous
+# uploads through; schema uses name/content (not title/data).
 echo ""
 echo "--- Artifact Upload ---"
-UPLOAD_BODY='{"type":"file","title":"Smoke Test File","data":"SGVsbG8gV29ybGQ=","mime_type":"text/plain","filename":"test.txt","visibility":"private"}'
+UPLOAD_BODY='{"name":"smoke-test.txt","mimeType":"text/plain","content":"SGVsbG8gV29ybGQ="}'
 check "Upload artifact" "/api/artifacts/upload" "POST" "$UPLOAD_BODY"
 
 # ── Durable DTU ──────────────────────────────────────────
@@ -140,7 +151,10 @@ echo "--- Economy ---"
 check "Fee schedule" "/api/economy/fees"
 check "Ledger integrity" "/api/economy/integrity"
 BUY_BODY='{"user_id":"smoke-user","amount":100}'
-check "Token purchase" "/api/economy/buy" "POST" "$BUY_BODY"
+# /api/economy/buy and /api/stripe/connect/status both require auth —
+# the anonymous probe asserts the gate is wired (401), not the
+# functionality (which a session-bearing test covers).
+check "Token purchase (auth required)" "/api/economy/buy" "POST" "$BUY_BODY" "401"
 check "Balance check" "/api/economy/balance?user_id=smoke-user"
 check "Economy status" "/api/economy/status"
 check "Platform balance" "/api/economy/platform-balance"

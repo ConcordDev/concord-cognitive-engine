@@ -104,10 +104,10 @@ The phase F2 modules log structured events (`world_clock_broadcast_started`, `np
 - NPC behaviors: count by segment over time
 - Combat anti-cheat: hits rejected by reason
 
-### 9. Prometheus metric for heartbeat liveness — **HIGH**
-If the heartbeat tick stops, every emergent system silently freezes. There's no metric for "ticks per minute."
+### 9. Prometheus metric for heartbeat liveness — **DONE**
+Counter `concord_heartbeat_ticks_total` is declared at `server/server.js:5592` and incremented inside `governorTick()` at `server/server.js:28655`. Prometheus alert `ConcordHeartbeatStopped` exists at `monitoring/prometheus/alerts.yml:60` (rule: `rate(concord_heartbeat_ticks_total[5m]) == 0`).
 
-**Action**: Add `concord_heartbeat_ticks_total` counter incremented in `governorTick`. Alert if `rate(...[1m]) == 0` for > 60s. The alert lives in `monitoring/prometheus/`.
+**Remaining sub-gap**: when a tick is *skipped* because the previous tick is still running (`_governorTickRunning` guard), no counter increments. Add `concord_heartbeat_skipped_total` and alert if rate > 0 for >5min — that signals heartbeat overrun (e.g., a slow DTU-consolidation pass starving subsequent ticks).
 
 ### 10. Backup verification — **HIGH**
 `scripts/db-backup.sh` exists. `scripts/db-restore.sh` exists. Has a backup → restore round-trip been exercised against a copy of `concord.db`?

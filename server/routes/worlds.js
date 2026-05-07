@@ -22,6 +22,58 @@ import {
   recordObjectiveProgress,
   checkQuestCompletion,
 } from "../lib/quests/quest-engine.js";
+import * as cityPresence from "../lib/city-presence.js";
+
+// Combat anti-cheat constants. Server-side validation prevents a modified
+// client from claiming impossible reach or damage. The values are tuned
+// loose enough that legitimate gameplay (crits, buffed attacks, lag-comp)
+// passes, but tight enough that one-shot hacks get rejected.
+const COMBAT_MAX_REACH_M       = Number(process.env.CONCORD_COMBAT_MAX_REACH_M)       || 80;  // ranged ceiling
+const COMBAT_MELEE_REACH_M     = Number(process.env.CONCORD_COMBAT_MELEE_REACH_M)     || 3;   // melee threshold
+const COMBAT_DAMAGE_HARD_CAP   = Number(process.env.CONCORD_COMBAT_DAMAGE_HARD_CAP)   || 500; // absolute per-hit cap
+const COMBAT_DAMAGE_CRIT_MULT  = Number(process.env.CONCORD_COMBAT_DAMAGE_CRIT_MULT)  || 2.5; // crits scale this much
+
+/**
+ * Server-authoritative reach check. Returns { ok, reason?, distance? }.
+ * Uses cityPresence's last-known player position (updated 30Hz from
+ * player:move socket). NPC position comes from world_npcs row.
+ *
+ * Skill DTUs may declare `range_m` to override; otherwise melee (3m).
+ */
+function _validateCombatReach(userId, npcRow, skillData) {
+  const playerPos = cityPresence.getUserPosition(userId);
+  if (!playerPos) return { ok: true, reason: "no_presence_yet" }; // first frame after login — pass
+  if (!npcRow || typeof npcRow.x !== "number" || typeof npcRow.z !== "number") return { ok: true, reason: "npc_no_pos" };
+  const dx = (playerPos.x ?? 0) - (npcRow.x ?? 0);
+  const dz = (playerPos.z ?? 0) - (npcRow.z ?? 0);
+  const distance = Math.sqrt(dx * dx + dz * dz);
+  const declaredRange = Number(skillData?.range_m) || COMBAT_MELEE_REACH_M;
+  const allowedRange = Math.min(COMBAT_MAX_REACH_M, Math.max(COMBAT_MELEE_REACH_M, declaredRange));
+  if (distance > allowedRange + 1) { // +1m grace for lag-comp
+    return { ok: false, reason: "out_of_range", distance, allowedRange };
+  }
+  return { ok: true, distance, allowedRange };
+}
+
+/**
+ * Server-authoritative damage cap. After computeDamage() runs, verify
+ * the result didn't blow past a sane maximum. A modified client can't
+ * inflate damageResult.damage beyond what the server's own formula
+ * produced — this is the second guard, defending against a future bug
+ * in computeDamage that drops a sanity check.
+ */
+function _validateDamageCap(damageResult, skillData) {
+  if (!damageResult || typeof damageResult.damage !== "number") {
+    return { ok: false, reason: "damage_missing" };
+  }
+  const skillCap = Number(skillData?.max_damage) || 0;
+  const isCrit = !!damageResult.isCrit;
+  const cap = (skillCap > 0 ? skillCap * COMBAT_DAMAGE_CRIT_MULT : COMBAT_DAMAGE_HARD_CAP);
+  if (damageResult.damage > cap + 0.5) {
+    return { ok: false, reason: "damage_cap_exceeded", computed: damageResult.damage, cap, isCrit };
+  }
+  return { ok: true };
+}
 
 export default function createWorldsRouter({ requireAuth, db }) {
   const router = express.Router();
@@ -688,6 +740,44 @@ export default function createWorldsRouter({ requireAuth, db }) {
       });
 
       res.json({ ok: true, emergents: worldEmergents, bosses, total: worldEmergents.length + bosses.length });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // GET /api/worlds/:worldId/opinions/recent — NPC opinion-shift feed.
+  // npc-relations.js writes a row to opinion_events whenever a player or
+  // NPC action shifts ambient opinion (witnessed combat, theft, charity,
+  // public speech). The witness_radius column was always meant to drive
+  // spatial reads — pre-this-route nothing actually queried them, so the
+  // NPC reaction system had no UI surface. Frontend dialogue can now
+  // pull recent opinion events near an NPC's position to flavor lines
+  // ("they saw what you did to the Mayor").
+  //
+  // Query params:
+  //   actorId — optional, filter to events caused by this actor
+  //   limit   — default 50, max 200
+  //   sinceTs — optional unix-epoch lower bound
+  router.get("/:worldId/opinions/recent", requireAuth, (req, res) => {
+    try {
+      const { worldId } = req.params;
+      const actorId = req.query.actorId || null;
+      const sinceTs = req.query.sinceTs ? Number(req.query.sinceTs) : null;
+      const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 50, 1), 200);
+      const where = ["world_id = ?"];
+      const args = [worldId];
+      if (actorId) { where.push("actor_id = ?"); args.push(actorId); }
+      if (sinceTs) { where.push("occurred_at >= ?"); args.push(sinceTs); }
+      args.push(limit);
+      const rows = db.prepare(
+        `SELECT id, world_id, actor_id, actor_type, event_type, magnitude,
+                location_x, location_z, witness_radius, context, occurred_at
+           FROM opinion_events
+          WHERE ${where.join(" AND ")}
+          ORDER BY occurred_at DESC
+          LIMIT ?`,
+      ).all(...args);
+      res.json({ ok: true, worldId, events: rows, count: rows.length });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }
@@ -1692,7 +1782,29 @@ export default function createWorldsRouter({ requireAuth, db }) {
       const defenderStats = getOrCreateNPCResistances(db, npcId);
       if (!defenderStats) return res.status(404).json({ ok: false, error: "NPC not found" });
 
+      // ── Anti-cheat: reach check ────────────────────────────────────────────
+      // Server-authoritative position validation. A modified client can't
+      // attack an NPC across the map. NPC row already loaded for opinion
+      // broadcast below — fetch it now and reuse.
+      const npcPosRow = db.prepare("SELECT id, x, y, z FROM world_npcs WHERE id = ?").get(npcId);
+      const reachCheck = _validateCombatReach(userId, npcPosRow, skillData);
+      if (!reachCheck.ok) {
+        logger.warn?.('worlds', 'combat_reach_rejected', { userId, npcId, ...reachCheck });
+        return res.status(422).json({ ok: false, error: "out_of_range", distance: reachCheck.distance, allowedRange: reachCheck.allowedRange });
+      }
+
       const damageResult = computeDamage(attackerStats, defenderStats, skillData);
+
+      // ── Anti-cheat: damage cap ─────────────────────────────────────────────
+      // Defends against future bugs in computeDamage that might drop a
+      // sanity check. Cap = skillData.max_damage * 2.5 (crit) OR a hard
+      // 500 absolute fallback.
+      const dmgCheck = _validateDamageCap(damageResult, skillData);
+      if (!dmgCheck.ok) {
+        logger.warn?.('worlds', 'combat_damage_rejected', { userId, npcId, ...dmgCheck });
+        return res.status(422).json({ ok: false, error: "damage_cap_exceeded", reason: dmgCheck.reason });
+      }
+
       const { eventId, kill } = applyDamageToNPC(db, worldId, userId, 'player', npcId, damageResult, {
         skill_dtu_id: skillDtuId, item_dtu_id: itemDtuId,
         element: skillData.element || 'none',
@@ -1709,12 +1821,15 @@ export default function createWorldsRouter({ requireAuth, db }) {
         }
       } catch { /* non-critical */ }
 
-      // Track kill quest objectives when NPC dies
+      // Track kill / defeat quest objectives when NPC dies. Some authored
+      // content uses "defeat" for tonal reasons (onboarding fight quest);
+      // some uses "kill". Fire both so either authoring style works.
       if (kill) {
         try {
           const killedNpc = db.prepare("SELECT archetype FROM world_npcs WHERE id = ?").get(npcId);
           const archetype = killedNpc?.archetype || 'enemy';
           recordObjectiveProgress(db, userId, worldId, null, 'kill', archetype, 1);
+          recordObjectiveProgress(db, userId, worldId, null, 'defeat', archetype, 1);
         } catch { /* non-fatal */ }
       }
 
