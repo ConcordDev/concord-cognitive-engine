@@ -65,25 +65,6 @@ function logEvent(db, type, actorUserId, payload, requestId) {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════
-// ALLOWED MIME TYPES per artifact type
-// ═══════════════════════════════════════════════════════════════
-
-const ALLOWED_MIMES = {
-  audio: ["audio/wav", "audio/mpeg", "audio/flac", "audio/ogg", "audio/aac", "audio/webm", "audio/mp4"],
-  image: ["image/png", "image/jpeg", "image/gif", "image/webp", "image/svg+xml"],
-  video: ["video/mp4", "video/webm"],
-  document: ["application/pdf", "text/plain", "text/markdown"],
-  code: ["text/plain", "application/json", "text/javascript", "text/typescript"],
-  json: ["application/json"],
-  file: null, // accepts all
-  analysis: ["application/json"],
-  render: ["audio/wav", "audio/mpeg", "audio/flac"],
-  master: ["audio/wav", "audio/mpeg", "audio/flac"],
-};
-
-const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500 MB
-
 /**
  * Register all durable endpoints on the Express app.
  *
@@ -238,39 +219,6 @@ export function registerDurableEndpoints(app, db) {
     }
   });
 
-  // GET /api/artifacts/paginated
-  app.get("/api/artifacts/paginated", (req, res) => {
-    try {
-      const { q, limit, offset, type, visibility } = req.query;
-      const filters = {};
-      if (type) filters.type = type;
-      if (visibility) filters.visibility = visibility;
-
-      const result = paginatedQuery("artifacts", {
-        q,
-        limit,
-        offset,
-        filters,
-        searchCols: ["title", "metadata_json"],
-        orderBy: "created_at DESC",
-      });
-
-      result.items = result.items.map((item) => ({
-        ...item,
-        metadata: safeParseJSON(item.metadata_json),
-      }));
-
-      const facets = {
-        types: db.prepare("SELECT type, COUNT(*) as count FROM artifacts GROUP BY type").all(),
-        visibility: db.prepare("SELECT visibility, COUNT(*) as count FROM artifacts GROUP BY visibility").all(),
-      };
-
-      res.json({ ok: true, ...result, facets });
-    } catch (e) {
-      sendDbError(res, e, "durable");
-    }
-  });
-
   // GET /api/jobs/paginated
   app.get("/api/jobs/paginated", (req, res) => {
     try {
@@ -334,141 +282,13 @@ export function registerDurableEndpoints(app, db) {
   });
 
   // ═══════════════════════════════════════════════════════════════
-  // ARTIFACT UPLOAD / DOWNLOAD
+  // ARTIFACT endpoints removed — superseded by routes/artifacts.js
+  // (mounted earlier, so /upload, /:id, /:id/download, /:id/info routes
+  // here were unreachable). The router writes to route_artifacts; studio
+  // pipelines below still write to the artifacts table directly via
+  // INSERTs (render/vocal/master). Reads of those rows are a TODO —
+  // tracked separately, would need a new endpoint or a unified table.
   // ═══════════════════════════════════════════════════════════════
-
-  // POST /api/artifacts/upload — multipart or JSON with base64 data
-  app.post("/api/artifacts/upload", async (req, res) => {
-    try {
-      const { type = "file", title = "Untitled", data, mime_type, filename, visibility = "private", owner_user_id } = req.body;
-
-      if (!data) {
-        return res.status(400).json({ error: "Missing 'data' field (base64 encoded)" });
-      }
-
-      // Validate mime type
-      const mimeType = mime_type || "application/octet-stream";
-      const allowedList = ALLOWED_MIMES[type];
-      if (allowedList && !allowedList.includes(mimeType)) {
-        return res.status(400).json({
-          error: `Mime type '${mimeType}' not allowed for artifact type '${type}'`,
-          allowed: allowedList,
-        });
-      }
-
-      // Decode and check size
-      const buf = Buffer.from(data, "base64");
-      if (buf.length > MAX_FILE_SIZE) {
-        return res.status(413).json({
-          error: `File too large. Max size: ${MAX_FILE_SIZE / 1024 / 1024} MB`,
-        });
-      }
-
-      const artifactId = uid("art");
-      const versionId = uid("artv");
-      const now = nowISO();
-
-      // Store file
-      const ext = (filename || "").split(".").pop() || "bin";
-      const storagePath = `${artifactId}/v1/${filename || `upload.${ext}`}`;
-      const putResult = await storage.put(storagePath, buf, mimeType);
-
-      // DB transaction: create artifact + version + event
-      const tx = db.transaction(() => {
-        db.prepare(
-          "INSERT INTO artifacts (id, owner_user_id, type, title, metadata_json, visibility, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-        ).run(artifactId, owner_user_id || null, type, title, JSON.stringify({ filename, originalMime: mimeType }), visibility, now, now);
-
-        db.prepare(
-          "INSERT INTO artifact_versions (id, artifact_id, version, storage_uri, sha256, size_bytes, mime_type, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-        ).run(versionId, artifactId, 1, putResult.uri, putResult.sha256, putResult.size, mimeType, now);
-
-        logEvent(db, "artifact.uploaded", owner_user_id, { artifactId, versionId, type, title, size: putResult.size }, req.headers["x-request-id"]);
-      });
-      tx();
-
-      res.json({
-        ok: true,
-        artifact: { id: artifactId, type, title, visibility },
-        version: { id: versionId, version: 1, sha256: putResult.sha256, size_bytes: putResult.size },
-      });
-    } catch (e) {
-      sendDbError(res, e, "durable");
-    }
-  });
-
-  // GET /api/artifacts/:id/download
-  app.get("/api/artifacts/:id/download", async (req, res) => {
-    try {
-      const artifact = db.prepare("SELECT * FROM artifacts WHERE id = ?").get(req.params.id);
-      if (!artifact) return res.status(404).json({ error: "Artifact not found" });
-
-      // Get latest version
-      const version = db
-        .prepare("SELECT * FROM artifact_versions WHERE artifact_id = ? ORDER BY version DESC LIMIT 1")
-        .get(req.params.id);
-      if (!version) return res.status(404).json({ error: "No versions found" });
-
-      // Check entitlement if marketplace
-      if (artifact.visibility === "marketplace") {
-        const userId = req.actor?.userId || req.user?.id || req.headers["x-user-id"];
-        if (userId && userId !== artifact.owner_user_id) {
-          const listingAsset = db.prepare(
-            "SELECT la.listing_id FROM marketplace_listing_assets la JOIN marketplace_listings l ON la.listing_id = l.id WHERE la.artifact_id = ? AND l.visibility = 'published'"
-          ).get(req.params.id);
-
-          if (listingAsset) {
-            const entitlement = db.prepare(
-              "SELECT id FROM entitlements WHERE user_id = ? AND listing_id = ?"
-            ).get(userId, listingAsset.listing_id);
-
-            const listing = db.prepare("SELECT price_cents FROM marketplace_listings WHERE id = ?").get(listingAsset.listing_id);
-            if (!entitlement && listing && listing.price_cents > 0) {
-              return res.status(403).json({ error: "Purchase required", listing_id: listingAsset.listing_id });
-            }
-          }
-        }
-      }
-
-      const file = await storage.get(version.storage_uri);
-
-      logEvent(db, "artifact.downloaded", req.user?.id || null, { artifactId: req.params.id, versionId: version.id }, req.headers["x-request-id"]);
-
-      res.setHeader("Content-Type", file.contentType);
-      res.setHeader("Content-Length", file.size);
-      const safeFilename = (artifact.title || "download").replace(/["\r\n\\]/g, "_");
-      res.setHeader("Content-Disposition", `attachment; filename="${safeFilename}"`);
-      file.stream.pipe(res);
-    } catch (e) {
-      if (e.message?.includes("not found")) return res.status(404).json({ error: "Not found" });
-      sendDbError(res, e, "durable");
-    }
-  });
-
-  // GET /api/artifacts/:id — metadata only
-  app.get("/api/artifacts/:id/info", (req, res) => {
-    try {
-      const artifact = db.prepare("SELECT * FROM artifacts WHERE id = ?").get(req.params.id);
-      if (!artifact) return res.status(404).json({ error: "Artifact not found" });
-
-      const versions = db
-        .prepare("SELECT id, version, sha256, size_bytes, mime_type, created_at FROM artifact_versions WHERE artifact_id = ? ORDER BY version DESC")
-        .all(req.params.id);
-
-      const links = db
-        .prepare("SELECT * FROM artifact_links WHERE to_artifact_id = ?")
-        .all(req.params.id);
-
-      res.json({
-        ok: true,
-        artifact: { ...artifact, metadata: safeParseJSON(artifact.metadata_json) },
-        versions,
-        links,
-      });
-    } catch (e) {
-      sendDbError(res, e, "durable");
-    }
-  });
 
   // ═══════════════════════════════════════════════════════════════
   // MARKETPLACE — Durable Listings
