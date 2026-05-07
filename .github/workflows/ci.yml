@@ -80,6 +80,25 @@ jobs:
           fi
           echo "Auth bypass gate: PASS (0 violations)"
 
+      - name: Cartograph drift gate
+        id: cartograph_diff
+        working-directory: ./server
+        run: |
+          echo "Re-running cartographer in static mode to verify SYSTEMS.json is current..."
+          npm run cartograph:static
+          # Compare audit/cartograph/SYSTEMS.json stats against the prior commit's snapshot
+          # Allow generatedAt + bootDurationMs to drift; flag impactful changes
+          if git diff --exit-code --no-color -- ../audit/cartograph/SYSTEMS.json | grep -E '^\+.*"(macroCount|heartbeatCount|tableCount|lensCount|deadTableCount|orphanModuleCount|dormantModuleCount|coverageInScope|coveragePresent)"' > /tmp/cartograph-impactful.txt; then
+            echo "Impactful cartographer fields changed — verifying intent..."
+            cat /tmp/cartograph-impactful.txt
+            # Don't fail on impactful changes (they're expected as wires land);
+            # log them to surface in PR review instead. Strict-fail mode can be
+            # added later via CONCORD_CARTOGRAPH_STRICT=true.
+            echo "Cartograph diff: INFO — impactful fields changed (expected during wiring sprints)"
+          else
+            echo "Cartograph diff: PASS — no impactful field changes"
+          fi
+
       - name: Validate lens quality gate
         id: validate_lens_quality
         working-directory: ./concord-frontend
