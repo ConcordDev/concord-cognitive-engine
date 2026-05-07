@@ -5130,12 +5130,28 @@ function authMiddleware(req, res, next) {
 }
 
 // Require authentication helper (returns middleware)
-function requireAuth() {
-  return (req, res, next) => {
+// Polymorphic auth gate — works both as factory (`requireAuth()`) and as
+// direct middleware (`requireAuth`). Older routers call it as a factory
+// (~19 files); newer / port-from-elsewhere routers pass it directly
+// as middleware (~46 files). When passed directly, Express invokes
+// requireAuth(req, res, next) and the prior factory-only signature
+// silently returned a discarded inner middleware — every direct-pattern
+// route hung for 30s before the request-timeout middleware bailed.
+//
+// Detect by argument shape: real middleware invocation has (req, res, next)
+// with next as a function. Anything else is treated as factory-mode.
+function requireAuth(...args) {
+  const handle = (req, res, next) => {
     if (AUTH_MODE === "public") return next();
     if (!req.user) return res.status(401).json({ ok: false, error: "Unauthorized" });
     return next();
   };
+  // Direct-middleware pattern: Express calls (req, res, next).
+  if (args.length >= 3 && typeof args[2] === "function" && args[0] && typeof args[0] === "object" && "headers" in args[0]) {
+    return handle(args[0], args[1], args[2]);
+  }
+  // Factory pattern: return a middleware closure.
+  return handle;
 }
 
 // Permission check helper — simplified 4-role model:
@@ -25372,7 +25388,7 @@ registerSystemRoutes(app, {
 });
 
 // ---- Audit Log Endpoints (extracted to routes/audit.js) ----
-app.use("/api/audit", createAuditRouter({ requireRole }));
+app.use("/api/audit", createAuditRouter({ requireRole, db }));
 
 // ---- Auth Endpoints (extracted to routes/auth.js) ----
 app.use("/api/auth", createAuthRouter({

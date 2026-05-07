@@ -745,6 +745,44 @@ export default function createWorldsRouter({ requireAuth, db }) {
     }
   });
 
+  // GET /api/worlds/:worldId/opinions/recent — NPC opinion-shift feed.
+  // npc-relations.js writes a row to opinion_events whenever a player or
+  // NPC action shifts ambient opinion (witnessed combat, theft, charity,
+  // public speech). The witness_radius column was always meant to drive
+  // spatial reads — pre-this-route nothing actually queried them, so the
+  // NPC reaction system had no UI surface. Frontend dialogue can now
+  // pull recent opinion events near an NPC's position to flavor lines
+  // ("they saw what you did to the Mayor").
+  //
+  // Query params:
+  //   actorId — optional, filter to events caused by this actor
+  //   limit   — default 50, max 200
+  //   sinceTs — optional unix-epoch lower bound
+  router.get("/:worldId/opinions/recent", requireAuth, (req, res) => {
+    try {
+      const { worldId } = req.params;
+      const actorId = req.query.actorId || null;
+      const sinceTs = req.query.sinceTs ? Number(req.query.sinceTs) : null;
+      const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 50, 1), 200);
+      const where = ["world_id = ?"];
+      const args = [worldId];
+      if (actorId) { where.push("actor_id = ?"); args.push(actorId); }
+      if (sinceTs) { where.push("occurred_at >= ?"); args.push(sinceTs); }
+      args.push(limit);
+      const rows = db.prepare(
+        `SELECT id, world_id, actor_id, actor_type, event_type, magnitude,
+                location_x, location_z, witness_radius, context, occurred_at
+           FROM opinion_events
+          WHERE ${where.join(" AND ")}
+          ORDER BY occurred_at DESC
+          LIMIT ?`,
+      ).all(...args);
+      res.json({ ok: true, worldId, events: rows, count: rows.length });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
   // POST /api/worlds/:worldId/npcs/:npcId/kill — handle NPC death (from combat)
   router.post("/:worldId/npcs/:npcId/kill", requireAuth, async (req, res) => {
     try {

@@ -124,5 +124,30 @@ export default function createMinigamesRouter({ requireAuth, db, realtimeEmit })
     } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
   });
 
+  // GET /api/minigames/:matchId/events — play-by-play feed.
+  // basketball.js / racing.js write to minigame_events on every shot,
+  // checkpoint, lap-complete and crash, but pre-this-route nothing read
+  // them back. UI replay surfaces (post-match recap, share-card) and
+  // future match-chronicle-DTU enrichment consume this shape.
+  router.get("/:matchId/events", requireAuth, (req, res) => {
+    try {
+      const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 200, 1), 1000);
+      const events = db
+        .prepare(
+          `SELECT id, match_id, actor_id, event_kind, payload_json, ts
+             FROM minigame_events
+            WHERE match_id = ?
+            ORDER BY ts ASC
+            LIMIT ?`,
+        )
+        .all(req.params.matchId, limit);
+      const parsed = events.map((e) => ({
+        ...e,
+        payload: (() => { try { return JSON.parse(e.payload_json); } catch { return null; } })(),
+      }));
+      res.json({ ok: true, matchId: req.params.matchId, events: parsed, count: parsed.length });
+    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  });
+
   return router;
 }

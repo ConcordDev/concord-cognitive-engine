@@ -10,9 +10,10 @@ import { getAuditLog, getAuditLogForUser } from "../lib/audit-logger.js";
  *
  * @param {object} deps
  * @param {Function} deps.requireRole - RBAC middleware (e.g. requireRole("owner","admin"))
+ * @param {object}   [deps.db]        - SQLite connection (used by /wash-trades).
  * @returns {import('express').Router}
  */
-export default function createAuditRouter({ requireRole }) {
+export default function createAuditRouter({ requireRole, db = null }) {
   const router = express.Router();
 
   // ── GET /api/audit — admin-only: list all audit entries ────────────────────
@@ -78,6 +79,36 @@ export default function createAuditRouter({ requireRole }) {
     });
 
     res.json({ ok: true, ...result });
+  });
+
+  // ── GET /api/audit/wash-trades — admin-only: marketplace integrity feed ───
+  // marketplace-service.js detects circular trades and writes to
+  // wash_trade_flags, but pre-this-route nothing read those flags. Admin
+  // surfaces (compliance dashboard, fraud-team review) consume this.
+  router.get("/wash-trades", requireRole("owner", "admin"), (req, res) => {
+    if (!db) return res.status(503).json({ ok: false, error: "db_unavailable" });
+    try {
+      const limit = Math.max(1, Math.min(Number(req.query.limit) || 50, 200));
+      const offset = Math.max(0, Number(req.query.offset) || 0);
+      const accountFilter = req.query.account || null;
+      const sql = accountFilter
+        ? `SELECT id, account_a, account_b, content_id, trade_count, flagged_at
+             FROM wash_trade_flags
+            WHERE account_a = ? OR account_b = ?
+            ORDER BY flagged_at DESC
+            LIMIT ? OFFSET ?`
+        : `SELECT id, account_a, account_b, content_id, trade_count, flagged_at
+             FROM wash_trade_flags
+            ORDER BY flagged_at DESC
+            LIMIT ? OFFSET ?`;
+      const args = accountFilter
+        ? [accountFilter, accountFilter, limit, offset]
+        : [limit, offset];
+      const flags = db.prepare(sql).all(...args);
+      res.json({ ok: true, flags, count: flags.length });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e?.message || "wash_trade_query_failed" });
+    }
   });
 
   return router;
