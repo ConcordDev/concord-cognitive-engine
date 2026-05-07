@@ -248,6 +248,27 @@ registerHeartbeat("qualia-persist", {
     }
   },
 });
+
+// Layer 7: Environment-sense — every 5 ticks (~75s) reads weather +
+// biome + time-of-day for each active world, computes thermal/sight/
+// sonic/chemical/tactile_force_os channel values, writes to
+// embodied_signal_log, and updates the QualiaEngine via hookEcology.
+// The fauna-spawner's signal-responsive modifier consumes the same
+// values on its tick, so cold zones produce fewer bugs and more
+// cold-adapted fauna emergently.
+registerHeartbeat("environment-sense", {
+  frequency: 5,
+  handler: async (ctx) => {
+    if (!ctx?.db) return { ok: false, reason: "no_db" };
+    try {
+      const { runEnvironmentSense } = await import("./lib/embodied/environment-sensor.js");
+      return runEnvironmentSense(ctx);
+    } catch (err) {
+      structuredLog("warn", "environment_sense_failed", { error: err?.message });
+      return { ok: false, reason: "exception" };
+    }
+  },
+});
 import { ConcordError } from "./lib/errors.js";
 import { asyncHandler } from "./lib/async-handler.js";
 import { init as initGRC, formatAndValidate as grcFormatAndValidate, getGRCSystemPrompt } from "./grc/index.js";

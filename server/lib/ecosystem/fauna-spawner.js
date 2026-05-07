@@ -12,8 +12,54 @@
 
 import crypto from "node:crypto";
 import { speciesForBiome } from "./loot-tables.js";
+import { signalsForWorld } from "../embodied/environment-sensor.js";
 
 const BIOMES = ["plains", "forest", "highland", "mountain", "water"];
+
+// Layer 7: Climate-responsive species modifier. Reads current world
+// signals from the embodied substrate and produces a per-species
+// multiplier on target_count so a cold zone genuinely has fewer bugs
+// and more cold-adapted fauna. Loose substring classification — novel
+// species default to modifier 1.0 (climate-neutral) until classified.
+function _signalModifierFor(speciesId, signals) {
+  if (!signals) return 1.0;
+  const id = String(speciesId || "").toLowerCase();
+  const temp = Number(signals.temperature);
+  const isCold = Number.isFinite(temp) && temp < 5;
+  const isHot  = Number.isFinite(temp) && temp > 28;
+  const lowAir = Number(signals.airQuality) < 0.5;
+  if (/(bug|insect|fly|beetle|wasp|bee|ant)/.test(id)) {
+    if (isCold) return 0.1;
+    if (isHot)  return 1.3;
+    return 1.0;
+  }
+  if (/(rabbit|fox|squirrel|hare|marten|weasel)/.test(id)) {
+    if (isCold) return 1.4;
+    return 1.0;
+  }
+  if (/(deer|elk|bison|moose|bear)/.test(id)) {
+    if (isCold) return 0.8;
+    return 1.0;
+  }
+  if (/(snake|lizard|frog|gecko|turtle)/.test(id)) {
+    if (isCold) return 0.0;
+    if (isHot)  return 1.2;
+    return 1.0;
+  }
+  if (/(fish|trout|bass|salmon|otter|crab)/.test(id)) {
+    if (signals.humidity != null && signals.humidity < 30) return 0.5;
+    return 1.0;
+  }
+  if (/(wolf|caribou|polar|tundra|arctic)/.test(id)) {
+    if (isCold) return 1.3;
+    if (isHot)  return 0.4;
+    return 0.9;
+  }
+  if (lowAir && /(songbird|hummingbird|butterfly)/.test(id)) {
+    return 0.3;
+  }
+  return 1.0;
+}
 // Bumped from 60 → 500 for 32GB-heap deployments. Per-tick cap on creature
 // spawns across all worlds; large value lets thinly-populated worlds
 // recover their target populations within a single tick.
@@ -68,6 +114,13 @@ export function runFaunaSpawner({ state, db }) {
       if (w?.universe_type) universe = w.universe_type;
     } catch { /* worlds table may not exist on minimal deployments */ }
 
+    // Layer 7: Read current environmental signals once per world per
+    // tick. The per-species _signalModifierFor() consumes these to
+    // adjust effective target counts (cold = bug × 0.1, etc.).
+    let worldSignals = null;
+    try { worldSignals = signalsForWorld(db, worldId); }
+    catch { /* signals are optional; spawner falls back to static targets */ }
+
     for (const biome of BIOMES) {
       if (spawned >= BATCH_LIMIT) break;
       const species = speciesForBiome(universe, biome);
@@ -94,7 +147,13 @@ export function runFaunaSpawner({ state, db }) {
           WHERE world_id = ? AND archetype = ? AND is_dead = 0
         `).get(worldId, `creature:${sp.id}`)?.c ?? 0;
 
-        const target = existing?.target_count ?? sp.target;
+        // Layer 7: apply climate-responsive modifier to the static
+        // target. e.g. a "bug" species in a cold biome (temperature < 5°C)
+        // gets target × 0.1 → far fewer spawn attempts and population
+        // settles at ~10% of warm-zone density.
+        const baseTarget = existing?.target_count ?? sp.target;
+        const modifier = _signalModifierFor(sp.id, worldSignals);
+        const target = Math.max(0, Math.round(baseTarget * modifier));
         const need = Math.max(0, target - liveCount);
         if (need === 0) {
           db.prepare(`
