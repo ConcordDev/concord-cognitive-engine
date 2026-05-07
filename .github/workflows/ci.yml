@@ -407,7 +407,7 @@ jobs:
         working-directory: ./server
         run: npm ci || (sleep 5 && npm ci) || (sleep 10 && npm ci)
 
-      - name: Start server (c8-instrumented)
+      - name: Start server
         working-directory: ./server
         env:
           NODE_ENV: ci
@@ -416,22 +416,20 @@ jobs:
           ADMIN_PASSWORD: testpassword123
           REDIS_URL: redis://localhost:6379
           CONCORD_RATE_LIMIT_BYPASS: '1'
-          # Wrap the integration-tier server in c8 so the 200+ HTTP route
-          # handlers exercised by the API tests below get instrumentation
-          # credit. Without this, the unit-tier c8 in lint-and-test sees
-          # ~33% function coverage even though integration adds ~600 more
-          # function calls. NODE_V8_COVERAGE points c8 at the per-process
-          # coverage dump location; c8 reads it back when we run `c8 report`.
-          NODE_V8_COVERAGE: ./.nyc_output
+        # NOTE: NODE_V8_COVERAGE was previously set here to capture
+        # integration-tier coverage on the running server. It worked, but
+        # the per-source-compile dump pressure slowed boot under the
+        # 60k-line server.js to the point where the wait-for-server loop
+        # raced ahead of full readiness and tests started before all
+        # routers had registered, producing "cancelled by parent" failures.
+        # Backed out for stability. A cleaner cross-job coverage merge
+        # (artifact upload from integration → download in lint-and-test
+        # → c8 merge → unified report) is the proper path; tracked as a
+        # follow-up.
         run: |
-          mkdir -p .nyc_output
-          # Use NODE_V8_COVERAGE directly rather than `npx c8 node server.js`
-          # because c8's child-process wrapper exits with the node child
-          # which is backgrounded; the env-var approach lets v8 dump
-          # coverage on SIGTERM/SIGINT cleanly.
           node server.js > server.log 2>&1 &
           echo $! > server.pid
-          echo "Server started with PID $(cat server.pid) (NODE_V8_COVERAGE=$NODE_V8_COVERAGE)"
+          echo "Server started with PID $(cat server.pid)"
 
       - name: Wait for server
         working-directory: ./server
@@ -472,49 +470,7 @@ jobs:
           API_BASE: http://localhost:5050
         run: node --test tests/error-paths.test.js
 
-      - name: Stop server gracefully (so v8 dumps coverage)
-        if: always()
-        working-directory: ./server
-        run: |
-          if [ -f server.pid ]; then
-            # SIGTERM, not SIGKILL — let the server flush its v8 coverage
-            # dump to NODE_V8_COVERAGE before exiting.
-            kill -TERM $(cat server.pid) 2>/dev/null || true
-            for i in {1..15}; do
-              if ! kill -0 $(cat server.pid) 2>/dev/null; then break; fi
-              sleep 1
-            done
-          fi
-
-      - name: Report integration coverage
-        if: always()
-        working-directory: ./server
-        run: |
-          if [ -d .nyc_output ] && [ "$(ls -A .nyc_output 2>/dev/null)" ]; then
-            echo "::group::Integration test coverage (route handlers + heartbeat modules)"
-            npx c8 report --reporter=text-summary --reporter=text 2>&1 | tail -30 || true
-            echo "::endgroup::"
-            echo ""
-            echo "Note: this is route-handler + integration-tier coverage."
-            echo "Combined with the unit-tier ~46% coverage from lint-and-test,"
-            echo "real total coverage is materially higher than the unit number"
-            echo "alone. Merging the two reports across jobs requires artifact"
-            echo "upload/download — left as a follow-up."
-          else
-            echo "No v8 coverage output found at .nyc_output — server may have"
-            echo "been killed before flush. Try increasing the SIGTERM grace."
-          fi
-
-      - name: Upload integration coverage artifact
-        if: always()
-        uses: actions/upload-artifact@v6
-        with:
-          name: integration-coverage
-          path: server/.nyc_output/
-          retention-days: 7
-          if-no-files-found: ignore
-
-      - name: Stop server (final cleanup)
+      - name: Stop server
         if: always()
         working-directory: ./server
         run: |
