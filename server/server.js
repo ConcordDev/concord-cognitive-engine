@@ -153,6 +153,17 @@ registerHeartbeat("presence-stale-sweep", {
   },
 });
 
+// Layer 11: faction emergent strategy. Every 200 ticks (~50 min) advances
+// each faction whose next_move_at clock has elapsed — picks a deterministic
+// move from the {expand, war, alliance, rebuild, isolation, consolidate}
+// state machine, persists to faction_strategy_state + faction_strategy_log,
+// updates faction_relations. Zero work on builds without seeded factions.
+import { runFactionStrategyCycle } from "./emergent/faction-strategy-cycle.js";
+registerHeartbeat("faction-strategy-cycle", {
+  frequency: 200,
+  handler: runFactionStrategyCycle,
+});
+
 // Layer 10: forward-sim anticipation cycle. Every 100 ticks (~25 min)
 // generates speculative predictions for offline players about active
 // quests, recently-met NPCs, and factions. Throttled by
