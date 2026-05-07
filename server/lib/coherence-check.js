@@ -163,3 +163,129 @@ export async function checkCoherence(db, {
     warnings,
   };
 }
+
+/**
+ * Validate a kingdom decree against world genre + faction policy state +
+ * current storyline. Returns an alignment score 0..1 plus detailed
+ * reasoning. Used by lib/kingdom.js#enactDecree to gate activation.
+ *
+ * Score semantics:
+ *   >= 0.6 → enforced (refusal field activates)
+ *   0.3..0.6 → tension (visible but not enforced)
+ *   < 0.3 → fails
+ *
+ * Computation:
+ *   - Genre affinity match: 0.5 base
+ *   - Storyline-coherent (worldId has an active storyline whose tags
+ *     match the decree kind's tone): +0.2
+ *   - Faction policy alignment (most recent ruling faction's policy
+ *     supports the decree intent): +0.2
+ *   - Anti-genre penalty (decree explicitly hostile to the world's
+ *     genre — e.g. firearms_prohibited in cyberpunk): -0.3
+ */
+export async function validateDecree(db, { kingdom, decreeKind, parameters = {} } = {}) {
+  if (!kingdom || !decreeKind) {
+    return { alignmentScore: 0, reasoning: ["missing_inputs"] };
+  }
+
+  const reasoning = [];
+  let score = 0.5;
+
+  // Genre affinity check via decree kind catalog
+  const worldGenre = _genreFromWorldId(kingdom.world_id);
+  const genreAffinity = _decreeGenreAffinity(decreeKind, worldGenre);
+  if (genreAffinity === "match") {
+    score += 0.20;
+    reasoning.push(`genre_match:${worldGenre}:${decreeKind}`);
+  } else if (genreAffinity === "neutral") {
+    reasoning.push(`genre_neutral:${worldGenre}:${decreeKind}`);
+  } else if (genreAffinity === "hostile") {
+    score -= 0.30;
+    reasoning.push(`genre_hostile:${worldGenre}:${decreeKind}`);
+  }
+
+  // Storyline coherence — best-effort. If kingdom.current_storyline_id
+  // is set and the storyline's tags match the decree, bump score.
+  if (kingdom.current_storyline_id && db) {
+    try {
+      const storyline = db.prepare(
+        `SELECT tags_json FROM dtus WHERE id = ?`,
+      ).get(kingdom.current_storyline_id);
+      if (storyline?.tags_json && _tagsMatchDecree(storyline.tags_json, decreeKind)) {
+        score += 0.15;
+        reasoning.push(`storyline_supports:${kingdom.current_storyline_id}`);
+      }
+    } catch { /* storyline lookup best-effort */ }
+  }
+
+  // Faction policy state — if the ruler's faction has recent policy
+  // matching the decree kind's intent, +0.10.
+  if (kingdom.ruler_faction_id && db) {
+    try {
+      const { getFactionPolicyState } = await import("./council-world-bridge.js");
+      const history = getFactionPolicyState(db, kingdom.ruler_faction_id);
+      if (history?.length > 0 && _policyMatchesDecree(history[0]?.outcome, decreeKind)) {
+        score += 0.10;
+        reasoning.push(`faction_policy_supports`);
+      }
+    } catch { /* policy bridge unavailable */ }
+  }
+
+  // Parameter bounds — extreme parameters reduce alignment.
+  if (parameters?.tax_rate && parameters.tax_rate > 0.5) {
+    score -= 0.20;
+    reasoning.push(`extreme_tax_rate:${parameters.tax_rate}`);
+  }
+  if (parameters?.duration_hours && parameters.duration_hours > 24) {
+    score -= 0.10;
+    reasoning.push(`extreme_duration:${parameters.duration_hours}h`);
+  }
+
+  // Clamp 0..1
+  score = Math.max(0, Math.min(1, score));
+  return { alignmentScore: score, reasoning };
+}
+
+function _genreFromWorldId(worldId) {
+  if (!worldId) return "concordia";
+  const id = worldId.toLowerCase();
+  if (id.includes("fantasy")) return "fantasy";
+  if (id.includes("cyber"))   return "cyber";
+  if (id.includes("crime"))   return "crime";
+  if (id.includes("hero") || id.includes("super")) return "superhero";
+  if (id.includes("scifi") || id.includes("space")) return "scifi";
+  return "concordia";
+}
+
+function _decreeGenreAffinity(decreeKind, worldGenre) {
+  // Mirror DECREE_KINDS in lib/kingdom.js — kept here so coherence-check
+  // doesn't need to import it (avoid circular dep).
+  const AFFINITY = {
+    firearms_prohibited:  { match: ["fantasy", "concordia"], hostile: ["cyber", "scifi", "crime"] },
+    martial_law:          { match: ["fantasy", "crime", "superhero"], hostile: [] },
+    travel_restricted:    { match: ["crime", "superhero"], hostile: ["concordia"] },
+    anonymous_zone:       { match: ["crime", "cyber"], hostile: ["fantasy"] },
+    tax_levied:           { match: ["concordia", "fantasy", "crime", "superhero", "cyber"], hostile: [] },
+    bounty_hunt:          { match: ["crime", "fantasy"], hostile: ["concordia"] },
+  };
+  const meta = AFFINITY[decreeKind];
+  if (!meta) return "neutral";
+  if (meta.match.includes(worldGenre))   return "match";
+  if (meta.hostile.includes(worldGenre)) return "hostile";
+  return "neutral";
+}
+
+function _tagsMatchDecree(tagsJson, decreeKind) {
+  try {
+    const tags = JSON.parse(tagsJson);
+    const decreeTokens = decreeKind.split("_");
+    return tags.some((t) => decreeTokens.some((dt) => String(t).toLowerCase().includes(dt)));
+  } catch { return false; }
+}
+
+function _policyMatchesDecree(outcome, decreeKind) {
+  if (!outcome) return false;
+  const outStr = String(outcome).toLowerCase();
+  const tokens = decreeKind.split("_");
+  return tokens.some((t) => outStr.includes(t));
+}

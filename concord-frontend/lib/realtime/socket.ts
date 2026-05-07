@@ -320,7 +320,27 @@ export type SocketEvent =
   | 'combat:hit'
   | 'combat:kill'
   // Combat combo evolution — server emits when flow-engine derives a new branch.
-  | 'combat:combo-evolved';
+  | 'combat:combo-evolved'
+  // Companions (pet/tame system) — Phase A of pre-playtest sprint.
+  | 'companion:tame-success'
+  | 'companion:deployed'
+  | 'companion:level-up'
+  // Stealth perception (Phase B) — fires when high-perception observer
+  // breaks a hidden actor's cover.
+  | 'stealth:detected'
+  // Kingdoms (Phase C)
+  | 'kingdom:founded'
+  | 'kingdom:decree-enacted'
+  | 'kingdom:contested'
+  | 'kingdom:fallen'
+  // Fishing (Phase D)
+  | 'fishing:cast'
+  | 'fishing:bite'
+  | 'fishing:caught'
+  // Minigames (Phase E)
+  | 'minigame:started'
+  | 'minigame:scored'
+  | 'minigame:complete';
 
 // ---- Enriched Event Payload (Category 2+5: Concurrency + Observability) ----
 interface EnrichedPayload {

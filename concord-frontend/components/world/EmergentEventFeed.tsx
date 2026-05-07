@@ -12,7 +12,7 @@ import { subscribe, type SocketEvent } from '@/lib/realtime/socket';
 // Authored events (combat-hit, marketplace-purchase, chat:token) are
 // intentionally excluded — those have their own surfaces (CombatHUD,
 // CurrencyHUD, chat panel).
-type EmergentChannel = 'world' | 'entity' | 'agent' | 'evo' | 'weather' | 'crisis';
+type EmergentChannel = 'world' | 'entity' | 'agent' | 'evo' | 'weather' | 'crisis' | 'companion';
 
 const TRACKED_EVENTS: { name: SocketEvent; channel: EmergentChannel; label: string }[] = [
   { name: 'entity:death',                channel: 'entity',  label: 'NPC died' },
@@ -26,6 +26,14 @@ const TRACKED_EVENTS: { name: SocketEvent; channel: EmergentChannel; label: stri
   { name: 'attention:allocation',        channel: 'agent',   label: 'Attention shifted' },
   { name: 'evo:asset-promoted',          channel: 'evo',     label: 'Evo-asset promoted' },
   { name: 'combat:combo-evolved',        channel: 'evo',     label: 'Combo evolved' },
+  { name: 'companion:tame-success',      channel: 'companion', label: 'Companion tamed' },
+  { name: 'companion:level-up',          channel: 'companion', label: 'Companion leveled up' },
+  { name: 'kingdom:founded',             channel: 'world',     label: 'Kingdom founded' },
+  { name: 'kingdom:decree-enacted',      channel: 'world',     label: 'Decree enacted' },
+  { name: 'kingdom:contested',           channel: 'crisis',    label: 'Kingdom contested' },
+  { name: 'kingdom:fallen',              channel: 'crisis',    label: 'Kingdom fallen' },
+  { name: 'fishing:caught',              channel: 'world',     label: 'Fish caught' },
+  { name: 'minigame:complete',           channel: 'world',     label: 'Minigame complete' },
   { name: 'world:refusal-field',         channel: 'world',   label: 'Refusal field' },
   { name: 'world:crisis',                channel: 'crisis',  label: 'World crisis' },
   { name: 'world:crisis-resolved',       channel: 'crisis',  label: 'Crisis resolved' },
@@ -39,12 +47,13 @@ const TRACKED_EVENTS: { name: SocketEvent; channel: EmergentChannel; label: stri
 ];
 
 const CHANNEL_COLORS: Record<EmergentChannel, string> = {
-  world:   'text-emerald-300',
-  entity:  'text-amber-300',
-  agent:   'text-sky-300',
-  evo:     'text-violet-300',
-  weather: 'text-slate-300',
-  crisis:  'text-rose-300',
+  world:     'text-emerald-300',
+  entity:    'text-amber-300',
+  agent:     'text-sky-300',
+  evo:       'text-violet-300',
+  weather:   'text-slate-300',
+  crisis:    'text-rose-300',
+  companion: 'text-pink-300',
 };
 
 const MAX_FEED_ITEMS = 50;
@@ -86,7 +95,7 @@ export function EmergentEventFeed() {
   const [paused, setPaused] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [activeChannels, setActiveChannels] = useState<Set<EmergentChannel>>(
-    new Set(['world', 'entity', 'agent', 'evo', 'weather', 'crisis']),
+    new Set(['world', 'entity', 'agent', 'evo', 'weather', 'crisis', 'companion']),
   );
   const pausedRef = useRef(paused);
   pausedRef.current = paused;

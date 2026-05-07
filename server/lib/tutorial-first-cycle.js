@@ -16,13 +16,24 @@ export const FIRST_CYCLE_QUEST_IDS = Object.freeze([
   "first_cycle_eat",
   "first_cycle_fight",
   "first_cycle_commune",
+  // Pre-playtest sprint additions — Phase F. The earlier 4-beat cycle
+  // is preserved exactly; new beats append. Tier-3 E2E test fixture
+  // updated in lockstep.
+  "first_cycle_befriend",
+  "first_cycle_sneak",
+  "first_cycle_kingdom_visit",
+  "first_cycle_play",
 ]);
 
 export const FIRST_CYCLE_PHASE_BY_QUEST = Object.freeze({
-  first_cycle_cook:    "cook",
-  first_cycle_eat:     "eat",
-  first_cycle_fight:   "fight",
-  first_cycle_commune: "commune",
+  first_cycle_cook:           "cook",
+  first_cycle_eat:            "eat",
+  first_cycle_fight:          "fight",
+  first_cycle_commune:        "commune",
+  first_cycle_befriend:       "befriend",
+  first_cycle_sneak:          "sneak",
+  first_cycle_kingdom_visit:  "kingdom_visit",
+  first_cycle_play:           "play",
 });
 
 /**

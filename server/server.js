@@ -6682,6 +6682,30 @@ async function tryInitWebSockets(server) {
         }
       } catch { /* raid module unavailable — continue with normal damage */ }
 
+      // Stealth perception gate (Phase B): backstab style attacks
+      // require the attacker's stealth to clear the victim's perception.
+      // If the victim has high perception they sense the attack and the
+      // backstab degrades to a regular attack with awareness penalty —
+      // we emit `stealth:detected` so the would-be sneak knows they
+      // were spotted (instead of silently failing).
+      if (data?.style === 'backstab' || data?.style === 'takedown_silent') {
+        try {
+          const { assertCanBackstab } = await import("./lib/stealth-perception.js");
+          const r = assertCanBackstab(db, userId, _ffTargetId);
+          if (!r.ok) {
+            realtimeEmit("stealth:detected", {
+              detectorId: _ffTargetId, hiddenId: userId,
+              confidence: r.victimPerception - r.attackerStealth,
+            });
+            // Force the attack to be treated as light and lose the
+            // backstab multiplier by stripping the style. The combat
+            // resolves below with reduced damage.
+            data.style = 'attack-light';
+            data.heavy = false;
+          }
+        } catch { /* stealth gate unavailable — allow */ }
+      }
+
       // Refusal Field: Sovereign-targeted attacks during the eternal raid
       // phase cannot land — he literally refuses victory by numbers.
       // Same gate applies to any kind of refused-death suspension.
@@ -6838,6 +6862,20 @@ async function tryInitWebSockets(server) {
           targetMaxHealth: result.targetMaxHealth,
           targetKilled: result.targetKilled,
         });
+
+        // Companion assist XP: deployed companions of the attacker get
+        // assist XP (and kill XP if it was a kill). Best-effort import +
+        // emit so a companion module load failure never blocks combat.
+        try {
+          import("./lib/companions.js").then(({ awardAssistXP }) => {
+            const grants = awardAssistXP(db, userId, { kill: !!result.targetKilled, assist: true });
+            for (const g of grants) {
+              if (g.leveledUp) {
+                realtimeEmit("companion:level-up", { companionId: g.companionId, newLevel: g.newLevel });
+              }
+            }
+          }).catch(() => { /* companion XP best-effort */ });
+        } catch { /* dynamic import guard */ }
 
         if (result.targetKilled) {
           realtimeEmit("combat:kill", {
@@ -27217,6 +27255,31 @@ app.use("/api/training-match", createTrainingMatchRouter({ db, requireAuth, emit
 // is set.
 import createTournamentRouter from "./routes/tournaments.js";
 app.use("/api/tournaments", createTournamentRouter({ db, requireAuth }));
+
+// Companions (pet / tame) — player-owned creatures bonded through
+// co-location encounters. Distinct from creature_bonds (breeding) —
+// player_companions tracks allegiance from creature to owner. See
+// lib/companions.js for the tame roll + bond gate.
+import createCompanionsRouter from "./routes/companions.js";
+app.use("/api/companions", createCompanionsRouter({ db, requireAuth, realtimeEmit }));
+
+// Kingdoms — Crusader Kings × 3D × MMO regional governance. Rulers
+// enact decrees, coherence-check gates activation by world-storyline
+// alignment. Aligned decrees activate as refusal-field gates on
+// visitors; misaligned ones stack as exploitable tension.
+import createKingdomsRouter from "./routes/kingdoms.js";
+app.use("/api/kingdoms", createKingdomsRouter({ db, requireAuth, state: STATE, realtimeEmit }));
+
+// Fishing minigame — cast / reel / mint catch into player_inventory
+// for the existing cooking pipeline. World-scoped via fauna content.
+import createFishingRouter from "./routes/fishing.js";
+app.use("/api/fishing", createFishingRouter({ db, requireAuth, realtimeEmit }));
+
+// Sports minigames — basketball + vehicle racing. Generic
+// minigame_matches table backs both. Tournament toolkit reuses the
+// rule-set enforcement pattern for ranked play.
+import createMinigamesRouter from "./routes/minigames.js";
+app.use("/api/minigames", createMinigamesRouter({ db, requireAuth, realtimeEmit }));
 
 // Flow Combat — shared faction-war events (NPCs co-evolving against each
 // other in the background; players join either side and contribute flows)

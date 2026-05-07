@@ -41,6 +41,32 @@ export const EVENT_SHAPES = Object.freeze({
   // icon. `evolved` is the array from flow-engine.evolveFighterCombos.
   "combat:combo-evolved": { required: ["userId", "evolved"], optional: ["worldId"] },
 
+  // ── Companions (pet/tame) ─────────────────────────────────────────
+  "companion:tame-success": { required: ["ownerId", "companionId", "creatureId"], optional: ["name"] },
+  "companion:deployed":     { required: ["ownerId", "companionId", "worldId"], optional: [] },
+  "companion:level-up":     { required: ["companionId", "newLevel"], optional: ["ownerId"] },
+
+  // ── Stealth perception (Phase B) ──────────────────────────────────
+  // Fires when a high-perception observer breaks a hidden actor's cover
+  // (e.g. a backstab attempt that fails the perception gate).
+  "stealth:detected":       { required: ["detectorId", "hiddenId"], optional: ["confidence"] },
+
+  // ── Kingdoms (Phase C) ────────────────────────────────────────────
+  "kingdom:founded":         { required: ["kingdomId", "rulerId", "worldId"], optional: ["name"] },
+  "kingdom:decree-enacted":  { required: ["kingdomId", "decreeId", "decreeKind", "activationState"], optional: ["alignmentScore"] },
+  "kingdom:contested":       { required: ["kingdomId", "contestId", "claimantId", "contestKind"], optional: [] },
+  "kingdom:fallen":          { required: ["contestId", "outcome"], optional: ["kingdomId"] },
+
+  // ── Fishing (Phase D) ─────────────────────────────────────────────
+  "fishing:cast":   { required: ["userId", "sessionId"], optional: ["biteAtEpochMs"] },
+  "fishing:bite":   { required: ["userId", "sessionId"], optional: [] },
+  "fishing:caught": { required: ["userId", "sessionId", "fishId"], optional: ["fishName", "qualityScore", "tier"] },
+
+  // ── Minigames (Phase E) ───────────────────────────────────────────
+  "minigame:started":  { required: ["matchId", "kind"], optional: ["players", "trackId"] },
+  "minigame:scored":   { required: ["matchId", "kind", "actor"], optional: ["eventKind", "points"] },
+  "minigame:complete": { required: ["matchId", "kind"], optional: ["winner"] },
+
   // ── Social ────────────────────────────────────────────────────────
   "social:ping":   { required: ["from", "type", "position"], optional: ["cityId", "target", "text"] },
 

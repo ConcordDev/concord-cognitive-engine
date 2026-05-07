@@ -1,0 +1,98 @@
+[
+  {
+    "id": "river-trout",
+    "name": "River Trout",
+    "biome": "water",
+    "subBiome": "river",
+    "mass": 1.2,
+    "rarity": "common",
+    "description": "Speckled freshwater fish; cooks into a hearty meal that grants stamina recovery.",
+    "abilities": ["dart", "leap"],
+    "dropTable": { "raw_fish": 1.0, "fish_oil": 0.15 },
+    "buffOnCook": { "stamina_recovery_pct": 15, "duration_minutes": 20 }
+  },
+  {
+    "id": "lake-bass",
+    "name": "Lake Bass",
+    "biome": "water",
+    "subBiome": "lake",
+    "mass": 2.4,
+    "rarity": "common",
+    "description": "Stocky predatory fish; popular for tournaments because of its fight strength.",
+    "abilities": ["pull", "thrash"],
+    "dropTable": { "raw_fish": 1.0, "fish_scale": 0.30 },
+    "buffOnCook": { "max_stamina_pct": 10, "duration_minutes": 30 }
+  },
+  {
+    "id": "ocean-tuna",
+    "name": "Ocean Tuna",
+    "biome": "water",
+    "subBiome": "ocean",
+    "mass": 18.0,
+    "rarity": "rare",
+    "description": "Deep-water giant; requires high tackle skill to land. Cook for endurance buff.",
+    "abilities": ["dive", "long_run"],
+    "dropTable": { "raw_fish": 3.0, "fish_oil": 0.50 },
+    "buffOnCook": { "endurance_pct": 25, "duration_minutes": 45 }
+  },
+  {
+    "id": "swamp-eel",
+    "name": "Swamp Eel",
+    "biome": "water",
+    "subBiome": "swamp",
+    "mass": 1.8,
+    "rarity": "uncommon",
+    "description": "Slick, electric-tinged eel. Hard to grip; cooks into a meal that resists stagger.",
+    "abilities": ["shock", "slip"],
+    "dropTable": { "raw_fish": 1.0, "eel_skin": 0.35, "shock_glands": 0.10 },
+    "buffOnCook": { "stagger_resistance_pct": 20, "duration_minutes": 15 }
+  },
+  {
+    "id": "ice-salmon",
+    "name": "Ice Salmon",
+    "biome": "water",
+    "subBiome": "river",
+    "mass": 4.5,
+    "rarity": "uncommon",
+    "description": "Cold-water salmon found near mountain rivers. Cooks into a cold-resistance buff.",
+    "abilities": ["leap", "long_run"],
+    "dropTable": { "raw_fish": 1.5, "salmon_roe": 0.20 },
+    "buffOnCook": { "cold_resistance_pct": 30, "duration_minutes": 25 }
+  },
+  {
+    "id": "mythril-koi",
+    "name": "Mythril Koi",
+    "biome": "water",
+    "subBiome": "lake",
+    "mass": 0.8,
+    "rarity": "legendary",
+    "description": "Mythical koi with metallic scales; symbol of patience. Cooks into a meal that grants temporary mana regen.",
+    "abilities": ["evade", "vanish"],
+    "dropTable": { "raw_fish": 1.0, "mythril_scale": 0.95 },
+    "buffOnCook": { "mana_recovery_pct": 30, "duration_minutes": 60 }
+  },
+  {
+    "id": "shadow-marlin",
+    "name": "Shadow Marlin",
+    "biome": "water",
+    "subBiome": "ocean",
+    "mass": 25.0,
+    "rarity": "legendary",
+    "description": "Massive deep-sea marlin that cuts through water like a shadow. Cook for high-tier crit-chance buff.",
+    "abilities": ["dive", "shadow_dash"],
+    "dropTable": { "raw_fish": 5.0, "marlin_horn": 1.0 },
+    "buffOnCook": { "crit_chance_pct": 15, "duration_minutes": 30 }
+  },
+  {
+    "id": "voltfin-piranha",
+    "name": "Voltfin Piranha",
+    "biome": "water",
+    "subBiome": "swamp",
+    "mass": 0.6,
+    "rarity": "uncommon",
+    "description": "Aggressive electric piranha; bites the tackle. Be quick on the reel.",
+    "abilities": ["bite", "swarm"],
+    "dropTable": { "raw_fish": 0.7, "voltfin": 0.40 },
+    "buffOnCook": { "attack_speed_pct": 18, "duration_minutes": 18 }
+  }
+]
