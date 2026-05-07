@@ -691,7 +691,38 @@ export const GLOBAL_FEEDS = [
 ];
 
 // ══════════════════════════════════════════════════════════════════════════════
+// DOMAIN → LENS ID MAPPING
+// Maps feed domain names to their corresponding lens registry IDs.
+// Divergences: weather→environment, technology→code, real-estate→realestate,
+//              transportation→logistics, environment→environment (same)
+// ══════════════════════════════════════════════════════════════════════════════
+
+export const DOMAIN_TO_LENS_ID = {
+  "finance":        "finance",
+  "news":           "news",
+  "sports":         "sports",
+  "weather":        "environment",
+  "music":          "music",
+  "healthcare":     "healthcare",
+  "legal":          "legal",
+  "real-estate":    "realestate",
+  "trades":         "trades",
+  "agriculture":    "agriculture",
+  "energy":         "energy",
+  "science":        "science",
+  "space":          "space",
+  "technology":     "code",
+  "environment":    "environment",
+  "geology":        "geology",
+  "ocean":          "ocean",
+  "transportation": "logistics",
+  "global":         "global",
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
 // AGGREGATED EXPORT
+// lensId is injected from DOMAIN_TO_LENS_ID so the feed-manager can scope DTUs
+// to the correct lens feed without touching individual source definitions.
 // ══════════════════════════════════════════════════════════════════════════════
 
 export const ALL_DEFAULT_FEEDS = [
@@ -714,7 +745,7 @@ export const ALL_DEFAULT_FEEDS = [
   ...OCEAN_FEEDS,
   ...TRANSPORTATION_FEEDS,
   ...GLOBAL_FEEDS,
-];
+].map(f => ({ ...f, lensId: f.lensId ?? DOMAIN_TO_LENS_ID[f.domain] ?? f.domain }));
 
 export const FEED_DOMAINS = [
   "finance", "news", "sports", "weather", "music",

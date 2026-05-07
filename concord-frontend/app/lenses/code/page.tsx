@@ -30,6 +30,7 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { VisionAnalyzeButton } from '@/components/common/VisionAnalyzeButton';
+import { CodeEngineStatus } from '@/components/admin/CodeEngineStatus';
 
 interface FileNode {
   id: string;
@@ -472,7 +473,7 @@ export default function CodeLensPage() {
 
   const [files, setFiles] = useState<FileNode[]>([]);
   const [tabs, setTabs] = useState<Tab[]>([
-    { id: 'main', name: 'untitled.js', language: 'javascript', content: '// Start writing your script here\n', isDirty: false, scriptType: 'midi' },
+    { id: 'main', name: 'untitled.js', language: 'javascript', content: DEFAULT_CODE, isDirty: false, scriptType: 'snippet' },
   ]);
   const [activeTabId, setActiveTabId] = useState('main');
   const [scriptOutput, setScriptOutput] = useState<{ log: string; visualization: string } | null>(null);
@@ -483,7 +484,7 @@ export default function CodeLensPage() {
   const [showApiRef, setShowApiRef] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [outputTab, setOutputTab] = useState<'output' | 'console'>('output');
-  const [showFeatures, setShowFeatures] = useState(true);
+  const [showFeatures, setShowFeatures] = useState(false);
   const [showForge, setShowForge] = useState(false);
   const [forgePrompt, setForgePrompt] = useState('');
   const [forgeResult, setForgeResult] = useState<string | null>(null);

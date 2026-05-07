@@ -349,6 +349,19 @@ export async function handleWebhook(db, { rawBody, signature, requestId, ip }) {
       }
       break;
     }
+
+    case "charge.dispute.created": {
+      const dispute = event.data.object;
+      const amountCents = dispute.amount; // Stripe amounts are already in cents
+      await handleChargeback(db, {
+        chargebackAmountCents: amountCents,
+        stripeDisputeId: dispute.id,
+        paymentIntentId: dispute.payment_intent,
+        requestId,
+        ip,
+      });
+      break;
+    }
     }
 
     // Mark event processed (idempotency)

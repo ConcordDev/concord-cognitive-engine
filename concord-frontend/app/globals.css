@@ -25,8 +25,8 @@
 
   /* ── Text — hierarchy through opacity ── */
   --text-primary: #F0EDE8;
-  --text-secondary: #9B978F;
-  --text-tertiary: #5C584F;
+  --text-secondary: #b5b0a8;
+  --text-tertiary: #79746c;
 
   /* ── Accent — one dominant, two supporting ── */
   --accent-primary: #3ECFA0;   /* living green — the system is alive */
@@ -362,6 +362,12 @@
   .toast.error { @apply border-l-4 border-l-status-error; }
   .toast.warning { @apply border-l-4 border-l-status-warning; }
   .toast.info { @apply border-l-4 border-l-status-info; }
+
+  /* Lattice shadow depth */
+  .shadow-lattice-sm { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3); }
+  .shadow-lattice-md { box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.3); }
+  .shadow-lattice-lg { box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5), 0 4px 8px rgba(0, 0, 0, 0.3); }
+  .shadow-neon-glow { box-shadow: 0 0 20px rgba(0, 212, 255, 0.15), 0 0 40px rgba(0, 212, 255, 0.05); }
 
   /* Hide scrollbar utility */
   .scrollbar-none {

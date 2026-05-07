@@ -25,6 +25,7 @@ const EVENT_TYPES = {
   ceremony:     { id: "ceremony",     name: "Awards Ceremony",          category: "recognition",  lens: "general",     minPlayers: 5,  maxPlayers: 200, defaultDuration: 60 },
   raid:         { id: "raid",         name: "World Raid / Boss Event",  category: "cooperative",  lens: "gaming",      minPlayers: 10, maxPlayers: 100, defaultDuration: 120 },
   festival:     { id: "festival",     name: "Multi-Day Festival",       category: "celebration",  lens: "general",     minPlayers: 20, maxPlayers: 500, defaultDuration: 1440 },
+  referendum:   { id: "referendum",   name: "Council Referendum Resolved", category: "civic",      lens: "government",  minPlayers: 1,  maxPlayers: 500, defaultDuration: 60 },
 };
 
 // ── Event Storage ────────────────────────────────────────────────────────────
@@ -153,7 +154,7 @@ export function startEvent(eventId, userId = null) {
 /**
  * End an event (transition to completed).
  */
-export function endEvent(eventId, userId = null) {
+export async function endEvent(eventId, userId = null) {
   const event = events.get(eventId);
   if (!event) throw new Error("Event not found");
   if (userId && event.hostId !== userId) throw new Error("Only the host can end this event");
@@ -163,11 +164,81 @@ export function endEvent(eventId, userId = null) {
   event.endedAt = new Date().toISOString();
   event.updatedAt = new Date().toISOString();
 
+  // Reward distribution to attendees. Pre-this-fix, only realtime "you
+  // got rewards" toasts fired — the CC was never actually minted to the
+  // user's balance, so the wallet stayed flat and the toast was a lie.
+  // Now: real ledger mint per attendee, refId-based idempotency keeps
+  // a re-run of endEvent from double-paying.
+  try {
+    if (event.reward && event.attendees) {
+      const io = globalThis._concordREALTIME?.io;
+      const db = globalThis._concordSTATE?.db;
+      let mintCoins = null;
+      if (db) {
+        try { ({ mintCoins } = await import("../economy/coin-service.js")); }
+        catch { /* coin-service unavailable on minimal builds */ }
+      }
+      for (const [userId] of event.attendees) {
+        // Real ledger credit. refId is event-scoped + user-scoped, so
+        // a re-end of the event won't double-mint to the same attendee.
+        if (mintCoins && db && Number(event.reward.cc) > 0) {
+          try { mintCoins(db, { amount: Number(event.reward.cc), userId, refId: `event_reward:${eventId}:${userId}` }); }
+          catch (err) { /* mint failures shouldn't poison the rest of the loop */
+            if (typeof console !== "undefined") console.warn("[world-events] mint failed", { eventId, userId, err: err?.message });
+          }
+        }
+        // Realtime toast so the HUD updates without waiting for a poll.
+        if (io) {
+          io.to(`user:${userId}`).emit("event:reward", {
+            eventId,
+            eventTitle: event.title,
+            cc: event.reward.cc,
+            skillXp: event.reward.skillXp,
+          });
+          io.to(`user:${userId}`).emit("skill:xp-awarded", {
+            dtuId: `event_${event.type}`,
+            action: "event",
+            xp: event.reward.skillXp,
+            leveledUp: false,
+          });
+        }
+      }
+    }
+  } catch { /* reward distribution best-effort */ }
+
   return {
     ..._serializeEvent(event),
     attendeeCount: event.attendees.size,
     dtusGenerated: event.dtusGenerated.length,
   };
+}
+
+/**
+ * Tick — sweep all events and auto-end any whose start+duration has elapsed.
+ * Called from governorTick at low frequency. Without this, scheduler-created
+ * events sit at status="active" forever and never distribute rewards.
+ */
+export function tick() {
+  const now = Date.now();
+  let ended = 0;
+  for (const event of events.values()) {
+    if (event.status !== "active") continue;
+    const startMs = new Date(event.startTime || event.startedAt || event.createdAt || 0).getTime();
+    const durationMs = (event.duration ?? 60) * 60 * 1000; // duration is minutes
+    if (!Number.isFinite(startMs) || !Number.isFinite(durationMs)) continue;
+    if (now - startMs >= durationMs) {
+      try {
+        // endEvent is async (now mints real CC to attendees) — but tick
+        // is called from heartbeat without awaiting. Fire-and-forget is
+        // fine here: any mint failure is logged inside endEvent.
+        endEvent(event.id).catch((err) => {
+          if (typeof console !== "undefined") console.warn("[world-events] tick endEvent failed", { id: event.id, err: err?.message });
+        });
+        ended++;
+      } catch { /* end best-effort */ }
+    }
+  }
+  return { ok: true, ended };
 }
 
 // ── RSVP / Attendance ────────────────────────────────────────────────────────

@@ -13,17 +13,17 @@ import {
   Music, Play, Pause, Plus, Search, Home, Disc3, ListMusic,
   Clock, Upload, BarChart3, Heart, Library, Mic2,
   TrendingUp, Sparkles, GitFork, DollarSign,
-  Users, X, Headphones, Volume2, ShoppingBag, Package, Layers, Filter,
+  Users, X, Headphones, Volume2,
 } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
+import { showToast } from '@/components/common/Toasts';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useMusicStore } from '@/lib/music/store';
 import { getPlayer } from '@/lib/music/player';
 import type {
   MusicTrack, Artist, Playlist,
   MusicLensView, UploadProgress,
-  BeatListing, SamplePackListing, StemPackListing,
 } from '@/lib/music/types';
 import { previewRoyaltyObligations, ROYALTY_CONSTANTS } from '@/lib/music/royalty-cascade';
 import { TrackCard } from '@/components/music/TrackCard';
@@ -31,6 +31,8 @@ import { ArtistProfile } from '@/components/music/ArtistProfile';
 // AlbumView unused — album support pending
 import { UploadFlow } from '@/components/music/UploadFlow';
 import { PlaylistView } from '@/components/music/PlaylistView';
+import { MediaUpload } from '@/components/media/MediaUpload';
+import { UniversalPlayer } from '@/components/media/UniversalPlayer';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { VisionAnalyzeButton } from '@/components/common/VisionAnalyzeButton';
@@ -145,7 +147,7 @@ export default function MusicLensPage() {
   const [marketplaceKey, setMarketplaceKey] = useState('');
   const [marketplaceSearch, setMarketplaceSearch] = useState('');
 
-  const { playTrack: _playTrack, addToQueue, nowPlaying } = useMusicStore();
+  const { playTrack, addToQueue, nowPlaying } = useMusicStore();
 
   // ---- Navigation ----
   const navigateToArtist = useCallback((artistId: string) => {
@@ -169,47 +171,6 @@ export default function MusicLensPage() {
     setSelectedAlbumId(null);
     setSelectedPlaylistId(null);
   }, []);
-
-  // ---- Marketplace fetch ----
-  const fetchMarketplace = useCallback(async () => {
-    setMarketplaceLoading(true);
-    try {
-      const { api: apiClient } = await import('@/lib/api/client');
-      const params = new URLSearchParams();
-      if (marketplaceBpmMin) params.set('bpmMin', marketplaceBpmMin);
-      if (marketplaceBpmMax) params.set('bpmMax', marketplaceBpmMax);
-      if (marketplaceGenre) params.set('genre', marketplaceGenre);
-      if (marketplaceKey) params.set('key', marketplaceKey);
-      if (marketplaceSearch) params.set('search', marketplaceSearch);
-
-      if (marketplaceTab === 'beats') {
-        const res = await apiClient.get(`/api/artistry/marketplace/beats?${params}`);
-        setMarketplaceBeats(res.data?.listings || res.data || []);
-      } else if (marketplaceTab === 'samples') {
-        const res = await apiClient.get('/api/artistry/marketplace/samples');
-        setMarketplaceSamples(res.data?.listings || res.data || []);
-      } else {
-        const res = await apiClient.get('/api/artistry/marketplace/stems');
-        setMarketplaceStems(res.data?.listings || res.data || []);
-      }
-    } catch (err) {
-      console.error('Marketplace fetch failed:', err instanceof Error ? err.message : err);
-    } finally {
-      setMarketplaceLoading(false);
-    }
-  }, [marketplaceTab, marketplaceBpmMin, marketplaceBpmMax, marketplaceGenre, marketplaceKey, marketplaceSearch]);
-
-  // Fetch when marketplace view opens or filters change
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useMemo(() => { if (view === 'marketplace') fetchMarketplace(); }, [view === 'marketplace', marketplaceTab, fetchMarketplace]);
-
-  // ---- Album MEGA DTUs ----
-  const albumMegaDTUs = useMemo(() => {
-    return (_megaDTUs || []).filter((d) => {
-      const rec = d as unknown as Record<string, unknown>;
-      return rec.domain === 'music' || ((rec.tags as string[] || []).some((t: string) => t === 'album' || t === 'music'));
-    });
-  }, [_megaDTUs]);
 
   // ---- Like toggle ----
   const toggleLike = useCallback((trackId: string) => {
@@ -392,7 +353,7 @@ export default function MusicLensPage() {
             prompt="Analyze this image related to music (album cover, concert photo, instrument, etc.). Describe what you see and suggest relevant genre tags, mood, and metadata for music cataloging."
             onResult={(res) => {
               handleCreatePlaylist();
-              // Vision analysis result available via res.analysis
+              console.log('[Vision] Music analysis:', res.analysis);
             }}
           />
           <button
@@ -571,7 +532,7 @@ export default function MusicLensPage() {
                     <Users className="w-5 h-5 text-neon-pink" /> Artists
                   </h2>
                   <div className="flex gap-4 flex-wrap pb-2">
-                    {artists.map(artist => (
+                    {artists.map((artist) => (
                       <button
                         key={artist.id}
                         onClick={() => navigateToArtist(artist.id)}
@@ -677,21 +638,32 @@ export default function MusicLensPage() {
                 <div className="flex flex-wrap items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/5">
                   <Filter className="w-4 h-4 text-gray-500 flex-shrink-0" />
                   <label className="flex items-center gap-2 text-xs text-gray-400">
-                    <input type="checkbox" checked={filterByBpm} onChange={e => setFilterByBpm(e.target.checked)} className="rounded bg-white/10 border-white/20" />
+                    <input
+                      type="checkbox"
+                      checked={filterByBpm}
+                      onChange={(e) => setFilterByBpm(e.target.checked)}
+                      className="rounded bg-white/10 border-white/20"
+                    />
                     BPM
                   </label>
                   {filterByBpm && (
                     <div className="flex items-center gap-2">
                       <input
-                        type="number" min={0} max={300} value={bpmRange[0]}
-                        onChange={e => setBpmRange([Number(e.target.value), bpmRange[1]])}
+                        type="number"
+                        min={0}
+                        max={300}
+                        value={bpmRange[0]}
+                        onChange={(e) => setBpmRange([Number(e.target.value), bpmRange[1]])}
                         className="w-16 px-2 py-1 text-xs bg-white/5 border border-white/10 rounded"
                         placeholder="Min"
                       />
                       <span className="text-xs text-gray-500">–</span>
                       <input
-                        type="number" min={0} max={300} value={bpmRange[1]}
-                        onChange={e => setBpmRange([bpmRange[0], Number(e.target.value)])}
+                        type="number"
+                        min={0}
+                        max={300}
+                        value={bpmRange[1]}
+                        onChange={(e) => setBpmRange([bpmRange[0], Number(e.target.value)])}
                         className="w-16 px-2 py-1 text-xs bg-white/5 border border-white/10 rounded"
                         placeholder="Max"
                       />
@@ -699,21 +671,34 @@ export default function MusicLensPage() {
                   )}
                   {/* Tag filter */}
                   {(() => {
-                    const allTags = [...new Set(tracks.flatMap(t => t.tags))].sort();
+                    const allTags = [...new Set(tracks.flatMap((t) => t.tags))].sort();
                     if (allTags.length === 0) return null;
                     return (
                       <select
                         value={filterTag || ''}
-                        onChange={e => setFilterTag(e.target.value || null)}
+                        onChange={(e) => setFilterTag(e.target.value || null)}
                         className="px-2 py-1 text-xs bg-white/5 border border-white/10 rounded text-gray-300"
                       >
                         <option value="">All Tags</option>
-                        {allTags.map(tag => <option key={tag} value={tag}>{tag}</option>)}
+                        {allTags.map((tag) => (
+                          <option key={tag} value={tag}>
+                            {tag}
+                          </option>
+                        ))}
                       </select>
                     );
                   })()}
                   {(filterByBpm || filterTag) && (
-                    <button onClick={() => { setFilterByBpm(false); setBpmRange([0, 300]); setFilterTag(null); }} className="text-xs text-gray-500 hover:text-white">Clear</button>
+                    <button
+                      onClick={() => {
+                        setFilterByBpm(false);
+                        setBpmRange([0, 300]);
+                        setFilterTag(null);
+                      }}
+                      className="text-xs text-gray-500 hover:text-white"
+                    >
+                      Clear
+                    </button>
                   )}
                 </div>
 
@@ -748,19 +733,22 @@ export default function MusicLensPage() {
 
                 {/* Results */}
                 <div className="space-y-1">
-                  {(browseGenre ? tracks.filter(t => t.genre === browseGenre) : tracks)
-                    .filter(t => !filterByBpm || ((t.bpm ?? 0) >= bpmRange[0] && (t.bpm ?? 0) <= bpmRange[1]))
-                    .filter(t => !filterTag || t.tags.includes(filterTag))
-                    .map(track => (
-                    <TrackCard
-                      key={track.id}
-                      track={track}
-                      variant="row"
-                      showTiers
-                      showLineage
-                      onArtistClick={navigateToArtist}
-                    />
-                  ))}
+                  {(browseGenre ? tracks.filter((t) => t.genre === browseGenre) : tracks)
+                    .filter(
+                      (t) =>
+                        !filterByBpm || ((t.bpm ?? 0) >= bpmRange[0] && (t.bpm ?? 0) <= bpmRange[1])
+                    )
+                    .filter((t) => !filterTag || t.tags.includes(filterTag))
+                    .map((track) => (
+                      <TrackCard
+                        key={track.id}
+                        track={track}
+                        variant="row"
+                        showTiers
+                        showLineage
+                        onArtistClick={navigateToArtist}
+                      />
+                    ))}
                 </div>
               </div>
             )}
@@ -992,267 +980,15 @@ export default function MusicLensPage() {
               />
             )}
 
-            {/* ---- MARKETPLACE ---- */}
-            {view === 'marketplace' && (
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <h1 className="text-xl font-bold flex items-center gap-2">
-                    <ShoppingBag className="w-5 h-5 text-neon-cyan" /> Beat Marketplace
-                  </h1>
-                  <span className="text-xs text-gray-500">Beats · Samples · Stems</span>
-                </div>
-
-                {/* Tab bar */}
-                <div className="flex gap-1 border-b border-white/5">
-                  {([
-                    { id: 'beats' as const, icon: Music, label: 'Beats' },
-                    { id: 'samples' as const, icon: Package, label: 'Sample Packs' },
-                    { id: 'stems' as const, icon: Layers, label: 'Stems' },
-                  ]).map(tab => (
-                    <button
-                      key={tab.id}
-                      onClick={() => setMarketplaceTab(tab.id)}
-                      className={cn(
-                        'flex items-center gap-1.5 px-4 py-2 text-sm border-b-2 transition-colors',
-                        marketplaceTab === tab.id ? 'border-neon-cyan text-neon-cyan' : 'border-transparent text-gray-400 hover:text-white',
-                      )}
-                    >
-                      <tab.icon className="w-3.5 h-3.5" /> {tab.label}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Filters (beats only) */}
-                {marketplaceTab === 'beats' && (
-                  <div className="flex flex-wrap items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/5">
-                    <Filter className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-400">BPM</span>
-                      <input
-                        type="number" value={marketplaceBpmMin} onChange={e => setMarketplaceBpmMin(e.target.value)}
-                        className="w-16 px-2 py-1 text-xs bg-white/5 border border-white/10 rounded" placeholder="Min"
-                      />
-                      <span className="text-xs text-gray-500">–</span>
-                      <input
-                        type="number" value={marketplaceBpmMax} onChange={e => setMarketplaceBpmMax(e.target.value)}
-                        className="w-16 px-2 py-1 text-xs bg-white/5 border border-white/10 rounded" placeholder="Max"
-                      />
-                    </div>
-                    <select value={marketplaceGenre} onChange={e => setMarketplaceGenre(e.target.value)}
-                      className="px-2 py-1 text-xs bg-white/5 border border-white/10 rounded text-gray-300">
-                      <option value="">All Genres</option>
-                      {['hip-hop', 'trap', 'r&b', 'pop', 'electronic', 'drill', 'afrobeats', 'lo-fi', 'house', 'jazz'].map(g => (
-                        <option key={g} value={g}>{g}</option>
-                      ))}
-                    </select>
-                    <select value={marketplaceKey} onChange={e => setMarketplaceKey(e.target.value)}
-                      className="px-2 py-1 text-xs bg-white/5 border border-white/10 rounded text-gray-300">
-                      <option value="">All Keys</option>
-                      {['C', 'Cm', 'D', 'Dm', 'E', 'Em', 'F', 'Fm', 'G', 'Gm', 'A', 'Am', 'B', 'Bm', 'Bb', 'Eb', 'Ab', 'F#m'].map(k => (
-                        <option key={k} value={k}>{k}</option>
-                      ))}
-                    </select>
-                    <div className="flex-1 min-w-[120px]">
-                      <input
-                        type="text" value={marketplaceSearch} onChange={e => setMarketplaceSearch(e.target.value)}
-                        className="w-full px-2 py-1 text-xs bg-white/5 border border-white/10 rounded" placeholder="Search beats..."
-                      />
-                    </div>
-                    <button onClick={fetchMarketplace} className="px-3 py-1 text-xs bg-neon-cyan/10 text-neon-cyan rounded hover:bg-neon-cyan/20 transition-colors">
-                      Search
-                    </button>
-                  </div>
-                )}
-
-                {/* Loading */}
-                {marketplaceLoading && (
-                  <div className="text-center py-8 text-gray-500">
-                    <Disc3 className="w-8 h-8 mx-auto mb-2 animate-spin opacity-40" />
-                    <p className="text-sm">Loading...</p>
-                  </div>
-                )}
-
-                {/* Beat listings */}
-                {!marketplaceLoading && marketplaceTab === 'beats' && (
-                  <div className="space-y-2">
-                    {marketplaceBeats.length === 0 ? (
-                      <div className="text-center py-12 text-gray-500">
-                        <Music className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                        <p className="text-sm">No beats listed yet</p>
-                        <p className="text-xs mt-1">Upload your beats to the marketplace</p>
-                      </div>
-                    ) : (
-                      marketplaceBeats.map(beat => (
-                        <div key={beat.listingId} className="flex items-center justify-between p-4 rounded-xl bg-white/[0.03] border border-white/5 hover:border-white/10 transition-colors group">
-                          <div className="flex items-center gap-4 min-w-0 flex-1">
-                            <button className="w-10 h-10 rounded-lg bg-neon-cyan/10 flex items-center justify-center flex-shrink-0 group-hover:bg-neon-cyan/20 transition-colors">
-                              <Play className="w-4 h-4 text-neon-cyan" />
-                            </button>
-                            <div className="min-w-0">
-                              <p className="text-sm font-medium truncate">{beat.title}</p>
-                              <div className="flex items-center gap-2 mt-0.5">
-                                <span className="text-xs text-neon-cyan font-mono">{beat.bpm} BPM</span>
-                                <span className="text-xs text-gray-500">·</span>
-                                <span className="text-xs text-gray-400">{beat.key}</span>
-                                <span className="text-xs text-gray-500">·</span>
-                                <span className="text-xs text-gray-400 capitalize">{beat.genre}</span>
-                              </div>
-                              {beat.tags.length > 0 && (
-                                <div className="flex gap-1 mt-1">
-                                  {beat.tags.slice(0, 4).map(tag => (
-                                    <span key={tag} className="px-1.5 py-0.5 text-[10px] rounded bg-white/5 text-gray-500">{tag}</span>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-3 flex-shrink-0">
-                            <div className="text-right">
-                              {beat.licenses?.map(lic => (
-                                <span key={lic.tier} className={cn(
-                                  'inline-block px-2 py-0.5 text-[10px] rounded-full ml-1',
-                                  lic.tier === 'listen' ? 'bg-neon-cyan/10 text-neon-cyan' :
-                                  lic.tier === 'create' ? 'bg-neon-purple/10 text-neon-purple' :
-                                  'bg-neon-green/10 text-neon-green',
-                                )}>
-                                  {lic.tier}: {lic.price === 0 ? 'Free' : `$${lic.price}`}
-                                </span>
-                              ))}
-                            </div>
-                            <div className="text-xs text-gray-500 text-right">
-                              <p>{beat.totalPlays} plays</p>
-                              <p>{beat.totalSales} sales</p>
-                            </div>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                )}
-
-                {/* Sample pack listings */}
-                {!marketplaceLoading && marketplaceTab === 'samples' && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {marketplaceSamples.length === 0 ? (
-                      <div className="col-span-full text-center py-12 text-gray-500">
-                        <Package className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                        <p className="text-sm">No sample packs yet</p>
-                      </div>
-                    ) : (
-                      marketplaceSamples.map(pack => (
-                        <div key={pack.listingId} className="p-4 rounded-xl bg-white/[0.03] border border-white/5 hover:border-white/10 transition-colors">
-                          <div className="w-full aspect-video rounded-lg bg-gradient-to-br from-neon-purple/10 to-neon-cyan/10 flex items-center justify-center mb-3">
-                            <Package className="w-10 h-10 text-gray-500" />
-                          </div>
-                          <h3 className="text-sm font-medium truncate">{pack.title}</h3>
-                          <p className="text-xs text-gray-500 mt-1">{pack.sampleCount} samples · {pack.genre}</p>
-                          {pack.description && <p className="text-xs text-gray-400 mt-1 line-clamp-2">{pack.description}</p>}
-                          <div className="flex items-center justify-between mt-3">
-                            <div className="flex gap-1">
-                              {pack.tags.slice(0, 3).map(tag => (
-                                <span key={tag} className="px-1.5 py-0.5 text-[10px] rounded bg-white/5 text-gray-500">{tag}</span>
-                              ))}
-                            </div>
-                            <span className="text-sm font-semibold text-neon-green">${pack.price}</span>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                )}
-
-                {/* Stem pack listings */}
-                {!marketplaceLoading && marketplaceTab === 'stems' && (
-                  <div className="space-y-2">
-                    {marketplaceStems.length === 0 ? (
-                      <div className="text-center py-12 text-gray-500">
-                        <Layers className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                        <p className="text-sm">No stem packs yet</p>
-                        <p className="text-xs mt-1">Artists can release stems for their tracks</p>
-                      </div>
-                    ) : (
-                      marketplaceStems.map(stem => (
-                        <div key={stem.listingId} className="flex items-center justify-between p-4 rounded-xl bg-white/[0.03] border border-white/5 hover:border-white/10 transition-colors">
-                          <div className="flex items-center gap-3">
-                            <Layers className="w-5 h-5 text-neon-purple flex-shrink-0" />
-                            <div>
-                              <p className="text-sm font-medium">{stem.title}</p>
-                              <p className="text-xs text-gray-500">{stem.assetIds.length} stems · {stem.genre}</p>
-                            </div>
-                          </div>
-                          <span className="text-sm font-semibold text-neon-green">${stem.price}</span>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* ---- ALBUM (MEGA DTU) ---- */}
+            {/* ---- ALBUM ---- */}
             {view === 'album' && (
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <h1 className="text-xl font-bold flex items-center gap-2">
-                    <Disc3 className="w-5 h-5 text-neon-purple" /> Albums
-                  </h1>
-                  <button onClick={navigateHome} className="text-xs text-gray-400 hover:text-white">&larr; Back</button>
-                </div>
-                {albumMegaDTUs.length === 0 && tracks.length === 0 ? (
-                  <div className="text-center py-16 text-gray-500">
-                    <Disc3 className="w-12 h-12 mx-auto mb-3 opacity-40" />
-                    <p className="text-sm font-medium">No albums yet</p>
-                    <p className="text-xs mt-1">Albums are created as MEGA DTUs when artists group tracks together.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {/* MEGA DTU albums */}
-                    {albumMegaDTUs.length > 0 && (
-                      <section>
-                        <h2 className="text-xs font-semibold text-gray-400 uppercase mb-3">MEGA DTU Albums</h2>
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                          {albumMegaDTUs.map((mega) => { const m = mega as unknown as Record<string, unknown>; return (
-                            <div key={m.id as string} className={cn("p-4 rounded-xl bg-gradient-to-br from-neon-purple/5 to-neon-cyan/5 border transition-colors", selectedAlbumId === (m.id as string) ? "border-neon-cyan ring-1 ring-neon-cyan" : "border-neon-purple/20 hover:border-neon-purple/40")}>
-                              <div className="w-full aspect-square rounded-lg bg-neon-purple/10 flex items-center justify-center mb-3">
-                                <Disc3 className="w-12 h-12 text-neon-purple/40" />
-                              </div>
-                              <p className="text-sm font-medium truncate">{(m.title as string) || 'Untitled Album'}</p>
-                              <p className="text-xs text-neon-purple mt-0.5">MEGA DTU · {((m.sourceCount as number) || 0)} tracks consolidated</p>
-                              <p className="text-[10px] text-gray-500 mt-1">1.5x relevance boost</p>
-                            </div>
-                          )})}
-                        </div>
-                      </section>
-                    )}
-                    {/* Artist-grouped albums from tracks */}
-                    {(() => {
-                      const byArtist: Record<string, MusicTrack[]> = {};
-                      for (const t of tracks) {
-                        if (!byArtist[t.artistName]) byArtist[t.artistName] = [];
-                        byArtist[t.artistName].push(t);
-                      }
-                      const multiTrackArtists = Object.entries(byArtist).filter(([, ts]) => ts.length >= 2);
-                      if (multiTrackArtists.length === 0) return null;
-                      return (
-                        <section>
-                          <h2 className="text-xs font-semibold text-gray-400 uppercase mb-3">Artist Collections</h2>
-                          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                            {multiTrackArtists.map(([artist, ts]) => (
-                              <button key={artist} onClick={() => { const a = artists.find(a => a.name === artist); if (a) navigateToArtist(a.id); }}
-                                className="p-4 rounded-xl bg-white/[0.03] border border-white/5 hover:border-white/10 text-left transition-colors">
-                                <div className="w-full aspect-square rounded-lg bg-gradient-to-br from-neon-cyan/10 to-neon-purple/10 flex items-center justify-center mb-3">
-                                  <Music className="w-10 h-10 text-gray-500" />
-                                </div>
-                                <p className="text-sm font-medium truncate">{artist}</p>
-                                <p className="text-xs text-gray-500">{ts.length} tracks</p>
-                              </button>
-                            ))}
-                          </div>
-                        </section>
-                      );
-                    })()}
-                  </div>
-                )}
+              <div className="text-center py-16 text-gray-500">
+                <Disc3 className="w-12 h-12 mx-auto mb-3 opacity-40" />
+                <p className="text-sm font-medium">No albums yet</p>
+                <p className="text-xs mt-1">Albums will appear here when artists release them.</p>
+                <button onClick={navigateHome} className="text-xs text-neon-cyan hover:underline mt-4 inline-block">
+                  &larr; Back to Home
+                </button>
               </div>
             )}
 
@@ -1562,7 +1298,6 @@ export default function MusicLensPage() {
         <div className="fixed right-4 bottom-24 z-40">
           <UniversalActions domain="music" artifactId={null} compact />
           <RealtimeDataPanel
-      <UniversalActions domain="music" artifactId={null} compact />
             domain="music"
             data={realtimeData}
             insights={realtimeInsights}

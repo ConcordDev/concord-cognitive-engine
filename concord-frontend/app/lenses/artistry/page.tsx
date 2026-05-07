@@ -1,21 +1,23 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiHelpers } from '@/lib/api/client';
+import { api, apiHelpers } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
+import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useLensDTUs } from '@/hooks/useLensDTUs';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Palette, Search, Upload,
-  Eye, ShoppingBag, DollarSign, Sparkles,
-  Music, X,
-  BarChart3, Globe, Layers,
+  Palette, Plus, Search, Upload, Heart, Share2, Filter,
+  Eye, ShoppingBag, DollarSign, TrendingUp, Sparkles,
+  Music, Image as ImageIcon, Video, Mic2, X,
+  BarChart3, Users, Globe, Layers,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { ErrorState } from '@/components/common/EmptyState';
+import { ArtistryFeed } from '@/components/artistry/ArtistryFeed';
+import { PreviewCard } from '@/components/artistry/PreviewCard';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -33,7 +35,7 @@ export default function ArtistryLensPage() {
 
   const [tab, setTab] = useState<ArtistryTab>('feed');
   const [searchQuery, setSearchQuery] = useState('');
-  const [showFeatures, setShowFeatures] = useState(true);
+  const [showFeatures, setShowFeatures] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
   const [feedMode, setFeedMode] = useState<FeedMode>('chronological');
 
@@ -130,7 +132,6 @@ export default function ArtistryLensPage() {
 
         {showFeatures && <LensFeaturePanel lensId="artistry" />}
         <RealtimeDataPanel data={realtimeData} insights={realtimeInsights} />
-      <UniversalActions domain="artistry" artifactId={null} compact />
 
         {/* Stat Cards — creative palette feel */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

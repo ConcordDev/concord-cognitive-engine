@@ -21,13 +21,22 @@ import {
 import * as THREE from "three";
 
 // ── Constants ────────────────────────────────────────────────────────────────
+//
+// Phase D scale-up: world bounds expanded from 4km to 20km. Existing chunk
+// bookkeeping survives the change because chunks are computed from world
+// position; we simply have more chunks now. Frustum culling + the existing
+// LOD bands (kept unchanged) keep the render cost bounded. Vehicles can
+// reach 150 m/s (planes) so VIEW_DISTANCE is bumped to keep approach
+// detection viable; on weak machines this can be lowered without breaking
+// gameplay because anti-cheat is server-side.
 
-const WORLD_SIZE = 4000;
-const CHUNK_SIZE = 200;
-const VIEW_DISTANCE = 1200;
+const WORLD_SIZE = 20000;
+const CHUNK_SIZE = 1000;        // 1km terrain chunks → 20×20 grid
+const VIEW_DISTANCE = 5000;     // 5km — enough to see an approaching plane in time
 const PLAYER_SPEED = 50;
 const PLAYER_SPRINT_SPEED = 100;
 const PLAYER_HEIGHT = 1.8;
+const ACTIVE_CHUNK_RADIUS = 1;  // 3×3 grid of chunks loaded around the camera
 
 const DISTRICT_COLORS: Record<string, string> = {
   CREATIVE_QUARTER: "#e74c3c",
@@ -484,6 +493,194 @@ function WorkstationPrompt({
   );
 }
 
+// ── Day / Night Cycle ───────────────────────────────────────────────────────
+//
+// Phase F fix 4: gives Concordia a real day/night cycle. Until now the
+// world was eternal grey noon; the audit's World-life cell flagged this as
+// the single biggest "feels lifeless" complaint.
+//
+// One in-world day = DAY_LENGTH_MS of real time (default 24 minutes).
+// Sun orbits in a great circle east → up → west → down → up. Five color
+// stops keyed off the cycle phase t ∈ [0,1):
+//   t=0.00 dawn     warm orange  ambient 0.45  directional 0.9
+//   t=0.25 noon     bright white ambient 0.55  directional 1.4
+//   t=0.50 dusk     deep amber   ambient 0.40  directional 0.8
+//   t=0.75 midnight cold blue    ambient 0.15  directional 0.25
+//
+// Throttled to ~10Hz state updates so drei's <Sky> doesn't re-render every
+// frame. If skyPreset is provided as anything other than 'auto', the cycle
+// is paused at that preset for backward compatibility with callers that
+// want a fixed time-of-day.
+
+const DAY_LENGTH_MS = 24 * 60 * 1000;
+
+interface DayNightStop {
+  t: number;
+  sky:        [number, number, number]; // sunPosition vector
+  ambient:    number;
+  directional: number;
+}
+
+const DAY_NIGHT_STOPS: DayNightStop[] = [
+  { t: 0.00, sky: [ 1.0, 0.10, 0.0],  ambient: 0.45, directional: 0.9  }, // dawn (east horizon)
+  { t: 0.25, sky: [ 0.0, 1.00, 0.0],  ambient: 0.55, directional: 1.4  }, // noon (overhead)
+  { t: 0.50, sky: [-1.0, 0.10, 0.0],  ambient: 0.40, directional: 0.8  }, // dusk (west horizon)
+  { t: 0.75, sky: [ 0.0, -1.0, 0.0],  ambient: 0.15, directional: 0.25 }, // midnight (below)
+];
+
+function lerp(a: number, b: number, k: number): number { return a + (b - a) * k; }
+function lerp3(a: [number, number, number], b: [number, number, number], k: number): [number, number, number] {
+  return [lerp(a[0], b[0], k), lerp(a[1], b[1], k), lerp(a[2], b[2], k)];
+}
+
+function sampleDayNight(t: number): { sky: [number, number, number]; ambient: number; directional: number } {
+  // Wrap to [0,1)
+  const phase = ((t % 1) + 1) % 1;
+  // Find adjacent stops
+  let i = 0;
+  for (; i < DAY_NIGHT_STOPS.length - 1; i++) {
+    if (phase < DAY_NIGHT_STOPS[i + 1].t) break;
+  }
+  const a = DAY_NIGHT_STOPS[i];
+  const b = DAY_NIGHT_STOPS[(i + 1) % DAY_NIGHT_STOPS.length];
+  const span = (b.t > a.t ? b.t : b.t + 1) - a.t;
+  const k = span === 0 ? 0 : (phase - a.t) / span;
+  return {
+    sky:         lerp3(a.sky, b.sky, k),
+    ambient:     lerp(a.ambient, b.ambient, k),
+    directional: lerp(a.directional, b.directional, k),
+  };
+}
+
+interface DayNightCycleProps {
+  skyPreset?: "auto" | "sunset" | "dawn" | "night" | "noon";
+  startedAt?: number; // epoch ms — used so all clients see the same time-of-day
+}
+
+function DayNightCycle({ skyPreset = "auto", startedAt }: DayNightCycleProps) {
+  const [sample, setSample] = useState(() => sampleDayNight(0));
+  const lastUpdateRef = useRef(0);
+  const startRef      = useRef(startedAt ?? Date.now());
+
+  // Subscribe to server-broadcast world clock so all clients see exactly the
+  // same time-of-day. Falls back to local Date.now() if the server hasn't
+  // emitted yet.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { epochMs?: number; dayLengthMs?: number } | undefined;
+      if (detail?.epochMs)     startRef.current = detail.epochMs;
+      // If server reports a non-default day length, honor it locally.
+      // (We don't reassign DAY_LENGTH_MS here; a future enhancement could
+      // dispatch a context event for renderer-wide consumption.)
+    };
+    window.addEventListener("concordia:world-clock", handler);
+    return () => window.removeEventListener("concordia:world-clock", handler);
+  }, []);
+
+  useFrame(() => {
+    if (skyPreset !== "auto") return;
+    const now = performance.now();
+    if (now - lastUpdateRef.current < 100) return; // ~10Hz
+    lastUpdateRef.current = now;
+    const t = ((Date.now() - startRef.current) % DAY_LENGTH_MS) / DAY_LENGTH_MS;
+    setSample(sampleDayNight(t));
+  });
+
+  // Backward-compat presets (paused cycle).
+  let sky:         [number, number, number] = sample.sky;
+  let ambient:     number = sample.ambient;
+  let directional: number = sample.directional;
+  if (skyPreset === "noon")    { sky = [0, 1, 0];     ambient = 0.55; directional = 1.4; }
+  if (skyPreset === "dawn")    { sky = [1, 0.1, 0];   ambient = 0.45; directional = 0.9; }
+  if (skyPreset === "sunset")  { sky = [1, 0.3, -0.5]; ambient = 0.40; directional = 0.8; }
+  if (skyPreset === "night")   { sky = [0, -1, 0];    ambient = 0.15; directional = 0.25; }
+
+  return (
+    <>
+      <ambientLight intensity={ambient} />
+      <directionalLight
+        position={[sky[0] * 500, Math.max(50, sky[1] * 300), sky[2] * 200]}
+        intensity={directional}
+        castShadow
+        shadow-mapSize-width={2048}
+        shadow-mapSize-height={2048}
+        shadow-camera-far={2000}
+        shadow-camera-left={-500}
+        shadow-camera-right={500}
+        shadow-camera-top={500}
+        shadow-camera-bottom={-500}
+      />
+      <Sky distance={450000} sunPosition={sky} inclination={0.5} azimuth={0.25} />
+    </>
+  );
+}
+
+// ── Chunk Streamer ──────────────────────────────────────────────────────────
+//
+// Phase F fix 7: with WORLD_SIZE=20km the entire world cannot be rendered at
+// once on weak hardware. ChunkStreamer keeps only the (2*radius+1)² grid of
+// chunks around the player active, filtering districts and world objects
+// by position. Cheap: filters a JS array per render pass and lets React
+// reconcile the diff. ACTIVE_CHUNK_RADIUS=1 → 3×3 grid → ~9 km² loaded.
+//
+// Coordinates: world center is (0,0). Chunk index for a position p is
+//   Math.floor((p + WORLD_SIZE/2) / CHUNK_SIZE).
+// Inputs that lack a position default to the world center so legacy data
+// without coords still appears (graceful degradation).
+
+interface ChunkStreamerProps {
+  playerPos: { x: number; z: number };
+  districts: District[];
+  objects: WorldObject[];
+  chunkRadius?: number;
+  onObjectClick?: (obj: WorldObject) => void;
+}
+
+function chunkIndex(p: number): number {
+  return Math.floor((p + WORLD_SIZE / 2) / CHUNK_SIZE);
+}
+
+function isWithinActiveChunk(
+  pos: { x: number; z: number } | undefined,
+  cx: number,
+  cz: number,
+  radius: number
+): boolean {
+  if (!pos) return true; // missing coords → always show, never accidentally cull
+  const ix = chunkIndex(pos.x);
+  const iz = chunkIndex(pos.z);
+  return Math.abs(ix - cx) <= radius && Math.abs(iz - cz) <= radius;
+}
+
+function ChunkStreamer({
+  playerPos,
+  districts,
+  objects,
+  chunkRadius = ACTIVE_CHUNK_RADIUS,
+  onObjectClick,
+}: ChunkStreamerProps) {
+  const cx = chunkIndex(playerPos.x);
+  const cz = chunkIndex(playerPos.z);
+
+  const visibleDistricts = districts.filter((d) =>
+    isWithinActiveChunk(d.position ? { x: d.position.x, z: d.position.z } : undefined, cx, cz, chunkRadius)
+  );
+  const visibleObjects = objects.filter((obj) =>
+    isWithinActiveChunk(obj.position ? { x: obj.position.x, z: obj.position.z } : undefined, cx, cz, chunkRadius)
+  );
+
+  return (
+    <>
+      {visibleDistricts.map((d) => (
+        <DistrictZone key={d.id} district={d} lodLevel="high" />
+      ))}
+      {visibleObjects.map((obj) => (
+        <WorldObjectMesh key={obj.id} obj={obj} onClick={onObjectClick} />
+      ))}
+    </>
+  );
+}
+
 // ── Main World Renderer ──────────────────────────────────────────────────────
 
 interface WorldRendererProps {
@@ -492,7 +689,8 @@ interface WorldRendererProps {
   onDistrictEnter?: (district: District) => void;
   onWorkstationActivate?: (workstation: string, district: District) => void;
   onObjectClick?: (obj: WorldObject) => void;
-  skyPreset?: "sunset" | "dawn" | "night" | "noon";
+  /** 'auto' (default) runs the live day/night cycle. Any other value pins the sky to that preset. */
+  skyPreset?: "auto" | "sunset" | "dawn" | "night" | "noon";
 }
 
 export default function WorldRenderer({
@@ -501,7 +699,7 @@ export default function WorldRenderer({
   onDistrictEnter,
   onWorkstationActivate,
   onObjectClick,
-  skyPreset = "sunset",
+  skyPreset = "auto",
 }: WorldRendererProps) {
   const [currentDistrictId, setCurrentDistrictId] = useState<string | null>(null);
   const [nearestWorkstation, setNearestWorkstation] = useState<string | null>(null);
@@ -585,37 +783,11 @@ export default function WorldRenderer({
         }}
       >
         <Suspense fallback={null}>
-          {/* Lighting */}
-          <ambientLight intensity={0.3} />
-          <directionalLight
-            position={[500, 300, 200]}
-            intensity={1.2}
-            castShadow
-            shadow-mapSize-width={2048}
-            shadow-mapSize-height={2048}
-            shadow-camera-far={2000}
-            shadow-camera-left={-500}
-            shadow-camera-right={500}
-            shadow-camera-top={500}
-            shadow-camera-bottom={-500}
-          />
+          {/* Lighting + sky driven by the day/night cycle. Setting skyPreset
+              to a fixed value (the original behavior) pauses the cycle there
+              for backward compat; the default 'auto' lets the cycle run. */}
+          <DayNightCycle skyPreset={skyPreset === "auto" ? "auto" : skyPreset} />
           <pointLight position={[0, 50, 0]} intensity={0.5} color="#f39c12" />
-
-          {/* Sky */}
-          <Sky
-            distance={450000}
-            sunPosition={
-              skyPreset === "noon"
-                ? [0, 1, 0]
-                : skyPreset === "dawn"
-                ? [1, 0.1, 0]
-                : skyPreset === "night"
-                ? [0, -1, 0]
-                : [1, 0.3, -0.5] // sunset
-            }
-            inclination={skyPreset === "night" ? 0 : 0.5}
-            azimuth={0.25}
-          />
 
           {/* Fog */}
           <fog attach="fog" args={["#1a1a2e", VIEW_DISTANCE * 0.5, VIEW_DISTANCE]} />
@@ -624,15 +796,15 @@ export default function WorldRenderer({
           <Ground />
           <GridOverlay />
 
-          {/* Districts */}
-          {districts.map((d) => (
-            <DistrictZone key={d.id} district={d} lodLevel="high" />
-          ))}
-
-          {/* World Objects */}
-          {objects.map((obj) => (
-            <WorldObjectMesh key={obj.id} obj={obj} onClick={onObjectClick} />
-          ))}
+          {/* Districts + World Objects, streamed by ChunkStreamer so only
+              the chunks within ACTIVE_CHUNK_RADIUS of the player are mounted */}
+          <ChunkStreamer
+            playerPos={playerPos}
+            districts={districts}
+            objects={objects}
+            chunkRadius={ACTIVE_CHUNK_RADIUS}
+            onObjectClick={onObjectClick}
+          />
 
           {/* Player Controller */}
           <PlayerController

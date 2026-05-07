@@ -35,6 +35,49 @@ export default function InvariantLensPage() {
   const [testResult, setTestResult] = useState<{ passed: boolean; message: string } | null>(null);
   const [showFeatures, setShowFeatures] = useState(true);
 
+  const runAction = useRunArtifact('invariant');
+  const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
+  const [isRunning, setIsRunning] = useState<string | null>(null);
+
+  const handleAction = async (action: string) => {
+    let targetId = invariantItems[0]?.id;
+    // Auto-create an invariant artifact if none exists yet
+    if (!targetId) {
+      try {
+        const created = await apiHelpers.lens.create('invariant', {
+          type: 'invariant',
+          title: 'System Invariant Set',
+          data: {
+            name: 'SYSTEM_INVARIANTS',
+            description: 'Auto-created invariant set for analysis',
+            status: 'enforced',
+            category: 'structural',
+            frozen: true,
+          },
+        });
+        targetId = created?.data?.artifact?.id;
+        if (targetId) {
+          // Refetch so the UI picks up the new artifact
+          refetch();
+        }
+      } catch (e) {
+        console.error('[Invariant] Failed to auto-create artifact:', e);
+        setActionResult({ message: 'No invariant artifact found. Please try again.' });
+        return;
+      }
+      if (!targetId) {
+        setActionResult({ message: 'Could not create invariant artifact. Please try again.' });
+        return;
+      }
+    }
+    setIsRunning(action);
+    try {
+      const res = await runAction.mutateAsync({ id: targetId, action });
+      if (res.ok === false) { setActionResult({ message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setActionResult(res.result as Record<string, unknown>); }
+    } catch (e) { console.error(`Action ${action} failed:`, e); setActionResult({ message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` }); }
+    finally { setIsRunning(null); }
+  };
+
   // Fetch invariants from backend via useLensData with auto-seeding
   const { items: invariantItems, isLoading, isError, error, refetch } = useLensData<Invariant>('invariant', 'invariant', {
     seed: SEED_INVARIANTS,

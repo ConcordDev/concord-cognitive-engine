@@ -29,6 +29,42 @@ export default function AppMakerLens() {
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('app-maker');
 
   const [showFeatures, setShowFeatures] = useState(true);
+
+  // Backend action wiring
+  const runAction = useRunArtifact('appmaker');
+  const { items: appmakerItems } = useLensData<Record<string, unknown>>('appmaker', 'app', { seed: [] });
+  const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
+  const [isRunning, setIsRunning] = useState<string | null>(null);
+
+  const handleAppmakerAction = async (action: string) => {
+    let targetId = appmakerItems[0]?.id;
+    // Auto-create an app artifact if none exists yet
+    if (!targetId) {
+      try {
+        const created = await apiHelpers.lens.create('appmaker', {
+          type: 'app',
+          title: 'App Maker Workspace',
+          data: { template: selectedTemplate, name: appBuildName || 'Untitled App' },
+        });
+        targetId = created?.data?.artifact?.id;
+      } catch (e) {
+        console.error('[AppMaker] Failed to auto-create artifact:', e);
+        setActionResult({ message: 'No app artifact found. Please create an app first.' });
+        return;
+      }
+      if (!targetId) {
+        setActionResult({ message: 'No app artifact found. Please create an app first.' });
+        return;
+      }
+    }
+    setIsRunning(action);
+    try {
+      const res = await runAction.mutateAsync({ id: targetId, action });
+      if (res.ok === false) { setActionResult({ message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setActionResult(res.result as Record<string, unknown>); }
+    } catch (e) { console.error(`Action ${action} failed:`, e); setActionResult({ message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` }); }
+    setIsRunning(null);
+  };
+
   const [apps, setApps] = useState<AppEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);

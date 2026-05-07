@@ -37,6 +37,22 @@ export default function AuditLensPage() {
   const [filter, setFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showFeatures, setShowFeatures] = useState(true);
+  const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
+  const [isRunning, setIsRunning] = useState<string | null>(null);
+
+  const runAction = useRunArtifact('audit');
+  const { items: auditItems } = useLensData<Record<string, unknown>>('audit', 'entry', { seed: [] });
+
+  const handleAuditAction = async (action: string) => {
+    const targetId = auditItems[0]?.id;
+    if (!targetId) return;
+    setIsRunning(action);
+    try {
+      const res = await runAction.mutateAsync({ id: targetId, action });
+      if (res.ok === false) { setActionResult({ message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setActionResult(res.result as Record<string, unknown>); }
+    } catch (e) { console.error(`Action ${action} failed:`, e); setActionResult({ message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` }); }
+    setIsRunning(null);
+  };
 
   // Backend: GET /api/events
   const { data: events, isLoading, isError: isError, error: error, refetch: refetch,} = useQuery({

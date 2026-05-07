@@ -2,7 +2,6 @@
 
 import { LensFeedPanel } from '@/components/feeds/LensFeedPanel';
 import { useLensNav } from '@/hooks/useLensNav';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useQuery } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useState, useMemo, useCallback } from 'react';
@@ -61,13 +60,17 @@ export default function NewsLensPage() {
   const addToast = useUIStore((s) => s.addToast);
   const queryClient = useQueryClient();
 
-  const { data: news, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ['news', selectedCategory],
-    queryFn: () =>
-      apiHelpers.lens.list('news', {
-        tags: selectedCategory !== 'all' ? selectedCategory : undefined,
-      }).then((r) => r.data),
-    refetchInterval: 60_000,
+  // Pull article to user's DTU substrate
+  const pullMutation = useMutation({
+    mutationFn: (articleId: string) => api.post(`/api/lens/news/${articleId}/pull`),
+    onSuccess: (res) => {
+      addToast({
+        type: 'success',
+        message: `Pulled to your substrate${res.data?.dtu?.title ? `: ${res.data.dtu.title}` : ''}`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['dtus'] });
+    },
+    onError: () => addToast({ type: 'error', message: 'Failed to pull article' }),
   });
 
   // Cite an article (link it to one of user's DTUs)
@@ -134,27 +137,7 @@ export default function NewsLensPage() {
     { id: 'community', name: 'Community', icon: Eye },
   ];
 
-  const articles: NewsArticle[] = useMemo(() => {
-    const raw = news?.artifacts || news?.articles || news?.items || [];
-    return raw.map((item: Record<string, unknown>) => {
-      const data = (item.data || {}) as Record<string, unknown>;
-      return {
-        id: String(item.id || ''),
-        title: String(data.title || item.title || ''),
-        summary: String(data.summary || data.description || ''),
-        source: String(data.source || ''),
-        category: String(data.eventType?.toString().split(':')[1] || item.type || 'general'),
-        timestamp: String(item.createdAt || item.updatedAt || ''),
-        imageUrl: (data.imageUrl as string) || undefined,
-        trending: Boolean(data.trending),
-        bookmarked: false,
-        url: (data.url as string) || (data.link as string) || undefined,
-        readTime: (data.readTime as number) || undefined,
-        views: (data.views as number) || undefined,
-        importance: (data.importance as 'low' | 'medium' | 'high' | 'critical') || undefined,
-      };
-    });
-  }, [news]);
+  const articles: NewsArticle[] = useMemo(() => news?.artifacts || news?.articles || news?.items || [], [news]);
 
   // Extract unique sources for filtering
   const sources = useMemo(() => {
@@ -758,9 +741,151 @@ export default function NewsLensPage() {
           </div>
         </div>
 
-      {/* Real-time Data Panel */}
-      <RealtimeDataPanel domain="news" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
-      <UniversalActions domain="news" artifactId={null} compact />
+        {/* Real-time Data Panel */}
+        <RealtimeDataPanel
+          domain="news"
+          data={realtimeData}
+          isLive={isLive}
+          lastUpdated={lastUpdated}
+          insights={insights}
+          compact
+        />
+        <UniversalActions domain="news" artifactId={null} compact />
+
+        {/* Backend Action Panel */}
+        <div className="panel p-4 space-y-3">
+          <h2 className="font-semibold flex items-center gap-2">
+            <Newspaper className="w-4 h-4 text-neon-cyan" />
+            News Analysis
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { action: 'biasDetection', label: 'Bias Detection' },
+              { action: 'eventExtraction', label: 'Event Extraction' },
+              { action: 'narrativeTracking', label: 'Narrative Tracking' },
+            ].map(({ action, label }) => (
+              <button
+                key={action}
+                onClick={() => handleAction(action)}
+                disabled={!!isRunning}
+                className="btn-secondary text-sm flex items-center gap-1 disabled:opacity-50"
+              >
+                {isRunning === action ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  <Play className="w-3 h-3" />
+                )}
+                {label}
+              </button>
+            ))}
+          </div>
+          {actionResult && (
+            <div className="bg-lattice-deep rounded-lg p-4 space-y-3 text-sm">
+              {'overallBiasScore' in actionResult && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3">
+                    <span className="text-gray-400 text-xs">
+                      Bias Score:{' '}
+                      <span className="text-neon-cyan font-bold">
+                        {String(actionResult.overallBiasScore)}
+                      </span>
+                    </span>
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded ${
+                        actionResult.biasLevel === 'high'
+                          ? 'bg-red-400/20 text-red-400'
+                          : actionResult.biasLevel === 'moderate'
+                            ? 'bg-yellow-400/20 text-yellow-400'
+                            : 'bg-neon-green/20 text-neon-green'
+                      }`}
+                    >
+                      {String(actionResult.biasLevel)}
+                    </span>
+                  </div>
+                  {'sourceBiasProfiles' in actionResult &&
+                    Array.isArray(actionResult.sourceBiasProfiles) &&
+                    actionResult.sourceBiasProfiles.length > 0 && (
+                      <div className="space-y-1">
+                        <p className="text-xs text-gray-500 uppercase tracking-wider">Sources</p>
+                        {(actionResult.sourceBiasProfiles as Array<Record<string, unknown>>)
+                          .slice(0, 4)
+                          .map((s, i) => (
+                            <div
+                              key={i}
+                              className="flex justify-between text-xs bg-lattice-surface rounded px-2 py-1"
+                            >
+                              <span className="text-gray-300">{String(s.source)}</span>
+                              <span className="text-yellow-400">{String(s.avgBiasScore ?? 0)}</span>
+                            </div>
+                          ))}
+                      </div>
+                    )}
+                </div>
+              )}
+              {'eventsExtracted' in actionResult && (
+                <div className="space-y-2">
+                  <span className="text-gray-400 text-xs">
+                    Events:{' '}
+                    <span className="text-neon-cyan font-bold">
+                      {String(actionResult.eventsExtracted)}
+                    </span>
+                  </span>
+                  {'topEntities' in actionResult &&
+                    Array.isArray(actionResult.topEntities) &&
+                    actionResult.topEntities.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {(actionResult.topEntities as Array<Record<string, unknown>>)
+                          .slice(0, 5)
+                          .map((e, i) => (
+                            <span
+                              key={i}
+                              className="text-xs bg-neon-cyan/10 border border-neon-cyan/20 rounded px-2 py-0.5 text-neon-cyan"
+                            >
+                              {String(e.entity || e.name)}
+                            </span>
+                          ))}
+                      </div>
+                    )}
+                </div>
+              )}
+              {'narrativeStability' in actionResult && (
+                <div className="space-y-1">
+                  <div className="flex items-center gap-3">
+                    <span className="text-gray-400 text-xs">
+                      Stability:{' '}
+                      <span className="text-neon-cyan font-bold">
+                        {String(actionResult.narrativeStability)}
+                      </span>
+                    </span>
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded ${
+                        actionResult.stabilityLevel === 'stable'
+                          ? 'bg-neon-green/20 text-neon-green'
+                          : 'bg-yellow-400/20 text-yellow-400'
+                      }`}
+                    >
+                      {String(actionResult.stabilityLevel)}
+                    </span>
+                  </div>
+                  {'shiftCount' in actionResult && (
+                    <p className="text-xs text-gray-400">
+                      Narrative shifts:{' '}
+                      <span className="text-yellow-400">{String(actionResult.shiftCount)}</span>
+                    </p>
+                  )}
+                </div>
+              )}
+              {'message' in actionResult && (
+                <p className="text-gray-400">{String(actionResult.message)}</p>
+              )}
+            </div>
+          )}
+
+          {/* Live Web Feed */}
+          <div className="px-4 mb-2">
+            <LensFeedPanel lensId="news" />
+          </div>
+        </div>
       </div>
     </div>
   );

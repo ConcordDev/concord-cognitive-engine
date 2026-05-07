@@ -117,6 +117,25 @@ export default function CryptoLensPage() {
   const [showAddChain, setShowAddChain] = useState(false);
   const [showFeatures, setShowFeatures] = useState(true);
 
+  // ── Backend action state ───────────────────────────────────────────────────
+  const runAction = useRunArtifact('crypto');
+  const [actionResult, setActionResult] = useState<ActionResultData | null>(null);
+  const [isRunningAction, setIsRunningAction] = useState(false);
+
+  const handleRunAction = async (action: string) => {
+    const targetId = chainItems[0]?.id ?? 'crypto-default';
+    setIsRunningAction(true);
+    setActionResult(null);
+    try {
+      const result = await runAction.mutateAsync({ id: targetId, action });
+      setActionResult(result as ActionResultData);
+    } catch (err) {
+      setActionResult({ error: err instanceof Error ? err.message : 'Action failed' });
+    } finally {
+      setIsRunningAction(false);
+    }
+  };
+
   // Send form
   const [sendAmount, setSendAmount] = useState('');
   const [sendTo, setSendTo] = useState('');

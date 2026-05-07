@@ -3,12 +3,13 @@
 import { useState, useMemo, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { useLensNav } from '@/hooks/useLensNav';
-import { useLensData } from '@/lib/hooks/use-lens-data';
+import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Compass, MapPin, Plane, Hotel, Calendar, Plus, Search, X, Trash2, DollarSign, Clock, Star, Globe, Layers, ChevronDown, Map,
-  Users, CheckSquare, Square, Luggage,
+  Compass, MapPin, Plane, Hotel, Calendar, Plus, Search, X,
+  Edit2, Trash2, DollarSign, Clock, Star, Globe, Layers, ChevronDown, Map,
+  Users, CheckSquare, Square, Luggage, ArrowRight,
 } from 'lucide-react';
 
 const MapView = dynamic(() => import('@/components/common/MapView'), { ssr: false });
@@ -58,7 +59,7 @@ export default function TravelLensPage() {
   const [tab, setTab] = useState<ModeTab>('trips');
   const [search, setSearch] = useState('');
   const [showCreate, setShowCreate] = useState(false);
-  const [showFeatures, setShowFeatures] = useState(true);
+  const [showFeatures, setShowFeatures] = useState(false);
   const [newTrip, setNewTrip] = useState({ name: '', destination: '', startDate: '', endDate: '', budget: 0, lat: '', lng: '' });
 
   // Packing list state
@@ -284,14 +285,9 @@ export default function TravelLensPage() {
                         {trip.activities?.length > 0 && <span className="flex items-center gap-1"><Star className="w-3 h-3" />{trip.activities.length} activities</span>}
                       </div>
                     </div>
-                    <div className="flex items-center gap-1 ml-2">
-                      <button onClick={() => { const nextStatus = trip.status === 'planning' ? 'booked' : trip.status === 'booked' ? 'in-progress' : trip.status === 'in-progress' ? 'completed' : 'planning'; update(trip.id, { data: { ...trip, status: nextStatus } as unknown as Partial<TripData> }); }} className="text-gray-500 hover:text-neon-cyan p-1" title="Advance status">
-                        <CheckSquare className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => remove(trip.id)} disabled={deleteMut.isPending} className="text-gray-500 hover:text-red-400 p-1">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+                    <button onClick={() => remove(trip.id)} disabled={deleteMut.isPending} className="text-gray-500 hover:text-red-400 p-1 ml-2">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                   {/* Budget progress bar */}
                   {trip.budget > 0 && (
@@ -412,7 +408,7 @@ export default function TravelLensPage() {
       <RealtimeDataPanel domain="travel" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
 
       <div className="border-t border-white/10">
-        <button onClick={() => setShowFeatures(!showFeatures)} className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg">
+        <button onClick={() => setShowFeatures(!showFeatures)} className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-400 hover:text-white transition-colors">
           <span className="flex items-center gap-2"><Layers className="w-4 h-4" />Lens Features & Capabilities</span>
           <ChevronDown className={cn('w-4 h-4 transition-transform', showFeatures && 'rotate-180')} />
         </button>

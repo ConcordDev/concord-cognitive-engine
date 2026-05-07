@@ -18,13 +18,18 @@
 import { createHash, randomUUID } from "crypto";
 import logger from "../logger.js";
 import { feedAttribution } from "./source-attribution.js";
+import { browserEngine } from "./browser-engine.js";
 
 // ══════════════════════════════════════════════════════════════════════════════
 // CONSTANTS & LIMITS
 // ══════════════════════════════════════════════════════════════════════════════
 
-const MAX_ACTIVE_FEEDS = 100;
-const MAX_DTUS_PER_HOUR = 1000;
+// Bumped from 100 → 1000 active feeds for 32GB-heap deployments.
+const MAX_ACTIVE_FEEDS = Number(process.env.CONCORD_MAX_ACTIVE_FEEDS) || 1000;
+// Bumped from 1000 → 10000/hour for 32GB-heap deployments. Hourly
+// rate-limit on inbound feed DTUs so a misbehaving source can't flood
+// the substrate. Override via env CONCORD_FEED_DTUS_PER_HOUR.
+const MAX_DTUS_PER_HOUR = Number(process.env.CONCORD_FEED_DTUS_PER_HOUR) || 10000;
 const STALE_THRESHOLD = 5; // consecutive failures before auto-disable
 const FETCH_TIMEOUT = 10000;
 const DEFAULT_USER_AGENT = "ConcordOS/2.0 FeedManager";
@@ -230,7 +235,7 @@ function tryParseDate(str) {
   try {
     const d = new Date(str);
     return isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
-  } catch { return new Date().toISOString(); }
+  } catch (err) { console.debug('[feed-manager] date parse failed', err?.message); return new Date().toISOString(); }
 }
 
 
@@ -393,6 +398,7 @@ async function fetchFeed(feedSource) {
 
     let items = [];
     const type = feedSource.type || "rss";
+    const mode = feedSource.mode || "standard";
 
     if (type === "rss" || type === "xml" || type === "atom") {
       const text = await res.text();
@@ -400,9 +406,54 @@ async function fetchFeed(feedSource) {
     } else if (type === "json") {
       const data = await res.json();
       items = parseJSON(data, feedSource);
+    } else if (type === "html" && mode === "rendered") {
+      // JS-rendered HTML: use Playwright via BrowserEngine for full rendering
+      const rendered = await browserEngine.fetchRenderedPage(feedSource.url, {
+        timeout: feedSource.timeout || FETCH_TIMEOUT,
+        waitFor: feedSource.waitFor || undefined,
+      });
+      if (rendered.ok) {
+        items = parseHTML(rendered.html, feedSource);
+        // If HTML parser found nothing, create a single item from the rendered text
+        if (items.length === 0 && rendered.text?.length > 20) {
+          items.push({
+            title: rendered.title || feedSource.name || "Rendered Page",
+            sourceUrl: feedSource.url,
+            summary: rendered.text.slice(0, 200),
+            publishedAt: new Date().toISOString(),
+            categories: [],
+            content: rendered.text.slice(0, 10000),
+          });
+        }
+      } else {
+        // Rendered fetch failed — fall back to the standard HTTP response
+        const text = await res.text();
+        items = parseHTML(text, feedSource);
+      }
     } else if (type === "html") {
       const text = await res.text();
       items = parseHTML(text, feedSource);
+    } else if (type === "rendered" || mode === "rendered") {
+      // Explicit "rendered" type: skip the HTTP response, use Playwright directly
+      const rendered = await browserEngine.fetchRenderedPage(feedSource.url, {
+        timeout: feedSource.timeout || FETCH_TIMEOUT,
+        waitFor: feedSource.waitFor || undefined,
+      });
+      if (rendered.ok) {
+        items = parseHTML(rendered.html, feedSource);
+        if (items.length === 0 && rendered.text?.length > 20) {
+          items.push({
+            title: rendered.title || feedSource.name || "Rendered Page",
+            sourceUrl: feedSource.url,
+            summary: rendered.text.slice(0, 200),
+            publishedAt: new Date().toISOString(),
+            categories: [],
+            content: rendered.text.slice(0, 10000),
+          });
+        }
+      } else {
+        throw new Error(`Rendered fetch failed: ${rendered.error}`);
+      }
     }
 
     // Update health
@@ -466,11 +517,13 @@ async function commitFeedDTU(item, feedSource) {
   const now = new Date().toISOString();
   const dtuId = `feed_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
 
+  const _lensId = feedSource.lensId || feedSource.domain;
   const tags = [
     ...(feedSource.tags || []),
     ...(Array.isArray(item.categories) ? item.categories.slice(0, 5) : []),
     "feed",
     "live",
+    ...(_lensId ? [`lens:${_lensId}`, _lensId] : []),
   ].map(t => String(t).toLowerCase().trim()).filter(Boolean);
   const uniqueTags = [...new Set(tags)].slice(0, 15);
 
@@ -491,6 +544,7 @@ async function commitFeedDTU(item, feedSource) {
     },
     meta: {
       feedId: feedSource.id,
+      lensId: feedSource.lensId || feedSource.domain,
       fetchedAt: now,
       via: "feed-manager",
       sourceUrl: item.sourceUrl || "",
@@ -559,6 +613,7 @@ async function tickFeed(feedId) {
           _deps.realtimeEmit("feed:new-dtu", {
             dtuId: result.dtuId,
             feedId: feedSource.id,
+            lensId: feedSource.lensId || feedSource.domain,
             domain: feedSource.domain,
             title: item.title,
             sourceUrl: item.sourceUrl,
@@ -665,6 +720,20 @@ function stopFeedTimer(feedId) {
  */
 export function initFeedManager(deps = {}) {
   _deps = deps;
+  // Rebuild dedup set from existing feed DTUs to prevent duplicates after restart
+  try {
+    const dtusArray = deps.dtusArray || (() => []);
+    const feedDtus = dtusArray().filter(d => d.source?.startsWith("feed.") || d.meta?.sourceName);
+    for (const d of feedDtus) {
+      if (d.meta?.sourceUrl) _seenHashes.add(urlHash(d.meta.sourceUrl));
+      if (d.title) _seenHashes.add(titleHash(d.title));
+    }
+    if (feedDtus.length > 0) {
+      logger.info?.(`[feed-manager] Rebuilt dedup set: ${_seenHashes.size} hashes from ${feedDtus.length} feed DTUs`);
+    }
+  } catch (e) {
+    logger.warn?.("[feed-manager] Failed to rebuild dedup set:", e?.message);
+  }
   logger.info?.("[feed-manager] Initialized with deps:", Object.keys(deps).filter(k => !!deps[k]).join(", "));
 }
 
@@ -685,6 +754,7 @@ export function registerFeed(source) {
     id: source.id,
     name: source.name || source.id,
     domain: source.domain || "general",
+    lensId: source.lensId || source.domain || "general",
     type: source.type || "rss",
     url: source.url,
     interval: source.interval || 60000,
@@ -713,7 +783,7 @@ export function registerFeed(source) {
  * @param {object[]} sources
  * @returns {{ registered: number, errors: string[] }}
  */
-export function registerFeeds(sources) {
+function registerFeeds(sources) {
   let registered = 0;
   const errors = [];
   for (const src of sources) {

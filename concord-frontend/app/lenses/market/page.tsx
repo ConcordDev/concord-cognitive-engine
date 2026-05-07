@@ -52,6 +52,21 @@ export default function MarketLensPage() {
   const [showPurchaseConfirm, setShowPurchaseConfirm] = useState<MarketListingItem | null>(null);
   const [showFeatures, setShowFeatures] = useState(true);
 
+  const { items: marketItems } = useLensData('market', 'data', { noSeed: true });
+  const runAction = useRunArtifact('market');
+  const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
+  const [isRunning, setIsRunning] = useState<string | null>(null);
+  const handleAction = async (action: string) => {
+    const targetId = marketItems[0]?.id;
+    if (!targetId) { setActionResult({ message: 'No market data artifact found. Add price data to analyze.' }); return; }
+    setIsRunning(action);
+    try {
+      const res = await runAction.mutateAsync({ id: targetId, action });
+      if (res.ok === false) { setActionResult({ message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setActionResult(res.result as Record<string, unknown>); }
+    } catch (e) { console.error(`Action ${action} failed:`, e); setActionResult({ message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` }); }
+    finally { setIsRunning(null); }
+  };
+
   // Backend: GET /api/marketplace/listings
   const { data: listings, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['marketplace-listings'],

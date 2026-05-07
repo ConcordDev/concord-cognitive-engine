@@ -21,6 +21,7 @@
 
 import { getSummaryText } from "./conversation-summarizer.js";
 import { filterByEmergentConsent } from "./consent.js";
+import { decryptBlob } from "./personal-locker/crypto.js";
 
 // ── Hardware Detection ───────────────────────────────────────────────────────
 

@@ -1037,15 +1037,17 @@ export default function VoiceLensPage() {
 
       {/* Real-time Data Panel */}
       {realtimeData && (
-        <RealtimeDataPanel
-      <UniversalActions domain="voice" artifactId={null} compact />
-          domain="voice"
-          data={realtimeData}
-          isLive={isLive}
-          lastUpdated={lastUpdated}
-          insights={realtimeInsights}
-          compact
-        />
+        <>
+          <UniversalActions domain="voice" artifactId={null} compact />
+          <RealtimeDataPanel
+            domain="voice"
+            data={realtimeData}
+            isLive={isLive}
+            lastUpdated={lastUpdated}
+            insights={realtimeInsights}
+            compact
+          />
+        </>
       )}
       </div>
     </div>

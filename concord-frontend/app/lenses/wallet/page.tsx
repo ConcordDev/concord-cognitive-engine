@@ -11,7 +11,7 @@
  * - Earnings summary for creators
  */
 
-import { useState, useCallback, useRef, useMemo, useEffect, Suspense } from 'react';
+import { useState, useCallback, useRef, useMemo, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -44,7 +44,6 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ds } from '@/lib/design-system';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { PurchaseFlow } from '@/components/wallet/PurchaseFlow';
 import { WithdrawFlow } from '@/components/wallet/WithdrawFlow';
 import { StripeConnectPanel } from '@/components/wallet/StripeConnectPanel';
@@ -1142,12 +1141,6 @@ function TransferFlow({
   const [amount, setAmount] = useState('');
   const [step, setStep] = useState<'input' | 'confirm' | 'loading' | 'success' | 'error'>('input');
   const [errorMessage, setErrorMessage] = useState('');
-  const transferAbortRef = useRef<AbortController | null>(null);
-
-  // Abort in-flight transfer on unmount (e.g. navigation away)
-  useEffect(() => {
-    return () => { transferAbortRef.current?.abort(); };
-  }, []);
 
   const TRANSFER_FEE_RATE = 0.0146; // 1.46% transfer fee
   const parsedAmount = parseInt(amount, 10) || 0;
@@ -1157,15 +1150,12 @@ function TransferFlow({
 
   const handleTransfer = async () => {
     if (!isValid) return;
-    transferAbortRef.current?.abort();
-    const abortController = new AbortController();
-    transferAbortRef.current = abortController;
     setStep('loading');
     try {
       const res = await api.post('/api/economy/transfer', {
         to: recipientId.trim(),
         amount: parsedAmount,
-      }, { signal: abortController.signal });
+      });
       const data = res.data as { ok?: boolean; error?: string };
       if (data.ok) {
         setStep('success');

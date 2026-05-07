@@ -171,7 +171,7 @@ describe('useLensDTUs', () => {
         expect(mockedApi.post).toHaveBeenCalledWith('/api/macros/run', {
           domain: 'context',
           name: 'query',
-          input: { lens: 'research', tags: ['physics'], limit: 50 },
+          input: { query: 'research', primaryDomain: 'research', lens: 'research', tags: ['physics'], limit: 50 },
         });
       });
     });

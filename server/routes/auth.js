@@ -47,6 +47,15 @@ export default function createAuthRouter({
   const _regIpDaily = new Map(); // ip → { count, day }
   const MAX_REGISTRATIONS_PER_IP_PER_DAY = 3;
 
+  // Cleanup stale entries from _regIpDaily every hour to prevent memory leak
+  const _regIpCleanupInterval = setInterval(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    for (const [ip, entry] of _regIpDaily) {
+      if (entry.day !== today) _regIpDaily.delete(ip);
+    }
+  }, 60 * 60 * 1000);
+  _regIpCleanupInterval.unref();
+
   router.post("/register", authRateLimitMiddleware, validate("userRegister"), (req, res) => {
     const { username, email, password } = req.validated || req.body;
 
@@ -88,18 +97,6 @@ export default function createAuthRouter({
       }
     } catch (_) { /* content-guard may not be available yet */ }
 
-    // ── Bot prevention: disposable email domain blocking ────────────
-    const emailDomain = email.split("@")[1]?.toLowerCase();
-    const DISPOSABLE_DOMAINS = new Set([
-      "mailinator.com", "guerrillamail.com", "tempmail.com", "throwaway.email",
-      "yopmail.com", "sharklasers.com", "guerrillamailblock.com", "grr.la",
-      "dispostable.com", "maildrop.cc", "temp-mail.org", "fakeinbox.com",
-      "trashmail.com", "getnada.com", "10minutemail.com", "minutemail.com",
-    ]);
-    if (DISPOSABLE_DOMAINS.has(emailDomain)) {
-      return res.status(400).json({ ok: false, error: "Please use a permanent email address" });
-    }
-
     // Check for existing user
     if (AuthDB.getUserByUsername(username)) {
       return res.status(409).json({ ok: false, error: "Username taken" });
@@ -128,6 +125,14 @@ export default function createAuthRouter({
     }
 
     AuthDB.createUser(user);
+
+    // Grant starter inventory so the new user can immediately gather, craft,
+    // and trade without spending the first 30 minutes empty-handed.
+    try {
+      import("../lib/starter-content.js").then((sc) => {
+        sc.grantStarterInventoryToUser?.(db, userId);
+      }).catch(() => { /* starter grant best-effort */ });
+    } catch { /* import silent */ }
 
     // Track per-IP daily registrations
     if (ipEntry && ipEntry.day === today) {

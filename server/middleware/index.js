@@ -53,6 +53,10 @@ export default function configureMiddleware(app, deps) {
     authMiddleware,
     productionWriteAuthMiddleware,
     csrfMiddleware,
+    writeRateLimitMiddleware,
+    readRateLimitMiddleware,
+    contentGuardMiddleware,
+    securityScanMiddleware,
     NODE_ENV,
   } = deps;
 
@@ -108,7 +112,7 @@ export default function configureMiddleware(app, deps) {
   if (compression) app.use(compression());
 
   // ---- Body Parsing (per-endpoint size limits) ----
-  // Strict limits for chatty endpoints; generous for bulk operations
+  // Default 1MB for JSON, 50MB for media uploads per pre-launch spec
   const BODY_LIMITS = {
     '/api/chat': '256kb',
     '/api/ask': '256kb',
@@ -118,12 +122,14 @@ export default function configureMiddleware(app, deps) {
     '/api/auth/login': '16kb',
     '/api/auth/change-password': '4kb',
     '/api/shared-session': '64kb',
+    '/api/media/upload': '50mb',
   };
+  const DEFAULT_JSON_LIMIT = '1mb';
 
   app.use((req, res, next) => {
     // Find most specific matching route prefix
     const matchedLimit = Object.entries(BODY_LIMITS).find(([prefix]) => req.url.startsWith(prefix));
-    const limit = matchedLimit ? matchedLimit[1] : '10mb';
+    const limit = matchedLimit ? matchedLimit[1] : DEFAULT_JSON_LIMIT;
     express.json({ limit, verify: (innerReq, _res, buf) => {
       if (innerReq.url === '/api/economy/webhook') innerReq.rawBody = buf;
     } })(req, res, next);
@@ -234,7 +240,21 @@ export default function configureMiddleware(app, deps) {
 
   // ---- Auth Pipeline ----
   app.use(cookieParserMiddleware);          // Parse cookies before auth
-  app.use(authMiddleware);                  // Authentication
+  app.use(authMiddleware);                  // Authentication (selective protection)
   app.use(productionWriteAuthMiddleware);   // Enforce auth on all writes in production
   app.use(csrfMiddleware);                  // CSRF protection after auth
+
+  // ---- Pre-Launch Rate Limiting (per-route) ----
+  if (writeRateLimitMiddleware) app.use(writeRateLimitMiddleware);  // Write rate limits per endpoint
+  if (readRateLimitMiddleware) app.use(readRateLimitMiddleware);    // Read rate limits for open GETs
+
+  // ---- Content Guard — Illegal Content Blocking ----
+  // MUST run BEFORE security scanner. Blocks Categories 1-5 (CSAM, threats,
+  // terrorism, NCII, drug sales) and prevents content from being stored.
+  if (contentGuardMiddleware) app.use(contentGuardMiddleware);
+
+  // ---- Security Intelligence Scanner ----
+  // Scans POST/PUT body content through layers 1-3 (hash, regex, token-overlap).
+  // Flags and logs matches but only blocks blocking-level threats.
+  if (securityScanMiddleware) app.use(securityScanMiddleware);
 }

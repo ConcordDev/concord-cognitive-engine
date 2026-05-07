@@ -6,7 +6,8 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
-  PawPrint, Plus, Search, Trash2, Calendar, Heart, Layers, ChevronDown, Syringe, ShieldCheck, Loader2,
+  PawPrint, Plus, Search, Trash2, Calendar, Heart,
+  Stethoscope, Clock, Star, Layers, ChevronDown, Syringe, ShieldCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -46,7 +47,7 @@ export default function PetsLensPage() {
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('pets');
   const [search, setSearch] = useState('');
   const [showCreate, setShowCreate] = useState(false);
-  const [showFeatures, setShowFeatures] = useState(true);
+  const [showFeatures, setShowFeatures] = useState(false);
   const [newPet, setNewPet] = useState({ name: '', species: 'dog', breed: '', age: 0 });
 
   const {
@@ -146,7 +147,7 @@ export default function PetsLensPage() {
           <motion.div key={pet.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }} className="panel p-4">
             <div className="flex items-center justify-between mb-2">
               <h3 className="font-semibold text-white truncate">{pet.name}</h3>
-              <button onClick={() => remove(pet.id)} disabled={deleteMut.isPending} className="text-gray-500 hover:text-red-400">{deleteMut.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}</button>
+              <button onClick={() => remove(pet.id)} className="text-gray-500 hover:text-red-400"><Trash2 className="w-4 h-4" /></button>
             </div>
             <div className="flex flex-wrap gap-2 text-xs mb-2">
               <span className={cn('px-2 py-0.5 rounded capitalize', SPECIES_ICONS[pet.species] || 'bg-gray-400/10 text-gray-400')}>{pet.species}</span>
@@ -163,7 +164,7 @@ export default function PetsLensPage() {
       <RealtimeDataPanel domain="pets" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
 
       <div className="border-t border-white/10">
-        <button onClick={() => setShowFeatures(!showFeatures)} className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg">
+        <button onClick={() => setShowFeatures(!showFeatures)} className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-400 hover:text-white transition-colors">
           <span className="flex items-center gap-2"><Layers className="w-4 h-4" />Lens Features & Capabilities</span>
           <ChevronDown className={cn('w-4 h-4 transition-transform', showFeatures && 'rotate-180')} />
         </button>

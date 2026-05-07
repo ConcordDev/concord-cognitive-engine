@@ -6,9 +6,9 @@ import { useLensData } from '@/lib/hooks/use-lens-data';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Trophy, Plus, Search, Trash2, Calendar,
+  Trophy, Plus, Search, Trash2, Calendar, Users,
   Target, Clock, TrendingUp, Layers, ChevronDown, Zap,
-  Medal, Swords, MapPin, X, BarChart3, Loader2,
+  Medal, Swords, MapPin, X, Edit2, BarChart3,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -62,13 +62,13 @@ export default function SportsLensPage() {
   const [tab, setTab] = useState<Tab>('games');
   const [search, setSearch] = useState('');
   const [showCreate, setShowCreate] = useState(false);
-  const [showFeatures, setShowFeatures] = useState(true);
+  const [showFeatures, setShowFeatures] = useState(false);
   const [newGame, setNewGame] = useState({ title: '', sport: '', team: '', opponent: '', date: '', location: '' });
 
   // Training state
   const [trainingLogs, setTrainingLogs] = useState<TrainingLog[]>([]);
   const [showAddTraining, setShowAddTraining] = useState(false);
-  const [newTraining, setNewTraining] = useState({ name: '', type: '', duration: 60, intensity: 'moderate' as 'light' | 'moderate' | 'intense', date: '', notes: '' });
+  const [newTraining, setNewTraining] = useState({ name: '', type: '', duration: 60, intensity: 'moderate' as const, date: '', notes: '' });
 
   const {
     items, isLoading, isError, error, refetch,
@@ -287,7 +287,7 @@ export default function SportsLensPage() {
                         </p>
                       </div>
                     )}
-                    <button onClick={() => remove(g.id)} disabled={deleteMut.isPending} className="text-gray-500 hover:text-red-400 p-1">{deleteMut.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}</button>
+                    <button onClick={() => remove(g.id)} className="text-gray-500 hover:text-red-400 p-1"><Trash2 className="w-4 h-4" /></button>
                   </div>
                 </div>
               </motion.div>
@@ -411,7 +411,7 @@ export default function SportsLensPage() {
       <RealtimeDataPanel domain="sports" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
 
       <div className="border-t border-white/10">
-        <button onClick={() => setShowFeatures(!showFeatures)} className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg">
+        <button onClick={() => setShowFeatures(!showFeatures)} className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-400 hover:text-white transition-colors">
           <span className="flex items-center gap-2"><Layers className="w-4 h-4" />Lens Features & Capabilities</span>
           <ChevronDown className={cn('w-4 h-4 transition-transform', showFeatures && 'rotate-180')} />
         </button>

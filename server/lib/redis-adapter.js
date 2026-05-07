@@ -4,7 +4,7 @@
  * Three-tier storage strategy: in-memory Map (primary) → Redis (optional) → SQLite (persistent).
  * When REDIS_URL is not set, all methods are no-ops (local-only mode).
  */
-import { structuredLog } from "./logger.js";
+import logger from "../logger.js";
 
 const REDIS_URL = process.env.REDIS_URL || null;
 let _client = null;
@@ -18,7 +18,7 @@ const _subscriptions = new Map(); // channel -> Set<callback>
  */
 export async function initRedis() {
   if (!REDIS_URL) {
-    structuredLog("info", "redis_skipped", { reason: "REDIS_URL not set, local-only mode" });
+    logger.log("info", "lib", "redis_skipped", { reason: "REDIS_URL not set, local-only mode" });
     return { connected: false, mode: "local" };
   }
 
@@ -39,14 +39,14 @@ export async function initRedis() {
 
     _client.on("connect", () => {
       _connected = true;
-      structuredLog("info", "redis_connected", { url: REDIS_URL.replace(/\/\/.*@/, "//***@") });
+      logger.log("info", "lib", "redis_connected", { url: REDIS_URL.replace(/\/\/.*@/, "//***@") });
     });
     _client.on("error", (err) => {
-      structuredLog("warn", "redis_error", { error: err?.message });
+      logger.log("warn", "lib", "redis_error", { error: err?.message });
     });
     _client.on("close", () => {
       _connected = false;
-      structuredLog("info", "redis_disconnected", {});
+      logger.log("info", "lib", "redis_disconnected", {});
     });
 
     await _client.connect();
@@ -60,14 +60,14 @@ export async function initRedis() {
         let parsed;
         try { parsed = JSON.parse(message); } catch { parsed = message; }
         for (const cb of cbs) {
-          try { cb(parsed); } catch (e) { structuredLog("warn", "redis_sub_callback_error", { channel, error: e?.message }); }
+          try { cb(parsed); } catch (e) { logger.log("warn", "lib", "redis_sub_callback_error", { channel, error: e?.message }); }
         }
       }
     });
 
     return { connected: true, mode: "redis" };
   } catch (e) {
-    structuredLog("warn", "redis_init_failed", { error: e?.message, reason: "ioredis may not be installed" });
+    logger.log("warn", "lib", "redis_init_failed", { error: e?.message, reason: "ioredis may not be installed" });
     return { connected: false, mode: "local", error: e?.message };
   }
 }
@@ -83,7 +83,7 @@ export async function sessionGet(sessionId) {
     const raw = await _client.get(`concord:session:${sessionId}`);
     return raw ? JSON.parse(raw) : null;
   } catch (e) {
-    structuredLog("debug", "redis_session_get_error", { sessionId, error: e?.message });
+    logger.log("debug", "lib", "redis_session_get_error", { sessionId, error: e?.message });
     return null;
   }
 }
@@ -94,7 +94,7 @@ export async function sessionSet(sessionId, data, ttlSeconds = 86400) {
     await _client.set(`concord:session:${sessionId}`, JSON.stringify(data), "EX", ttlSeconds);
     return true;
   } catch (e) {
-    structuredLog("debug", "redis_session_set_error", { sessionId, error: e?.message });
+    logger.log("debug", "lib", "redis_session_set_error", { sessionId, error: e?.message });
     return false;
   }
 }
@@ -104,7 +104,7 @@ export async function sessionDelete(sessionId) {
   try {
     await _client.del(`concord:session:${sessionId}`);
     return true;
-  } catch { return false; }
+  } catch (err) { console.warn('[redis-adapter] sessionDelete failed', err?.message); return false; }
 }
 
 // ── Token revocation ──
@@ -115,14 +115,20 @@ export async function revokeToken(tokenHash) {
     await _client.sadd("concord:revoked_tokens", tokenHash);
     await _client.expire("concord:revoked_tokens", 86400 * 7); // 7 day TTL
     return true;
-  } catch { return false; }
+  } catch (err) {
+    console.error('[Redis] revokeToken failed, token may not be revoked:', err.message);
+    throw err; // fail-loud: callers must know revocation did not persist
+  }
 }
 
 export async function isTokenRevoked(tokenHash) {
   if (!_connected) return false; // Can't check, assume not revoked
   try {
     return await _client.sismember("concord:revoked_tokens", tokenHash) === 1;
-  } catch { return false; }
+  } catch (err) {
+    console.error('[Redis] isTokenRevoked check failed, treating token as revoked (fail-closed):', err.message);
+    return true; // fail-closed: treat as revoked when we can't verify
+  }
 }
 
 // ── Pub/Sub ──
@@ -132,7 +138,7 @@ export async function publish(channel, data) {
   try {
     await _client.publish(channel, JSON.stringify(data));
     return true;
-  } catch { return false; }
+  } catch (err) { console.warn('[redis-adapter] publish failed', { channel, err: err?.message }); return false; }
 }
 
 export async function subscribe(channel, callback) {
@@ -153,7 +159,10 @@ export async function lockAcquire(lockName, ttlMs = 30000) {
     const key = `concord:lock:${lockName}`;
     const result = await _client.set(key, process.pid.toString(), "PX", ttlMs, "NX");
     return result === "OK";
-  } catch { return true; } // Fail-open: allow operation if Redis errors
+  } catch (err) {
+    console.error('[Redis] lockAcquire failed, denying lock (fail-closed):', err.message);
+    return false; // fail-closed: deny lock when Redis errors
+  }
 }
 
 export async function lockRelease(lockName) {
@@ -161,7 +170,7 @@ export async function lockRelease(lockName) {
   try {
     await _client.del(`concord:lock:${lockName}`);
     return true;
-  } catch { return true; }
+  } catch (err) { console.warn('[redis-adapter] lockRelease failed', { lockName, err: err?.message }); return true; }
 }
 
 // ── Cleanup ──

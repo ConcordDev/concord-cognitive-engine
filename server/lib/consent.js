@@ -558,8 +558,12 @@ export function canEmergentCiteUser(db, userId) {
 }
 
 /**
- * Check if a DTU can be cited by other users.
+ * Check if a DTU can be cited by other users — OWNER-ONLY variant.
  * Returns false if owner hasn't opted into citations.
+ *
+ * Prefer `canCiteSpecificDtu(db, dtu)` when you have the DTU itself —
+ * it takes visibility and scope into account (public / global-scoped
+ * DTUs are always citable regardless of per-user consent).
  */
 export function canCiteDtu(db, dtuOwnerId) {
   if (!dtuOwnerId) return false;
@@ -569,6 +573,43 @@ export function canCiteDtu(db, dtuOwnerId) {
 
   const result = checkConsent(db, dtuOwnerId, "allow_citation");
   return result.consented;
+}
+
+/**
+ * DTU-aware citability check. Preferred over `canCiteDtu(db, ownerId)`
+ * because it considers the DTU's visibility / scope / promotion stage
+ * before falling back to the owner's consent. This is what makes the
+ * marketplace + council flow actually work:
+ *
+ *   • Public / published DTUs              → always citable
+ *   • Global-scoped DTUs (council approved) → always citable
+ *   • Social-lens posts (auto-public)       → always citable
+ *   • System / emergent-owned DTUs          → always citable
+ *   • Otherwise, fall back to owner's `allow_citation` consent
+ *
+ * @param {object} db
+ * @param {object} dtu  - Parent DTU object (must have ownerId / visibility / scope)
+ * @returns {boolean}
+ */
+export function canCiteSpecificDtu(db, dtu) {
+  if (!dtu) return false;
+
+  const ownerId = dtu.ownerId || dtu.owner_user_id || dtu.creator_id || dtu.createdBy;
+
+  // System / emergent content is always citable.
+  if (!ownerId || ownerId === "__CONCORD__" || ownerId === "system" || ownerId === "founder") return true;
+  if (typeof ownerId === "string" && (ownerId.startsWith("ent_") || ownerId.startsWith("__"))) return true;
+
+  // DTU-level public / published / global → implied citation license.
+  const visibility = dtu.visibility || dtu.meta?.visibility;
+  if (visibility === "public" || visibility === "published") return true;
+  const scope = dtu.scope || dtu.meta?.scope;
+  if (scope === "global" || scope === "published") return true;
+  // Explicit council approval / promotion stage.
+  if (dtu._promotionStage === "global" || dtu._promotionStage === "published") return true;
+
+  // Fall through to owner consent.
+  return canCiteDtu(db, ownerId);
 }
 
 /**

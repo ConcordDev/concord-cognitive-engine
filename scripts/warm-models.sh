@@ -14,7 +14,7 @@ echo "[warm-models] Ollama is up."
 # Conscious brain (14B) — main chat model, needs largest context
 echo "[warm-models] Loading conscious brain (concord-conscious)..."
 curl -s --max-time 120 "$OLLAMA_URL/api/generate" -d '{
-  "model":"concord-conscious",
+  "model":"qwen2.5:14b-q4_K_M",
   "prompt":"ping",
   "stream":false,
   "keep_alive":"24h",
@@ -24,7 +24,7 @@ curl -s --max-time 120 "$OLLAMA_URL/api/generate" -d '{
 # Subconscious brain (7B) — background processing
 echo "[warm-models] Loading subconscious brain..."
 curl -s --max-time 120 "$OLLAMA_URL/api/generate" -d '{
-  "model":"qwen2.5:7b-instruct-q4_K_M",
+  "model":"qwen2.5:7b",
   "prompt":"ping",
   "stream":false,
   "keep_alive":"24h",

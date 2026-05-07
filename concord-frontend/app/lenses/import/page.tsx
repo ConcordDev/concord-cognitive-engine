@@ -108,6 +108,24 @@ export default function ImportLens() {
     completed_at: item.data.completed_at,
   } as ImportJob));
 
+  const runAction = useRunArtifact('import');
+  const [importActionResult, setImportActionResult] = useState<{ action: string; data: unknown } | null>(null);
+
+  const handleImportAction = useCallback((action: string) => {
+    const artifactId = importJobItems[0]?.id;
+    if (!artifactId) return;
+    runAction.mutate(
+      { id: artifactId, action, params: {} },
+      {
+        onSuccess: (res) => setImportActionResult({ action, data: res.result }),
+        onError: (e) => {
+          console.error(`Action failed:`, e);
+          setImportActionResult({ action, data: { error: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` } });
+        },
+      }
+    );
+  }, [importJobItems, runAction]);
+
   const [showFeatures, setShowFeatures] = useState(true);
   const [dragActive, setDragActive] = useState(false);
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);

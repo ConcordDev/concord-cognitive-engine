@@ -4,7 +4,7 @@
  * Provides tiered fallback when primary Ollama brains are unavailable.
  * All tiers are local — no cloud APIs, no data leaving the box.
  */
-import { structuredLog } from "./logger.js";
+import logger from "../logger.js";
 
 const TIERS = ["ollama", "llama_cpp", "semantic_cache", "heuristic", "graceful_error"];
 
@@ -36,7 +36,7 @@ export async function callWithFallback(brainName, opts, ollamaCall) {
       return { ...result, tier: "ollama", confidence: "full" };
     }
   } catch (e) {
-    structuredLog("debug", "fallback_tier1_failed", { brain: brainName, error: e?.message });
+    logger.log("debug", "lib", "fallback_tier1_failed", { brain: brainName, error: e?.message });
   }
 
   // Tier 2: llama.cpp local
@@ -48,7 +48,7 @@ export async function callWithFallback(brainName, opts, ollamaCall) {
         return { ...result, tier: "llama_cpp", confidence: "reduced" };
       }
     } catch (e) {
-      structuredLog("debug", "fallback_tier2_failed", { brain: brainName, error: e?.message });
+      logger.log("debug", "lib", "fallback_tier2_failed", { brain: brainName, error: e?.message });
     }
   }
 
@@ -64,7 +64,7 @@ export async function callWithFallback(brainName, opts, ollamaCall) {
         }
       }
     } catch (e) {
-      structuredLog("debug", "fallback_tier3_failed", { brain: brainName, error: e?.message });
+      logger.log("debug", "lib", "fallback_tier3_failed", { brain: brainName, error: e?.message });
     }
   }
 
@@ -77,7 +77,7 @@ export async function callWithFallback(brainName, opts, ollamaCall) {
         return { ok: true, text: JSON.stringify(cached), tier: "heuristic", confidence: "cached" };
       }
     } catch (e) {
-      structuredLog("debug", "fallback_tier4_failed", { brain: brainName, error: e?.message });
+      logger.log("debug", "lib", "fallback_tier4_failed", { brain: brainName, error: e?.message });
     }
   }
 

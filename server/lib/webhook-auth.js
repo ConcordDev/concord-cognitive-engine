@@ -118,9 +118,16 @@ export function verifyWebhook(req, STATE, domain) {
     return { authenticated: false, method: "query-invalid" };
   }
 
-  // No secret configured for this domain — open mode
+  // SECURITY: previously, no secret configured ⇒ "open mode" ⇒ any payload
+  // was accepted as authenticated. That silently trusted arbitrary
+  // third-party requests as legitimate events. We now default-deny —
+  // operators must explicitly enable open mode via env var.
+  const openModeEnabled = process.env.CONCORD_WEBHOOK_ALLOW_OPEN === "true";
   if (!domainSecret && !GLOBAL_SECRET) {
-    return { authenticated: true, method: "open" };
+    if (openModeEnabled) {
+      return { authenticated: true, method: "open" };
+    }
+    return { authenticated: false, method: "no-secret-configured" };
   }
 
   // Secret exists but no auth provided

@@ -221,7 +221,7 @@ export function spamGuard(action, getContent) {
     };
 
     if (getContent) {
-      try { opts.content = getContent(req); } catch (_) {}
+      try { opts.content = getContent(req); } catch (err) { console.warn('[spam-prevention] failed to extract content from request', { err: err.message }); }
     }
 
     const result = checkSpamLimit(userId, action, opts);

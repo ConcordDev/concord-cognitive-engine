@@ -107,6 +107,11 @@ export default function MetacognitionLensPage() {
   const [expandedPrediction, setExpandedPrediction] = useState<string | null>(null);
   const [showFeatures, setShowFeatures] = useState(true);
 
+  const { items: metaItems } = useLensData('metacognition', 'snapshot', { noSeed: true });
+  const runAction = useRunArtifact('metacognition');
+  const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
+  const [isRunning, setIsRunning] = useState<string | null>(null);
+
   // --- Lens Bridge ---
   const bridge = useLensBridge('metacognition', 'snapshot');
 

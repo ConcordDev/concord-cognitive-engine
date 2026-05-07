@@ -3,9 +3,9 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bot, Plus, Trash2, Layers, ChevronDown, Activity, Power, Radio, Zap, AlertCircle, CheckCircle2, WifiOff, Clock, Loader2 } from 'lucide-react';
+import { Bot, Cpu, Cog, Wifi, Plus, Trash2, Search, Layers, ChevronDown, Activity, Shield, Settings, Power, Thermometer, Radio, Zap, AlertCircle, CheckCircle2, WifiOff, Clock } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -72,8 +72,8 @@ const TYPE_ICONS: Record<RobotType, string> = {
   custom: 'Custom',
 };
 
-// Default sensor configurations per robot type (shown until real telemetry connects)
-const DEFAULT_SENSORS: Record<RobotType, { label: string; value: string; unit: string }[]> = {
+// Mock sensor readings per robot type
+const MOCK_SENSORS: Record<RobotType, { label: string; value: string; unit: string }[]> = {
   arm: [
     { label: 'Torque', value: '12.4', unit: 'Nm' },
     { label: 'Temp', value: '42', unit: '°C' },
@@ -106,8 +106,8 @@ const DEFAULT_SENSORS: Record<RobotType, { label: string; value: string; unit: s
   ],
 };
 
-// Default command options (shown until real command history loads)
-const DEFAULT_COMMANDS = [
+// Mock command history
+const MOCK_COMMANDS = [
   'INIT_SEQUENCE',
   'MOVE_TO(0,0,0)',
   'CALIBRATE_SENSORS',
@@ -134,17 +134,13 @@ export default function RoboticsLensPage() {
   useLensNav('robotics');
 
   const [activeTab, setActiveTab] = useState<'fleet' | 'tasks' | 'diagnostics'>('fleet');
-  const [showFeatures, setShowFeatures] = useState(true);
+  const [showFeatures, setShowFeatures] = useState(false);
   const [expandedRobot, setExpandedRobot] = useState<string | null>(null);
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('robotics');
 
   const { items: robotItems, isLoading, isError, error, refetch, create, update, remove } = useLensData<Record<string, unknown>>('robotics', 'robot', { seed: [] });
   const { items: taskItems, create: createTask, remove: removeTask } = useLensData<Record<string, unknown>>('robotics', 'task', { seed: [] });
   const runAction = useRunArtifact('robotics');
-
-  const handleAction = useCallback((artifactId: string) => {
-    runAction.mutate({ id: artifactId, action: 'analyze' });
-  }, [runAction]);
 
   const robots = robotItems.map(i => ({ id: i.id, title: i.title, ...(i.data || {}) })) as unknown as (RobotUnit & { id: string; title: string })[];
   const tasks = taskItems.map(i => ({ id: i.id, title: i.title, ...(i.data || {}) })) as unknown as (TaskQueue & { id: string; title: string })[];
@@ -169,7 +165,7 @@ export default function RoboticsLensPage() {
         uptime: 0,
         sensors: [],
         actuators: [],
-        lastCommand: DEFAULT_COMMANDS[Math.floor(Math.random() * DEFAULT_COMMANDS.length)],
+        lastCommand: MOCK_COMMANDS[Math.floor(Math.random() * MOCK_COMMANDS.length)],
         errorCount: 0,
       },
     });
@@ -213,7 +209,6 @@ export default function RoboticsLensPage() {
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-bold">Robotics Lens</h1>
               <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
-              {runAction.isPending && <Loader2 className="w-4 h-4 animate-spin text-neon-cyan" />}
             </div>
             <p className="text-sm text-gray-400">Fleet management, task queues, and diagnostics</p>
           </div>
@@ -280,9 +275,9 @@ export default function RoboticsLensPage() {
             ) : (
               robots.map(robot => {
                 const robotType = (robot.type as RobotType) || 'custom';
-                const sensors = DEFAULT_SENSORS[robotType] || DEFAULT_SENSORS.custom;
+                const sensors = MOCK_SENSORS[robotType] || MOCK_SENSORS.custom;
                 const isExpanded = expandedRobot === robot.id;
-                const recentCommands = [
+                const mockCommands = [
                   robot.lastCommand || 'INIT_SEQUENCE',
                   'CALIBRATE_SENSORS',
                   'STATUS_CHECK',
@@ -325,12 +320,6 @@ export default function RoboticsLensPage() {
                           <span>{robot.battery ?? 100}%</span>
                         </div>
                         <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                        <button onClick={e => { e.stopPropagation(); handleAction(robot.id); }} className="text-gray-500 hover:text-neon-cyan ml-1" title="Run AI analysis">
-                          <Zap className="w-4 h-4" />
-                        </button>
-                        <button onClick={e => { e.stopPropagation(); update(robot.id, { data: { ...robot, lastUpdated: new Date().toISOString() } as unknown as Partial<Record<string, unknown>> }); }} className="text-gray-500 hover:text-yellow-400 ml-1" title="Update">
-                          <Activity className="w-4 h-4" />
-                        </button>
                         <button onClick={e => { e.stopPropagation(); remove(robot.id); }} className="text-gray-500 hover:text-red-400 ml-1">
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -371,7 +360,7 @@ export default function RoboticsLensPage() {
                                 <Clock className="w-3 h-3" /> Command History
                               </p>
                               <div className="space-y-1.5">
-                                {recentCommands.map((cmd, idx) => (
+                                {mockCommands.map((cmd, idx) => (
                                   <div key={idx} className="flex items-center gap-2 p-2 rounded-lg bg-black/30">
                                     <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${idx === 0 ? 'bg-neon-cyan' : 'bg-gray-600'}`} />
                                     <span className="font-mono text-xs text-gray-300">{cmd}</span>
@@ -516,12 +505,12 @@ export default function RoboticsLensPage() {
                       </div>
                       <div>
                         <span className="text-gray-500">Sensors</span>
-                        <p className="font-mono text-base mt-1 text-neon-cyan">{DEFAULT_SENSORS[(robot.type as RobotType) || 'custom']?.length || 3}</p>
+                        <p className="font-mono text-base mt-1 text-neon-cyan">{MOCK_SENSORS[(robot.type as RobotType) || 'custom']?.length || 3}</p>
                       </div>
                     </div>
                     {/* Sensor readings in diagnostics */}
                     <div className="mt-3 grid grid-cols-3 gap-1.5">
-                      {DEFAULT_SENSORS[(robot.type as RobotType) || 'custom'].map(s => (
+                      {MOCK_SENSORS[(robot.type as RobotType) || 'custom'].map(s => (
                         <div key={s.label} className="p-1.5 rounded bg-black/30 text-center">
                           <p className="text-[10px] text-gray-500">{s.label}</p>
                           <p className="font-mono text-xs text-neon-cyan">{s.value}{s.unit}</p>
@@ -538,7 +527,7 @@ export default function RoboticsLensPage() {
 
       {/* Lens Features */}
       <div className="border-t border-white/10">
-        <button onClick={() => setShowFeatures(!showFeatures)} className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg">
+        <button onClick={() => setShowFeatures(!showFeatures)} className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-400 hover:text-white transition-colors">
           <span className="flex items-center gap-2"><Layers className="w-4 h-4" /> Lens Features & Capabilities</span>
           <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
         </button>

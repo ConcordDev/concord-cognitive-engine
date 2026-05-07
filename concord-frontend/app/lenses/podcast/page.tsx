@@ -2,17 +2,18 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
-import { useLensData } from '@/lib/hooks/use-lens-data';
+import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useLensDTUs } from '@/hooks/useLensDTUs';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Mic2, Play, Pause, Plus, Search, Rss, BarChart3,
-  Clock, Users, X, Headphones, ListMusic, Trash2, Check,
+  Clock, Upload, Users, X, Headphones, ListMusic,
+  Image as ImageIcon, Hash, TrendingUp, Edit3, Trash2,
+  ExternalLink, Copy, Check,
 } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useMusicStore } from '@/lib/music/store';
 import { getPlayer } from '@/lib/music/player';
 import { MediaUpload } from '@/components/media/MediaUpload';
@@ -347,15 +348,6 @@ export default function PodcastLensPage() {
                           </span>
                         </div>
 
-                        {/* Publish / Edit */}
-                        <button
-                          onClick={() => { const nextStatus = episode.status === 'draft' ? 'published' : episode.status === 'published' ? 'draft' : 'published'; updateEpisode(episode.id, { data: { ...episode, status: nextStatus } as unknown as Record<string, unknown> }); }}
-                          className="p-1.5 rounded-lg text-gray-600 hover:text-green-400 hover:bg-green-500/10 opacity-0 group-hover:opacity-100 transition-all"
-                          title={episode.status === 'published' ? 'Unpublish' : 'Publish'}
-                        >
-                          <Check className="w-4 h-4" />
-                        </button>
-
                         {/* Delete */}
                         <button
                           onClick={() => removeEpisode(episode.id)}
@@ -506,7 +498,6 @@ export default function PodcastLensPage() {
 
               {realtimeInsights.length > 0 && (
                 <RealtimeDataPanel data={null} insights={realtimeInsights} />
-      <UniversalActions domain="podcast" artifactId={null} compact />
               )}
             </motion.div>
           )}

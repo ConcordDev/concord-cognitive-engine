@@ -4,7 +4,7 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { use70Lock } from '@/hooks/use70Lock';
 import { useState } from 'react';
 import { Lock, Unlock, Shield, Eye, AlertTriangle, Check, Key, Loader2, Layers, ChevronDown, Gauge, ShieldAlert, Ban, Activity } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { apiHelpers } from '@/lib/api/client';
 import { useMutation } from '@tanstack/react-query';
@@ -42,6 +42,14 @@ export default function LockLensPage() {
   } = useRealtimeLens('lock');
   const { lockPercentage, invariants, isLocked, invariantSummary } = use70Lock();
   const [showFeatures, setShowFeatures] = useState(true);
+  const [showSovereigntySetup, setShowSovereigntySetup] = useState(false);
+  const [sovereigntyPromptMessage, setSovereigntyPromptMessage] = useState<{
+    message: string;
+    localCount: number;
+    globalCount: number;
+    globalDomains: string[];
+    globalDTUIds: string[];
+  } | null>(null);
 
   const {
     items: historyItems,

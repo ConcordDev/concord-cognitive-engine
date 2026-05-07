@@ -1148,15 +1148,17 @@ export default function SRSLensPage() {
 
       {/* Real-time Data Panel */}
       {realtimeData && (
-        <RealtimeDataPanel
-      <UniversalActions domain="srs" artifactId={null} compact />
-          domain="srs"
-          data={realtimeData}
-          isLive={isLive}
-          lastUpdated={lastUpdated}
-          insights={realtimeInsights}
-          compact
-        />
+        <>
+          <UniversalActions domain="srs" artifactId={null} compact />
+          <RealtimeDataPanel
+            domain="srs"
+            data={realtimeData}
+            isLive={isLive}
+            lastUpdated={lastUpdated}
+            insights={realtimeInsights}
+            compact
+          />
+        </>
       )}
 
       {/* SRS Domain Actions */}

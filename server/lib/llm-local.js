@@ -8,7 +8,7 @@
 import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { structuredLog } from "./logger.js";
+import logger from "../logger.js";
 
 const LLAMA_BIN = process.env.LLAMA_CPP_BIN || _findBinary();
 const LLAMA_MODEL = process.env.LLAMA_CPP_MODEL || _findModel();
@@ -43,7 +43,7 @@ function _findModel() {
 /**
  * Check if llama.cpp is available.
  */
-export function isAvailable() {
+function isAvailable() {
   if (_available !== null) return _available;
   if (!LLAMA_MODEL || !existsSync(LLAMA_MODEL)) {
     _available = false;
@@ -54,7 +54,7 @@ export function isAvailable() {
     execFile(LLAMA_BIN, ["--version"], { timeout: 5000 }, (err) => {
       _available = !err;
       if (!_available) {
-        structuredLog("info", "llama_cpp_not_available", { bin: LLAMA_BIN, model: LLAMA_MODEL, error: err?.message });
+        logger.log("info", "lib", "llama_cpp_not_available", { bin: LLAMA_BIN, model: LLAMA_MODEL, error: err?.message });
       }
       resolve(_available);
     });
@@ -97,7 +97,7 @@ export async function generate(messages, opts = {}) {
   return new Promise((resolve) => {
     execFile(LLAMA_BIN, args, { timeout: TIMEOUT_MS, maxBuffer: 1024 * 1024 }, (err, stdout, stderr) => {
       if (err) {
-        structuredLog("debug", "llama_cpp_generate_failed", { error: err?.message });
+        logger.log("debug", "lib", "llama_cpp_generate_failed", { error: err?.message });
         if (err.code === "ENOENT") _available = false;
         resolve(null);
         return;

@@ -40,6 +40,7 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
+import { SharedSessionChat } from '@/components/social/SharedSessionChat';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -361,6 +362,7 @@ export default function CollabLensPage() {
   const [activeSession, setActiveSession] = useState<CollabSession | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showFeatures, setShowFeatures] = useState(true);
+  const [inviteSessionId, setInviteSessionId] = useState<string | null>(null);
 
   // --- Backend action wiring ---
   const runAction = useRunArtifact('collab');
@@ -688,7 +690,6 @@ export default function CollabLensPage() {
       </AnimatePresence>
 
       <RealtimeDataPanel data={realtimeInsights} />
-      <UniversalActions domain="collab" artifactId={null} compact />
 
       {/* Lens Features */}
       <div className="border-t border-white/10">

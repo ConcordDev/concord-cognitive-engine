@@ -30,9 +30,6 @@ import {
   TreePine, Landmark, Plane, PartyPopper, FlaskRound,
   ShieldCheck, Scissors, Umbrella,
   Shirt, ChefHat, Baby, PawPrint, Trophy, Hammer, Swords, BadgeCheck,
-  HardHat, Plug, Mountain, Radio, Play,
-  Camera, TrendingUp, Bot, Pill, Map, Search, Gem, Link2, Waves,
-  Wind, MapPin, Cog,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -2302,67 +2299,6 @@ export const LENS_REGISTRY: LensEntry[] = [
     keywords: ['project', 'task', 'milestone', 'gantt'],
   },
 
-  // ── New Cognitive & Meta Lenses ─────────────────────────────────
-  { id: 'analytics', name: 'Analytics', icon: TrendingUp, description: 'Platform analytics & usage insights', category: 'system', showInSidebar: false, showInCommandPalette: true, path: '/lenses/analytics', order: 232, keywords: ['metrics', 'usage', 'insights', 'statistics'] },
-  { id: 'bridge', name: 'Bridge', icon: Link2, description: 'Cross-lens bridge connections', category: 'system', showInSidebar: false, showInCommandPalette: true, path: '/lenses/bridge', order: 233, keywords: ['connection', 'link', 'cross-lens'] },
-  { id: 'disputes', name: 'Disputes', icon: Scale, description: 'Dispute resolution & mediation', category: 'governance', showInSidebar: false, showInCommandPalette: true, path: '/lenses/disputes', order: 278, keywords: ['conflict', 'resolution', 'mediation', 'arbitration'] },
-  { id: 'privacy', name: 'Privacy', icon: ShieldCheck, description: 'Privacy controls & data management', category: 'governance', showInSidebar: false, showInCommandPalette: true, path: '/lenses/privacy', order: 279, keywords: ['gdpr', 'data', 'consent', 'privacy'] },
-  { id: 'wallet', name: 'Wallet', icon: Wallet, description: 'Concord Coin wallet & transactions', category: 'governance', showInSidebar: false, showInCommandPalette: true, path: '/lenses/wallet', order: 280, keywords: ['coins', 'balance', 'transactions', 'credits'] },
-  { id: 'world', name: 'World', icon: Globe, description: 'World model & global knowledge', category: 'specialized', showInSidebar: false, showInCommandPalette: true, path: '/lenses/world', order: 172, keywords: ['world', 'global', 'knowledge', 'model'] },
-  { id: 'all', name: 'All DTUs', icon: Search, description: 'Universal search across all lenses', category: 'system', showInSidebar: false, showInCommandPalette: true, path: '/lenses/all', order: 234, keywords: ['search', 'browse', 'all', 'universal'] },
-
-  // ── Unregistered Industry & Professional Lenses ────────────────
-  { id: 'automotive', name: 'Automotive', icon: Wrench, description: 'Automotive repair & fleet management', category: 'superlens', showInSidebar: false, showInCommandPalette: true, path: '/lenses/automotive', order: 300, keywords: ['car', 'vehicle', 'repair', 'fleet'] },
-  { id: 'carpentry', name: 'Carpentry', icon: Hammer, description: 'Woodworking & carpentry projects', category: 'superlens', showInSidebar: false, showInCommandPalette: true, path: '/lenses/carpentry', order: 301, keywords: ['wood', 'furniture', 'carpentry', 'build'] },
-  { id: 'construction', name: 'Construction', icon: HardHat, description: 'Construction project management', category: 'superlens', showInSidebar: false, showInCommandPalette: true, path: '/lenses/construction', order: 302, keywords: ['building', 'contractor', 'project', 'site'] },
-  { id: 'consulting', name: 'Consulting', icon: Briefcase, description: 'Consulting engagement management', category: 'superlens', showInSidebar: false, showInCommandPalette: true, path: '/lenses/consulting', order: 303, keywords: ['consulting', 'client', 'engagement', 'advisory'] },
-  { id: 'defense', name: 'Defense', icon: Shield, description: 'Defense & national security', category: 'superlens', showInSidebar: false, showInCommandPalette: true, path: '/lenses/defense', order: 304, keywords: ['military', 'defense', 'security', 'intelligence'] },
-  { id: 'electrical', name: 'Electrical', icon: Plug, description: 'Electrical work & systems', category: 'superlens', showInSidebar: false, showInCommandPalette: true, path: '/lenses/electrical', order: 305, keywords: ['electrical', 'wiring', 'power', 'circuits'] },
-  { id: 'emergency-services', name: 'Emergency Services', icon: AlertTriangle, description: 'Emergency response & dispatch', category: 'superlens', showInSidebar: false, showInCommandPalette: true, path: '/lenses/emergency-services', order: 306, keywords: ['emergency', 'fire', 'ems', 'dispatch', 'rescue'] },
-  { id: 'energy', name: 'Energy', icon: Zap, description: 'Energy production & management', category: 'superlens', showInSidebar: false, showInCommandPalette: true, path: '/lenses/energy', order: 307, keywords: ['power', 'solar', 'wind', 'electricity', 'grid'] },
-  { id: 'engineering', name: 'Engineering', icon: Cog, description: 'Engineering design & analysis', category: 'superlens', showInSidebar: false, showInCommandPalette: true, path: '/lenses/engineering', order: 308, keywords: ['engineering', 'design', 'cad', 'structural'] },
-  { id: 'forestry', name: 'Forestry', icon: TreePine, description: 'Forestry & land management', category: 'superlens', showInSidebar: false, showInCommandPalette: true, path: '/lenses/forestry', order: 309, keywords: ['forest', 'timber', 'wildlife', 'conservation'] },
-  { id: 'geology', name: 'Geology', icon: Mountain, description: 'Geological surveys & analysis', category: 'superlens', showInSidebar: false, showInCommandPalette: true, path: '/lenses/geology', order: 310, keywords: ['rocks', 'minerals', 'survey', 'earth'] },
-  { id: 'hr', name: 'HR', icon: Users, description: 'Human resources management', category: 'superlens', showInSidebar: false, showInCommandPalette: true, path: '/lenses/hr', order: 311, keywords: ['hiring', 'employees', 'payroll', 'benefits'] },
-  { id: 'hvac', name: 'HVAC', icon: Wind, description: 'Heating, ventilation & air conditioning', category: 'superlens', showInSidebar: false, showInCommandPalette: true, path: '/lenses/hvac', order: 312, keywords: ['heating', 'cooling', 'ventilation', 'climate'] },
-  { id: 'landscaping', name: 'Landscaping', icon: TreePine, description: 'Landscaping & garden design', category: 'superlens', showInSidebar: false, showInCommandPalette: true, path: '/lenses/landscaping', order: 313, keywords: ['garden', 'landscape', 'plants', 'outdoor'] },
-  { id: 'law-enforcement', name: 'Law Enforcement', icon: Shield, description: 'Law enforcement operations', category: 'superlens', showInSidebar: false, showInCommandPalette: true, path: '/lenses/law-enforcement', order: 314, keywords: ['police', 'investigation', 'patrol', 'crime'] },
-  { id: 'masonry', name: 'Masonry', icon: Building2, description: 'Masonry & stonework', category: 'superlens', showInSidebar: false, showInCommandPalette: true, path: '/lenses/masonry', order: 315, keywords: ['brick', 'stone', 'concrete', 'masonry'] },
-  { id: 'materials', name: 'Materials', icon: Gem, description: 'Materials science & engineering', category: 'superlens', showInSidebar: false, showInCommandPalette: true, path: '/lenses/materials', order: 316, keywords: ['materials', 'composite', 'alloy', 'testing'] },
-  { id: 'mining', name: 'Mining', icon: Hammer, description: 'Mining operations & exploration', category: 'superlens', showInSidebar: false, showInCommandPalette: true, path: '/lenses/mining', order: 317, keywords: ['mine', 'ore', 'extraction', 'drilling'] },
-  { id: 'ocean', name: 'Ocean', icon: Waves, description: 'Marine & ocean sciences', category: 'superlens', showInSidebar: false, showInCommandPalette: true, path: '/lenses/ocean', order: 318, keywords: ['marine', 'ocean', 'maritime', 'nautical'] },
-  { id: 'pharmacy', name: 'Pharmacy', icon: Pill, description: 'Pharmacy & medication management', category: 'superlens', showInSidebar: false, showInCommandPalette: true, path: '/lenses/pharmacy', order: 319, keywords: ['medication', 'prescription', 'drug', 'pharmacy'] },
-  { id: 'plumbing', name: 'Plumbing', icon: Wrench, description: 'Plumbing systems & repair', category: 'superlens', showInSidebar: false, showInCommandPalette: true, path: '/lenses/plumbing', order: 320, keywords: ['pipes', 'plumbing', 'water', 'drainage'] },
-  { id: 'supplychain', name: 'Supply Chain', icon: Truck, description: 'Supply chain management', category: 'superlens', showInSidebar: false, showInCommandPalette: true, path: '/lenses/supplychain', order: 321, keywords: ['supply', 'procurement', 'vendor', 'inventory'] },
-  { id: 'telecommunications', name: 'Telecom', icon: Radio, description: 'Telecommunications & networks', category: 'superlens', showInSidebar: false, showInCommandPalette: true, path: '/lenses/telecommunications', order: 322, keywords: ['telecom', 'network', 'wireless', 'fiber'] },
-  { id: 'urban-planning', name: 'Urban Planning', icon: MapPin, description: 'City planning & zoning', category: 'superlens', showInSidebar: false, showInCommandPalette: true, path: '/lenses/urban-planning', order: 323, keywords: ['city', 'zoning', 'planning', 'infrastructure'] },
-  { id: 'veterinary', name: 'Veterinary', icon: PawPrint, description: 'Veterinary medicine & animal care', category: 'superlens', showInSidebar: false, showInCommandPalette: true, path: '/lenses/veterinary', order: 324, keywords: ['vet', 'animal', 'pet', 'clinic'] },
-  { id: 'welding', name: 'Welding', icon: Zap, description: 'Welding & metalwork', category: 'superlens', showInSidebar: false, showInCommandPalette: true, path: '/lenses/welding', order: 325, keywords: ['weld', 'metal', 'fabrication', 'steel'] },
-  { id: 'desert', name: 'Desert', icon: Mountain, description: 'Desert ecology & arid environments', category: 'superlens', showInSidebar: false, showInCommandPalette: true, path: '/lenses/desert', order: 326, keywords: ['desert', 'arid', 'climate', 'ecology'] },
-
-  // ── Unregistered Creative & Knowledge Lenses ───────────────────
-  { id: 'animation', name: 'Animation', icon: Play, description: 'Animation & motion graphics', category: 'creative', showInSidebar: false, showInCommandPalette: true, path: '/lenses/animation', order: 350, keywords: ['animate', 'motion', 'video', '2d', '3d'] },
-  { id: 'artistry', name: 'Artistry', icon: Palette, description: 'Advanced artistic techniques', category: 'creative', showInSidebar: false, showInCommandPalette: true, path: '/lenses/artistry', order: 351, keywords: ['art', 'technique', 'style', 'craft'] },
-  { id: 'creative-writing', name: 'Creative Writing', icon: PenTool, description: 'Fiction, poetry & storytelling', category: 'creative', showInSidebar: false, showInCommandPalette: true, path: '/lenses/creative-writing', order: 352, keywords: ['writing', 'fiction', 'story', 'narrative'] },
-  { id: 'film-studios', name: 'Film Studios', icon: Play, description: 'Film production & post-production', category: 'creative', showInSidebar: false, showInCommandPalette: true, path: '/lenses/film-studios', order: 353, keywords: ['film', 'movie', 'production', 'director'] },
-  { id: 'game-design', name: 'Game Design', icon: Gamepad2, description: 'Game design & level editing', category: 'creative', showInSidebar: false, showInCommandPalette: true, path: '/lenses/game-design', order: 354, keywords: ['gamedev', 'level', 'mechanics', 'design'] },
-  { id: 'photography', name: 'Photography', icon: Camera, description: 'Photography & image editing', category: 'creative', showInSidebar: false, showInCommandPalette: true, path: '/lenses/photography', order: 355, keywords: ['photo', 'camera', 'edit', 'lightroom'] },
-  { id: 'poetry', name: 'Poetry', icon: PenTool, description: 'Poetry composition & analysis', category: 'creative', showInSidebar: false, showInCommandPalette: true, path: '/lenses/poetry', order: 356, keywords: ['poem', 'verse', 'rhyme', 'meter'] },
-
-  // ── Unregistered Knowledge & Science Lenses ────────────────────
-  { id: 'astronomy', name: 'Astronomy', icon: Orbit, description: 'Astronomy & celestial observation', category: 'science', showInSidebar: false, showInCommandPalette: true, path: '/lenses/astronomy', order: 360, keywords: ['stars', 'planets', 'telescope', 'celestial'] },
-  { id: 'atlas', name: 'Atlas', icon: Map, description: 'Geographic atlas & mapping', category: 'science', showInSidebar: false, showInCommandPalette: true, path: '/lenses/atlas', order: 361, keywords: ['map', 'geography', 'location', 'terrain'] },
-  { id: 'history', name: 'History', icon: FileText, description: 'Historical records & timelines', category: 'knowledge', showInSidebar: false, showInCommandPalette: true, path: '/lenses/history', order: 362, keywords: ['history', 'event', 'era', 'timeline'] },
-  { id: 'linguistics', name: 'Linguistics', icon: Globe, description: 'Language analysis & translation', category: 'knowledge', showInSidebar: false, showInCommandPalette: true, path: '/lenses/linguistics', order: 363, keywords: ['language', 'translation', 'grammar', 'syntax'] },
-  { id: 'philosophy', name: 'Philosophy', icon: Lightbulb, description: 'Philosophical frameworks & arguments', category: 'knowledge', showInSidebar: false, showInCommandPalette: true, path: '/lenses/philosophy', order: 364, keywords: ['philosophy', 'logic', 'argument', 'ethics'] },
-  { id: 'robotics', name: 'Robotics', icon: Bot, description: 'Robotics design & control systems', category: 'science', showInSidebar: false, showInCommandPalette: true, path: '/lenses/robotics', order: 365, keywords: ['robot', 'automation', 'control', 'servo'] },
-  { id: 'space', name: 'Space', icon: Rocket, description: 'Space exploration & aerospace', category: 'science', showInSidebar: false, showInCommandPalette: true, path: '/lenses/space', order: 366, keywords: ['space', 'nasa', 'rocket', 'orbit', 'satellite'] },
-
-  // ── Unregistered Professional & Social Lenses ──────────────────
-  { id: 'marketing', name: 'Marketing', icon: TrendingUp, description: 'Marketing campaigns & analytics', category: 'superlens', showInSidebar: false, showInCommandPalette: true, path: '/lenses/marketing', order: 370, keywords: ['campaign', 'seo', 'social', 'brand'] },
-  { id: 'mental-health', name: 'Mental Health', icon: Heart, description: 'Mental wellness & therapy tools', category: 'superlens', showInSidebar: false, showInCommandPalette: true, path: '/lenses/mental-health', order: 371, keywords: ['therapy', 'wellness', 'anxiety', 'counseling'] },
-  { id: 'projects', name: 'Projects', icon: Layout, description: 'Project management & tracking', category: 'superlens', showInSidebar: false, showInCommandPalette: true, path: '/lenses/projects', order: 372, keywords: ['project', 'task', 'milestone', 'gantt'] },
-
   // ── Command Center (sovereign dashboard) ───────────────────────
   {
     id: 'command-center',
@@ -2535,16 +2471,12 @@ const SOVEREIGN_LENS_SET = new Set<string>(SOVEREIGN_LENSES);
  * data-model `LensCategory` used by LENS_REGISTRY entries.
  */
 export const SIDEBAR_CATEGORIES: Record<string, string[]> = {
-  Knowledge: ['research', 'hypothesis', 'reasoning', 'metacognition', 'graph', 'education', 'science', 'grounding', 'commonsense', 'inference', 'metalearning', 'reflection', 'meta', 'history', 'linguistics', 'philosophy', 'astronomy', 'atlas', 'space', 'robotics', 'geology'],
-  Creative: ['art', 'music', 'creative', 'studio', 'whiteboard', 'game', 'sim', 'voice', 'podcast', 'animation', 'artistry', 'creative-writing', 'film-studios', 'game-design', 'photography', 'poetry'],
-  Lifestyle: ['food', 'fitness', 'healthcare', 'realestate', 'travel', 'daily', 'calendar', 'household', 'insurance', 'fashion', 'cooking', 'home-improvement', 'parenting', 'pets', 'sports', 'diy', 'mental-health'],
-  Professional: ['finance', 'legal', 'law', 'code', 'database', 'accounting', 'billing', 'logistics', 'manufacturing', 'retail', 'hr', 'consulting', 'marketing', 'projects', 'engineering', 'supplychain'],
-  'Industry & Trades': ['trades', 'construction', 'carpentry', 'electrical', 'plumbing', 'hvac', 'welding', 'masonry', 'landscaping', 'automotive', 'energy', 'mining', 'forestry', 'materials', 'ocean', 'desert', 'telecommunications', 'urban-planning'],
-  'Public & Safety': ['government', 'defense', 'law-enforcement', 'emergency-services', 'veterinary', 'pharmacy', 'aviation', 'environment', 'nonprofit', 'events', 'security', 'services'],
-  Social: ['feed', 'forum', 'marketplace', 'collab', 'vote', 'global', 'alliance', 'debate', 'mentorship', 'disputes', 'privacy', 'world'],
-  'AI & Cognition': ['ml', 'agents', 'affect', 'attention', 'experience', 'transfer', 'bio', 'chem', 'physics', 'math', 'quantum', 'neuro'],
-  Tools: ['export', 'import', 'fork', 'analytics', 'custom', 'ingest', 'wallet', 'bridge', 'all', 'app-maker', 'integrations'],
-  System: ['chat', 'entity', 'council', 'organ', 'tick', 'timeline', 'queue', 'resonance', 'docs', 'paper', 'platform', 'offline', 'lab', 'legacy', 'crypto', 'invariant', 'suffering', 'cri', 'market', 'questmarket', 'ethics'],
+  Knowledge: ['research', 'hypothesis', 'reasoning', 'metacognition', 'graph', 'education', 'science', 'grounding', 'commonsense', 'inference', 'metalearning', 'reflection', 'meta'],
+  Creative: ['art', 'music', 'creative', 'studio', 'whiteboard', 'game', 'sim', 'voice', 'podcast'],
+  Lifestyle: ['food', 'fitness', 'healthcare', 'realestate', 'travel', 'daily', 'calendar', 'household', 'insurance', 'fashion', 'cooking', 'home-improvement', 'parenting', 'pets', 'sports', 'diy'],
+  Professional: ['finance', 'legal', 'law', 'code', 'database', 'accounting', 'billing', 'logistics', 'manufacturing', 'retail'],
+  Social: ['feed', 'forum', 'marketplace', 'collab', 'vote', 'global', 'alliance', 'debate', 'mentorship'],
+  System: ['chat', 'entity', 'council', 'organ', 'tick', 'timeline', 'agents', 'queue'],
   Sovereign: ['admin', 'command-center', 'audit', 'lock'],
 };
 

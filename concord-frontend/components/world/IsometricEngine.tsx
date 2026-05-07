@@ -124,6 +124,30 @@ export default function IsometricEngine({
   dayNightCycle = 0.5,
 }: IsometricEngineProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Refs to avoid stale closures in the animation loop for frequently-changing props
+  const onPlayerMoveRef = useRef(onPlayerMove);
+  const onDistrictEnterRef = useRef(onDistrictEnter);
+  const onBuildingClickRef = useRef(onBuildingClick);
+  const onNPCClickRef = useRef(onNPCClick);
+  const onPlayerClickRef = useRef(onPlayerClick);
+  const npcsRef = useRef(npcs);
+  const nearbyPlayersRef = useRef(nearbyPlayers);
+  const activeDistrictRef = useRef(activeDistrict);
+  const factionTerritoriesRef = useRef(factionTerritories);
+  const dayNightCycleRef = useRef(dayNightCycle);
+
+  useEffect(() => { onPlayerMoveRef.current = onPlayerMove; }, [onPlayerMove]);
+  useEffect(() => { onDistrictEnterRef.current = onDistrictEnter; }, [onDistrictEnter]);
+  useEffect(() => { onBuildingClickRef.current = onBuildingClick; }, [onBuildingClick]);
+  useEffect(() => { onNPCClickRef.current = onNPCClick; }, [onNPCClick]);
+  useEffect(() => { onPlayerClickRef.current = onPlayerClick; }, [onPlayerClick]);
+  useEffect(() => { npcsRef.current = npcs; }, [npcs]);
+  useEffect(() => { nearbyPlayersRef.current = nearbyPlayers; }, [nearbyPlayers]);
+  useEffect(() => { activeDistrictRef.current = activeDistrict; }, [activeDistrict]);
+  useEffect(() => { factionTerritoriesRef.current = factionTerritories; }, [factionTerritories]);
+  useEffect(() => { dayNightCycleRef.current = dayNightCycle; }, [dayNightCycle]);
+
   const stateRef = useRef({
     px: playerPosition.x,
     py: playerPosition.y,
@@ -168,7 +192,7 @@ export default function IsometricEngine({
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d')!;
     if (!ctx) return;
 
     canvas.width = BASE_W;
@@ -193,26 +217,26 @@ export default function IsometricEngine({
 
       if (isDouble) {
         const d = districtAt(tileX, tileY);
-        if (d) { onBuildingClick({ id: d.id, name: d.name, lens: d.lens }); return; }
+        if (d) { onBuildingClickRef.current({ id: d.id, name: d.name, lens: d.lens }); return; }
       }
 
       // Check NPC click
-      for (const npc of npcs) {
+      for (const npc of npcsRef.current) {
         const [nx, ny] = toScreen(npc.position.x, npc.position.y, offX, offY);
-        if (Math.abs(mx - nx) < 12 && Math.abs(my - ny) < 12) { onNPCClick(npc); return; }
+        if (Math.abs(mx - nx) < 12 && Math.abs(my - ny) < 12) { onNPCClickRef.current(npc); return; }
       }
 
       // Check player click
-      for (const p of nearbyPlayers) {
+      for (const p of nearbyPlayersRef.current) {
         const [px, py] = toScreen(p.x, p.y, offX, offY);
-        if (Math.abs(mx - px) < 12 && Math.abs(my - py) < 12) { onPlayerClick(p); return; }
+        if (Math.abs(mx - px) < 12 && Math.abs(my - py) < 12) { onPlayerClickRef.current(p); return; }
       }
 
       // Move to tile
       if (tileX >= 0 && tileX < GRID_SIZE && tileY >= 0 && tileY < GRID_SIZE) {
         s.tx = tileX + 0.5;
         s.ty = tileY + 0.5;
-        onPlayerMove(s.tx, s.ty);
+        onPlayerMoveRef.current(s.tx, s.ty);
       }
     };
 
@@ -313,7 +337,7 @@ export default function IsometricEngine({
       if (s.keys.has('a') || s.keys.has('arrowleft'))   { s.tx -= MOVE_SPEED; s.ty += MOVE_SPEED; }
       if (s.keys.has('d') || s.keys.has('arrowright'))  { s.tx += MOVE_SPEED; s.ty -= MOVE_SPEED; }
 
-      if (s.keys.size > 0) onPlayerMove(s.tx, s.ty);
+      if (s.keys.size > 0) onPlayerMoveRef.current(s.tx, s.ty);
 
       // Lerp player toward target
       s.px = lerp(s.px, s.tx, 0.12);
@@ -332,7 +356,7 @@ export default function IsometricEngine({
       if (curId !== s.lastDistrict) {
         s.lastDistrict = curId;
         if (curDist) {
-          onDistrictEnter({ id: curDist.id, name: curDist.name, lens: curDist.lens });
+          onDistrictEnterRef.current({ id: curDist.id, name: curDist.name, lens: curDist.lens });
           s.bannerText = curDist.name;
           s.bannerTimer = Date.now();
         }
@@ -352,14 +376,14 @@ export default function IsometricEngine({
       ctx.fillRect(0, 0, BASE_W, BASE_H);
 
       // Day/night tint
-      const nightAlpha = Math.max(0, 0.3 - Math.abs(dayNightCycle - 0.5) * 0.6);
+      const nightAlpha = Math.max(0, 0.3 - Math.abs(dayNightCycleRef.current - 0.5) * 0.6);
 
       // Ground (cached)
       ctx.drawImage(s.groundCache, 0, 0);
 
       // Faction territories overlay
-      if (factionTerritories) {
-        for (const [key, color] of Object.entries(factionTerritories)) {
+      if (factionTerritoriesRef.current) {
+        for (const [key, color] of Object.entries(factionTerritoriesRef.current)) {
           const [ftx, fty] = key.split(',').map(Number);
           const [sx, sy] = toScreen(ftx, fty, offX, offY);
           if (sx < -TILE_W || sx > BASE_W + TILE_W || sy < -TILE_H || sy > BASE_H + TILE_H) continue;
@@ -388,7 +412,7 @@ export default function IsometricEngine({
         ctx.fillText(d.name, sx, sy - bldgH - 8);
 
         // Active district highlight
-        if (activeDistrict === d.id) {
+        if (activeDistrictRef.current === d.id) {
           ctx.strokeStyle = d.color;
           ctx.lineWidth = 2;
           ctx.beginPath();
@@ -398,7 +422,7 @@ export default function IsometricEngine({
       }
 
       // NPCs
-      for (const npc of npcs) {
+      for (const npc of npcsRef.current) {
         const [nx, ny] = toScreen(npc.position.x, npc.position.y, offX, offY);
         if (nx < -20 || nx > BASE_W + 20 || ny < -20 || ny > BASE_H + 20) continue;
 
@@ -438,7 +462,7 @@ export default function IsometricEngine({
       }
 
       // Other players
-      for (const p of nearbyPlayers) {
+      for (const p of nearbyPlayersRef.current) {
         const [px, py] = toScreen(p.x, p.y, offX, offY);
         if (px < -20 || px > BASE_W + 20 || py < -20 || py > BASE_H + 20) continue;
         ctx.beginPath();
@@ -509,8 +533,9 @@ export default function IsometricEngine({
       canvas.removeEventListener('mousedown', onMouseDown);
       canvas.removeEventListener('touchstart', onTouchStart);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [npcs, nearbyPlayers, activeDistrict, factionTerritories, dayNightCycle]);
+    // All frequently-changing values are read via refs inside the animation loop,
+    // so this effect only needs to run once on mount.
+  }, [toScreen, toTile]);
 
   return (
     <div style={{ width: '100%', height: '100%', overflow: 'hidden', background: '#0a0a0f' }}>

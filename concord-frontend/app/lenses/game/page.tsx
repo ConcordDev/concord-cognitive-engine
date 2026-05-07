@@ -15,6 +15,7 @@ import {
   Activity, ArrowUp, Loader2, Scale, BarChart2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { showToast } from '@/components/common/Toasts';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -227,9 +228,10 @@ export default function GameLensPage() {
 
   const [activeTab, setActiveTab] = useState<MainTab>('dashboard');
   const [lbPeriod, setLbPeriod] = useState<LeaderboardPeriod>('alltime');
-  const { items: shopLensItems, update: updateShopItem } = useLensData<ShopItem>('game', 'shop-item', { noSeed: true });
+  const { items: shopLensItems, update: updateShopItem } = useLensData<ShopItem>('game', 'shop-item', {
+    seed: SHOP_ITEMS.map(s => ({ title: s.name, data: s as unknown as Record<string, unknown> })),
+  });
   const [shopItems, setShopItems] = useState<ShopItem[]>([]);
-  const [purchasingIds, setPurchasingIds] = useState<Set<string>>(new Set());
 
   // Sync shop items from API
   useEffect(() => {
@@ -249,7 +251,7 @@ export default function GameLensPage() {
     queryKey: ['game', 'achievements'],
     queryFn: () => api.get('/api/game/achievements').then(r => r.data),
   });
-  const achievements: Achievement[] = (achievementsResp?.achievements || INITIAL_ACHIEVEMENTS).map((a: Record<string, unknown>) => ({
+  const achievements: Achievement[] = (achievementsResp?.achievements || []).map((a: Record<string, unknown>) => ({
     id: a.id as string,
     name: a.name as string || a.id as string,
     description: a.description as string || '',
@@ -268,7 +270,7 @@ export default function GameLensPage() {
     queryFn: () => api.get('/api/game/challenges').then(r => r.data),
   });
   const { create: createQuest } = useLensData<Quest>('game', 'quest', { noSeed: true });
-  const quests: Quest[] = (challengesResp?.challenges || INITIAL_QUESTS).map((c: Record<string, unknown>) => ({
+  const quests: Quest[] = (challengesResp?.challenges || []).map((c: Record<string, unknown>) => ({
     id: c.id as string,
     name: c.name as string,
     description: c.description as string,
@@ -291,7 +293,7 @@ export default function GameLensPage() {
     queryKey: ['game', 'leaderboard'],
     queryFn: () => api.get('/api/game/leaderboard').then(r => r.data),
   });
-  const leaderboardData = (leaderboardResp?.leaderboard || INITIAL_LEADERBOARD) as Record<string, unknown>[];
+  const leaderboardData = (leaderboardResp?.leaderboard || []) as Record<string, unknown>[];
 
   // Sync profile data into local state when available
   useEffect(() => {
@@ -343,9 +345,8 @@ export default function GameLensPage() {
     setShopItems((prev) => prev.map((i) => (i.id === id ? { ...i, owned: true } : i)));
     setPlayerXp((prev) => prev - item.cost);
     updateShopItem(id, { data: { owned: true } as unknown as Partial<ShopItem> })
-      .catch(err => console.error('Failed to persist shop purchase:', err instanceof Error ? err.message : err))
-      .finally(() => setPurchasingIds(prev => { const next = new Set(prev); next.delete(id); return next; }));
-  }, [shopItems, playerXp, purchasingIds, updateShopItem]);
+      .catch(err => console.error('Failed to persist shop purchase:', err instanceof Error ? err.message : err));
+  }, [shopItems, playerXp, updateShopItem]);
 
   // Achievement unlock (optimistic UI - will refresh from API on next fetch)
   const [achievementOverrides, setAchievementOverrides] = useState<Record<string, boolean>>({});
@@ -807,9 +808,6 @@ export default function GameLensPage() {
               <tbody>
                 {sortedLeaderboard.length === 0 && (
                   <tr><td colSpan={5} className="py-8 text-center text-gray-500">No players on the leaderboard yet. Start a game to climb the ranks.</td></tr>
-                )}
-                {sortedLeaderboard.length === 1 && (
-                  <tr><td colSpan={6} className="py-4 text-center text-neon-cyan text-xs">🏔️ Pioneer — First on the leaderboard!</td></tr>
                 )}
                 {sortedLeaderboard.map((player, index) => (
                   <motion.tr
@@ -1343,7 +1341,6 @@ export default function GameLensPage() {
 
       {realtimeData && (
         <RealtimeDataPanel
-      <UniversalActions domain="game" artifactId={null} compact />
           domain="game"
           data={realtimeData}
           isLive={isLive}

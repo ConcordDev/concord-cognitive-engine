@@ -36,7 +36,7 @@ export default function ChemLensPage() {
 
   const [selectedCompound, setSelectedCompound] = useState<string | null>(null);
   const [reactionInput, setReactionInput] = useState('');
-  const [showFeatures, setShowFeatures] = useState(true);
+  const [showFeatures, setShowFeatures] = useState(false);
   const [activeTab, setActiveTab] = useState<'elements' | 'reactions' | 'compounds'>('reactions');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('chem');
 

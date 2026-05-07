@@ -1,5 +1,4 @@
 import { Metadata } from 'next';
-import Link from 'next/link';
 
 /* ------------------------------------------------------------------ */
 /*  Newsletter Public View                                             */
@@ -15,7 +14,7 @@ interface NewsletterPageProps {
 export async function generateMetadata({ params }: NewsletterPageProps): Promise<Metadata> {
   const { postId } = await params;
   // Fetch post metadata for OG tags
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5050';
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
   let title = 'Newsletter';
   let description = 'A newsletter post from Concord';
 
@@ -50,7 +49,7 @@ export async function generateMetadata({ params }: NewsletterPageProps): Promise
 }
 
 async function getPost(postId: string) {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5050';
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
   try {
     const res = await fetch(`${baseUrl}/api/social/post/${postId}`, {
       next: { revalidate: 60 },
@@ -135,9 +134,9 @@ export default async function NewsletterPage({ params }: NewsletterPageProps) {
         <div className="max-w-2xl mx-auto px-6 py-6 text-center text-xs text-gray-400">
           <p>Published via Concord Cognitive Engine</p>
           <p className="mt-1">
-            <Link href="/" className="text-indigo-500 hover:text-indigo-600">
+            <a href="/" className="text-indigo-500 hover:text-indigo-600">
               Visit Concord
-            </Link>
+            </a>
           </p>
         </div>
       </footer>

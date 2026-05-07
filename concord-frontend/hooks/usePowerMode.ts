@@ -1,6 +1,11 @@
 'use client';
 
 /**
+ * NOTE: This hook is not currently imported by any production component.
+ * It is available for use in settings pages or layout components that need
+ * to toggle between Simple and Power UI modes. Wire into a layout or
+ * settings page when the feature is enabled.
+ *
  * usePowerMode — Simple/Power mode toggle.
  *
  * Simple mode (default): Clean interface, hides technical UI.

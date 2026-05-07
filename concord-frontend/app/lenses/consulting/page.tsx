@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -10,9 +10,9 @@ import { cn } from '@/lib/utils';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   Lightbulb, Briefcase, FileText, Users, Clock, DollarSign,
-  Plus, Search, X, Trash2, BarChart3,
-  Target, TrendingUp, ArrowRight,
-  Layers, ChevronDown, BookOpen, Star, Zap,
+  Plus, Search, X, Trash2, BarChart3, CheckCircle2,
+  Target, TrendingUp, Calendar, PieChart, ArrowRight,
+  Layers, ChevronDown, Presentation, BookOpen, Star,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -61,7 +61,7 @@ export default function ConsultingLensPage() {
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<LensItem<ConsultingArtifact> | null>(null);
   const [showDashboard, setShowDashboard] = useState(false);
-  const [showFeatures, setShowFeatures] = useState(true);
+  const [showFeatures, setShowFeatures] = useState(false);
 
   const [formName, setFormName] = useState('');
   const [formDescription, setFormDescription] = useState('');
@@ -85,16 +85,6 @@ export default function ConsultingLensPage() {
     if (filterStatus !== 'all') result = result.filter(i => (i.data as unknown as ConsultingArtifact).status === filterStatus);
     return result;
   }, [items, searchQuery, filterStatus]);
-
-  const handleAction = useCallback(async (action: string, artifactId?: string) => {
-    const targetId = artifactId || filtered[0]?.id;
-    if (!targetId) return;
-    try {
-      await runAction.mutateAsync({ id: targetId, action });
-    } catch (err) {
-      console.error('Action failed:', err);
-    }
-  }, [filtered, runAction]);
 
   const openCreate = () => { setEditingItem(null); setFormName(''); setFormDescription(''); setFormStatus('draft'); setFormNotes(''); setFormClient(''); setFormEngType('Strategy'); setFormFee(''); setFormRate(''); setFormStartDate(''); setFormEndDate(''); setFormScope(''); setEditorOpen(true); };
 
@@ -180,7 +170,6 @@ export default function ConsultingLensPage() {
               <div className="flex items-center gap-2">
                 {d.totalFee && <span className="text-xs text-green-400">${d.totalFee.toLocaleString()}</span>}
                 <span className={`text-xs px-2 py-0.5 rounded-full bg-${sc.color}/20 text-${sc.color}`}>{sc.label}</span>
-                <button onClick={e => { e.stopPropagation(); handleAction('analyze', item.id); }} className={ds.btnGhost}><Zap className="w-4 h-4 text-neon-cyan" /></button>
                 <button onClick={e => { e.stopPropagation(); remove(item.id); }} className={ds.btnGhost}><Trash2 className="w-4 h-4 text-red-400" /></button>
               </div>
             </div>
@@ -197,7 +186,7 @@ export default function ConsultingLensPage() {
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center"><Lightbulb className="w-5 h-5 text-white" /></div>
           <div><div className="flex items-center gap-2"><h1 className={ds.heading1}>Consulting</h1><LiveIndicator isLive={isLive} lastUpdated={lastUpdated} /></div><p className={ds.textMuted}>Engagements, proposals, deliverables, clients, and frameworks</p></div>
         </div>
-        <div className="flex items-center gap-2">{runAction.isPending && <span className="text-xs text-neon-cyan animate-pulse">AI processing...</span>}<DTUExportButton domain="consulting" data={{}} compact /><button onClick={() => setShowDashboard(!showDashboard)} className={cn(showDashboard ? ds.btnPrimary : ds.btnSecondary)}><BarChart3 className="w-4 h-4" /> Dashboard</button></div>
+        <div className="flex items-center gap-2"><DTUExportButton domain="consulting" data={{}} compact /><button onClick={() => setShowDashboard(!showDashboard)} className={cn(showDashboard ? ds.btnPrimary : ds.btnSecondary)}><BarChart3 className="w-4 h-4" /> Dashboard</button></div>
       </header>
       <RealtimeDataPanel domain="consulting" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
       <UniversalActions domain="consulting" artifactId={items[0]?.id} compact />
@@ -216,7 +205,6 @@ export default function ConsultingLensPage() {
             { icon: Clock, label: 'Billed Hours', value: totalHours.toLocaleString(), color: 'text-blue-400' },
             { icon: Briefcase, label: 'Active Engagements', value: activeCount, color: 'text-purple-400' },
             { icon: Star, label: 'Utilization Rate', value: `${utilRate.toFixed(0)}%`, color: 'text-amber-400' },
-            { icon: DollarSign, label: 'Avg Rate', value: `$${avgRate.toFixed(0)}/hr`, color: 'text-cyan-400' },
           ].map((stat, i) => (
             <motion.div key={stat.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }} className={ds.panel}>
               <stat.icon className={`w-5 h-5 ${stat.color} mb-2`} />
@@ -253,13 +241,13 @@ export default function ConsultingLensPage() {
         </div>
       </motion.div>
 
-      <nav className="flex items-center gap-2 border-b border-lattice-border pb-4 flex-wrap">
+      <nav className="flex items-center gap-2 border-b border-lattice-border pb-4 overflow-x-auto">
         {MODE_TABS.map(tab => (<button key={tab.id} onClick={() => { setActiveTab(tab.id); setShowDashboard(false); }} className={cn('flex items-center gap-2 px-4 py-2 rounded-lg transition-colors whitespace-nowrap', activeTab === tab.id && !showDashboard ? 'bg-neon-blue/20 text-neon-blue' : 'text-gray-400 hover:text-white hover:bg-lattice-elevated')}><tab.icon className="w-4 h-4" />{tab.label}</button>))}
       </nav>
       {showDashboard ? renderDashboard() : renderLibrary()}
       {renderEditor()}
       <div className="border-t border-white/10">
-        <button onClick={() => setShowFeatures(!showFeatures)} className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"><span className="flex items-center gap-2"><Layers className="w-4 h-4" />Lens Features & Capabilities</span><ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} /></button>
+        <button onClick={() => setShowFeatures(!showFeatures)} className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-400 hover:text-white transition-colors"><span className="flex items-center gap-2"><Layers className="w-4 h-4" />Lens Features & Capabilities</span><ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} /></button>
         {showFeatures && <div className="px-4 pb-4"><LensFeaturePanel lensId="consulting" /></div>}
       </div>
     </div>

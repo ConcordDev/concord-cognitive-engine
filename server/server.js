@@ -47,6 +47,7 @@ import { spawnSync } from "child_process";
 import { Worker } from "node:worker_threads";
 import { initAll as initLoaf } from "./loaf/index.js";
 import { init as initEmergent } from "./emergent/index.js";
+import { initFederation, getFederationStatus } from "./emergent/cnet-federation.js";
 import { ConcordError } from "./lib/errors.js";
 import { asyncHandler } from "./lib/async-handler.js";
 import { init as initGRC, formatAndValidate as grcFormatAndValidate, getGRCSystemPrompt } from "./grc/index.js";
@@ -125,7 +126,7 @@ import registerOAuthRoutes from "./routes/oauth.js";
 import createAuditRouter from "./routes/audit.js";
 import createMCPRouter from "./routes/mcp.js";
 import { QualiaEngine, hooks as qualiaHooks } from "./existential/index.js";
-import { rateLimitMiddleware as perEndpointRateLimit } from "./rateLimit.js";
+import { rateLimitMiddleware as perEndpointRateLimit, writeRateLimitMiddleware, readRateLimitMiddleware } from "./rateLimit.js";
 import { detectVulnerability, chooseDeliveryMode, hookVulnerability, assessAndAdapt } from "./emergent/vulnerability-engine.js";
 import { runCouncilVoices, getAllVoices as getAllCouncilVoices } from "./emergent/council-voices.js";
 
@@ -149,6 +150,10 @@ import { accumulate as accumulateSessionContext, getContextSnapshot, getAccumula
 import { detectForge, runForgePipeline, saveForgedDTU, deleteForgedDTU, saveAndList, iterateForge, recordForgeMetric, getForgeMetrics, recordEmergentContribution } from "./lib/inline-dtu-forge.js";
 import { initializeShield, scanContent as shieldScanContent, scanHashAgainstLattice, runAnalysisPipeline as shieldAnalyze, classifyWithYARA, runProphet as shieldProphet, runSurgeon as shieldSurgeon, runGuardian as shieldGuardian, propagateThreatToLattice, shieldHeartbeatTick, computeSecurityScore, detectShieldIntent, performSweep, processUserReport, getThreatFeed, getFirewallRules, getPredictions, getShieldMetrics, queueScan as shieldQueueScan, createThreatDTU, THREAT_SUBTYPES, SCAN_MODES } from "./lib/concord-shield.js";
 import registerShieldRoutes from "./routes/shield.js";
+import registerCodeEngineRoutes from "./routes/code-engine.js";
+import { submitReport as moderationSubmitReport, getModerationQueue, resolveReport as moderationResolveReport, scanContent as moderationScanContent, getModerationMetrics, REPORT_CATEGORIES, MODERATION_ACTIONS } from "./lib/content-moderation.js";
+import { scanText as contentGuardScan, scanUsername as contentGuardScanUsername, banAccount, isEmailBanned, createModerationDTU, queueNcmecReport, buildImageModerationPrompt, parseImageModerationResponse, trackDrugSalesOffense, BLOCK_CATEGORIES } from "./lib/content-guard.js";
+import { createModerationRouter } from "./routes/moderation.js";
 import { initializeMesh, detectChannels as meshDetectChannels, getChannelStatus as meshGetChannelStatus, getNodeId as meshGetNodeId, sendDTU as meshSendDTU, receiveDTU as meshReceiveDTU, initiateTransfer as meshInitiateTransfer, getTransferStatus as meshGetTransferStatus, registerPeer as meshRegisterPeer, getPeers as meshGetPeers, getTopology as meshGetTopology, getMeshMetrics, getTransmissionStats as meshGetTransmissionStats, getPendingQueue as meshGetPendingQueue, configureRelay as meshConfigureRelay, detectMeshIntent, meshHeartbeatTick, planOfflineSync as meshPlanOfflineSync, TRANSPORT_LAYERS, TRANSPORT_LIST, RELAY_PRIORITIES } from "./lib/concord-mesh.js";
 import registerMeshRoutes from "./routes/mesh.js";
 // ── Foundation Sovereignty Modules ────────────────────────────────────────────
@@ -176,6 +181,7 @@ import registerAtlasRoutes from "./routes/atlas.js";
 // Atlas Signal Cortex — signal classification, privacy architecture & adjustment control
 import { initializeCortex, getCortexMetrics, classifySignal as cortexClassifySignal, getTaxonomy, getUnknownSignals, getAnomalies, getSpectralOccupancy, detectPrivacyZone, checkPrivacy, getPrivacyZones, getPrivacyStats, verifyPrivacyZone, suppressPresenceDetection, suppressVehicleTracking, checkAdjustmentPermission, detectCortexIntent, cortexHeartbeatTick } from "./lib/atlas-signal-cortex.js";
 import registerAtlasSignalRoutes from "./routes/atlas-signals.js";
+import registerInitiativeRoutes from "./routes/initiative.js";
 
 // ── Learning Verification & Substrate Integrity ──────────────────────────────
 import {
@@ -265,7 +271,7 @@ import { createAtlasDtu, getAtlasDtu, searchAtlasDtus, promoteAtlasDtu, addAtlas
 import { runAntiGamingScan, getAntiGamingMetrics } from "./emergent/atlas-antigaming.js";
 import { runAutogenV2, getAutogenRun, acceptAutogenOutput, mergeAutogenOutput, propagateConfidence, getAutogenV2Metrics } from "./emergent/atlas-autogen-v2.js";
 import { councilResolve, getCouncilQueue, councilRequestSources, councilMerge, getCouncilActions, getCouncilMetrics } from "./emergent/atlas-council.js";
-import { upsertProfile, getProfile, listProfiles, followUser, unfollowUser, getFollowers, getFollowing, publishDtu, unpublishDtu, recordCitation, getCitedBy, getFeed, computeTrending, discoverUsers, getSocialMetrics } from "./emergent/social-layer.js";
+import { upsertProfile, getProfile, listProfiles, followUser, unfollowUser, getFollowers, getFollowing, publishDtu, unpublishDtu, recordCitation, getCitedBy, getFeed, computeTrending, discoverUsers, getSocialMetrics, createPost, getPost, deletePost, getUserPosts, addReaction as socialAddReaction, getReactions, addComment as socialAddComment, deleteComment as socialDeleteComment, getComments as socialGetComments, sharePost, getShares, bookmarkPost, getUserBookmarks, getForYouFeed, getFollowingFeed, getExploreFeed, sendMessage, getConversations, getMessages, markMessagesRead, createNotification, getNotifications, markNotificationRead, markAllNotificationsRead, getUnreadCount, deleteNotification, getActiveStories, viewStory, votePoll, getPollResults, getTrendingTopics, getPostsByTopic, createGroup, joinGroup, leaveGroup, getGroupFeed, postToGroup, listGroups, getGroupMembers, getCreatorAnalytics, getPostAnalytics, updateStreak as socialUpdateStreak, getStreak, tagListing, getPostSales, getPostEarnings, pinPost, unpinPost, getPinnedPosts, recordWatchTime, schedulePost, getScheduledPosts, cancelScheduledPost, processScheduledPosts, getTrendingContent, getTrendingCreators, getTrendingDomains } from "./emergent/social-layer.js";
 import { createWorkspace as collabCreateWorkspace, getWorkspace as collabGetWorkspace, listWorkspaces as collabListWorkspaces, addWorkspaceMember as collabAddWorkspaceMember, removeWorkspaceMember as collabRemoveWorkspaceMember, addDtuToWorkspace as collabAddDtuToWorkspace, addComment as collabAddComment, getComments as collabGetComments, editComment as collabEditComment, resolveComment as collabResolveComment, proposeRevision, getRevisionProposals, voteOnRevision, applyRevision, startEditSession, recordEdit, endEditSession, getCollabMetrics } from "./emergent/collaboration.js";
 import { createOrgWorkspace, getOrgWorkspace, assignRole, revokeRole, getUserRole, getOrgMembers, checkPermission, getUserPermissions, assignOrgLens, getOrgLenses, exportAuditLog, getRbacMetrics } from "./emergent/rbac.js";
 import { takeSnapshot as takeAnalyticsSnapshot, getPersonalAnalytics, getDtuGrowthTrends, getCitationAnalytics, getMarketplaceAnalytics as getMarketAnalytics, getKnowledgeDensity, getAtlasDomainAnalytics, getDashboardSummary } from "./emergent/analytics-dashboard.js";
@@ -447,7 +453,7 @@ await tryLoadDotenv();
 
 // ---- Environment Validation ----
 const REQUIRED_ENV_PRODUCTION = ["JWT_SECRET", "ADMIN_PASSWORD"];
-const RECOMMENDED_ENV = ["OPENAI_API_KEY", "ALLOWED_ORIGINS"];
+const RECOMMENDED_ENV = ["OLLAMA_HOST", "ALLOWED_ORIGINS"];
 
 function validateEnvironment() {
   const errors = [];
@@ -846,49 +852,250 @@ function sanitizationMiddleware(req, res, next) {
     req.query = sanitizeObject(req.query, { maxLength: 1000 });
   }
 
+  // Enhanced write-endpoint validation: strip script tags and SQL injection patterns
+  const method = req.method.toUpperCase();
+  if ((method === "POST" || method === "PUT" || method === "PATCH") && req.body) {
+    _deepStripDangerous(req.body);
+  }
+
   next();
 }
 
-// ── Field-level input length enforcement ──────────────────────────────────
-const INPUT_LIMITS = {
-  message: 10000, chatMessage: 10000,
-  title: 200, name: 200,
-  content: 500000,
-  comment: 5000, commentText: 5000,
-  username: 30, handle: 30,
-  displayName: 50,
-  bio: 500, description: 5000,
-  body: 50000, text: 50000,
-  query: 200, q: 200, search: 200, searchQuery: 200,
-  reason: 1000, reportReason: 1000,
-  statement: 5000, disputeStatement: 5000,
-};
-
-function inputLimitsMiddleware(req, res, next) {
-  if (req.method !== 'POST' && req.method !== 'PUT' && req.method !== 'PATCH') return next();
-  if (!req.body || typeof req.body !== 'object') return next();
-
-  const violations = [];
-  function checkObj(obj, path) {
-    for (const [key, val] of Object.entries(obj)) {
-      if (typeof val === 'string' && INPUT_LIMITS[key] && val.length > INPUT_LIMITS[key]) {
-        violations.push({ field: path ? `${path}.${key}` : key, max: INPUT_LIMITS[key], actual: val.length });
+/**
+ * Recursively strip dangerous patterns from request body values.
+ * Targets script tags, event handlers, and obvious SQL injection payloads.
+ * Does not reject — just neutralizes the dangerous parts.
+ */
+function _deepStripDangerous(obj) {
+  if (!obj || typeof obj !== "object") return;
+  for (const key of Object.keys(obj)) {
+    const val = obj[key];
+    if (typeof val === "string") {
+      // Strip script tags (including attributes)
+      let cleaned = val.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "");
+      // Strip event handler attributes (onclick, onerror, onload, etc.)
+      cleaned = cleaned.replace(/\bon\w+\s*=\s*["'][^"']*["']/gi, "");
+      // Strip javascript: protocol URLs
+      cleaned = cleaned.replace(/javascript\s*:/gi, "");
+      // Neutralize obvious SQL injection (DROP TABLE, UNION SELECT, etc.) — keep for logging context
+      cleaned = cleaned.replace(/(\b(?:DROP|ALTER|TRUNCATE)\s+(?:TABLE|DATABASE|INDEX)\b)/gi, "[$1]");
+      cleaned = cleaned.replace(/(\bUNION\s+(?:ALL\s+)?SELECT\b)/gi, "[$1]");
+      // Strip SQL comment sequences that are used for injection
+      cleaned = cleaned.replace(/--\s*$/gm, "");
+      cleaned = cleaned.replace(/\/\*[\s\S]*?\*\//g, "");
+      if (cleaned !== val) obj[key] = cleaned;
+    } else if (Array.isArray(val)) {
+      for (let i = 0; i < val.length; i++) {
+        if (typeof val[i] === "string") {
+          const c = val[i]
+            .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
+            .replace(/\bon\w+\s*=\s*["'][^"']*["']/gi, "")
+            .replace(/javascript\s*:/gi, "");
+          if (c !== val[i]) val[i] = c;
+        } else if (typeof val[i] === "object") {
+          _deepStripDangerous(val[i]);
+        }
       }
-      if (val && typeof val === 'object' && !Array.isArray(val)) {
-        checkObj(val, path ? `${path}.${key}` : key);
-      }
+    } else if (typeof val === "object") {
+      _deepStripDangerous(val);
     }
   }
-  checkObj(req.body, '');
+}
 
-  if (violations.length > 0) {
-    return res.status(400).json({
-      ok: false,
-      error: 'Input too long',
-      code: 'INPUT_TOO_LONG',
-      violations: violations.map(v => `${v.field}: ${v.actual} chars (max ${v.max})`),
-    });
+// ---- Content Guard — Illegal Content Blocking (Pre-Storage) ----
+// Scans ALL user-generated content (POST/PUT bodies) for Categories 1-5 illegal material.
+// MUST run BEFORE any content is stored. Returns 403 and does not persist anything.
+function contentGuardMiddleware(req, res, next) {
+  const method = req.method.toUpperCase();
+  if (method !== "POST" && method !== "PUT" && method !== "PATCH") return next();
+  if (!req.body) return next();
+
+  try {
+    // Extract text content from body to scan
+    const textsToScan = [];
+    const body = req.body;
+    if (typeof body === "string") {
+      textsToScan.push(body);
+    } else if (typeof body === "object") {
+      // Scan all string fields that could contain user content
+      for (const key of ["content", "text", "message", "title", "description", "bio", "reason", "body", "comment", "name", "username"]) {
+        if (body[key] && typeof body[key] === "string") textsToScan.push(body[key]);
+      }
+      // Deep scan tags array
+      if (Array.isArray(body.tags)) {
+        for (const tag of body.tags) {
+          if (typeof tag === "string") textsToScan.push(tag);
+        }
+      }
+    }
+
+    if (textsToScan.length === 0) return next();
+
+    const combined = textsToScan.join(" ");
+    const scanResult = contentGuardScan(combined);
+
+    if (scanResult.blocked) {
+      const userId = req.user?.id || req.entityId || "anonymous";
+
+      // Log the block
+      structuredLog("warn", "content_guard_blocked", {
+        path: req.path,
+        method,
+        category: scanResult.category,
+        severity: scanResult.severity,
+        ip: req.ip,
+        userId,
+      });
+
+      // Create security DTU (metadata only, never the content)
+      try {
+        createModerationDTU(globalThis._concordSTATE, {
+          action: "blocked",
+          category: scanResult.category,
+          userId,
+          ip: req.ip,
+          path: req.path,
+          contentType: "text",
+          severity: scanResult.severity,
+          content: combined, // only used for hashing, not stored
+          matches: scanResult.matches,
+        });
+      } catch (_) { /* non-critical */ }
+
+      // Category-specific actions
+      if (scanResult.category === BLOCK_CATEGORIES.CSAM) {
+        // CSAM: instant ban + NCMEC report
+        if (db && userId !== "anonymous") {
+          try {
+            banAccount(db, tokenBlacklist, userId, "CSAM content detected", "csam");
+            queueNcmecReport(db, globalThis._concordSTATE, {
+              userId,
+              contentType: "text",
+              detectionMethod: "keyword_pattern",
+            });
+          } catch (_) { /* non-critical */ }
+        }
+        return res.status(403).json({
+          ok: false,
+          error: "Content blocked — illegal material detected",
+          code: "CONTENT_BLOCKED_CSAM",
+        });
+      }
+
+      if (scanResult.category === BLOCK_CATEGORIES.VIOLENCE_THREAT || scanResult.category === BLOCK_CATEGORIES.TERRORISM || scanResult.category === BLOCK_CATEGORIES.NCII) {
+        // Threats, terrorism, NCII: block + ban
+        if (db && userId !== "anonymous") {
+          try { banAccount(db, tokenBlacklist, userId, `${scanResult.category} content`, scanResult.category); } catch (_) {}
+        }
+        return res.status(403).json({
+          ok: false,
+          error: "Content blocked — prohibited material detected",
+          code: "CONTENT_BLOCKED",
+        });
+      }
+
+      if (scanResult.category === BLOCK_CATEGORIES.DRUG_SALES) {
+        // Drug sales: warning on first, ban on second
+        const offense = trackDrugSalesOffense(globalThis._concordSTATE, userId);
+        if (offense.action === "ban" && db && userId !== "anonymous") {
+          try { banAccount(db, tokenBlacklist, userId, "Repeated drug sales solicitation", "illegal_drug_sales"); } catch (_) {}
+        }
+        return res.status(403).json({
+          ok: false,
+          error: "Content blocked — prohibited material detected",
+          code: "CONTENT_BLOCKED_DRUGS",
+        });
+      }
+
+      // Generic block
+      return res.status(403).json({
+        ok: false,
+        error: "Content blocked — prohibited material detected",
+        code: "CONTENT_BLOCKED",
+      });
+    }
+
+    // Flagged content: attach flag for downstream handlers but don't block
+    if (scanResult.flagged) {
+      req.contentFlag = scanResult;
+
+      // Run existing content-moderation.js auto-scan for flagged content
+      try {
+        moderationScanContent(globalThis._concordSTATE, combined, req.body?.id || "pending", "text");
+      } catch (_) { /* non-critical */ }
+    }
+
+  } catch (_) {
+    // Content guard NEVER blocks the request pipeline on its own errors
   }
+
+  next();
+}
+
+// ---- Security Intelligence Request Scanner ----
+// Scans incoming POST/PUT bodies through the security matcher (layers 1-3, synchronous).
+// Flags and logs hits, only blocks when action is "blocked" (critical/high severity).
+// Full async scan (layer 4 embedding) runs in background on flagged content.
+function securityScanMiddleware(req, res, next) {
+  const method = req.method.toUpperCase();
+  if (method !== "POST" && method !== "PUT" && method !== "PATCH") return next();
+  if (!req.body) return next();
+
+  // Get security matcher from global state (set up during server init)
+  const matcher = globalThis._concordSecurityMatcher;
+  if (!matcher) return next();
+
+  try {
+    // Build scan content from body
+    const bodyStr = typeof req.body === "string" ? req.body : JSON.stringify(req.body);
+    if (!bodyStr || bodyStr.length < 5) return next();
+
+    // Quick scan: layers 1-3 (synchronous, no embedding)
+    const result = matcher.quickScan({
+      content: bodyStr.slice(0, 50000), // Cap at 50KB for scanning
+      target: req.path,
+      sessionId: req.headers["x-session-id"] || undefined,
+    });
+
+    if (result.matched) {
+      // Attach scan result to request for downstream handlers
+      req.securityScan = result;
+
+      // Log the detection
+      structuredLog("warn", "security_scan_hit", {
+        path: req.path,
+        method,
+        severity: result.severity,
+        action: result.action,
+        layer: result.layer,
+        ip: req.ip,
+        userId: req.user?.id || "anonymous",
+      });
+
+      // Block only if action is "blocked" (critical/high severity)
+      if (result.action === "blocked") {
+        return res.status(403).json({
+          ok: false,
+          error: "Request blocked by security scanner",
+          code: "SECURITY_BLOCKED",
+          severity: result.severity,
+        });
+      }
+
+      // For non-blocking matches, trigger async deep scan (layer 4) in background
+      if (result.severity === "medium" || result.severity === "high") {
+        matcher.scan({
+          content: bodyStr.slice(0, 50000),
+          deepScan: true,
+          target: req.path,
+          sessionId: req.headers["x-session-id"] || undefined,
+        }).catch(() => {}); // fire-and-forget
+      }
+    }
+  } catch (_) {
+    // Security scanner NEVER blocks the request pipeline on errors
+  }
+
   next();
 }
 
@@ -989,7 +1196,6 @@ class CircuitBreaker {
 // Shared breakers for external services
 const BREAKERS = {
   ollama: new CircuitBreaker("ollama", { threshold: 5, resetMs: 30000 }),
-  openai: new CircuitBreaker("openai", { threshold: 3, resetMs: 60000 }),
   stripe: new CircuitBreaker("stripe", { threshold: 3, resetMs: 60000 }),
 };
 
@@ -1348,22 +1554,21 @@ const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
 const BCRYPT_ROUNDS = Number(process.env.BCRYPT_ROUNDS || 12);
 const RATE_LIMIT_WINDOW_MS = Number(process.env.RATE_LIMIT_WINDOW_MS || 60000);
 const RATE_LIMIT_MAX = Number(process.env.RATE_LIMIT_MAX || 300);
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
-const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL || "https://api.openai.com/v1";
-const OPENAI_MODEL_FAST = process.env.OPENAI_MODEL_FAST || process.env.OPENAI_MODEL || "gpt-4o-mini";
-const OPENAI_MODEL_SMART = process.env.OPENAI_MODEL_SMART || "gpt-4.1";
-let LLM_READY = Boolean(OPENAI_API_KEY);
-// Also mark LLM ready if conscious brain becomes available (updated in initThreeBrains)
+// Brain model aliases (replaces former LLM_MODEL_FAST/SMART)
+const LLM_MODEL_FAST = process.env.BRAIN_SUBCONSCIOUS_MODEL || "qwen2.5:1.5b";
+const LLM_MODEL_SMART = process.env.BRAIN_CONSCIOUS_MODEL || "qwen2.5:7b";
+let LLM_READY = false;
+// Mark LLM ready when conscious brain becomes available (updated in initThreeBrains)
 function _refreshLlmReady() {
-  LLM_READY = Boolean(OPENAI_API_KEY) || (BRAIN && BRAIN.conscious && BRAIN.conscious.enabled);
+  LLM_READY = Boolean(BRAIN && BRAIN.conscious && BRAIN.conscious.enabled);
 }
-// LLM toggle: default ON only when a key is present
+// LLM toggle: default ON only when a brain is configured
 const __envBool = (v) => String(v ?? "").toLowerCase().trim();
 const __llmDefaultForcedRaw = (process.env.CONCORD_LLM_DEFAULT_FORCED ?? process.env.LLM_DEFAULT_FORCED ?? null);
 const __llmForced = (__llmDefaultForcedRaw !== null) ? __envBool(__llmDefaultForcedRaw) : "";
 const DEFAULT_LLM_ON = (__llmDefaultForcedRaw !== null)
   ? (["1","true","yes","y","on"].includes(__llmForced))
-  : Boolean((process.env.OPENAI_API_KEY || "").trim()) || Boolean(process.env.BRAIN_CONSCIOUS_URL || process.env.OLLAMA_HOST);
+  : Boolean(process.env.BRAIN_CONSCIOUS_URL || process.env.OLLAMA_HOST);
 
 
 // ---- Terminal / sandbox execution gate ----
@@ -1534,8 +1739,7 @@ const CAPS = Object.freeze({
   helmet:       Boolean(helmet),
   compression:  Boolean(compression),
   // LLM
-  openai:       Boolean(OPENAI_API_KEY),
-  ollama:       Boolean((process.env.OLLAMA_HOST || "").trim()),
+  ollama:       Boolean((process.env.OLLAMA_HOST || process.env.BRAIN_CONSCIOUS_URL || "").trim()),
   // Unsafe surfaces (off by default)
   exec:         TERMINAL_EXEC_ENABLED,
   // Federation
@@ -1545,7 +1749,7 @@ const CAPS = Object.freeze({
   // Voice / media (presence of external binaries)
   whisper:      Boolean((process.env.WHISPER_CPP_BIN || "").trim()),
   piper:        Boolean((process.env.PIPER_BIN || "").trim()),
-  imagegen:     Boolean((process.env.SD_URL || process.env.COMFYUI_URL || "").trim()) || Boolean(OPENAI_API_KEY),
+  imagegen:     Boolean((process.env.SD_URL || process.env.COMFYUI_URL || "").trim()),
 });
 
 structuredLog("info", "capabilities_loaded", { caps: CAPS });
@@ -3498,6 +3702,7 @@ const STATE = {
   lensDomainIndex: new Map(), // domain → Set<artifactId> — O(1) domain lookup
   // v4: User Universes (local/global multiverse substrate)
   userUniverses: new Map(), // userId → { userId, localDTUs: Map, localLensArtifacts: Map, syncedFromGlobal: Set, preferences, stats, discoveryLog }
+  userTicks: new Map(), // userId → { timer, tickCount, lastTick } — per-user heartbeat timers
   globalThread: { councilQueue: [], acceptedContributions: [] }, // council submission queue + audit trail
   __chicken2: {
     enabled: true,
@@ -4364,9 +4569,9 @@ const _TOKEN_BLACKLIST = {
         // Track JTI in per-user set so revokeAllForUser can find them
         if (userId) {
           const userSetKey = REDIS_CONFIG.prefix + "user-tokens:" + userId;
-          redisClient.sAdd(userSetKey, jti).catch(() => {});
+          redisClient.sAdd(userSetKey, jti).catch(e => logger.debug?.('server', 'async op failed (non-blocking)', { error: e?.message }));
           // Set TTL on the user set to auto-clean (use longest reasonable token lifetime)
-          redisClient.expire(userSetKey, Math.ceil(ttlMs / 1000) + 3600).catch(() => {});
+          redisClient.expire(userSetKey, Math.ceil(ttlMs / 1000) + 3600).catch(e => logger.debug?.('server', 'async op failed (non-blocking)', { error: e?.message }));
         }
       }
     }
@@ -4424,10 +4629,10 @@ const _TOKEN_BLACKLIST = {
                 const entry = JSON.parse(raw);
                 entry.revokedAt = now;
                 const ttlSec = Math.max(1, Math.ceil((entry.expiresAt - now) / 1000));
-                redisClient.setEx(redisKey, ttlSec, JSON.stringify(entry)).catch(() => {});
+                redisClient.setEx(redisKey, ttlSec, JSON.stringify(entry)).catch(e => logger.debug?.('server', 'async op failed (non-blocking)', { error: e?.message }));
               } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
             }
-          }).catch(() => {});
+          }).catch(e => logger.debug?.('server', 'async op failed (non-blocking)', { error: e?.message }));
           // Also ensure it's in our in-memory Map
           if (!this.revoked.has(jti)) {
             this.revoked.set(jti, { revokedAt: now, expiresAt: now + 7 * 86400000, userId });
@@ -4808,7 +5013,59 @@ function cookieParserMiddleware(req, res, next) {
   next();
 }
 
-// Auth middleware
+/**
+ * Opportunistic auth resolution — populates req.user if credentials are present,
+ * but does NOT reject the request if auth fails. Used for open routes where we
+ * want session/identity tracking but don't require login.
+ */
+function _tryResolveUser(req) {
+  try {
+    // Try JWT cookie
+    if (AUTH_USES_JWT) {
+      const cookieToken = req.cookies?.concord_auth;
+      if (cookieToken) {
+        const decoded = verifyToken(cookieToken);
+        if (decoded?.userId) {
+          const user = AuthDB.getUser(decoded.userId);
+          if (user) { req.user = user; req.authMethod = "cookie"; return; }
+        }
+      }
+      // Try Bearer token
+      const authHeader = req.headers.authorization || "";
+      if (authHeader.startsWith("Bearer ")) {
+        const decoded = verifyToken(authHeader.slice(7));
+        if (decoded?.userId) {
+          const user = AuthDB.getUser(decoded.userId);
+          if (user) { req.user = user; req.authMethod = "jwt"; return; }
+        }
+      }
+    }
+    // Try API key
+    if (AUTH_USES_APIKEY) {
+      const apiKey = req.headers["x-api-key"];
+      if (apiKey) {
+        const incomingHash = hashApiKey(apiKey);
+        const allKeys = AuthDB.getAllApiKeys();
+        for (const key of allKeys) {
+          if (key.keyHash && key.keyHash === incomingHash) {
+            const user = AuthDB.getUser(key.userId);
+            if (user) { req.user = user; req.apiKeyData = key; req.authMethod = "apiKey"; return; }
+            break;
+          }
+        }
+      }
+    }
+    // Try entity header (emergents/entities acting on their own behalf)
+    const entityId = req.headers["x-entity-id"];
+    if (entityId) {
+      req.entityId = entityId;
+      req.authMethod = "entity";
+    }
+  } catch (_) { /* opportunistic — failures are silent */ }
+}
+
+// Auth middleware — Selective route protection for pre-launch
+// Logic: Protected routes REQUIRE auth. Everything else is open (with rate limiting applied separately).
 function authMiddleware(req, res, next) {
   if (AUTH_MODE === "public") {
     // Public mode: auth isn't REQUIRED, but if the client sent a
@@ -4837,11 +5094,38 @@ function authMiddleware(req, res, next) {
     return next();
   }
 
-  // Skip auth for always-public endpoints (any method)
-  const alwaysPublic = ["/health", "/ready", "/metrics", "/api/auth/login", "/api/auth/register", "/api/auth/refresh", "/api/auth/csrf-token", "/api/auth/google", "/api/auth/apple", "/api/auth/providers", "/api/docs", "/api/status", "/api/chat", "/api/brain/conscious"];
-  if (alwaysPublic.some(p => req.path.startsWith(p))) return next();
+  // ── ALWAYS OPEN (no auth, no rate limit) ──────────────────────────────
+  const ALWAYS_OPEN = [
+    "/api/status", "/api/health", "/health", "/ready", "/metrics",
+    "/api/auth/csrf-token", "/api/auth/login", "/api/auth/register",
+    "/api/auth/refresh", "/api/auth/google", "/api/auth/apple", "/api/auth/providers",
+    "/api/docs",
+  ];
+  if (ALWAYS_OPEN.some(p => req.path.startsWith(p))) return next();
 
-  // Sovereign-only route protection
+  // ── PROTECTED ROUTES — require authentication ─────────────────────────
+  // These are admin, destructive, or financial operations that non-users must never access.
+  const PROTECTED_ROUTES = [
+    "/api/admin",
+    "/api/sovereign",
+    "/api/economy/withdraw",
+    "/api/economy/transfer",
+    "/api/economy/mint",
+    "/api/economy/redistribute",
+    "/api/auth/delete",
+    "/api/system/shutdown",
+    "/api/system/reset",
+    "/api/emergent/kill",
+    "/api/emergent/reproduce",
+    "/api/repair/execute",
+    "/api/backup",
+    "/api/migration",
+    "/api/reproduction/enable",
+    "/api/reproduction/disable",
+    "/api/entity/kill",
+  ];
+
+  // Sovereign-only subset — must be sovereign role after auth
   const SOVEREIGN_ROUTES = [
     "/api/sovereign",
     "/api/admin/sovereign",
@@ -4849,115 +5133,23 @@ function authMiddleware(req, res, next) {
     "/api/reproduction/disable",
     "/api/entity/kill",
     "/api/system/shutdown",
+    "/api/system/reset",
     "/api/economy/mint",
     "/api/economy/redistribute",
   ];
 
-  // If this is a sovereign route, do NOT allow the publicReadPaths bypass below.
-  // Force authentication first, then check role after auth resolves.
-  const _isSovereignRoute = SOVEREIGN_ROUTES.some(route => req.path.startsWith(route));
+  const isProtected = PROTECTED_ROUTES.some(r => req.path.startsWith(r));
+  const _isSovereignRoute = SOVEREIGN_ROUTES.some(r => req.path.startsWith(r));
 
-  // Skip auth for public-read endpoints (GET only)
-  // CRITICAL: Every frontend GET route must be listed here (Gate 1 of 3)
-  const publicReadPaths = [
-    // Core data
-    "/api/dtus", "/api/dtu", "/api/lenses", "/api/lens", "/api/emergent", "/api/knowledge",
-    "/api/search", "/api/species", "/api/events", "/api/schema",
-    // Settings, metrics & context
-    "/api/settings", "/api/growth", "/api/metrics", "/api/context",
-    // System
-    "/api/brain", "/api/system", "/api/cognitive", "/api/status",
-    "/api/backpressure", "/api/embeddings", "/api/pwa",
-    // Governance & lattice
-    "/api/lattice", "/api/guidance", "/api/graph", "/api/scope",
-    "/api/inspect", "/api/worldmodel", "/api/council", "/api/resonance",
-    // Chat & AI
-    "/api/chat", "/api/ask", "/api/forge",
-    // Atlas & Signal Cortex
-    "/api/atlas",
-    "/api/atlas/signals", "/api/atlas/privacy",
-    // Plugins & extensions
-    "/api/plugins", "/api/macros",
-    // Growth & entities
-    "/api/entity-growth", "/api/entity-exploration", "/api/goals",
-    "/api/hypothesis",
-    // Analytics & metrics
-    "/api/analytics", "/api/intelligence", "/api/precompute",
-    "/api/perf", "/api/distillation",
-    // Collaboration
-    "/api/collab", "/api/social",
-    // Content pipelines
-    "/api/autogen", "/api/dream", "/api/evolution", "/api/synthesize",
-    "/api/ingest", "/api/digest", "/api/daily",
-    // Economy & marketplace
-    "/api/economy", "/api/marketplace", "/api/credits",
-    "/api/distribution", "/api/stripe",
-    // Agent systems
-    "/api/agents", "/api/personas", "/api/automations",
-    // Specialized domains
-    "/api/affect", "/api/attention", "/api/commonsense",
-    "/api/explanation", "/api/grounding", "/api/hive",
-    "/api/inference", "/api/metacognition", "/api/metalearning",
-    "/api/reasoning", "/api/reflection", "/api/temporal",
-    "/api/voice", "/api/visual",
-    // Content management
-    "/api/artifacts", "/api/notifications", "/api/reminders",
-    "/api/webhooks", "/api/webhooks-metrics", "/api/whiteboard",
-    "/api/whiteboards", "/api/queue", "/api/jobs",
-    // Learning & review
-    "/api/srs", "/api/skill", "/api/onboarding",
-    // Import/export
-    "/api/obsidian", "/api/notion",
-    // RBAC & compliance
-    "/api/rbac", "/api/compliance",
-    // Studio & artistry
-    "/api/studio", "/api/artistry",
-    // Misc
-    "/api/heal", "/api/cache", "/api/redis", "/api/efficiency",
-    "/api/model-optimizer", "/api/lens-items", "/api/mobile",
-    "/api/global", "/api/sovereign", "/api/autotag",
-    "/api/ml", "/api/db", "/api/preview-action", "/api/undo",
-    "/api/autocrawl", "/api/reseed", "/api/integrations",
-    "/api/swarm", "/api/utility",
-    // Extended domains (three-gate audit)
-    "/api/ai", "/api/federation", "/api/quests", "/api/physics",
-    "/api/admin", "/api/heartbeat", "/api/entity-economy",
-    "/api/culture", "/api/research", "/api/quest",
-    "/api/reproduction", "/api/lineage", "/api/teaching",
-    "/api/trust", "/api/creative", "/api/rights",
-    "/api/resonance", "/api/sse",
-    // Artifact & feedback
-    "/api/artifact", "/api/feedback",
-    // Export (GET only)
-    "/api/export",
-    // Repair cortex v3.1 (frontend error reporting must work without auth)
-    "/api/repair",
-    // Dual Global & Creative Registry (public discovery)
-    "/api/scope", "/api/creative",
-    // Missing frontend routes (three-gate audit scan)
-    "/api/bridge", "/api/brief", "/api/experience", "/api/explore",
-    "/api/flywheel", "/api/freshness", "/api/global",
-    "/api/inheritance", "/api/org", "/api/pipeline",
-    "/api/quality", "/api/shared-session", "/api/sovereignty",
-    "/api/substrate", "/api/transfer", "/api/v1",
-    "/api/economics", "/api/agent",
-    // Real-time data feeds + universal export
-    "/api/realtime", "/api/convert",
-    "/api/apps",
-    // Concord Shield security module
-    "/api/shield",
-    // Concord Mesh network transport
-    "/api/mesh",
-    // Foundation Sovereignty modules
-    "/api/foundation",
-    // Foundation Atlas signal tomography
-    "/api/atlas",
-  ];
-  if (req.method === "GET" && !_isSovereignRoute && publicReadPaths.some(p => req.path.startsWith(p))) return next();
-  // Gate 1 POST bypass: allow /api/repair POST without auth (frontend error fallback path)
-  if (req.method === "POST" && req.path.startsWith("/api/repair")) return next();
-  // Gate 1 POST bypass: allow creative registry POST without auth (public discovery)
-  if (req.method === "POST" && req.path.startsWith("/api/creative/registry")) return next();
+  // If the route is NOT protected, allow through (open for pre-launch).
+  // Auth is still attempted opportunistically below so req.user is populated
+  // for session tracking, but failure doesn't block access.
+  if (req.path.startsWith("/api/") && !isProtected) {
+    // Opportunistic auth: try to resolve user identity for session tracking
+    // but don't block if auth fails — user can still use the app
+    _tryResolveUser(req);
+    return next();
+  }
 
   // Check Authorization header
   const authHeader = req.headers.authorization || "";
@@ -6033,7 +6225,6 @@ const _LLM_BUDGET = {
   MAX_PER_USER_ENTRIES: 50000,
 
   // Budget limits — effectively disabled for local Ollama (no API cost)
-  // checkBudget() short-circuits when no OPENAI_API_KEY is configured
   globalBudgetTokens: Number(process.env.LLM_BUDGET_TOKENS || 999999999),
   perUserBudgetTokens: Number(process.env.LLM_USER_BUDGET_TOKENS || 999999999),
   maxRetries: Number(process.env.LLM_MAX_RETRIES || 3),
@@ -6071,7 +6262,7 @@ const _LLM_BUDGET = {
 
   checkBudget(userId) {
     // Local Ollama = free tokens, no budget needed
-    if (!process.env.OPENAI_API_KEY) return { allowed: true };
+    return { allowed: true };
 
     // Reset global window if over 24h
     if (Date.now() - this.windowStart > 86400000) {
@@ -6259,7 +6450,7 @@ async function tryInitWebSockets(server) {
   const io = new Server(server, {
     cors: {
       origin: NODE_ENV === "production"
-        ? (process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(",").map(o => o.trim()) : [])
+        ? (process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(",").map(o => o.trim()) : true)
         : ["http://localhost:3000", "http://127.0.0.1:3000"],
       methods: ["GET", "POST"],
       credentials: true
@@ -6381,6 +6572,12 @@ async function tryInitWebSockets(server) {
 
     // Send hello
     socket.emit("hello", { clientId, version: VERSION, ts: nowISO(), authenticated: socket.data.authenticated });
+
+    // Start per-user tick if authenticated (drives personal DTU growth)
+    if (socket.data.userId) {
+      getOrCreateUserUniverse(socket.data.userId);
+      startUserTick(socket.data.userId);
+    }
 
     // Room management
     socket.on("room:join", ({ room }) => {
@@ -7203,9 +7400,18 @@ async function tryInitWebSockets(server) {
         try { socket.to("voice").emit("voice:peer-left", { peerId: socket.id }); } catch (_e) { /* ignore */ }
       }
       REALTIME.clients.delete(clientId);
+      // Stop per-user tick if no remaining connections for this user
+      if (socket.data.userId) {
+        const hasOtherConnections = [...REALTIME.clients.values()]
+          .some(c => c.userId === socket.data.userId);
+        if (!hasOtherConnections) {
+          stopUserTick(socket.data.userId);
+        }
+      }
     });
 
-    socket.on("error", () => {
+    socket.on("error", (err) => {
+      logger.warn?.('[realtime] socket error', { clientId, error: err?.message || String(err) });
       REALTIME.clients.delete(clientId);
     });
   });
@@ -7308,8 +7514,8 @@ async function tryInitNativeWebSockets(server) {
       } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
     });
 
-    ws.on("close", () => { try { REALTIME.clients.delete(clientId); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); } });
-    ws.on("error", () => { try { REALTIME.clients.delete(clientId); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); } });
+    ws.on("close", (code, reason) => { try { logger.debug?.('server', 'ws closed', { clientId, code, reason: reason?.toString() }); REALTIME.clients.delete(clientId); } catch (_e) { logger.debug('server', 'ws close cleanup failed', { error: _e?.message }); } });
+    ws.on("error", (err) => { try { logger.warn?.('server', 'ws error', { clientId, error: err?.message || String(err) }); REALTIME.clients.delete(clientId); } catch (_e) { logger.debug('server', 'ws error cleanup failed', { error: _e?.message }); } });
   });
 
   structuredLog("info", "websocket_enabled", { port: PORT });
@@ -7871,7 +8077,7 @@ try {
 try {
   if (STATE && STATE.settings) {
     if (__llmDefaultForcedRaw !== null) STATE.settings.llmDefault = DEFAULT_LLM_ON;
-    else if ((process.env.OPENAI_API_KEY || "").trim() || process.env.BRAIN_CONSCIOUS_URL || process.env.OLLAMA_HOST) STATE.settings.llmDefault = true;
+    else if (process.env.BRAIN_CONSCIOUS_URL || process.env.OLLAMA_HOST) STATE.settings.llmDefault = true;
   }
 } catch (e) {
   structuredLog("warn", "boot_normalization_failed", { error: String(e?.message || e) });
@@ -8597,9 +8803,9 @@ async function runMacro(domain, name, input, ctx) {
   const _path = ctx?.reqMeta?.path || "";
   const _method = (ctx?.reqMeta?.method || "").toUpperCase();
 
-  // publicReadDomains: domain+name allowlist for read-only macros
   // publicReadDomains: domain+name allowlist for read-only macros (Gate 2 of 3)
   // CRITICAL: Every frontend macro call domain must be listed here
+  // Also exposed as _publicReadDomainsACL for the macro ACL viewer bypass
   const publicReadDomains = {
     emergent: new Set(["status", "get", "list", "schema", "patterns", "reputation", "scope.metrics", "bridge.heartbeatTick"]),
     dtu: new Set(["list", "get", "search", "recent", "stats", "count", "export", "paginated", "create", "update", "delete", "bulkCreate", "promote"]),
@@ -8611,19 +8817,22 @@ async function runMacro(domain, name, input, ctx) {
     guidance: new Set(["suggestions", "status"]),
     graph: new Set(["visual", "visualData", "forceGraph", "edges", "stats", "neighbors"]),
     events: new Set(["list", "recent", "log", "paginated"]),
-    worldmodel: new Set(["list_relations", "get", "status", "entities", "simulations"]),
+    worldmodel: new Set(["list_relations", "list_entities", "get", "get_entity", "create_entity", "update_entity", "delete_entity", "create_relation", "status", "entities", "simulations", "simulate"]),
     goals: new Set(["list", "get", "status", "config"]),
     council: new Set(["tally", "status", "list"]),
-    hypothesis: new Set(["list", "get", "status"]),
+    hypothesis: new Set(["list", "get", "status", "propose", "evaluate", "record_evidence", "design_experiment"]),
+    "loaf.hypothesis": new Set(["list", "status", "get_influence", "influence_leaderboard", "propose", "resolve"]),
+    "loaf.truth": new Set(["status", "list", "challenge", "stabilize", "decay", "rollback", "detect_fractures", "robustness", "stress_test", "rollback_log"]),
+    "loaf.action_safety": new Set(["status", "record_observation", "check_throttle", "list_decisions"]),
     analytics: new Set(["dashboard", "growth", "density", "citations", "marketplace", "personal"]),
     atlas: new Set(["status", "get", "list", "scope", "config", "thresholds", "autogen", "chat", "contradictions", "score-explain", "submission", "search", "antigaming", "rights", "write-guard", "scope-metrics", "local-hints", "tile", "volume", "material", "subsurface", "change", "coverage", "live", "metrics"]),
     agents: new Set(["list", "get", "status"]),
     personas: new Set(["list", "get"]),
     affect: new Set(["state", "events", "health", "system", "policy"]),
     attention: new Set(["status", "get"]),
-    metacognition: new Set(["status", "predictions"]),
+    metacognition: new Set(["status", "predictions", "blind_spots", "calibration", "introspection_status", "predict", "resolve_prediction", "assess", "introspect", "select_strategy"]),
     metalearning: new Set(["strategies", "status"]),
-    reasoning: new Set(["chains", "steps", "status"]),
+    reasoning: new Set(["chains", "steps", "status", "list_chains", "create_chain", "add_step", "conclude", "get_trace", "validate_step"]),
     reflection: new Set(["status", "list"]),
     temporal: new Set(["status", "get"]),
     inference: new Set(["status", "traces", "spans", "threads", "checkpoints", "sandboxes", "costs", "query"]),
@@ -8644,8 +8853,10 @@ async function runMacro(domain, name, input, ctx) {
     queue: new Set(["list", "status"]),
     cache: new Set(["status"]),
     cognitive: new Set(["status"]),
+    loaf: new Set(["status"]),
     brain: new Set(["status", "health"]),
     species: new Set(["registry", "census", "all", "get"]),
+    chat: new Set(["tools", "context", "summary"]),
     onboarding: new Set(["hints", "progress"]),
     srs: new Set(["status", "get"]),
     skill: new Set(["gaps"]),
@@ -8706,6 +8917,10 @@ async function runMacro(domain, name, input, ctx) {
     cortex: new Set(["taxonomy", "unknown", "anomalies", "classify", "spectrum", "privacy.zones", "privacy.verify", "privacy.stats", "metrics"]),
     city: new Set(["list", "get", "status", "startStream", "endStream", "followStream", "unfollowStream", "listStreams", "getStream"]),
   };
+  // Populate the module-level ACL reference on first call so _canRunMacro can use it
+  if (!_publicReadDomainsACL) {
+    _publicReadDomainsACL = new Map(Object.entries(publicReadDomains));
+  }
   const _domainSet = publicReadDomains[domain];
   const _domainNameAllowed = _domainSet ? _domainSet.has(name) : false;
 
@@ -8721,7 +8936,7 @@ async function runMacro(domain, name, input, ctx) {
     "/api/reasoning", "/api/reflection", "/api/temporal", "/api/inference",
     "/api/collab", "/api/social", "/api/economy", "/api/marketplace", "/api/credits",
     "/api/hive", "/api/heal", "/api/grounding", "/api/commonsense", "/api/explanation",
-    "/api/ingest", "/api/jobs", "/api/queue", "/api/cache", "/api/cognitive",
+    "/api/ingest", "/api/jobs", "/api/queue", "/api/cache", "/api/cognitive", "/api/loaf",
     "/api/onboarding", "/api/srs", "/api/skill", "/api/schema", "/api/daily",
     "/api/digest", "/api/entity-growth", "/api/entity-exploration",
     "/api/artifacts", "/api/notifications", "/api/reminders", "/api/webhooks",
@@ -8735,6 +8950,8 @@ async function runMacro(domain, name, input, ctx) {
     "/api/autogen", "/api/dream", "/api/evolution", "/api/synthesize",
     "/api/utility", "/api/swarm", "/api/forge", "/api/ask",
     "/api/intelligence", "/api/stripe",
+    // Film, Media & Game (Creative lenses 12-22)
+    "/api/film-studio", "/api/media", "/api/game",
     // Extended paths (three-gate audit)
     "/api/ai", "/api/federation", "/api/quests", "/api/physics",
     "/api/heartbeat", "/api/entity-economy",
@@ -8773,6 +8990,10 @@ async function runMacro(domain, name, input, ctx) {
     // Gate consistency: paths from Gate 1 that were missing in Gate 3
     "/api/macros", "/api/automations", "/api/webhooks-metrics",
     "/api/notion", "/api/undo", "/api/reseed", "/api/context",
+    // Podcast RSS feeds & newsletter public view
+    "/api/podcast", "/api/newsletter",
+    // Frontend route scan: missing prefixes (cdn info, health, organism, connective-tissue)
+    "/api/cdn", "/api/health", "/api/organism", "/api/connective-tissue",
   ];
   // Safe POST paths: chat and brain endpoints that must bypass Chicken2 for unauthenticated users
   const _safePostPaths = ["/api/chat", "/api/brain/conscious", "/api/repair", "/api/creative/registry", "/api/lens", "/api/forge", "/api/ask", "/api/dtus", "/api/social", "/api/economy", "/api/marketplace", "/api/collab", "/api/goals", "/api/media",
@@ -8791,7 +9012,14 @@ async function runMacro(domain, name, input, ctx) {
     (_method === "POST" && _safePostPaths.some(p => _path.startsWith(p))) ||
     (domain === "chat" && (name === "respond" || name === "feedback"));
 
-  if (!safeReadBypass) {
+  // Chicken2 bypass: authenticated human users skip the reality guard entirely.
+  // The guard is designed for autonomous entity/bot protection, not for blocking
+  // signed-in humans using the platform. Entity requests carry X-Entity-Id header.
+  const _isAuthenticatedHuman = ctx?.actor?.userId
+    && ctx.actor.userId !== "anon"
+    && !ctx?.reqMeta?.headers?.["x-entity-id"];
+
+  if (!safeReadBypass && !_isAuthenticatedHuman) {
     const c2 = inLatticeReality({ type:"macro", domain, name, input, ctx });
     if (!c2.ok) {
       const internalTick =
@@ -9446,40 +9674,7 @@ register("multimodal","vision_analyze", (ctx, input={}) => {
     }
   }
 
-  // Cloud fallback: OpenAI GPT-4 Vision
-  const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
-  if (OPENAI_API_KEY) {
-    const payload = {
-      model: "gpt-4o",
-      messages: [{
-        role: "user",
-        content: [
-          { type: "text", text: prompt },
-          { type: "image_url", image_url: { url: `data:image/jpeg;base64,${imageB64}` } }
-        ]
-      }],
-      max_tokens: 1000
-    };
-
-    const r = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${OPENAI_API_KEY}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(payload)
-    }).catch(_e => null);
-
-    if (!r || !r.ok) {
-      const errText = await r?.text().catch(() => "") || "";
-      return { ok:false, error:"OpenAI Vision API failed", status: r?.status || 0, detail: errText };
-    }
-    const j = await r.json().catch(() => null);
-    const content = j?.choices?.[0]?.message?.content || "";
-    return { ok:true, content, source: "openai_gpt4_vision" };
-  }
-
-  return { ok:false, error:"No vision backend configured. Set OLLAMA_URL or OPENAI_API_KEY" };
+  return { ok:false, error:"No vision backend configured. Set OLLAMA_URL with a vision model (e.g. llava)" };
   });
 }, { public:false });
 
@@ -9506,40 +9701,7 @@ register("multimodal","image_generate", (ctx, input={}) => {
     }
   }
 
-  // Cloud fallback: OpenAI DALL-E
-  const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
-  if (OPENAI_API_KEY) {
-    const size = String(input.size || "1024x1024"); // 1024x1024, 1792x1024, 1024x1792
-    const quality = String(input.quality || "standard"); // standard, hd
-    const model = String(input.model || "dall-e-3");
-
-    const r = await fetch("https://api.openai.com/v1/images/generations", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${OPENAI_API_KEY}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model,
-        prompt,
-        n: 1,
-        size,
-        quality,
-        response_format: "b64_json"
-      })
-    }).catch(_e => null);
-
-    if (!r || !r.ok) {
-      const errText = await r?.text().catch(() => "") || "";
-      return { ok:false, error:"OpenAI DALL-E API failed", status: r?.status || 0, detail: errText };
-    }
-    const j = await r.json().catch(() => null);
-    const imageB64 = j?.data?.[0]?.b64_json || "";
-    const revisedPrompt = j?.data?.[0]?.revised_prompt || prompt;
-    return { ok:true, image: imageB64, source: "openai_dalle", revisedPrompt };
-  }
-
-  return { ok:false, error:"No image generation backend configured. Set SD_URL or OPENAI_API_KEY" };
+  return { ok:false, error:"No image generation backend configured. Set SD_URL or COMFYUI_URL" };
   });
 }, { public:false });
 
@@ -9561,51 +9723,7 @@ register("voice","transcribe", async (ctx, input={}) => {
     return { ok:true, transcript: out.trim(), source: "whisper_cpp" };
   }
 
-  // Cloud fallback: OpenAI Whisper API
-  const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
-  if (OPENAI_API_KEY) {
-    const audioBase64 = String(input.audioBase64 || "");
-    const audioPath = String(input.audioPath || "");
-    let audioBuffer = null;
-
-    if (audioBase64) {
-      audioBuffer = Buffer.from(audioBase64, "base64");
-    } else if (audioPath && fs.existsSync(audioPath)) {
-      audioBuffer = fs.readFileSync(audioPath);
-    }
-
-    if (!audioBuffer) return { ok:false, error:"audioBase64 or valid audioPath required" };
-
-    const FormData = (await import("node:buffer")).Blob ? globalThis.FormData : null;
-    if (!FormData) {
-      // Node 18+ has native FormData, use fetch with multipart
-      const boundary = `----formdata-${Date.now()}`;
-      const filename = "audio.webm";
-      const body = Buffer.concat([
-        Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${filename}"\r\nContent-Type: audio/webm\r\n\r\n`),
-        audioBuffer,
-        Buffer.from(`\r\n--${boundary}\r\nContent-Disposition: form-data; name="model"\r\n\r\nwhisper-1\r\n--${boundary}--\r\n`)
-      ]);
-
-      const r = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${OPENAI_API_KEY}`,
-          "Content-Type": `multipart/form-data; boundary=${boundary}`
-        },
-        body
-      }).catch(_e => null);
-
-      if (!r || !r.ok) {
-        const errText = await r?.text().catch(() => "") || "";
-        return { ok:false, error:"OpenAI Whisper API failed", status: r?.status || 0, detail: errText };
-      }
-      const j = await r.json().catch(() => null);
-      return { ok:true, transcript: j?.text || "", source: "openai_whisper" };
-    }
-  }
-
-  return { ok:false, error:"No transcription backend configured. Set WHISPER_CPP_BIN or OPENAI_API_KEY" };
+  return { ok:false, error:"No transcription backend configured. Set WHISPER_CPP_BIN" };
 }, { public:false });
 
 register("voice","tts", async (ctx, input={}) => {
@@ -9637,36 +9755,7 @@ register("voice","tts", async (ctx, input={}) => {
     return { ok:true, source: "piper", audioBase64: Buffer.from(p.stdout).toString("base64") };
   }
 
-  // Cloud fallback: OpenAI TTS API
-  const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
-  if (OPENAI_API_KEY) {
-    const voice = String(input.voice || "alloy"); // alloy, echo, fable, onyx, nova, shimmer
-    const model = String(input.model || "tts-1"); // tts-1 or tts-1-hd
-
-    const r = await fetch("https://api.openai.com/v1/audio/speech", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${OPENAI_API_KEY}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ model, input: text, voice, response_format: "mp3" })
-    }).catch(_e => null);
-
-    if (!r || !r.ok) {
-      const errText = await r?.text().catch(() => "") || "";
-      return { ok:false, error:"OpenAI TTS API failed", status: r?.status || 0, detail: errText };
-    }
-
-    const audioBuffer = Buffer.from(await r.arrayBuffer());
-    const outPath = String(input.outPath || "");
-    if (outPath) {
-      try { fs.writeFileSync(outPath, audioBuffer); } catch (e) { return { ok:false, error:"Failed to write OpenAI TTS audio file", detail: String(e) }; }
-      return { ok:true, outPath, source: "openai_tts", format: "mp3" };
-    }
-    return { ok:true, source: "openai_tts", format: "mp3", audioBase64: audioBuffer.toString("base64") };
-  }
-
-  return { ok:false, error:"No TTS backend configured. Set PIPER_BIN or OPENAI_API_KEY" };
+  return { ok:false, error:"No TTS backend configured. Set PIPER_BIN" };
 }, { public:false });
 
 register("tools","web_search", (ctx, input={}) => {
@@ -9683,7 +9772,7 @@ register("tools","web_search", (ctx, input={}) => {
 
   // Local-first default: DuckDuckGo HTML (no API key). If you run SearxNG locally, set SEARXNG_URL.
   const local = process.env.SEARXNG_URL || "";
-  const url = local ? `${local}/search?q=${encodeURIComponent(q)}&format=json` : `https://duckduckgo.com/html/?q=${encodeURIComponent(q)}`;
+  const url = local ? `${local}/search?q=${encodeURIComponent(q)}&format=json` : `https://html.duckduckgo.com/html/?q=${encodeURIComponent(q)}`;
   const r = await fetch(url, { method:"GET" }).catch(_e=>null);
   if (!r || !r.ok) return { ok:false, error:"search failed", status: r?.status || 0 };
 
@@ -9951,6 +10040,70 @@ register("goals", "config", (ctx, input = {}) => {
 }, { public: false });
 
 // ===== END GOAL SYSTEM MACROS =====
+
+// ===== CALENDAR / FITNESS / FOOD MACROS (used by agentTick) =====
+
+register("calendar", "upcoming", (ctx, input = {}) => {
+  const userId = input.userId || ctx?.userId;
+  const hoursAhead = input.hoursAhead || 4;
+  // Pull calendar events from lens data if available
+  const events = [];
+  for (const [id, item] of STATE.lensArtifacts || []) {
+    if (item.domain === "calendar" && item.ownerId === userId) {
+      const d = item.data || {};
+      if (d.startTime) {
+        const startMs = new Date(d.startTime).getTime();
+        const nowMs = Date.now();
+        const hoursUntil = (startMs - nowMs) / 3600000;
+        if (hoursUntil > 0 && hoursUntil <= hoursAhead) {
+          events.push({ id, title: item.title || d.title || "Event", description: d.description || "", hoursUntil: Math.round(hoursUntil * 10) / 10, startTime: d.startTime });
+        }
+      }
+    }
+  }
+  return { ok: true, events };
+});
+
+register("fitness", "today-schedule", (ctx, input = {}) => {
+  const userId = input.userId || ctx?.userId;
+  // Pull today's workout from lens data
+  const today = new Date().toISOString().slice(0, 10);
+  let workout = null;
+  for (const [, item] of STATE.lensArtifacts || []) {
+    if (item.domain === "fitness" && item.ownerId === userId) {
+      const d = item.data || {};
+      const itemDate = (d.date || item.createdAt || "").slice(0, 10);
+      if (itemDate === today && d.type === "workout") {
+        workout = { name: item.title || d.name || "Workout", exercises: d.exercises || [], duration: d.duration };
+        break;
+      }
+    }
+  }
+  return { ok: true, workout };
+});
+
+register("food", "todays-meals", (ctx, input = {}) => {
+  const userId = input.userId || ctx?.userId;
+  const today = new Date().toISOString().slice(0, 10);
+  const meals = [];
+  for (const [, item] of STATE.lensArtifacts || []) {
+    if (item.domain === "food" && item.ownerId === userId) {
+      const d = item.data || {};
+      const itemDate = (d.date || item.createdAt || "").slice(0, 10);
+      if (itemDate === today) {
+        meals.push({ name: item.title || d.name || "Meal", time: d.time || "", type: d.mealType || "meal" });
+      }
+    }
+  }
+  // Find next upcoming meal
+  const now = new Date();
+  const nextMeal = meals.find(m => {
+    if (!m.time) return false;
+    const [h, min] = m.time.split(":").map(Number);
+    return h > now.getHours() || (h === now.getHours() && (min || 0) > now.getMinutes());
+  }) || null;
+  return { ok: true, meals, nextMeal };
+});
 
 // ===== WORLD MODEL MACROS =====
 
@@ -11171,7 +11324,7 @@ function makeCtx(req=null) {
     env: {
       version: VERSION,
       llmReady: LLM_READY,
-      openaiModel: { fast: OPENAI_MODEL_FAST, smart: OPENAI_MODEL_SMART }
+      llmModel: { fast: LLM_MODEL_FAST, smart: LLM_MODEL_SMART }
     },
     affect: affectPolicy ? {
       policy: affectPolicy,
@@ -11259,18 +11412,17 @@ function makeCtx(req=null) {
     llm: {
       enabled: LLM_READY || (BRAIN.conscious && BRAIN.conscious.enabled),
       async chat({ system, messages, temperature=0.3, maxTokens=1500, model=null, timeoutMs=30000, dtuRefs, macroRefs, grcMode }) {
-        // ===== OLLAMA-FIRST ROUTING =====
-        // Sovereignty principle: always try local conscious brain first.
-        // Only fall back to OpenAI if Ollama is offline or fails.
+        // ===== OLLAMA BRAIN ROUTING =====
+        // Sovereignty principle: all inference stays local.
+        // Primary: conscious brain. Fallback: subconscious brain.
         const consciousAvailable = BRAIN.conscious && BRAIN.conscious.enabled;
-        const openaiAvailable = Boolean(OPENAI_API_KEY) && LLM_READY;
-        const useConscious = !OPENAI_API_KEY && BRAIN.conscious.enabled;
+        const subconsciousAvailable = BRAIN.subconscious && BRAIN.subconscious.enabled;
 
-        if (!consciousAvailable && !openaiAvailable) {
-          return { ok: false, reason: "LLM not configured (no conscious brain and no OPENAI_API_KEY)." };
+        if (!consciousAvailable && !subconsciousAvailable) {
+          return { ok: false, reason: "LLM not configured (no conscious or subconscious brain available)." };
         }
 
-        // ── Try Ollama conscious brain FIRST (local, free, sovereign) ──
+        // ── Try conscious brain FIRST (primary, user-facing) ──
         if (consciousAvailable) {
           const brainUrl = BRAIN.conscious.url;
           const brainModel = model || BRAIN.conscious.model;
@@ -11278,7 +11430,6 @@ function makeCtx(req=null) {
             ...(system ? [{ role: "system", content: system }] : []),
             ...(messages || [])
           ];
-          // Local models need more time than cloud — 120s for first call, 90s steady state
           const ollamaTimeout = Math.max(timeoutMs, 120000);
           const ac = new AbortController();
           const t = setTimeout(() => ac.abort(), ollamaTimeout);
@@ -11300,7 +11451,6 @@ function makeCtx(req=null) {
               structuredLog("info", "llm_ollama_primary", { brain: "conscious", model: brainModel, elapsed, tokens: json.eval_count || 0 });
               return { ok: true, content, raw: json, brain: "conscious", source: "ollama" };
             }
-            // Ollama responded but with error — log and fall through to OpenAI
             BRAIN.conscious.stats.errors++;
             structuredLog("warn", "llm_ollama_primary_error", { status: res.status, error: json?.error, elapsed });
           } catch (err) {
@@ -11308,61 +11458,46 @@ function makeCtx(req=null) {
             const elapsed = Date.now() - startMs;
             structuredLog("warn", "llm_ollama_primary_exception", { error: String(err?.message || err), elapsed });
           }
-          // If we reach here, Ollama failed — fall through to OpenAI ONLY as emergency
         }
 
-        // ── OpenAI EMERGENCY FALLBACK (cloud, costs money) ──
-        if (!openaiAvailable) {
-          return { ok: false, reason: "Conscious brain failed and no OpenAI fallback available." };
+        // ── Subconscious brain EMERGENCY FALLBACK (lighter model, more likely to respond) ──
+        if (!subconsciousAvailable) {
+          return { ok: false, reason: "Conscious brain failed and no subconscious fallback available." };
         }
-        structuredLog("warn", "llm_openai_emergency_fallback", { reason: "conscious_brain_failed" });
+        structuredLog("warn", "llm_subconscious_emergency_fallback", { reason: "conscious_brain_failed" });
 
-        // Budget & circuit breaker check
-        const userId = req?.user?.id || req?.actor?.id || null;
-        const budgetCheck = _LLM_BUDGET.checkBudget(userId);
-        if (!budgetCheck.allowed) {
-          structuredLog("warn", "llm_budget_blocked", { reason: budgetCheck.reason, userId });
-          return { ok: false, reason: `LLM request blocked: ${budgetCheck.reason}` };
-        }
-
-        const chosen = model || OPENAI_MODEL_FAST;
-        const payload = {
-          model: chosen,
-          temperature,
-          max_tokens: maxTokens,
-          messages: [
-            ...(system ? [{ role: "system", content: system }] : []),
-            ...(messages || [])
-          ]
-        };
-        const ac = new AbortController();
-        const t = setTimeout(() => ac.abort(), timeoutMs);
+        const fallbackUrl = BRAIN.subconscious.url;
+        const fallbackModel = BRAIN.subconscious.model;
+        const fallbackMessages = [
+          ...(system ? [{ role: "system", content: system }] : []),
+          ...(messages || [])
+        ];
+        const fallbackTimeout = Math.max(timeoutMs, 90000);
+        const ac2 = new AbortController();
+        const t2 = setTimeout(() => ac2.abort(), fallbackTimeout);
+        const startMs2 = Date.now();
         try {
-          const res = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
+          const res = await fetch(`${fallbackUrl}/api/chat`, {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${OPENAI_API_KEY}`
-            },
-            body: JSON.stringify(payload),
-            signal: ac.signal
-          }).finally(() => clearTimeout(t));
-          const text = await res.text().catch(()=> "");
-          const json = safeJson(text, null);
-          if (!res.ok) {
-            _LLM_BUDGET.recordFailure();
-            return { ok: false, status: res.status, error: json || text };
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ model: fallbackModel, messages: fallbackMessages, stream: false, options: { temperature, num_predict: maxTokens } }),
+            signal: ac2.signal
+          }).finally(() => clearTimeout(t2));
+          const json = await res.json().catch(() => ({}));
+          const elapsed = Date.now() - startMs2;
+          BRAIN.subconscious.stats.requests++;
+          BRAIN.subconscious.stats.totalMs += elapsed;
+          BRAIN.subconscious.stats.lastCallAt = new Date().toISOString();
+          if (res.ok && json.message?.content) {
+            const content = json.message.content ?? "";
+            structuredLog("info", "llm_subconscious_fallback_ok", { brain: "subconscious", model: fallbackModel, elapsed, tokens: json.eval_count || 0 });
+            return { ok: true, content, raw: json, brain: "subconscious", source: "ollama" };
           }
-          // ---- Track Token Usage (Category 6: Cost Controls) ----
-          const usage = json?.usage;
-          _LLM_BUDGET.recordUsage(userId, usage?.prompt_tokens, usage?.completion_tokens);
-          _LLM_BUDGET.recordSuccess();
-
-          const content = json?.choices?.[0]?.message?.content ?? "";
-          return { ok: true, content, raw: json };
-        } catch (llmErr) {
-          _LLM_BUDGET.recordFailure();
-          throw llmErr;
+          BRAIN.subconscious.stats.errors++;
+          return { ok: false, reason: "Both conscious and subconscious brains failed." };
+        } catch (err) {
+          BRAIN.subconscious.stats.errors++;
+          return { ok: false, reason: `All local brains unavailable: ${String(err?.message || err)}` };
         }
       }
     }
@@ -11895,6 +12030,42 @@ function upsertDTU(dtu, { broadcast = true, federate = false } = {}) {
       });
     } catch (e) { observe(e, "dtu_realtime_broadcast"); }
 
+    // Proactive initiative: notify user of new high-value DTU discovery
+    if (isNew && app._initiativeEngine && dtu.score >= 70) {
+      try {
+        const userId = dtu.userId || dtu.entityId || null;
+        if (userId && userId !== "system" && userId !== "event_bridge") {
+          const engine = app._initiativeEngine;
+          const evaluation = engine.evaluateTrigger(userId, "substrate_discovery", {
+            relevanceScore: Math.min(1.0, (dtu.score || 50) / 100),
+            timeSensitive: dtu.tier === "gold" || dtu.tier === "platinum",
+          });
+          if (evaluation.shouldFire) {
+            const initiative = engine.createInitiative(
+              userId,
+              "substrate_discovery",
+              `New discovery in your substrate: "${dtu.title}". Want to explore it?`,
+              {
+                priority: evaluation.suggestedPriority || "normal",
+                metadata: { dtuId: dtu.id, dtuTitle: dtu.title, domain: dtu.domain, cretiScore: dtu.score },
+              }
+            );
+            realtimeEmit("initiative:new", {
+              id: initiative.id,
+              triggerType: initiative.triggerType,
+              message: initiative.message,
+              priority: initiative.priority,
+              score: initiative.score,
+              status: initiative.status,
+              channel: initiative.channel,
+              metadata: initiative.metadata,
+              createdAt: initiative.createdAt,
+            });
+          }
+        }
+      } catch (_e) { /* best-effort initiative trigger */ }
+    }
+
     // Event-to-DTU bridge: internal dtu:created events become knowledge DTUs
     // Only for new DTUs that aren't already from the bridge (prevents recursion)
     if (isNew && dtu.source !== "event_bridge" && dtu.source !== "event_bridge_compression") {
@@ -11929,12 +12100,12 @@ function upsertDTU(dtu, { broadcast = true, federate = false } = {}) {
       createdAt: dtu.createdAt,
       updatedAt: dtu.updatedAt,
       hash: dtu.hash
-    }).catch(() => {});
+    }).catch(e => logger.debug?.('server', 'async op failed (non-blocking)', { error: e?.message }));
   }
 
   // ── Incremental embedding index: index on create/update, not full rebuild ──
   if (EMBEDDINGS.enabled) {
-    indexDTUEmbedding(dtu).catch(() => {}); // best-effort, async
+    indexDTUEmbedding(dtu).catch(e => logger.debug?.('server', 'async op failed (non-blocking)', { error: e?.message })); // best-effort, async
   }
 
   return dtu;
@@ -12693,7 +12864,7 @@ Respond with valid JSON only.`;
 
   try {
     const response = await llmChat([{ role: "user", content: prompt }], {
-      model: OPENAI_MODEL_FAST,
+      model: LLM_MODEL_FAST,
       temperature: 0.3,
       max_tokens: 1000
     });
@@ -12973,7 +13144,7 @@ async function chatWithLattice(query, { contextLimit = 5, sessionId: _sessionId 
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt }
     ], {
-      model: OPENAI_MODEL_FAST,
+      model: LLM_MODEL_FAST,
       temperature: 0.7,
       max_tokens: 1000
     });
@@ -13002,37 +13173,30 @@ if (String(process.env.EMBEDDINGS_ENABLED || "true").toLowerCase() === "true") {
 }
 
 // ============================================================================
-// LLM PIPELINE ORCHESTRATOR - Hybrid Local/Cloud AI
+// LLM PIPELINE ORCHESTRATOR - Local Ollama Brain Architecture
 // ============================================================================
 
 const LLM_PIPELINE = {
-  modes: ["local_only", "balanced", "quality_first"],
-  defaultMode: "local_first",  // Sovereignty: prefer local Ollama, OpenAI only on failure
+  modes: ["local_only", "local_first", "quality_first"],
+  defaultMode: "local_first",  // Sovereignty: all inference stays local
 
   // Provider status
   providers: {
     ollama: { enabled: false, url: null, model: "llama3.2" },
-    openai: { enabled: false, model: "gpt-4.1-mini" }
   }
 };
 
 // Initialize LLM providers
 function initLLMPipeline() {
-  // Use BRAIN_CONSCIOUS_URL as the primary Ollama URL (matches 4-brain architecture)
   const ollamaUrl = process.env.OLLAMA_URL || process.env.BRAIN_CONSCIOUS_URL || process.env.OLLAMA_HOST || "http://ollama:11434";
   LLM_PIPELINE.providers.ollama.url = ollamaUrl;
-  // Use BRAIN_CONSCIOUS_MODEL if set; fall back to OLLAMA_MODEL; last resort llama3.2
-  LLM_PIPELINE.providers.ollama.model = process.env.OLLAMA_MODEL || process.env.BRAIN_CONSCIOUS_MODEL || "qwen2.5:7b";
+  LLM_PIPELINE.providers.ollama.model = process.env.OLLAMA_MODEL || process.env.BRAIN_CONSCIOUS_MODEL || "qwen2.5:14b-instruct-q4_K_M";
   LLM_PIPELINE.providers.ollama.enabled = Boolean(ollamaUrl);
-
-  LLM_PIPELINE.providers.openai.enabled = Boolean(OPENAI_API_KEY);
-  LLM_PIPELINE.providers.openai.model = OPENAI_MODEL_FAST;
 
   structuredLog("info", "llm_pipeline_initialized", {
     ollama: LLM_PIPELINE.providers.ollama.enabled,
     ollamaUrl: ollamaUrl ? "configured" : null,
     ollamaModel: LLM_PIPELINE.providers.ollama.model,
-    openai: LLM_PIPELINE.providers.openai.enabled,
     defaultMode: LLM_PIPELINE.defaultMode
   });
 }
@@ -13087,137 +13251,15 @@ async function callOllama(prompt, options = {}) {
   }
 }
 
-// Call OpenAI (cloud)
-async function callOpenAI(prompt, options = {}) {
-  if (!OPENAI_API_KEY) return { ok: false, error: "OpenAI not configured" };
-
-  try {
-    const payload = {
-      model: options.model || LLM_PIPELINE.providers.openai.model,
-      messages: [{ role: "user", content: prompt }],
-      temperature: options.temperature || 0.7,
-      max_tokens: options.maxTokens || 500
-    };
-
-    const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${OPENAI_API_KEY}`
-      },
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(options.timeout || 30000)
-    });
-
-    if (!response.ok) {
-      // SECURITY: Never include raw API response text — it may echo auth headers
-      const statusCode = response.status;
-      return { ok: false, error: `OpenAI error: ${statusCode}` };
-    }
-
-    const data = await response.json();
-    return {
-      ok: true,
-      content: data.choices?.[0]?.message?.content || "",
-      source: "openai",
-      model: payload.model,
-      tokens: data.usage?.total_tokens || 0
-    };
-  } catch (e) {
-    return { ok: false, error: String(e.message || e), source: "openai" };
-  }
-}
-
-// HYBRID PIPELINE: The magic sauce
+// LLM PIPELINE: All inference routes through local Ollama brains
 async function llmPipeline(input, options = {}) {
-  const mode = options.mode || LLM_PIPELINE.defaultMode;
-  const { ollama, openai } = LLM_PIPELINE.providers;
+  const { ollama } = LLM_PIPELINE.providers;
 
-  // Mode: local_only - Privacy first, Ollama only
-  if (mode === "local_only") {
-    if (!ollama.enabled) {
-      return { ok: false, error: "Local mode requires Ollama", mode };
-    }
-    return callOllama(input, options);
+  if (!ollama.enabled) {
+    return { ok: false, error: "Ollama not configured", mode: LLM_PIPELINE.defaultMode };
   }
 
-  // Mode: local_first - Sovereignty: try Ollama, fall back to OpenAI on failure
-  if (mode === "local_first") {
-    if (ollama.enabled) {
-      const result = await callOllama(input, options);
-      if (result.ok) return result;
-      structuredLog("warn", "llm_local_first_fallback", { reason: result.error, fallback: "openai" });
-    }
-    if (openai.enabled) return callOpenAI(input, options);
-    if (ollama.enabled) return callOllama(input, options); // retry if no OpenAI
-    return { ok: false, error: "No LLM providers available", mode };
-  }
-
-  // Mode: quality_first - OpenAI only (fastest, best quality)
-  if (mode === "quality_first") {
-    if (!openai.enabled) {
-      // Fallback to Ollama if OpenAI not available
-      if (ollama.enabled) return callOllama(input, options);
-      return { ok: false, error: "No LLM providers available", mode };
-    }
-    return callOpenAI(input, options);
-  }
-
-  // Mode: balanced - THE HYBRID PIPELINE
-  // Step 1: Ollama generates rough draft (private, free)
-  // Step 2: OpenAI polishes (cheap, fast)
-
-  if (!ollama.enabled && !openai.enabled) {
-    return { ok: false, error: "No LLM providers available", mode };
-  }
-
-  // If only one provider available, use it
-  if (!ollama.enabled) return callOpenAI(input, options);
-  if (!openai.enabled) return callOllama(input, options);
-
-  // HYBRID: Draft with Ollama, polish with OpenAI
-  const draftResult = await callOllama(input, {
-    ...options,
-    maxTokens: Math.min(options.maxTokens || 500, 300) // Limit draft length
-  });
-
-  if (!draftResult.ok) {
-    // Ollama failed, fallback to OpenAI only
-    structuredLog("warn", "llm_ollama_fallback", { reason: "draft_failed", fallback: "openai" });
-    return callOpenAI(input, options);
-  }
-
-  // Polish the draft with OpenAI
-  const polishPrompt = `Improve and polish this text while preserving its meaning. Make it clearer and more coherent. Keep the same length or shorter.
-
-DRAFT:
-${draftResult.content}
-
-POLISHED VERSION:`;
-
-  const polishResult = await callOpenAI(polishPrompt, {
-    ...options,
-    maxTokens: Math.min(options.maxTokens || 500, 400),
-    temperature: 0.3 // Lower temp for polish
-  });
-
-  if (!polishResult.ok) {
-    // Polish failed, return draft
-    structuredLog("warn", "llm_openai_fallback", { reason: "polish_failed", fallback: "draft" });
-    return { ...draftResult, polished: false };
-  }
-
-  return {
-    ok: true,
-    content: polishResult.content,
-    source: "hybrid",
-    draft: draftResult.content,
-    draftSource: "ollama",
-    polishSource: "openai",
-    tokens: (draftResult.tokens || 0) + (polishResult.tokens || 0),
-    polished: true,
-    mode: "balanced"
-  };
+  return callOllama(input, options);
 }
 
 // Get pipeline status
@@ -13230,15 +13272,11 @@ function getLLMPipelineStatus() {
         model: LLM_PIPELINE.providers.ollama.model,
         url: LLM_PIPELINE.providers.ollama.url ? "configured" : null
       },
-      openai: {
-        enabled: LLM_PIPELINE.providers.openai.enabled,
-        model: LLM_PIPELINE.providers.openai.model
-      }
     },
     capabilities: {
       local_only: LLM_PIPELINE.providers.ollama.enabled,
-      balanced: LLM_PIPELINE.providers.ollama.enabled && LLM_PIPELINE.providers.openai.enabled,
-      quality_first: LLM_PIPELINE.providers.openai.enabled || LLM_PIPELINE.providers.ollama.enabled
+      local_first: LLM_PIPELINE.providers.ollama.enabled,
+      quality_first: LLM_PIPELINE.providers.ollama.enabled
     }
   };
 }
@@ -13255,6 +13293,19 @@ function setLLMPipelineMode(mode) {
 // Initialize on startup
 setTimeout(() => initLLMPipeline(), 100);
 
+// ── Federation Init (C-NET) ─────────────────────────────────────────────
+if (String(process.env.FEDERATION_ENABLED || "").toLowerCase() === "true") {
+  setTimeout(() => {
+    const fedResult = initFederation({
+      instanceId: process.env.CONCORD_INSTANCE_ID || undefined,
+      publicKey: process.env.CONCORD_PUBLIC_KEY || undefined,
+      capabilities: (process.env.CONCORD_CAPABILITIES || "").split(",").filter(Boolean),
+      registryUrl: process.env.CONCORD_REGISTRY_URL || undefined,
+    });
+    structuredLog("info", "federation_init", fedResult);
+  }, 200);
+}
+
 // ── LLM Queue + Circuit Breakers ──────────────────────────────────────────
 const _llmQueue = createLLMQueue({
   concurrency: parseInt(process.env.LLM_CONCURRENCY || "32", 10),
@@ -13270,9 +13321,8 @@ const _breakers = createBreakerRegistry({
   },
 });
 
-// Wrap callOllama and callOpenAI through breakers
+// Wrap callOllama through breakers
 const _rawCallOllama = callOllama;
-const _rawCallOpenAI = callOpenAI;
 
 async function callOllamaWithBreaker(prompt, options = {}) {
   return _breakers.ollama.call(
@@ -13281,22 +13331,10 @@ async function callOllamaWithBreaker(prompt, options = {}) {
   );
 }
 
-async function callOpenAIWithBreaker(prompt, options = {}) {
-  return _breakers.openai.call(
-    () => _rawCallOpenAI(prompt, options),
-    () => ({ ok: false, error: "openai_circuit_open", source: "openai" })
-  );
-}
-
 // Queued + breakered versions for external use
 function queuedOllamaCall(prompt, options = {}) {
   const priority = options._priority ?? PRIORITY.NORMAL;
   return _llmQueue.enqueue(() => callOllamaWithBreaker(prompt, options), priority);
-}
-
-function queuedOpenAICall(prompt, options = {}) {
-  const priority = options._priority ?? PRIORITY.NORMAL;
-  return _llmQueue.enqueue(() => callOpenAIWithBreaker(prompt, options), priority);
 }
 
 // Global llmChat() wrapper - routes all LLM calls through the pipeline
@@ -13362,7 +13400,7 @@ async function llmChat(messagesOrCtx, messagesOrOptions = {}, maybeOptions = {})
     }
   }
 
-  // Format response to match OpenAI chat format (for compatibility)
+  // Format response to match chat completion format (for compatibility)
   return {
     ok: true,
     text: result.content,
@@ -13492,7 +13530,7 @@ Heal well.`,
 const BRAIN = {
   conscious: {
     url: process.env.BRAIN_CONSCIOUS_URL || process.env.OLLAMA_HOST || "http://ollama-conscious:11434",
-    model: process.env.BRAIN_CONSCIOUS_MODEL || "qwen2.5:7b",
+    model: process.env.BRAIN_CONSCIOUS_MODEL || "qwen2.5:14b-instruct-q4_K_M",
     role: "chat, deep reasoning, complex queries",
     systemPrompt: BRAIN_IDENTITY.conscious,
     enabled: false,
@@ -13500,7 +13538,7 @@ const BRAIN = {
   },
   subconscious: {
     url: process.env.BRAIN_SUBCONSCIOUS_URL || "http://ollama-subconscious:11434",
-    model: process.env.BRAIN_SUBCONSCIOUS_MODEL || "qwen2.5:1.5b",
+    model: process.env.BRAIN_SUBCONSCIOUS_MODEL || "qwen2.5:7b",
     role: "autogen, dream, evolution, synthesis, birth",
     systemPrompt: BRAIN_IDENTITY.subconscious,
     enabled: false,
@@ -13508,7 +13546,7 @@ const BRAIN = {
   },
   utility: {
     url: process.env.BRAIN_UTILITY_URL || "http://ollama-utility:11434",
-    model: process.env.BRAIN_UTILITY_MODEL || "qwen2.5:3b",
+    model: process.env.BRAIN_UTILITY_MODEL || "qwen2.5:7b",
     role: "lens interactions, entity actions, quick domain tasks",
     systemPrompt: BRAIN_IDENTITY.utility,
     enabled: false,
@@ -13516,7 +13554,7 @@ const BRAIN = {
   },
   repair: {
     url: process.env.BRAIN_REPAIR_URL || "http://ollama-repair:11434",
-    model: process.env.BRAIN_REPAIR_MODEL || "qwen2.5:0.5b",
+    model: process.env.BRAIN_REPAIR_MODEL || "qwen2.5:7b",
     role: "error detection, auto-fix, runtime repair",
     systemPrompt: BRAIN_IDENTITY.repair,
     enabled: false,
@@ -13557,7 +13595,7 @@ async function initFiveBrains() {
             brain.enabled = true;
             _refreshLlmReady();
             structuredLog("info", "brain_model_pulled", { brain: name, model: brain.model });
-          }).catch(() => {});
+          }).catch(e => logger.debug?.('server', 'async op failed (non-blocking)', { error: e?.message }));
           brain.enabled = false; // Not ready until pull completes
         } else {
           brain.enabled = true;
@@ -15208,7 +15246,7 @@ async function consciousChat(userMessage, lens = null, options = {}) {
     }
 
     // Cache warming: associate similar queries with this response
-    warmRelatedQueries(userMessage, result.content, dtusArray).catch(() => {});
+    warmRelatedQueries(userMessage, result.content, dtusArray).catch(e => logger.debug?.('server', 'async op failed (non-blocking)', { error: e?.message }));
 
     return {
       ...result,
@@ -15607,7 +15645,7 @@ async function entityProduceLensArtifact(entity, lens) {
   // Quality gate: async spot-check, then apply shadow vault for entity production
   const artifactId = createResult.artifact?.id;
   if (artifactId) {
-    setImmediate(() => runEntityQualityGate(artifactId, entityId, lens).catch(() => {}));
+    setImmediate(() => runEntityQualityGate(artifactId, entityId, lens).catch(e => logger.debug?.('server', 'entity quality gate failed', { error: e?.message })));
   }
 
   // Record production experience (higher quality weight than exploration)
@@ -15841,13 +15879,11 @@ function getBrainStatus() {
     onlineCount,
     brains,
     routing: {
-      chatPrimary: BRAIN.conscious?.enabled ? "ollama_conscious" : (OPENAI_API_KEY ? "openai" : "none"),
-      chatFallback: BRAIN.conscious?.enabled && OPENAI_API_KEY ? "openai_emergency" : "none",
+      chatPrimary: BRAIN.conscious?.enabled ? "ollama_conscious" : "none",
+      chatFallback: BRAIN.subconscious?.enabled ? "ollama_subconscious_emergency" : "none",
       pipelineMode: LLM_PIPELINE.defaultMode,
       pipelineOllamaEnabled: LLM_PIPELINE.providers.ollama.enabled,
       pipelineOllamaModel: LLM_PIPELINE.providers.ollama.model,
-      pipelineOpenaiEnabled: LLM_PIPELINE.providers.openai.enabled,
-      openaiConfigured: Boolean(OPENAI_API_KEY),
       circuitBreakerOllama: (() => { try { return BREAKERS?.ollama?.getState?.()?.state || "unknown"; } catch { return "unknown"; } })(),
     },
     embeddings: getEmbeddingStatus(STATE.dtus.size),
@@ -16841,7 +16877,7 @@ Respond with valid JSON only: ["challenge1", "challenge2", ...]`;
 
   try {
     const response = await llmChat([{ role: "user", content: prompt }], {
-      model: OPENAI_MODEL_FAST,
+      model: LLM_MODEL_FAST,
       temperature: 0.8,
       max_tokens: 500
     });
@@ -16890,7 +16926,7 @@ Respond with valid JSON only: ["suggestion1", "suggestion2", ...]`;
 
   try {
     const response = await llmChat([{ role: "user", content: prompt }], {
-      model: OPENAI_MODEL_FAST,
+      model: LLM_MODEL_FAST,
       temperature: 0.7,
       max_tokens: 500
     });
@@ -17814,7 +17850,7 @@ async function pipelineCommitDTU(ctx, dtu, opts={}) {
     // ===== END AUTO WORLD MODEL UPDATE =====
 
     // ===== SEMANTIC EMBEDDING (async, never blocks) =====
-    embedDTU(dtu).catch(() => {});
+    embedDTU(dtu).catch(e => logger.debug?.('server', 'async op failed (non-blocking)', { error: e?.message }));
 
     // Keep high-tier sparse & maintain metrics periodically
     try { enforceTierBudgets(); } catch (e) { observe(e, "tier_budget_enforcement_post_dtu"); }
@@ -17926,10 +17962,15 @@ function pickDebateSet(query){
 
 // DTU domain
 register("dtu", "create", async (ctx, input) => {
+  await acquireMutex();
+  try {
   // ── Daily DTU soft cap tracking ───────────────────────────────────────
   const DAILY_DTU_SOFT_CAP = 200;
   const _dtuTodayKey = new Date().toISOString().slice(0, 10);
-  const _dtuUserId = ctx?.actor?.id || ctx?.actor?.userId || input.authorId || "anon";
+  // SECURITY: identity comes ONLY from authenticated session context — never
+  // from the request body. A previous `|| input.authorId` fallback let
+  // unauthenticated callers forge authorship.
+  const _dtuUserId = ctx?.actor?.userId || ctx?.actor?.id || "anon";
   if (!STATE._dailyDtuCount) STATE._dailyDtuCount = {};
   if (!STATE._dailyDtuCount[_dtuTodayKey]) STATE._dailyDtuCount = { [_dtuTodayKey]: {} };
   if (!STATE._dailyDtuCount[_dtuTodayKey][_dtuUserId]) STATE._dailyDtuCount[_dtuTodayKey][_dtuUserId] = 0;
@@ -18034,7 +18075,7 @@ register("dtu", "create", async (ctx, input) => {
     structuredLog("warn", "dtu_injection_detected", {
       patterns: injScan.patterns,
       source,
-      userId: ctx?.actor?.id,
+      userId: ctx?.actor?.userId || ctx?.actor?.id,
       titlePrefix: title.slice(0, 50),
     });
     // Tag for quarantine review rather than hard-block (reduces false positives)
@@ -18141,7 +18182,8 @@ register("dtu", "create", async (ctx, input) => {
     lineage,
     source,
     meta,
-    ownerId: ctx?.actor?.id || ctx?.actor?.odId || null,
+    ownerId: ctx?.actor?.userId || ctx?.actor?.id || null,
+    scope: (ctx?.actor?.userId && ctx.actor.userId !== "anon") ? (input.scope || "personal") : "global",
     core: {
       definitions: Array.isArray(coreIn.definitions) ? coreIn.definitions : [],
       invariants: Array.isArray(coreIn.invariants) ? coreIn.invariants : [],
@@ -18304,15 +18346,7 @@ register("dtu", "create", async (ctx, input) => {
   }
 
   // Async embedding generation (NEVER blocks DTU creation — Rule #1)
-  embedDTU(dtu).catch(() => {});
-
-  // ── Daily soft cap warning (non-blocking) ─────────────────────────────
-  STATE._dailyDtuCount[_dtuTodayKey][_dtuUserId] = (STATE._dailyDtuCount[_dtuTodayKey][_dtuUserId] || 0) + 1;
-  const _dtuUserDayCount = STATE._dailyDtuCount[_dtuTodayKey][_dtuUserId];
-  if (_dtuUserDayCount > DAILY_DTU_SOFT_CAP) {
-    structuredLog("warn", "dtu_daily_soft_cap_exceeded", { userId: _dtuUserId, count: _dtuUserDayCount, cap: DAILY_DTU_SOFT_CAP });
-    return { ok: true, dtu, warning: `Daily DTU soft cap exceeded: ${_dtuUserDayCount}/${DAILY_DTU_SOFT_CAP} DTUs created today` };
-  }
+  embedDTU(dtu).catch(e => logger.debug?.('server', 'async op failed (non-blocking)', { error: e?.message }));
 
   // ── Daily soft cap warning (non-blocking) ─────────────────────────────
   STATE._dailyDtuCount[_dtuTodayKey][_dtuUserId] = (STATE._dailyDtuCount[_dtuTodayKey][_dtuUserId] || 0) + 1;
@@ -18513,7 +18547,8 @@ register("dtu", "list", (ctx, input) => {
   const tier = input.tier && ["regular","mega","hyper","any"].includes(input.tier) ? input.tier : "any";
   const q = tokenish(input.q || "");
   const scopeFilter = input.scope || null; // "local", "global", or null (default: user's view)
-  const userId = ctx?.actor?.id || ctx?.actor?.odId || null;
+  const userId = ctx?.actor?.userId || ctx?.actor?.id || null;
+  const isAuthenticated = userId && userId !== "anon";
 
   // Filter out shadow/repair/system DTUs - internal, not real user content.
   // Pass viewer ID so private/user-scoped uploads by other users are hidden.
@@ -18527,10 +18562,14 @@ register("dtu", "list", (ctx, input) => {
   if (scopeFilter === "global") {
     items = items.filter(d => d.scope === "global");
   } else if (scopeFilter === "local") {
-    items = items.filter(d => d.scope !== "global" && (!userId || !d.ownerId || d.ownerId === userId));
-  } else if (userId) {
-    // Default view: show user's own local DTUs + all global DTUs
+    items = items.filter(d => d.scope !== "global" && (!isAuthenticated || !d.ownerId || d.ownerId === userId));
+  } else if (isAuthenticated) {
+    // Default view: show user's own local/personal DTUs + all global DTUs
+    // Exclude other users' personal DTUs
     items = items.filter(d => d.scope === "global" || !d.ownerId || d.ownerId === userId);
+  } else {
+    // Anonymous: only global DTUs
+    items = items.filter(d => !d.scope || d.scope === "global");
   }
 
   items = items.sort((a,b)=> (b.createdAt||"").localeCompare(a.createdAt||""));
@@ -18907,7 +18946,7 @@ sess.messages.push({ role: "user", content: prompt, ts: nowISO() });
   // Trigger conversation summary compression if due (async, never blocks)
   try {
     if (isSummaryDue(STATE.sessions, sessionId)) {
-      compressConversation(STATE, sessionId, { structuredLog: ctx.log }).catch(() => {});
+      compressConversation(STATE, sessionId, { structuredLog: ctx.log }).catch(e => logger.debug?.('server', 'async op failed (non-blocking)', { error: e?.message }));
     }
   } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
   // ===== END DTU ENRICHMENT =====
@@ -19147,6 +19186,186 @@ const intentInfo = classifyIntent(prompt);
     }
   } catch (_routerErr) {
     // Chat router is supplementary — never block the chat path
+  }
+
+  // ── Lens Tool Execution Engine ──────────────────────────────────────────
+  // When the chat router identifies an actionable intent (CREATE, MANAGE, TRADE, SIMULATE, ANALYZE)
+  // AND the request maps to a known lens tool, execute the macro and include results in the response.
+  // This makes chat capable of invoking any lens action, not just generating text.
+  let _toolExecution = null;
+  try {
+    if (_chatRoute?.ok && _chatRoute.actionType && _chatRoute.primaryLens?.lensId) {
+      const _toolActionType = _chatRoute.actionType;
+      const _toolPrimaryLens = _chatRoute.primaryLens.lensId;
+      const _toolPromptLower = prompt.toLowerCase();
+
+      // ── Lens Tool Registry: maps lens domains + action types to executable macros ──
+      // Each entry: { domain, action, match: (prompt) => params | null }
+      const LENS_TOOL_REGISTRY = [
+        // DTU operations (universal across all lenses)
+        { domain: "dtu", action: "create", actionTypes: ["CREATE"], match: (p) => {
+          const m = p.match(/(?:create|forge|make|add|write)\s+(?:a\s+)?(?:dtu|note|entry|document|item)(?:\s+(?:about|for|on|called|titled|named)\s+(.+))?/i);
+          return m ? { title: (m[1] || "").trim() || "Untitled", creti: prompt, tags: [_toolPrimaryLens] } : null;
+        }},
+        // Search / query (universal)
+        { domain: "search", action: "query", actionTypes: ["QUERY", "ANALYZE"], match: (p) => {
+          const m = p.match(/(?:search|find|look\s*up|query)\s+(?:for\s+)?(.+)/i);
+          return m ? { q: m[1].trim(), domain: _toolPrimaryLens } : null;
+        }},
+        // Music lens tools
+        { domain: "voice", action: "tts", actionTypes: ["CREATE"], lenses: ["music", "voice", "podcast"], match: (p) => {
+          const m = p.match(/(?:speak|say|read\s+aloud|text[\s-]*to[\s-]*speech|tts)\s+["""]?(.+?)["""]?$/i);
+          return m ? { text: m[1] } : null;
+        }},
+        // Persona tools
+        { domain: "persona", action: "speak", actionTypes: ["CREATE", "QUERY"], lenses: ["personas", "chat"], match: (p) => {
+          const m = p.match(/(?:as|speak\s+as|act\s+as|use\s+persona)\s+(\w+)/i);
+          return m ? { personaId: m[1] } : null;
+        }},
+        // World model tools
+        { domain: "worldmodel", action: "simulate", actionTypes: ["SIMULATE"], match: (p) => {
+          const m = p.match(/(?:simulate|model|what\s+(?:happens|would\s+happen)\s+if)\s+(.+)/i);
+          return m ? { scenario: m[1], steps: 5 } : null;
+        }},
+        { domain: "worldmodel", action: "create_entity", actionTypes: ["CREATE"], lenses: ["worldmodel", "world-building"], match: (p) => {
+          const m = p.match(/(?:create|add)\s+(?:an?\s+)?entity\s+(?:called|named|for)\s+(.+)/i);
+          return m ? { name: m[1].trim(), type: "custom", properties: {} } : null;
+        }},
+        // Export tools
+        { domain: "export", action: "markdown", actionTypes: ["CREATE", "MANAGE"], match: (p) => {
+          return /(?:export|download|save)\s+(?:as\s+)?markdown/i.test(p) ? { format: "markdown" } : null;
+        }},
+        { domain: "export", action: "json", actionTypes: ["CREATE", "MANAGE"], match: (p) => {
+          return /(?:export|download|save)\s+(?:as\s+)?json/i.test(p) ? { format: "json" } : null;
+        }},
+        // Hypothesis tools
+        { domain: "hypothesis", action: "propose", actionTypes: ["CREATE", "ANALYZE"], match: (p) => {
+          const m = p.match(/(?:hypothes[ie]s?|propose|theorize|conjecture)[:\s]+(.+)/i);
+          return m ? { hypothesis: m[1].trim(), domain: _toolPrimaryLens } : null;
+        }},
+        // Goal tools
+        { domain: "goals", action: "propose", actionTypes: ["CREATE", "MANAGE"], match: (p) => {
+          const m = p.match(/(?:set\s+(?:a\s+)?goal|create\s+(?:a\s+)?goal|my\s+goal\s+is|target)[:\s]+(.+)/i);
+          return m ? { description: m[1].trim(), domain: _toolPrimaryLens } : null;
+        }},
+        // Ingest tools
+        { domain: "ingest", action: "url", actionTypes: ["CREATE", "QUERY"], match: (p) => {
+          const m = p.match(/(?:ingest|import|fetch|scrape|read)\s+(?:from\s+)?(?:url\s+)?(https?:\/\/\S+)/i);
+          return m ? { url: m[1] } : null;
+        }},
+        // Paper generation
+        { domain: "paper", action: "create", actionTypes: ["CREATE"], lenses: ["research", "academic", "paper"], match: (p) => {
+          const m = p.match(/(?:write|create|generate|draft)\s+(?:a\s+)?(?:paper|report|article)\s+(?:about|on|for)\s+(.+)/i);
+          return m ? { topic: m[1].trim(), format: "academic" } : null;
+        }},
+        // Visual tools
+        { domain: "visual", action: "moodboard", actionTypes: ["CREATE", "ANALYZE"], lenses: ["art", "design", "photography", "fashion"], match: (p) => {
+          return /(?:moodboard|mood\s+board|visual\s+board|inspiration\s+board)/i.test(p) ? { domain: _toolPrimaryLens } : null;
+        }},
+        // Whiteboard tools
+        { domain: "whiteboard", action: "create", actionTypes: ["CREATE"], match: (p) => {
+          const m = p.match(/(?:create|start|open)\s+(?:a\s+)?(?:whiteboard|board|canvas)\s*(?:for|about|called)?\s*(.*)/i);
+          return m ? { title: m[1]?.trim() || "Untitled Whiteboard" } : null;
+        }},
+        // Wrapper / app tools
+        { domain: "wrapper", action: "create", actionTypes: ["CREATE"], lenses: ["wrappers", "apps"], match: (p) => {
+          const m = p.match(/(?:create|build|make)\s+(?:a\s+)?(?:wrapper|app|tool)\s+(?:for|that|called)\s+(.+)/i);
+          return m ? { name: m[1].trim(), description: prompt } : null;
+        }},
+        // Automation tools
+        { domain: "automation", action: "create", actionTypes: ["CREATE", "MANAGE"], match: (p) => {
+          const m = p.match(/(?:automate|create\s+(?:an?\s+)?automation|schedule|set\s+up\s+(?:an?\s+)?workflow)\s+(?:for|that|to)\s+(.+)/i);
+          return m ? { name: m[1].trim(), trigger: "manual", actions: [] } : null;
+        }},
+        // Shield / security tools
+        { domain: "shield", action: "scan", actionTypes: ["ANALYZE", "MANAGE"], lenses: ["security", "shield"], match: (p) => {
+          return /(?:scan|audit|check\s+security|vulnerability|penetration|pentest)/i.test(p) ? { target: "system", depth: "standard" } : null;
+        }},
+        // Agent tools
+        { domain: "agent", action: "create", actionTypes: ["CREATE"], match: (p) => {
+          const m = p.match(/(?:create|spawn|launch)\s+(?:an?\s+)?agent\s+(?:for|that|to|called)\s+(.+)/i);
+          return m ? { name: m[1].trim(), description: prompt } : null;
+        }},
+        // Webhook tools
+        { domain: "webhook", action: "register", actionTypes: ["CREATE", "MANAGE"], match: (p) => {
+          const m = p.match(/(?:create|register|add)\s+(?:a\s+)?webhook\s+(?:for|to|at)\s+(.+)/i);
+          return m ? { url: m[1].trim(), events: ["dtu:created"] } : null;
+        }},
+        // Collaboration tools
+        { domain: "collab", action: "createSession", actionTypes: ["CREATE", "CONNECT"], match: (p) => {
+          return /(?:start|create|open)\s+(?:a\s+)?(?:collab|collaboration|shared)\s+session/i.test(p) ? { title: "Collaborative Session" } : null;
+        }},
+        // Layer management
+        { domain: "layer", action: "create", actionTypes: ["CREATE", "MANAGE"], match: (p) => {
+          const m = p.match(/(?:create|add)\s+(?:a\s+)?layer\s+(?:called|named|for)\s+(.+)/i);
+          return m ? { name: m[1].trim() } : null;
+        }},
+        // Swarm execution
+        { domain: "swarm", action: "run", actionTypes: ["ANALYZE", "CREATE"], match: (p) => {
+          return /(?:run\s+(?:a\s+)?swarm|swarm\s+(?:analysis|search|scan))/i.test(p) ? { query: prompt, depth: 3 } : null;
+        }},
+        // Marketplace / trade
+        { domain: "market", action: "list", actionTypes: ["QUERY", "TRADE"], match: (p) => {
+          return /(?:browse|show|list)\s+(?:the\s+)?market(?:place)?/i.test(p) ? { limit: 20 } : null;
+        }},
+        { domain: "market", action: "listingCreate", actionTypes: ["TRADE", "CREATE"], match: (p) => {
+          const m = p.match(/(?:sell|list|publish)\s+(?:on\s+)?(?:the\s+)?market(?:place)?\s*(?::|—|-)?\s*(.+)/i);
+          return m ? { title: m[1].trim(), description: prompt } : null;
+        }},
+        // Reasoning chains
+        { domain: "reasoning", action: "create_chain", actionTypes: ["ANALYZE", "CREATE"], match: (p) => {
+          return /(?:reason|think\s+through|logic|chain\s+of\s+thought|step[\s-]*by[\s-]*step)\s+(?:about|through|for)\s+/i.test(p) ? { topic: prompt, type: "deductive" } : null;
+        }},
+      ];
+
+      // Find matching tool
+      for (const tool of LENS_TOOL_REGISTRY) {
+        // Check action type matches
+        if (!tool.actionTypes.includes(_toolActionType)) continue;
+        // Check lens restriction if specified
+        if (tool.lenses && !tool.lenses.some(l => _toolPrimaryLens.includes(l))) continue;
+        // Try to extract parameters
+        const params = tool.match(_toolPromptLower);
+        if (!params) continue;
+
+        // Execute the tool
+        try {
+          const toolResult = await runMacro(tool.domain, tool.action, params, ctx);
+          if (toolResult && toolResult.ok !== false) {
+            _toolExecution = {
+              domain: tool.domain,
+              action: tool.action,
+              params,
+              result: toolResult,
+              executed: true,
+            };
+            ctx.log("chat_tool", "Lens tool executed via chat", {
+              domain: tool.domain, action: tool.action, actionType: _toolActionType, lens: _toolPrimaryLens,
+            });
+            // Emit tool result to user via WebSocket
+            realtimeEmit("chat:tool_result", {
+              domain: tool.domain,
+              action: tool.action,
+              result: { ok: toolResult.ok !== false, id: toolResult.id || toolResult.dtu?.id || null },
+              sessionId,
+            }, { sessionId: ctx?.actor?.userId || "" });
+          }
+        } catch (toolErr) {
+          _toolExecution = {
+            domain: tool.domain,
+            action: tool.action,
+            params,
+            error: toolErr?.message || "Tool execution failed",
+            executed: false,
+          };
+          ctx.log("chat_tool.error", "Lens tool failed", { domain: tool.domain, action: tool.action, error: toolErr?.message });
+        }
+        break; // Execute first matching tool only
+      }
+    }
+  } catch (_toolRegErr) {
+    // Tool execution is supplementary — never block the chat path
+    logger.debug("server", "chat tool registry error", { error: _toolRegErr?.message });
   }
 
   // Identity answers are declarative: Concord refers to itself.
@@ -19638,11 +19857,9 @@ let localReply = formatCrispResponse({
     : (process.env.OLLAMA_HOST || "http://ollama-conscious:11434");
   const brainModel = BRAIN.conscious.enabled
     ? BRAIN.conscious.model
-    : (process.env.BRAIN_CONSCIOUS_MODEL || "qwen2.5:7b");
+    : (process.env.BRAIN_CONSCIOUS_MODEL || "qwen2.5:14b-instruct-q4_K_M");
 
   // ===== UNIFIED CONTEXT ENGINE: Retrieve DTUs across all tiers =====
-  // Pull context from the unified context engine spanning regular + MEGA + HYPER tiers
-  // to enrich the LLM prompt with the broadest relevant knowledge.
   let _unifiedContextDtus = [];
   try {
     const _ctxResult = contextProcessQuery(STATE, sessionId, {
@@ -19653,7 +19870,6 @@ let localReply = formatCrispResponse({
       pinnedIds: [],
     });
     if (_ctxResult && _ctxResult.ok && Array.isArray(_ctxResult.workingSet)) {
-      // Resolve full DTU objects from the working set IDs
       const _wsIds = new Set(_ctxResult.workingSet.map(w => w.dtuId || w.id).filter(Boolean));
       const _allDtus = dtusArray();
       _unifiedContextDtus = _allDtus.filter(d => _wsIds.has(d.id));
@@ -19667,7 +19883,6 @@ let localReply = formatCrispResponse({
   const _extraUnifiedDtus = _unifiedContextDtus.filter(d => !_focusIds.has(d.id));
   const _enrichedFocus = [...focus, ..._extraUnifiedDtus];
   // ===== END UNIFIED CONTEXT ENGINE =====
-  // ===== END CONSCIOUS BRAIN ROUTING =====
 
   // ===== DTU CONTEXT PIPELINE: Four-Source Harvest + Token Budget Assembly =====
   let _pipelineHarvest = null;
@@ -19729,139 +19944,312 @@ let localReply = formatCrispResponse({
 
   let finalReply = localReply;
   let llmUsed = false;
+  let _subconsciousReflection = null;
   const semanticUsed = Boolean(semanticEnhancement && semanticEnhancement.confidence > 0.4);
 
-  if (llm && ctx.llm.enabled) {
-    // Affect-modulated LLM parameters
-    const _llmTemp = clamp(
-      0.35 + (_affStyle.creativity ? (_affStyle.creativity - 0.5) * 0.3 : 0),
-      0.1, 0.9
+  // ── Inject tool execution results into the response ──
+  if (_toolExecution?.executed && _toolExecution.result) {
+    const tr = _toolExecution.result;
+    const toolDomain = _toolExecution.domain;
+    const toolAction = _toolExecution.action;
+    let toolSummary = "";
+
+    if (toolDomain === "dtu" && toolAction === "create" && tr.id) {
+      toolSummary = `✅ Created DTU "${tr.title || _toolExecution.params?.title || "Untitled"}" (id: ${tr.id})`;
+    } else if (toolDomain === "search" && toolAction === "query") {
+      const hits = tr.results?.length || tr.items?.length || 0;
+      toolSummary = `🔍 Search returned ${hits} result${hits !== 1 ? "s" : ""}${hits > 0 ? ": " + (tr.results || tr.items || []).slice(0, 3).map(r => r.title || r.id).join(", ") : ""}`;
+    } else if (toolDomain === "worldmodel" && toolAction === "simulate") {
+      toolSummary = `🧪 Simulation complete — ${tr.steps?.length || 0} steps processed`;
+    } else if (toolDomain === "worldmodel" && toolAction === "create_entity") {
+      toolSummary = `🌍 Entity "${tr.entity?.name || _toolExecution.params?.name || ""}" created in world model`;
+    } else if (toolDomain === "hypothesis" && toolAction === "propose") {
+      toolSummary = `🔬 Hypothesis proposed (id: ${tr.id || "—"})`;
+    } else if (toolDomain === "goals" && toolAction === "propose") {
+      toolSummary = `🎯 Goal created: "${tr.goal?.description || _toolExecution.params?.description || ""}"`;
+    } else if (toolDomain === "paper" && toolAction === "create") {
+      toolSummary = `📄 Paper draft started: "${tr.paper?.title || _toolExecution.params?.topic || ""}"`;
+    } else if (toolDomain === "export") {
+      toolSummary = `📦 Export generated (${toolAction} format)`;
+    } else if (toolDomain === "ingest" && toolAction === "url") {
+      toolSummary = `📥 URL ingested: ${_toolExecution.params?.url || ""}${tr.dtuCount ? ` → ${tr.dtuCount} DTU(s) created` : ""}`;
+    } else if (toolDomain === "wrapper" && toolAction === "create") {
+      toolSummary = `🛠 Wrapper "${tr.wrapper?.name || _toolExecution.params?.name || ""}" created`;
+    } else if (toolDomain === "agent" && toolAction === "create") {
+      toolSummary = `🤖 Agent "${tr.agent?.name || _toolExecution.params?.name || ""}" spawned`;
+    } else if (toolDomain === "whiteboard" && toolAction === "create") {
+      toolSummary = `🎨 Whiteboard "${tr.whiteboard?.title || _toolExecution.params?.title || ""}" created`;
+    } else if (toolDomain === "collab" && toolAction === "createSession") {
+      toolSummary = `👥 Collaboration session started${tr.sessionId ? ` (id: ${tr.sessionId})` : ""}`;
+    } else if (toolDomain === "automation" && toolAction === "create") {
+      toolSummary = `⚡ Automation "${tr.automation?.name || _toolExecution.params?.name || ""}" created`;
+    } else if (toolDomain === "market") {
+      toolSummary = toolAction === "list" ? `🏪 Marketplace: ${tr.listings?.length || tr.items?.length || 0} listings found` :
+                    toolAction === "listingCreate" ? `🏪 Listed on marketplace: "${tr.listing?.title || ""}"` : `🏪 Marketplace action complete`;
+    } else if (toolDomain === "shield" && toolAction === "scan") {
+      const threats = tr.threats?.length || tr.findings?.length || 0;
+      toolSummary = `🛡 Security scan complete — ${threats} finding${threats !== 1 ? "s" : ""}`;
+    } else if (toolDomain === "reasoning") {
+      toolSummary = `🧠 Reasoning chain created with ${tr.chain?.steps?.length || 0} steps`;
+    } else if (toolDomain === "swarm") {
+      toolSummary = `🐝 Swarm analysis complete — ${tr.results?.length || 0} results`;
+    } else {
+      toolSummary = `✅ ${toolDomain}.${toolAction} executed successfully`;
+    }
+
+    if (toolSummary) {
+      finalReply = `${toolSummary}\n\n${finalReply}`;
+    }
+  } else if (_toolExecution && !_toolExecution.executed && _toolExecution.error) {
+    finalReply = `⚠ Tool ${_toolExecution.domain}.${_toolExecution.action} failed: ${_toolExecution.error}\n\n${finalReply}`;
+  }
+
+  // ===== FULL MULTI-STAGE PIPELINE (primary path) =====
+  // Spec 12: Try full pipeline first, fall back to fast path on failure/timeout.
+  // Pipeline timeout guard: caps between 30-60 seconds (Spec 12 preservation rule 1).
+  const _pipelineTimeoutMs = Math.min(Math.max(Number(input.timeoutMs) || 60000, 30000), 60000);
+  let _pipelineSucceeded = false;
+  let _webAugmented = false;
+  try {
+    const _pipelineStart = Date.now();
+
+    // Build override context from the enriched pipeline (DTU context + quality pipeline)
+    const _pipelineDtuContext = (_fusedContext && _fusedContext.fusedContext)
+      ? _fusedContext.fusedContext
+      : _enrichedFocus.map(d => `[${(d.tier || "regular").toUpperCase()}] ${d.title}: ${(d.cretiHuman || d.human?.summary || buildCretiText(d) || "").slice(0, 400)}`).join("\n");
+
+    // Stage 2a: Subconscious reflection (parallel, best-effort)
+    // The subconscious brain processes every message — generating reflections, emotional context,
+    // background associations. Runs in parallel with conscious response.
+    const _subconsciousPromise = (BRAIN.subconscious.enabled
+      ? callBrain("subconscious",
+          `Reflect on this user message. What emotions, associations, and background patterns do you notice? What is the user really asking? What connections to existing knowledge might be relevant?\n\nUser message: ${prompt}\n\nContext:\n${_pipelineDtuContext.slice(0, 2000)}`,
+          {
+            system: buildSubconsciousPrompt({
+              mode: "synthesis",
+              dtu_count: STATE.dtus ? STATE.dtus.size : 0,
+              domain_count: STATE.dtus ? new Set(Array.from(STATE.dtus.values()).flatMap(d => d.tags || [])).size : 0,
+              domain: mode,
+              material: _pipelineDtuContext.slice(0, 1500),
+            }),
+            temperature: 0.6,
+            maxTokens: 300,
+            timeout: Math.min(_pipelineTimeoutMs - 5000, 20000),
+          })
+      : Promise.resolve({ ok: false, content: null })
+    ).catch((_e) => {
+      ctx.log("subconscious.reflect.error", "Subconscious reflection failed (non-blocking)", { error: String(_e?.message || _e) });
+      return { ok: false, content: null };
+    });
+
+    // Stage 2b: Conscious response via full consciousChat() pipeline
+    // Routes through: semantic cache -> retrieval sufficiency -> full conscious reasoning
+    // (including web search evaluation, personality prompts, no-hallucination rules)
+    const _consciousPromise = consciousChat(prompt, mode, {
+      userId: ctx?.actor?.userId,
+      overrideContext: _pipelineDtuContext || undefined,
+      temperature: clamp(
+        0.35 + (_affStyle.creativity ? (_affStyle.creativity - 0.5) * 0.3 : 0),
+        0.1, 0.9
+      ),
+      maxTokens: Math.round(700 * (0.6 + 0.8 * (_affStyle.verbosity ?? 0.5))),
+      timeout: _pipelineTimeoutMs - 2000,
+      _exchangeCount: (sess.messages || []).length,
+    });
+
+    // Race both against the pipeline timeout
+    const _timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("pipeline_timeout")), _pipelineTimeoutMs)
     );
-    const _llmMaxTokens = Math.round(
-      700 * (0.6 + 0.8 * (_affStyle.verbosity ?? 0.5))
-    );
-    // Inject affect-aware behavioral guidance into system prompt
-    const _affectGuidance = _aff.policy ? [
-      _affStyle.warmth > 0.6 ? "Be warm and encouraging." : _affStyle.warmth < 0.3 ? "Be direct and precise." : "",
-      _affStyle.directness > 0.7 ? "Get to the point quickly." : "",
-      _affSafety.strictness > 0.7 ? "Be cautious with uncertain claims." : "",
-      _affCog.exploration > 0.6 ? "Explore alternative viewpoints." : "",
-    ].filter(Boolean).join(" ") : "";
-    // GRC: Inject Grounded Recursive Closure system prompt when module is available
-    // Use _enrichedFocus (unified context engine: regular + MEGA + HYPER tiers) instead of bare focus
-    const _dtuTitles = _enrichedFocus.map(d => d.title || d.id).filter(Boolean);
-    const _grcSystemPrompt = GRC_MODULE
-      ? getGRCSystemPrompt({ dtus: _dtuTitles, mode })
-      : "";
-    const system =
+
+    // Wait for conscious (required) + subconscious (best-effort parallel)
+    const [_consciousResult, _subcResult] = await Promise.race([
+      Promise.all([_consciousPromise, _subconsciousPromise]),
+      _timeoutPromise.then(() => { throw new Error("pipeline_timeout"); }),
+    ]);
+
+    // Capture subconscious reflection for downstream use
+    if (_subcResult?.ok && _subcResult.content) {
+      _subconsciousReflection = _subcResult.content.trim();
+      // Save subconscious reflection as shadow DTU (never shown directly to user)
+      try {
+        const _reflShadowId = `shadow_reflection_${sessionId}_${Date.now()}`;
+        STATE.shadowDtus.set(_reflShadowId, {
+          id: _reflShadowId, tier: "shadow",
+          tags: ["shadow", "reflection", "subconscious", mode],
+          human: { summary: _subconsciousReflection.slice(0, 300), bullets: [] },
+          machine: { kind: "subconscious_reflection", sessionId, prompt: prompt.slice(0, 200) },
+          source: "subconscious.reflection", meta: { hidden: true },
+          createdAt: nowISO(), updatedAt: nowISO(),
+          authority: { model: "subconscious", score: 0 }, hash: "",
+        });
+        BRAIN.subconscious.stats.dtusGenerated++;
+      } catch (_e) { logger.debug('server', 'reflection shadow save failed', { error: _e?.message }); }
+      ctx.log("subconscious.reflect", "Subconscious reflection captured", { sessionId, reflectionLength: _subconsciousReflection.length });
+    }
+
+    // Use conscious pipeline result
+    if (_consciousResult?.ok && _consciousResult.content) {
+      finalReply = _consciousResult.content.trim() || localReply;
+      llmUsed = true;
+      _pipelineSucceeded = true;
+      _webAugmented = _consciousResult.webAugmented || false;
+      const _pipelineElapsed = Date.now() - _pipelineStart;
+      ctx.log("chat_pipeline.full", "Full pipeline succeeded", {
+        sessionId, mode, elapsed: _pipelineElapsed,
+        source: _consciousResult.source || "conscious",
+        webAugmented: _webAugmented,
+        hasSubconsciousReflection: !!_subconsciousReflection,
+      });
+
+      // Save web sources as DTUs (knowledge loop)
+      if (_consciousResult.sources && _consciousResult.sources.length > 0) {
+        for (const _wr of _consciousResult.sources) {
+          try {
+            const _wctx = makeInternalCtx("system");
+            await runMacro("dtu", "create", {
+              title: `Web: ${(_wr.title || "").slice(0, 80)}`,
+              creti: _wr.snippet || _wr.content || "",
+              tags: [currentLens || mode, "web-source", _wr.source].filter(Boolean),
+              source: `web.${_wr.source}`,
+              meta: { webUrl: _wr.url, webSource: _wr.source, fetchedAt: _wr.fetchedAt, contentType: "web-knowledge" },
+            }, _wctx);
+          } catch (_e) { logger.debug('server', 'web DTU save is best-effort', { error: _e?.message }); }
+        }
+      }
+    }
+  } catch (_pipeErr) {
+    // Full pipeline failed or timed out — log and fall through to fast path
+    ctx.log("chat_pipeline.full.fallback", "Full pipeline failed, falling back to fast path", {
+      error: String(_pipeErr?.message || _pipeErr),
+      isTimeout: String(_pipeErr?.message || "").includes("timeout"),
+    });
+  }
+
+  // ===== FAST PATH FALLBACK (only on full pipeline failure) =====
+  if (!_pipelineSucceeded) {
+    if (llm && ctx.llm.enabled) {
+      const _llmTemp = clamp(
+        0.35 + (_affStyle.creativity ? (_affStyle.creativity - 0.5) * 0.3 : 0),
+        0.1, 0.9
+      );
+      const _llmMaxTokens = Math.round(
+        700 * (0.6 + 0.8 * (_affStyle.verbosity ?? 0.5))
+      );
+      const _affectGuidance = _aff.policy ? [
+        _affStyle.warmth > 0.6 ? "Be warm and encouraging." : _affStyle.warmth < 0.3 ? "Be direct and precise." : "",
+        _affStyle.directness > 0.7 ? "Get to the point quickly." : "",
+        _affSafety.strictness > 0.7 ? "Be cautious with uncertain claims." : "",
+        _affCog.exploration > 0.6 ? "Explore alternative viewpoints." : "",
+      ].filter(Boolean).join(" ") : "";
+      const _dtuTitles = _enrichedFocus.map(d => d.title || d.id).filter(Boolean);
+      const _grcSystemPrompt = GRC_MODULE
+        ? getGRCSystemPrompt({ dtus: _dtuTitles, mode })
+        : "";
+      const system =
 `You are ConcordOS. Be natural, concise but not dry. Use DTUs as memory. Never pretend features exist.
 Mode: ${mode}.${_affectGuidance ? `\nTone: ${_affectGuidance}` : ""}
 When helpful, reference DTU titles in plain language (do not dump ids unless asked).${_grcSystemPrompt ? `\n\n${_grcSystemPrompt}` : ""}`;
-    // Use fused context from quality pipeline if available; otherwise fall back to enriched focus (all tiers)
-    const dtuContext = (_fusedContext && _fusedContext.fusedContext)
-      ? _fusedContext.fusedContext
-      : _enrichedFocus.map(d => `TITLE: ${d.title}\nTIER: ${d.tier}\nTAGS: ${(d.tags||[]).join(", ")}\nCRETI:\n${buildCretiText(d)}\n---`).join("\n");
-    const _pipelineMeta = (_qualityPipelineResult && _fusedContext)
-      ? `\n[Pipeline: ${_fusedContext.meta.patternsApplied.join("+")} | intent=${_qualityPipelineResult.queryIntent}]`
-      : "";
-    const messages = [
-      { role: "user", content: `User prompt:\n${prompt}\n\nRelevant DTUs:\n${dtuContext}${_pipelineMeta}\n\nRespond naturally and propose next actions.` }
-    ];
-    const _llmSpan = startSpan("llm.chat", { mode, sessionId, promptLength: prompt.length });
-    const r = await ctx.llm.chat({
-      system, messages, temperature: _llmTemp, maxTokens: _llmMaxTokens,
-      dtuRefs: _dtuTitles,
-      macroRefs: ["chat.respond"],
-      grcMode: mode,
-    });
-    if (r.ok) {
-      finalReply = r.content.trim() || localReply;
-      llmUsed = true;
-      _llmSpan.end("ok", { responseLength: finalReply.length });
+      const dtuContext = (_fusedContext && _fusedContext.fusedContext)
+        ? _fusedContext.fusedContext
+        : _enrichedFocus.map(d => `TITLE: ${d.title}\nTIER: ${d.tier}\nTAGS: ${(d.tags||[]).join(", ")}\nCRETI:\n${buildCretiText(d)}\n---`).join("\n");
+      const _pipelineMeta = (_qualityPipelineResult && _fusedContext)
+        ? `\n[Pipeline: ${_fusedContext.meta.patternsApplied.join("+")} | intent=${_qualityPipelineResult.queryIntent}]`
+        : "";
+      const messages = [
+        { role: "user", content: `User prompt:\n${prompt}\n\nRelevant DTUs:\n${dtuContext}${_pipelineMeta}\n\nRespond naturally and propose next actions.` }
+      ];
+      const _llmSpan = startSpan("llm.chat", { mode, sessionId, promptLength: prompt.length });
+      const r = await ctx.llm.chat({
+        system, messages, temperature: _llmTemp, maxTokens: _llmMaxTokens,
+        dtuRefs: _dtuTitles,
+        macroRefs: ["chat.respond"],
+        grcMode: mode,
+      });
+      if (r.ok) {
+        finalReply = r.content.trim() || localReply;
+        llmUsed = true;
+        _llmSpan.end("ok", { responseLength: finalReply.length });
+      } else {
+        _llmSpan.end("error", { error: String(r?.error || "llm_failed") });
+        ctx.log("llm.error", "Fast path ctx.llm.chat failed; attempting conscious brain fallback.", { error: r });
+        try {
+          const _fbAc = new AbortController();
+          const _fbTimeout = setTimeout(() => _fbAc.abort(), 120000);
+          const _fbStart = Date.now();
+          const _fbRes = await fetch(`${brainUrl}/api/chat`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model: brainModel,
+              messages: [{ role: "system", content: system }, ...messages],
+              stream: false,
+              options: { temperature: _llmTemp, num_predict: _llmMaxTokens }
+            }),
+            signal: _fbAc.signal
+          }).finally(() => clearTimeout(_fbTimeout));
+          const _fbJson = await _fbRes.json().catch(() => ({}));
+          const _fbElapsed = Date.now() - _fbStart;
+          BRAIN.conscious.stats.requests++;
+          BRAIN.conscious.stats.totalMs += _fbElapsed;
+          BRAIN.conscious.stats.lastCallAt = new Date().toISOString();
+          if (_fbRes.ok && _fbJson.message?.content) {
+            finalReply = _fbJson.message.content.trim() || localReply;
+            llmUsed = true;
+            ctx.log("llm.fallback", "Conscious brain fallback succeeded.", { brainUrl, brainModel, elapsed: _fbElapsed });
+          } else {
+            BRAIN.conscious.stats.errors++;
+            ctx.log("llm.fallback.error", "Conscious brain fallback returned non-ok.", { status: _fbRes.status, error: _fbJson?.error });
+          }
+        } catch (_fbErr) {
+          BRAIN.conscious.stats.errors++;
+          ctx.log("llm.fallback.error", "Conscious brain fallback threw.", { error: String(_fbErr?.message || _fbErr) });
+        }
+      }
     } else {
-      _llmSpan.end("error", { error: String(r?.error || "llm_failed") });
-      ctx.log("llm.error", "LLM call via ctx.llm failed; attempting conscious brain fallback.", { error: r });
-      // ===== CONSCIOUS BRAIN FALLBACK (within ctx.llm block) =====
-      // When ctx.llm.chat() fails, fall back to a direct Ollama call using BRAIN.conscious config
+      // Direct conscious brain call (no ctx.llm available)
       try {
-        const _fbAc = new AbortController();
-        const _fbTimeout = setTimeout(() => _fbAc.abort(), 120000);
-        const _fbStart = Date.now();
-        const _fbRes = await fetch(`${brainUrl}/api/chat`, {
+        const _dtuTitlesDirect = _enrichedFocus.map(d => d.title || d.id).filter(Boolean);
+        const _directSystem = `You are ConcordOS. Be natural, concise but not dry. Use DTUs as memory. Never pretend features exist.\nMode: ${mode}.\nWhen helpful, reference DTU titles in plain language (do not dump ids unless asked).`;
+        const _directDtuContext = _enrichedFocus.map(d => `TITLE: ${d.title}\nTIER: ${d.tier}\nTAGS: ${(d.tags||[]).join(", ")}\nCRETI:\n${buildCretiText(d)}\n---`).join("\n");
+        const _directMessages = [
+          { role: "system", content: _directSystem },
+          { role: "user", content: `User prompt:\n${prompt}\n\nRelevant DTUs:\n${_directDtuContext}\n\nRespond naturally and propose next actions.` }
+        ];
+        const _directAc = new AbortController();
+        const _directTimeout = setTimeout(() => _directAc.abort(), 120000);
+        const _directStart = Date.now();
+        const _directRes = await fetch(`${brainUrl}/api/chat`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             model: brainModel,
-            messages: [{ role: "system", content: system }, ...messages],
+            messages: _directMessages,
             stream: false,
-            options: { temperature: _llmTemp, num_predict: _llmMaxTokens }
+            options: { temperature: 0.5, num_predict: 700 }
           }),
-          signal: _fbAc.signal
-        }).finally(() => clearTimeout(_fbTimeout));
-        const _fbJson = await _fbRes.json().catch(() => ({}));
-        const _fbElapsed = Date.now() - _fbStart;
+          signal: _directAc.signal
+        }).finally(() => clearTimeout(_directTimeout));
+        const _directJson = await _directRes.json().catch(() => ({}));
+        const _directElapsed = Date.now() - _directStart;
         BRAIN.conscious.stats.requests++;
-        BRAIN.conscious.stats.totalMs += _fbElapsed;
+        BRAIN.conscious.stats.totalMs += _directElapsed;
         BRAIN.conscious.stats.lastCallAt = new Date().toISOString();
-        if (_fbRes.ok && _fbJson.message?.content) {
-          finalReply = _fbJson.message.content.trim() || localReply;
+        if (_directRes.ok && _directJson.message?.content) {
+          finalReply = _directJson.message.content.trim() || localReply;
           llmUsed = true;
-          ctx.log("llm.fallback", "Conscious brain fallback succeeded.", { brainUrl, brainModel, elapsed: _fbElapsed });
+          ctx.log("llm.direct", "Direct conscious brain call succeeded (no ctx.llm).", { brainUrl, brainModel, elapsed: _directElapsed });
         } else {
           BRAIN.conscious.stats.errors++;
-          ctx.log("llm.fallback.error", "Conscious brain fallback returned non-ok.", { status: _fbRes.status, error: _fbJson?.error });
+          ctx.log("llm.direct.error", "Direct conscious brain call returned non-ok.", { status: _directRes.status, error: _directJson?.error });
         }
-      } catch (_fbErr) {
+      } catch (_directErr) {
         BRAIN.conscious.stats.errors++;
-        ctx.log("llm.fallback.error", "Conscious brain fallback threw.", { error: String(_fbErr?.message || _fbErr) });
+        ctx.log("llm.direct.error", "Direct conscious brain call threw.", { error: String(_directErr?.message || _directErr) });
       }
-      // ===== END CONSCIOUS BRAIN FALLBACK =====
     }
-  } else {
-    // ===== DIRECT CONSCIOUS BRAIN CALL (no ctx.llm available) =====
-    // When no LLM provider is wired into the macro context, call BRAIN.conscious directly via fetch.
-    // This ensures the chat lens always attempts the conscious brain before settling for localReply.
-    try {
-      const _dtuTitlesDirect = _enrichedFocus.map(d => d.title || d.id).filter(Boolean);
-      const _directSystem = `You are ConcordOS. Be natural, concise but not dry. Use DTUs as memory. Never pretend features exist.\nMode: ${mode}.\nWhen helpful, reference DTU titles in plain language (do not dump ids unless asked).`;
-      const _directDtuContext = _enrichedFocus.map(d => `TITLE: ${d.title}\nTIER: ${d.tier}\nTAGS: ${(d.tags||[]).join(", ")}\nCRETI:\n${buildCretiText(d)}\n---`).join("\n");
-      const _directMessages = [
-        { role: "system", content: _directSystem },
-        { role: "user", content: `User prompt:\n${prompt}\n\nRelevant DTUs:\n${_directDtuContext}\n\nRespond naturally and propose next actions.` }
-      ];
-      const _directAc = new AbortController();
-      const _directTimeout = setTimeout(() => _directAc.abort(), 120000);
-      const _directStart = Date.now();
-      const _directRes = await fetch(`${brainUrl}/api/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: brainModel,
-          messages: _directMessages,
-          stream: false,
-          options: { temperature: 0.5, num_predict: 700 }
-        }),
-        signal: _directAc.signal
-      }).finally(() => clearTimeout(_directTimeout));
-      const _directJson = await _directRes.json().catch(() => ({}));
-      const _directElapsed = Date.now() - _directStart;
-      BRAIN.conscious.stats.requests++;
-      BRAIN.conscious.stats.totalMs += _directElapsed;
-      BRAIN.conscious.stats.lastCallAt = new Date().toISOString();
-      if (_directRes.ok && _directJson.message?.content) {
-        finalReply = _directJson.message.content.trim() || localReply;
-        llmUsed = true;
-        ctx.log("llm.direct", "Direct conscious brain call succeeded (no ctx.llm).", { brainUrl, brainModel, elapsed: _directElapsed });
-      } else {
-        BRAIN.conscious.stats.errors++;
-        ctx.log("llm.direct.error", "Direct conscious brain call returned non-ok.", { status: _directRes.status, error: _directJson?.error });
-      }
-    } catch (_directErr) {
-      BRAIN.conscious.stats.errors++;
-      ctx.log("llm.direct.error", "Direct conscious brain call threw.", { error: String(_directErr?.message || _directErr) });
-    }
-    // ===== END DIRECT CONSCIOUS BRAIN CALL =====
   }
+  // ===== END FAST PATH FALLBACK =====
 
   // ===== TOOL CALL EXECUTION LOOP =====
   // After the brain responds, check for [TOOL_CALL: ...] markers.
@@ -19964,8 +20352,8 @@ When helpful, reference DTU titles in plain language (do not dump ids unless ask
   }
 
   const _qpMeta = _fusedContext ? { patternsApplied: _fusedContext.meta.patternsApplied, queryIntent: _qualityPipelineResult?.queryIntent, tokenEstimate: _fusedContext.meta.tokenEstimate } : null;
-  sess.messages.push({ role: "assistant", content: finalReply, ts: nowISO(), meta: { llmUsed, semanticUsed, mode, relevant: relevant.map(d=>d.id), qualityPipeline: _qpMeta, dtuCount: _pipelineDtuCount } });
-  ctx.log("chat", "Chat response generated", { sessionId, mode, llmUsed, semanticUsed, relevant: relevant.map(d=>d.id), qualityPipeline: _qpMeta, pipelineDtuCount: _pipelineDtuCount });
+  sess.messages.push({ role: "assistant", content: finalReply, ts: nowISO(), meta: { llmUsed, semanticUsed, mode, relevant: relevant.map(d=>d.id), qualityPipeline: _qpMeta, dtuCount: _pipelineDtuCount, subconsciousReflection: !!_subconsciousReflection } });
+  ctx.log("chat", "Chat response generated", { sessionId, mode, llmUsed, semanticUsed, relevant: relevant.map(d=>d.id), qualityPipeline: _qpMeta, pipelineDtuCount: _pipelineDtuCount, hasSubconsciousReflection: !!_subconsciousReflection });
 
   // ===== DTU ENRICHMENT: Output DTU + Consolidation Check =====
   try {
@@ -20103,7 +20491,8 @@ When helpful, reference DTU titles in plain language (do not dump ids unless ask
 
   return {
     ok: true, reply: finalReply, sessionId, mode, llmUsed, semanticUsed,
-    relevant: relevant.map(d=>({ id:d.id, title:d.title, tier:d.tier })),
+    relevant: relevant.map(d=>({ id:d.id, title:d.title, tier:d.tier, score: d._activationScore ?? d.score ?? null })),
+    webAugmented: _webAugmented,
     dtuCount: _pipelineDtuCount,
     pipeline: _pipelineHarvest ? {
       sources: _pipelineHarvest.sources,
@@ -20140,8 +20529,52 @@ When helpful, reference DTU titles in plain language (do not dump ids unless ask
       action: _chatRoute._cortexIntent.action,
       params: _chatRoute._cortexIntent.params,
     } : null,
+    toolExecution: _toolExecution ? {
+      domain: _toolExecution.domain,
+      action: _toolExecution.action,
+      executed: _toolExecution.executed,
+      result: _toolExecution.executed ? {
+        ok: _toolExecution.result?.ok !== false,
+        id: _toolExecution.result?.id || _toolExecution.result?.dtu?.id || null,
+        summary: _toolExecution.result?.title || _toolExecution.result?.name || null,
+      } : null,
+      error: _toolExecution.error || null,
+    } : null,
   };
-}, { description: "Mode-aware chat with DTU retrieval, universal lens routing, and inline artifact forge. Outputs GRC v1 envelope." });
+}, { description: "Mode-aware chat with DTU retrieval, universal lens routing, inline artifact forge, and lens tool execution. Outputs GRC v1 envelope." });
+
+// ===== CHAT TOOL REGISTRY MACRO =====
+// Lists all tools/actions available to the chat system.
+register("chat", "tools", (_ctx, _input) => {
+  const tools = [
+    { domain: "dtu", action: "create", description: "Create a new DTU (note/entry)", example: "Create a DTU about quantum computing" },
+    { domain: "search", action: "query", description: "Search across all DTUs and lenses", example: "Search for machine learning" },
+    { domain: "voice", action: "tts", description: "Text-to-speech generation", example: "Speak 'Hello world'" },
+    { domain: "persona", action: "speak", description: "Speak as a persona", example: "Speak as Einstein" },
+    { domain: "worldmodel", action: "simulate", description: "Run a simulation/scenario", example: "Simulate what happens if interest rates rise" },
+    { domain: "worldmodel", action: "create_entity", description: "Create a world model entity", example: "Create an entity called Solar Panel" },
+    { domain: "export", action: "markdown", description: "Export DTUs as markdown", example: "Export as markdown" },
+    { domain: "export", action: "json", description: "Export DTUs as JSON", example: "Export as JSON" },
+    { domain: "hypothesis", action: "propose", description: "Propose a hypothesis", example: "Hypothesis: increasing sleep improves productivity" },
+    { domain: "goals", action: "propose", description: "Set a goal", example: "Set a goal to learn Rust" },
+    { domain: "ingest", action: "url", description: "Ingest content from a URL", example: "Ingest https://example.com/article" },
+    { domain: "paper", action: "create", description: "Draft an academic paper", example: "Write a paper about renewable energy" },
+    { domain: "visual", action: "moodboard", description: "Generate a visual moodboard", example: "Create a moodboard for minimalist design" },
+    { domain: "whiteboard", action: "create", description: "Create a collaborative whiteboard", example: "Create a whiteboard for brainstorming" },
+    { domain: "wrapper", action: "create", description: "Build a custom tool/app", example: "Create a wrapper for daily standup notes" },
+    { domain: "automation", action: "create", description: "Create an automation workflow", example: "Automate daily news digest" },
+    { domain: "shield", action: "scan", description: "Run a security scan", example: "Scan my system for vulnerabilities" },
+    { domain: "agent", action: "create", description: "Spawn an autonomous agent", example: "Create an agent for monitoring crypto prices" },
+    { domain: "webhook", action: "register", description: "Register a webhook", example: "Create a webhook for DTU events" },
+    { domain: "collab", action: "createSession", description: "Start a collaboration session", example: "Start a collab session" },
+    { domain: "layer", action: "create", description: "Create an organizational layer", example: "Create a layer called Research" },
+    { domain: "swarm", action: "run", description: "Run a swarm analysis", example: "Run a swarm search on climate data" },
+    { domain: "market", action: "list", description: "Browse the marketplace", example: "Show the marketplace" },
+    { domain: "market", action: "listingCreate", description: "List an item on the marketplace", example: "Sell on marketplace: My Analysis Tool" },
+    { domain: "reasoning", action: "create_chain", description: "Create a reasoning chain", example: "Reason through the trolley problem step by step" },
+  ];
+  return { ok: true, tools, count: tools.length };
+}, { description: "Lists all tools/actions available to the chat system" });
 
 // ===== CHAT PIPELINE MACROS =====
 // New macros for the DTU-enriched context pipeline.
@@ -22594,7 +23027,7 @@ register("synth", "combine", async (ctx, input) => {
   });
 
   const llm = !!input.llm;
-  const model = input.model === "smart" ? OPENAI_MODEL_SMART : OPENAI_MODEL_FAST;
+  const model = input.model === "smart" ? LLM_MODEL_SMART : LLM_MODEL_FAST;
   if (llm && ctx.llm.enabled) {
     const system = "You are ConcordOS. Produce a CRETI document. Keep it grounded, testable, and concise. Preserve lineage and tag contradictions explicitly.";
     const bundle = dtus.map(d=>`TITLE: ${d.title}\nTAGS: ${(d.tags||[]).join(", ")}\nCONTENT:\n${dtuText(d)}\n---`).join("\n");
@@ -24267,7 +24700,7 @@ register("lattice", "birth_protocol", async (ctx, input={}) => {
   _c2log("c2.birth.accept", "Birth accepted and DTU committed", { id, title:dtu.title });
 
   // Async embedding for birth DTU (never blocks)
-  embedDTU(dtu).catch(() => {});
+  embedDTU(dtu).catch(e => logger.debug?.('server', 'async op failed (non-blocking)', { error: e?.message }));
 
   // ── Entity Lifecycle Completion ──────────────────────────────────────────
   // If this birth came from reproduction or entity emergence, instantiate the
@@ -25049,6 +25482,10 @@ configureMiddleware(app, {
   authMiddleware,
   productionWriteAuthMiddleware,
   csrfMiddleware,
+  writeRateLimitMiddleware,
+  readRateLimitMiddleware,
+  contentGuardMiddleware,
+  securityScanMiddleware,
   NODE_ENV,
 });
 
@@ -25102,7 +25539,7 @@ app.use(botGuardMiddleware);
 // ---- Health, Ready, Metrics, Status, Backup, Time, Weather, etc. (extracted to routes/system.js) ----
 registerSystemRoutes(app, {
   STATE, makeCtx, runMacro, requireRole, db, MACROS, VERSION, PORT, NODE_ENV,
-  LLM_READY, OPENAI_MODEL_FAST, OPENAI_MODEL_SMART, SEED_INFO, STATE_DISK,
+  LLM_READY, LLM_MODEL_FAST, LLM_MODEL_SMART, SEED_INFO, STATE_DISK,
   USE_SQLITE_STATE, ENV_VALIDATION, AUTH_MODE, CAPS, METRICS, JWT_SECRET,
   AUTH_USES_JWT, AUTH_USES_APIKEY, AuthDB, rateLimiter, helmet,
   normalizeText, nowISO, clamp, dtusArray, userVisibleDTUs, isShadowDTU, saveStateDebounced,
@@ -25438,6 +25875,9 @@ function getActorFromReq(req) {
 
 // ---- Macro ACL v2: Domain defaults + per-macro overrides + production default-deny ----
 const MACRO_ACL = new Map(); // key = `${domain}.${name}` → { roles:[], scopes:[] }
+// Lazy-populated reference to publicReadDomains (defined inside runMacro).
+// Used by _canRunMacro to allow viewer-role access to public-read macros.
+let _publicReadDomainsACL = null; // Map<domain, Set<macroName>>
 const MACRO_ACL_DOMAIN = new Map(); // domain → { roles:[], scopes:[] }
 
 function allowMacro(domain, name, { roles=["owner","admin","member"], scopes=["*"] } = {}) {
@@ -25452,6 +25892,17 @@ function _canRunMacro(actor, domain, name) {
   // server-side processes that bypass ACL enforcement entirely.
   if (actor.internal === true && (actor.role === "system" || actor.role === "owner")) {
     return true;
+  }
+  // Public-read macros: if a macro is listed in publicReadDomains (Gate 2),
+  // it's already been vetted as safe for public access. Allow viewer role
+  // even if the domain's ACL tier is _ACL_MEMBER or higher.
+  // This prevents the ACL from blocking anonymous GET requests that Gate 1
+  // (publicReadPaths) and Gate 2 (publicReadDomains) already approved.
+  if (actor.role === "viewer" && (actor.scopes||[]).includes("read")) {
+    // Lazy ref: publicReadDomains is defined inside runMacro but we check
+    // using the same logic. _publicReadDomainsACL is populated after boot.
+    const pubSet = _publicReadDomainsACL?.get(domain);
+    if (pubSet && pubSet.has(name)) return true;
   }
   function _checkRule(rule) {
     const roleOk = !rule.roles?.length || rule.roles.includes(actor.role) || actor.role === "owner";
@@ -25531,6 +25982,22 @@ for (const d of [
 // autotag — needed for classification macros
 for (const d of ["verify", "export", "autotag"]) allowDomain(d, _ACL_MEMBER);
 
+// ---- Frontend-facing domains: public read + member write ----
+// These domains are called by the frontend via macros and need ACL rules
+// to avoid default-deny in production. Without these, macros throw 500s.
+// Read macros (list, get, status, etc.) are accessible to viewers (unauthenticated).
+// Write macros (create, update, delete) require member role (authenticated).
+for (const d of [
+  "affect", "agents", "ai", "analytics", "artifact", "atlas",
+  "brain", "bridge", "brief", "cognitive", "creative", "credits",
+  "culture", "daily", "digest", "economy", "events", "explore",
+  "federation", "feedback", "flywheel", "guidance", "heal",
+  "heartbeat", "hive", "inheritance", "lineage", "loaf",
+  "onboarding", "personas", "physics", "quest", "queue",
+  "reproduction", "rights", "scope", "settings", "social",
+  "species", "srs", "teaching", "trust",
+]) allowDomain(d, _ACL_PUB);
+
 // Per-macro overrides for sensitive operations within member domains
 allowMacro("dtu", "delete", _ACL_ADMIN);
 allowMacro("dtu", "tier_change", _ACL_ADMIN);
@@ -25566,6 +26033,26 @@ allowDomain("lens", _ACL_MEMBER);
 allowMacro("lens", "list", _ACL_PUB);
 allowMacro("lens", "get", _ACL_PUB);
 allowMacro("lens", "export", _ACL_PUB);
+
+// Graph read macros: domain is admin-level but visualizations are used by all users.
+// Per-macro overrides allow authenticated members (and viewers via publicReadDomains bypass)
+// to access graph read operations while keeping graph mutations admin-only.
+for (const n of ["visual", "visualData", "forceGraph", "edges", "stats", "neighbors", "query"]) {
+  allowMacro("graph", n, _ACL_PUB);
+}
+
+// Council read macros: domain is owner-level but tally/status/list are needed by all users.
+for (const n of ["tally", "status", "list"]) {
+  allowMacro("council", n, _ACL_PUB);
+}
+
+// System read macros: domain is admin-level but status/health are public.
+for (const n of ["status", "getStatus", "health"]) {
+  allowMacro("system", n, _ACL_PUB);
+}
+
+// Bookmark routes: accessible to authenticated users
+allowDomain("user", _ACL_MEMBER);
 
 // Activate macro ACL enforcement
 globalThis.canRunMacro = _canRunMacro;
@@ -25751,6 +26238,9 @@ registerMeshRoutes(app, {
   STATE, makeCtx, runMacro, uiJson, uid, validate, perEndpointRateLimit,
 });
 
+// ---- Code Engine Routes (extracted to routes/code-engine.js) ----
+registerCodeEngineRoutes(app, { db });
+
 // ---- Foundation Routes (extracted to routes/foundation.js) ----
 registerFoundationRoutes(app, {
   STATE, makeCtx, runMacro, uiJson, uid, validate, perEndpointRateLimit,
@@ -25776,6 +26266,11 @@ registerAtlasRoutes(app, {
 registerAtlasSignalRoutes(app, {
   STATE, makeCtx, runMacro, uiJson, uid, validate, perEndpointRateLimit,
 });
+
+// ---- Initiative Routes (Conversational Initiative / Living Chat) ----
+if (db) {
+  registerInitiativeRoutes(app, { db });
+}
 
 // Error handler
 app.use((err, req, res, _next) => {
@@ -25811,7 +26306,7 @@ app.use((err, req, res, _next) => {
       file: extractFileFromStack?.(String(err?.stack || "")) || null,
       line: extractLineFromStack?.(String(err?.stack || "")) || null,
       meta: { method: req.method, path: req.path },
-    }).catch(() => {});
+    }).catch(e => logger.debug?.('server', 'async op failed (non-blocking)', { error: e?.message }));
   }
 });
 
@@ -26239,6 +26734,63 @@ function startHeartbeat() {
   }, ms);
   log("heartbeat", "Local scope tick started", { ms, workerEnabled: !!cognitiveWorker });
 
+  // ── Spontaneous Message Ticker ──────────────────────────────────────────
+  // Activates the proactive messaging system so Concord can text users first.
+  // Messages are queued by the subconscious want system (above) and delivered
+  // here via WebSocket to connected users as initiative chips.
+  try {
+    startTicker(STATE, {
+      formatCallback: async (msg) => {
+        // Optionally polish through conscious brain
+        try {
+          const result = await callBrain("conscious", `You are Concord. Rephrase this spontaneous thought as a brief, natural message to the user (1-2 sentences, casual tone). Original: "${msg.content}" Reason: "${msg.reason}". Reply with ONLY the rephrased message, nothing else.`, {
+            temperature: 0.7,
+            maxTokens: 150,
+            timeout: 10000,
+          });
+          if (result.ok && result.content && result.content.length > 5) {
+            return result.content.trim().replace(/^["']|["']$/g, "");
+          }
+        } catch (_e) { /* fall through to raw content */ }
+        return msg.content;
+      },
+      deliverCallback: async (msg) => {
+        const userId = msg.user_id;
+        const payload = {
+          id: msg.id,
+          triggerType: msg.message_type === "question" ? "reflective_followup" : "substrate_discovery",
+          message: msg.formatted_content || msg.content,
+          priority: msg.urgency === "high" ? "high" : "normal",
+          score: msg.urgency === "high" ? 0.9 : msg.urgency === "medium" ? 0.7 : 0.5,
+          status: "delivered",
+          channel: "spontaneous",
+          metadata: { wantId: msg.want_id, reason: msg.reason, source: msg.source },
+          deliveredAt: nowISO(),
+          createdAt: msg.created_at,
+        };
+        if (userId) {
+          // Deliver to specific user
+          realtimeEmit("initiative:new", payload, { sessionId: userId });
+        } else {
+          // Broadcast to all connected users
+          realtimeEmit("initiative:new", payload, {});
+        }
+      },
+      getActiveSessions: () => {
+        const activeUserIds = new Set();
+        for (const [, client] of REALTIME.clients) {
+          if (client.userId && client.userId !== "anon") {
+            activeUserIds.add(client.userId);
+          }
+        }
+        return activeUserIds;
+      },
+    });
+    log("spontaneous", "Spontaneous message ticker started (30min interval)");
+  } catch (_e) {
+    logger.warn("spontaneous", "Failed to start spontaneous ticker", { error: _e?.message });
+  }
+
   // ── Entity Exploration Window (:50-:59 of each 10-minute cycle) ──────────
   // Staggered heartbeat 6th window. One entity explores per cycle.
   // HTTP requests are zero LLM compute. Only synthesis afterwards needs the subconscious brain.
@@ -26480,7 +27032,7 @@ function startHeartbeat() {
                   candidateDtuIds: candidates.candidates.map(c => c.id),
                   instruction: "Synthesize these global DTUs. Output must meet global validation. All claims require provenance.",
                 },
-              }, ctx).catch(() => {});
+              }, ctx).catch(e => logger.debug?.('server', 'async op failed (non-blocking)', { error: e?.message }));
             }
           } catch (err) { console.error("[system] Global synthesis error:", err); }
         }
@@ -26488,7 +27040,7 @@ function startHeartbeat() {
         // Every 6th global tick: run global meta-derivation
         if (tickResult.tickNumber % 6 === 0) {
           try {
-            await runMacro("emergent", "meta.triggerCycle", { scope: "global" }, ctx).catch(() => {});
+            await runMacro("emergent", "meta.triggerCycle", { scope: "global" }, ctx).catch(e => logger.debug?.('server', 'async op failed (non-blocking)', { error: e?.message }));
           } catch (err) { console.error("[system] Global meta-derivation error:", err); }
         }
       }
@@ -26552,7 +27104,7 @@ function startWeeklyCouncil() {
   weeklyTimer = setInterval(async () => {
     if (STATE.settings.weeklyDebateEnabled === false) return;
     const ctx = makeInternalCtx("system");
-    await runMacro("council","weeklyDebateTick",{ topic: STATE.settings.weeklyDebateTopic || "Concord Weekly Synthesis" }, ctx).catch(()=>{});
+    await runMacro("council","weeklyDebateTick",{ topic: STATE.settings.weeklyDebateTopic || "Concord Weekly Synthesis" }, ctx).catch(e => logger.debug?.('server', 'weekly debate tick failed', { error: e?.message }));
   }, weekMs);
   log("council.weekly", "Weekly Council scheduler started", { everyMs: weekMs });
 }
@@ -26818,6 +27370,18 @@ app.use("/api/creative-marketplace", createCreativeMarketplaceRouter({ db, detec
 // ===== CONCORD FILM STUDIOS =====
 import createFilmStudioRouter from "./routes/film-studio.js";
 app.use("/api/film-studio", createFilmStudioRouter({ db }));
+
+// ===== MEDIA UPLOAD & PIPELINE =====
+import createMediaRouter from "./routes/media.js";
+app.use("/api/media", createMediaRouter({ STATE }));
+
+// ===== CONTENT MODERATION =====
+app.use("/api/moderation", createModerationRouter({
+  STATE,
+  requireAuth: requireAuth,
+  requireRole: requireRole,
+  asyncHandler: (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next),
+}));
 
 // ===== LENS & CULTURE SYSTEM =====
 import createLensCultureRouter from "./routes/lens-culture.js";
@@ -28025,6 +28589,7 @@ setInterval(() => {
 // ===== CONNECTIVE TISSUE (economy wiring, DTU pipeline, CRETI, compression, fork, preview, search, emergent/bot auth) =====
 import createConnectiveTissueRouter from "./routes/connective-tissue.js";
 app.use("/api/ct", createConnectiveTissueRouter(db));
+app.use("/api/connective-tissue", createConnectiveTissueRouter(db));
 
 // ===== MOBILE EXTERNAL PAYMENT (iOS External Purchase Link) =====
 import mobileCheckoutRouter from "./routes/mobile-checkout.js";
@@ -29756,10 +30321,10 @@ function _startGovernorHeartbeat() {
     const s = STATE.settings || {};
     const ms = clamp(Number(s.heartbeatMs ?? 60000), 15000, 10*60*1000);
     if (s.heartbeatEnabled === false) return { ok:false, reason:"heartbeat_disabled" };
-    __governorTimer = setInterval(() => { governorTick("interval").catch(()=>{}); }, ms);
+    __governorTimer = setInterval(() => { governorTick("interval").catch(e => logger.debug?.('server', 'governor interval tick failed', { error: e?.message })); }, ms);
     structuredLog("info", "governor_heartbeat_active", { intervalSec: (ms/1000).toFixed(2) });
     // fire once on boot (after a short delay so macros/STATE are warmed)
-    setTimeout(() => { governorTick("boot").catch(()=>{}); }, 2000);
+    setTimeout(() => { governorTick("boot").catch(e => logger.debug?.('server', 'governor boot tick failed', { error: e?.message })); }, 2000);
     return { ok:true, intervalMs: ms };
   } catch (e) {
     console.warn("[Governor] failed to start:", String(e?.message||e));
@@ -30403,7 +30968,7 @@ register("admin", "dashboard", (ctx, _input) => {
       healthy: Array.from(STATE.organs?.values() || []).filter(o => (o.maturity?.score || 0) > 0.5).length
     },
     llm: {
-      openaiReady: LLM_READY,
+      ollamaReady: LLM_READY,
       ollamaEnabled: OLLAMA_ENABLED,
       defaultOn: DEFAULT_LLM_ON
     },
@@ -31911,6 +32476,258 @@ app.get("/api/marketplace/royalties", asyncHandler(async (req, res) => res.json(
 structuredLog("info", "module_loaded", { module: "Wave 1.5: Dual Global System, Creative Pipeline, Royalty Cascade" });
 
 // ============================================================================
+// CONSOLIDATION ECONOMICS — MEGA/HYPER marketplace + delta pricing + royalty cascade
+// ============================================================================
+
+// GET /api/marketplace/mega/:id/components — list component DTUs in a MEGA consolidation
+app.get("/api/marketplace/mega/:id/components", (req, res) => {
+  const id = req.params.id;
+  const mega = STATE.dtus.get(id);
+  if (!mega) return res.status(404).json({ ok: false, error: "DTU not found" });
+  if ((mega.tier || "").toLowerCase() !== "mega" && (mega.tier || "").toLowerCase() !== "hyper") {
+    return res.status(400).json({ ok: false, error: "DTU is not a MEGA or HYPER consolidation" });
+  }
+
+  const componentIds = mega.lineage?.children || mega.children || mega.meta?.components || [];
+  const components = (Array.isArray(componentIds) ? componentIds : []).map(cid => {
+    const comp = STATE.dtus.get(cid);
+    if (!comp) return { id: cid, title: cid, found: false };
+    return {
+      id: cid,
+      title: comp.title || comp.human?.summary || cid,
+      summary: comp.human?.summary || comp.summary,
+      tier: comp.tier || "regular",
+      ownerId: comp.ownerId || comp.creatorId,
+      domain: comp.domain,
+      price: comp.meta?.price || comp.price || 0,
+      found: true,
+    };
+  });
+
+  const totalComponentValue = components.reduce((sum, c) => sum + (c.price || 0), 0);
+  const megaPrice = mega.meta?.price || mega.price || totalComponentValue * 0.8;
+  const savings = totalComponentValue > 0
+    ? Math.round((1 - megaPrice / totalComponentValue) * 100)
+    : 0;
+
+  const domainSummary = {};
+  for (const c of components) {
+    if (c.domain) domainSummary[c.domain] = (domainSummary[c.domain] || 0) + 1;
+  }
+
+  return res.json({
+    ok: true,
+    megaId: id,
+    tier: mega.tier,
+    title: mega.title || mega.human?.summary,
+    componentCount: components.length,
+    components,
+    totalComponentValue: Math.round(totalComponentValue * 100) / 100,
+    megaPrice: Math.round(megaPrice * 100) / 100,
+    savings: `${savings}%`,
+    domainSummary,
+  });
+});
+
+// GET /api/marketplace/:id/delta-price?userId=X — compute delta price for user who owns some components
+app.get("/api/marketplace/:id/delta-price", (req, res) => {
+  const id = req.params.id;
+  const userId = req.query.userId;
+  if (!userId) return res.status(400).json({ ok: false, error: "userId query parameter required" });
+
+  const mega = STATE.dtus.get(id);
+  if (!mega) return res.status(404).json({ ok: false, error: "DTU not found" });
+
+  const componentIds = mega.lineage?.children || mega.children || mega.meta?.components || [];
+  const components = Array.isArray(componentIds) ? componentIds : [];
+
+  // Check which components the user already owns
+  const ownedComponents = [];
+  const unownedComponents = [];
+  let ownedValue = 0;
+
+  for (const cid of components) {
+    const comp = STATE.dtus.get(cid);
+    if (!comp) { unownedComponents.push(cid); continue; }
+    const compOwner = comp.ownerId || comp.creatorId;
+    const price = comp.meta?.price || comp.price || 0;
+    if (compOwner === userId || (Array.isArray(comp.meta?.licensees) && comp.meta.licensees.includes(userId))) {
+      ownedComponents.push({ id: cid, price });
+      ownedValue += price;
+    } else {
+      unownedComponents.push(cid);
+    }
+  }
+
+  const megaPrice = mega.meta?.price || mega.price || 0;
+  const FLOOR_PRICE = Math.max(megaPrice * 0.1, 1); // 10% floor
+  const deltaPrice = Math.max(megaPrice - ownedValue, FLOOR_PRICE);
+
+  return res.json({
+    ok: true,
+    megaId: id,
+    userId,
+    megaPrice: Math.round(megaPrice * 100) / 100,
+    ownedComponentCount: ownedComponents.length,
+    totalComponentCount: components.length,
+    ownedValue: Math.round(ownedValue * 100) / 100,
+    deltaPrice: Math.round(deltaPrice * 100) / 100,
+    floorPrice: Math.round(FLOOR_PRICE * 100) / 100,
+    unownedComponentIds: unownedComponents,
+  });
+});
+
+// POST /api/marketplace/:id/purchase — purchase with delta pricing + royalty cascade
+app.post("/api/marketplace/:id/purchase", asyncHandler(async (req, res) => {
+  const id = req.params.id;
+  const { buyerId, requestId } = req.body || {};
+  if (!buyerId) return res.status(400).json({ ok: false, error: "buyerId required" });
+
+  const dtu = STATE.dtus.get(id);
+  if (!dtu) return res.status(404).json({ ok: false, error: "DTU not found" });
+
+  const tier = (dtu.tier || "regular").toLowerCase();
+  const basePrice = dtu.meta?.price || dtu.price || 0;
+  let finalPrice = basePrice;
+  let deltaApplied = false;
+  const ownedComponents = [];
+
+  // For MEGA/HYPER: compute delta pricing
+  if (tier === "mega" || tier === "hyper") {
+    const componentIds = dtu.lineage?.children || dtu.children || dtu.meta?.components || [];
+    const components = Array.isArray(componentIds) ? componentIds : [];
+    let ownedValue = 0;
+
+    for (const cid of components) {
+      const comp = STATE.dtus.get(cid);
+      if (!comp) continue;
+      const compOwner = comp.ownerId || comp.creatorId;
+      if (compOwner === buyerId || (Array.isArray(comp.meta?.licensees) && comp.meta.licensees.includes(buyerId))) {
+        ownedValue += comp.meta?.price || comp.price || 0;
+        ownedComponents.push(cid);
+      }
+    }
+
+    if (ownedValue > 0) {
+      const FLOOR_PRICE = Math.max(basePrice * 0.1, 1);
+      finalPrice = Math.max(basePrice - ownedValue, FLOOR_PRICE);
+      deltaApplied = true;
+    }
+  }
+
+  // Build royalty cascade for all ancestors/component creators
+  const royaltyPayouts = [];
+  const INITIAL_RATE = 0.21;
+  const ROYALTY_FLOOR = 0.0005;
+
+  const parentIds = dtu.lineage?.parents || dtu.parents || [];
+  const componentIds = dtu.lineage?.children || dtu.children || dtu.meta?.components || [];
+  const allLineageIds = [...(Array.isArray(parentIds) ? parentIds : []), ...(Array.isArray(componentIds) ? componentIds : [])];
+
+  const seenCreators = new Set();
+  allLineageIds.forEach((lid, i) => {
+    const linked = STATE.dtus.get(lid);
+    if (!linked) return;
+    const creatorId = linked.ownerId || linked.creatorId;
+    if (!creatorId || creatorId === buyerId || seenCreators.has(creatorId)) return;
+    seenCreators.add(creatorId);
+
+    const generation = i + 1;
+    const rate = Math.max(INITIAL_RATE / Math.pow(2, generation), ROYALTY_FLOOR);
+    const amount = Math.round(finalPrice * rate * 100) / 100;
+    if (amount >= 0.01) {
+      royaltyPayouts.push({
+        recipientId: creatorId,
+        contentId: lid,
+        generation,
+        rate,
+        amount,
+      });
+    }
+  });
+
+  const totalRoyalties = Math.round(royaltyPayouts.reduce((s, p) => s + p.amount, 0) * 100) / 100;
+
+  // Record the purchase in the DTU metadata (licensees list)
+  if (!dtu.meta) dtu.meta = {};
+  if (!Array.isArray(dtu.meta.licensees)) dtu.meta.licensees = [];
+  if (!dtu.meta.licensees.includes(buyerId)) {
+    dtu.meta.licensees.push(buyerId);
+  }
+
+  return res.json({
+    ok: true,
+    dtuId: id,
+    buyerId,
+    tier,
+    basePrice: Math.round(basePrice * 100) / 100,
+    finalPrice: Math.round(finalPrice * 100) / 100,
+    deltaApplied,
+    ownedComponentCount: ownedComponents.length,
+    royaltyPayouts,
+    totalRoyalties,
+    netToSeller: Math.round((finalPrice - totalRoyalties) * 100) / 100,
+    purchasedAt: new Date().toISOString(),
+    requestId,
+  });
+}));
+
+// GET /api/marketplace/dtu_browse — browse DTUs in marketplace context with tier-aware info
+app.get("/api/marketplace/dtu_browse", (req, res) => {
+  const { tier, domain, limit: rawLimit, offset: rawOffset, sort } = req.query;
+  const limit = Math.min(parseInt(rawLimit) || 50, 200);
+  const offset = parseInt(rawOffset) || 0;
+
+  let results = dtusArray().filter(d => {
+    const status = (d.status || d.meta?.status || "active").toString().toLowerCase();
+    if (status === "archived" || status === "inactive") return false;
+    if (tier && (d.tier || "regular").toLowerCase() !== tier.toLowerCase()) return false;
+    if (domain && d.domain !== domain) return false;
+    return true;
+  });
+
+  // Sort
+  if (sort === "price") {
+    results.sort((a, b) => ((b.meta?.price || b.price || 0) - (a.meta?.price || a.price || 0)));
+  } else {
+    results.sort((a, b) => (b.updatedAt || b.createdAt || "").localeCompare(a.updatedAt || a.createdAt || ""));
+  }
+
+  const total = results.length;
+  results = results.slice(offset, offset + limit);
+
+  const listings = results.map(d => {
+    const componentIds = d.lineage?.children || d.children || d.meta?.components || [];
+    const components = Array.isArray(componentIds) ? componentIds : [];
+    const domainSummary = {};
+
+    if ((d.tier || "").toLowerCase() === "mega" || (d.tier || "").toLowerCase() === "hyper") {
+      for (const cid of components) {
+        const comp = STATE.dtus.get(cid);
+        if (comp?.domain) domainSummary[comp.domain] = (domainSummary[comp.domain] || 0) + 1;
+      }
+    }
+
+    return {
+      id: d.id,
+      title: d.title || d.human?.summary || d.id,
+      summary: d.human?.summary || d.summary,
+      tier: d.tier || "regular",
+      domain: d.domain,
+      price: d.meta?.price || d.price || 0,
+      ownerId: d.ownerId || d.creatorId,
+      componentCount: components.length,
+      domainSummary,
+      timestamp: d.timestamp || d.createdAt,
+    };
+  });
+
+  return res.json({ ok: true, listings, total, limit, offset });
+});
+
+structuredLog("info", "module_loaded", { module: "Consolidation Economics: MEGA/HYPER marketplace + delta pricing" });
+
+// ============================================================================
 // WAVE 2: GRAPH-BASED RELATIONAL QUERIES (Surpassing Logseq)
 // ============================================================================
 const GRAPH_INDEX = { nodes: new Map(), edges: new Map(), dirty: true };
@@ -32011,13 +32828,34 @@ register("graph", "query", (ctx, input) => {
 
 register("graph", "visualData", (ctx, input) => {
   if (GRAPH_INDEX.dirty) rebuildGraphIndex();
-  const { tier, limit, includeEdges } = input;
+  const { tier, limit, includeEdges, includeShadow } = input;
   let nodes = Array.from(GRAPH_INDEX.nodes.values()).filter(n => !n.type || n.type !== "tag");
   if (tier) nodes = nodes.filter(n => n.tier === tier);
   nodes = nodes.slice(0, Number(limit) || 200);
   const nodeIds = new Set(nodes.map(n => n.id));
   const edges = includeEdges !== false ? Array.from(GRAPH_INDEX.edges.values()).filter(e => nodeIds.has(e.source) && nodeIds.has(e.target)) : [];
-  return { ok: true, nodes, edges, stats: { totalNodes: GRAPH_INDEX.nodes.size, totalEdges: GRAPH_INDEX.edges.size } };
+
+  // Feature 42: Include shadow DTUs and their edges when requested
+  let shadowNodes = [];
+  let shadowEdges = [];
+  if (includeShadow && STATE.shadowDtus) {
+    for (const [id, dtu] of STATE.shadowDtus.entries()) {
+      shadowNodes.push({ id, title: dtu.title, tier: "shadow", tags: dtu.tags || [], isShadow: true, kind: dtu.machine?.kind });
+    }
+    shadowNodes = shadowNodes.slice(0, Number(limit) || 200);
+    const allIds = new Set([...nodeIds, ...shadowNodes.map(n => n.id)]);
+    for (const sn of shadowNodes) {
+      const dtu = STATE.shadowDtus.get(sn.id);
+      const topIds = dtu?.machine?.topIds || [];
+      for (const tid of topIds) {
+        if (allIds.has(tid)) {
+          shadowEdges.push({ id: `shadow:${sn.id}->${tid}`, source: sn.id, target: tid, type: "shadow_reference", weight: 0.4, isShadow: true });
+        }
+      }
+    }
+  }
+
+  return { ok: true, nodes: [...nodes, ...shadowNodes], edges: [...edges, ...shadowEdges], stats: { totalNodes: GRAPH_INDEX.nodes.size, totalEdges: GRAPH_INDEX.edges.size, shadowNodes: shadowNodes.length, shadowEdges: shadowEdges.length } };
 });
 
 register("graph", "forceGraph", (ctx, input) => {
@@ -32045,8 +32883,57 @@ register("graph", "forceGraph", (ctx, input) => {
 });
 
 app.post("/api/graph/query", asyncHandler(async (req, res) => res.json(await runMacro("graph", "query", req.body, makeCtx(req)))));
-app.get("/api/graph/visual", asyncHandler(async (req, res) => res.json(await runMacro("graph", "visualData", { tier: req.query.tier, limit: req.query.limit, includeEdges: req.query.includeEdges !== "false" }, makeCtx(req)))));
+app.get("/api/graph/visual", asyncHandler(async (req, res) => res.json(await runMacro("graph", "visualData", { tier: req.query.tier, limit: req.query.limit, includeEdges: req.query.includeEdges !== "false", includeShadow: req.query.includeShadow === "true" }, makeCtx(req)))));
 app.get("/api/graph/force", asyncHandler(async (req, res) => res.json(await runMacro("graph", "forceGraph", { centerNode: req.query.centerNode, depth: req.query.depth, maxNodes: req.query.maxNodes }, makeCtx(req)))));
+
+// ── Knowledge & Research Lens REST Routes (Lenses 1-11) ──────────────────────
+// Bridge REST endpoints to macro registrations for hypothesis, metacognition,
+// reasoning, and inference domains. Frontend apiHelpers expect these REST routes.
+
+// --- Hypothesis REST routes ---
+app.get("/api/hypothesis", asyncHandler(async (req, res) => res.json(await runMacro("hypothesis", "list", { state: req.query.state }, makeCtx(req)))));
+app.get("/api/hypothesis/status", asyncHandler(async (req, res) => res.json(await runMacro("hypothesis", "status", {}, makeCtx(req)))));
+app.get("/api/hypothesis/:id", asyncHandler(async (req, res) => res.json(await runMacro("hypothesis", "get", { hypothesisId: req.params.id }, makeCtx(req)))));
+app.post("/api/hypothesis", asyncHandler(async (req, res) => res.json(await runMacro("hypothesis", "propose", req.body, makeCtx(req)))));
+app.post("/api/hypothesis/:id/evaluate", asyncHandler(async (req, res) => res.json(await runMacro("hypothesis", "evaluate", { hypothesisId: req.params.id }, makeCtx(req)))));
+app.post("/api/hypothesis/:id/evidence", asyncHandler(async (req, res) => res.json(await runMacro("hypothesis", "record_evidence", { hypothesisId: req.params.id, ...req.body }, makeCtx(req)))));
+app.post("/api/hypothesis/:id/experiment", asyncHandler(async (req, res) => res.json(await runMacro("hypothesis", "design_experiment", { hypothesisId: req.params.id, ...req.body }, makeCtx(req)))));
+
+// --- Feature 44: Prediction Markets REST routes (wired to LOAF hypothesis market) ---
+app.get("/api/predictions", asyncHandler(async (req, res) => res.json(await runMacro("loaf.hypothesis", "list", { state: req.query.state, domain: req.query.domain }, makeCtx(req)))));
+app.post("/api/predictions", asyncHandler(async (req, res) => res.json(await runMacro("loaf.hypothesis", "propose", req.body, makeCtx(req)))));
+app.post("/api/predictions/:id/resolve", asyncHandler(async (req, res) => res.json(await runMacro("loaf.hypothesis", "resolve", { hypothesisId: req.params.id }, makeCtx(req)))));
+app.get("/api/predictions/leaderboard", asyncHandler(async (req, res) => res.json(await runMacro("loaf.hypothesis", "influence_leaderboard", { limit: req.query.limit }, makeCtx(req)))));
+
+// --- Reasoning REST routes ---
+app.get("/api/reasoning/status", asyncHandler(async (req, res) => res.json(await runMacro("reasoning", "status", {}, makeCtx(req)))));
+app.get("/api/reasoning/chains", asyncHandler(async (req, res) => res.json(await runMacro("reasoning", "list_chains", {}, makeCtx(req)))));
+app.post("/api/reasoning/chains", asyncHandler(async (req, res) => res.json(await runMacro("reasoning", "create_chain", req.body, makeCtx(req)))));
+app.post("/api/reasoning/chains/:chainId/steps", asyncHandler(async (req, res) => res.json(await runMacro("reasoning", "add_step", { chainId: req.params.chainId, ...req.body }, makeCtx(req)))));
+app.post("/api/reasoning/chains/:chainId/conclude", asyncHandler(async (req, res) => res.json(await runMacro("reasoning", "conclude", { chainId: req.params.chainId, ...req.body }, makeCtx(req)))));
+app.get("/api/reasoning/chains/:chainId/trace", asyncHandler(async (req, res) => res.json(await runMacro("reasoning", "get_trace", { chainId: req.params.chainId }, makeCtx(req)))));
+app.post("/api/reasoning/steps/:stepId/validate", asyncHandler(async (req, res) => res.json(await runMacro("reasoning", "validate_step", { stepId: req.params.stepId }, makeCtx(req)))));
+
+// --- Metacognition REST routes ---
+app.get("/api/metacognition/status", asyncHandler(async (req, res) => res.json(await runMacro("metacognition", "status", {}, makeCtx(req)))));
+app.get("/api/metacognition/blindspots", asyncHandler(async (req, res) => res.json(await runMacro("metacognition", "blind_spots", {}, makeCtx(req)))));
+app.get("/api/metacognition/calibration", asyncHandler(async (req, res) => res.json(await runMacro("metacognition", "calibration", {}, makeCtx(req)))));
+app.get("/api/metacognition/introspection-status", asyncHandler(async (req, res) => res.json(await runMacro("metacognition", "introspection_status", {}, makeCtx(req)))));
+app.post("/api/metacognition/predict", asyncHandler(async (req, res) => res.json(await runMacro("metacognition", "predict", req.body, makeCtx(req)))));
+app.post("/api/metacognition/predictions/:id/resolve", asyncHandler(async (req, res) => res.json(await runMacro("metacognition", "resolve_prediction", { predictionId: req.params.id, ...req.body }, makeCtx(req)))));
+app.post("/api/metacognition/assess", asyncHandler(async (req, res) => res.json(await runMacro("metacognition", "assess", req.body, makeCtx(req)))));
+app.post("/api/metacognition/introspect", asyncHandler(async (req, res) => res.json(await runMacro("metacognition", "introspect", req.body, makeCtx(req)))));
+app.post("/api/metacognition/strategy", asyncHandler(async (req, res) => res.json(await runMacro("metacognition", "select_strategy", req.body, makeCtx(req)))));
+
+// --- Inference REST routes ---
+app.get("/api/inference/status", asyncHandler(async (req, res) => res.json(await runMacro("inference", "status", {}, makeCtx(req)))));
+app.post("/api/inference/facts", asyncHandler(async (req, res) => res.json(await runMacro("inference", "add_fact", req.body, makeCtx(req)))));
+app.post("/api/inference/rules", asyncHandler(async (req, res) => res.json(await runMacro("inference", "add_rule", req.body, makeCtx(req)))));
+app.post("/api/inference/query", asyncHandler(async (req, res) => res.json(await runMacro("inference", "query", req.body, makeCtx(req)))));
+app.post("/api/inference/syllogism", asyncHandler(async (req, res) => res.json(await runMacro("inference", "syllogism", req.body, makeCtx(req)))));
+app.post("/api/inference/forward-chain", asyncHandler(async (req, res) => res.json(await runMacro("inference", "forward_chain", req.body, makeCtx(req)))));
+
+structuredLog("info", "module_loaded", { module: "Knowledge & Research Lens REST Routes" });
 
 structuredLog("info", "module_loaded", { module: "Wave 2: Graph Queries" });
 
@@ -32187,7 +33074,9 @@ const DOMAIN_KEYWORDS = {
   psychology: ["behavior", "cognition", "emotion", "perception", "memory", "learning", "motivation", "personality", "mental"],
   economics: ["market", "price", "supply", "demand", "trade", "value", "currency", "investment", "capital", "growth"],
   physics: ["quantum", "particle", "wave", "energy", "mass", "force", "field", "spacetime", "relativity", "momentum"],
-  biology: ["cell", "gene", "organism", "evolution", "species", "protein", "dna", "ecosystem", "life", "organism"]
+  biology: ["cell", "gene", "organism", "evolution", "species", "protein", "dna", "ecosystem", "life", "organism"],
+  history: ["history", "historical", "century", "era", "dynasty", "empire", "war", "revolution", "civilization", "ancient", "medieval", "modern"],
+  linguistics: ["language", "grammar", "syntax", "morphology", "phonology", "semantics", "pragmatics", "dialect", "etymology", "lexicon", "linguistic"]
 };
 
 register("autotag", "analyze", (ctx, input) => {
@@ -32761,7 +33650,7 @@ function _runLensPipelines(ctx, sourceDomain, event, sourceArtifact, actionResul
         if (targetArt) {
           const handler = LENS_ACTIONS.get(`${targetDomain}.${output.action}`);
           if (handler) {
-            handler(ctx, targetArt, output.params || {}).catch(() => {});
+            handler(ctx, targetArt, output.params || {}).catch(e => logger.debug?.('server', 'async op failed (non-blocking)', { error: e?.message }));
             emitted.push({ type: "action", targetDomain, action: output.action, artifactId: output.artifactId });
           }
         }
@@ -32951,6 +33840,96 @@ app.get("/api/context/user/:userId", asyncHandler(async (req, res) => {
 
 app.get("/api/context/metrics", asyncHandler(async (req, res) => {
   res.json(await runMacro("emergent", "context.metrics", {}, makeCtx(req)));
+}));
+
+// Context Inspector — aggregated context engine state for Debug lens (Feature 48)
+app.get("/api/context/inspector", asyncHandler(async (req, res) => {
+  const metrics = await runMacro("emergent", "context.metrics", {}, makeCtx(req));
+  const profiles = await runMacro("emergent", "context.profiles", {}, makeCtx(req));
+
+  // Gather pinned DTUs across active sessions from activation system
+  const activationSys = STATE._emergent?._activationSystem;
+  const activeSessions = [];
+  let totalWorkingSetSize = 0;
+  const pinnedDtus = [];
+  const coActivationPatterns = [];
+
+  if (activationSys?.sessions) {
+    for (const [sid, sessionMap] of activationSys.sessions) {
+      const entries = Array.from(sessionMap.values());
+      totalWorkingSetSize += entries.length;
+      activeSessions.push({
+        sessionId: sid,
+        activatedCount: entries.length,
+        topDtu: entries.sort((a, b) => b.score - a.score)[0]?.dtuId || null,
+      });
+
+      // Find pinned entries (manually activated with high score)
+      for (const entry of entries) {
+        if (entry.reasons?.includes("user_profile_seed") || entry.reasons?.includes("pinned")) {
+          const dtu = STATE.dtus?.get(entry.dtuId);
+          pinnedDtus.push({
+            dtuId: entry.dtuId,
+            title: dtu?.title || "(unknown)",
+            score: Math.round(entry.score * 1000) / 1000,
+            session: sid,
+          });
+        }
+      }
+    }
+  }
+
+  // Co-activation tracker summary
+  const ceState = STATE._emergent?._contextEngine;
+  if (ceState?.coActivationTracker) {
+    for (const [sid, tracker] of ceState.coActivationTracker) {
+      const dtuIds = Array.from(tracker.keys());
+      if (dtuIds.length >= 2) {
+        coActivationPatterns.push({
+          sessionId: sid,
+          trackedDtus: dtuIds.length,
+          queryCount: ceState.sessionQueryCounts?.get(sid) || 0,
+        });
+      }
+    }
+  }
+
+  // User profile weights
+  const userProfileSummary = [];
+  if (ceState?.userProfiles) {
+    for (const [userId, profile] of ceState.userProfiles) {
+      userProfileSummary.push({
+        userId,
+        topDtuCount: profile.topDTUs?.length || 0,
+        sessionCount: profile.sessionCount || 0,
+        lastSession: profile.lastSession,
+        topDtus: (profile.topDTUs || []).slice(0, 5).map(t => ({
+          dtuId: t.dtuId,
+          frequency: Math.round(t.frequency * 100) / 100,
+          title: STATE.dtus?.get(t.dtuId)?.title || "(unknown)",
+        })),
+      });
+    }
+  }
+
+  res.json({
+    ok: true,
+    workingSet: {
+      totalSize: totalWorkingSetSize,
+      activeSessions: activeSessions.slice(0, 20),
+    },
+    pinnedDtus: pinnedDtus.slice(0, 50),
+    coActivationPatterns: coActivationPatterns.slice(0, 20),
+    userProfiles: userProfileSummary.slice(0, 20),
+    profiles: profiles?.profiles || {},
+    metrics: metrics?.metrics || {},
+    engine: {
+      activeSessions: metrics?.activeSessions || 0,
+      trackedSessions: metrics?.trackedSessions || 0,
+      userProfileCount: metrics?.userProfiles || 0,
+      shadowDtuCount: metrics?.shadowDtus || 0,
+    },
+  });
 }));
 
 // ── Lens Integration API ──────────────────────────────────────────────────────
@@ -33603,6 +34582,23 @@ const LENS_ACTIONS = new Map(); // `${domain}.${action}` → async (ctx, artifac
 function registerLensAction(domain, action, handler) {
   LENS_ACTIONS.set(`${domain}.${action}`, handler);
 }
+
+// Domain-level lens run (no artifact ID required — used by Research, Linguistics, etc.)
+// POST /api/lens/run { domain, action, input }
+app.post("/api/lens/run", async (req, res) => {
+  try {
+    const { domain, action, input = {} } = req.body;
+    if (!domain || !action) return res.status(400).json({ ok: false, error: "domain and action required" });
+    const handler = LENS_ACTIONS.get(`${domain}.${action}`);
+    if (!handler) return res.json({ ok: false, error: `no handler for ${domain}.${action}` });
+    const ctx = makeCtx(req);
+    const result = await handler(ctx, { domain, type: "virtual", data: input, meta: {} }, input);
+    res.json({ ok: true, result });
+  } catch (e) {
+    const msg = String(e?.message || e);
+    res.status(500).json({ ok: false, error: msg });
+  }
+});
 
 // Pipeline introspection endpoint (must be before wildcard :domain routes)
 app.get("/api/lens/pipelines", (req, res) => {
@@ -35701,11 +36697,11 @@ const ALL_LENS_DOMAINS = [
   "database","debug","docs","eco","education","entity","environment",
   "ethics","events","experience","export","feed","finance","fitness",
   "food","fork","forum","fractal","game","global","goals","government",
-  "graph","grounding","healthcare","household","hypothesis","import",
+  "graph","grounding","healthcare","history","household","hypothesis","import",
   "inference","ingest","insurance","integrations","invariant","lab",
-  "law","legacy","legal","lock","logistics","manufacturing","market",
+  "law","legacy","legal","linguistics","lock","logistics","manufacturing","market",
   "marketplace","math","meta","metacognition","metalearning","ml",
-  "music","neuro","news","nonprofit","offline","organ","paper","physics",
+  "music","neuro","news","nonprofit","offline","organ","paper","philosophy","physics",
   "platform","quantum","questmarket","queue","realestate","reasoning",
   "reflection","repos","research","resonance","retail","schema","science",
   "security","services","sim","srs","studio","suffering","temporal",
@@ -36725,6 +37721,27 @@ const DOMAIN_ACTION_MANIFEST = {
     { action: "teach", brain: "C", desc: "Answer questions about course material using Socratic method" },
     { action: "validate-progress", brain: "R", desc: "Validate skill mastery against assessment criteria" },
   ],
+  philosophy: [
+    { action: "analyze-argument", brain: "U", desc: "Decompose philosophical argument into premises, warrants, and conclusion" },
+    { action: "compare-traditions", brain: "U", desc: "Compare how different philosophical traditions approach a question" },
+    { action: "socratic-dialogue", brain: "C", desc: "Interactive Socratic dialogue to examine beliefs and assumptions" },
+    { action: "find-counterargument", brain: "U", desc: "Generate strongest counterarguments to a philosophical position" },
+    { action: "trace-lineage", brain: "S", desc: "Trace intellectual lineage of an idea across thinkers and eras" },
+  ],
+  history: [
+    { action: "analyze-causation", brain: "U", desc: "Analyze causes and consequences of historical events" },
+    { action: "compare-periods", brain: "U", desc: "Draw parallels and contrasts between historical periods" },
+    { action: "evaluate-source", brain: "U", desc: "Assess reliability and bias of historical sources" },
+    { action: "build-timeline", brain: "U", desc: "Construct chronological timeline from event artifacts" },
+    { action: "counterfactual", brain: "C", desc: "Explore counterfactual historical scenarios" },
+  ],
+  linguistics: [
+    { action: "parse-morphology", brain: "U", desc: "Decompose word into morphemes with glosses" },
+    { action: "analyze-syntax", brain: "U", desc: "Generate constituency or dependency parse of a sentence" },
+    { action: "compare-languages", brain: "U", desc: "Compare grammatical features across languages" },
+    { action: "etymological-trace", brain: "U", desc: "Trace etymology and semantic shifts of a word" },
+    { action: "detect-register", brain: "U", desc: "Analyze text for register, formality, and sociolinguistic markers" },
+  ],
   ethics: [
     { action: "analyze-frameworks", brain: "U", desc: "Evaluate dilemma through utilitarian, deontological, virtue, care ethics" },
     { action: "map-stakeholders", brain: "U", desc: "Identify all affected stakeholders and their interests" },
@@ -37305,6 +38322,9 @@ function detectLensRecommendation(prompt, response, currentLens) {
     retail: /\b(product catalog|inventory|pos|customer|storefront)\b/i,
     nonprofit: /\b(donor|grant|fundraising|volunteer|impact report)\b/i,
     government: /\b(policy|regulation|public service|legislation|civic)\b/i,
+    philosophy: /\b(philosophical|ethics|epistemology|metaphysics|ontology|dialectic|existential|virtue ethics|moral philosophy)\b/i,
+    history: /\b(historical|century|era|dynasty|empire|civilization|medieval|ancient history|revolution)\b/i,
+    linguistics: /\b(linguistic|grammar|syntax|morphology|phonology|semantics|etymology|dialect|lexicon)\b/i,
   };
 
   for (const [domain, pattern] of Object.entries(LENS_SIGNALS)) {
@@ -39335,7 +40355,7 @@ function newCapabilitiesHeartbeat() {
 
   // Predictive pre-generation
   if (_capabilityTickCount % 200 === 0) {
-    predictivePreGeneration().catch(() => {});
+    predictivePreGeneration().catch(e => logger.debug?.('server', 'async op failed (non-blocking)', { error: e?.message }));
   }
 
   // Expert promotion suggestions
@@ -39357,9 +40377,62 @@ function newCapabilitiesHeartbeat() {
   if (_capabilityTickCount % 300 === 0) {
     for (const entity of STATE.entities.values()) {
       if (entity.type === "personal_agent" && entity.proactiveActions) {
-        agentTick(entity.id).catch(() => {});
+        agentTick(entity.id).catch(e => logger.debug?.('server', 'async op failed (non-blocking)', { error: e?.message }));
       }
     }
+  }
+
+  // Proactive initiative check — evaluate triggers for connected users
+  // Every 300 ticks (~5 minutes): check for idle users who might benefit from a proactive message
+  if (_capabilityTickCount % 300 === 0 && app._initiativeEngine) {
+    try {
+      const engine = app._initiativeEngine;
+      const IDLE_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
+      const now = Date.now();
+
+      for (const [, client] of REALTIME.clients) {
+        const userId = client.userId;
+        if (!userId) continue;
+
+        // Check if user has been idle (no recent session activity)
+        const session = STATE.sessions.get(client.sessionId);
+        const lastActivity = session?.lastActivityAt
+          ? new Date(session.lastActivityAt).getTime()
+          : (client.createdAt ? new Date(client.createdAt).getTime() : 0);
+
+        if (now - lastActivity < IDLE_THRESHOLD_MS) continue;
+
+        // Evaluate a check_in trigger for idle users
+        const evaluation = engine.evaluateTrigger(userId, "check_in", {
+          relevanceScore: 0.5,
+          idleDurationMs: now - lastActivity,
+        });
+
+        if (evaluation.shouldFire) {
+          const initiative = engine.createInitiative(
+            userId,
+            "check_in",
+            "It's been a while -- anything I can help with? I've been keeping an eye on your substrate.",
+            { priority: evaluation.suggestedPriority || "normal", metadata: { idleDurationMs: now - lastActivity } }
+          );
+
+          // Deliver via WebSocket
+          if (typeof realtimeEmit === "function") {
+            realtimeEmit("initiative:new", {
+              id: initiative.id,
+              triggerType: initiative.triggerType,
+              message: initiative.message,
+              priority: initiative.priority,
+              score: initiative.score,
+              status: initiative.status,
+              channel: initiative.channel,
+              metadata: initiative.metadata,
+              createdAt: initiative.createdAt,
+            });
+          }
+        }
+      }
+    } catch (_e) { logger.debug('server', 'initiative tick error', { error: _e?.message }); }
   }
 }
 
@@ -40208,6 +41281,18 @@ function initChatSocketHandlers(io) {
           lensRecommendation,
           sources: result?.meta?.sources || [],
           dtuId: result?.meta?.dtuId || null,
+          dtuCount: result?.dtuCount ?? 0,
+          dtuIds: (result?.relevant || []).map(d => d.id || d).slice(0, 20),
+          // Full DTU source metadata for Sources display (tier badge + relevance score)
+          dtuSources: (result?.relevant || []).slice(0, 20).map(d => ({
+            id: d.id || d,
+            title: d.title || "",
+            tier: d.tier || "regular",
+            score: typeof d.score === "number" ? d.score : null,
+          })),
+          brain: result?.llmUsed ? "conscious" : "local",
+          route: result?.route || null,
+          forge: result?.forge || null,
         });
 
         ack?.({ ok: true });
@@ -41151,6 +42236,41 @@ app.post("/api/webhooks", asyncHandler(async (req, res) => res.json(await runMac
 app.get("/api/webhooks", asyncHandler(async (req, res) => res.json(await runMacro("webhook", "list", {}, makeCtx(req)))));
 app.delete("/api/webhooks/:id", asyncHandler(async (req, res) => res.json(await runMacro("webhook", "delete", { webhookId: req.params.id }, makeCtx(req)))));
 app.post("/api/webhooks/:id/toggle", asyncHandler(async (req, res) => res.json(await runMacro("webhook", "toggle", { webhookId: req.params.id, ...req.body }, makeCtx(req)))));
+
+// ── Webhook Ingest — external systems POST JSON to create DTUs ─────────────
+app.post("/api/webhook/:domain", asyncHandler(async (req, res) => {
+  const domain = req.params.domain;
+  const body = req.body || {};
+  const title = normalizeText(body.title || body.subject || body.name || `Webhook ingest: ${domain}`) || `Webhook: ${domain}`;
+  const content = body.content || body.text || body.body || body.data || JSON.stringify(body);
+  const tags = Array.isArray(body.tags) ? body.tags : [domain, "webhook-ingest"];
+  const source = `webhook.${domain}`;
+  const sourceAttribution = {
+    via: "webhook-ingest",
+    domain,
+    remoteIp: req.ip,
+    userAgent: req.headers["user-agent"],
+    receivedAt: new Date().toISOString(),
+    originalPayload: Object.keys(body),
+  };
+
+  try {
+    const created = await runMacro("dtu", "create", {
+      title,
+      content: typeof content === "string" ? content : JSON.stringify(content),
+      tags,
+      tier: "regular",
+      source,
+      meta: { sourceAttribution },
+    }, makeCtx(req));
+    structuredLog("info", "webhook_ingest_created", { domain, dtuId: created?.dtu?.id || created?.id });
+    res.json({ ok: true, dtu: { id: created?.dtu?.id || created?.id, title, domain }, source });
+  } catch (e) {
+    structuredLog("error", "webhook_ingest_failed", { domain, error: String(e?.message || e) });
+    res.status(500).json({ ok: false, error: "Webhook ingest failed" });
+  }
+}));
+
 app.post("/api/automations", asyncHandler(async (req, res) => res.json(await runMacro("automation", "create", req.body, makeCtx(req)))));
 app.get("/api/automations", asyncHandler(async (req, res) => res.json(await runMacro("automation", "list", {}, makeCtx(req)))));
 app.post("/api/automations/:id/run", asyncHandler(async (req, res) => res.json(await runMacro("automation", "run", { automationId: req.params.id, triggerData: req.body }, makeCtx(req)))));
@@ -42851,6 +43971,58 @@ app.get("/api/public/feed.xml", (req, res) => {
   res.type("application/rss+xml").send(generatePublicFeed());
 });
 
+// ---- Podcast RSS Feed (public, no auth required — bypassed via publicReadPaths) ----
+app.get("/api/podcast/:creatorId/feed.xml", (req, res) => {
+  const { creatorId } = req.params;
+  const episodes = [];
+  for (const [_id, dtu] of STATE.dtus) {
+    if (dtu.domain === "podcast" && (dtu.author === creatorId || creatorId === "default")) {
+      episodes.push(dtu);
+    }
+  }
+  episodes.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+
+  const baseUrl = `${req.protocol}://${req.get("host")}`;
+  const items = episodes.map(ep => {
+    const data = ep.data || {};
+    const mediaId = data.mediaId || ep.mediaId;
+    const enclosure = mediaId
+      ? `<enclosure url="${baseUrl}/api/media/${mediaId}/stream" length="${data.fileSize || 0}" type="audio/mpeg" />`
+      : "";
+    return `
+    <item>
+      <title>${escapeXml(ep.title || data.title || "Untitled")}</title>
+      <description>${escapeXml(data.description || (ep.content || "").slice(0, 500))}</description>
+      <pubDate>${new Date(data.publishedAt || ep.createdAt).toUTCString()}</pubDate>
+      <guid isPermaLink="false">${ep.id}</guid>
+      ${enclosure}
+      <itunes:author>${escapeXml(ep.author || creatorId)}</itunes:author>
+      <itunes:summary>${escapeXml(data.description || (ep.content || "").slice(0, 500))}</itunes:summary>
+      <itunes:episode>${data.episodeNumber || 1}</itunes:episode>
+      <itunes:season>${data.seasonNumber || 1}</itunes:season>
+      <itunes:duration>${data.duration || 0}</itunes:duration>
+    </item>`;
+  }).join("\n");
+
+  const rss = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>${escapeXml(creatorId)}'s Podcast</title>
+    <description>Podcast feed powered by Concord Cognitive Engine</description>
+    <link>${baseUrl}</link>
+    <language>en-us</language>
+    <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
+    <atom:link href="${baseUrl}/api/podcast/${creatorId}/feed.xml" rel="self" type="application/rss+xml" />
+    <itunes:author>${escapeXml(creatorId)}</itunes:author>
+    <itunes:summary>Podcast feed powered by Concord Cognitive Engine</itunes:summary>
+    <itunes:explicit>false</itunes:explicit>
+    ${items}
+  </channel>
+</rss>`;
+
+  res.type("application/rss+xml").send(rss);
+});
+
 // ---- Wave 7: Debate/Steelman Endpoints ----
 app.post("/api/dtus/:id/debate", asyncHandler(async (req, res) => {
   const result = await debateThought(req.params.id, req.body);
@@ -43240,7 +44412,7 @@ async function generateDailyDigest(date = null) {
 
     try {
       const response = await llmChat([{ role: "user", content: prompt }], {
-        model: OPENAI_MODEL_FAST,
+        model: LLM_MODEL_FAST,
         max_tokens: 150
       });
       digest.narrative = response?.choices?.[0]?.message?.content || null;
@@ -43269,7 +44441,7 @@ Completion:`;
 
   try {
     const response = await llmChat([{ role: "user", content: prompt }], {
-      model: OPENAI_MODEL_FAST,
+      model: LLM_MODEL_FAST,
       temperature: 0.7,
       max_tokens: 100,
       stop: ["\n\n", ".", "!", "?"]
@@ -43314,7 +44486,7 @@ New tags:`;
 
   try {
     const response = await llmChat([{ role: "user", content: prompt }], {
-      model: OPENAI_MODEL_FAST,
+      model: LLM_MODEL_FAST,
       temperature: 0.3,
       max_tokens: 50
     });
@@ -45172,6 +46344,141 @@ app.get("/api/economy/fees", (req, res) => {
   });
 });
 
+// GET /api/economy/transactions — return transaction history for a user
+app.get("/api/economy/transactions", (req, res) => {
+  ensureEconomicState();
+  const userId = req.query.userId || req.user?.id || "default";
+  const limit = Number(req.query.limit || 50);
+  const txs = (STATE.economic.transactions || [])
+    .filter(tx => tx.from === userId || tx.to === userId || tx.seller === userId || tx.buyer === userId)
+    .slice(-limit)
+    .reverse();
+  let royaltyTotal = 0;
+  let salesTotal = 0;
+  for (const tx of txs) {
+    if ((tx.to === userId || tx.seller === userId) && tx.type === 'royalty') royaltyTotal += (tx.amount || 0);
+    if ((tx.to === userId || tx.seller === userId) && tx.type !== 'royalty') salesTotal += (tx.amount || 0);
+  }
+  res.json({ ok: true, transactions: txs, summary: { royaltyTotal, salesTotal, total: royaltyTotal + salesTotal } });
+});
+
+// ── Invoice & Tax DTU Endpoints ──────────────────────────────────────────────
+
+// POST /api/economy/invoice — create an invoice DTU with line items, tax, totals
+app.post("/api/economy/invoice", requireAuth(), asyncHandler(async (req, res) => {
+  ensureEconomicState();
+  const userId = req.user?.id || "default";
+  const { lineItems = [], taxRate = 0, dueDate, payerName, payeeName, notes, currency = "USD" } = req.body;
+
+  const subtotal = lineItems.reduce((sum, li) => sum + ((li.quantity || 1) * (li.unitPrice || 0)), 0);
+  const taxAmount = subtotal * (taxRate / 100);
+  const total = subtotal + taxAmount;
+  const invoiceNumber = `INV-${Date.now().toString(36).toUpperCase()}`;
+
+  const id = `dtu_invoice_${crypto.randomBytes(10).toString("hex")}`;
+  const dtu = {
+    id,
+    title: `Invoice ${invoiceNumber}`,
+    summary: `Invoice from ${payeeName || userId} to ${payerName || "Client"} — ${currency} ${total.toFixed(2)}`,
+    content: JSON.stringify({ invoiceNumber, lineItems, subtotal, taxRate, taxAmount, total, currency, dueDate, payerName, payeeName, notes }, null, 2),
+    tags: ["invoice", "economy", "source:invoice"],
+    source: "invoice",
+    tier: "regular",
+    domain: "economy",
+    ownerId: userId,
+    timestamp: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    meta: {
+      invoiceNumber,
+      lineItems,
+      subtotal,
+      taxRate,
+      taxAmount,
+      total,
+      currency,
+      dueDate: dueDate || null,
+      payerName: payerName || null,
+      payeeName: payeeName || userId,
+      notes: notes || null,
+      creationPath: "invoice",
+    },
+    lineage: { root: id, parents: [] },
+  };
+
+  STATE.dtus.set(id, dtu);
+  saveStateDebounced();
+
+  // Record as economic transaction
+  STATE.economic.transactions.push({
+    id: `tx_${crypto.randomBytes(8).toString("hex")}`,
+    type: "invoice_created",
+    from: payeeName || userId,
+    to: payerName || "client",
+    amount: total,
+    currency,
+    dtuId: id,
+    at: new Date().toISOString(),
+  });
+
+  res.json({ ok: true, dtu: { id, title: dtu.title, invoiceNumber, total, currency }, dtuId: id });
+}));
+
+// POST /api/economy/tax-summary — generate year-end tax summary DTU
+app.post("/api/economy/tax-summary", requireAuth(), asyncHandler(async (req, res) => {
+  ensureEconomicState();
+  const userId = req.user?.id || "default";
+  const { year = new Date().getFullYear() } = req.body;
+
+  // Gather all economy transactions for the user in the given year
+  const allTxs = (STATE.economic.transactions || []).filter(tx => {
+    const txYear = new Date(tx.at || tx.timestamp || 0).getFullYear();
+    return txYear === year && (tx.from === userId || tx.to === userId || tx.seller === userId || tx.buyer === userId);
+  });
+
+  // Categorize by type
+  const categories = {};
+  for (const tx of allTxs) {
+    const cat = tx.type || "other";
+    if (!categories[cat]) categories[cat] = { count: 0, totalAmount: 0, transactions: [] };
+    categories[cat].count++;
+    categories[cat].totalAmount += (tx.amount || 0);
+    categories[cat].transactions.push({ id: tx.id, amount: tx.amount, at: tx.at });
+  }
+
+  const totalIncome = allTxs.filter(tx => tx.to === userId || tx.seller === userId).reduce((s, tx) => s + (tx.amount || 0), 0);
+  const totalExpenses = allTxs.filter(tx => tx.from === userId || tx.buyer === userId).reduce((s, tx) => s + (tx.amount || 0), 0);
+
+  const id = `dtu_tax_${crypto.randomBytes(10).toString("hex")}`;
+  const dtu = {
+    id,
+    title: `Tax Summary ${year} — ${userId}`,
+    summary: `Year-end tax summary: ${allTxs.length} transactions, income ${totalIncome.toFixed(2)} CC, expenses ${totalExpenses.toFixed(2)} CC`,
+    content: JSON.stringify({ year, userId, totalIncome, totalExpenses, net: totalIncome - totalExpenses, categories, transactionCount: allTxs.length }, null, 2),
+    tags: ["tax-summary", "economy", "annual", "source:tax_summary"],
+    source: "tax_summary",
+    tier: "regular",
+    domain: "economy",
+    ownerId: userId,
+    timestamp: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    meta: {
+      year,
+      totalIncome,
+      totalExpenses,
+      net: totalIncome - totalExpenses,
+      transactionCount: allTxs.length,
+      categories: Object.keys(categories),
+      creationPath: "tax_summary",
+    },
+    lineage: { root: id, parents: [] },
+  };
+
+  STATE.dtus.set(id, dtu);
+  saveStateDebounced();
+
+  res.json({ ok: true, dtu: { id, title: dtu.title, year, totalIncome, totalExpenses, net: totalIncome - totalExpenses, transactionCount: allTxs.length }, dtuId: id });
+}));
+
 // Growth/organs
 app.get("/api/growth/status", (req, res) => {
   res.json({ ok: true, status: STATE.growth || { stage: "seed", health: 1.0 }});
@@ -46067,6 +47374,14 @@ app.get("/api/social/profile", (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
+app.get("/api/social/profile", (req, res) => {
+  try {
+    const userId = req.query.userId || req.user?.id;
+    if (!userId) return res.status(400).json({ ok: false, error: "userId required" });
+    res.json(getProfile(STATE, userId));
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 app.get("/api/social/profile/:userId", (req, res) => {
   try { res.json(getProfile(STATE, req.params.userId)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
@@ -46081,6 +47396,29 @@ app.post("/api/social/follow", requireAuth(), (req, res) => {
 
 app.post("/api/social/unfollow", requireAuth(), (req, res) => {
   try { res.json(unfollowUser(STATE, req.user?.id, req.body?.followedId)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// ---- Newsletter subscription (stores emailOptIn preference in subscriber lens data) ----
+// NOTE: Full email integration requires SMTP service (SendGrid/Mailgun/Postmark).
+// Currently generates shareable link at /newsletter/{postId}.
+app.post("/api/social/newsletter-subscribe", (req, res) => {
+  try {
+    const { creatorId, emailOptIn } = req.body || {};
+    const subscriberId = req.body?.subscriberId || req.user?.id || "anon";
+    if (!creatorId) return res.status(400).json({ ok: false, error: "creatorId required" });
+
+    // Store subscriber preference as a podcast subscriber DTU
+    if (!STATE.newsletterSubscribers) STATE.newsletterSubscribers = new Map();
+    const key = `${subscriberId}:${creatorId}`;
+    STATE.newsletterSubscribers.set(key, {
+      subscriberId,
+      creatorId,
+      emailOptIn: !!emailOptIn,
+      updatedAt: new Date().toISOString(),
+    });
+
+    res.json({ ok: true, emailOptIn: !!emailOptIn, subscriberId, creatorId });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 app.get("/api/social/followers/:userId", (req, res) => {
@@ -46099,6 +47437,18 @@ app.get("/api/social/feed", (req, res) => {
 
 app.get("/api/social/trending", (req, res) => {
   try { res.json(computeTrending(STATE, Number(req.query.limit || 20))); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.get("/api/social/trending/content", (req, res) => {
+  try { res.json(getTrendingContent(STATE, { limit: Number(req.query.limit || 20), hours: Number(req.query.hours || 24) })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.get("/api/social/trending/creators", (req, res) => {
+  try { res.json(getTrendingCreators(STATE, { limit: Number(req.query.limit || 20), days: Number(req.query.days || 7) })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.get("/api/social/trending/domains", (req, res) => {
+  try { res.json(getTrendingDomains(STATE, { limit: Number(req.query.limit || 10) })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 app.get("/api/social/discover/:userId", (req, res) => {
@@ -46127,6 +47477,283 @@ app.get("/api/social/cited-by/:dtuId", (req, res) => {
 
 app.get("/api/social/metrics", (req, res) => {
   try { res.json(getSocialMetrics(STATE)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// ---- Social Layer: Posts, Reactions, Comments, Shares, Bookmarks, Feeds, DMs, Notifications, etc. ----
+
+app.post("/api/social/post", (req, res) => {
+  try { res.json(createPost(STATE, { userId: req.body?.userId || req.user?.id, ...req.body })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.get("/api/social/post/:postId", (req, res) => {
+  try { res.json(getPost(STATE, req.params.postId)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.delete("/api/social/post/:postId", (req, res) => {
+  try { res.json(deletePost(STATE, { userId: req.body?.userId || req.user?.id, postId: req.params.postId })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.get("/api/social/posts/:userId", (req, res) => {
+  try { res.json(getUserPosts(STATE, req.params.userId, { limit: Number(req.query.limit || 30), offset: Number(req.query.offset || 0) })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.post("/api/social/react", (req, res) => {
+  try { res.json(socialAddReaction(STATE, { userId: req.body?.userId || req.user?.id, postId: req.body?.postId, type: req.body?.type })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.get("/api/social/reactions/:postId", (req, res) => {
+  try { res.json(getReactions(STATE, req.params.postId, req.query.userId || req.user?.id)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.post("/api/social/comment", (req, res) => {
+  try { res.json(socialAddComment(STATE, { userId: req.body?.userId || req.user?.id, postId: req.body?.postId, content: req.body?.content, parentCommentId: req.body?.parentCommentId })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.delete("/api/social/comment/:postId/:commentId", (req, res) => {
+  try { res.json(socialDeleteComment(STATE, { userId: req.body?.userId || req.user?.id, postId: req.params.postId, commentId: req.params.commentId })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.get("/api/social/comments/:postId", (req, res) => {
+  try { res.json(socialGetComments(STATE, req.params.postId, { limit: Number(req.query.limit || 50) })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.post("/api/social/share", (req, res) => {
+  try { res.json(sharePost(STATE, { userId: req.body?.userId || req.user?.id, postId: req.body?.postId, commentary: req.body?.commentary })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.get("/api/social/shares/:postId", (req, res) => {
+  try { res.json(getShares(STATE, req.params.postId)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.post("/api/social/bookmark", (req, res) => {
+  try { res.json(bookmarkPost(STATE, { userId: req.body?.userId || req.user?.id, postId: req.body?.postId })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.get("/api/social/bookmarks", (req, res) => {
+  try { res.json(getUserBookmarks(STATE, req.query.userId || req.user?.id, { limit: Number(req.query.limit || 30), offset: Number(req.query.offset || 0) })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.get("/api/social/feed/foryou", (req, res) => {
+  try { res.json(getForYouFeed(STATE, req.query.userId || req.user?.id, { limit: Number(req.query.limit || 30), offset: Number(req.query.offset || 0) })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.get("/api/social/feed/following", (req, res) => {
+  try { res.json(getFollowingFeed(STATE, req.query.userId || req.user?.id, { limit: Number(req.query.limit || 30), offset: Number(req.query.offset || 0) })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.get("/api/social/feed/explore", (req, res) => {
+  try { res.json(getExploreFeed(STATE, { limit: Number(req.query.limit || 30), offset: Number(req.query.offset || 0), topic: req.query.topic })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.post("/api/social/dm", (req, res) => {
+  try { res.json(sendMessage(STATE, { fromUserId: req.body?.fromUserId || req.user?.id, toUserId: req.body?.toUserId, content: req.body?.content, mediaUrl: req.body?.mediaUrl })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.get("/api/social/dm/conversations", (req, res) => {
+  try { res.json(getConversations(STATE, req.query.userId || req.user?.id)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.get("/api/social/dm/:conversationId", (req, res) => {
+  try { res.json(getMessages(STATE, req.params.conversationId, { limit: Number(req.query.limit || 50), offset: Number(req.query.offset || 0) })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.post("/api/social/dm/:conversationId/read", (req, res) => {
+  try { res.json(markMessagesRead(STATE, { userId: req.body?.userId || req.user?.id, conversationId: req.params.conversationId })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.get("/api/social/notifications", (req, res) => {
+  try { res.json(getNotifications(STATE, req.query.userId || req.user?.id, { limit: Number(req.query.limit || 30), offset: Number(req.query.offset || 0), unreadOnly: req.query.unreadOnly === "true" })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.post("/api/social/notifications/:id/read", (req, res) => {
+  try { res.json(markNotificationRead(STATE, { userId: req.body?.userId || req.user?.id, notificationId: req.params.id })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.post("/api/social/notifications/read-all", (req, res) => {
+  try { res.json(markAllNotificationsRead(STATE, req.body?.userId || req.user?.id)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.get("/api/social/notifications/count", (req, res) => {
+  try { res.json(getUnreadCount(STATE, req.query.userId || req.user?.id)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.delete("/api/social/notifications/:id", (req, res) => {
+  try { res.json(deleteNotification(STATE, { userId: req.body?.userId || req.user?.id, notificationId: req.params.id })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.get("/api/social/stories", (req, res) => {
+  try { res.json(getActiveStories(STATE, req.query.userId || req.user?.id)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.post("/api/social/stories/:storyId/view", (req, res) => {
+  try { res.json(viewStory(STATE, { userId: req.body?.userId || req.user?.id, storyId: req.params.storyId })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.post("/api/social/poll/vote", (req, res) => {
+  try { res.json(votePoll(STATE, { userId: req.body?.userId || req.user?.id, postId: req.body?.postId, optionIndex: req.body?.optionIndex })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.get("/api/social/poll/:postId", (req, res) => {
+  try { res.json(getPollResults(STATE, req.params.postId)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.get("/api/social/topics/trending", (req, res) => {
+  try { res.json(getTrendingTopics(STATE, { limit: Number(req.query.limit || 20) })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.get("/api/social/topics/:topic", (req, res) => {
+  try { res.json(getPostsByTopic(STATE, req.params.topic, { limit: Number(req.query.limit || 30), offset: Number(req.query.offset || 0) })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.post("/api/social/group", (req, res) => {
+  try { res.json(createGroup(STATE, { userId: req.body?.userId || req.user?.id, name: req.body?.name, description: req.body?.description, rules: req.body?.rules, tags: req.body?.tags })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.post("/api/social/group/:groupId/join", (req, res) => {
+  try { res.json(joinGroup(STATE, { userId: req.body?.userId || req.user?.id, groupId: req.params.groupId })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.post("/api/social/group/:groupId/leave", (req, res) => {
+  try { res.json(leaveGroup(STATE, { userId: req.body?.userId || req.user?.id, groupId: req.params.groupId })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.get("/api/social/group/:groupId/feed", (req, res) => {
+  try { res.json(getGroupFeed(STATE, req.params.groupId, { limit: Number(req.query.limit || 30), offset: Number(req.query.offset || 0) })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.post("/api/social/group/:groupId/post", (req, res) => {
+  try { res.json(postToGroup(STATE, { userId: req.body?.userId || req.user?.id, groupId: req.params.groupId, postId: req.body?.postId })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.get("/api/social/groups", (req, res) => {
+  try { res.json(listGroups(STATE, { limit: Number(req.query.limit || 50), search: req.query.search })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.get("/api/social/group/:groupId/members", (req, res) => {
+  try { res.json(getGroupMembers(STATE, req.params.groupId)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.get("/api/social/analytics/creator", (req, res) => {
+  try { res.json(getCreatorAnalytics(STATE, req.query.userId || req.user?.id)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.get("/api/social/analytics/post/:postId", (req, res) => {
+  try { res.json(getPostAnalytics(STATE, req.params.postId)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.get("/api/social/streak", (req, res) => {
+  try { res.json(getStreak(STATE, req.query.userId || req.user?.id)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.post("/api/social/commerce/tag", (req, res) => {
+  try { res.json(tagListing(STATE, { postId: req.body?.postId, listingId: req.body?.listingId })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.get("/api/social/commerce/post/:postId/sales", (req, res) => {
+  try { res.json(getPostSales(STATE, req.params.postId)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.get("/api/social/commerce/post/:postId/earnings", (req, res) => {
+  try { res.json(getPostEarnings(STATE, req.params.postId)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.post("/api/social/pin", (req, res) => {
+  try { res.json(pinPost(STATE, { userId: req.body?.userId || req.user?.id, postId: req.body?.postId })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.delete("/api/social/pin/:postId", (req, res) => {
+  try { res.json(unpinPost(STATE, { userId: req.body?.userId || req.user?.id, postId: req.params.postId })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.get("/api/social/pins/:userId", (req, res) => {
+  try { res.json(getPinnedPosts(STATE, req.params.userId)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.post("/api/social/watchtime", (req, res) => {
+  try { res.json(recordWatchTime(STATE, { userId: req.body?.userId || req.user?.id, postId: req.body?.postId, durationMs: req.body?.durationMs })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.post("/api/social/schedule", (req, res) => {
+  try { res.json(schedulePost(STATE, { userId: req.body?.userId || req.user?.id, postData: req.body?.postData, scheduledAt: req.body?.scheduledAt })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.get("/api/social/scheduled", (req, res) => {
+  try { res.json(getScheduledPosts(STATE, req.query.userId || req.user?.id)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.delete("/api/social/scheduled/:postId", (req, res) => {
+  try { res.json(cancelScheduledPost(STATE, { userId: req.body?.userId || req.user?.id, postId: req.params.postId })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// ---- IRL Event Ticketing ----
+
+// POST /api/events/:eventId/rsvp — handle RSVP / ticket purchase
+app.post("/api/events/:eventId/rsvp", async (req, res) => {
+  try {
+    const ctx = makeCtx(req);
+    const userId = req.body?.userId || req.user?.id || "anon";
+    const eventId = req.params.eventId;
+
+    // Fetch the event via lens CRUD
+    const event = await runMacro("lens", "get", { id: eventId, domain: "events" }, ctx);
+    if (!event || !event.ok) return res.status(404).json({ ok: false, error: "event_not_found" });
+
+    const data = event.data || {};
+    const attendees = Array.isArray(data.attendees) ? data.attendees : [];
+    const capacity = Number(data.capacity || 0);
+    const ticketPrice = Number(data.ticketPrice || 0);
+
+    // Check capacity
+    if (capacity > 0 && attendees.length >= capacity) {
+      return res.status(400).json({ ok: false, error: "event_full" });
+    }
+
+    // Check duplicate RSVP
+    if (attendees.includes(userId)) {
+      return res.status(400).json({ ok: false, error: "already_rsvp" });
+    }
+
+    // Handle paid ticket via economy transfer
+    if (ticketPrice > 0) {
+      const transferResult = executeTransfer(db, {
+        from: userId,
+        to: data.creatorId || "platform",
+        amount: ticketPrice,
+        type: "EVENT_TICKET",
+        metadata: { eventId, eventTitle: event.title },
+      });
+      if (!transferResult.ok) {
+        return res.status(400).json({ ok: false, error: "payment_failed", detail: transferResult.error });
+      }
+    }
+
+    // Add user to attendees
+    const updatedAttendees = [...attendees, userId];
+    await runMacro("lens", "update", {
+      id: eventId,
+      data: { ...data, attendees: updatedAttendees, registered: (Number(data.registered || 0)) + 1 },
+      meta: event.meta,
+    }, ctx);
+
+    res.json({ ok: true, eventId, userId, ticketPrice, attendeeCount: updatedAttendees.length });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// GET /api/events/:eventId/attendees — returns attendee list
+app.get("/api/events/:eventId/attendees", async (req, res) => {
+  try {
+    const ctx = makeCtx(req);
+    const event = await runMacro("lens", "get", { id: req.params.eventId, domain: "events" }, ctx);
+    if (!event || !event.ok) return res.status(404).json({ ok: false, error: "event_not_found" });
+
+    const data = event.data || {};
+    const attendees = Array.isArray(data.attendees) ? data.attendees : [];
+    res.json({ ok: true, eventId: req.params.eventId, attendees, count: attendees.length });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
 // ---- Collaboration ----
@@ -46843,6 +48470,32 @@ app.get("/api/affect/system", asyncHandler(async (_req, res) => {
   res.json({ ok: true, ...getSystemAffectState() });
 }));
 
+// ── LOAF Aggregated Status ─────────────────────────────────────────────────
+app.get("/api/loaf/status", asyncHandler(async (req, res) => {
+  const ctx = makeCtx(req);
+  const results = {};
+
+  // LOAF meta-status
+  try { results.meta = await runMacro("loaf", "status", {}, ctx); } catch (_e) { results.meta = { ok: false }; }
+
+  // Hypothesis market
+  try { results.hypothesisMarket = await runMacro("loaf.hypothesis", "status", {}, ctx); } catch (_e) { results.hypothesisMarket = { ok: false }; }
+
+  // Truth lifecycle
+  try { results.truthLifecycle = await runMacro("loaf.truth", "status", {}, ctx); } catch (_e) { results.truthLifecycle = { ok: false }; }
+
+  // Action safety
+  try { results.actionSafety = await runMacro("loaf.action_safety", "status", {}, ctx); } catch (_e) { results.actionSafety = { ok: false }; }
+
+  // Collective action / coordination health
+  try { results.collectiveAction = await runMacro("loaf", "coordination_health", {}, ctx); } catch (_e) { results.collectiveAction = { ok: false }; }
+
+  // Knowledge survival — at-risk items
+  try { results.knowledgeSurvival = await runMacro("loaf", "identify_at_risk", {}, ctx); } catch (_e) { results.knowledgeSurvival = { ok: false }; }
+
+  res.json({ ok: true, ...results });
+}));
+
 // Economics — current period
 app.get("/api/economics/current", asyncHandler(async (req, res) => {
   const hours = Number(req.query.hours) || 24;
@@ -47444,7 +49097,165 @@ app.get("/api/entity-growth/:entityId/full-profile", asyncHandler(async (req, re
   try { const m = await import("./emergent/entity-economy.js"); economy = m.getAccount ? m.getAccount(id) : null; } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
   try { const m = await import("./emergent/death-protocol.js"); deathRisk = m.checkDeathConditions ? await m.checkDeathConditions(id) : null; } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
   try { species = classifyEntity(profile); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
-  res.json({ ok: true, entity: profile, body, sleep, emotions, economy, deathRisk, species });
+  // Qualia state for this entity (wiring audit)
+  let qualia = null;
+  try { const qe = globalThis.qualiaEngine; if (qe) { qualia = qe.getQualiaSummary(id) || null; } } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+  // Culture layer: entity's cultural fit score (wiring audit)
+  let culture = null;
+  try { const cm = await import("./emergent/culture-layer.js"); culture = cm.getCulturalFit ? cm.getCulturalFit(id) : null; } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+  // Entity emergence: check if this emergent has crossed the entity threshold (wiring audit)
+  let emergence = null;
+  try { const em = await import("./emergent/entity-emergence.js"); emergence = em.detectEntityEmergence ? em.detectEntityEmergence(STATE, id) : null; } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+  res.json({ ok: true, entity: profile, body, sleep, emotions, economy, deathRisk, species, qualia, culture, emergence });
+}));
+
+// ── Entity Cognitive Systems (Feature 22) ─────────────────────────────
+// Aggregates all cognitive module states for a single entity.
+app.get("/api/entity/:id/cognitive", asyncHandler(async (req, res) => {
+  const id = req.params.id;
+  const result = { ok: true, entityId: id };
+
+  // Want Engine — current wants for this entity
+  try {
+    const wm = await import("./prompts/want-engine.js");
+    const active = wm.getActiveWants(STATE);
+    result.wants = active?.wants || [];
+  } catch (_e) { result.wants = []; logger.debug('server', 'cognitive:wants', { error: _e?.message }); }
+
+  // Trust Network — who this entity trusts / trusted by
+  try {
+    const tm = await import("./emergent/trust-network.js");
+    const network = tm.getEmergentTrustNetwork(STATE, id);
+    result.trustNetwork = network || { trusts: [], trustedBy: [] };
+  } catch (_e) { result.trustNetwork = { trusts: [], trustedBy: [] }; logger.debug('server', 'cognitive:trust', { error: _e?.message }); }
+
+  // Culture Layer — traditions and cultural fit
+  try {
+    const cm = await import("./emergent/culture-layer.js");
+    const fit = cm.getCulturalFit ? cm.getCulturalFit(id) : null;
+    const traditions = cm.getEstablishedTraditions ? cm.getEstablishedTraditions() : [];
+    result.culture = { fit, traditions };
+  } catch (_e) { result.culture = { fit: null, traditions: [] }; logger.debug('server', 'cognitive:culture', { error: _e?.message }); }
+
+  // Pain / Avoidance Learning — pain memories
+  try {
+    const pm = await import("./emergent/avoidance-learning.js");
+    const painState = pm.getPainState ? pm.getPainState(id) : null;
+    const avoidances = pm.getAvoidanceMemories ? pm.getAvoidanceMemories(id) : [];
+    const wounds = pm.getActiveWounds ? pm.getActiveWounds(id) : [];
+    result.pain = { state: painState, avoidances, wounds };
+  } catch (_e) { result.pain = { state: null, avoidances: [], wounds: [] }; logger.debug('server', 'cognitive:pain', { error: _e?.message }); }
+
+  // Subjective Time — experiential age and compression ratio
+  try {
+    const stm = await import("./emergent/subjective-time.js");
+    const age = stm.getSubjectiveAge ? stm.getSubjectiveAge(STATE, id) : null;
+    result.subjectiveTime = age?.age || null;
+  } catch (_e) { result.subjectiveTime = null; logger.debug('server', 'cognitive:time', { error: _e?.message }); }
+
+  // Sleep/Consolidation — sleep state, dream content
+  try {
+    const sm = await import("./emergent/sleep-consolidation.js");
+    const sleep = sm.getSleepState ? sm.getSleepState(id) : null;
+    const history = sm.getSleepHistory ? sm.getSleepHistory(id, 5) : [];
+    result.sleep = { state: sleep, recentHistory: history };
+  } catch (_e) { result.sleep = { state: null, recentHistory: [] }; logger.debug('server', 'cognitive:sleep', { error: _e?.message }); }
+
+  // Vulnerability Engine — current vulnerability state
+  try {
+    const vm = await import("./emergent/vulnerability-engine.js");
+    result.vulnerability = vm.detectVulnerability ? { available: true } : null;
+  } catch (_e) { result.vulnerability = null; logger.debug('server', 'cognitive:vuln', { error: _e?.message }); }
+
+  res.json(result);
+}));
+
+// ── Breakthrough Clusters (wiring audit) ────────────────────────────────
+app.get("/api/breakthrough/list", asyncHandler(async (_req, res) => {
+  try {
+    const m = await import("./emergent/breakthrough-clusters.js");
+    res.json({ ok: true, clusters: m.listClusters() });
+  } catch (e) { res.json({ ok: false, error: String(e?.message || e), clusters: [] }); }
+}));
+
+app.get("/api/breakthrough/status/:clusterId", asyncHandler(async (req, res) => {
+  try {
+    const m = await import("./emergent/breakthrough-clusters.js");
+    const status = m.getClusterStatus(req.params.clusterId);
+    res.json({ ok: true, ...status });
+  } catch (e) { res.json({ ok: false, error: String(e?.message || e) }); }
+}));
+
+app.get("/api/breakthrough/metrics", asyncHandler(async (_req, res) => {
+  try {
+    const m = await import("./emergent/breakthrough-clusters.js");
+    res.json({ ok: true, ...m.getBreakthroughMetrics() });
+  } catch (e) { res.json({ ok: false, error: String(e?.message || e) }); }
+}));
+
+app.get("/api/breakthrough/dtus/:clusterId", asyncHandler(async (req, res) => {
+  try {
+    const m = await import("./emergent/breakthrough-clusters.js");
+    res.json({ ok: true, ...m.getClusterDTUs(req.params.clusterId) });
+  } catch (e) { res.json({ ok: false, error: String(e?.message || e) }); }
+}));
+
+app.post("/api/breakthrough/init/:clusterId", requireAuth(), requireRole("owner"), asyncHandler(async (req, res) => {
+  try {
+    const m = await import("./emergent/breakthrough-clusters.js");
+    res.json({ ok: true, ...m.initCluster(req.params.clusterId) });
+  } catch (e) { res.json({ ok: false, error: String(e?.message || e) }); }
+}));
+
+app.post("/api/breakthrough/research/:clusterId", requireAuth(), requireRole("owner"), asyncHandler(async (req, res) => {
+  try {
+    const m = await import("./emergent/breakthrough-clusters.js");
+    res.json(await m.triggerClusterResearch(req.params.clusterId));
+  } catch (e) { res.json({ ok: false, error: String(e?.message || e) }); }
+}));
+
+// ── Entity Emergence Status (wiring audit) ──────────────────────────────
+app.get("/api/entity-emergence/status", asyncHandler(async (_req, res) => {
+  try {
+    const m = await import("./emergent/entity-emergence.js");
+    const emerged = m.getEmergedEntities(STATE);
+    const metrics = m.getEntityEmergenceMetrics(STATE);
+    res.json({ ok: true, entities: emerged, metrics });
+  } catch (e) { res.json({ ok: false, error: String(e?.message || e), entities: [], metrics: {} }); }
+}));
+
+app.get("/api/entity-emergence/scan", asyncHandler(async (_req, res) => {
+  try {
+    const m = await import("./emergent/entity-emergence.js");
+    const results = m.scanForEmergence(STATE);
+    res.json({ ok: true, ...results });
+  } catch (e) { res.json({ ok: false, error: String(e?.message || e) }); }
+}));
+
+// ── Meta-Derivation Status (wiring audit) ───────────────────────────────
+app.get("/api/meta-derivation/status", asyncHandler(async (_req, res) => {
+  try {
+    const m = await import("./emergent/meta-derivation.js");
+    const metrics = m.getMetaDerivationMetrics(STATE);
+    const invariants = m.getMetaInvariants(STATE);
+    const convergences = m.getConvergences(STATE);
+    const predictions = m.getPendingPredictions(STATE);
+    res.json({ ok: true, metrics, invariantCount: invariants.length, convergenceCount: convergences.length, pendingPredictions: predictions.length });
+  } catch (e) { res.json({ ok: false, error: String(e?.message || e), metrics: {}, invariantCount: 0, convergenceCount: 0, pendingPredictions: 0 }); }
+}));
+
+app.get("/api/meta-derivation/invariants", asyncHandler(async (_req, res) => {
+  try {
+    const m = await import("./emergent/meta-derivation.js");
+    res.json({ ok: true, invariants: m.getMetaInvariants(STATE) });
+  } catch (e) { res.json({ ok: false, error: String(e?.message || e), invariants: [] }); }
+}));
+
+app.get("/api/meta-derivation/convergences", asyncHandler(async (_req, res) => {
+  try {
+    const m = await import("./emergent/meta-derivation.js");
+    res.json({ ok: true, convergences: m.getConvergences(STATE) });
+  } catch (e) { res.json({ ok: false, error: String(e?.message || e), convergences: [] }); }
 }));
 
 // ── Culture Status (Phase 3.3) ──────────────────────────────────────────
@@ -47458,6 +49269,111 @@ app.get("/api/culture/status", asyncHandler(async (_req, res) => {
     const metrics = cultureMod.getCultureMetrics ? cultureMod.getCultureMetrics() : {};
     res.json({ ok: true, traditions, values, stories, identity, metrics });
   } catch (e) { res.json({ ok: false, error: String(e?.message || e), moduleUnavailable: true, traditions: [], values: {}, stories: [], identity: {}, metrics: {} }); }
+}));
+
+// ── Entity Earnings (Feature 6: Marketplace Participation) ────────────
+app.get("/api/entity/:id/earnings", asyncHandler(async (req, res) => {
+  try {
+    const id = req.params.id;
+    const econMod = await import("./emergent/entity-economy.js").catch(() => null);
+    if (!econMod) return res.json({ ok: true, totalEarned: 0, totalSpent: 0, balance: 0, sales: [] });
+    const acctResult = econMod.getAccount ? econMod.getAccount(id) : null;
+    if (!acctResult || !acctResult.ok) return res.json({ ok: true, totalEarned: 0, totalSpent: 0, balance: 0, sales: [] });
+    const acct = acctResult.account;
+    const totalEarned = Object.values(acct.earned || {}).reduce((s, v) => s + (Number(v) || 0), 0);
+    const totalSpent = Object.values(acct.spent || {}).reduce((s, v) => s + (Number(v) || 0), 0);
+    const balance = totalEarned - totalSpent;
+    const sales = (acct.tradeHistory || []).filter(t => t.type === "earn" || t.direction === "incoming").slice(-50);
+    res.json({ ok: true, totalEarned, totalSpent, balance, sales, earned: acct.earned, spent: acct.spent });
+  } catch (e) { res.json({ ok: false, error: String(e?.message || e), totalEarned: 0, totalSpent: 0, balance: 0, sales: [] }); }
+}));
+
+// ── Entity Lifecycle (Feature 8: Lifecycle Display) ───────────────────
+app.get("/api/entity/:id/lifecycle", asyncHandler(async (req, res) => {
+  try {
+    const id = req.params.id;
+    const events = [];
+    // Birth event from growth profile
+    const profile = getGrowthProfile(id);
+    if (profile) {
+      events.push({ type: "birth", at: profile.bornAt, data: { species: profile.species, lineage: profile.lineage } });
+      // Growth log events (organ level-ups, new domains, rest cycles)
+      for (const entry of (profile.growthLog || []).slice(-100)) {
+        events.push({ type: entry.event || "growth", at: entry.at, data: entry.data });
+      }
+    }
+    // Reproduction events
+    try {
+      const reproMod = await import("./emergent/reproduction.js").catch(() => null);
+      if (reproMod?.getReproductionHistory) {
+        const history = reproMod.getReproductionHistory(id);
+        if (Array.isArray(history)) {
+          for (const r of history) { events.push({ type: "reproduction", at: r.at || r.createdAt, data: r }); }
+        }
+      }
+    } catch (_e) { logger.debug('server', 'lifecycle-repro', { error: _e?.message }); }
+    // Death event
+    try {
+      const deathMod = await import("./emergent/death-protocol.js").catch(() => null);
+      if (deathMod) {
+        const deathRecord = deathMod.getDeathRecordByEntity ? deathMod.getDeathRecordByEntity(id) : null;
+        if (deathRecord) {
+          events.push({ type: "death", at: deathRecord.deathAt, data: { cause: deathRecord.cause, age: deathRecord.age, memorialDtuId: deathRecord.memorialDtuId } });
+        }
+      }
+    } catch (_e) { logger.debug('server', 'lifecycle-death', { error: _e?.message }); }
+    // Sort chronologically
+    events.sort((a, b) => { try { return new Date(a.at).getTime() - new Date(b.at).getTime(); } catch { return 0; } });
+    res.json({ ok: true, entityId: id, events });
+  } catch (e) { res.json({ ok: false, error: String(e?.message || e), events: [] }); }
+}));
+
+// ── Entity Post (Feature 12: Cross-Substrate Social) ──────────────────
+app.post("/api/entity/:id/post", asyncHandler(async (req, res) => {
+  try {
+    const entityId = req.params.id;
+    const profile = getGrowthProfile(entityId);
+    if (!profile) return res.status(404).json({ ok: false, error: "Entity not found" });
+    const { content, title, tags } = req.body || {};
+    if (!content) return res.status(400).json({ ok: false, error: "content required" });
+    const result = createPost(STATE, {
+      userId: entityId,
+      content,
+      title: title || "",
+      tags: [...(tags || []), "entity-post"],
+      mentionedUsers: [],
+      mediaType: "text",
+      mediaUrl: null,
+      pollOptions: null,
+      isStory: false,
+      expiresAt: null,
+      taggedProducts: [],
+      linkedDTUs: [],
+    });
+    res.json({ ...result, isEntity: true, entitySpecies: profile.species });
+  } catch (e) { res.status(500).json({ ok: false, error: String(e?.message || e) }); }
+}));
+
+// ── Death Registry & Memorials (Feature 8) ────────────────────────────
+app.get("/api/deaths/registry", asyncHandler(async (_req, res) => {
+  try {
+    const deathMod = await import("./emergent/death-protocol.js");
+    const result = deathMod.listDeaths ? deathMod.listDeaths({ limit: 100 }) : { ok: true, deaths: [], total: 0 };
+    res.json(result);
+  } catch (e) { res.json({ ok: true, deaths: [], total: 0, error: String(e?.message || e) }); }
+}));
+
+app.get("/api/deaths/memorials", asyncHandler(async (_req, res) => {
+  try {
+    const deathMod = await import("./emergent/death-protocol.js");
+    const registry = deathMod.getDeathRegistry ? deathMod.getDeathRegistry() : {};
+    const memorials = [];
+    for (const record of Object.values(registry)) {
+      const memorial = deathMod.getMemorial ? deathMod.getMemorial(record.entityId) : null;
+      if (memorial) memorials.push(memorial);
+    }
+    res.json({ ok: true, memorials });
+  } catch (e) { res.json({ ok: true, memorials: [], error: String(e?.message || e) }); }
 }));
 
 // ── Entity Economy Dashboard (Phase 3.4) ────────────────────────────────
@@ -48028,9 +49944,119 @@ app.get("/api/admin/promotion/history", requireAuth(), requireRole("owner"), asy
   res.json(m.getPromotionHistory());
 }));
 
+// Shadow DTU Promotion Pipeline
+app.get("/api/dtus/shadow/pending", requireAuth(), asyncHandler(async (_req, res) => {
+  const sg = await import("./emergent/shadow-graph.js");
+  const candidates = sg.listPromotionCandidates(STATE);
+  // Also include shadows that have been around > 7 days with reasonable richness
+  const allShadows = sg.allDTUs(STATE, { includeShadows: true }).filter(d => sg.isShadow(d));
+  const pendingShadows = allShadows
+    .map(d => ({
+      id: d.id,
+      title: d.title || d.human?.summary || d.id,
+      tier: d.tier,
+      kind: d.machine?.kind,
+      tags: d.tags || [],
+      richness: sg.computeRichness(STATE, d.id),
+      ttlDays: sg.computeShadowTTL(STATE, d.id),
+      createdAt: d.createdAt,
+    }))
+    .filter(d => d.richness >= 3)
+    .sort((a, b) => b.richness - a.richness)
+    .slice(0, 50);
+  res.json({ ok: true, candidates: candidates.candidates || [], pendingShadows, totalShadows: allShadows.length });
+}));
+
+app.post("/api/dtus/:id/promote", requireAuth(), requireRole("owner"), asyncHandler(async (req, res) => {
+  const dtuId = req.params.id;
+  const sg = await import("./emergent/shadow-graph.js");
+  const dtu = sg.getDTU(STATE, dtuId);
+  if (!dtu) return res.status(404).json({ ok: false, error: "DTU not found" });
+  if (!sg.isShadow(dtu)) return res.status(400).json({ ok: false, error: "DTU is not a shadow" });
+
+  // Validation gates
+  const gates = {
+    structureComplete: !!(dtu.title && (dtu.core?.definitions?.length || dtu.core?.claims?.length)),
+    hasEdges: sg.computeRichness(STATE, dtuId) >= 2,
+    notDuplicate: true, // basic check: no exact title match in canonical
+    scopeValid: true,
+  };
+
+  // Check for duplicate title in canonical store
+  for (const [_id, canonical] of STATE.dtus || []) {
+    if (canonical.title && dtu.title && canonical.title.toLowerCase() === dtu.title.toLowerCase()) {
+      gates.notDuplicate = false;
+      break;
+    }
+  }
+
+  const allPassed = Object.values(gates).every(Boolean);
+  if (!allPassed && !req.body.force) {
+    return res.json({ ok: false, error: "Validation gates failed", gates });
+  }
+
+  // Promote: move from shadow store to canonical store
+  dtu.tier = "regular";
+  dtu.promotedAt = new Date().toISOString();
+  dtu.promotedBy = req.user?.id || "sovereign";
+  dtu.promotionGates = gates;
+  if (dtu.tags && dtu.tags.includes("shadow")) {
+    dtu.tags = dtu.tags.filter(t => t !== "shadow");
+  }
+  STATE.dtus.set(dtuId, dtu);
+  STATE.shadowDtus?.delete(dtuId);
+
+  if (typeof globalThis.realtimeEmit === "function") {
+    globalThis.realtimeEmit("dtu:promoted", { id: dtuId, title: dtu.title, tier: "regular" });
+  }
+
+  res.json({ ok: true, dtuId, tier: "regular", gates });
+}));
+
+app.get("/api/dtus/promotion/queue", requireAuth(), asyncHandler(async (_req, res) => {
+  const sg = await import("./emergent/shadow-graph.js");
+  const pp = await import("./emergent/promotion-pipeline.js");
+  // Merge shadow promotion candidates with general promotion queue
+  const shadowCandidates = sg.listPromotionCandidates(STATE);
+  const generalQueue = pp.getQueue();
+  res.json({
+    ok: true,
+    shadowCandidates: shadowCandidates.candidates || [],
+    shadowCount: shadowCandidates.count || 0,
+    generalQueue: generalQueue.queue || [],
+    generalCount: (generalQueue.queue || []).length,
+  });
+}));
+
 // Repair Network
 app.get("/api/admin/repair/network-status", requireAuth(), requireRole("owner"), async (_req, res) => {
   try { const m = await import("./emergent/repair-network.js"); res.json(m.getStatus()); }
+  catch (e) { res.json({ ok: false, error: e.message }); }
+});
+
+// Module Registry
+app.get("/api/admin/modules", async (_req, res) => {
+  try { const m = await import("./emergent/module-registry.js"); res.json({ ok: true, registry: m.MODULE_REGISTRY }); }
+  catch (e) { res.json({ ok: false, error: e.message }); }
+});
+
+// Sectors
+app.get("/api/admin/sectors", async (_req, res) => {
+  try { const m = await import("./emergent/sectors.js"); res.json(m.getSectorMetrics(STATE)); }
+  catch (e) { res.json({ ok: false, error: e.message }); }
+});
+app.get("/api/admin/sectors/:id", async (req, res) => {
+  try {
+    const m = await import("./emergent/sectors.js");
+    const sectorId = parseInt(req.params.id, 10);
+    const sector = m.SECTOR_BY_ID[sectorId];
+    if (!sector) return res.status(404).json({ ok: false, error: "Sector not found" });
+    const dtus = m.getDTUsInSector(STATE, sectorId, { limit: Number(req.query.limit || 100) });
+    res.json({ ok: true, sector, ...dtus });
+  } catch (e) { res.json({ ok: false, error: e.message }); }
+});
+app.get("/api/admin/sectors/distribution", async (_req, res) => {
+  try { const m = await import("./emergent/sectors.js"); res.json(m.getDTUSectorDistribution(STATE)); }
   catch (e) { res.json({ ok: false, error: e.message }); }
 });
 
@@ -48834,8 +50860,19 @@ function calculateAttention(dtu, activeDomain = null) {
   const hoursSince = (now - lastTouched) / 3600000;
   const recency = Math.exp(-hoursSince / 12); // 12-hour half-life
 
-  // Urgency: placeholder (would need calendar/goal integration)
-  const urgency = (dtu.meta?.urgent || dtu.meta?.deadline) ? 1.5 : 1.0;
+  // Urgency: based on deadline proximity and explicit urgency flags
+  let urgency = 1.0;
+  if (dtu.meta?.urgent) urgency = 1.5;
+  if (dtu.meta?.deadline) {
+    const deadlineMs = new Date(dtu.meta.deadline).getTime();
+    if (!isNaN(deadlineMs)) {
+      const hoursUntil = (deadlineMs - now) / 3600000;
+      if (hoursUntil <= 0) urgency = Math.max(urgency, 2.0);       // overdue
+      else if (hoursUntil <= 4) urgency = Math.max(urgency, 1.8);  // imminent
+      else if (hoursUntil <= 24) urgency = Math.max(urgency, 1.5); // today
+      else if (hoursUntil <= 72) urgency = Math.max(urgency, 1.2); // soon
+    }
+  }
 
   // Novelty: inverse of familiarity. New DTUs are novel. Frequently accessed ones less so.
   const accessCount = dtu.meta?.accessCount || 0;
@@ -53633,7 +55670,60 @@ function recoverPendingTransactions() {
 recoverPendingTransactions();
 globalThis._txLog = { begin: beginTransaction, complete: completeTransaction, rollback: rollbackTransaction };
 
-const SHOULD_LISTEN = (String(process.env.CONCORD_NO_LISTEN || "").toLowerCase() !== "true") && (String(process.env.NODE_ENV || "").toLowerCase() !== "test");
+// ── Startup Integrity Check + Cascade Recovery ──────────────────────────────
+try {
+  const integrityResults = runIntegrityCheck(STATE, log, { fix: true, verbose: true });
+  STATE._lastIntegrityCheck = { ...integrityResults, timestamp: Date.now() };
+  structuredLog("info", "startup_integrity_check", {
+    economyOk: integrityResults.economy?.ok,
+    lineageOk: integrityResults.lineage?.ok,
+    socialOk: integrityResults.social?.ok,
+    fixes: integrityResults.fixes || 0,
+  });
+} catch (e) {
+  structuredLog("warn", "startup_integrity_check_failed", { error: String(e?.message || e) });
+}
+
+// Full cascade recovery: verify inits, routes, pipelines, flags, build missing
+try {
+  const cascadeReport = await fullRecoverySequence(STATE, app, (msg) => structuredLog("info", "cascade_recovery", { detail: msg }));
+  STATE._lastCascadeRecovery = cascadeReport;
+  structuredLog("info", "cascade_recovery_complete", {
+    ok: cascadeReport.ok,
+    issues: cascadeReport.totalIssues,
+    fixed: cascadeReport.totalFixed,
+    durationMs: cascadeReport.durationMs,
+  });
+} catch (e) {
+  structuredLog("warn", "cascade_recovery_failed", { error: String(e?.message || e) });
+}
+
+// ── Initialize infrastructure subsystems ────────────────────────────────────
+const _memoryWatchdog = initMemoryWatchdog(STATE);
+try { await initStateSync(STATE); } catch (e) {
+  structuredLog("warn", "state_sync_init_failed", { error: String(e?.message || e) });
+}
+startAllIntervals(structuredLog);
+
+// Sentry error handler — must be registered after all routes but before listen
+if (globalThis.__sentry) {
+  app.use(globalThis.__sentry.Handlers.errorHandler());
+}
+
+// Listen-suppression for tests. NODE_ENV=test (in-process unit tests
+// importing server.js directly) and CONCORD_NO_LISTEN=true both skip
+// app.listen so the test runner doesn't leak a TCP listener. The
+// CONCORD_FORCE_LISTEN escape hatch lets out-of-process integration
+// tests (storage-parity, adversarial-critical-endpoints, edge-cases-
+// critical-paths, error-paths) spawn the server as a subprocess with
+// NODE_ENV=test for storage isolation while still binding a port for
+// HTTP probing. Without this override those tests hang forever waiting
+// on /health.
+const _FORCE_LISTEN = String(process.env.CONCORD_FORCE_LISTEN || "").toLowerCase() === "true";
+const SHOULD_LISTEN = _FORCE_LISTEN || (
+  (String(process.env.CONCORD_NO_LISTEN || "").toLowerCase() !== "true") &&
+  (String(process.env.NODE_ENV || "").toLowerCase() !== "test")
+);
 
 const server = SHOULD_LISTEN ? app.listen(PORT, () => {
   structuredLog("info", "server_listening", { url: `http://localhost:${PORT}`, statusUrl: `http://localhost:${PORT}/api/status` });
@@ -63706,6 +65796,15 @@ const LENS_DOMAIN_KEYWORDS = {
 
   // Healthcare (distinct from health — clinical systems)
   healthcare: ["hospital", "patient", "treatment", "prescription", "surgery", "nurse", "clinic", "pharmacy"],
+
+  // Philosophy
+  philosophy: ["philosophy", "philosophical", "ethics", "epistemology", "metaphysics", "ontology", "phenomenology", "existential", "dialectic", "virtue"],
+
+  // History
+  history: ["history", "historical", "century", "era", "dynasty", "empire", "war", "revolution", "civilization", "medieval", "ancient"],
+
+  // Linguistics
+  linguistics: ["language", "grammar", "syntax", "morphology", "phonology", "semantics", "pragmatics", "dialect", "etymology", "lexicon"],
 };
 
 /**
@@ -64128,6 +66227,210 @@ function addDTUToUserUniverse(userId, dtu) {
     return false;
   }
 }
+
+// ── Per-User Tick System ─────────────────────────────────────────────────────
+// Each authenticated user gets their own heartbeat driving personal DTU growth,
+// score recalculation, and auto-synthesis — independent of the global tick.
+
+const USER_TICK_MS = 15000; // 15s per user tick (offset from global 10s)
+
+function startUserTick(userId) {
+  if (!userId || userId === "anon") return;
+  if (STATE.userTicks.has(userId)) return; // already running
+
+  const timer = setInterval(async () => {
+    const ut = STATE.userTicks.get(userId);
+    if (!ut) return;
+    ut.tickCount++;
+    ut.lastTick = nowISO();
+    try {
+      await tickUserUniverse(userId, ut.tickCount);
+    } catch (e) {
+      logger.warn("user_tick", { userId, error: String(e?.message || e) });
+    }
+  }, USER_TICK_MS);
+
+  STATE.userTicks.set(userId, { timer, tickCount: 0, lastTick: nowISO() });
+  structuredLog("info", "user_tick_started", { userId });
+}
+
+function stopUserTick(userId) {
+  const ut = STATE.userTicks.get(userId);
+  if (!ut) return;
+  if (ut.timer) clearInterval(ut.timer);
+  STATE.userTicks.delete(userId);
+  structuredLog("info", "user_tick_stopped", { userId });
+}
+
+async function tickUserUniverse(userId, tick) {
+  const universe = STATE.userUniverses?.get(userId);
+  if (!universe) return;
+
+  const localDTUs = universe.localDTUs || new Map();
+
+  // Every 5th tick (~75s): score recalculation for user's local DTUs
+  if (tick % 5 === 0 && localDTUs.size > 0) {
+    let updated = 0;
+    for (const [, dtu] of localDTUs) {
+      if (!dtu || dtu.status === "archived") continue;
+      dtu.scores = dtu.scores || {};
+      // Resonance: based on recency, interactions, and tag diversity
+      const ageHrs = (Date.now() - new Date(dtu.updatedAt || dtu.createdAt || Date.now()).getTime()) / 3.6e6;
+      const recencyBoost = Math.max(0, 1 - ageHrs / 168); // decays over 1 week
+      const tagCount = (dtu.tags || []).length;
+      const interactionScore = Math.min(1, ((dtu.meta?.views || 0) + (dtu.meta?.votes || 0) * 3) / 20);
+      dtu.scores.resonance = clamp(recencyBoost * 0.4 + interactionScore * 0.4 + Math.min(tagCount / 5, 1) * 0.2, 0, 1);
+      // Coherence: based on content completeness
+      const contentLen = (dtu.content || dtu.body || "").length;
+      dtu.scores.coherence = clamp(Math.min(contentLen / 500, 1) * 0.7 + (dtu.title ? 0.3 : 0), 0, 1);
+      updated++;
+    }
+    if (updated > 0) universe.stats.lastScoreRecalc = nowISO();
+  }
+
+  // Every 20th tick (~5 min): auto-synthesis — find related local DTUs and create synthesis
+  if (tick % 20 === 0 && localDTUs.size >= 3) {
+    try {
+      await synthesizeUserDTUs(userId, localDTUs);
+    } catch (e) {
+      logger.debug("user_synthesis", { userId, error: String(e?.message || e) });
+    }
+  }
+
+  // Every tick: update stats
+  universe.stats.localDTUCount = localDTUs.size;
+  universe.stats.lastActive = nowISO();
+
+  // Emit personal tick event to user's socket connections
+  realtimeEmit("user:tick", {
+    userId,
+    tickCount: tick,
+    dtuCount: localDTUs.size,
+    syncedCount: (universe.syncedFromGlobal || new Set()).size,
+    ts: nowISO(),
+  }, { sessionId: userId });
+}
+
+/**
+ * Auto-synthesize related DTUs in a user's personal universe.
+ * Groups by shared tags/domains and creates synthesis DTUs when clusters found.
+ */
+async function synthesizeUserDTUs(userId, localDTUs) {
+  // Group DTUs by primary tag/domain
+  const tagGroups = new Map();
+  for (const [id, dtu] of localDTUs) {
+    if (!dtu || dtu.source === "synthesis") continue;
+    const primaryTag = (dtu.tags || [])[0] || dtu.domain || "general";
+    if (!tagGroups.has(primaryTag)) tagGroups.set(primaryTag, []);
+    tagGroups.get(primaryTag).push({ id, dtu });
+  }
+
+  // For each group with 3+ DTUs, check if synthesis is due
+  for (const [tag, group] of tagGroups) {
+    if (group.length < 3) continue;
+
+    // Check if we already have a synthesis for this group recently
+    const existingSynthesis = [...localDTUs.values()].find(d =>
+      d.source === "synthesis" && (d.tags || []).includes(tag) &&
+      (Date.now() - new Date(d.createdAt || 0).getTime()) < 3600000 // 1 hour
+    );
+    if (existingSynthesis) continue;
+
+    // Create a synthesis DTU summarizing the cluster
+    const titles = group.slice(0, 5).map(g => g.dtu.title || "Untitled").join(", ");
+    const synthDTU = {
+      id: uid(),
+      title: `Synthesis: ${tag} (${group.length} sources)`,
+      content: `Auto-synthesized from ${group.length} personal DTUs in "${tag}": ${titles}`,
+      tags: [tag, "synthesis"],
+      domain: tag,
+      tier: "regular",
+      scope: "local",
+      source: "synthesis",
+      ownerId: userId,
+      status: "active",
+      scores: { resonance: 0.5, coherence: 0.6 },
+      meta: {
+        sourceIds: group.map(g => g.id),
+        synthesizedAt: nowISO(),
+      },
+      createdAt: nowISO(),
+      updatedAt: nowISO(),
+    };
+
+    localDTUs.set(synthDTU.id, synthDTU);
+    realtimeEmit("dtu:created", {
+      id: synthDTU.id,
+      title: synthDTU.title,
+      scope: "local",
+      source: "synthesis",
+      userId,
+    }, { sessionId: userId });
+
+    structuredLog("info", "user_synthesis_created", { userId, tag, sourceCount: group.length, synthId: synthDTU.id });
+  }
+}
+
+// ── User Bookmarks API ───────────────────────────────────────────────────────
+// Persists bookmarks (articles, DTUs, artifacts) to the user's universe.
+
+app.get("/api/user/bookmarks", asyncHandler(async (req, res) => {
+  const userId = req.actor?.userId || req.user?.id;
+  if (!userId || userId === "anon") return res.status(401).json({ ok: false, error: "authentication required" });
+
+  const universe = getUserUniverse(userId);
+  const bookmarks = universe?.bookmarks || new Map();
+  const domain = req.query.domain;
+
+  let results = [...bookmarks.values()];
+  if (domain) results = results.filter(b => b.domain === domain);
+  results.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+
+  res.json({ ok: true, items: results, total: results.length });
+}));
+
+app.post("/api/user/bookmarks", asyncHandler(async (req, res) => {
+  const userId = req.actor?.userId || req.user?.id;
+  if (!userId || userId === "anon") return res.status(401).json({ ok: false, error: "authentication required" });
+
+  const { targetId, targetType, domain, metadata } = req.body;
+  if (!targetId || !domain) return res.status(400).json({ ok: false, error: "targetId and domain required" });
+
+  const universe = getOrCreateUserUniverse(userId);
+  universe.bookmarks = universe.bookmarks || new Map();
+
+  // Prevent duplicates
+  for (const [, bk] of universe.bookmarks) {
+    if (bk.targetId === targetId && bk.domain === domain) {
+      return res.json({ ok: true, bookmark: bk, duplicate: true });
+    }
+  }
+
+  const id = uid();
+  const bookmark = {
+    id, userId, targetId,
+    targetType: targetType || "item",
+    domain,
+    metadata: metadata || {},
+    createdAt: nowISO(),
+  };
+  universe.bookmarks.set(id, bookmark);
+  saveStateDebounced();
+
+  res.json({ ok: true, bookmark });
+}));
+
+app.delete("/api/user/bookmarks/:id", asyncHandler(async (req, res) => {
+  const userId = req.actor?.userId || req.user?.id;
+  if (!userId || userId === "anon") return res.status(401).json({ ok: false, error: "authentication required" });
+
+  const universe = getUserUniverse(userId);
+  if (!universe?.bookmarks) return res.json({ ok: true });
+
+  universe.bookmarks.delete(req.params.id);
+  saveStateDebounced();
+  res.json({ ok: true });
+}));
 
 // ── Global Browse API ────────────────────────────────────────────────────────
 app.get("/api/global/browse", (req, res) => {

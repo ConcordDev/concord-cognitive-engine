@@ -51,6 +51,19 @@ export default function GroundingLensPage() {
   const [groundDtuId, setGroundDtuId] = useState('');
   const [showFeatures, setShowFeatures] = useState(true);
 
+  // --- Grounding action wiring ---
+  const { items: groundingArtifacts } = useLensData('grounding', 'grounding-data', { seed: [] });
+  const runGroundingAction = useRunArtifact('grounding');
+  const [groundingActionResult, setGroundingActionResult] = useState<{ action: string; data: unknown } | null>(null);
+  const handleGroundingAction = useCallback((action: string) => {
+    const artifactId = groundingArtifacts[0]?.id;
+    if (!artifactId) return;
+    runGroundingAction.mutate(
+      { id: artifactId, action, params: {} },
+      { onSuccess: (res) => setGroundingActionResult({ action, data: res.result }) }
+    );
+  }, [groundingArtifacts, runGroundingAction]);
+
   const { data: status, isLoading, isError: isError, error: error, refetch: refetch,} = useQuery({
     queryKey: ['grounding-status'],
     queryFn: () => apiHelpers.grounding.status().then((r) => r.data),

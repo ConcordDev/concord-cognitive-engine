@@ -3,18 +3,18 @@
 import { useState, useCallback, useMemo, useRef } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api/client';
+import { api, apiHelpers } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useLensDTUs } from '@/hooks/useLensDTUs';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Clapperboard, Plus, Play, Pause, Layers,
-  Clock, X, Upload, Film,
-  BarChart3, Sparkles, RotateCcw, Zap,
+  Clapperboard, Plus, Search, Play, Pause, Layers,
+  Clock, Eye, X, Save, Upload, Film,
+  BarChart3, Sparkles, Grid, Settings,
+  ChevronRight, RotateCcw, Zap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -57,7 +57,7 @@ export default function AnimationPage() {
 
   const [tab, setTab] = useState<AnimTab>('projects');
   const [searchQuery, setSearchQuery] = useState('');
-  const [showFeatures, setShowFeatures] = useState(true);
+  const [showFeatures, setShowFeatures] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedProject, setSelectedProject] = useState<AnimProject | null>(null);
 
@@ -128,9 +128,6 @@ export default function AnimationPage() {
           </div>
           <div className="flex items-center gap-2">
             <DTUExportButton domain="animation" data={{}} compact />
-            <button onClick={() => { queryClient.invalidateQueries({ queryKey: ['lens-data', 'animation'] }); refetch(); }} className="px-3 py-1.5 text-xs bg-white/5 border border-white/10 rounded-lg hover:bg-white/10" title="Refresh">
-              <RotateCcw className="w-3 h-3" />
-            </button>
             <button onClick={() => setShowFeatures(!showFeatures)} className="px-3 py-1.5 text-xs bg-white/5 border border-white/10 rounded-lg hover:bg-white/10">Features</button>
             <button onClick={() => setShowCreateModal(true)} className="px-3 py-1.5 text-xs bg-orange-500/20 border border-orange-500/30 rounded-lg hover:bg-orange-500/30 flex items-center gap-1">
               <Plus className="w-3 h-3" /> New Project
@@ -140,7 +137,6 @@ export default function AnimationPage() {
 
         {showFeatures && <LensFeaturePanel lensId="animation" />}
         <RealtimeDataPanel data={realtimeData} insights={realtimeInsights} />
-      <UniversalActions domain="animation" artifactId={null} compact />
 
         {/* Stat Cards — keyframe timeline feel */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -180,33 +176,12 @@ export default function AnimationPage() {
           ))}
         </div>
 
-        {(isLoading || dtusLoading) && (
-          <div className="flex items-center justify-center py-4">
-            <div className="w-5 h-5 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
-            <span className="ml-2 text-xs text-gray-400">Loading...</span>
-          </div>
-        )}
-
         {isError && <ErrorState error={error?.message} onRetry={refetch} />}
 
         {/* Projects */}
         {tab === 'projects' && (
           <div className="space-y-4">
-            {/* Search */}
-            <div className="relative">
-              <input
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Search projects..."
-                className="w-full bg-white/5 border border-white/10 rounded-lg pl-3 pr-8 py-2 text-sm placeholder:text-gray-500 focus:outline-none focus:border-orange-500/30"
-              />
-              {searchQuery && (
-                <button onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white">
-                  <X className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-            {projects.filter(p => !searchQuery || p.title.toLowerCase().includes(searchQuery.toLowerCase()) || p.type?.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 ? (
+            {projects.length === 0 ? (
               <div className="text-center py-16 text-gray-500">
                 <Clapperboard className="w-12 h-12 mx-auto mb-3 opacity-30" />
                 <p className="text-sm">No animation projects yet.</p>
@@ -214,7 +189,7 @@ export default function AnimationPage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {projects.filter(p => !searchQuery || p.title.toLowerCase().includes(searchQuery.toLowerCase()) || p.type?.toLowerCase().includes(searchQuery.toLowerCase())).map(proj => (
+                {projects.map(proj => (
                   <motion.div key={proj.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-white/5 border border-white/10 rounded-lg p-4 hover:border-orange-500/30 transition-colors cursor-pointer" onClick={() => { setSelectedProject(proj); setTab('timeline'); }}>
                     <div className="flex items-start justify-between mb-2">
                       <h3 className="font-medium text-sm">{proj.title}</h3>
@@ -225,13 +200,6 @@ export default function AnimationPage() {
                       <span>{proj.fps || 24} fps</span>
                       <span>{proj.frameCount || 0} frames</span>
                       {proj.resolution && <span>{proj.resolution.width}x{proj.resolution.height}</span>}
-                      <button
-                        onClick={e => { e.stopPropagation(); const nextStatus = proj.status === 'draft' ? 'in-progress' : proj.status === 'in-progress' ? 'rendering' : proj.status === 'rendering' ? 'complete' : 'draft'; updateProject(proj.id, { data: { status: nextStatus } as unknown as Record<string, unknown> }).then(() => refetch()); }}
-                        className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
-                        title="Advance status"
-                      >
-                        Advance
-                      </button>
                     </div>
                   </motion.div>
                 ))}

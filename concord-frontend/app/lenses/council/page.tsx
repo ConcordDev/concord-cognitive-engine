@@ -2556,7 +2556,7 @@ export default function CouncilLensPage() {
         {[
           { label: 'Proposals', value: proposals.length, icon: FileText },
           { label: 'Active Votes', value: proposals.filter(p => p.status === 'voting').length, icon: Vote },
-          { label: 'Participation', value: `${stakeholders.length > 0 ? Math.round((stakeholders.filter(s => s.votingWeight > 0).length / stakeholders.length) * 100) : 0}%`, icon: Users },
+          { label: 'Participation', value: `${stakeholders.length > 0 ? Math.round((stakeholders.filter(s => s.votingPower > 0).length / stakeholders.length) * 100) : 0}%`, icon: Users },
           { label: 'Committees', value: committees.length, icon: Layers },
         ].map((stat) => (
           <div key={stat.label} className={ds.panel + ' flex items-center gap-3 p-3'}>
@@ -2614,7 +2614,7 @@ export default function CouncilLensPage() {
 
       {/* Tabs */}
       <div className="flex items-center gap-1 border-b border-lattice-border flex-wrap">
-        {TABS.map(tab => {
+        {TABS.map((tab) => {
           const Icon = tab.icon;
           return (
             <button
@@ -2991,18 +2991,435 @@ export default function CouncilLensPage() {
             </div>
           </div>
 
-      {/* Real-time Data Panel */}
-      {realtimeData && (
-        <RealtimeDataPanel
-      <UniversalActions domain="council" artifactId={null} compact />
-          domain="council"
-          data={realtimeData}
-          isLive={isLive}
-          lastUpdated={lastUpdated}
-          insights={realtimeInsights}
-          compact
-        />
-      )}
+          {/* ── Council Domain Action Panel ──────────────────────────────────── */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={ds.panel + ' space-y-4'}
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <Gavel className="w-4 h-4 text-neon-purple" />
+              <h2 className="font-semibold text-sm">Council Analysis Engine</h2>
+              <span className="text-xs text-gray-500 ml-auto">
+                Domain actions — deliberate, vote, minutes, conflict
+              </span>
+            </div>
+
+            {/* Action Buttons Row */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {[
+                {
+                  action: 'deliberate',
+                  label: 'Deliberate',
+                  setter: setDeliberateResult,
+                  icon: Scale,
+                  color: 'text-neon-purple',
+                },
+                {
+                  action: 'voteCount',
+                  label: 'Count Votes',
+                  setter: setVoteCountResult,
+                  icon: Vote,
+                  color: 'text-yellow-400',
+                },
+                {
+                  action: 'generateMinutes',
+                  label: 'Gen Minutes',
+                  setter: setMinutesResult,
+                  icon: ClipboardList,
+                  color: 'text-neon-cyan',
+                },
+                {
+                  action: 'conflictResolution',
+                  label: 'Resolve Conflict',
+                  setter: setConflictResult,
+                  icon: HandshakeIcon,
+                  color: 'text-green-400',
+                },
+              ].map(({ action, label, setter, icon: Icon, color }) => (
+                <button
+                  key={action}
+                  onClick={() => handleCouncilAction(action, setter)}
+                  disabled={councilActionRunning !== null}
+                  className={cn(
+                    ds.btnSecondary,
+                    'flex items-center gap-1.5 justify-center disabled:opacity-40 disabled:cursor-not-allowed text-xs'
+                  )}
+                >
+                  {councilActionRunning === action ? (
+                    <ClipboardCheck className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Icon className={cn('w-3.5 h-3.5', color)} />
+                  )}
+                  {councilActionRunning === action ? 'Running…' : label}
+                </button>
+              ))}
+            </div>
+
+            {/* Results Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Deliberate Result */}
+              {deliberateResult && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="rounded-lg border border-neon-purple/20 bg-neon-purple/5 p-4 space-y-3"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-neon-purple uppercase tracking-wider flex items-center gap-1.5">
+                      <Scale className="w-3.5 h-3.5" /> Deliberation Result
+                    </span>
+                    {'recommendation' in deliberateResult && (
+                      <span
+                        className={cn(
+                          'text-xs px-2 py-0.5 rounded-full font-medium',
+                          String(deliberateResult.recommendation) === 'Proceed'
+                            ? 'bg-green-500/20 text-green-400'
+                            : String(deliberateResult.recommendation) === 'Reject'
+                              ? 'bg-red-500/20 text-red-400'
+                              : 'bg-yellow-500/20 text-yellow-400'
+                        )}
+                      >
+                        {String(deliberateResult.recommendation)}
+                      </span>
+                    )}
+                  </div>
+                  {'proposal' in deliberateResult && (
+                    <p className="text-xs text-gray-400 italic">
+                      &ldquo;{String(deliberateResult.proposal)}&rdquo;
+                    </p>
+                  )}
+                  {'weightedScore' in deliberateResult && (
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-gray-500">Weighted Score</span>
+                      <div className="flex-1 h-2 bg-black/30 rounded-full overflow-hidden">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${Number(deliberateResult.weightedScore)}%` }}
+                          transition={{ duration: 0.6 }}
+                          className={cn(
+                            'h-full rounded-full',
+                            Number(deliberateResult.weightedScore) >= 60
+                              ? 'bg-green-500'
+                              : Number(deliberateResult.weightedScore) >= 40
+                                ? 'bg-yellow-500'
+                                : 'bg-red-500'
+                          )}
+                        />
+                      </div>
+                      <span className="text-sm font-mono font-bold text-white">
+                        {String(deliberateResult.weightedScore)}
+                      </span>
+                    </div>
+                  )}
+                  {'consensus' in deliberateResult && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-500">Consensus:</span>
+                      <span
+                        className={cn(
+                          'text-xs px-2 py-0.5 rounded-full',
+                          String(deliberateResult.consensus) === 'unanimous'
+                            ? 'bg-green-500/20 text-green-400'
+                            : String(deliberateResult.consensus) === 'majority'
+                              ? 'bg-blue-500/20 text-blue-400'
+                              : 'bg-red-500/20 text-red-400'
+                        )}
+                      >
+                        {String(deliberateResult.consensus)}
+                      </span>
+                    </div>
+                  )}
+                  {Array.isArray(deliberateResult.evaluations) && (
+                    <div className="space-y-2">
+                      <p className="text-xs text-gray-500 font-medium">Voice Evaluations</p>
+                      {(deliberateResult.evaluations as Array<Record<string, unknown>>).map(
+                        (ev, i) => (
+                          <div key={i} className="flex items-center gap-2">
+                            <span className="text-xs text-gray-400 w-24 shrink-0">
+                              {String(ev.voice)}
+                            </span>
+                            <div className="flex-1 h-1.5 bg-black/30 rounded-full overflow-hidden">
+                              <div
+                                className={cn(
+                                  'h-full rounded-full',
+                                  Number(ev.score) >= 60
+                                    ? 'bg-green-500'
+                                    : Number(ev.score) >= 40
+                                      ? 'bg-yellow-500'
+                                      : 'bg-red-500'
+                                )}
+                                style={{ width: `${Number(ev.score)}%` }}
+                              />
+                            </div>
+                            <span
+                              className={cn(
+                                'text-xs w-14 text-right font-mono',
+                                String(ev.position) === 'support'
+                                  ? 'text-green-400'
+                                  : String(ev.position) === 'oppose'
+                                    ? 'text-red-400'
+                                    : 'text-gray-400'
+                              )}
+                            >
+                              {String(ev.score)}/100
+                            </span>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  )}
+                </motion.div>
+              )}
+
+              {/* Vote Count Result */}
+              {voteCountResult && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-4 space-y-3"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-yellow-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <Vote className="w-3.5 h-3.5" /> Vote Tally
+                    </span>
+                    {'passed' in voteCountResult && (
+                      <span
+                        className={cn(
+                          'text-xs px-2 py-0.5 rounded-full font-medium',
+                          voteCountResult.passed
+                            ? 'bg-green-500/20 text-green-400'
+                            : 'bg-red-500/20 text-red-400'
+                        )}
+                      >
+                        {voteCountResult.passed ? 'PASSED' : 'FAILED'}
+                      </span>
+                    )}
+                  </div>
+                  {'tally' in voteCountResult && (
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        {
+                          key: 'for',
+                          label: 'For',
+                          color: 'text-green-400',
+                          bg: 'bg-green-500/20',
+                        },
+                        {
+                          key: 'against',
+                          label: 'Against',
+                          color: 'text-red-400',
+                          bg: 'bg-red-500/20',
+                        },
+                        {
+                          key: 'abstain',
+                          label: 'Abstain',
+                          color: 'text-gray-400',
+                          bg: 'bg-gray-500/20',
+                        },
+                      ].map(({ key, label, color, bg }) => (
+                        <div key={key} className={cn('rounded-lg p-2 text-center', bg)}>
+                          <p className={cn('text-lg font-bold', color)}>
+                            {String((voteCountResult.tally as Record<string, unknown>)[key] ?? 0)}
+                          </p>
+                          <p className="text-xs text-gray-500">{label}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {'forPercent' in voteCountResult && (
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs text-gray-500">
+                        <span>Support Rate</span>
+                        <span className="font-mono text-white">
+                          {String(voteCountResult.forPercent)}%
+                        </span>
+                      </div>
+                      <div className="h-2 bg-black/30 rounded-full overflow-hidden">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${Number(voteCountResult.forPercent)}%` }}
+                          transition={{ duration: 0.6 }}
+                          className={cn(
+                            'h-full rounded-full',
+                            Number(voteCountResult.forPercent) >= 67 ? 'bg-green-500' : 'bg-red-500'
+                          )}
+                        />
+                      </div>
+                      <div className="flex justify-between text-xs text-gray-600">
+                        <span>Threshold: {String(voteCountResult.passThreshold)}</span>
+                        <span>
+                          Quorum:{' '}
+                          {voteCountResult.quorumMet ? (
+                            <span className="text-green-400">Met</span>
+                          ) : (
+                            <span className="text-red-400">Not Met</span>
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+
+              {/* Minutes Result */}
+              {minutesResult && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="rounded-lg border border-neon-cyan/20 bg-neon-cyan/5 p-4 space-y-3"
+                >
+                  <span className="text-xs font-semibold text-neon-cyan uppercase tracking-wider flex items-center gap-1.5">
+                    <ClipboardList className="w-3.5 h-3.5" /> Meeting Minutes
+                  </span>
+                  {'title' in minutesResult && (
+                    <p className="text-sm font-medium text-white">{String(minutesResult.title)}</p>
+                  )}
+                  <div className="grid grid-cols-2 gap-2">
+                    {'date' in minutesResult && (
+                      <div className="lens-card text-center">
+                        <p className="text-xs text-gray-500">Date</p>
+                        <p className="text-sm font-mono text-white">{String(minutesResult.date)}</p>
+                      </div>
+                    )}
+                    {'attendees' in minutesResult && (
+                      <div className="lens-card text-center">
+                        <p className="text-xs text-gray-500">Attendees</p>
+                        <p className="text-sm font-bold text-neon-cyan">
+                          {String(minutesResult.attendees)}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  {Array.isArray(minutesResult.agendaItems) &&
+                    (minutesResult.agendaItems as Array<Record<string, unknown>>).length > 0 && (
+                      <div>
+                        <p className="text-xs text-gray-500 font-medium mb-1">Agenda Items</p>
+                        <div className="space-y-1">
+                          {(minutesResult.agendaItems as Array<Record<string, unknown>>).map(
+                            (item, i) => (
+                              <div key={i} className="flex items-center gap-2 text-xs">
+                                <span className="w-5 h-5 rounded-full bg-neon-cyan/20 text-neon-cyan flex items-center justify-center font-mono text-[10px] shrink-0">
+                                  {String(item.item)}
+                                </span>
+                                <span className="text-gray-300 flex-1">{String(item.topic)}</span>
+                                <span className="text-gray-500 capitalize">
+                                  {String(item.status)}
+                                </span>
+                              </div>
+                            )
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  {Array.isArray(minutesResult.decisions) &&
+                    (minutesResult.decisions as Array<Record<string, unknown>>).length > 0 && (
+                      <div>
+                        <p className="text-xs text-gray-500 font-medium mb-1">Decisions</p>
+                        {(minutesResult.decisions as Array<Record<string, unknown>>).map((d, i) => (
+                          <div
+                            key={i}
+                            className="flex items-center gap-2 text-xs p-1.5 rounded bg-white/5"
+                          >
+                            {d.passed ? (
+                              <CheckCircle2 className="w-3 h-3 text-green-400 shrink-0" />
+                            ) : (
+                              <XCircle className="w-3 h-3 text-red-400 shrink-0" />
+                            )}
+                            <span className="text-gray-300">{String(d.decision)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                </motion.div>
+              )}
+
+              {/* Conflict Resolution Result */}
+              {conflictResult && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="rounded-lg border border-green-500/20 bg-green-500/5 p-4 space-y-3"
+                >
+                  <span className="text-xs font-semibold text-green-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <HandshakeIcon className="w-3.5 h-3.5" /> Conflict Resolution
+                  </span>
+                  {'issue' in conflictResult && (
+                    <p className="text-xs text-gray-400 italic">
+                      &ldquo;{String(conflictResult.issue)}&rdquo;
+                    </p>
+                  )}
+                  {'commonGround' in conflictResult && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-500">Common Ground:</span>
+                      <span
+                        className={cn(
+                          'text-xs px-2 py-0.5 rounded-full',
+                          String(conflictResult.commonGround) === 'shared-urgency'
+                            ? 'bg-green-500/20 text-green-400'
+                            : 'bg-yellow-500/20 text-yellow-400'
+                        )}
+                      >
+                        {String(conflictResult.commonGround).replace(/-/g, ' ')}
+                      </span>
+                    </div>
+                  )}
+                  {'suggestedApproach' in conflictResult && (
+                    <p className="text-xs text-gray-300 bg-black/20 rounded p-2">
+                      {String(conflictResult.suggestedApproach)}
+                    </p>
+                  )}
+                  {Array.isArray(conflictResult.steps) && (
+                    <div>
+                      <p className="text-xs text-gray-500 font-medium mb-1">Resolution Steps</p>
+                      <ol className="space-y-1">
+                        {(conflictResult.steps as string[]).map((step, i) => (
+                          <li key={i} className="flex items-start gap-2 text-xs text-gray-400">
+                            <span className="w-4 h-4 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
+                              {i + 1}
+                            </span>
+                            {step}
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                  )}
+                  {Array.isArray(conflictResult.parties) && (
+                    <div>
+                      <p className="text-xs text-gray-500 font-medium mb-1">Parties</p>
+                      <div className="flex flex-wrap gap-2">
+                        {(conflictResult.parties as Array<Record<string, unknown>>).map((p, i) => (
+                          <span
+                            key={i}
+                            className={cn(
+                              'text-xs px-2 py-0.5 rounded-full',
+                              String(p.priority) === 'high'
+                                ? 'bg-orange-500/20 text-orange-400'
+                                : 'bg-gray-500/20 text-gray-400'
+                            )}
+                          >
+                            {String(p.party)} · {String(p.priority)}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </div>
+          </motion.div>
+
+          {/* Real-time Data Panel */}
+          <UniversalActions domain="council" artifactId={null} compact />
+          {realtimeData && (
+            <RealtimeDataPanel
+              domain="council"
+              data={realtimeData}
+              isLive={isLive}
+              lastUpdated={lastUpdated}
+              insights={realtimeInsights}
+              compact
+            />
+          )}
         </div>
       )}
     </div>

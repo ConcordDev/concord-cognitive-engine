@@ -734,7 +734,6 @@ export default function DailyLensPage() {
       <UniversalActions domain="daily" artifactId={null} compact />
       {realtimeData && (
         <RealtimeDataPanel
-      <UniversalActions domain="daily" artifactId={null} compact />
           domain="daily"
           data={realtimeData}
           isLive={isLive}

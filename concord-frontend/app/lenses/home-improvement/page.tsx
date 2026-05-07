@@ -6,9 +6,9 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
-  Hammer, Plus, Search, Trash2, DollarSign,
-  CheckCircle2, Wrench, Layers, ChevronDown,
-  Home, ToggleLeft, ToggleRight, Loader2,
+  Hammer, Plus, Search, Trash2, DollarSign, Clock,
+  CheckCircle2, AlertTriangle, Wrench, Layers, ChevronDown,
+  Home, ToggleLeft, ToggleRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -60,7 +60,7 @@ export default function HomeImprovementLensPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [showCreate, setShowCreate] = useState(false);
-  const [showFeatures, setShowFeatures] = useState(true);
+  const [showFeatures, setShowFeatures] = useState(false);
   const [activeTab, setActiveTab] = useState<'projects' | 'budget' | 'contractors'>('projects');
   const [beforeAfterView, setBeforeAfterView] = useState<'before' | 'after'>('before');
   const [newProject, setNewProject] = useState({ name: '', room: 'Kitchen', priority: 'medium' as 'low' | 'medium' | 'high', budget: 0 });
@@ -289,7 +289,7 @@ export default function HomeImprovementLensPage() {
                           </div>
                         )}
                       </div>
-                      <button onClick={() => remove(p.id)} disabled={deleteMut.isPending} className="text-gray-500 hover:text-red-400 p-1 ml-3">{deleteMut.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}</button>
+                      <button onClick={() => remove(p.id)} className="text-gray-500 hover:text-red-400 p-1 ml-3"><Trash2 className="w-4 h-4" /></button>
                     </motion.div>
                   ))}
                 </div>
@@ -457,7 +457,7 @@ export default function HomeImprovementLensPage() {
       <RealtimeDataPanel domain="home-improvement" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
 
       <div className="border-t border-white/10">
-        <button onClick={() => setShowFeatures(!showFeatures)} className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg">
+        <button onClick={() => setShowFeatures(!showFeatures)} className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-400 hover:text-white transition-colors">
           <span className="flex items-center gap-2"><Layers className="w-4 h-4" />Lens Features & Capabilities</span>
           <ChevronDown className={cn('w-4 h-4 transition-transform', showFeatures && 'rotate-180')} />
         </button>

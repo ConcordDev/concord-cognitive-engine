@@ -2,20 +2,19 @@
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api/client';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { api, apiHelpers } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useLensDTUs } from '@/hooks/useLensDTUs';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Camera, Search, Upload, Grid, Image as ImageIcon,
-  Heart, Eye, X,
-  Aperture, Sliders, BarChart3,
-  Layers, ChevronLeft, ChevronRight, Focus,
+  Camera, Plus, Search, Upload, Grid, Image as ImageIcon,
+  Heart, Share2, Filter, Eye, Download, X,
+  Aperture, Sun, Contrast, Sliders, BarChart3,
+  Layers, MapPin, Clock, Star, ChevronLeft, ChevronRight, Focus,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -61,7 +60,7 @@ export default function PhotographyPage() {
 
   const [tab, setTab] = useState<PhotoTab>('gallery');
   const [searchQuery, setSearchQuery] = useState('');
-  const [showFeatures, setShowFeatures] = useState(true);
+  const [showFeatures, setShowFeatures] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [showUpload, setShowUpload] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
@@ -207,12 +206,6 @@ export default function PhotographyPage() {
           <div className="flex items-center gap-3">
             <Camera className="w-6 h-6 text-sky-400" />
             <h1 className="text-2xl font-bold">Photography</h1>
-            {(isLoading || dtusLoading) && (
-              <div className="flex items-center gap-1.5 text-xs text-sky-400">
-                <div className="w-3 h-3 border-2 border-sky-400 border-t-transparent rounded-full animate-spin" />
-                Loading...
-              </div>
-            )}
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
           </div>
           <div className="flex items-center gap-2">
@@ -226,7 +219,6 @@ export default function PhotographyPage() {
 
         {showFeatures && <LensFeaturePanel lensId="photography" />}
         <RealtimeDataPanel data={realtimeData} insights={realtimeInsights} />
-      <UniversalActions domain="photography" artifactId={null} compact />
 
         {/* Tabs */}
         <div className="flex gap-1 bg-white/5 p-1 rounded-lg border border-white/10">

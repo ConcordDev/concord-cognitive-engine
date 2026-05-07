@@ -21,7 +21,7 @@ import logger from "../logger.js";
  * @param {boolean} [opts.explain] - Generate explanations via utility brain
  * @returns {Promise<{ ok: boolean, analogies: object[], source: object }>}
  */
-export async function findAnalogies(sourceDtuId, deps, opts = {}) {
+async function findAnalogies(sourceDtuId, deps, opts = {}) {
   const { STATE, EMBEDDINGS, cosineSimilarity, callBrain } = deps;
   const { targetDomains = null, minScore = 0.5, limit = 10, explain = true } = opts;
 

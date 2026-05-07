@@ -32,6 +32,8 @@ import {
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
+import { MediaUpload } from '@/components/media/MediaUpload';
+import { UniversalPlayer } from '@/components/media/UniversalPlayer';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
@@ -338,6 +340,36 @@ export default function StudioLensPage() {
   const [showNewProject, setShowNewProject] = useState(false);
   const [showAddTrack, setShowAddTrack] = useState(false);
   const [showFeatures, setShowFeatures] = useState(true);
+  const { items: studioArtifacts } = useLensData('studio', 'project', { noSeed: true });
+  const runStudioAction = useRunArtifact('studio');
+  const [studioActionResult, setStudioActionResult] = useState<Record<string, unknown> | null>(
+    null
+  );
+  const [studioActiveAction, setStudioActiveAction] = useState<string | null>(null);
+
+  const handleStudioAction = useCallback(
+    async (action: string) => {
+      const id = studioArtifacts[0]?.id;
+      if (!id) return;
+      setStudioActiveAction(action);
+      try {
+        const res = await runStudioAction.mutateAsync({ id, action });
+        if (res.ok === false) {
+          setStudioActionResult({
+            action,
+            message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}`,
+          });
+        } else {
+          setStudioActionResult({ action, ...(res.result as Record<string, unknown>) });
+        }
+      } catch (err) {
+        console.error('Studio action failed:', err);
+      } finally {
+        setStudioActiveAction(null);
+      }
+    },
+    [studioArtifacts, runStudioAction]
+  );
 
   // New project form
   const [newTitle, setNewTitle] = useState('');
@@ -1943,15 +1975,17 @@ export default function StudioLensPage() {
 
       {/* Realtime Data */}
       {realtimeData && (
-        <RealtimeDataPanel
-      <UniversalActions domain="studio" artifactId={null} compact />
-          domain="studio"
-          data={realtimeData}
-          isLive={isLive}
-          lastUpdated={lastUpdated}
-          insights={realtimeInsights}
-          compact
-        />
+        <>
+          <UniversalActions domain="studio" artifactId={null} compact />
+          <RealtimeDataPanel
+            domain="studio"
+            data={realtimeData}
+            isLive={isLive}
+            lastUpdated={lastUpdated}
+            insights={realtimeInsights}
+            compact
+          />
+        </>
       )}
 
       {/* Studio Domain Actions */}

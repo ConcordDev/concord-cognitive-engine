@@ -37,6 +37,21 @@ interface Reflection {
 export default function ReflectionLensPage() {
   useLensNav('reflection');
   const [showFeatures, setShowFeatures] = useState(true);
+  const { items: reflectionArtifacts } = useLensData('reflection', 'entry', { seed: [] });
+  const runReflectionAction = useRunArtifact('reflection');
+  const [reflActionResult, setReflActionResult] = useState<Record<string, unknown> | null>(null);
+  const [reflActiveAction, setReflActiveAction] = useState<string | null>(null);
+
+  const handleReflectionAction = async (action: string) => {
+    const id = reflectionArtifacts[0]?.id;
+    if (!id) return;
+    setReflActiveAction(action);
+    try {
+      const res = await runReflectionAction.mutateAsync({ id, action });
+      if (res.ok === false) { setReflActionResult({ action, message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setReflActionResult({ action, ...(res.result as Record<string, unknown>) }); }
+    } catch (err) { console.error('Reflection action failed:', err); }
+    finally { setReflActiveAction(null); }
+  };
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('reflection');
 
   // --- Lens Bridge ---

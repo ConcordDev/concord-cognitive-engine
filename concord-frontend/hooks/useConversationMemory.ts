@@ -1,4 +1,9 @@
 /**
+ * NOTE: This hook is not currently imported by any production component.
+ * It is intended for chat-related pages that need rolling window compression
+ * and server-side memory management. Wire into the chat page or conversation
+ * view when the memory compression feature is enabled.
+ *
  * useConversationMemory — Rolling Window Compression Hook
  *
  * Monitors the active session's message count and triggers server-side
@@ -38,12 +43,12 @@ interface ConversationMemoryState {
 // ── Constants ───────────────────────────────────────────────────────────────
 
 const WINDOW_THRESHOLD = 50;
-const ACTIVE_WINDOW = 30;
+const _ACTIVE_WINDOW = 30;
 
 // ── Hook ────────────────────────────────────────────────────────────────────
 
 export function useConversationMemory(): ConversationMemoryState {
-  const { activeSessionId, activeMessages, addMessage, getActiveWindow } = useSessionStore();
+  const { activeSessionId, addMessage, getActiveWindow } = useSessionStore();
   const [stats, setStats] = useState<MemoryStats | null>(null);
   const [isCompressing, setIsCompressing] = useState(false);
   const [error, setError] = useState<string | null>(null);

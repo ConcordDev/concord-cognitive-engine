@@ -59,7 +59,7 @@ const DEFAULT_HALF_LIFE = 30; // days
 /**
  * Get the domain-specific half-life for a DTU based on its tags.
  */
-export function getDomainHalfLife(tags = []) {
+function getDomainHalfLife(tags = []) {
   if (!Array.isArray(tags) || tags.length === 0) return DEFAULT_HALF_LIFE;
 
   // Use the fastest-decaying matching domain
@@ -86,7 +86,7 @@ export function getDomainHalfLife(tags = []) {
  * @param {object} dtu
  * @returns {{ score: number, label: string, factors: object, halfLife: number }}
  */
-export function computeFreshness(dtu) {
+function computeFreshness(dtu) {
   if (!dtu) return { score: 0, label: "stale", factors: {}, halfLife: DEFAULT_HALF_LIFE };
 
   const now = Date.now();
@@ -161,7 +161,7 @@ export function freshnessLabel(score) {
  * @param {{ freshnessWeight?: number }} opts
  * @returns {object[]} Re-ranked results with combined score
  */
-export function applyFreshnessToRelevance(results, { freshnessWeight = 0.2 } = {}) {
+function applyFreshnessToRelevance(results, { freshnessWeight = 0.2 } = {}) {
   if (!Array.isArray(results) || results.length === 0) return results;
 
   const similarityWeight = 1 - freshnessWeight;
@@ -185,7 +185,7 @@ export function applyFreshnessToRelevance(results, { freshnessWeight = 0.2 } = {
 /**
  * Mark a DTU as validated (refreshes its freshness score).
  */
-export function markValidated(dtu) {
+function markValidated(dtu) {
   if (!dtu) return;
   if (!dtu.meta) dtu.meta = {};
   dtu.meta.lastValidatedAt = new Date().toISOString();
@@ -194,7 +194,7 @@ export function markValidated(dtu) {
 /**
  * Get domain velocity stats — how fast knowledge changes in a domain.
  */
-export function getDomainVelocity(domain) {
+function getDomainVelocity(domain) {
   const hl = DOMAIN_HALF_LIVES[domain?.toLowerCase()] || DEFAULT_HALF_LIFE;
   return {
     domain,

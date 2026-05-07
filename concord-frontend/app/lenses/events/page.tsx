@@ -2431,7 +2431,7 @@ export default function EventsLensPage() {
       <UniversalActions domain="events" artifactId={events[0]?.id} compact />
       {/* Mode Tabs */}
       <nav className="flex items-center gap-1 border-b border-lattice-border pb-3 flex-wrap">
-        {MODE_TABS.map(tab => {
+        {MODE_TABS.map((tab) => {
           const Icon = tab.icon;
           return (
             <button

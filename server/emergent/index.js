@@ -3069,14 +3069,22 @@ function init({ register, STATE, helpers }) {
       const now = Date.now();
       const sevenDays = 7 * 24 * 60 * 60 * 1000;
 
-      // Safe iteration: STATE.dtus may be a Map, Array, or plain Object
-      const dtusIterable = STATE.dtus instanceof Map
-        ? STATE.dtus
-        : Array.isArray(STATE.dtus)
-          ? new Map(STATE.dtus.map(d => [d.id, d]))
-          : typeof STATE.dtus === 'object' && STATE.dtus
-            ? new Map(Object.entries(STATE.dtus))
-            : new Map();
+      // Safe iteration: STATE.dtus may be a Map, DTU store (has .entries()), Array, or plain Object
+      let dtusIterable;
+      if (!STATE.dtus) {
+        dtusIterable = new Map();
+      } else if (STATE.dtus instanceof Map) {
+        dtusIterable = STATE.dtus;
+      } else if (typeof STATE.dtus.entries === 'function') {
+        // DTU store or Map-like object with .entries() method
+        dtusIterable = new Map(STATE.dtus.entries());
+      } else if (Array.isArray(STATE.dtus)) {
+        dtusIterable = new Map(STATE.dtus.map(d => [d.id, d]));
+      } else if (typeof STATE.dtus === 'object') {
+        dtusIterable = new Map(Object.entries(STATE.dtus));
+      } else {
+        dtusIterable = new Map();
+      }
 
       const allIds = new Set(dtusIterable.keys());
 

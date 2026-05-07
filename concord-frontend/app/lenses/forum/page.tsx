@@ -1140,7 +1140,6 @@ export default function ForumLensPage() {
 
       {realtimeData && (
         <RealtimeDataPanel
-      <UniversalActions domain="forum" artifactId={null} compact />
           domain="forum"
           data={realtimeData}
           isLive={isLive}

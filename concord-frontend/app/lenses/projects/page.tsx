@@ -9,10 +9,10 @@ import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
-  FolderKanban, ListTodo, Calendar, Users, DollarSign,
-  Plus, Search, X, Trash2, BarChart3,
-  AlertTriangle, Milestone,
-  Layers, ChevronDown, Gauge, Activity, CircleDot, Zap,
+  FolderKanban, ListTodo, Calendar, Users, Clock, DollarSign,
+  Plus, Search, X, Trash2, BarChart3, CheckCircle2,
+  AlertTriangle, Target, TrendingUp, Flag, Milestone,
+  Layers, ChevronDown, GitBranch, Gauge, Timer, Activity, CircleDot,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -69,7 +69,7 @@ export default function ProjectsLensPage() {
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<LensItem<ProjectArtifact> | null>(null);
   const [showDashboard, setShowDashboard] = useState(false);
-  const [showFeatures, setShowFeatures] = useState(true);
+  const [showFeatures, setShowFeatures] = useState(false);
 
   const [formName, setFormName] = useState('');
   const [formDescription, setFormDescription] = useState('');
@@ -116,7 +116,7 @@ export default function ProjectsLensPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className={ds.panel}><FolderKanban className="w-5 h-5 text-blue-400 mb-2" /><p className={ds.textMuted}>Total Projects</p><p className="text-xl font-bold text-white">{items.length}</p></div>
         <div className={ds.panel}><Gauge className="w-5 h-5 text-green-400 mb-2" /><p className={ds.textMuted}>Avg Progress</p><p className="text-xl font-bold text-white">{avgProgress.toFixed(0)}%</p></div>
-        <div className={ds.panel}><DollarSign className="w-5 h-5 text-yellow-400 mb-2" /><p className={ds.textMuted}>Budget</p><p className="text-xl font-bold text-white">${totalBudget.toLocaleString()}</p><p className={ds.textMuted}>${totalSpent.toLocaleString()} spent</p></div>
+        <div className={ds.panel}><DollarSign className="w-5 h-5 text-yellow-400 mb-2" /><p className={ds.textMuted}>Budget</p><p className="text-xl font-bold text-white">${totalBudget.toLocaleString()}</p></div>
         <div className={ds.panel}><AlertTriangle className="w-5 h-5 text-red-400 mb-2" /><p className={ds.textMuted}>At Risk</p><p className="text-xl font-bold text-white">{all.filter(p => p.status === 'at_risk' || p.status === 'overdue').length}</p></div>
       </div>
     );
@@ -191,7 +191,7 @@ export default function ProjectsLensPage() {
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center"><FolderKanban className="w-5 h-5 text-white" /></div>
           <div><div className="flex items-center gap-2"><h1 className={ds.heading1}>Projects</h1><LiveIndicator isLive={isLive} lastUpdated={lastUpdated} /></div><p className={ds.textMuted}>Projects, tasks, milestones, resources, timeline, and risk management</p></div>
         </div>
-        <div className="flex items-center gap-2"><DTUExportButton domain="projects" data={{}} compact /><button onClick={() => runAction.mutate({ id: items[0]?.id || 'projects', action: 'analyze-risks' })} className={ds.btnSecondary} title="Run risk analysis"><Zap className="w-4 h-4" /> Analyze</button><button onClick={() => setShowDashboard(!showDashboard)} className={cn(showDashboard ? ds.btnPrimary : ds.btnSecondary)}><BarChart3 className="w-4 h-4" /> Dashboard</button></div>
+        <div className="flex items-center gap-2"><DTUExportButton domain="projects" data={{}} compact /><button onClick={() => setShowDashboard(!showDashboard)} className={cn(showDashboard ? ds.btnPrimary : ds.btnSecondary)}><BarChart3 className="w-4 h-4" /> Dashboard</button></div>
       </header>
       <RealtimeDataPanel domain="projects" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
       <UniversalActions domain="projects" artifactId={items[0]?.id} compact />
@@ -205,11 +205,11 @@ export default function ProjectsLensPage() {
           <div className={ds.panel}><AlertTriangle className="w-5 h-5 text-red-400 mb-2" /><p className={ds.textMuted}>At Risk</p><p className="text-xl font-bold text-white">{all.filter(p => p.status === 'at_risk' || p.status === 'overdue').length}</p></div>
         </div>
       ); })()}
-      <nav className="flex items-center gap-2 border-b border-lattice-border pb-4 flex-wrap">{MODE_TABS.map(tab => (<button key={tab.id} onClick={() => { setActiveTab(tab.id); setShowDashboard(false); }} className={cn('flex items-center gap-2 px-4 py-2 rounded-lg transition-colors whitespace-nowrap', activeTab === tab.id && !showDashboard ? 'bg-neon-blue/20 text-neon-blue' : 'text-gray-400 hover:text-white hover:bg-lattice-elevated')}><tab.icon className="w-4 h-4" />{tab.label}</button>))}</nav>
+      <nav className="flex items-center gap-2 border-b border-lattice-border pb-4 overflow-x-auto">{MODE_TABS.map(tab => (<button key={tab.id} onClick={() => { setActiveTab(tab.id); setShowDashboard(false); }} className={cn('flex items-center gap-2 px-4 py-2 rounded-lg transition-colors whitespace-nowrap', activeTab === tab.id && !showDashboard ? 'bg-neon-blue/20 text-neon-blue' : 'text-gray-400 hover:text-white hover:bg-lattice-elevated')}><tab.icon className="w-4 h-4" />{tab.label}</button>))}</nav>
       {showDashboard ? renderDashboard() : renderLibrary()}
       {renderEditor()}
       <div className="border-t border-white/10">
-        <button onClick={() => setShowFeatures(!showFeatures)} className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"><span className="flex items-center gap-2"><Layers className="w-4 h-4" />Lens Features & Capabilities</span><ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} /></button>
+        <button onClick={() => setShowFeatures(!showFeatures)} className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-400 hover:text-white transition-colors"><span className="flex items-center gap-2"><Layers className="w-4 h-4" />Lens Features & Capabilities</span><ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} /></button>
         {showFeatures && <div className="px-4 pb-4"><LensFeaturePanel lensId="projects" /></div>}
       </div>
     </div>

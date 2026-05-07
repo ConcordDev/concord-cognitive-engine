@@ -57,7 +57,6 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { VisionAnalyzeButton } from '@/components/common/VisionAnalyzeButton';
 import { ProvenanceBadge } from '@/components/dtu/ProvenanceBadge';
-import { ReportButton } from '@/components/common/ReportButton';
 import { StoriesBar } from '@/components/social/StoriesBar';
 import { SuggestedFollows } from '@/components/social/SuggestedFollows';
 import { SocialCommerceTag } from '@/components/social/SocialCommerceTag';
@@ -1261,6 +1260,13 @@ export default function FeedLensPage() {
                           >
                             <Share className="w-4 h-4" />
                           </button>
+                          <CrossPostExternal
+                            postId={post.id}
+                            title={post.content.slice(0, 80)}
+                            content={post.content}
+                            tags={post.tags}
+                            authorName={post.author.name}
+                          />
                           <ReportButton contentId={post.id} contentType="post" compact />
                         </div>
                       </div>
@@ -1486,18 +1492,344 @@ export default function FeedLensPage() {
         />
         <FeedbackWidget targetType="lens" targetId="feed" />
 
-      {/* Real-time Data Panel */}
-      {realtimeData && (
-        <RealtimeDataPanel
-      <UniversalActions domain="feed" artifactId={null} compact />
-          domain="feed"
-          data={realtimeData}
-          isLive={isLive}
-          lastUpdated={lastUpdated}
-          insights={realtimeInsights}
-          compact
-        />
-      )}
+        {/* Real-time Data Panel */}
+        <UniversalActions domain="feed" artifactId={null} compact />
+
+        {/* Feed Analytics Actions */}
+        <div className="panel p-4 space-y-3">
+          <h2 className="font-semibold text-sm flex items-center gap-2">
+            <BarChart3 className="w-4 h-4 text-neon-cyan" />
+            Feed Analytics
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            {[
+              {
+                action: 'engagementScore',
+                label: 'Engagement Score',
+                icon: TrendingUp,
+                color: 'text-neon-green',
+              },
+              {
+                action: 'contentCalendar',
+                label: 'Content Calendar',
+                icon: Eye,
+                color: 'text-neon-cyan',
+              },
+              {
+                action: 'audienceInsights',
+                label: 'Audience Insights',
+                icon: Users,
+                color: 'text-neon-purple',
+              },
+              {
+                action: 'hashtagAnalysis',
+                label: 'Hashtag Analysis',
+                icon: Hash,
+                color: 'text-yellow-400',
+              },
+            ].map(({ action, label, icon: Icon, color }) => (
+              <button
+                key={action}
+                onClick={() => handleFeedAction(action)}
+                disabled={!!feedRunning || !postLensItems?.[0]?.id}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-lattice-deep border border-lattice-border text-sm hover:border-white/20 disabled:opacity-40 transition-colors"
+              >
+                {feedRunning === action ? (
+                  <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                ) : (
+                  <Icon className={`w-4 h-4 ${color}`} />
+                )}
+                <span className="truncate text-xs">{label}</span>
+              </button>
+            ))}
+          </div>
+
+          {feedActionResult && (
+            <div className="mt-3 rounded-lg bg-black/30 border border-white/10 p-4 relative">
+              <button
+                onClick={() => setFeedActionResult(null)}
+                className="absolute top-3 right-3 text-gray-500 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
+              {/* engagementScore */}
+              {feedActionResult._action === 'engagementScore' && (
+                <div className="space-y-3">
+                  <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">
+                    Engagement Report
+                  </p>
+                  {(feedActionResult.message as string) ? (
+                    <p className="text-sm text-gray-400">{feedActionResult.message as string}</p>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        {[
+                          {
+                            label: 'Posts',
+                            value: String(feedActionResult.totalPosts ?? 0),
+                            color: 'text-white',
+                          },
+                          {
+                            label: 'Avg Engagement',
+                            value: `${feedActionResult.avgEngagement ?? 0}%`,
+                            color: 'text-neon-green',
+                          },
+                          {
+                            label: 'Top Post',
+                            value: String(feedActionResult.topPost ?? '—'),
+                            color: 'text-neon-cyan',
+                          },
+                          {
+                            label: 'Total Reach',
+                            value: String(
+                              ((feedActionResult.totalReach as number) || 0).toLocaleString()
+                            ),
+                            color: 'text-neon-purple',
+                          },
+                        ].map(({ label, value, color }) => (
+                          <div key={label} className="bg-white/5 rounded-lg p-3 text-center">
+                            <p className={`text-sm font-bold ${color} truncate`}>{value}</p>
+                            <p className="text-xs text-gray-400">{label}</p>
+                          </div>
+                        ))}
+                      </div>
+                      {Array.isArray(feedActionResult.posts) &&
+                        (
+                          feedActionResult.posts as {
+                            title: string;
+                            engagementRate: number;
+                            performance: string;
+                            likes: number;
+                            comments: number;
+                            shares: number;
+                          }[]
+                        )
+                          .slice(0, 5)
+                          .map((p) => (
+                            <div
+                              key={p.title}
+                              className="flex items-center gap-3 text-xs px-2 py-1 rounded bg-white/5"
+                            >
+                              <span className="flex-1 text-white truncate">{p.title}</span>
+                              <span className="text-gray-400">
+                                {p.likes}♥ {p.comments}💬 {p.shares}↗
+                              </span>
+                              <span
+                                className={`text-xs font-mono ${p.engagementRate > 5 ? 'text-neon-green' : p.engagementRate > 2 ? 'text-yellow-400' : 'text-gray-500'}`}
+                              >
+                                {p.engagementRate}%
+                              </span>
+                              <span
+                                className={`px-1.5 py-0.5 rounded text-[10px] ${p.performance === 'viral' ? 'bg-neon-green/20 text-neon-green' : p.performance === 'above-average' ? 'bg-neon-cyan/20 text-neon-cyan' : 'bg-white/5 text-gray-400'}`}
+                              >
+                                {p.performance}
+                              </span>
+                            </div>
+                          ))}
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* contentCalendar */}
+              {feedActionResult._action === 'contentCalendar' && (
+                <div className="space-y-3">
+                  <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">
+                    Content Calendar
+                  </p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {[
+                      {
+                        label: 'Planned',
+                        value: String(feedActionResult.planedPosts ?? 0),
+                        color: 'text-neon-green',
+                      },
+                      {
+                        label: 'Target',
+                        value: String(feedActionResult.targetPosts ?? 0),
+                        color: 'text-neon-cyan',
+                      },
+                      {
+                        label: 'Coverage',
+                        value: `${feedActionResult.coveragePercent ?? 0}%`,
+                        color:
+                          (feedActionResult.coveragePercent as number) >= 80
+                            ? 'text-neon-green'
+                            : 'text-yellow-400',
+                      },
+                      {
+                        label: 'Gaps',
+                        value: String(((feedActionResult.gaps as string[]) || []).length),
+                        color: 'text-red-400',
+                      },
+                    ].map(({ label, value, color }) => (
+                      <div key={label} className="bg-white/5 rounded-lg p-3 text-center">
+                        <p className={`text-lg font-bold ${color}`}>{value}</p>
+                        <p className="text-xs text-gray-400">{label}</p>
+                      </div>
+                    ))}
+                  </div>
+                  {Array.isArray(feedActionResult.upcoming) && (
+                    <div className="grid grid-cols-7 gap-1">
+                      {(
+                        feedActionResult.upcoming as {
+                          date: string;
+                          day: string;
+                          planned: boolean;
+                          type: string | null;
+                        }[]
+                      )
+                        .slice(0, 14)
+                        .map((d) => (
+                          <div
+                            key={d.date}
+                            className={`rounded p-1 text-center text-[10px] ${d.planned ? 'bg-neon-green/20 border border-neon-green/30 text-neon-green' : 'bg-white/5 text-gray-600'}`}
+                          >
+                            <p>{d.day}</p>
+                            {d.type && <p className="truncate text-[9px]">{d.type}</p>}
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* audienceInsights */}
+              {feedActionResult._action === 'audienceInsights' && (
+                <div className="space-y-3">
+                  <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">
+                    Audience Insights
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-white/5 rounded-lg p-3">
+                      <p className="text-xs text-gray-400">Total Followers</p>
+                      <p className="text-xl font-bold text-neon-purple">
+                        {((feedActionResult.totalFollowers as number) || 0).toLocaleString()}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Growth: {feedActionResult.growthRate as string}
+                      </p>
+                    </div>
+                    <div className="bg-white/5 rounded-lg p-3">
+                      <p className="text-xs text-gray-400">Best Posting Times</p>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {((feedActionResult.bestPostingTimes as string[]) || []).map((t) => (
+                          <span
+                            key={t}
+                            className="text-xs px-2 py-0.5 rounded bg-neon-cyan/20 text-neon-cyan"
+                          >
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  {Array.isArray(feedActionResult.demographics) &&
+                    (
+                      feedActionResult.demographics as {
+                        group: string;
+                        percent: number;
+                        count: number;
+                      }[]
+                    ).length > 0 && (
+                      <div className="space-y-1">
+                        {(
+                          feedActionResult.demographics as {
+                            group: string;
+                            percent: number;
+                            count: number;
+                          }[]
+                        ).map((d) => (
+                          <div key={d.group} className="flex items-center gap-3 text-xs">
+                            <span className="text-gray-400 w-24 capitalize">{d.group}</span>
+                            <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-neon-purple/60 rounded-full"
+                                style={{ width: `${d.percent}%` }}
+                              />
+                            </div>
+                            <span className="text-white w-10 text-right">{d.percent}%</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                </div>
+              )}
+
+              {/* hashtagAnalysis */}
+              {feedActionResult._action === 'hashtagAnalysis' && (
+                <div className="space-y-3">
+                  <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">
+                    Hashtag Analysis
+                  </p>
+                  {(feedActionResult.message as string) ? (
+                    <p className="text-sm text-gray-400">{feedActionResult.message as string}</p>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-3 gap-3">
+                        {[
+                          {
+                            label: 'Unique Tags',
+                            value: String(feedActionResult.totalUniqueTags ?? 0),
+                            color: 'text-neon-cyan',
+                          },
+                          {
+                            label: 'Posts Analyzed',
+                            value: String(feedActionResult.postsAnalyzed ?? 0),
+                            color: 'text-white',
+                          },
+                          {
+                            label: 'Top Tag',
+                            value: (feedActionResult.topTags as { tag: string }[])?.[0]?.tag
+                              ? `#${(feedActionResult.topTags as { tag: string }[])[0].tag}`
+                              : '—',
+                            color: 'text-neon-green',
+                          },
+                        ].map(({ label, value, color }) => (
+                          <div key={label} className="bg-white/5 rounded-lg p-3 text-center">
+                            <p className={`text-sm font-bold ${color}`}>{value}</p>
+                            <p className="text-xs text-gray-400">{label}</p>
+                          </div>
+                        ))}
+                      </div>
+                      {Array.isArray(feedActionResult.topTags) && (
+                        <div className="flex flex-wrap gap-2">
+                          {(feedActionResult.topTags as { tag: string; uses: number }[]).map(
+                            (t) => (
+                              <span
+                                key={t.tag}
+                                className="text-xs px-2 py-1 rounded bg-neon-cyan/10 border border-neon-cyan/20 text-neon-cyan"
+                              >
+                                #{t.tag} <span className="text-gray-400">×{t.uses}</span>
+                              </span>
+                            )
+                          )}
+                        </div>
+                      )}
+                      {feedActionResult.recommendation && (
+                        <p className="text-xs text-gray-500 italic">
+                          {feedActionResult.recommendation as string}
+                        </p>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {realtimeData && (
+          <RealtimeDataPanel
+            domain="feed"
+            data={realtimeData}
+            isLive={isLive}
+            lastUpdated={lastUpdated}
+            insights={realtimeInsights}
+            compact
+          />
+        )}
       </div>
     </div>
   );

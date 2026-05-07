@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Heart, Coins, Star, Swords, Shield, MapPin,
   ChevronDown, ChevronUp, Trophy, Target, LogIn, Compass, Map,

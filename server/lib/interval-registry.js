@@ -176,7 +176,7 @@ export function stopAllIntervals() {
 /**
  * Stop a specific interval by name.
  */
-export function stopInterval(name) {
+function stopInterval(name) {
   const entry = _registeredIntervals.get(name);
   if (!entry) return { ok: false, error: "not_found" };
   clearInterval(entry.id);
@@ -214,7 +214,7 @@ function gcd(a, b) {
  * Verify no two intervals collide within a given window.
  * Returns list of collisions (should be empty).
  */
-export function verifyNoCollisions(windowMs = 600_000) {
+function verifyNoCollisions(windowMs = 600_000) {
   const entries = Object.entries(INTERVALS);
   const collisions = [];
 

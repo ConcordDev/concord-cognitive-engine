@@ -8,6 +8,7 @@
  */
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -58,9 +59,11 @@ export function CreatorLink({
     >
       {showAvatar && (
         avatarUrl ? (
-          <img
+          <Image
             src={avatarUrl}
             alt={displayName}
+            width={size === 'lg' ? 36 : size === 'md' ? 28 : 20}
+            height={size === 'lg' ? 36 : size === 'md' ? 28 : 20}
             className={cn('rounded-full object-cover', avatarSizes[size])}
           />
         ) : (

@@ -3,7 +3,7 @@
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { apiHelpers } from '@/lib/api/client';
 import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, Scale, Brain, MessageSquare, Shield, Gavel, BookOpen } from 'lucide-react';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import {

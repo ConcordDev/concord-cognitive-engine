@@ -7,9 +7,12 @@
  * Status flow visualization, auto-escalation awareness, refund controls.
  */
 
+import { useLensNav } from '@/hooks/useLensNav';
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
+import { useLensData } from '@/lib/hooks/use-lens-data';
 import {
   AlertTriangle,
   Shield,
@@ -31,6 +34,8 @@ import {
   Scale,
   Eye,
   Loader2,
+  Zap,
+  TrendingUp,
 } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -634,11 +639,30 @@ function DisputeCard({
 type ViewTab = 'my' | 'queue';
 
 export default function DisputesPage() {
+  useLensNav('disputes');
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<ViewTab>('my');
   const [statusFilter, setStatusFilter] = useState<DisputeStatus | 'all'>('all');
   const queryClient = useQueryClient();
+
+  // --- Domain action state ---
+  const { items: disputeItems } = useLensData('disputes', 'dispute', { seed: [] });
+  const runAction = useRunArtifact('disputes');
+  const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
+  const [activeAction, setActiveAction] = useState<string | null>(null);
+
+  const handleDisputeAction = useCallback(async (action: string) => {
+    const targetId = disputeItems[0]?.id;
+    if (!targetId) return;
+    setActiveAction(action);
+    setActionResult(null);
+    try {
+      const res = await runAction.mutateAsync({ id: targetId, action });
+      if (res.ok === false) { setActionResult({ message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setActionResult(res.result as Record<string, unknown>); }
+    } catch (e) { console.error(`Action ${action} failed:`, e); setActionResult({ message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` }); }
+    setActiveAction(null);
+  }, [disputeItems, runAction]);
 
   const myDisputes = useMyDisputes();
   const adminQueue = useDisputeQueue();
@@ -710,6 +734,178 @@ export default function DisputesPage() {
             <p className="text-2xl font-bold text-white mt-1">{s.value}</p>
           </div>
         ))}
+      </div>
+
+      {/* ── Domain Action Panel ─────────────────────────────────── */}
+      <div className={cn(ds.panel, 'space-y-3')}>
+        <h3 className="text-sm font-semibold text-gray-300 flex items-center gap-2">
+          <Zap className="w-4 h-4 text-neon-blue" /> AI Dispute Analysis
+        </h3>
+        <div className="flex flex-wrap gap-2">
+          {(['assessDispute','timelineTrack','settlementCalc','evidenceStrength'] as const).map(action => (
+            <button
+              key={action}
+              onClick={() => handleDisputeAction(action)}
+              disabled={activeAction !== null || !disputeItems[0]?.id}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded bg-neon-blue/10 border border-neon-blue/30 text-neon-blue hover:bg-neon-blue/20 disabled:opacity-50 transition-colors"
+            >
+              {activeAction === action ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
+              {action === 'assessDispute' ? 'Assess Dispute' : action === 'timelineTrack' ? 'Timeline Track' : action === 'settlementCalc' ? 'Settlement Calc' : 'Evidence Strength'}
+            </button>
+          ))}
+        </div>
+
+        {/* assessDispute result */}
+        {actionResult && actionResult.complexity !== undefined && (
+          <div className="space-y-3 pt-2 border-t border-white/5">
+            <div className="grid grid-cols-4 gap-2">
+              <div className="p-2 bg-lattice-surface rounded text-center">
+                <p className="text-lg font-bold text-neon-blue">{String(actionResult.parties ?? 0)}</p>
+                <p className="text-[10px] text-gray-500">Parties</p>
+              </div>
+              <div className="p-2 bg-lattice-surface rounded text-center">
+                <p className="text-xs font-bold text-neon-cyan capitalize">{String(actionResult.complexity ?? '—')}</p>
+                <p className="text-[10px] text-gray-500">Complexity</p>
+              </div>
+              <div className="p-2 bg-lattice-surface rounded text-center">
+                <p className="text-xs font-bold text-yellow-400 capitalize">{String(actionResult.valueTier ?? '—').replace('-', ' ')}</p>
+                <p className="text-[10px] text-gray-500">Value Tier</p>
+              </div>
+              <div className="p-2 bg-lattice-surface rounded text-center">
+                <p className="text-sm font-bold text-neon-green">${String(actionResult.disputeAmount ?? 0)}</p>
+                <p className="text-[10px] text-gray-500">Amount</p>
+              </div>
+            </div>
+            {!!actionResult.preferredMethod && (
+              <div className="flex items-center gap-2 p-2 bg-neon-blue/5 border border-neon-blue/20 rounded text-xs">
+                <Gavel className="w-3 h-3 text-neon-blue" />
+                <span className="text-gray-300">Preferred Method: </span>
+                <span className="text-neon-blue font-semibold">{String(actionResult.preferredMethod)}</span>
+              </div>
+            )}
+            {Array.isArray(actionResult.recommendedMethods) && (
+              <div className="grid grid-cols-2 gap-2">
+                {(actionResult.recommendedMethods as Array<{method:string;cost:string;timeWeeks:number;binding?:boolean}>).map((m, i) => (
+                  <div key={i} className="p-2 bg-white/[0.02] border border-white/5 rounded text-xs">
+                    <p className="text-gray-200 font-semibold">{m.method}</p>
+                    <div className="flex gap-2 text-gray-500 mt-0.5">
+                      <span>{m.cost}</span>
+                      <span>{m.timeWeeks}w</span>
+                      {m.binding && <span className="text-orange-400">Binding</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* timelineTrack result */}
+        {actionResult && actionResult.daysElapsed !== undefined && actionResult.totalEvents !== undefined && (
+          <div className="space-y-3 pt-2 border-t border-white/5">
+            <div className="grid grid-cols-3 gap-2">
+              <div className="p-2 bg-lattice-surface rounded text-center">
+                <p className="text-lg font-bold text-neon-cyan">{String(actionResult.totalEvents)}</p>
+                <p className="text-[10px] text-gray-500">Events</p>
+              </div>
+              <div className="p-2 bg-lattice-surface rounded text-center">
+                <p className="text-lg font-bold text-yellow-400">{String(actionResult.daysElapsed)}</p>
+                <p className="text-[10px] text-gray-500">Days Elapsed</p>
+              </div>
+              <div className="p-2 bg-lattice-surface rounded text-center">
+                <p className={`text-xs font-bold capitalize ${actionResult.status === 'protracted' ? 'text-red-400' : actionResult.status === 'extended' ? 'text-yellow-400' : 'text-neon-green'}`}>{String(actionResult.status ?? '—')}</p>
+                <p className="text-[10px] text-gray-500">Status</p>
+              </div>
+            </div>
+            {Array.isArray(actionResult.events) && (actionResult.events as Array<{date:string;event:string;party:string}>).length > 0 && (
+              <div className="space-y-1 max-h-36 overflow-y-auto">
+                {(actionResult.events as Array<{date:string;event:string;party:string}>).map((e, i) => (
+                  <div key={i} className="flex items-start gap-2 text-xs">
+                    <span className="text-gray-500 font-mono shrink-0">{e.date}</span>
+                    <span className="text-gray-300 flex-1">{e.event}</span>
+                    <span className="text-neon-blue shrink-0">{e.party}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* settlementCalc result */}
+        {actionResult && actionResult.settlementZone !== undefined && (
+          <div className="space-y-3 pt-2 border-t border-white/5">
+            <div className="grid grid-cols-3 gap-2">
+              <div className="p-2 bg-lattice-surface rounded text-center">
+                <p className="text-lg font-bold text-neon-cyan">${String(actionResult.expectedValue ?? 0)}</p>
+                <p className="text-[10px] text-gray-500">Expected Value</p>
+              </div>
+              <div className="p-2 bg-lattice-surface rounded text-center">
+                <p className={`text-lg font-bold ${Number(actionResult.netAfterCosts) >= 0 ? 'text-neon-green' : 'text-red-400'}`}>${String(actionResult.netAfterCosts ?? 0)}</p>
+                <p className="text-[10px] text-gray-500">Net After Costs</p>
+              </div>
+              <div className="p-2 bg-lattice-surface rounded text-center">
+                <p className="text-lg font-bold text-yellow-400">{String(actionResult.winProbability ?? 0)}%</p>
+                <p className="text-[10px] text-gray-500">Win Probability</p>
+              </div>
+            </div>
+            {!!actionResult.settlementZone && (
+              <div className="p-2 bg-neon-green/5 border border-neon-green/20 rounded text-xs space-y-1">
+                <p className="text-[10px] text-gray-500 uppercase tracking-wider">Settlement Zone</p>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Min: <span className="text-neon-green">${String((actionResult.settlementZone as Record<string,number>).min)}</span></span>
+                  <span className="text-gray-400">Mid: <span className="text-neon-cyan">${String((actionResult.settlementZone as Record<string,number>).midpoint)}</span></span>
+                  <span className="text-gray-400">Max: <span className="text-yellow-400">${String((actionResult.settlementZone as Record<string,number>).max)}</span></span>
+                </div>
+              </div>
+            )}
+            {!!actionResult.recommendation && (
+              <p className={`text-xs px-3 py-2 rounded border ${String(actionResult.recommendation).includes('within') ? 'bg-neon-green/10 text-neon-green border-neon-green/20' : 'bg-yellow-400/10 text-yellow-400 border-yellow-400/20'}`}>
+                {String(actionResult.recommendation)}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* evidenceStrength result */}
+        {actionResult && actionResult.caseStrength !== undefined && (
+          <div className="space-y-3 pt-2 border-t border-white/5">
+            <div className="grid grid-cols-3 gap-2">
+              <div className="p-2 bg-lattice-surface rounded text-center">
+                <p className="text-lg font-bold text-neon-cyan">{String(actionResult.totalPieces ?? 0)}</p>
+                <p className="text-[10px] text-gray-500">Evidence Items</p>
+              </div>
+              <div className="p-2 bg-lattice-surface rounded text-center">
+                <p className="text-lg font-bold text-neon-green">{String(actionResult.avgStrength ?? 0)}</p>
+                <p className="text-[10px] text-gray-500">Avg Strength</p>
+              </div>
+              <div className="p-2 bg-lattice-surface rounded text-center">
+                <p className={`text-xs font-bold capitalize ${actionResult.caseStrength === 'strong' ? 'text-neon-green' : actionResult.caseStrength === 'moderate' ? 'text-yellow-400' : 'text-red-400'}`}>{String(actionResult.caseStrength)}</p>
+                <p className="text-[10px] text-gray-500">Case Strength</p>
+              </div>
+            </div>
+            {!!actionResult.strongestEvidence && (
+              <p className="text-xs text-gray-300 flex items-center gap-1">
+                <TrendingUp className="w-3 h-3 text-neon-green" /> Strongest: <span className="text-neon-green">{String(actionResult.strongestEvidence)}</span>
+              </p>
+            )}
+            {Array.isArray(actionResult.evidence) && (
+              <div className="space-y-1">
+                {(actionResult.evidence as Array<{item:string;type:string;score:number;reliability:number}>).slice(0, 5).map((e, i) => (
+                  <div key={i} className="flex items-center gap-2 text-xs">
+                    <span className="text-gray-300 flex-1 truncate">{e.item}</span>
+                    <span className="text-gray-500 capitalize">{e.type}</span>
+                    <span className="text-neon-cyan">{e.score}</span>
+                    <span className="text-gray-500">{e.reliability}%</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {actionResult && !!actionResult.message && (
+          <p className="text-xs text-gray-400 italic pt-1">{String(actionResult.message)}</p>
+        )}
       </div>
 
       {/* Tabs */}

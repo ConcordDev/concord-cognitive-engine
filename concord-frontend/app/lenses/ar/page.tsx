@@ -3,11 +3,10 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useQuery } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Glasses, Camera, Scan, Settings, Layers, Eye, Maximize } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -357,7 +356,6 @@ export default function ARLensPage() {
       </header>
 
       <RealtimeDataPanel domain="ar" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
-      <UniversalActions domain="ar" artifactId={null} compact />
       <DTUExportButton domain="ar" data={{}} compact />
 
       {/* Stat Cards Row */}

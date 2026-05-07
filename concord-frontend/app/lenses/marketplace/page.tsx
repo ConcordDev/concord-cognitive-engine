@@ -607,7 +607,7 @@ export default function MarketplaceLensPage() {
   const [showNewListing, setShowNewListing] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
-  const [showFeatures, setShowFeatures] = useState(true);
+  const [showFeatures, setShowFeatures] = useState(false);
   const [showCheckoutConfirm, setShowCheckoutConfirm] = useState(false);
 
   // New listing form state
@@ -2215,18 +2215,20 @@ export default function MarketplaceLensPage() {
             </div>
           </div>
 
-      {/* Real-time Data Panel */}
-      {realtimeData && (
-        <RealtimeDataPanel
-      <UniversalActions domain="marketplace" artifactId={null} compact />
-          domain="marketplace"
-          data={realtimeData}
-          isLive={isLive}
-          lastUpdated={lastUpdated}
-          insights={realtimeInsights}
-          compact
-        />
-      )}
+          {/* Real-time Data Panel */}
+          {realtimeData && (
+            <>
+              <UniversalActions domain="marketplace" artifactId={null} compact />
+              <RealtimeDataPanel
+                domain="marketplace"
+                data={realtimeData}
+                isLive={isLive}
+                lastUpdated={lastUpdated}
+                insights={realtimeInsights}
+                compact
+              />
+            </>
+          )}
         </div>
       )}
 

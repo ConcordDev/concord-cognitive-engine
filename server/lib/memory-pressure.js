@@ -11,7 +11,7 @@
  *   critical (>90%) — aggressive eviction, prepare for graceful restart
  */
 
-import { structuredLog } from "./logger.js";
+import logger from "../logger.js";
 
 const POLL_INTERVAL_MS = 15_000;
 const HEAP_LIMIT_MB = Number(process.env.MAX_OLD_SPACE_SIZE || 3584);
@@ -45,14 +45,14 @@ export function initMemoryWatchdog(STATE) {
     try {
       _tick(STATE);
     } catch (e) {
-      structuredLog("warn", "memory_watchdog_error", { error: e?.message });
+      logger.log("warn", "lib", "memory_watchdog_error", { error: e?.message });
     }
   }, POLL_INTERVAL_MS);
 
   // Don't block process exit
   if (_timer.unref) _timer.unref();
 
-  structuredLog("info", "memory_watchdog_started", { heapLimitMB: HEAP_LIMIT_MB });
+  logger.log("info", "lib", "memory_watchdog_started", { heapLimitMB: HEAP_LIMIT_MB });
 
   return {
     stop() {
@@ -79,7 +79,7 @@ function _tick(STATE) {
 
   // Log on level change
   if (_level !== prevLevel) {
-    structuredLog(_level === "normal" ? "info" : "warn", "memory_pressure_change", {
+    logger.log(_level === "normal" ? "info" : "warn", "lib", "memory_pressure_change", {
       from: prevLevel,
       to: _level,
       heapUsedMB: Math.round(heapUsedMB),
@@ -115,7 +115,7 @@ function _tryGC() {
   if (typeof global.gc === "function") {
     global.gc();
     _lastGcAt = now;
-    structuredLog("info", "memory_watchdog_gc", { forced: true });
+    logger.log("info", "lib", "memory_watchdog_gc", { forced: true });
   }
 }
 
@@ -129,12 +129,16 @@ function _evictOldSessions(STATE) {
     const age = now - (session.createdAt || session.startedAt || 0);
     if (age > SESSION_EVICT_AGE_MS) {
       STATE.sessions.delete(id);
+      // Clean up orphaned styleVectors for this session
+      if (STATE.styleVectors && typeof STATE.styleVectors.delete === "function") {
+        STATE.styleVectors.delete(id);
+      }
       evicted++;
     }
   });
 
   if (evicted > 0) {
-    structuredLog("info", "memory_watchdog_session_evict", { evicted });
+    logger.log("info", "lib", "memory_watchdog_session_evict", { evicted });
   }
 }
 
@@ -142,7 +146,7 @@ function _pauseBackgroundWork(STATE) {
   if (!STATE?.settings) return;
   if (!STATE._memoryPausedFeatures) {
     STATE._memoryPausedFeatures = {};
-    const features = ["autogenEnabled", "dreamEnabled", "evolutionEnabled", "synthEnabled"];
+    const features = ["autogenEnabled", "dreamEnabled", "evolutionEnabled", "synthEnabled", "heartbeatEnabled"];
     for (const f of features) {
       if (STATE.settings[f] === true) {
         STATE._memoryPausedFeatures[f] = true;
@@ -150,7 +154,7 @@ function _pauseBackgroundWork(STATE) {
       }
     }
     if (Object.keys(STATE._memoryPausedFeatures).length > 0) {
-      structuredLog("warn", "memory_watchdog_paused_background", {
+      logger.log("warn", "lib", "memory_watchdog_paused_background", {
         paused: Object.keys(STATE._memoryPausedFeatures),
       });
     }
@@ -162,7 +166,7 @@ function _resumeBackgroundWork(STATE) {
   for (const [f, was] of Object.entries(STATE._memoryPausedFeatures)) {
     if (was) STATE.settings[f] = true;
   }
-  structuredLog("info", "memory_watchdog_resumed_background", {
+  logger.log("info", "lib", "memory_watchdog_resumed_background", {
     resumed: Object.keys(STATE._memoryPausedFeatures),
   });
   delete STATE._memoryPausedFeatures;
@@ -180,6 +184,9 @@ function _aggressiveEviction(STATE) {
     const age = now - (session.createdAt || session.startedAt || 0);
     if (age > SHORT_AGE) {
       STATE.sessions.delete(id);
+      if (STATE.styleVectors && typeof STATE.styleVectors.delete === "function") {
+        STATE.styleVectors.delete(id);
+      }
       evicted++;
     }
   });
@@ -188,7 +195,7 @@ function _aggressiveEviction(STATE) {
   if (STATE.crawlQueue?.length > 0) {
     const trimmed = STATE.crawlQueue.length;
     STATE.crawlQueue.length = 0;
-    structuredLog("warn", "memory_watchdog_crawl_queue_cleared", { trimmed });
+    logger.log("warn", "lib", "memory_watchdog_crawl_queue_cleared", { trimmed });
   }
 
   // Trim logs
@@ -196,7 +203,64 @@ function _aggressiveEviction(STATE) {
     STATE.logs.splice(0, STATE.logs.length - 500);
   }
 
+  // Trim unbounded queues
+  if (STATE.queues?.notifications?.length > 500) {
+    STATE.queues.notifications.splice(0, STATE.queues.notifications.length - 200);
+  }
+  if (STATE.queues?.macroProposals?.length > 200) {
+    STATE.queues.macroProposals.splice(0, STATE.queues.macroProposals.length - 100);
+  }
+  if (STATE.queues?.synthesis?.length > 200) {
+    STATE.queues.synthesis.splice(0, STATE.queues.synthesis.length - 100);
+  }
+
+  // Trim globalThread queues
+  if (STATE.globalThread?.councilQueue?.length > 200) {
+    // Keep only pending + most recent 100 resolved
+    const pending = STATE.globalThread.councilQueue.filter(s => s.status === "pending");
+    const resolved = STATE.globalThread.councilQueue.filter(s => s.status !== "pending").slice(-100);
+    STATE.globalThread.councilQueue = [...pending, ...resolved];
+  }
+  if (STATE.globalThread?.acceptedContributions?.length > 500) {
+    STATE.globalThread.acceptedContributions = STATE.globalThread.acceptedContributions.slice(-200);
+  }
+
+  // Prune completed/failed jobs
+  if (STATE.jobs && typeof STATE.jobs.forEach === "function") {
+    const toPrune = [];
+    STATE.jobs.forEach((j, id) => {
+      if (j && (j.status === "succeeded" || j.status === "failed")) toPrune.push(id);
+    });
+    for (const id of toPrune) STATE.jobs.delete(id);
+    if (toPrune.length > 0) {
+      logger.log("warn", "lib", "memory_watchdog_jobs_pruned", { pruned: toPrune.length });
+    }
+  }
+
+  // Cap large Maps that grow without bound
+  const mapCaps = [
+    ["sources", 5000],
+    ["transactions", 10000],
+    ["listings", 5000],
+    ["entitlements", 5000],
+    ["styleVectors", 500],
+  ];
+  for (const [field, cap] of mapCaps) {
+    const m = STATE[field];
+    if (m && typeof m.size === "number" && m.size > cap && typeof m.delete === "function") {
+      // Delete oldest entries (Maps iterate in insertion order)
+      const excess = m.size - Math.floor(cap * 0.8);
+      const iter = m.keys();
+      for (let i = 0; i < excess; i++) {
+        const k = iter.next();
+        if (k.done) break;
+        m.delete(k.value);
+      }
+      logger.log("warn", "lib", `memory_watchdog_${field}_capped`, { before: m.size + excess, after: m.size });
+    }
+  }
+
   if (evicted > 0) {
-    structuredLog("warn", "memory_watchdog_aggressive_evict", { evicted });
+    logger.log("warn", "lib", "memory_watchdog_aggressive_evict", { evicted });
   }
 }

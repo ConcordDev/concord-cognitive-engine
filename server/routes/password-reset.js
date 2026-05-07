@@ -74,8 +74,8 @@ export default function createPasswordResetRouter({ AuthDB, hashPassword, authRa
       return res.status(400).json({ ok: false, error: "Token and new password are required" });
     }
 
-    if (typeof newPassword !== "string" || newPassword.length < 8) {
-      return res.status(400).json({ ok: false, error: "Password must be at least 8 characters" });
+    if (typeof newPassword !== "string" || newPassword.length < 12) {
+      return res.status(400).json({ ok: false, error: "Password must be at least 12 characters" });
     }
 
     try {

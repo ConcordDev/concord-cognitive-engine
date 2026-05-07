@@ -21,10 +21,10 @@ let _avgResponseMs = 0;
 let _pendingRequests = 0;
 let _ollamaQueueDepth = 0;
 
-export function updateChatCount(n) { _activeChatCount = n; }
-export function updateAvgResponseMs(ms) { _avgResponseMs = ms; }
-export function updatePendingRequests(n) { _pendingRequests = n; }
-export function updateOllamaQueueDepth(n) { _ollamaQueueDepth = n; }
+function updateChatCount(n) { _activeChatCount = n; }
+function updateAvgResponseMs(ms) { _avgResponseMs = ms; }
+function updatePendingRequests(n) { _pendingRequests = n; }
+function updateOllamaQueueDepth(n) { _ollamaQueueDepth = n; }
 
 // ── Event Loop Lag ─────────────────────────────────────────────────────────
 
@@ -41,7 +41,7 @@ function measureEventLoopLag() {
 
 // ── Load Metrics ───────────────────────────────────────────────────────────
 
-export function recordLoadMetrics(structuredLog) {
+function recordLoadMetrics(structuredLog) {
   measureEventLoopLag();
 
   const mem = process.memoryUsage();
@@ -195,15 +195,15 @@ async function stopOverflowPod() {
  * Route a chat request: if overflow pod is active and local queue is deep,
  * forward to the overflow pod.
  */
-export function shouldRouteToOverflow(localQueueDepth = 0) {
+function shouldRouteToOverflow(localQueueDepth = 0) {
   return !!(_overflow?.endpoint && localQueueDepth > 5);
 }
 
-export function getOverflowEndpoint() {
+function getOverflowEndpoint() {
   return _overflow?.endpoint || null;
 }
 
-export function getOverflowStatus() {
+function getOverflowStatus() {
   if (!_overflow) return { active: false };
   return {
     active: true,

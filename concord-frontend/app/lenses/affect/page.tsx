@@ -216,6 +216,14 @@ export default function AffectLensPage() {
   const [expandedEvent, setExpandedEvent] = useState<number | null>(null);
   const [showFeatures, setShowFeatures] = useState(true);
 
+  // --- Domain action state (backend analysis tools) ---
+  const runAction = useRunArtifact('affect');
+  const [isRunning, setIsRunning] = useState<string | null>(null);
+  const [sentimentResult, setSentimentResult] = useState<Record<string, unknown> | null>(null);
+  const [timelineResult, setTimelineResult] = useState<Record<string, unknown> | null>(null);
+  const [empathyResult, setEmpathyResult] = useState<Record<string, unknown> | null>(null);
+  const [patternResult, setPatternResult] = useState<Record<string, unknown> | null>(null);
+
   // --- Lens Bridge (mirrors affect state into universal artifact system) ---
   const bridge = useLensBridge('affect', 'snapshot');
 

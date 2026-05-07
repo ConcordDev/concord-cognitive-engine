@@ -195,14 +195,14 @@ export function ContentPublisher({
     }
 
     if (platform === 'x') {
-      const tweet = `${title}${hashtags ? `\n\n${hashtags}` : ''}\n\n${shareUrl}`;
-      const tweetText = tweet.length > 280 ? `${title.slice(0, 200)}\n\n${shareUrl}` : tweet;
+      const tweet = `${text}${hashtags ? `\n\n${hashtags}` : ''}\n\n${shareUrl}`;
+      const tweetText = tweet.length > 280 ? `${text.slice(0, 200)}\n\n${shareUrl}` : tweet;
       window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`, '_blank', 'noopener,noreferrer,width=600,height=500');
     } else if (platform === 'linkedin') {
-      window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`, '_blank', 'noopener,noreferrer,width=600,height=500');
+      window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}&summary=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer,width=600,height=500');
     } else if (platform === 'instagram') {
       // Instagram doesn't support URL sharing — copy caption
-      const caption = `${title}\n\n${(postText || description).slice(0, 1500)}\n\n${hashtags}`;
+      const caption = `${text.slice(0, 1500)}\n\n${hashtags}`;
       try {
         await navigator.clipboard.writeText(caption);
         setCopiedPlatform('instagram');

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -361,10 +361,6 @@ function ScheduleTimeline({ schedule }: { schedule: LensItem }) {
 // Component
 // ---------------------------------------------------------------------------
 export default function ManufacturingLensPage() {
-  useLensNav('manufacturing');
-  const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('manufacturing');
-
-  const [showFeatures, setShowFeatures] = useState(true);
   const [mode, setMode] = useState<ModeTab>('dashboard');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -1423,7 +1419,9 @@ export default function ManufacturingLensPage() {
                   </div>
                 ) : (
                   <div className="text-center py-6 text-gray-500 text-sm border border-dashed border-white/10 rounded-lg">
-                    <p>No quality measurements yet. Add measurements to track manufacturing quality.</p>
+                    <p>
+                      No quality measurements yet. Add measurements to track manufacturing quality.
+                    </p>
                   </div>
                 )}
 
@@ -2116,7 +2114,7 @@ export default function ManufacturingLensPage() {
       <UniversalActions domain="manufacturing" artifactId={dashWOs[0]?.id} compact />
       {/* Mode Tabs */}
       <nav className="flex items-center gap-1 border-b border-lattice-border pb-3 flex-wrap">
-        {MODE_TABS.map(tab => {
+        {MODE_TABS.map((tab) => {
           const Icon = tab.icon;
           return (
             <button
@@ -2452,25 +2450,6 @@ export default function ManufacturingLensPage() {
           </div>
         </>
       )}
-
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="manufacturing" />
-          </div>
-        )}
-      </div>
-    </div>
+    </LensPageShell>
   );
 }

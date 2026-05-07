@@ -3271,7 +3271,7 @@ export default function GovernmentLensPage() {
       <DTUExportButton domain="government" data={{}} compact />
       {/* Navigation tabs */}
       <nav className="flex items-center gap-1 border-b border-lattice-border pb-4 flex-wrap">
-        {MODE_TABS.map(tab => {
+        {MODE_TABS.map((tab) => {
           const Icon = tab.icon;
           const isActive = mode === tab.id;
           return (

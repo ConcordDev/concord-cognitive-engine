@@ -113,8 +113,9 @@ export function checkGate1_CreatorThreshold(db, creatorId) {
       "SELECT COUNT(*) as count FROM dtu_store WHERE json_extract(data, '$.creatorId') = ? OR json_extract(data, '$.creator_id') = ? OR json_extract(data, '$.ownerId') = ?"
     ).get(creatorId, creatorId, creatorId);
     dtuCount = countRow?.count || 0;
-  } catch {
+  } catch (err) {
     // dtu_store may not have json_extract — fallback
+    console.warn('[global-gates] gate1: could not count creator DTUs', { creatorId, err: err.message });
     dtuCount = 10; // assume OK if we can't check
   }
 
@@ -130,7 +131,7 @@ export function checkGate1_CreatorThreshold(db, creatorId) {
     if (merit && merit.balance < 0) {
       reasons.push("Creator has negative merit credit score");
     }
-  } catch { /* economy tables may not exist */ }
+  } catch (err) { console.warn('[global-gates] gate1: could not check merit balance', { creatorId, err: err.message }); }
 
   // Zero active moderation strikes
   try {
@@ -140,7 +141,7 @@ export function checkGate1_CreatorThreshold(db, creatorId) {
     if (strikes && strikes.count > 0) {
       reasons.push(`Creator has ${strikes.count} active moderation strike(s)`);
     }
-  } catch { /* moderation table may not exist */ }
+  } catch (err) { console.warn('[global-gates] gate1: could not check moderation strikes', { creatorId, err: err.message }); }
 
   return { passed: reasons.length === 0, reasons };
 }
@@ -155,7 +156,7 @@ export function checkGate2_ContentQuality(db, dtuId) {
   try {
     const row = db.prepare("SELECT data FROM dtu_store WHERE id = ?").get(dtuId);
     if (row) dtu = JSON.parse(row.data);
-  } catch { /* */ }
+  } catch (err) { console.warn('[global-gates] gate2: could not load DTU', { dtuId, err: err.message }); }
 
   if (!dtu) {
     return { passed: false, reasons: ["DTU not found"] };
@@ -176,7 +177,7 @@ export function checkGate2_ContentQuality(db, dtuId) {
       "SELECT COUNT(*) as count FROM royalty_citations WHERE source_dtu_id = ?"
     ).get(dtuId);
     citationCount = citRow?.count || 0;
-  } catch { /* citations table may not exist */ }
+  } catch (err) { console.warn('[global-gates] gate2: could not count citations', { dtuId, err: err.message }); }
 
   if (citationCount < 3) {
     reasons.push(`DTU needs at least 3 citations (current: ${citationCount})`);
@@ -196,7 +197,7 @@ export function checkGate2_ContentQuality(db, dtuId) {
     if (flags && flags.count > 0) {
       reasons.push(`DTU has ${flags.count} active moderation flag(s)`);
     }
-  } catch { /* */ }
+  } catch (err) { console.warn('[global-gates] gate2: could not check moderation flags', { dtuId, err: err.message }); }
 
   return { passed: reasons.length === 0, reasons };
 }
@@ -234,7 +235,7 @@ export function checkGate4_Attribution(db, dtuId) {
   try {
     const row = db.prepare("SELECT data FROM dtu_store WHERE id = ?").get(dtuId);
     if (row) dtu = JSON.parse(row.data);
-  } catch { /* */ }
+  } catch (err) { console.warn('[global-gates] gate4: could not load DTU', { dtuId, err: err.message }); }
 
   if (!dtu) {
     return { passed: false, reasons: ["DTU not found"] };
@@ -255,7 +256,7 @@ export function checkGate4_Attribution(db, dtuId) {
       if (!parent) {
         reasons.push(`Parent DTU ${forkedFrom} not found — lineage broken`);
       }
-    } catch { /* */ }
+    } catch (err) { console.warn('[global-gates] gate4: could not verify parent lineage', { dtuId, forkedFrom, err: err.message }); }
 
     // Check licenses valid
     try {
@@ -263,7 +264,7 @@ export function checkGate4_Attribution(db, dtuId) {
         "SELECT * FROM dtu_licenses WHERE dtu_id = ? AND user_id = ? AND revoked = 0"
       ).get(forkedFrom, dtu.creatorId || dtu.creator_id || dtu.ownerId);
       // License check is advisory — don't hard-block if table doesn't exist
-    } catch { /* */ }
+    } catch (err) { console.warn('[global-gates] gate4: could not check license', { dtuId, err: err.message }); }
   }
   // Original content — creator attestation (implied by submission)
 
@@ -279,7 +280,7 @@ export function checkGate5_DomainRelevance(db, dtuId) {
   try {
     const row = db.prepare("SELECT data FROM dtu_store WHERE id = ?").get(dtuId);
     if (row) dtu = JSON.parse(row.data);
-  } catch { /* */ }
+  } catch (err) { console.warn('[global-gates] gate5: could not load DTU', { dtuId, err: err.message }); }
 
   if (!dtu) {
     return { passed: false, reasons: ["DTU not found"] };
@@ -321,7 +322,7 @@ export function runAllGates(db, dtuId, submitterId) {
       const dtu = JSON.parse(row.data);
       creatorId = dtu.creatorId || dtu.creator_id || dtu.ownerId || submitterId;
     }
-  } catch { /* */ }
+  } catch (err) { console.warn('[global-gates] runAllGates: could not resolve creator ID', { dtuId, err: err.message }); }
 
   const gate1 = checkGate1_CreatorThreshold(db, creatorId);
   const gate2 = checkGate2_ContentQuality(db, dtuId);
@@ -367,7 +368,7 @@ export function submitForGlobal(db, { dtuId, submitterId }) {
         return { ok: false, error: "already_global" };
       }
     }
-  } catch { /* */ }
+  } catch (err) { console.warn('[global-gates] submitForGlobal: could not check if already global', { dtuId, err: err.message }); }
 
   // Run automatic gates
   const gateResults = runAllGates(db, dtuId, submitterId);
@@ -543,7 +544,7 @@ export function demoteFromGlobal(db, { dtuId, reason }) {
       dtu.meta.demotionReason = reason;
       db.prepare("UPDATE dtu_store SET data = ? WHERE id = ?").run(JSON.stringify(dtu), dtuId);
     }
-  } catch { /* */ }
+  } catch (err) { console.error('[global-gates] demoteFromGlobal failed', { dtuId, err: err.message }); }
 
   return { ok: true, dtuId, reason };
 }
@@ -560,7 +561,7 @@ export function runHealthCheck(db, dtuId) {
       "SELECT COUNT(*) as count FROM royalty_citations WHERE source_dtu_id = ?"
     ).get(dtuId);
     citationCount = row?.count || 0;
-  } catch { /* */ }
+  } catch (err) { console.warn('[global-gates] healthCheck: could not count citations', { dtuId, err: err.message }); }
 
   if (citationCount === 0) {
     issues.push({ type: "citation_decay", severity: "warning", detail: "Zero citations" });
@@ -571,7 +572,7 @@ export function runHealthCheck(db, dtuId) {
   try {
     const row = db.prepare("SELECT data FROM dtu_store WHERE id = ?").get(dtuId);
     if (row) dtu = JSON.parse(row.data);
-  } catch { /* */ }
+  } catch (err) { console.warn('[global-gates] healthCheck: could not load DTU', { dtuId, err: err.message }); }
 
   if (dtu) {
     const age = Date.now() - new Date(dtu.timestamp || dtu.created_at).getTime();
@@ -634,7 +635,7 @@ export function getGlobalFeed(db, { limit = 20, offset = 0 } = {}) {
       ORDER BY citation_count DESC
       LIMIT 10
     `).all();
-  } catch { /* */ }
+  } catch (err) { console.warn('[global-gates] globalFeed: could not fetch top cited DTUs', { err: err.message }); }
 
   return {
     recentPromotions,
@@ -652,7 +653,7 @@ export function getGlobalStats(db) {
       "SELECT COUNT(*) as count FROM dtu_store WHERE json_extract(data, '$.scope') = 'global'"
     ).get();
     totalGlobal = row?.count || 0;
-  } catch { /* */ }
+  } catch (err) { console.warn('[global-gates] globalStats: could not count global DTUs', { err: err.message }); }
 
   const pendingSubmissions = db.prepare(
     "SELECT COUNT(*) as count FROM global_submissions WHERE status = 'reviewing'"

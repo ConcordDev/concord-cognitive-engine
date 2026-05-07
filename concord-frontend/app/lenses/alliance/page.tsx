@@ -6,7 +6,7 @@ import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { Loading } from '@/components/common/Loading';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Plus, MessageSquare, Target, Zap, Layers, ChevronDown, HeartHandshake as Handshake, Crown } from 'lucide-react';
+import { Users, Plus, MessageSquare, Target, Shield, Zap, Layers, ChevronDown, Handshake, Crown } from 'lucide-react';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { ErrorState } from '@/components/common/EmptyState';
 import { UniversalActions } from '@/components/lens/UniversalActions';
@@ -53,6 +53,22 @@ export default function AllianceLensPage() {
   const [newAllianceDesc, setNewAllianceDesc] = useState('');
   const [newAllianceType, setNewAllianceType] = useState<AllianceData['type']>('research');
   const [showFeatures, setShowFeatures] = useState(true);
+
+  // Backend action wiring
+  const runAction = useRunArtifact('alliance');
+  const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
+  const [isRunning, setIsRunning] = useState<string | null>(null);
+
+  const handleAllianceAction = async (action: string) => {
+    const targetId = selectedAlliance || allianceItems[0]?.id;
+    if (!targetId) return;
+    setIsRunning(action);
+    try {
+      const res = await runAction.mutateAsync({ id: targetId, action });
+      if (res.ok === false) { setActionResult({ message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setActionResult(res.result as Record<string, unknown>); }
+    } catch (e) { console.error(`Action ${action} failed:`, e); setActionResult({ message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` }); }
+    setIsRunning(null);
+  };
 
   const {
     items: allianceItems,
@@ -258,7 +274,7 @@ export default function AllianceLensPage() {
       </div>
 
       {/* Alliance Strength Meter */}
-      {alliances.length > 0 ? (
+      {alliances.length > 0 && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -292,10 +308,6 @@ export default function AllianceLensPage() {
             })}
           </div>
         </motion.div>
-      ) : (
-        <div className="text-center py-6 text-gray-500 text-sm border border-dashed border-white/10 rounded-lg">
-          <p>No alliances formed yet. Create an alliance to see collaboration data.</p>
-        </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

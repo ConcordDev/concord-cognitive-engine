@@ -90,7 +90,8 @@ export function FeedHealthDashboard({ className }: FeedHealthDashboardProps) {
 
   const toggleFeed = async (feedId: string, enabled: boolean) => {
     try {
-      await fetch(`/api/feeds/${feedId}/${enabled ? 'enable' : 'disable'}`, { method: 'PUT' });
+      const res = await fetch(`/api/feeds/${feedId}/${enabled ? 'enable' : 'disable'}`, { method: 'PUT' });
+      if (!res.ok) throw new Error(`Request failed: ${res.status}`);
       fetchData();
     } catch (_e) { /* silent */ }
   };
@@ -98,6 +99,7 @@ export function FeedHealthDashboard({ className }: FeedHealthDashboardProps) {
   const testFeed = async (feedId: string) => {
     try {
       const res = await fetch(`/api/feeds/${feedId}/test`, { method: 'POST' });
+      if (!res.ok) throw new Error(`Request failed: ${res.status}`);
       const json = await res.json();
       alert(json.reachable ? `✓ Feed reachable (${json.status}, ${json.size} bytes)` : `✗ Feed unreachable: ${json.error}`);
     } catch (_e) {

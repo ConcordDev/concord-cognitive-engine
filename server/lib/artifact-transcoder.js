@@ -24,7 +24,7 @@ export async function isTranscodingAvailable() {
  * @param {string} filePath
  * @returns {Promise<object|null>} { duration, codec, width, height, bitrate }
  */
-export async function probeMedia(filePath) {
+async function probeMedia(filePath) {
   try {
     const { stdout } = await execFileAsync('ffprobe', [
       '-v', 'quiet',
@@ -254,7 +254,7 @@ export async function generateVideoDerivatives(inputPath, hash, outputDir) {
  * @param {number} originalSizeBytes
  * @returns {Promise<number|null>}
  */
-export async function estimateTranscodedSize(mimeType, originalSizeBytes) {
+async function estimateTranscodedSize(mimeType, originalSizeBytes) {
   try {
     if (!mimeType || !originalSizeBytes || originalSizeBytes <= 0) {
       return null;

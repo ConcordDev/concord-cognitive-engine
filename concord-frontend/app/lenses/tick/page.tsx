@@ -332,6 +332,22 @@ export default function TickLensPage() {
   const [tickHistory, setTickHistory] = useState<TickEvent[]>([]);
   const [activeTab, setActiveTab] = useState<TickViewTab>('stream');
   const [showFeatures, setShowFeatures] = useState(true);
+  const { items: tickItems } = useLensData<Record<string, unknown>>('tick', 'heartbeat');
+  const runTickAction = useRunArtifact('tick');
+  const [tickActionResult, setTickActionResult] = useState<{ action: string; result: Record<string, unknown> } | null>(null);
+  const [tickActiveAction, setTickActiveAction] = useState<string | null>(null);
+
+  const handleTickAction = useCallback(async (action: string) => {
+    const id = tickItems[0]?.id;
+    if (!id) return;
+    setTickActiveAction(action);
+    try {
+      const res = await runTickAction.mutateAsync({ id, action });
+      if (res.ok) setTickActionResult({ action, result: res.result as Record<string, unknown> });
+    } finally {
+      setTickActiveAction(null);
+    }
+  }, [tickItems, runTickAction]);
 
   // Backend: GET /api/events for tick history
   const { data: events, isLoading, isError, error, refetch } = useQuery({

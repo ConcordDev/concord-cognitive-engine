@@ -5,7 +5,7 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { BarChart3, TrendingUp, AlertTriangle, Star, ArrowUpDown, Layers, ChevronDown, Search, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -51,6 +51,29 @@ export default function CRILensPage() {
   const [selectedDtu, setSelectedDtu] = useState<DTUWithCRETI | null>(null);
   const [thresholdFilter, setThresholdFilter] = useState(0);
   const [showFeatures, setShowFeatures] = useState(true);
+
+  const runAction = useRunArtifact('cri');
+  const [actionResult, setActionResult] = useState<{ action: string; result: unknown } | null>(null);
+  const [isRunning, setIsRunning] = useState(false);
+
+  const handleAction = useCallback(async (action: string) => {
+    const targetId = selectedDtu?.id ?? null;
+    if (!targetId) return;
+    setIsRunning(true);
+    setActionResult(null);
+    try {
+      const res = await runAction.mutateAsync({ id: targetId, action });
+      if (res.ok === false) {
+        setActionResult({ action, result: { message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` } });
+      } else {
+        setActionResult({ action, result: res.result });
+      }
+    } catch (err) {
+      setActionResult({ action, result: `Error: ${err instanceof Error ? err.message : String(err)}` });
+    } finally {
+      setIsRunning(false);
+    }
+  }, [selectedDtu, runAction]);
 
   const { data: dtusData, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['cri-dtus'],

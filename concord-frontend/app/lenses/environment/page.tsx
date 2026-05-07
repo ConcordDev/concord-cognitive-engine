@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -418,10 +418,6 @@ const seedData: Record<
 /* ------------------------------------------------------------------ */
 
 export default function EnvironmentLensPage() {
-  useLensNav('environment');
-  const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('environment');
-
-  const [showFeatures, setShowFeatures] = useState(true);
   const [mode, setMode] = useState<ModeTab>('Sites');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -3181,7 +3177,10 @@ export default function EnvironmentLensPage() {
         </div>
       ) : (
         <div className="text-center py-6 text-gray-500 text-sm border border-dashed border-white/10 rounded-lg">
-          <p>No compliance items tracked yet. Add compliance records to monitor environmental regulations.</p>
+          <p>
+            No compliance items tracked yet. Add compliance records to monitor environmental
+            regulations.
+          </p>
         </div>
       )}
     </div>
@@ -3344,7 +3343,7 @@ export default function EnvironmentLensPage() {
       <UniversalActions domain="environment" artifactId={siteItems[0]?.id} compact />
       {/* Navigation Tabs */}
       <nav className="flex items-center gap-2 border-b border-lattice-border pb-4 flex-wrap">
-        {MODE_TABS.map(tab => {
+        {MODE_TABS.map((tab) => {
           const Icon = tab.icon;
           return (
             <button
@@ -3392,7 +3391,7 @@ export default function EnvironmentLensPage() {
       </div>
 
       {/* Carbon Footprint Tracker */}
-      {carbonItems.length > 0 ? (
+      {carbonItems.length > 0 && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -3435,10 +3434,6 @@ export default function EnvironmentLensPage() {
             </div>
           </div>
         </motion.div>
-      ) : (
-        <div className="text-center py-6 text-gray-500 text-sm border border-dashed border-white/10 rounded-lg">
-          <p>No carbon tracking data yet. Add carbon footprint records to see emissions analysis.</p>
-        </div>
       )}
 
       {/* View Content */}
@@ -3625,7 +3620,7 @@ export default function EnvironmentLensPage() {
       <div className="border-t border-white/10">
         <button
           onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
+          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-400 hover:text-white transition-colors"
         >
           <span className="flex items-center gap-2">
             <Layers className="w-4 h-4" />

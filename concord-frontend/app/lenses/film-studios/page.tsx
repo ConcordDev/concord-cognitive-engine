@@ -3,18 +3,18 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiHelpers } from '@/lib/api/client';
+import { api, apiHelpers } from '@/lib/api/client';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useLensDTUs } from '@/hooks/useLensDTUs';
 import { useUIStore } from '@/store/ui';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Film, Plus, Search, Play, Users, Clock, Eye, TrendingUp, Clapperboard, Camera, Mic,
-  Music, Layers, BarChart3, Share2, X, ChevronRight,
-  Monitor, Globe, Sparkles,
+  Film, Plus, Search, Play, Users, Star, Clock, Eye,
+  DollarSign, TrendingUp, Clapperboard, Camera, Mic,
+  Music, Layers, BarChart3, Share2, Gift, X, ChevronRight,
+  Monitor, Globe, Award, Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -45,7 +45,7 @@ export default function FilmStudiosPage() {
   const [tab, setTab] = useState<FilmTab>('discover');
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showFeatures, setShowFeatures] = useState(true);
+  const [showFeatures, setShowFeatures] = useState(false);
   const [partyCode, setPartyCode] = useState('');
   const [partyActive, setPartyActive] = useState(false);
 
@@ -193,7 +193,6 @@ export default function FilmStudiosPage() {
 
         {showFeatures && <LensFeaturePanel lensId="film_studios" />}
         <RealtimeDataPanel data={realtimeData} insights={realtimeInsights} />
-      <UniversalActions domain="film-studios" artifactId={null} compact />
 
         {/* Tabs */}
         <div className="flex gap-1 bg-white/5 p-1 rounded-lg border border-white/10">

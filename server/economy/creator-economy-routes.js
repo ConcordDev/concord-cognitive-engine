@@ -1,9 +1,26 @@
 // economy/creator-economy-routes.js
-// Routes for: License tiers, commissions, global scope gates, rights enforcement.
+// Routes for: License tiers, commissions, global scope gates, rights enforcement,
+// and micro-CC conversion utilities.
 // Mounted alongside the main economy routes in server.js.
 
 import express from "express";
 import { adminOnly } from "./guards.js";
+import {
+  microToCC,
+  ccToMicro,
+  microToDisplay,
+  microToStripeCents,
+  stripeCentsToMicro,
+  calculateFeeMicro,
+  calculateFeeForType,
+  isValidMicro,
+  addMicro,
+  subtractMicro,
+  apiInputToMicro,
+  microToApiOutput,
+  FEE_RATES_BPS,
+  MICRO,
+} from "./micro-cc.js";
 
 /**
  * Register creator economy routes.
@@ -593,6 +610,87 @@ export function registerCreatorEconomyRoutes(app, db, opts = {}) {
       res.json(result);
     } catch (err) {
       log("error", "global_demote_failed", { error: err.message });
+      res.status(500).json({ ok: false, error: "internal" });
+    }
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // MICRO-CC CONVERSION UTILITIES
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // GET /api/economy/micro-cc/rates — fee rates in basis points
+  app.get("/api/economy/micro-cc/rates", (_req, res) => {
+    res.json({ ok: true, feeRatesBps: FEE_RATES_BPS, microPerCC: MICRO });
+  });
+
+  // GET /api/economy/micro-cc/convert — convert CC ↔ micro-CC
+  // Query params: amount (float CC), direction=cc_to_micro|micro_to_cc
+  app.get("/api/economy/micro-cc/convert", (req, res) => {
+    try {
+      const { amount, direction = "cc_to_micro" } = req.query;
+      const parsed = parseFloat(amount);
+      if (!Number.isFinite(parsed) || parsed < 0) {
+        return res.status(400).json({ ok: false, error: "invalid_amount" });
+      }
+      if (direction === "micro_to_cc") {
+        const micro = Math.round(parsed);
+        res.json({ ok: true, micro, cc: microToCC(micro), display: microToDisplay(micro) });
+      } else {
+        const result = apiInputToMicro(parsed);
+        if (!result.ok) return res.status(400).json(result);
+        res.json({ ok: true, cc: parsed, micro: result.micro, display: microToDisplay(result.micro) });
+      }
+    } catch (err) {
+      log("error", "micro_cc_convert_failed", { error: err.message });
+      res.status(500).json({ ok: false, error: "internal" });
+    }
+  });
+
+  // POST /api/economy/micro-cc/calculate-fee — calculate fee for a transaction type
+  // Body: { amountCC: number, type: string }
+  app.post("/api/economy/micro-cc/calculate-fee", (req, res) => {
+    try {
+      const { amountCC, type } = req.body || {};
+      const input = apiInputToMicro(amountCC);
+      if (!input.ok) return res.status(400).json({ ok: false, error: "invalid_amount" });
+      if (!type || !(type in FEE_RATES_BPS)) {
+        return res.status(400).json({ ok: false, error: "invalid_fee_type", validTypes: Object.keys(FEE_RATES_BPS) });
+      }
+      const { fee, net, rateBps } = calculateFeeForType(type, input.micro);
+      res.json({
+        ok: true,
+        type,
+        grossCC: microToApiOutput(input.micro),
+        feeCC: microToApiOutput(fee),
+        netCC: microToApiOutput(net),
+        grossMicro: input.micro,
+        feeMicro: fee,
+        netMicro: net,
+        rateBps,
+      });
+    } catch (err) {
+      log("error", "micro_cc_fee_calc_failed", { error: err.message });
+      res.status(500).json({ ok: false, error: "internal" });
+    }
+  });
+
+  // POST /api/economy/micro-cc/stripe-convert — convert micro-CC ↔ Stripe cents
+  // Body: { micro?: number, stripeCents?: number, tokensPerUsd?: number }
+  app.post("/api/economy/micro-cc/stripe-convert", (req, res) => {
+    try {
+      const { micro, stripeCents, tokensPerUsd = 1 } = req.body || {};
+      if (micro !== undefined) {
+        if (!isValidMicro(micro)) return res.status(400).json({ ok: false, error: "invalid_micro" });
+        const cents = microToStripeCents(micro, tokensPerUsd);
+        res.json({ ok: true, micro, stripeCents: cents, cc: microToApiOutput(micro) });
+      } else if (stripeCents !== undefined) {
+        const resultMicro = stripeCentsToMicro(stripeCents, tokensPerUsd);
+        res.json({ ok: true, stripeCents, micro: resultMicro, cc: microToApiOutput(resultMicro) });
+      } else {
+        res.status(400).json({ ok: false, error: "provide micro or stripeCents" });
+      }
+    } catch (err) {
+      log("error", "micro_cc_stripe_convert_failed", { error: err.message });
       res.status(500).json({ ok: false, error: "internal" });
     }
   });

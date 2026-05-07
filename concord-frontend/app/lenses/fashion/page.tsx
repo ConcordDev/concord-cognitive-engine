@@ -6,8 +6,9 @@ import { useLensData } from '@/lib/hooks/use-lens-data';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Shirt, Plus, Search, Trash2, Star, Tag, Palette, DollarSign, Layers, ChevronDown, X,
-  Heart, Eye, Sparkles, Grid3X3, List, Loader2,
+  Shirt, Plus, Search, Trash2, Star, Tag, Palette,
+  Calendar, DollarSign, Layers, ChevronDown, X,
+  Heart, Eye, Sparkles, Grid3X3, List,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -70,7 +71,7 @@ export default function FashionLensPage() {
   const [search, setSearch] = useState('');
   const [catFilter, setCatFilter] = useState('');
   const [showCreate, setShowCreate] = useState(false);
-  const [showFeatures, setShowFeatures] = useState(true);
+  const [showFeatures, setShowFeatures] = useState(false);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [newItem, setNewItem] = useState({ name: '', category: 'Tops', color: '', brand: '', price: 0, season: 'All Season', size: '' });
 
@@ -125,7 +126,7 @@ export default function FashionLensPage() {
   const toggleFavorite = useCallback((id: string) => {
     setFavorites(prev => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
+      next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
   }, []);
@@ -268,7 +269,7 @@ export default function FashionLensPage() {
                       <button onClick={() => toggleFavorite(g.id)} className="p-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <Heart className={cn('w-4 h-4', favorites.has(g.id) ? 'fill-pink-500 text-pink-500' : 'text-gray-500')} />
                       </button>
-                      <button onClick={() => remove(g.id)} disabled={deleteMut.isPending} className="p-1 opacity-0 group-hover:opacity-100 transition-opacity text-gray-500 hover:text-red-400">{deleteMut.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}</button>
+                      <button onClick={() => remove(g.id)} className="p-1 opacity-0 group-hover:opacity-100 transition-opacity text-gray-500 hover:text-red-400"><Trash2 className="w-4 h-4" /></button>
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-1.5 text-xs mb-2">
@@ -311,7 +312,7 @@ export default function FashionLensPage() {
                   <div className="flex items-center gap-3">
                     {g.condition && <span className={cn('text-[10px] px-2 py-0.5 rounded border', CONDITION_COLORS[g.condition])}>{g.condition}</span>}
                     {g.price > 0 && <span className="text-sm font-medium text-neon-green">${g.price}</span>}
-                    <button onClick={() => remove(g.id)} disabled={deleteMut.isPending} className="p-1 opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-400">{deleteMut.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}</button>
+                    <button onClick={() => remove(g.id)} className="p-1 opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-400"><Trash2 className="w-3.5 h-3.5" /></button>
                   </div>
                 </motion.div>
               ))}
@@ -407,7 +408,7 @@ export default function FashionLensPage() {
       <RealtimeDataPanel domain="fashion" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
 
       <div className="border-t border-white/10">
-        <button onClick={() => setShowFeatures(!showFeatures)} className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg">
+        <button onClick={() => setShowFeatures(!showFeatures)} className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-400 hover:text-white transition-colors">
           <span className="flex items-center gap-2"><Layers className="w-4 h-4" />Lens Features & Capabilities</span>
           <ChevronDown className={cn('w-4 h-4 transition-transform', showFeatures && 'rotate-180')} />
         </button>

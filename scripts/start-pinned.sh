@@ -121,7 +121,7 @@ if [ "$SKIP_OLLAMA" = false ]; then
   sleep 1
 
   log "Starting Ollama on cores ${OLLAMA_CORES}, port ${OLLAMA_PORT}..."
-  OLLAMA_HOST="0.0.0.0:${OLLAMA_PORT}" \
+  OLLAMA_HOST="127.0.0.1:${OLLAMA_PORT}" \
   OLLAMA_NUM_PARALLEL=2 \
   OLLAMA_MAX_LOADED_MODELS=2 \
     taskset -c "${OLLAMA_CORES}" ollama serve \
@@ -133,11 +133,11 @@ if [ "$SKIP_OLLAMA" = false ]; then
 
   # Pull primary model (if not already present)
   log "Ensuring model ${OLLAMA_MODEL} is available..."
-  OLLAMA_HOST="0.0.0.0:${OLLAMA_PORT}" ollama pull "${OLLAMA_MODEL}" 2>&1 | tail -1 || true
+  OLLAMA_HOST="127.0.0.1:${OLLAMA_PORT}" ollama pull "${OLLAMA_MODEL}" 2>&1 | tail -1 || true
 
   # Pull embedding model
   log "Ensuring embedding model is available..."
-  OLLAMA_HOST="0.0.0.0:${OLLAMA_PORT}" ollama pull nomic-embed-text 2>&1 | tail -1 || true
+  OLLAMA_HOST="127.0.0.1:${OLLAMA_PORT}" ollama pull nomic-embed-text 2>&1 | tail -1 || true
 else
   log "Skipping Ollama (--no-ollama flag)"
 fi

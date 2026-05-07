@@ -156,7 +156,7 @@ export default function EcoLensPage() {
   const BIODIVERSITY: BiodiversityIndex[] = useMemo(() =>
     biodiversityItems.map(i => ({ ...i.data } as BiodiversityIndex)), [biodiversityItems]);
   const IMPACTS: ImpactAssessment[] = useMemo(() =>
-    impactItems.map(i => ({ id: i.id, ...i.data } as ImpactAssessment)), [impactItems]);
+    impactItems.map(i => ({ ...i.data } as ImpactAssessment)), [impactItems]);
 
   const isLoading = metricsLoading || organismsLoading;
 
@@ -963,7 +963,7 @@ export default function EcoLensPage() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 2 * 0.05 }} className="panel p-3 flex items-center gap-3">
           <CheckCircle2 className="w-5 h-5 text-neon-blue" />
           <div>
-            <p className="text-lg font-bold">{IMPACTS.filter(i => i.mitigationStatus === 'completed' || i.mitigationStatus === 'in_progress').length}</p>
+            <p className="text-lg font-bold">{SIMULATED_IMPACTS.filter(i => i.mitigationStatus === 'completed' || i.mitigationStatus === 'in_progress').length}</p>
             <p className="text-xs text-gray-500">Eco Actions Done</p>
           </div>
         </motion.div>

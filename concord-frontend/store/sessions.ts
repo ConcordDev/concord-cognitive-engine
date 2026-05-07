@@ -145,7 +145,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     if (state.activeSessionId === sessionId) {
       if (remaining.length === 0) {
         // Create a new default session
-        const newId = await get().createSession();
+        const _newId = await get().createSession();
         set({ sessions: get().sessions });
         return;
       }

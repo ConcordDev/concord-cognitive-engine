@@ -177,10 +177,9 @@ export default function DTUBrowserPage() {
               </div>
               <button
                 type="submit"
-                disabled={isLoading}
-                className={cn('px-3 py-2 text-sm bg-lattice-surface border border-lattice-border rounded-lg text-gray-300 hover:text-white transition-colors', isLoading && 'opacity-40 cursor-not-allowed')}
+                className="px-3 py-2 text-sm bg-lattice-surface border border-lattice-border rounded-lg text-gray-300 hover:text-white transition-colors"
               >
-                {isLoading ? 'Searching...' : 'Search'}
+                Search
               </button>
             </form>
 

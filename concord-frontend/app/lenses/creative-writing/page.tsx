@@ -8,12 +8,12 @@ import { useUIStore } from '@/store/ui';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   BookOpen, Plus, Search, FileText, Edit2, Trash2,
-  Clock, Sparkles, Save, BarChart3, Globe,
-  AlignLeft, PenTool, Check, Zap, Users, Star,
+  Clock, Eye, TrendingUp, Sparkles, X, Save,
+  ChevronRight, Layers, BarChart3, Globe, Filter,
+  AlignLeft, Type, PenTool, Check, Zap, Users, Star,
   Maximize2, Minimize2, Shuffle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -46,8 +46,13 @@ const GENRES: { id: WritingGenre; label: string }[] = [
   { id: 'other', label: 'Other' },
 ];
 
-// Prompts are loaded from the backend via useLensData; empty until real data exists
-const FALLBACK_PROMPTS: { text: string; genres: WritingGenre[] }[] = [];
+const WRITING_PROMPTS: { text: string; genres: WritingGenre[] }[] = [
+  { text: 'A stranger arrives in a town where everyone shares the same recurring dream.', genres: ['fiction', 'short-story'] },
+  { text: 'Write a story that begins with the last sentence.', genres: ['fiction', 'novel'] },
+  { text: 'Two characters who speak different languages must solve a puzzle together.', genres: ['fiction', 'short-story', 'screenplay'] },
+  { text: 'An object gains sentience during an ordinary day.', genres: ['fiction', 'short-story'] },
+  { text: 'Describe a world where music is the primary currency.', genres: ['fiction', 'novel', 'essay'] },
+];
 
 const WORD_COUNT_GOAL = 1000;
 
@@ -76,15 +81,9 @@ export default function CreativeWritingPage() {
   const { items: workItems, isLoading, isError, error, refetch, create: createWork, update: updateWork, remove: removeWork } = useLensData<WritingWork>('creative-writing', 'work', { seed: [] });
   const works = useMemo(() => workItems.map(i => ({ ...(i.data as unknown as WritingWork), id: i.id, title: i.title })), [workItems]);
 
-  const { items: promptItems } = useLensData<{ text: string; genres: string[] }>('creative-writing', 'prompt', { noSeed: true });
-  const WRITING_PROMPTS = useMemo(() => {
-    if (promptItems.length > 0) return promptItems.map(i => ({ text: i.data.text || i.title, genres: (i.data.genres || []) as WritingGenre[] }));
-    return FALLBACK_PROMPTS;
-  }, [promptItems]);
-
   const [tab, setTab] = useState<WritingTab>('works');
   const [searchQuery, setSearchQuery] = useState('');
-  const [showFeatures, setShowFeatures] = useState(true);
+  const [showFeatures, setShowFeatures] = useState(false);
   const [genreFilter, setGenreFilter] = useState<WritingGenre | null>(null);
 
   // Editor state
@@ -268,7 +267,6 @@ export default function CreativeWritingPage() {
 
             {showFeatures && <LensFeaturePanel lensId="creative-writing" />}
             <RealtimeDataPanel data={realtimeData} insights={realtimeInsights} />
-      <UniversalActions domain="creative-writing" artifactId={null} compact />
 
             {/* Tabs */}
             <div className="flex gap-1 bg-white/5 p-1 rounded-lg border border-white/10">
@@ -279,13 +277,6 @@ export default function CreativeWritingPage() {
               ))}
             </div>
           </>
-        )}
-
-        {(isLoading || dtusLoading) && (
-          <div className="flex items-center justify-center py-4">
-            <div className="w-5 h-5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
-            <span className="ml-2 text-xs text-gray-400">Loading...</span>
-          </div>
         )}
 
         {isError && <ErrorState error={error?.message} onRetry={refetch} />}

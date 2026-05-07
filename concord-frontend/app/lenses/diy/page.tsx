@@ -7,7 +7,7 @@ import { useLensData } from '@/lib/hooks/use-lens-data';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   Wrench, Plus, Search, Trash2, DollarSign, Clock,
-  CheckCircle2, Hammer, Package, Layers, ChevronDown, Ruler, Loader2,
+  CheckCircle2, Hammer, Package, Layers, ChevronDown, Zap, Ruler,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -52,7 +52,7 @@ export default function DIYLensPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [showCreate, setShowCreate] = useState(false);
-  const [showFeatures, setShowFeatures] = useState(true);
+  const [showFeatures, setShowFeatures] = useState(false);
   const [activeTab, setActiveTab] = useState<'projects' | 'tools' | 'materials'>('projects');
   const [newProject, setNewProject] = useState({ name: '', category: 'Woodworking', difficulty: 'beginner' as 'beginner' | 'intermediate' | 'advanced', estimatedHours: 0, cost: 0 });
 
@@ -190,10 +190,9 @@ export default function DIYLensPage() {
                   <span className={cn('text-xs px-2 py-0.5 rounded', STATUS_COLORS[p.status || 'idea'])}>{p.status}</span>
                   {/* Difficulty Badge */}
                   <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium',
-                    p.difficulty === 'beginner' ? 'bg-green-500/20' :
-                    p.difficulty === 'intermediate' ? 'bg-amber-500/20' :
-                    'bg-red-500/20',
-                    DIFFICULTY_COLORS[p.difficulty] || 'text-gray-400'
+                    p.difficulty === 'beginner' ? 'bg-green-500/20 text-green-400' :
+                    p.difficulty === 'intermediate' ? 'bg-amber-500/20 text-amber-400' :
+                    'bg-red-500/20 text-red-400'
                   )}>
                     {p.difficulty === 'beginner' ? 'Beginner' : p.difficulty === 'intermediate' ? 'Intermediate' : 'Advanced'}
                   </span>
@@ -222,7 +221,7 @@ export default function DIYLensPage() {
                   </div>
                 )}
               </div>
-              <button onClick={() => remove(p.id)} disabled={deleteMut.isPending} className="text-gray-500 hover:text-red-400 p-1 ml-2">{deleteMut.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}</button>
+              <button onClick={() => remove(p.id)} className="text-gray-500 hover:text-red-400 p-1 ml-2"><Trash2 className="w-4 h-4" /></button>
             </div>
           </motion.div>
         ))}
@@ -281,7 +280,7 @@ export default function DIYLensPage() {
       <RealtimeDataPanel domain="diy" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
 
       <div className="border-t border-white/10">
-        <button onClick={() => setShowFeatures(!showFeatures)} className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg">
+        <button onClick={() => setShowFeatures(!showFeatures)} className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-400 hover:text-white transition-colors">
           <span className="flex items-center gap-2"><Layers className="w-4 h-4" />Lens Features & Capabilities</span>
           <ChevronDown className={cn('w-4 h-4 transition-transform', showFeatures && 'rotate-180')} />
         </button>

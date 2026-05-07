@@ -12,7 +12,7 @@
 
 set -euo pipefail
 
-PORT="${CONCORD_PORT:-3001}"
+PORT="${CONCORD_PORT:-5050}"
 BASE_URL="http://localhost:$PORT"
 TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 ALERT_WEBHOOK="${CONCORD_ALERT_WEBHOOK:-}"

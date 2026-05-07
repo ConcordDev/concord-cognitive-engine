@@ -183,8 +183,6 @@ export default function LogisticsLensPage() {
   const [kanbanView, setKanbanView] = useState(true);
   const [warehouseView, setWarehouseView] = useState<'grid' | 'list'>('grid');
   const [routeExpanded, setRouteExpanded] = useState<string | null>(null);
-  const [showFeatures, setShowFeatures] = useState(true);
-
   // Editor form state
   const [formTitle, setFormTitle] = useState('');
   const [formStatus, setFormStatus] = useState('active');
@@ -944,7 +942,7 @@ export default function LogisticsLensPage() {
         {kanbanView ? (
           /* Kanban Board */
           <div className="flex gap-3 flex-wrap pb-4">
-            {KANBAN_COLUMNS.map(col => {
+            {KANBAN_COLUMNS.map((col) => {
               const columnItems = groupedShipments[col.key] || [];
               return (
                 <div key={col.key} className="min-w-[260px] flex-shrink-0">
@@ -1967,12 +1965,12 @@ export default function LogisticsLensPage() {
 
       {/* Quick Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {([
-          { label: 'Shipments', value: String(allShipments.length), icon: Package },
-          { label: 'On-Time Rate', value: `${Math.round(Number(dashMetrics.onTimeRate))}%`, icon: CheckCircle },
-          { label: 'Warehouses', value: String(allWarehouse.length), icon: Warehouse },
-          { label: 'Active Fleet', value: String(dashMetrics.activeVehicles), icon: Truck },
-        ]).map((stat) => (
+        {[
+          { label: 'Shipments', value: allShipments.length, icon: Package },
+          { label: 'On-Time Rate', value: `${Math.round(dashMetrics.onTimeRate)}%`, icon: CheckCircle },
+          { label: 'Warehouses', value: allWarehouse.length, icon: Warehouse },
+          { label: 'Active Fleet', value: dashMetrics.activeVehicles, icon: Truck },
+        ].map((stat) => (
           <div key={stat.label} className={ds.panel + ' flex items-center gap-3 p-3'}>
             <stat.icon className="w-5 h-5 text-neon-cyan shrink-0" />
             <div>
@@ -1987,7 +1985,7 @@ export default function LogisticsLensPage() {
       <UniversalActions domain="logistics" artifactId={items[0]?.id} compact />
       {/* Mode Tabs */}
       <nav className="flex items-center gap-1 border-b border-lattice-border pb-3 flex-wrap">
-        {MODE_TABS.map(tab => {
+        {MODE_TABS.map((tab) => {
           const Icon = tab.icon;
           return (
             <button
@@ -2478,7 +2476,7 @@ export default function LogisticsLensPage() {
       <div className="border-t border-white/10">
         <button
           onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
+          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-400 hover:text-white transition-colors"
         >
           <span className="flex items-center gap-2">
             <Layers className="w-4 h-4" />
