@@ -170,6 +170,26 @@ registerHeartbeat("scheduled-posts", {
     }
   },
 });
+
+// Daily brain refresh — runs Modelfile-based in-context training on
+// the brains small enough to fit the 23:30-23:59 window (utility,
+// repair). Internal _inWindow check returns "out_of_window" outside
+// the window so the heartbeat can fire harmlessly at any tick. We
+// schedule every 60 ticks (~15 min) so the window is reliably hit
+// even if the heartbeat misses a tick under load.
+registerHeartbeat("brain-daily-refresh", {
+  frequency: 60,
+  handler: async ({ db: ctxDb }) => {
+    if (!ctxDb) return { ok: false, reason: "no_db" };
+    try {
+      const { runDailyRefresh } = await import("./lib/brain-training/runner.js");
+      return await runDailyRefresh(ctxDb);
+    } catch (err) {
+      structuredLog("warn", "brain_daily_refresh_failed", { error: err?.message });
+      return { ok: false, reason: "exception" };
+    }
+  },
+});
 import { ConcordError } from "./lib/errors.js";
 import { asyncHandler } from "./lib/async-handler.js";
 import { init as initGRC, formatAndValidate as grcFormatAndValidate, getGRCSystemPrompt } from "./grc/index.js";
@@ -28518,6 +28538,15 @@ try { app.use("/api/world-orgs", createWorldOrgsExtendedRouter({ requireAuth }))
 // training pipeline. See lib/training-consent.js + migration 108.
 import createLatticeRouter from "./routes/lattice.js";
 try { app.use("/api/lattice", createLatticeRouter({ db, requireAuth })); } catch (e) { structuredLog("warn", "lattice_routes_skip", { error: e.message }); }
+
+// Brain self-training infrastructure. Logs every brain call to
+// brain_interactions, runs daily 23:30-23:59 Modelfile rebuild on
+// the brains small enough to fit the window (utility, repair). The
+// runner uses in-context "training" via Ollama Modelfile + SYSTEM
+// prompt baking. Real LoRA/QLoRA can swap in later by replacing the
+// runner internals. See lib/brain-training/ + migration 109.
+import createBrainsRouter from "./routes/brains.js";
+try { app.use("/api/brains", createBrainsRouter({ db, requireAuth, requireRole })); } catch (e) { structuredLog("warn", "brains_routes_skip", { error: e.message }); }
 
 import createChannelsRouter from "./routes/channels.js";
 try { app.use("/api/channels", createChannelsRouter({ STATE, requireAuth, realtimeEmit })); } catch (e) { structuredLog("warn", "channels_routes_skip", { error: e.message }); }
