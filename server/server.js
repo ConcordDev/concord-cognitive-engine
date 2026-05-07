@@ -210,6 +210,25 @@ registerHeartbeat("brain-outcome-resolver", {
     }
   },
 });
+
+// Layer 2: Affect engine tick — walks affect_state rows whose
+// last_tick_at is older than ~30s and applies decay/momentum via
+// affect/engine.js#tick. Persists the post-tick state. Without this
+// tick the affect state stays static between events; decay never
+// happens. Every 4 ticks (~1 min).
+registerHeartbeat("affect-tick", {
+  frequency: 4,
+  handler: async ({ db: ctxDb }) => {
+    if (!ctxDb) return { ok: false, reason: "no_db" };
+    try {
+      const { affectTickAll } = await import("./lib/affect-bridge.js");
+      return affectTickAll(ctxDb);
+    } catch (err) {
+      structuredLog("warn", "affect_tick_failed", { error: err?.message });
+      return { ok: false, reason: "exception" };
+    }
+  },
+});
 import { ConcordError } from "./lib/errors.js";
 import { asyncHandler } from "./lib/async-handler.js";
 import { init as initGRC, formatAndValidate as grcFormatAndValidate, getGRCSystemPrompt } from "./grc/index.js";
@@ -14840,6 +14859,21 @@ ${_sharedToolRules}` : "";
         if (interactionId) result._interactionId = interactionId;
       }
     } catch (_e) { /* logging never blocks */ }
+
+    // Layer 2: emit a SUCCESS affect event for the user (or system, if
+    // anonymous). Couples with Layer 3's outcome-signals dispatch — a
+    // big positive valence delta will mark this brain interaction as
+    // positive in the resolver. Fail-safe.
+    try {
+      if (typeof db !== "undefined" && db) {
+        const { applyAffectEvent } = await import("./lib/affect-bridge.js");
+        applyAffectEvent(db, options._userId || "system:chat", {
+          type: "SUCCESS",
+          source: "chat",
+          magnitude: Math.min(1, (result.content?.length || 0) / 1000),
+        }, { refId: result._interactionId });
+      }
+    } catch (_e) { /* affect emit must never block */ }
 
     // Attach confidence score to every brain output
     try {
