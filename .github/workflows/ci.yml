@@ -576,6 +576,43 @@ jobs:
           done
           exit 1
 
+      # Build + start the frontend with `next start` (production mode).
+      # Previously the playwright config's webServer block ran `npm run dev`
+      # (next dev) inside the test step. On the 1.3M-line frontend, dev's
+      # default ~3.8GB heap + lazy compile of every visited route blew past
+      # the 120s webServer timeout, giving E2E the appearance of "tests
+      # failing" when the server itself never reached ready. Build+start
+      # mirrors the proven Lighthouse CI pattern — heap-budgeted build
+      # (6GB), then a lean `next start` server that boots in seconds.
+      - name: Build frontend for E2E
+        working-directory: ./concord-frontend
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:5050
+          NODE_OPTIONS: --max-old-space-size=6144
+        run: npm run build
+
+      - name: Start frontend (production)
+        working-directory: ./concord-frontend
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:5050
+          PORT: 3000
+        run: |
+          npm run start > frontend.log 2>&1 &
+          echo $! > frontend.pid
+
+      - name: Wait for frontend
+        run: |
+          for i in {1..60}; do
+            if curl -sf http://localhost:3000 > /dev/null 2>&1; then
+              echo "Frontend ready after $i seconds"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Frontend failed to start. Logs:"
+          cat concord-frontend/frontend.log || true
+          exit 1
+
       - name: Run E2E tests
         working-directory: ./concord-frontend
         env:
@@ -596,4 +633,7 @@ jobs:
         run: |
           if [ -f server/server.pid ]; then
             kill $(cat server/server.pid) 2>/dev/null || true
+          fi
+          if [ -f concord-frontend/frontend.pid ]; then
+            kill $(cat concord-frontend/frontend.pid) 2>/dev/null || true
           fi

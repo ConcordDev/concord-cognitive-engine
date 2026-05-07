@@ -44,7 +44,12 @@ export default defineConfig({
   webServer: {
     command: 'npm run dev',
     url: 'http://localhost:3000',
-    reuseExistingServer: !process.env.CI,
-    timeout: 120000,
+    // Always reuse an existing server when one is responding on :3000.
+    // CI explicitly starts `next start` (production mode) before invoking
+    // playwright so we get fast, deterministic boots; Playwright reuses
+    // that server and skips spawning `next dev`. Locally, with no server
+    // running, Playwright still falls back to spawning `next dev`.
+    reuseExistingServer: true,
+    timeout: 240000,
   },
 });
