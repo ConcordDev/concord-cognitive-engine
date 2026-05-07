@@ -9,6 +9,13 @@ on:
 env:
   NODE_VERSION: '20'
 
+# Cancel previous runs on the same ref when a new push lands. Without this,
+# a slow E2E run can be wasting runner minutes long after the next push has
+# arrived and is already running its own E2E.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 # Default workflow permissions to read-only; the e2e-test job overrides to
 # allow posting a failure-digest PR comment via the issues API.
 permissions:
