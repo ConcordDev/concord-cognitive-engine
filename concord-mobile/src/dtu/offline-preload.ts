@@ -19,7 +19,7 @@
  */
 
 import type { DTUStore } from './store/dtu-store';
-import type { DTU } from './type-bridge';
+import type { DTU } from '../utils/types';
 
 const DEFAULT_LIMIT_PER_LENS = 60;
 const MAX_TOTAL_CACHED = 5_000;

@@ -40,6 +40,10 @@ jobs:
         working-directory: ./concord-frontend
         env:
           NEXT_PUBLIC_API_URL: http://localhost:5050
+          # Default Node heap (~3.8GB) OOMs during Next.js production
+          # compile of the full codebase + 175 lenses + Sentry webpack
+          # passes. Match the ci.yml frontend build allocation.
+          NODE_OPTIONS: --max-old-space-size=6144
         run: npm run build
 
       - name: Run migrations
