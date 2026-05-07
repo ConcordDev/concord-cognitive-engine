@@ -37,22 +37,27 @@ jobs:
         run: npm ci || (sleep 5 && npm ci) || (sleep 10 && npm ci)
 
       - name: Lint server
+        id: lint_server
         working-directory: ./server
         run: npm run lint
 
       - name: Typecheck server
+        id: typecheck_server
         working-directory: ./server
         run: npm run typecheck
 
       - name: Check emergent module dependencies
+        id: check_deps
         working-directory: ./server
         run: npm run check-deps
 
       - name: Lint frontend
+        id: lint_frontend
         working-directory: ./concord-frontend
         run: npm run lint
 
       - name: Typecheck frontend
+        id: typecheck_frontend
         working-directory: ./concord-frontend
         run: npm run type-check
 
@@ -76,10 +81,12 @@ jobs:
           echo "Auth bypass gate: PASS (0 violations)"
 
       - name: Validate lens quality gate
+        id: validate_lens_quality
         working-directory: ./concord-frontend
         run: npm run validate-lens-quality
 
       - name: Build frontend
+        id: build_frontend
         working-directory: ./concord-frontend
         env:
           # Default Node heap (~3.8GB) OOMs during Next.js production
@@ -91,6 +98,7 @@ jobs:
         run: npm run build
 
       - name: Run frontend unit tests with coverage (thresholds enforced)
+        id: frontend_coverage
         working-directory: ./concord-frontend
         env:
           # Vitest + v8 coverage instrumentation across the full
@@ -114,6 +122,7 @@ jobs:
           retention-days: 7
 
       - name: Run server tests with coverage
+        id: server_coverage
         working-directory: ./server
         env:
           NODE_ENV: test
@@ -137,6 +146,28 @@ jobs:
         # Raise these as test coverage grows; do NOT raise without
         # proportional coverage being added first.
         run: npx c8 --check-coverage --statements 45 --branches 45 --functions 34 --lines 45 node --test --test-force-exit $(ls tests/*.test.js | grep -v -E 'auth-security|storage-parity')
+
+      # Diagnostic — runs on failure only, dumps which step failed plus
+      # available context. Will help identify the failing step from
+      # CI's perspective when raw logs aren't accessible.
+      - name: Failure diagnostic
+        if: failure()
+        run: |
+          echo "::group::Step outcomes"
+          echo "lint_server:           ${{ steps.lint_server.outcome }}"
+          echo "typecheck_server:      ${{ steps.typecheck_server.outcome }}"
+          echo "check_deps:            ${{ steps.check_deps.outcome }}"
+          echo "lint_frontend:         ${{ steps.lint_frontend.outcome }}"
+          echo "typecheck_frontend:    ${{ steps.typecheck_frontend.outcome }}"
+          echo "validate_lens_quality: ${{ steps.validate_lens_quality.outcome }}"
+          echo "build_frontend:        ${{ steps.build_frontend.outcome }}"
+          echo "frontend_coverage:     ${{ steps.frontend_coverage.outcome }}"
+          echo "server_coverage:       ${{ steps.server_coverage.outcome }}"
+          echo "::endgroup::"
+          echo "::group::Free memory at failure"
+          free -m || true
+          df -h / || true
+          echo "::endgroup::"
 
   mobile-test:
     name: Mobile Lint, Typecheck & Test
