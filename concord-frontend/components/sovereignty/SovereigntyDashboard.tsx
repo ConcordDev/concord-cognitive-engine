@@ -11,15 +11,8 @@ import { api, exportSubstrate } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/ui';
 import {
-  Shield,
-  Lock,
-  Globe,
-  Trash2,
-  Settings,
-  Database,
-  RefreshCw,
-  AlertTriangle,
-  Download,
+  Shield, Lock, Globe, Trash2, Settings,
+  Database, RefreshCw, AlertTriangle,
 } from 'lucide-react';
 
 type ConsentMode = 'ask' | 'always_temp' | 'always_permanent' | 'never';

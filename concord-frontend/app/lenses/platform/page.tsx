@@ -8,10 +8,8 @@ import {
   Activity, Brain, FlaskConical, Layers, Radio,
   BarChart3, Zap, Shield, Database,
   Heart, Clock, CheckCircle, AlertTriangle,
-  ChevronDown, ChevronRight, Eye, Server, Gauge, Play, Loader2,
+  ChevronDown, ChevronRight, Eye, Server, Gauge,
 } from 'lucide-react';
-import { useLensData } from '@/lib/hooks/use-lens-data';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { motion } from 'framer-motion';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import PipelineMonitor from '@/components/platform/PipelineMonitor';

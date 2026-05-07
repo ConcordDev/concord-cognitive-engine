@@ -10,7 +10,7 @@ import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   TrendingUp, AlertTriangle, CheckCircle2,
   Brain, Eye, Shield, BarChart3, Layers, ChevronDown,
-  BookOpen, Target, ThumbsUp, ThumbsDown, Clock, ArrowRight, Lightbulb, Flame, CalendarDays, Zap, X,
+  BookOpen, Target, ThumbsUp, ThumbsDown, Clock, ArrowRight, Lightbulb, Flame, CalendarDays,
 } from 'lucide-react';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useLensData } from '@/lib/hooks/use-lens-data';

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -10,9 +10,10 @@ import { cn } from '@/lib/utils';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   Megaphone, Target, BarChart3, Users, Mail, Share2,
-  Plus, Search, X, Trash2, TrendingUp, DollarSign, Eye, MousePointerClick, Globe,
-  Layers, ChevronDown,
-  PenTool, Zap,
+  Plus, Search, X, Edit3, Trash2, TrendingUp, DollarSign,
+  Calendar, Eye, MousePointerClick, Globe, Hash,
+  Layers, ChevronDown, CheckCircle2, AlertCircle,
+  PenTool, Zap, Filter, ArrowRight,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -119,7 +120,7 @@ export default function MarketingLensPage() {
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<LensItem<MarketingArtifact> | null>(null);
   const [showDashboard, setShowDashboard] = useState(false);
-  const [showFeatures, setShowFeatures] = useState(true);
+  const [showFeatures, setShowFeatures] = useState(false);
 
   // Form state
   const [formName, setFormName] = useState('');
@@ -153,17 +154,7 @@ export default function MarketingLensPage() {
     return result;
   }, [items, searchQuery, filterStatus]);
 
-  const handleAction = useCallback(async (action: string, artifactId?: string) => {
-    const targetId = artifactId || filtered[0]?.id;
-    if (!targetId) return;
-    try {
-      await runAction.mutateAsync({ id: targetId, action });
-    } catch (err) {
-      console.error('Action failed:', err);
-    }
-  }, [filtered, runAction]);
-
-  const openCreate =() => {
+  const openCreate = () => {
     setEditingItem(null);
     setFormName(''); setFormDescription(''); setFormStatus('draft'); setFormNotes('');
     setFormBudget(''); setFormChannel('Email'); setFormStartDate(''); setFormEndDate('');
@@ -373,7 +364,6 @@ export default function MarketingLensPage() {
                 <div className="flex items-center gap-2">
                   {d.budget && <span className="text-xs text-green-400">${d.budget.toLocaleString()}</span>}
                   <span className={`text-xs px-2 py-0.5 rounded-full bg-${sc.color}/20 text-${sc.color}`}>{sc.label}</span>
-                  <button onClick={e => { e.stopPropagation(); handleAction('analyze', item.id); }} className={ds.btnGhost}><Zap className="w-4 h-4 text-neon-cyan" /></button>
                   <button onClick={e => { e.stopPropagation(); remove(item.id); }} className={ds.btnGhost}><Trash2 className="w-4 h-4 text-red-400" /></button>
                 </div>
               </div>
@@ -404,7 +394,6 @@ export default function MarketingLensPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {runAction.isPending && <span className="text-xs text-neon-cyan animate-pulse">AI processing...</span>}
           <DTUExportButton domain="marketing" data={{}} compact />
           <button onClick={() => setShowDashboard(!showDashboard)} className={cn(showDashboard ? ds.btnPrimary : ds.btnSecondary)}>
             <BarChart3 className="w-4 h-4" /> Dashboard
@@ -471,7 +460,7 @@ export default function MarketingLensPage() {
         );
       })()}
 
-      <nav className="flex items-center gap-2 border-b border-lattice-border pb-4 flex-wrap">
+      <nav className="flex items-center gap-2 border-b border-lattice-border pb-4 overflow-x-auto">
         {MODE_TABS.map(tab => (
           <button key={tab.id} onClick={() => { setActiveTab(tab.id); setShowDashboard(false); }}
             className={cn('flex items-center gap-2 px-4 py-2 rounded-lg transition-colors whitespace-nowrap',
@@ -486,7 +475,7 @@ export default function MarketingLensPage() {
 
       <div className="border-t border-white/10">
         <button onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg">
+          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-400 hover:text-white transition-colors">
           <span className="flex items-center gap-2"><Layers className="w-4 h-4" />Lens Features & Capabilities</span>
           <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
         </button>

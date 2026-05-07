@@ -11,7 +11,6 @@ import {
   GraduationCap, Plus, TrendingUp, Award,
   ArrowRight, BarChart3, Zap, BookOpen, Layers, ChevronDown,
   Brain, Target, AlertCircle, Lightbulb, CircleDot, Puzzle, Sparkles, Waypoints,
-  Play, Loader2,
 } from 'lucide-react';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -78,21 +77,6 @@ export default function MetalearningLensPage() {
     },
     onError: (err) => console.error('runCurriculum failed:', err instanceof Error ? err.message : err),
   });
-
-  const { items: mlStratItems } = useLensData('metalearning', 'strategy', { noSeed: true });
-  const runAction = useRunArtifact('metalearning');
-  const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
-  const [isRunning, setIsRunning] = useState<string | null>(null);
-  const handleAction = async (action: string) => {
-    const targetId = mlStratItems[0]?.id;
-    if (!targetId) { setActionResult({ message: 'No metalearning strategies found. Create a strategy first.' }); return; }
-    setIsRunning(action);
-    try {
-      const res = await runAction.mutateAsync({ id: targetId, action });
-      if (res.ok === false) { setActionResult({ message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setActionResult(res.result as Record<string, unknown>); }
-    } catch (e) { console.error(`Action ${action} failed:`, e); setActionResult({ message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` }); }
-    finally { setIsRunning(null); }
-  };
 
   const strategyList: Strategy[] = useMemo(() => strategies?.strategies || strategies || [], [strategies]);
   const statusInfo = status?.status || status || {};

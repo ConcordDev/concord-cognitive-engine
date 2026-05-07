@@ -141,7 +141,6 @@ function classifyWriteEndpoint(req) {
  * Designed for pre-launch: open write endpoints get per-IP rate limiting.
  */
 function writeRateLimitMiddleware(req, res, next) {
-  if (_RATE_LIMIT_BYPASS) return next();
   const bucket = classifyWriteEndpoint(req);
   if (!bucket) return next(); // GETs pass through
 
@@ -168,7 +167,6 @@ function writeRateLimitMiddleware(req, res, next) {
  * Express middleware: rate limit open GET routes.
  */
 function readRateLimitMiddleware(req, res, next) {
-  if (_RATE_LIMIT_BYPASS) return next();
   if (req.method !== "GET") return next();
 
   const key = req.user?.id || req.ip;

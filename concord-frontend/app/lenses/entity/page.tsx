@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers, api } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import { useState } from 'react';
-import { Users, Plus, Terminal, GitFork, Activity, Play, Brain, X, Cpu, Bot, Search, Loader2, Network, ShieldCheck, Link2, XCircle, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Users, Plus, Terminal, GitFork, Activity, Play, Brain, X, Cpu, Bot, Search, Loader2 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -15,10 +15,6 @@ import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import QualiaSensoryFeed from '@/components/emergent/QualiaSensoryFeed';
 import QualiaBodyMap from '@/components/emergent/QualiaBodyMap';
 import PresenceDashboard from '@/components/emergent/PresenceDashboard';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { useLensData } from '@/lib/hooks/use-lens-data';
-import EntityLifecycleViz from '@/components/visualizations/EntityLifecycleViz';
-import { resolveEntityName } from '@/lib/entity-naming';
 
 interface Entity {
   id: string;
@@ -47,26 +43,6 @@ export default function EntityLensPage() {
   const [terminalOutput, setTerminalOutput] = useState<string[]>([]);
   const [qualiaEntity, setQualiaEntity] = useState<string | null>(null);
   const [cognitiveEntity, setCognitiveEntity] = useState<string | null>(null);
-  const [entityActionResult, setEntityActionResult] = useState<Record<string, unknown> | null>(null);
-  const [entityRunning, setEntityRunning] = useState<string | null>(null);
-  const [activeAction, setActiveAction] = useState<string | null>(null);
-
-  // Backend action runner
-  const runEntityAction = useRunArtifact('entity');
-  const { items: entityArtifacts } = useLensData<Record<string, unknown>>('entity', 'entity', { seed: [] });
-
-  const handleEntityAction = async (action: string) => {
-    const targetId = entityArtifacts[0]?.id;
-    if (!targetId) return;
-    setEntityRunning(action);
-    setActiveAction(action);
-    setEntityActionResult(null);
-    try {
-      const res = await runEntityAction.mutateAsync({ id: targetId, action });
-      if (res.ok === false) { setEntityActionResult({ message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setEntityActionResult(res.result as Record<string, unknown>); }
-    } catch (e) { console.error(`Entity action ${action} failed:`, e); setEntityActionResult({ message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` }); }
-    setEntityRunning(null);
-  };
 
   // Fetch entities from worldmodel backend
   const { data: entitiesData, isLoading, isError: isError, error: error, refetch: refetch,} = useQuery({
@@ -86,7 +62,7 @@ export default function EntityLensPage() {
       queryClient.invalidateQueries({ queryKey: ['worldmodel-entities'] });
     },
     onError: () => {
-      useUIStore.getState().addToast({ type: 'error', message: 'Entity operation failed. The server may still be loading.' });
+      useUIStore.getState().addToast({ type: 'error', message: 'Operation failed. Please try again.' });
     },
   });
 
@@ -106,7 +82,7 @@ export default function EntityLensPage() {
       queryClient.invalidateQueries({ queryKey: ['worldmodel-entities'] });
     },
     onError: () => {
-      useUIStore.getState().addToast({ type: 'error', message: 'Entity operation failed. The server may still be loading.' });
+      useUIStore.getState().addToast({ type: 'error', message: 'Operation failed. Please try again.' });
     },
   });
 
@@ -203,9 +179,6 @@ export default function EntityLensPage() {
           </div>
         ))}
       </div>
-
-      {/* Entity Lifecycle Timeline Visualization */}
-      <EntityLifecycleViz />
 
       {/* Create Entity Form */}
       {showCreate && (
@@ -337,9 +310,7 @@ export default function EntityLensPage() {
           <p className="text-gray-400">No entities spawned yet. Click "Spawn Entity" to create one.</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {entities.map((entity, index) => {
-              const resolved = resolveEntityName(entity);
-              return (
+            {entities.map((entity, index) => (
               <motion.div key={entity.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }} className="lens-card">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3 min-w-0">
@@ -403,36 +374,27 @@ export default function EntityLensPage() {
                   </button>
                 </div>
               </motion.div>
-              );
-            })}
+            ))}
           </div>
         )}
 
       {/* Qualia Detail Panel */}
-      {qualiaEntity && (() => {
-        const e = entities.find(e => e.id === qualiaEntity);
-        const name = e ? resolveEntityName(e).displayName : qualiaEntity;
-        return (
-          <QualiaEntityPanel
-            entityId={qualiaEntity}
-            entityName={name}
-            onClose={() => setQualiaEntity(null)}
-          />
-        );
-      })()}
+      {qualiaEntity && (
+        <QualiaEntityPanel
+          entityId={qualiaEntity}
+          entityName={entities.find(e => e.id === qualiaEntity)?.name || qualiaEntity}
+          onClose={() => setQualiaEntity(null)}
+        />
+      )}
 
       {/* Cognitive Systems Detail Panel (Feature 22) */}
-      {cognitiveEntity && (() => {
-        const e = entities.find(e => e.id === cognitiveEntity);
-        const name = e ? resolveEntityName(e).displayName : cognitiveEntity;
-        return (
-          <CognitiveEntityPanel
-            entityId={cognitiveEntity}
-            entityName={name}
-            onClose={() => setCognitiveEntity(null)}
-          />
-        );
-      })()}
+      {cognitiveEntity && (
+        <CognitiveEntityPanel
+          entityId={cognitiveEntity}
+          entityName={entities.find(e => e.id === cognitiveEntity)?.name || cognitiveEntity}
+          onClose={() => setCognitiveEntity(null)}
+        />
+      )}
 
       {/* Real-time Data Panel */}
       {realtimeData && (
@@ -448,55 +410,6 @@ export default function EntityLensPage() {
 
       {/* Agent Status & Research Spawning (Feature 40) */}
       <AgentStatusPanel />
-      </div>
-
-      {/* ── Entity Domain Actions ─────────────────────────────────────────── */}
-      <div className="panel p-4 space-y-4">
-        <h2 className="font-semibold flex items-center gap-2">
-          <Network className="w-4 h-4 text-neon-cyan" />
-          Entity Domain Actions
-        </h2>
-        <p className="text-xs text-gray-400">
-          Run analysis actions on the first artifact in this lens. Add an artifact with entity records, relationship data, or schema to unlock results.
-        </p>
-        <div className="flex flex-wrap gap-3">
-          {[
-            { action: 'entityResolution', label: 'Entity Resolution', icon: Link2, color: 'cyan' },
-            { action: 'relationshipGraph', label: 'Relationship Graph', icon: Network, color: 'purple' },
-            { action: 'attributeValidation', label: 'Attribute Validation', icon: ShieldCheck, color: 'green' },
-          ].map(({ action, label, icon: Icon, color }) => (
-            <button
-              key={action}
-              onClick={() => handleEntityAction(action)}
-              disabled={!!entityRunning || entityArtifacts.length === 0}
-              className={`btn-neon ${color} flex items-center gap-2 text-sm`}
-            >
-              {entityRunning === action ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Icon className="w-4 h-4" />
-              )}
-              {label}
-            </button>
-          ))}
-        </div>
-        {entityArtifacts.length === 0 && (
-          <p className="text-xs text-yellow-400/70 flex items-center gap-1">
-            <AlertTriangle className="w-3 h-3" />
-            No artifacts found. Create an entity artifact first.
-          </p>
-        )}
-
-        {/* ── Action Results ───────────────────────────────────────────────── */}
-        {entityActionResult && activeAction === 'entityResolution' && (
-          <EntityResolutionResult result={entityActionResult} />
-        )}
-        {entityActionResult && activeAction === 'relationshipGraph' && (
-          <RelationshipGraphResult result={entityActionResult} />
-        )}
-        {entityActionResult && activeAction === 'attributeValidation' && (
-          <AttributeValidationResult result={entityActionResult} />
-        )}
       </div>
     </div>
   );
@@ -744,7 +657,7 @@ function AgentStatusPanel() {
       queryClient.invalidateQueries({ queryKey: ['agents-status'] });
     },
     onError: () => {
-      useUIStore.getState().addToast({ type: 'error', message: 'Entity operation failed. The server may still be loading.' });
+      useUIStore.getState().addToast({ type: 'error', message: 'Operation failed. Please try again.' });
     },
   });
 
@@ -1012,425 +925,6 @@ function CognitiveEntityPanel({ entityId, entityName, onClose }: { entityId: str
               <p className="text-xs text-gray-400">Adaptive delivery engine active — adjusts response tone based on detected emotional state</p>
             </div>
           )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Entity Resolution Result ──────────────────────────────────────────────
-
-function EntityResolutionResult({ result }: { result: Record<string, unknown> }) {
-  if (result.message) {
-    return (
-      <div className="mt-4 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-sm text-yellow-300">
-        {result.message as string}
-      </div>
-    );
-  }
-
-  const totalRecords = result.totalRecords as number;
-  const matchesFound = result.matchesFound as number;
-  const uniqueEntities = result.uniqueEntities as number;
-  const duplicateRate = result.duplicateRate as number;
-  const mergeGroups = result.mergeGroups as { count: number; groups: Array<{ groupId: number; memberCount: number; members: string[]; avgConfidence: number }> };
-  const matches = result.matches as Array<{ recordA: string; recordB: string; confidence: number; fieldsCompared: number; fieldScores: Record<string, number> }>;
-  const parameters = result.parameters as { threshold: number; matchFields: string | string[] };
-
-  const dupeColor = duplicateRate > 30 ? 'text-red-400' : duplicateRate > 10 ? 'text-yellow-400' : 'text-neon-green';
-
-  return (
-    <div className="mt-4 space-y-4">
-      <div className="flex items-center gap-2">
-        <Link2 className="w-4 h-4 text-neon-cyan" />
-        <h3 className="font-semibold text-sm">Entity Resolution Results</h3>
-        <span className="text-xs text-gray-500">threshold: {parameters?.threshold}</span>
-      </div>
-
-      {/* Summary stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {[
-          { label: 'Total Records', value: totalRecords, color: 'text-white' },
-          { label: 'Matches Found', value: matchesFound, color: 'text-neon-cyan' },
-          { label: 'Unique Entities', value: uniqueEntities, color: 'text-neon-purple' },
-          { label: 'Duplicate Rate', value: `${duplicateRate}%`, color: dupeColor },
-        ].map(({ label, value, color }) => (
-          <div key={label} className="bg-zinc-900 rounded-lg p-3 border border-zinc-800 text-center">
-            <p className={`text-xl font-bold ${color}`}>{value}</p>
-            <p className="text-xs text-gray-400 mt-0.5">{label}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Merge groups */}
-      {mergeGroups?.count > 0 && (
-        <div className="space-y-2">
-          <h4 className="text-xs font-semibold uppercase text-gray-400">
-            Merge Groups ({mergeGroups.count})
-          </h4>
-          <div className="space-y-2 max-h-48 overflow-y-auto">
-            {mergeGroups.groups.map((g) => (
-              <div key={g.groupId} className="bg-zinc-900 rounded-lg p-3 border border-zinc-800 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <span className="text-xs font-mono text-gray-500">Group {g.groupId}</span>
-                  <div className="flex flex-wrap gap-1">
-                    {g.members.map((m) => (
-                      <span key={m} className="text-[10px] px-1.5 py-0.5 rounded bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/20 font-mono">
-                        {m}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                <div className="text-right shrink-0">
-                  <p className="text-sm font-bold text-neon-purple">{(g.avgConfidence * 100).toFixed(1)}%</p>
-                  <p className="text-[10px] text-gray-500">avg conf.</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Top matches */}
-      {matches?.length > 0 && (
-        <div className="space-y-2">
-          <h4 className="text-xs font-semibold uppercase text-gray-400">Top Matches</h4>
-          <div className="space-y-2 max-h-64 overflow-y-auto">
-            {matches.slice(0, 10).map((m, i) => (
-              <div key={i} className="bg-zinc-900 rounded-lg p-3 border border-zinc-800 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-mono text-white">
-                    <span className="text-neon-cyan">{m.recordA}</span>
-                    <span className="text-gray-500 mx-2">↔</span>
-                    <span className="text-neon-cyan">{m.recordB}</span>
-                  </span>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-xs text-gray-400">{m.fieldsCompared} fields</span>
-                    <span className={`text-sm font-bold ${m.confidence >= 0.95 ? 'text-neon-green' : m.confidence >= 0.85 ? 'text-yellow-400' : 'text-red-400'}`}>
-                      {(m.confidence * 100).toFixed(1)}%
-                    </span>
-                  </div>
-                </div>
-                {/* Confidence bar */}
-                <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full ${m.confidence >= 0.95 ? 'bg-neon-green' : m.confidence >= 0.85 ? 'bg-yellow-400' : 'bg-red-400'}`}
-                    style={{ width: `${m.confidence * 100}%` }}
-                  />
-                </div>
-                {/* Field scores */}
-                {Object.keys(m.fieldScores).length > 0 && (
-                  <div className="flex flex-wrap gap-1.5">
-                    {Object.entries(m.fieldScores).map(([field, score]) => (
-                      <span key={field} className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-gray-300 border border-zinc-700">
-                        {field}: <span className="text-neon-cyan font-mono">{(score * 100).toFixed(0)}%</span>
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {mergeGroups?.count === 0 && matches?.length === 0 && (
-        <div className="flex items-center gap-2 text-sm text-neon-green p-3 bg-neon-green/5 rounded-lg border border-neon-green/20">
-          <CheckCircle2 className="w-4 h-4" />
-          No duplicates found above the {parameters?.threshold} confidence threshold.
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Relationship Graph Result ─────────────────────────────────────────────
-
-function RelationshipGraphResult({ result }: { result: Record<string, unknown> }) {
-  if (result.message) {
-    return (
-      <div className="mt-4 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-sm text-yellow-300">
-        {result.message as string}
-      </div>
-    );
-  }
-
-  const entityCount = result.entityCount as number;
-  const relationshipCount = result.relationshipCount as number;
-  const graphDensity = result.graphDensity as number;
-  const connectedComponents = result.connectedComponents as number;
-  const largestComponentSize = result.largestComponentSize as number;
-  const cycles = result.cycles as { count: number; items: Array<{ path: string[]; length: number }> };
-  const keyConnectors = result.keyConnectors as { count: number; entities: Array<{ id: string; name?: string; type?: string; degree: number; betweennessCentrality: number; degreeCentrality: number }> };
-  const entities = result.entities as Array<{ id: string; name?: string; type?: string; degree: number; betweennessCentrality: number; closenessCentrality: number; degreeCentrality: number; isKeyConnector: boolean }>;
-  const relationshipTypes = result.relationshipTypes as string[];
-
-  const densityPct = Math.round(graphDensity * 100);
-
-  return (
-    <div className="mt-4 space-y-4">
-      <div className="flex items-center gap-2">
-        <Network className="w-4 h-4 text-neon-purple" />
-        <h3 className="font-semibold text-sm">Relationship Graph Analysis</h3>
-      </div>
-
-      {/* Summary stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        {[
-          { label: 'Entities', value: entityCount, color: 'text-white' },
-          { label: 'Relationships', value: relationshipCount, color: 'text-neon-cyan' },
-          { label: 'Connected Components', value: connectedComponents, color: 'text-neon-purple' },
-          { label: 'Largest Component', value: largestComponentSize, color: 'text-neon-green' },
-          { label: 'Cycles Detected', value: cycles?.count ?? 0, color: cycles?.count > 0 ? 'text-yellow-400' : 'text-neon-green' },
-          { label: 'Key Connectors', value: keyConnectors?.count ?? 0, color: 'text-neon-cyan' },
-        ].map(({ label, value, color }) => (
-          <div key={label} className="bg-zinc-900 rounded-lg p-3 border border-zinc-800 text-center">
-            <p className={`text-xl font-bold ${color}`}>{value}</p>
-            <p className="text-xs text-gray-400 mt-0.5">{label}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Graph density bar */}
-      <div className="bg-zinc-900 rounded-lg p-3 border border-zinc-800 space-y-1.5">
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-gray-400">Graph Density</span>
-          <span className="font-mono font-bold text-neon-purple">{densityPct}%</span>
-        </div>
-        <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-neon-purple to-neon-cyan"
-            style={{ width: `${Math.min(densityPct, 100)}%` }}
-          />
-        </div>
-        <p className="text-[10px] text-gray-500">
-          {densityPct < 10 ? 'Sparse graph' : densityPct < 40 ? 'Moderate connectivity' : 'Dense graph'}
-        </p>
-      </div>
-
-      {/* Relationship types */}
-      {relationshipTypes?.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {relationshipTypes.map((t) => (
-            <span key={t} className="text-xs px-2 py-1 rounded-full bg-neon-purple/10 text-neon-purple border border-neon-purple/20">
-              {t}
-            </span>
-          ))}
-        </div>
-      )}
-
-      {/* Key connectors */}
-      {keyConnectors?.entities?.length > 0 && (
-        <div className="space-y-2">
-          <h4 className="text-xs font-semibold uppercase text-gray-400">Key Connectors</h4>
-          <div className="space-y-2">
-            {keyConnectors.entities.map((e) => (
-              <div key={e.id} className="bg-zinc-900 rounded-lg p-3 border border-neon-cyan/20 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="text-sm font-medium text-white">{e.name || e.id}</span>
-                    {e.type && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-gray-400">{e.type}</span>}
-                  </div>
-                  <span className="text-xs text-neon-cyan font-mono">{e.degree} connections</span>
-                </div>
-                <div className="grid grid-cols-3 gap-2 text-[10px] text-gray-500">
-                  <div>
-                    <p className="text-gray-300 font-mono">{(e.betweennessCentrality * 100).toFixed(2)}%</p>
-                    <p>Betweenness</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-300 font-mono">{(e.degreeCentrality * 100).toFixed(1)}%</p>
-                    <p>Degree</p>
-                  </div>
-                  <div className="text-right">
-                    <span className="px-1.5 py-0.5 rounded bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/20">
-                      Key Connector
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Entity centrality table */}
-      {entities?.length > 0 && (
-        <div className="space-y-2">
-          <h4 className="text-xs font-semibold uppercase text-gray-400">Entity Centrality</h4>
-          <div className="max-h-48 overflow-y-auto space-y-1">
-            {entities.slice(0, 15).map((e) => (
-              <div key={e.id} className="flex items-center gap-3 px-3 py-2 bg-zinc-900 rounded border border-zinc-800 text-xs">
-                <span className="text-white font-medium truncate flex-1">{e.name || e.id}</span>
-                <span className="text-gray-500">deg {e.degree}</span>
-                <div className="w-20 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-neon-purple to-neon-cyan"
-                    style={{ width: `${Math.min((e.betweennessCentrality || 0) * 1000, 100)}%` }}
-                  />
-                </div>
-                {e.isKeyConnector && (
-                  <span className="text-[10px] px-1 py-0.5 rounded bg-neon-cyan/10 text-neon-cyan">hub</span>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Cycles */}
-      {cycles?.count > 0 && (
-        <div className="space-y-2">
-          <h4 className="text-xs font-semibold uppercase text-yellow-400 flex items-center gap-1">
-            <AlertTriangle className="w-3 h-3" />
-            Cycles Detected ({cycles.count})
-          </h4>
-          <div className="space-y-1 max-h-32 overflow-y-auto">
-            {cycles.items.map((c, i) => (
-              <div key={i} className="bg-zinc-900 rounded p-2 border border-yellow-500/20 text-xs font-mono text-yellow-300">
-                {c.path.join(' → ')} <span className="text-gray-500 ml-1">({c.length} edges)</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Attribute Validation Result ───────────────────────────────────────────
-
-function AttributeValidationResult({ result }: { result: Record<string, unknown> }) {
-  const validationScore = result.validationScore as number;
-  const valid = result.valid as boolean;
-  const status = result.status as string;
-  const fieldsValid = result.fieldsValid as number;
-  const totalFields = result.totalFields as number;
-  const errors = result.errors as { count: number; items: Array<{ field: string; type: string; message: string; value?: string }> };
-  const warnings = result.warnings as { count: number; items: Array<{ field: string; type?: string; message: string }> };
-  const consistencyRules = result.consistencyRules as { count: number; results: Array<{ rule: string; fields?: string[]; status: string; reason?: string }> };
-  const entityId = result.entityId as string;
-
-  const scoreColor = validationScore >= 80 ? 'text-neon-green' : validationScore >= 50 ? 'text-yellow-400' : 'text-red-400';
-  const scoreBarColor = validationScore >= 80 ? 'bg-neon-green' : validationScore >= 50 ? 'bg-yellow-400' : 'bg-red-400';
-
-  const statusBadge = status === 'valid'
-    ? 'bg-neon-green/10 text-neon-green border-neon-green/20'
-    : status === 'incomplete'
-    ? 'bg-yellow-400/10 text-yellow-400 border-yellow-400/20'
-    : 'bg-red-400/10 text-red-400 border-red-400/20';
-
-  return (
-    <div className="mt-4 space-y-4">
-      <div className="flex items-center gap-2">
-        <ShieldCheck className="w-4 h-4 text-neon-green" />
-        <h3 className="font-semibold text-sm">Attribute Validation Results</h3>
-        {entityId && <span className="text-xs text-gray-500 font-mono">{entityId}</span>}
-        <span className={`ml-auto text-xs px-2 py-0.5 rounded border font-semibold capitalize ${statusBadge}`}>
-          {status || (valid ? 'valid' : 'invalid')}
-        </span>
-      </div>
-
-      {/* Validation score */}
-      <div className="bg-zinc-900 rounded-lg p-4 border border-zinc-800 space-y-3">
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-gray-400">Validation Score</span>
-          <span className={`text-2xl font-bold ${scoreColor}`}>{validationScore}%</span>
-        </div>
-        <div className="h-3 bg-zinc-800 rounded-full overflow-hidden">
-          <div
-            className={`h-full rounded-full transition-all ${scoreBarColor}`}
-            style={{ width: `${validationScore}%` }}
-          />
-        </div>
-        <div className="grid grid-cols-3 gap-3 text-center text-xs">
-          <div>
-            <p className="text-lg font-bold text-white">{totalFields}</p>
-            <p className="text-gray-500">Total Fields</p>
-          </div>
-          <div>
-            <p className="text-lg font-bold text-neon-green">{fieldsValid}</p>
-            <p className="text-gray-500">Valid</p>
-          </div>
-          <div>
-            <p className={`text-lg font-bold ${errors?.count > 0 ? 'text-red-400' : 'text-gray-400'}`}>
-              {errors?.count ?? 0}
-            </p>
-            <p className="text-gray-500">Errors</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Errors */}
-      {errors?.count > 0 && (
-        <div className="space-y-2">
-          <h4 className="text-xs font-semibold uppercase text-red-400 flex items-center gap-1">
-            <XCircle className="w-3 h-3" />
-            Errors ({errors.count})
-          </h4>
-          <div className="space-y-1.5 max-h-48 overflow-y-auto">
-            {errors.items.map((e, i) => (
-              <div key={i} className="bg-zinc-900 rounded-lg p-3 border border-red-500/20 space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-mono font-bold text-white">{e.field}</span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/20 uppercase">
-                    {e.type}
-                  </span>
-                </div>
-                <p className="text-xs text-gray-300">{e.message}</p>
-                {e.value && (
-                  <p className="text-[10px] font-mono text-gray-500 truncate">Value: {e.value}</p>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Warnings */}
-      {warnings?.count > 0 && (
-        <div className="space-y-2">
-          <h4 className="text-xs font-semibold uppercase text-yellow-400 flex items-center gap-1">
-            <AlertTriangle className="w-3 h-3" />
-            Warnings ({warnings.count})
-          </h4>
-          <div className="space-y-1 max-h-32 overflow-y-auto">
-            {warnings.items.map((w, i) => (
-              <div key={i} className="bg-zinc-900 rounded p-2 border border-yellow-500/20 flex items-start gap-2 text-xs">
-                <span className="font-mono font-bold text-yellow-300 shrink-0">{w.field}</span>
-                <span className="text-gray-300">{w.message}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Consistency rules */}
-      {consistencyRules?.count > 0 && (
-        <div className="space-y-2">
-          <h4 className="text-xs font-semibold uppercase text-gray-400">Consistency Rules ({consistencyRules.count})</h4>
-          <div className="space-y-1">
-            {consistencyRules.results.map((r, i) => (
-              <div key={i} className="flex items-center justify-between bg-zinc-900 rounded p-2 border border-zinc-800 text-xs">
-                <span className="text-gray-300 truncate flex-1">{r.rule}</span>
-                {r.reason && <span className="text-gray-500 mx-2 text-[10px]">{r.reason}</span>}
-                <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
-                  r.status === 'passed' ? 'bg-neon-green/10 text-neon-green'
-                  : r.status === 'skipped' ? 'bg-gray-500/10 text-gray-400'
-                  : 'bg-red-500/10 text-red-400'
-                }`}>
-                  {r.status}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {valid && (
-        <div className="flex items-center gap-2 text-sm text-neon-green p-3 bg-neon-green/5 rounded-lg border border-neon-green/20">
-          <CheckCircle2 className="w-4 h-4" />
-          All fields passed validation successfully.
         </div>
       )}
     </div>

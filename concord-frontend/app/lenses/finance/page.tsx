@@ -312,6 +312,11 @@ export default function FinanceLensPage() {
     range: number;
   }>({ padding: 40, width: 1000, height: 320, minVal: 0, maxVal: 1, range: 1 });
 
+  // Chart tooltip state
+  const [chartTooltip, setChartTooltip] = useState<{ x: number; y: number; value: number; index: number } | null>(null);
+  const chartDataRef = useRef<number[]>([]);
+  const chartMetaRef = useRef<{ padding: number; width: number; height: number; minVal: number; maxVal: number; range: number }>({ padding: 40, width: 1000, height: 320, minVal: 0, maxVal: 1, range: 1 });
+
   const handleSubmitOrder = async () => {
     if (!tradeAmount || isSubmittingOrder) return;
     const amount = parseFloat(tradeAmount);
@@ -358,6 +363,12 @@ export default function FinanceLensPage() {
   const animatedTotalPnl = useAnimatedNumber(totalPnl);
   const animatedVolume = useAnimatedNumber(assets.reduce((sum, a) => sum + a.volume24h, 0));
   const animatedAlertCount = useAnimatedNumber(alerts.filter((a) => a.active).length, 600);
+
+  // Animated KPI values
+  const animatedTotalValue = useAnimatedNumber(totalValue);
+  const animatedTotalPnl = useAnimatedNumber(totalPnl);
+  const animatedVolume = useAnimatedNumber(assets.reduce((sum, a) => sum + a.volume24h, 0));
+  const animatedAlertCount = useAnimatedNumber(alerts.filter(a => a.active).length, 600);
 
   // Chart rendering
   useEffect(() => {
@@ -531,7 +542,7 @@ export default function FinanceLensPage() {
     const tooltipX = e.clientX - rect.left;
     const tooltipY = e.clientY - rect.top;
 
-    setChartTooltip({ x: tooltipX, y: tooltipY, value: val, index: clampedIndex, min: minVal });
+    setChartTooltip({ x: tooltipX, y: tooltipY, value: val, index: clampedIndex });
 
     // Redraw crosshair on canvas — trigger a re-render of chart + crosshair
     const ctx = canvas.getContext('2d');
@@ -550,12 +561,7 @@ export default function FinanceLensPage() {
 
     // Save the base chart image once
     if (!(canvas as unknown as Record<string, unknown>).__baseImage) {
-      (canvas as unknown as Record<string, unknown>).__baseImage = ctx.getImageData(
-        0,
-        0,
-        width,
-        height
-      );
+      (canvas as unknown as Record<string, unknown>).__baseImage = ctx.getImageData(0, 0, width, height);
     }
     const baseImage = (canvas as unknown as Record<string, unknown>).__baseImage as ImageData;
     ctx.putImageData(baseImage, 0, 0);
@@ -589,9 +595,7 @@ export default function FinanceLensPage() {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    const baseImage = (canvas as unknown as Record<string, unknown>).__baseImage as
-      | ImageData
-      | undefined;
+    const baseImage = (canvas as unknown as Record<string, unknown>).__baseImage as ImageData | undefined;
     if (baseImage) {
       ctx.putImageData(baseImage, 0, 0);
     }
@@ -603,12 +607,7 @@ export default function FinanceLensPage() {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    (canvas as unknown as Record<string, unknown>).__baseImage = ctx.getImageData(
-      0,
-      0,
-      canvas.width,
-      canvas.height
-    );
+    (canvas as unknown as Record<string, unknown>).__baseImage = ctx.getImageData(0, 0, canvas.width, canvas.height);
   }, [timeRange, chartType, totalValue]);
 
   const formatCurrency = (value: number, compact = false) => {
@@ -659,9 +658,7 @@ export default function FinanceLensPage() {
     const isPositive = data[data.length - 1] >= data[0];
 
     const SparklineWithHover = () => {
-      const [hoverInfo, setHoverInfo] = useState<{ x: number; y: number; value: number } | null>(
-        null
-      );
+      const [hoverInfo, setHoverInfo] = useState<{ x: number; y: number; value: number } | null>(null);
       const svgRef = useRef<SVGSVGElement>(null);
 
       const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
@@ -695,23 +692,8 @@ export default function FinanceLensPage() {
             />
             {hoverInfo && (
               <>
-                <circle
-                  cx={hoverInfo.x}
-                  cy={hoverInfo.y}
-                  r={3}
-                  fill={isPositive ? '#22c55e' : '#ef4444'}
-                  stroke="#fff"
-                  strokeWidth={1}
-                />
-                <line
-                  x1={hoverInfo.x}
-                  y1={0}
-                  x2={hoverInfo.x}
-                  y2={height}
-                  stroke="rgba(255,255,255,0.3)"
-                  strokeWidth={0.5}
-                  strokeDasharray="2,2"
-                />
+                <circle cx={hoverInfo.x} cy={hoverInfo.y} r={3} fill={isPositive ? '#22c55e' : '#ef4444'} stroke="#fff" strokeWidth={1} />
+                <line x1={hoverInfo.x} y1={0} x2={hoverInfo.x} y2={height} stroke="rgba(255,255,255,0.3)" strokeWidth={0.5} strokeDasharray="2,2" />
               </>
             )}
           </svg>
@@ -734,27 +716,15 @@ export default function FinanceLensPage() {
         <div className="lens-card bg-[#111820] border-emerald-900/20 font-mono">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-emerald-500/70">Total Balance</span>
-            <button
-              onClick={() => setShowBalances(!showBalances)}
-              className="text-gray-400 hover:text-white"
-            >
+            <button onClick={() => setShowBalances(!showBalances)} className="text-gray-400 hover:text-white">
               {showBalances ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
             </button>
           </div>
           <p className="text-3xl font-bold font-mono tracking-tight">
             {showBalances ? formatCurrency(animatedTotalValue) : '••••••'}
           </p>
-          <div
-            className={cn(
-              'flex items-center gap-1 mt-1 text-sm font-mono',
-              totalPnlPercent >= 0 ? 'text-green-400' : 'text-red-400'
-            )}
-          >
-            {totalPnlPercent >= 0 ? (
-              <ArrowUpRight className="w-4 h-4" />
-            ) : (
-              <ArrowDownRight className="w-4 h-4" />
-            )}
+          <div className={cn('flex items-center gap-1 mt-1 text-sm font-mono', totalPnlPercent >= 0 ? 'text-green-400' : 'text-red-400')}>
+            {totalPnlPercent >= 0 ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
             <span>{showBalances ? formatCurrency(animatedTotalPnl) : '••••'}</span>
             <span>({formatPercent(totalPnlPercent)})</span>
           </div>
@@ -765,23 +735,9 @@ export default function FinanceLensPage() {
             <TrendingUp className="w-4 h-4 text-green-400" />
             <span className="text-sm text-gray-400">Best Performer</span>
           </div>
-          <p className="text-xl font-bold">
-            {assets.length > 0
-              ? [...assets].sort((a, b) => b.pnlPercent - a.pnlPercent)[0].symbol
-              : '--'}
-          </p>
-          <p
-            className={cn(
-              'text-sm',
-              assets.length > 0 &&
-                [...assets].sort((a, b) => b.pnlPercent - a.pnlPercent)[0].pnlPercent >= 0
-                ? 'text-green-400'
-                : 'text-red-400'
-            )}
-          >
-            {assets.length > 0
-              ? formatPercent([...assets].sort((a, b) => b.pnlPercent - a.pnlPercent)[0].pnlPercent)
-              : '--'}
+          <p className="text-xl font-bold">{assets.length > 0 ? [...assets].sort((a, b) => b.pnlPercent - a.pnlPercent)[0].symbol : '--'}</p>
+          <p className={cn('text-sm', assets.length > 0 && [...assets].sort((a, b) => b.pnlPercent - a.pnlPercent)[0].pnlPercent >= 0 ? 'text-green-400' : 'text-red-400')}>
+            {assets.length > 0 ? formatPercent([...assets].sort((a, b) => b.pnlPercent - a.pnlPercent)[0].pnlPercent) : '--'}
           </p>
         </div>
 
@@ -790,7 +746,9 @@ export default function FinanceLensPage() {
             <Activity className="w-4 h-4 text-neon-blue" />
             <span className="text-sm text-gray-400">24h Volume</span>
           </div>
-          <p className="text-xl font-bold">{formatCurrency(animatedVolume, true)}</p>
+          <p className="text-xl font-bold">
+            {formatCurrency(animatedVolume, true)}
+          </p>
           <p className="text-gray-400 text-sm">Across all assets</p>
         </div>
 
@@ -800,9 +758,7 @@ export default function FinanceLensPage() {
             <span className="text-sm text-gray-400">Active Alerts</span>
           </div>
           <p className="text-xl font-bold">{Math.round(animatedAlertCount)}</p>
-          <p className="text-gray-400 text-sm">
-            {orders.filter((o) => o.status === 'open').length} open orders
-          </p>
+          <p className="text-gray-400 text-sm">{orders.filter(o => o.status === 'open').length} open orders</p>
         </div>
       </div>
 
@@ -870,15 +826,12 @@ export default function FinanceLensPage() {
               }}
             >
               <div className="bg-lattice-elevated/95 border border-lattice-border rounded-lg px-3 py-1.5 shadow-lg backdrop-blur-sm text-center">
-                <p className="text-xs text-gray-400 font-mono">Point {chartTooltip.index + 1}</p>
+                <p className="text-xs text-gray-400 font-mono">
+                  Point {chartTooltip.index + 1}
+                </p>
                 <p className="text-sm font-bold font-mono text-white">
                   {formatCurrency(chartTooltip.value)}
                 </p>
-                {chartTooltip.min !== undefined && (
-                  <p className="text-[10px] text-gray-500 font-mono">
-                    Min: {formatCurrency(chartTooltip.min)}
-                  </p>
-                )}
               </div>
             </div>
           )}
@@ -1124,25 +1077,8 @@ export default function FinanceLensPage() {
                   <p className="text-xs text-gray-400">{formatTime(tx.timestamp)}</p>
                 </div>
                 <div className="text-right">
-                  <p
-                    className={cn(
-                      'font-mono',
-                      tx.type === 'sell' || tx.type === 'reward'
-                        ? 'text-green-400'
-                        : tx.type === 'buy'
-                          ? 'text-red-400'
-                          : 'text-gray-300'
-                    )}
-                  >
-                    {tx.type === 'sell' || tx.type === 'reward'
-                      ? '+'
-                      : tx.type === 'buy'
-                        ? '-'
-                        : ''}
-                    {formatCurrency(tx.value)}
-                  </p>
-                  <p className="text-xs text-gray-400">
-                    {tx.amount} {tx.symbol}
+                  <p className={cn('font-mono', tx.type === 'sell' || tx.type === 'reward' ? 'text-green-400' : tx.type === 'buy' ? 'text-red-400' : 'text-gray-300')}>
+                    {tx.type === 'sell' || tx.type === 'reward' ? '+' : tx.type === 'buy' ? '-' : ''}{formatCurrency(tx.value)}
                   </p>
                 </div>
               </div>
@@ -1745,9 +1681,7 @@ export default function FinanceLensPage() {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold font-mono tracking-tight text-emerald-100">
-                Finance Lens
-              </h1>
+              <h1 className="text-xl font-bold font-mono tracking-tight text-emerald-100">Finance Lens</h1>
               <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
             </div>
             <p className="text-sm text-gray-400">Portfolio tracking & trading dashboard</p>
@@ -2131,15 +2065,13 @@ export default function FinanceLensPage() {
 
       {/* Navigation */}
       <nav className="flex items-center gap-1 border-b border-emerald-900/20 pb-4">
-        {(
-          [
-            { id: 'overview', label: 'Overview', icon: PieChart },
-            { id: 'trade', label: 'Trade', icon: Activity },
-            { id: 'orders', label: 'Orders', icon: Layers },
-            { id: 'alerts', label: 'Alerts', icon: Bell },
-            { id: 'news', label: 'News', icon: Newspaper },
-          ] as const
-        ).map((item) => (
+        {([
+          { id: 'overview', label: 'Overview', icon: PieChart },
+          { id: 'trade', label: 'Trade', icon: Activity },
+          { id: 'orders', label: 'Orders', icon: Layers },
+          { id: 'alerts', label: 'Alerts', icon: Bell },
+          { id: 'news', label: 'News', icon: Newspaper },
+        ] as const).map((item) => (
           <button
             key={item.id}
             onClick={() => setViewMode(item.id)}

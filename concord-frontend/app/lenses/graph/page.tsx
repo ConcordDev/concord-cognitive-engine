@@ -28,11 +28,6 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { ProvenanceBadge } from '@/components/dtu/ProvenanceBadge';
-import { useLatticeStore } from '@/store/lattice';
-import { InteractiveGraph } from '@/components/graphs/InteractiveGraphCore';
-import { KnowledgeSpace3D } from '@/components/graphs/KnowledgeSpace3D';
-import { FractalEmpireExplorer } from '@/components/graphs/FractalEmpireExplorer';
-import KnowledgeGenomeBrowser from '@/components/visualizations/KnowledgeGenomeBrowser';
 
 // --- Types ---
 
@@ -1085,11 +1080,10 @@ export default function GraphLensPage() {
   return (
     <div data-lens-theme="graph" className="h-full flex flex-col bg-[#0a0e14]">
       {/* Stat Cards Row */}
-      <div className="flex items-center gap-3 px-4 py-2 border-b border-cyan-900/20 bg-[#0a0e14]/90 backdrop-blur-sm flex-wrap">
+      <div className="flex items-center gap-3 px-4 py-2 border-b border-cyan-900/20 bg-[#0a0e14]/90 backdrop-blur-sm overflow-x-auto">
         {[
           { label: 'Nodes', value: stats.nodeCount, color: 'text-cyan-400', bg: 'bg-cyan-400/10' },
           { label: 'Edges', value: stats.edgeCount, color: 'text-purple-400', bg: 'bg-purple-400/10' },
-          ...(stats.clusterCount > 0 ? [{ label: 'Clusters', value: stats.clusterCount, color: 'text-pink-400', bg: 'bg-pink-400/10' }] : []),
           { label: 'Density', value: `${stats.density.toFixed(1)}%`, color: 'text-emerald-400', bg: 'bg-emerald-400/10' },
           { label: 'Avg Connections', value: stats.avgConnections.toFixed(1), color: 'text-amber-400', bg: 'bg-amber-400/10' },
         ].map((s, i) => (
@@ -1127,7 +1121,6 @@ export default function GraphLensPage() {
         <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
         <DTUExportButton domain="graph" data={realtimeData || {}} compact />
         <RealtimeDataPanel domain="graph" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={realtimeInsights} compact />
-      <UniversalActions domain="graph" artifactId={null} compact />
         <button onClick={() => refetchDTUs()} disabled={dtusLoading} className="p-1 rounded hover:bg-lattice-surface/50 disabled:opacity-50 transition-colors" title="Refresh DTUs">
           {dtusLoading ? <Circle className="w-4 h-4 animate-spin text-neon-cyan" /> : <RotateCcw className="w-4 h-4 text-gray-400" />}
         </button>
@@ -1640,6 +1633,10 @@ export default function GraphLensPage() {
                   {selectedNode.tier === 'artist' && <User className="w-3.5 h-3.5 text-violet-400" />}
                   {selectedNode.tier === 'sample' && <AudioWaveform className="w-3.5 h-3.5 text-green-400" />}
                   {selectedNode.tier === 'release' && <Share2 className="w-3.5 h-3.5 text-pink-400" />}
+                </div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold text-white text-lg">{selectedNode.label}</h3>
+                  <ProvenanceBadge source={selectedNode.originalSource} />
                 </div>
                 <div className="flex items-center gap-2">
                   <h3 className="font-semibold text-white text-lg">{selectedNode.label}</h3>

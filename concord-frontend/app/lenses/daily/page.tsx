@@ -264,7 +264,7 @@ export default function DailyLensPage() {
             privacy: 'private',
             duration,
             data: base64,
-          }).catch(err => { console.error('[Daily] Upload failed:', err); showToast('error', 'Upload failed'); });
+          }).catch(err => console.error('[Daily] Upload failed:', err));
         };
         reader.readAsDataURL(blob);
       };

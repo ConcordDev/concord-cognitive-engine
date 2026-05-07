@@ -66,46 +66,7 @@ import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { DTUDetailView } from '@/components/dtu/DTUDetailView';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { useLensData } from '@/lib/hooks/use-lens-data';
-import MessageRenderer from '@/components/chat/MessageRenderer';
-import OracleResponse from '@/components/chat/OracleResponse';
-import { ToolCallCard } from '@/components/chat/ToolCallCard';
-import { ReasoningIndicator } from '@/components/chat/ReasoningIndicator';
-import { MessageContinuationMarker } from '@/components/chat/MessageContinuationMarker';
-import { useOracleSolve, type OracleResponseData } from '@/hooks/useOracleSolve';
-import AtlasOverlay from '@/components/chat/AtlasOverlay';
-import AtlasViewer from '@/components/chat/AtlasViewer';
-import {
-  WelcomePanel,
-  ModeSelector,
-  ChatPanel as ChatModePanel,
-} from '@/components/chat/ChatModePanels';
-import ChatRouteOverlay from '@/components/chat/ChatRouteOverlay';
-import { ContextOverlay } from '@/components/chat/ContextOverlay';
-import ForgeCard from '@/components/chat/ForgeCard';
-import FoundationCard from '@/components/chat/FoundationCard';
-import { SessionSidebar } from '@/components/chat/SessionSidebar';
-// ── Systems panels ─────────────────────────────────────────────
-// These five panels round-trip through the /api/chat cognitive
-// pipeline and surface system-level context alongside the
-// conversation — security posture, mesh state, inference model
-// status, proactive initiative chips, and Atlas privacy zones.
-// All fully built, all previously orphaned.
-import ShieldCard from '@/components/chat/ShieldCard';
-import MeshStatusCard from '@/components/chat/MeshStatusCard';
-import IntelligenceCard from '@/components/chat/IntelligenceCard';
-import AtlasPrivacyMonitor from '@/components/chat/AtlasPrivacyMonitor';
-import { InitiativeChip, type Initiative } from '@/components/chat/InitiativeChip';
-import {
-  recommendLenses,
-  createSessionContext,
-  createSessionTelemetry,
-  recordLensOpened,
-  type LensRecommendation,
-  type SessionContext,
-  type SessionTelemetry,
-} from '@/lib/lenses/chat-lens-recommender';
+import { SharedSessionChat } from '@/components/social/SharedSessionChat';
 
 // ──────────────────────────────────────────────
 // Types
@@ -439,9 +400,7 @@ export default function ChatLensPage() {
 
   // Existing state
   const [input, setInput] = useState('');
-  const [selectedConversation, setSelectedConversation] = useState<string | null>(() =>
-    loadSessionId()
-  );
+  const [selectedConversation, setSelectedConversation] = useState<string | null>(() => loadSessionId());
   const [aiMode, setAiMode] = useState<AIMode>(AI_MODES[0]);
   const [showModeSelect, setShowModeSelect] = useState(false);
   const [localMessages, setLocalMessages] = useState<Message[]>([]);
@@ -449,15 +408,8 @@ export default function ChatLensPage() {
   const [chatSidebarOpen, setChatSidebarOpen] = useState(false);
   const [conversationSearch, setConversationSearch] = useState('');
   const [showMoreMenu, setShowMoreMenu] = useState(false);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
-  const [editContent, setEditContent] = useState('');
-  const [renamingConversation, setRenamingConversation] = useState<string | null>(null);
-  const [renameValue, setRenameValue] = useState('');
-  const [showFeatures, setShowFeatures] = useState(true);
-  const [storedConversations, setStoredConversations] = useState<Conversation[]>(() =>
-    loadConversations()
-  );
+  const [showFeatures, setShowFeatures] = useState(false);
+  const [storedConversations, setStoredConversations] = useState<Conversation[]>(() => loadConversations());
 
   // New state — Persona picker
   const [selectedPersona, setSelectedPersona] = useState<Persona>(PERSONAS[0]);
@@ -480,118 +432,6 @@ export default function ChatLensPage() {
   // New state — Domain context
   const [domainContext, setDomainContext] = useState<string>('');
   const [inspectingDtuId, setInspectingDtuId] = useState<string | null>(null);
-
-  // New state — Wired orphan components
-  const [chatMode, setChatMode] = useState<'welcome' | 'assist' | 'explore' | 'connect' | 'chat'>(
-    'chat'
-  );
-  const [sessionSidebarOpen, setSessionSidebarOpen] = useState(false);
-  const [contextOverlayOpen, setContextOverlayOpen] = useState(false);
-
-  // ── Systems panel (shield / mesh / intel / privacy / initiatives) ─────
-  // Opt-in drawer surfacing the orphaned systems cards. All five
-  // components are fully built; this gives them a live home inside
-  // the chat lens where they're most useful (the AI can reference
-  // shield/mesh/intel state while responding). Endpoints are thin
-  // REST wrappers that delegate to the corresponding macros server-side.
-  const [systemsPanelOpen, setSystemsPanelOpen] = useState(false);
-  const [systemsTab, setSystemsTab] = useState<
-    'shield' | 'mesh' | 'intel' | 'privacy' | 'initiatives'
-  >('shield');
-  const { data: shieldData } = useQuery({
-    queryKey: ['chat-shield-status'],
-    queryFn: () =>
-      api
-        .get<{ ok: boolean; securityScore?: Record<string, unknown> }>('/api/shield/status')
-        .then((r) => (r.data?.securityScore || r.data || {}) as Record<string, unknown>),
-    enabled: systemsPanelOpen && systemsTab === 'shield',
-    refetchInterval: systemsPanelOpen && systemsTab === 'shield' ? 10_000 : false,
-  });
-  const { data: meshData } = useQuery({
-    queryKey: ['chat-mesh-status'],
-    queryFn: () => api.get<Record<string, unknown>>('/api/mesh/status').then((r) => r.data || {}),
-    enabled: systemsPanelOpen && systemsTab === 'mesh',
-    refetchInterval: systemsPanelOpen && systemsTab === 'mesh' ? 10_000 : false,
-  });
-  const { data: intelData } = useQuery({
-    queryKey: ['chat-intel-status'],
-    queryFn: () => api.get<Record<string, unknown>>('/api/intel/status').then((r) => r.data || {}),
-    enabled: systemsPanelOpen && systemsTab === 'intel',
-    refetchInterval: systemsPanelOpen && systemsTab === 'intel' ? 15_000 : false,
-  });
-  const { data: privacyData } = useQuery({
-    queryKey: ['chat-atlas-privacy'],
-    queryFn: () =>
-      api
-        .get<Record<string, unknown>>('/api/atlas/privacy_zones?view=stats')
-        .then((r) => r.data || null),
-    enabled: systemsPanelOpen && systemsTab === 'privacy',
-    refetchInterval: systemsPanelOpen && systemsTab === 'privacy' ? 20_000 : false,
-  });
-  const { data: initiativesData } = useQuery({
-    queryKey: ['chat-initiatives'],
-    queryFn: () =>
-      api
-        .get<{ pending?: Initiative[]; initiatives?: Initiative[] }>('/api/initiative/pending')
-        .then((r) => r.data?.pending || r.data?.initiatives || []),
-    enabled: systemsPanelOpen && systemsTab === 'initiatives',
-    refetchInterval: systemsPanelOpen && systemsTab === 'initiatives' ? 30_000 : false,
-  });
-  const [atlasQuery, _setAtlasQuery] = useState('');
-  const [atlasResult, _setAtlasResult] = useState<Record<string, unknown> | null>(null);
-  const [atlasLoading, _setAtlasLoading] = useState(false);
-  const [routeMeta, setRouteMeta] = useState<{
-    actionType: string;
-    lenses: Array<{ lensId: string; score: number }>;
-    primaryLens: string | null;
-    isMultiLens: boolean;
-    confidence: number;
-    attribution: string[];
-    message: string | null;
-  } | null>(null);
-  const [forgeEnvelope, setForgeEnvelope] = useState<Record<string, unknown> | null>(null);
-
-  // ── Chat backend action state ──
-  const runChatAction = useRunArtifact('chat');
-  const { items: chatArtifacts } = useLensData<Record<string, unknown>>('chat', 'conversation', {
-    seed: [],
-  });
-  const [chatActionRunning, setChatActionRunning] = useState<string | null>(null);
-  const [threadSummarizeResult, setThreadSummarizeResult] = useState<Record<
-    string,
-    unknown
-  > | null>(null);
-  const [participantAnalysisResult, setParticipantAnalysisResult] = useState<Record<
-    string,
-    unknown
-  > | null>(null);
-  const [topicDetectionResult, setTopicDetectionResult] = useState<Record<string, unknown> | null>(
-    null
-  );
-
-  // ── Lens Recommender state ──
-  const [lensRecommendations, setLensRecommendations] = useState<LensRecommendation[]>([]);
-  const lensSessionCtx = useRef<SessionContext>(createSessionContext());
-  const lensTelemetry = useRef<SessionTelemetry>(createSessionTelemetry());
-
-  // Compute lens recommendations whenever messages change
-  const lastUserMessage = useMemo(() => {
-    const userMessages = localMessages.filter((m) => m.role === 'user');
-    return userMessages.length > 0 ? userMessages[userMessages.length - 1].content : '';
-  }, [localMessages]);
-
-  useEffect(() => {
-    if (!lastUserMessage) {
-      setLensRecommendations([]);
-      return;
-    }
-    try {
-      const result = recommendLenses(lastUserMessage, lensSessionCtx.current);
-      setLensRecommendations(result.recs.slice(0, 3));
-    } catch {
-      setLensRecommendations([]);
-    }
-  }, [lastUserMessage]);
 
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -929,7 +769,7 @@ export default function ChatLensPage() {
           updatedAt: new Date().toISOString(),
           messageCount: 1,
         };
-        setStoredConversations((prev) => {
+        setStoredConversations(prev => {
           const next = [newConv, ...prev];
           saveConversations(next);
           return next;
@@ -938,7 +778,7 @@ export default function ChatLensPage() {
         // Save the user message for this new session right away
         saveMessagesForSession(newId, [userMsg]);
       }
-      setLocalMessages((prev) => [...prev, userMsg]);
+      setLocalMessages(prev => [...prev, userMsg]);
 
       // Build system prompt from persona + domain context
       let systemPrompt = '';
@@ -1039,34 +879,26 @@ export default function ChatLensPage() {
         // Stream endpoint failed, fall back to regular POST
         setIsStreaming(false);
         setStreamingContent('');
-        const response = await api.post(
-          '/api/chat',
-          {
-            message: messageContent,
-            mode: aiMode.id,
-            sessionId: activeSessionId,
-            ...(systemPrompt ? { systemPrompt } : {}),
-            ...(attachmentMeta.length > 0 ? { attachments: attachmentMeta } : {}),
-          },
-          { signal: abortController.signal }
-        );
+        const response = await api.post('/api/chat', {
+          message: messageContent,
+          mode: aiMode.id,
+          sessionId: activeSessionId,
+          ...(systemPrompt ? { systemPrompt } : {}),
+          ...(attachmentMeta.length > 0 ? { attachments: attachmentMeta } : {}),
+        });
         return response.data;
       }
     },
     onSuccess: (data) => {
+      // If a tool was executed, include it in the response metadata
+      const toolInfo = data.toolExecution?.executed
+        ? `\n\n> 🔧 **Tool:** \`${data.toolExecution.domain}.${data.toolExecution.action}\`${data.toolExecution.result?.ok ? ' — Success' : ' — Failed'}`
+        : '';
+
       const assistantMsg: Message = {
         id: `asst-${Date.now()}`,
         role: 'assistant',
-        content:
-          data.reply ||
-          data.out?.reply ||
-          data.answer ||
-          data.content ||
-          data.text ||
-          data.response ||
-          (data.error
-            ? `Error: ${data.error}`
-            : 'The conscious brain is not responding. Check that the Ollama service is running.'),
+        content: (data.reply || data.answer || data.content || data.text || data.response || (data.error ? `Error: ${data.error}` : 'The conscious brain is not responding. Check that the Ollama service is running.')) + toolInfo,
         timestamp: new Date().toISOString(),
         refs: data.refs,
         sources: data.sources as Message['sources'],
@@ -1080,19 +912,14 @@ export default function ChatLensPage() {
         shadowsUsed: typeof data.shadowsUsed === 'number' ? data.shadowsUsed : undefined,
       };
 
-      setLocalMessages((prev) => [...prev, assistantMsg]);
+      setLocalMessages(prev => [...prev, assistantMsg]);
 
       // Update conversation registry metadata
       if (selectedConversation) {
-        setStoredConversations((prev) => {
-          const next = prev.map((c) =>
+        setStoredConversations(prev => {
+          const next = prev.map(c =>
             c.id === selectedConversation
-              ? {
-                  ...c,
-                  lastMessage: (assistantMsg.content || '').slice(0, 100),
-                  updatedAt: new Date().toISOString(),
-                  messageCount: c.messageCount + 2,
-                }
+              ? { ...c, lastMessage: (assistantMsg.content || '').slice(0, 100), updatedAt: new Date().toISOString(), messageCount: c.messageCount + 2 }
               : c
           );
           saveConversations(next);
@@ -1112,7 +939,7 @@ export default function ChatLensPage() {
         content: `Failed to send message: ${err instanceof Error ? err.message : 'Unknown error'}. Please try again.`,
         timestamp: new Date().toISOString(),
       };
-      setLocalMessages((prev) => [...prev, errorMsg]);
+      setLocalMessages(prev => [...prev, errorMsg]);
     },
   });
 
@@ -1141,8 +968,8 @@ export default function ChatLensPage() {
         timestamp: new Date().toISOString(),
         refs: data.refs,
       };
-      setLocalMessages((prev) => {
-        const lastAssistantIdx = [...prev].reverse().findIndex((m) => m.role === 'assistant');
+      setLocalMessages(prev => {
+        const lastAssistantIdx = [...prev].reverse().findIndex(m => m.role === 'assistant');
         if (lastAssistantIdx === -1) return [...prev, assistantMsg];
         const idx = prev.length - 1 - lastAssistantIdx;
         return [...prev.slice(0, idx), assistantMsg];
@@ -1156,7 +983,7 @@ export default function ChatLensPage() {
         content: `Regeneration failed: ${err instanceof Error ? err.message : 'Unknown error'}`,
         timestamp: new Date().toISOString(),
       };
-      setLocalMessages((prev) => [...prev, errorMsg]);
+      setLocalMessages(prev => [...prev, errorMsg]);
     },
   });
 
@@ -1189,6 +1016,9 @@ export default function ChatLensPage() {
         .getState()
         .addToast({ type: 'error', message: 'Operation failed. Please try again.' });
     },
+    onError: () => {
+      useUIStore.getState().addToast({ type: 'error', message: 'Operation failed. Please try again.' });
+    },
   });
 
   const forgeMutation = useMutation({
@@ -1212,9 +1042,7 @@ export default function ChatLensPage() {
       queryClient.invalidateQueries({ queryKey: ['dtus'] });
     },
     onError: () => {
-      useUIStore
-        .getState()
-        .addToast({ type: 'error', message: 'Operation failed. Please try again.' });
+      useUIStore.getState().addToast({ type: 'error', message: 'Operation failed. Please try again.' });
     },
   });
 
@@ -1229,14 +1057,12 @@ export default function ChatLensPage() {
       return sessionId;
     },
     onError: () => {
-      useUIStore
-        .getState()
-        .addToast({ type: 'error', message: 'Operation failed. Please try again.' });
+      useUIStore.getState().addToast({ type: 'error', message: 'Operation failed. Please try again.' });
     },
     onSuccess: (deletedId: string) => {
       deleteMessagesForSession(deletedId);
-      setStoredConversations((prev) => {
-        const next = prev.filter((c) => c.id !== deletedId);
+      setStoredConversations(prev => {
+        const next = prev.filter(c => c.id !== deletedId);
         saveConversations(next);
         return next;
       });
@@ -1522,36 +1348,114 @@ export default function ChatLensPage() {
   // Message renderer
   // ──────────────────────────────────────────────
 
-  const renderMessage = useCallback(
-    (msgIdx: number, message: Message) => {
-      const isPinned = pinnedMessages.has(message.id) || message.pinned;
-      const timeStr = message.timestamp
-        ? new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        : '';
+  const renderMessage = useCallback((msgIdx: number, message: Message) => {
+    const isPinned = pinnedMessages.has(message.id) || message.pinned;
+    const timeStr = message.timestamp ? new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
 
-      return (
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.25, ease: 'easeOut' }}
-          className={cn(
-            'flex gap-4 px-4 lg:px-6 py-3 group relative',
-            message.role === 'user' ? 'flex-row-reverse' : '',
-            isPinned && 'bg-yellow-500/5 border-l-2 border-l-yellow-500/50'
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.25, ease: 'easeOut' }}
+        className={cn(
+          'flex gap-4 px-4 lg:px-6 py-3 group relative',
+          message.role === 'user' ? 'flex-row-reverse' : '',
+          isPinned && 'bg-yellow-500/5 border-l-2 border-l-yellow-500/50'
+        )}
+      >
+        <div className={cn(
+          'w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg',
+          message.role === 'user'
+            ? 'bg-gradient-to-br from-neon-purple to-purple-700'
+            : 'bg-gradient-to-br from-neon-cyan/30 to-cyan-900/40 ring-1 ring-neon-cyan/20'
+        )}>
+          {message.role === 'user' ? (
+            <User className="w-5 h-5 text-white" />
+          ) : (
+            <Bot className="w-5 h-5 text-neon-cyan" />
           )}
         >
           <div
             className={cn(
               'w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg',
               message.role === 'user'
-                ? 'bg-gradient-to-br from-neon-purple to-purple-700'
-                : 'bg-gradient-to-br from-neon-cyan/30 to-cyan-900/40 ring-1 ring-neon-cyan/20'
+                ? 'bg-neon-purple/10 border-neon-purple/30 ml-auto'
+                : 'bg-lattice-bg border-lattice-border'
+            )}>
+              <div className="flex items-center gap-1 mb-1 text-gray-500">
+                <Quote className="w-3 h-3" />
+                <span>Replying to</span>
+              </div>
+              <p className="truncate">{message.quotedContent}</p>
+            </div>
+          )}
+
+          <div className={cn(
+            'inline-block p-4 rounded-2xl shadow-sm',
+            message.role === 'user'
+              ? 'bg-gradient-to-br from-neon-purple to-purple-700 text-white rounded-br-md'
+              : message.role === 'system'
+                ? 'bg-red-500/10 border border-red-500/30 text-red-300 rounded-bl-md'
+                : 'bg-lattice-surface border border-lattice-border text-gray-200 rounded-bl-md hover:border-lattice-border/80 transition-colors'
+          )}>
+            <p className="whitespace-pre-wrap leading-relaxed">{message.content}</p>
+
+            {/* Attachment chips on user messages */}
+            {message.attachments && message.attachments.length > 0 && (
+              <div className="mt-2 pt-2 border-t border-white/10 flex flex-wrap gap-1.5">
+                {message.attachments.map((att, i) => (
+                  <span key={i} className="inline-flex items-center gap-1.5 px-2 py-1 bg-white/10 rounded text-xs">
+                    <Paperclip className="w-3 h-3" />
+                    <span className="truncate max-w-[120px]">{att.name}</span>
+                    <span className="text-white/50">{formatBytes(att.size)}</span>
+                  </span>
+                ))}
+              </div>
             )}
-          >
-            {message.role === 'user' ? (
-              <User className="w-5 h-5 text-white" />
-            ) : (
-              <Bot className="w-5 h-5 text-neon-cyan" />
+
+            {message.refs && message.refs.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-lattice-border/50">
+                <p className="text-xs text-gray-400 mb-2">Referenced DTUs:</p>
+                <div className="flex flex-wrap gap-1">
+                  {message.refs.slice(0, 5).map((ref) => (
+                    <button
+                      key={ref.id}
+                      onClick={() => setInspectingDtuId(ref.id)}
+                      className="text-xs px-2 py-1 bg-neon-purple/20 text-neon-purple rounded cursor-pointer hover:bg-neon-purple/30 transition-colors"
+                      title={`View DTU: ${ref.id}`}
+                    >
+                      {ref.title}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Web sources panel */}
+            {message.sources && message.sources.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-lattice-border/50">
+                <div className="flex items-center gap-1.5 text-xs text-neon-cyan/80 mb-2">
+                  <Globe className="w-3 h-3" />
+                  <span>Web Sources</span>
+                </div>
+                <div className="space-y-1.5">
+                  {message.sources.map((src, i) => (
+                    <a
+                      key={`${src.url}-${i}`}
+                      href={src.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-start gap-2 p-1.5 rounded bg-neon-cyan/5 hover:bg-neon-cyan/10 transition-colors group/src"
+                    >
+                      <ExternalLink className="w-3 h-3 mt-0.5 text-neon-cyan/60 flex-shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs text-neon-cyan/90 truncate group-hover/src:text-neon-cyan">{src.title}</p>
+                        <p className="text-[10px] text-gray-500 truncate">{src.source}</p>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
           <div className={cn('flex-1 max-w-2xl', message.role === 'user' ? 'text-right' : '')}>
@@ -1874,29 +1778,10 @@ export default function ChatLensPage() {
               )}
             </div>
           </div>
-        </motion.div>
-      );
-    },
-    [
-      feedbackState,
-      feedbackMutation,
-      forgeMutation,
-      regenerateMutation,
-      handleRegenerate,
-      copyToClipboard,
-      formatTime,
-      pinnedMessages,
-      copiedMessageId,
-      togglePin,
-      quoteMessage,
-      editingMessageId,
-      editContent,
-      startEditMessage,
-      saveEditMessage,
-      cancelEditMessage,
-      deleteMessage,
-    ]
-  );
+        </div>
+      </motion.div>
+    );
+  }, [feedbackState, feedbackMutation, forgeMutation, regenerateMutation, handleRegenerate, copyToClipboard, formatTime, pinnedMessages, copiedMessageId, togglePin, quoteMessage]);
 
   // ──────────────────────────────────────────────
   // Loading / Error states
@@ -1916,12 +1801,7 @@ export default function ChatLensPage() {
   if (isError) {
     return (
       <div className="flex items-center justify-center h-full p-8">
-        <ErrorState
-          error={error?.message}
-          onRetry={() => {
-            refetch();
-          }}
-        />
+        <ErrorState error={error?.message} onRetry={() => { refetch(); }} />
       </div>
     );
   }
@@ -1955,11 +1835,58 @@ export default function ChatLensPage() {
       />
       <UniversalActions domain="chat" artifactId={null} compact />
       <div className="flex-1 flex overflow-hidden relative">
-        {/* Mobile sidebar backdrop */}
-        {chatSidebarOpen && (
-          <div
-            className="lg:hidden fixed inset-0 bg-black/50 z-30"
-            onClick={() => setChatSidebarOpen(false)}
+      {/* Mobile sidebar backdrop */}
+      {chatSidebarOpen && (
+        <div
+          className="lg:hidden fixed inset-0 bg-black/50 z-30"
+          onClick={() => setChatSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside
+        className={cn(
+          'w-80 border-r border-lattice-border flex flex-col bg-lattice-surface z-40 transition-transform duration-200',
+          'fixed inset-y-0 left-0 lg:relative lg:translate-x-0',
+          chatSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        )}
+        role="complementary"
+        aria-label="Conversation list"
+      >
+        <div className="p-4 border-b border-lattice-border">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+              <Bot className="w-6 h-6 text-neon-cyan" />
+              Chat
+            </h2>
+            <button
+              className="p-2 hover:bg-lattice-bg rounded-lg transition-colors"
+              aria-label="Chat settings"
+              onClick={() => useUIStore.getState().addToast({ type: 'info', message: 'Use the mode selector in the chat rail to configure chat behavior' })}
+            >
+              <Settings className="w-5 h-5 text-gray-400" />
+            </button>
+          </div>
+          <button
+            onClick={() => { startNewChat(); setChatSidebarOpen(false); }}
+            className="w-full flex items-center justify-center gap-2 py-2.5 bg-neon-cyan text-black font-medium rounded-lg hover:bg-neon-cyan/90 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            New Chat
+          </button>
+        </div>
+
+        {/* DTU Context */}
+        <div className="p-3 border-t border-white/10 space-y-3">
+          <ArtifactUploader lens="chat" acceptTypes="*/*" multi compact onUploadComplete={() => refetchDTUs()} />
+          <LensContextPanel
+            hyperDTUs={hyperDTUs}
+            megaDTUs={megaDTUs}
+            regularDTUs={regularDTUs}
+            tierDistribution={tierDistribution}
+            onPublish={(dtu) => publishToMarketplace({ dtuId: dtu.id })}
+            title="Chat DTUs"
+            className="!bg-transparent !border-0 !p-0"
           />
         )}
 
@@ -2004,27 +1931,63 @@ export default function ChatLensPage() {
             </button>
           </div>
 
-          {/* DTU Context */}
-          <div className="p-3 border-t border-white/10 space-y-3">
-            <ArtifactUploader
-              lens="chat"
-              acceptTypes="*/*"
-              multi
-              compact
-              onUploadComplete={() => refetchDTUs()}
-            />
-            <LensContextPanel
-              hyperDTUs={hyperDTUs}
-              megaDTUs={megaDTUs}
-              regularDTUs={regularDTUs}
-              tierDistribution={tierDistribution}
-              onPublish={(dtu) => publishToMarketplace({ dtuId: dtu.id })}
-              title="Chat DTUs"
-              className="!bg-transparent !border-0 !p-0"
-            />
-            <FeedbackWidget targetType="lens" targetId="chat" />
-            <FoundationCard type="status" />
-          </div>
+        <div className="flex-1 overflow-y-auto" role="list" aria-label="Conversations">
+          {filteredConversations.length === 0 && (
+            <div className="p-6 text-center text-gray-500 text-sm">
+              {conversationSearch ? 'No matching conversations' : 'No conversations yet. Start a new chat!'}
+            </div>
+          )}
+          {filteredConversations.map((conv: Conversation) => (
+            <div
+              key={conv.id}
+              className={cn(
+                'group relative w-full p-4 text-left hover:bg-lattice-bg transition-colors border-b border-lattice-border/50 cursor-pointer',
+                selectedConversation === conv.id && 'bg-neon-cyan/10 border-l-2 border-l-neon-cyan'
+              )}
+              role="listitem"
+              aria-current={selectedConversation === conv.id ? 'true' : undefined}
+              onClick={() => { setSelectedConversation(conv.id); setChatSidebarOpen(false); }}
+            >
+              <div className="flex items-start gap-3">
+                <div className={cn(
+                  'w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0',
+                  selectedConversation === conv.id ? 'bg-neon-cyan/20' : 'bg-lattice-bg'
+                )}>
+                  <MessageSquare className={cn(
+                    'w-5 h-5',
+                    selectedConversation === conv.id ? 'text-neon-cyan' : 'text-gray-400'
+                  )} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="font-medium text-white truncate text-sm">{conv.title}</h3>
+                    <span className="text-[10px] text-gray-500 whitespace-nowrap flex-shrink-0">
+                      {formatRelativeTime(conv.updatedAt)}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-400 truncate mt-0.5">{conv.lastMessage || 'No messages'}</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-[10px] text-gray-500">{conv.messageCount} message{conv.messageCount !== 1 ? 's' : ''}</span>
+                  </div>
+                </div>
+              </div>
+              {/* Delete button - visible on hover */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  deleteConversationMutation.mutate(conv.id);
+                }}
+                disabled={deleteConversationMutation.isPending}
+                className="absolute top-3 right-3 p-1.5 rounded-md opacity-0 group-hover:opacity-100 hover:bg-red-500/20 text-gray-500 hover:text-red-400 transition-all"
+                title="Delete conversation"
+                aria-label={`Delete conversation: ${conv.title}`}
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      </aside>
 
           <div className="p-4">
             <div className="relative">
@@ -2048,26 +2011,244 @@ export default function ChatLensPage() {
                   : 'No conversations yet. Start a new chat!'}
               </div>
             )}
-            {filteredConversations.map((conv: Conversation) => (
-              <div
-                key={conv.id}
-                className={cn(
-                  'group relative w-full p-4 text-left hover:bg-lattice-bg transition-colors border-b border-lattice-border/50 cursor-pointer',
-                  selectedConversation === conv.id &&
-                    'bg-neon-cyan/10 border-l-2 border-l-neon-cyan'
-                )}
-                role="listitem"
-                aria-current={selectedConversation === conv.id ? 'true' : undefined}
-                onClick={() => {
-                  setSelectedConversation(conv.id);
-                  setChatSidebarOpen(false);
-                }}
+          </div>
+
+          {/* Cognitive Status Bar */}
+          {cogStatus && (
+            <div className="hidden md:flex items-center gap-4 text-xs">
+              {exp && (
+                <div className="flex items-center gap-1.5 text-gray-400" title={`${exp.episodes} episodes, ${exp.patterns} patterns learned`}>
+                  <Brain className="w-3.5 h-3.5 text-neon-purple" />
+                  <span>{exp.patterns} patterns</span>
+                </div>
+              )}
+              {attn && (
+                <div className="flex items-center gap-1.5 text-gray-400" title={`${attn.activeThreads} active threads`}>
+                  <Eye className="w-3.5 h-3.5 text-neon-cyan" />
+                  <span>{attn.activeThreads} threads</span>
+                </div>
+              )}
+              {refl && (
+                <div className="flex items-center gap-1.5" title={`Self-calibration: ${((refl.calibration || 0) * 100).toFixed(0)}%`}>
+                  <Activity className={`w-3.5 h-3.5 ${(refl.calibration || 0) > 0.6 ? 'text-neon-green' : 'text-yellow-400'}`} />
+                  <span className={`${(refl.calibration || 0) > 0.6 ? 'text-neon-green' : 'text-yellow-400'}`}>
+                    {((refl.calibration || 0) * 100).toFixed(0)}%
+                  </span>
+                </div>
+              )}
+              {refl?.strengths?.length > 0 && (
+                <div className="flex items-center gap-1 text-neon-green" title={`Strengths: ${refl.strengths.join(', ')}`}>
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="flex items-center gap-2 relative">
+            <button
+              onClick={() => setShowMoreMenu(!showMoreMenu)}
+              className="p-2 hover:bg-lattice-bg rounded-lg transition-colors"
+              aria-label="Chat options"
+            >
+              <MoreVertical className="w-5 h-5 text-gray-400" />
+            </button>
+            <AnimatePresence>
+              {showMoreMenu && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="absolute top-full right-0 mt-2 w-48 bg-lattice-surface border border-lattice-border rounded-lg shadow-xl z-50 overflow-hidden"
+                >
+                  <button
+                    onClick={handleExportChat}
+                    disabled={messages.length === 0}
+                    className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-200 hover:bg-lattice-bg transition-colors disabled:opacity-50"
+                  >
+                    <Download className="w-4 h-4" />
+                    Export Chat
+                  </button>
+                  <button
+                    onClick={() => { startNewChat(); setShowMoreMenu(false); }}
+                    className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-200 hover:bg-lattice-bg transition-colors"
+                  >
+                    <Plus className="w-4 h-4" />
+                    New Conversation
+                  </button>
+                  {selectedConversation && (
+                    <button
+                      onClick={() => {
+                        deleteConversationMutation.mutate(selectedConversation);
+                        setShowMoreMenu(false);
+                      }}
+                      disabled={deleteConversationMutation.isPending}
+                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors border-t border-lattice-border disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${deleteConversationMutation.isPending ? 'animate-spin' : ''}`} />
+                      {deleteConversationMutation.isPending ? 'Deleting...' : 'Delete Conversation'}
+                    </button>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </header>
+
+        {/* Messages */}
+        <div className="flex-1 overflow-hidden flex flex-col" role="log" aria-label="Chat messages" aria-live="polite">
+          {messages.length === 0 && (
+            <div className="h-full flex flex-col items-center justify-center text-center">
+              <div className="w-20 h-20 rounded-full bg-neon-cyan/10 flex items-center justify-center mb-6">
+                <Bot className="w-10 h-10 text-neon-cyan" />
+              </div>
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.5, ease: 'easeOut' }}
+                className="w-20 h-20 rounded-2xl bg-gradient-to-br from-neon-cyan/30 to-cyan-900/40 ring-1 ring-neon-cyan/20 flex items-center justify-center mb-6 shadow-lg shadow-neon-cyan/10"
               >
-                <div className="flex items-start gap-3">
+                <Bot className="w-10 h-10 text-neon-cyan" />
+              </motion.div>
+              <motion.h2
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15, duration: 0.4 }}
+                className="text-2xl font-bold text-white mb-2"
+              >Yo. What&apos;s the move?</motion.h2>
+              <motion.p
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.25, duration: 0.4 }}
+                className="text-gray-400 max-w-md mb-8"
+              >
+                Pick a direction or ask me anything. Everything we talk about becomes knowledge in your lattice.
+              </motion.p>
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.35, duration: 0.4 }}
+                className="grid grid-cols-2 gap-3 max-w-lg"
+              >
+                {[
+                  { icon: Sparkles, label: 'Explain a concept', desc: 'Break anything down' },
+                  { icon: Code, label: 'Help me code', desc: 'Debug, build, ship' },
+                  { icon: FileText, label: 'Summarize text', desc: 'Condense anything' },
+                  { icon: Brain, label: 'Forge a DTU', desc: 'Create knowledge' },
+                ].map(suggestion => (
+                  <button
+                    key={suggestion.label}
+                    onClick={() => setInput(suggestion.label)}
+                    className="flex items-start gap-3 p-4 bg-lattice-surface border border-lattice-border rounded-xl hover:border-neon-cyan/50 hover:bg-lattice-surface/80 transition-all text-left group"
+                  >
+                    <div className="w-9 h-9 rounded-lg bg-neon-cyan/10 flex items-center justify-center flex-shrink-0 group-hover:bg-neon-cyan/20 transition-colors">
+                      <suggestion.icon className="w-4.5 h-4.5 text-neon-cyan" />
+                    </div>
+                    <div>
+                      <span className="text-sm font-medium text-white block">{suggestion.label}</span>
+                      <span className="text-xs text-gray-500">{suggestion.desc}</span>
+                    </div>
+                  </button>
+                ))}
+              </motion.div>
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.6, duration: 0.4 }}
+                className="text-xs text-gray-500 mt-6"
+              >
+                Type <code className="px-1.5 py-0.5 bg-lattice-surface rounded text-gray-400">/help</code> for slash commands &middot; <code className="px-1.5 py-0.5 bg-lattice-surface rounded text-gray-400">/forge</code> to create DTUs
+              </motion.p>
+            </div>
+          )}
+
+          {messages.length > 0 && (
+            <Virtuoso
+              data={messages}
+              followOutput="smooth"
+              initialTopMostItemIndex={messages.length - 1}
+              className="flex-1"
+              itemContent={renderMessage}
+            />
+          )}
+
+          {/* Streaming indicator */}
+          {isStreaming && streamingContent && (
+            <div className="flex gap-4 px-4 lg:px-6 pb-2">
+              <div className="w-10 h-10 rounded-lg bg-neon-cyan/20 flex items-center justify-center flex-shrink-0">
+                <Bot className="w-5 h-5 text-neon-cyan animate-pulse" />
+              </div>
+              <div className="flex-1 max-w-2xl">
+                <div className="inline-block p-4 rounded-2xl rounded-bl-md bg-lattice-surface border border-neon-cyan/30 text-gray-200">
+                  <p className="whitespace-pre-wrap">{streamingContent}</p>
+                  <span className="inline-block w-2 h-4 bg-neon-cyan/60 animate-pulse ml-0.5" />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Thinking indicator (when not streaming) */}
+          {(sendMutation.isPending || regenerateMutation.isPending) && !isStreaming && (
+            <div className="flex gap-4 px-4 lg:px-6 pb-2" role="status" aria-label="AI is thinking">
+              <div className="w-10 h-10 rounded-lg bg-neon-cyan/20 flex items-center justify-center flex-shrink-0">
+                <Bot className="w-5 h-5 text-neon-cyan animate-pulse" />
+              </div>
+              <div className="flex-1 max-w-2xl">
+                <div className="inline-block p-4 rounded-2xl rounded-bl-md bg-lattice-surface border border-lattice-border">
+                  <div className="flex items-center gap-2 text-gray-400">
+                    <div className="w-2 h-2 bg-neon-cyan rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <div className="w-2 h-2 bg-neon-cyan rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <div className="w-2 h-2 bg-neon-cyan rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                  </div>
+                  <span className="sr-only">AI is generating a response...</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+        </div>
+
+        {/* Input Area */}
+        <div className="p-4 border-t border-lattice-border bg-lattice-surface">
+          <div className="max-w-4xl mx-auto">
+
+            {/* Quoted message indicator */}
+            {quotedMessage && (
+              <div className="flex items-center gap-2 mb-2 p-2 bg-lattice-bg border border-lattice-border rounded-lg">
+                <Quote className="w-4 h-4 text-neon-cyan flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-gray-400 mb-0.5">
+                    Replying to {quotedMessage.role === 'user' ? 'yourself' : 'assistant'}
+                  </p>
+                  <p className="text-sm text-gray-300 truncate">{quotedMessage.content}</p>
+                </div>
+                <button
+                  onClick={() => setQuotedMessage(null)}
+                  className="p-1 hover:bg-lattice-surface rounded transition-colors flex-shrink-0"
+                  aria-label="Cancel reply"
+                >
+                  <X className="w-4 h-4 text-gray-400" />
+                </button>
+              </div>
+            )}
+
+            {/* Attachment chips */}
+            {attachments.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-2">
+                {attachments.map(att => (
                   <div
-                    className={cn(
-                      'w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0',
-                      selectedConversation === conv.id ? 'bg-neon-cyan/20' : 'bg-lattice-bg'
+                    key={att.id}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-lattice-bg border border-lattice-border rounded-lg text-sm"
+                  >
+                    {att.preview ? (
+                      <Image
+                        src={att.preview}
+                        alt={att.name}
+                        width={24}
+                        height={24}
+                        className="w-6 h-6 rounded object-cover"
+                      />
+                    ) : (
+                      <FileText className="w-4 h-4 text-gray-400" />
                     )}
                   >
                     <MessageSquare
@@ -3254,35 +3435,16 @@ export default function ChatLensPage() {
             </div>
           </motion.div>
         )}
-      </AnimatePresence>
+      </div>
+      </div>
 
-      {/* Atlas Overlay — material query results */}
-      {atlasLoading || atlasResult ? (
-        <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-40">
-          <AtlasOverlay query={atlasQuery} result={atlasResult as never} loading={atlasLoading} />
-        </div>
-      ) : null}
-
-      {/* Chat Route Overlay — shows lens attribution on routed messages */}
-      {routeMeta && (
-        <ChatRouteOverlay
-          route={routeMeta}
-          onConfirm={() => setRouteMeta(null)}
-          onCancel={() => setRouteMeta(null)}
+      {/* DTU Detail Overlay -- opened when clicking a DTU reference */}
+      {inspectingDtuId && (
+        <DTUDetailView
+          dtuId={inspectingDtuId}
+          onClose={() => setInspectingDtuId(null)}
+          onNavigate={(id) => setInspectingDtuId(id)}
         />
-      )}
-
-      {/* Forge Card — inline artifact creation when forge envelope exists */}
-      {forgeEnvelope && (
-        <div className="absolute bottom-20 right-4 z-40 w-96">
-          <ForgeCard
-            dtu={forgeEnvelope.dtu as never}
-            presentation={forgeEnvelope.presentation as never}
-            actions={forgeEnvelope.actions as never}
-            onSave={() => setForgeEnvelope(null)}
-            onDelete={() => setForgeEnvelope(null)}
-          />
-        </div>
       )}
     </div>
   );

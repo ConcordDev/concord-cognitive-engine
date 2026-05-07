@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -314,19 +314,7 @@ function WorkoutStreakCounter() {
   const [streak, setStreak] = useState(7);
   const [bestStreak, setBestStreak] = useState(14);
   const days = ['M','T','W','T','F','S','S'];
-  const [activeDays, setActiveDays] = useState([true, true, true, true, false, true, true]);
-
-  const toggleDay = (dayIndex: number) => {
-    setActiveDays(prev => {
-      const next = [...prev];
-      next[dayIndex] = !next[dayIndex];
-      // Recalculate streak from active days
-      const newStreak = next.filter(Boolean).length;
-      setStreak(newStreak);
-      if (newStreak > bestStreak) setBestStreak(newStreak);
-      return next;
-    });
-  };
+  const activeDays = [true, true, true, true, false, true, true];
 
   return (
     <div className="panel p-4 space-y-3">
@@ -354,9 +342,9 @@ function WorkoutStreakCounter() {
           <div className="flex gap-1">
             {days.map((d, i) => (
               <div key={i} className="flex flex-col items-center gap-1">
-                <button onClick={() => toggleDay(i)} className={cn('w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors cursor-pointer',
-                  activeDays[i] ? 'bg-orange-500 text-white' : 'bg-white/5 text-gray-500 hover:bg-white/10'
-                )}>{d}</button>
+                <div className={cn('w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors',
+                  activeDays[i] ? 'bg-orange-500 text-white' : 'bg-white/5 text-gray-500'
+                )}>{d}</div>
               </div>
             ))}
           </div>
@@ -503,7 +491,7 @@ export default function FitnessLensPage() {
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('fitness');
 
   /* ---------- core state ---------- */
-  const [showFeatures, setShowFeatures] = useState(true);
+  const [showFeatures, setShowFeatures] = useState(false);
   const [showDailyPanel, setShowDailyPanel] = useState(false);
   const [activeTab, setActiveTab] = useState<ModeTab>('Clients');
   const [searchQuery, setSearchQuery] = useState('');

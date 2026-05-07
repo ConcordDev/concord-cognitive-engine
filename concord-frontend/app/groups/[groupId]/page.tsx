@@ -2,8 +2,6 @@
 
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
-import Link from 'next/link';
-import Image from 'next/image';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -20,6 +18,7 @@ import {
   UserCircle,
   PenSquare,
   X,
+  Eye,
 } from 'lucide-react';
 import { cn, formatNumber, formatRelativeTime } from '@/lib/utils';
 import { api } from '@/lib/api/client';
@@ -287,11 +286,9 @@ function MembersSidebar({
                         )}
                       >
                         {member.avatarUrl ? (
-                          <Image
+                          <img
                             src={member.avatarUrl}
                             alt={member.displayName}
-                            width={32}
-                            height={32}
                             className="w-full h-full rounded-full object-cover"
                           />
                         ) : (
@@ -396,12 +393,12 @@ export default function GroupDetailPage() {
         <div className="text-center">
           <Users className="w-12 h-12 text-gray-600 mx-auto mb-4" />
           <h2 className="text-white font-medium mb-2">Group not found</h2>
-          <Link
+          <a
             href="/groups"
             className="text-sm text-neon-cyan hover:underline"
           >
             Browse groups
-          </Link>
+          </a>
         </div>
       </div>
     );
@@ -417,13 +414,13 @@ export default function GroupDetailPage() {
         <div className="max-w-4xl mx-auto px-4 -mt-8">
           <div className="flex items-end justify-between pb-4">
             <div>
-              <Link
+              <a
                 href="/groups"
                 className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-white transition-colors mb-2"
               >
                 <ChevronLeft className="w-3 h-3" />
                 All Groups
-              </Link>
+              </a>
               <h1 className="text-2xl font-bold text-white">{group.name}</h1>
               <p className="text-sm text-gray-400 mt-1 max-w-xl">
                 {group.description}

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { ds } from '@/lib/design-system';
@@ -2687,11 +2687,11 @@ export default function AccountingLensPage() {
             )}
 
             {/* Journal Entry Timeline */}
-            {transactions.length > 0 ? (
+            {transactions.length > 0 && (
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className={ds.panel}>
                 <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2"><Clock className="w-4 h-4 text-neon-cyan" /> Recent Journal Entries</h3>
                 <div className="space-y-0">
-                  {transactionData.items.slice(0, 5).map((t, _i) => {
+                  {transactionData.items.slice(0, 5).map((t, i) => {
                     const d = t.data as unknown as Transaction;
                     return (
                       <div key={t.id} className="flex items-center gap-3 py-2 border-b border-white/5 last:border-0">
@@ -2709,10 +2709,6 @@ export default function AccountingLensPage() {
                   })}
                 </div>
               </motion.div>
-            ) : (
-              <div className="text-center py-6 text-gray-500 text-sm border border-dashed border-white/10 rounded-lg">
-                <p>No transactions recorded yet. Add transactions to see your financial ledger.</p>
-              </div>
             )}
           </>
         );

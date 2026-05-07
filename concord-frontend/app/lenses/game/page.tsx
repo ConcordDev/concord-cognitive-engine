@@ -5,7 +5,6 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { useLensData } from '@/lib/hooks/use-lens-data';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Trophy, Star, Zap, Target, Users, Swords, Crown,
@@ -229,25 +228,10 @@ export default function GameLensPage() {
 
   const [activeTab, setActiveTab] = useState<MainTab>('dashboard');
   const [lbPeriod, setLbPeriod] = useState<LeaderboardPeriod>('alltime');
-  const { items: shopLensItems, update: updateShopItem } = useLensData<ShopItem>('game', 'shop-item', { noSeed: true });
-
-  // Backend action wiring
-  const runGameAction = useRunArtifact('game');
-  const [gameActionResult, setGameActionResult] = useState<Record<string, unknown> | null>(null);
-  const [gameRunning, setGameRunning] = useState<string | null>(null);
-
-  const handleGameAction = useCallback(async (action: string) => {
-    const targetId = shopLensItems[0]?.id;
-    if (!targetId) return;
-    setGameRunning(action);
-    try {
-      const res = await runGameAction.mutateAsync({ id: targetId, action });
-      if (res.ok === false) { setGameActionResult({ _action: action, message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setGameActionResult({ _action: action, ...(res.result as Record<string, unknown>) }); }
-    } catch (e) { console.error(`Game action ${action} failed:`, e); setGameActionResult({ message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` }); }
-    setGameRunning(null);
-  }, [shopLensItems, runGameAction]);
+  const { items: shopLensItems, update: updateShopItem } = useLensData<ShopItem>('game', 'shop-item', {
+    seed: SHOP_ITEMS.map(s => ({ title: s.name, data: s as unknown as Record<string, unknown> })),
+  });
   const [shopItems, setShopItems] = useState<ShopItem[]>([]);
-  const [purchasingIds, setPurchasingIds] = useState<Set<string>>(new Set());
 
   // Sync shop items from API
   useEffect(() => {
@@ -262,463 +246,12 @@ export default function GameLensPage() {
   const [unlockAnim, setUnlockAnim] = useState<string | null>(null);
   const [questFilter, setQuestFilter] = useState<'all' | 'daily' | 'weekly' | 'challenge'>('all');
 
-  // ---------------------------------------------------------------------------
-  // Mini-Game Engine State
-  // ---------------------------------------------------------------------------
-  // All simulation state lives in refs to avoid 60fps re-renders.
-  // React state is synced periodically (every ~150ms) for HUD display only.
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const animFrameRef = useRef<number>(0);
-  const gameLoopRef = useRef<boolean>(false);
-
-  interface MiniGameTarget {
-    id: number;
-    x: number;
-    y: number;
-    radius: number;
-    life: number;      // frames remaining
-    maxLife: number;
-    points: number;
-    color: string;
-    spawned: number;    // frame it appeared
-    vx: number;         // horizontal drift velocity
-    vy: number;         // vertical drift velocity
-  }
-
-  interface HitParticle {
-    x: number;
-    y: number;
-    vx: number;
-    vy: number;
-    life: number;
-    color: string;
-    size: number;
-  }
-
-  interface FloatingText {
-    x: number;
-    y: number;
-    text: string;
-    life: number;
-    color: string;
-  }
-
-  // React state -- updated periodically from refs, drives HUD display
-  const [mgState, setMgState] = useState<'idle' | 'playing' | 'ended'>('idle');
-  const [mgScore, setMgScore] = useState(0);
-  const [mgTimeLeft, setMgTimeLeft] = useState(30);
-  const [mgHits, setMgHits] = useState(0);
-  const [mgMisses, setMgMisses] = useState(0);
-  const [mgCombo, setMgCombo] = useState(0);
-  const [mgBestCombo, setMgBestCombo] = useState(0);
-  const [mgXpAwarded, setMgXpAwarded] = useState(0);
-
-  // Simulation refs -- mutated directly inside requestAnimationFrame
-  const simRef = useRef({
-    score: 0,
-    timeLeft: 30,
-    hits: 0,
-    misses: 0,
-    combo: 0,
-    bestCombo: 0,
-    targets: [] as MiniGameTarget[],
-    particles: [] as HitParticle[],
-    floatingTexts: [] as FloatingText[],
-    screenShake: 0,
-    spawnInterval: 900,     // ms, decreases over time for difficulty ramp
-    nextId: 1,
-  });
-
-  const TARGET_COLORS = ['#a855f7', '#06b6d4', '#22c55e', '#eab308', '#ec4899', '#3b82f6'];
-
-  // Sync simulation refs to React state for HUD (called every ~150ms from game loop)
-  const syncStateFromSim = useCallback(() => {
-    const s = simRef.current;
-    setMgScore(s.score);
-    setMgTimeLeft(s.timeLeft);
-    setMgHits(s.hits);
-    setMgMisses(s.misses);
-    setMgCombo(s.combo);
-    setMgBestCombo(s.bestCombo);
-  }, []);
-
-  const startMiniGame = useCallback(() => {
-    // Reset React state
-    setMgScore(0);
-    setMgTimeLeft(30);
-    setMgHits(0);
-    setMgMisses(0);
-    setMgCombo(0);
-    setMgBestCombo(0);
-    setMgXpAwarded(0);
-    // Reset simulation refs
-    simRef.current = {
-      score: 0, timeLeft: 30, hits: 0, misses: 0, combo: 0, bestCombo: 0,
-      targets: [], particles: [], floatingTexts: [], screenShake: 0,
-      spawnInterval: 900, nextId: 1,
-    };
-    setMgState('playing');
-    gameLoopRef.current = true;
-  }, []);
-
-  const endMiniGame = useCallback(() => {
-    gameLoopRef.current = false;
-    if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
-    // Final sync
-    const s = simRef.current;
-    setMgScore(s.score);
-    setMgHits(s.hits);
-    setMgMisses(s.misses);
-    setMgBestCombo(s.bestCombo);
-    setMgCombo(0);
-    setMgTimeLeft(0);
-    setMgState('ended');
-    // Award XP: 1 XP per 10 points scored, minimum 5 if any hits
-    const xpEarned = Math.max(s.hits > 0 ? 5 : 0, Math.floor(s.score / 10));
-    setMgXpAwarded(xpEarned);
-    if (xpEarned > 0) {
-      setPlayerXp((prev) => prev + xpEarned);
-    }
-  }, []);
-
-  // Main game loop -- pure canvas rendering, no React setState per frame
-  useEffect(() => {
-    if (mgState !== 'playing') return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    let frameCount = 0;
-    let lastTimestamp = performance.now();
-    let secondAccumulator = 0;
-    let spawnAccumulator = 0;
-    let syncAccumulator = 0;
-    const SYNC_INTERVAL = 150; // ms between React state syncs
-
-    const spawnTarget = (): MiniGameTarget => {
-      const s = simRef.current;
-      // Difficulty ramp: targets get smaller and faster over time
-      const elapsed = 30 - s.timeLeft;
-      const difficultyScale = 1 + elapsed / 30; // 1.0 -> 2.0 over 30s
-      const baseRadius = 18 + Math.random() * 18;
-      const radius = Math.max(12, baseRadius / (1 + difficultyScale * 0.15));
-      const points = Math.round((40 - radius) + 5 * difficultyScale);
-      const life = Math.max(40, (80 + Math.floor(Math.random() * 50)) - elapsed);
-      const speed = 0.15 + Math.random() * 0.3 * difficultyScale;
-      const angle = Math.random() * Math.PI * 2;
-      return {
-        id: s.nextId++,
-        x: radius + Math.random() * (canvas.width - radius * 2),
-        y: 40 + radius + Math.random() * (canvas.height - radius * 2 - 40),
-        radius,
-        life,
-        maxLife: life,
-        points,
-        color: TARGET_COLORS[Math.floor(Math.random() * TARGET_COLORS.length)],
-        spawned: frameCount,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed,
-      };
-    };
-
-    const spawnParticles = (x: number, y: number, color: string, count: number) => {
-      const s = simRef.current;
-      for (let i = 0; i < count; i++) {
-        const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.5;
-        const speed = 1.5 + Math.random() * 3;
-        s.particles.push({
-          x, y,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed,
-          life: 20 + Math.random() * 15,
-          color,
-          size: 2 + Math.random() * 3,
-        });
-      }
-    };
-
-    const addFloatingText = (x: number, y: number, text: string, color: string) => {
-      simRef.current.floatingTexts.push({ x, y, text, life: 40, color });
-    };
-
-    const loop = (timestamp: number) => {
-      if (!gameLoopRef.current) return;
-
-      const dt = timestamp - lastTimestamp;
-      lastTimestamp = timestamp;
-      frameCount++;
-      const s = simRef.current;
-
-      // Timer countdown
-      secondAccumulator += dt;
-      if (secondAccumulator >= 1000) {
-        secondAccumulator -= 1000;
-        s.timeLeft = Math.max(0, s.timeLeft - 1);
-        // Ramp difficulty: spawn faster over time
-        s.spawnInterval = Math.max(350, 900 - (30 - s.timeLeft) * 20);
-        if (s.timeLeft <= 0) {
-          setTimeout(() => endMiniGame(), 0);
-          return;
-        }
-      }
-
-      // Spawn targets
-      spawnAccumulator += dt;
-      if (spawnAccumulator >= s.spawnInterval) {
-        spawnAccumulator -= s.spawnInterval;
-        s.targets.push(spawnTarget());
-      }
-
-      // Age targets, apply drift, remove expired
-      const alive: MiniGameTarget[] = [];
-      let missed = 0;
-      for (const t of s.targets) {
-        t.life--;
-        // Drift movement -- bounce off walls
-        t.x += t.vx;
-        t.y += t.vy;
-        if (t.x - t.radius < 0 || t.x + t.radius > canvas.width) t.vx *= -1;
-        if (t.y - t.radius < 40 || t.y + t.radius > canvas.height) t.vy *= -1;
-        t.x = Math.max(t.radius, Math.min(canvas.width - t.radius, t.x));
-        t.y = Math.max(40 + t.radius, Math.min(canvas.height - t.radius, t.y));
-        if (t.life > 0) {
-          alive.push(t);
-        } else {
-          missed++;
-        }
-      }
-      if (missed > 0) {
-        s.misses += missed;
-        s.combo = 0;
-      }
-      s.targets = alive;
-
-      // Update particles
-      s.particles = s.particles.filter((p) => {
-        p.x += p.vx;
-        p.y += p.vy;
-        p.vy += 0.08; // gravity
-        p.life--;
-        p.vx *= 0.98;
-        return p.life > 0;
-      });
-
-      // Update floating texts
-      s.floatingTexts = s.floatingTexts.filter((ft) => {
-        ft.y -= 0.8;
-        ft.life--;
-        return ft.life > 0;
-      });
-
-      // Decay screen shake
-      s.screenShake *= 0.85;
-      if (s.screenShake < 0.5) s.screenShake = 0;
-
-      // Sync to React periodically
-      syncAccumulator += dt;
-      if (syncAccumulator >= SYNC_INTERVAL) {
-        syncAccumulator -= SYNC_INTERVAL;
-        syncStateFromSim();
-      }
-
-      // --- DRAW ---
-      ctx.save();
-      // Apply screen shake
-      if (s.screenShake > 0) {
-        const sx = (Math.random() - 0.5) * s.screenShake;
-        const sy = (Math.random() - 0.5) * s.screenShake;
-        ctx.translate(sx, sy);
-      }
-
-      ctx.clearRect(-5, -5, canvas.width + 10, canvas.height + 10);
-
-      // Background grid with subtle pulse
-      const gridAlpha = 0.06 + Math.sin(frameCount * 0.02) * 0.02;
-      ctx.strokeStyle = `rgba(139, 92, 246, ${gridAlpha})`;
-      ctx.lineWidth = 1;
-      for (let x = 0; x < canvas.width; x += 40) {
-        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
-      }
-      for (let y = 0; y < canvas.height; y += 40) {
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
-      }
-
-      // Draw particles
-      for (const p of s.particles) {
-        ctx.save();
-        ctx.globalAlpha = Math.min(1, p.life / 10);
-        ctx.fillStyle = p.color;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size * (p.life / 30), 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-      }
-
-      // Draw targets
-      for (const t of s.targets) {
-        const lifeRatio = t.life / t.maxLife;
-        const pulse = 1 + Math.sin(frameCount * 0.15 + t.id) * 0.06;
-        const r = t.radius * pulse;
-
-        // Outer glow
-        ctx.save();
-        ctx.globalAlpha = lifeRatio * 0.25;
-        ctx.beginPath();
-        ctx.arc(t.x, t.y, r + 10, 0, Math.PI * 2);
-        ctx.fillStyle = t.color;
-        ctx.fill();
-        ctx.restore();
-
-        // Main circle
-        ctx.save();
-        ctx.globalAlpha = 0.2 + lifeRatio * 0.8;
-        ctx.beginPath();
-        ctx.arc(t.x, t.y, r, 0, Math.PI * 2);
-        ctx.fillStyle = t.color;
-        ctx.fill();
-
-        // Life ring (shrinks as life drains)
-        ctx.beginPath();
-        ctx.arc(t.x, t.y, r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * lifeRatio);
-        ctx.strokeStyle = lifeRatio < 0.3 ? '#ef4444' : '#ffffff';
-        ctx.lineWidth = 2.5;
-        ctx.stroke();
-
-        // Crosshair lines
-        ctx.beginPath();
-        ctx.moveTo(t.x - r * 0.4, t.y);
-        ctx.lineTo(t.x + r * 0.4, t.y);
-        ctx.moveTo(t.x, t.y - r * 0.4);
-        ctx.lineTo(t.x, t.y + r * 0.4);
-        ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-        ctx.lineWidth = 1;
-        ctx.stroke();
-
-        // Points label
-        ctx.fillStyle = '#ffffff';
-        ctx.font = `bold ${Math.max(9, Math.round(r * 0.55))}px monospace`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(`${t.points}`, t.x, t.y);
-        ctx.restore();
-      }
-
-      // Draw floating texts (score popups)
-      for (const ft of s.floatingTexts) {
-        ctx.save();
-        ctx.globalAlpha = Math.min(1, ft.life / 15);
-        ctx.fillStyle = ft.color;
-        ctx.font = 'bold 16px monospace';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(ft.text, ft.x, ft.y);
-        ctx.restore();
-      }
-
-      // HUD bar background
-      ctx.fillStyle = 'rgba(0,0,0,0.5)';
-      ctx.fillRect(0, 0, canvas.width, 36);
-
-      // HUD text
-      ctx.save();
-      ctx.fillStyle = 'rgba(255,255,255,0.9)';
-      ctx.font = 'bold 14px monospace';
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(`Score: ${s.score}`, 12, 18);
-      ctx.textAlign = 'right';
-      // Timer color shifts red when low
-      ctx.fillStyle = s.timeLeft <= 5 ? '#ef4444' : s.timeLeft <= 10 ? '#eab308' : 'rgba(255,255,255,0.9)';
-      ctx.fillText(`Time: ${s.timeLeft}s`, canvas.width - 12, 18);
-      // Combo
-      if (s.combo > 1) {
-        ctx.fillStyle = '#eab308';
-        ctx.font = 'bold 15px monospace';
-        ctx.textAlign = 'center';
-        ctx.fillText(`COMBO x${s.combo}`, canvas.width / 2, 18);
-      }
-      // Accuracy
-      const totalShots = s.hits + s.misses;
-      if (totalShots > 0) {
-        ctx.fillStyle = 'rgba(255,255,255,0.5)';
-        ctx.font = '11px monospace';
-        ctx.textAlign = 'left';
-        ctx.fillText(`Acc: ${Math.round((s.hits / totalShots) * 100)}%`, 160, 18);
-      }
-      ctx.restore();
-
-      ctx.restore(); // pop screen shake
-
-      animFrameRef.current = requestAnimationFrame(loop);
-    };
-
-    // Handle canvas clicks within the loop scope via a ref-based approach
-    const clickHandler = (e: MouseEvent) => {
-      if (!gameLoopRef.current) return;
-      const rect = canvas.getBoundingClientRect();
-      const scaleX = canvas.width / rect.width;
-      const scaleY = canvas.height / rect.height;
-      const mx = (e.clientX - rect.left) * scaleX;
-      const my = (e.clientY - rect.top) * scaleY;
-      const s = simRef.current;
-
-      // Find the topmost target that was clicked
-      let hitIndex = -1;
-      for (let i = s.targets.length - 1; i >= 0; i--) {
-        const t = s.targets[i];
-        const dx = mx - t.x;
-        const dy = my - t.y;
-        if (dx * dx + dy * dy <= t.radius * t.radius) {
-          hitIndex = i;
-          break;
-        }
-      }
-
-      if (hitIndex >= 0) {
-        const target = s.targets[hitIndex];
-        s.combo++;
-        s.hits++;
-        if (s.combo > s.bestCombo) s.bestCombo = s.combo;
-        const comboMultiplier = 1 + (s.combo - 1) * 0.25;
-        const points = Math.round(target.points * comboMultiplier);
-        s.score += points;
-        // Visual effects
-        spawnParticles(target.x, target.y, target.color, 10 + s.combo * 2);
-        addFloatingText(target.x, target.y - target.radius - 8,
-          s.combo > 1 ? `+${points} x${s.combo}` : `+${points}`,
-          s.combo > 3 ? '#eab308' : '#ffffff');
-        s.screenShake = Math.min(8, 2 + s.combo);
-        // Remove the target
-        s.targets.splice(hitIndex, 1);
-      } else {
-        // Clicked empty space -- break combo
-        s.combo = 0;
-      }
-    };
-
-    canvas.addEventListener('click', clickHandler);
-    animFrameRef.current = requestAnimationFrame(loop);
-
-    return () => {
-      canvas.removeEventListener('click', clickHandler);
-      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mgState, endMiniGame, syncStateFromSim]);
-
-  // Canvas click handler -- only used when NOT playing (idle/ended states use React onClick)
-  const handleCanvasClick = useCallback((_e: React.MouseEvent<HTMLCanvasElement>) => {
-    // Click handling during gameplay is done via native event listener in the game loop effect.
-    // This React handler is a no-op; it exists so the onClick prop is always defined.
-  }, []);
-
   // Fetch achievements from /api/game/achievements
   const { data: achievementsResp, isLoading, isError: isError, error: error, refetch: refetch } = useQuery({
     queryKey: ['game', 'achievements'],
     queryFn: () => api.get('/api/game/achievements').then(r => r.data),
   });
-  const achievements: Achievement[] = (achievementsResp?.achievements || INITIAL_ACHIEVEMENTS).map((a: Record<string, unknown>) => ({
+  const achievements: Achievement[] = (achievementsResp?.achievements || []).map((a: Record<string, unknown>) => ({
     id: a.id as string,
     name: a.name as string || a.id as string,
     description: a.description as string || '',
@@ -737,7 +270,7 @@ export default function GameLensPage() {
     queryFn: () => api.get('/api/game/challenges').then(r => r.data),
   });
   const { create: createQuest } = useLensData<Quest>('game', 'quest', { noSeed: true });
-  const quests: Quest[] = (challengesResp?.challenges || INITIAL_QUESTS).map((c: Record<string, unknown>) => ({
+  const quests: Quest[] = (challengesResp?.challenges || []).map((c: Record<string, unknown>) => ({
     id: c.id as string,
     name: c.name as string,
     description: c.description as string,
@@ -760,7 +293,7 @@ export default function GameLensPage() {
     queryKey: ['game', 'leaderboard'],
     queryFn: () => api.get('/api/game/leaderboard').then(r => r.data),
   });
-  const leaderboardData = (leaderboardResp?.leaderboard || INITIAL_LEADERBOARD) as Record<string, unknown>[];
+  const leaderboardData = (leaderboardResp?.leaderboard || []) as Record<string, unknown>[];
 
   // Sync profile data into local state when available
   useEffect(() => {
@@ -793,7 +326,7 @@ export default function GameLensPage() {
   const acceptQuest = useCallback((id: string) => {
     setQuestStatusOverrides(prev => ({ ...prev, [id]: 'accepted' as QuestStatus }));
     updateQuest(id, { data: { status: 'accepted' } as unknown as Partial<Quest> })
-      .catch(err => { console.error('Failed to accept quest:', err instanceof Error ? err.message : err); showToast('error', 'Failed to accept quest'); });
+      .catch(err => console.error('Failed to accept quest:', err instanceof Error ? err.message : err));
   }, [updateQuest]);
 
   const completeQuest = useCallback((id: string) => {
@@ -812,9 +345,8 @@ export default function GameLensPage() {
     setShopItems((prev) => prev.map((i) => (i.id === id ? { ...i, owned: true } : i)));
     setPlayerXp((prev) => prev - item.cost);
     updateShopItem(id, { data: { owned: true } as unknown as Partial<ShopItem> })
-      .catch(err => { console.error('Failed to persist shop purchase:', err instanceof Error ? err.message : err); showToast('error', 'Purchase failed'); })
-      .finally(() => setPurchasingIds(prev => { const next = new Set(prev); next.delete(id); return next; }));
-  }, [shopItems, playerXp, purchasingIds, updateShopItem]);
+      .catch(err => console.error('Failed to persist shop purchase:', err instanceof Error ? err.message : err));
+  }, [shopItems, playerXp, updateShopItem]);
 
   // Achievement unlock (optimistic UI - will refresh from API on next fetch)
   const [achievementOverrides, setAchievementOverrides] = useState<Record<string, boolean>>({});
@@ -839,7 +371,7 @@ export default function GameLensPage() {
     setLocalQuests((prev) => [...prev, questData]);
     createQuest({ title: questData.name, data: questData as unknown as Record<string, unknown>, meta: { status: 'active', tags: ['challenge', questData.difficulty] } })
       .then(() => { refetch2(); })
-      .catch(err => { console.error('Failed to persist challenge:', err instanceof Error ? err.message : err); showToast('error', 'Challenge submission failed'); });
+      .catch(err => console.error('Failed to persist challenge:', err instanceof Error ? err.message : err));
     setNewChallenge({ name: '', description: '', difficulty: 'medium', xpReward: 300 });
     setShowCreateChallenge(false);
   }, [newChallenge, createQuest, refetch2]);
@@ -1276,9 +808,6 @@ export default function GameLensPage() {
               <tbody>
                 {sortedLeaderboard.length === 0 && (
                   <tr><td colSpan={5} className="py-8 text-center text-gray-500">No players on the leaderboard yet. Start a game to climb the ranks.</td></tr>
-                )}
-                {sortedLeaderboard.length === 1 && (
-                  <tr><td colSpan={6} className="py-4 text-center text-neon-cyan text-xs">🏔️ Pioneer — First on the leaderboard!</td></tr>
                 )}
                 {sortedLeaderboard.map((player, index) => (
                   <motion.tr

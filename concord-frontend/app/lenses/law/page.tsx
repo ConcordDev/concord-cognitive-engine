@@ -4,8 +4,7 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useState } from 'react';
-import { Scale, Gavel, FileText, CheckCircle, XCircle, AlertTriangle, Plus, Layers, ChevronDown, BookOpen, Shield, Users, Clock, Copy, Globe, Calendar, ChevronRight, Play, Loader2 } from 'lucide-react';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
+import { Scale, Gavel, FileText, CheckCircle, XCircle, AlertTriangle, Plus, Layers, ChevronDown, BookOpen, Shield, Users, Clock, Copy, Globe, Calendar, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ErrorState } from '@/components/common/EmptyState';
 import { api } from '@/lib/api/client';
@@ -46,6 +45,35 @@ function deadlineDays(deadlineStr: string): number | null {
   return Math.ceil(diff / (1000 * 60 * 60 * 24));
 }
 
+const JURISDICTIONS = ['US', 'EU', 'UK', 'CA', 'AU', 'INT'] as const;
+type Jurisdiction = typeof JURISDICTIONS[number];
+
+const JURISDICTION_COLORS: Record<Jurisdiction, string> = {
+  US:  'bg-blue-400/15 border-blue-400/30 text-blue-400',
+  EU:  'bg-indigo-400/15 border-indigo-400/30 text-indigo-400',
+  UK:  'bg-purple-400/15 border-purple-400/30 text-purple-400',
+  CA:  'bg-red-400/15 border-red-400/30 text-red-400',
+  AU:  'bg-yellow-400/15 border-yellow-400/30 text-yellow-400',
+  INT: 'bg-teal-400/15 border-teal-400/30 text-teal-400',
+};
+
+const CASE_STATUSES = ['open', 'in-review', 'hearing', 'closed'] as const;
+type CaseStatus = typeof CASE_STATUSES[number];
+
+const STATUS_COLORS: Record<CaseStatus, string> = {
+  'open':      'bg-blue-400/15 border-blue-400/30 text-blue-400',
+  'in-review': 'bg-yellow-400/15 border-yellow-400/30 text-yellow-400',
+  'hearing':   'bg-orange-400/15 border-orange-400/30 text-orange-400',
+  'closed':    'bg-green-400/15 border-green-400/30 text-green-400',
+};
+
+// Days until deadline countdown
+function deadlineDays(deadlineStr: string): number | null {
+  if (!deadlineStr) return null;
+  const diff = new Date(deadlineStr).getTime() - Date.now();
+  return Math.ceil(diff / (1000 * 60 * 60 * 24));
+}
+
 export default function LawLensPage() {
   useLensNav('law');
   const [testProposal, setTestProposal] = useState('');
@@ -54,7 +82,7 @@ export default function LawLensPage() {
   const [newCaseJurisdiction, setNewCaseJurisdiction] = useState<Jurisdiction>('US');
   const [newCaseDeadline, setNewCaseDeadline] = useState('');
   const [expandedCase, setExpandedCase] = useState<string | null>(null);
-  const [showFeatures, setShowFeatures] = useState(true);
+  const [showFeatures, setShowFeatures] = useState(false);
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('law');
 
   // Lens artifact persistence layer
@@ -86,20 +114,6 @@ export default function LawLensPage() {
     });
     setNewCaseTitle('');
     setNewCaseDeadline('');
-  };
-
-  const runAction = useRunArtifact('law');
-  const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
-  const [isRunning, setIsRunning] = useState<string | null>(null);
-  const handleAction = async (action: string) => {
-    const targetId = caseItems[0]?.id;
-    if (!targetId) { setActionResult({ message: 'Create a case file first to run analysis.' }); return; }
-    setIsRunning(action);
-    try {
-      const res = await runAction.mutateAsync({ id: targetId, action });
-      if (res.ok === false) { setActionResult({ message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setActionResult(res.result as Record<string, unknown>); }
-    } catch (e) { console.error(`Action ${action} failed:`, e); setActionResult({ message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` }); }
-    finally { setIsRunning(null); }
   };
 
   const handleGateCheck = () => {
@@ -226,13 +240,6 @@ export default function LawLensPage() {
           <FileText className="w-4 h-4 text-neon-cyan" />
           Case Files
         </h2>
-
-        {/* Status filter */}
-        <div className="flex items-center gap-2 mb-4">
-          {CASE_STATUSES.map(s => (
-            <button key={s} onClick={() => setExpandedCase(null)} className={`text-[10px] px-2 py-1 rounded border font-medium ${STATUS_COLORS[s] || 'bg-gray-500/15 border-gray-500/30 text-gray-400'}`}>{s}</button>
-          ))}
-        </div>
 
         {/* New case form */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-4">

@@ -3,7 +3,6 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useLensData } from '@/lib/hooks/use-lens-data';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useMutation } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
@@ -180,6 +179,9 @@ export default function AgentsLensPage() {
     },
     onError: (err) => {
       useUIStore.getState().addToast({ type: 'error', message: `Agent tick failed: ${err instanceof Error ? err.message : 'Unknown error'}` });
+    },
+    onError: () => {
+      useUIStore.getState().addToast({ type: 'error', message: 'Operation failed. Please try again.' });
     },
   });
 

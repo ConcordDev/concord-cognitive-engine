@@ -162,7 +162,7 @@ function AtmosphereView({ data }: { data: NonNullable<AtlasPublicData['atmospher
 
 // ── Overview View ───────────────────────────────────────────────────────────
 
-function OverviewView({ data }: { data: AtlasPublicData }) {
+function OverviewView({ data: _data }: { data: AtlasPublicData }) {
   return (
     <div className="rounded-lg bg-zinc-800/50 border border-zinc-700/50 p-4 space-y-3">
       <div className="flex items-center gap-2">

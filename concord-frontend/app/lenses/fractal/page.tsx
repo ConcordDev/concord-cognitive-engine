@@ -3,16 +3,12 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
-import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { ds } from '@/lib/design-system';
-import { cn } from '@/lib/utils';
-import { UniversalActions } from '@/components/lens/UniversalActions';
-import {
-  Layers, GitBranch, Infinity, Plus, Search, Trash2, X,
-  BarChart3, Zap, ChevronDown,
-  Sparkles, Eye, Settings2, Activity,
-} from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { apiHelpers } from '@/lib/api/client';
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { FractalEmpireExplorer } from '@/components/graphs/FractalEmpireExplorer';
+import { Layers, ZoomIn, ZoomOut, RotateCcw, Maximize, GitBranch, Infinity } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -350,24 +346,110 @@ export default function FractalLensPage() {
         <select className={cn(ds.select, 'w-auto')} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}><option value="all">All Status</option>{Object.entries(STATUS_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select>
         <button onClick={openCreate} className={ds.btnPrimary}><Plus className="w-4 h-4" /> New</button>
       </div>
-      {isLoading ? <div className="flex items-center justify-center py-12"><div className="w-6 h-6 border-2 border-neon-purple border-t-transparent rounded-full animate-spin" /></div>
-      : filtered.length === 0 ? <div className={cn(ds.panel, 'text-center py-12')}><Sparkles className="w-12 h-12 text-gray-600 mx-auto mb-3" /><p className={ds.textMuted}>No {activeArtifactType} items yet</p><button onClick={openCreate} className={cn(ds.btnPrimary, 'mt-3')}><Plus className="w-4 h-4" /> Create First</button></div>
-      : filtered.map((item, index) => {
-        const d = item.data as unknown as FractalArtifact;
-        const sc = STATUS_CONFIG[d.status] || STATUS_CONFIG.active;
-        return (
-          <motion.div key={item.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }} className={ds.panelHover} onClick={() => openEdit(item)}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3"><Sparkles className="w-5 h-5 text-neon-purple" /><div>
-                <p className="text-white font-medium">{d.name || item.title}</p>
-                <p className={ds.textMuted}>
-                  {d.algorithm && <span>{d.algorithm} </span>}
-                  {d.depth && <span>Depth:{d.depth} </span>}
-                  {d.iterations && <span>x{d.iterations} </span>}
-                  {d.symmetry && <span>&middot; {d.symmetry} </span>}
-                  {d.nodeType && <span>{d.nodeType} </span>}
-                  {d.children && <span>{d.children} children </span>}
-                  {d.format && <span>{d.format} </span>}
+    );
+  }
+  return (
+    <div data-lens-theme="fractal" className="p-6 space-y-6 h-full flex flex-col">
+      <header className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <span className="text-2xl">🌀</span>
+          <div>
+            <h1 className="text-xl font-bold">Fractal Lens</h1>
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
+            <p className="text-sm text-gray-400">
+              Infinite zoom into DTU sub-structures
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setZoomLevel((z) => Math.max(0.1, z - 0.2))}
+            className="btn-neon p-2"
+          >
+            <ZoomOut className="w-4 h-4" />
+          </button>
+          <span className="text-sm font-mono px-2">{(zoomLevel * 100).toFixed(0)}%</span>
+          <button
+            onClick={() => setZoomLevel((z) => Math.min(5, z + 0.2))}
+            className="btn-neon p-2"
+          >
+            <ZoomIn className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => {
+              setZoomLevel(1);
+              setSelectedNode(null);
+            }}
+            className="btn-neon p-2"
+          >
+            <RotateCcw className="w-4 h-4" />
+          </button>
+        </div>
+      </header>
+
+      {/* Stats Row */}
+      <div className="grid grid-cols-3 gap-4">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }} className="panel p-3 flex items-center gap-3">
+          <GitBranch className="w-5 h-5 text-neon-purple" />
+          <div><p className="text-lg font-bold">{fractalData?.nodes?.length || 0}</p><p className="text-xs text-gray-400">Patterns</p></div>
+        </motion.div>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="panel p-3 flex items-center gap-3">
+          <Infinity className="w-5 h-5 text-neon-cyan" />
+          <div><p className="text-lg font-bold">{fractalData?.currentDepth || 0}</p><p className="text-xs text-gray-400">Iterations</p></div>
+        </motion.div>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="panel p-3 flex items-center gap-3">
+          <Layers className="w-5 h-5 text-neon-green" />
+          <div><p className="text-lg font-bold">{((zoomLevel * 100) / 100).toFixed(1)}</p><p className="text-xs text-gray-400">Complexity Avg</p></div>
+        </motion.div>
+      </div>
+
+      <RealtimeDataPanel domain="fractal" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
+      <DTUExportButton domain="fractal" data={{}} compact />
+
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-6 min-h-0">
+        {/* Fractal Visualization */}
+        <div className="lg:col-span-3 panel p-4 flex flex-col">
+          <div className="flex-1 graph-container relative overflow-hidden">
+            <FractalEmpireExplorer
+              data={fractalData?.nodes}
+              zoom={zoomLevel}
+              onNodeSelect={(id) => setSelectedNode(id)}
+              selectedNode={selectedNode}
+            />
+
+            {/* Depth indicator */}
+            <div className="absolute bottom-4 left-4 bg-lattice-void/80 px-3 py-2 rounded-lg">
+              <p className="text-xs text-gray-400">Current Depth</p>
+              <p className="text-lg font-mono text-neon-purple">
+                Level {fractalData?.currentDepth || 0}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Node Detail Panel */}
+        <div className="panel p-4 space-y-4 overflow-auto">
+          <h3 className="font-semibold flex items-center gap-2">
+            <Layers className="w-4 h-4 text-neon-purple" />
+            Node Details
+          </h3>
+
+          {selectedNode && nodeDetail ? (
+            <div className="space-y-4">
+              <div className="lens-card">
+                <p className="text-xs text-gray-400">Node ID</p>
+                <p className="font-mono text-sm truncate">{nodeDetail.id}</p>
+              </div>
+
+              <div className="lens-card">
+                <p className="text-xs text-gray-400">Type</p>
+                <p className="font-medium">{nodeDetail.type}</p>
+              </div>
+
+              <div className="lens-card">
+                <p className="text-xs text-gray-400">Children</p>
+                <p className="text-2xl font-bold text-neon-cyan">
+                  {nodeDetail.children?.length || 0}
                 </p>
               </div></div>
               <div className="flex items-center gap-2">

@@ -11,7 +11,7 @@
  *   - Real-time dtu:created events via socket
  */
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -21,15 +21,11 @@ import { VirtualDTUList } from '@/components/lists/VirtualDTUList';
 import { DTUDetailView } from '@/components/dtu/DTUDetailView';
 import { DTUQuickCreate } from '@/components/dtu/DTUQuickCreate';
 import { LiveDTUFeed } from '@/components/live/LiveDTUFeed';
-import { useLatticeStore, selectDTUsByTier, selectFilteredDTUs } from '@/store/lattice';
 import { cn } from '@/lib/utils';
 import {
   Database, Plus, RefreshCw, ChevronLeft, ChevronRight,
   Search, Filter, Zap, LayoutGrid, List, Tag, Clock,
-  Loader2, XCircle, GitFork, Award, Network, Layers, Copy, BarChart3, AlertTriangle,
 } from 'lucide-react';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { useLensData } from '@/lib/hooks/use-lens-data';
 
 const PAGE_SIZE = 20;
 
@@ -48,23 +44,6 @@ export default function DTUBrowserPage() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [showFeed, setShowFeed] = useState(true);
-
-  // Backend action wiring
-  const runAction = useRunArtifact('dtus');
-  const { items: dtuLensItems } = useLensData<Record<string, unknown>>('dtus', 'dtu', { seed: [] });
-  const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
-  const [isRunning, setIsRunning] = useState<string | null>(null);
-
-  const handleDtusAction = useCallback(async (action: string) => {
-    const targetId = selectedDtuId || dtuLensItems[0]?.id;
-    if (!targetId) return;
-    setIsRunning(action);
-    try {
-      const res = await runAction.mutateAsync({ id: targetId, action });
-      if (res.ok === false) { setActionResult({ message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` }); } else { setActionResult(res.result as Record<string, unknown>); }
-    } catch (e) { console.error(`Action ${action} failed:`, e); setActionResult({ message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}` }); }
-    setIsRunning(null);
-  }, [selectedDtuId, dtuLensItems, runAction]);
 
   // Build query params
   const queryParams = useMemo(() => ({
@@ -90,19 +69,7 @@ export default function DTUBrowserPage() {
     staleTime: 15_000,
   });
 
-  // Real-time tier counts from the lattice store (populated by socket events)
-  const tierCounts = useLatticeStore(selectDTUsByTier);
-
-  // Sync page filters into the lattice store so selectFilteredDTUs stays current
-  const setTierFilterStore = useLatticeStore((s) => s.setTierFilter);
-  const setSearchQueryStore = useLatticeStore((s) => s.setSearchQuery);
-  useEffect(() => { setTierFilterStore(tierFilter); }, [tierFilter, setTierFilterStore]);
-  useEffect(() => { setSearchQueryStore(searchQuery); }, [searchQuery, setSearchQueryStore]);
-
-  // Filtered DTUs from the lattice store (real-time, reflecting socket-pushed DTUs)
-  const filteredStoreDTUs = useLatticeStore(selectFilteredDTUs);
-
-  const dtus: DTU[] = useMemo(() => data?.dtus || data?.items || [], [data?.dtus, data?.items]);
+  const dtus: DTU[] = data?.dtus || data?.items || [];
   const total = data?.total || 0;
   const totalPages = Math.ceil(total / PAGE_SIZE);
   const hasMore = data?.hasMore ?? (page + 1) < totalPages;
@@ -210,10 +177,9 @@ export default function DTUBrowserPage() {
               </div>
               <button
                 type="submit"
-                disabled={isLoading}
-                className={cn('px-3 py-2 text-sm bg-lattice-surface border border-lattice-border rounded-lg text-gray-300 hover:text-white transition-colors', isLoading && 'opacity-40 cursor-not-allowed')}
+                className="px-3 py-2 text-sm bg-lattice-surface border border-lattice-border rounded-lg text-gray-300 hover:text-white transition-colors"
               >
-                {isLoading ? 'Searching...' : 'Search'}
+                Search
               </button>
             </form>
 
@@ -261,7 +227,7 @@ export default function DTUBrowserPage() {
         </div>
       </header>
 
-      {/* Stats Row — uses real-time tier counts from lattice store when available, falls back to page counts */}
+      {/* Stats Row */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-4">
         <div className="grid grid-cols-4 gap-4">
           <div className="p-3 bg-lattice-surface rounded-lg border border-lattice-border flex items-center gap-3">
@@ -271,17 +237,17 @@ export default function DTUBrowserPage() {
           <div className="p-3 bg-lattice-surface rounded-lg border border-lattice-border flex items-center gap-3">
             <Tag className="w-5 h-5 text-neon-purple" />
             <div>
-              <p className="text-lg font-bold">{(tierCounts.mega + tierCounts.hyper) || dtus.filter(d => d.tier === 'mega' || d.tier === 'hyper').length}</p>
+              <p className="text-lg font-bold">{dtus.filter(d => d.tier === 'mega' || d.tier === 'hyper').length}</p>
               <p className="text-xs text-gray-400">Mega/Hyper</p>
             </div>
           </div>
           <div className="p-3 bg-lattice-surface rounded-lg border border-lattice-border flex items-center gap-3">
             <Zap className="w-5 h-5 text-neon-cyan" />
-            <div><p className="text-lg font-bold">{tierCounts.regular || dtus.filter(d => d.tier === 'regular').length}</p><p className="text-xs text-gray-400">Regular</p></div>
+            <div><p className="text-lg font-bold">{dtus.filter(d => d.tier === 'regular').length}</p><p className="text-xs text-gray-400">Regular</p></div>
           </div>
           <div className="p-3 bg-lattice-surface rounded-lg border border-lattice-border flex items-center gap-3">
             <Clock className="w-5 h-5 text-gray-400" />
-            <div><p className="text-lg font-bold">{tierCounts.shadow || dtus.filter(d => d.tier === 'shadow').length}</p><p className="text-xs text-gray-400">Shadow</p></div>
+            <div><p className="text-lg font-bold">{dtus.filter(d => d.tier === 'shadow').length}</p><p className="text-xs text-gray-400">Shadow</p></div>
           </div>
         </div>
       </div>
@@ -400,202 +366,9 @@ export default function DTUBrowserPage() {
 
           {/* Right sidebar: live feed */}
           {showFeed && (
-            <aside className="w-80 flex-shrink-0 hidden xl:block space-y-3">
+            <aside className="w-80 flex-shrink-0 hidden xl:block">
               <LiveDTUFeed limit={15} onDtuClick={(id) => setSelectedDtuId(id)} />
-              {filteredStoreDTUs.length > 0 && (
-                <div className="px-3 py-2 rounded-lg border border-lattice-border bg-lattice-surface/50 text-xs text-gray-400">
-                  <Zap className="w-3 h-3 inline mr-1 text-neon-cyan" />
-                  {filteredStoreDTUs.length} DTUs match current filters in real-time store
-                </div>
-              )}
             </aside>
-          )}
-        </div>
-      </div>
-
-      {/* ── Backend Action Panels ── */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-4">
-        <div className="rounded-xl bg-lattice-deep border border-lattice-border p-4">
-          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-            <Zap className="w-4 h-4 text-neon-cyan" /> DTU Compute Actions
-          </h3>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-            <button onClick={() => handleDtusAction('lineageAnalysis')} disabled={isRunning !== null} className="flex flex-col items-center gap-2 p-3 bg-lattice-surface rounded-lg border border-lattice-border hover:border-neon-cyan/50 transition-colors disabled:opacity-50">
-              {isRunning === 'lineageAnalysis' ? <Loader2 className="w-5 h-5 text-neon-cyan animate-spin" /> : <GitFork className="w-5 h-5 text-neon-cyan" />}
-              <span className="text-xs text-gray-300">Lineage Analysis</span>
-            </button>
-            <button onClick={() => handleDtusAction('qualityScore')} disabled={isRunning !== null} className="flex flex-col items-center gap-2 p-3 bg-lattice-surface rounded-lg border border-lattice-border hover:border-neon-green/50 transition-colors disabled:opacity-50">
-              {isRunning === 'qualityScore' ? <Loader2 className="w-5 h-5 text-neon-green animate-spin" /> : <Award className="w-5 h-5 text-neon-green" />}
-              <span className="text-xs text-gray-300">Quality Score</span>
-            </button>
-            <button onClick={() => handleDtusAction('citationNetwork')} disabled={isRunning !== null} className="flex flex-col items-center gap-2 p-3 bg-lattice-surface rounded-lg border border-lattice-border hover:border-neon-purple/50 transition-colors disabled:opacity-50">
-              {isRunning === 'citationNetwork' ? <Loader2 className="w-5 h-5 text-neon-purple animate-spin" /> : <Network className="w-5 h-5 text-neon-purple" />}
-              <span className="text-xs text-gray-300">Citation Network</span>
-            </button>
-            <button onClick={() => handleDtusAction('tierRecommendation')} disabled={isRunning !== null} className="flex flex-col items-center gap-2 p-3 bg-lattice-surface rounded-lg border border-lattice-border hover:border-yellow-400/50 transition-colors disabled:opacity-50">
-              {isRunning === 'tierRecommendation' ? <Loader2 className="w-5 h-5 text-yellow-400 animate-spin" /> : <Layers className="w-5 h-5 text-yellow-400" />}
-              <span className="text-xs text-gray-300">Tier Recommendation</span>
-            </button>
-            <button onClick={() => handleDtusAction('duplicateDetection')} disabled={isRunning !== null} className="flex flex-col items-center gap-2 p-3 bg-lattice-surface rounded-lg border border-lattice-border hover:border-red-400/50 transition-colors disabled:opacity-50">
-              {isRunning === 'duplicateDetection' ? <Loader2 className="w-5 h-5 text-red-400 animate-spin" /> : <Copy className="w-5 h-5 text-red-400" />}
-              <span className="text-xs text-gray-300">Duplicate Detection</span>
-            </button>
-          </div>
-
-          {/* Action Result Display */}
-          {actionResult && (
-            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-4 p-3 bg-lattice-surface rounded-lg border border-lattice-border">
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="text-sm font-semibold flex items-center gap-2"><BarChart3 className="w-4 h-4 text-neon-cyan" /> Result</h4>
-                <button onClick={() => setActionResult(null)} className="text-gray-400 hover:text-white"><XCircle className="w-4 h-4" /></button>
-              </div>
-
-              {/* Lineage Analysis */}
-              {actionResult.lineageHealth !== undefined && actionResult.depth !== undefined && (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded ${
-                      (actionResult.lineageHealth as string) === 'prolific' ? 'bg-green-500/20 text-green-400' :
-                      (actionResult.lineageHealth as string) === 'healthy' ? 'bg-blue-500/20 text-blue-400' :
-                      (actionResult.lineageHealth as string) === 'root' ? 'bg-neon-cyan/20 text-neon-cyan' :
-                      (actionResult.lineageHealth as string) === 'leaf' ? 'bg-yellow-500/20 text-yellow-400' :
-                      'bg-red-500/20 text-red-400'
-                    }`}>{actionResult.lineageHealth as string}</span>
-                    <span className="text-xs text-gray-400">{actionResult.title as string}</span>
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    <div className="p-2 bg-lattice-deep rounded text-center"><p className="text-sm font-bold text-neon-cyan">{actionResult.depth as number}</p><p className="text-[10px] text-gray-500">Depth</p></div>
-                    <div className="p-2 bg-lattice-deep rounded text-center"><p className="text-sm font-bold text-neon-green">{actionResult.forkCount as number}</p><p className="text-[10px] text-gray-500">Forks</p></div>
-                    <div className="p-2 bg-lattice-deep rounded text-center"><p className="text-sm font-bold text-neon-purple">{actionResult.totalDescendants as number}</p><p className="text-[10px] text-gray-500">Descendants</p></div>
-                    <div className="p-2 bg-lattice-deep rounded text-center"><p className="text-sm font-bold text-white">{actionResult.isRoot ? 'Root' : actionResult.isLeaf ? 'Leaf' : 'Branch'}</p><p className="text-[10px] text-gray-500">Position</p></div>
-                  </div>
-                  {!!actionResult.oldestAncestor && <p className="text-xs text-gray-400">Oldest ancestor: <span className="text-white">{actionResult.oldestAncestor as string}</span></p>}
-                </div>
-              )}
-
-              {/* Quality Score */}
-              {actionResult.totalScore !== undefined && actionResult.grade !== undefined && actionResult.breakdown !== undefined && (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <span className={`text-4xl font-bold ${
-                      (actionResult.grade as string) === 'A' ? 'text-green-400' :
-                      (actionResult.grade as string) === 'B' ? 'text-blue-400' :
-                      (actionResult.grade as string) === 'C' ? 'text-yellow-400' :
-                      'text-red-400'
-                    }`}>{actionResult.grade as string}</span>
-                    <div>
-                      <p className="text-lg font-bold text-white">{actionResult.totalScore as number}/100</p>
-                      <p className="text-xs text-gray-400">{actionResult.title as string}</p>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-4 gap-2">
-                    {Object.entries(actionResult.breakdown as Record<string, number>).map(([key, val]) => (
-                      <div key={key} className="p-2 bg-lattice-deep rounded">
-                        <div className="h-1.5 bg-lattice-border rounded-full overflow-hidden mb-1"><div className="h-full bg-neon-cyan rounded-full" style={{ width: `${(val / 25) * 100}%` }} /></div>
-                        <p className="text-xs font-bold text-white">{val}/25</p>
-                        <p className="text-[10px] text-gray-500 capitalize">{key}</p>
-                      </div>
-                    ))}
-                  </div>
-                  {(actionResult.recommendations as string[])?.length > 0 && (
-                    <div className="space-y-1">{(actionResult.recommendations as string[]).map((rec, i) => (
-                      <div key={i} className="flex items-center gap-2 text-xs text-yellow-400"><AlertTriangle className="w-3 h-3 flex-shrink-0" /> {rec}</div>
-                    ))}</div>
-                  )}
-                </div>
-              )}
-
-              {/* Citation Network */}
-              {actionResult.influenceScore !== undefined && actionResult.inDegree !== undefined && (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <span className="text-3xl font-bold text-neon-purple">{actionResult.influenceScore as number}</span>
-                    <div>
-                      <span className={`text-xs font-medium px-2 py-0.5 rounded ${
-                        (actionResult.influenceLevel as string) === 'high' ? 'bg-green-500/20 text-green-400' :
-                        (actionResult.influenceLevel as string) === 'moderate' ? 'bg-yellow-500/20 text-yellow-400' :
-                        'bg-gray-500/20 text-gray-400'
-                      }`}>{actionResult.influenceLevel as string} influence</span>
-                      <p className="text-xs text-gray-400 mt-1">h-index: {actionResult.hIndex as number}</p>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="p-2 bg-lattice-deep rounded text-center"><p className="text-sm font-bold text-neon-cyan">{actionResult.inDegree as number}</p><p className="text-[10px] text-gray-500">Cited By</p></div>
-                    <div className="p-2 bg-lattice-deep rounded text-center"><p className="text-sm font-bold text-neon-purple">{actionResult.outDegree as number}</p><p className="text-[10px] text-gray-500">References</p></div>
-                    <div className="p-2 bg-lattice-deep rounded text-center"><p className="text-sm font-bold text-neon-green">{actionResult.reciprocalCount as number}</p><p className="text-[10px] text-gray-500">Reciprocal</p></div>
-                  </div>
-                  {(actionResult.topCiters as Array<{ title: string; count: number }>)?.length > 0 && (
-                    <div>
-                      <p className="text-xs text-gray-400 mb-1">Top Citers</p>
-                      {(actionResult.topCiters as Array<{ title: string; count: number }>).map((c, i) => (
-                        <div key={i} className="flex items-center justify-between text-xs p-1.5 bg-lattice-deep rounded mb-1">
-                          <span className="text-white truncate">{c.title}</span>
-                          <span className="text-neon-cyan font-bold">{c.count}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Tier Recommendation */}
-              {actionResult.recommendedTier !== undefined && actionResult.action !== undefined && actionResult.currentTier !== undefined && (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded uppercase ${
-                      (actionResult.action as string) === 'promote' ? 'bg-green-500/20 text-green-400' :
-                      (actionResult.action as string) === 'demote' ? 'bg-red-500/20 text-red-400' :
-                      'bg-blue-500/20 text-blue-400'
-                    }`}>{actionResult.action as string}</span>
-                    <span className="text-sm text-gray-300">{actionResult.currentTier as string} → {actionResult.recommendedTier as string}</span>
-                  </div>
-                  <p className="text-xs text-gray-400">{actionResult.reasoning as string}</p>
-                  {!!actionResult.metrics && (
-                    <div className="grid grid-cols-4 gap-2">
-                      {Object.entries(actionResult.metrics as Record<string, number>).map(([key, val]) => (
-                        <div key={key} className="p-2 bg-lattice-deep rounded text-center">
-                          <p className="text-sm font-bold text-white">{val}</p>
-                          <p className="text-[10px] text-gray-500 capitalize">{key.replace(/([A-Z])/g, ' $1')}</p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Duplicate Detection */}
-              {actionResult.duplicatesFound !== undefined && actionResult.totalChecked !== undefined && (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    {(actionResult.isUnique as boolean)
-                      ? <span className="text-xs font-medium px-2 py-0.5 rounded bg-green-500/20 text-green-400">Unique</span>
-                      : <span className="text-xs font-medium px-2 py-0.5 rounded bg-red-500/20 text-red-400">{actionResult.duplicatesFound as number} duplicates</span>
-                    }
-                    <span className="text-xs text-gray-400">Checked {actionResult.totalChecked as number} DTUs</span>
-                  </div>
-                  {(actionResult.duplicates as Array<{ title: string; combinedScore: number; titleSimilarity: number }>)?.map((d, i) => (
-                    <div key={i} className="flex items-center justify-between text-xs p-2 bg-red-500/10 rounded">
-                      <span className="text-white truncate flex-1">{d.title}</span>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <span className="text-gray-400">Title: {d.titleSimilarity}%</span>
-                        <span className="text-red-400 font-bold">{d.combinedScore}%</span>
-                      </div>
-                    </div>
-                  ))}
-                  {(actionResult.possibleDuplicates as Array<{ title: string; combinedScore: number }>)?.map((d, i) => (
-                    <div key={i} className="flex items-center justify-between text-xs p-2 bg-yellow-500/10 rounded">
-                      <span className="text-white truncate flex-1">{d.title}</span>
-                      <span className="text-yellow-400 font-bold">{d.combinedScore}%</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Fallback */}
-              {!!actionResult.message && !actionResult.lineageHealth && !actionResult.totalScore && !actionResult.influenceScore && !actionResult.recommendedTier && !actionResult.duplicatesFound && (
-                <p className="text-sm text-gray-400">{actionResult.message as string}</p>
-              )}
-            </motion.div>
           )}
         </div>
       </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -142,7 +142,7 @@ export default function SpaceLensPage() {
 
   const [activeMode, setActiveMode] = useState<ModeTab>('Dashboard');
   const [searchQuery, setSearchQuery] = useState('');
-  const [showFeatures, setShowFeatures] = useState(true);
+  const [showFeatures, setShowFeatures] = useState(false);
   const [tick, setTick] = useState(0);
 
   // Drive countdown re-renders every second while on LaunchOps
@@ -163,16 +163,6 @@ export default function SpaceLensPage() {
   const { items: launchItems } = useLensData<ArtifactDataUnion>('space', 'Launch', { seed: [] });
 
   const runAction = useRunArtifact('space');
-
-  const handleAction = useCallback(async (action: string, artifactId?: string) => {
-    const targetId = artifactId || items[0]?.id;
-    if (!targetId) return;
-    try {
-      await runAction.mutateAsync({ id: targetId, action });
-    } catch (err) {
-      console.error('Action failed:', err);
-    }
-  }, [items, runAction]);
 
   const stats = useMemo(() => {
     const activeMissions = missions.filter(m => ['active', 'orbit'].includes((m.data as MissionData).status)).length;
@@ -252,14 +242,13 @@ export default function SpaceLensPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {runAction.isPending && <span className="text-xs text-neon-cyan animate-pulse">AI processing...</span>}
           <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
           <DTUExportButton domain="space" data={realtimeData || {}} compact />
         </div>
       </header>
 
       {/* ── Tab bar ── */}
-      <div className="flex gap-1 bg-zinc-900 rounded-lg p-1 flex-wrap">
+      <div className="flex gap-1 bg-zinc-900 rounded-lg p-1 overflow-x-auto">
         {MODE_TABS.map(({ key, label, icon: Icon }) => (
           <button key={key} onClick={() => setActiveMode(key)}
             className={cn('flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors',
@@ -429,7 +418,7 @@ export default function SpaceLensPage() {
 
       {/* ── Telemetry system health bar ── */}
       <AnimatePresence>
-        {activeMode === 'Telemetry' && (telemetryItems.length > 0 ? (
+        {activeMode === 'Telemetry' && telemetryItems.length > 0 && (
           <motion.div
             key="syshealth"
             initial={{ opacity: 0, y: -6 }}
@@ -461,11 +450,7 @@ export default function SpaceLensPage() {
               </div>
             </div>
           </motion.div>
-        ) : (
-          <div className="text-center py-6 text-gray-500 text-sm border border-dashed border-white/10 rounded-lg">
-            <p>No telemetry data yet. Add telemetry records to see spacecraft data.</p>
-          </div>
-        ))}
+        )}
       </AnimatePresence>
 
       {/* ── Item cards ── */}
@@ -495,14 +480,9 @@ export default function SpaceLensPage() {
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <button onClick={() => handleAction('analyze', item.id)} className="p-1.5 hover:bg-zinc-800 rounded text-gray-500 hover:text-neon-cyan">
-                      <Zap className="w-3.5 h-3.5" />
-                    </button>
-                    <button onClick={() => remove(item.id)} className="p-1.5 hover:bg-zinc-800 rounded text-gray-500 hover:text-red-400">
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
+                  <button onClick={() => remove(item.id)} className="p-1.5 hover:bg-zinc-800 rounded text-gray-500 hover:text-red-400 shrink-0">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
                 </div>
 
                 {/* Objective / description */}
@@ -513,12 +493,12 @@ export default function SpaceLensPage() {
                 {/* Mission badges */}
                 {isMission && (
                   <div className="flex flex-wrap items-center gap-2 mt-2">
-                    {!!d.launchVehicle && (
+                    {d.launchVehicle && (
                       <span className="inline-flex items-center gap-1 text-[11px] bg-indigo-500/10 text-indigo-300 px-2 py-0.5 rounded-full">
                         <Rocket className="w-3 h-3" /> {String(d.launchVehicle)}
                       </span>
                     )}
-                    {!!d.payload && (
+                    {d.payload && (
                       <span className="inline-flex items-center gap-1 text-[11px] bg-zinc-800 text-gray-300 px-2 py-0.5 rounded-full">
                         <Database className="w-3 h-3" /> {String(d.payload)}
                       </span>
@@ -539,12 +519,12 @@ export default function SpaceLensPage() {
                         <MapPin className="w-3 h-3" /> {d.altitude} km · {getOrbitalZone(d.altitude)}
                       </span>
                     )}
-                    {!!d.orbit && (
+                    {d.orbit && (
                       <span className="inline-flex items-center gap-1 text-[11px] bg-indigo-500/10 text-indigo-300 px-2 py-0.5 rounded-full">
                         <Orbit className="w-3 h-3" /> {String(d.orbit)}
                       </span>
                     )}
-                    {!!d.operator && (
+                    {d.operator && (
                       <span className="inline-flex items-center gap-1 text-[11px] bg-zinc-800 text-gray-400 px-2 py-0.5 rounded-full">
                         <Eye className="w-3 h-3" /> {String(d.operator)}
                       </span>
@@ -567,7 +547,7 @@ export default function SpaceLensPage() {
                         </span>
                       </div>
                     )}
-                    {!!d.dataRate && (
+                    {d.dataRate && (
                       <span className="inline-flex items-center gap-1 text-[11px] bg-zinc-800 text-gray-300 px-2 py-0.5 rounded-full">
                         <Zap className="w-3 h-3 text-yellow-400" /> {String(d.dataRate)}
                       </span>
@@ -600,7 +580,7 @@ export default function SpaceLensPage() {
 
       <div className="border-t border-white/10">
         <button onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg">
+          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-400 hover:text-white transition-colors">
           <span className="flex items-center gap-2"><Layers className="w-4 h-4" /> Lens Features</span>
           <ChevronDown className={cn('w-4 h-4 transition-transform', showFeatures && 'rotate-180')} />
         </button>

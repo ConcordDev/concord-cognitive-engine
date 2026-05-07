@@ -3,8 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Atom, Zap, Waves, RotateCcw, Play, Shuffle, Loader2, Layers, ChevronDown, X } from 'lucide-react';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
+import { Atom, Zap, Waves, RotateCcw, Play, Shuffle, Loader2, Layers, ChevronDown } from 'lucide-react';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { apiHelpers } from '@/lib/api/client';
 import { useMutation } from '@tanstack/react-query';
@@ -354,74 +353,6 @@ export default function QuantumLensPage() {
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Quantum Domain Actions */}
-      <div className="panel p-4 space-y-3">
-        <h3 className="text-sm font-semibold text-neon-purple flex items-center gap-2"><Zap className="w-4 h-4" /> Circuit Analysis Actions</h3>
-        <div className="flex flex-wrap gap-2">
-          {[
-            { action: 'simulateCircuit', label: 'Simulate Circuit' },
-            { action: 'analyzeCircuit', label: 'Analyze Circuit' },
-            { action: 'errorAnalysis', label: 'Error Analysis' },
-          ].map(({ action, label }) => (
-            <button key={action} onClick={() => handleQuantumAction(action)} disabled={quantumActiveAction === action || !circuitItems[0]?.id}
-              className="px-3 py-1.5 text-xs bg-neon-purple/10 border border-neon-purple/20 rounded-lg hover:bg-neon-purple/20 disabled:opacity-50 flex items-center gap-1.5">
-              {quantumActiveAction === action ? <div className="w-3 h-3 border border-neon-purple border-t-transparent rounded-full animate-spin" /> : <Atom className="w-3 h-3 text-neon-purple" />}
-              {label}
-            </button>
-          ))}
-        </div>
-        {quantumActionResult && (
-          <div className="p-3 bg-black/40 rounded-lg border border-neon-purple/20 text-xs space-y-2">
-            {quantumActionResult.action === 'simulateCircuit' && (
-              <div className="space-y-2">
-                <div className="flex gap-4 flex-wrap">
-                  <span className="text-gray-400">Qubits: <span className="text-neon-purple font-mono">{String(quantumActionResult.qubits ?? '')}</span></span>
-                  <span className="text-gray-400">Gates applied: <span className="text-white font-mono">{String(quantumActionResult.gatesApplied ?? '')}</span></span>
-                  <span className="text-gray-400">Entropy: <span className="text-neon-cyan font-mono">{String(quantumActionResult.entropy ?? '')}</span></span>
-                  <span className={`${quantumActionResult.maxEntanglement ? 'text-neon-purple' : 'text-gray-500'}`}>{quantumActionResult.maxEntanglement ? 'Max entanglement' : 'Low entanglement'}</span>
-                </div>
-                {Array.isArray(quantumActionResult.statevector) && (
-                  <div className="space-y-0.5">
-                    <p className="text-gray-500">Top states:</p>
-                    {(quantumActionResult.statevector as {state:string;probability:number}[]).slice(0,5).map(({state,probability}) => (
-                      <div key={state} className="flex items-center gap-2">
-                        <span className="font-mono text-neon-cyan w-12">{state}</span>
-                        <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden"><div className="h-full bg-neon-purple/70 rounded-full" style={{width:`${probability*100}%`}} /></div>
-                        <span className="font-mono text-neon-purple w-12 text-right">{(probability*100).toFixed(1)}%</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-            {quantumActionResult.action === 'analyzeCircuit' && (
-              <div className="space-y-1">
-                <div className="flex gap-4 flex-wrap">
-                  <span className="text-gray-400">Total gates: <span className="text-white font-mono">{String(quantumActionResult.totalGates ?? '')}</span></span>
-                  <span className="text-gray-400">Depth: <span className="text-neon-cyan font-mono">{String(quantumActionResult.circuitDepth ?? '')}</span></span>
-                  <span className="text-gray-400">T-count: <span className="text-neon-purple font-mono">{String(quantumActionResult.tCount ?? '')}</span></span>
-                  <span className="text-gray-400">CNOT: <span className="text-white font-mono">{String(quantumActionResult.cnotCount ?? '')}</span></span>
-                  <span className="text-gray-400">Parallelism: <span className="text-neon-green font-mono">{String(quantumActionResult.parallelism ?? '')}</span></span>
-                </div>
-                <p className="text-gray-400">Fault tolerance: <span className={`${String(quantumActionResult.faultToleranceCost).includes('Clifford') ? 'text-green-400' : 'text-yellow-400'}`}>{String(quantumActionResult.faultToleranceCost ?? '')}</span></p>
-              </div>
-            )}
-            {quantumActionResult.action === 'errorAnalysis' && (
-              <div className="space-y-1">
-                <div className="flex gap-4 flex-wrap">
-                  <span className="text-gray-400">Fidelity: <span className={`font-mono font-bold ${(quantumActionResult.fidelityPercent as number) > 95 ? 'text-green-400' : (quantumActionResult.fidelityPercent as number) > 80 ? 'text-yellow-400' : 'text-red-400'}`}>{String(quantumActionResult.fidelityPercent ?? '')}%</span></span>
-                  <span className="text-gray-400">Quality: <span className="text-white capitalize">{String(quantumActionResult.quality ?? '')}</span></span>
-                </div>
-                {Array.isArray(quantumActionResult.recommendations) && quantumActionResult.recommendations.length > 0 && (
-                  <div className="space-y-0.5">{(quantumActionResult.recommendations as string[]).map((r, i) => <p key={i} className="text-yellow-300">⚠ {r}</p>)}</div>
-                )}
-              </div>
-            )}
-            <button onClick={() => setQuantumActionResult(null)} className="text-gray-600 hover:text-gray-400 text-xs flex items-center gap-1"><X className="w-3 h-3" /> Dismiss</button>
-          </div>
-        )}
-      </div>
 
       {/* Recent Simulations */}
       {recentSims.length > 0 && (

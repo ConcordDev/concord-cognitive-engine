@@ -302,35 +302,15 @@ const STATUSES_BY_TYPE: Record<ArtifactType, string[]> = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  intake: 'neon-blue',
-  active: 'neon-green',
-  discovery: 'amber-400',
-  negotiation: 'amber-400',
-  trial: 'red-400',
-  appeal: 'orange-400',
-  closed: 'gray-400',
-  draft: 'gray-400',
-  review: 'neon-blue',
-  filed: 'neon-cyan',
-  served: 'neon-green',
-  logged: 'neon-blue',
-  billed: 'amber-400',
-  paid: 'neon-green',
-  upcoming: 'neon-blue',
-  today: 'amber-400',
-  overdue: 'red-400',
-  completed: 'neon-green',
-  inactive: 'gray-400',
-  conflict: 'red-400',
-  executed: 'neon-green',
-  expired: 'red-400',
-  terminated: 'red-400',
-  compliant: 'neon-green',
-  due_soon: 'amber-400',
-  under_review: 'neon-blue',
-  pending: 'amber-400',
-  registered: 'neon-green',
-  contested: 'red-400',
+  intake: 'neon-blue', active: 'neon-green', discovery: 'amber-400', negotiation: 'amber-400',
+  trial: 'red-400', appeal: 'orange-400', closed: 'gray-400',
+  draft: 'gray-400', review: 'neon-blue', filed: 'neon-cyan', served: 'neon-green',
+  logged: 'neon-blue', billed: 'amber-400', paid: 'neon-green',
+  upcoming: 'neon-blue', today: 'amber-400', overdue: 'red-400', completed: 'neon-green',
+  inactive: 'gray-400', conflict: 'red-400',
+  executed: 'neon-green', expired: 'red-400', terminated: 'red-400',
+  compliant: 'neon-green', due_soon: 'amber-400', under_review: 'neon-blue',
+  pending: 'amber-400', registered: 'neon-green', contested: 'red-400',
 };
 
 const MATTER_TYPES: MatterType[] = [
@@ -1014,34 +994,10 @@ export default function LegalLensPage() {
       <>
         {/* Top-level KPIs */}
         <div className={ds.grid4}>
-          <StatCard
-            icon={Briefcase}
-            value={stats.activeCases}
-            label="Active Matters"
-            sub={`${stats.totalCases} total cases`}
-            color="text-neon-blue"
-          />
-          <StatCard
-            icon={Timer}
-            value={`${stats.weeklyHours.toFixed(1)}h`}
-            label="Billable This Week"
-            sub={`${stats.monthlyHours.toFixed(1)}h this month`}
-            color="text-neon-green"
-          />
-          <StatCard
-            icon={AlertTriangle}
-            value={stats.upcomingDeadlines}
-            label="Deadlines (7 days)"
-            sub={`${stats.overdueEvents} overdue`}
-            color="text-amber-400"
-          />
-          <StatCard
-            icon={DollarSign}
-            value={formatCurrency(stats.unbilledAmount)}
-            label="Unbilled Time"
-            sub={`Trust: ${formatCurrency(stats.trustBalance)}`}
-            color="text-amber-400"
-          />
+          <StatCard icon={Briefcase} value={stats.activeCases} label="Active Matters" sub={`${stats.totalCases} total cases`} color="text-neon-blue" />
+          <StatCard icon={Timer} value={`${stats.weeklyHours.toFixed(1)}h`} label="Billable This Week" sub={`${stats.monthlyHours.toFixed(1)}h this month`} color="text-neon-green" />
+          <StatCard icon={AlertTriangle} value={stats.upcomingDeadlines} label="Deadlines (7 days)" sub={`${stats.overdueEvents} overdue`} color="text-amber-400" />
+          <StatCard icon={DollarSign} value={formatCurrency(stats.unbilledAmount)} label="Unbilled Time" sub={`Trust: ${formatCurrency(stats.trustBalance)}`} color="text-amber-400" />
         </div>
 
         {/* Second row KPIs */}
@@ -1246,14 +1202,7 @@ export default function LegalLensPage() {
         const d = item.data as unknown as CaseData;
         const color = STATUS_COLORS[d.status] || 'gray-400';
         return (
-          <motion.div
-            key={item.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.05 }}
-            className={ds.panelHover}
-            onClick={() => openDetail(item)}
-          >
+          <motion.div key={item.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }} className={ds.panelHover} onClick={() => openDetail(item)}>
             <div className="flex items-start justify-between mb-2">
               <h3 className={cn(ds.heading3, 'text-base truncate flex-1')}>{item.title}</h3>
               <StatusBadge status={d.status} />
@@ -3060,6 +3009,30 @@ export default function LegalLensPage() {
               value: items.filter((i) => i.meta?.status === 'active').length,
               icon: Scale,
             },
+          ].map((stat) => (
+            <div key={stat.label} className={ds.panel + ' flex items-center gap-3 p-3'}>
+              <stat.icon className="w-5 h-5 text-amber-400 shrink-0" />
+              <div>
+                <p className="text-xs text-gray-400">{stat.label}</p>
+                <p className="text-lg font-bold text-white">{stat.value}</p>
+              </div>
+            </div>
+          ));
+        })()}
+      </div>
+
+      {/* Quick Stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {(() => {
+          const cases = items.filter(i => (i.data as Record<string, unknown>).caseNumber);
+          const timeEntries = items.filter(i => (i.data as Record<string, unknown>).hours);
+          const totalHours = timeEntries.reduce((s, i) => s + Number((i.data as Record<string, unknown>).hours || 0), 0);
+          const clients = new Set(items.map(i => (i.data as Record<string, unknown>).client).filter(Boolean));
+          return [
+            { label: 'Cases', value: cases.length || items.length, icon: Briefcase },
+            { label: 'Billable Hours', value: totalHours.toFixed(1), icon: Timer },
+            { label: 'Client Count', value: clients.size, icon: Users },
+            { label: 'Active', value: items.filter(i => i.meta?.status === 'active').length, icon: Scale },
           ].map((stat) => (
             <div key={stat.label} className={ds.panel + ' flex items-center gap-3 p-3'}>
               <stat.icon className="w-5 h-5 text-amber-400 shrink-0" />

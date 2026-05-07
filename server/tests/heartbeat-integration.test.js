@@ -97,11 +97,10 @@ describe("Heartbeat Integration", () => {
     assert.ok(source.includes("CREATE TABLE IF NOT EXISTS archived_dtus"));
   });
 
-  // Brain routing check — Ollama-first sovereignty: conscious brain first, OpenAI as emergency fallback
-  it("should route chat LLM to conscious brain with OpenAI emergency fallback", () => {
+  // Brain routing check
+  it("should route chat LLM to conscious brain with subconscious fallback", () => {
     assert.ok(source.includes("const consciousAvailable = BRAIN.conscious && BRAIN.conscious.enabled"));
-    assert.ok(source.includes("const openaiAvailable = Boolean(OPENAI_API_KEY)"));
-    assert.ok(source.includes("llm_openai_emergency_fallback"));
+    assert.ok(source.includes("const subconsciousAvailable = BRAIN.subconscious && BRAIN.subconscious.enabled"));
   });
 
   // Rate limiting check

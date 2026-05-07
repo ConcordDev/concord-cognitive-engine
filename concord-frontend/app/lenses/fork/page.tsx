@@ -2,8 +2,8 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { useState, useCallback } from 'react';
-import { motion } from 'framer-motion';
-import { GitFork, GitBranch, GitMerge, Layers, Loader2, ChevronDown, ArrowLeftRight, Eye, GitPullRequest, Network, Scale, Diff, RefreshCw, X, Zap, Activity } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { GitFork, GitBranch, GitMerge, Layers, Loader2, ChevronDown, ArrowLeftRight, Eye, GitPullRequest, Network, Scale, Diff, RefreshCw } from 'lucide-react';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -200,140 +200,6 @@ export default function ForkLensPage() {
 
       {/* AI Actions */}
       <UniversalActions domain="fork" artifactId={forkItems[0]?.id} compact />
-
-      {/* Fork Analysis Actions */}
-      <div className="panel p-4 space-y-3">
-        <h2 className="font-semibold text-sm flex items-center gap-2">
-          <Zap className="w-4 h-4 text-neon-cyan" />
-          Fork Analysis
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-          {[
-            { action: 'divergenceAnalysis', label: 'Divergence Analysis', icon: ArrowLeftRight, color: 'text-neon-cyan' },
-            { action: 'mergeComplexity',    label: 'Merge Complexity',    icon: GitMerge,      color: 'text-neon-purple' },
-            { action: 'forkHealth',         label: 'Fork Health',         icon: Activity,      color: 'text-neon-green' },
-          ].map(({ action, label, icon: Icon, color }) => (
-            <button
-              key={action}
-              onClick={() => handleForkAction(action)}
-              disabled={!!forkRunning || !forkItems[0]?.id}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-lattice-deep border border-lattice-border text-sm hover:border-white/20 disabled:opacity-40 transition-colors"
-            >
-              {forkRunning === action ? <Loader2 className="w-4 h-4 animate-spin" /> : <Icon className={`w-4 h-4 ${color}`} />}
-              <span className="truncate">{label}</span>
-            </button>
-          ))}
-        </div>
-
-        {forkActionResult && (
-          <div className="mt-3 rounded-lg bg-black/30 border border-white/10 p-4 relative">
-            <button onClick={() => setForkActionResult(null)} className="absolute top-3 right-3 text-gray-500 hover:text-white">
-              <X className="w-4 h-4" />
-            </button>
-
-            {/* divergenceAnalysis */}
-            {forkActionResult._action === 'divergenceAnalysis' && (forkActionResult.summary as Record<string,unknown>) && (
-              <div className="space-y-3">
-                <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Divergence Analysis</p>
-                {(() => {
-                  const summary = forkActionResult.summary as Record<string,number>;
-                  const divergence = forkActionResult.divergence as Record<string,unknown>;
-                  return (
-                    <>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        {[
-                          { label: 'Total Files', value: String(summary.totalFiles ?? 0), color: 'text-white' },
-                          { label: 'Conflicts', value: String(summary.conflictingFiles ?? 0), color: summary.conflictingFiles > 0 ? 'text-red-400' : 'text-neon-green' },
-                          { label: 'Modified in A', value: String(summary.modifiedInA ?? 0), color: 'text-neon-cyan' },
-                          { label: 'Modified in B', value: String(summary.modifiedInB ?? 0), color: 'text-neon-purple' },
-                        ].map(({ label, value, color }) => (
-                          <div key={label} className="bg-white/5 rounded-lg p-3 text-center">
-                            <p className={`text-lg font-bold ${color}`}>{value}</p>
-                            <p className="text-xs text-gray-400">{label}</p>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div className="flex-1">
-                          <p className="text-xs text-gray-400 mb-1">Divergence Score</p>
-                          <div className="h-3 bg-white/5 rounded-full overflow-hidden">
-                            <div className={`h-full rounded-full ${(divergence.score as number) > 70 ? 'bg-red-500' : (divergence.score as number) > 40 ? 'bg-yellow-500' : 'bg-neon-green'}`} style={{ width: `${divergence.score as number}%` }} />
-                          </div>
-                        </div>
-                        <span className={`text-sm font-bold px-2 py-1 rounded ${(divergence.score as number) > 70 ? 'bg-red-500/20 text-red-400' : (divergence.score as number) > 40 ? 'bg-yellow-500/20 text-yellow-400' : 'bg-neon-green/20 text-neon-green'}`}>{divergence.score as number}% — {divergence.level as string}</span>
-                      </div>
-                    </>
-                  );
-                })()}
-              </div>
-            )}
-
-            {/* mergeComplexity */}
-            {forkActionResult._action === 'mergeComplexity' && (
-              <div className="space-y-3">
-                <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Merge Complexity</p>
-                {(forkActionResult.message as string) ? <p className="text-sm text-gray-400">{forkActionResult.message as string}</p> : (() => {
-                  const complexity = forkActionResult.complexity as Record<string,unknown>;
-                  const summary = forkActionResult.summary as Record<string,unknown>;
-                  return (
-                    <>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        {[
-                          { label: 'Score', value: `${complexity?.score ?? 0}/100`, color: 'text-neon-cyan' },
-                          { label: 'Level', value: String(complexity?.level ?? '—'), color: (complexity?.level as string) === 'easy' ? 'text-neon-green' : (complexity?.level as string) === 'moderate' ? 'text-yellow-400' : 'text-red-400' },
-                          { label: 'Est. Hours', value: String(complexity?.estimatedMergeHours ?? 0), color: 'text-white' },
-                          { label: 'Conflicts', value: String((summary as Record<string,number>)?.totalDirectConflicts ?? 0), color: 'text-red-400' },
-                        ].map(({ label, value, color }) => (
-                          <div key={label} className="bg-white/5 rounded-lg p-3 text-center">
-                            <p className={`text-lg font-bold ${color} capitalize`}>{value}</p>
-                            <p className="text-xs text-gray-400">{label}</p>
-                          </div>
-                        ))}
-                      </div>
-                      {(summary as Record<string,boolean>)?.autoMergeCandidate && (
-                        <p className="text-xs text-neon-green bg-neon-green/10 border border-neon-green/20 rounded px-3 py-2">Auto-merge candidate — no conflicts detected</p>
-                      )}
-                    </>
-                  );
-                })()}
-              </div>
-            )}
-
-            {/* forkHealth */}
-            {forkActionResult._action === 'forkHealth' && (
-              <div className="space-y-3">
-                <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Fork Health — {forkActionResult.name as string}</p>
-                <div className="flex items-center gap-4">
-                  <div className="flex-1">
-                    <div className="h-3 bg-white/5 rounded-full overflow-hidden">
-                      <div className={`h-full rounded-full ${(forkActionResult.healthScore as number) >= 80 ? 'bg-neon-green' : (forkActionResult.healthScore as number) >= 60 ? 'bg-yellow-400' : 'bg-red-400'}`} style={{ width: `${forkActionResult.healthScore as number}%` }} />
-                    </div>
-                  </div>
-                  <span className={`text-lg font-bold px-2 py-1 rounded ${(forkActionResult.healthScore as number) >= 80 ? 'text-neon-green' : (forkActionResult.healthScore as number) >= 60 ? 'text-yellow-400' : 'text-red-400'}`}>{forkActionResult.healthScore as number} — {forkActionResult.healthLevel as string}</span>
-                </div>
-                {(forkActionResult.factors as Record<string,Record<string,number>>) && (
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                    {Object.entries(forkActionResult.factors as Record<string,{score:number}>).map(([key, val]) => (
-                      <div key={key} className="bg-white/5 rounded-lg p-2 text-center">
-                        <p className={`text-sm font-bold ${val.score >= 80 ? 'text-neon-green' : val.score >= 60 ? 'text-yellow-400' : 'text-red-400'}`}>{val.score}</p>
-                        <p className="text-[10px] text-gray-400 capitalize">{key.replace(/([A-Z])/g, ' $1')}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {Array.isArray(forkActionResult.recommendations) && (forkActionResult.recommendations as string[]).length > 0 && (
-                  <div className="space-y-1">
-                    {(forkActionResult.recommendations as string[]).map((rec, i) => (
-                      <p key={i} className="text-xs text-yellow-400 bg-yellow-400/5 border border-yellow-400/10 rounded px-3 py-1.5">{rec}</p>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
       {/* Stat Cards Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
@@ -357,7 +223,7 @@ export default function ForkLensPage() {
       </div>
 
       {/* Fork Divergence & Sync Status */}
-      {forks.length > 0 ? (
+      {forks.length > 0 && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -394,10 +260,6 @@ export default function ForkLensPage() {
             })}
           </div>
         </motion.div>
-      ) : (
-        <div className="text-center py-6 text-gray-500 text-sm border border-dashed border-white/10 rounded-lg">
-          <p>No forks created yet. Fork a DTU to see version branches here.</p>
-        </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

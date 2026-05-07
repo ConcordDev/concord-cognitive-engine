@@ -9,11 +9,10 @@ import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
-  FolderKanban, ListTodo, Calendar, Users, DollarSign,
-  Plus, Search, X, Trash2, BarChart3,
-  AlertTriangle, Milestone,
-  Layers, ChevronDown, Gauge, Activity, CircleDot, Zap,
-  Loader2, TrendingDown, TrendingUp,
+  FolderKanban, ListTodo, Calendar, Users, Clock, DollarSign,
+  Plus, Search, X, Trash2, BarChart3, CheckCircle2,
+  AlertTriangle, Target, TrendingUp, Flag, Milestone,
+  Layers, ChevronDown, GitBranch, Gauge, Timer, Activity, CircleDot,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -70,7 +69,7 @@ export default function ProjectsLensPage() {
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<LensItem<ProjectArtifact> | null>(null);
   const [showDashboard, setShowDashboard] = useState(false);
-  const [showFeatures, setShowFeatures] = useState(true);
+  const [showFeatures, setShowFeatures] = useState(false);
 
   const [formName, setFormName] = useState('');
   const [formDescription, setFormDescription] = useState('');
@@ -96,28 +95,6 @@ export default function ProjectsLensPage() {
     return result;
   }, [items, searchQuery, filterStatus]);
 
-  // --- Domain action state ---
-  const [projActionRunning, setProjActionRunning] = useState<string | null>(null);
-  const [ganttResult, setGanttResult] = useState<Record<string, unknown> | null>(null);
-  const [riskMatrixResult, setRiskMatrixResult] = useState<Record<string, unknown> | null>(null);
-  const [burndownResult, setBurndownResult] = useState<Record<string, unknown> | null>(null);
-  const [stakeholderMapResult, setStakeholderMapResult] = useState<Record<string, unknown> | null>(null);
-
-  const handleProjAction = async (
-    action: string,
-    setter: (val: Record<string, unknown> | null) => void
-  ) => {
-    setProjActionRunning(action);
-    try {
-      const artifactId = items[0]?.id || 'projects';
-      const res = await runAction.mutateAsync({ id: artifactId, action });
-      if (res.ok === false) { setter({ message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` } as Record<string, unknown>); } else { setter((res.result as Record<string, unknown>) || null); }
-    } catch (e) {
-      console.error(`Projects action ${action} failed:`, e);
-    }
-    setProjActionRunning(null);
-  };
-
   const openCreate = () => { setEditingItem(null); setFormName(''); setFormDescription(''); setFormStatus('planned'); setFormNotes(''); setFormPriority('medium'); setFormAssignee(''); setFormStartDate(''); setFormEndDate(''); setFormBudget(''); setFormEstimatedHours(''); setFormMethodology('Agile'); setFormClient(''); setEditorOpen(true); };
   const openEdit = (item: LensItem<ProjectArtifact>) => { const d = item.data as unknown as ProjectArtifact; setEditingItem(item); setFormName(d.name || ''); setFormDescription(d.description || ''); setFormStatus(d.status || 'planned'); setFormNotes(d.notes || ''); setFormPriority(d.priority || 'medium'); setFormAssignee(d.assignee || ''); setFormStartDate(d.startDate || ''); setFormEndDate(d.endDate || ''); setFormBudget(d.budget?.toString() || ''); setFormEstimatedHours(d.estimatedHours?.toString() || ''); setFormMethodology(d.methodology || 'Agile'); setFormClient(d.client || ''); setEditorOpen(true); };
 
@@ -139,7 +116,7 @@ export default function ProjectsLensPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className={ds.panel}><FolderKanban className="w-5 h-5 text-blue-400 mb-2" /><p className={ds.textMuted}>Total Projects</p><p className="text-xl font-bold text-white">{items.length}</p></div>
         <div className={ds.panel}><Gauge className="w-5 h-5 text-green-400 mb-2" /><p className={ds.textMuted}>Avg Progress</p><p className="text-xl font-bold text-white">{avgProgress.toFixed(0)}%</p></div>
-        <div className={ds.panel}><DollarSign className="w-5 h-5 text-yellow-400 mb-2" /><p className={ds.textMuted}>Budget</p><p className="text-xl font-bold text-white">${totalBudget.toLocaleString()}</p><p className={ds.textMuted}>${totalSpent.toLocaleString()} spent</p></div>
+        <div className={ds.panel}><DollarSign className="w-5 h-5 text-yellow-400 mb-2" /><p className={ds.textMuted}>Budget</p><p className="text-xl font-bold text-white">${totalBudget.toLocaleString()}</p></div>
         <div className={ds.panel}><AlertTriangle className="w-5 h-5 text-red-400 mb-2" /><p className={ds.textMuted}>At Risk</p><p className="text-xl font-bold text-white">{all.filter(p => p.status === 'at_risk' || p.status === 'overdue').length}</p></div>
       </div>
     );
@@ -214,256 +191,9 @@ export default function ProjectsLensPage() {
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center"><FolderKanban className="w-5 h-5 text-white" /></div>
           <div><div className="flex items-center gap-2"><h1 className={ds.heading1}>Projects</h1><LiveIndicator isLive={isLive} lastUpdated={lastUpdated} /></div><p className={ds.textMuted}>Projects, tasks, milestones, resources, timeline, and risk management</p></div>
         </div>
-        <div className="flex items-center gap-2"><DTUExportButton domain="projects" data={{}} compact /><button onClick={() => runAction.mutate({ id: items[0]?.id || 'projects', action: 'riskMatrix' }, { onError: (e) => { console.error('Action failed:', e); } })} className={ds.btnSecondary} title="Run risk analysis"><Zap className="w-4 h-4" /> Analyze</button><button onClick={() => setShowDashboard(!showDashboard)} className={cn(showDashboard ? ds.btnPrimary : ds.btnSecondary)}><BarChart3 className="w-4 h-4" /> Dashboard</button></div>
+        <div className="flex items-center gap-2"><DTUExportButton domain="projects" data={{}} compact /><button onClick={() => setShowDashboard(!showDashboard)} className={cn(showDashboard ? ds.btnPrimary : ds.btnSecondary)}><BarChart3 className="w-4 h-4" /> Dashboard</button></div>
       </header>
       <RealtimeDataPanel domain="projects" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
-
-      {/* ── Projects Domain Action Panel ── */}
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className={cn(ds.panel, 'space-y-4')}>
-        <div className="flex items-center gap-2">
-          <BarChart3 className="w-4 h-4 text-violet-400" />
-          <h2 className="font-semibold text-sm">Project Analysis Engine</h2>
-          <span className={cn(ds.textMuted, 'ml-auto text-xs')}>Gantt · Risk · Burndown · Stakeholders</span>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          {[
-            { action: 'ganttGenerate', label: 'Gantt Chart', setter: setGanttResult, icon: Calendar, color: 'text-violet-400' },
-            { action: 'riskMatrix', label: 'Risk Matrix', setter: setRiskMatrixResult, icon: AlertTriangle, color: 'text-red-400' },
-            { action: 'burndownCalc', label: 'Burndown', setter: setBurndownResult, icon: TrendingDown, color: 'text-orange-400' },
-            { action: 'stakeholderMap', label: 'Stakeholder Map', setter: setStakeholderMapResult, icon: Users, color: 'text-neon-cyan' },
-          ].map(({ action, label, setter, icon: Icon, color }) => (
-            <button
-              key={action}
-              onClick={() => handleProjAction(action, setter)}
-              disabled={projActionRunning !== null}
-              className={cn(ds.btnSecondary, 'flex items-center gap-1.5 justify-center disabled:opacity-40 disabled:cursor-not-allowed text-xs')}
-            >
-              {projActionRunning === action
-                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                : <Icon className={cn('w-3.5 h-3.5', color)} />}
-              {projActionRunning === action ? 'Running…' : label}
-            </button>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-
-          {/* Gantt Result */}
-          {ganttResult && (
-            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-lg border border-violet-500/20 bg-violet-500/5 p-4 space-y-3">
-              <span className="text-xs font-semibold text-violet-400 uppercase tracking-wider flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5" /> Gantt Timeline
-              </span>
-              {'message' in ganttResult ? (
-                <p className="text-xs text-gray-400">{String(ganttResult.message)}</p>
-              ) : (
-                <>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className={cn(ds.panel, 'text-center')}>
-                      <p className="text-xs text-gray-500">Total Days</p>
-                      <p className="text-lg font-bold text-white">{String(ganttResult.totalDays ?? 0)}</p>
-                    </div>
-                    <div className={cn(ds.panel, 'text-center')}>
-                      <p className="text-xs text-gray-500">Total Weeks</p>
-                      <p className="text-lg font-bold text-violet-400">{String(ganttResult.totalWeeks ?? 0)}</p>
-                    </div>
-                  </div>
-                  {Array.isArray(ganttResult.tasks) && (
-                    <div className="space-y-2">
-                      <p className="text-xs text-gray-500 font-medium">Task Timeline</p>
-                      {(ganttResult.tasks as Array<Record<string, unknown>>).slice(0, 8).map((task, i) => {
-                        const total = Number(ganttResult.totalDays) || 1;
-                        const startPct = (Number(task.startDay) / total) * 100;
-                        const widthPct = (Number(task.duration) / total) * 100;
-                        return (
-                          <div key={i} className="space-y-0.5">
-                            <div className="flex justify-between text-xs text-gray-400">
-                              <span className="truncate max-w-[60%]">{String(task.task)}</span>
-                              <span className="text-gray-600 font-mono">d{String(task.startDay)}–{String(task.endDay)}</span>
-                            </div>
-                            <div className="h-3 bg-black/30 rounded-full relative overflow-hidden">
-                              <motion.div
-                                initial={{ width: 0, opacity: 0 }}
-                                animate={{ width: `${Math.max(widthPct, 2)}%`, opacity: 1 }}
-                                transition={{ delay: i * 0.05, duration: 0.4 }}
-                                style={{ left: `${startPct}%` }}
-                                className="absolute h-full rounded-full bg-violet-500/70"
-                              />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </>
-              )}
-            </motion.div>
-          )}
-
-          {/* Risk Matrix Result */}
-          {riskMatrixResult && (
-            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-lg border border-red-500/20 bg-red-500/5 p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-red-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <AlertTriangle className="w-3.5 h-3.5" /> Risk Matrix
-                </span>
-                {'critical' in riskMatrixResult && Number(riskMatrixResult.critical) > 0 && (
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-red-600/30 text-red-300">
-                    {String(riskMatrixResult.critical)} critical
-                  </span>
-                )}
-              </div>
-              {'message' in riskMatrixResult ? (
-                <p className="text-xs text-gray-400">{String(riskMatrixResult.message)}</p>
-              ) : (
-                <>
-                  {'topRisk' in riskMatrixResult && (
-                    <p className="text-xs text-gray-400">Top Risk: <span className="text-orange-400 font-medium">{String(riskMatrixResult.topRisk)}</span></p>
-                  )}
-                  {Array.isArray(riskMatrixResult.risks) && (
-                    <div className="space-y-2">
-                      {(riskMatrixResult.risks as Array<Record<string, unknown>>).slice(0, 6).map((risk, i) => (
-                        <div key={i} className="space-y-0.5">
-                          <div className="flex items-center gap-2 text-xs">
-                            <span className="flex-1 text-gray-300 truncate">{String(risk.risk)}</span>
-                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                              String(risk.severity) === 'critical' ? 'bg-red-600/30 text-red-300' :
-                              String(risk.severity) === 'high' ? 'bg-orange-500/20 text-orange-400' :
-                              String(risk.severity) === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
-                              'bg-gray-500/20 text-gray-400'
-                            }`}>{String(risk.severity)}</span>
-                            <span className="text-gray-600 font-mono w-8 text-right">{String(risk.score)}</span>
-                          </div>
-                          <div className="h-1.5 bg-black/30 rounded-full overflow-hidden">
-                            <motion.div
-                              initial={{ width: 0 }}
-                              animate={{ width: `${Number(risk.score)}%` }}
-                              transition={{ delay: i * 0.05, duration: 0.4 }}
-                              className={`h-full rounded-full ${
-                                String(risk.severity) === 'critical' ? 'bg-red-500' :
-                                String(risk.severity) === 'high' ? 'bg-orange-500' :
-                                String(risk.severity) === 'medium' ? 'bg-yellow-500' : 'bg-gray-500'
-                              }`}
-                            />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </>
-              )}
-            </motion.div>
-          )}
-
-          {/* Burndown Result */}
-          {burndownResult && (
-            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-lg border border-orange-500/20 bg-orange-500/5 p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-orange-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <TrendingDown className="w-3.5 h-3.5" /> Burndown
-                </span>
-                {'status' in burndownResult && (
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${
-                    String(burndownResult.status) === 'ahead' ? 'bg-green-500/20 text-green-400' :
-                    String(burndownResult.status) === 'on-track' ? 'bg-blue-500/20 text-blue-400' :
-                    'bg-red-500/20 text-red-400'
-                  }`}>{String(burndownResult.status)}</span>
-                )}
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { label: 'Total Pts', value: String(burndownResult.totalPoints ?? '—'), color: 'text-white' },
-                  { label: 'Completed', value: String(burndownResult.completed ?? '—'), color: 'text-green-400' },
-                  { label: 'Remaining', value: String(burndownResult.remaining ?? '—'), color: 'text-orange-400' },
-                  { label: 'Velocity', value: `${String(burndownResult.actualVelocity ?? '—')} pts/day`, color: 'text-neon-cyan' },
-                ].map(({ label, value, color }) => (
-                  <div key={label} className={cn(ds.panel, 'text-center')}>
-                    <p className="text-xs text-gray-500">{label}</p>
-                    <p className={cn('text-sm font-bold font-mono', color)}>{value}</p>
-                  </div>
-                ))}
-              </div>
-              {'projectedDaysToFinish' in burndownResult && (
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="text-gray-500">Projected Finish:</span>
-                  <span className={`font-mono font-bold ${
-                    burndownResult.onTrack ? 'text-green-400' : 'text-red-400'
-                  }`}>
-                    {burndownResult.projectedDaysToFinish === Infinity || Number(burndownResult.projectedDaysToFinish) > 9999
-                      ? 'N/A'
-                      : `${String(burndownResult.projectedDaysToFinish)} days`}
-                  </span>
-                  {burndownResult.onTrack
-                    ? <TrendingUp className="w-3 h-3 text-green-400" />
-                    : <TrendingDown className="w-3 h-3 text-red-400" />}
-                </div>
-              )}
-              {'idealBurnRate' in burndownResult && (
-                <div className="flex justify-between text-xs text-gray-500">
-                  <span>Ideal rate: <span className="text-gray-300 font-mono">{String(burndownResult.idealBurnRate)} pts/day</span></span>
-                  <span>Days elapsed: <span className="text-gray-300 font-mono">{String(burndownResult.daysElapsed)}</span></span>
-                </div>
-              )}
-            </motion.div>
-          )}
-
-          {/* Stakeholder Map Result */}
-          {stakeholderMapResult && (
-            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-4 space-y-3">
-              <span className="text-xs font-semibold text-neon-cyan uppercase tracking-wider flex items-center gap-1.5">
-                <Users className="w-3.5 h-3.5" /> Stakeholder Map
-              </span>
-              {'message' in stakeholderMapResult ? (
-                <p className="text-xs text-gray-400">{String(stakeholderMapResult.message)}</p>
-              ) : (
-                <>
-                  {'byQuadrant' in stakeholderMapResult && (
-                    <div className="grid grid-cols-2 gap-2">
-                      {[
-                        { key: 'manageClosely', label: 'Manage Closely', color: 'text-red-400', bg: 'bg-red-500/10' },
-                        { key: 'keepSatisfied', label: 'Keep Satisfied', color: 'text-yellow-400', bg: 'bg-yellow-500/10' },
-                        { key: 'keepInformed', label: 'Keep Informed', color: 'text-blue-400', bg: 'bg-blue-500/10' },
-                        { key: 'monitor', label: 'Monitor', color: 'text-gray-400', bg: 'bg-gray-500/10' },
-                      ].map(({ key, label, color, bg }) => (
-                        <div key={key} className={cn('rounded-lg p-2 text-center', bg)}>
-                          <p className={cn('text-lg font-bold', color)}>
-                            {String((stakeholderMapResult.byQuadrant as Record<string, unknown>)[key] ?? 0)}
-                          </p>
-                          <p className="text-xs text-gray-500">{label}</p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {Array.isArray(stakeholderMapResult.stakeholders) && (
-                    <div className="space-y-1.5">
-                      <p className="text-xs text-gray-500 font-medium">Stakeholders ({String(stakeholderMapResult.total ?? 0)})</p>
-                      {(stakeholderMapResult.stakeholders as Array<Record<string, unknown>>).slice(0, 8).map((s, i) => (
-                        <div key={i} className="flex items-center gap-2 text-xs">
-                          <span className="flex-1 text-gray-300">{String(s.name)}</span>
-                          <div className="flex gap-1 text-[10px]">
-                            <span className="text-gray-500">P:{String(s.power)}</span>
-                            <span className="text-gray-500">I:{String(s.interest)}</span>
-                          </div>
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                            String(s.quadrant) === 'manage-closely' ? 'bg-red-500/20 text-red-400' :
-                            String(s.quadrant) === 'keep-satisfied' ? 'bg-yellow-500/20 text-yellow-400' :
-                            String(s.quadrant) === 'keep-informed' ? 'bg-blue-500/20 text-blue-400' :
-                            'bg-gray-500/20 text-gray-400'
-                          }`}>
-                            {String(s.communication)}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </>
-              )}
-            </motion.div>
-          )}
-        </div>
-      </motion.div>
-
       <UniversalActions domain="projects" artifactId={items[0]?.id} compact />
 
       {/* Stats Row */}
@@ -475,11 +205,11 @@ export default function ProjectsLensPage() {
           <div className={ds.panel}><AlertTriangle className="w-5 h-5 text-red-400 mb-2" /><p className={ds.textMuted}>At Risk</p><p className="text-xl font-bold text-white">{all.filter(p => p.status === 'at_risk' || p.status === 'overdue').length}</p></div>
         </div>
       ); })()}
-      <nav className="flex items-center gap-2 border-b border-lattice-border pb-4 flex-wrap">{MODE_TABS.map(tab => (<button key={tab.id} onClick={() => { setActiveTab(tab.id); setShowDashboard(false); }} className={cn('flex items-center gap-2 px-4 py-2 rounded-lg transition-colors whitespace-nowrap', activeTab === tab.id && !showDashboard ? 'bg-neon-blue/20 text-neon-blue' : 'text-gray-400 hover:text-white hover:bg-lattice-elevated')}><tab.icon className="w-4 h-4" />{tab.label}</button>))}</nav>
+      <nav className="flex items-center gap-2 border-b border-lattice-border pb-4 overflow-x-auto">{MODE_TABS.map(tab => (<button key={tab.id} onClick={() => { setActiveTab(tab.id); setShowDashboard(false); }} className={cn('flex items-center gap-2 px-4 py-2 rounded-lg transition-colors whitespace-nowrap', activeTab === tab.id && !showDashboard ? 'bg-neon-blue/20 text-neon-blue' : 'text-gray-400 hover:text-white hover:bg-lattice-elevated')}><tab.icon className="w-4 h-4" />{tab.label}</button>))}</nav>
       {showDashboard ? renderDashboard() : renderLibrary()}
       {renderEditor()}
       <div className="border-t border-white/10">
-        <button onClick={() => setShowFeatures(!showFeatures)} className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"><span className="flex items-center gap-2"><Layers className="w-4 h-4" />Lens Features & Capabilities</span><ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} /></button>
+        <button onClick={() => setShowFeatures(!showFeatures)} className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-400 hover:text-white transition-colors"><span className="flex items-center gap-2"><Layers className="w-4 h-4" />Lens Features & Capabilities</span><ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} /></button>
         {showFeatures && <div className="px-4 pb-4"><LensFeaturePanel lensId="projects" /></div>}
       </div>
     </div>

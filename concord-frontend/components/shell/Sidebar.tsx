@@ -17,7 +17,6 @@ import {
   getAbsorbedLenses,
   getExtensionsByCategory,
   getLensById,
-  getSubLensTree,
   type CoreLensConfig,
   type LensEntry,
   type SubLensTreeNode,

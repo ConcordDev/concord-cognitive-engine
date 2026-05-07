@@ -3,16 +3,11 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
-import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { ds } from '@/lib/design-system';
-import { cn } from '@/lib/utils';
-import { UniversalActions } from '@/components/lens/UniversalActions';
-import {
-  Glasses, Camera, Settings2, Layers, Eye, Plus,
-  Search, Trash2, X, BarChart3, Zap, ChevronDown, Box,
-  MapPin, Globe, Monitor,
-} from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { apiHelpers } from '@/lib/api/client';
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Glasses, Camera, Scan, Settings, Layers, Eye, Maximize } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -318,17 +313,96 @@ export default function ARLensPage() {
           <div className={ds.panel}><MapPin className="w-5 h-5 text-neon-green mb-2" /><p className={ds.textMuted}>Anchors</p><p className="text-xl font-bold text-white">{totalAnchors}</p></div>
           <div className={ds.panel}><Box className="w-5 h-5 text-neon-blue mb-2" /><p className={ds.textMuted}>3D Models</p><p className="text-xl font-bold text-white">{modelCount}</p></div>
         </div>
-        {/* AR Viewport Preview */}
-        <div className={ds.panel}>
-          <div className="h-64 relative overflow-hidden rounded-lg bg-lattice-deep">
-            {arEnabled ? (
-              <div ref={viewportRef} className="w-full h-full" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <div className="text-center text-gray-500"><Glasses className="w-12 h-12 mx-auto mb-2 opacity-50" /><p className="text-sm">Enable AR to begin</p></div>
-              </div>
-            )}
+      </div>
+    );
+  }
+
+  if (isError || isError2) {
+    return (
+      <div className="flex items-center justify-center h-full p-8">
+        <ErrorState error={error?.message || error2?.message} onRetry={() => { refetch(); refetch2(); }} />
+      </div>
+    );
+  }
+  return (
+    <div data-lens-theme="ar" className="p-6 space-y-6">
+      <header className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <span className="text-2xl">🥽</span>
+          <div>
+            <h1 className="text-xl font-bold">AR Lens</h1>
+            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
+            <p className="text-sm text-gray-400">
+              Augmented reality overlay for DTU visualization
+            </p>
           </div>
+        </div>
+        <button
+          onClick={() => setArEnabled(!arEnabled)}
+          className={`btn-neon ${arEnabled ? 'pink' : 'purple'}`}
+        >
+          {arEnabled ? (
+            <>
+              <Camera className="w-4 h-4 mr-2 inline" />
+              Stop AR
+            </>
+          ) : (
+            <>
+              <Glasses className="w-4 h-4 mr-2 inline" />
+              Start AR
+            </>
+          )}
+        </button>
+      </header>
+
+      <RealtimeDataPanel domain="ar" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
+      <DTUExportButton domain="ar" data={{}} compact />
+
+      {/* Stat Cards Row */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[
+          { icon: Layers, color: 'text-neon-purple', value: layers.filter((l) => arLayers?.active?.includes(l.id)).length, label: 'Active Layers' },
+          { icon: Eye, color: 'text-neon-cyan', value: arEnabled ? 'LIVE' : 'OFF', label: 'AR Status' },
+          { icon: Scan, color: 'text-neon-green', value: arEnabled ? '60' : '--', label: 'FPS' },
+          { icon: Maximize, color: 'text-neon-blue', value: '1920x1080', label: 'Viewport' },
+        ].map((stat, i) => (
+          <motion.div
+            key={stat.label}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.08 }}
+            className="lens-card"
+          >
+            <stat.icon className={`w-5 h-5 ${stat.color} mb-2`} />
+            <p className="text-2xl font-bold">{stat.value}</p>
+            <p className="text-sm text-gray-400">{stat.label}</p>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* AR Viewport */}
+      <div className="panel p-4">
+        <div className="graph-container relative overflow-hidden">
+          {arEnabled ? (
+            <div className="absolute inset-0 bg-gradient-to-br from-neon-purple/10 to-neon-blue/10 flex items-center justify-center">
+              <div className="text-center">
+                <Scan className="w-24 h-24 mx-auto text-neon-cyan animate-pulse mb-4" />
+                <p className="text-lg font-medium">AR Mode Active</p>
+                <p className="text-sm text-gray-400">
+                  Camera feed would render here
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="text-center text-gray-500">
+                <Glasses className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                <p>Enable AR to begin visualization</p>
+              </div>
+            </div>
+          )}
+
+          {/* AR Status Overlay */}
           {arEnabled && (
             <div className="flex items-center gap-2 mt-2 px-1">
               <div className="w-2 h-2 rounded-full bg-neon-green animate-pulse" />
@@ -341,67 +415,112 @@ export default function ARLensPage() {
     );
   };
 
-  const renderEditor = () => {
-    if (!editorOpen) return null;
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setEditorOpen(false)}>
-        <div className={cn(ds.panel, 'w-full max-w-lg max-h-[85vh] overflow-y-auto')} onClick={e => e.stopPropagation()}>
-          <div className="flex items-center justify-between mb-4"><h3 className={ds.heading3}>{editingItem ? 'Edit' : 'New'} {activeArtifactType}</h3><button onClick={() => setEditorOpen(false)} className={ds.btnGhost}><X className="w-4 h-4" /></button></div>
-          <div className="space-y-3">
-            <div><label className={ds.label}>Name</label><input className={ds.input} value={formName} onChange={e => setFormName(e.target.value)} /></div>
-            <div><label className={ds.label}>Description</label><textarea className={ds.textarea} rows={2} value={formDescription} onChange={e => setFormDescription(e.target.value)} /></div>
-            <div><label className={ds.label}>Status</label><select className={ds.select} value={formStatus} onChange={e => setFormStatus(e.target.value as Status)}>{Object.entries(STATUS_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select></div>
+      {/* AR Layers */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {layers.map((layer, i) => {
+          const isActive = arLayers?.active?.includes(layer.id);
+          return (
+            <motion.button
+              key={layer.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.08 }}
+              onClick={() => setSelectedLayer(layer.id)}
+              className={`lens-card text-left transition-all ${
+                isActive ? 'border-neon-cyan shadow-[0_0_15px_rgba(0,212,255,0.3)]' : ''
+              } ${selectedLayer === layer.id ? 'ring-2 ring-neon-cyan shadow-[0_0_20px_rgba(0,212,255,0.4)]' : ''}`}
+            >
+              <div className="flex items-start gap-3">
+                <span className="text-2xl">{layer.icon}</span>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-semibold">{layer.name}</h4>
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded ${
+                        isActive
+                          ? 'bg-neon-green/20 text-neon-green'
+                          : 'bg-gray-500/20 text-gray-400'
+                      }`}
+                    >
+                      {isActive ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-400 mt-1">{layer.description}</p>
+                </div>
+              </div>
+            </motion.button>
+          );
+        })}
+      </div>
 
-            {(activeArtifactType === 'Scene' || activeArtifactType === 'Config') && (<>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className={ds.label}>Tracking Mode</label><select className={ds.select} value={formTrackingMode} onChange={e => setFormTrackingMode(e.target.value)}>{TRACKING_MODES.map(m => <option key={m} value={m}>{m}</option>)}</select></div>
-                <div><label className={ds.label}>Render Quality</label><select className={ds.select} value={formRenderQuality} onChange={e => setFormRenderQuality(e.target.value)}>{RENDER_QUALITIES.map(q => <option key={q} value={q}>{q}</option>)}</select></div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className={ds.label}>DTU Density</label><input type="number" className={ds.input} value={formDtuDensity} onChange={e => setFormDtuDensity(e.target.value)} min="1" max="100" /></div>
-                <div><label className={ds.label}>Target FPS</label><input type="number" className={ds.input} value={formFps} onChange={e => setFormFps(e.target.value)} /></div>
-              </div>
-              <div><label className={ds.label}>Resolution</label><input className={ds.input} value={formResolution} onChange={e => setFormResolution(e.target.value)} /></div>
-            </>)}
+      {/* AR Scene Statistics */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+        className="panel p-4"
+      >
+        <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+          <Glasses className="w-4 h-4 text-neon-purple" />
+          Scene Statistics
+        </h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {[
+            { label: 'DTU Anchors', value: 24, color: 'text-neon-cyan' },
+            { label: 'Tracked Planes', value: 3, color: 'text-neon-green' },
+            { label: 'Light Probes', value: 8, color: 'text-amber-400' },
+            { label: 'Render Calls', value: 142, color: 'text-neon-purple' },
+          ].map((item) => (
+            <div key={item.label} className="bg-lattice-deep rounded-lg p-3 text-center">
+              <p className={`text-xl font-bold font-mono ${item.color}`}>{item.value}</p>
+              <p className="text-xs text-gray-500">{item.label}</p>
+            </div>
+          ))}
+        </div>
+      </motion.div>
 
-            {activeArtifactType === 'Layer' && (<>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className={ds.label}>Layer Type</label><select className={ds.select} value={formLayerType} onChange={e => setFormLayerType(e.target.value)}>{LAYER_TYPES.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
-                <div><label className={ds.label}>Z-Index</label><input type="number" className={ds.input} value={formZIndex} onChange={e => setFormZIndex(e.target.value)} /></div>
-              </div>
-              <div><label className={ds.label}>Opacity (%)</label><input type="number" className={ds.input} value={formOpacity} onChange={e => setFormOpacity(e.target.value)} min="0" max="100" /></div>
-            </>)}
-
-            {activeArtifactType === 'Anchor' && (<>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className={ds.label}>Anchor Type</label><select className={ds.select} value={formAnchorType} onChange={e => setFormAnchorType(e.target.value)}>{ANCHOR_TYPES.map(a => <option key={a} value={a}>{a}</option>)}</select></div>
-                <div><label className={ds.label}>Confidence (0-1)</label><input type="number" step="0.01" className={ds.input} value={formConfidence} onChange={e => setFormConfidence(e.target.value)} /></div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className={ds.label}>Position (x,y,z)</label><input className={ds.input} value={formPosition} onChange={e => setFormPosition(e.target.value)} placeholder="0, 0, 0" /></div>
-                <div><label className={ds.label}>Rotation</label><input className={ds.input} value={formRotation} onChange={e => setFormRotation(e.target.value)} placeholder="0, 0, 0" /></div>
-              </div>
-            </>)}
-
-            {activeArtifactType === 'Model3D' && (<>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className={ds.label}>Format</label><select className={ds.select} value={formFormat} onChange={e => setFormFormat(e.target.value)}>{MODEL_FORMATS.map(f => <option key={f} value={f}>{f}</option>)}</select></div>
-                <div><label className={ds.label}>Poly Count</label><input type="number" className={ds.input} value={formPolyCount} onChange={e => setFormPolyCount(e.target.value)} /></div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className={ds.label}>Scale</label><input type="number" step="0.1" className={ds.input} value={formScale} onChange={e => setFormScale(e.target.value)} /></div>
-                <div><label className={ds.label}>Position</label><input className={ds.input} value={formPosition} onChange={e => setFormPosition(e.target.value)} placeholder="0, 0, 0" /></div>
-              </div>
-            </>)}
-
-            {activeArtifactType === 'Capture' && (<>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className={ds.label}>Resolution</label><input className={ds.input} value={formResolution} onChange={e => setFormResolution(e.target.value)} /></div>
-                <div><label className={ds.label}>Format</label><select className={ds.select} value={formFormat} onChange={e => setFormFormat(e.target.value)}><option value="PNG">PNG</option><option value="JPEG">JPEG</option><option value="MP4">MP4</option><option value="WebM">WebM</option></select></div>
-              </div>
-            </>)}
-
-            <div><label className={ds.label}>Notes</label><textarea className={ds.textarea} rows={2} value={formNotes} onChange={e => setFormNotes(e.target.value)} /></div>
+      {/* AR Settings */}
+      <div className="panel p-4">
+        <h3 className="font-semibold mb-4 flex items-center gap-2">
+          <Settings className="w-4 h-4 text-neon-purple" />
+          AR Configuration
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <label className="text-sm text-gray-400">Render Quality</label>
+            <select className="input-lattice">
+              <option value="low">Low (Better Performance)</option>
+              <option value="medium">Medium</option>
+              <option value="high">High (Better Quality)</option>
+            </select>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm text-gray-400">Tracking Mode</label>
+            <select className="input-lattice">
+              <option value="world">World Tracking</option>
+              <option value="face">Face Tracking</option>
+              <option value="image">Image Tracking</option>
+            </select>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm text-gray-400">DTU Density</label>
+            <input
+              type="range"
+              min="1"
+              max="100"
+              defaultValue="50"
+              className="w-full"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm text-gray-400">Opacity</label>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              defaultValue="75"
+              className="w-full"
+            />
           </div>
           <div className="flex justify-end gap-2 mt-4"><button onClick={() => setEditorOpen(false)} className={ds.btnSecondary}>Cancel</button><button onClick={handleSave} className={ds.btnPrimary} disabled={!formName.trim()}>Save</button></div>
         </div>

@@ -5,16 +5,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Activity,
-  Shield,
-  Zap,
-  ChevronDown,
-  ChevronUp,
-  Loader2,
-  Brain,
-  Sparkles,
-  Wrench,
-  Lock,
+  Activity, Shield, Zap,
+  ChevronDown, ChevronUp, Loader2,
+  Brain, Sparkles, Wrench, Lock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -134,15 +127,7 @@ function NervousSystem({ className }: { className?: string }) {
         <div className="flex items-center gap-2">
           {/* Circuit breaker status dots */}
           <div className="flex items-center gap-1">
-            {(
-              Object.entries(circuitData?.breakers || {}) as [
-                string,
-                {
-                  state: string;
-                  stats: { totalCalls: number; totalFailures: number; opens: number };
-                },
-              ][]
-            ).map(([name, breaker]) => (
+            {(Object.entries(circuitData?.breakers || {}) as [string, { state: string; stats: { totalCalls: number; totalFailures: number; opens: number } }][]).map(([name, breaker]) => (
               <div
                 key={name}
                 className={cn(
@@ -168,12 +153,7 @@ function NervousSystem({ className }: { className?: string }) {
 
       {/* Component health grid */}
       <div className="p-4 grid grid-cols-5 gap-2">
-        {(
-          Object.entries(pulseData?.components || {}) as [
-            string,
-            { status: string; score: number },
-          ][]
-        ).map(([name, comp]) => {
+        {(Object.entries(pulseData?.components || {}) as [string, { status: string; score: number }][]).map(([name, comp]) => {
           const Icon = BRAIN_ICONS[name] || Activity;
           return (
             <div key={name} className="text-center">
@@ -220,16 +200,8 @@ function NervousSystem({ className }: { className?: string }) {
               {/* Pulse tab */}
               {activeTab === 'pulse' && pulseData?.components && (
                 <div className="space-y-2">
-                  {(
-                    Object.entries(pulseData.components) as [
-                      string,
-                      { status: string; score: number },
-                    ][]
-                  ).map(([name, comp]) => (
-                    <div
-                      key={name}
-                      className="p-2 bg-lattice-deep rounded-lg flex items-center justify-between"
-                    >
+                  {(Object.entries(pulseData.components) as [string, { status: string; score: number }][]).map(([name, comp]) => (
+                    <div key={name} className="p-2 bg-lattice-deep rounded-lg flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span
                           className={cn(
@@ -254,15 +226,7 @@ function NervousSystem({ className }: { className?: string }) {
               {/* Circuits tab */}
               {activeTab === 'circuits' && circuitData?.breakers && (
                 <div className="space-y-2">
-                  {(
-                    Object.entries(circuitData.breakers) as [
-                      string,
-                      {
-                        state: string;
-                        stats: { totalCalls: number; totalFailures: number; opens: number };
-                      },
-                    ][]
-                  ).map(([name, breaker]) => (
+                  {(Object.entries(circuitData.breakers) as [string, { state: string; stats: { totalCalls: number; totalFailures: number; opens: number } }][]).map(([name, breaker]) => (
                     <div key={name} className="p-2 bg-lattice-deep rounded-lg">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">

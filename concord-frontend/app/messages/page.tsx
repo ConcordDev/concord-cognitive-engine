@@ -2,7 +2,6 @@
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   MessageCircle,
@@ -12,26 +11,15 @@ import {
   Plus,
   CheckCheck,
   Check,
+  Image as ImageIcon,
   Link2,
   Loader2,
+  User,
   X,
 } from 'lucide-react';
 import { cn, formatRelativeTime } from '@/lib/utils';
 import { api } from '@/lib/api/client';
 import { getSocket, subscribe, SocketEvent } from '@/lib/realtime/socket';
-
-/** Sanitize user-provided URLs — only allow http: and https: schemes. */
-function sanitizeUrl(url: string): string {
-  try {
-    const parsed = new URL(url);
-    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
-      return url;
-    }
-  } catch {
-    // invalid URL
-  }
-  return '';
-}
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -90,11 +78,9 @@ function ConversationItem({
       <div className="relative flex-shrink-0">
         <div className="w-10 h-10 rounded-full bg-gradient-to-br from-neon-purple to-neon-blue flex items-center justify-center text-sm font-bold text-white">
           {conversation.participantAvatar ? (
-            <Image
+            <img
               src={conversation.participantAvatar}
               alt={conversation.participantName}
-              width={40}
-              height={40}
               className="w-10 h-10 rounded-full object-cover"
             />
           ) : (
@@ -186,54 +172,42 @@ function MessageBubble({
           )}
         >
           {/* Media URL preview */}
-          {message.mediaUrl && sanitizeUrl(message.mediaUrl) && (
+          {message.mediaUrl && (
             <div className="mb-2 rounded-lg overflow-hidden">
-              <Image
-                src={sanitizeUrl(message.mediaUrl)}
+              <img
+                src={message.mediaUrl}
                 alt="Shared media"
-                width={400}
-                height={240}
-                className="max-w-full max-h-60 object-contain rounded-lg w-auto h-auto"
+                className="max-w-full max-h-60 object-contain rounded-lg"
               />
             </div>
           )}
 
           {/* Inline image URLs from content */}
-          {imageUrls.map((url, i) => {
-            const safe = sanitizeUrl(url);
-            if (!safe) return null;
-            return (
-              <div key={i} className="mb-2 rounded-lg overflow-hidden">
-                <Image
-                  src={safe}
-                  alt="Shared image"
-                  width={400}
-                  height={240}
-                  className="max-w-full max-h-60 object-contain rounded-lg w-auto h-auto"
-                />
-              </div>
-            );
-          })}
+          {imageUrls.map((url, i) => (
+            <div key={i} className="mb-2 rounded-lg overflow-hidden">
+              <img
+                src={url}
+                alt="Shared image"
+                className="max-w-full max-h-60 object-contain rounded-lg"
+              />
+            </div>
+          ))}
 
           {/* Non-image URLs as links */}
           {urls
             .filter((u) => !imageUrls.includes(u))
-            .map((url, i) => {
-              const safe = sanitizeUrl(url);
-              if (!safe) return null;
-              return (
-                <a
-                  key={i}
-                  href={safe}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 text-neon-cyan hover:text-neon-blue text-xs mb-1 break-all"
-                >
-                  <Link2 className="w-3 h-3 flex-shrink-0" />
-                  {url}
-                </a>
-              );
-            })}
+            .map((url, i) => (
+              <a
+                key={i}
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 text-neon-cyan hover:text-neon-blue text-xs mb-1 break-all"
+              >
+                <Link2 className="w-3 h-3 flex-shrink-0" />
+                {url}
+              </a>
+            ))}
 
           {/* Text content */}
           {(textContent || (!message.mediaUrl && imageUrls.length === 0)) && (
@@ -360,11 +334,9 @@ function NewConversationModal({
             >
               <div className="w-9 h-9 rounded-full bg-gradient-to-br from-neon-purple to-neon-blue flex items-center justify-center text-sm font-bold text-white flex-shrink-0">
                 {user.avatar ? (
-                  <Image
+                  <img
                     src={user.avatar}
                     alt={user.displayName || user.username}
-                    width={36}
-                    height={36}
                     className="w-9 h-9 rounded-full object-cover"
                   />
                 ) : (
@@ -421,7 +393,7 @@ export default function MessagesPage() {
     refetchInterval: 30000,
   });
 
-  const conversations = useMemo(() => conversationsData || [], [conversationsData]);
+  const conversations = conversationsData || [];
 
   // Get active conversation metadata
   const activeConversation = useMemo(
@@ -664,11 +636,9 @@ export default function MessagesPage() {
               <div className="relative flex-shrink-0">
                 <div className="w-9 h-9 rounded-full bg-gradient-to-br from-neon-purple to-neon-blue flex items-center justify-center text-sm font-bold text-white">
                   {activeConversation?.participantAvatar ? (
-                    <Image
+                    <img
                       src={activeConversation.participantAvatar}
                       alt={activeConversation.participantName}
-                      width={36}
-                      height={36}
                       className="w-9 h-9 rounded-full object-cover"
                     />
                   ) : (

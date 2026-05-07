@@ -34,7 +34,7 @@ export function ForgettingPanel() {
   useEffect(() => {
     apiHelpers.forgetting.status().then((resp) => {
       setStatus(resp.data);
-    }).catch(err => { console.error('[Forgetting] Failed to load status:', err); showToast('error', 'Failed to load forgetting status'); });
+    }).catch(err => console.error('[Forgetting] Failed to load status:', err));
   }, []);
 
   const loadHistory = async () => {

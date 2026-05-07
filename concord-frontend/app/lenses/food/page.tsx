@@ -2637,7 +2637,7 @@ export default function FoodLensPage() {
         }}
         className="inline-flex"
       />
-      <nav className="flex items-center gap-2 border-b border-lattice-border pb-4 flex-wrap">
+      <nav className="flex items-center gap-2 border-b border-lattice-border pb-4 overflow-x-auto">
         {MODE_TABS.map(tab => (
           <button
             key={tab.id}

@@ -4,17 +4,9 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { motion } from 'framer-motion';
 import {
-  Sun,
-  Wind,
-  CloudFog,
-  CloudLightning,
-  Brain,
-  Sparkles,
-  Wrench,
-  Shield,
-  ChevronDown,
-  ChevronUp,
-  Thermometer,
+  Sun, Wind, CloudFog, CloudLightning,
+  Brain, Sparkles, Wrench, Shield,
+  ChevronDown, ChevronUp, Thermometer,
 } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -156,12 +148,7 @@ function SubstrateWeather({ className }: { className?: string }) {
       {/* Brain health */}
       <div className="px-5 pb-3">
         <div className="flex items-center gap-3">
-          {(
-            Object.entries(data.brainHealth || {}) as [
-              string,
-              { requests: number; errors: number; enabled: boolean },
-            ][]
-          ).map(([name, health]) => {
+          {(Object.entries(data.brainHealth || {}) as [string, { requests: number; errors: number; enabled: boolean }][]).map(([name, health]) => {
             const BrainIcon = BRAIN_ICONS[name] || Brain;
             return (
               <div
@@ -220,23 +207,11 @@ function SubstrateWeather({ className }: { className?: string }) {
           <div>
             <h4 className="text-xs font-medium text-gray-400 mb-1">Tier Distribution</h4>
             <div className="flex items-center gap-3">
-              {(Object.entries(stats.tierDistribution || {}) as [string, number][]).map(
-                ([tier, count]) => (
-                  <span
-                    key={tier}
-                    className={cn(
-                      'text-xs',
-                      tier === 'hyper'
-                        ? 'text-yellow-400'
-                        : tier === 'mega'
-                          ? 'text-purple-400'
-                          : 'text-gray-400'
-                    )}
-                  >
-                    {tier}: {count}
-                  </span>
-                )
-              )}
+              {(Object.entries(stats.tierDistribution || {}) as [string, number][]).map(([tier, count]) => (
+                <span key={tier} className={cn('text-xs', tier === 'hyper' ? 'text-yellow-400' : tier === 'mega' ? 'text-purple-400' : 'text-gray-400')}>
+                  {tier}: {count}
+                </span>
+              ))}
             </div>
           </div>
 

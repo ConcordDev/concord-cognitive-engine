@@ -13,6 +13,8 @@ import type { DTU } from '@/lib/api/generated-types';
 import { LensContextPanel } from '@/components/lens/LensContextPanel';
 import { ArtifactRenderer } from '@/components/artifact/ArtifactRenderer';
 import { ArtifactUploader } from '@/components/artifact/ArtifactUploader';
+import { MediaUpload } from '@/components/media/MediaUpload';
+import { UniversalPlayer } from '@/components/media/UniversalPlayer';
 import { FeedbackWidget } from '@/components/feedback/FeedbackWidget';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
@@ -1425,8 +1427,6 @@ export default function CreativeLensPage() {
         </div>
       </header>
 
-
-      <FeedBanner domain="creative" />
 
       {/* Quick Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
