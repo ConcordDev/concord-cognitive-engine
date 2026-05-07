@@ -275,6 +275,105 @@ registerHeartbeat("scheduled-posts", {
     }
   },
 });
+
+// Daily brain refresh — runs Modelfile-based in-context training on
+// the brains small enough to fit the 23:30-23:59 window (utility,
+// repair). Internal _inWindow check returns "out_of_window" outside
+// the window so the heartbeat can fire harmlessly at any tick. We
+// schedule every 60 ticks (~15 min) so the window is reliably hit
+// even if the heartbeat misses a tick under load.
+registerHeartbeat("brain-daily-refresh", {
+  frequency: 60,
+  handler: async ({ db: ctxDb }) => {
+    if (!ctxDb) return { ok: false, reason: "no_db" };
+    try {
+      const { runDailyRefresh } = await import("./lib/brain-training/runner.js");
+      return await runDailyRefresh(ctxDb);
+    } catch (err) {
+      structuredLog("warn", "brain_daily_refresh_failed", { error: err?.message });
+      return { ok: false, reason: "exception" };
+    }
+  },
+});
+
+// Brain outcome resolver — walks brain_interactions every 20 ticks
+// (~5 min). Resolves pending rows whose engagement-window has
+// elapsed (positive if user made a follow-up call within 30min,
+// otherwise still pending). Older than 7 days → expired. Without
+// this tick the corpus would never have positive examples to train
+// on, because every interaction starts pending.
+registerHeartbeat("brain-outcome-resolver", {
+  frequency: 20,
+  handler: async ({ db: ctxDb }) => {
+    if (!ctxDb) return { ok: false, reason: "no_db" };
+    try {
+      const { resolvePendingOutcomes } = await import("./lib/brain-training/interaction-log.js");
+      return resolvePendingOutcomes(ctxDb);
+    } catch (err) {
+      structuredLog("warn", "brain_outcome_resolver_failed", { error: err?.message });
+      return { ok: false, reason: "exception" };
+    }
+  },
+});
+
+// Layer 2: Affect engine tick — walks affect_state rows whose
+// last_tick_at is older than ~30s and applies decay/momentum via
+// affect/engine.js#tick. Persists the post-tick state. Without this
+// tick the affect state stays static between events; decay never
+// happens. Every 4 ticks (~1 min).
+registerHeartbeat("affect-tick", {
+  frequency: 4,
+  handler: async ({ db: ctxDb }) => {
+    if (!ctxDb) return { ok: false, reason: "no_db" };
+    try {
+      const { affectTickAll } = await import("./lib/affect-bridge.js");
+      return affectTickAll(ctxDb);
+    } catch (err) {
+      structuredLog("warn", "affect_tick_failed", { error: err?.message });
+      return { ok: false, reason: "exception" };
+    }
+  },
+});
+
+// Layer 4: Qualia persistence — flushes the in-memory QualiaEngine
+// channels to qualia_state every 60 ticks (~15 min). Without this
+// tick the existential OS state evaporates on every restart and
+// Concord's accumulated self-model context (drift, integrity,
+// burnout, alignment, novelty) starts fresh on every reboot.
+registerHeartbeat("qualia-persist", {
+  frequency: 60,
+  handler: async ({ db: ctxDb }) => {
+    if (!ctxDb) return { ok: false, reason: "no_db" };
+    try {
+      const { persistQualiaState } = await import("./existential/hooks.js");
+      return persistQualiaState(ctxDb);
+    } catch (err) {
+      structuredLog("warn", "qualia_persist_failed", { error: err?.message });
+      return { ok: false, reason: "exception" };
+    }
+  },
+});
+
+// Layer 7: Environment-sense — every 5 ticks (~75s) reads weather +
+// biome + time-of-day for each active world, computes thermal/sight/
+// sonic/chemical/tactile_force_os channel values, writes to
+// embodied_signal_log, and updates the QualiaEngine via hookEcology.
+// The fauna-spawner's signal-responsive modifier consumes the same
+// values on its tick, so cold zones produce fewer bugs and more
+// cold-adapted fauna emergently.
+registerHeartbeat("environment-sense", {
+  frequency: 5,
+  handler: async (ctx) => {
+    if (!ctx?.db) return { ok: false, reason: "no_db" };
+    try {
+      const { runEnvironmentSense } = await import("./lib/embodied/environment-sensor.js");
+      return runEnvironmentSense(ctx);
+    } catch (err) {
+      structuredLog("warn", "environment_sense_failed", { error: err?.message });
+      return { ok: false, reason: "exception" };
+    }
+  },
+});
 import { ConcordError } from "./lib/errors.js";
 import { asyncHandler } from "./lib/async-handler.js";
 import { init as initGRC, formatAndValidate as grcFormatAndValidate, getGRCSystemPrompt } from "./grc/index.js";
@@ -282,6 +381,10 @@ import configureMiddleware from "./middleware/index.js";
 import { createLLMQueue, PRIORITY } from "./lib/llm-queue.js";
 import { BRAIN_CONFIG, SYSTEM_TO_BRAIN, BRAIN_PRIORITY, getBrainForSystem } from "./lib/brain-config.js";
 import { preloadBrains, getBrainPriority, resolveBrain } from "./lib/brain-router.js";
+// Brain self-training: log every brain call + consult the active model
+// from brain_active_models so daily-refresh swaps actually take effect.
+import { logBrainInteraction, resolveBrainInteraction } from "./lib/brain-training/interaction-log.js";
+import { getActiveBrainModel } from "./lib/brain-training/runner.js";
 import { createBreakerRegistry } from "./lib/circuit-breaker.js";
 import { traceMiddleware, startSpan, storeTrace, getRecentTraces, getTraceMetrics } from "./lib/request-trace.js";
 import {
@@ -3923,6 +4026,17 @@ if (db) {
   // refusal-field persistence layer). Modules that already capture `db`
   // via closure are unaffected.
   STATE.db = db;
+
+  // Hand the db reference to oracle-brain so its callUtilityBrain can
+  // consult brain_active_models for the daily-refreshed Utility tag and
+  // log interactions to brain_interactions. Without this the
+  // Concordia-narrative path silently bypasses self-training.
+  try {
+    const { setOracleDb } = await import("./lib/oracle-brain.js");
+    setOracleDb(db);
+  } catch (e) {
+    structuredLog("warn", "oracle_db_inject_failed", { error: e.message });
+  }
 
   // Reload any non-expired Refusal Field declarations so a deploy mid-
   // quest doesn't lose the Sovereign's active gates.
@@ -14845,8 +14959,15 @@ ${_sharedToolRules}` : "";
       ...(systemContent ? [{ role: "system", content: systemContent }] : []),
       { role: "user", content: prompt },
     ];
+    // Brain self-training: consult brain_active_models for the currently-
+    // routed model name. Daily refresh swaps these by inserting a row with
+    // active=1; getActiveBrainModel returns brain.model as fallback when
+    // no swap has happened yet (or when db is unavailable in early boot).
+    const activeModel = (typeof db !== "undefined" && db)
+      ? getActiveBrainModel(db, brainName, brain.model)
+      : brain.model;
     const payload = {
-      model: brain.model,
+      model: activeModel,
       messages,
       stream: false,
       options: {
@@ -14883,10 +15004,44 @@ ${_sharedToolRules}` : "";
       ok: true,
       content: data.message?.content || data.response || "",
       source: brainName,
-      model: brain.model,
+      model: activeModel,
       tokens: data.eval_count || 0,
       elapsed,
     };
+
+    // Brain self-training: log every interaction. Outcome resolves later
+    // via the brain-outcome-resolver heartbeat. Fail-safe — never blocks
+    // the user-facing response if logging errors.
+    try {
+      if (typeof db !== "undefined" && db) {
+        const interactionId = logBrainInteraction(db, {
+          brainId:   brainName,
+          userId:    options._userId || null,
+          prompt:    { messages, options: { temperature: payload.options.temperature, maxTokens: payload.options.num_predict } },
+          response:  { content: result.content, model: activeModel },
+          domain:    options._domain || null,
+          latencyMs: elapsed,
+          tokensIn:  data.prompt_eval_count || null,
+          tokensOut: data.eval_count || null,
+        });
+        if (interactionId) result._interactionId = interactionId;
+      }
+    } catch (_e) { /* logging never blocks */ }
+
+    // Layer 2: emit a SUCCESS affect event for the user (or system, if
+    // anonymous). Couples with Layer 3's outcome-signals dispatch — a
+    // big positive valence delta will mark this brain interaction as
+    // positive in the resolver. Fail-safe.
+    try {
+      if (typeof db !== "undefined" && db) {
+        const { applyAffectEvent } = await import("./lib/affect-bridge.js");
+        applyAffectEvent(db, options._userId || "system:chat", {
+          type: "SUCCESS",
+          source: "chat",
+          magnitude: Math.min(1, (result.content?.length || 0) / 1000),
+        }, { refId: result._interactionId });
+      }
+    } catch (_e) { /* affect emit must never block */ }
 
     // Attach confidence score to every brain output
     try {
@@ -28854,6 +29009,23 @@ try { app.use("/api/social-extended", createSocialExtendedRouter({ STATE, requir
 // mentorships, org stats.
 import createWorldOrgsExtendedRouter from "./routes/world-orgs-extended.js";
 try { app.use("/api/world-orgs", createWorldOrgsExtendedRouter({ requireAuth })); } catch (e) { structuredLog("warn", "world_orgs_extended_routes_skip", { error: e.message }); }
+
+// Lattice (6th brain) consent infrastructure. Endpoints stage opt-in
+// flags on user-authored DTUs and expose corpus stats. The brain
+// itself isn't deployed yet — this is the pre-investment so every
+// row created from now forward is correctly tagged for the future
+// training pipeline. See lib/training-consent.js + migration 108.
+import createLatticeRouter from "./routes/lattice.js";
+try { app.use("/api/lattice", createLatticeRouter({ db, requireAuth })); } catch (e) { structuredLog("warn", "lattice_routes_skip", { error: e.message }); }
+
+// Brain self-training infrastructure. Logs every brain call to
+// brain_interactions, runs daily 23:30-23:59 Modelfile rebuild on
+// the brains small enough to fit the window (utility, repair). The
+// runner uses in-context "training" via Ollama Modelfile + SYSTEM
+// prompt baking. Real LoRA/QLoRA can swap in later by replacing the
+// runner internals. See lib/brain-training/ + migration 109.
+import createBrainsRouter from "./routes/brains.js";
+try { app.use("/api/brains", createBrainsRouter({ db, requireAuth, requireRole })); } catch (e) { structuredLog("warn", "brains_routes_skip", { error: e.message }); }
 
 import createChannelsRouter from "./routes/channels.js";
 try { app.use("/api/channels", createChannelsRouter({ STATE, requireAuth, realtimeEmit })); } catch (e) { structuredLog("warn", "channels_routes_skip", { error: e.message }); }

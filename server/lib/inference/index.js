@@ -2,6 +2,16 @@
 // @concord/inference — unified entry point for all brain calls.
 // Replaces direct Ollama fetch() calls across the codebase with a typed,
 // traced, royalty-aware, VRAM-managed inference interface.
+//
+// Self-training integration (Layer 1 convergence):
+//  - Consults brain_active_models via getActiveBrainModel so the daily
+//    Modelfile refresh in lib/brain-training/runner.js takes effect on
+//    every inference call (was previously bypassed — only callBrain
+//    used the lookup, splitting the corpus across two paths).
+//  - Logs every successful call into brain_interactions for the
+//    outcome resolver to score later (was previously unwired — the
+//    inference module's ~20 call sites in emergent modules were
+//    invisible to brain training).
 
 import crypto from "node:crypto";
 import { selectBrain, markBrainAvailable, markBrainUnavailable } from "./router.js";
@@ -34,6 +44,17 @@ export async function infer(req, db) {
       brainOverride: req.brainOverride,
     });
 
+    // Layer 1 wire: consult brain_active_models for the daily-refreshed
+    // model tag. Falls back to handle.model when no swap has happened
+    // yet (or db unavailable). The lookup is fail-safe.
+    let activeModel = handle.model;
+    if (db) {
+      try {
+        const { getActiveBrainModel } = await import("../brain-training/runner.js");
+        activeModel = getActiveBrainModel(db, handle.name, handle.model);
+      } catch { /* fall back to static handle.model */ }
+    }
+
     // Assemble context
     const messages = await assembleContext(req, db);
 
@@ -47,11 +68,16 @@ export async function infer(req, db) {
     let loopResult;
 
     try {
-      loopResult = await runAgentLoop(handle, messages, tools, {
-        maxSteps: req.maxSteps,
-        stopWhen: req.stopWhen,
-        signal: req.signal,
-      });
+      loopResult = await runAgentLoop(
+        { ...handle, model: activeModel },
+        messages,
+        tools,
+        {
+          maxSteps: req.maxSteps,
+          stopWhen: req.stopWhen,
+          signal: req.signal,
+        },
+      );
       markBrainAvailable(handle.name);
     } catch (err) {
       markBrainUnavailable(handle.name);
@@ -66,11 +92,32 @@ export async function infer(req, db) {
     // Async royalty credit (non-blocking)
     emitRoyaltyEvent(inferenceId, dtuContributors, db);
 
+    // Layer 1 wire: log to brain_interactions so the outcome resolver +
+    // daily refresh see this call. Fail-safe — never blocks the user
+    // path. Caller can attach _userId via req.callerId, _domain via
+    // req.intent or req.lensContext.lens.
+    let interactionId = null;
+    if (db) {
+      try {
+        const { logBrainInteraction } = await import("../brain-training/interaction-log.js");
+        interactionId = logBrainInteraction(db, {
+          brainId:   handle.name,
+          userId:    req.callerId || null,
+          prompt:    { messages, intent: req.intent, lens: req.lensContext?.lens },
+          response:  { content: loopResult.finalText || "", model: activeModel, steps: loopResult.steps?.length || 0 },
+          domain:    req.lensContext?.lens || req.intent || null,
+          latencyMs,
+          tokensIn:  loopResult.tokensIn || 0,
+          tokensOut: loopResult.tokensOut || 0,
+        });
+      } catch { /* logging never blocks */ }
+    }
+
     /** @type {import('./types.js').InferResponse} */
     const response = {
       inferenceId,
       brainUsed: handle.name,
-      modelUsed: handle.model,
+      modelUsed: activeModel,
       steps: loopResult.steps,
       finalText: loopResult.finalText || "",
       toolCalls: loopResult.toolCalls || [],
@@ -82,10 +129,11 @@ export async function infer(req, db) {
     };
 
     if (loopResult.terminated) response.terminated = loopResult.terminated;
+    if (interactionId) response._interactionId = interactionId;
 
     traceEmit("finish", inferenceId, {
       brainUsed: handle.name,
-      modelUsed: handle.model,
+      modelUsed: activeModel,
       tokensIn: response.tokensIn,
       tokensOut: response.tokensOut,
       latencyMs,

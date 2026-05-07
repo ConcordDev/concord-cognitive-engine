@@ -4,6 +4,13 @@
  * Synthesizes lore, generates quest chains, and writes dialogue trees using
  * the Utility brain (Qwen2.5 3B) at CRITICAL priority. No new Ollama instance
  * needed — Utility handles fast analytical tasks.
+ *
+ * Brain self-training integration: if a db handle has been registered via
+ * setOracleDb(), every call here consults brain_active_models for the
+ * currently-routed model (so daily Modelfile refreshes take effect) and
+ * logs the interaction to brain_interactions for the outcome resolver
+ * to score later. When no db is registered (early bootstrap or tests),
+ * falls back to the static BRAIN_CONFIG model.
  */
 
 import { BRAIN_CONFIG } from "./brain-config.js";
@@ -13,17 +20,35 @@ const MAX_TOKENS_LORE      = 600;
 const MAX_TOKENS_QUEST     = 800;
 const MAX_TOKENS_DIALOGUE  = 700;
 
-async function callUtilityBrain(prompt, maxTokens = 600) {
+// Lazy db reference for self-training integration. server.js calls
+// setOracleDb(db) after database init.
+let _trainingDb = null;
+export function setOracleDb(db) { _trainingDb = db || null; }
+
+async function callUtilityBrain(prompt, maxTokens = 600, opts = {}) {
   const { url, model, temperature, timeout } = BRAIN_CONFIG.utility;
+
+  // Brain self-training: route through the daily-refreshed model when one
+  // exists. Falls back to BRAIN_CONFIG.utility.model if no swap yet, or
+  // when the training infra isn't ready (early bootstrap, tests).
+  let activeModel = model;
+  if (_trainingDb) {
+    try {
+      const { getActiveBrainModel } = await import("./brain-training/runner.js");
+      activeModel = getActiveBrainModel(_trainingDb, "utility", model);
+    } catch { /* fall back to static */ }
+  }
+
   const ac = new AbortController();
   const timer = setTimeout(() => ac.abort(), timeout);
+  const start = Date.now();
 
   try {
     const res = await fetch(`${url}/api/generate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model,
+        model: activeModel,
         prompt,
         stream: false,
         options: { temperature, num_predict: maxTokens },
@@ -40,6 +65,26 @@ async function callUtilityBrain(prompt, maxTokens = 600) {
 
     const data = await res.json();
     const text = String(data.response || "").trim();
+    const elapsed = Date.now() - start;
+
+    // Log the interaction for the brain-training corpus. Fail-safe — never
+    // blocks the user-facing return path.
+    if (_trainingDb && text) {
+      try {
+        const { logBrainInteraction } = await import("./brain-training/interaction-log.js");
+        logBrainInteraction(_trainingDb, {
+          brainId:   "utility",
+          userId:    opts.userId || null,
+          prompt:    { input: prompt, maxTokens, source: "oracle-brain" },
+          response:  { content: text, model: activeModel },
+          domain:    opts.domain || "concordia-narrative",
+          latencyMs: elapsed,
+          tokensIn:  data.prompt_eval_count || null,
+          tokensOut: data.eval_count || null,
+        });
+      } catch { /* logging never blocks */ }
+    }
+
     return text ? { ok: true, text } : { ok: false, error: "empty_response" };
   } catch (err) {
     clearTimeout(timer);
