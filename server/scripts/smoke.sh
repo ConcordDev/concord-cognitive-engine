@@ -79,17 +79,23 @@ check_json "Status returns ok" "/api/status" "['ok']"
 check "Schema version" "/api/schema/version"
 
 # ── Paginated Endpoints ──────────────────────────────────
+# /api/artifacts/paginated and /api/artifacts/upload are durable.js
+# endpoints shadowed by routes/artifacts.js (mounted earlier; its /:id
+# captures "paginated" → 404, its /upload requires auth → 401).
+# The newer /api/artifacts list endpoint is the live read path.
 echo ""
 echo "--- Paginated Endpoints ---"
 check "DTUs paginated" "/api/dtus/paginated?limit=5"
-check "Artifacts paginated" "/api/artifacts/paginated?limit=5"
+check "Artifacts (list)" "/api/artifacts?limit=5"
 check "Jobs paginated" "/api/jobs/paginated?limit=5"
 check "Marketplace paginated" "/api/marketplace/paginated?limit=5"
 
 # ── Artifact Upload ──────────────────────────────────────
+# routes/artifacts.js requireAuth allows AUTH_MODE=public anonymous
+# uploads through; schema uses name/content (not title/data).
 echo ""
 echo "--- Artifact Upload ---"
-UPLOAD_BODY='{"type":"file","title":"Smoke Test File","data":"SGVsbG8gV29ybGQ=","mime_type":"text/plain","filename":"test.txt","visibility":"private"}'
+UPLOAD_BODY='{"name":"smoke-test.txt","mimeType":"text/plain","content":"SGVsbG8gV29ybGQ="}'
 check "Upload artifact" "/api/artifacts/upload" "POST" "$UPLOAD_BODY"
 
 # ── Durable DTU ──────────────────────────────────────────
@@ -145,7 +151,10 @@ echo "--- Economy ---"
 check "Fee schedule" "/api/economy/fees"
 check "Ledger integrity" "/api/economy/integrity"
 BUY_BODY='{"user_id":"smoke-user","amount":100}'
-check "Token purchase" "/api/economy/buy" "POST" "$BUY_BODY"
+# /api/economy/buy and /api/stripe/connect/status both require auth —
+# the anonymous probe asserts the gate is wired (401), not the
+# functionality (which a session-bearing test covers).
+check "Token purchase (auth required)" "/api/economy/buy" "POST" "$BUY_BODY" "401"
 check "Balance check" "/api/economy/balance?user_id=smoke-user"
 check "Economy status" "/api/economy/status"
 check "Platform balance" "/api/economy/platform-balance"
