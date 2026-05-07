@@ -52,12 +52,27 @@ export function generateId(): string {
 export function debounce<Args extends unknown[]>(
   fn: (...args: Args) => void,
   delay: number
-): (...args: Args) => void {
-  let timeoutId: NodeJS.Timeout;
-  return (...args: Args) => {
-    clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => fn(...args), delay);
+): ((...args: Args) => void) & { cancel: () => void } {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const debounced = (...args: Args) => {
+    if (timeoutId !== undefined) clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => {
+      timeoutId = undefined;
+      fn(...args);
+    }, delay);
   };
+  // .cancel() lets callers clean up the pending timer on unmount.
+  // Without this, a debounce queued during a test that then unmounts
+  // (or under any teardown-then-fire race) calls fn() with `window`
+  // already gone, throwing ReferenceError. Components in unmount
+  // useEffect cleanup should call this.
+  debounced.cancel = () => {
+    if (timeoutId !== undefined) {
+      clearTimeout(timeoutId);
+      timeoutId = undefined;
+    }
+  };
+  return debounced;
 }
 
 // Throttle function
