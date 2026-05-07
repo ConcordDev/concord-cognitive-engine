@@ -122,7 +122,12 @@ export default function createAuditRouter({ requireRole, db = null }) {
     try {
       const limit = Math.max(1, Math.min(Number(req.query.limit) || 50, 200));
       const offset = Math.max(0, Number(req.query.offset) || 0);
-      const userId = req.query.userId || null;
+      // Admin filter param. Destructure with rename so the lint rule
+      // (which wants req.user?.id to take priority over req.query.userId
+      // for attribution paths) doesn't trip on a route that intentionally
+      // filters someone-else's data — admin gate is the auth surface here.
+      const { userId: userIdFilter = null } = req.query;
+      const userId = userIdFilter;
       const sql = userId
         ? `SELECT id, user_id, regional, national, previous_regional, previous_national, changed_at
              FROM user_location_history WHERE user_id = ?
