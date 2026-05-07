@@ -27,8 +27,8 @@ import {
   MIN_PASS_INTERVAL_S,
 } from "../lib/embodied/forward-sim.js";
 import { runForwardSimCycle } from "../emergent/forward-sim-cycle.js";
-import { up as up109 } from "../migrations/109_pain_signals.js";
-import { up as up111 } from "../migrations/111_forward_predictions.js";
+import { up as up109 } from "../migrations/114_pain_signals.js";
+import { up as up111 } from "../migrations/116_forward_predictions.js";
 
 function setupDb() {
   const db = new Database(":memory:");

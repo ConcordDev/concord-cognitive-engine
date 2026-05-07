@@ -26,7 +26,7 @@ import {
   REGION_SKILL,
 } from "../lib/embodied/pain.js";
 import { runRepairCycle, REGION_XP_PER_PAIN_UNIT } from "../emergent/repair-cycle.js";
-import { up as up109 } from "../migrations/109_pain_signals.js";
+import { up as up109 } from "../migrations/114_pain_signals.js";
 
 function setupDb() {
   const db = new Database(":memory:");

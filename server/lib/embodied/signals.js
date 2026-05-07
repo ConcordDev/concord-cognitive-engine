@@ -1,35 +1,44 @@
 // server/lib/embodied/signals.js
 //
-// Layer 7: embodied signal store. Read/write helpers over the
-// embodied_signal_log table (migration 108).
+// Layer 7 reader/writer over `embodied_signal_log` (created by
+// migration 112_embodied_signals.js, extended by migration
+// 113_embodied_signal_log_unification.js).
 //
-// CELL_SIZE = 50m. World is 2000x2000 (per world-gathering.js) so we
-// have a 40x40 cell grid per world. signalsForWorld(db, worldId, location?)
-// folds rows in a 3x3 cell window around `location` (or all cells if no
-// location given).
+// Post-merge of claude/lattice-consent-infra (PR #301): main's Layer 7
+// table is canonical. This module preserves our `recordSignal`,
+// `signalsForWorld`, `decaySweep`, `seedWorldClimate`, `cellOf`,
+// `CELL_SIZE` exports — the API our Phase 7.5 / 8 code paths
+// (`routes/worlds.js`, `lib/embodied/skill-environment.js`) depend on.
+//
+// CELL_SIZE = 50m. World is 2000x2000 → 40x40 = 1600 cells per world.
+// signalsForWorld(db, worldId, location?) folds rows in a 3x3 cell
+// window around `location` (or all cells if no location given).
 //
 // Recency-weighted average: a row recorded 10s ago weighs ~1.0; a row
-// 600s ago weighs ~0.05. Old rows already past `decay_at` are excluded
-// at the SQL level so the math stays bounded.
+// 600s ago weighs ~0.05. Old rows past `decay_at` are excluded at the
+// SQL level so the math stays bounded.
 //
-// Channel naming follows the sensory-OS convention from earlier layers:
-//   thermal_os.ambient_temp        — Celsius, baseline ~15
-//   chemical_os.humidity           — 0..100
-//   chemical_os.air_quality        — 0..1 (1 = pristine, 0 = toxic)
-//   sight_os.illumination          — lux, 0..120000
-//   sonic_os.ambient_db            — decibels, 20..120
-//   tactile_force_os.ambient_pressure — kPa around 101.325
-//   tactile_force_os.structural_stress — 0..1 cumulative damage signal
+// `value` is added as a delta on top of channel default for `source =
+// skill_cast`, `combat`, and `world_event` rows; for `sensor` and
+// `world_seed` rows it is treated as the ABSOLUTE reading.
+// signalsForWorld() folds both classes.
 //
-// Readers MUST tolerate `hasData: false` — fresh installs and quiet
-// worlds will have no rows, in which case signalsForWorld returns
-// neutral defaults and downstream consumers (elementalEnvBoost) collapse
-// to 1.0 multipliers. Layer 7.5 must degrade gracefully.
+// Schema reconciliation:
+//   - location_x, location_z (REAL) — main's columns; we write raw
+//     coords here for compatibility with main's queries
+//   - cell_x, cell_z (INTEGER) — our additions via migration 113;
+//     populated by recordSignal so cell-window reads are O(index)
+//   - source (TEXT) — our taxonomy; main's observer_type may be
+//     populated separately by main's environment-sensor for the
+//     'sensor' / 'npc' / 'player' / 'creature' axis. Both can coexist.
+//   - decay_at (INTEGER) — our TTL; main's environment-sensor doesn't
+//     populate this, so its rows persist indefinitely until
+//     application-side filtering. Our queries respect decay_at.
 
 import crypto from "node:crypto";
 
 export const CELL_SIZE = 50;
-export const RECENCY_HALF_LIFE_S = 180; // a 3-min-old row weighs half as much as a fresh one.
+export const RECENCY_HALF_LIFE_S = 180; // 3-min half-life
 
 const DEFAULT_TTL_S = 900;
 const DEFAULTS = Object.freeze({
@@ -51,25 +60,13 @@ export function cellOf(x, z) {
 }
 
 /**
- * Append a signal row. Caller chooses TTL based on disturbance class:
- *   - 30s  for transient lightning/illumination flash
- *   - 300s for skill-cast feedback
- *   - 900s for sensor baseline + slow drifts (humidity/air-quality)
- *
- * `value` is added as a delta on top of channel default for `source = skill_cast`,
- * `combat`, and `world_event` rows; for `sensor` and `world_seed` rows it
- * is treated as the ABSOLUTE reading. signalsForWorld() folds both classes.
+ * Append a signal row to the merged-schema embodied_signal_log table.
+ * Writes both location_x/z (main's coords) and cell_x/z (our quantized)
+ * so both query paths work.
  *
  * @param {import('better-sqlite3').Database} db
  * @param {object} opts
- * @param {string} opts.worldId
- * @param {number} opts.x
- * @param {number} opts.z
- * @param {string} opts.channel
- * @param {number} opts.value
- * @param {string} opts.source — 'sensor'|'skill_cast'|'world_event'|'combat'|'world_seed'
- * @param {string} [opts.sourceId]
- * @param {number} [opts.ttlSeconds]
+ *   { worldId, x, z, channel, value, source, sourceId?, ttlSeconds? }
  */
 export function recordSignal(db, opts) {
   if (!db || !opts) return null;
@@ -82,9 +79,18 @@ export function recordSignal(db, opts) {
   try {
     db.prepare(`
       INSERT INTO embodied_signal_log
-        (id, world_id, cell_x, cell_z, channel, value, source, source_id, recorded_at, decay_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(id, worldId, cell_x, cell_z, channel, Number(value), source, sourceId, now, now + ttl);
+        (id, world_id, location_x, location_z, cell_x, cell_z,
+         channel, value, source, source_id,
+         observed_at, recorded_at, decay_at, train_consented)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+    `).run(
+      id, worldId,
+      Number(x ?? 0), Number(z ?? 0),
+      cell_x, cell_z,
+      channel, Number(value),
+      source, sourceId,
+      now, now, now + ttl,
+    );
     return { id, cell_x, cell_z };
   } catch {
     return null;
@@ -95,17 +101,9 @@ export function recordSignal(db, opts) {
  * Fold signals for a world (optionally restricted to a 3x3 cell window).
  * Returns one merged number per channel, recency-weighted, plus a
  * derived `weatherKind` heuristic and a `hasData` flag.
- *
- * @param {import('better-sqlite3').Database} db
- * @param {string} worldId
- * @param {{ x: number, z: number } | null} [location]
- * @returns {object}
  */
 export function signalsForWorld(db, worldId, location = null) {
   const out = { ...DEFAULTS, hasData: false, weatherKind: "clear" };
-  // Camel-case aliases must be present on every return path, including the
-  // early-return when no rows exist — downstream consumers (combat,
-  // gather, NPC dialogue tone) read by alias, not by channel key.
   _attachAliases(out);
   if (!db || !worldId) return out;
 
@@ -115,16 +113,27 @@ export function signalsForWorld(db, worldId, location = null) {
     if (location && Number.isFinite(location.x) && Number.isFinite(location.z)) {
       const { cell_x, cell_z } = cellOf(location.x, location.z);
       rows = db.prepare(`
-        SELECT channel, value, source, recorded_at FROM embodied_signal_log
-        WHERE world_id = ?
-          AND decay_at >= ?
-          AND cell_x BETWEEN ? AND ?
-          AND cell_z BETWEEN ? AND ?
-      `).all(worldId, now, cell_x - 1, cell_x + 1, cell_z - 1, cell_z + 1);
+        SELECT channel, value, source, recorded_at, observed_at
+          FROM embodied_signal_log
+         WHERE world_id = ?
+           AND (decay_at IS NULL OR decay_at >= ?)
+           AND (
+             (cell_x BETWEEN ? AND ? AND cell_z BETWEEN ? AND ?)
+             OR (cell_x IS NULL AND location_x IS NOT NULL
+                 AND ABS(location_x - ?) <= ? AND ABS(location_z - ?) <= ?)
+           )
+      `).all(
+        worldId, now,
+        cell_x - 1, cell_x + 1, cell_z - 1, cell_z + 1,
+        Number(location.x), CELL_SIZE * 1.5,
+        Number(location.z), CELL_SIZE * 1.5,
+      );
     } else {
       rows = db.prepare(`
-        SELECT channel, value, source, recorded_at FROM embodied_signal_log
-        WHERE world_id = ? AND decay_at >= ?
+        SELECT channel, value, source, recorded_at, observed_at
+          FROM embodied_signal_log
+         WHERE world_id = ?
+           AND (decay_at IS NULL OR decay_at >= ?)
       `).all(worldId, now);
     }
   } catch {
@@ -132,19 +141,18 @@ export function signalsForWorld(db, worldId, location = null) {
   }
   if (!rows || rows.length === 0) return out;
 
-  // Per-channel: split absolute (sensor/world_seed) from delta (everything else),
-  // recency-weighted average for absolutes, recency-weighted SUM for deltas.
-  /** @type {Map<string, { absSum: number, absW: number, deltaSum: number }>} */
   const acc = new Map();
   for (const r of rows) {
     const ch = r.channel;
-    const ageS = Math.max(1, now - r.recorded_at);
+    const ts = Number(r.recorded_at ?? r.observed_at ?? now);
+    const ageS = Math.max(1, now - ts);
     const w = Math.pow(0.5, ageS / RECENCY_HALF_LIFE_S);
     const v = Number(r.value);
     if (!Number.isFinite(v)) continue;
     let cur = acc.get(ch);
     if (!cur) { cur = { absSum: 0, absW: 0, deltaSum: 0 }; acc.set(ch, cur); }
-    if (r.source === "sensor" || r.source === "world_seed") {
+    if (r.source === "sensor" || r.source === "world_seed" || r.source == null) {
+      // null source = main's environment-sense output; treat as absolute
       cur.absSum += v * w;
       cur.absW   += w;
     } else {
@@ -157,10 +165,8 @@ export function signalsForWorld(db, worldId, location = null) {
     out[ch] = base + agg.deltaSum;
   }
   out.hasData = true;
-
   _attachAliases(out);
 
-  // Derived weather heuristic.
   if (out.humidity > 80 && out.pressure < 100.5) out.weatherKind = "storm";
   else if (out.humidity > 75) out.weatherKind = "rain";
   else if (out.temperature < 2 && out.humidity > 60) out.weatherKind = "snow";
@@ -181,11 +187,14 @@ function _attachAliases(out) {
   out.structuralStress = out["tactile_force_os.structural_stress"];
 }
 
-/** GC sweep: hard-delete rows past their TTL. Bounded by the index. */
+/** GC sweep: hard-delete rows past their TTL (if decay_at set). */
 export function decaySweep(db) {
   if (!db) return 0;
   try {
-    const r = db.prepare("DELETE FROM embodied_signal_log WHERE decay_at < unixepoch()").run();
+    const r = db.prepare(`
+      DELETE FROM embodied_signal_log
+       WHERE decay_at IS NOT NULL AND decay_at < unixepoch()
+    `).run();
     return r.changes;
   } catch {
     return 0;
@@ -194,12 +203,7 @@ export function decaySweep(db) {
 
 /**
  * Idempotent world-seed: writes a one-time absolute baseline per channel
- * with a long TTL. Used by content-seeder + tests so freshly-seeded worlds
- * have a starting climate before the env-sensor heartbeat fires.
- *
- * @param {import('better-sqlite3').Database} db
- * @param {string} worldId
- * @param {object} [overrides] — partial { temperature, humidity, light, ... }
+ * with a long TTL.
  */
 export function seedWorldClimate(db, worldId, overrides = {}) {
   if (!db || !worldId) return;
@@ -216,7 +220,7 @@ export function seedWorldClimate(db, worldId, overrides = {}) {
       worldId, x: 1000, z: 1000,
       channel, value: Number(value),
       source: "world_seed", sourceId: worldId,
-      ttlSeconds: 86400, // 24h — the env-sensor will refresh long before that
+      ttlSeconds: 86400,
     });
   }
 }

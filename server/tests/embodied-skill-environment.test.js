@@ -34,11 +34,13 @@ import {
   applyStructuralStress,
 } from "../lib/embodied/skill-environment.js";
 import { runEnvironmentSensor } from "../emergent/environment-sensor.js";
-import { up as up108 } from "../migrations/108_embodied_signal_log.js";
+import { up as up112 } from "../migrations/112_embodied_signals.js";
+import { up as up113 } from "../migrations/113_embodied_signal_log_unification.js";
 
 function setupDb() {
   const db = new Database(":memory:");
-  up108(db);
+  up112(db);
+  up113(db);
   // worlds + world_visits + world_buildings — minimal schema needed.
   db.exec(`
     CREATE TABLE worlds (

@@ -26,8 +26,8 @@ import {
   MIN_FRAGMENTS,
 } from "../lib/embodied/dream-engine.js";
 import { runEmbodiedDreamCycle } from "../emergent/embodied-dream-cycle.js";
-import { up as up109 } from "../migrations/109_pain_signals.js";
-import { up as up110 } from "../migrations/110_dreams.js";
+import { up as up109 } from "../migrations/114_pain_signals.js";
+import { up as up110 } from "../migrations/115_dreams.js";
 
 function setupDb() {
   const db = new Database(":memory:");

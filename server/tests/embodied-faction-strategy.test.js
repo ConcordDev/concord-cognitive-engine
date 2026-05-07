@@ -27,7 +27,7 @@ import {
   MOVE_COOLDOWN_S,
 } from "../lib/embodied/faction-strategy.js";
 import { runFactionStrategyCycle } from "../emergent/faction-strategy-cycle.js";
-import { up as up112 } from "../migrations/112_faction_strategy.js";
+import { up as up112 } from "../migrations/117_faction_strategy.js";
 
 function setupDb() {
   const db = new Database(":memory:");
