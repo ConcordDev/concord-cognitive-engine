@@ -153,6 +153,18 @@ registerHeartbeat("presence-stale-sweep", {
   },
 });
 
+// Layer 8: repair-cycle pain processor. Every 20 ticks (~5min) consumes
+// pending pain_signals rows for each user, grants endurance / strength /
+// agility / vitality / focus XP based on regional distribution, and grants
+// a short-lived `damage_resist` buff. Without this, pain_signals rows
+// accumulate but never become adaptation — the "what doesn't kill you
+// makes you tougher" feedback loop is silently broken.
+import { runRepairCycle } from "./emergent/repair-cycle.js";
+registerHeartbeat("repair-cycle", {
+  frequency: 20,
+  handler: runRepairCycle,
+});
+
 // Layer 7: embodied environment sensor. Every 5 ticks (~75s) writes a
 // baseline ambient signal row per active world (temperature, humidity,
 // light scaled by time-of-day, air quality, noise, pressure) and runs

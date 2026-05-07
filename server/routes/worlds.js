@@ -1995,6 +1995,19 @@ export default function createWorldsRouter({ requireAuth, db }) {
         element, bar_used: 'hp', bar_cost: damageResult.finalDamage,
       });
 
+      // ── Layer 8: record pain signal ────────────────────────────────────────
+      // Players' bodies remember. The repair-cycle heartbeat will turn this
+      // into endurance / strength / agility / vitality / focus XP plus a
+      // `damage_resist` buff at the next 20-tick boundary.
+      try {
+        const { recordPain, regionForElement } = await import("../lib/embodied/pain.js");
+        const intensity = Math.max(0.05, Math.min(1, (damageResult.finalDamage || 0) / 100));
+        recordPain(db, userId, {
+          worldId, region: regionForElement(element),
+          intensity, source: 'combat', sourceId: eventId, element,
+        });
+      } catch { /* Layer 8 disabled — combat still works */ }
+
       res.json({ ok: true, damageResult, eventId, kill, message: kill ? 'You have been defeated' : undefined });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
