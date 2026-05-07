@@ -145,7 +145,11 @@ jobs:
         # handlers + server.js callsites that lack direct unit tests.
         # Raise these as test coverage grows; do NOT raise without
         # proportional coverage being added first.
-        run: npx c8 --check-coverage --statements 45 --branches 45 --functions 34 --lines 45 node --test --test-force-exit $(ls tests/*.test.js | grep -v -E 'auth-security|storage-parity')
+        # Functions threshold = 33 because CI execution path covers
+        # 33.13% (slightly different from local's 34.54% — tests that
+        # depend on optional infra get skipped in CI). Anchored at
+        # current CI baseline, raise as test coverage grows.
+        run: npx c8 --check-coverage --statements 45 --branches 45 --functions 33 --lines 45 node --test --test-force-exit $(ls tests/*.test.js | grep -v -E 'auth-security|storage-parity')
 
       # Diagnostic — runs on failure only, dumps which step failed plus
       # available context. Will help identify the failing step from

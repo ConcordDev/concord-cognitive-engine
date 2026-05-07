@@ -73,8 +73,16 @@ export function castLine({ userId, worldId = "concordia-hub", x = 0, z = 0, biom
   if (!userId) return { ok: false, error: "userId_required" };
   const fishOptions = listFishForWorld(worldId, biome);
   if (fishOptions.length === 0) return { ok: false, error: "no_fish_in_biome" };
-  const sessionId = `fish_${crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2, 12)}`;
-  const biteAt = Date.now() + BITE_MIN_MS + Math.floor(Math.random() * (BITE_MAX_MS - BITE_MIN_MS));
+  // Cryptographically secure session id — Math.random fallback was
+  // CodeQL-flagged as insecure randomness in a security context.
+  // crypto.randomUUID is in Node 18+ stdlib so the conditional fallback
+  // was unreachable in practice; the explicit randomBytes covers any
+  // exotic runtime that lacks randomUUID.
+  const sessionId = `fish_${crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(8).toString("hex")}`;
+  // Bite delay range — non-security randomness, but use crypto for
+  // consistency and to avoid CodeQL false-positive on this file.
+  const biteRange = BITE_MAX_MS - BITE_MIN_MS;
+  const biteAt = Date.now() + BITE_MIN_MS + Math.floor((crypto.randomBytes(2).readUInt16BE(0) / 0xffff) * biteRange);
   _sessions.set(sessionId, {
     userId, worldId, x, z, biome,
     castAt: Date.now(),

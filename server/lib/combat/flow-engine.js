@@ -212,7 +212,11 @@ export function evolveFighterCombos(db, fighterId, fighterKind = "player") {
     }));
     const stepsJson = JSON.stringify(stepsCanonical);
     const id = crypto.randomUUID();
-    const vfxSeed = crypto.createHash("sha1").update(agg.signature + fighterId).digest("hex").slice(0, 12);
+    // SHA-256 (not SHA-1) — vfxSeed is a deterministic-but-unique
+    // 12-char hash used to seed visual presets per combo. SHA-1 is
+    // CodeQL-flagged as weak even for non-security contexts; SHA-256
+    // is essentially the same speed on modern CPUs.
+    const vfxSeed = crypto.createHash("sha256").update(agg.signature + fighterId).digest("hex").slice(0, 12);
 
     try {
       const existing = db.prepare(

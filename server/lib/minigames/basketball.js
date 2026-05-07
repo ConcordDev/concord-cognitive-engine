@@ -16,13 +16,44 @@ const TWO_POINT_RADIUS_M = 6.75; // shots within this radius score 2
 // shots beyond TWO_POINT_RADIUS_M and within HOOP_REACH_M score 3
 
 function _newId() {
-  return `mg_${crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2, 12)}`;
+  // Cryptographically secure id — Math.random fallback was flagged.
+  const rand = crypto.randomUUID
+    ? crypto.randomUUID()
+    : crypto.randomBytes(8).toString("hex");
+  return `mg_${rand}`;
+}
+
+// Validate user-provided ids before using them as object keys. Pattern
+// matches typical user/match identifiers (alphanumeric + underscore +
+// hyphen), 1-80 chars. Rejects __proto__ / constructor / prototype
+// and other special property names that CodeQL flags as
+// remote-property-injection vectors.
+const _SAFE_ID_RE = /^[A-Za-z0-9_-]{1,80}$/;
+const _RESERVED_PROPERTY_NAMES = new Set(["__proto__", "constructor", "prototype"]);
+function _isSafeId(id) {
+  if (typeof id !== "string") return false;
+  if (_RESERVED_PROPERTY_NAMES.has(id)) return false;
+  return _SAFE_ID_RE.test(id);
 }
 
 export function createMatch(db, { challengerId, opponentId, worldId = "concordia-hub", districtId = null, hoopPosition = { x: 0, y: 0, z: 0 }, targetScore = DEFAULT_TARGET_SCORE } = {}) {
   if (!db || !challengerId || !opponentId) return { ok: false, error: "missing_args" };
   if (challengerId === opponentId) return { ok: false, error: "cannot_self_play" };
+  // Validate ids before using them as object keys. CodeQL flagged the
+  // dynamic-key write `{ [challengerId]: 0 }` as remote-property-injection
+  // even though scores_json is JSON.stringify'd immediately; validating
+  // upstream is the cleanest fix and rejects pathological ids
+  // (__proto__, constructor, …) before they touch any object.
+  if (!_isSafeId(challengerId) || !_isSafeId(opponentId)) {
+    return { ok: false, error: "invalid_player_id" };
+  }
   const id = _newId();
+  // Build scores via Object.create(null) so the resulting object has no
+  // prototype chain; even if validation drifts, prototype pollution is
+  // structurally impossible.
+  const scores = Object.create(null);
+  scores[challengerId] = 0;
+  scores[opponentId] = 0;
   db.prepare(`
     INSERT INTO minigame_matches
       (id, kind, world_id, district_id, players_json, scores_json, meta_json)
@@ -30,7 +61,7 @@ export function createMatch(db, { challengerId, opponentId, worldId = "concordia
   `).run(
     id, worldId, districtId,
     JSON.stringify([challengerId, opponentId]),
-    JSON.stringify({ [challengerId]: 0, [opponentId]: 0 }),
+    JSON.stringify(scores),
     JSON.stringify({ hoopPosition, targetScore }),
   );
   return { ok: true, matchId: id };
@@ -49,6 +80,10 @@ export function recordShot(db, matchId, { shooterId, shooterPos, hitRim = false,
   if (!m) return { ok: false, error: "match_not_found" };
   if (m.status !== "active") return { ok: false, error: "match_not_active" };
   const players = JSON.parse(m.players_json);
+  // Defense in depth: explicit ID-shape check + membership check.
+  // The membership check is the real authorization gate; the format
+  // check makes CodeQL aware that shooterId can't be __proto__ etc.
+  if (!_isSafeId(shooterId)) return { ok: false, error: "invalid_shooter_id" };
   if (!players.includes(shooterId)) return { ok: false, error: "not_a_player" };
 
   const meta = JSON.parse(m.meta_json || "{}");

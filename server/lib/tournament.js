@@ -73,7 +73,14 @@ const DEFAULT_RULES = Object.freeze({
 });
 
 function _newId(prefix) {
-  return `${prefix}_${crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2, 14)}`;
+  // Cryptographically secure id generation — Math.random fallback was
+  // CodeQL-flagged as insecure randomness in a security context.
+  // crypto.randomUUID is in Node 18+ stdlib so the conditional fallback
+  // was unreachable in practice; randomBytes covers exotic runtimes.
+  const rand = crypto.randomUUID
+    ? crypto.randomUUID()
+    : crypto.randomBytes(12).toString("hex");
+  return `${prefix}_${rand}`;
 }
 
 function _ensureRules(rules) {
