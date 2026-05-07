@@ -153,6 +153,33 @@ registerHeartbeat("presence-stale-sweep", {
   },
 });
 
+// Layer 12: lattice orchestrator — wires the four production-grade emergent
+// engines that already existed but were never on a heartbeat:
+//   - drift-monitor.js   (frequency 60,  ~15 min) — runs runDriftScan +
+//     routes HIGH/CRITICAL findings to HLR for resolution traces.
+//   - breakthrough-clusters.js (frequency 240, ~60 min) — advances every
+//     active research cluster's pass.
+//   - cnet-federation.js (frequency 120, ~30 min) — pollGlobal()
+//   See `emergent/lattice-orchestrator.js` for the bridge logic.
+import {
+  initLatticeOrchestrator,
+  runPeriodicDriftScan,
+  runBreakthroughResearchPass,
+  runFederationPoll,
+} from "./emergent/lattice-orchestrator.js";
+registerHeartbeat("lattice-drift-scan", {
+  frequency: 60,
+  handler: runPeriodicDriftScan,
+});
+registerHeartbeat("lattice-breakthrough-pass", {
+  frequency: 240,
+  handler: runBreakthroughResearchPass,
+});
+registerHeartbeat("lattice-federation-poll", {
+  frequency: 120,
+  handler: runFederationPoll,
+});
+
 // Layer 11: faction emergent strategy. Every 200 ticks (~50 min) advances
 // each faction whose next_move_at clock has elapsed — picks a deterministic
 // move from the {expand, war, alliance, rebuild, isolation, consolidate}
@@ -52943,6 +52970,11 @@ const circuitBreakers = {
 };
 
 STATE._circuitBreakers = circuitBreakers;
+
+// Layer 12: hand the lattice orchestrator the STATE reference. Drift-scan
+// reads STATE; without this call drift-monitor can't run. Idempotent —
+// safe to call multiple times.
+try { initLatticeOrchestrator(STATE); } catch { /* non-fatal — orchestrator handles unset STATE with reason */ }
 
 app.get("/api/circuits", (_req, res) => {
   const states = {};
