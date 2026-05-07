@@ -1,0 +1,209 @@
+'use client';
+
+/**
+ * Unified Self Lens — composition of fitness/sleep/mood/journal/meditation
+ * macros into one quantified-self surface. No new backend; aggregates
+ * existing macro domains.
+ *
+ * Phase 4.6 wire-the-Lost (universe-gap fill: unified-self).
+ */
+
+import { useLensNav } from '@/hooks/useLensNav';
+import { useQuery } from '@tanstack/react-query';
+import { apiHelpers } from '@/lib/api/client';
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Heart, Moon, Smile, BookOpen, Activity, TrendingUp, Loader2,
+  type LucideIcon,
+} from 'lucide-react';
+
+type TabKey = 'overview' | 'fitness' | 'sleep' | 'mood' | 'journal';
+
+export default function UnifiedSelfLensPage() {
+  useLensNav('self');
+  const [activeTab, setActiveTab] = useState<TabKey>('overview');
+
+  const safeRunDomain = async (domain: string, action: string, input: Record<string, unknown> = {}) => {
+    try {
+      const r = await apiHelpers.lens.runDomain(domain, action, input);
+      return (r.data?.result ?? r.data) as Record<string, unknown>;
+    } catch { return null; }
+  };
+
+  const fitness = useQuery({
+    queryKey: ['self-fitness'],
+    queryFn: async () => {
+      // Try a few common fitness-domain action names
+      const r = await safeRunDomain('fitness', 'status') ?? await safeRunDomain('fitness', 'metrics');
+      return r as { workouts?: number; weeklyMinutes?: number; recentSessions?: unknown[] } | null;
+    },
+  });
+
+  const sleep = useQuery({
+    queryKey: ['self-sleep'],
+    queryFn: async () => {
+      const r = await safeRunDomain('sleep', 'status') ?? await safeRunDomain('sleep', 'metrics');
+      return r as { avgHours?: number; lastNight?: number; quality?: number } | null;
+    },
+  });
+
+  const mood = useQuery({
+    queryKey: ['self-mood'],
+    queryFn: async () => {
+      // Mood typically lives under affect or mental-health
+      const r = await safeRunDomain('affect', 'status') ?? await safeRunDomain('mental_health', 'status');
+      return r as { current?: string; weeklyAvg?: number; trend?: string } | null;
+    },
+  });
+
+  const journal = useQuery({
+    queryKey: ['self-journal'],
+    queryFn: async () => {
+      const r = await safeRunDomain('journal', 'recent', { limit: 10 }) ?? await safeRunDomain('atlas', 'recent_entries', { limit: 10 });
+      return r as { entries?: Array<{ id: string; date?: string; preview?: string }> } | null;
+    },
+  });
+
+  const tabs: { key: TabKey; label: string; icon: LucideIcon }[] = [
+    { key: 'overview', label: 'Overview', icon: TrendingUp },
+    { key: 'fitness',  label: 'Fitness',  icon: Activity },
+    { key: 'sleep',    label: 'Sleep',    icon: Moon },
+    { key: 'mood',     label: 'Mood',     icon: Smile },
+    { key: 'journal',  label: 'Journal',  icon: BookOpen },
+  ];
+
+  return (
+    <div className="min-h-screen bg-black pb-12 text-rose-50">
+      <header className="sticky top-0 z-10 border-b border-rose-900/50 bg-black/95 px-4 py-3 backdrop-blur md:px-8">
+        <div className="mx-auto flex max-w-7xl items-center gap-3">
+          <Heart className="h-6 w-6 text-rose-400" aria-hidden />
+          <div>
+            <h1 className="font-mono text-lg font-semibold tracking-wide">Self</h1>
+            <p className="text-xs text-rose-700">Unified quantified-self · fitness · sleep · mood · journal</p>
+          </div>
+        </div>
+      </header>
+
+      <nav className="border-b border-rose-900/30 px-4 md:px-8" aria-label="Self sections">
+        <div className="mx-auto flex max-w-7xl gap-1 overflow-x-auto">
+          {tabs.map(({ key, label, icon: Icon }) => (
+            <button
+              key={key}
+              onClick={() => setActiveTab(key)}
+              className={`flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-rose-400 ${
+                activeTab === key ? 'border-rose-400 text-rose-200' : 'border-transparent text-rose-700 hover:text-rose-400'
+              }`}
+              aria-pressed={activeTab === key}
+            >
+              <Icon className="h-3.5 w-3.5" aria-hidden /> {label}
+            </button>
+          ))}
+        </div>
+      </nav>
+
+      <main className="mx-auto max-w-7xl px-4 py-6 md:px-8">
+        <AnimatePresence mode="wait">
+          {activeTab === 'overview' && (
+            <motion.section key="overview" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+              <h2 className="mb-3 text-base font-semibold text-rose-200">This week</h2>
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                <Stat label="Workouts" value={fitness.data?.workouts ?? '—'} icon={Activity} />
+                <Stat label="Sleep avg" value={sleep.data?.avgHours != null ? `${sleep.data.avgHours.toFixed(1)}h` : '—'} icon={Moon} />
+                <Stat label="Mood" value={mood.data?.current ?? '—'} icon={Smile} />
+                <Stat label="Journal entries" value={journal.data?.entries?.length ?? '—'} icon={BookOpen} />
+              </div>
+              <p className="mt-6 max-w-prose text-xs text-rose-700">
+                The Self Lens aggregates data from existing fitness, sleep, mood, and journal substrates into one
+                pane. Each tab calls the relevant macro domain. Where a backend isn't yet registered, the tab
+                shows a hint and the substrate fills in as you use the underlying lenses.
+              </p>
+            </motion.section>
+          )}
+
+          {activeTab === 'fitness' && (
+            <Section k="fitness">
+              <h2 className="mb-3 text-base font-semibold text-rose-200">Fitness</h2>
+              {fitness.isLoading ? <Loader2 className="h-4 w-4 animate-spin text-rose-500" /> : fitness.data ? (
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+                  <Stat label="Workouts" value={fitness.data.workouts ?? '—'} icon={Activity} />
+                  <Stat label="Weekly min" value={fitness.data.weeklyMinutes ?? '—'} icon={Activity} />
+                  <Stat label="Recent" value={fitness.data.recentSessions?.length ?? 0} icon={Activity} />
+                </div>
+              ) : <Empty>No fitness data — visit the Fitness lens to log a session.</Empty>}
+            </Section>
+          )}
+
+          {activeTab === 'sleep' && (
+            <Section k="sleep">
+              <h2 className="mb-3 text-base font-semibold text-rose-200">Sleep</h2>
+              {sleep.isLoading ? <Loader2 className="h-4 w-4 animate-spin text-rose-500" /> : sleep.data ? (
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+                  <Stat label="Avg hours" value={sleep.data.avgHours != null ? sleep.data.avgHours.toFixed(1) : '—'} icon={Moon} />
+                  <Stat label="Last night" value={sleep.data.lastNight != null ? `${sleep.data.lastNight}h` : '—'} icon={Moon} />
+                  <Stat label="Quality" value={sleep.data.quality != null ? `${(sleep.data.quality * 100).toFixed(0)}%` : '—'} icon={Moon} />
+                </div>
+              ) : <Empty>No sleep data — log a night via the Sleep substrate.</Empty>}
+            </Section>
+          )}
+
+          {activeTab === 'mood' && (
+            <Section k="mood">
+              <h2 className="mb-3 text-base font-semibold text-rose-200">Mood</h2>
+              {mood.isLoading ? <Loader2 className="h-4 w-4 animate-spin text-rose-500" /> : mood.data ? (
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+                  <Stat label="Current" value={mood.data.current ?? '—'} icon={Smile} />
+                  <Stat label="Weekly avg" value={mood.data.weeklyAvg != null ? mood.data.weeklyAvg.toFixed(1) : '—'} icon={Smile} />
+                  <Stat label="Trend" value={mood.data.trend ?? '—'} icon={TrendingUp} />
+                </div>
+              ) : <Empty>No mood data — affect engine surfaces this once you log.</Empty>}
+            </Section>
+          )}
+
+          {activeTab === 'journal' && (
+            <Section k="journal">
+              <h2 className="mb-3 text-base font-semibold text-rose-200">Recent journal entries</h2>
+              {journal.isLoading ? <Loader2 className="h-4 w-4 animate-spin text-rose-500" /> : (journal.data?.entries ?? []).length > 0 ? (
+                <ul className="space-y-1">
+                  {(journal.data?.entries ?? []).map(e => (
+                    <li key={e.id} className="flex items-start gap-3 rounded border border-rose-900/30 bg-rose-950/10 px-3 py-2 text-xs">
+                      <BookOpen className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-rose-500" aria-hidden />
+                      <div>
+                        {e.date && <span className="block text-[10px] text-rose-700">{new Date(e.date).toLocaleDateString()}</span>}
+                        <span className="text-rose-100">{e.preview ?? e.id}</span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : <Empty>No journal entries — visit the Journal lens to write one.</Empty>}
+            </Section>
+          )}
+        </AnimatePresence>
+      </main>
+    </div>
+  );
+}
+
+function Section({ children, k }: { children: React.ReactNode; k: TabKey }) {
+  return (
+    <motion.section key={k} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+      {children}
+    </motion.section>
+  );
+}
+
+function Stat({ label, value, icon: Icon }: { label: string; value: number | string; icon: LucideIcon }) {
+  return (
+    <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.18 }}
+      className="rounded-lg border border-rose-900/40 bg-rose-950/10 p-3 text-rose-200">
+      <div className="mb-1 flex items-center justify-between text-[11px] uppercase tracking-wider text-rose-700">
+        <span>{label}</span><Icon className="h-3.5 w-3.5" aria-hidden />
+      </div>
+      <div className="font-mono text-xl font-semibold">{value}</div>
+    </motion.div>
+  );
+}
+
+function Empty({ children }: { children: React.ReactNode }) {
+  return <p className="rounded border border-rose-900/30 bg-rose-950/10 px-4 py-6 text-center text-xs text-rose-600">{children}</p>;
+}
