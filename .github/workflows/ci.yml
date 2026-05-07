@@ -92,6 +92,11 @@ jobs:
 
       - name: Run frontend unit tests with coverage (thresholds enforced)
         working-directory: ./concord-frontend
+        env:
+          # Vitest + v8 coverage instrumentation across the full
+          # components/ + lib/ + hooks/ tree pushes heap usage well
+          # past Node's default ~3.8GB. Match the build step's heap.
+          NODE_OPTIONS: --max-old-space-size=6144
         run: npm run test:coverage
 
       - name: Verify coverage thresholds
@@ -119,6 +124,10 @@ jobs:
           BRAIN_SUBCONSCIOUS_URL: http://127.0.0.1:11434
           BRAIN_UTILITY_URL: http://127.0.0.1:11434
           BRAIN_REPAIR_URL: http://127.0.0.1:11434
+          # c8 instrumentation across the full server.js (62k LOC) +
+          # all lib/ + emergent/ + economy/ pushes heap into territory
+          # the default 3.8GB can't hold. Match the build step's heap.
+          NODE_OPTIONS: --max-old-space-size=6144
         # Coverage thresholds anchored at "no regression below current" —
         # current baseline is ~46% statements, ~80% branches, ~34%
         # functions, ~46% lines across the unit-test scope (which excludes
@@ -158,6 +167,10 @@ jobs:
 
       - name: Run mobile unit tests with coverage
         working-directory: ./concord-mobile
+        env:
+          # Jest with coverage instrumentation across the full mobile
+          # tree can also push past default heap. Match other steps.
+          NODE_OPTIONS: --max-old-space-size=6144
         run: npm run test:coverage
 
       - name: Upload mobile coverage report
