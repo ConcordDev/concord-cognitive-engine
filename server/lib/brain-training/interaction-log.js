@@ -166,4 +166,93 @@ function _safeParse(s) {
   try { return JSON.parse(s); } catch { return s; }
 }
 
+/**
+ * Outcome resolver — walks pending interactions and infers an outcome
+ * from observed signals. Designed to be called from a heartbeat tick
+ * (~every 5-15 minutes) so resolution happens within hours of the call.
+ *
+ * Resolution heuristics (conservative defaults; refine over time):
+ *   - 'positive' if the same user made another brain call within 30 min
+ *     of this one (engagement signal: they kept using the platform).
+ *   - 'expired' if the row is older than 7 days and still pending
+ *     (no signal collected in time).
+ *   - Otherwise: leave pending (more time may produce a signal).
+ *
+ * Future signal sources (not wired here yet — placeholders for upgrade):
+ *   - Citation: a DTU created near the response time was later cited
+ *   - Repair: the error in the prompt context didn't recur within 24h
+ *   - Synthesis: subconscious output was promoted to MEGA
+ *   - User-thumbed: explicit user feedback (👍/👎) on the response
+ *
+ * @param {object} db
+ * @param {object} [opts]
+ * @param {number} [opts.batchSize=200] — max rows to walk per call
+ * @param {number} [opts.engagementWindowSec=1800] — 30min default
+ * @param {number} [opts.expireAfterSec=604800] — 7 days default
+ * @returns {{ scanned: number, positive: number, expired: number, stillPending: number }}
+ */
+export function resolvePendingOutcomes(db, opts = {}) {
+  if (!db) return { scanned: 0, positive: 0, expired: 0, stillPending: 0 };
+  const batchSize = Math.max(1, Math.min(opts.batchSize ?? 200, 5000));
+  const engageSec = Math.max(60, opts.engagementWindowSec ?? 1800);
+  const expireSec = Math.max(3600, opts.expireAfterSec ?? 7 * 86400);
+  const now = Math.floor(Date.now() / 1000);
+
+  let positive = 0;
+  let expired = 0;
+  let stillPending = 0;
+  let scanned = 0;
+
+  // Pull oldest pending rows first (give them more time to accumulate signal,
+  // and ensures resolver progresses through the backlog rather than getting
+  // stuck on a hot tail).
+  const rows = db.prepare(
+    `SELECT id, brain_id, user_id, created_at
+       FROM brain_interactions
+      WHERE outcome = 'pending'
+      ORDER BY created_at ASC
+      LIMIT ?`,
+  ).all(batchSize);
+
+  const followUpStmt = db.prepare(
+    `SELECT 1 FROM brain_interactions
+      WHERE user_id = ?
+        AND created_at > ?
+        AND created_at <= ?
+        AND id != ?
+      LIMIT 1`,
+  );
+
+  for (const r of rows) {
+    scanned++;
+    const ageSec = now - r.created_at;
+    if (ageSec >= expireSec) {
+      const ok = resolveBrainInteraction(db, r.id, "expired", { reason: "age_exceeded", ageSec });
+      if (ok) expired++;
+      continue;
+    }
+    // Engagement check: only meaningful when we can attribute follow-ups
+    // to the same user. System-internal calls (user_id null) can't be
+    // engagement-resolved this way — leave them pending until expire.
+    if (r.user_id) {
+      const followUpEnd = r.created_at + engageSec;
+      // Don't resolve as positive until the engagement window has fully
+      // elapsed — otherwise we resolve on a "yes they made one quick call"
+      // signal that may not actually mean satisfaction.
+      if (now < followUpEnd) { stillPending++; continue; }
+      const followUp = followUpStmt.get(r.user_id, r.created_at, followUpEnd, r.id);
+      if (followUp) {
+        const ok = resolveBrainInteraction(db, r.id, "positive", { reason: "engagement_followup", windowSec: engageSec });
+        if (ok) positive++;
+      } else {
+        stillPending++;
+      }
+    } else {
+      stillPending++;
+    }
+  }
+
+  return { scanned, positive, expired, stillPending };
+}
+
 export const _internal = { VALID_BRAINS, VALID_OUTCOMES };

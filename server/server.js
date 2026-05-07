@@ -190,6 +190,26 @@ registerHeartbeat("brain-daily-refresh", {
     }
   },
 });
+
+// Brain outcome resolver — walks brain_interactions every 20 ticks
+// (~5 min). Resolves pending rows whose engagement-window has
+// elapsed (positive if user made a follow-up call within 30min,
+// otherwise still pending). Older than 7 days → expired. Without
+// this tick the corpus would never have positive examples to train
+// on, because every interaction starts pending.
+registerHeartbeat("brain-outcome-resolver", {
+  frequency: 20,
+  handler: async ({ db: ctxDb }) => {
+    if (!ctxDb) return { ok: false, reason: "no_db" };
+    try {
+      const { resolvePendingOutcomes } = await import("./lib/brain-training/interaction-log.js");
+      return resolvePendingOutcomes(ctxDb);
+    } catch (err) {
+      structuredLog("warn", "brain_outcome_resolver_failed", { error: err?.message });
+      return { ok: false, reason: "exception" };
+    }
+  },
+});
 import { ConcordError } from "./lib/errors.js";
 import { asyncHandler } from "./lib/async-handler.js";
 import { init as initGRC, formatAndValidate as grcFormatAndValidate, getGRCSystemPrompt } from "./grc/index.js";
@@ -197,6 +217,10 @@ import configureMiddleware from "./middleware/index.js";
 import { createLLMQueue, PRIORITY } from "./lib/llm-queue.js";
 import { BRAIN_CONFIG, SYSTEM_TO_BRAIN, BRAIN_PRIORITY, getBrainForSystem } from "./lib/brain-config.js";
 import { preloadBrains, getBrainPriority, resolveBrain } from "./lib/brain-router.js";
+// Brain self-training: log every brain call + consult the active model
+// from brain_active_models so daily-refresh swaps actually take effect.
+import { logBrainInteraction, resolveBrainInteraction } from "./lib/brain-training/interaction-log.js";
+import { getActiveBrainModel } from "./lib/brain-training/runner.js";
 import { createBreakerRegistry } from "./lib/circuit-breaker.js";
 import { traceMiddleware, startSpan, storeTrace, getRecentTraces, getTraceMetrics } from "./lib/request-trace.js";
 import {
@@ -3838,6 +3862,17 @@ if (db) {
   // refusal-field persistence layer). Modules that already capture `db`
   // via closure are unaffected.
   STATE.db = db;
+
+  // Hand the db reference to oracle-brain so its callUtilityBrain can
+  // consult brain_active_models for the daily-refreshed Utility tag and
+  // log interactions to brain_interactions. Without this the
+  // Concordia-narrative path silently bypasses self-training.
+  try {
+    const { setOracleDb } = await import("./lib/oracle-brain.js");
+    setOracleDb(db);
+  } catch (e) {
+    structuredLog("warn", "oracle_db_inject_failed", { error: e.message });
+  }
 
   // Reload any non-expired Refusal Field declarations so a deploy mid-
   // quest doesn't lose the Sovereign's active gates.
@@ -14737,8 +14772,15 @@ ${_sharedToolRules}` : "";
       ...(systemContent ? [{ role: "system", content: systemContent }] : []),
       { role: "user", content: prompt },
     ];
+    // Brain self-training: consult brain_active_models for the currently-
+    // routed model name. Daily refresh swaps these by inserting a row with
+    // active=1; getActiveBrainModel returns brain.model as fallback when
+    // no swap has happened yet (or when db is unavailable in early boot).
+    const activeModel = (typeof db !== "undefined" && db)
+      ? getActiveBrainModel(db, brainName, brain.model)
+      : brain.model;
     const payload = {
-      model: brain.model,
+      model: activeModel,
       messages,
       stream: false,
       options: {
@@ -14775,10 +14817,29 @@ ${_sharedToolRules}` : "";
       ok: true,
       content: data.message?.content || data.response || "",
       source: brainName,
-      model: brain.model,
+      model: activeModel,
       tokens: data.eval_count || 0,
       elapsed,
     };
+
+    // Brain self-training: log every interaction. Outcome resolves later
+    // via the brain-outcome-resolver heartbeat. Fail-safe — never blocks
+    // the user-facing response if logging errors.
+    try {
+      if (typeof db !== "undefined" && db) {
+        const interactionId = logBrainInteraction(db, {
+          brainId:   brainName,
+          userId:    options._userId || null,
+          prompt:    { messages, options: { temperature: payload.options.temperature, maxTokens: payload.options.num_predict } },
+          response:  { content: result.content, model: activeModel },
+          domain:    options._domain || null,
+          latencyMs: elapsed,
+          tokensIn:  data.prompt_eval_count || null,
+          tokensOut: data.eval_count || null,
+        });
+        if (interactionId) result._interactionId = interactionId;
+      }
+    } catch (_e) { /* logging never blocks */ }
 
     // Attach confidence score to every brain output
     try {

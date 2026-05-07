@@ -182,3 +182,78 @@ test("DAILY_ELIGIBLE_BRAINS is the small-brain set (utility, repair)", () => {
   // 30-minute window without GPU work.
   assert.deepStrictEqual([..._internal.DAILY_ELIGIBLE_BRAINS].sort(), ["repair", "utility"]);
 });
+
+// ─────────────────────────────────────────────────────────────────────
+// resolvePendingOutcomes — the heartbeat resolver that turns 'pending'
+// rows into 'positive'/'expired' so the daily refresh has corpus to
+// pull from. Without this resolver, every brain interaction stays
+// pending forever and runDailyRefresh always reports
+// insufficient_corpus.
+// ─────────────────────────────────────────────────────────────────────
+
+test("resolvePendingOutcomes: marks engagement-followup as positive", async () => {
+  const { resolvePendingOutcomes } = await import("../../lib/brain-training/interaction-log.js");
+  const userId = "user-engaged";
+  // Seed an old pending interaction (well past the engagement window).
+  const oldId = `bi_${"a".repeat(16)}`;
+  const oldTs = Math.floor(Date.now() / 1000) - 7200; // 2h ago
+  db.prepare(
+    `INSERT INTO brain_interactions
+       (id, brain_id, user_id, prompt_hash, prompt_json, response_json, outcome, created_at)
+     VALUES (?, 'utility', ?, 'h1', '{"x":1}', '{"y":2}', 'pending', ?)`,
+  ).run(oldId, userId, oldTs);
+  // Plus a follow-up call from the same user, INSIDE the 30-min window
+  // after the first call (so engagement is detected).
+  const followUpTs = oldTs + 600; // 10min later
+  db.prepare(
+    `INSERT INTO brain_interactions
+       (id, brain_id, user_id, prompt_hash, prompt_json, response_json, outcome, created_at)
+     VALUES ('bi_followup', 'utility', ?, 'h2', '{"x":3}', '{"y":4}', 'pending', ?)`,
+  ).run(userId, followUpTs);
+
+  const r = resolvePendingOutcomes(db);
+  assert.ok(r.scanned >= 2);
+  assert.ok(r.positive >= 1, "engagement signal must produce at least one positive resolution");
+  const oldRow = db.prepare(`SELECT outcome FROM brain_interactions WHERE id = ?`).get(oldId);
+  assert.strictEqual(oldRow.outcome, "positive");
+});
+
+test("resolvePendingOutcomes: marks rows older than expireAfterSec as expired", async () => {
+  const { resolvePendingOutcomes } = await import("../../lib/brain-training/interaction-log.js");
+  const ancientId = "bi_ancient";
+  const ancientTs = Math.floor(Date.now() / 1000) - (10 * 86400); // 10 days ago
+  db.prepare(
+    `INSERT INTO brain_interactions
+       (id, brain_id, user_id, prompt_hash, prompt_json, response_json, outcome, created_at)
+     VALUES (?, 'utility', 'lonely-user', 'h', '{}', '{}', 'pending', ?)`,
+  ).run(ancientId, ancientTs);
+
+  const r = resolvePendingOutcomes(db, { expireAfterSec: 7 * 86400 });
+  assert.ok(r.expired >= 1, "row older than 7d with no follow-up must expire");
+  const row = db.prepare(`SELECT outcome FROM brain_interactions WHERE id = ?`).get(ancientId);
+  assert.strictEqual(row.outcome, "expired");
+});
+
+test("resolvePendingOutcomes: leaves recent unresolved rows pending", async () => {
+  const { resolvePendingOutcomes } = await import("../../lib/brain-training/interaction-log.js");
+  const recentId = "bi_recent";
+  const recentTs = Math.floor(Date.now() / 1000) - 60; // 1 minute ago
+  db.prepare(
+    `INSERT INTO brain_interactions
+       (id, brain_id, user_id, prompt_hash, prompt_json, response_json, outcome, created_at)
+     VALUES (?, 'utility', 'user-X', 'h', '{}', '{}', 'pending', ?)`,
+  ).run(recentId, recentTs);
+
+  const r = resolvePendingOutcomes(db);
+  assert.ok(r.stillPending >= 1, "row inside engagement window must stay pending");
+  const row = db.prepare(`SELECT outcome FROM brain_interactions WHERE id = ?`).get(recentId);
+  assert.strictEqual(row.outcome, "pending");
+});
+
+test("resolvePendingOutcomes: never throws on empty DB", async () => {
+  const { resolvePendingOutcomes } = await import("../../lib/brain-training/interaction-log.js");
+  const r = resolvePendingOutcomes(db);
+  assert.strictEqual(r.scanned, 0);
+  assert.strictEqual(r.positive, 0);
+  assert.strictEqual(r.expired, 0);
+});
