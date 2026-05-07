@@ -1,0 +1,124 @@
+// server/emergent/environment-sensor.js
+//
+// Layer 7 heartbeat: writes baseline ambient signals for every active world
+// every 5 ticks (~75s) and runs decay GC.
+//
+// "Active world" = any world with at least one row in world_visits whose
+// `departed_at IS NULL`. Quiet worlds incur zero writes — the table stays
+// bounded to active play.
+//
+// The baseline is derived from:
+//   - World rule_modulators (if the world declares a climate band)
+//   - Time-of-day (light intensity follows a sin curve over 24h)
+//   - World defaults otherwise
+//
+// This module is intentionally simple. Real weather variation, seasonal
+// drift, and biome-specific readings are layered on top by world events and
+// by skill-cast feedback. The sensor's only job is to keep a fresh
+// `source = sensor` row per channel per active world so signalsForWorld()
+// has something to fold against.
+
+import { recordSignal, decaySweep } from "../lib/embodied/signals.js";
+import logger from "../logger.js";
+
+const SECONDS_PER_DAY = 86400;
+const SENSOR_TTL_S    = 600; // 10 min — must outlive the 75s tick interval
+
+/**
+ * Compute a 0..1 daylight factor from the world's time-of-day.
+ * Worlds without a `time_of_day_s` row default to noon.
+ */
+function daylightFactor(secondsOfDay) {
+  const s = ((Number(secondsOfDay) || 43200) + SECONDS_PER_DAY) % SECONDS_PER_DAY;
+  // sin curve peaks at noon (s = 43200), troughs at midnight.
+  const phase = (s / SECONDS_PER_DAY) * 2 * Math.PI - Math.PI / 2;
+  return Math.max(0, Math.sin(phase));
+}
+
+/**
+ * Heartbeat handler. Registered in server.js with frequency: 5.
+ *
+ * @param {{ db: import('better-sqlite3').Database, state: object, tickCount: number }} ctx
+ */
+export function runEnvironmentSensor({ db, state: _state, tickCount: _tickCount } = {}) {
+  if (!db) return { ok: false, reason: "no_db" };
+
+  // 1) GC first — keeps the working set small for the read in step 3.
+  let pruned = 0;
+  try { pruned = decaySweep(db); } catch { /* non-fatal */ }
+
+  // 2) Discover active worlds. Defensive against world_visits being missing.
+  let activeWorlds = [];
+  try {
+    activeWorlds = db.prepare(`
+      SELECT DISTINCT world_id FROM world_visits WHERE departed_at IS NULL
+    `).all().map(r => r.world_id).filter(Boolean);
+  } catch {
+    return { ok: false, reason: "world_visits_missing", pruned };
+  }
+  if (activeWorlds.length === 0) return { ok: true, pruned, worlds: 0 };
+
+  // 3) For each, read climate config + time-of-day, write baseline.
+  let written = 0;
+  for (const worldId of activeWorlds) {
+    try {
+      const world = db.prepare(`
+        SELECT rule_modulators FROM worlds WHERE id = ?
+      `).get(worldId);
+      const rules = _safeParseJSON(world?.rule_modulators) ?? {};
+      const climate = rules.climate ?? {};
+
+      // Time-of-day: prefer worlds.time_of_day_s if the column exists; fall
+      // back to wall-clock UTC seconds-of-day. Tests can pin either.
+      let secondsOfDay = null;
+      try {
+        const tod = db.prepare(`SELECT time_of_day_s FROM worlds WHERE id = ?`).get(worldId);
+        secondsOfDay = Number(tod?.time_of_day_s);
+      } catch { /* column may not exist */ }
+      if (!Number.isFinite(secondsOfDay)) {
+        secondsOfDay = (Math.floor(Date.now() / 1000)) % SECONDS_PER_DAY;
+      }
+      const dayF = daylightFactor(secondsOfDay);
+
+      const temperature = Number(climate.temperature ?? 15);
+      const humidity    = Number(climate.humidity ?? 50);
+      const airQuality  = Number(climate.airQuality ?? 0.92);
+      const noise       = Number(climate.noise ?? 42);
+      const pressure    = Number(climate.pressure ?? 101.325);
+
+      // Light scales with day factor (ambient quarter, sun three-quarters).
+      const peakLux = Number(climate.peakLight ?? 100000);
+      const ambientLux = 2000;
+      const light = ambientLux + (peakLux - ambientLux) * dayF;
+
+      // Per-channel one-row baseline. Each replaces the prior sensor reading
+      // because signalsForWorld recency-weights the absolute reads.
+      const channels = [
+        ["thermal_os.ambient_temp",           temperature],
+        ["chemical_os.humidity",              humidity],
+        ["chemical_os.air_quality",           airQuality],
+        ["sight_os.illumination",             light],
+        ["sonic_os.ambient_db",               noise],
+        ["tactile_force_os.ambient_pressure", pressure],
+      ];
+      for (const [channel, value] of channels) {
+        recordSignal(db, {
+          worldId, x: 1000, z: 1000,
+          channel, value, source: "sensor", sourceId: null,
+          ttlSeconds: SENSOR_TTL_S,
+        });
+        written++;
+      }
+    } catch (err) {
+      try { logger.warn("environment-sensor", "world_failed", { worldId, error: err?.message }); } catch { /* ignore */ }
+    }
+  }
+
+  return { ok: true, pruned, worlds: activeWorlds.length, written };
+}
+
+function _safeParseJSON(s) {
+  if (!s) return null;
+  if (typeof s !== "string") return s;
+  try { return JSON.parse(s); } catch { return null; }
+}

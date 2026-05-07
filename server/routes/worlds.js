@@ -1225,7 +1225,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
   router.post("/:worldId/nodes/:nodeId/gather", requireAuth, async (req, res) => {
     try {
       const { worldId, nodeId } = req.params;
-      const { toolType = 'hands', toolTier = 1, skillLevel = 1, x, z } = req.body;
+      const { toolType = 'hands', toolTier = 1, skillLevel = 1, x, z, element } = req.body;
 
       const result = gatherFromNode(db, nodeId, req.user.id, {
         toolType, toolTier: parseInt(toolTier), skillLevel: parseInt(skillLevel),
@@ -1233,6 +1233,33 @@ export default function createWorldsRouter({ requireAuth, db }) {
       });
 
       if (!result.ok) return res.status(400).json(result);
+
+      // ── Layer 7.5: terrain affinity yield boost ───────────────────────────
+      // Earth-aligned (physical) gatherers extract more from stone/ore;
+      // water-aligned from springs; bio-aligned from herbs/soil. Boost is
+      // applied AFTER gatherFromNode so node depletion is unchanged — the
+      // bender effect represents more efficient extraction of the same
+      // material removed from the node. Degrades to 1.0× if Layer 7 is
+      // not active (signalsForWorld returns hasData=false).
+      try {
+        if (element && element !== 'none') {
+          const { signalsForWorld } = await import("../lib/embodied/signals.js");
+          const { terrainResourceBoost } = await import("../lib/embodied/skill-environment.js");
+          const loc = (x != null && z != null) ? { x: parseFloat(x), z: parseFloat(z) } : null;
+          const sig = signalsForWorld(db, worldId, loc);
+          for (const item of result.gathered) {
+            const boost = terrainResourceBoost(element, item.fromNodeType, sig);
+            if (boost > 1.0) {
+              const bonus = Math.floor(item.quantity * (boost - 1));
+              if (bonus > 0) {
+                item.quantity += bonus;
+                item.elementBonus = bonus;
+                item.elementBoost = boost;
+              }
+            }
+          }
+        }
+      } catch { /* Layer 7 disabled — neutral pass-through */ }
 
       // Add gathered items to player inventory
       for (const item of result.gathered) {
@@ -1798,12 +1825,32 @@ export default function createWorldsRouter({ requireAuth, db }) {
       // ── Anti-cheat: damage cap ─────────────────────────────────────────────
       // Defends against future bugs in computeDamage that might drop a
       // sanity check. Cap = skillData.max_damage * 2.5 (crit) OR a hard
-      // 500 absolute fallback.
+      // 500 absolute fallback. Cap is applied to RAW computed damage
+      // before Layer-7.5 env amplification so client-side bug exploits
+      // can't stack with legit env boosts to bypass the gate.
       const dmgCheck = _validateDamageCap(damageResult, skillData);
       if (!dmgCheck.ok) {
         logger.warn?.('worlds', 'combat_damage_rejected', { userId, npcId, ...dmgCheck });
         return res.status(422).json({ ok: false, error: "damage_cap_exceeded", reason: dmgCheck.reason });
       }
+
+      // ── Layer 7.5: env-coupled potency + feedback ──────────────────────────
+      // Frost in cold cells is stronger; fire on rainy days weaker; lightning
+      // spikes during storms. Multiplier applied AFTER the anti-cheat cap so
+      // the cap stays a tight bound on raw damage. Feedback signals (warming,
+      // humidifying, ozone, etc.) are written post-hit so the world remembers.
+      let envBoost = 1.0;
+      let envSignals = null;
+      try {
+        const { signalsForWorld } = await import("../lib/embodied/signals.js");
+        const { elementalEnvBoost } = await import("../lib/embodied/skill-environment.js");
+        envSignals = signalsForWorld(db, worldId, npcPosRow ? { x: npcPosRow.x, z: npcPosRow.z } : null);
+        envBoost = elementalEnvBoost(skillData.element || 'none', envSignals);
+        if (envBoost !== 1.0 && Number.isFinite(damageResult.finalDamage)) {
+          damageResult.finalDamage = Math.round(damageResult.finalDamage * envBoost * 10) / 10;
+          damageResult.envBoost = envBoost;
+        }
+      } catch { /* Layer 7 disabled / migration not applied — neutral pass-through */ }
 
       const { eventId, kill } = applyDamageToNPC(db, worldId, userId, 'player', npcId, damageResult, {
         skill_dtu_id: skillDtuId, item_dtu_id: itemDtuId,
@@ -1811,6 +1858,64 @@ export default function createWorldsRouter({ requireAuth, db }) {
         bar_used: barType === 'multi' ? 'mana' : barType,
         bar_cost: barCost,
       });
+
+      // ── Layer 7.5: write feedback signals + check terrain stagger ──────────
+      try {
+        const { recordSignal } = await import("../lib/embodied/signals.js");
+        const {
+          elementalEnvFeedback, shouldStaggerOnTerrain, applyStructuralStress,
+        } = await import("../lib/embodied/skill-environment.js");
+
+        const targetPos = npcPosRow ? { x: npcPosRow.x, z: npcPosRow.z } : null;
+        const attackerPos = cityPresence.getUserPosition?.(userId) || null;
+
+        if (targetPos && damageResult.finalDamage > 0) {
+          const deltas = elementalEnvFeedback(skillData.element || 'none', damageResult.finalDamage);
+          for (const d of deltas) {
+            recordSignal(db, {
+              worldId, x: targetPos.x, z: targetPos.z,
+              channel: d.channel, value: d.value,
+              source: 'skill_cast', sourceId: skillDtuId || null,
+              ttlSeconds: d.ttlSeconds,
+            });
+          }
+        }
+
+        const stagger = shouldStaggerOnTerrain({
+          element: skillData.element || 'none',
+          magnitude: damageResult.finalDamage,
+          attackerPos, targetPos, db, worldId,
+        });
+        if (stagger) {
+          const stress = applyStructuralStress(db, worldId, stagger.buildingId, stagger.structuralStress);
+          // Persist a structural-stress signal so the env-aware harvest path
+          // and the dust-in-the-air feedback can read it back later.
+          if (targetPos) {
+            recordSignal(db, {
+              worldId, x: targetPos.x, z: targetPos.z,
+              channel: 'tactile_force_os.structural_stress',
+              value: stagger.structuralStress,
+              source: 'combat', sourceId: eventId || null,
+              ttlSeconds: 300,
+            });
+          }
+          try {
+            const io = req.app.locals.io;
+            io?.to(`world:${worldId}`).emit('combat:stagger', {
+              worldId, targetId: npcId, targetType: 'npc',
+              buildingId: stagger.buildingId,
+              durationMs: stagger.durationMs,
+              structuralStress: stagger.structuralStress,
+            });
+            if (stress?.transitioned) {
+              io?.to(`world:${worldId}`).emit('world:building-state', {
+                worldId, buildingId: stagger.buildingId,
+                state: stress.state, healthPct: stress.healthPct,
+              });
+            }
+          } catch { /* realtime best-effort */ }
+        }
+      } catch { /* non-critical */ }
 
       // Broadcast opinion event — violence witnessed nearby
       try {

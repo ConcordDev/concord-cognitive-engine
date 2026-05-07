@@ -153,6 +153,18 @@ registerHeartbeat("presence-stale-sweep", {
   },
 });
 
+// Layer 7: embodied environment sensor. Every 5 ticks (~75s) writes a
+// baseline ambient signal row per active world (temperature, humidity,
+// light scaled by time-of-day, air quality, noise, pressure) and runs
+// decay GC on embodied_signal_log. Without this writer, signalsForWorld()
+// returns neutral defaults and Layer 7.5 (env-coupled skills) collapses
+// to 1.0 multipliers — so gameplay degrades gracefully if disabled.
+import { runEnvironmentSensor } from "./emergent/environment-sensor.js";
+registerHeartbeat("environment-sensor", {
+  frequency: 5,
+  handler: runEnvironmentSensor,
+});
+
 // Scheduled-post processor — promotes posts whose scheduledAt has passed
 // from the queue to the live feed. Pre-this-tick schedulePost() worked
 // but processScheduledPosts() was never invoked, so scheduled posts
