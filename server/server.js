@@ -28511,6 +28511,14 @@ try { app.use("/api/social-extended", createSocialExtendedRouter({ STATE, requir
 import createWorldOrgsExtendedRouter from "./routes/world-orgs-extended.js";
 try { app.use("/api/world-orgs", createWorldOrgsExtendedRouter({ requireAuth })); } catch (e) { structuredLog("warn", "world_orgs_extended_routes_skip", { error: e.message }); }
 
+// Lattice (6th brain) consent infrastructure. Endpoints stage opt-in
+// flags on user-authored DTUs and expose corpus stats. The brain
+// itself isn't deployed yet — this is the pre-investment so every
+// row created from now forward is correctly tagged for the future
+// training pipeline. See lib/training-consent.js + migration 108.
+import createLatticeRouter from "./routes/lattice.js";
+try { app.use("/api/lattice", createLatticeRouter({ db, requireAuth })); } catch (e) { structuredLog("warn", "lattice_routes_skip", { error: e.message }); }
+
 import createChannelsRouter from "./routes/channels.js";
 try { app.use("/api/channels", createChannelsRouter({ STATE, requireAuth, realtimeEmit })); } catch (e) { structuredLog("warn", "channels_routes_skip", { error: e.message }); }
 
