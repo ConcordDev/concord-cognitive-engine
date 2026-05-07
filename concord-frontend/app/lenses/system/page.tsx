@@ -23,6 +23,7 @@ import {
   Activity, Database, Globe, Heart, Layers, Map as MapIcon,
   RefreshCw, AlertTriangle, CheckCircle2, XCircle, Loader2,
   Zap, BookOpen, GitBranch,
+  type LucideIcon,
 } from 'lucide-react';
 
 interface CartographStats {
@@ -191,11 +192,11 @@ export default function SystemLensPage() {
       <nav className="border-b border-cyan-900/30 px-4 md:px-8" aria-label="System Lens sections">
         <div className="mx-auto flex max-w-7xl gap-1 overflow-x-auto">
           {([
-            { key: 'overview', label: 'Overview', icon: Activity },
-            { key: 'heartbeats', label: `Heartbeats (${heartbeats.length})`, icon: Heart },
-            { key: 'gaps', label: `Gaps (${data.crossRef.dormantModules.length + data.crossRef.headlessBackends.length})`, icon: AlertTriangle },
-            { key: 'coverage', label: `Coverage (${coveragePct}%)`, icon: MapIcon },
-            { key: 'drift', label: `Drift (${data.drift.length})`, icon: GitBranch },
+            { key: 'overview', label: 'Overview', icon: Activity as LucideIcon },
+            { key: 'heartbeats', label: `Heartbeats (${heartbeats.length})`, icon: Heart as LucideIcon },
+            { key: 'gaps', label: `Gaps (${data.crossRef.dormantModules.length + data.crossRef.headlessBackends.length})`, icon: AlertTriangle as LucideIcon },
+            { key: 'coverage', label: `Coverage (${coveragePct}%)`, icon: MapIcon as LucideIcon },
+            { key: 'drift', label: `Drift (${data.drift.length})`, icon: GitBranch as LucideIcon },
           ] as const).map(({ key, label, icon: Icon }) => (
             <button
               key={key}
@@ -416,7 +417,7 @@ function StatCard({ label, value, sub, icon: Icon, tone = 'ok' }: {
   label: string;
   value: number | string;
   sub?: string;
-  icon: React.ComponentType<{ className?: string; 'aria-hidden'?: boolean }>;
+  icon: LucideIcon;
   tone?: 'ok' | 'warn' | 'bad';
 }) {
   const toneCls = tone === 'bad' ? 'border-rose-700/40 text-rose-200'
