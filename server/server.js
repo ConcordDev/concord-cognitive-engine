@@ -153,6 +153,21 @@ registerHeartbeat("presence-stale-sweep", {
   },
 });
 
+// Layer 9: embodied-dream-cycle. Every 80 ticks (~20 min) the offline
+// branch runs: discovers users with recent activity who are NOT currently
+// in a world, calls tryComposeForUser() which throttles by
+// MIN_COMPOSE_INTERVAL_S (default 6h) and dedupes by fragment signature.
+// Composes a `dream` kind DTU (scope='personal') from the day's combat,
+// pain, gathering, visits, DTU creations. LLM enhancement opt-in via
+// CONCORD_DREAM_LLM=true; default deterministic composer is always
+// available. Distinct from the system-level substrate dream cycle in
+// emergent/dream-cycle.js (which runs the 6-phase global replay pass).
+import { runEmbodiedDreamCycle } from "./emergent/embodied-dream-cycle.js";
+registerHeartbeat("embodied-dream-cycle", {
+  frequency: 80,
+  handler: runEmbodiedDreamCycle,
+});
+
 // Layer 8: repair-cycle pain processor. Every 20 ticks (~5min) consumes
 // pending pain_signals rows for each user, grants endurance / strength /
 // agility / vitality / focus XP based on regional distribution, and grants
