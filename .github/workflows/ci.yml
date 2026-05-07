@@ -495,11 +495,10 @@ jobs:
         image: ollama/ollama:latest
         ports:
           - 11434:11434
-        options: >-
-          --health-cmd "curl -sf http://localhost:11434/ -o /dev/null"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 12
+        # No health-cmd — the slim ollama image doesn't ship curl/wget,
+        # so an in-container health check would never report healthy and
+        # the job would kill the service before tests run. We wait for
+        # readiness from the runner side via the Pull step below.
 
     steps:
       - name: Checkout code
@@ -521,19 +520,29 @@ jobs:
 
       - name: Pull tiny Ollama model for chat specs
         # qwen2.5:0.5b is ~400MB — small enough that pull + load fits
-        # the CI minute budget but real enough that brain-router's
-        # responses are coherent for chat-flow / chat-modes assertions.
+        # the CI minute budget. Chat-flow and chat-modes specs are
+        # already defensive (no-op when chat panel hidden), so a model
+        # pull failure isn't fatal — server's brain_offline fallback +
+        # the spec's defensive isVisible checks degrade gracefully.
+        timeout-minutes: 4
+        continue-on-error: true
         run: |
+          # Wait for Ollama to bind 11434 from the runner's perspective.
           for i in {1..18}; do
             if curl -sf http://localhost:11434/ -o /dev/null; then
-              echo "Ollama service ready"
+              echo "Ollama service ready (attempt $i)"
               break
             fi
             echo "Waiting for Ollama... ($i/18)"
             sleep 5
           done
-          curl -sf http://localhost:11434/api/pull -X POST -H "Content-Type: application/json" \
-            -d '{"name":"qwen2.5:0.5b"}' || echo "model pull failed (non-fatal — chat specs will degrade gracefully)"
+          # Pull the model with a hard timeout so a slow Ollama registry
+          # never hangs the whole E2E job. 3 minutes is generous for a
+          # ~400MB pull on GitHub-hosted runners.
+          timeout 180 curl -sf -X POST http://localhost:11434/api/pull \
+            -H "Content-Type: application/json" \
+            -d '{"name":"qwen2.5:0.5b"}' \
+            || echo "model pull skipped/failed (non-fatal — chat specs degrade gracefully)"
 
       - name: Start server
         working-directory: ./server
