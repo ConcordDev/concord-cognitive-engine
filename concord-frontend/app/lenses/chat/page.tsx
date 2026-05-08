@@ -530,14 +530,17 @@ export default function ChatLensPage() {
     enabled: systemsPanelOpen && systemsTab === 'privacy',
     refetchInterval: systemsPanelOpen && systemsTab === 'privacy' ? 20_000 : false,
   });
+  // Initiatives are Concord's proactive messages to the user. They
+  // arrive unprompted — Concord can "double-text" — and need to appear
+  // *inline in the conversation thread*, not buried in a drawer. Poll
+  // continuously while the chat lens is mounted.
   const { data: initiativesData } = useQuery({
     queryKey: ['chat-initiatives'],
     queryFn: () =>
       api
         .get<{ pending?: Initiative[]; initiatives?: Initiative[] }>('/api/initiative/pending')
         .then((r) => r.data?.pending || r.data?.initiatives || []),
-    enabled: systemsPanelOpen && systemsTab === 'initiatives',
-    refetchInterval: systemsPanelOpen && systemsTab === 'initiatives' ? 30_000 : false,
+    refetchInterval: 30_000,
   });
   const [atlasQuery, _setAtlasQuery] = useState('');
   const [atlasResult, _setAtlasResult] = useState<Record<string, unknown> | null>(null);
@@ -1535,6 +1538,51 @@ export default function ChatLensPage() {
   // Message renderer
   // ──────────────────────────────────────────────
 
+  // Initiatives appear inline in the thread as proactive Concord
+  // messages. We discriminate via a `__kind` tag on the merged item.
+  type ThreadItem =
+    | (Message & { __kind: 'message' })
+    | (Initiative & { __kind: 'initiative' });
+
+  const threadItems = useMemo<ThreadItem[]>(() => {
+    const items: ThreadItem[] = messages.map((m) => ({ ...m, __kind: 'message' as const }));
+    const initiatives = Array.isArray(initiativesData) ? initiativesData : [];
+    for (const init of initiatives) {
+      // Only render initiatives that aren't already represented by a
+      // matching assistant message (the engine sometimes synthesises
+      // both — keep the assistant message and skip the duplicate).
+      const dup = items.some((it) => it.__kind === 'message' && it.id === init.id);
+      if (!dup) items.push({ ...init, __kind: 'initiative' as const });
+    }
+    items.sort((a, b) => {
+      const at = a.__kind === 'message' ? a.timestamp : a.deliveredAt || a.createdAt;
+      const bt = b.__kind === 'message' ? b.timestamp : b.deliveredAt || b.createdAt;
+      const av = at ? new Date(at).getTime() : 0;
+      const bv = bt ? new Date(bt).getTime() : 0;
+      return av - bv;
+    });
+    return items;
+  }, [messages, initiativesData]);
+
+  // Count of unread initiatives — drives the "Concord wrote you while
+  // you were away" banner that's surfaced on lens entry.
+  const unreadInitiativesCount = Array.isArray(initiativesData)
+    ? initiativesData.filter((i) => i.status !== 'read' && i.status !== 'dismissed').length
+    : 0;
+
+  const handleInitiativeDismiss = useCallback((id: string) => {
+    api.post(`/api/initiative/${encodeURIComponent(id)}/dismiss`, {}).catch(() => {});
+  }, []);
+  const handleInitiativeRespond = useCallback((id: string) => {
+    api.post(`/api/initiative/${encodeURIComponent(id)}/respond`, { responded: true }).catch(() => {});
+  }, []);
+  const handleInitiativeAction = useCallback(
+    (id: string, action: string, payload?: Record<string, unknown>) => {
+      api.post(`/api/initiative/${encodeURIComponent(id)}/respond`, { action, ...(payload || {}) }).catch(() => {});
+    },
+    []
+  );
+
   const renderMessage = useCallback(
     (msgIdx: number, message: Message) => {
       const isPinned = pinnedMessages.has(message.id) || message.pinned;
@@ -1909,6 +1957,28 @@ export default function ChatLensPage() {
       cancelEditMessage,
       deleteMessage,
     ]
+  );
+
+  // Thread renderer dispatches between assistant/user messages and
+  // proactive initiative chips. Defined after renderMessage so the
+  // useCallback can close over it without a forward reference.
+  const renderThreadItem = useCallback(
+    (idx: number, item: ThreadItem) => {
+      if (item.__kind === 'initiative') {
+        return (
+          <div className="px-4 lg:px-6 pb-2">
+            <InitiativeChip
+              initiative={item}
+              onDismiss={handleInitiativeDismiss}
+              onRespond={handleInitiativeRespond}
+              onAction={handleInitiativeAction}
+            />
+          </div>
+        );
+      }
+      return renderMessage(idx, item);
+    },
+    [renderMessage, handleInitiativeDismiss, handleInitiativeRespond, handleInitiativeAction]
   );
 
   // ──────────────────────────────────────────────
@@ -2561,14 +2631,22 @@ export default function ChatLensPage() {
               </div>
             )}
 
-            {messages.length > 0 && (
-              <Virtuoso
-                data={messages}
-                followOutput="smooth"
-                initialTopMostItemIndex={messages.length - 1}
-                className="flex-1"
-                itemContent={renderMessage}
-              />
+            {threadItems.length > 0 && (
+              <>
+                {unreadInitiativesCount > 0 && (
+                  <div className="mx-4 lg:mx-6 mb-2 inline-flex items-center gap-2 self-start rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs text-amber-200">
+                    <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
+                    Concord wrote you {unreadInitiativesCount} time{unreadInitiativesCount === 1 ? '' : 's'} while you were away.
+                  </div>
+                )}
+                <Virtuoso
+                  data={threadItems}
+                  followOutput="smooth"
+                  initialTopMostItemIndex={threadItems.length - 1}
+                  className="flex-1"
+                  itemContent={renderThreadItem}
+                />
+              </>
             )}
 
             {/* Streaming indicator */}
