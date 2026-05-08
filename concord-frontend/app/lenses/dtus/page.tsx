@@ -30,6 +30,8 @@ import {
 } from 'lucide-react';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useLensData } from '@/lib/hooks/use-lens-data';
+import { DomainProbeCard } from '@/components/system/DomainProbeCard';
+import { probesByGroup } from '@/lib/headless-probes';
 
 const PAGE_SIZE = 20;
 
@@ -599,6 +601,30 @@ export default function DTUBrowserPage() {
           )}
         </div>
       </div>
+
+      {/* DTU operations — surfaces the substrate-class macro domains
+          that act on or emit DTUs (promotion queue, dream cycle,
+          autotag classifier, multimodal vision, etc.). Each card is a
+          live probe of its primary macro. */}
+      <section
+        className="mx-auto mt-8 max-w-7xl px-4 md:px-6"
+        aria-labelledby="dtu-ops-heading"
+        data-lens-section="dtu-operations"
+      >
+        <header className="mb-3 flex items-baseline justify-between">
+          <h2 id="dtu-ops-heading" className="text-base font-semibold text-white">
+            DTU operations
+          </h2>
+          <span className="text-[11px] text-gray-500">
+            substrate macros · live probes
+          </span>
+        </header>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {probesByGroup('dtu').map((p) => (
+            <DomainProbeCard key={`${p.domain}.${p.macro}`} probe={p} />
+          ))}
+        </div>
+      </section>
 
       {/* DTU Detail View (modal) */}
       {selectedDtuId && (

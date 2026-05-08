@@ -23,6 +23,8 @@ import SettingsPanel from '@/components/world-lens/SettingsPanel';
 import { SettingsNav } from './SettingsNav';
 import { LensActionBar, type LensAction } from '@/components/lens/LensActionBar';
 import { UtilityPageShell } from '@/components/shell/UtilityPageShell';
+import { DomainProbeCard } from '@/components/system/DomainProbeCard';
+import { probesByGroup } from '@/lib/headless-probes';
 
 const STORAGE_KEY = 'concord:settings';
 
@@ -190,6 +192,25 @@ export default function SettingsPage() {
       }
     >
       <SettingsPanel settings={settings} onSave={handleSave} onCancel={handleCancel} />
+      <section
+        className="mt-8 rounded-lg border border-slate-700/40 bg-slate-900/30 p-4"
+        aria-labelledby="integrations-heading"
+      >
+        <header className="mb-3">
+          <h2 id="integrations-heading" className="text-base font-semibold text-slate-100">
+            Integrations
+          </h2>
+          <p className="text-xs text-slate-400">
+            External services + companion clients. Each card probes its
+            integration adapter and reports whether the bridge is reachable.
+          </p>
+        </header>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {probesByGroup('integration').map((p) => (
+            <DomainProbeCard key={`${p.domain}.${p.macro}`} probe={p} />
+          ))}
+        </div>
+      </section>
     </UtilityPageShell>
   );
 }

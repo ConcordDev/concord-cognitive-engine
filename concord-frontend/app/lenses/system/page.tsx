@@ -32,6 +32,8 @@ const LensPluginSystem = dynamic(
   () => import('@/components/world-lens/LensPluginSystem'),
   { ssr: false },
 );
+import { DomainProbeCard } from '@/components/system/DomainProbeCard';
+import { probesByGroup } from '@/lib/headless-probes';
 import {
   Activity, Database, Globe, Heart, Layers, Map as MapIcon,
   RefreshCw, AlertTriangle, CheckCircle2, XCircle, Loader2,
@@ -85,7 +87,7 @@ interface SystemsReport {
 export default function SystemLensPage() {
   useLensNav('system');
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'heartbeats' | 'gaps' | 'coverage' | 'drift' | 'analytics' | 'plugins'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'heartbeats' | 'gaps' | 'coverage' | 'drift' | 'analytics' | 'plugins' | 'substrate'>('overview');
   const [coverageFilter, setCoverageFilter] = useState<'all' | 'present' | 'partial' | 'missing'>('all');
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -353,6 +355,7 @@ export default function SystemLensPage() {
             { key: 'drift', label: `Drift (${data.drift.length})`, icon: GitBranch as LucideIcon },
             { key: 'analytics', label: 'Analytics', icon: BarChart3 as LucideIcon },
             { key: 'plugins', label: 'Plugins', icon: Puzzle as LucideIcon },
+            { key: 'substrate', label: 'Substrate', icon: Layers as LucideIcon },
           ] as const).map(({ key, label, icon: Icon }) => (
             <button
               key={key}
@@ -597,6 +600,30 @@ export default function SystemLensPage() {
                 marketplace={pluginsQ.data?.marketplace ?? []}
                 activeWidgets={[]}
               />
+            </motion.section>
+          )}
+          {activeTab === 'substrate' && (
+            <motion.section
+              key="substrate"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              aria-labelledby="substrate-heading"
+            >
+              <h2 id="substrate-heading" className="mb-1 text-base font-semibold text-cyan-200">
+                Substrate operations
+              </h2>
+              <p className="mb-4 text-xs text-cyan-700">
+                Live diagnostics for each substrate-class macro domain. Each card calls
+                its primary macro on mount and renders the result with a domain-specific
+                accent. Errors here surface as dormant or misconfigured backends.
+              </p>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {probesByGroup('substrate').map((p) => (
+                  <DomainProbeCard key={`${p.domain}.${p.macro}`} probe={p} />
+                ))}
+              </div>
             </motion.section>
           )}
         </AnimatePresence>

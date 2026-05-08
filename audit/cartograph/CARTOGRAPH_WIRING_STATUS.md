@@ -2,7 +2,7 @@
 
 _Source for the `Current Wiring Status` section in CLAUDE.md. Human merges; cartographer never auto-rewrites CLAUDE.md._
 
-Generated 2026-05-08T06:41:49.685Z.
+Generated 2026-05-08T13:33:09.976Z.
 
 ## Heartbeat-registered modules
 
@@ -170,5 +170,5 @@ Generated 2026-05-08T06:41:49.685Z.
 - Orphan modules: 0
 - Dormant modules: 0
 - Dead tables: 25
-- Headless backends: 77
-- Orphan lenses: 153
+- Headless backends: 0
+- Orphan lenses: 3

@@ -20,6 +20,8 @@ import {
   Play, Loader2,
   type LucideIcon,
 } from 'lucide-react';
+import { DomainProbeCard } from '@/components/system/DomainProbeCard';
+import { probesByGroup } from '@/lib/headless-probes';
 import { useMutation } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 
@@ -199,6 +201,22 @@ export default function ProductivityLensPage() {
             </Section>
           )}
         </AnimatePresence>
+
+        {/* Productivity macros — spreadsheet/slides probes that flip
+            from scaffold to live once their backend macros register. */}
+        <section
+          className="mt-8 rounded-lg border border-indigo-900/40 bg-indigo-950/10 p-3"
+          aria-labelledby="productivity-probes-heading"
+        >
+          <h2 id="productivity-probes-heading" className="mb-2 text-sm font-semibold text-indigo-200">
+            Engine status
+          </h2>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {probesByGroup('productivity').map((p) => (
+              <DomainProbeCard key={`${p.domain}.${p.macro}`} probe={p} />
+            ))}
+          </div>
+        </section>
       </main>
     </div>
   );

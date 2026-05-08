@@ -63,8 +63,10 @@ export async function crossReferenceAll(repoRoot, staticData, runtimeData) {
     .map(m => ({ id: m.id, file: m.file, subsystem: m.subsystem, importedBy: m.importedBy, reason: "no_heartbeat_no_macro" }));
 
   // ── Headless backends ──────────────────────────────────────────────────
-  // Macro domains that exist but have no matching frontend lens dir.
-  const lensDirNames = new Set((staticData.lensDirs || []).map(d => d.name.toLowerCase()));
+  // Macro domains that exist but have no matching frontend lens dir AND
+  // are not referenced via runDomain/runMacro from any lens page.tsx.
+  const lensDirs = staticData.lensDirs || [];
+  const lensDirNames = new Set(lensDirs.map(d => normaliseId(d.name)));
   const macroDomains = new Set();
   if (runtimeData.macros && runtimeData.macros.length > 0) {
     for (const m of runtimeData.macros) macroDomains.add(m.domain);
@@ -72,30 +74,75 @@ export async function crossReferenceAll(repoRoot, staticData, runtimeData) {
     // Fallback to static callsites
     for (const m of staticData.macroCallsites || []) macroDomains.add(m.domain);
   }
+
+  // Build the set of domain names referenced by ANY lens page.tsx —
+  // so domains called via composite / macro-routed lenses (e.g.
+  // `cognition` → runDomain('hlr', 'hlm', ...)) are no longer flagged
+  // headless. ALSO fold in the frontend-wide call set so domains
+  // called via shared imported components (DomainProbeCard,
+  // LensFeaturePanel, …) count as wired.
+  const domainsCalledByPages = new Set();
+  for (const lens of lensDirs) {
+    for (const d of lens.macroDomainCalls || []) domainsCalledByPages.add(normaliseId(d));
+    for (const a of lens.apiCalls || []) domainsCalledByPages.add(normaliseId(a));
+  }
+  for (const d of staticData.frontendDomainCalls || []) {
+    domainsCalledByPages.add(normaliseId(d));
+  }
+
+  // Domain filenames in server/domains/ — strong wire evidence.
+  const domainFileNorm = new Set((staticData.domainFiles || []).map(normaliseId));
+
   const headlessBackends = [];
   for (const dom of macroDomains) {
-    const lensCandidates = [dom, dom.replace(/_/g, "-"), dom.replace(/-/g, "_"), dom.replace(/_/g, "")];
-    const found = lensCandidates.some(c => lensDirNames.has(c.toLowerCase()));
-    if (!found) {
+    const norm = normaliseId(dom);
+    const candidates = [norm, dom.replace(/_/g, "-"), dom.replace(/-/g, "_"), dom.replace(/_/g, "")].map(normaliseId);
+    const matchedDir = candidates.some(c => lensDirNames.has(c));
+    const matchedPageCall = candidates.some(c => domainsCalledByPages.has(c));
+    if (!matchedDir && !matchedPageCall) {
       const macroCount = runtimeData.macros
         ? runtimeData.macros.filter(m => m.domain === dom).length
         : (staticData.macroCallsites || []).filter(m => m.domain === dom).length;
-      headlessBackends.push({ domain: dom, macroCount, reason: "no_matching_lens_dir" });
+      headlessBackends.push({ domain: dom, macroCount, reason: "no_matching_lens_dir_and_no_page_call" });
     }
   }
 
   // ── Orphan lenses ──────────────────────────────────────────────────────
-  // Lens dirs without backend domain OR with empty page.tsx
+  // A lens is orphan only if ALL of:
+  //   1. page.tsx empty or missing, OR
+  //   2. no backend evidence at all:
+  //      - no domain name match (kebab/snake/case-folded)
+  //      - no server/domains/<name>.js file (also case-folded)
+  //      - no /api/<path> fetches anywhere in its tree
+  //      - no runMacro / runDomain / callMacro calls
+  // The legacy heuristic flagged ~150 false-positives because composite
+  // and proxy lenses (e.g. `cognition` → 5 emergent backends, `answers`
+  // → /api/oracle/recent) make zero domain-name matches but are fully
+  // wired in practice.
   const orphanLenses = [];
-  for (const lens of staticData.lensDirs || []) {
+  for (const lens of lensDirs) {
+    // Skip Next.js dynamic-route placeholders (`[parent]`, `[id]`, …) and
+    // hidden directories.
+    if (
+      lens.name === "(parent)" ||
+      lens.name.startsWith(".") ||
+      (lens.name.startsWith("[") && lens.name.endsWith("]"))
+    ) continue;
     if (!lens.hasPage) {
       orphanLenses.push({ frontendDir: lens.name, reason: "page_tsx_empty_or_missing" });
       continue;
     }
-    const candidates = [lens.name, lens.name.replace(/-/g, "_"), lens.name.replace(/_/g, "-"), lens.name.replace(/-/g, "")];
-    const matched = candidates.some(c => macroDomains.has(c.toLowerCase()));
-    if (!matched && lens.name !== "(parent)" && !lens.name.startsWith(".")) {
-      orphanLenses.push({ frontendDir: lens.name, pageBytes: lens.pageBytes, reason: "no_matching_backend_domain" });
+    const norm = normaliseId(lens.name);
+    const candidates = [norm, lens.name.replace(/-/g, "_"), lens.name.replace(/_/g, "-"), lens.name.replace(/-/g, "")].map(normaliseId);
+    const matchesDomain = candidates.some(c => macroDomains.has(c) || domainFileNorm.has(c));
+    const callsBackend = (lens.apiCalls && lens.apiCalls.length > 0)
+      || (lens.macroDomainCalls && lens.macroDomainCalls.length > 0);
+    if (!matchesDomain && !callsBackend) {
+      orphanLenses.push({
+        frontendDir: lens.name,
+        pageBytes: lens.pageBytes,
+        reason: "no_backend_evidence_in_page_tsx",
+      });
     }
   }
 
@@ -154,6 +201,11 @@ export async function crossReferenceAll(repoRoot, staticData, runtimeData) {
     unshapedEvents,
     routesNeverHit: { todo: "requires_prod_traffic_data" },
   };
+}
+
+// Lowercase + strip separators for kebab↔snake↔camel-insensitive comparison.
+function normaliseId(id) {
+  return String(id || "").toLowerCase().replace(/[-_\s]+/g, "");
 }
 
 async function readPublicReadDomains(repoRoot) {

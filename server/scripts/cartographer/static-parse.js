@@ -272,10 +272,112 @@ async function parseLensDirs(repoRoot) {
   try { entries = await readdir(lensRoot, { withFileTypes: true }); } catch { return out; }
   for (const e of entries) {
     if (!e.isDirectory()) continue;
-    const pageTsx = path.join(lensRoot, e.name, "page.tsx");
+    const lensDir = path.join(lensRoot, e.name);
+    const pageTsx = path.join(lensDir, "page.tsx");
     let pageBytes = 0;
     try { pageBytes = (await stat(pageTsx)).size; } catch { /* missing */ }
-    out.push({ name: e.name, hasPage: pageBytes > 0, pageBytes });
+    const calls = await scanLensBackendCalls(lensDir);
+    out.push({
+      name: e.name,
+      hasPage: pageBytes > 0,
+      pageBytes,
+      apiCalls: calls.api,
+      macroDomainCalls: calls.macroDomains,
+    });
+  }
+  return out;
+}
+
+// Scan a lens directory's tsx/ts files for backend-call evidence:
+//   - /api/<path> string references (pageHasBackendCalls true if any)
+//   - runMacro / runDomain / callMacro first-arg domain names
+//   - apiHelpers.lens.{runMacro,runDomain,run}('<domain>', ...)
+//
+// Returns lowercased deduped lists. Used by cross-reference.js to
+// classify "orphan" lens dirs that were name-mismatched against the
+// backend domain set (e.g. `app-maker → appmaker.js` is wired but the
+// naive matcher reports orphan).
+async function scanLensBackendCalls(lensDir) {
+  const out = { api: new Set(), macroDomains: new Set() };
+  const files = await walk(lensDir, [".tsx", ".ts"], ["node_modules", ".next", "__tests__"]);
+  const apiRe = /\/api\/([a-z0-9_./-]+)/gi;
+  const macroRe = /(?:runMacro|runDomain|callMacro|api\.runDomain)\s*\(\s*["']([a-z0-9_-]+)["']/gi;
+  for (const f of files) {
+    const src = await readSafe(f);
+    if (!src) continue;
+    let m;
+    apiRe.lastIndex = 0;
+    while ((m = apiRe.exec(src))) {
+      // Take the first path segment as the domain hint (e.g. /api/oracle/recent → 'oracle')
+      const seg = m[1].split(/[/?#]/)[0];
+      if (seg) out.api.add(seg.toLowerCase());
+    }
+    macroRe.lastIndex = 0;
+    while ((m = macroRe.exec(src))) {
+      out.macroDomains.add(m[1].toLowerCase());
+    }
+  }
+  return { api: [...out.api], macroDomains: [...out.macroDomains] };
+}
+
+// ── Frontend-wide domain-call scan ────────────────────────────────────────
+//
+// Lens pages routinely import shared components (e.g. DomainProbeCard,
+// LensFeaturePanel) that own the actual `runDomain`/`runMacro` calls.
+// The per-lens scanner can't see those because they live outside the
+// lens directory. This pass walks the entire frontend src tree once
+// and returns the union of every domain referenced via runDomain /
+// runMacro / callMacro / `/api/<seg>` — used as additional evidence
+// when classifying headless backends.
+
+async function parseFrontendDomainCalls(repoRoot) {
+  const fe = path.join(repoRoot, FRONTEND_DIR_NAME);
+  const dirs = ["components", "lib", "hooks", "app"].map(d => path.join(fe, d));
+  const out = new Set();
+  const macroRe = /(?:runMacro|runDomain|callMacro|api\.runDomain)\s*\(\s*["']([a-z0-9_-]+)["']/gi;
+  const apiRe = /\/api\/([a-z0-9_-]+)/gi;
+  // Probe-registry style: `{ domain: "cache", macro: "stats" }` — used
+  // by lib/headless-probes.ts and any similar declarative table.
+  const probeRe = /\bdomain\s*:\s*["']([a-z0-9_-]+)["']\s*,\s*macro\s*:/gi;
+  for (const dir of dirs) {
+    let files;
+    try { files = await walk(dir, [".tsx", ".ts"], ["node_modules", ".next", "__tests__"]); }
+    catch { continue; }
+    for (const f of files) {
+      const src = await readSafe(f);
+      if (!src) continue;
+      let m;
+      macroRe.lastIndex = 0;
+      while ((m = macroRe.exec(src))) out.add(m[1].toLowerCase());
+      apiRe.lastIndex = 0;
+      while ((m = apiRe.exec(src))) {
+        const seg = m[1].split(/[/?#]/)[0];
+        if (seg) out.add(seg.toLowerCase());
+      }
+      probeRe.lastIndex = 0;
+      while ((m = probeRe.exec(src))) out.add(m[1].toLowerCase());
+    }
+  }
+  return [...out];
+}
+
+// ── Backend domain filenames ──────────────────────────────────────────────
+//
+// `server/domains/*.js` filenames carry strong wire-evidence even when
+// no `register("name", ...)` callsite was matched by the macro parser.
+// Returned lowercased + with hyphens stripped so the matcher can pair
+// against any of `creative-writing` / `creativewriting` / `creative_writing`.
+
+async function parseDomainFiles(repoRoot) {
+  const domDir = path.join(repoRoot, SERVER_DIR_NAME, "domains");
+  let entries;
+  try { entries = await readdir(domDir, { withFileTypes: true }); } catch { return []; }
+  const out = [];
+  for (const e of entries) {
+    if (!e.isFile()) continue;
+    if (!e.name.endsWith(".js")) continue;
+    const base = e.name.replace(/\.js$/, "");
+    out.push(base.toLowerCase());
   }
   return out;
 }
@@ -304,7 +406,7 @@ async function parseTableRefs(repoRoot, tableNames) {
 
 export async function staticParseAll(repoRoot) {
   const t0 = Date.now();
-  const [{ tables, migrations }, routes, socketEvents, envVars, macroCallsites, heartbeatCallsites, lensDirs] = await Promise.all([
+  const [{ tables, migrations }, routes, socketEvents, envVars, macroCallsites, heartbeatCallsites, lensDirs, domainFiles, frontendDomainCalls] = await Promise.all([
     parseMigrations(path.join(repoRoot, SERVER_DIR_NAME)),
     parseRoutes(repoRoot),
     parseSocketEvents(repoRoot),
@@ -312,11 +414,13 @@ export async function staticParseAll(repoRoot) {
     parseMacroCallsites(repoRoot),
     parseHeartbeatCallsites(repoRoot),
     parseLensDirs(repoRoot),
+    parseDomainFiles(repoRoot),
+    parseFrontendDomainCalls(repoRoot),
   ]);
   const tableRefs = await parseTableRefs(repoRoot, tables.map(t => t.name));
   return {
     tables, migrations, routes, socketEvents, envVars,
-    macroCallsites, heartbeatCallsites, lensDirs,
+    macroCallsites, heartbeatCallsites, lensDirs, domainFiles, frontendDomainCalls,
     tableRefs: Array.from(tableRefs, ([name, count]) => ({ name, count })),
     elapsedMs: Date.now() - t0,
   };
