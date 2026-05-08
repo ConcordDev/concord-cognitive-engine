@@ -53,6 +53,10 @@ import {
   Loader2,
   XCircle,
   BarChart3,
+  Hammer,
+  ChevronRight,
+  PauseCircle,
+  PlayCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { UniversalActions } from '@/components/lens/UniversalActions';
@@ -99,6 +103,8 @@ import MeshStatusCard from '@/components/chat/MeshStatusCard';
 import IntelligenceCard from '@/components/chat/IntelligenceCard';
 import AtlasPrivacyMonitor from '@/components/chat/AtlasPrivacyMonitor';
 import { InitiativeChip, type Initiative } from '@/components/chat/InitiativeChip';
+import { ToolPalette, type ToolEntry } from '@/components/chat/ToolPalette';
+import { useEvent } from '@/lib/realtime/event-bus';
 import {
   recommendLenses,
   createSessionContext,
@@ -276,6 +282,12 @@ const SLASH_COMMANDS: SlashCommand[] = [
     icon: Download,
   },
   { command: '/forge', label: '/forge', description: 'Forge last response to DTU', icon: Zap },
+  {
+    command: '/tool',
+    label: '/tool',
+    description: 'Open the tool palette (every domain.action runnable)',
+    icon: Sparkles,
+  },
   { command: '/help', label: '/help', description: 'Show available commands', icon: HelpCircle },
   {
     command: '/context',
@@ -500,6 +512,60 @@ export default function ChatLensPage() {
   const [systemsTab, setSystemsTab] = useState<
     'shield' | 'mesh' | 'intel' | 'privacy' | 'initiatives'
   >('shield');
+
+  // Tool palette — every domain.action across all 200 lens manifests
+  // is searchable + runnable from here. Open via /tool slash command
+  // or Cmd/Ctrl+. keyboard shortcut.
+  const [toolPaletteOpen, setToolPaletteOpen] = useState(false);
+
+  // Tool execution traces — when Concord (or the user via the palette)
+  // runs a tool, the result appears inline in the thread as a trace
+  // block. Sourced from chat:tool_result socket events + direct local
+  // dispatch when the user runs from the palette.
+  interface ToolTrace {
+    id: string;
+    domain: string;
+    action: string;
+    result: unknown;
+    error?: string;
+    createdAt: string;
+  }
+  const [toolTraces, setToolTraces] = useState<ToolTrace[]>([]);
+  useEvent<{ id?: string; domain?: string; action?: string; result?: unknown; error?: string }>(
+    'chat:tool_result',
+    (data) => {
+      if (!data?.domain || !data?.action) return;
+      setToolTraces((prev) => [
+        ...prev,
+        {
+          id: data.id ?? `trace_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+          domain: data.domain!,
+          action: data.action!,
+          result: data.result,
+          error: data.error,
+          createdAt: new Date().toISOString(),
+        },
+      ]);
+    }
+  );
+
+  // "Pause Concord" — toggles initiative delivery server-side via
+  // PUT /api/initiative/settings. When paused, the engine continues to
+  // queue but doesn't deliver until unpaused.
+  const [initiativesPaused, setInitiativesPaused] = useState(false);
+  useEffect(() => {
+    api
+      .get<{ ok?: boolean; settings?: { disabled?: boolean } }>('/api/initiative/settings')
+      .then((r) => setInitiativesPaused(!!r.data?.settings?.disabled))
+      .catch(() => {});
+  }, []);
+  const toggleInitiativesPaused = useCallback(() => {
+    const next = !initiativesPaused;
+    setInitiativesPaused(next);
+    api
+      .put('/api/initiative/settings', { disabled: next })
+      .catch(() => setInitiativesPaused(!next));
+  }, [initiativesPaused]);
   const { data: shieldData } = useQuery({
     queryKey: ['chat-shield-status'],
     queryFn: () =>
@@ -799,6 +865,10 @@ export default function ChatLensPage() {
             };
             setLocalMessages((prev) => [...prev, sysMsg]);
           }
+          break;
+        }
+        case '/tool': {
+          setToolPaletteOpen(true);
           break;
         }
         case '/help': {
@@ -1293,6 +1363,8 @@ export default function ChatLensPage() {
     [
       { id: 'send', keys: 'mod+enter', description: 'Send message', category: 'actions', action: handleSend, global: true },
       { id: 'focus-input', keys: '/', description: 'Focus message input', category: 'navigation', action: () => inputRef.current?.focus() },
+      { id: 'tool-palette', keys: 'mod+.', description: 'Open tool palette', category: 'actions', action: () => setToolPaletteOpen(true), global: true },
+      { id: 'toggle-pause', keys: 'mod+shift+p', description: 'Pause / resume Concord initiatives', category: 'actions', action: toggleInitiativesPaused, global: true },
     ],
     { lensId: 'chat' }
   );
@@ -1538,31 +1610,43 @@ export default function ChatLensPage() {
   // Message renderer
   // ──────────────────────────────────────────────
 
-  // Initiatives appear inline in the thread as proactive Concord
-  // messages. We discriminate via a `__kind` tag on the merged item.
+  // Initiatives + tool traces appear inline in the thread as proactive
+  // Concord activity. We discriminate via a `__kind` tag on the merged
+  // item so renderThreadItem can dispatch.
   type ThreadItem =
     | (Message & { __kind: 'message' })
-    | (Initiative & { __kind: 'initiative' });
+    | (Initiative & { __kind: 'initiative' })
+    | (ToolTrace & { __kind: 'tool_trace' });
 
   const threadItems = useMemo<ThreadItem[]>(() => {
     const items: ThreadItem[] = messages.map((m) => ({ ...m, __kind: 'message' as const }));
     const initiatives = Array.isArray(initiativesData) ? initiativesData : [];
     for (const init of initiatives) {
-      // Only render initiatives that aren't already represented by a
-      // matching assistant message (the engine sometimes synthesises
-      // both — keep the assistant message and skip the duplicate).
       const dup = items.some((it) => it.__kind === 'message' && it.id === init.id);
       if (!dup) items.push({ ...init, __kind: 'initiative' as const });
     }
+    for (const trace of toolTraces) {
+      items.push({ ...trace, __kind: 'tool_trace' as const });
+    }
     items.sort((a, b) => {
-      const at = a.__kind === 'message' ? a.timestamp : a.deliveredAt || a.createdAt;
-      const bt = b.__kind === 'message' ? b.timestamp : b.deliveredAt || b.createdAt;
+      const at =
+        a.__kind === 'message'
+          ? a.timestamp
+          : a.__kind === 'initiative'
+            ? a.deliveredAt || a.createdAt
+            : a.createdAt;
+      const bt =
+        b.__kind === 'message'
+          ? b.timestamp
+          : b.__kind === 'initiative'
+            ? b.deliveredAt || b.createdAt
+            : b.createdAt;
       const av = at ? new Date(at).getTime() : 0;
       const bv = bt ? new Date(bt).getTime() : 0;
       return av - bv;
     });
     return items;
-  }, [messages, initiativesData]);
+  }, [messages, initiativesData, toolTraces]);
 
   // Count of unread initiatives — drives the "Concord wrote you while
   // you were away" banner that's surfaced on lens entry.
@@ -1959,12 +2043,17 @@ export default function ChatLensPage() {
     ]
   );
 
-  // Thread renderer dispatches between assistant/user messages and
-  // proactive initiative chips. Defined after renderMessage so the
-  // useCallback can close over it without a forward reference.
+  // Thread renderer dispatches between assistant/user messages,
+  // proactive initiative chips, and tool-execution traces. Defined
+  // after renderMessage so the useCallback can close over it without a
+  // forward reference.
   const renderThreadItem = useCallback(
     (idx: number, item: ThreadItem) => {
       if (item.__kind === 'initiative') {
+        // pendingWorkReminder triggerType gets a "Create quest from
+        // this" hand-off; one-click promote a nag into something
+        // actionable in the quest engine.
+        const isWorkReminder = item.triggerType === 'pendingWorkReminder';
         return (
           <div className="px-4 lg:px-6 pb-2">
             <InitiativeChip
@@ -1973,6 +2062,27 @@ export default function ChatLensPage() {
               onRespond={handleInitiativeRespond}
               onAction={handleInitiativeAction}
             />
+            {isWorkReminder && (
+              <div className="mt-1.5 ml-12">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const title = item.message.slice(0, 80);
+                    window.location.href = `/lenses/maker?compose=quest&title=${encodeURIComponent(title)}&seedFromInitiative=${encodeURIComponent(item.id)}`;
+                  }}
+                  className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded border border-amber-500/30 bg-amber-500/10 text-amber-200 hover:bg-amber-500/20"
+                >
+                  <Plus className="w-3 h-3" /> Create quest from this
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      }
+      if (item.__kind === 'tool_trace') {
+        return (
+          <div className="px-4 lg:px-6 pb-2">
+            <ToolTraceBlock trace={item} />
           </div>
         );
       }
@@ -2387,6 +2497,35 @@ export default function ChatLensPage() {
                 <span>Context</span>
               </button>
 
+              {/* Pause Concord — toggles initiative delivery server-side
+                  via PUT /api/initiative/settings. When paused, Concord
+                  queues but doesn't double-text until resumed. */}
+              <button
+                onClick={toggleInitiativesPaused}
+                className={cn(
+                  'hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 bg-lattice-bg border rounded-full text-xs transition-colors',
+                  initiativesPaused
+                    ? 'border-amber-500/50 text-amber-300'
+                    : 'border-lattice-border text-gray-400 hover:text-amber-300 hover:border-amber-500/30'
+                )}
+                aria-pressed={initiativesPaused}
+                title={initiativesPaused ? 'Concord is paused — resume to allow proactive messages' : 'Pause Concord — stops double-texting'}
+              >
+                {initiativesPaused
+                  ? <PlayCircle className="w-3.5 h-3.5" aria-hidden="true" />
+                  : <PauseCircle className="w-3.5 h-3.5" aria-hidden="true" />}
+                {initiativesPaused ? 'Paused' : 'Active'}
+              </button>
+              {/* Tool palette button — every domain.action across the 200
+                  lens manifests in one searchable surface. */}
+              <button
+                onClick={() => setToolPaletteOpen(true)}
+                className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 bg-lattice-bg border border-lattice-border rounded-full text-xs text-gray-400 hover:text-neon-cyan hover:border-neon-cyan/30 transition-colors"
+                title="Open tool palette (Cmd+. or /tool)"
+              >
+                <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
+                Tools
+              </button>
               {/* Systems button — opens the ShieldCard / MeshStatusCard /
                 IntelligenceCard / AtlasPrivacyMonitor / InitiativeChip
                 drawer with live-polling data from shield/mesh/intel
@@ -3376,7 +3515,83 @@ export default function ChatLensPage() {
           />
         </div>
       )}
+      <ToolPalette
+        open={toolPaletteOpen}
+        onClose={() => setToolPaletteOpen(false)}
+        onRunResult={(entry, result) => {
+          // Mirror palette-run results into the same trace stream so
+          // the user sees their action land inline alongside whatever
+          // Concord would have run autonomously.
+          setToolTraces((prev) => [
+            ...prev,
+            {
+              id: `palette_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+              domain: entry.domain,
+              action: entry.action,
+              result,
+              createdAt: new Date().toISOString(),
+            },
+          ]);
+        }}
+      />
     </div>
     </LensShell>
+  );
+}
+
+// ── Tool trace block ─────────────────────────────────────────────────────────
+
+interface ToolTraceBlockProps {
+  trace: {
+    id: string;
+    domain: string;
+    action: string;
+    result: unknown;
+    error?: string;
+    createdAt: string;
+  };
+}
+
+function ToolTraceBlock({ trace }: ToolTraceBlockProps) {
+  const [open, setOpen] = useState(false);
+  const failed = !!trace.error || (typeof trace.result === 'object' && trace.result && 'ok' in trace.result && (trace.result as { ok?: boolean }).ok === false);
+  return (
+    <div
+      className={cn(
+        'flex gap-4',
+        // Match the Concord-side message shape; trace is "Concord did a thing"
+      )}
+    >
+      <div className="w-10 h-10 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center flex-shrink-0">
+        <Hammer className="w-4 h-4 text-cyan-300" aria-hidden="true" />
+      </div>
+      <div className="flex-1 max-w-2xl">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className={cn(
+            'inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs font-mono',
+            failed
+              ? 'border-rose-500/40 bg-rose-500/10 text-rose-200'
+              : 'border-cyan-500/30 bg-cyan-500/10 text-cyan-200',
+            'hover:brightness-110'
+          )}
+          aria-expanded={open}
+        >
+          {open ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+          {trace.domain}.{trace.action}
+          <span className="ml-1 text-[10px] opacity-70">
+            {failed ? 'failed' : 'ok'}
+          </span>
+        </button>
+        {open && (
+          <pre className="mt-2 max-h-64 overflow-auto rounded-md border border-lattice-border bg-black/60 p-3 text-[11px] font-mono text-gray-300">
+            {trace.error
+              ? trace.error
+              : JSON.stringify(trace.result, null, 2)}
+          </pre>
+        )}
+      </div>
+    </div>
   );
 }
