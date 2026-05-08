@@ -1265,7 +1265,7 @@ export default function WorldLensPage() {
     RT: 'KeyF',      // heavy attack
   };
 
-  const { connected: gamepadConnected, pad: gamepadInfo } = useGamepad(
+  const { connected: gamepadConnected, pad: gamepadInfo, flavor: gamepadFlavor } = useGamepad(
     {
       onConnect: () => {
         // Browsers expose the controller name; "Xbox One Controller (STANDARD GAMEPAD …)"
@@ -3542,7 +3542,11 @@ export default function WorldLensPage() {
                 className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs bg-emerald-500/15 border border-emerald-500/30 text-emerald-200"
                 title={gamepadInfo?.id ? `Controller: ${gamepadInfo.id}` : 'Controller connected'}
               >
-                🎮 controller
+                {gamepadFlavor === 'xbox' ? '🟢 Xbox'
+                  : gamepadFlavor === 'playstation' ? '🔷 PS'
+                  : gamepadFlavor === 'switch' ? '🟥 Switch'
+                  : gamepadFlavor === 'steam' ? '🟦 Steam'
+                  : '🎮 controller'}
               </span>
             )}
           </div>

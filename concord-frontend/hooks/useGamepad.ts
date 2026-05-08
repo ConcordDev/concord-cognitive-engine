@@ -40,6 +40,78 @@ export type GamepadButton =
   | 'DUp' | 'DDown' | 'DLeft' | 'DRight'
   | 'Home';
 
+/**
+ * Controller flavor — drives glyph rendering so Xbox players see Ⓐ,
+ * PlayStation players see ⓧ, and Switch / generic users see Standard.
+ * Detection from `Gamepad.id` is the only reliable signal in browsers
+ * because there's no platform-vendor field on the API.
+ */
+export type ControllerFlavor =
+  | 'xbox'        // Xbox One / Series / 360
+  | 'playstation' // DualSense / DualShock 4
+  | 'switch'      // Joy-Con / Pro Controller
+  | 'steam'       // Steam Controller / Steam Deck builtin
+  | 'generic';
+
+const FLAVOR_PATTERNS: Array<[RegExp, ControllerFlavor]> = [
+  [/xbox|xinput|microsoft/i, 'xbox'],
+  [/dualsense|dualshock|playstation|sony|wireless controller/i, 'playstation'],
+  [/joy.?con|pro controller|nintendo|switch/i, 'switch'],
+  [/steam/i, 'steam'],
+];
+
+export function detectControllerFlavor(id: string | undefined | null): ControllerFlavor {
+  if (!id) return 'generic';
+  for (const [re, flavor] of FLAVOR_PATTERNS) {
+    if (re.test(id)) return flavor;
+  }
+  return 'generic';
+}
+
+/**
+ * Per-flavor glyph table. Used by HUD prompts so the player sees the
+ * button label they actually have on their controller, not a generic
+ * "A". Strings are emoji + circled-letter unicode that render well on
+ * console browsers without custom fonts.
+ */
+export const BUTTON_GLYPHS: Record<ControllerFlavor, Partial<Record<GamepadButton, string>>> = {
+  xbox: {
+    A: 'Ⓐ', B: 'Ⓑ', X: 'Ⓧ', Y: 'Ⓨ',
+    LB: 'LB', RB: 'RB', LT: 'LT', RT: 'RT',
+    Back: 'View', Start: 'Menu', LS: 'L3', RS: 'R3',
+    DUp: '↑', DDown: '↓', DLeft: '←', DRight: '→',
+  },
+  playstation: {
+    A: '✕', B: '◯', X: '◻', Y: '△',
+    LB: 'L1', RB: 'R1', LT: 'L2', RT: 'R2',
+    Back: 'Create', Start: 'Options', LS: 'L3', RS: 'R3',
+    DUp: '↑', DDown: '↓', DLeft: '←', DRight: '→',
+  },
+  switch: {
+    A: 'Ⓑ', B: 'Ⓐ', X: 'Ⓨ', Y: 'Ⓧ',  // Switch swaps A/B + X/Y vs Xbox
+    LB: 'L', RB: 'R', LT: 'ZL', RT: 'ZR',
+    Back: '−', Start: '+', LS: 'L3', RS: 'R3',
+    DUp: '↑', DDown: '↓', DLeft: '←', DRight: '→',
+  },
+  steam: {
+    A: 'Ⓐ', B: 'Ⓑ', X: 'Ⓧ', Y: 'Ⓨ',
+    LB: 'LB', RB: 'RB', LT: 'LT', RT: 'RT',
+    Back: 'Back', Start: 'Start', LS: 'L3', RS: 'R3',
+    DUp: '↑', DDown: '↓', DLeft: '←', DRight: '→',
+  },
+  generic: {
+    A: 'A', B: 'B', X: 'X', Y: 'Y',
+    LB: 'LB', RB: 'RB', LT: 'LT', RT: 'RT',
+    Back: 'Back', Start: 'Start', LS: 'L3', RS: 'R3',
+    DUp: '↑', DDown: '↓', DLeft: '←', DRight: '→',
+  },
+};
+
+/** Lookup helper for HUD prompts. Falls back to button name if glyph missing. */
+export function glyphFor(flavor: ControllerFlavor, btn: GamepadButton): string {
+  return BUTTON_GLYPHS[flavor][btn] ?? btn;
+}
+
 const BUTTON_INDEX: Record<number, GamepadButton> = {
   0: 'A', 1: 'B', 2: 'X', 3: 'Y',
   4: 'LB', 5: 'RB', 6: 'LT', 7: 'RT',
@@ -176,7 +248,8 @@ export function useGamepad(handlers: UseGamepadHandlers = {}, options: UseGamepa
     return gp ? buildState(gp, deadzone) : null;
   }, [deadzone]);
 
-  return { connected, pad, readState };
+  const flavor: ControllerFlavor = pad ? detectControllerFlavor(pad.id) : 'generic';
+  return { connected, pad, flavor, readState };
 }
 
 function buildState(gp: Gamepad, deadzone: number): GamepadState {
