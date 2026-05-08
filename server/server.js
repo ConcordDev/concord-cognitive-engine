@@ -196,6 +196,30 @@ registerHeartbeat("forgetting-health-check", {
   handler: runForgettingHealthCheck,
 });
 
+// Code-quality detector sweep. Every 2880 ticks (~12h) runs the static
+// detector suite (stale code, invariants, macro usage, lens health,
+// secret-leak, perf hotspots) plus the runtime DB scans (DTU lineage,
+// heartbeat health). Results land on globalThis.__CONCORD_DETECTORS__
+// and are queryable via runMacro("detectors", "summary"|"findings"|"runAll").
+// Repair Cortex subscribes to this output for auto-fix routing.
+registerHeartbeat("detectors-sweep", {
+  frequency: 2880,
+  handler: async ({ db, state }) => {
+    try {
+      const mod = await import("./lib/detectors/index.js");
+      const report = await mod.runAllDetectors({ db, state });
+      // Stash latest report for HUD consumers — read-only snapshot.
+      globalThis.__CONCORD_DETECTORS__ = Object.assign(
+        globalThis.__CONCORD_DETECTORS__ || {},
+        { latestReport: report, latestRunAt: Date.now() },
+      );
+      return { ok: true, totals: report.totals, detectorCount: report.detectorCount };
+    } catch (err) {
+      return { ok: false, reason: "detector_sweep_failed", error: err?.message };
+    }
+  },
+});
+
 // Layer 11: faction emergent strategy. Every 200 ticks (~50 min) advances
 // each faction whose next_move_at clock has elapsed — picks a deterministic
 // move from the {expand, war, alliance, rebuild, isolation, consolidate}
@@ -9057,6 +9081,9 @@ async function runMacro(domain, name, input, ctx) {
     intel: new Set(["weather", "geology", "energy", "ocean", "seismic", "agriculture", "environment", "research.status", "research.data", "research.synthesis", "research.archive", "classifier.status", "metrics"]),
     cortex: new Set(["taxonomy", "unknown", "anomalies", "classify", "spectrum", "privacy.zones", "privacy.verify", "privacy.stats", "metrics"]),
     city: new Set(["list", "get", "status", "startStream", "endStream", "followStream", "unfollowStream", "listStreams", "getStream"]),
+    // Code-quality detector suite — read-only inspection. See
+    // server/lib/detectors/* and server/domains/detectors.js.
+    detectors: new Set(["list", "summary", "findings", "run", "runAll"]),
   };
   const _domainSet = publicReadDomains[domain];
   const _domainNameAllowed = _domainSet ? _domainSet.has(name) : false;
@@ -22444,6 +22471,17 @@ register("system", "cartograph", async (_ctx, input = {}) => {
     return { ok: false, reason: "cartograph_not_run", hint: "run `npm run cartograph:static` to generate audit/cartograph/SYSTEMS.json", error: err?.message };
   }
 }, { description: "Returns the latest cartographer SYSTEMS.json (input: { section?: 'static'|'runtime'|'crossRef'|'coverage'|'stats', statsOnly?: boolean })" });
+
+// ===================== Code-quality detector suite =====================
+// Multi-purpose detector registry — used by:
+//   - the Code Quality lens (HUD)
+//   - repair-cortex (drives auto-fix decisions)
+//   - Concordia/NPC observers (e.g. surface invariant violations as
+//     "world health" warnings)
+//   - the heartbeat sweep at frequency 2880 (~12h)
+// See server/lib/detectors/index.js for the registry + filterFindings helper.
+import registerDetectorMacros from "./domains/detectors.js";
+registerDetectorMacros(register);
 
 // ===================== Phase 4 backend macros (close-the-gaps) =====================
 // Five macros backing the Productivity + Tools lens scaffolds shipped in

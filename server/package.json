@@ -24,7 +24,10 @@
     "cartograph": "node scripts/cartograph.js",
     "cartograph:static": "node scripts/cartograph.js --static",
     "cartograph:diff": "node scripts/cartograph.js --static --diff",
-    "cartograph:graph": "node scripts/cartograph.js --static && (which dot >/dev/null 2>&1 && dot -Tsvg ../audit/cartograph/systems-graph.dot -o ../audit/cartograph/systems-graph.svg && echo 'systems-graph.svg rendered' || echo 'graphviz dot not on PATH; .dot source committed')"
+    "cartograph:graph": "node scripts/cartograph.js --static && (which dot >/dev/null 2>&1 && dot -Tsvg ../audit/cartograph/systems-graph.dot -o ../audit/cartograph/systems-graph.svg && echo 'systems-graph.svg rendered' || echo 'graphviz dot not on PATH; .dot source committed')",
+    "detectors": "node scripts/run-detectors.js",
+    "detectors:report": "node scripts/run-detectors.js --out ../audit/detectors/REPORT.md",
+    "detectors:json": "node scripts/run-detectors.js --json"
   },
   "lint-staged": {
     "*.{js,mjs,cjs}": [

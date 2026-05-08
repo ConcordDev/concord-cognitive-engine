@@ -1,8 +1,8 @@
 # Gaps & Wire Targets
 
-_Generated 2026-05-08T17:55:36.053Z. Each gap proposes a concrete wire action._
+_Generated 2026-05-08T20:01:43.830Z. Each gap proposes a concrete wire action._
 
-## Dead tables (25)
+## Dead tables (24)
 
 | Table | Migration | Wire option | Archive option |
 |---|---|---|---|
@@ -16,7 +16,6 @@ _Generated 2026-05-08T17:55:36.053Z. Each gap proposes a concrete wire action._
 | `spontaneous_queue` | server/migrations/009_brain_want_engine.js | `analytics.spontaneous_queueStats` macro | // REPLACED_BY: migration_NN |
 | `spontaneous_user_prefs` | server/migrations/009_brain_want_engine.js | `analytics.spontaneous_user_prefsStats` macro | // REPLACED_BY: migration_NN |
 | `want_actions` | server/migrations/009_brain_want_engine.js | `analytics.want_actionsStats` macro | // REPLACED_BY: migration_NN |
-| `dtu_citations` | server/migrations/010_learning_verification.js | `analytics.dtu_citationsStats` macro | // REPLACED_BY: migration_NN |
 | `dtu_helpfulness` | server/migrations/010_learning_verification.js | `analytics.dtu_helpfulnessStats` macro | // REPLACED_BY: migration_NN |
 | `retrieval_metrics` | server/migrations/010_learning_verification.js | `analytics.retrieval_metricsStats` macro | // REPLACED_BY: migration_NN |
 | `novelty_daily` | server/migrations/010_learning_verification.js | `analytics.novelty_dailyStats` macro | // REPLACED_BY: migration_NN |
@@ -40,14 +39,17 @@ _None._
 
 _None — every module either has a heartbeat or is invoked by a macro callsite._
 
-## Headless backend domains (0)
+## Headless backend domains (1)
 
-_None — every macro domain has a matching frontend lens dir._
+| Domain | Macro count | Suggested frontend lens dir |
+|---|---:|---|
+| `understanding` | 16 | `concord-frontend/app/lenses/understanding/page.tsx` |
 
-## Orphan lenses (3)
+## Orphan lenses (4)
 
 | Lens dir | Reason | Action |
 |---|---|---|
+| `message` | no_backend_evidence_in_page_tsx | wire backend OR remove |
 | `root` | no_backend_evidence_in_page_tsx | wire backend OR remove |
 | `ux-suite` | no_backend_evidence_in_page_tsx | wire backend OR remove |
 | `world-creator` | page_tsx_empty_or_missing | wire backend OR remove |

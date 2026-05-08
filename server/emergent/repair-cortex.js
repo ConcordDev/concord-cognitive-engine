@@ -2191,6 +2191,55 @@ const PRE_BUILD_CHECKS = {
       }
     },
   },
+
+  // ── Detector suite — multi-purpose, wired in May 2026 ─────────────────
+  // Runs the StaleCode / InvariantGuardian / SecretLeak / PerfHotspot /
+  // LensHealth / DTULineage / Heartbeat / MacroUsage detectors and
+  // translates findings into Prophet issues. Critical findings (invariant
+  // drift, hardcoded secrets) block the build; lower severities surface
+  // as warnings so the surgeon / guardian can pick them up.
+  detector_suite: {
+    name: "detector_suite",
+    description: "Static + runtime code-quality detectors (8 detectors)",
+    action: async (projectRoot) => {
+      try {
+        const mod = await import("../lib/detectors/index.js").catch(() => null);
+        if (!mod?.runAllDetectors) return { issues: [], autoFixable: [] };
+        const report = await mod.runAllDetectors({
+          root: projectRoot,
+          consumer: "repair-cortex",
+        });
+        const issues = [];
+        const autoFixable = [];
+        for (const r of report.reports || []) {
+          for (const f of r.findings || []) {
+            // Only forward actionable findings — skip pure summary rows.
+            if (f.severity === "info") continue;
+            const severityMap = {
+              critical: "critical",
+              high: "warning",
+              medium: "warning",
+              low: "info",
+            };
+            issues.push({
+              file: (f.location || "").split(":")[0] || null,
+              severity: severityMap[f.severity] || "info",
+              message: `[${r.id}] ${f.message}`,
+              autoFixed: false,
+              detector: r.id,
+              findingId: f.id,
+              fixHint: f.fixHint,
+              subject: f.subject,
+            });
+          }
+        }
+        return { issues, autoFixable };
+      } catch (_e) {
+        // Silent — repair cortex never crashes the build.
+        return { issues: [], autoFixable: [] };
+      }
+    },
+  },
 };
 
 /**
