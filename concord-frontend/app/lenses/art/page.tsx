@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, apiHelpers } from '@/lib/api/client';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -128,6 +129,20 @@ export default function ArtLensPage() {
   const [selectedStyle, setSelectedStyle] = useState<string | null>(null);
   const [showUpload, setShowUpload] = useState(false);
   const [showCreateListing, setShowCreateListing] = useState(false);
+
+  // Lens-scoped keyboard commands. Procreate / Photoshop idiom: g
+  // (gallery), c (canvas), m (marketplace), u upload, l list.
+  useLensCommand(
+    [
+      { id: 'view-gallery', keys: 'g', description: 'Gallery', category: 'navigation', action: () => setViewMode('gallery') },
+      { id: 'view-canvas', keys: 'c', description: 'Canvas', category: 'navigation', action: () => setViewMode('canvas') },
+      { id: 'view-marketplace', keys: 'm', description: 'Marketplace', category: 'navigation', action: () => setViewMode('marketplace') },
+      { id: 'view-myart', keys: 'a', description: 'My art', category: 'navigation', action: () => setViewMode('my-art') },
+      { id: 'upload', keys: 'u', description: 'Upload artwork', category: 'actions', action: () => setShowUpload(true) },
+      { id: 'list-piece', keys: 'l', description: 'List for sale', category: 'actions', action: () => setShowCreateListing(true) },
+    ],
+    { lensId: 'art' }
+  );
 
   // Canvas state
   const [canvasTool, setCanvasTool] = useState<CanvasTool>('brush');

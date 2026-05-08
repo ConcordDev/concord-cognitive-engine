@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
@@ -79,6 +80,20 @@ export default function AnimationPage() {
   const [showFeatures, setShowFeatures] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedProject, setSelectedProject] = useState<AnimProject | null>(null);
+
+  // Lens-scoped keyboard commands. After Effects / Blender idiom:
+  // single-letter tab jumps, n new project.
+  useLensCommand(
+    [
+      { id: 'tab-projects', keys: 'p', description: 'Projects', category: 'navigation', action: () => setTab('projects') },
+      { id: 'tab-timeline', keys: 't', description: 'Timeline', category: 'navigation', action: () => setTab('timeline') },
+      { id: 'tab-assets', keys: 'a', description: 'Assets', category: 'navigation', action: () => setTab('assets') },
+      { id: 'tab-render', keys: 'r', description: 'Render', category: 'navigation', action: () => setTab('render') },
+      { id: 'tab-stats', keys: 's', description: 'Stats', category: 'navigation', action: () => setTab('stats') },
+      { id: 'new-project', keys: 'n', description: 'New project', category: 'actions', action: () => setShowCreateModal(true) },
+    ],
+    { lensId: 'animation' }
+  );
 
   // Form state
   const [newTitle, setNewTitle] = useState('');

@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -50,6 +51,20 @@ export default function FilmStudiosPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showFeatures, setShowFeatures] = useState(true);
+
+  // Lens-scoped keyboard commands. Letterboxd / Final Cut idiom:
+  // single-letter section jumps; n new film.
+  useLensCommand(
+    [
+      { id: 'tab-discover', keys: 'd', description: 'Discover', category: 'navigation', action: () => setTab('discover') },
+      { id: 'tab-myfilms', keys: 'f', description: 'My films', category: 'navigation', action: () => setTab('my-films') },
+      { id: 'tab-create', keys: 'c', description: 'Create', category: 'navigation', action: () => setTab('create') },
+      { id: 'tab-analytics', keys: 'a', description: 'Analytics', category: 'navigation', action: () => setTab('analytics') },
+      { id: 'tab-watch', keys: 'w', description: 'Watch parties', category: 'navigation', action: () => setTab('watch-parties') },
+      { id: 'new-film', keys: 'n', description: 'New film', category: 'actions', action: () => setShowCreateModal(true) },
+    ],
+    { lensId: 'film-studios' }
+  );
   const [partyCode, setPartyCode] = useState('');
   const [partyActive, setPartyActive] = useState(false);
   const [previewFilm, setPreviewFilm] = useState<FilmProject | null>(null);
