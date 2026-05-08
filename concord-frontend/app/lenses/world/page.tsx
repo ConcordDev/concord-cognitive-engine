@@ -5,6 +5,7 @@ import { LensShell } from '@/components/lens/LensShell';
 import { useRouter } from 'next/navigation';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
+import { useGamepad, type GamepadButton } from '@/hooks/useGamepad';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { useSocket } from '@/hooks/useSocket';
@@ -1201,6 +1202,95 @@ export default function WorldLensPage() {
       exploreShellRef.current.requestPointerLock?.();
     }
   }, []);
+
+  // ── Gamepad / console-controller integration ────────────────────
+  //
+  // Standard Gamepad API works in console browsers (Xbox Edge, PS5/PS4
+  // WebKit, Steam Deck Chromium) the same as on desktop. Loading
+  // concord-os.org on Xbox and pressing any button auto-connects the
+  // controller. We synthesize KeyboardEvents from gamepad input so
+  // every existing WASD / E / Space binding in the avatar system
+  // works without any further glue.
+  //
+  // Stick → walk: held-down KeyW/A/S/D events per direction.
+  // A button   → KeyE (interact)
+  // X button   → Space (attack / jump — depends on avatar binding)
+  // B button   → Escape (cancel / close dialogue)
+  // Y button   → KeyI (inventory)
+  // Start      → KeyM (map / commune wheel)
+  // LB / RB    → Digit1..9 (quickslot swap via dpad combos)
+  // dpad U/D   → quickslot prev/next
+  const heldKeysRef = useRef(new Set<string>());
+  const dispatchKey = useCallback((code: string, down: boolean) => {
+    const target = exploreShellRef.current ?? document.body;
+    const evt = new KeyboardEvent(down ? 'keydown' : 'keyup', {
+      code,
+      key: code.replace('Key', '').toLowerCase(),
+      bubbles: true,
+      cancelable: true,
+    });
+    target.dispatchEvent(evt);
+    window.dispatchEvent(evt);
+  }, []);
+  const setKeyHeld = useCallback((code: string, shouldHold: boolean) => {
+    const held = heldKeysRef.current;
+    if (shouldHold && !held.has(code)) {
+      held.add(code);
+      dispatchKey(code, true);
+    } else if (!shouldHold && held.has(code)) {
+      held.delete(code);
+      dispatchKey(code, false);
+    }
+  }, [dispatchKey]);
+  const releaseAllHeld = useCallback(() => {
+    for (const code of [...heldKeysRef.current]) {
+      heldKeysRef.current.delete(code);
+      dispatchKey(code, false);
+    }
+  }, [dispatchKey]);
+
+  const BUTTON_TO_CODE: Partial<Record<GamepadButton, string>> = {
+    A: 'KeyE',       // interact
+    X: 'Space',      // attack / jump
+    B: 'Escape',     // cancel
+    Y: 'KeyI',       // inventory
+    Start: 'KeyM',   // map / commune wheel
+    DUp: 'Digit1',
+    DDown: 'Digit2',
+    DLeft: 'Digit3',
+    DRight: 'Digit4',
+    LB: 'KeyQ',
+    RB: 'KeyR',
+    LT: 'KeyZ',      // aim down sights / heavy block
+    RT: 'KeyF',      // heavy attack
+  };
+
+  const { connected: gamepadConnected, pad: gamepadInfo } = useGamepad(
+    {
+      onConnect: () => {
+        // Browsers expose the controller name; "Xbox One Controller (STANDARD GAMEPAD …)"
+      },
+      onDisconnect: () => releaseAllHeld(),
+      onTick: (state) => {
+        // Left-stick walk → WASD held keys.
+        const { x, y } = state.leftStick;
+        const threshold = 0.25; // re-deadzone for direction binarisation
+        setKeyHeld('KeyW', y < -threshold);
+        setKeyHeld('KeyS', y > threshold);
+        setKeyHeld('KeyA', x < -threshold);
+        setKeyHeld('KeyD', x > threshold);
+      },
+      onButtonDown: (btn) => {
+        const code = BUTTON_TO_CODE[btn];
+        if (code) dispatchKey(code, true);
+      },
+      onButtonUp: (btn) => {
+        const code = BUTTON_TO_CODE[btn];
+        if (code) dispatchKey(code, false);
+      },
+    },
+    { paused: !exploreShellRef.current /* polling auto-quietens when no shell yet */ }
+  );
 
   // Skyrim-shape keys: F to toggle fullscreen, P to capture mouse for
   // FPS-style aim. The lens-scoped shortcut won't fire when the user
@@ -3447,6 +3537,14 @@ export default function WorldLensPage() {
             >
               {isPointerLocked ? '◉ aim on' : '○ aim off'}
             </button>
+            {gamepadConnected && (
+              <span
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs bg-emerald-500/15 border border-emerald-500/30 text-emerald-200"
+                title={gamepadInfo?.id ? `Controller: ${gamepadInfo.id}` : 'Controller connected'}
+              >
+                🎮 controller
+              </span>
+            )}
           </div>
           <ConcordiaScene
             districtId={activeDistrict.id}
