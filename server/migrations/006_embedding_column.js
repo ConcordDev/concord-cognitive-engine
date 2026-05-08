@@ -1,6 +1,15 @@
 /**
  * Migration 006: Add embedding BLOB column to dtus table.
  * Stores Float64Array serialised as raw bytes for semantic search.
+ *
+ * NOTE (Phase 3.5.5 archival, May 2026):
+ *   The `dtu_embeddings` ancillary table created here is no longer
+ *   referenced by any SELECT in the codebase. The embedding column on
+ *   `dtus` is the live path; `embeddings.js` and the semantic substrate
+ *   read from there directly. The standalone table is preserved
+ *   idempotently via CREATE TABLE IF NOT EXISTS so existing DBs aren't
+ *   rebuilt; new installs allocate it but never write to it.
+ *   REPLACED_BY: dtus.embedding column (live) + embeddings.js
  */
 
 export function up(db) {

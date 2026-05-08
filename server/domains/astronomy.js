@@ -35,7 +35,7 @@ export default function registerAstronomyActions(registerLensAction) {
     const distanceLY = parseFloat(data.distanceLightYears) || 0;
     const distancePC = parseFloat(data.distanceParsecs) || 0;
     const distanceAU = parseFloat(data.distanceAU) || 0;
-    let lyFinal = distanceLY || distancePC * 3.2616 || distanceAU * 0.0000158;
+    const lyFinal = distanceLY || distancePC * 3.2616 || distanceAU * 0.0000158;
     if (lyFinal === 0) return { ok: true, result: { message: "Provide distance in light-years, parsecs, or AU." } };
     const lightSpeed = 299792.458; // km/s
     const seconds = lyFinal * 365.25 * 86400;

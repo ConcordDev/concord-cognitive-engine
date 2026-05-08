@@ -153,6 +153,122 @@ registerHeartbeat("presence-stale-sweep", {
   },
 });
 
+// Layer 12: lattice orchestrator — wires the four production-grade emergent
+// engines that already existed but were never on a heartbeat:
+//   - drift-monitor.js   (frequency 60,  ~15 min) — runs runDriftScan +
+//     routes HIGH/CRITICAL findings to HLR for resolution traces.
+//   - breakthrough-clusters.js (frequency 240, ~60 min) — advances every
+//     active research cluster's pass.
+//   - cnet-federation.js (frequency 120, ~30 min) — pollGlobal()
+//   See `emergent/lattice-orchestrator.js` for the bridge logic.
+import {
+  initLatticeOrchestrator,
+  runPeriodicDriftScan,
+  runBreakthroughResearchPass,
+  runFederationPoll,
+  runCultureDriftPass,
+  runForgettingHealthCheck,
+} from "./emergent/lattice-orchestrator.js";
+registerHeartbeat("lattice-drift-scan", {
+  frequency: 60,
+  handler: runPeriodicDriftScan,
+});
+registerHeartbeat("lattice-breakthrough-pass", {
+  frequency: 240,
+  handler: runBreakthroughResearchPass,
+});
+registerHeartbeat("lattice-federation-poll", {
+  frequency: 120,
+  handler: runFederationPoll,
+});
+// Phase 3 wire-the-Lost: culture-layer drift pass (frequency 120, ~30 min).
+// 16 macros were registered via Ghost Fleet but never tick-scheduled.
+registerHeartbeat("culture-drift-pass", {
+  frequency: 120,
+  handler: runCultureDriftPass,
+});
+// Phase 3 wire-the-Lost: forgetting-engine health-check pass. The engine
+// already runs inline in governorTick on TICK_FREQUENCIES.FORGETTING; this
+// heartbeat surfaces status + candidates count so the memory-health UI
+// has a reactive event stream every 480 ticks (~2h).
+registerHeartbeat("forgetting-health-check", {
+  frequency: 480,
+  handler: runForgettingHealthCheck,
+});
+
+// Layer 11: faction emergent strategy. Every 200 ticks (~50 min) advances
+// each faction whose next_move_at clock has elapsed — picks a deterministic
+// move from the {expand, war, alliance, rebuild, isolation, consolidate}
+// state machine, persists to faction_strategy_state + faction_strategy_log,
+// updates faction_relations. Zero work on builds without seeded factions.
+import { runFactionStrategyCycle } from "./emergent/faction-strategy-cycle.js";
+registerHeartbeat("faction-strategy-cycle", {
+  frequency: 200,
+  handler: runFactionStrategyCycle,
+});
+
+// Layer 10: forward-sim anticipation cycle. Every 100 ticks (~25 min)
+// generates speculative predictions for offline players about active
+// quests, recently-met NPCs, and factions. Throttled by
+// MIN_PASS_INTERVAL_S (default 4h); same subject not re-predicted while
+// an active non-realised prediction exists. LLM enhancement opt-in via
+// CONCORD_FORWARD_SIM_LLM=true.
+import { runForwardSimCycle } from "./emergent/forward-sim-cycle.js";
+registerHeartbeat("forward-sim-cycle", {
+  frequency: 100,
+  handler: runForwardSimCycle,
+});
+
+// Layer 9: embodied-dream-cycle. Every 80 ticks (~20 min) the offline
+// branch runs: discovers users with recent activity who are NOT currently
+// in a world, calls tryComposeForUser() which throttles by
+// MIN_COMPOSE_INTERVAL_S (default 6h) and dedupes by fragment signature.
+// Composes a `dream` kind DTU (scope='personal') from the day's combat,
+// pain, gathering, visits, DTU creations. LLM enhancement opt-in via
+// CONCORD_DREAM_LLM=true; default deterministic composer is always
+// available. Distinct from the system-level substrate dream cycle in
+// emergent/dream-cycle.js (which runs the 6-phase global replay pass).
+import { runEmbodiedDreamCycle } from "./emergent/embodied-dream-cycle.js";
+registerHeartbeat("embodied-dream-cycle", {
+  frequency: 80,
+  handler: runEmbodiedDreamCycle,
+});
+
+// Layer 13: NPC-initiated conversations. Every 8 ticks (~2 min) scans each
+// active world for cooldown-elapsed NPC pairs, generates a grounded opener
+// (deterministic by default; LLM-enhanced via CONCORD_NPC_DIALOGUE_LLM=true),
+// emits npc:conversation-bid socket event so nearby players see ambient NPC
+// dialogue. GC sweep also closes expired conversations.
+import { runNpcConversationInitiator } from "./emergent/npc-conversation-initiator.js";
+registerHeartbeat("npc-conversation-initiator", {
+  frequency: 8,
+  handler: ({ db } = {}) => runNpcConversationInitiator({ db, io: REALTIME?.io }),
+});
+
+// Layer 8: repair-cycle pain processor. Every 20 ticks (~5min) consumes
+// pending pain_signals rows for each user, grants endurance / strength /
+// agility / vitality / focus XP based on regional distribution, and grants
+// a short-lived `damage_resist` buff. Without this, pain_signals rows
+// accumulate but never become adaptation — the "what doesn't kill you
+// makes you tougher" feedback loop is silently broken.
+import { runRepairCycle } from "./emergent/repair-cycle.js";
+registerHeartbeat("repair-cycle", {
+  frequency: 20,
+  handler: runRepairCycle,
+});
+
+// Layer 7: embodied environment sensor. Every 5 ticks (~75s) writes a
+// baseline ambient signal row per active world (temperature, humidity,
+// light scaled by time-of-day, air quality, noise, pressure) and runs
+// decay GC on embodied_signal_log. Without this writer, signalsForWorld()
+// returns neutral defaults and Layer 7.5 (env-coupled skills) collapses
+// to 1.0 multipliers — so gameplay degrades gracefully if disabled.
+import { runEnvironmentSensor } from "./emergent/environment-sensor.js";
+registerHeartbeat("environment-sensor", {
+  frequency: 5,
+  handler: runEnvironmentSensor,
+});
+
 // Scheduled-post processor — promotes posts whose scheduledAt has passed
 // from the queue to the live feed. Pre-this-tick schedulePost() worked
 // but processScheduledPosts() was never invoked, so scheduled posts
@@ -336,6 +452,9 @@ import createPersonalLockerRouter from "./routes/personal-locker.js";
 import registerChatRoutes from "./routes/chat.js";
 import registerDomainRoutes from "./routes/domain.js";
 import registerDtuRoutes from "./routes/dtus.js";
+import { registerSaveRoutes } from "./routes/save.js";
+import { registerWorldInviteRoutes } from "./routes/world-invites.js";
+import { registerAnalyticsRoutes } from "./routes/analytics.js";
 import createEmergentRouter from "./routes/emergent.js";
 import registerOperationRoutes from "./routes/operations.js";
 import createQualiaRouter from "./routes/qualia.js";
@@ -8793,6 +8912,14 @@ function listMacros(domain) {
   return Array.from(d.values()).map(x => x.spec);
 }
 
+// Layer 12.5 (cartographer): expose the macro registry on globalThis so the
+// runtime-introspect child process can dump it without re-binding HTTP. The
+// attachment is read-only intent — the cartographer never mutates it. Cost
+// is one globalThis property; production never reads it.
+globalThis.__CARTOGRAPHER__ = Object.assign(globalThis.__CARTOGRAPHER__ || {}, {
+  MACROS, listDomains, listMacros,
+});
+
 async function runMacro(domain, name, input, ctx) {
   // v3: permissioned cognition (macro-level ACL).
   //
@@ -11661,7 +11788,7 @@ function archiveDTUToDisk(dtu) {
         `INSERT OR REPLACE INTO archived_dtus (id, data, tier, consolidated_into, archived_at) VALUES (?, ?, ?, ?, ?)`
       );
       stmt.run(dtu.id, JSON.stringify(dtu), dtu.tier || "regular", dtu.meta?.consolidatedInto || null, new Date().toISOString());
-      return;
+      
     }
   } catch (e) { structuredLog("error", "archive_dtu_to_disk_failed", { id: dtu?.id, error: String(e) }); }
 }
@@ -13917,18 +14044,23 @@ async function initFiveBrains() {
 }
 
 // Initialize brains after a short delay (let Ollama instances start)
-setTimeout(() => initFiveBrains(), 3000);
-// Retry brain init after 30s (Ollama containers may still be pulling models)
-// Then preload/warm all models for instant first response
-setTimeout(async () => {
-  await initFiveBrains();
-  try {
-    const preloadResult = await preloadBrains(structuredLog);
-    structuredLog("info", "brain_preload_complete", preloadResult);
-  } catch (e) {
-    structuredLog("warn", "brain_preload_failed", { error: e.message });
-  }
-}, 30000);
+// Layer 12.5 (cartographer): CONCORD_DISABLE_BRAINS short-circuits brain init
+// so cartographer's runtime-introspect child can boot server.js without
+// requiring Ollama. Production never sets this.
+if (process.env.CONCORD_DISABLE_BRAINS !== "true") {
+  setTimeout(() => initFiveBrains(), 3000);
+  // Retry brain init after 30s (Ollama containers may still be pulling models)
+  // Then preload/warm all models for instant first response
+  setTimeout(async () => {
+    await initFiveBrains();
+    try {
+      const preloadResult = await preloadBrains(structuredLog);
+      structuredLog("info", "brain_preload_complete", preloadResult);
+    } catch (e) {
+      structuredLog("warn", "brain_preload_failed", { error: e.message });
+    }
+  }, 30000);
+}
 
 // ── Repair Cortex Runtime Loop ────────────────────────────────────────────
 // Expose MACROS, BRAIN, STATE globally so repair cortex executors can access them.
@@ -13949,6 +14081,12 @@ const GHOST_FLEET_STATUS = {
   totalLoaded: 0,
   totalFailed: 0,
 };
+
+// Layer 12.5 (cartographer): expose ghost-fleet status on globalThis for
+// runtime-introspect dumps.
+globalThis.__CARTOGRAPHER__ = Object.assign(globalThis.__CARTOGRAPHER__ || {}, {
+  GHOST_FLEET_STATUS,
+});
 
 const _ghostFleetYield = () => new Promise(r => { setTimeout(r, 2000); }); // 2s gap between modules
 
@@ -14664,11 +14802,15 @@ async function initGhostFleet() {
 
 // Stagger: ghost fleet at T+225s (5th autonomous task, 45s after repair loop)
 // Modules load one-at-a-time with 2s gaps between each.
-setTimeout(() => {
-  initGhostFleet().catch(err => {
-    structuredLog("error", "ghost_fleet_init_error", { error: err.message });
-  });
-}, 225_000);
+// Layer 12.5 (cartographer): CONCORD_DISABLE_GHOST_FLEET=true skips this so
+// runtime-introspect doesn't wait ~52s for staggered module loads.
+if (process.env.CONCORD_DISABLE_GHOST_FLEET !== "true") {
+  setTimeout(() => {
+    initGhostFleet().catch(err => {
+      structuredLog("error", "ghost_fleet_init_error", { error: err.message });
+    });
+  }, 225_000);
+}
 
 // ── Artifact Garbage Collection Timer (weekly) ──────────────────────────
 // Starts after a short delay so STATE and db are fully ready
@@ -22090,6 +22232,222 @@ register("quality", "preview", (_ctx, input) => {
   };
 }, { description: "Preview which quality pipeline patterns would apply to a query" });
 
+// Phase 3 wire-the-Lost: surface the cartographer's latest SYSTEMS.json
+// to any frontend lens via runMacro. Falls back to { stale: true } if the
+// cartographer hasn't been run yet. The frontend "System" lens consumes
+// this; the Lattice / Audit / dashboard lenses can also browse it.
+register("system", "cartograph", async (_ctx, input = {}) => {
+  const { readFile } = await import("node:fs/promises");
+  const path = await import("node:path");
+  try {
+    const p = path.resolve(import.meta.dirname || ".", "..", "audit", "cartograph", "SYSTEMS.json");
+    const raw = await readFile(p, "utf-8");
+    const systems = JSON.parse(raw);
+    if (input.section && systems[input.section] != null) return { ok: true, section: input.section, data: systems[input.section] };
+    if (input.statsOnly) return { ok: true, stats: systems.stats, generatedAt: systems.generatedAt };
+    return { ok: true, systems };
+  } catch (err) {
+    return { ok: false, reason: "cartograph_not_run", hint: "run `npm run cartograph:static` to generate audit/cartograph/SYSTEMS.json", error: err?.message };
+  }
+}, { description: "Returns the latest cartographer SYSTEMS.json (input: { section?: 'static'|'runtime'|'crossRef'|'coverage'|'stats', statsOnly?: boolean })" });
+
+// ===================== Phase 4 backend macros (close-the-gaps) =====================
+// Five macros backing the Productivity + Tools lens scaffolds shipped in
+// Phase 4. Each is a small, dependency-light implementation; lenses
+// were already calling these names with graceful "not registered"
+// fallbacks. Registering them flips the scaffolds to live features.
+
+// ── spreadsheet.eval ─────────────────────────────────────────────────────
+// Evaluates a 2D grid of cells. Cells starting with "=" are formulas.
+// Supports: =SUM(A1:B3), =AVG(A1:A10), =IF(cond, then, else), =VLOOKUP(key, range, col).
+// Cell references: A1, B2, etc. (column letter + 1-indexed row).
+// Inputs: { cells: string[][] } → outputs { values: any[][], errors?: string[] }
+register("spreadsheet", "eval", (_ctx, input = {}) => {
+  const grid = Array.isArray(input.cells) ? input.cells : [];
+  if (grid.length === 0) return { ok: true, values: [], errors: [] };
+  const rows = grid.length, cols = Math.max(...grid.map(r => r.length));
+  const values = grid.map(r => r.slice());
+  const errors = [];
+  const cellAt = (col, row) => {
+    if (row < 0 || row >= rows || col < 0 || col >= cols) return null;
+    const v = values[row][col];
+    if (typeof v === "string" && v.startsWith("=")) return null; // unresolved formula
+    const n = Number(v);
+    return Number.isFinite(n) ? n : v;
+  };
+  const colIdx = (letter) => letter.toUpperCase().charCodeAt(0) - 65;
+  const parseRef = (ref) => {
+    const m = /^([A-Z])(\d+)$/.exec(ref.trim());
+    if (!m) return null;
+    return { col: colIdx(m[1]), row: parseInt(m[2], 10) - 1 };
+  };
+  const parseRange = (range) => {
+    const [a, b] = range.split(":").map(s => s.trim());
+    const start = parseRef(a), end = parseRef(b ?? a);
+    if (!start || !end) return [];
+    const cells = [];
+    for (let r = start.row; r <= end.row; r++) {
+      for (let c = start.col; c <= end.col; c++) {
+        cells.push(cellAt(c, r));
+      }
+    }
+    return cells;
+  };
+  const evalFormula = (formula, depth = 0) => {
+    if (depth > 16) return "#CYCLE";
+    const expr = formula.slice(1).trim();
+    const sumM = /^SUM\(([^)]+)\)$/i.exec(expr);
+    if (sumM) return parseRange(sumM[1]).reduce((s, v) => s + (Number(v) || 0), 0);
+    const avgM = /^(AVG|AVERAGE)\(([^)]+)\)$/i.exec(expr);
+    if (avgM) {
+      const cells = parseRange(avgM[2]).map(v => Number(v) || 0);
+      return cells.length ? cells.reduce((s, v) => s + v, 0) / cells.length : 0;
+    }
+    const ifM = /^IF\((.+),(.+),(.+)\)$/i.exec(expr);
+    if (ifM) return Number(ifM[1].trim()) ? ifM[2].trim() : ifM[3].trim();
+    const vlookupM = /^VLOOKUP\(([^,]+),([^,]+),([^,]+)\)$/i.exec(expr);
+    if (vlookupM) {
+      const key = String(values[parseRef(vlookupM[1].trim())?.row ?? -1]?.[parseRef(vlookupM[1].trim())?.col ?? -1] ?? "");
+      const range = parseRange(vlookupM[2].trim());
+      const col = parseInt(vlookupM[3].trim(), 10);
+      const idx = range.indexOf(key);
+      return idx >= 0 ? range[idx + col - 1] ?? "#N/A" : "#N/A";
+    }
+    // Simple arithmetic: A1+B2, A1-B2, A1*B2, A1/B2 with cell refs or numbers
+    const arithM = /^\s*([A-Z]\d+|-?\d+(?:\.\d+)?)\s*([+\-*/])\s*([A-Z]\d+|-?\d+(?:\.\d+)?)\s*$/.exec(expr);
+    if (arithM) {
+      const lookup = (tok) => {
+        const ref = parseRef(tok);
+        if (ref) return Number(cellAt(ref.col, ref.row)) || 0;
+        return Number(tok) || 0;
+      };
+      const a = lookup(arithM[1]), b = lookup(arithM[3]);
+      switch (arithM[2]) {
+        case "+": return a + b;
+        case "-": return a - b;
+        case "*": return a * b;
+        case "/": return b === 0 ? "#DIV/0" : a / b;
+      }
+    }
+    return "#NAME?";
+  };
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const v = values[r][c];
+      if (typeof v === "string" && v.startsWith("=")) {
+        try { values[r][c] = evalFormula(v); }
+        catch (e) { errors.push(`R${r+1}C${c+1}: ${e?.message ?? "eval error"}`); values[r][c] = "#ERR"; }
+      }
+    }
+  }
+  return { ok: true, values, errors };
+}, { description: "Evaluate a 2D spreadsheet grid; supports SUM, AVG, IF, VLOOKUP, and basic arithmetic" });
+
+// ── slides.compile ───────────────────────────────────────────────────────
+// Composes a presentation deck from an array of slide-source DTUs.
+// Each input slide: { title, body, layout?, theme? }. Returns an artifact
+// bundle structure ready for the DTU pipeline to render to SVG.
+register("slides", "compile", (_ctx, input = {}) => {
+  const slides = Array.isArray(input.slides) ? input.slides : [];
+  const theme = input.theme ?? "default";
+  const compiled = slides.map((s, i) => ({
+    index: i,
+    title: String(s.title ?? `Slide ${i + 1}`).slice(0, 100),
+    body: String(s.body ?? "").slice(0, 2000),
+    layout: s.layout ?? "title-body",
+    theme: s.theme ?? theme,
+    artifact: { kind: "slide", svgPath: null, renderedAt: null },
+  }));
+  return {
+    ok: true,
+    deckId: `deck_${Date.now().toString(36)}`,
+    slideCount: compiled.length,
+    theme,
+    slides: compiled,
+    note: "compiled deck spec — render-engine.js renders to SVG via the artifact pipeline",
+  };
+}, { description: "Compile a presentation deck spec from slide DTUs" });
+
+// ── tools.web_search ─────────────────────────────────────────────────────
+// Surfaces the chat-web-search infrastructure as a one-shot macro for
+// any lens. Falls back to documenting the fetch path if the chat web
+// adapter isn't loaded.
+register("tools", "web_search", async (_ctx, input = {}) => {
+  const query = String(input.query ?? "").slice(0, 500);
+  if (!query) return { ok: false, error: "query required" };
+  // Try existing web-search infra
+  try {
+    const mod = await import("./lib/web-search.js").catch(() => null);
+    if (mod?.searchWeb) {
+      const results = await mod.searchWeb(query, { limit: input.limit ?? 5 });
+      return { ok: true, query, results };
+    }
+  } catch (_e) { /* fall through */ }
+  // Fallback: return query + hint so the lens can still show something
+  return {
+    ok: true, query, results: [],
+    note: "web-search adapter not available on this build; chat lens emits chat:web_results socket events directly",
+  };
+}, { description: "One-shot web search returning DTU-ingestible results" });
+
+// ── compile.transpile ────────────────────────────────────────────────────
+// TypeScript / modern-JS transpile via esbuild if available. Falls back
+// to a stripped-types pass for dev-only use.
+register("compile", "transpile", async (_ctx, input = {}) => {
+  const source = String(input.source ?? "");
+  const target = String(input.target ?? "esnext");
+  if (!source) return { ok: false, error: "source required" };
+  try {
+    const esbuild = await import("esbuild").catch(() => null);
+    if (esbuild?.transform) {
+      const r = await esbuild.transform(source, {
+        loader: "ts", target, format: input.format ?? "esm",
+      });
+      return { ok: true, code: r.code, warnings: r.warnings, target };
+    }
+  } catch (_e) { /* fall through */ }
+  // Naive fallback: strip TS-only syntax
+  const stripped = source
+    .replace(/:\s*[A-Za-z_<>[\]|&,?\s]+(?=[=,)\]\s])/g, "")
+    .replace(/<[A-Z][^>]*>/g, "")
+    .replace(/\binterface\s+\w+\s*\{[^}]*\}/g, "")
+    .replace(/\btype\s+\w+\s*=\s*[^;\n]+;?/g, "");
+  return {
+    ok: true, code: stripped, target, fallback: "strip-types",
+    note: "esbuild not available; returned best-effort strip-types output",
+  };
+}, { description: "Transpile TypeScript / modern JS to a target output" });
+
+// ── legal.sign ───────────────────────────────────────────────────────────
+// Sign a DTU's machine-layer JSON with a platform-derived key. v1 uses
+// HMAC-SHA256 over the DTU id + machine layer (deterministic, reversible
+// given the same secret). Production should swap to RSA via a KMS-backed
+// key; the interface here is forward-compatible.
+register("legal", "sign", (ctx, input = {}) => {
+  const dtuId = String(input.dtuId ?? "");
+  if (!dtuId) return { ok: false, error: "dtuId required" };
+  const dtu = STATE.dtus?.get?.(dtuId);
+  if (!dtu) return { ok: false, error: "dtu not found" };
+  const machine = dtu.machine ?? dtu.data?.machine ?? {};
+  const subject = ctx?.actor?.userId || ctx?.actor?.id || "anonymous";
+  const payload = {
+    dtuId,
+    subject,
+    issuedAt: new Date().toISOString(),
+    machineHash: crypto.createHash("sha256").update(JSON.stringify(machine)).digest("hex"),
+  };
+  const secret = process.env.JWT_SECRET || "concord-default-signing";
+  const token = crypto
+    .createHmac("sha256", secret)
+    .update(JSON.stringify(payload))
+    .digest("base64url");
+  return {
+    ok: true,
+    signature: { alg: "HS256", token, payload },
+    note: "v1 uses HMAC; production swap to RSA via KMS preserves the same signature shape",
+  };
+}, { description: "Sign a DTU's machine-layer with a platform key (HMAC v1; RSA-via-KMS in prod)" });
+
 // ===================== System Status =====================
 // Returns live system metrics consumed by dashboard, header bar, and status cards
 register("system", "status", (_ctx, _input) => {
@@ -22837,6 +23195,24 @@ register("dtu", "dedupeSweep", async (ctx, input) => {
   ctx.log("dtu.dedupeSweep", "Dedupe sweep complete", { merges: merges.length, threshold });
   return { ok:true, merges, threshold };
 }, { description: "Merge near-duplicate DTUs by similarity; keeps lineage." });
+
+// ── Phase C: dtu.protocol_validate ─────────────────────────────────────────
+// Surfaces the absorbed dtu-protocol.js (canonical envelope/hash spec).
+// Does NOT replace the existing DTU writer pipeline — it's a validator that
+// callers can use to check whether an external/imported DTU conforms to the
+// canonical envelope shape before persistence. Returns { ok, valid, errors,
+// canonicalHash }. Unlike most macros this one is deliberately validation-
+// only (read-shape, no DB writes) so it stays in publicReadDomains.
+import { DTUProtocol as _DTUProtocol, computeContentHash as _computeContentHash } from "./lib/dtu-protocol.js";
+const _dtuProtocol = new _DTUProtocol();
+register("dtu", "protocol_validate", (_ctx, input = {}) => {
+  try {
+    const dtu = input.dtu || input;
+    const result = _dtuProtocol.validate(dtu);
+    const canonicalHash = dtu?.content ? _computeContentHash(dtu.content) : null;
+    return { ok: true, ...result, canonicalHash };
+  } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+}, { description: "Validate an external DTU against the canonical envelope spec; returns errors + canonical content hash." });
 
 // ── Unified Context Engine ─────────────────────────────────────────────────
 // Every lens, entity, and chat interaction uses this to retrieve knowledge
@@ -26170,6 +26546,15 @@ registerHook("before_tool", async (ctx) => {
 // ---- DTU Endpoints (extracted to routes/dtus.js) ----
 registerDtuRoutes(app, { STATE, makeCtx, runMacro, dtuForClient, dtusArray, userVisibleDTUs, _withAck, saveStateDebounced, validate });
 
+// ---- Save status + manual snapshot (extracted to routes/save.js) ----
+registerSaveRoutes(app, { db, asyncHandler, STATE });
+
+// ---- World invites (extracted to routes/world-invites.js) ----
+registerWorldInviteRoutes(app, { db, asyncHandler, requireAuth });
+
+// ---- Analytics aggregator (extracted to routes/analytics.js) ----
+registerAnalyticsRoutes(app, { db, asyncHandler });
+
 // ---- Chat + Ask Endpoints (extracted to routes/chat.js) ----
 registerChatRoutes(app, {
   STATE, makeCtx, runMacro, enforceRequestInvariants, enforceEthosInvariant,
@@ -26573,7 +26958,7 @@ function startHeartbeat() {
     // ── v5.8: Biological Systems Tick (every 3rd tick ~30s) ────────────────
     // Wire all 12 emergent modules into the heartbeat for living biology
     if (_heartbeatTickCount % 3 !== 0) { /* skip biology this tick */ }
-    else try {
+    else {try {
       const entities = STATE.__emergent
         ? Array.from(STATE.__emergent.emergents.values()).filter(e => e.active)
         : [];
@@ -26602,7 +26987,7 @@ function startHeartbeat() {
       if (_heartbeatCount % 5 === 0) {
         try { runDriftScan(STATE); } catch (_e) { logger.debug('server', 'silent', { error: _e?.message }); }
       }
-    } catch (err) { console.error('[system] Biological systems tick error:', err); }
+    } catch (err) { console.error('[system] Biological systems tick error:', err); }}
 
     // Plugin system tick — runs tick() on all loaded plugins.
     // tickPlugins is async and enforces a per-plugin timeout so one
@@ -27378,6 +27763,45 @@ app.use("/api/avatars", createAvatarsRouter({ db, requireAuth }));
 
 import createWorldCreatureRouter from "./routes/world-creature.js";
 app.use("/api/world/creature", createWorldCreatureRouter({ db, requireAuth, state: STATE }));
+
+// ── Forge: polyglot single-file app generator (Phase B wire-up) ─────────────
+// Surfaces the absorbed forge-template-generator + forge-template-engine so
+// the ForgeWorkbench frontend (concord-frontend/components/forge) can hit
+// /api/forge/{templates,sections,generate,validate,...}. Macros below give
+// runMacro() callers parity access; the route is the HTTP surface.
+import createForgeRouter from "./routes/forge.js";
+app.use("/api/forge", createForgeRouter({ db }));
+
+import {
+  generateForgeApp as _forgeGenerate,
+  validateForgeConfig as _forgeValidate,
+  getForgeTemplateSections as _forgeSections,
+  listForgeTemplates as _forgeListTemplates,
+} from "./lib/forge-template-generator.js";
+register("forge", "list", (_ctx, _input = {}) => {
+  try {
+    const templates = _forgeListTemplates();
+    return { ok: true, templates, count: templates.length };
+  } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+});
+register("forge", "sections", (_ctx, input = {}) => {
+  try {
+    const templateId = String(input.templateId || "blank");
+    return { ok: true, sections: _forgeSections(templateId) };
+  } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+});
+register("forge", "validate", (_ctx, input = {}) => {
+  try {
+    const config = input.config || input;
+    return { ok: true, ..._forgeValidate(config) };
+  } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+});
+register("forge", "generate", (_ctx, input = {}) => {
+  try {
+    const out = _forgeGenerate(input);
+    return { ok: true, ...out };
+  } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+});
 
 if (db) {
   try {
@@ -30195,6 +30619,9 @@ async function governorTick(reason="heartbeat") {
 function _startGovernorHeartbeat() {
   try {
     if (__governorTimer) return { ok:true, already:true };
+    // Layer 12.5 (cartographer): CONCORD_DISABLE_HEARTBEAT=true short-circuits
+    // so runtime-introspect doesn't fire ticks during boot.
+    if (process.env.CONCORD_DISABLE_HEARTBEAT === "true") return { ok:false, reason:"heartbeat_disabled_env" };
     const s = STATE.settings || {};
     const ms = clamp(Number(s.heartbeatMs ?? 60000), 15000, 10*60*1000);
     if (s.heartbeatEnabled === false) return { ok:false, reason:"heartbeat_disabled" };
@@ -33457,7 +33884,7 @@ app.get("/api/shadow/dtus/:id/context", asyncHandler(async (req, res) => {
 app.post("/api/shadow/dtus/:id/interact", asyncHandler(async (req, res) => {
   const result = recordShadowInteraction(STATE, req.params.id, {
     type: req.body?.type,
-    // eslint-disable-next-line no-restricted-syntax
+     
     // eslint-disable-next-line no-restricted-syntax
     userId: req.body?.userId, // safe: target-identifier
     claim: req.body?.claim,
@@ -41255,12 +41682,12 @@ app.post("/api/cache", asyncHandler(async (req, res) => res.json(await runMacro(
 app.delete("/api/cache", asyncHandler(async (req, res) => res.json(await runMacro("cache", "invalidate", req.body, makeCtx(req)))));
 app.get("/api/cache/stats", asyncHandler(async (req, res) => res.json(await runMacro("cache", "stats", {}, makeCtx(req)))));
 app.post("/api/cache/clear", asyncHandler(async (req, res) => res.json(await runMacro("cache", "clear", {}, makeCtx(req)))));
-// eslint-disable-next-line no-restricted-syntax
+ 
 // eslint-disable-next-line no-restricted-syntax
 app.get("/api/shard/route", asyncHandler(async (req, res) => res.json(await runMacro("shard", "route", { userId: req.query.userId, orgId: req.query.orgId }, makeCtx(req))))); // safe: public-filter
 app.get("/api/shard/stats", asyncHandler(async (req, res) => res.json(await runMacro("shard", "stats", {}, makeCtx(req)))));
 app.post("/api/governor/configure", asyncHandler(async (req, res) => res.json(await runMacro("governor", "configure", req.body, makeCtx(req)))));
-// eslint-disable-next-line no-restricted-syntax
+ 
 // eslint-disable-next-line no-restricted-syntax
 app.get("/api/governor/check", asyncHandler(async (req, res) => res.json(await runMacro("governor", "check", { userId: req.query.userId, action: req.query.action }, makeCtx(req))))); // safe: public-filter
 app.get("/api/perf/metrics", asyncHandler(async (req, res) => res.json(await runMacro("perf", "metrics", {}, makeCtx(req)))));
@@ -42826,7 +43253,7 @@ app.post("/api/workspaces/:id/members", (req, res) => {
     // an invite, not a self-action), but the inviter must be authenticated.
     const inviterId = req.user?.id;
     if (!inviterId) return res.status(401).json({ ok: false, error: "Authentication required" });
-    // eslint-disable-next-line no-restricted-syntax
+     
     // eslint-disable-next-line no-restricted-syntax
     const result = addWorkspaceMember(req.params.id, req.body.userId, req.body.role, { inviterId }); // safe: target-identifier
     res.json(result);
@@ -43052,7 +43479,7 @@ app.get("/api/shared/:token", (req, res) => {
 // ---- Wave 4: Activity Log ----
 app.get("/api/activity", (req, res) => {
   const result = getActivityLog({
-    // eslint-disable-next-line no-restricted-syntax
+     
     // eslint-disable-next-line no-restricted-syntax
     userId: req.query.userId, // safe: public-filter
     action: req.query.action,
@@ -43097,7 +43524,7 @@ app.get("/api/sw-config", (req, res) => {
 });
 
 app.get("/api/onboarding", (req, res) => {
-  // eslint-disable-next-line no-restricted-syntax
+   
   // eslint-disable-next-line no-restricted-syntax
   const userId = req.user?.id || req.query.userId || "anonymous"; // safe: public-filter
   res.json(getOnboardingProgress(userId));
@@ -45601,7 +46028,7 @@ app.get("/api/economy/status", (req, res) => {
 // GET /api/economy/balance — return wallet balance for current user (marketplace)
 app.get("/api/economy/balance", (req, res) => {
   ensureEconomicState();
-  // eslint-disable-next-line no-restricted-syntax
+   
   // eslint-disable-next-line no-restricted-syntax
   const userId = req.user?.id || req.query.user_id || "default"; // safe: admin-only
   const wallet = STATE.economic?.wallets?.get(userId);
@@ -46358,7 +46785,7 @@ app.get("/api/global/feed/:lensId", (req, res) => {
   const lensId = String(req.params.lensId || "").toLowerCase();
   const { limit = 50, offset = 0 } = req.query;
 
-  let feed = Array.from(STATE.dtus?.values() || [])
+  const feed = Array.from(STATE.dtus?.values() || [])
     .filter(d => d.scope === "global" && !isShadowDTU(d))
     .filter(d => {
       // Match by published lens, tags, or domain
@@ -46769,7 +47196,7 @@ app.get("/api/social/following/:userId", (req, res) => {
 });
 
 app.get("/api/social/feed", (req, res) => {
-  // eslint-disable-next-line no-restricted-syntax
+   
   // eslint-disable-next-line no-restricted-syntax
   try { res.json(getFeed(STATE, req.user?.id || req.query.userId, { limit: Number(req.query.limit || 30), offset: Number(req.query.offset || 0) })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } // safe: public-filter
 });
@@ -46781,7 +47208,7 @@ app.get("/api/social/trending", (req, res) => {
 // Social analytics + trending extensions
 app.get("/api/social/analytics/creator", (req, res) => {
   try {
-    // eslint-disable-next-line no-restricted-syntax
+     
     // eslint-disable-next-line no-restricted-syntax
     const userId = req.user?.id || req.query.userId || "anon"; // safe: public-filter
     const profile = getProfile(STATE, userId);
@@ -46907,7 +47334,7 @@ app.post("/api/social/react", requireAuth(), (req, res) => {
 
 app.get("/api/social/reactions/:postId", (req, res) => {
   try {
-    // eslint-disable-next-line no-restricted-syntax
+     
     // eslint-disable-next-line no-restricted-syntax
     const currentUserId = req.user?.id || req.query.userId || null; // safe: public-filter
     res.json(socialGetReactions(STATE, req.params.postId, currentUserId));
@@ -46955,7 +47382,7 @@ app.post("/api/social/bookmark", requireAuth(), (req, res) => {
 
 app.get("/api/social/bookmarks", (req, res) => {
   try {
-    // eslint-disable-next-line no-restricted-syntax
+     
     // eslint-disable-next-line no-restricted-syntax
     const userId = req.user?.id || req.query.userId || "anon"; // safe: public-filter
     res.json(socialGetUserBookmarks(STATE, userId, { limit: Number(req.query.limit || 30), offset: Number(req.query.offset || 0) }));
@@ -46965,7 +47392,7 @@ app.get("/api/social/bookmarks", (req, res) => {
 // ---- Social Feeds (For-You, Following, Explore) ----
 app.get("/api/social/feed/foryou", (req, res) => {
   try {
-    // eslint-disable-next-line no-restricted-syntax
+     
     // eslint-disable-next-line no-restricted-syntax
     const userId = req.user?.id || req.query.userId || "anon"; // safe: public-filter
     res.json(getForYouFeed(STATE, userId, { limit: Number(req.query.limit || 30), offset: Number(req.query.offset || 0) }));
@@ -46974,7 +47401,7 @@ app.get("/api/social/feed/foryou", (req, res) => {
 
 app.get("/api/social/feed/following", (req, res) => {
   try {
-    // eslint-disable-next-line no-restricted-syntax
+     
     // eslint-disable-next-line no-restricted-syntax
     const userId = req.user?.id || req.query.userId || "anon"; // safe: public-filter
     res.json(getFollowingFeed(STATE, userId, { limit: Number(req.query.limit || 30), offset: Number(req.query.offset || 0) }));
@@ -46991,7 +47418,7 @@ app.get("/api/social/feed/explore", (req, res) => {
 app.post("/api/social/dm", requireAuth(), (req, res) => {
   try {
     const fromUserId = req.user?.id || req.actor?.userId || "anon";
-    // eslint-disable-next-line no-restricted-syntax
+     
     // eslint-disable-next-line no-restricted-syntax
     res.json(socialSendMessage(STATE, { fromUserId, toUserId: req.body?.toUserId, content: req.body?.content, mediaUrl: req.body?.mediaUrl })); // safe: target-identifier
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
@@ -47026,7 +47453,7 @@ app.post("/api/social/dm/:conversationId/read", requireAuth(), (req, res) => {
 // ---- Social Stories ----
 app.get("/api/social/stories", (req, res) => {
   try {
-    // eslint-disable-next-line no-restricted-syntax
+     
     // eslint-disable-next-line no-restricted-syntax
     const userId = req.user?.id || req.query.userId || "anon"; // safe: public-filter
     res.json(getActiveStories(STATE, userId));
@@ -47139,13 +47566,13 @@ app.get("/api/collab/workspace/:id", (req, res) => {
 });
 
 app.get("/api/collab/workspaces", (req, res) => {
-  // eslint-disable-next-line no-restricted-syntax
+   
   // eslint-disable-next-line no-restricted-syntax
   try { res.json(collabListWorkspaces(STATE, req.user?.id || req.query.userId)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } // safe: public-filter
 });
 
 app.post("/api/collab/workspace/:id/member", (req, res) => {
-  // eslint-disable-next-line no-restricted-syntax
+   
   // eslint-disable-next-line no-restricted-syntax
   try { res.json(collabAddWorkspaceMember(STATE, req.params.id, req.body?.userId, req.body?.role, req.user?.id)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } // safe: target-identifier
 });
@@ -47216,7 +47643,7 @@ app.get("/api/collab/metrics", (req, res) => {
 
 // ---- RBAC & Enterprise Access Controls ----
 app.post("/api/rbac/org", (req, res) => {
-  // eslint-disable-next-line no-restricted-syntax
+   
   // eslint-disable-next-line no-restricted-syntax
   try { res.json(createOrgWorkspace(STATE, { ...req.body, ownerId: req.body?.ownerId || req.user?.id })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } // safe: target-identifier
 });
@@ -47226,13 +47653,13 @@ app.get("/api/rbac/org/:orgId", (req, res) => {
 });
 
 app.post("/api/rbac/role", requireAuth(), (req, res) => {
-  // eslint-disable-next-line no-restricted-syntax
+   
   // eslint-disable-next-line no-restricted-syntax
   try { res.json(assignRole(STATE, req.body?.orgId, req.body?.userId, req.body?.role, req.user?.id)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } // safe: target-identifier
 });
 
 app.delete("/api/rbac/role", requireAuth(), (req, res) => {
-  // eslint-disable-next-line no-restricted-syntax
+   
   // eslint-disable-next-line no-restricted-syntax
   try { res.json(revokeRole(STATE, req.body?.orgId, req.body?.userId, req.user?.id)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } // safe: target-identifier
 });
@@ -47250,7 +47677,7 @@ app.get("/api/rbac/permissions/:orgId/:userId", (req, res) => {
 });
 
 app.post("/api/rbac/check-permission", (req, res) => {
-  // eslint-disable-next-line no-restricted-syntax
+   
   // eslint-disable-next-line no-restricted-syntax
   try { res.json(checkPermission(STATE, req.body?.orgId, req.body?.userId, req.body?.permission)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } // safe: target-identifier
 });
@@ -49134,7 +49561,7 @@ app.get("/api/freshness/batch", (req, res) => {
   const limit = Math.min(Number(lim) || 50, 200);
   const all = dtusArray();
 
-  let pool = domain ? all.filter(d => (d.tags || []).includes(String(domain))) : all;
+  const pool = domain ? all.filter(d => (d.tags || []).includes(String(domain))) : all;
 
   const scored = pool.map(d => ({
     id: d.id,
@@ -49312,7 +49739,7 @@ app.post("/api/capture/quick", asyncHandler(async (req, res) => {
   const trimmed = String(content).trim();
 
   // Auto-detect domain from content using utility brain (fast, background)
-  let detectedTags = Array.isArray(userTags) ? [...userTags] : [];
+  const detectedTags = Array.isArray(userTags) ? [...userTags] : [];
   if (detectedTags.length === 0) {
     // Quick heuristic domain detection (no brain call needed)
     const domainKeywords = {
@@ -51174,7 +51601,7 @@ async function bloomGarden(gardenId) {
   const dtus = garden.dtus.slice(0, 15).map(id => STATE.dtus.get(id)).filter(Boolean);
   const titles = dtus.map(d => d.title || "untitled").join(", ");
 
-  let insight = {
+  const insight = {
     content: `Garden "${garden.name}" contains ${garden.dtus.length} DTUs around the theme "${garden.theme}". Key topics: ${titles}`,
     generatedAt: new Date().toISOString(),
   };
@@ -51864,7 +52291,7 @@ function setSubscription(userId, tier) {
 }
 
 app.get("/api/subscription", (req, res) => {
-  // eslint-disable-next-line no-restricted-syntax
+   
   // eslint-disable-next-line no-restricted-syntax
   const sub = getSubscription(req.query.userId); // safe: public-filter
   res.json({ ok: true, ...sub, details: SUBSCRIPTION_TIERS[sub.tier] });
@@ -52014,14 +52441,14 @@ function updateCognitiveDigitalTwin(userId) {
 // Digital Twin API routes
 app.get("/api/twin", (req, res) => {
   try {
-    // eslint-disable-next-line no-restricted-syntax
+     
     // eslint-disable-next-line no-restricted-syntax
     const userId = req.user?.id || req.query.userId || "default"; // safe: public-filter
     let twin = STATE.cognitiveDigitalTwins?.get(userId);
     if (!twin) twin = updateCognitiveDigitalTwin(userId);
     res.json({ ok: true, twin });
   } catch (e) {
-    // eslint-disable-next-line no-restricted-syntax
+     
     // eslint-disable-next-line no-restricted-syntax
     res.status(500).json({ ok: false, error: String(e?.message || e), twin: { userId: req.query.userId || "default", insights: [], patterns: [] } }); // safe: public-filter
   }
@@ -52040,7 +52467,7 @@ app.post("/api/twin/update", (req, res) => {
 });
 
 app.get("/api/twin/circadian", (req, res) => {
-  // eslint-disable-next-line no-restricted-syntax
+   
   // eslint-disable-next-line no-restricted-syntax
   const userId = req.user?.id || req.query.userId || "default"; // safe: public-filter
   const twin = STATE.cognitiveDigitalTwins.get(userId) || initializeTwin(userId);
@@ -53054,6 +53481,11 @@ const circuitBreakers = {
 
 STATE._circuitBreakers = circuitBreakers;
 
+// Layer 12: hand the lattice orchestrator the STATE reference. Drift-scan
+// reads STATE; without this call drift-monitor can't run. Idempotent —
+// safe to call multiple times.
+try { initLatticeOrchestrator(STATE); } catch { /* non-fatal — orchestrator handles unset STATE with reason */ }
+
 app.get("/api/circuits", (_req, res) => {
   const states = {};
   for (const [name, breaker] of Object.entries(circuitBreakers)) {
@@ -53304,7 +53736,7 @@ function recordCost(userId, brainName, tokensIn, tokensOut, durationMs) {
 }
 
 app.get("/api/rate-limits", (req, res) => {
-  // eslint-disable-next-line no-restricted-syntax
+   
   // eslint-disable-next-line no-restricted-syntax
   const userId = req.user?.id || req.query.userId || "default"; // safe: public-filter
   const limits = STATE._rateLimits.get(userId);
@@ -53314,7 +53746,7 @@ app.get("/api/rate-limits", (req, res) => {
 });
 
 app.get("/api/costs", (req, res) => {
-  // eslint-disable-next-line no-restricted-syntax
+   
   // eslint-disable-next-line no-restricted-syntax
   const userId = req.user?.id || req.query.userId || "default"; // safe: public-filter
   const account = STATE._costAccounting.get(userId) || { daily: {}, total: 0, calls: [] };
@@ -53869,7 +54301,7 @@ function getAdaptiveLayout(userId) {
 }
 
 app.get("/api/adaptive/layout", (req, res) => {
-  // eslint-disable-next-line no-restricted-syntax
+   
   // eslint-disable-next-line no-restricted-syntax
   res.json({ ok: true, ...getAdaptiveLayout(req.user?.id || req.query.userId) }); // safe: public-filter
 });
@@ -54051,13 +54483,13 @@ app.post("/api/compile", async (req, res) => {
 // Connects emergent governance agents with knowledge organisms (DTU swarms).
 // Emergents validate organism output; organisms provide domain expertise to emergents.
 
-if (!STATE._bridge) STATE._bridge = {
+if (!STATE._bridge) {STATE._bridge = {
   log: [],           // Interaction history (bounded)
   quarantine: [],    // DTUs rejected by governance
   birthCerts: [],    // Organism birth certificates
   deathRecords: [],  // Organism death records
   debates: [],       // Bridge debates
-};
+};}
 
 const BRIDGE_MAX_LOG = 500;
 const BRIDGE_MAX_QUARANTINE = 200;

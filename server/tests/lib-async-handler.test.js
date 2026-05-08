@@ -21,7 +21,7 @@ function mockRes() {
 
 describe("asyncHandler", () => {
   it("passes successful handler through", async () => {
-    // eslint-disable-next-line require-await
+     
     const handler = asyncHandler(async (req, res) => {
       res.json({ ok: true });
     });
@@ -36,7 +36,7 @@ describe("asyncHandler", () => {
   });
 
   it("catches async errors and forwards to next", async () => {
-    // eslint-disable-next-line require-await
+     
     const handler = asyncHandler(async () => {
       throw new Error("async boom");
     });
@@ -51,7 +51,7 @@ describe("asyncHandler", () => {
   });
 
   it("catches ConcordError subclasses and forwards to next", async () => {
-    // eslint-disable-next-line require-await
+     
     const handler = asyncHandler(async () => {
       throw new ValidationError("bad input");
     });
@@ -66,7 +66,7 @@ describe("asyncHandler", () => {
   });
 
   it("handles sync errors too", async () => {
-    // eslint-disable-next-line require-await
+     
     const handler = asyncHandler(async () => {
       throw new Error("sync in async");
     });

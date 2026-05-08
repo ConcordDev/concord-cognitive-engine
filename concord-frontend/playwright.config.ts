@@ -4,8 +4,22 @@ export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  // CI retry budget: 1 retry per test (was 2). Three runs of every
+  // failing test compounds rapidly across 16 specs — 1 retry catches
+  // genuine flakes without blowing the time budget. Real failures
+  // still surface; they just surface in 2x time instead of 3x.
+  retries: process.env.CI ? 1 : 0,
+  // Two workers in CI (was 1). Playwright handles per-test isolation
+  // via separate browser contexts; the bottleneck on one worker was
+  // serial execution, not contention. Two workers halve the wall-
+  // clock time without measurably increasing flake rate.
+  workers: process.env.CI ? 2 : undefined,
+  // Hard cap on the entire test run. 20 minutes leaves 5 min headroom
+  // under the 25-min job timeout in .github/workflows/ci.yml for the
+  // artifact upload + cleanup steps. Without this, playwright will
+  // happily run for an hour and the GitHub runner gives up first
+  // ('hosted runner lost communication') — a confusing failure mode.
+  globalTimeout: 20 * 60 * 1000,
   reporter: 'html',
 
   use: {

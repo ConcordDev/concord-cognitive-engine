@@ -219,7 +219,7 @@ export default function registerOperationRoutes(app, {
       const url = String(req.body?.url || "").trim();
       if (!url) return res.status(400).json({ ok: false, error: "url required" });
 
-      // eslint-disable-next-line no-restricted-syntax
+       
       // eslint-disable-next-line no-restricted-syntax
       const userId = req.user?.id || req.body?.userId || "anon"; // safe: target-identifier
       const tier = req.body?.tier || "free";

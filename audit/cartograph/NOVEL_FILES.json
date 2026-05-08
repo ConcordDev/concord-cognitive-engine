@@ -1,0 +1,287 @@
+{
+  "generatedAt": "2026-05-08T01:23:51.435Z",
+  "apply": true,
+  "branches": [
+    {
+      "branch": "claude/world-lens-core-pipeline-D6Ric",
+      "totalAdded": 350,
+      "novel": [
+        "concord-frontend/components/lens/LensActionBar.tsx",
+        "concord-frontend/components/world-lens/ARPreview.tsx",
+        "concord-frontend/components/world-lens/AccessibilityPanel.tsx",
+        "concord-frontend/components/world-lens/AchievementSystem.tsx",
+        "concord-frontend/components/world-lens/AdaptiveComplexity.tsx",
+        "concord-frontend/components/world-lens/AgentBuilder.tsx",
+        "concord-frontend/components/world-lens/AnalyticsDashboard.tsx",
+        "concord-frontend/components/world-lens/DailyRituals.tsx",
+        "concord-frontend/components/world-lens/DistrictTimeline.tsx",
+        "concord-frontend/components/world-lens/EnvironmentalStorytelling.tsx",
+        "concord-frontend/components/world-lens/HiddenAssistance.tsx",
+        "concord-frontend/components/world-lens/LensPluginSystem.tsx",
+        "concord-frontend/components/world-lens/LocalizationProvider.tsx",
+        "concord-frontend/components/world-lens/MobileCompanion.tsx",
+        "concord-frontend/components/world-lens/ProgressionPanel.tsx",
+        "concord-frontend/components/world-lens/SaveSystem.tsx",
+        "concord-frontend/components/world-lens/SeasonalContent.tsx",
+        "concord-frontend/components/world-lens/SecretsDiscovery.tsx",
+        "concord-frontend/components/world-lens/SettingsPanel.tsx",
+        "concord-frontend/components/world-lens/SoundSystem.tsx",
+        "concord-frontend/components/world-lens/WorldTravel.tsx",
+        "server/config/frontier.js",
+        "server/config/infrastructure.js",
+        "server/lib/brain-service.js",
+        "server/lib/component-registry.js",
+        "server/lib/concord-identity.js",
+        "server/lib/concord-lens.js",
+        "server/lib/concord-moderate.js",
+        "server/lib/concord-observe.js",
+        "server/lib/concord-procgen.js",
+        "server/lib/concord-sync.js",
+        "server/lib/concord-test.js",
+        "server/lib/cpm-manager.js",
+        "server/lib/dtu-protocol.js"
+      ],
+      "skipped": {
+        "onHead": 316,
+        "blacklisted": 0
+      }
+    },
+    {
+      "branch": "claude/polyglot-monolith-template-pTDoX",
+      "totalAdded": 4,
+      "novel": [
+        "concord-frontend/components/forge/ForgeWorkbench.tsx",
+        "server/lib/forge-constants.js",
+        "server/lib/forge-template-generator.js",
+        "server/routes/forge.js"
+      ],
+      "skipped": {
+        "onHead": 0,
+        "blacklisted": 0
+      }
+    },
+    {
+      "branch": "claude/plan-execute-concord-TQYcv",
+      "totalAdded": 2,
+      "novel": [
+        "concord-frontend/instrumentation-client.ts",
+        "concord-frontend/instrumentation.ts"
+      ],
+      "skipped": {
+        "onHead": 0,
+        "blacklisted": 0
+      }
+    },
+    {
+      "branch": "claude/forge-template-TP60S",
+      "totalAdded": 2,
+      "novel": [
+        "server/emergent/forge-template-engine.js",
+        "server/routes/forge-template.js"
+      ],
+      "skipped": {
+        "onHead": 0,
+        "blacklisted": 0
+      }
+    },
+    {
+      "branch": "claude/fix-build-errors-q3SCU",
+      "totalAdded": 228,
+      "novel": [
+        "concord-frontend/components/lens/LensActionBar.tsx"
+      ],
+      "skipped": {
+        "onHead": 227,
+        "blacklisted": 0
+      }
+    },
+    {
+      "branch": "claude/audit-hidden-elements-M4vWy",
+      "totalAdded": 224,
+      "novel": [
+        "concord-frontend/components/lens/LensActionBar.tsx"
+      ],
+      "skipped": {
+        "onHead": 223,
+        "blacklisted": 0
+      }
+    },
+    {
+      "branch": "claude/priority-2-3-complete-qe7NG",
+      "totalAdded": 223,
+      "novel": [
+        "concord-frontend/components/lens/LensActionBar.tsx"
+      ],
+      "skipped": {
+        "onHead": 222,
+        "blacklisted": 0
+      }
+    },
+    {
+      "branch": "claude/audit-math-physics-modules-e9sYc",
+      "totalAdded": 196,
+      "novel": [
+        "WORLD_LENS_SPEC.md"
+      ],
+      "skipped": {
+        "onHead": 195,
+        "blacklisted": 0
+      }
+    },
+    {
+      "branch": "claude/verify-lens-data-wiring-oq7pN",
+      "totalAdded": 206,
+      "novel": [],
+      "skipped": {
+        "onHead": 206,
+        "blacklisted": 0
+      }
+    },
+    {
+      "branch": "claude/verification-test-suite-dkF0d",
+      "totalAdded": 191,
+      "novel": [],
+      "skipped": {
+        "onHead": 191,
+        "blacklisted": 0
+      }
+    },
+    {
+      "branch": "claude/real-time-feed-manager-Qs8cC",
+      "totalAdded": 144,
+      "novel": [],
+      "skipped": {
+        "onHead": 144,
+        "blacklisted": 0
+      }
+    },
+    {
+      "branch": "claude/cleanup-openai-federation-init-HHoKu",
+      "totalAdded": 106,
+      "novel": [],
+      "skipped": {
+        "onHead": 106,
+        "blacklisted": 0
+      }
+    },
+    {
+      "branch": "claude/continue-previous-work-U03Rb",
+      "totalAdded": 101,
+      "novel": [],
+      "skipped": {
+        "onHead": 101,
+        "blacklisted": 0
+      }
+    },
+    {
+      "branch": "claude/continue-previous-work-uDjWl",
+      "totalAdded": 101,
+      "novel": [],
+      "skipped": {
+        "onHead": 101,
+        "blacklisted": 0
+      }
+    },
+    {
+      "branch": "claude/wire-unused-variables-j7GVD",
+      "totalAdded": 100,
+      "novel": [],
+      "skipped": {
+        "onHead": 100,
+        "blacklisted": 0
+      }
+    },
+    {
+      "branch": "claude/concordia-content-strategy-IThxY",
+      "totalAdded": 113,
+      "novel": [],
+      "skipped": {
+        "onHead": 113,
+        "blacklisted": 0
+      }
+    },
+    {
+      "branch": "claude/competitive-parity-master-spec-XAYJ9",
+      "totalAdded": 102,
+      "novel": [],
+      "skipped": {
+        "onHead": 102,
+        "blacklisted": 0
+      }
+    },
+    {
+      "branch": "claude/production-audit-macros-1alt5",
+      "totalAdded": 61,
+      "novel": [],
+      "skipped": {
+        "onHead": 51,
+        "blacklisted": 10
+      }
+    },
+    {
+      "branch": "claude/create-domain-logic-files-GfTRA",
+      "totalAdded": 5,
+      "novel": [],
+      "skipped": {
+        "onHead": 5,
+        "blacklisted": 0
+      }
+    },
+    {
+      "branch": "claude/setup-and-fix-ci-ra8bk",
+      "totalAdded": 0,
+      "novel": [],
+      "skipped": {
+        "onHead": 0,
+        "blacklisted": 0
+      }
+    },
+    {
+      "branch": "claude/document-next-session-sY9bg",
+      "totalAdded": 1,
+      "novel": [],
+      "skipped": {
+        "onHead": 1,
+        "blacklisted": 0
+      }
+    },
+    {
+      "branch": "claude/fix-ci-lint-ydQ4C",
+      "totalAdded": 0,
+      "novel": [],
+      "skipped": {
+        "onHead": 0,
+        "blacklisted": 0
+      }
+    },
+    {
+      "branch": "claude/derive-dtu-formulas-B9flm",
+      "totalAdded": 0,
+      "novel": [],
+      "skipped": {
+        "onHead": 0,
+        "blacklisted": 0
+      }
+    },
+    {
+      "branch": "claude/fix-ci-stripe-ios-Y87Sf",
+      "totalAdded": 0,
+      "novel": [],
+      "skipped": {
+        "onHead": 0,
+        "blacklisted": 0
+      }
+    }
+  ],
+  "collisions": [
+    {
+      "path": "concord-frontend/components/lens/LensActionBar.tsx",
+      "owners": [
+        "claude/world-lens-core-pipeline-D6Ric",
+        "claude/fix-build-errors-q3SCU",
+        "claude/audit-hidden-elements-M4vWy",
+        "claude/priority-2-3-complete-qe7NG"
+      ]
+    }
+  ]
+}

@@ -87,7 +87,7 @@ function isPrivateIPv4(ip) {
 // ── IPv6 reserved checks ────────────────────────────────────────────────────
 function normalizeIPv6(ip) {
   // Strip zone id and brackets, lowercase
-  let s = ip.replace(/^\[|\]$/g, "").split("%")[0].toLowerCase();
+  const s = ip.replace(/^\[|\]$/g, "").split("%")[0].toLowerCase();
   return s;
 }
 

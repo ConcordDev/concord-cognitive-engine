@@ -77,7 +77,7 @@ export function economyAudit(db, opts) {
  */
 export function auditCtx(req) {
   return {
-    // eslint-disable-next-line no-restricted-syntax
+     
     // eslint-disable-next-line no-restricted-syntax
     userId: req.user?.id || req.body?.user_id || req.query?.user_id, // safe: target-identifier
     requestId: req.headers["x-request-id"],

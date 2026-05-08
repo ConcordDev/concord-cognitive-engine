@@ -238,7 +238,7 @@ describe("getSystemBalanceSummary", () => {
               let total = 0;
               for (const r of ledgerRows) {
                 if (r.to_user_id === userId && r.status === "complete")
-                  total += Math.round(r.net * 100);
+                  {total += Math.round(r.net * 100);}
               }
               return { total_cents: total };
             }
@@ -247,7 +247,7 @@ describe("getSystemBalanceSummary", () => {
               let total = 0;
               for (const r of ledgerRows) {
                 if (r.from_user_id === userId && r.status === "complete")
-                  total += Math.round(r.amount * 100);
+                  {total += Math.round(r.amount * 100);}
               }
               return { total_cents: total };
             }

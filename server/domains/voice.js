@@ -38,7 +38,7 @@ export default function registerVoiceActions(registerLensAction) {
     const segments = artifact.data?.segments || [];
     const transcript = artifact.data?.transcript || "";
     if (segments.length === 0 && !transcript.trim()) return { ok: true, result: { message: "Provide segments (array of {speaker, text, startTime, endTime}) or a tagged transcript." } };
-    let parsed = segments;
+    const parsed = segments;
     if (parsed.length === 0 && transcript) {
       const tagPattern = /\[?(Speaker\s*\w+|SPEAKER[\s_]*\w+)\]?:\s*(.*?)(?=\[?(?:Speaker\s*\w+|SPEAKER[\s_]*\w+)\]?:|$)/gis;
       let match;

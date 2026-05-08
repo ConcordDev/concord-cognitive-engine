@@ -106,7 +106,7 @@ function createMockDb() {
                 p[col] = params[i];
               });
             }
-            return;
+            
           }
         },
         get(...params) {

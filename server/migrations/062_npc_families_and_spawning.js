@@ -5,7 +5,7 @@ export function up(db) {
   const npcCols = db.prepare("PRAGMA table_info(world_npcs)").all().map(c => c.name);
   const addNpcCol = (col, def) => {
     if (!npcCols.includes(col))
-      db.prepare(`ALTER TABLE world_npcs ADD COLUMN ${col} ${def}`).run();
+      {db.prepare(`ALTER TABLE world_npcs ADD COLUMN ${col} ${def}`).run();}
   };
 
   // ── Crossbreeding & species ───────────────────────────────────────────────
@@ -47,7 +47,7 @@ export function up(db) {
   // ── NPC death events (extend for family grief tracking) ───────────────────
   const deathCols = db.prepare("PRAGMA table_info(npc_deaths)").all().map(c => c.name);
   if (!deathCols.includes('notified_family'))
-    db.prepare('ALTER TABLE npc_deaths ADD COLUMN notified_family INTEGER DEFAULT 0').run();
+    {db.prepare('ALTER TABLE npc_deaths ADD COLUMN notified_family INTEGER DEFAULT 0').run();}
 }
 
 export function down(db) {

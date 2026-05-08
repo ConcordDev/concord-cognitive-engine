@@ -80,7 +80,7 @@ export default function registerInferenceActions(registerLensAction) {
 
     // Forward chaining loop
     const factSet = new Set(initialFacts.map(factKey));
-    let facts = [...initialFacts];
+    const facts = [...initialFacts];
     const derivedFacts = [];
     const derivationLog = [];
     let iterations = 0;

@@ -47,7 +47,7 @@ export default function registerCustomActions(registerLensAction) {
     const data = artifact.data?.input || {};
     const transforms = artifact.data?.transforms || [];
     if (transforms.length === 0) return { ok: true, result: { message: "Define transform operations." } };
-    let output = { ...data };
+    const output = { ...data };
     const log = [];
     for (const t of transforms) {
       const field = t.field;

@@ -139,7 +139,7 @@ function _load(db) {
 function _validateSkill(skill) {
   if (!skill?.name || !skill?.verb) return { ok: false, reason: "missing name/verb" };
   if (!Array.isArray(skill.effects) || skill.effects.length === 0)
-    return { ok: false, reason: "no effects" };
+    {return { ok: false, reason: "no effects" };}
   for (const eff of skill.effects) {
     if (!EFFECT_KINDS.has(eff.kind)) return { ok: false, reason: `unknown effect kind: ${eff.kind}` };
   }

@@ -152,7 +152,7 @@ export default function registerLawActions(registerLensAction) {
         // Count keyword matches in text and title
         let textMatches = 0;
         let titleMatches = 0;
-        let exactPhraseMatch = text.includes(query) || title.includes(query);
+        const exactPhraseMatch = text.includes(query) || title.includes(query);
 
         for (const kw of keywords) {
           // Count occurrences in text

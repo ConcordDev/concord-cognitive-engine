@@ -313,7 +313,7 @@ export async function runParallelBrains(opts) {
 
 // ── Metrics ──────────────────────────────────────────────────────────────────
 
-let _parallelBrainMetrics = {
+const _parallelBrainMetrics = {
   totalRuns: 0,
   subconsciousRuns: 0,
   subconsciousSuccesses: 0,

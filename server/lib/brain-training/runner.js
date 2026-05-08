@@ -201,7 +201,7 @@ function _ollamaPost(path, body, timeoutMs) {
   return new Promise((resolve) => {
     let url;
     try { url = new URL(OLLAMA_HOST + path); }
-    catch { return resolve({ ok: false, error: "bad_ollama_url" }); }
+    catch { resolve({ ok: false, error: "bad_ollama_url" }); return; }
 
     const opts = {
       method: "POST",

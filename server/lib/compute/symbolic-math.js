@@ -48,7 +48,7 @@ function tokenize(input) {
           (s[j] >= '0' && s[j] <= '9') ||
           s[j] === '_')
       )
-        j++;
+        {j++;}
       const name = s.slice(i, j);
       if (FUNCTIONS.has(name.toLowerCase())) {
         tokens.push({ type: 'fn', name: name.toLowerCase() });
@@ -301,7 +301,7 @@ function simplifyOnce(ast) {
     return FN(ast.name, a);
   }
   if (ast.type === 'op') {
-    let [a, b] = ast.args.map(simplifyOnce);
+    const [a, b] = ast.args.map(simplifyOnce);
     const op = ast.op;
 
     // Numeric folding
@@ -362,7 +362,7 @@ function simplifyOnce(ast) {
 // ---------------------------------------------------------------------------
 
 export function expand(expression) {
-  let ast = typeof expression === 'string' ? parse(expression) : clone(expression);
+  const ast = typeof expression === 'string' ? parse(expression) : clone(expression);
   return simplify(expandAst(ast));
 }
 

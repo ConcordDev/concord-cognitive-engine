@@ -10,7 +10,7 @@ import assert from "node:assert/strict";
 
 // ── Stub store.js before importing activation ──────────────────────────────
 
-let _stubbedState = {};
+const _stubbedState = {};
 
 // We need to mock getEmergentState from store.js
 // Using dynamic import with a loader is complex, so instead we test the

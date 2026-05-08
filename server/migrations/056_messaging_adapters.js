@@ -1,5 +1,11 @@
 // server/migrations/056_messaging_adapters.js
 // External messaging channel bindings, message log, and user-platform linking.
+//
+// NOTE (Phase 3.5.5 archival, May 2026):
+//   `messaging_verification_codes` has zero SELECT references —
+//   verification flow now uses session/JWT short-lived tokens directly.
+//   Idempotent CREATE preserved.
+//   REPLACED_BY: session-based verification in auth flow
 
 export function up(db) {
   db.exec(`

@@ -145,7 +145,7 @@ export default function createStudioRouter({ db, requireAuth }) {
   // ── Helpers ─────────────────────────────────────────────────────────────────
 
   function resolveUserId(req) {
-    // eslint-disable-next-line no-restricted-syntax
+     
     // eslint-disable-next-line no-restricted-syntax
     return req.user?.id || req.body?.userId || req.query?.userId || "anonymous"; // safe: target-identifier
   }
@@ -194,7 +194,7 @@ export default function createStudioRouter({ db, requireAuth }) {
   router.get("/projects", (req, res) => {
     try {
       const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 100);
-      // eslint-disable-next-line no-restricted-syntax
+       
       const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
       // eslint-disable-next-line no-restricted-syntax
       const userId = req.user?.id || req.query.userId; // safe: public-filter

@@ -117,7 +117,7 @@ export function registerEconomyRoutes(app, db, opts = {}) {
 
   app.post("/api/economy/buy", adminOnly, (req, res) => {
     try {
-      // eslint-disable-next-line no-restricted-syntax
+       
       // eslint-disable-next-line no-restricted-syntax
       const userId = req.body.user_id || req.user?.id; // safe: target-identifier
       const amount = Math.round(parseFloat(req.body.amount) * 100) / 100;
@@ -226,7 +226,7 @@ export function registerEconomyRoutes(app, db, opts = {}) {
 
   app.post("/api/economy/marketplace-purchase", authRequired, (req, res) => {
     try {
-      // eslint-disable-next-line no-restricted-syntax
+       
       const buyerId = req.user?.id;
       // eslint-disable-next-line no-restricted-syntax
       const sellerId = req.body.seller_id; // safe: target-identifier
@@ -837,7 +837,7 @@ export function registerEconomyRoutes(app, db, opts = {}) {
       const ctx = auditCtx(req);
       const adjustmentAmount = Math.round(parseFloat(req.body.amount) * 100) / 100;
       if (!Number.isFinite(adjustmentAmount) || adjustmentAmount === 0) {
-        // eslint-disable-next-line no-restricted-syntax
+         
         return res.status(400).json({ ok: false, error: "invalid_adjustment_amount" });
       }
       // eslint-disable-next-line no-restricted-syntax
@@ -848,7 +848,7 @@ export function registerEconomyRoutes(app, db, opts = {}) {
       const result = executeCorrection(db, {
         correctionType: "ADJUSTMENT",
         purchaseId: req.params.purchaseId,
-        // eslint-disable-next-line no-restricted-syntax
+         
         reason: req.body.reason || "admin_adjustment",
         actor: ctx.userId || "admin",
         adjustmentAmount,
@@ -1981,7 +1981,7 @@ export function registerEconomyRoutes(app, db, opts = {}) {
       if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
       const storage = getUserStorage(db, userId);
       // Earned-storage breakdown by reason (last 50 events for the UI).
-      let earnedSources = { earned_royalty: 0, earned_mega: 0, earned_sale: 0 };
+      const earnedSources = { earned_royalty: 0, earned_mega: 0, earned_sale: 0 };
       let recentEvents = [];
       try {
         const breakdown = db.prepare(`

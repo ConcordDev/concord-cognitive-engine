@@ -5,5 +5,9 @@
 # Frontend: lint-staged (ESLint + Prettier on staged files)
 (cd concord-frontend && npx lint-staged) || exit 1
 
+# Server: lint-staged (ESLint --fix --max-warnings=0 on staged files)
+# Pulls lint-staged via npx; matches the frontend pattern.
+(cd server && npx lint-staged) || exit 1
+
 # Backend: syntax check of the server entry point
 (cd server && node --check server.js) || exit 1

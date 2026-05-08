@@ -340,7 +340,13 @@ export type SocketEvent =
   // Minigames (Phase E)
   | 'minigame:started'
   | 'minigame:scored'
-  | 'minigame:complete';
+  | 'minigame:complete'
+  // Forge polyglot template engine
+  | 'forge:template:created'
+  | 'forge:template:generated'
+  | 'forge:template:published'
+  // Layer 13 — NPC ambient conversations
+  | 'npc:conversation-bid';
 
 // ---- Enriched Event Payload (Category 2+5: Concurrency + Observability) ----
 interface EnrichedPayload {

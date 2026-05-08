@@ -1,0 +1,174 @@
+# Auto-Generated Wiring Status
+
+_Source for the `Current Wiring Status` section in CLAUDE.md. Human merges; cartographer never auto-rewrites CLAUDE.md._
+
+Generated 2026-05-08T06:41:49.685Z.
+
+## Heartbeat-registered modules
+
+- `refusal-field-sweep` (frequency 1)
+- `scheduled-posts` (frequency 4)
+- `affect-tick` (frequency 4)
+- `social-npc-bridge` (frequency 5)
+- `eco-expiry-sweep` (frequency 5)
+- `environment-sensor` (frequency 5)
+- `environment-sense` (frequency 5)
+- `npc-conversation-initiator` (frequency 8)
+- `npc-knowledge-bridge` (frequency 10)
+- `corpse-cleanup` (frequency 10)
+- `metrics-decay` (frequency 20)
+- `presence-stale-sweep` (frequency 20)
+- `repair-cycle` (frequency 20)
+- `brain-outcome-resolver` (frequency 20)
+- `fauna-spawner` (frequency 30)
+- `lattice-drift-scan` (frequency 60)
+- `brain-daily-refresh` (frequency 60)
+- `qualia-persist` (frequency 60)
+- `embodied-dream-cycle` (frequency 80)
+- `forward-sim-cycle` (frequency 100)
+- `lattice-federation-poll` (frequency 120)
+- `culture-drift-pass` (frequency 120)
+- `faction-strategy-cycle` (frequency 200)
+- `lattice-breakthrough-pass` (frequency 240)
+- `forgetting-health-check` (frequency 480)
+
+## Macro domains with macro counts
+
+- `hypothesis` — 20 macros
+- `worldmodel` — 16 macros
+- `culture` — 16 macros
+- `agents` — 13 macros
+- `ingest` — 13 macros
+- `entity_economy` — 13 macros
+- `goals` — 12 macros
+- `metacognition` — 12 macros
+- `creative` — 12 macros
+- `grounding` — 11 macros
+- `teaching` — 11 macros
+- `autonomy` — 11 macros
+- `conflict` — 11 macros
+- `history` — 11 macros
+- `cri` — 11 macros
+- `shield` — 11 macros
+- `quest` — 10 macros
+- `dtu` — 10 macros
+- `mesh` — 10 macros
+- `hlm` — 9 macros
+- `research` — 9 macros
+- `apps` — 9 macros
+- `atlas` — 9 macros
+- `persona` — 9 macros
+- `marketplace` — 9 macros
+- `metalearning` — 8 macros
+- `physical` — 8 macros
+- `intel` — 8 macros
+- `system` — 8 macros
+- `semantic` — 7 macros
+- `transfer` — 7 macros
+- `reasoning` — 7 macros
+- `breakthrough` — 7 macros
+- `forgetting` — 7 macros
+- `forge` — 7 macros
+- `lens` — 7 macros
+- `experience` — 6 macros
+- `attention` — 6 macros
+- `commonsense` — 6 macros
+- `inference` — 6 macros
+- `attention_alloc` — 6 macros
+- `promotion` — 6 macros
+- `chat` — 6 macros
+- `cortex` — 6 macros
+- `reflection` — 5 macros
+- `hlr` — 5 macros
+- `council` — 5 macros
+- `dream` — 5 macros
+- `schema` — 5 macros
+- `autotag` — 5 macros
+- `collab` — 5 macros
+- `cache` — 5 macros
+- `webhook` — 5 macros
+- `automation` — 5 macros
+- `chicken3` — 4 macros
+- `explanation` — 4 macros
+- `repair_network` — 4 macros
+- `temporal` — 4 macros
+- `agent` — 4 macros
+- `plugin` — 4 macros
+- `admin` — 4 macros
+- `whiteboard` — 4 macros
+- `redis` — 4 macros
+- `voice` — 3 macros
+- `explore` — 3 macros
+- `wrapper` — 3 macros
+- `layer` — 3 macros
+- `anon` — 3 macros
+- `jobs` — 3 macros
+- `market` — 3 macros
+- `paper` — 3 macros
+- `lattice` — 3 macros
+- `resonance` — 3 macros
+- `export` — 3 macros
+- `visual` — 3 macros
+- `governor` — 3 macros
+- `db` — 3 macros
+- `entity` — 2 macros
+- `multimodal` — 2 macros
+- `tools` — 2 macros
+- `style` — 2 macros
+- `quality` — 2 macros
+- `settings` — 2 macros
+- `crawl` — 2 macros
+- `source` — 2 macros
+- `global` — 2 macros
+- `search` — 2 macros
+- `llm` — 2 macros
+- `import` — 2 macros
+- `shard` — 2 macros
+- `perf` — 2 macros
+- `obsidian` — 2 macros
+- `universe` — 2 macros
+- `foundation` — 1 macros
+- `ask` — 1 macros
+- `swarm` — 1 macros
+- `sim` — 1 macros
+- `spreadsheet` — 1 macros
+- `slides` — 1 macros
+- `compile` — 1 macros
+- `legal` — 1 macros
+- `experiment` — 1 macros
+- `context` — 1 macros
+- `interface` — 1 macros
+- `log` — 1 macros
+- `materials` — 1 macros
+- `synth` — 1 macros
+- `evolution` — 1 macros
+- `heartbeat` — 1 macros
+- `auth` — 1 macros
+- `org` — 1 macros
+- `audit` — 1 macros
+- `verify` — 1 macros
+- `skill` — 1 macros
+- `intent` — 1 macros
+- `harness` — 1 macros
+- `accounting` — 1 macros
+- `scope` — 1 macros
+- `graph` — 1 macros
+- `pwa` — 1 macros
+- `mobile` — 1 macros
+- `sync` — 1 macros
+- `backpressure` — 1 macros
+- `vscode` — 1 macros
+- `notion` — 1 macros
+- `integration` — 1 macros
+
+## Frontend lens count
+
+- 202 directories under `concord-frontend/app/lenses/`
+
+## Orphan / Dormant inventory
+
+- Orphan modules: 0
+- Dormant modules: 0
+- Dead tables: 25
+- Headless backends: 77
+- Orphan lenses: 153

@@ -67,7 +67,7 @@ export function TameAttemptOverlay({ eligibleCreature, onClose }: Props) {
       });
       const j = await r.json();
       setOutcome(j);
-    } catch (e) {
+    } catch {
       setOutcome({ ok: false, reason: 'network_error' });
     } finally {
       setSubmitting(false);

@@ -1174,7 +1174,7 @@ describe("Test 12: The One Undeniable Loop", () => {
     const query1 = "thermodynamics second law entropy";
 
     // Search lattice — nothing found
-    let found1 = [];
+    const found1 = [];
     for (const [id, dtu] of lattice) {
       if (dtu.human?.summary?.toLowerCase().includes("thermodynamics")) found1.push(dtu);
     }
@@ -1201,7 +1201,7 @@ describe("Test 12: The One Undeniable Loop", () => {
     const query2Start = Date.now();
     const query2 = "how does entropy relate to thermodynamics";
 
-    let found2 = [];
+    const found2 = [];
     for (const [id, dtu] of lattice) {
       const text = `${dtu.human?.summary || ""} ${(dtu.tags || []).join(" ")}`.toLowerCase();
       if (text.includes("thermodynamics") || text.includes("entropy")) found2.push(dtu);

@@ -199,7 +199,7 @@ test("applyAffectEvent with refId emits positive resolver signal on big positive
   }, { refId: interactionId });
   assert.strictEqual(r.ok, true);
   // The cross-emit is async (lazy import). Wait briefly then check.
-  await new Promise((resolve) => setTimeout(resolve, 50));
+  await new Promise((resolve) => { setTimeout(resolve, 50); });
   const row = db.prepare(`SELECT outcome FROM brain_interactions WHERE id = ?`).get(interactionId);
   // Resolution may be 'positive' if delta.v exceeded threshold,
   // or still 'pending' if engine math produced smaller delta. Both

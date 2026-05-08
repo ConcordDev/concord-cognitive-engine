@@ -1077,7 +1077,7 @@ export function createOracleEngine(opts = {}) {
       let violatedBy = null;
       for (const inv of invariants) {
         checked++;
-        // eslint-disable-next-line no-await-in-loop
+         
         const bad = await _brainViolates(answer, inv);
         if (bad) {
           theoremViolated = true;

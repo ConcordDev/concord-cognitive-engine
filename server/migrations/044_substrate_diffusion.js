@@ -1,4 +1,10 @@
 // server/migrations/044_substrate_diffusion.js
+//
+// NOTE (Phase 3.5.5 archival, May 2026):
+//   The `creation_diffusion` table here has zero SELECT references in
+//   the codebase. Superseded by the promotion-pipeline + breakthrough-
+//   clusters substrate. Idempotent CREATE preserved for existing DBs.
+//   REPLACED_BY: promotion-pipeline.js + breakthrough-clusters.js
 export function up(db) {
   db.exec(`
     CREATE TABLE IF NOT EXISTS skill_diffusion (

@@ -116,7 +116,7 @@ describe("LLM contract test file loads (sanity)", () => {
   it("gating env var is honored", () => {
     assert.equal(typeof ENABLED, "boolean");
     if (!ENABLED) {
-      // eslint-disable-next-line no-console
+       
       console.log("[llm-router-contract] gated: set CONCORD_BEHAVIOR_TEST_LLM=true on the RunPod box to exercise.");
     }
   });

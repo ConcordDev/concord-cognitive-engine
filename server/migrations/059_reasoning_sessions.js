@@ -1,5 +1,11 @@
 // server/migrations/059_reasoning_sessions.js
 // Ongoing shadow reasoning: session tracking and shadow DTU indexing.
+//
+// NOTE (Phase 3.5.5 archival, May 2026):
+//   `reasoning_sessions` has zero SELECT references — superseded by
+//   the HLR engine's in-memory trace store + reasoning-trace persistence.
+//   Idempotent CREATE preserved.
+//   REPLACED_BY: emergent/hlr-engine.js trace store + listTraces macro
 
 export function up(db) {
   // ALTER TABLE statements must run individually in SQLite
