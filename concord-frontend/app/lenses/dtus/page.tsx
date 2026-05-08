@@ -15,6 +15,7 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import type { DTU, DTUTier } from '@/lib/api/generated-types';
@@ -51,6 +52,18 @@ export default function DTUBrowserPage() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [showFeed, setShowFeed] = useState(true);
+
+  // Lens-scoped keyboard commands. Roam / Obsidian-graph idiom: l/g
+  // toggle list/grid, n new DTU, f toggles the live feed.
+  useLensCommand(
+    [
+      { id: 'view-list', keys: 'l', description: 'List view', category: 'view', action: () => setViewMode('list') },
+      { id: 'view-grid', keys: 'g', description: 'Grid view', category: 'view', action: () => setViewMode('grid') },
+      { id: 'new-dtu', keys: 'n', description: 'New DTU', category: 'actions', action: () => setShowCreateForm(true) },
+      { id: 'toggle-feed', keys: 'f', description: 'Toggle live feed', category: 'view', action: () => setShowFeed((v) => !v) },
+    ],
+    { lensId: 'dtus' }
+  );
 
   // Backend action wiring
   const runAction = useRunArtifact('dtus');

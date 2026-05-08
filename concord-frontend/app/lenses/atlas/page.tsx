@@ -5,6 +5,7 @@ import { LensShell } from '@/components/lens/LensShell';
 import { useQuery } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -60,6 +61,18 @@ export default function AtlasLensPage() {
   const [showFeatures, setShowFeatures] = useState(true);
   const [queryLat, setQueryLat] = useState('');
   const [queryLng, setQueryLng] = useState('');
+
+  // Lens-scoped keyboard commands. Mapping-tool idiom: t/s/a/c jump
+  // between layers (terrain/signals/anomalies/coverage).
+  useLensCommand(
+    [
+      { id: 'tab-terrain', keys: 't', description: 'Terrain', category: 'navigation', action: () => setTab('terrain') },
+      { id: 'tab-signals', keys: 's', description: 'Signals', category: 'navigation', action: () => setTab('signals') },
+      { id: 'tab-anomalies', keys: 'a', description: 'Anomalies', category: 'navigation', action: () => setTab('anomalies') },
+      { id: 'tab-coverage', keys: 'c', description: 'Coverage', category: 'navigation', action: () => setTab('coverage') },
+    ],
+    { lensId: 'atlas' }
+  );
 
   // ── Data fetching ──────────────────────────────────────────────────────
 
