@@ -10,7 +10,7 @@
  * controls stay caller-owned.
  */
 
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Inbox, Send, Star, Archive, Trash2, Tag, Clock,
   Paperclip, Reply, Forward, ChevronDown,

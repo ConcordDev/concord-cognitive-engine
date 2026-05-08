@@ -25,13 +25,6 @@ import { useUIStore } from '@/store/ui';
 import { cn } from '@/lib/utils';
 import { useLensShell } from './LensShell';
 
-function humanize(s: string): string {
-  return s
-    .replace(/[-_]+/g, ' ')
-    .replace(/\b\w/g, (c) => c.toUpperCase())
-    .trim();
-}
-
 export interface EmptyStateCTAProps {
   lensId?: string;
   /** Override the headline. Default: "Nothing here yet." */

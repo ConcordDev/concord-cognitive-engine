@@ -16,8 +16,11 @@
  */
 'use strict';
 
+// ESLint plugin loader is CJS — require() is the correct shape here.
+/* eslint-disable @typescript-eslint/no-require-imports */
 const path = require('path');
 const fs = require('fs');
+/* eslint-enable @typescript-eslint/no-require-imports */
 
 // ── Manifest index loader ────────────────────────────────────────────────────
 //
