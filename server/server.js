@@ -28661,6 +28661,41 @@ app.post("/api/world/quest-author", requireAuth, asyncHandler(async (req, res) =
   }
   res.json({ ok: true, questId: result.quest?.id, quest: result.quest });
 }));
+// Commune templates — community-defined gathering shapes that close the
+// cook → eat → fight → commune loop. Runtime registry in
+// server/lib/commune-templates.js. Endpoints below let creators author
+// templates; quest-engine + npc-conversation-initiator + faction
+// strategy can read them via list/get to instantiate live communes.
+app.get("/api/world/commune-templates", asyncHandler(async (req, res) => {
+  const ct = await import("./lib/commune-templates.js");
+  const filter = {};
+  if (req.query.trigger) filter.trigger = String(req.query.trigger);
+  if (req.query.location_type) filter.location_type = String(req.query.location_type);
+  res.json({ ok: true, templates: ct.listCommuneTemplates(filter) });
+}));
+app.get("/api/world/commune-templates/options", asyncHandler(async (_req, res) => {
+  const ct = await import("./lib/commune-templates.js");
+  res.json({
+    ok: true,
+    triggers: ct.COMMUNE_TRIGGERS,
+    locationTypes: ct.COMMUNE_LOCATION_TYPES,
+    ritualStepKinds: ct.COMMUNE_RITUAL_STEP_KINDS,
+  });
+}));
+app.get("/api/world/commune-templates/:id", asyncHandler(async (req, res) => {
+  const ct = await import("./lib/commune-templates.js");
+  const tpl = ct.getCommuneTemplate(req.params.id);
+  if (!tpl) return res.status(404).json({ ok: false, error: "not_found" });
+  res.json({ ok: true, template: tpl });
+}));
+app.post("/api/world/commune-author", requireAuth, asyncHandler(async (req, res) => {
+  const ct = await import("./lib/commune-templates.js");
+  const template = req.body || {};
+  if (req.user?.id && !template.author_id) template.author_id = req.user.id;
+  const result = ct.addCommuneTemplate(template);
+  if (!result.ok) return res.status(400).json(result);
+  res.json({ ok: true, templateId: template.id });
+}));
 
 // ── Performance telemetry: aggregate FPS / frame budget breaches ──────────
 // Frontend posts a rolling sample every 30s. We keep an in-memory ring
