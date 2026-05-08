@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -145,6 +146,20 @@ const STATUS_COLORS: Record<string, string> = {
 export default function EmergencyServicesLensPage() {
   const [activeMode, setActiveMode] = useState<ModeTab>('Dashboard');
   const [searchQuery, setSearchQuery] = useState('');
+
+  useLensCommand(
+    [
+      { id: 'mode-dashboard', keys: 'd', description: 'Dashboard', category: 'navigation', action: () => setActiveMode('Dashboard') },
+      { id: 'mode-calls', keys: 'c', description: 'Calls', category: 'navigation', action: () => setActiveMode('Calls') },
+      { id: 'mode-units', keys: 'u', description: 'Units', category: 'navigation', action: () => setActiveMode('Units') },
+      { id: 'mode-fire', keys: 'f', description: 'Fire', category: 'navigation', action: () => setActiveMode('Fire') },
+      { id: 'mode-ems', keys: 'e', description: 'EMS', category: 'navigation', action: () => setActiveMode('EMS') },
+      { id: 'mode-dispatch', keys: 'p', description: 'Dispatch', category: 'navigation', action: () => setActiveMode('Dispatch') },
+      { id: 'mode-resources', keys: 'r', description: 'Resources', category: 'navigation', action: () => setActiveMode('Resources') },
+      { id: 'mode-map', keys: 'm', description: 'Map', category: 'navigation', action: () => setActiveMode('Map') },
+    ],
+    { lensId: 'emergency-services' }
+  );
 
   const currentType = getTypeForTab(activeMode);
   const { items, isLoading, isError, error, refetch, create, remove } =

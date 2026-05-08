@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -79,6 +80,18 @@ export default function AgentsLensPage() {
   const [, setView] = useState<ViewMode>('dashboard');
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+
+  // Lens-scoped keyboard commands.
+  useLensCommand(
+    [
+      { id: 'view-dashboard', keys: 'd', description: 'Dashboard', category: 'navigation', action: () => setView('dashboard') },
+      { id: 'view-builder', keys: 'b', description: 'Builder', category: 'navigation', action: () => setView('builder') },
+      { id: 'view-logs', keys: 'l', description: 'Logs', category: 'navigation', action: () => setView('logs') },
+      { id: 'view-workflows', keys: 'w', description: 'Workflows', category: 'navigation', action: () => setView('workflows') },
+      { id: 'new-agent', keys: 'n', description: 'New agent', category: 'actions', action: () => setShowCreate(true) },
+    ],
+    { lensId: 'agents' }
+  );
   const [filter, setFilter] = useState<AgentFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [detailTab, setDetailTab] = useState<'overview' | 'logs' | 'memory' | 'config'>('overview');

@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { apiHelpers } from '@/lib/api/client';
 
@@ -93,6 +94,15 @@ export default function VoteLensPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'proposals' | 'dashboard'>('proposals');
   const [expandedProposal, setExpandedProposal] = useState<string | null>(null);
+
+  useLensCommand(
+    [
+      { id: 'tab-proposals', keys: 'p', description: 'Proposals', category: 'navigation', action: () => setActiveTab('proposals') },
+      { id: 'tab-dashboard', keys: 'd', description: 'Dashboard', category: 'navigation', action: () => setActiveTab('dashboard') },
+      { id: 'new-proposal', keys: 'n', description: 'New proposal', category: 'actions', action: () => setShowCreateModal(true) },
+    ],
+    { lensId: 'vote' }
+  );
   const [showFeatures, setShowFeatures] = useState(true);
 
   // Data

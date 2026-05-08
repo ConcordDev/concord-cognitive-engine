@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ds } from '@/lib/design-system';
@@ -119,6 +120,19 @@ export default function DefenseLensPage() {
 
   const [activeMode, setActiveMode] = useState<ModeTab>('Dashboard');
   const [searchQuery, setSearchQuery] = useState('');
+
+  useLensCommand(
+    [
+      { id: 'mode-dashboard', keys: 'd', description: 'Dashboard', category: 'navigation', action: () => setActiveMode('Dashboard') },
+      { id: 'mode-operations', keys: 'o', description: 'Operations', category: 'navigation', action: () => setActiveMode('Operations') },
+      { id: 'mode-assets', keys: 'a', description: 'Assets', category: 'navigation', action: () => setActiveMode('Assets') },
+      { id: 'mode-personnel', keys: 'p', description: 'Personnel', category: 'navigation', action: () => setActiveMode('Personnel') },
+      { id: 'mode-intel', keys: 'i', description: 'Intel', category: 'navigation', action: () => setActiveMode('Intel') },
+      { id: 'mode-logistics', keys: 'l', description: 'Logistics', category: 'navigation', action: () => setActiveMode('Logistics') },
+      { id: 'mode-comms', keys: 'c', description: 'Communications', category: 'navigation', action: () => setActiveMode('Communications') },
+    ],
+    { lensId: 'defense' }
+  );
   const [showFeatures, setShowFeatures] = useState(true);
   const [showEditor, setShowEditor] = useState(false);
 

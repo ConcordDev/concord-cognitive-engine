@@ -11,6 +11,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useState } from 'react';
@@ -26,6 +27,17 @@ type TabKey = 'attention' | 'repair_network' | 'physical' | 'explore' | 'dtu';
 export default function OpsLensPage() {
   useLensNav('ops');
   const [activeTab, setActiveTab] = useState<TabKey>('attention');
+
+  useLensCommand(
+    [
+      { id: 'tab-attention', keys: 'a', description: 'Attention allocator', category: 'navigation', action: () => setActiveTab('attention') },
+      { id: 'tab-repair', keys: 'r', description: 'Repair network', category: 'navigation', action: () => setActiveTab('repair_network') },
+      { id: 'tab-physical', keys: 'p', description: 'Physical', category: 'navigation', action: () => setActiveTab('physical') },
+      { id: 'tab-explore', keys: 'x', description: 'Explore', category: 'navigation', action: () => setActiveTab('explore') },
+      { id: 'tab-dtu', keys: 'd', description: 'DTU', category: 'navigation', action: () => setActiveTab('dtu') },
+    ],
+    { lensId: 'ops' }
+  );
 
   const attention = useQuery({
     queryKey: ['ops-attention'],
