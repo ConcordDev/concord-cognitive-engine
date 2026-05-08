@@ -15,10 +15,23 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Heart, Moon, Smile, BookOpen, Activity, TrendingUp, Loader2,
+  Sun, Trophy, Award, Calendar,
   type LucideIcon,
 } from 'lucide-react';
+import dynamic from 'next/dynamic';
 
-type TabKey = 'overview' | 'fitness' | 'sleep' | 'mood' | 'journal';
+// Absorbed UX components — mounted as self-lens tabs. Each ships with
+// built-in seed-data fallbacks for empty inputs so the surface renders
+// before a backend macro is wired. Replace seeds with real data via
+// per-component query hooks in follow-on commits.
+const DailyRituals = dynamic(() => import('@/components/world-lens/DailyRituals'), { ssr: false });
+const AchievementSystem = dynamic(() => import('@/components/world-lens/AchievementSystem'), { ssr: false });
+const ProgressionPanelExt = dynamic(() => import('@/components/world-lens/ProgressionPanel'), { ssr: false });
+const SeasonalContent = dynamic(() => import('@/components/world-lens/SeasonalContent'), { ssr: false });
+
+type TabKey =
+  | 'overview' | 'fitness' | 'sleep' | 'mood' | 'journal'
+  | 'rituals' | 'achievements' | 'milestones' | 'season';
 
 export default function UnifiedSelfLensPage() {
   useLensNav('self');
@@ -71,6 +84,10 @@ export default function UnifiedSelfLensPage() {
     { key: 'sleep',    label: 'Sleep',    icon: Moon },
     { key: 'mood',     label: 'Mood',     icon: Smile },
     { key: 'journal',  label: 'Journal',  icon: BookOpen },
+    { key: 'rituals',     label: 'Rituals',     icon: Sun },
+    { key: 'achievements',label: 'Achievements',icon: Trophy },
+    { key: 'milestones',  label: 'Milestones',  icon: Award },
+    { key: 'season',      label: 'Season',      icon: Calendar },
   ];
 
   return (
@@ -176,6 +193,26 @@ export default function UnifiedSelfLensPage() {
                   ))}
                 </ul>
               ) : <Empty>No journal entries — visit the Journal lens to write one.</Empty>}
+            </Section>
+          )}
+          {activeTab === 'rituals' && (
+            <Section k="rituals">
+              <DailyRituals />
+            </Section>
+          )}
+          {activeTab === 'achievements' && (
+            <Section k="achievements">
+              <AchievementSystem achievements={[]} progress={[]} />
+            </Section>
+          )}
+          {activeTab === 'milestones' && (
+            <Section k="milestones">
+              <ProgressionPanelExt />
+            </Section>
+          )}
+          {activeTab === 'season' && (
+            <Section k="season">
+              <SeasonalContent />
             </Section>
           )}
         </AnimatePresence>
