@@ -2,7 +2,7 @@
 
 _Source for the `Current Wiring Status` section in CLAUDE.md. Human merges; cartographer never auto-rewrites CLAUDE.md._
 
-Generated 2026-05-07T23:28:11.714Z.
+Generated 2026-05-08T06:23:59.953Z.
 
 ## Heartbeat-registered modules
 
@@ -13,6 +13,7 @@ Generated 2026-05-07T23:28:11.714Z.
 - `eco-expiry-sweep` (frequency 5)
 - `environment-sensor` (frequency 5)
 - `environment-sense` (frequency 5)
+- `npc-conversation-initiator` (frequency 8)
 - `npc-knowledge-bridge` (frequency 10)
 - `corpse-cleanup` (frequency 10)
 - `metrics-decay` (frequency 20)
@@ -50,11 +51,11 @@ Generated 2026-05-07T23:28:11.714Z.
 - `cri` — 11 macros
 - `shield` — 11 macros
 - `quest` — 10 macros
+- `dtu` — 10 macros
 - `mesh` — 10 macros
 - `hlm` — 9 macros
 - `research` — 9 macros
 - `apps` — 9 macros
-- `dtu` — 9 macros
 - `atlas` — 9 macros
 - `persona` — 9 macros
 - `marketplace` — 9 macros
@@ -67,6 +68,7 @@ Generated 2026-05-07T23:28:11.714Z.
 - `reasoning` — 7 macros
 - `breakthrough` — 7 macros
 - `forgetting` — 7 macros
+- `forge` — 7 macros
 - `lens` — 7 macros
 - `experience` — 6 macros
 - `attention` — 6 macros
@@ -97,7 +99,6 @@ Generated 2026-05-07T23:28:11.714Z.
 - `redis` — 4 macros
 - `voice` — 3 macros
 - `explore` — 3 macros
-- `forge` — 3 macros
 - `wrapper` — 3 macros
 - `layer` — 3 macros
 - `anon` — 3 macros
@@ -162,12 +163,12 @@ Generated 2026-05-07T23:28:11.714Z.
 
 ## Frontend lens count
 
-- 200 directories under `concord-frontend/app/lenses/`
+- 202 directories under `concord-frontend/app/lenses/`
 
 ## Orphan / Dormant inventory
 
 - Orphan modules: 0
 - Dormant modules: 0
 - Dead tables: 25
-- Headless backends: 78
-- Orphan lenses: 152
+- Headless backends: 77
+- Orphan lenses: 153

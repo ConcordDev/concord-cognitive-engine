@@ -1,6 +1,6 @@
 # Gaps & Wire Targets
 
-_Generated 2026-05-07T23:28:11.714Z. Each gap proposes a concrete wire action._
+_Generated 2026-05-08T06:23:59.953Z. Each gap proposes a concrete wire action._
 
 ## Dead tables (25)
 
@@ -40,7 +40,7 @@ _None._
 
 _None — every module either has a heartbeat or is invoked by a macro callsite._
 
-## Headless backend domains (78)
+## Headless backend domains (77)
 
 | Domain | Macro count | Suggested frontend lens dir |
 |---|---:|---|
@@ -65,14 +65,13 @@ _None — every module either has a heartbeat or is invoked by a macro callsite.
 | `promotion` | 6 | `concord-frontend/app/lenses/promotion/page.tsx` |
 | `explore` | 3 | `concord-frontend/app/lenses/explore/page.tsx` |
 | `dream` | 5 | `concord-frontend/app/lenses/dream/page.tsx` |
-| `dtu` | 9 | `concord-frontend/app/lenses/dtu/page.tsx` |
+| `dtu` | 10 | `concord-frontend/app/lenses/dtu/page.tsx` |
 | `shield` | 11 | `concord-frontend/app/lenses/shield/page.tsx` |
 | `foundation` | 1 | `concord-frontend/app/lenses/foundation/page.tsx` |
 | `intel` | 8 | `concord-frontend/app/lenses/intel/page.tsx` |
 | `cortex` | 6 | `concord-frontend/app/lenses/cortex/page.tsx` |
 | `style` | 2 | `concord-frontend/app/lenses/style/page.tsx` |
 | `ask` | 1 | `concord-frontend/app/lenses/ask/page.tsx` |
-| `forge` | 3 | `concord-frontend/app/lenses/forge/page.tsx` |
 | `swarm` | 1 | `concord-frontend/app/lenses/swarm/page.tsx` |
 | `wrapper` | 3 | `concord-frontend/app/lenses/wrapper/page.tsx` |
 | `layer` | 3 | `concord-frontend/app/lenses/layer/page.tsx` |
@@ -94,8 +93,9 @@ _None — every module either has a heartbeat or is invoked by a macro callsite.
 | `agent` | 4 | `concord-frontend/app/lenses/agent/page.tsx` |
 | `crawl` | 2 | `concord-frontend/app/lenses/crawl/page.tsx` |
 | `source` | 2 | `concord-frontend/app/lenses/source/page.tsx` |
+| `verify` | 1 | `concord-frontend/app/lenses/verify/page.tsx` |
 
-## Orphan lenses (152)
+## Orphan lenses (153)
 
 | Lens dir | Reason | Action |
 |---|---|---|
@@ -149,7 +149,7 @@ _None — every module either has a heartbeat or is invoked by a macro callsite.
 | `emergency-services` | no_matching_backend_domain | wire backend OR remove |
 | `energy` | no_matching_backend_domain | wire backend OR remove |
 | `engineering` | no_matching_backend_domain | wire backend OR remove |
-| ... | _+102 more_ | |
+| ... | _+103 more_ | |
 
 ## Unused macros (0)
 
@@ -157,9 +157,13 @@ _None — every module either has a heartbeat or is invoked by a macro callsite.
 
 _None._
 
-## Unshaped socket events (0)
+## Unshaped socket events (3)
 
-_None — every emit is registered in `event-shapes.js`._
+| Event | First emitter | Action |
+|---|---|---|
+| `forge:template:created` | server/emergent/forge-template-engine.js:1206 | add to event-shapes.js |
+| `forge:template:generated` | server/emergent/forge-template-engine.js:1293 | add to event-shapes.js |
+| `forge:template:published` | server/emergent/forge-template-engine.js:1383 | add to event-shapes.js |
 
 ## Universe-coverage gaps (in-scope categories)
 
