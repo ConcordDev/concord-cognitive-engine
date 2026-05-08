@@ -501,6 +501,13 @@ jobs:
     name: E2E Tests
     runs-on: ubuntu-latest
     needs: [lint-and-test]
+    # Job-level hard timeout. Without this, hosted runners would
+    # eventually drop comms with GitHub (~52min in practice) and the
+    # job dies of "lost communication" — a confusing failure mode that
+    # masks real timing issues. 25min is comfortable headroom over the
+    # observed clean-run time (~12-18min) and still fails fast when
+    # something hangs.
+    timeout-minutes: 25
     # E2E now runs with Ollama provisioned as a service (qwen2.5:0.5b
     # for the smallest sane model that exercises the chat path) plus
     # Stripe test-mode keys for wallet-flow. OAuth specs use page.route
@@ -535,7 +542,12 @@ jobs:
 
       - name: Install Playwright browsers
         working-directory: ./concord-frontend
-        run: npx playwright install --with-deps chromium firefox
+        # Only chromium on PR runs — firefox-specific bugs are rare,
+        # the perf cost of installing both browsers + running specs in
+        # both is high (~2x), and the nightly workflow can pick up
+        # firefox + webkit when added. Keep this aligned with the
+        # `Run E2E tests` step's --project flag below.
+        run: npx playwright install --with-deps chromium
 
       - name: Pull tiny Ollama model for chat specs
         # qwen2.5:0.5b is ~400MB — small enough that pull + load fits
@@ -600,7 +612,11 @@ jobs:
         env:
           BASE_URL: http://localhost:3000
           NEXT_PUBLIC_API_URL: http://localhost:5050
-        run: npx playwright test --project=chromium --project=firefox
+        # Chromium-only on PR runs (matches the install step above).
+        # globalTimeout in playwright.config caps the entire suite at
+        # 20min so we bail before the job's 25min hard timeout — that
+        # leaves time for the artifact upload + cleanup steps.
+        run: npx playwright test --project=chromium
 
       - name: Upload test results
         uses: actions/upload-artifact@v6
