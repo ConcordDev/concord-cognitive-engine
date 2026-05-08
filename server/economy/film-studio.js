@@ -748,43 +748,56 @@ export function getFilmRemixes(db, sourceDtuId) {
 }
 
 /**
- * Get the full remix lineage chain for a film.
+ * Get the full remix lineage chain for a film. Single recursive CTE
+ * walks the ancestor chain in one round-trip, then a single batched
+ * SELECT joins film_dtus + creative_artifacts (was 2N queries → 2).
  */
 export function getRemixLineage(db, filmDtuId, maxDepth = 50) {
   const lineage = [];
-  const visited = new Set();
-  const queue = [{ id: filmDtuId, depth: 0 }];
+  // Step 1 — recursive CTE collects ancestor edges. We capture the FIRST
+  // discovery (MIN depth) per ancestor to mirror BFS-first-visit semantics.
+  const edges = db.prepare(`
+    WITH RECURSIVE ancestors(remix_dtu_id, source_dtu_id, remix_type, depth) AS (
+      SELECT remix_dtu_id, source_dtu_id, remix_type, 1
+        FROM film_remixes
+       WHERE remix_dtu_id = ?
+      UNION
+      SELECT fr.remix_dtu_id, fr.source_dtu_id, fr.remix_type, ancestors.depth + 1
+        FROM film_remixes fr
+        JOIN ancestors ON fr.remix_dtu_id = ancestors.source_dtu_id
+       WHERE ancestors.depth < ?
+    )
+    SELECT source_dtu_id, remix_type, MIN(depth) AS depth
+      FROM ancestors
+     GROUP BY source_dtu_id
+  `).all(filmDtuId, maxDepth);
 
-  while (queue.length > 0) {
-    const current = queue.shift();
-    if (visited.has(current.id) || current.depth > maxDepth) continue;
-    visited.add(current.id);
+  if (edges.length === 0) return lineage;
 
-    const parents = db.prepare(
-      "SELECT source_dtu_id, remix_type FROM film_remixes WHERE remix_dtu_id = ?"
-    ).all(current.id);
+  // Step 2 — single batched join to fetch parent film metadata.
+  const ids = edges.map(e => e.source_dtu_id);
+  const placeholders = ids.map(() => "?").join(",");
+  const parentRows = db.prepare(`
+    SELECT f.id, f.film_type, f.creator_id, ca.title
+      FROM film_dtus f
+      JOIN creative_artifacts ca ON f.artifact_id = ca.id
+     WHERE f.id IN (${placeholders})
+  `).all(...ids);
+  const parentById = new Map(parentRows.map(p => [p.id, p]));
 
-    for (const parent of parents) {
-      const parentFilm = db.prepare(`
-        SELECT f.id, f.film_type, f.creator_id, ca.title
-        FROM film_dtus f
-        JOIN creative_artifacts ca ON f.artifact_id = ca.id
-        WHERE f.id = ?
-      `).get(parent.source_dtu_id);
-
-      if (parentFilm && !visited.has(parentFilm.id)) {
-        lineage.push({
-          filmDtuId: parentFilm.id,
-          title: parentFilm.title,
-          creatorId: parentFilm.creator_id,
-          remixType: parent.remix_type,
-          depth: current.depth + 1,
-        });
-        queue.push({ id: parentFilm.id, depth: current.depth + 1 });
-      }
-    }
+  // Preserve depth order so callers see the BFS-equivalent traversal.
+  edges.sort((a, b) => a.depth - b.depth);
+  for (const edge of edges) {
+    const parentFilm = parentById.get(edge.source_dtu_id);
+    if (!parentFilm) continue;
+    lineage.push({
+      filmDtuId: parentFilm.id,
+      title: parentFilm.title,
+      creatorId: parentFilm.creator_id,
+      remixType: edge.remix_type,
+      depth: edge.depth,
+    });
   }
-
   return lineage;
 }
 

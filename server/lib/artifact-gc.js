@@ -1,3 +1,4 @@
+// @sync-fs-ok: garbage collector reads/writes from a startup tick, never request-handler
 /**
  * Artifact Garbage Collection
  *

@@ -179,8 +179,19 @@ export async function loadLensManifestMacros(root) {
 
 const SYNC_FS_OK_MARK = /@sync-fs-ok\b/;
 const STARTUP_PATH_HINT = /[/\\](?:persistence|bootstrap|seed|init|migration|repair-cortex|prophet)/i;
+const SQL_LOOP_OK_MARK = /@sql-loop-ok\b/;
 
 export function syncFsExempt(filePath, content) {
   if (SYNC_FS_OK_MARK.test(content)) return true;
   return STARTUP_PATH_HINT.test(filePath);
+}
+
+/**
+ * `@sql-loop-ok` annotation — operator opt-out for the N+1 SQL detector.
+ * Used for files where the per-row work is required (e.g. business logic
+ * that depends on the previous iteration), or where the loop iterates a
+ * tiny constant set of table names.
+ */
+export function sqlLoopExempt(_filePath, content) {
+  return SQL_LOOP_OK_MARK.test(content);
 }

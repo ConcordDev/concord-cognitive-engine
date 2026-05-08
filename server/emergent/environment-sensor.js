@@ -59,22 +59,32 @@ export function runEnvironmentSensor({ db, state: _state, tickCount: _tickCount 
   if (activeWorlds.length === 0) return { ok: true, pruned, worlds: 0 };
 
   // 3) For each, read climate config + time-of-day, write baseline.
+  // Single batched fetch of rule_modulators replaces per-world loop (was N+1).
   let written = 0;
+  const placeholders = activeWorlds.map(() => "?").join(",");
+  const worldRows = activeWorlds.length > 0
+    ? db.prepare(`SELECT id, rule_modulators FROM worlds WHERE id IN (${placeholders})`).all(...activeWorlds)
+    : [];
+  const rulesByWorld = new Map(worldRows.map(r => [r.id, _safeParseJSON(r.rule_modulators) ?? {}]));
+
+  // time_of_day_s lives on the same row when present — try one batched
+  // SELECT first, fall back per-world if the column doesn't exist.
+  let todByWorld = new Map();
+  try {
+    const todRows = activeWorlds.length > 0
+      ? db.prepare(`SELECT id, time_of_day_s FROM worlds WHERE id IN (${placeholders})`).all(...activeWorlds)
+      : [];
+    todByWorld = new Map(todRows.map(r => [r.id, Number(r.time_of_day_s)]));
+  } catch { /* column may not exist on minimal builds */ }
+
   for (const worldId of activeWorlds) {
     try {
-      const world = db.prepare(`
-        SELECT rule_modulators FROM worlds WHERE id = ?
-      `).get(worldId);
-      const rules = _safeParseJSON(world?.rule_modulators) ?? {};
+      const rules = rulesByWorld.get(worldId) ?? {};
       const climate = rules.climate ?? {};
 
       // Time-of-day: prefer worlds.time_of_day_s if the column exists; fall
       // back to wall-clock UTC seconds-of-day. Tests can pin either.
-      let secondsOfDay = null;
-      try {
-        const tod = db.prepare(`SELECT time_of_day_s FROM worlds WHERE id = ?`).get(worldId);
-        secondsOfDay = Number(tod?.time_of_day_s);
-      } catch { /* column may not exist */ }
+      let secondsOfDay = todByWorld.get(worldId);
       if (!Number.isFinite(secondsOfDay)) {
         secondsOfDay = (Math.floor(Date.now() / 1000)) % SECONDS_PER_DAY;
       }

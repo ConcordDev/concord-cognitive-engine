@@ -1,3 +1,4 @@
+// @sync-fs-ok: skill registry boot-loads frontmatter; file count is small + bounded
 // server/lib/agentic/skills.js
 // Skill registry loader — reads EMERGENT.md files from the skills/ directory.
 // Eager skills load frontmatter at startup. On-demand skills load full content when called.

@@ -214,6 +214,7 @@ export function createLootBag(db, worldId, position, ownerType, ownerId, killerT
  * Returns the claimed items on success, null if already claimed or expired.
  */
 export function claimLootBag(db, bagId, claimerId, claimerType = 'player') {
+  // TODO: project explicit columns (auto-fix suggestion)
   const bag = db.prepare('SELECT * FROM loot_bags WHERE id = ?').get(bagId);
   if (!bag) return null;
   if (bag.claimed_by) return null;

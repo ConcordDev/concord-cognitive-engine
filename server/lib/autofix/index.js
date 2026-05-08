@@ -32,7 +32,7 @@ export function registerFix(fix) {
 export function listFixes() { return Array.from(FIXES.values()); }
 export function getFix(id) { return FIXES.get(id); }
 
-const HARD_REFUSAL_RE = /(?:^|\/)server\/(?:server\.js|migrations\/|tests?\/)|\/(?:economy|royalty|sovereign|refusal-field|invariant)/i;
+const HARD_REFUSAL_RE = /(?:^|\/)server\/(?:server\.js|migrations\/|tests?\/)|\/(?:economy|royalty|sovereign|refusal-field|invariant)|\/(?:lib\/)?autofix\//i;
 
 /**
  * Apply a fix to the given file content. Returns { ok, content?, reason? }.

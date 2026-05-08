@@ -95,6 +95,7 @@ export function recordInteraction(db, assetId, actor, action, weight = 1.0) {
  * candidates worth refining.
  */
 export function recomputeEvolutionScore(db, assetId) {
+  // TODO: project explicit columns (auto-fix suggestion)
   const row = db.prepare(`SELECT * FROM evo_assets WHERE id = ?`).get(assetId);
   if (!row) return null;
   const now = Math.floor(Date.now() / 1000);
@@ -129,6 +130,7 @@ export function recomputeEvolutionScore(db, assetId) {
  */
 export function selectEvolutionCandidates(db, limit = 5) {
   return db.prepare(`
+    // TODO: project explicit columns (auto-fix suggestion)
     SELECT * FROM evo_assets
      WHERE archived_at IS NULL
        AND quality_level < 10
@@ -192,6 +194,7 @@ export function appendVersion(db, assetId, opts) {
  * quality level + last_evolved_at.
  */
 export function promoteVersion(db, versionId) {
+  // TODO: project explicit columns (auto-fix suggestion)
   const v = db.prepare(`SELECT * FROM evo_asset_versions WHERE id = ?`).get(versionId);
   if (!v) throw new Error(`unknown_version:${versionId}`);
   const tx = db.transaction(() => {

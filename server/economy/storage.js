@@ -153,8 +153,13 @@ export function cleanupUnreferencedArtifacts(db) {
     AND last_referenced_at < datetime('now', ?)
   `).all(`-${graceDays} days`);
 
-  for (const entry of unreferenced) {
-    db.prepare("DELETE FROM artifact_vault WHERE hash = ?").run(entry.hash);
+  // Single batched DELETE replaces the per-entry loop (was N+1).
+  // Chunked at 500 to stay under SQLite's variable cap.
+  const hashes = unreferenced.map(e => e.hash);
+  for (let i = 0; i < hashes.length; i += 500) {
+    const chunk = hashes.slice(i, i + 500);
+    const placeholders = chunk.map(() => "?").join(",");
+    db.prepare(`DELETE FROM artifact_vault WHERE hash IN (${placeholders})`).run(...chunk);
   }
 
   return { ok: true, cleaned: unreferenced.length };

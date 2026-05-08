@@ -546,12 +546,15 @@ export async function processStripeWithdrawal(db, { withdrawalId, requestId, ip 
       },
     });
 
-    // Step 3: Mark ledger entries as complete and burn coins from treasury
+    // Step 3: Mark ledger entries as complete and burn coins from treasury.
+    // Single batched UPDATE replaces the per-entry loop (was N+1).
     const doComplete = db.transaction(() => {
-      for (const entry of ledgerResults) {
+      const ids = ledgerResults.map(e => e.id);
+      if (ids.length > 0) {
+        const placeholders = ids.map(() => "?").join(",");
         db.prepare(
-          "UPDATE economy_ledger SET status = 'complete' WHERE id = ?"
-        ).run(entry.id);
+          `UPDATE economy_ledger SET status = 'complete' WHERE id IN (${placeholders})`,
+        ).run(...ids);
       }
 
       db.prepare(`
@@ -596,13 +599,16 @@ export async function processStripeWithdrawal(db, { withdrawalId, requestId, ip 
       withdrawal: { ...wd, status: "complete" },
     };
   } catch (err) {
-    // Stripe transfer failed — reverse the ledger entries
+    // Stripe transfer failed — reverse the ledger entries.
+    // Single batched UPDATE replaces the per-entry loop (was N+1).
     try {
       const doReverse = db.transaction(() => {
-        for (const entry of ledgerResults) {
+        const ids = ledgerResults.map(e => e.id);
+        if (ids.length > 0) {
+          const placeholders = ids.map(() => "?").join(",");
           db.prepare(
-            "UPDATE economy_ledger SET status = 'reversed' WHERE id = ?"
-          ).run(entry.id);
+            `UPDATE economy_ledger SET status = 'reversed' WHERE id IN (${placeholders})`,
+          ).run(...ids);
         }
 
         db.prepare(`

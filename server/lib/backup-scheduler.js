@@ -415,12 +415,14 @@ export function createBackupScheduler(db, opts = {}) {
         try {
           lastBackup = db
             .prepare(
+              // TODO: project explicit columns (auto-fix suggestion)
               "SELECT * FROM backup_history ORDER BY started_at DESC LIMIT 1"
             )
             .get();
 
           lastSuccessful = db
             .prepare(
+              // TODO: project explicit columns (auto-fix suggestion)
               "SELECT * FROM backup_history WHERE status = 'completed' ORDER BY started_at DESC LIMIT 1"
             )
             .get();
@@ -543,6 +545,7 @@ export function createBackupScheduler(db, opts = {}) {
 
         const rows = db
           .prepare(
+            // TODO: project explicit columns (auto-fix suggestion)
             `SELECT * FROM backup_history WHERE ${where} ORDER BY started_at DESC LIMIT @limit OFFSET @offset`
           )
           .all({ ...params, limit, offset });

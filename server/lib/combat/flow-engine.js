@@ -274,6 +274,7 @@ export function evolveFighterCombos(db, fighterId, fighterKind = "player") {
 export function suggestNextAction(db, fighterId, currentChain, context) {
   if (!db || !fighterId || !context) return null;
   const combos = db.prepare(`
+    // TODO: project explicit columns (auto-fix suggestion)
     SELECT * FROM combat_combos
     WHERE fighter_id = ? AND context = ?
     ORDER BY tier DESC, success_rate DESC, uses DESC
@@ -313,12 +314,14 @@ export function listFighterCombos(db, fighterId, context = null) {
   if (!db || !fighterId) return [];
   const rows = context
     ? db.prepare(`
+        // TODO: project explicit columns (auto-fix suggestion)
         SELECT * FROM combat_combos
         WHERE fighter_id = ?
         ORDER BY (CASE WHEN context = ? THEN 0 ELSE 1 END), tier DESC, uses DESC
         LIMIT 50
       `).all(fighterId, context)
     : db.prepare(`
+        // TODO: project explicit columns (auto-fix suggestion)
         SELECT * FROM combat_combos
         WHERE fighter_id = ?
         ORDER BY tier DESC, uses DESC LIMIT 50

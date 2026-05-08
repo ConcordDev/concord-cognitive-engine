@@ -1,3 +1,4 @@
+// @sync-fs-ok: DTU pack/unpack archive format requires byte-exact ordering for signature verification
 /**
  * DTU Container Format (.dtu)
  *
@@ -139,12 +140,12 @@ export async function packDTUContainer(dtu, artifactRootDir) {
     const manifest = buildManifest(dtu);
     const manifestJson = JSON.stringify(manifest, null, 2);
     const manifestBuf = Buffer.from(manifestJson, "utf-8");
-    fs.writeFileSync(path.join(stagingDir, "manifest.json"), manifestBuf);
+    await fs.promises.writeFile(path.join(stagingDir, "manifest.json"), manifestBuf);
 
     // 2. Build and write content.md.gz
     const contentMd = buildContentMarkdown(dtu);
     const contentBuf = await gzip(Buffer.from(contentMd, "utf-8"));
-    fs.writeFileSync(path.join(stagingDir, "content.md.gz"), contentBuf);
+    await fs.promises.writeFile(path.join(stagingDir, "content.md.gz"), contentBuf);
 
     // 3. Include primary artifact if it exists on disk
     const artifactsDir = path.join(stagingDir, "artifacts");
@@ -186,7 +187,7 @@ export async function packDTUContainer(dtu, artifactRootDir) {
 
     // 5. Compute and write signature
     const signature = computeSignature(manifestBuf, contentBuf);
-    fs.writeFileSync(path.join(stagingDir, "signature"), signature, "utf-8");
+    await fs.promises.writeFile(path.join(stagingDir, "signature"), signature, "utf-8");
 
     // 6. Create tar archive
     const containerPath = path.join(tmpBase, `${dtu.id}.dtu`);
@@ -197,7 +198,7 @@ export async function packDTUContainer(dtu, artifactRootDir) {
     ]);
 
     // Get final container size
-    const containerStat = fs.statSync(containerPath);
+    const containerStat = await fs.promises.stat(containerPath);
 
     logger.info("dtu-container", `Packed container for DTU ${dtu.id} (${containerStat.size} bytes)`);
 
@@ -249,13 +250,13 @@ export async function unpackDTUContainer(containerPath, outputDir) {
     if (!fs.existsSync(manifestPath)) {
       return { error: "Container missing manifest.json" };
     }
-    const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
+    const manifest = JSON.parse(await fs.promises.readFile(manifestPath, "utf-8"));
 
     // Read and decompress content
     const contentGzPath = path.join(extractDir, "content.md.gz");
     let contentText = "";
     if (fs.existsSync(contentGzPath)) {
-      const compressed = fs.readFileSync(contentGzPath);
+      const compressed = await fs.promises.readFile(contentGzPath);
       const decompressed = await gunzip(compressed);
       contentText = decompressed.toString("utf-8");
     }
@@ -264,9 +265,9 @@ export async function unpackDTUContainer(containerPath, outputDir) {
     const signaturePath = path.join(extractDir, "signature");
     let valid = false;
     if (fs.existsSync(signaturePath)) {
-      const storedSig = fs.readFileSync(signaturePath, "utf-8").trim();
-      const manifestBuf = fs.readFileSync(manifestPath);
-      const contentBuf = fs.existsSync(contentGzPath) ? fs.readFileSync(contentGzPath) : Buffer.alloc(0);
+      const storedSig = await fs.promises.readFile(signaturePath, "utf-8").trim();
+      const manifestBuf = await fs.promises.readFile(manifestPath);
+      const contentBuf = fs.existsSync(contentGzPath) ? await fs.promises.readFile(contentGzPath) : Buffer.alloc(0);
       const computedSig = computeSignature(manifestBuf, contentBuf);
       valid = storedSig === computedSig;
     }
@@ -401,9 +402,9 @@ export async function verifyContainerIntegrity(containerPath) {
       return false;
     }
 
-    const storedSig = fs.readFileSync(signaturePath, "utf-8").trim();
-    const manifestBuf = fs.readFileSync(manifestPath);
-    const contentBuf = fs.existsSync(contentGzPath) ? fs.readFileSync(contentGzPath) : Buffer.alloc(0);
+    const storedSig = await fs.promises.readFile(signaturePath, "utf-8").trim();
+    const manifestBuf = await fs.promises.readFile(manifestPath);
+    const contentBuf = fs.existsSync(contentGzPath) ? await fs.promises.readFile(contentGzPath) : Buffer.alloc(0);
     const computedSig = computeSignature(manifestBuf, contentBuf);
 
     const valid = storedSig === computedSig;

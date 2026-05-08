@@ -30,6 +30,13 @@ const RUN_MACRO_RE = /runMacro\s*\(\s*['"`]([a-zA-Z0-9_-]+)['"`]\s*,\s*['"`]([a-
 const LENS_RUN_BODY_RE = /domain\s*:\s*['"`]([a-zA-Z0-9_-]+)['"`]\s*,\s*name\s*:\s*['"`]([a-zA-Z0-9_.\-]+)['"`]/g;
 const TABLE_DDL_RE = /CREATE\s+TABLE(?:\s+IF\s+NOT\s+EXISTS)?\s+([a-zA-Z_][a-zA-Z0-9_]*)/gi;
 const TABLE_REF_RE = /\b(?:FROM|JOIN|INTO|UPDATE|TABLE)\s+([a-zA-Z_][a-zA-Z0-9_]*)/gi;
+// Recognize tables retired by later migrations. A table flagged orphan
+// purely because the read sites disappeared but the CREATE remains
+// shouldn't be reported once a DROP migration has shipped.
+const TABLE_DROP_RE = /DROP\s+TABLE(?:\s+IF\s+EXISTS)?\s+([a-zA-Z_][a-zA-Z0-9_]*)/gi;
+// Migrations 120-124 use a shared rescue helper — pull table names out of
+// the array literal too.
+const RESCUE_DROP_RE = /dropDeadTables\s*\(\s*[a-zA-Z_]\w*\s*,\s*\[([^\]]*)\]/g;
 const IMPORT_RE = /(?:import\s+(?:[^'"`]+?\s+from\s+)?['"`]([^'"`]+)['"`])|(?:require\s*\(\s*['"`]([^'"`]+)['"`]\s*\))|(?:import\s*\(\s*['"`]([^'"`]+)['"`]\s*\))/g;
 
 // Tables that are populated externally (writes from migrations only) or are
@@ -135,6 +142,9 @@ export async function runStaleCodeDetector({ root, opts = {} } = {}) {
     // detect `_fix` staging tables (created and renamed back within the
     // same migration; e.g. mig 107).
     const tableMigrations = new Map(); // tableName -> Set<migration file content>
+    // Tables that any later migration drops — either via raw `DROP TABLE`
+    // or via the shared `dropDeadTables(db, [...])` helper used by 120-124.
+    const droppedTables = new Set();
     for (const f of migrationFiles) {
       const c = await readSafe(f);
       if (!c) continue;
@@ -146,6 +156,17 @@ export async function runStaleCodeDetector({ root, opts = {} } = {}) {
         if (!tables.has(t)) tables.set(t, { file: relPath(root, f), line: lineOf(c, m.index) });
         if (!tableMigrations.has(t)) tableMigrations.set(t, new Set());
         tableMigrations.get(t).add(c);
+      }
+      TABLE_DROP_RE.lastIndex = 0;
+      while ((m = TABLE_DROP_RE.exec(c)) != null) {
+        droppedTables.add(m[1].toLowerCase());
+      }
+      RESCUE_DROP_RE.lastIndex = 0;
+      while ((m = RESCUE_DROP_RE.exec(c)) != null) {
+        // Pull individual quoted strings out of the array literal body.
+        for (const lit of m[1].matchAll(/['"`]([a-zA-Z_][a-zA-Z0-9_]*)['"`]/g)) {
+          droppedTables.add(lit[1].toLowerCase());
+        }
       }
     }
     for (const f of serverFiles) {
@@ -160,6 +181,8 @@ export async function runStaleCodeDetector({ root, opts = {} } = {}) {
     }
     for (const [t, loc] of tables.entries()) {
       if (tableUses.has(t)) continue;
+      // Already retired by a later DROP migration — don't flag.
+      if (droppedTables.has(t)) continue;
       // `_fix` staging tables — created in a migration that ALSO renames
       // or drops them in the same file (mig 107 pattern). Skip.
       if (t.endsWith("_fix")) {

@@ -34,6 +34,7 @@ export function createThread(db, { userId, agentId, sandboxId, brainRole = "cons
  */
 export function getThread(db, threadId, userId) {
   try {
+    // TODO: project explicit columns (auto-fix suggestion)
     const row = db.prepare(`SELECT * FROM agent_threads WHERE id = ?`).get(threadId);
     if (!row) return null;
     if (userId && row.user_id !== userId) return null;
@@ -96,6 +97,7 @@ export function saveCheckpoint(db, threadId, stepIndex, { messages, toolCalls, t
 export function loadLatestCheckpoint(db, threadId) {
   try {
     const row = db.prepare(`
+      // TODO: project explicit columns (auto-fix suggestion)
       SELECT * FROM agent_thread_checkpoints
       WHERE thread_id = ?
       ORDER BY step_index DESC

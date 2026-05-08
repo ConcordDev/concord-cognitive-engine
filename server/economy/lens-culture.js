@@ -1045,9 +1045,18 @@ export function listLenses(db, { isSystem } = {}) {
  */
 export function registerSystemLenses(db) {
   const results = [];
+  // Single batched lookup of already-registered names (was N+1).
+  const declNames = Object.keys(SYSTEM_LENS_DECLARATIONS);
+  const existingNames = new Set();
+  if (declNames.length > 0) {
+    const placeholders = declNames.map(() => "?").join(",");
+    const rows = db.prepare(
+      `SELECT name FROM lens_registry WHERE name IN (${placeholders})`,
+    ).all(...declNames);
+    for (const r of rows) existingNames.add(r.name);
+  }
   for (const [name, decl] of Object.entries(SYSTEM_LENS_DECLARATIONS)) {
-    const existing = db.prepare("SELECT id FROM lens_registry WHERE name = ?").get(name);
-    if (existing) {
+    if (existingNames.has(name)) {
       results.push({ name, status: "already_registered" });
       continue;
     }

@@ -57,6 +57,8 @@ export function issueDirective(db, issuerId, issuerType, worldId, directive, opt
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `).run(id, worldId, issuerId, issuerType, directive, directive_type, faction, expiresAt);
 
+  // TODO: project explicit columns (auto-fix suggestion)
+
   return db.prepare('SELECT * FROM world_directives WHERE id = ?').get(id);
 }
 
@@ -100,6 +102,7 @@ export function voteOnDirective(db, directiveId, voterId, voterType, vote, reaso
   }
 
   // Re-read updated directive to check rejection threshold
+  // TODO: project explicit columns (auto-fix suggestion)
   const dir = db.prepare('SELECT * FROM world_directives WHERE id = ?').get(directiveId);
   if (!dir || dir.status !== 'active') {
     return { voted, directiveStatus: dir?.status ?? 'resolved' };
@@ -187,6 +190,7 @@ export function tickDirectiveVoting(db, worldId) {
 
   // Get active directives created within the last hour (voting window)
   const directives = db.prepare(`
+    // TODO: project explicit columns (auto-fix suggestion)
     SELECT * FROM world_directives
     WHERE world_id = ? AND status = 'active' AND created_at > ?
   `).all(worldId, now - oneHour);
@@ -238,6 +242,7 @@ export function tickDirectiveVoting(db, worldId) {
  */
 export function getActiveDirectives(db, worldId) {
   return db.prepare(`
+    // TODO: project explicit columns (auto-fix suggestion)
     SELECT * FROM world_directives
     WHERE world_id = ? AND status = 'active'
     ORDER BY created_at DESC
@@ -254,6 +259,7 @@ export function getActiveDirectives(db, worldId) {
  */
 export function getDirectiveHistory(db, worldId, limit = 20) {
   return db.prepare(`
+    // TODO: project explicit columns (auto-fix suggestion)
     SELECT * FROM world_directives
     WHERE world_id = ? AND status != 'active'
     ORDER BY resolved_at DESC

@@ -7,12 +7,15 @@
  * @returns {object|null}
  */
 export function loadWorld(db, worldId) {
+  // TODO: project explicit columns (auto-fix suggestion)
   const world = db.prepare("SELECT * FROM worlds WHERE id = ? AND status = 'active'").get(worldId);
   if (!world) return null;
 
   world.substrate_dtu_ids  = _parseJSON(world.substrate_dtu_ids,  []);
   world.physics_modulators = _parseJSON(world.physics_modulators, {});
   world.rule_modulators    = _parseJSON(world.rule_modulators,    {});
+
+  // TODO: project explicit columns (auto-fix suggestion)
 
   const substrateDtus = db.prepare("SELECT * FROM world_substrate_dtus WHERE world_id = ?").all(worldId);
   world._substrateDtus = substrateDtus;
@@ -25,6 +28,7 @@ export function loadWorld(db, worldId) {
  * @returns {object[]}
  */
 export function listWorlds(db) {
+  // TODO: project explicit columns (auto-fix suggestion)
   const rows = db.prepare("SELECT * FROM worlds WHERE status = 'active' ORDER BY created_at ASC").all();
   return rows.map(w => ({
     ...w,

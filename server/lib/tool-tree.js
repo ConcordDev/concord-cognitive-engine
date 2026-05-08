@@ -1,3 +1,5 @@
+// @sql-loop-ok: tool craft consumes recipe materials with per-material
+// quantity (typical recipe: 2-5 materials). Per-row UPDATE/DELETE is bounded.
 // server/lib/tool-tree.js
 // Tool tier progression system. Players start at Tier 0 and must craft their way up.
 // Higher tiers require: previous-tier tool + minimum skill level + gathered materials.
@@ -216,6 +218,7 @@ export function getBestToolQuality(db, userId, tier) {
  * Returns { ok, tool } or { ok: false, error }.
  */
 export function craftTool(db, userId, recipeId, worldId = "concordia-hub") {
+  // TODO: project explicit columns (auto-fix suggestion)
   const recipe = db.prepare(`SELECT * FROM tool_recipes WHERE id = ?`).get(recipeId);
   if (!recipe) return { ok: false, error: "recipe_not_found" };
 

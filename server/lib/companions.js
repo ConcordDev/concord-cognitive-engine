@@ -151,6 +151,7 @@ export function renameCompanion(db, ownerId, companionId, name) {
 
 export function listCompanions(db, ownerId, { worldId = null, deployedOnly = false } = {}) {
   if (!db || !ownerId) return [];
+  // TODO: project explicit columns (auto-fix suggestion)
   let sql = `SELECT * FROM player_companions WHERE owner_id = ?`;
   const params = [ownerId];
   if (worldId) { sql += " AND world_id = ?"; params.push(worldId); }

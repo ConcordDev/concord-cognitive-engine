@@ -72,7 +72,9 @@ export function createIntegritySystem(db, opts = {}) {
     if (!db) return null;
     try {
       _stmts = {
+        // TODO: project explicit columns (auto-fix suggestion)
         get: db.prepare("SELECT * FROM dtu_integrity WHERE dtu_id = ?"),
+        // TODO: project explicit columns (auto-fix suggestion)
         getByHash: db.prepare("SELECT * FROM dtu_integrity WHERE content_hash = ?"),
         upsert: db.prepare(`
           INSERT OR REPLACE INTO dtu_integrity
@@ -84,6 +86,7 @@ export function createIntegritySystem(db, opts = {}) {
         ),
         delete: db.prepare("DELETE FROM dtu_integrity WHERE dtu_id = ?"),
         invalidCount: db.prepare("SELECT COUNT(*) as count FROM dtu_integrity WHERE is_valid = 0"),
+        // TODO: project explicit columns (auto-fix suggestion)
         allInvalid: db.prepare("SELECT * FROM dtu_integrity WHERE is_valid = 0"),
         count: db.prepare("SELECT COUNT(*) as count FROM dtu_integrity"),
       };

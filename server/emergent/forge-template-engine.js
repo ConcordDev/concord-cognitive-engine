@@ -1047,7 +1047,7 @@ async function runTests(): Promise<void> {
     if (r.error) console.log(\`       \${r.error}\`);
     r.passed ? passed++ : failed++;
   }
-  console.log(\`\\n  \${passed} passed, \${failed} failed\\n\`);
+
   db.close();
   process.exit(failed > 0 ? 1 : 0);
 }`;
@@ -1120,7 +1120,7 @@ ${hasWs ? "  initWebSockets(server);" : ""}
   threadManager.start();
 
   server.listen(Config.port, Config.host, () => {
-    console.log(\`\\n  ${appName} running on http://localhost:\${Config.port}\\n\`);
+
   });
 
   const shutdown = (sig: string) => {

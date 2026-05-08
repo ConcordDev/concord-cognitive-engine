@@ -32,7 +32,9 @@ import {
   RIGHTS_ACTIONS,
 } from "./atlas-config.js";
 import { getAtlasState } from "./atlas-epistemic.js";
-import { getDtuScope } from "./atlas-scope-router.js";
+// Imported from the shared scope-state module to avoid cycling back into
+// atlas-scope-router (which imports atlas-write-guard which imports us).
+import { getDtuScope } from "./atlas-scope-state.js";
 
 // ── Rights State ────────────────────────────────────────────────────────────
 

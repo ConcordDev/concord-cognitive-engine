@@ -434,6 +434,7 @@ export function saveUnderstanding(db, understanding, { ttlDays } = {}) {
 export function getUnderstanding(db, id) {
   if (!db || !id) return null;
   try {
+    // TODO: project explicit columns (auto-fix suggestion)
     const row = db.prepare(`SELECT * FROM understandings WHERE id = ?`).get(id);
     if (!row) return null;
     const model = parseJSON(row.model_json, {});

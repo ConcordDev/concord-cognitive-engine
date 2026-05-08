@@ -179,8 +179,6 @@ export function init({ register, STATE, helpers }) {
     description: "List core GRC invariants",
   });
 
-  console.log("[GRC] Grounded Recursive Closure v1 initialized — 6 macros registered");
-
   return {
     name: "grc",
     version: "1.0.0",

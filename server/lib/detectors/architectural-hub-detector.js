@@ -84,28 +84,49 @@ export async function runArchitecturalHubDetector({ root, opts = {} } = {}) {
     const findings = [];
     const { adjacency, reverseAdj, files } = await buildImportGraph(root);
 
-    let hubsCount = 0, hubOfHubs = 0, cyclesCount = 0;
+    let hubsCount = 0, hubOfHubs = 0, cyclesCount = 0, leafUtilities = 0;
     for (const f of files) {
       const fanIn = (reverseAdj.get(f) || new Set()).size;
       const fanOut = (adjacency.get(f) || new Set()).size;
-      if (fanIn > FAN_IN_THRESHOLD) {
-        hubsCount++;
-        const product = fanIn * fanOut;
-        const isHubOfHubs = product > HUB_OF_HUBS_THRESHOLD;
-        if (isHubOfHubs) hubOfHubs++;
+      if (fanIn <= FAN_IN_THRESHOLD) continue;
+
+      // Leaf utility demotion — a module with fan-out 0 imports nothing
+      // local, so it does no orchestration work. Loggers, type-only
+      // re-export modules, constants files all land here. They are widely
+      // imported by design; "splitting" them just moves the leaf to a
+      // different path. Demote to info, not "split risk".
+      const isLeafUtility = fanOut === 0;
+      if (isLeafUtility) {
+        leafUtilities++;
         findings.push({
-          id: isHubOfHubs ? "architectural_hub_of_hubs" : "architectural_hub_split_risk",
-          severity: isHubOfHubs ? "critical" : "high",
+          id: "architectural_leaf_utility",
+          severity: "info",
           kind: "architectural",
           category: "structure",
           subject: { kind: "module", path: relPath(root, f) },
-          message: `Module ${relPath(root, f)} fan-in=${fanIn} fan-out=${fanOut}${isHubOfHubs ? " (hub-of-hubs)" : ""}`,
+          message: `Module ${relPath(root, f)} fan-in=${fanIn} fan-out=0 (leaf utility — wide use is by design)`,
           location: relPath(root, f),
-          evidence: { fanIn, fanOut, product },
-          fixHint: "split_module",
+          evidence: { fanIn, fanOut, kind: "leaf_utility" },
         });
-        if (findings.length >= 60) break;
+        continue;
       }
+
+      hubsCount++;
+      const product = fanIn * fanOut;
+      const isHubOfHubs = product > HUB_OF_HUBS_THRESHOLD;
+      if (isHubOfHubs) hubOfHubs++;
+      findings.push({
+        id: isHubOfHubs ? "architectural_hub_of_hubs" : "architectural_hub_split_risk",
+        severity: isHubOfHubs ? "critical" : "high",
+        kind: "architectural",
+        category: "structure",
+        subject: { kind: "module", path: relPath(root, f) },
+        message: `Module ${relPath(root, f)} fan-in=${fanIn} fan-out=${fanOut}${isHubOfHubs ? " (hub-of-hubs)" : ""}`,
+        location: relPath(root, f),
+        evidence: { fanIn, fanOut, product },
+        fixHint: "split_module",
+      });
+      if (findings.length >= 60) break;
     }
 
     // Cycle detection

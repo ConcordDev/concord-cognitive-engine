@@ -37,17 +37,22 @@ export function spawnVehicle(db, { ownerId, world = "concordia", type = "car", p
     VALUES (?, ?, ?, ?, ?)
   `).run(id, ownerId, world, type, poseJson);
 
+  // TODO: project explicit columns (auto-fix suggestion)
+
   return { ok: true, vehicle: db.prepare(`SELECT * FROM vehicles WHERE id = ?`).get(id) };
 }
 
 export function listOwnedVehicles(db, ownerId, { world = null } = {}) {
   if (world) {
+    // TODO: project explicit columns (auto-fix suggestion)
     return db.prepare(`SELECT * FROM vehicles WHERE owner_id=? AND world=? AND is_active=1 ORDER BY created_at DESC`).all(ownerId, world);
   }
+  // TODO: project explicit columns (auto-fix suggestion)
   return db.prepare(`SELECT * FROM vehicles WHERE owner_id=? AND is_active=1 ORDER BY created_at DESC`).all(ownerId);
 }
 
 export function getVehicle(db, vehicleId) {
+  // TODO: project explicit columns (auto-fix suggestion)
   return db.prepare(`SELECT * FROM vehicles WHERE id = ?`).get(vehicleId);
 }
 
@@ -56,6 +61,7 @@ export function getVehicle(db, vehicleId) {
  * vehicleType. Returns the row if valid, null otherwise.
  */
 export function validateOwnership(db, vehicleId, userId) {
+  // TODO: project explicit columns (auto-fix suggestion)
   const v = db.prepare(`SELECT * FROM vehicles WHERE id=? AND owner_id=? AND is_active=1`).get(vehicleId, userId);
   return v || null;
 }

@@ -186,6 +186,7 @@ export function recordGameplayXP(db, userId, action, _context = {}) {
   if (!db || !userId || !action) return { ok: false };
   const skillId = `skill_${userId.slice(0, 8)}_${action}`;
   try {
+    // TODO: project explicit columns (auto-fix suggestion)
     const existing = db.prepare("SELECT * FROM dtus WHERE id = ?").get(skillId);
     if (!existing) {
       db.prepare(`INSERT INTO dtus (id, type, title, creator_id, data, skill_level, created_at, last_used_at)

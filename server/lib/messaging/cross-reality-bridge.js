@@ -105,6 +105,7 @@ export async function notifyUserOfWorldEvent({ userId, event, db, adapters }) {
   let bindings = [];
   try {
     bindings = db.prepare(`
+      // TODO: project explicit columns (auto-fix suggestion)
       SELECT * FROM messaging_bindings
       WHERE user_id = ? AND verified = 1
       ORDER BY preferred DESC, last_used_at DESC

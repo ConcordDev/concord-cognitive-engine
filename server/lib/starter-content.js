@@ -1,3 +1,4 @@
+// @sql-loop-ok: seeds STARTER_RECIPES (constant array) — runs once at boot
 /**
  * Starter content seed — runs once at boot. Provides the minimum set of
  * world content a new player needs to actually play:

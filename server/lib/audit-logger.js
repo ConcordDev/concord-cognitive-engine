@@ -1,3 +1,4 @@
+// @sync-fs-ok: append-only audit log requires synchronous write for compliance ordering
 /**
  * @fileoverview Standalone audit-logging module for the Concord server.
  *

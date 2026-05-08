@@ -27,37 +27,20 @@ import crypto from "crypto";
 import { assertInvariant } from "./atlas-invariants.js";
 import { validateMarketplaceListing, resolveLicense } from "./atlas-rights.js";
 import logger from '../logger.js';
+// Scope state lives in a shared module so atlas-rights.js can read it
+// without importing back into this router (avoids the 3-module cycle
+// scope-router → write-guard → rights → scope-router).
+import {
+  initScopeState as _initScopeState,
+  getScopeState as _getScopeState,
+  getDtuScope as _getDtuScope,
+} from "./atlas-scope-state.js";
 
-// ── Scope State Initialization ──────────────────────────────────────────────
-
-export function initScopeState(STATE) {
-  if (!STATE._scopes) {
-    STATE._scopes = {
-      // Per-scope DTU index (dtuId → scope)
-      dtuScope: new Map(),
-
-      // Submission queue (cross-lane artifacts)
-      submissions: new Map(),  // submissionId → SubmissionArtifact
-
-      // Scope metrics
-      metrics: {
-        localWrites: 0,
-        globalWrites: 0,
-        marketWrites: 0,
-        submissionsCreated: 0,
-        submissionsApproved: 0,
-        submissionsRejected: 0,
-        crossScopeBlocked: 0,
-      },
-    };
-  }
-  return STATE._scopes;
-}
-
-function getScopeState(STATE) {
-  if (!STATE._scopes) initScopeState(STATE);
-  return STATE._scopes;
-}
+// Re-export the public initializer + accessor so existing import sites keep
+// working with no changes.
+export const initScopeState = _initScopeState;
+export const getDtuScope = _getDtuScope;
+const getScopeState = _getScopeState;
 
 // ── Core: concord.write(scope, op, payload, ctx) ────────────────────────────
 
@@ -451,11 +434,7 @@ export function listSubmissions(STATE, options = {}) {
 }
 
 // ── Scope Query ─────────────────────────────────────────────────────────────
-
-export function getDtuScope(STATE, dtuId) {
-  const scopeState = getScopeState(STATE);
-  return scopeState.dtuScope.get(dtuId) || SCOPES.LOCAL;
-}
+// getDtuScope is re-exported from ./atlas-scope-state.js (top of file).
 
 let _scopeMetricsCache = null;
 let _scopeMetricsCacheAt = 0;

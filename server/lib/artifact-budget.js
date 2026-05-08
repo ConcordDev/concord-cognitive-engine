@@ -1,3 +1,4 @@
+// @sync-fs-ok: quota check + budget mutation must be atomic — sync write prevents race
 /**
  * Artifact Budget — Daily Storage Budget for Emergent Entity Artifacts
  *

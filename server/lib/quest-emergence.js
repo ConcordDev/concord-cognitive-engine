@@ -95,6 +95,8 @@ Generate a quest this NPC would give to a player. Return JSON only:
     JSON.stringify(questData.reward),
   );
 
+  // TODO: project explicit columns (auto-fix suggestion)
+
   const questRow = db.prepare("SELECT * FROM world_quests WHERE id = ?").get(id);
 
   // 20% chance: spawn a dedicated target NPC for this quest
@@ -136,7 +138,9 @@ Generate a quest this NPC would give to a player. Return JSON only:
  */
 export function getWorldQuests(worldId, status, db) {
   const q = status === "all"
+    // TODO: project explicit columns (auto-fix suggestion)
     ? db.prepare("SELECT * FROM world_quests WHERE world_id = ? ORDER BY created_at DESC").all(worldId)
+    // TODO: project explicit columns (auto-fix suggestion)
     : db.prepare("SELECT * FROM world_quests WHERE world_id = ? AND status = ? ORDER BY created_at DESC").all(worldId, status);
 
   return q.map(row => ({
@@ -154,6 +158,7 @@ export function getWorldQuests(worldId, status, db) {
  * @returns {{ updated: boolean, completed: boolean }}
  */
 export function updateQuestProgress(questId, event, db) {
+  // TODO: project explicit columns (auto-fix suggestion)
   const row = db.prepare("SELECT * FROM world_quests WHERE id = ?").get(questId);
   if (!row || row.status !== "active") return { updated: false, completed: false };
 

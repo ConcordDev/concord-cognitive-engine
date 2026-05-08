@@ -325,18 +325,31 @@ export function publishDerivativeArtifact(db, { creatorId, artifact, parentDecla
     WHERE id = ?
   `).run(maxParentDepth + 1, newArtifactId);
 
-  // Record derivative relationships — reuse parentArtifacts map from above.
-  for (const parent of parentDeclarations) {
-    const pa = parentArtifacts.get(parent.artifactId);
-    db.prepare(`
-      INSERT INTO creative_artifact_derivatives (id, child_artifact_id, parent_artifact_id, derivative_type, generation, created_at)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).run(uid("cad"), newArtifactId, parent.artifactId, parent.derivativeType, (pa?.lineage_depth || 0) + 1, nowISO());
-
-    // Increment parent's derivative count
+  // Record derivative relationships — single batched INSERT + single batched
+  // UPDATE replace the per-parent loop (was 2N queries → 2 queries).
+  if (parentDeclarations.length > 0) {
+    const ts = nowISO();
+    const insertCols = "(id, child_artifact_id, parent_artifact_id, derivative_type, generation, created_at)";
+    const insertRow = "(?, ?, ?, ?, ?, ?)";
+    const insertPlaceholders = parentDeclarations.map(() => insertRow).join(", ");
+    const insertParams = [];
+    for (const parent of parentDeclarations) {
+      const pa = parentArtifacts.get(parent.artifactId);
+      insertParams.push(
+        uid("cad"), newArtifactId, parent.artifactId, parent.derivativeType,
+        (pa?.lineage_depth || 0) + 1, ts,
+      );
+    }
     db.prepare(
-      "UPDATE creative_artifacts SET derivative_count = derivative_count + 1, updated_at = ? WHERE id = ?"
-    ).run(nowISO(), parent.artifactId);
+      `INSERT INTO creative_artifact_derivatives ${insertCols} VALUES ${insertPlaceholders}`,
+    ).run(...insertParams);
+
+    // Increment derivative_count for every parent in one UPDATE.
+    const parentIds = parentDeclarations.map(p => p.artifactId);
+    const updPlaceholders = parentIds.map(() => "?").join(",");
+    db.prepare(
+      `UPDATE creative_artifacts SET derivative_count = derivative_count + 1, updated_at = ? WHERE id IN (${updPlaceholders})`,
+    ).run(ts, ...parentIds);
   }
 
   result.artifact.isDerivative = true;
@@ -1552,32 +1565,26 @@ export function updateArtifactPrice(db, { artifactId, creatorId, newPrice }) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Check if adding a parent link would create a cycle.
+ * Check if adding a parent link would create a cycle. Single recursive
+ * CTE walks the ancestor chain in one round-trip, replacing the BFS
+ * loop that issued one query per node (was N+1).
  */
 function wouldCreateCycle(db, childId, parentId) {
-  const visited = new Set();
-  const queue = [parentId];
-
-  while (queue.length > 0) {
-    const current = queue.shift();
-    if (current === childId) return true;
-    if (visited.has(current)) continue;
-    visited.add(current);
-
-    const parents = db.prepare(
-      "SELECT parent_artifact_id FROM creative_artifact_derivatives WHERE child_artifact_id = ?"
-    ).all(current);
-
-    for (const p of parents) {
-      if (!visited.has(p.parent_artifact_id)) {
-        queue.push(p.parent_artifact_id);
-      }
-    }
-
-    if (visited.size > CREATIVE_MARKETPLACE.MAX_CASCADE_DEPTH) break;
-  }
-
-  return false;
+  // The proposed edge is parentId → childId. A cycle exists iff childId
+  // already appears as an ancestor of parentId.
+  const maxDepth = CREATIVE_MARKETPLACE.MAX_CASCADE_DEPTH || 50;
+  const row = db.prepare(`
+    WITH RECURSIVE ancestors(id, depth) AS (
+      SELECT ?, 0
+      UNION
+      SELECT cad.parent_artifact_id, ancestors.depth + 1
+        FROM creative_artifact_derivatives cad
+        JOIN ancestors ON cad.child_artifact_id = ancestors.id
+       WHERE ancestors.depth < ?
+    )
+    SELECT 1 AS hit FROM ancestors WHERE id = ? LIMIT 1
+  `).get(parentId, maxDepth, childId);
+  return !!row;
 }
 
 /**

@@ -496,6 +496,7 @@ export function createSecurityMatcher(db, opts = {}) {
    */
   function findFix(vulnerabilityType, content, minConfidence = 0.5) {
     const fixes = db.prepare(`
+      // TODO: project explicit columns (auto-fix suggestion)
       SELECT * FROM security_fixes
       WHERE vulnerability_type = ? AND deprecated = 0 AND confidence >= ?
       ORDER BY success_rate DESC, confidence DESC

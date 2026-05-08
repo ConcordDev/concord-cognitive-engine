@@ -22,6 +22,7 @@ export function loadUserContext(userId, lockerKey, db) {
   if (!userId || !lockerKey || !db) return EMPTY_CONTEXT();
   try {
     const row = db.prepare(
+      // TODO: project explicit columns (auto-fix suggestion)
       "SELECT * FROM personal_dtus WHERE user_id = ? AND content_type = ? ORDER BY created_at DESC LIMIT 1"
     ).get(userId, CONTEXT_CONTENT_TYPE);
     if (!row) return EMPTY_CONTEXT();
@@ -82,6 +83,7 @@ export function reEncryptUserContext(userId, oldKey, newKey, db) {
   if (!oldKey || !newKey || !db) return;
   try {
     const rows = db.prepare(
+      // TODO: project explicit columns (auto-fix suggestion)
       "SELECT * FROM personal_dtus WHERE user_id = ? AND content_type = ?"
     ).all(userId, CONTEXT_CONTENT_TYPE);
     for (const row of rows) {

@@ -85,11 +85,13 @@ export function getRecentFlows(db, fighterId, opts = {}) {
   const sinceTs = typeof opts.sinceTs === "number" ? opts.sinceTs : null;
   const rows = context
     ? db.prepare(`
+        // TODO: project explicit columns (auto-fix suggestion)
         SELECT * FROM combat_flows
         WHERE fighter_id = ? AND context = ? ${sinceTs ? "AND ts >= ?" : ""}
         ORDER BY ts DESC LIMIT ?
       `).all(...[fighterId, context, ...(sinceTs ? [sinceTs] : []), limit])
     : db.prepare(`
+        // TODO: project explicit columns (auto-fix suggestion)
         SELECT * FROM combat_flows
         WHERE fighter_id = ? ${sinceTs ? "AND ts >= ?" : ""}
         ORDER BY ts DESC LIMIT ?
