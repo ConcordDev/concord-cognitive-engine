@@ -17,6 +17,12 @@ import {
   loadHistory,
   loadBudget,
 } from "../lib/detectors/baseline.js";
+import {
+  snapshot as telemetrySnapshot,
+  loadAggregated as telemetryLoadAggregated,
+  flush as telemetryFlush,
+  MACRO_LIVE_WINDOW_DAYS,
+} from "../lib/detectors/macro-telemetry.js";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -84,6 +90,45 @@ export default function registerDetectorMacros(register) {
       findings,
     };
   }, { note: "filtered, flattened findings list" });
+
+  /**
+   * detectors.macro_telemetry — runtime fact about which macros are
+   * actually firing. Resolves the dispatcher-reach mystery — macros
+   * that have fired in the last MACRO_LIVE_WINDOW_DAYS are live; macros
+   * that haven't are retirement candidates. Input: { mode?: "snapshot"|"aggregated", windowDays?: 30, top?: 50 }.
+   */
+  register("detectors", "macro_telemetry", async (_ctx, input = {}) => {
+    const mode = input?.mode === "snapshot" ? "snapshot" : "aggregated";
+    const top = Math.min(Math.max(Number(input?.top) || 50, 1), 1000);
+    if (mode === "snapshot") {
+      return { ok: true, mode, rows: telemetrySnapshot().slice(0, top) };
+    }
+    const windowDays = Number(input?.windowDays) || MACRO_LIVE_WINDOW_DAYS;
+    const agg = await telemetryLoadAggregated(REPO_ROOT, windowDays);
+    const rows = Array.from(agg.totals.entries())
+      .map(([key, total]) => ({
+        key, total,
+        lastFiredAt: agg.lastFiredAt.get(key) || 0,
+        live: agg.liveKeys.has(key),
+      }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, top);
+    return {
+      ok: true, mode, windowDays,
+      liveCount: agg.liveKeys.size,
+      totalKeys: agg.totals.size,
+      rows,
+    };
+  }, { note: "runtime macro telemetry" });
+
+  /**
+   * detectors.flush_telemetry — force a flush of in-memory telemetry to
+   * disk. Used by tests + ad-hoc audits.
+   */
+  register("detectors", "flush_telemetry", async () => {
+    const r = await telemetryFlush();
+    return { ok: true, ...r };
+  }, { note: "force telemetry flush" });
 
   /**
    * detectors.history — return the recent N rows from history.jsonl. Lens

@@ -16,6 +16,9 @@
 import { syncFsFix } from "./sync-fs.js";
 import { unusedImportFix } from "./unused-import.js";
 import { selectStarFix } from "./select-star.js";
+import { preferConstFix } from "./prefer-const.js";
+import { dropConsoleLogFix } from "./drop-console-log.js";
+import { emptyCatchFix } from "./empty-catch.js";
 
 const FIXES = new Map();
 
@@ -53,3 +56,6 @@ export function safeApply(fix, filePath, content, finding) {
 registerFix(syncFsFix);
 registerFix(unusedImportFix);
 registerFix(selectStarFix);
+registerFix(preferConstFix);
+registerFix(dropConsoleLogFix);
+registerFix(emptyCatchFix);

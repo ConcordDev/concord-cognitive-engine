@@ -48,6 +48,7 @@ import { Worker } from "node:worker_threads";
 import { initAll as initLoaf } from "./loaf/index.js";
 import { init as initEmergent } from "./emergent/index.js";
 import { tickAllRegistered, registerHeartbeat } from "./emergent/heartbeat-registry.js";
+import * as _macroTelemetry from "./lib/detectors/macro-telemetry.js";
 import { runSocialNpcBridge } from "./emergent/social-npc-bridge.js";
 import { runNpcKnowledgeBridge } from "./lib/npc-knowledge-bridge.js";
 import {
@@ -250,10 +251,22 @@ registerHeartbeat("code-substrate-refresh", {
   },
 });
 
+// Start macro telemetry — periodic flush to audit/detectors/macro-telemetry.jsonl
+// so MacroUsageDetector can resolve dispatcher-reach by runtime fact, not regex.
+// import.meta.dirname is Node 21+; we already require Node 18+ but fall back.
+try {
+  const _modDir = import.meta.dirname || path.resolve(".");
+  _macroTelemetry.startTelemetry(path.resolve(_modDir, ".."));
+} catch (_e) { /* telemetry optional */ }
+
 registerHeartbeat("detectors-sweep", {
   frequency: 2880,
   handler: async ({ db, state }) => {
     try {
+      // Force a telemetry flush before the sweep so the latest in-memory
+      // counts are visible to MacroUsageDetector.
+      await _macroTelemetry.flush().catch(() => {});
+
       const mod = await import("./lib/detectors/index.js");
       const baseline = await import("./lib/detectors/baseline.js");
       const report = await mod.runAllDetectors({ db, state });
@@ -9043,6 +9056,12 @@ globalThis.__CARTOGRAPHER__ = Object.assign(globalThis.__CARTOGRAPHER__ || {}, {
 });
 
 async function runMacro(domain, name, input, ctx) {
+  // Macro telemetry — single Map.set, ~50ns hot-path cost. Resolves the
+  // dispatcher-reach mystery: macros that never fire in 30 days are
+  // genuinely dead even when the static parse can't tell.
+  try { _macroTelemetry.recordInvocation(domain, name, ctx); }
+  catch { /* telemetry must never throw */ }
+
   // v3: permissioned cognition (macro-level ACL).
   //
   // A note on the default actor: previously this defaulted to
@@ -9181,7 +9200,7 @@ async function runMacro(domain, name, input, ctx) {
     city: new Set(["list", "get", "status", "startStream", "endStream", "followStream", "unfollowStream", "listStreams", "getStream"]),
     // Code-quality detector suite — read-only inspection. See
     // server/lib/detectors/* and server/domains/detectors.js.
-    detectors: new Set(["list", "summary", "findings", "run", "runAll", "history", "baseline", "diff"]),
+    detectors: new Set(["list", "summary", "findings", "run", "runAll", "history", "baseline", "diff", "macro_telemetry", "flush_telemetry"]),
     // Phase 7 — Code substrate. Read-only macros for the code-DTU view.
     code: new Set(["dtu_for", "dtu_query", "cluster_for", "refresh"]),
   };
@@ -14122,6 +14141,26 @@ const BRAIN = {
  * Falls back gracefully to single-Ollama if multi-brain isn't deployed.
  */
 async function initFiveBrains() {
+  // Resolve hardware-adaptive brain profile FIRST so the model + concurrency
+  // selections in BRAIN reflect the actual GPU. CPU / 12GB / 16GB / 24GB /
+  // 32GB profiles in lib/brain-profiles.js. Honours CONCORD_GPU_PROFILE
+  // env override and explicit BRAIN_*_MODEL overrides.
+  try {
+    const { initBrainProfile, getActiveBrainProfile } = await import("./lib/brain-config.js");
+    const r = await initBrainProfile();
+    structuredLog("info", "brain_profile_resolved", {
+      source: r.source, choice: r.choice,
+      gpuInfo: r.gpuInfo ? { gb: r.gpuInfo.gb, gpus: r.gpuInfo.gpus?.length } : null,
+      label: r.profile?.label,
+    });
+    const _ap = getActiveBrainProfile();
+    if (_ap?.profile?.bandGb != null) {
+      structuredLog("info", "brain_profile_band", { bandGb: _ap.profile.bandGb });
+    }
+  } catch (err) {
+    structuredLog("warn", "brain_profile_resolve_failed", { error: err?.message });
+  }
+
   for (const [name, brain] of Object.entries(BRAIN)) {
     try {
       const r = await fetch(`${brain.url}/api/tags`, { signal: AbortSignal.timeout(15000) });

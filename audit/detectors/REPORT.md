@@ -1,6 +1,6 @@
 # Detector report
 
-Generated: `2026-05-08T21:24:38.141Z`  Consumer: `all`  Total findings: **1296**
+Generated: `2026-05-08T21:58:48.707Z`  Consumer: `all`  Total findings: **1296**
 
 | severity | count |
 |---|---|
@@ -14,17 +14,17 @@ Generated: `2026-05-08T21:24:38.141Z`  Consumer: `all`  Total findings: **1296**
 
 | id | ok | total | critical | high | medium | low | duration |
 |---|---|---|---|---|---|---|---|
-| stale-code | yes | 231 | 0 | 0 | 20 | 11 | 27128ms |
-| invariant-guardian | yes | 0 | 0 | 0 | 0 | 0 | 2620ms |
-| macro-usage | yes | 255 | 0 | 0 | 0 | 0 | 12604ms |
-| lens-health | yes | 1 | 0 | 0 | 0 | 0 | 654ms |
+| stale-code | yes | 231 | 0 | 0 | 20 | 11 | 21761ms |
+| invariant-guardian | yes | 0 | 0 | 0 | 0 | 0 | 3187ms |
+| macro-usage | yes | 255 | 0 | 0 | 0 | 0 | 10529ms |
+| lens-health | yes | 1 | 0 | 0 | 0 | 0 | 807ms |
 | dtu-lineage | no (no_db) | 0 | 0 | 0 | 0 | 0 | 0ms |
-| heartbeat-monitor | yes | 1 | 0 | 0 | 0 | 0 | 267ms |
-| secret-leak | yes | 1 | 0 | 0 | 0 | 0 | 2549ms |
-| performance-hotspot | yes | 802 | 0 | 17 | 539 | 245 | 869ms |
-| historical-trend | yes | 1 | 0 | 0 | 0 | 0 | 7ms |
-| predictive-growth | yes | 1 | 0 | 0 | 0 | 0 | 24ms |
-| architectural-hub | yes | 3 | 0 | 2 | 0 | 0 | 1486ms |
+| heartbeat-monitor | yes | 1 | 0 | 0 | 0 | 0 | 340ms |
+| secret-leak | yes | 1 | 0 | 0 | 0 | 0 | 3097ms |
+| performance-hotspot | yes | 802 | 0 | 17 | 539 | 245 | 1030ms |
+| historical-trend | yes | 1 | 0 | 0 | 0 | 0 | 9ms |
+| predictive-growth | yes | 1 | 0 | 0 | 0 | 0 | 25ms |
+| architectural-hub | yes | 3 | 0 | 2 | 0 | 0 | 1822ms |
 
 ### stale-code
 
@@ -86,56 +86,56 @@ _No findings._
 
 ### macro-usage
 
-- · **info** `macro_usage_summary` — 707 macros · 0 dead · 411 single-caller · 1 popular · 253 dispatcher-reach
-- · **info** `macro_dispatcher_reach` — Macro chicken3.status has no static callers but is reachable via open dispatcher `server/server.js:9885`
-- · **info** `macro_dispatcher_reach` — Macro chicken3.session_optin has no static callers but is reachable via open dispatcher `server/server.js:9890`
-- · **info** `macro_dispatcher_reach` — Macro hlr.trace has no static callers but is reachable via open dispatcher `server/server.js:14232`
-- · **info** `macro_dispatcher_reach` — Macro hlr.list_traces has no static callers but is reachable via open dispatcher `server/server.js:14233`
-- · **info** `macro_dispatcher_reach` — Macro hlr.metrics has no static callers but is reachable via open dispatcher `server/server.js:14234`
-- · **info** `macro_dispatcher_reach` — Macro hlr.findings has no static callers but is reachable via open dispatcher `server/server.js:14235`
-- · **info** `macro_dispatcher_reach` — Macro hlm.clusters has no static callers but is reachable via open dispatcher `server/server.js:14253`
-- · **info** `macro_dispatcher_reach` — Macro hlm.gaps has no static callers but is reachable via open dispatcher `server/server.js:14257`
-- · **info** `macro_dispatcher_reach` — Macro hlm.redundancy has no static callers but is reachable via open dispatcher `server/server.js:14262`
-- · **info** `macro_dispatcher_reach` — Macro hlm.orphans has no static callers but is reachable via open dispatcher `server/server.js:14266`
-- · **info** `macro_dispatcher_reach` — Macro hlm.topology has no static callers but is reachable via open dispatcher `server/server.js:14271`
-- · **info** `macro_dispatcher_reach` — Macro hlm.domain_census has no static callers but is reachable via open dispatcher `server/server.js:14275`
-- · **info** `macro_dispatcher_reach` — Macro hlm.freshness has no static callers but is reachable via open dispatcher `server/server.js:14279`
-- · **info** `macro_dispatcher_reach` — Macro hlm.metrics has no static callers but is reachable via open dispatcher `server/server.js:14283`
-- · **info** `macro_dispatcher_reach` — Macro understanding.parse has no static callers but is reachable via open dispatcher `server/server.js:14311`
-- · **info** `macro_dispatcher_reach` — Macro understanding.compose has no static callers but is reachable via open dispatcher `server/server.js:14325`
-- · **info** `macro_dispatcher_reach` — Macro understanding.get has no static callers but is reachable via open dispatcher `server/server.js:14340`
-- · **info** `macro_dispatcher_reach` — Macro understanding.list has no static callers but is reachable via open dispatcher `server/server.js:14345`
-- · **info** `macro_dispatcher_reach` — Macro understanding.recompose has no static callers but is reachable via open dispatcher `server/server.js:14348`
-- · **info** `macro_dispatcher_reach` — Macro understanding.sweep has no static callers but is reachable via open dispatcher `server/server.js:14360`
-- · **info** `macro_dispatcher_reach` — Macro understanding.subject_kinds has no static callers but is reachable via open dispatcher `server/server.js:14362`
-- · **info** `macro_dispatcher_reach` — Macro understanding.record_evidence has no static callers but is reachable via open dispatcher `server/server.js:14380`
-- · **info** `macro_dispatcher_reach` — Macro understanding.evaluate_promotion has no static callers but is reachable via open dispatcher `server/server.js:14383`
-- · **info** `macro_dispatcher_reach` — Macro understanding.apply_promotion has no static callers but is reachable via open dispatcher `server/server.js:14386`
-- · **info** `macro_dispatcher_reach` — Macro understanding.consolidate has no static callers but is reachable via open dispatcher `server/server.js:14389`
-- · **info** `macro_dispatcher_reach` — Macro understanding.consolidation_candidates has no static callers but is reachable via open dispatcher `server/server.js:14392`
-- · **info** `macro_dispatcher_reach` — Macro understanding.lineage has no static callers but is reachable via open dispatcher `server/server.js:14395`
-- · **info** `macro_dispatcher_reach` — Macro understanding.evolution_tick has no static callers but is reachable via open dispatcher `server/server.js:14398`
-- · **info** `macro_dispatcher_reach` — Macro understanding.promoted_by_composer has no static callers but is reachable via open dispatcher `server/server.js:14401`
-- · **info** `macro_dispatcher_reach` — Macro understanding.evolution_stats has no static callers but is reachable via open dispatcher `server/server.js:14404`
-- · **info** `macro_dispatcher_reach` — Macro cognition.understand has no static callers but is reachable via open dispatcher `server/server.js:14415`
-- · **info** `macro_dispatcher_reach` — Macro cognition.live_understanding has no static callers but is reachable via open dispatcher `server/server.js:14426`
-- · **info** `macro_dispatcher_reach` — Macro forge.verify_constraints has no static callers but is reachable via open dispatcher `server/server.js:14435`
-- · **info** `macro_dispatcher_reach` — Macro council.understanding_for_proposal has no static callers but is reachable via open dispatcher `server/server.js:14441`
-- · **info** `macro_dispatcher_reach` — Macro chat.compose_thread_understanding has no static callers but is reachable via open dispatcher `server/server.js:14470`
-- · **info** `macro_dispatcher_reach` — Macro agents.create has no static callers but is reachable via open dispatcher `server/server.js:14500`
-- · **info** `macro_dispatcher_reach` — Macro agents.run has no static callers but is reachable via open dispatcher `server/server.js:14501`
-- · **info** `macro_dispatcher_reach` — Macro agents.pause has no static callers but is reachable via open dispatcher `server/server.js:14505`
-- · **info** `macro_dispatcher_reach` — Macro agents.resume has no static callers but is reachable via open dispatcher `server/server.js:14506`
-- · **info** `macro_dispatcher_reach` — Macro agents.destroy has no static callers but is reachable via open dispatcher `server/server.js:14507`
-- · **info** `macro_dispatcher_reach` — Macro agents.get has no static callers but is reachable via open dispatcher `server/server.js:14508`
-- · **info** `macro_dispatcher_reach` — Macro agents.list has no static callers but is reachable via open dispatcher `server/server.js:14509`
-- · **info** `macro_dispatcher_reach` — Macro agents.findings has no static callers but is reachable via open dispatcher `server/server.js:14510`
-- · **info** `macro_dispatcher_reach` — Macro agents.all_findings has no static callers but is reachable via open dispatcher `server/server.js:14511`
-- · **info** `macro_dispatcher_reach` — Macro agents.freeze has no static callers but is reachable via open dispatcher `server/server.js:14512`
-- · **info** `macro_dispatcher_reach` — Macro agents.thaw has no static callers but is reachable via open dispatcher `server/server.js:14513`
-- · **info** `macro_dispatcher_reach` — Macro agents.tick has no static callers but is reachable via open dispatcher `server/server.js:14514`
-- · **info** `macro_dispatcher_reach` — Macro agents.metrics has no static callers but is reachable via open dispatcher `server/server.js:14518`
-- · **info** `macro_dispatcher_reach` — Macro hypothesis.add_evidence has no static callers but is reachable via open dispatcher `server/server.js:14553`
+- · **info** `macro_usage_summary` — 707 macros · 0 dead · 411 single-caller · 1 popular · 253 dispatcher-reach (0 runtime-live, 0 retirement-candidates)
+- · **info** `macro_dispatcher_reach` — Macro chicken3.status has no static callers but is reachable via open dispatcher (no telemetry yet) `server/server.js:9904`
+- · **info** `macro_dispatcher_reach` — Macro chicken3.session_optin has no static callers but is reachable via open dispatcher (no telemetry yet) `server/server.js:9909`
+- · **info** `macro_dispatcher_reach` — Macro hlr.trace has no static callers but is reachable via open dispatcher (no telemetry yet) `server/server.js:14271`
+- · **info** `macro_dispatcher_reach` — Macro hlr.list_traces has no static callers but is reachable via open dispatcher (no telemetry yet) `server/server.js:14272`
+- · **info** `macro_dispatcher_reach` — Macro hlr.metrics has no static callers but is reachable via open dispatcher (no telemetry yet) `server/server.js:14273`
+- · **info** `macro_dispatcher_reach` — Macro hlr.findings has no static callers but is reachable via open dispatcher (no telemetry yet) `server/server.js:14274`
+- · **info** `macro_dispatcher_reach` — Macro hlm.clusters has no static callers but is reachable via open dispatcher (no telemetry yet) `server/server.js:14292`
+- · **info** `macro_dispatcher_reach` — Macro hlm.gaps has no static callers but is reachable via open dispatcher (no telemetry yet) `server/server.js:14296`
+- · **info** `macro_dispatcher_reach` — Macro hlm.redundancy has no static callers but is reachable via open dispatcher (no telemetry yet) `server/server.js:14301`
+- · **info** `macro_dispatcher_reach` — Macro hlm.orphans has no static callers but is reachable via open dispatcher (no telemetry yet) `server/server.js:14305`
+- · **info** `macro_dispatcher_reach` — Macro hlm.topology has no static callers but is reachable via open dispatcher (no telemetry yet) `server/server.js:14310`
+- · **info** `macro_dispatcher_reach` — Macro hlm.domain_census has no static callers but is reachable via open dispatcher (no telemetry yet) `server/server.js:14314`
+- · **info** `macro_dispatcher_reach` — Macro hlm.freshness has no static callers but is reachable via open dispatcher (no telemetry yet) `server/server.js:14318`
+- · **info** `macro_dispatcher_reach` — Macro hlm.metrics has no static callers but is reachable via open dispatcher (no telemetry yet) `server/server.js:14322`
+- · **info** `macro_dispatcher_reach` — Macro understanding.parse has no static callers but is reachable via open dispatcher (no telemetry yet) `server/server.js:14350`
+- · **info** `macro_dispatcher_reach` — Macro understanding.compose has no static callers but is reachable via open dispatcher (no telemetry yet) `server/server.js:14364`
+- · **info** `macro_dispatcher_reach` — Macro understanding.get has no static callers but is reachable via open dispatcher (no telemetry yet) `server/server.js:14379`
+- · **info** `macro_dispatcher_reach` — Macro understanding.list has no static callers but is reachable via open dispatcher (no telemetry yet) `server/server.js:14384`
+- · **info** `macro_dispatcher_reach` — Macro understanding.recompose has no static callers but is reachable via open dispatcher (no telemetry yet) `server/server.js:14387`
+- · **info** `macro_dispatcher_reach` — Macro understanding.sweep has no static callers but is reachable via open dispatcher (no telemetry yet) `server/server.js:14399`
+- · **info** `macro_dispatcher_reach` — Macro understanding.subject_kinds has no static callers but is reachable via open dispatcher (no telemetry yet) `server/server.js:14401`
+- · **info** `macro_dispatcher_reach` — Macro understanding.record_evidence has no static callers but is reachable via open dispatcher (no telemetry yet) `server/server.js:14419`
+- · **info** `macro_dispatcher_reach` — Macro understanding.evaluate_promotion has no static callers but is reachable via open dispatcher (no telemetry yet) `server/server.js:14422`
+- · **info** `macro_dispatcher_reach` — Macro understanding.apply_promotion has no static callers but is reachable via open dispatcher (no telemetry yet) `server/server.js:14425`
+- · **info** `macro_dispatcher_reach` — Macro understanding.consolidate has no static callers but is reachable via open dispatcher (no telemetry yet) `server/server.js:14428`
+- · **info** `macro_dispatcher_reach` — Macro understanding.consolidation_candidates has no static callers but is reachable via open dispatcher (no telemetry yet) `server/server.js:14431`
+- · **info** `macro_dispatcher_reach` — Macro understanding.lineage has no static callers but is reachable via open dispatcher (no telemetry yet) `server/server.js:14434`
+- · **info** `macro_dispatcher_reach` — Macro understanding.evolution_tick has no static callers but is reachable via open dispatcher (no telemetry yet) `server/server.js:14437`
+- · **info** `macro_dispatcher_reach` — Macro understanding.promoted_by_composer has no static callers but is reachable via open dispatcher (no telemetry yet) `server/server.js:14440`
+- · **info** `macro_dispatcher_reach` — Macro understanding.evolution_stats has no static callers but is reachable via open dispatcher (no telemetry yet) `server/server.js:14443`
+- · **info** `macro_dispatcher_reach` — Macro cognition.understand has no static callers but is reachable via open dispatcher (no telemetry yet) `server/server.js:14454`
+- · **info** `macro_dispatcher_reach` — Macro cognition.live_understanding has no static callers but is reachable via open dispatcher (no telemetry yet) `server/server.js:14465`
+- · **info** `macro_dispatcher_reach` — Macro forge.verify_constraints has no static callers but is reachable via open dispatcher (no telemetry yet) `server/server.js:14474`
+- · **info** `macro_dispatcher_reach` — Macro council.understanding_for_proposal has no static callers but is reachable via open dispatcher (no telemetry yet) `server/server.js:14480`
+- · **info** `macro_dispatcher_reach` — Macro chat.compose_thread_understanding has no static callers but is reachable via open dispatcher (no telemetry yet) `server/server.js:14509`
+- · **info** `macro_dispatcher_reach` — Macro agents.create has no static callers but is reachable via open dispatcher (no telemetry yet) `server/server.js:14539`
+- · **info** `macro_dispatcher_reach` — Macro agents.run has no static callers but is reachable via open dispatcher (no telemetry yet) `server/server.js:14540`
+- · **info** `macro_dispatcher_reach` — Macro agents.pause has no static callers but is reachable via open dispatcher (no telemetry yet) `server/server.js:14544`
+- · **info** `macro_dispatcher_reach` — Macro agents.resume has no static callers but is reachable via open dispatcher (no telemetry yet) `server/server.js:14545`
+- · **info** `macro_dispatcher_reach` — Macro agents.destroy has no static callers but is reachable via open dispatcher (no telemetry yet) `server/server.js:14546`
+- · **info** `macro_dispatcher_reach` — Macro agents.get has no static callers but is reachable via open dispatcher (no telemetry yet) `server/server.js:14547`
+- · **info** `macro_dispatcher_reach` — Macro agents.list has no static callers but is reachable via open dispatcher (no telemetry yet) `server/server.js:14548`
+- · **info** `macro_dispatcher_reach` — Macro agents.findings has no static callers but is reachable via open dispatcher (no telemetry yet) `server/server.js:14549`
+- · **info** `macro_dispatcher_reach` — Macro agents.all_findings has no static callers but is reachable via open dispatcher (no telemetry yet) `server/server.js:14550`
+- · **info** `macro_dispatcher_reach` — Macro agents.freeze has no static callers but is reachable via open dispatcher (no telemetry yet) `server/server.js:14551`
+- · **info** `macro_dispatcher_reach` — Macro agents.thaw has no static callers but is reachable via open dispatcher (no telemetry yet) `server/server.js:14552`
+- · **info** `macro_dispatcher_reach` — Macro agents.tick has no static callers but is reachable via open dispatcher (no telemetry yet) `server/server.js:14553`
+- · **info** `macro_dispatcher_reach` — Macro agents.metrics has no static callers but is reachable via open dispatcher (no telemetry yet) `server/server.js:14557`
+- · **info** `macro_dispatcher_reach` — Macro hypothesis.add_evidence has no static callers but is reachable via open dispatcher (no telemetry yet) `server/server.js:14592`
 - _…and 205 more_
 
 ### lens-health
@@ -153,7 +153,7 @@ _No findings._
 
 ### secret-leak
 
-- · **info** `secret_leak_summary` — Scanned 2871 files; flagged 0
+- · **info** `secret_leak_summary` — Scanned 2882 files; flagged 0
 
 ### performance-hotspot
 
@@ -215,10 +215,10 @@ _No findings._
 
 ### predictive-growth
 
-- · **info** `predictive_growth_summary` — 6 samples · 0 tables observed · heap 5MB
+- · **info** `predictive_growth_summary` — 12 samples · 0 tables observed · heap 5MB
 
 ### architectural-hub
 
 - ⚠️  **high** `architectural_hub_split_risk` — Module server/logger.js fan-in=176 fan-out=0 `server/logger.js`
 - ⚠️  **high** `architectural_import_cycle` — Import cycle of 4 modules: server/emergent/atlas-scope-router.js → server/emergent/atlas-write-guard.js → server/emergent/atlas-rights.js → server/emergent/atlas-scope-router.js `server/emergent/atlas-scope-router.js`
-- · **info** `architectural_hub_summary` — Scanned 1511 server modules · 1 hubs · 0 hub-of-hubs · 1 cycles
+- · **info** `architectural_hub_summary` — Scanned 1522 server modules · 1 hubs · 0 hub-of-hubs · 1 cycles

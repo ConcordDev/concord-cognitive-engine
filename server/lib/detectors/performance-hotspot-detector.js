@@ -95,6 +95,20 @@ const PATTERNS = [
     description: "Regex with nested quantifier shape (a+)+ — risk of catastrophic backtracking",
     regex: /\/[^/\n]*\([^()/\n]*\+[^()/\n]*\)\+/g,
   },
+  {
+    id: "console_log_production",
+    severity: "low",
+    description: "console.log left in production code — drop or replace with logger",
+    regex: /^\s*console\.log\s*\(/gm,
+    skipFiles: [/\/tests?\//, /\/scripts\//, /\/migrations\//, /\/examples?\//],
+  },
+  {
+    id: "empty_catch",
+    severity: "medium",
+    description: "Empty catch block — silent failure swallowed without observation",
+    regex: /catch\s*(?:\(\s*\w*\s*\))?\s*\{\s*\}/g,
+    skipFiles: [/\/tests?\//, /\/scripts\//, /silent-ok/],
+  },
 ];
 
 export async function runPerformanceHotspotDetector({ root, opts = {} } = {}) {
@@ -152,6 +166,8 @@ export async function runPerformanceHotspotDetector({ root, opts = {} } = {}) {
               evidence: { snippet: snippet(m[0], 80), exempt: exemptFromSyncFs },
               fixHint: p.id === "sync_fs_in_handler" ? "sync_fs_to_promises"
                      : p.id === "select_star_hot" ? "replace_select_star"
+                     : p.id === "console_log_production" ? "drop_console_log"
+                     : p.id === "empty_catch" ? "empty_catch_to_logger"
                      : null,
             });
             if (findings.length > 800) break;

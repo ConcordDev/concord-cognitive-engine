@@ -18,6 +18,7 @@ import {
   walk, readSafe, makeReport, makeError, lineOf, relPath,
   loadOpenDispatchers, loadLensManifestMacros,
 } from "./_framework.js";
+import { loadAggregated, MACRO_LIVE_WINDOW_DAYS } from "./macro-telemetry.js";
 
 const REGISTER_RE = /register\s*\(\s*['"`]([a-zA-Z0-9_-]+)['"`]\s*,\s*['"`]([a-zA-Z0-9_.\-]+)['"`]/g;
 const RUN_MACRO_RE = /runMacro\s*\(\s*['"`]([a-zA-Z0-9_-]+)['"`]\s*,\s*['"`]([a-zA-Z0-9_.\-]+)['"`]/g;
@@ -37,6 +38,10 @@ export async function runMacroUsageDetector({ root, opts = {} } = {}) {
 
     const dispatchers = await loadOpenDispatchers(root);
     const manifestKeys = await loadLensManifestMacros(root);
+    // Runtime telemetry — what's actually fired in the live window.
+    const telemetry = await loadAggregated(root, MACRO_LIVE_WINDOW_DAYS).catch(() => ({
+      liveKeys: new Set(), lastFiredAt: new Map(), totals: new Map(),
+    }));
 
     const declared = new Map();           // domain.name -> {file, line}
     const usageCounts = new Map();        // domain.name -> n
@@ -76,35 +81,72 @@ export async function runMacroUsageDetector({ root, opts = {} } = {}) {
     let solo = 0;
     let popular = 0;
     let dispatcherReach = 0;
+    let runtimeLive = 0;
+    let retirementCandidate = 0;
     const histogram = { "0": 0, "1": 0, "2-5": 0, "6-20": 0, "21+": 0 };
 
     const dispatcherActive = dispatchers.length > 0;
+    const telemetryActive = telemetry.liveKeys.size > 0;
 
     for (const [key, loc] of declared.entries()) {
       const n = usageCounts.get(key) ?? 0;
       const samples = Array.from(callerSamples.get(key) || []).slice(0, 3);
       const inManifest = manifestKeys.has(key);
+      const firedAt = telemetry.lastFiredAt.get(key) || 0;
+      const fireCount = telemetry.totals.get(key) || 0;
+      const firedInWindow = telemetry.liveKeys.has(key);
 
       if (n === 0) {
         histogram["0"]++;
         // Reachable via dispatcher OR lens manifest? Downgrade.
         if (dispatcherActive || inManifest) {
           dispatcherReach++;
-          findings.push({
-            id: "macro_dispatcher_reach",
-            severity: "info",
-            kind: "static",
-            category: "macro-usage",
-            message: `Macro ${key} has no static callers but is reachable via ${
-              inManifest ? "lens manifest" : "open dispatcher"
-            }`,
-            location: `${loc.file}:${loc.line}`,
-            evidence: {
-              domain: key.split(".")[0],
-              dispatcher: dispatchers[0]?.file ?? null,
-              inManifest,
-            },
-          });
+
+          // Runtime telemetry resolves the mystery: did this macro
+          // actually fire in the live window?
+          if (firedInWindow) {
+            runtimeLive++;
+            findings.push({
+              id: "macro_runtime_live",
+              severity: "info",
+              kind: "semantic",          // upgrade from static — this is observed behaviour
+              category: "macro-usage",
+              message: `Macro ${key} fired ${fireCount} time(s) at runtime — live`,
+              location: `${loc.file}:${loc.line}`,
+              evidence: { domain: key.split(".")[0], fireCount, lastFiredAt: firedAt },
+            });
+          } else if (telemetryActive) {
+            // We HAVE telemetry data and this macro hasn't fired in the
+            // window — strong signal it's actually dead.
+            retirementCandidate++;
+            findings.push({
+              id: "macro_retirement_candidate",
+              severity: "low",
+              kind: "semantic",
+              category: "macro-usage",
+              message: `Macro ${key} has dispatcher reach but never fired in last ${MACRO_LIVE_WINDOW_DAYS} days — candidate for retirement`,
+              location: `${loc.file}:${loc.line}`,
+              evidence: { domain: key.split(".")[0], windowDays: MACRO_LIVE_WINDOW_DAYS, telemetryRowCount: telemetry.totals.size },
+              fixHint: "verify_unused_then_remove",
+            });
+          } else {
+            // No telemetry yet — keep the conservative dispatcher-reach finding.
+            findings.push({
+              id: "macro_dispatcher_reach",
+              severity: "info",
+              kind: "static",
+              category: "macro-usage",
+              message: `Macro ${key} has no static callers but is reachable via ${
+                inManifest ? "lens manifest" : "open dispatcher"
+              } (no telemetry yet)`,
+              location: `${loc.file}:${loc.line}`,
+              evidence: {
+                domain: key.split(".")[0],
+                dispatcher: dispatchers[0]?.file ?? null,
+                inManifest,
+              },
+            });
+          }
         } else {
           dead++;
           findings.push({
@@ -132,9 +174,11 @@ export async function runMacroUsageDetector({ root, opts = {} } = {}) {
       severity: "info",
       kind: "static",
       category: "macro-usage",
-      message: `${declared.size} macros · ${dead} dead · ${solo} single-caller · ${popular} popular · ${dispatcherReach} dispatcher-reach`,
+      message: `${declared.size} macros · ${dead} dead · ${solo} single-caller · ${popular} popular · ${dispatcherReach} dispatcher-reach (${runtimeLive} runtime-live, ${retirementCandidate} retirement-candidates)`,
       evidence: {
         histogram, declared: declared.size, dead, solo, popular, dispatcherReach,
+        runtimeLive, retirementCandidate,
+        telemetryActive, telemetryRowCount: telemetry.totals.size,
         dispatchers: dispatchers.map(d => d.file),
         manifestMacroCount: manifestKeys.size,
       },
