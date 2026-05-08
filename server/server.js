@@ -27723,6 +27723,45 @@ app.use("/api/avatars", createAvatarsRouter({ db, requireAuth }));
 import createWorldCreatureRouter from "./routes/world-creature.js";
 app.use("/api/world/creature", createWorldCreatureRouter({ db, requireAuth, state: STATE }));
 
+// ── Forge: polyglot single-file app generator (Phase B wire-up) ─────────────
+// Surfaces the absorbed forge-template-generator + forge-template-engine so
+// the ForgeWorkbench frontend (concord-frontend/components/forge) can hit
+// /api/forge/{templates,sections,generate,validate,...}. Macros below give
+// runMacro() callers parity access; the route is the HTTP surface.
+import createForgeRouter from "./routes/forge.js";
+app.use("/api/forge", createForgeRouter({ db }));
+
+import {
+  generateForgeApp as _forgeGenerate,
+  validateForgeConfig as _forgeValidate,
+  getForgeTemplateSections as _forgeSections,
+  listForgeTemplates as _forgeListTemplates,
+} from "./lib/forge-template-generator.js";
+register("forge", "list", (_ctx, _input = {}) => {
+  try {
+    const templates = _forgeListTemplates();
+    return { ok: true, templates, count: templates.length };
+  } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+});
+register("forge", "sections", (_ctx, input = {}) => {
+  try {
+    const templateId = String(input.templateId || "blank");
+    return { ok: true, sections: _forgeSections(templateId) };
+  } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+});
+register("forge", "validate", (_ctx, input = {}) => {
+  try {
+    const config = input.config || input;
+    return { ok: true, ..._forgeValidate(config) };
+  } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+});
+register("forge", "generate", (_ctx, input = {}) => {
+  try {
+    const out = _forgeGenerate(input);
+    return { ok: true, ...out };
+  } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+});
+
 if (db) {
   try {
     seedWorlds(db);

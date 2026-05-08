@@ -1050,4 +1050,19 @@ export const EXTENDED_FEATURES = {
     ],
     featureCount: 5, economicIntegrations: ["concord_coin"], emergentAccess: true, botAccess: true, usbIntegration: false,
   },
+
+  "forge": {
+    lensId: "forge",
+    lensNumber: 124,
+    category: "AI_EXT",
+    features: [
+      f("template_picker", "Template Picker", "6 base templates: blank, SaaS, e-commerce, social, API-only, realtime", "creation", []),
+      f("section_configurator", "Section Configurator", "13 subsystems: deps, config, db, auth, payments, api, frontend, ws, jobs, threads, tests, deploy, repair-cortex", "creation", []),
+      f("config_validator", "Config Validator", "Pre-generation validation surfacing missing required fields and unsafe identifiers", "infrastructure", []),
+      f("live_preview", "Live Preview", "Live code preview with section navigation and copy-to-clipboard", "creation", []),
+      f("export_download", "Export / Download", "Export the generated single-file TypeScript app + Dockerfile + systemd unit", "creation", ["dtu"]),
+      f("dtu_publish", "DTU Publish", "Publish a generated app as a marketplace DTU with citation cascade", "marketplace", ["dtu", "concord_coin"]),
+    ],
+    featureCount: 6, economicIntegrations: ["concord_coin", "creator_royalties"], emergentAccess: true, botAccess: true, usbIntegration: false,
+  },
 };
