@@ -89,6 +89,97 @@ export default function SystemLensPage() {
   const [coverageFilter, setCoverageFilter] = useState<'all' | 'present' | 'partial' | 'missing'>('all');
   const [refreshKey, setRefreshKey] = useState(0);
 
+  // Plugins query — list installed/marketplace plugins from the
+  // developer-sdk loader. Maps the loader's flat `plugins` array onto
+  // the LensPluginSystem prop split (installed vs marketplace) by
+  // status: enabled plugins → installed; status='registered' → still
+  // a draft, not surfaced; everything else → marketplace.
+  type LoaderPlugin = {
+    id: string;
+    name: string;
+    version?: string;
+    creator?: string;
+    category?: string;
+    description?: string;
+    citations?: number;
+    downloads?: number;
+    rating?: number;
+    status?: string;
+  };
+  // Mirror the LensPluginSystem prop subtypes — Parameters<typeof X>
+  // breaks on dynamic-imported components.
+  type PluginCategory = 'Science' | 'Engineering' | 'Economics' | 'Social' | 'Entertainment' | 'Education';
+  type FrontendInstalled = {
+    id: string;
+    name: string;
+    creator: string;
+    category: PluginCategory;
+    version: string;
+  };
+  type FrontendMarketplace = {
+    id: string;
+    name: string;
+    creator: string;
+    description: string;
+    category: PluginCategory;
+    citations: number;
+    downloads: number;
+    rating: number;
+    status: 'draft' | 'in review' | 'published';
+    royaltyRate?: number;
+    installed?: boolean;
+  };
+
+  const pluginsQ = useQuery({
+    queryKey: ['system-plugins'],
+    queryFn: async () => {
+      try {
+        const r = await fetch('/api/plugins', { credentials: 'same-origin' });
+        if (!r.ok) return { installed: [] as FrontendInstalled[], marketplace: [] as FrontendMarketplace[] };
+        const j = (await r.json()) as { plugins?: LoaderPlugin[] };
+        const all = j.plugins ?? [];
+        const VALID_CATS: ReadonlySet<PluginCategory> = new Set(['Science','Engineering','Economics','Social','Entertainment','Education']);
+        const normalizeCat = (raw?: string): PluginCategory => {
+          if (!raw) return 'Engineering';
+          const titled = raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
+          return (VALID_CATS.has(titled as PluginCategory) ? titled : 'Engineering') as PluginCategory;
+        };
+        const installed: FrontendInstalled[] = all
+          .filter((p) => p.status === 'active' || p.status === 'enabled')
+          .map((p) => ({
+            id: p.id,
+            name: p.name,
+            creator: p.creator ?? 'unknown',
+            category: normalizeCat(p.category),
+            version: p.version ?? '1.0.0',
+          }));
+        const VALID_STATUS = new Set<FrontendMarketplace['status']>(['draft','in review','published']);
+        const normalizeStatus = (raw?: string): FrontendMarketplace['status'] => {
+          if (raw && VALID_STATUS.has(raw as FrontendMarketplace['status'])) {
+            return raw as FrontendMarketplace['status'];
+          }
+          return 'draft';
+        };
+        const marketplace: FrontendMarketplace[] = all
+          .filter((p) => p.status !== 'active' && p.status !== 'enabled')
+          .map((p) => ({
+            id: p.id,
+            name: p.name,
+            creator: p.creator ?? 'unknown',
+            description: p.description ?? '',
+            category: normalizeCat(p.category),
+            citations: p.citations ?? 0,
+            downloads: p.downloads ?? 0,
+            rating: p.rating ?? 0,
+            status: normalizeStatus(p.status),
+          }));
+        return { installed, marketplace };
+      } catch {
+        return { installed: [] as FrontendInstalled[], marketplace: [] as FrontendMarketplace[] };
+      }
+    },
+  });
+
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['system-cartograph', refreshKey],
     queryFn: async () => {
@@ -445,11 +536,11 @@ export default function SystemLensPage() {
             >
               <h2 className="mb-3 text-base font-semibold text-cyan-200">Lens plugin marketplace</h2>
               <p className="mb-3 text-xs text-cyan-700">
-                Browse + install + create lens plugins. Backed by the plugin gallery (migration 085) — the marketplace queries are stubbed until /api/plugins surfaces.
+                Browse + install + create lens plugins. Backed by /api/plugins (developer-sdk loader).
               </p>
               <LensPluginSystem
-                installedPlugins={[]}
-                marketplace={[]}
+                installedPlugins={pluginsQ.data?.installed ?? []}
+                marketplace={pluginsQ.data?.marketplace ?? []}
                 activeWidgets={[]}
               />
             </motion.section>
