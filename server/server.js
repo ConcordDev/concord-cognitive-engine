@@ -28645,6 +28645,22 @@ app.post("/api/world/npc-author", requireAuth, asyncHandler(async (req, res) => 
   if (!result.ok) return res.status(400).json(result);
   res.json({ ok: true, npcId: npc.id });
 }));
+// User-authored quest registration. Wraps quest-engine.createQuest with
+// the authoring user stamped onto the resulting quest so downstream
+// citation + royalty paths can credit them when other DTUs reference
+// the quest.
+app.post("/api/world/quest-author", requireAuth, asyncHandler(async (req, res) => {
+  const qe = await import("./emergent/quest-engine.js");
+  const { title, ...config } = req.body || {};
+  if (!title) return res.status(400).json({ ok: false, error: "title_required" });
+  const result = qe.createQuest(title, config);
+  if (!result.ok) return res.status(400).json(result);
+  if (req.user?.id && result.quest) {
+    result.quest.creator = req.user.id;
+    result.quest.author_id = req.user.id;
+  }
+  res.json({ ok: true, questId: result.quest?.id, quest: result.quest });
+}));
 
 // ── Performance telemetry: aggregate FPS / frame budget breaches ──────────
 // Frontend posts a rolling sample every 30s. We keep an in-memory ring
