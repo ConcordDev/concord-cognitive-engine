@@ -292,6 +292,13 @@ export default function CreatorDashboardPage() {
         )}
       </section>
 
+      {/* Cascade tree — for the top-cited DTU, show downstream lineage
+          + projected per-generation royalty share. Makes "your work
+          earns forever" a visible compounding shape, not just a number. */}
+      {me?.ok && (me.topCitedDTUs?.length ?? 0) > 0 && (
+        <CascadePanel topCited={me.topCitedDTUs ?? []} />
+      )}
+
       <div className={GRID}>
         {/* Leaderboard */}
         <section className={PANEL}>
@@ -425,5 +432,129 @@ function ListingRow({ listing, onUpdate, onWithdraw, onRelist }: ListingRowProps
         </>
       )}
     </div>
+  );
+}
+
+// ── Cascade panel ────────────────────────────────────────────────────────────
+
+interface CascadeGeneration {
+  depth: number;
+  count: number;
+  rate: number;
+  projectedShare: number;
+}
+
+interface CascadeResponse {
+  ok: boolean;
+  rootId: string;
+  generations: CascadeGeneration[];
+  totalDownstream: number;
+  maxObservedDepth: number;
+}
+
+interface CascadePanelProps {
+  topCited: { id: string; title: string; domain: string; citationsReceived: number }[];
+}
+
+function CascadePanel({ topCited }: CascadePanelProps) {
+  const [selected, setSelected] = useState<string>(topCited[0]?.id ?? '');
+  const [tree, setTree] = useState<CascadeResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!selected) {
+      setTree(null);
+      return;
+    }
+    setLoading(true);
+    fetch(`/api/creator/cascade/${encodeURIComponent(selected)}?maxDepth=6`, {
+      credentials: 'include',
+    })
+      .then((r) => r.json())
+      .then((d) => setTree(d as CascadeResponse))
+      .catch(() => setTree(null))
+      .finally(() => setLoading(false));
+  }, [selected]);
+
+  // Width-by-count visualization scale.
+  const maxCount = tree
+    ? Math.max(1, ...tree.generations.map((g) => g.count))
+    : 1;
+
+  return (
+    <section className={`${PANEL} mb-6`}>
+      <div className="flex flex-wrap items-baseline justify-between gap-2 mb-3">
+        <h2 className="text-amber-200 font-semibold">Royalty cascade</h2>
+        <span className="text-[11px] text-gray-500">
+          downstream lineage · projected per-generation share
+        </span>
+      </div>
+      <div className="mb-3">
+        <label className="block text-[11px] text-gray-500 mb-1">Top-cited DTU</label>
+        <select
+          value={selected}
+          onChange={(e) => setSelected(e.target.value)}
+          className="w-full max-w-md bg-black/60 border border-white/10 rounded px-3 py-2 text-sm text-gray-200"
+        >
+          {topCited.map((d) => (
+            <option key={d.id} value={d.id}>
+              {d.title || d.id.slice(0, 16)} · {d.citationsReceived} citations
+            </option>
+          ))}
+        </select>
+      </div>
+      {loading ? (
+        <div className="text-xs text-gray-500 italic">Walking lineage…</div>
+      ) : !tree?.ok || tree.generations.length === 0 ? (
+        <div className="text-xs text-gray-500 italic">
+          No downstream citations yet for this DTU. As other creators cite or remix
+          your work, generations appear here — each one paying you a halving share
+          forever (floor 0.05%).
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <div className="flex items-baseline gap-4 text-xs text-gray-400">
+            <span><span className="text-gray-200 font-mono">{tree.totalDownstream}</span> downstream DTUs</span>
+            <span><span className="text-gray-200 font-mono">{tree.maxObservedDepth}</span> generations deep</span>
+            <span className="text-amber-300/80">
+              projected share total:{' '}
+              <span className="font-mono">
+                {tree.generations.reduce((s, g) => s + g.projectedShare, 0).toFixed(2)}
+              </span>
+              {' '}× sale
+            </span>
+          </div>
+          <ol className="space-y-1.5 mt-3">
+            {tree.generations.map((g) => {
+              const widthPct = Math.round((g.count / maxCount) * 100);
+              return (
+                <li key={g.depth} className="flex items-center gap-3 text-xs">
+                  <span className="w-12 shrink-0 text-amber-400 font-mono">gen {g.depth}</span>
+                  <div className="flex-1 h-5 bg-black/40 rounded overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-amber-500/60 to-amber-300/40 flex items-center px-2"
+                      style={{ width: `${widthPct}%` }}
+                    >
+                      <span className="text-[10px] font-mono text-black/70">{g.count}</span>
+                    </div>
+                  </div>
+                  <span className="w-20 shrink-0 text-right text-amber-300 font-mono">
+                    {(g.rate * 100).toFixed(2)}%
+                  </span>
+                  <span className="w-24 shrink-0 text-right text-emerald-300 font-mono">
+                    +{g.projectedShare.toFixed(2)}× sale
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
+          <p className="text-[10px] text-gray-500 mt-2">
+            Projected share = count × generational-rate. Royalties halve per generation
+            (initial 21%) with a 0.05% floor — so a 4-deep cascade with 10 / 25 / 60 / 140
+            downstream DTUs still pays the original creator on every transaction.
+          </p>
+        </div>
+      )}
+    </section>
   );
 }

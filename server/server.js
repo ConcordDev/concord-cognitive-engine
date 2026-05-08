@@ -28696,6 +28696,40 @@ app.post("/api/world/commune-author", requireAuth, asyncHandler(async (req, res)
   if (!result.ok) return res.status(400).json(result);
   res.json({ ok: true, templateId: template.id });
 }));
+// Goddess / patron / antagonist arcs — the phase-from-ecosystem
+// framework was hard-coded to one NPC; this surface lets the community
+// declare custom deities with their own thresholds + dialogue + cues.
+// world-narrative.js consumes the arc when the dialogue endpoint is
+// hit for an NPC whose arc has been registered.
+app.get("/api/world/arcs", asyncHandler(async (req, res) => {
+  const arcs = await import("./lib/goddess-arcs.js");
+  const filter = {};
+  if (req.query.patron_npc_id) filter.patron_npc_id = String(req.query.patron_npc_id);
+  res.json({ ok: true, arcs: arcs.listGoddessArcs(filter) });
+}));
+app.get("/api/world/arcs/options", asyncHandler(async (_req, res) => {
+  const arcs = await import("./lib/goddess-arcs.js");
+  res.json({
+    ok: true,
+    metrics: arcs.GODDESS_ARC_METRICS,
+    tones: arcs.GODDESS_ARC_TONES,
+    comparators: arcs.GODDESS_ARC_COMPARATORS,
+  });
+}));
+app.get("/api/world/arcs/:id", asyncHandler(async (req, res) => {
+  const arcs = await import("./lib/goddess-arcs.js");
+  const arc = arcs.getGoddessArc(req.params.id);
+  if (!arc) return res.status(404).json({ ok: false, error: "not_found" });
+  res.json({ ok: true, arc });
+}));
+app.post("/api/world/arc-author", requireAuth, asyncHandler(async (req, res) => {
+  const arcs = await import("./lib/goddess-arcs.js");
+  const arc = req.body || {};
+  if (req.user?.id && !arc.author_id) arc.author_id = req.user.id;
+  const result = arcs.addGoddessArc(arc);
+  if (!result.ok) return res.status(400).json(result);
+  res.json({ ok: true, arcId: arc.id });
+}));
 
 // ── Performance telemetry: aggregate FPS / frame budget breaches ──────────
 // Frontend posts a rolling sample every 30s. We keep an in-memory ring
@@ -42647,6 +42681,16 @@ app.get("/api/creator/influence-drift", asyncHandler(async (_req, res) => {
 app.get("/api/creator/withdrawal-status", requireAuth(), asyncHandler(async (req, res) => {
   const cd = await import("./lib/creator-dashboard.js");
   res.json(cd.computeWithdrawalEligibility(db, req.user?.id));
+}));
+// Cascade tree — for a given DTU, compute the per-generation downstream
+// citation count + projected royalty rate. Public read (creator
+// rankings / trending features will eventually surface other creators'
+// cascades too); auth-gated only because we don't want anonymous bots
+// scraping the lineage graph en masse.
+app.get("/api/creator/cascade/:dtuId", requireAuth(), asyncHandler(async (req, res) => {
+  const cd = await import("./lib/creator-dashboard.js");
+  const maxDepth = Math.min(50, Math.max(1, Number(req.query.maxDepth) || 6));
+  res.json(cd.computeCascadeTree(req.params.dtuId, STATE, { maxDepth }));
 }));
 
 // Federation: peer list, trust graph visualization, cross-instance search.

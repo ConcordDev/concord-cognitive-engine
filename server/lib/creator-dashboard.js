@@ -339,6 +339,81 @@ export function computeInfluenceDrift(STATE) {
   return { ok: true, drift: drift.slice(0, 25) };
 }
 
+/**
+ * Cascade tree for one of a creator's DTUs.
+ *
+ * Walks the lineage forward from `rootDtuId` up to `maxDepth`
+ * generations. At each generation we count downstream DTUs that cite
+ * the root (or any ancestor in our walk) and estimate per-generation
+ * royalty using the standard cascade rate
+ * (`calculateGenerationalRate` from royalty-cascade.js).
+ *
+ * Estimated earnings = generation_count × generation_rate × baseRate.
+ * This is an *expected-value* number, not a transactional ledger sum;
+ * the dashboard surfaces it as "potential" so creators see the
+ * compounding shape of their lineage even before sales close.
+ *
+ * @param {string} rootDtuId
+ * @param {object} STATE
+ * @param {object} [opts] — { maxDepth?: number, baseRate?: number }
+ * @returns {{
+ *   ok: boolean,
+ *   rootId: string,
+ *   generations: Array<{ depth: number, count: number, rate: number, projectedShare: number }>,
+ *   totalDownstream: number,
+ *   maxObservedDepth: number,
+ * }}
+ */
+export function computeCascadeTree(rootDtuId, STATE, opts = {}) {
+  if (!rootDtuId) return { ok: false, error: "root_required" };
+  const maxDepth = Math.min(50, Math.max(1, Number(opts.maxDepth) || 6));
+  // Default base rate of 0.21 mirrors `DEFAULT_INITIAL_RATE` in
+  // royalty-cascade.js. Halves per generation, floor 0.0005.
+  const baseRate = Number(opts.baseRate) || 0.21;
+  const dtus = STATE?.dtus;
+  if (!dtus?.values) return { ok: true, rootId: rootDtuId, generations: [], totalDownstream: 0, maxObservedDepth: 0 };
+
+  // Build ancestor set per generation. Generation 0 = the root itself.
+  // Generation N = DTUs whose lineage cites a generation N-1 DTU.
+  const seen = new Set([rootDtuId]);
+  let currentGen = new Set([rootDtuId]);
+  const generations = [];
+  let totalDownstream = 0;
+  for (let depth = 1; depth <= maxDepth; depth++) {
+    const nextGen = new Set();
+    for (const dtu of dtus.values()) {
+      if (seen.has(dtu.id)) continue;
+      const parents = dtu.lineage?.parents ?? [];
+      const cites = dtu.lineage?.citations ?? [];
+      const refsAncestor = parents.some?.((p) => currentGen.has(p))
+        || cites.some?.((c) => {
+          const id = typeof c === "string" ? c : c?.dtuId;
+          return id && currentGen.has(id);
+        });
+      if (refsAncestor) nextGen.add(dtu.id);
+    }
+    if (nextGen.size === 0) break;
+    const rate = Math.max(baseRate / Math.pow(2, depth - 1), 0.0005);
+    generations.push({
+      depth,
+      count: nextGen.size,
+      rate,
+      projectedShare: nextGen.size * rate,
+    });
+    totalDownstream += nextGen.size;
+    for (const id of nextGen) seen.add(id);
+    currentGen = nextGen;
+  }
+
+  return {
+    ok: true,
+    rootId: rootDtuId,
+    generations,
+    totalDownstream,
+    maxObservedDepth: generations.length,
+  };
+}
+
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 function countIncomingCitations(targetId, STATE) {
