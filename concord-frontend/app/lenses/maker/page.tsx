@@ -14,6 +14,7 @@
  */
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
@@ -30,6 +31,15 @@ export default function MakerLensPage() {
   useLensNav('maker');
   const qc = useQueryClient();
   const [activeTab, setActiveTab] = useState<TabKey>('apps');
+
+  useLensCommand(
+    [
+      { id: 'tab-apps', keys: 'a', description: 'Apps', category: 'navigation', action: () => setActiveTab('apps') },
+      { id: 'tab-quests', keys: 'q', description: 'Quests', category: 'navigation', action: () => setActiveTab('quests') },
+      { id: 'tab-creative', keys: 'c', description: 'Creative', category: 'navigation', action: () => setActiveTab('creative') },
+    ],
+    { lensId: 'maker' }
+  );
 
   // ── Apps ──────────────────────────────────────────────────────────────
   const apps = useQuery({

@@ -20,6 +20,7 @@
  */
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -42,6 +43,17 @@ export default function LatticeLensPage() {
   useLensNav('lattice');
   const qc = useQueryClient();
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
+
+  useLensCommand(
+    [
+      { id: 'tab-overview', keys: 'o', description: 'Overview', category: 'navigation', action: () => setActiveTab('overview') },
+      { id: 'tab-consent', keys: 'c', description: 'Consent', category: 'navigation', action: () => setActiveTab('consent') },
+      { id: 'tab-brains', keys: 'b', description: 'Brains', category: 'navigation', action: () => setActiveTab('brains') },
+      { id: 'tab-refresh', keys: 'r', description: 'Refresh', category: 'navigation', action: () => setActiveTab('refresh') },
+      { id: 'tab-federation', keys: 'f', description: 'Federation', category: 'navigation', action: () => setActiveTab('federation') },
+    ],
+    { lensId: 'lattice' }
+  );
 
   // ── Corpus stats ──────────────────────────────────────────────────────
   const corpusStats = useQuery({

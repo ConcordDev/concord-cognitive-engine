@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ds } from '@/lib/design-system';
@@ -284,6 +285,19 @@ export default function AviationLensPage() {
   const [showFeatures, setShowFeatures] = useState(true);
   const [activeMode, setActiveMode] = useState<ModeTab>('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
+
+  useLensCommand(
+    [
+      { id: 'mode-dashboard', keys: 'd', description: 'Dashboard', category: 'navigation', action: () => setActiveMode('dashboard') },
+      { id: 'mode-flights', keys: 'f', description: 'Flights', category: 'navigation', action: () => setActiveMode('flights') },
+      { id: 'mode-pilots', keys: 'p', description: 'Pilots', category: 'navigation', action: () => setActiveMode('pilots') },
+      { id: 'mode-fleet', keys: 'l', description: 'Fleet', category: 'navigation', action: () => setActiveMode('fleet') },
+      { id: 'mode-maintenance', keys: 'm', description: 'Maintenance', category: 'navigation', action: () => setActiveMode('maintenance') },
+      { id: 'mode-charter', keys: 'c', description: 'Charter', category: 'navigation', action: () => setActiveMode('charter') },
+      { id: 'mode-weather', keys: 'w', description: 'Weather', category: 'navigation', action: () => setActiveMode('weather') },
+    ],
+    { lensId: 'aviation' }
+  );
   const [statusFilter, setStatusFilter] = useState('');
   const [showEditor, setShowEditor] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
