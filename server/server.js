@@ -452,6 +452,7 @@ import createPersonalLockerRouter from "./routes/personal-locker.js";
 import registerChatRoutes from "./routes/chat.js";
 import registerDomainRoutes from "./routes/domain.js";
 import registerDtuRoutes from "./routes/dtus.js";
+import { registerSaveRoutes } from "./routes/save.js";
 import createEmergentRouter from "./routes/emergent.js";
 import registerOperationRoutes from "./routes/operations.js";
 import createQualiaRouter from "./routes/qualia.js";
@@ -26542,6 +26543,9 @@ registerHook("before_tool", async (ctx) => {
 
 // ---- DTU Endpoints (extracted to routes/dtus.js) ----
 registerDtuRoutes(app, { STATE, makeCtx, runMacro, dtuForClient, dtusArray, userVisibleDTUs, _withAck, saveStateDebounced, validate });
+
+// ---- Save status + manual snapshot (extracted to routes/save.js) ----
+registerSaveRoutes(app, { db, asyncHandler, STATE });
 
 // ---- Chat + Ask Endpoints (extracted to routes/chat.js) ----
 registerChatRoutes(app, {

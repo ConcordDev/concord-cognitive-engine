@@ -13,7 +13,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Cloud, ArrowLeft, Database, Globe, Coins, Users } from 'lucide-react';
+import {
+  Cloud, ArrowLeft, Database, Globe, Coins, Users,
+  Backpack, Award, CalendarDays,
+  type LucideIcon,
+} from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { api } from '@/lib/api/client';
 
@@ -42,6 +46,15 @@ const SaveSystem = dynamic(
   { ssr: false },
 );
 
+// Resolve backend iconName strings to lucide ComponentTypes. Unknown
+// names fall back to Database — the panel tile will still render.
+const ICON_BY_NAME: Record<string, LucideIcon> = {
+  Database, Globe, Coins, Users, Backpack, Award, CalendarDays,
+};
+function resolveIcon(name?: string): LucideIcon {
+  return (name && ICON_BY_NAME[name]) || Database;
+}
+
 const DEFAULT_SAVE_STATE: SaveState = {
   autoSaving: false,
   lastSaveTime: new Date().toISOString(),
@@ -66,7 +79,7 @@ export default function SaveSystemPage() {
   const router = useRouter();
   const [saveState, setSaveState] = useState<SaveState>(DEFAULT_SAVE_STATE);
   const [offlineCalcs, setOfflineCalcs] = useState<OfflineCalc[] | null>(null);
-  const [worldPersistence] = useState<WorldPersistence>(DEFAULT_PERSISTENCE);
+  const [worldPersistence, setWorldPersistence] = useState<WorldPersistence>(DEFAULT_PERSISTENCE);
 
   useEffect(() => {
     let cancelled = false;
@@ -74,12 +87,26 @@ export default function SaveSystemPage() {
       .get('/api/save/status')
       .then((r) => {
         if (cancelled) return;
-        const d = r.data as { saveState?: SaveState; offlineCalcs?: OfflineCalc[] };
+        const d = r.data as {
+          saveState?: SaveState;
+          offlineCalcs?: OfflineCalc[];
+          worldPersistence?: { entries: { label: string; lastUpdated: string; iconName?: string }[] };
+        };
         if (d.saveState) setSaveState(d.saveState);
         if (d.offlineCalcs) setOfflineCalcs(d.offlineCalcs);
+        if (d.worldPersistence) {
+          // Backend sends iconName strings; resolve to lucide component refs here.
+          setWorldPersistence({
+            entries: d.worldPersistence.entries.map((e) => ({
+              label: e.label,
+              lastUpdated: e.lastUpdated,
+              icon: resolveIcon(e.iconName),
+            })),
+          });
+        }
       })
       .catch(() => {
-        // Endpoint may not exist yet; fall back to defaults.
+        // Endpoint not live yet; defaults already in state.
       });
     return () => {
       cancelled = true;
