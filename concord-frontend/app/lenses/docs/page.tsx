@@ -1,6 +1,8 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { useState, useMemo, useCallback } from 'react';
@@ -278,6 +280,8 @@ export default function DocsLensPage() {
   }
 
   return (
+    <LensShell lensId="docs" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="docs" className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -964,5 +968,6 @@ export default function DocsLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

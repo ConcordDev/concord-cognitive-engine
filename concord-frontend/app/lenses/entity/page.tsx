@@ -1,7 +1,10 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers, api } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
@@ -155,6 +158,8 @@ export default function EntityLensPage() {
     );
   }
   return (
+    <LensShell lensId="entity" asMain={false}>
+      <ManifestActionBar />
     <div className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -499,6 +504,7 @@ export default function EntityLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }
 
@@ -542,6 +548,27 @@ function QualiaEntityPanel({ entityId, entityName, onClose }: { entityId: string
   });
 
   const [section, setSection] = useState<'sensory' | 'body' | 'presence' | 'os-tiers'>('sensory');
+
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+
+  useLensCommand(
+
+    [
+
+      { id: 'tab-sensory', keys: 's', description: 'Sensory', category: 'navigation', action: () => setSection('sensory') },
+
+      { id: 'tab-body', keys: 'b', description: 'Body', category: 'navigation', action: () => setSection('body') },
+
+      { id: 'tab-presence', keys: 'p', description: 'Presence', category: 'navigation', action: () => setSection('presence') },
+
+      { id: 'tab-os-tiers', keys: 'o', description: 'Os Tiers', category: 'navigation', action: () => setSection('os-tiers') },
+
+    ],
+
+    { lensId: 'entity' }
+
+  );
   const sections = [
     { id: 'sensory' as const, label: 'Sensory Feed' },
     { id: 'body' as const, label: 'Body Map' },

@@ -3,6 +3,9 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useQuery } from '@tanstack/react-query';
@@ -441,6 +444,17 @@ export default function DebateLensPage() {
     setTurnCount(0);
   }, []);
 
+  // Lens-scoped keyboard commands. P / C swap argument side, N opens
+  // the new-debate composer, / focuses the debate search.
+  useLensCommand(
+    [
+      { id: 'side-pro', keys: 'p', description: 'Argue pro', category: 'actions', action: () => setArgumentSide('pro') },
+      { id: 'side-con', keys: 'c', description: 'Argue con', category: 'actions', action: () => setArgumentSide('con') },
+      { id: 'new-debate', keys: 'n', description: 'New debate', category: 'actions', action: () => setShowCreate(true) },
+    ],
+    { lensId: 'debate' }
+  );
+
   const canSubmitArgument = phaseConfig.allowSubmit && (!phaseConfig.hasTurns || argumentSide === currentTurn);
 
   // Wire to social groups API for community features
@@ -525,6 +539,8 @@ export default function DebateLensPage() {
   if (isError) return <div className="flex items-center justify-center h-full p-8"><ErrorState error={error?.message} onRetry={refetch} /></div>;
 
   return (
+    <LensShell lensId="debate" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="debate" className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -975,5 +991,6 @@ export default function DebateLensPage() {
         {showFeatures && <div className="px-4 pb-4"><LensFeaturePanel lensId="debate" /></div>}
       </div>
     </div>
+    </LensShell>
   );
 }

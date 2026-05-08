@@ -1,7 +1,10 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -83,6 +86,25 @@ export default function SportsLensPage() {
   const [sportsActiveAction, setSportsActiveAction] = useState<string | null>(null);
 
   const [tab, setTab] = useState<Tab>('games');
+
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+
+  useLensCommand(
+
+    [
+
+      { id: 'tab-games', keys: 'g', description: 'Games', category: 'navigation', action: () => setTab('games') },
+
+      { id: 'tab-stats', keys: 's', description: 'Stats', category: 'navigation', action: () => setTab('stats') },
+
+      { id: 'tab-training', keys: 't', description: 'Training', category: 'navigation', action: () => setTab('training') },
+
+    ],
+
+    { lensId: 'sports' }
+
+  );
   const [search, setSearch] = useState('');
   const [showCreate, setShowCreate] = useState(false);
   const [showFeatures, setShowFeatures] = useState(true);
@@ -246,6 +268,8 @@ export default function SportsLensPage() {
     );
 
   return (
+    <LensShell lensId="sports" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="sports" className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -991,5 +1015,6 @@ export default function SportsLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

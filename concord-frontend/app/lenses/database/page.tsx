@@ -1,7 +1,10 @@
 'use client';
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -227,6 +230,18 @@ export default function DatabaseLensPage() {
   // --- Tab state ---
   const [activeTab, setActiveTab] = useState<TabId>('query');
 
+  useLensCommand(
+    [
+      { id: 'tab-query', keys: 'q', description: 'Query Editor', category: 'navigation', action: () => setActiveTab('query') },
+      { id: 'tab-tables', keys: 't', description: 'Table Browser', category: 'navigation', action: () => setActiveTab('tables') },
+      { id: 'tab-schema', keys: 'm', description: 'Schema Map', category: 'navigation', action: () => setActiveTab('schema') },
+      { id: 'tab-indexes', keys: 'i', description: 'Indexes', category: 'navigation', action: () => setActiveTab('indexes') },
+      { id: 'tab-monitor', keys: 'o', description: 'Monitoring', category: 'navigation', action: () => setActiveTab('monitor') },
+      { id: 'tab-history', keys: 'h', description: 'History', category: 'navigation', action: () => setActiveTab('history') },
+    ],
+    { lensId: 'database' }
+  );
+
   // --- Query editor state ---
   const [sql, setSql] = useState('SELECT id, title, tier, tags, created_at\nFROM dtus\nORDER BY created_at DESC\nLIMIT 50;');
   const [queryResult, setQueryResult] = useState<QueryResult | null>(null);
@@ -410,6 +425,8 @@ export default function DatabaseLensPage() {
     );
   }
   return (
+    <LensShell lensId="database" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="database" className="p-6 space-y-6 bg-lattice-bg min-h-screen">
       {/* Header */}
       <header className="flex items-center justify-between">
@@ -1222,5 +1239,6 @@ export default function DatabaseLensPage() {
         </motion.div>
       </AnimatePresence>
     </div>
+    </LensShell>
   );
 }

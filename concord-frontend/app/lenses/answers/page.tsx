@@ -18,6 +18,8 @@
  */
 
 import { useState, useEffect } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import {
   Atom,
@@ -500,6 +502,8 @@ export default function AnswersLensPage() {
   const activeEntries = bySection.get(activeSection) ?? [];
 
   return (
+    <LensShell lensId="answers" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="answers" className={cn(ds.pageContainer, 'space-y-6')}>
       {/* ── Header ─────────────────────────────────────────────────── */}
       <header className="space-y-4">
@@ -617,6 +621,7 @@ export default function AnswersLensPage() {
         </div>
       </footer>
     </div>
+    </LensShell>
   );
 }
 

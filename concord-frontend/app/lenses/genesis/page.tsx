@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Cpu, Zap, MessageSquare, Eye, Star, Clock, Trophy } from 'lucide-react';
 import Link from 'next/link';
@@ -225,6 +227,8 @@ export default function GenesisLens() {
   ).length;
 
   return (
+    <LensShell lensId="genesis" asMain={false}>
+      <ManifestActionBar />
     <div className="min-h-screen bg-gray-950 text-white p-6">
       {/* Header */}
       <header className="mb-8">
@@ -323,5 +327,6 @@ export default function GenesisLens() {
         </div>
       )}
     </div>
+    </LensShell>
   );
 }

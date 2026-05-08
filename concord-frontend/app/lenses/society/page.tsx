@@ -15,6 +15,9 @@
  */
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useState } from 'react';
@@ -38,6 +41,19 @@ type TabKey = 'culture' | 'economy' | 'autonomy' | 'conflict' | 'teaching' | 'pe
 export default function SocietyLensPage() {
   useLensNav('society');
   const [activeTab, setActiveTab] = useState<TabKey>('culture');
+
+  // Lens-scoped keyboard commands.
+  useLensCommand(
+    [
+      { id: 'tab-culture', keys: 'c', description: 'Culture', category: 'navigation', action: () => setActiveTab('culture') },
+      { id: 'tab-economy', keys: 'e', description: 'Economy', category: 'navigation', action: () => setActiveTab('economy') },
+      { id: 'tab-autonomy', keys: 'a', description: 'Autonomy', category: 'navigation', action: () => setActiveTab('autonomy') },
+      { id: 'tab-conflict', keys: 'x', description: 'Conflict', category: 'navigation', action: () => setActiveTab('conflict') },
+      { id: 'tab-teaching', keys: 't', description: 'Teaching', category: 'navigation', action: () => setActiveTab('teaching') },
+      { id: 'tab-persona', keys: 'p', description: 'Persona', category: 'navigation', action: () => setActiveTab('persona') },
+    ],
+    { lensId: 'society' }
+  );
 
   const culture = useQuery({
     queryKey: ['society-culture'],
@@ -114,6 +130,8 @@ export default function SocietyLensPage() {
   ];
 
   return (
+    <LensShell lensId="society" asMain={false}>
+      <ManifestActionBar />
     <div className="min-h-screen bg-black pb-12 text-amber-50">
       <header className="sticky top-0 z-10 border-b border-amber-900/50 bg-black/95 px-4 py-3 backdrop-blur md:px-8">
         <div className="mx-auto flex max-w-7xl items-center gap-3">
@@ -154,6 +172,7 @@ export default function SocietyLensPage() {
         </AnimatePresence>
       </main>
     </div>
+    </LensShell>
   );
 }
 

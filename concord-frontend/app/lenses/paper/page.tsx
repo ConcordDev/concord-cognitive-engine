@@ -1,7 +1,9 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { LensShell } from '@/components/lens/LensShell';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { showToast } from '@/components/common/Toasts';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -187,6 +189,20 @@ export default function PaperLensPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('');
+
+  // Lens-scoped keyboard commands. Zotero / Mendeley idiom: single
+  // letters jump between research-pipeline modes.
+  useLensCommand(
+    [
+      { id: 'mode-papers', keys: 'p', description: 'Papers', category: 'navigation', action: () => setActiveTab('papers') },
+      { id: 'mode-hypotheses', keys: 'h', description: 'Hypotheses', category: 'navigation', action: () => setActiveTab('hypotheses') },
+      { id: 'mode-evidence', keys: 'e', description: 'Evidence', category: 'navigation', action: () => setActiveTab('evidence') },
+      { id: 'mode-experiments', keys: 'x', description: 'Experiments', category: 'navigation', action: () => setActiveTab('experiments') },
+      { id: 'mode-synthesis', keys: 's', description: 'Synthesis', category: 'navigation', action: () => setActiveTab('synthesis') },
+      { id: 'mode-bib', keys: 'b', description: 'Bibliography', category: 'navigation', action: () => setActiveTab('bibliography') },
+    ],
+    { lensId: 'paper' }
+  );
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
@@ -476,6 +492,7 @@ export default function PaperLensPage() {
   // ====================================================================
 
   return (
+    <LensShell lensId="paper" asMain={false}>
     <div className={ds.pageContainer}>
       {/* ---- Header ---- */}
       <header className={ds.sectionHeader}>
@@ -951,6 +968,7 @@ export default function PaperLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }
 

@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -738,6 +740,8 @@ export default function DIYLensPage() {
   );
 
   return (
+    <LensShell lensId="diy" asMain={false}>
+      <ManifestActionBar />
     <LensPageShell
       domain="diy"
       title="DIY"
@@ -817,5 +821,6 @@ export default function DIYLensPage() {
       {showDashboard ? renderDashboard() : renderLibrary()}
       {renderEditor()}
     </LensPageShell>
+    </LensShell>
   );
 }

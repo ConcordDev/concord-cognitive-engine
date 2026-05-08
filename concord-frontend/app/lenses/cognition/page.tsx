@@ -13,6 +13,9 @@
  */
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useState } from 'react';
@@ -42,6 +45,20 @@ export default function CognitionLensPage() {
   const [activeTab, setActiveTab] = useState<TabKey>('reasoning');
   const [hlrInput, setHlrInput] = useState('');
   const [hlrMode, setHlrMode] = useState('abductive');
+
+  // Lens-scoped keyboard commands. Each tab is a different cognitive
+  // substrate: r reasoning, t topology, b breakthrough, f forgetting,
+  // d drift.
+  useLensCommand(
+    [
+      { id: 'tab-reasoning', keys: 'r', description: 'Reasoning (HLR/HLM)', category: 'navigation', action: () => setActiveTab('reasoning') },
+      { id: 'tab-topology', keys: 't', description: 'Topology', category: 'navigation', action: () => setActiveTab('topology') },
+      { id: 'tab-breakthrough', keys: 'b', description: 'Breakthrough', category: 'navigation', action: () => setActiveTab('breakthrough') },
+      { id: 'tab-forgetting', keys: 'f', description: 'Forgetting', category: 'navigation', action: () => setActiveTab('forgetting') },
+      { id: 'tab-drift', keys: 'd', description: 'Drift', category: 'navigation', action: () => setActiveTab('drift') },
+    ],
+    { lensId: 'cognition' }
+  );
   const [hlrResult, setHlrResult] = useState<unknown>(null);
   const [traceExpanded, setTraceExpanded] = useState<string | null>(null);
 
@@ -135,6 +152,8 @@ export default function CognitionLensPage() {
   ];
 
   return (
+    <LensShell lensId="cognition" asMain={false}>
+      <ManifestActionBar />
     <div className="min-h-screen bg-black pb-12 text-cyan-50">
       <header className="sticky top-0 z-10 border-b border-violet-900/50 bg-black/95 px-4 py-3 backdrop-blur md:px-8">
         <div className="mx-auto flex max-w-7xl items-center gap-3">
@@ -346,6 +365,7 @@ export default function CognitionLensPage() {
         </AnimatePresence>
       </main>
     </div>
+    </LensShell>
   );
 }
 

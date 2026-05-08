@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
@@ -176,6 +178,8 @@ export default function IngestLensPage() {
   }
 
   return (
+    <LensShell lensId="ingest" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="ingest" className="p-6 space-y-6">
       <header className="flex items-center gap-3">
         <Upload className="w-6 h-6 text-neon-cyan" />
@@ -775,5 +779,6 @@ export default function IngestLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

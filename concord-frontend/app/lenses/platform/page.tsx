@@ -1,7 +1,10 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery } from '@tanstack/react-query';
 import { api, apiHelpers } from '@/lib/api/client';
 import {
@@ -316,6 +319,19 @@ export default function PlatformPage() {
   useLensNav('platform');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('platform');
   const [activeTab, setActiveTab] = useState<Tab>('overview');
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+  useLensCommand(
+    [
+      { id: 'tab-overview', keys: 'o', description: 'Overview', category: 'navigation', action: () => setActiveTab('overview') },
+      { id: 'tab-pipeline', keys: 'p', description: 'Pipeline', category: 'navigation', action: () => setActiveTab('pipeline') },
+      { id: 'tab-nerve', keys: 'n', description: 'Nerve', category: 'navigation', action: () => setActiveTab('nerve') },
+      { id: 'tab-empirical', keys: 'e', description: 'Empirical', category: 'navigation', action: () => setActiveTab('empirical') },
+      { id: 'tab-scope', keys: 's', description: 'Scope', category: 'navigation', action: () => setActiveTab('scope') },
+      { id: 'tab-events', keys: 'v', description: 'Events', category: 'navigation', action: () => setActiveTab('events') },
+    ],
+    { lensId: 'platform' }
+  );
   const [showFeatures, setShowFeatures] = useState(true);
   const { events, connected } = usePlatformEvents();
   const { items: platformItems } = useLensData('platform', 'service', { noSeed: true });
@@ -334,6 +350,8 @@ export default function PlatformPage() {
   };
 
   return (
+    <LensShell lensId="platform" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="platform" className="min-h-screen bg-lattice-void text-gray-200">
       {/* Top Bar */}
       <div className="border-b border-lattice-border bg-lattice-deep/50 backdrop-blur-sm sticky top-0 z-10">
@@ -535,5 +553,6 @@ export default function PlatformPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

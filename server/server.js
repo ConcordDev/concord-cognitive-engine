@@ -14171,6 +14171,200 @@ async function initGhostFleet() {
   }
   await _ghostFleetYield();
 
+  // 2.5. Understanding Engine — `understand(x) → model` primitive.
+  // Composes DTU.machine layer → HLM topology → HLR reasoning into a
+  // typed Understanding artifact (entities, claims, relations, constraints,
+  // consistency, contradictions, gaps, predictions, confidence). The
+  // discrete primitive any lens can call instead of orchestrating five
+  // engines. Persisted in the `understandings` table (migration 120).
+  try {
+    const und = await import("./lib/understanding-engine.js");
+    GHOST_FLEET_STATUS.modules["understanding-engine"] = { loaded: true, loadedAt: new Date().toISOString() };
+
+    register("understanding", "parse", async (_ctx, input = {}) => {
+      try {
+        // Resolve DTU from STATE if subjectId is given without an inline DTU.
+        let dtu = input.dtu;
+        if (!dtu && input.subjectId && typeof STATE?.dtus?.get === "function") {
+          dtu = STATE.dtus.get(input.subjectId);
+        }
+        const u = und.parseUnderstanding({ ...input, dtu });
+        return { ok: true, understanding: u };
+      } catch (e) {
+        return { ok: false, error: e?.message || "understanding_parse_failed" };
+      }
+    });
+
+    register("understanding", "compose", async (_ctx, input = {}) => {
+      try {
+        let dtu = input.dtu;
+        if (!dtu && input.subjectId && typeof STATE?.dtus?.get === "function") {
+          dtu = STATE.dtus.get(input.subjectId);
+        }
+        const r = und.composeAndSave(db, { ...input, dtu });
+        return r.ok
+          ? { ok: true, id: r.understanding.id, understanding: r.understanding }
+          : { ok: false, error: r.error };
+      } catch (e) {
+        return { ok: false, error: e?.message || "understanding_compose_failed" };
+      }
+    });
+
+    register("understanding", "get", (_ctx, input = {}) => {
+      const u = und.getUnderstanding(db, input.id);
+      return u ? { ok: true, understanding: u } : { ok: false, error: "not_found" };
+    });
+
+    register("understanding", "list", (_ctx, input = {}) =>
+      ({ ok: true, rows: und.listUnderstandings(db, input) }));
+
+    register("understanding", "recompose", async (_ctx, input = {}) => {
+      try {
+        let dtu = input.dtu;
+        if (!dtu && input.subjectId && typeof STATE?.dtus?.get === "function") {
+          dtu = STATE.dtus.get(input.subjectId);
+        }
+        return und.recomposeUnderstanding(db, input.id, { ...input, dtu });
+      } catch (e) {
+        return { ok: false, error: e?.message || "understanding_recompose_failed" };
+      }
+    });
+
+    register("understanding", "sweep", () => und.sweepExpiredUnderstandings(db));
+
+    register("understanding", "subject_kinds", () =>
+      ({ ok: true, kinds: und.SUBJECT_KINDS }));
+
+    structuredLog("info", "ghost_fleet_module_loaded", { name: "understanding-engine", macros: 7 });
+  } catch (err) {
+    GHOST_FLEET_STATUS.modules["understanding-engine"] = { loaded: false, error: err.message };
+    structuredLog("warn", "ghost_fleet_module_failed", { name: "understanding-engine", error: err.message });
+  }
+  await _ghostFleetYield();
+
+  // 2.6. Understanding Evolution — the compounding loop.
+  // Mirrors the Evo asset scheduler shape (candidate → version → gate
+  // → promote / dispute) and adds consolidation (the MEGA→HYPER analog
+  // for understandings). Heartbeat-driven; idempotent; safe-skip.
+  try {
+    const evolve = await import("./lib/understanding-evolve.js");
+    GHOST_FLEET_STATUS.modules["understanding-evolve"] = { loaded: true, loadedAt: new Date().toISOString() };
+
+    register("understanding", "record_evidence", (_ctx, input = {}) =>
+      evolve.recordEvidence(db, input));
+
+    register("understanding", "evaluate_promotion", (_ctx, input = {}) =>
+      evolve.evaluatePromotion(db, input.id));
+
+    register("understanding", "apply_promotion", (_ctx, input = {}) =>
+      evolve.applyPromotion(db, input.id, input.decision));
+
+    register("understanding", "consolidate", (_ctx, input = {}) =>
+      evolve.consolidateUnderstandings(db, input.childIds || [], input));
+
+    register("understanding", "consolidation_candidates", (_ctx, input = {}) =>
+      ({ ok: true, candidates: evolve.findConsolidationCandidates(db, input) }));
+
+    register("understanding", "lineage", (_ctx, input = {}) =>
+      ({ ok: true, lineage: evolve.getUnderstandingLineage(db, input.id, input.maxDepth) }));
+
+    register("understanding", "evolution_tick", (_ctx, input = {}) =>
+      evolve.runUnderstandingEvolutionTick(db, input));
+
+    register("understanding", "promoted_by_composer", (_ctx, input = {}) =>
+      ({ ok: true, rows: evolve.listPromotedByComposer(db, input.userId, input.limit) }));
+
+    register("understanding", "evolution_stats", () =>
+      ({ ok: true, stats: evolve.getEvolutionStats(db) }));
+
+    // Consumer-side unifiers — single entry points for the natural
+    // consumer lenses. Each is a thin wrapper around the consumer helper
+    // (server/lib/understanding-consumers.js) so call sites stay readable.
+    const consumers = await import("./lib/understanding-consumers.js");
+
+    // cognition.understand — the unifier the cognition lens has been
+    // missing. One call composes the typed Understanding instead of
+    // orchestrating hlr/hlm/breakthrough/forgetting/drift by hand.
+    register("cognition", "understand", async (_ctx, input = {}) => {
+      let dtu = input.dtu;
+      if (!dtu && input.subjectId && typeof STATE?.dtus?.get === "function") {
+        dtu = STATE.dtus.get(input.subjectId);
+      }
+      const r = consumers.composeForCognition(db, { ...input, dtu });
+      return r.ok
+        ? { ok: true, understanding: r.understanding, id: r.understanding?.id }
+        : { ok: false, error: r.error };
+    });
+
+    register("cognition", "live_understanding", (_ctx, input = {}) => {
+      const u = consumers.liveUnderstandingForSubject(db, input);
+      return u ? { ok: true, understanding: u } : { ok: true, understanding: null };
+    });
+
+    // forge.verify_constraints — the gate forge.generate calls before
+    // publish. Surfaces constraint blockers as a typed list so the
+    // workbench can refuse to ship a recipe whose stated constraints
+    // aren't met.
+    register("forge", "verify_constraints", (_ctx, input = {}) =>
+      consumers.verifyAgainstConstraints(db, input, { persist: !!input.persist }));
+
+    // council.understanding_for_proposal — vote-prep helper. Surfaces
+    // gaps + contradictions to voters BEFORE the ballot opens so they
+    // don't vote on incoherent proposals.
+    register("council", "understanding_for_proposal", async (_ctx, input = {}) => {
+      const subjectId = input.proposalId || input.subjectId;
+      if (!subjectId) return { ok: false, error: "proposalId_required" };
+      let dtu = input.dtu;
+      if (!dtu && typeof STATE?.dtus?.get === "function") {
+        dtu = STATE.dtus.get(subjectId);
+      }
+      const r = consumers.composeForCognition(db, {
+        subjectId, subjectKind: "dtu", dtu, claims: input.claims,
+        question: `Is the proposal ${subjectId} coherent and complete?`,
+      });
+      return r.ok
+        ? {
+            ok: true,
+            understanding: r.understanding,
+            satisfied: (r.understanding?.gaps?.length || 0) === 0
+                       && (r.understanding?.contradictions?.length || 0) === 0,
+            blockers: [
+              ...((r.understanding?.gaps || []).map((g) => ({ kind: "gap", detail: g }))),
+              ...((r.understanding?.contradictions || []).map((c) => ({ kind: "contradiction", detail: c }))),
+            ],
+          }
+        : { ok: false, error: r.error };
+    });
+
+    // chat.compose_thread_understanding — chat send-pipeline hook.
+    // Caller passes verdict='compose' on first turn (or topic shift),
+    // 'confirm' on subsequent turns that extend the thread, 'contradict'
+    // when the user explicitly rejects the prior turn.
+    register("chat", "compose_thread_understanding", (_ctx, input = {}) =>
+      consumers.composeForChatTurn(db, input));
+
+    // Heartbeat: every 40 ticks (~10 min). Cheap, bounded, idempotent.
+    // Runs the evolution sweep + consolidation pass. The handler is
+    // try/catch-wrapped per CLAUDE.md heartbeat invariants.
+    try {
+      registerHeartbeat("understanding-evolve", {
+        frequency: 40,
+        handler: () => {
+          try { return evolve.runUnderstandingEvolutionTick(db); }
+          catch (e) { return { ok: false, error: e?.message || "tick_threw" }; }
+        },
+      });
+    } catch (e) {
+      structuredLog("warn", "understanding_evolve_heartbeat_register_failed", { error: e?.message });
+    }
+
+    structuredLog("info", "ghost_fleet_module_loaded", { name: "understanding-evolve", macros: 9, heartbeat: "understanding-evolve@40" });
+  } catch (err) {
+    GHOST_FLEET_STATUS.modules["understanding-evolve"] = { loaded: false, error: err.message };
+    structuredLog("warn", "ghost_fleet_module_failed", { name: "understanding-evolve", error: err.message });
+  }
+  await _ghostFleetYield();
+
   // 3. Agent System — Lattice immune system (6 agent types)
   try {
     const agents = await import("./emergent/agent-system.js");
@@ -28627,6 +28821,124 @@ app.post("/api/world/npc-schedule", requireAuth, (req, res) => {
 app.get("/api/world/npc-archetypes", (_req, res) => {
   res.json({ ok: true, archetypes: NPC_SCHEDULE_ARCHETYPES });
 });
+// User-authored NPC registration. Returns the validate-and-seed result;
+// the seeded NPC immediately participates in dialogue (oracle-brain
+// reads it via narrative-bridge) without a server restart. Secrets in
+// narrative_context.secret stay server-side only — narrative-bridge
+// omits them from LLM prompts.
+app.post("/api/world/npc-author", requireAuth, asyncHandler(async (req, res) => {
+  const seeder = await import("./lib/content-seeder.js");
+  if (!seeder.addAuthoredNPC) {
+    return res.status(501).json({ ok: false, error: "addAuthoredNPC_unavailable" });
+  }
+  const npc = req.body || {};
+  // Stamp the authoring user into the NPC so the dashboard / royalty
+  // path can find downstream usage credit.
+  if (req.user?.id && !npc.author_id) npc.author_id = req.user.id;
+  const result = seeder.addAuthoredNPC(npc);
+  if (!result.ok) return res.status(400).json(result);
+  res.json({ ok: true, npcId: npc.id });
+}));
+// User-authored quest registration. Wraps quest-engine.createQuest with
+// the authoring user stamped onto the resulting quest so downstream
+// citation + royalty paths can credit them when other DTUs reference
+// the quest.
+app.post("/api/world/quest-author", requireAuth, asyncHandler(async (req, res) => {
+  const qe = await import("./emergent/quest-engine.js");
+  const { title, ...config } = req.body || {};
+  if (!title) return res.status(400).json({ ok: false, error: "title_required" });
+  const result = qe.createQuest(title, config);
+  if (!result.ok) return res.status(400).json(result);
+  if (req.user?.id && result.quest) {
+    result.quest.creator = req.user.id;
+    result.quest.author_id = req.user.id;
+  }
+  res.json({ ok: true, questId: result.quest?.id, quest: result.quest });
+}));
+// Commune templates — community-defined gathering shapes that close the
+// cook → eat → fight → commune loop. Runtime registry in
+// server/lib/commune-templates.js. Endpoints below let creators author
+// templates; quest-engine + npc-conversation-initiator + faction
+// strategy can read them via list/get to instantiate live communes.
+app.get("/api/world/commune-templates", asyncHandler(async (req, res) => {
+  const ct = await import("./lib/commune-templates.js");
+  const filter = {};
+  if (req.query.trigger) filter.trigger = String(req.query.trigger);
+  if (req.query.location_type) filter.location_type = String(req.query.location_type);
+  res.json({ ok: true, templates: ct.listCommuneTemplates(filter) });
+}));
+app.get("/api/world/commune-templates/options", asyncHandler(async (_req, res) => {
+  const ct = await import("./lib/commune-templates.js");
+  res.json({
+    ok: true,
+    triggers: ct.COMMUNE_TRIGGERS,
+    locationTypes: ct.COMMUNE_LOCATION_TYPES,
+    ritualStepKinds: ct.COMMUNE_RITUAL_STEP_KINDS,
+  });
+}));
+app.get("/api/world/commune-templates/:id", asyncHandler(async (req, res) => {
+  const ct = await import("./lib/commune-templates.js");
+  const tpl = ct.getCommuneTemplate(req.params.id);
+  if (!tpl) return res.status(404).json({ ok: false, error: "not_found" });
+  res.json({ ok: true, template: tpl });
+}));
+app.post("/api/world/commune-author", requireAuth, asyncHandler(async (req, res) => {
+  const ct = await import("./lib/commune-templates.js");
+  const template = req.body || {};
+  if (req.user?.id && !template.author_id) template.author_id = req.user.id;
+  const result = ct.addCommuneTemplate(template);
+  if (!result.ok) return res.status(400).json(result);
+  res.json({ ok: true, templateId: template.id });
+}));
+// Goddess / patron / antagonist arcs — the phase-from-ecosystem
+// framework was hard-coded to one NPC; this surface lets the community
+// declare custom deities with their own thresholds + dialogue + cues.
+// world-narrative.js consumes the arc when the dialogue endpoint is
+// hit for an NPC whose arc has been registered.
+app.get("/api/world/arcs", asyncHandler(async (req, res) => {
+  const arcs = await import("./lib/goddess-arcs.js");
+  const filter = {};
+  if (req.query.patron_npc_id) filter.patron_npc_id = String(req.query.patron_npc_id);
+  res.json({ ok: true, arcs: arcs.listGoddessArcs(filter) });
+}));
+app.get("/api/world/arcs/options", asyncHandler(async (_req, res) => {
+  const arcs = await import("./lib/goddess-arcs.js");
+  res.json({
+    ok: true,
+    metrics: arcs.GODDESS_ARC_METRICS,
+    tones: arcs.GODDESS_ARC_TONES,
+    comparators: arcs.GODDESS_ARC_COMPARATORS,
+  });
+}));
+app.get("/api/world/arcs/:id", asyncHandler(async (req, res) => {
+  const arcs = await import("./lib/goddess-arcs.js");
+  const arc = arcs.getGoddessArc(req.params.id);
+  if (!arc) return res.status(404).json({ ok: false, error: "not_found" });
+  res.json({ ok: true, arc });
+}));
+app.post("/api/world/arc-author", requireAuth, asyncHandler(async (req, res) => {
+  const arcs = await import("./lib/goddess-arcs.js");
+  const arc = req.body || {};
+  if (req.user?.id && !arc.author_id) arc.author_id = req.user.id;
+  const result = arcs.addGoddessArc(arc);
+  if (!result.ok) return res.status(400).json(result);
+  res.json({ ok: true, arcId: arc.id });
+}));
+// Console / device-class telemetry — public-facing demand counter.
+// Records device class derived from User-Agent (with optional
+// gamepad-id confirmation from the client). Public read so platform
+// holders can see the demand they're not yet serving natively.
+app.post("/api/telemetry/console-ping", express.json({ limit: "2kb" }), asyncHandler(async (req, res) => {
+  const cs = await import("./lib/console-stats.js");
+  const userAgent = req.headers["user-agent"] || "";
+  const gamepadId = String(req.body?.gamepadId || "");
+  const result = cs.recordConsolePing({ userAgent, gamepadId });
+  res.json(result);
+}));
+app.get("/api/telemetry/console-stats", asyncHandler(async (_req, res) => {
+  const cs = await import("./lib/console-stats.js");
+  res.json({ ok: true, ...cs.getConsoleStats() });
+}));
 
 // ── Performance telemetry: aggregate FPS / frame budget breaches ──────────
 // Frontend posts a rolling sample every 30s. We keep an in-memory ring
@@ -42572,6 +42884,22 @@ app.get("/api/creator/trending-citations", asyncHandler(async (_req, res) => {
 app.get("/api/creator/influence-drift", asyncHandler(async (_req, res) => {
   const cd = await import("./lib/creator-dashboard.js");
   res.json(cd.computeInfluenceDrift(STATE));
+}));
+// Withdrawal eligibility — turns the 48h hold gate into a tangible
+// "eligible vs pending" surface for the creator dashboard.
+app.get("/api/creator/withdrawal-status", requireAuth(), asyncHandler(async (req, res) => {
+  const cd = await import("./lib/creator-dashboard.js");
+  res.json(cd.computeWithdrawalEligibility(db, req.user?.id));
+}));
+// Cascade tree — for a given DTU, compute the per-generation downstream
+// citation count + projected royalty rate. Public read (creator
+// rankings / trending features will eventually surface other creators'
+// cascades too); auth-gated only because we don't want anonymous bots
+// scraping the lineage graph en masse.
+app.get("/api/creator/cascade/:dtuId", requireAuth(), asyncHandler(async (req, res) => {
+  const cd = await import("./lib/creator-dashboard.js");
+  const maxDepth = Math.min(50, Math.max(1, Number(req.query.maxDepth) || 6));
+  res.json(cd.computeCascadeTree(req.params.dtuId, STATE, { maxDepth }));
 }));
 
 // Federation: peer list, trust graph visualization, cross-instance search.

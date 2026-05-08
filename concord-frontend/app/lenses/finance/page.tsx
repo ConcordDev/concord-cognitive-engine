@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -1737,6 +1738,7 @@ export default function FinanceLensPage() {
   }
 
   return (
+    <LensShell lensId="finance" asMain={false}>
     <div data-lens-theme="finance" className="p-6 space-y-6 bg-[#0c0f14] font-mono">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -2342,5 +2344,6 @@ export default function FinanceLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

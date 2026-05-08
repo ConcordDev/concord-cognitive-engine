@@ -13,6 +13,9 @@
  */
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -20,6 +23,8 @@ import {
   Play, Loader2,
   type LucideIcon,
 } from 'lucide-react';
+import { DomainProbeCard } from '@/components/system/DomainProbeCard';
+import { probesByGroup } from '@/lib/headless-probes';
 import { useMutation } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 
@@ -28,6 +33,20 @@ type TabKey = 'notebook' | 'spreadsheet' | 'diagram' | 'mindmap' | 'outliner' | 
 export default function ProductivityLensPage() {
   useLensNav('productivity');
   const [activeTab, setActiveTab] = useState<TabKey>('notebook');
+
+  // Lens-scoped keyboard commands. Vim-style "g <letter>" jumps between
+  // workspaces; each productivity tool gets a single-letter alias.
+  useLensCommand(
+    [
+      { id: 'goto-notebook', keys: 'g n', description: 'Notebook', category: 'navigation', action: () => setActiveTab('notebook') },
+      { id: 'goto-spreadsheet', keys: 'g s', description: 'Spreadsheet', category: 'navigation', action: () => setActiveTab('spreadsheet') },
+      { id: 'goto-diagram', keys: 'g d', description: 'Diagram', category: 'navigation', action: () => setActiveTab('diagram') },
+      { id: 'goto-mindmap', keys: 'g m', description: 'Mind-map', category: 'navigation', action: () => setActiveTab('mindmap') },
+      { id: 'goto-outliner', keys: 'g o', description: 'Outliner', category: 'navigation', action: () => setActiveTab('outliner') },
+      { id: 'goto-slides', keys: 'g p', description: 'Slides', category: 'navigation', action: () => setActiveTab('slides') },
+    ],
+    { lensId: 'productivity' }
+  );
 
   // Notebook scaffolding — uses code-engine.js (existing) for cell execution
   const [notebookCode, setNotebookCode] = useState('// JS notebook cell\n1 + 1');
@@ -57,6 +76,8 @@ export default function ProductivityLensPage() {
   ];
 
   return (
+    <LensShell lensId="productivity" asMain={false}>
+      <ManifestActionBar />
     <div className="min-h-screen bg-black pb-12 text-indigo-50">
       <header className="sticky top-0 z-10 border-b border-indigo-900/50 bg-black/95 px-4 py-3 backdrop-blur md:px-8">
         <div className="mx-auto flex max-w-7xl items-center gap-3">
@@ -199,8 +220,25 @@ export default function ProductivityLensPage() {
             </Section>
           )}
         </AnimatePresence>
+
+        {/* Productivity macros — spreadsheet/slides probes that flip
+            from scaffold to live once their backend macros register. */}
+        <section
+          className="mt-8 rounded-lg border border-indigo-900/40 bg-indigo-950/10 p-3"
+          aria-labelledby="productivity-probes-heading"
+        >
+          <h2 id="productivity-probes-heading" className="mb-2 text-sm font-semibold text-indigo-200">
+            Engine status
+          </h2>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {probesByGroup('productivity').map((p) => (
+              <DomainProbeCard key={`${p.domain}.${p.macro}`} probe={p} />
+            ))}
+          </div>
+        </section>
       </main>
     </div>
+    </LensShell>
   );
 }
 

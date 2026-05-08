@@ -1,8 +1,11 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { cn } from '@/lib/utils';
@@ -77,6 +80,23 @@ export default function HistoryLensPage() {
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('history');
 
   const [activeTab, setActiveTab] = useState<ModeTab>('Events');
+
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+
+  useLensCommand(
+
+    [
+
+      { id: 'tab-dashboard', keys: 'd', description: 'Dashboard', category: 'navigation', action: () => setActiveTab('Dashboard') },
+
+      { id: 'tab-timeline', keys: 't', description: 'Timeline', category: 'navigation', action: () => setActiveTab('Timeline') },
+
+    ],
+
+    { lensId: 'history' }
+
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [regionFilter, setRegionFilter] = useState<Region | ''>('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -163,6 +183,8 @@ export default function HistoryLensPage() {
   }
 
   return (
+    <LensShell lensId="history" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="history" className="p-6 space-y-6">
       <header className="flex items-center gap-3">
         <Clock className="w-6 h-6 text-neon-cyan" />
@@ -597,5 +619,6 @@ export default function HistoryLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

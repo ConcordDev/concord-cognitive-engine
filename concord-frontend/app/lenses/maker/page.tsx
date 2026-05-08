@@ -14,6 +14,9 @@
  */
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useState } from 'react';
@@ -29,6 +32,15 @@ export default function MakerLensPage() {
   useLensNav('maker');
   const qc = useQueryClient();
   const [activeTab, setActiveTab] = useState<TabKey>('apps');
+
+  useLensCommand(
+    [
+      { id: 'tab-apps', keys: 'a', description: 'Apps', category: 'navigation', action: () => setActiveTab('apps') },
+      { id: 'tab-quests', keys: 'q', description: 'Quests', category: 'navigation', action: () => setActiveTab('quests') },
+      { id: 'tab-creative', keys: 'c', description: 'Creative', category: 'navigation', action: () => setActiveTab('creative') },
+    ],
+    { lensId: 'maker' }
+  );
 
   // ── Apps ──────────────────────────────────────────────────────────────
   const apps = useQuery({
@@ -113,6 +125,8 @@ export default function MakerLensPage() {
   ];
 
   return (
+    <LensShell lensId="maker" asMain={false}>
+      <ManifestActionBar />
     <div className="min-h-screen bg-black pb-12 text-pink-50">
       <header className="sticky top-0 z-10 border-b border-pink-900/50 bg-black/95 px-4 py-3 backdrop-blur md:px-8">
         <div className="mx-auto flex max-w-7xl items-center gap-3">
@@ -275,6 +289,7 @@ export default function MakerLensPage() {
         </AnimatePresence>
       </main>
     </div>
+    </LensShell>
   );
 }
 

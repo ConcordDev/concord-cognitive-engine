@@ -205,6 +205,109 @@ export function computeTrendingCitations(STATE) {
 }
 
 /**
+ * Withdrawal eligibility for the creator dashboard.
+ *
+ * The 48-hour hold (`server/economy/withdrawals.js#WITHDRAWAL_HOLD_HOURS`)
+ * is a constitutional anti-refund-exploit invariant. This helper turns
+ * the gate into a tangible "what's available, what's still held"
+ * surface so creators see exactly when their earnings unlock.
+ *
+ * @param {object} db
+ * @param {string} userId
+ * @returns {{
+ *   ok: boolean,
+ *   balance: number,
+ *   eligibleAmount: number,
+ *   pendingHoldAmount: number,
+ *   nextEligibleAt: string | null,
+ *   pendingWithdrawals: Array<{ id, amount, status, createdAt }>,
+ *   minWithdraw: number,
+ *   holdHours: number,
+ * }}
+ */
+export function computeWithdrawalEligibility(db, userId) {
+  if (!userId) return { ok: false, error: "user_id_required" };
+  const HOLD_HOURS = 48;
+  try {
+    // Total wallet balance via economy_ledger.
+    const balRow = db.prepare(
+      `SELECT COALESCE(SUM(amount), 0) AS bal
+       FROM economy_ledger
+       WHERE user_id = ?`
+    ).get(userId);
+    const balance = Number(balRow?.bal || 0);
+
+    // Credits older than HOLD_HOURS are eligible to withdraw.
+    const eligibleRow = db.prepare(
+      `SELECT COALESCE(SUM(amount), 0) AS bal
+       FROM economy_ledger
+       WHERE user_id = ?
+         AND amount > 0
+         AND created_at <= datetime('now', '-${HOLD_HOURS} hours')`
+    ).get(userId);
+    const eligibleCredits = Number(eligibleRow?.bal || 0);
+
+    // Subtract debits + already-withdrawn / pending withdrawals from
+    // the eligible bucket so a creator can't double-spend their hold.
+    const debitsRow = db.prepare(
+      `SELECT COALESCE(SUM(amount), 0) AS bal
+       FROM economy_ledger
+       WHERE user_id = ? AND amount < 0`
+    ).get(userId);
+    const debits = Math.abs(Number(debitsRow?.bal || 0));
+    const eligibleAmount = Math.max(0, eligibleCredits - debits);
+    const pendingHoldAmount = Math.max(0, balance - eligibleAmount);
+
+    // The next credit that will unlock — earliest credit with age < HOLD_HOURS.
+    let nextEligibleAt = null;
+    try {
+      const nextRow = db.prepare(
+        `SELECT created_at AS ts
+         FROM economy_ledger
+         WHERE user_id = ?
+           AND amount > 0
+           AND created_at > datetime('now', '-${HOLD_HOURS} hours')
+         ORDER BY created_at ASC
+         LIMIT 1`
+      ).get(userId);
+      if (nextRow?.ts) {
+        const t = new Date(nextRow.ts).getTime();
+        if (Number.isFinite(t)) {
+          nextEligibleAt = new Date(t + HOLD_HOURS * 3600 * 1000).toISOString();
+        }
+      }
+    } catch { /* fall through */ }
+
+    // Open withdrawal requests in the queue.
+    let pendingWithdrawals = [];
+    try {
+      pendingWithdrawals = db.prepare(
+        `SELECT id, amount, status, created_at AS createdAt
+         FROM economy_withdrawals
+         WHERE user_id = ? AND status IN ('pending','approved','processing')
+         ORDER BY created_at DESC
+         LIMIT 10`
+      ).all(userId);
+    } catch { /* table may not exist on minimal builds */ }
+
+    const minWithdraw = Number(process.env.MIN_WITHDRAW_TOKENS) || 20;
+
+    return {
+      ok: true,
+      balance,
+      eligibleAmount,
+      pendingHoldAmount,
+      nextEligibleAt,
+      pendingWithdrawals,
+      minWithdraw,
+      holdHours: HOLD_HOURS,
+    };
+  } catch (e) {
+    return { ok: false, error: String(e?.message || e) };
+  }
+}
+
+/**
  * Influence drift: which creators are gaining/losing citation share fastest.
  */
 export function computeInfluenceDrift(STATE) {
@@ -234,6 +337,81 @@ export function computeInfluenceDrift(STATE) {
   }
   drift.sort((a, b) => Math.abs(b.change) - Math.abs(a.change));
   return { ok: true, drift: drift.slice(0, 25) };
+}
+
+/**
+ * Cascade tree for one of a creator's DTUs.
+ *
+ * Walks the lineage forward from `rootDtuId` up to `maxDepth`
+ * generations. At each generation we count downstream DTUs that cite
+ * the root (or any ancestor in our walk) and estimate per-generation
+ * royalty using the standard cascade rate
+ * (`calculateGenerationalRate` from royalty-cascade.js).
+ *
+ * Estimated earnings = generation_count × generation_rate × baseRate.
+ * This is an *expected-value* number, not a transactional ledger sum;
+ * the dashboard surfaces it as "potential" so creators see the
+ * compounding shape of their lineage even before sales close.
+ *
+ * @param {string} rootDtuId
+ * @param {object} STATE
+ * @param {object} [opts] — { maxDepth?: number, baseRate?: number }
+ * @returns {{
+ *   ok: boolean,
+ *   rootId: string,
+ *   generations: Array<{ depth: number, count: number, rate: number, projectedShare: number }>,
+ *   totalDownstream: number,
+ *   maxObservedDepth: number,
+ * }}
+ */
+export function computeCascadeTree(rootDtuId, STATE, opts = {}) {
+  if (!rootDtuId) return { ok: false, error: "root_required" };
+  const maxDepth = Math.min(50, Math.max(1, Number(opts.maxDepth) || 6));
+  // Default base rate of 0.21 mirrors `DEFAULT_INITIAL_RATE` in
+  // royalty-cascade.js. Halves per generation, floor 0.0005.
+  const baseRate = Number(opts.baseRate) || 0.21;
+  const dtus = STATE?.dtus;
+  if (!dtus?.values) return { ok: true, rootId: rootDtuId, generations: [], totalDownstream: 0, maxObservedDepth: 0 };
+
+  // Build ancestor set per generation. Generation 0 = the root itself.
+  // Generation N = DTUs whose lineage cites a generation N-1 DTU.
+  const seen = new Set([rootDtuId]);
+  let currentGen = new Set([rootDtuId]);
+  const generations = [];
+  let totalDownstream = 0;
+  for (let depth = 1; depth <= maxDepth; depth++) {
+    const nextGen = new Set();
+    for (const dtu of dtus.values()) {
+      if (seen.has(dtu.id)) continue;
+      const parents = dtu.lineage?.parents ?? [];
+      const cites = dtu.lineage?.citations ?? [];
+      const refsAncestor = parents.some?.((p) => currentGen.has(p))
+        || cites.some?.((c) => {
+          const id = typeof c === "string" ? c : c?.dtuId;
+          return id && currentGen.has(id);
+        });
+      if (refsAncestor) nextGen.add(dtu.id);
+    }
+    if (nextGen.size === 0) break;
+    const rate = Math.max(baseRate / Math.pow(2, depth - 1), 0.0005);
+    generations.push({
+      depth,
+      count: nextGen.size,
+      rate,
+      projectedShare: nextGen.size * rate,
+    });
+    totalDownstream += nextGen.size;
+    for (const id of nextGen) seen.add(id);
+    currentGen = nextGen;
+  }
+
+  return {
+    ok: true,
+    rootId: rootDtuId,
+    generations,
+    totalDownstream,
+    maxObservedDepth: generations.length,
+  };
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────

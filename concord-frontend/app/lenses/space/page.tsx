@@ -1,8 +1,11 @@
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ds } from '@/lib/design-system';
@@ -141,6 +144,29 @@ export default function SpaceLensPage() {
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('space');
 
   const [activeMode, setActiveMode] = useState<ModeTab>('Dashboard');
+
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+
+  useLensCommand(
+
+    [
+
+      { id: 'tab-dashboard', keys: 'd', description: 'Dashboard', category: 'navigation', action: () => setActiveMode('Dashboard') },
+
+      { id: 'tab-launchops', keys: 'l', description: 'LaunchOps', category: 'navigation', action: () => setActiveMode('LaunchOps') },
+
+      { id: 'tab-telemetry', keys: 't', description: 'Telemetry', category: 'navigation', action: () => setActiveMode('Telemetry') },
+
+      { id: 'tab-missions', keys: 'm', description: 'Missions', category: 'navigation', action: () => setActiveMode('Missions') },
+
+      { id: 'tab-satellites', keys: 's', description: 'Satellites', category: 'navigation', action: () => setActiveMode('Satellites') },
+
+    ],
+
+    { lensId: 'space' }
+
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [showFeatures, setShowFeatures] = useState(true);
   const [tick, setTick] = useState(0);
@@ -233,6 +259,8 @@ export default function SpaceLensPage() {
   }
 
   return (
+    <LensShell lensId="space" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="space" className={cn(ds.pageContainer, 'space-y-4')}>
 
       {/* ── Header with starfield gradient ── */}
@@ -607,5 +635,6 @@ export default function SpaceLensPage() {
         {showFeatures && <div className="px-4 pb-4"><LensFeaturePanel lensId="space" /></div>}
       </div>
     </div>
+    </LensShell>
   );
 }

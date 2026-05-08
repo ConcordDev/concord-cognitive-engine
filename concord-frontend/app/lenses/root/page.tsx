@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { Hash, ArrowRightLeft, X, BookOpen, AlertCircle } from 'lucide-react';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -135,6 +137,8 @@ export default function RootLens() {
   }, [dec2glyph, decInput]);
 
   return (
+    <LensShell lensId="root" asMain={false}>
+      <ManifestActionBar />
     <div className="min-h-screen bg-gray-950 text-gray-100 p-6 font-mono">
       <div className="max-w-3xl mx-auto space-y-8">
 
@@ -274,5 +278,6 @@ export default function RootLens() {
 
       </div>
     </div>
+    </LensShell>
   );
 }

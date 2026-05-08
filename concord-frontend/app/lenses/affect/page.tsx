@@ -1,6 +1,8 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
+import { LensShell } from '@/components/lens/LensShell';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useState, useMemo, useEffect } from 'react';
@@ -211,6 +213,18 @@ export default function AffectLensPage() {
   const [intensity, setIntensity] = useState(0.5);
   const [polarity, setPolarity] = useState(0.0);
   const [activeTab, setActiveTab] = useState<TabId>('dimensions');
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+  useLensCommand(
+    [
+      { id: 'tab-dimensions', keys: 'd', description: 'Dimensions', category: 'navigation', action: () => setActiveTab('dimensions') },
+      { id: 'tab-events', keys: 'e', description: 'Events', category: 'navigation', action: () => setActiveTab('events') },
+      { id: 'tab-policy', keys: 'p', description: 'Policy', category: 'navigation', action: () => setActiveTab('policy') },
+      { id: 'tab-health', keys: 'h', description: 'Health', category: 'navigation', action: () => setActiveTab('health') },
+      { id: 'tab-analysis', keys: 'a', description: 'Analysis', category: 'navigation', action: () => setActiveTab('analysis') },
+    ],
+    { lensId: 'affect' }
+  );
   const [eventFilter, setEventFilter] = useState<string>('all');
   const [eventDimFilter, setEventDimFilter] = useState<string>('all');
   const [expandedEvent, setExpandedEvent] = useState<number | null>(null);
@@ -560,6 +574,7 @@ export default function AffectLensPage() {
   // --- Render ---
 
   return (
+    <LensShell lensId="affect" asMain={false}>
     <div data-lens-theme="affect" className="p-6 space-y-6">
       {/* Header */}
       <header className="flex items-center justify-between">
@@ -2190,5 +2205,6 @@ export default function AffectLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

@@ -118,6 +118,20 @@ export function registerCitation(db, { childId, parentId, creatorId, parentCreat
       }
     } catch { /* signal emission must not affect citation outcome */ }
 
+    // Layer 14 signal: feed the citation into the Understanding loop —
+    // every active understanding of the parent gets a confirm-evidence
+    // beat. Lazy-import + try/catch so this is strictly additive; the
+    // citation registration must succeed regardless of the hook.
+    try {
+      import("../lib/understanding-consumers.js")
+        .then(({ noteCitationAsEvidence }) => {
+          try {
+            noteCitationAsEvidence(db, { parentId, childId, lineageId: id });
+          } catch { /* swallow */ }
+        })
+        .catch(() => { /* module may not be loaded yet */ });
+    } catch { /* understanding hook must not affect citation outcome */ }
+
     return { ok: true, lineageId: id, childId, parentId, generation };
   } catch (err) {
     if (err.message?.includes("UNIQUE")) return { ok: true, existing: true };

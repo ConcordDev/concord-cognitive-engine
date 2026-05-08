@@ -1,7 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { api } from '@/lib/api/client';
 import { motion } from 'framer-motion';
 import {
@@ -95,6 +98,18 @@ export default function BridgeLens() {
 
   const [showFeatures, setShowFeatures] = useState(true);
   const [tab, setTab] = useState<Tab>('activity');
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+  useLensCommand(
+    [
+      { id: 'tab-activity', keys: 'a', description: 'Activity', category: 'navigation', action: () => setTab('activity') },
+      { id: 'tab-organisms', keys: 'o', description: 'Organisms', category: 'navigation', action: () => setTab('organisms') },
+      { id: 'tab-debates', keys: 'd', description: 'Debates', category: 'navigation', action: () => setTab('debates') },
+      { id: 'tab-lifecycle', keys: 'l', description: 'Lifecycle', category: 'navigation', action: () => setTab('lifecycle') },
+      { id: 'tab-emergents', keys: 'e', description: 'Emergents', category: 'navigation', action: () => setTab('emergents') },
+    ],
+    { lensId: 'bridge' }
+  );
   const [organisms, setOrganisms] = useState<Organism[]>([]);
   const [log, setLog] = useState<BridgeLogEntry[]>([]);
   const [debates, setDebates] = useState<Debate[]>([]);
@@ -142,6 +157,8 @@ export default function BridgeLens() {
   };
 
   return (
+    <LensShell lensId="bridge" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="bridge" className="min-h-screen bg-zinc-950 text-zinc-100 p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
@@ -549,6 +566,7 @@ export default function BridgeLens() {
         />
       )}
     </div>
+    </LensShell>
   );
 }
 

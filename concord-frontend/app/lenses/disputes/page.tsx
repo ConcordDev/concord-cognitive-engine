@@ -8,6 +8,9 @@
  */
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -643,6 +646,15 @@ export default function DisputesPage() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<ViewTab>('my');
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+  useLensCommand(
+    [
+      { id: 'tab-my', keys: 'm', description: 'My', category: 'navigation', action: () => setActiveTab('my') },
+      { id: 'tab-queue', keys: 'q', description: 'Queue', category: 'navigation', action: () => setActiveTab('queue') },
+    ],
+    { lensId: 'disputes' }
+  );
   const [statusFilter, setStatusFilter] = useState<DisputeStatus | 'all'>('all');
   const queryClient = useQueryClient();
 
@@ -697,6 +709,8 @@ export default function DisputesPage() {
   }, [activeTab, myDisputes, adminQueue]);
 
   return (
+    <LensShell lensId="disputes" asMain={false}>
+      <ManifestActionBar />
     <div className={ds.pageContainer}>
       {/* Header */}
       <div className={ds.sectionHeader}>
@@ -1009,5 +1023,6 @@ export default function DisputesPage() {
         )}
       </AnimatePresence>
     </div>
+    </LensShell>
   );
 }

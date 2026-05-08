@@ -13,6 +13,9 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
+import { useLensCommand } from '@/hooks/useLensCommand';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { Trophy, Users, Coins, Plus, Play, ChevronRight } from 'lucide-react';
 
 interface Rules {
@@ -61,6 +64,16 @@ const SCHEME_OPTIONS = ['bare_hands', 'boxer', 'karate', 'blade', 'firearm_pisto
 
 export default function TournamentsPage() {
   const [view, setView] = useState<'list' | 'detail' | 'create'>('list');
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+  useLensCommand(
+    [
+      { id: 'tab-list', keys: 'l', description: 'List', category: 'navigation', action: () => setView('list') },
+      { id: 'tab-create', keys: 'c', description: 'Create', category: 'navigation', action: () => setView('create') },
+      { id: 'tab-detail', keys: 'd', description: 'Detail', category: 'navigation', action: () => setView('detail') },
+    ],
+    { lensId: 'tournaments' }
+  );
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [detail, setDetail] = useState<{ tournament: Tournament; entrants: Entrant[]; brackets: Bracket[] } | null>(null);
@@ -87,6 +100,8 @@ export default function TournamentsPage() {
   }, [view, activeId, fetchList, fetchDetail]);
 
   return (
+    <LensShell lensId="tournaments" asMain={false}>
+      <ManifestActionBar />
     <div className="min-h-screen bg-slate-950 p-6 text-slate-100">
       <div className="mx-auto max-w-6xl">
         <header className="mb-6 flex items-center justify-between">
@@ -115,6 +130,7 @@ export default function TournamentsPage() {
         {view === 'create' && <TournamentCreate onCreated={(id) => { setActiveId(id); setView('detail'); }} />}
       </div>
     </div>
+    </LensShell>
   );
 }
 

@@ -1907,3 +1907,19 @@ export function getLensesMissingMacro(macro: keyof LensManifest['macros']): stri
     .filter(m => !m.macros[macro])
     .map(m => m.domain);
 }
+
+/**
+ * lensId → manifest index. Re-exposes the internal map for tooling
+ * (ESLint plugin, cartograph matcher, scripts) that need O(1) lookups
+ * without re-importing all the per-domain logic in this file.
+ *
+ * Read-only: callers must not mutate the returned record.
+ */
+export const LENS_MANIFEST_INDEX: Readonly<Record<string, LensManifest>> = Object.freeze(
+  Object.fromEntries(_manifestMap)
+);
+
+/** True if the given id is a registered lens domain. */
+export function isKnownLensId(id: string): boolean {
+  return _manifestMap.has(id);
+}

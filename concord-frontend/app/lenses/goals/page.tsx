@@ -1,6 +1,9 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -250,6 +253,17 @@ export default function GoalsLensPage() {
 
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<'goals' | 'challenges' | 'milestones' | 'achievements'>('goals');
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+  useLensCommand(
+    [
+      { id: 'tab-goals', keys: 'g', description: 'Goals', category: 'navigation', action: () => setActiveTab('goals') },
+      { id: 'tab-challenges', keys: 'c', description: 'Challenges', category: 'navigation', action: () => setActiveTab('challenges') },
+      { id: 'tab-milestones', keys: 'm', description: 'Milestones', category: 'navigation', action: () => setActiveTab('milestones') },
+      { id: 'tab-achievements', keys: 'a', description: 'Achievements', category: 'navigation', action: () => setActiveTab('achievements') },
+    ],
+    { lensId: 'goals' }
+  );
   const [goalFilter, setGoalFilter] = useState('All');
   const [showCreate, setShowCreate] = useState(false);
   const [expandedGoal, setExpandedGoal] = useState<string | null>(null);
@@ -426,6 +440,8 @@ export default function GoalsLensPage() {
     );
   }
   return (
+    <LensShell lensId="goals" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="goals" className="p-6 space-y-6 max-w-5xl mx-auto">
       {/* ---- Header ---- */}
       <header className="flex items-center justify-between flex-wrap gap-3">
@@ -1204,5 +1220,6 @@ export default function GoalsLensPage() {
         })()}
       </div>
     </div>
+    </LensShell>
   );
 }

@@ -1,8 +1,10 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { LensShell } from '@/components/lens/LensShell';
 import { useState, useMemo, useCallback } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ds } from '@/lib/design-system';
@@ -165,6 +167,37 @@ export default function HouseholdLensPage() {
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('household');
 
   const [mode, setMode] = useState<ModeTab>('Dashboard');
+
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+
+  useLensCommand(
+
+    [
+
+      { id: 'tab-dashboard', keys: 'd', description: 'Dashboard', category: 'navigation', action: () => setMode('Dashboard') },
+
+      { id: 'tab-meals', keys: 'm', description: 'Meals', category: 'navigation', action: () => setMode('Meals') },
+
+      { id: 'tab-chores', keys: 'c', description: 'Chores', category: 'navigation', action: () => setMode('Chores') },
+
+      { id: 'tab-home', keys: 'h', description: 'Home', category: 'navigation', action: () => setMode('Home') },
+
+      { id: 'tab-calendar', keys: 'a', description: 'Calendar', category: 'navigation', action: () => setMode('Calendar') },
+
+      { id: 'tab-budget', keys: 'b', description: 'Budget', category: 'navigation', action: () => setMode('Budget') },
+
+      { id: 'tab-emergency', keys: 'e', description: 'Emergency', category: 'navigation', action: () => setMode('Emergency') },
+
+      { id: 'tab-family', keys: 'f', description: 'Family', category: 'navigation', action: () => setMode('Family') },
+
+      { id: 'tab-pets', keys: 'p', description: 'Pets', category: 'navigation', action: () => setMode('Pets') },
+
+    ],
+
+    { lensId: 'household' }
+
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<Status | 'all'>('all');
   const [showEditor, setShowEditor] = useState(false);
@@ -1591,6 +1624,7 @@ export default function HouseholdLensPage() {
   }
 
   return (
+    <LensShell lensId="household" asMain={false}>
     <div data-lens-theme="household" className={ds.pageContainer}>
       {/* Header */}
       <header className={ds.sectionHeader}>
@@ -1807,5 +1841,6 @@ export default function HouseholdLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

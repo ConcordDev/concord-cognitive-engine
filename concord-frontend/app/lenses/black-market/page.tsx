@@ -13,6 +13,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 interface Listing {
   id: string;
   message_id: string;
@@ -112,6 +114,8 @@ export default function BlackMarketPage() {
     : 'border-slate-700 bg-slate-900/40 text-slate-300';
 
   return (
+    <LensShell lensId="black-market" asMain={false}>
+      <ManifestActionBar />
     <main className="min-h-screen bg-slate-950 text-slate-100">
       <div className="mx-auto max-w-4xl px-4 py-8">
         <header className="mb-6 border-b border-rose-500/30 pb-4">
@@ -200,5 +204,6 @@ export default function BlackMarketPage() {
         </footer>
       </div>
     </main>
+    </LensShell>
   );
 }

@@ -1,6 +1,9 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useMutation } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -39,6 +42,15 @@ export default function ChemLensPage() {
   const [showFeatures, setShowFeatures] = useState(true);
   const [activeTab, setActiveTab] = useState<'elements' | 'reactions' | 'compounds'>('reactions');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('chem');
+
+  useLensCommand(
+    [
+      { id: 'tab-elements', keys: 'e', description: 'Elements', category: 'navigation', action: () => setActiveTab('elements') },
+      { id: 'tab-reactions', keys: 'r', description: 'Reactions', category: 'navigation', action: () => setActiveTab('reactions') },
+      { id: 'tab-compounds', keys: 'c', description: 'Compounds', category: 'navigation', action: () => setActiveTab('compounds') },
+    ],
+    { lensId: 'chem' }
+  );
 
   // Backend action wiring
   const runAction = useRunArtifact('chem');
@@ -99,6 +111,8 @@ export default function ChemLensPage() {
     );
   }
   return (
+    <LensShell lensId="chem" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="chem" className="p-6 space-y-6">
       {/* Sub-Lenses */}
       <SubLensQuickNav lensId="chem" />
@@ -600,5 +614,6 @@ export default function ChemLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

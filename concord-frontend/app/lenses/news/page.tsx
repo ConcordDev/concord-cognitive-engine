@@ -1,6 +1,8 @@
 'use client';
 
 import { LensFeedPanel } from '@/components/feeds/LensFeedPanel';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -267,6 +269,8 @@ export default function NewsLensPage() {
   }
 
   return (
+    <LensShell lensId="news" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="news" className="p-6 space-y-6">
       {/* Header */}
       <header className="flex items-center justify-between">
@@ -950,5 +954,6 @@ export default function NewsLensPage() {
         </div>
       </div>
     </div>
+    </LensShell>
   );
 }

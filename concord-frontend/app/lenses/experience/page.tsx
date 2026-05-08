@@ -1,6 +1,8 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
+import { LensShell } from '@/components/lens/LensShell';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useQuery } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
@@ -218,6 +220,27 @@ export default function ExperienceLensPage() {
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('experience');
 
   const [activeTab, setActiveTab] = useState<TabId>('portfolio');
+
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+
+  useLensCommand(
+
+    [
+
+      { id: 'tab-portfolio', keys: 'p', description: 'Portfolio', category: 'navigation', action: () => setActiveTab('portfolio') },
+
+      { id: 'tab-skills', keys: 's', description: 'Skills', category: 'navigation', action: () => setActiveTab('skills') },
+
+      { id: 'tab-history', keys: 'h', description: 'History', category: 'navigation', action: () => setActiveTab('history') },
+
+      { id: 'tab-insights', keys: 'i', description: 'Insights', category: 'navigation', action: () => setActiveTab('insights') },
+
+    ],
+
+    { lensId: 'experience' }
+
+  );
   const [portfolioFilter, setPortfolioFilter] = useState<PortfolioFilter>('all');
   const [showFeatures, setShowFeatures] = useState(true);
   const [expActionResult, setExpActionResult] = useState<Record<string, unknown> | null>(null);
@@ -452,6 +475,7 @@ export default function ExperienceLensPage() {
     );
   }
   return (
+    <LensShell lensId="experience" asMain={false}>
     <div data-lens-theme="experience" className="p-6 space-y-6 max-w-6xl mx-auto">
       {/* ========== Header ========== */}
       <motion.header
@@ -1149,6 +1173,7 @@ export default function ExperienceLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }
 

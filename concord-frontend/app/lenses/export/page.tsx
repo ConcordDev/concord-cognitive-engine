@@ -1,6 +1,8 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { useState } from 'react';
@@ -184,6 +186,8 @@ export default function ExportLensPage() {
   const localDtus = dtus.filter((d) => !((d.meta as Record<string, unknown>)?.origin === 'imported' || (d.tags as string[])?.includes('imported')));
 
   return (
+    <LensShell lensId="export" asMain={false}>
+      <ManifestActionBar />
     <div className="p-6 space-y-6">
       <header className="flex items-center gap-3">
         <Download className="w-7 h-7 text-neon-green" />
@@ -563,6 +567,7 @@ export default function ExportLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }
 

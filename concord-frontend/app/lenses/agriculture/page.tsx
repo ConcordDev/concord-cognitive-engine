@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ds } from '@/lib/design-system';
@@ -224,6 +226,35 @@ export default function AgricultureLensPage() {
   } = useRealtimeLens('agriculture');
 
   const [activeTab, setActiveTab] = useState<ModeTab>('fields');
+
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+
+  useLensCommand(
+
+    [
+
+      { id: 'tab-fields', keys: 'f', description: 'Fields', category: 'navigation', action: () => setActiveTab('fields') },
+
+      { id: 'tab-crops', keys: 'c', description: 'Crops', category: 'navigation', action: () => setActiveTab('crops') },
+
+      { id: 'tab-livestock', keys: 'l', description: 'Livestock', category: 'navigation', action: () => setActiveTab('livestock') },
+
+      { id: 'tab-equipment', keys: 'e', description: 'Equipment', category: 'navigation', action: () => setActiveTab('equipment') },
+
+      { id: 'tab-water', keys: 'w', description: 'Water', category: 'navigation', action: () => setActiveTab('water') },
+
+      { id: 'tab-harvest', keys: 'h', description: 'Harvest', category: 'navigation', action: () => setActiveTab('harvest') },
+
+      { id: 'tab-certifications', keys: 'r', description: 'Certifications', category: 'navigation', action: () => setActiveTab('certifications') },
+
+      { id: 'tab-map', keys: 'm', description: 'Map', category: 'navigation', action: () => setActiveTab('map') },
+
+    ],
+
+    { lensId: 'agriculture' }
+
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<Status | 'all'>('all');
   const [editorOpen, setEditorOpen] = useState(false);
@@ -1399,6 +1430,7 @@ export default function AgricultureLensPage() {
     );
   }
   return (
+    <LensShell lensId="agriculture" asMain={false}>
     <div data-lens-theme="agriculture" className={ds.pageContainer}>
       <header className={ds.sectionHeader}>
         <div className="flex items-center gap-3">
@@ -1764,5 +1796,6 @@ export default function AgricultureLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

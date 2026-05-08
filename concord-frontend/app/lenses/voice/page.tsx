@@ -2,6 +2,9 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { api, apiHelpers } from '@/lib/api/client';
@@ -349,6 +352,28 @@ export default function VoiceLensPage() {
     }
   }, [status, activeTakeId, isPlaying]);
 
+  // Lens-scoped keyboard commands. Space toggles record/stop; K toggles
+  // playback (shotcut convention from video editors).
+  useLensCommand(
+    [
+      {
+        id: 'record-toggle',
+        keys: 'space',
+        description: 'Start / stop recording',
+        category: 'actions',
+        action: () => (status === 'recording' ? handleStop() : handleRecord()),
+      },
+      {
+        id: 'play-toggle',
+        keys: 'k',
+        description: 'Play / pause active take',
+        category: 'actions',
+        action: handlePlayPause,
+      },
+    ],
+    { lensId: 'voice' }
+  );
+
   // Take actions
   const toggleStar = (id: string) =>
     setTakes((prev) => prev.map((t) => (t.id === id ? { ...t, starred: !t.starred } : t)));
@@ -460,6 +485,8 @@ export default function VoiceLensPage() {
     );
   }
   return (
+    <LensShell lensId="voice" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="voice" className="h-[calc(100vh-4rem)] flex flex-col bg-gradient-to-b from-purple-900/10 to-black">
       {/* Header */}
       <header className="flex items-center justify-between px-6 py-3 border-b border-lattice-border bg-black/40">
@@ -1075,5 +1102,6 @@ export default function VoiceLensPage() {
       )}
       </div>
     </div>
+    </LensShell>
   );
 }

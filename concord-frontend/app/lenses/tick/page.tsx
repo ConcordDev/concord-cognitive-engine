@@ -1,6 +1,9 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
@@ -331,6 +334,17 @@ export default function TickLensPage() {
   const [isLive, setIsLive] = useState(true);
   const [tickHistory, setTickHistory] = useState<TickEvent[]>([]);
   const [activeTab, setActiveTab] = useState<TickViewTab>('stream');
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+  useLensCommand(
+    [
+      { id: 'tab-stream', keys: 's', description: 'Stream', category: 'navigation', action: () => setActiveTab('stream') },
+      { id: 'tab-stats', keys: 't', description: 'Stats', category: 'navigation', action: () => setActiveTab('stats') },
+      { id: 'tab-timeline', keys: 'i', description: 'Timeline', category: 'navigation', action: () => setActiveTab('timeline') },
+      { id: 'tab-health', keys: 'h', description: 'Health', category: 'navigation', action: () => setActiveTab('health') },
+    ],
+    { lensId: 'tick' }
+  );
   const [showFeatures, setShowFeatures] = useState(true);
   const { items: tickItems } = useLensData<Record<string, unknown>>('tick', 'heartbeat');
   const runTickAction = useRunArtifact('tick');
@@ -519,6 +533,8 @@ export default function TickLensPage() {
   }
 
   return (
+    <LensShell lensId="tick" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="tick" className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -1129,5 +1145,6 @@ export default function TickLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

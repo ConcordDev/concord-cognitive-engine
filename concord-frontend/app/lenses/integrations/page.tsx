@@ -1,6 +1,9 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, apiHelpers } from '@/lib/api/client';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -22,6 +25,16 @@ export default function IntegrationsLensPage() {
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('integrations');
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<'webhooks' | 'automations' | 'services'>('webhooks');
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+  useLensCommand(
+    [
+      { id: 'tab-automations', keys: 'a', description: 'Automations', category: 'navigation', action: () => setActiveTab('automations') },
+      { id: 'tab-webhooks', keys: 'w', description: 'Webhooks', category: 'navigation', action: () => setActiveTab('webhooks') },
+      { id: 'tab-services', keys: 's', description: 'Services', category: 'navigation', action: () => setActiveTab('services') },
+    ],
+    { lensId: 'integrations' }
+  );
   const [showCreate, setShowCreate] = useState(false);
   const [showFeatures, setShowFeatures] = useState(true);
   const [webhookTestResults, setWebhookTestResults] = useState<Record<string, { status: 'loading' | 'success' | 'error'; message: string }>>({});
@@ -136,6 +149,8 @@ export default function IntegrationsLensPage() {
     );
   }
   return (
+    <LensShell lensId="integrations" asMain={false}>
+      <ManifestActionBar />
     <div className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -498,6 +513,7 @@ export default function IntegrationsLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }
 

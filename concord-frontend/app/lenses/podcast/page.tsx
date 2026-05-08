@@ -2,6 +2,9 @@
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useLensDTUs } from '@/hooks/useLensDTUs';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -287,6 +290,18 @@ export default function PodcastLensPage() {
     setIsPlayingPreview(false);
   }, [recordedUrl]);
 
+  // Lens-scoped keyboard commands. Space toggles preview playback;
+  // Vim-style "g <letter>" jumps between podcast tabs.
+  useLensCommand(
+    [
+      { id: 'preview-toggle', keys: 'space', description: 'Play / pause preview', category: 'actions', action: handlePlayPreview },
+      { id: 'goto-episodes', keys: 'g e', description: 'Go to Episodes', category: 'navigation', action: () => setActiveTab('episodes') },
+      { id: 'goto-create', keys: 'g c', description: 'Go to Create', category: 'navigation', action: () => setActiveTab('create') },
+      { id: 'goto-analytics', keys: 'g a', description: 'Go to Analytics', category: 'navigation', action: () => setActiveTab('analytics') },
+    ],
+    { lensId: 'podcast' }
+  );
+
   // ---- Create episode ----
   const handleCreateEpisode = useCallback(async () => {
     if (!formTitle.trim()) return;
@@ -350,6 +365,8 @@ export default function PodcastLensPage() {
   ];
 
   return (
+    <LensShell lensId="podcast" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="podcast" className="min-h-screen bg-lattice-void text-white">
       {/* Header */}
       <header className="border-b border-white/10 bg-lattice-surface/50 backdrop-blur-xl sticky top-0 z-30">
@@ -884,5 +901,6 @@ export default function PodcastLensPage() {
         </div>
       </main>
     </div>
+    </LensShell>
   );
 }

@@ -1,6 +1,8 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
+import { LensShell } from '@/components/lens/LensShell';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers, api } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
@@ -1757,6 +1759,25 @@ export default function CommandCenterPage() {
   const router = useRouter();
   const [showFeatures, setShowFeatures] = useState(true);
   const [activeTab, setActiveTab] = useState<TabId>('vitals');
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+  useLensCommand(
+    [
+      { id: 'tab-vitals', keys: 'v', description: 'Vitals', category: 'navigation', action: () => setActiveTab('vitals') },
+      { id: 'tab-brains', keys: 'b', description: 'Brains', category: 'navigation', action: () => setActiveTab('brains') },
+      { id: 'tab-cognitive', keys: 'c', description: 'Cognitive', category: 'navigation', action: () => setActiveTab('cognitive') },
+      { id: 'tab-loaf', keys: 'l', description: 'Loaf', category: 'navigation', action: () => setActiveTab('loaf') },
+      { id: 'tab-affect', keys: 'a', description: 'Affect', category: 'navigation', action: () => setActiveTab('affect') },
+      { id: 'tab-emergents', keys: 'e', description: 'Emergents', category: 'navigation', action: () => setActiveTab('emergents') },
+      { id: 'tab-lattice', keys: 't', description: 'Lattice', category: 'navigation', action: () => setActiveTab('lattice') },
+      { id: 'tab-shield', keys: 's', description: 'Shield', category: 'navigation', action: () => setActiveTab('shield') },
+      { id: 'tab-attention', keys: 'n', description: 'Attention', category: 'navigation', action: () => setActiveTab('attention') },
+      { id: 'tab-forgetting', keys: 'f', description: 'Forgetting', category: 'navigation', action: () => setActiveTab('forgetting') },
+      { id: 'tab-repair', keys: 'r', description: 'Repair', category: 'navigation', action: () => setActiveTab('repair') },
+      { id: 'tab-promotions', keys: 'p', description: 'Promotions', category: 'navigation', action: () => setActiveTab('promotions') },
+    ],
+    { lensId: 'command-center' }
+  );
   const [actionPreview, setActionPreview] = useState<{ action: string; entityType: string; entityId: string; onConfirm: () => void } | null>(null);
 
   // --- Backend action wiring ---
@@ -1850,6 +1871,7 @@ export default function CommandCenterPage() {
   };
 
   return (
+    <LensShell lensId="command-center" asMain={false}>
     <div data-lens-theme="dashboard" className="min-h-screen bg-[#070b10] text-white">
       {/* Header */}
       <div className="sticky top-0 z-50 bg-[#0a0f18]/95 backdrop-blur-md border-b border-cyan-900/20 px-4 py-3">
@@ -1985,6 +2007,7 @@ export default function CommandCenterPage() {
         />
       )}
     </div>
+    </LensShell>
   );
 }
 

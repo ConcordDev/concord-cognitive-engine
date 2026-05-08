@@ -1,6 +1,8 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Atom, Zap, Waves, RotateCcw, Play, Shuffle, Loader2, Layers, ChevronDown, X } from 'lucide-react';
@@ -138,6 +140,8 @@ export default function QuantumLensPage() {
     );
   }
   return (
+    <LensShell lensId="quantum" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="quantum" className="p-6 space-y-6">
       <header className="flex items-center gap-3">
         <span className="text-2xl">\u269B\uFE0F</span>
@@ -463,5 +467,6 @@ export default function QuantumLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

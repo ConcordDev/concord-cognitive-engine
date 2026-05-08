@@ -1,6 +1,9 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { api, apiHelpers } from '@/lib/api/client';
 import { useState, useRef, useEffect, useCallback } from 'react';
@@ -61,6 +64,22 @@ export default function DebugLensPage() {
     | 'templates'
   >('status');
 
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+  useLensCommand(
+    [
+      { id: 'tab-status', keys: 's', description: 'Status', category: 'navigation', action: () => setActiveTab('status') },
+      { id: 'tab-events', keys: 'e', description: 'Events', category: 'navigation', action: () => setActiveTab('events') },
+      { id: 'tab-logs', keys: 'l', description: 'Logs', category: 'navigation', action: () => setActiveTab('logs') },
+      { id: 'tab-inspector', keys: 'i', description: 'Inspector', category: 'navigation', action: () => setActiveTab('inspector') },
+      { id: 'tab-context', keys: 'c', description: 'Context', category: 'navigation', action: () => setActiveTab('context') },
+      { id: 'tab-monitoring', keys: 'm', description: 'Monitoring', category: 'navigation', action: () => setActiveTab('monitoring') },
+      { id: 'tab-compute', keys: 'o', description: 'Compute', category: 'navigation', action: () => setActiveTab('compute') },
+      { id: 'tab-templates', keys: 't', description: 'Templates', category: 'navigation', action: () => setActiveTab('templates') },
+      { id: 'tab-test', keys: '0', description: 'Test', category: 'navigation', action: () => setActiveTab('test') },
+    ],
+    { lensId: 'debug' }
+  );
   // --- Domain action state ---
   const { items: debugItems } = useLensData('debug', 'debug', { seed: [] });
   const runAction = useRunArtifact('debug');
@@ -257,6 +276,8 @@ export default function DebugLensPage() {
   }
 
   return (
+    <LensShell lensId="debug" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="debug" className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -1199,6 +1220,7 @@ export default function DebugLensPage() {
         </div>
       )}
     </div>
+    </LensShell>
   );
 }
 

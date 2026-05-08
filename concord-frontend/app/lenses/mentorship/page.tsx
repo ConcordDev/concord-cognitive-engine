@@ -1,8 +1,11 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
@@ -56,6 +59,16 @@ export default function MentorshipLensPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [showFeatures, setShowFeatures] = useState(true);
   const [activeTab, setActiveTab] = useState<'mentors' | 'sessions' | 'goals'>('mentors');
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+  useLensCommand(
+    [
+      { id: 'tab-mentors', keys: 'm', description: 'Mentors', category: 'navigation', action: () => setActiveTab('mentors') },
+      { id: 'tab-sessions', keys: 's', description: 'Sessions', category: 'navigation', action: () => setActiveTab('sessions') },
+      { id: 'tab-goals', keys: 'g', description: 'Goals', category: 'navigation', action: () => setActiveTab('goals') },
+    ],
+    { lensId: 'mentorship' }
+  );
   const [newMentorship, setNewMentorship] = useState({ mentorName: '', menteeName: '', topic: '', meetingFrequency: 'weekly' });
   const [newNote, setNewNote] = useState('');
 
@@ -174,6 +187,8 @@ export default function MentorshipLensPage() {
   ];
 
   return (
+    <LensShell lensId="mentorship" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="mentorship" className="p-6 space-y-6">
       <motion.header
         initial={{ opacity: 0, y: -10 }}
@@ -595,5 +610,6 @@ export default function MentorshipLensPage() {
         {showFeatures && <div className="px-4 pb-4"><LensFeaturePanel lensId="mentorship" /></div>}
       </div>
     </div>
+    </LensShell>
   );
 }

@@ -1,7 +1,10 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -49,6 +52,20 @@ export default function FilmStudiosPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showFeatures, setShowFeatures] = useState(true);
+
+  // Lens-scoped keyboard commands. Letterboxd / Final Cut idiom:
+  // single-letter section jumps; n new film.
+  useLensCommand(
+    [
+      { id: 'tab-discover', keys: 'd', description: 'Discover', category: 'navigation', action: () => setTab('discover') },
+      { id: 'tab-myfilms', keys: 'f', description: 'My films', category: 'navigation', action: () => setTab('my-films') },
+      { id: 'tab-create', keys: 'c', description: 'Create', category: 'navigation', action: () => setTab('create') },
+      { id: 'tab-analytics', keys: 'a', description: 'Analytics', category: 'navigation', action: () => setTab('analytics') },
+      { id: 'tab-watch', keys: 'w', description: 'Watch parties', category: 'navigation', action: () => setTab('watch-parties') },
+      { id: 'new-film', keys: 'n', description: 'New film', category: 'actions', action: () => setShowCreateModal(true) },
+    ],
+    { lensId: 'film-studios' }
+  );
   const [partyCode, setPartyCode] = useState('');
   const [partyActive, setPartyActive] = useState(false);
   const [previewFilm, setPreviewFilm] = useState<FilmProject | null>(null);
@@ -190,6 +207,8 @@ export default function FilmStudiosPage() {
   }, {});
 
   return (
+    <LensShell lensId="film-studios" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="film-studios" className="min-h-screen">
       <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
         {/* Header */}
@@ -811,5 +830,6 @@ export default function FilmStudiosPage() {
         </AnimatePresence>
       </div>
     </div>
+    </LensShell>
   );
 }

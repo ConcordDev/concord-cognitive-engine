@@ -1,7 +1,10 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
@@ -58,6 +61,17 @@ export default function BillingPage() {
   const [showFeatures, setShowFeatures] = useState(true);
   const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
   const [isRunning, setIsRunning] = useState<string | null>(null);
+
+  // Lens-scoped keyboard commands. Vim-style "g <letter>" navigation,
+  // Stripe-dashboard-inspired idiom for billing surfaces.
+  useLensCommand(
+    [
+      { id: 'goto-overview', keys: 'g o', description: 'Overview', category: 'navigation', action: () => setActiveTab('overview') },
+      { id: 'goto-transactions', keys: 'g t', description: 'Transactions', category: 'navigation', action: () => setActiveTab('transactions') },
+      { id: 'goto-subscriptions', keys: 'g s', description: 'Subscriptions', category: 'navigation', action: () => setActiveTab('subscriptions') },
+    ],
+    { lensId: 'billing' }
+  );
 
   // ---- Backend action hooks ----
   const runAction = useRunArtifact('billing');
@@ -251,6 +265,8 @@ export default function BillingPage() {
   }
 
   return (
+    <LensShell lensId="billing" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="billing" className="p-6 max-w-6xl mx-auto space-y-8">
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -989,6 +1005,7 @@ export default function BillingPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }
 

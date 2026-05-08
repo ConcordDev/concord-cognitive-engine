@@ -10,6 +10,9 @@
  */
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useState } from 'react';
@@ -24,6 +27,15 @@ type TabKey = 'shield' | 'intel' | 'semantic';
 export default function SentinelLensPage() {
   useLensNav('sentinel');
   const [activeTab, setActiveTab] = useState<TabKey>('shield');
+
+  useLensCommand(
+    [
+      { id: 'tab-shield', keys: 's', description: 'Shield', category: 'navigation', action: () => setActiveTab('shield') },
+      { id: 'tab-intel', keys: 'i', description: 'Intel', category: 'navigation', action: () => setActiveTab('intel') },
+      { id: 'tab-semantic', keys: 'm', description: 'Semantic', category: 'navigation', action: () => setActiveTab('semantic') },
+    ],
+    { lensId: 'sentinel' }
+  );
 
   // ── Shield ────────────────────────────────────────────────────────────
   const shieldStatus = useQuery({
@@ -98,6 +110,8 @@ export default function SentinelLensPage() {
   ];
 
   return (
+    <LensShell lensId="sentinel" asMain={false}>
+      <ManifestActionBar />
     <div className="min-h-screen bg-black pb-12 text-blue-50">
       <header className="sticky top-0 z-10 border-b border-blue-900/50 bg-black/95 px-4 py-3 backdrop-blur md:px-8">
         <div className="mx-auto flex max-w-7xl items-center gap-3">
@@ -245,6 +259,7 @@ export default function SentinelLensPage() {
         </AnimatePresence>
       </main>
     </div>
+    </LensShell>
   );
 }
 

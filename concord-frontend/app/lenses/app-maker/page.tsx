@@ -1,6 +1,8 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Boxes, Plus, CheckCircle, ArrowUp, Layers, ChevronDown, Rocket, Layout, ShoppingCart, Briefcase, UserCircle, Star, TrendingUp, Loader2, XCircle, Zap, BarChart3, Code, Ruler, ClipboardCheck, AlertTriangle } from 'lucide-react';
@@ -166,6 +168,8 @@ export default function AppMakerLens() {
   };
 
   return (
+    <LensShell lensId="app-maker" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="app-maker" className="p-6 max-w-4xl mx-auto space-y-6">
       <div className="flex items-center gap-3">
         <Boxes className="w-6 h-6 text-neon-cyan" />
@@ -533,5 +537,6 @@ export default function AppMakerLens() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

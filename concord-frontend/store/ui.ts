@@ -43,13 +43,21 @@ import {
   type RequestError,
   type AuthPosture,
 } from './slices/status';
+import {
+  createAccessibilitySlice,
+  type AccessibilitySlice,
+  type AccessibilitySettings,
+  type ColorblindMode,
+  type OneHandedMode,
+} from './slices/accessibility';
 
 // Combined state type
-export type UIState = LayoutSlice & ToastSlice & LensSlice & StatusSlice;
+export type UIState = LayoutSlice & ToastSlice & LensSlice & StatusSlice & AccessibilitySlice;
 
 // Re-export slice types for direct consumer use
-export type { LayoutSlice, ToastSlice, LensSlice, StatusSlice };
+export type { LayoutSlice, ToastSlice, LensSlice, StatusSlice, AccessibilitySlice };
 export type { Toast, RequestError, AuthPosture };
+export type { AccessibilitySettings, ColorblindMode, OneHandedMode };
 
 export const useUIStore = create<UIState>()(
   persist(
@@ -58,6 +66,7 @@ export const useUIStore = create<UIState>()(
       ...createToastSlice(...a),
       ...createLensSlice(...a),
       ...createStatusSlice(...a),
+      ...createAccessibilitySlice(...a),
     }),
     {
       name: 'concord-ui-store',
@@ -65,6 +74,7 @@ export const useUIStore = create<UIState>()(
         sidebarCollapsed: state.sidebarCollapsed,
         theme: state.theme,
         activeLens: state.activeLens,
+        accessibility: state.accessibility,
       }),
     },
   ),

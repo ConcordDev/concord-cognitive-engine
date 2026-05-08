@@ -1,6 +1,8 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -96,6 +98,8 @@ export default function TransferLensPage() {
     );
   }
   return (
+    <LensShell lensId="transfer" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="transfer" className="p-6 space-y-6">
       <header className="flex items-center gap-3">
         <span className="text-2xl">🔄</span>
@@ -455,5 +459,6 @@ export default function TransferLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -626,6 +628,8 @@ export default function PlumbingLensPage() {
   );
 
   return (
+    <LensShell lensId="plumbing" asMain={false}>
+      <ManifestActionBar />
     <LensPageShell
       domain="plumbing"
       title="Plumbing"
@@ -742,5 +746,6 @@ export default function PlumbingLensPage() {
       )}
       {renderEditor()}
     </LensPageShell>
+    </LensShell>
   );
 }

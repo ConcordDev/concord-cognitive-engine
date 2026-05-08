@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { LensShell } from '@/components/lens/LensShell';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { SubLensQuickNav } from '@/components/lens/SubLensQuickNav';
 import { useState, useRef, useEffect, useCallback } from 'react';
@@ -1014,6 +1015,7 @@ export default function PhysicsLensPage() {
     );
   }
   return (
+    <LensShell lensId="physics" asMain={false}>
     <div data-lens-theme="physics" className="p-6 space-y-6">
       {/* Sub-Lenses */}
       <SubLensQuickNav lensId="physics" />
@@ -1690,6 +1692,7 @@ export default function PhysicsLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 
   function toggleSimulation(running: boolean) {

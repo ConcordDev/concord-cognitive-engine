@@ -1,6 +1,9 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useState, useCallback } from 'react';
@@ -134,6 +137,25 @@ export default function RoboticsLensPage() {
   useLensNav('robotics');
 
   const [activeTab, setActiveTab] = useState<'fleet' | 'tasks' | 'diagnostics'>('fleet');
+
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+
+  useLensCommand(
+
+    [
+
+      { id: 'tab-fleet', keys: 'f', description: 'Fleet', category: 'navigation', action: () => setActiveTab('fleet') },
+
+      { id: 'tab-tasks', keys: 't', description: 'Tasks', category: 'navigation', action: () => setActiveTab('tasks') },
+
+      { id: 'tab-diagnostics', keys: 'd', description: 'Diagnostics', category: 'navigation', action: () => setActiveTab('diagnostics') },
+
+    ],
+
+    { lensId: 'robotics' }
+
+  );
   const [showFeatures, setShowFeatures] = useState(true);
   const [expandedRobot, setExpandedRobot] = useState<string | null>(null);
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('robotics');
@@ -216,6 +238,8 @@ export default function RoboticsLensPage() {
   }
 
   return (
+    <LensShell lensId="robotics" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="robotics" className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -563,5 +587,6 @@ export default function RoboticsLensPage() {
         {showFeatures && <div className="px-4 pb-4"><LensFeaturePanel lensId="robotics" /></div>}
       </div>
     </div>
+    </LensShell>
   );
 }

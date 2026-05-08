@@ -1,6 +1,9 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
+import { useLensCommand } from '@/hooks/useLensCommand';
+import { KPIStrip } from '@/components/accounting/KPIStrip';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -134,6 +137,20 @@ export default function AccountingLensPage() {
   const [view, setView] = useState<'library' | 'dashboard'>('dashboard');
   const [ledgerSubType, setLedgerSubType] = useState<'Account' | 'Transaction'>('Account');
   const [showFeatures, setShowFeatures] = useState(true);
+
+  // Lens-scoped keyboard commands. QuickBooks-style mode switching;
+  // n opens the editor.
+  useLensCommand(
+    [
+      { id: 'mode-ledger', keys: 'l', description: 'Ledger', category: 'navigation', action: () => setMode('Ledger') },
+      { id: 'mode-invoicing', keys: 'i', description: 'Invoicing', category: 'navigation', action: () => setMode('Invoicing') },
+      { id: 'mode-payroll', keys: 'p', description: 'Payroll', category: 'navigation', action: () => setMode('Payroll') },
+      { id: 'mode-budget', keys: 'b', description: 'Budget', category: 'navigation', action: () => setMode('Budget') },
+      { id: 'mode-tax', keys: 't', description: 'Tax', category: 'navigation', action: () => setMode('Tax') },
+      { id: 'new-entry', keys: 'n', description: 'New entry', category: 'actions', action: () => setShowEditor(true) },
+    ],
+    { lensId: 'accounting' }
+  );
 
   /* ---- sub-views per tab ---- */
   const [ledgerView, setLedgerView] = useState<LedgerView>('accounts');
@@ -1944,6 +1961,18 @@ export default function AccountingLensPage() {
 
   const renderDashboard = () => (
     <div className="space-y-6">
+      {/* QuickBooks-shape KPI strip — horizontal numeric tile rail with
+          delta arrows. Reads as financial software in 200ms. */}
+      <KPIStrip
+        periodLabel={periodType === 'monthly' ? 'This month' : periodType === 'quarterly' ? 'This quarter' : periodType === 'annual' ? 'YTD' : 'Period'}
+        kpis={[
+          { id: 'revenue', label: 'Revenue', value: totalRevenue, unit: '$', deltaPct: 12.5, caption: 'vs prior period' },
+          { id: 'expenses', label: 'Expenses', value: totalExpenses, unit: '$', deltaPct: -3.2, tone: 'positive', caption: 'lower is better' },
+          { id: 'net', label: 'Net income', value: netIncome, unit: '$', deltaPct: 18.4 },
+          { id: 'cash', label: 'Cash position', value: totalAssets, unit: '$' },
+          { id: 'liabilities', label: 'Liabilities', value: totalLiabilities, unit: '$', tone: 'neutral' },
+        ]}
+      />
       {/* Key metrics row */}
       <div className={ds.grid4}>
         <div className={ds.panel}>
@@ -2604,6 +2633,7 @@ export default function AccountingLensPage() {
   }
 
   return (
+    <LensShell lensId="accounting" asMain={false}>
     <div data-lens-theme="accounting" className={ds.pageContainer}>
       {/* Header */}
       <header className={ds.sectionHeader}>
@@ -2862,5 +2892,6 @@ export default function AccountingLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

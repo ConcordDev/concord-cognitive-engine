@@ -1,8 +1,12 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import { useRouter } from 'next/navigation';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
+import { useGamepad, type GamepadButton } from '@/hooks/useGamepad';
+import { useConsolePing } from '@/hooks/useConsolePing';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { useSocket } from '@/hooks/useSocket';
@@ -1146,6 +1150,177 @@ const DISTRICT_TOOLS: {
 
 export default function WorldLensPage() {
   useLensNav('world');
+
+  // Fullscreen + pointer-lock for the explore mode. When active,
+  // ConcordiaScene takes the whole viewport; HUD overlays stay
+  // pointer-events-auto so the user can still click theme swatches,
+  // emote wheel, etc. Escape exits both.
+  const exploreShellRef = useRef<HTMLDivElement | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isPointerLocked, setIsPointerLocked] = useState(false);
+
+  useEffect(() => {
+    const onFsChange = () => {
+      const isFs = document.fullscreenElement === exploreShellRef.current;
+      setIsFullscreen(isFs);
+      if (!isFs && document.pointerLockElement) {
+        document.exitPointerLock?.();
+      }
+    };
+    const onPlChange = () => {
+      setIsPointerLocked(document.pointerLockElement === exploreShellRef.current);
+    };
+    document.addEventListener('fullscreenchange', onFsChange);
+    document.addEventListener('pointerlockchange', onPlChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', onFsChange);
+      document.removeEventListener('pointerlockchange', onPlChange);
+    };
+  }, []);
+
+  const enterFullscreen = useCallback(async () => {
+    if (!exploreShellRef.current) return;
+    try {
+      await exploreShellRef.current.requestFullscreen();
+    } catch {
+      // Fullscreen blocked (e.g. iframe without allow="fullscreen") —
+      // fall back to a CSS-only "pseudo-fullscreen" that pins the
+      // shell to the viewport.
+      setIsFullscreen(true);
+    }
+  }, []);
+  const exitFullscreen = useCallback(async () => {
+    if (document.fullscreenElement) {
+      try { await document.exitFullscreen(); } catch { /* ignore */ }
+    }
+    setIsFullscreen(false);
+  }, []);
+  const togglePointerLock = useCallback(() => {
+    if (!exploreShellRef.current) return;
+    if (document.pointerLockElement) {
+      document.exitPointerLock?.();
+    } else {
+      exploreShellRef.current.requestPointerLock?.();
+    }
+  }, []);
+
+  // ── Gamepad / console-controller integration ────────────────────
+  //
+  // Standard Gamepad API works in console browsers (Xbox Edge, PS5/PS4
+  // WebKit, Steam Deck Chromium) the same as on desktop. Loading
+  // concord-os.org on Xbox and pressing any button auto-connects the
+  // controller. We synthesize KeyboardEvents from gamepad input so
+  // every existing WASD / E / Space binding in the avatar system
+  // works without any further glue.
+  //
+  // Stick → walk: held-down KeyW/A/S/D events per direction.
+  // A button   → KeyE (interact)
+  // X button   → Space (attack / jump — depends on avatar binding)
+  // B button   → Escape (cancel / close dialogue)
+  // Y button   → KeyI (inventory)
+  // Start      → KeyM (map / commune wheel)
+  // LB / RB    → Digit1..9 (quickslot swap via dpad combos)
+  // dpad U/D   → quickslot prev/next
+  const heldKeysRef = useRef(new Set<string>());
+  const dispatchKey = useCallback((code: string, down: boolean) => {
+    const target = exploreShellRef.current ?? document.body;
+    const evt = new KeyboardEvent(down ? 'keydown' : 'keyup', {
+      code,
+      key: code.replace('Key', '').toLowerCase(),
+      bubbles: true,
+      cancelable: true,
+    });
+    target.dispatchEvent(evt);
+    window.dispatchEvent(evt);
+  }, []);
+  const setKeyHeld = useCallback((code: string, shouldHold: boolean) => {
+    const held = heldKeysRef.current;
+    if (shouldHold && !held.has(code)) {
+      held.add(code);
+      dispatchKey(code, true);
+    } else if (!shouldHold && held.has(code)) {
+      held.delete(code);
+      dispatchKey(code, false);
+    }
+  }, [dispatchKey]);
+  const releaseAllHeld = useCallback(() => {
+    for (const code of [...heldKeysRef.current]) {
+      heldKeysRef.current.delete(code);
+      dispatchKey(code, false);
+    }
+  }, [dispatchKey]);
+
+  const BUTTON_TO_CODE: Partial<Record<GamepadButton, string>> = {
+    A: 'KeyE',       // interact
+    X: 'Space',      // attack / jump
+    B: 'Escape',     // cancel
+    Y: 'KeyI',       // inventory
+    Start: 'KeyM',   // map / commune wheel
+    DUp: 'Digit1',
+    DDown: 'Digit2',
+    DLeft: 'Digit3',
+    DRight: 'Digit4',
+    LB: 'KeyQ',
+    RB: 'KeyR',
+    LT: 'KeyZ',      // aim down sights / heavy block
+    RT: 'KeyF',      // heavy attack
+  };
+
+  // Public console-demand telemetry. Anonymous (UA + optional
+  // gamepad-id only). Fires once per session + once on first gamepad
+  // detection so the public stats page reflects real reach.
+  // Defined before useGamepad so we can pass the flavor in.
+  const { connected: gamepadConnected, pad: gamepadInfo, flavor: gamepadFlavor } = useGamepad(
+    {
+      onConnect: () => {
+        // Browsers expose the controller name; "Xbox One Controller (STANDARD GAMEPAD …)"
+      },
+      onDisconnect: () => releaseAllHeld(),
+      onTick: (state) => {
+        // Left-stick walk → WASD held keys.
+        const { x, y } = state.leftStick;
+        const threshold = 0.25; // re-deadzone for direction binarisation
+        setKeyHeld('KeyW', y < -threshold);
+        setKeyHeld('KeyS', y > threshold);
+        setKeyHeld('KeyA', x < -threshold);
+        setKeyHeld('KeyD', x > threshold);
+      },
+      onButtonDown: (btn) => {
+        const code = BUTTON_TO_CODE[btn];
+        if (code) dispatchKey(code, true);
+      },
+      onButtonUp: (btn) => {
+        const code = BUTTON_TO_CODE[btn];
+        if (code) dispatchKey(code, false);
+      },
+    },
+    { paused: !exploreShellRef.current /* polling auto-quietens when no shell yet */ }
+  );
+  useConsolePing({ gamepadId: gamepadInfo?.id ?? null });
+
+  // Skyrim-shape keys: F to toggle fullscreen, P to capture mouse for
+  // FPS-style aim. The lens-scoped shortcut won't fire when the user
+  // is typing in a chat input thanks to useLensCommand's default
+  // form-tag exclusion.
+  useLensCommand(
+    [
+      {
+        id: 'toggle-fullscreen',
+        keys: 'f',
+        description: 'Toggle fullscreen (Skyrim immersion)',
+        category: 'view',
+        action: () => (isFullscreen ? exitFullscreen() : enterFullscreen()),
+      },
+      {
+        id: 'toggle-aim',
+        keys: 'p',
+        description: 'Toggle mouse capture (FPS aim)',
+        category: 'view',
+        action: togglePointerLock,
+      },
+    ],
+    { lensId: 'world' }
+  );
 
   const router = useRouter();
   const { isLive, lastUpdated } = useRealtimeLens('world');
@@ -3266,6 +3441,7 @@ export default function WorldLensPage() {
   }, []);
 
   return (
+    <LensShell lensId="world" asMain={false}>
     <div data-lens-theme="world" className="flex flex-col h-full min-h-0">
       {/* Header */}
       <header className="flex items-center justify-between px-4 py-2 border-b border-white/10">
@@ -3328,7 +3504,58 @@ export default function WorldLensPage() {
         </div>
       ) : viewMode === 'explore' ? (
         /* ── 3D Explore Mode ── */
-        <div className="flex-1 relative min-h-0">
+        <div
+          ref={exploreShellRef}
+          className={
+            isFullscreen
+              ? 'fixed inset-0 z-50 bg-black'
+              : 'flex-1 relative min-h-0'
+          }
+          data-fullscreen={isFullscreen ? 'true' : undefined}
+          data-pointer-locked={isPointerLocked ? 'true' : undefined}
+        >
+          {/* Fullscreen + pointer-lock toggle. Mounted absolute so it
+              floats above the canvas in either windowed or fullscreen
+              mode. Skyrim-shape immersion: F to toggle full, P to
+              capture mouse for FPS-style aim. */}
+          <div className="absolute top-4 left-4 z-30 flex items-center gap-1.5 bg-black/60 border border-white/10 rounded-xl px-2 py-1.5 pointer-events-auto">
+            <button
+              onClick={isFullscreen ? exitFullscreen : enterFullscreen}
+              title={isFullscreen ? 'Exit fullscreen (Esc)' : 'Enter fullscreen (F)'}
+              aria-pressed={isFullscreen}
+              className={
+                isFullscreen
+                  ? 'inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs bg-amber-500/20 border border-amber-500/40 text-amber-200'
+                  : 'inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs border border-white/10 text-white/70 hover:bg-white/10'
+              }
+            >
+              {isFullscreen ? '⤢ exit' : '⤢ play'}
+            </button>
+            <button
+              onClick={togglePointerLock}
+              title={isPointerLocked ? 'Release mouse (Esc)' : 'Capture mouse for FPS aim (P)'}
+              aria-pressed={isPointerLocked}
+              className={
+                isPointerLocked
+                  ? 'inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs bg-rose-500/20 border border-rose-500/40 text-rose-200'
+                  : 'inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs border border-white/10 text-white/70 hover:bg-white/10'
+              }
+            >
+              {isPointerLocked ? '◉ aim on' : '○ aim off'}
+            </button>
+            {gamepadConnected && (
+              <span
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs bg-emerald-500/15 border border-emerald-500/30 text-emerald-200"
+                title={gamepadInfo?.id ? `Controller: ${gamepadInfo.id}` : 'Controller connected'}
+              >
+                {gamepadFlavor === 'xbox' ? '🟢 Xbox'
+                  : gamepadFlavor === 'playstation' ? '🔷 PS'
+                  : gamepadFlavor === 'switch' ? '🟥 Switch'
+                  : gamepadFlavor === 'steam' ? '🟦 Steam'
+                  : '🎮 controller'}
+              </span>
+            )}
+          </div>
           <ConcordiaScene
             districtId={activeDistrict.id}
             quality={getStoredQualityPreset()}
@@ -5099,6 +5326,7 @@ export default function WorldLensPage() {
       {/* Post-tutorial hints — rotates contextual tips after first visit */}
       {!showOnboarding && <PostTutorialHints />}
     </div>
+    </LensShell>
   );
 }
 

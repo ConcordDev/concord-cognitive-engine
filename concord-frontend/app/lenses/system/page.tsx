@@ -15,6 +15,9 @@
  */
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useState, useMemo } from 'react';
@@ -32,6 +35,8 @@ const LensPluginSystem = dynamic(
   () => import('@/components/world-lens/LensPluginSystem'),
   { ssr: false },
 );
+import { DomainProbeCard } from '@/components/system/DomainProbeCard';
+import { probesByGroup } from '@/lib/headless-probes';
 import {
   Activity, Database, Globe, Heart, Layers, Map as MapIcon,
   RefreshCw, AlertTriangle, CheckCircle2, XCircle, Loader2,
@@ -85,7 +90,36 @@ interface SystemsReport {
 export default function SystemLensPage() {
   useLensNav('system');
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'heartbeats' | 'gaps' | 'coverage' | 'drift' | 'analytics' | 'plugins'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'heartbeats' | 'gaps' | 'coverage' | 'drift' | 'analytics' | 'plugins' | 'substrate'>('overview');
+
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+
+  useLensCommand(
+
+    [
+
+      { id: 'tab-overview', keys: 'o', description: 'Overview', category: 'navigation', action: () => setActiveTab('overview') },
+
+      { id: 'tab-heartbeats', keys: 'h', description: 'Heartbeats', category: 'navigation', action: () => setActiveTab('heartbeats') },
+
+      { id: 'tab-gaps', keys: 'g', description: 'Gaps', category: 'navigation', action: () => setActiveTab('gaps') },
+
+      { id: 'tab-coverage', keys: 'c', description: 'Coverage', category: 'navigation', action: () => setActiveTab('coverage') },
+
+      { id: 'tab-drift', keys: 'd', description: 'Drift', category: 'navigation', action: () => setActiveTab('drift') },
+
+      { id: 'tab-analytics', keys: 'a', description: 'Analytics', category: 'navigation', action: () => setActiveTab('analytics') },
+
+      { id: 'tab-plugins', keys: 'p', description: 'Plugins', category: 'navigation', action: () => setActiveTab('plugins') },
+
+      { id: 'tab-substrate', keys: 's', description: 'Substrate', category: 'navigation', action: () => setActiveTab('substrate') },
+
+    ],
+
+    { lensId: 'system' }
+
+  );
   const [coverageFilter, setCoverageFilter] = useState<'all' | 'present' | 'partial' | 'missing'>('all');
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -316,6 +350,8 @@ export default function SystemLensPage() {
     : 0;
 
   return (
+    <LensShell lensId="system" asMain={false}>
+      <ManifestActionBar />
     <div className="min-h-screen bg-black pb-12 text-cyan-50">
       {/* Header */}
       <header className="sticky top-0 z-10 border-b border-cyan-900/50 bg-black/95 px-4 py-3 backdrop-blur md:px-8">
@@ -353,6 +389,7 @@ export default function SystemLensPage() {
             { key: 'drift', label: `Drift (${data.drift.length})`, icon: GitBranch as LucideIcon },
             { key: 'analytics', label: 'Analytics', icon: BarChart3 as LucideIcon },
             { key: 'plugins', label: 'Plugins', icon: Puzzle as LucideIcon },
+            { key: 'substrate', label: 'Substrate', icon: Layers as LucideIcon },
           ] as const).map(({ key, label, icon: Icon }) => (
             <button
               key={key}
@@ -599,9 +636,34 @@ export default function SystemLensPage() {
               />
             </motion.section>
           )}
+          {activeTab === 'substrate' && (
+            <motion.section
+              key="substrate"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              aria-labelledby="substrate-heading"
+            >
+              <h2 id="substrate-heading" className="mb-1 text-base font-semibold text-cyan-200">
+                Substrate operations
+              </h2>
+              <p className="mb-4 text-xs text-cyan-700">
+                Live diagnostics for each substrate-class macro domain. Each card calls
+                its primary macro on mount and renders the result with a domain-specific
+                accent. Errors here surface as dormant or misconfigured backends.
+              </p>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {probesByGroup('substrate').map((p) => (
+                  <DomainProbeCard key={`${p.domain}.${p.macro}`} probe={p} />
+                ))}
+              </div>
+            </motion.section>
+          )}
         </AnimatePresence>
       </main>
     </div>
+    </LensShell>
   );
 }
 

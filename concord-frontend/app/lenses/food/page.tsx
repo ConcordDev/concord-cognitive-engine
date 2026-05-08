@@ -1,8 +1,10 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { LensShell } from '@/components/lens/LensShell';
 import { useState, useMemo, useCallback } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { ds } from '@/lib/design-system';
 import { UniversalActions } from '@/components/lens/UniversalActions';
@@ -213,6 +215,39 @@ export default function FoodLensPage() {
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('food');
 
   const [activeTab, setActiveTab] = useState<ModeTab>('recipes');
+
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+
+  useLensCommand(
+
+    [
+
+      { id: 'tab-mealplan', keys: 'm', description: 'Mealplan', category: 'navigation', action: () => setActiveTab('mealplan') },
+
+      { id: 'tab-shopping', keys: 's', description: 'Shopping', category: 'navigation', action: () => setActiveTab('shopping') },
+
+      { id: 'tab-nutrition', keys: 'n', description: 'Nutrition', category: 'navigation', action: () => setActiveTab('nutrition') },
+
+      { id: 'tab-pantry', keys: 'p', description: 'Pantry', category: 'navigation', action: () => setActiveTab('pantry') },
+
+      { id: 'tab-menu', keys: 'e', description: 'Menu', category: 'navigation', action: () => setActiveTab('menu') },
+
+      { id: 'tab-inventory', keys: 'i', description: 'Inventory', category: 'navigation', action: () => setActiveTab('inventory') },
+
+      { id: 'tab-bookings', keys: 'b', description: 'Bookings', category: 'navigation', action: () => setActiveTab('bookings') },
+
+      { id: 'tab-batches', keys: 'a', description: 'Batches', category: 'navigation', action: () => setActiveTab('batches') },
+
+      { id: 'tab-shifts', keys: 'h', description: 'Shifts', category: 'navigation', action: () => setActiveTab('shifts') },
+
+      { id: 'tab-recipes', keys: 'r', description: 'Recipes', category: 'navigation', action: () => setActiveTab('recipes') },
+
+    ],
+
+    { lensId: 'food' }
+
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<Status | 'all'>('all');
   const [editorOpen, setEditorOpen] = useState(false);
@@ -2575,6 +2610,7 @@ export default function FoodLensPage() {
   }
 
   return (
+    <LensShell lensId="food" asMain={false}>
     <div data-lens-theme="food" className={ds.pageContainer}>
       {/* Nutrition Disclaimer */}
       <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-start gap-3">
@@ -2718,5 +2754,6 @@ export default function FoodLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
 import { Clock, Target, TrendingUp, Calendar, Milestone, Rocket, Loader2, Layers, ChevronDown, Database, Server, HardDrive, Cloud, RefreshCw, Archive, GitMerge, Play } from 'lucide-react';
@@ -78,6 +80,8 @@ export default function LegacyLensPage() {
     );
   }
   return (
+    <LensShell lensId="legacy" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="legacy" className="p-6 space-y-6">
       <header className="flex items-center gap-3">
         <span className="text-2xl">🏛️</span>
@@ -468,5 +472,6 @@ export default function LegacyLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

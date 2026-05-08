@@ -9,6 +9,9 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
+import { useLensCommand } from '@/hooks/useLensCommand';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { Crown, Flag, Hammer, Users, Plus, ChevronRight, AlertTriangle } from 'lucide-react';
 
 interface Kingdom {
@@ -45,6 +48,16 @@ interface DecreeKindMeta {
 
 export default function KingdomsPage() {
   const [view, setView] = useState<'list' | 'detail' | 'create'>('list');
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+  useLensCommand(
+    [
+      { id: 'tab-list', keys: 'l', description: 'List', category: 'navigation', action: () => setView('list') },
+      { id: 'tab-create', keys: 'c', description: 'Create', category: 'navigation', action: () => setView('create') },
+      { id: 'tab-detail', keys: 'd', description: 'Detail', category: 'navigation', action: () => setView('detail') },
+    ],
+    { lensId: 'kingdoms' }
+  );
   const [kingdoms, setKingdoms] = useState<Kingdom[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [detail, setDetail] = useState<{ kingdom: Kingdom; decrees: Decree[]; residents: Resident[] } | null>(null);
@@ -81,6 +94,8 @@ export default function KingdomsPage() {
   }, [view, activeId, fetchList, fetchDetail, fetchDecreeKinds]);
 
   return (
+    <LensShell lensId="kingdoms" asMain={false}>
+      <ManifestActionBar />
     <div className="min-h-screen bg-slate-950 p-6 text-slate-100">
       <div className="mx-auto max-w-6xl">
         <header className="mb-6 flex items-center justify-between">
@@ -109,6 +124,7 @@ export default function KingdomsPage() {
         {view === 'create' && <KingdomCreate onCreated={(id) => { setActiveId(id); setView('detail'); fetchList(); }} />}
       </div>
     </div>
+    </LensShell>
   );
 }
 

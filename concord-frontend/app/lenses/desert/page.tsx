@@ -1,6 +1,9 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import { useLensCommand } from '@/hooks/useLensCommand';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -119,6 +122,15 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function DesertLensPage() {
   const [activeMode, setActiveMode] = useState<ModeTab>('Dashboard');
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+  useLensCommand(
+    [
+      { id: 'tab-dashboard', keys: 'd', description: 'Dashboard', category: 'navigation', action: () => setActiveMode('Dashboard') },
+      { id: 'tab-map', keys: 'm', description: 'Map', category: 'navigation', action: () => setActiveMode('Map') },
+    ],
+    { lensId: 'desert' }
+  );
   const [searchQuery, setSearchQuery] = useState('');
 
   const currentType = getTypeForTab(activeMode);
@@ -158,6 +170,8 @@ export default function DesertLensPage() {
   );
 
   return (
+    <LensShell lensId="desert" asMain={false}>
+      <ManifestActionBar />
     <LensPageShell
       domain="desert"
       title="Desert Operations"
@@ -348,5 +362,6 @@ export default function DesertLensPage() {
 
       <UniversalActions domain="desert" artifactId={items[0]?.id} />
     </LensPageShell>
+    </LensShell>
   );
 }

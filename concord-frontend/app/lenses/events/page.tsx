@@ -1,8 +1,10 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { LensShell } from '@/components/lens/LensShell';
 import { useState, useMemo } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ds } from '@/lib/design-system';
@@ -300,6 +302,21 @@ export default function EventsLensPage() {
 
   const [showFeatures, setShowFeatures] = useState(true);
   const [mode, setMode] = useState<ModeTab>('dashboard');
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+  useLensCommand(
+    [
+      { id: 'tab-events', keys: 'e', description: 'Events', category: 'navigation', action: () => setMode('events') },
+      { id: 'tab-dashboard', keys: 'd', description: 'Dashboard', category: 'navigation', action: () => setMode('dashboard') },
+      { id: 'tab-vendors', keys: 'v', description: 'Vendors', category: 'navigation', action: () => setMode('vendors') },
+      { id: 'tab-venues', keys: 'n', description: 'Venues', category: 'navigation', action: () => setMode('venues') },
+      { id: 'tab-runofshow', keys: 'r', description: 'Runofshow', category: 'navigation', action: () => setMode('runofshow') },
+      { id: 'tab-budget', keys: 'b', description: 'Budget', category: 'navigation', action: () => setMode('budget') },
+      { id: 'tab-tickets', keys: 't', description: 'Tickets', category: 'navigation', action: () => setMode('tickets') },
+      { id: 'tab-guests', keys: 'g', description: 'Guests', category: 'navigation', action: () => setMode('guests') },
+    ],
+    { lensId: 'events' }
+  );
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
@@ -2487,6 +2504,7 @@ export default function EventsLensPage() {
   // Main return
   // ---------------------------------------------------------------------------
   return (
+    <LensShell lensId="events" asMain={false}>
     <div data-lens-theme="events" className={ds.pageContainer}>
       {/* Header */}
       <header className={ds.sectionHeader}>
@@ -2855,5 +2873,6 @@ export default function EventsLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

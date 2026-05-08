@@ -1,3 +1,4 @@
+import { createRequire } from 'module';
 import { dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { FlatCompat } from '@eslint/eslintrc';
@@ -5,11 +6,14 @@ import js from '@eslint/js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+const require = createRequire(import.meta.url);
 
 const compat = new FlatCompat({
   baseDirectory: __dirname,
   recommendedConfig: js.configs.recommended,
 });
+
+const lensManifestPlugin = require('./eslint-rules/lens-manifest.js');
 
 const eslintConfig = [
   ...compat.extends('next/core-web-vitals', 'next/typescript'),
@@ -28,6 +32,18 @@ const eslintConfig = [
           message: "Sending body.userId to a mutation may enable server-side auth bypass. Ensure the server uses req.user.id instead.",
         },
       ],
+    },
+  },
+  // Lens-page contract: every app/lenses/<id>/page.tsx must mount LensShell
+  // with a matching lensId. lens-id-is-known stays 'warn' until all 200+
+  // lens manifests are registered.
+  {
+    files: ['app/lenses/**/page.tsx'],
+    plugins: { lensManifest: lensManifestPlugin },
+    rules: {
+      'lensManifest/lens-shell-id-matches-path': 'error',
+      'lensManifest/lens-page-uses-shell': 'warn',
+      'lensManifest/lens-id-is-known': ['warn', { rootDir: __dirname }],
     },
   },
   {

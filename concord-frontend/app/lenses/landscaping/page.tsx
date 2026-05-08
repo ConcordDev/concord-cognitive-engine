@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -616,6 +618,8 @@ export default function LandscapingLensPage() {
   );
 
   return (
+    <LensShell lensId="landscaping" asMain={false}>
+      <ManifestActionBar />
     <LensPageShell
       domain="landscaping"
       title="Landscaping"
@@ -698,5 +702,6 @@ export default function LandscapingLensPage() {
       {showDashboard ? renderDashboard() : renderLibrary()}
       {renderEditor()}
     </LensPageShell>
+    </LensShell>
   );
 }

@@ -1,6 +1,9 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useState } from 'react';
@@ -47,6 +50,18 @@ export default function MentalHealthLensPage() {
   const [activeTab, setActiveTab] = useState<'mood' | 'journal' | 'coping' | 'resources'>('mood');
   const [showFeatures, setShowFeatures] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Lens-scoped keyboard commands. Headspace / Calm idiom: gentle
+  // single-letter section jumps.
+  useLensCommand(
+    [
+      { id: 'tab-mood', keys: 'm', description: 'Mood', category: 'navigation', action: () => setActiveTab('mood') },
+      { id: 'tab-journal', keys: 'j', description: 'Journal', category: 'navigation', action: () => setActiveTab('journal') },
+      { id: 'tab-coping', keys: 'c', description: 'Coping', category: 'navigation', action: () => setActiveTab('coping') },
+      { id: 'tab-resources', keys: 'r', description: 'Resources', category: 'navigation', action: () => setActiveTab('resources') },
+    ],
+    { lensId: 'mental-health' }
+  );
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('mental-health');
 
   const { items: moodItems, isLoading, isError, error, refetch, create, update, remove } = useLensData<Record<string, unknown>>('mental-health', 'mood', { seed: [] });
@@ -132,6 +147,8 @@ export default function MentalHealthLensPage() {
   }
 
   return (
+    <LensShell lensId="mental-health" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="mental-health" className="p-6 space-y-6">
       {/* Disclaimer */}
       <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-start gap-3">
@@ -648,5 +665,6 @@ export default function MentalHealthLensPage() {
         {showFeatures && <div className="px-4 pb-4"><LensFeaturePanel lensId="mental-health" /></div>}
       </div>
     </div>
+    </LensShell>
   );
 }

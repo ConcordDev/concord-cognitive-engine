@@ -1,7 +1,10 @@
 'use client';
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
@@ -78,6 +81,20 @@ export default function AnimationPage() {
   const [showFeatures, setShowFeatures] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedProject, setSelectedProject] = useState<AnimProject | null>(null);
+
+  // Lens-scoped keyboard commands. After Effects / Blender idiom:
+  // single-letter tab jumps, n new project.
+  useLensCommand(
+    [
+      { id: 'tab-projects', keys: 'p', description: 'Projects', category: 'navigation', action: () => setTab('projects') },
+      { id: 'tab-timeline', keys: 't', description: 'Timeline', category: 'navigation', action: () => setTab('timeline') },
+      { id: 'tab-assets', keys: 'a', description: 'Assets', category: 'navigation', action: () => setTab('assets') },
+      { id: 'tab-render', keys: 'r', description: 'Render', category: 'navigation', action: () => setTab('render') },
+      { id: 'tab-stats', keys: 's', description: 'Stats', category: 'navigation', action: () => setTab('stats') },
+      { id: 'new-project', keys: 'n', description: 'New project', category: 'actions', action: () => setShowCreateModal(true) },
+    ],
+    { lensId: 'animation' }
+  );
 
   // Form state
   const [newTitle, setNewTitle] = useState('');
@@ -291,6 +308,8 @@ export default function AnimationPage() {
   ];
 
   return (
+    <LensShell lensId="animation" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="animation" className="min-h-screen">
       <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
         {/* Header */}
@@ -647,5 +666,6 @@ export default function AnimationPage() {
         </AnimatePresence>
       </div>
     </div>
+    </LensShell>
   );
 }

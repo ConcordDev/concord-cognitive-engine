@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -183,6 +185,8 @@ export default function LawEnforcementLensPage() {
   );
 
   return (
+    <LensShell lensId="law-enforcement" asMain={false}>
+      <ManifestActionBar />
     <LensPageShell
       domain="law-enforcement"
       title="Law Enforcement"
@@ -360,5 +364,6 @@ export default function LawEnforcementLensPage() {
 
       <UniversalActions domain="law-enforcement" artifactId={items[0]?.id} />
     </LensPageShell>
+    </LensShell>
   );
 }

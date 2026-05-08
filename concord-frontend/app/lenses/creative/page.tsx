@@ -1,8 +1,10 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { LensShell } from '@/components/lens/LensShell';
 import { useState, useMemo, useCallback } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ds } from '@/lib/design-system';
@@ -148,6 +150,21 @@ export default function CreativeLensPage() {
   const [categoryFilter, setCategoryFilter] = useState<AssetCategory | 'all'>('all');
   const [editing, setEditing] = useState<string | null>(null);
   const [showEditor, setShowEditor] = useState(false);
+
+  // Lens-scoped keyboard commands. Frame.io / Asana-creative idiom:
+  // single-letter mode jumps for the production pipeline.
+  useLensCommand(
+    [
+      { id: 'mode-dashboard', keys: 'd', description: 'Dashboard', category: 'navigation', action: () => setMode('dashboard') },
+      { id: 'mode-projects', keys: 'p', description: 'Projects', category: 'navigation', action: () => setMode('projects') },
+      { id: 'mode-assets', keys: 'a', description: 'Assets', category: 'navigation', action: () => setMode('assets') },
+      { id: 'mode-revisions', keys: 'r', description: 'Revisions', category: 'navigation', action: () => setMode('revisions') },
+      { id: 'mode-shotlist', keys: 's', description: 'Shot list', category: 'navigation', action: () => setMode('shotlist') },
+      { id: 'mode-budget', keys: 'b', description: 'Budget', category: 'navigation', action: () => setMode('budget') },
+      { id: 'new-asset', keys: 'n', description: 'New', category: 'actions', action: () => setShowEditor(true) },
+    ],
+    { lensId: 'creative' }
+  );
   const [detailItem, setDetailItem] = useState<LensItem | null>(null);
   const [showDetail, setShowDetail] = useState(false);
   const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
@@ -1394,6 +1411,7 @@ export default function CreativeLensPage() {
   // Main Render
   // ---------------------------------------------------------------------------
   return (
+    <LensShell lensId="creative" asMain={false}>
     <div data-lens-theme="creative" className={ds.pageContainer}>
       {/* Header */}
       <header className={ds.sectionHeader}>
@@ -1697,5 +1715,6 @@ export default function CreativeLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

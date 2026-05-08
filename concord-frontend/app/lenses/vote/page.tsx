@@ -1,6 +1,9 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { apiHelpers } from '@/lib/api/client';
 
@@ -92,6 +95,15 @@ export default function VoteLensPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'proposals' | 'dashboard'>('proposals');
   const [expandedProposal, setExpandedProposal] = useState<string | null>(null);
+
+  useLensCommand(
+    [
+      { id: 'tab-proposals', keys: 'p', description: 'Proposals', category: 'navigation', action: () => setActiveTab('proposals') },
+      { id: 'tab-dashboard', keys: 'd', description: 'Dashboard', category: 'navigation', action: () => setActiveTab('dashboard') },
+      { id: 'new-proposal', keys: 'n', description: 'New proposal', category: 'actions', action: () => setShowCreateModal(true) },
+    ],
+    { lensId: 'vote' }
+  );
   const [showFeatures, setShowFeatures] = useState(true);
 
   // Data
@@ -181,6 +193,8 @@ export default function VoteLensPage() {
   }
 
   return (
+    <LensShell lensId="vote" asMain={false}>
+      <ManifestActionBar />
     <div className="p-6 space-y-6">
       {/* Header */}
       <header className="flex items-center justify-between">
@@ -509,6 +523,7 @@ export default function VoteLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }
 

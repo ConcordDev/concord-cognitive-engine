@@ -1,8 +1,11 @@
 'use client';
 
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ds } from '@/lib/design-system';
@@ -57,6 +60,17 @@ export default function FractalLensPage() {
 
   const [activeTab, setActiveTab] = useState<ModeTab>('patterns');
   const [searchQuery, setSearchQuery] = useState('');
+
+  useLensCommand(
+    [
+      { id: 'tab-patterns', keys: 'p', description: 'Patterns', category: 'navigation', action: () => setActiveTab('patterns') },
+      { id: 'tab-nodes', keys: 'n', description: 'Nodes', category: 'navigation', action: () => setActiveTab('nodes') },
+      { id: 'tab-generators', keys: 'g', description: 'Generators', category: 'navigation', action: () => setActiveTab('generators') },
+      { id: 'tab-iterations', keys: 'i', description: 'Iterations', category: 'navigation', action: () => setActiveTab('iterations') },
+      { id: 'tab-exports', keys: 'e', description: 'Exports', category: 'navigation', action: () => setActiveTab('exports') },
+    ],
+    { lensId: 'fractal' }
+  );
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<LensItem<FractalArtifact> | null>(null);
@@ -384,6 +398,8 @@ export default function FractalLensPage() {
   );
 
   return (
+    <LensShell lensId="fractal" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="fractal" className="space-y-6 p-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -439,5 +455,6 @@ export default function FractalLensPage() {
         {showFeatures && <div className="px-4 pb-4"><LensFeaturePanel lensId="fractal" /></div>}
       </div>
     </div>
+    </LensShell>
   );
 }

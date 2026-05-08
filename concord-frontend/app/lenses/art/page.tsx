@@ -1,7 +1,10 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, apiHelpers } from '@/lib/api/client';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -127,6 +130,20 @@ export default function ArtLensPage() {
   const [selectedStyle, setSelectedStyle] = useState<string | null>(null);
   const [showUpload, setShowUpload] = useState(false);
   const [showCreateListing, setShowCreateListing] = useState(false);
+
+  // Lens-scoped keyboard commands. Procreate / Photoshop idiom: g
+  // (gallery), c (canvas), m (marketplace), u upload, l list.
+  useLensCommand(
+    [
+      { id: 'view-gallery', keys: 'g', description: 'Gallery', category: 'navigation', action: () => setViewMode('gallery') },
+      { id: 'view-canvas', keys: 'c', description: 'Canvas', category: 'navigation', action: () => setViewMode('canvas') },
+      { id: 'view-marketplace', keys: 'm', description: 'Marketplace', category: 'navigation', action: () => setViewMode('marketplace') },
+      { id: 'view-myart', keys: 'a', description: 'My art', category: 'navigation', action: () => setViewMode('my-art') },
+      { id: 'upload', keys: 'u', description: 'Upload artwork', category: 'actions', action: () => setShowUpload(true) },
+      { id: 'list-piece', keys: 'l', description: 'List for sale', category: 'actions', action: () => setShowCreateListing(true) },
+    ],
+    { lensId: 'art' }
+  );
 
   // Canvas state
   const [canvasTool, setCanvasTool] = useState<CanvasTool>('brush');
@@ -1022,6 +1039,8 @@ export default function ArtLensPage() {
     );
   }
   return (
+    <LensShell lensId="art" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="art" className="h-[calc(100vh-4rem)] flex flex-col bg-gradient-to-b from-rose-950/10 via-neutral-950 to-black">
       {renderNav()}
       <div className="flex-1 overflow-hidden flex">
@@ -1243,5 +1262,6 @@ export default function ArtLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

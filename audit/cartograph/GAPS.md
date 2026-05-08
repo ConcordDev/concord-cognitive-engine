@@ -1,6 +1,6 @@
 # Gaps & Wire Targets
 
-_Generated 2026-05-08T06:41:49.685Z. Each gap proposes a concrete wire action._
+_Generated 2026-05-08T17:55:36.053Z. Each gap proposes a concrete wire action._
 
 ## Dead tables (25)
 
@@ -40,116 +40,17 @@ _None._
 
 _None — every module either has a heartbeat or is invoked by a macro callsite._
 
-## Headless backend domains (77)
+## Headless backend domains (0)
 
-| Domain | Macro count | Suggested frontend lens dir |
-|---|---:|---|
-| `chicken3` | 4 | `concord-frontend/app/lenses/chicken3/page.tsx` |
-| `multimodal` | 2 | `concord-frontend/app/lenses/multimodal/page.tsx` |
-| `semantic` | 7 | `concord-frontend/app/lenses/semantic/page.tsx` |
-| `explanation` | 4 | `concord-frontend/app/lenses/explanation/page.tsx` |
-| `hlr` | 5 | `concord-frontend/app/lenses/hlr/page.tsx` |
-| `hlm` | 9 | `concord-frontend/app/lenses/hlm/page.tsx` |
-| `quest` | 10 | `concord-frontend/app/lenses/quest/page.tsx` |
-| `teaching` | 11 | `concord-frontend/app/lenses/teaching/page.tsx` |
-| `entity_economy` | 13 | `concord-frontend/app/lenses/entity-economy/page.tsx` |
-| `autonomy` | 11 | `concord-frontend/app/lenses/autonomy/page.tsx` |
-| `conflict` | 11 | `concord-frontend/app/lenses/conflict/page.tsx` |
-| `culture` | 16 | `concord-frontend/app/lenses/culture/page.tsx` |
-| `breakthrough` | 7 | `concord-frontend/app/lenses/breakthrough/page.tsx` |
-| `physical` | 8 | `concord-frontend/app/lenses/physical/page.tsx` |
-| `forgetting` | 7 | `concord-frontend/app/lenses/forgetting/page.tsx` |
-| `attention_alloc` | 6 | `concord-frontend/app/lenses/attention-alloc/page.tsx` |
-| `repair_network` | 4 | `concord-frontend/app/lenses/repair-network/page.tsx` |
-| `apps` | 9 | `concord-frontend/app/lenses/apps/page.tsx` |
-| `promotion` | 6 | `concord-frontend/app/lenses/promotion/page.tsx` |
-| `explore` | 3 | `concord-frontend/app/lenses/explore/page.tsx` |
-| `dream` | 5 | `concord-frontend/app/lenses/dream/page.tsx` |
-| `dtu` | 10 | `concord-frontend/app/lenses/dtu/page.tsx` |
-| `shield` | 11 | `concord-frontend/app/lenses/shield/page.tsx` |
-| `foundation` | 1 | `concord-frontend/app/lenses/foundation/page.tsx` |
-| `intel` | 8 | `concord-frontend/app/lenses/intel/page.tsx` |
-| `cortex` | 6 | `concord-frontend/app/lenses/cortex/page.tsx` |
-| `style` | 2 | `concord-frontend/app/lenses/style/page.tsx` |
-| `ask` | 1 | `concord-frontend/app/lenses/ask/page.tsx` |
-| `swarm` | 1 | `concord-frontend/app/lenses/swarm/page.tsx` |
-| `wrapper` | 3 | `concord-frontend/app/lenses/wrapper/page.tsx` |
-| `layer` | 3 | `concord-frontend/app/lenses/layer/page.tsx` |
-| `persona` | 9 | `concord-frontend/app/lenses/persona/page.tsx` |
-| `quality` | 2 | `concord-frontend/app/lenses/quality/page.tsx` |
-| `spreadsheet` | 1 | `concord-frontend/app/lenses/spreadsheet/page.tsx` |
-| `slides` | 1 | `concord-frontend/app/lenses/slides/page.tsx` |
-| `compile` | 1 | `concord-frontend/app/lenses/compile/page.tsx` |
-| `experiment` | 1 | `concord-frontend/app/lenses/experiment/page.tsx` |
-| `context` | 1 | `concord-frontend/app/lenses/context/page.tsx` |
-| `interface` | 1 | `concord-frontend/app/lenses/interface/page.tsx` |
-| `log` | 1 | `concord-frontend/app/lenses/log/page.tsx` |
-| `synth` | 1 | `concord-frontend/app/lenses/synth/page.tsx` |
-| `evolution` | 1 | `concord-frontend/app/lenses/evolution/page.tsx` |
-| `heartbeat` | 1 | `concord-frontend/app/lenses/heartbeat/page.tsx` |
-| `auth` | 1 | `concord-frontend/app/lenses/auth/page.tsx` |
-| `org` | 1 | `concord-frontend/app/lenses/org/page.tsx` |
-| `jobs` | 3 | `concord-frontend/app/lenses/jobs/page.tsx` |
-| `agent` | 4 | `concord-frontend/app/lenses/agent/page.tsx` |
-| `crawl` | 2 | `concord-frontend/app/lenses/crawl/page.tsx` |
-| `source` | 2 | `concord-frontend/app/lenses/source/page.tsx` |
-| `verify` | 1 | `concord-frontend/app/lenses/verify/page.tsx` |
+_None — every macro domain has a matching frontend lens dir._
 
-## Orphan lenses (153)
+## Orphan lenses (3)
 
 | Lens dir | Reason | Action |
 |---|---|---|
-| `[parent]` | page_tsx_empty_or_missing | wire backend OR remove |
-| `affect` | no_matching_backend_domain | wire backend OR remove |
-| `agriculture` | no_matching_backend_domain | wire backend OR remove |
-| `all` | no_matching_backend_domain | wire backend OR remove |
-| `alliance` | no_matching_backend_domain | wire backend OR remove |
-| `analytics` | no_matching_backend_domain | wire backend OR remove |
-| `animation` | no_matching_backend_domain | wire backend OR remove |
-| `answers` | no_matching_backend_domain | wire backend OR remove |
-| `app-maker` | no_matching_backend_domain | wire backend OR remove |
-| `ar` | no_matching_backend_domain | wire backend OR remove |
-| `art` | no_matching_backend_domain | wire backend OR remove |
-| `artistry` | no_matching_backend_domain | wire backend OR remove |
-| `astronomy` | no_matching_backend_domain | wire backend OR remove |
-| `automotive` | no_matching_backend_domain | wire backend OR remove |
-| `aviation` | no_matching_backend_domain | wire backend OR remove |
-| `billing` | no_matching_backend_domain | wire backend OR remove |
-| `bio` | no_matching_backend_domain | wire backend OR remove |
-| `black-market` | no_matching_backend_domain | wire backend OR remove |
-| `board` | no_matching_backend_domain | wire backend OR remove |
-| `bridge` | no_matching_backend_domain | wire backend OR remove |
-| `calendar` | no_matching_backend_domain | wire backend OR remove |
-| `carpentry` | no_matching_backend_domain | wire backend OR remove |
-| `chem` | no_matching_backend_domain | wire backend OR remove |
-| `code` | no_matching_backend_domain | wire backend OR remove |
-| `cognition` | no_matching_backend_domain | wire backend OR remove |
-| `command-center` | no_matching_backend_domain | wire backend OR remove |
-| `construction` | no_matching_backend_domain | wire backend OR remove |
-| `consulting` | no_matching_backend_domain | wire backend OR remove |
-| `cooking` | no_matching_backend_domain | wire backend OR remove |
-| `crafting` | no_matching_backend_domain | wire backend OR remove |
-| `creative-writing` | no_matching_backend_domain | wire backend OR remove |
-| `creator` | no_matching_backend_domain | wire backend OR remove |
-| `crypto` | no_matching_backend_domain | wire backend OR remove |
-| `custom` | no_matching_backend_domain | wire backend OR remove |
-| `daily` | no_matching_backend_domain | wire backend OR remove |
-| `database` | no_matching_backend_domain | wire backend OR remove |
-| `debate` | no_matching_backend_domain | wire backend OR remove |
-| `debug` | no_matching_backend_domain | wire backend OR remove |
-| `defense` | no_matching_backend_domain | wire backend OR remove |
-| `desert` | no_matching_backend_domain | wire backend OR remove |
-| `disputes` | no_matching_backend_domain | wire backend OR remove |
-| `diy` | no_matching_backend_domain | wire backend OR remove |
-| `docs` | no_matching_backend_domain | wire backend OR remove |
-| `dtus` | no_matching_backend_domain | wire backend OR remove |
-| `eco` | no_matching_backend_domain | wire backend OR remove |
-| `education` | no_matching_backend_domain | wire backend OR remove |
-| `electrical` | no_matching_backend_domain | wire backend OR remove |
-| `emergency-services` | no_matching_backend_domain | wire backend OR remove |
-| `energy` | no_matching_backend_domain | wire backend OR remove |
-| `engineering` | no_matching_backend_domain | wire backend OR remove |
-| ... | _+103 more_ | |
+| `root` | no_backend_evidence_in_page_tsx | wire backend OR remove |
+| `ux-suite` | no_backend_evidence_in_page_tsx | wire backend OR remove |
+| `world-creator` | page_tsx_empty_or_missing | wire backend OR remove |
 
 ## Unused macros (0)
 

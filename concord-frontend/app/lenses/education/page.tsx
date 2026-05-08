@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { apiHelpers } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
@@ -494,6 +496,20 @@ export default function EducationLensPage() {
 
   /* ---------- core state ---------- */
   const [activeTab, setActiveTab] = useState<ModeTab>('Students');
+
+  // Lens-scoped keyboard commands. LMS idiom (Canvas / Schoology):
+  // single-letter section jumps for the teaching workflow.
+  useLensCommand(
+    [
+      { id: 'tab-students', keys: 's', description: 'Students', category: 'navigation', action: () => setActiveTab('Students') },
+      { id: 'tab-courses', keys: 'c', description: 'Courses', category: 'navigation', action: () => setActiveTab('Courses') },
+      { id: 'tab-assignments', keys: 'a', description: 'Assignments', category: 'navigation', action: () => setActiveTab('Assignments') },
+      { id: 'tab-grades', keys: 'g', description: 'Grades', category: 'navigation', action: () => setActiveTab('Grades') },
+      { id: 'tab-quizzes', keys: 'q', description: 'Quizzes', category: 'navigation', action: () => setActiveTab('Quizzes') },
+      { id: 'tab-resources', keys: 'r', description: 'Resources', category: 'navigation', action: () => setActiveTab('Resources') },
+    ],
+    { lensId: 'education' }
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<Status | 'all'>('all');
   const [showEditor, setShowEditor] = useState(false);
@@ -1263,6 +1279,7 @@ export default function EducationLensPage() {
   /* ================================================================== */
 
   return (
+    <LensShell lensId="education" asMain={false}>
     <div data-lens-theme="education" className="p-6 space-y-6 bg-gradient-to-b from-amber-950/10 to-transparent">
       {/* Header */}
       <header className={ds.sectionHeader}>
@@ -3122,6 +3139,7 @@ export default function EducationLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }
 

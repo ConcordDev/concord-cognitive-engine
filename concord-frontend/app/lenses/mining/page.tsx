@@ -1,6 +1,9 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import { useLensCommand } from '@/hooks/useLensCommand';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -121,6 +124,15 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function MiningLensPage() {
   const [activeMode, setActiveMode] = useState<ModeTab>('Dashboard');
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+  useLensCommand(
+    [
+      { id: 'tab-dashboard', keys: 'd', description: 'Dashboard', category: 'navigation', action: () => setActiveMode('Dashboard') },
+      { id: 'tab-map', keys: 'm', description: 'Map', category: 'navigation', action: () => setActiveMode('Map') },
+    ],
+    { lensId: 'mining' }
+  );
   const [searchQuery, setSearchQuery] = useState('');
 
   const currentType = getTypeForTab(activeMode);
@@ -158,6 +170,8 @@ export default function MiningLensPage() {
   );
 
   return (
+    <LensShell lensId="mining" asMain={false}>
+      <ManifestActionBar />
     <LensPageShell
       domain="mining"
       title="Mining Operations"
@@ -342,5 +356,6 @@ export default function MiningLensPage() {
         <UniversalActions domain="mining" artifactId={items[0]?.id} />
       </div>
     </LensPageShell>
+    </LensShell>
   );
 }

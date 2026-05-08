@@ -20,6 +20,9 @@
  */
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -41,6 +44,17 @@ export default function LatticeLensPage() {
   useLensNav('lattice');
   const qc = useQueryClient();
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
+
+  useLensCommand(
+    [
+      { id: 'tab-overview', keys: 'o', description: 'Overview', category: 'navigation', action: () => setActiveTab('overview') },
+      { id: 'tab-consent', keys: 'c', description: 'Consent', category: 'navigation', action: () => setActiveTab('consent') },
+      { id: 'tab-brains', keys: 'b', description: 'Brains', category: 'navigation', action: () => setActiveTab('brains') },
+      { id: 'tab-refresh', keys: 'r', description: 'Refresh', category: 'navigation', action: () => setActiveTab('refresh') },
+      { id: 'tab-federation', keys: 'f', description: 'Federation', category: 'navigation', action: () => setActiveTab('federation') },
+    ],
+    { lensId: 'lattice' }
+  );
 
   // ── Corpus stats ──────────────────────────────────────────────────────
   const corpusStats = useQuery({
@@ -116,6 +130,8 @@ export default function LatticeLensPage() {
   ];
 
   return (
+    <LensShell lensId="lattice" asMain={false}>
+      <ManifestActionBar />
     <div className="min-h-screen bg-black pb-12 text-fuchsia-50">
       <header className="sticky top-0 z-10 border-b border-fuchsia-900/50 bg-black/95 px-4 py-3 backdrop-blur md:px-8">
         <div className="mx-auto flex max-w-7xl items-center gap-3">
@@ -325,6 +341,7 @@ export default function LatticeLensPage() {
         </AnimatePresence>
       </main>
     </div>
+    </LensShell>
   );
 }
 

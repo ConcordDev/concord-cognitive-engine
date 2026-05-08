@@ -1,7 +1,10 @@
 'use client';
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
@@ -77,6 +80,19 @@ export default function PhotographyPage() {
 
   const [tab, setTab] = useState<PhotoTab>('gallery');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Lens-scoped keyboard commands. Lightroom / Capture One idiom.
+  useLensCommand(
+    [
+      { id: 'tab-gallery', keys: 'g', description: 'Gallery', category: 'navigation', action: () => setTab('gallery') },
+      { id: 'tab-upload', keys: 'u', description: 'Upload', category: 'navigation', action: () => setTab('upload') },
+      { id: 'tab-capture', keys: 'c', description: 'Capture', category: 'navigation', action: () => setTab('capture') },
+      { id: 'tab-collections', keys: 'l', description: 'Collections', category: 'navigation', action: () => setTab('collections') },
+      { id: 'tab-editing', keys: 'e', description: 'Editing', category: 'navigation', action: () => setTab('editing') },
+      { id: 'tab-stats', keys: 's', description: 'Stats', category: 'navigation', action: () => setTab('stats') },
+    ],
+    { lensId: 'photography' }
+  );
   const [showFeatures, setShowFeatures] = useState(true);
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [showUpload, setShowUpload] = useState(false);
@@ -362,6 +378,8 @@ export default function PhotographyPage() {
   ];
 
   return (
+    <LensShell lensId="photography" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="photography" className="min-h-screen">
       <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
         {/* Header */}
@@ -925,5 +943,6 @@ export default function PhotographyPage() {
         </AnimatePresence>
       </div>
     </div>
+    </LensShell>
   );
 }

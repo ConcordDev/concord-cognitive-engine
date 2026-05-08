@@ -93,10 +93,30 @@ function scoreLens(lens: LensEntry, query: string): number {
 
 // ── Component ───────────────────────────────────────────────────
 
-export function CommandPalette() {
+/**
+ * Optional controlled-mode props. When omitted, the palette mirrors
+ * the UI store's `commandPaletteOpen` flag (default behaviour). When
+ * supplied, the consumer owns open/close — useful inside modals,
+ * fullscreen world experiences, or tests that want explicit control.
+ */
+export interface CommandPaletteProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+}
+
+export function CommandPalette({ isOpen: isOpenProp, onClose }: CommandPaletteProps = {}) {
   const router = useRouter();
-  const isOpen = useUIStore((s) => s.commandPaletteOpen);
-  const setOpen = useUIStore((s) => s.setCommandPaletteOpen);
+  const storeIsOpen = useUIStore((s) => s.commandPaletteOpen);
+  const setStoreOpen = useUIStore((s) => s.setCommandPaletteOpen);
+  const isControlled = isOpenProp !== undefined;
+  const isOpen = isControlled ? isOpenProp : storeIsOpen;
+  const setOpen = (next: boolean) => {
+    if (isControlled) {
+      if (!next) onClose?.();
+    } else {
+      setStoreOpen(next);
+    }
+  };
 
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);

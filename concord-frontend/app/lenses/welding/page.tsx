@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -612,6 +614,8 @@ export default function WeldingLensPage() {
   );
 
   return (
+    <LensShell lensId="welding" asMain={false}>
+      <ManifestActionBar />
     <LensPageShell
       domain="welding"
       title="Welding"
@@ -692,5 +696,6 @@ export default function WeldingLensPage() {
       {showDashboard ? renderDashboard() : renderLibrary()}
       {renderEditor()}
     </LensPageShell>
+    </LensShell>
   );
 }

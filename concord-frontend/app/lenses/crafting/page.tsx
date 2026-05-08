@@ -4,6 +4,9 @@
 // Three sub-tabs: My Recipes, Browse Marketplace, Author New.
 
 import { useEffect, useState } from 'react';
+import { useLensCommand } from '@/hooks/useLensCommand';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import dynamic from 'next/dynamic';
 import { api } from '@/lib/api/client';
 import { Hammer, ShoppingBag, Plus, Loader2, Flame, Sparkles } from 'lucide-react';
@@ -30,6 +33,16 @@ type Tab = 'mine' | 'browse' | 'author';
 
 export default function CraftingPage() {
   const [tab, setTab] = useState<Tab>('mine');
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+  useLensCommand(
+    [
+      { id: 'tab-mine', keys: 'm', description: 'Mine', category: 'navigation', action: () => setTab('mine') },
+      { id: 'tab-browse', keys: 'b', description: 'Browse', category: 'navigation', action: () => setTab('browse') },
+      { id: 'tab-author', keys: 'a', description: 'Author', category: 'navigation', action: () => setTab('author') },
+    ],
+    { lensId: 'crafting' }
+  );
   const [mine, setMine] = useState<RecipeRow[]>([]);
   const [marketRecipes, setMarketRecipes] = useState<MarketplaceListing[]>([]);
   const [loading, setLoading] = useState(false);
@@ -158,6 +171,8 @@ export default function CraftingPage() {
   }
 
   return (
+    <LensShell lensId="crafting" asMain={false}>
+      <ManifestActionBar />
     <main className="min-h-screen p-6 max-w-4xl mx-auto text-white">
       <header className="flex items-center gap-3 mb-6">
         <Hammer className="w-7 h-7 text-amber-400" />
@@ -299,6 +314,7 @@ export default function CraftingPage() {
         </div>
       )}
     </main>
+    </LensShell>
   );
 }
 

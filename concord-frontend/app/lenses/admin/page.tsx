@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { LensShell } from '@/components/lens/LensShell';
 import { useQuery } from '@tanstack/react-query';
 import { api, apiHelpers } from '@/lib/api/client';
 import { useState, useMemo, useCallback } from 'react';
@@ -548,6 +549,7 @@ export default function AdminDashboardPage() {
     );
   }
   return (
+    <LensShell lensId="admin" asMain={false}>
     <div className="p-6 space-y-6">
       {/* Header */}
       <header className="flex items-center justify-between">
@@ -1471,6 +1473,7 @@ export default function AdminDashboardPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }
 

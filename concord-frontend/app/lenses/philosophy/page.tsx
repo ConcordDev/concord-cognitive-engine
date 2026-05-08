@@ -1,8 +1,11 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { cn } from '@/lib/utils';
@@ -77,6 +80,23 @@ export default function PhilosophyLensPage() {
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('philosophy');
 
   const [activeTab, setActiveTab] = useState<ModeTab>('Arguments');
+
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+
+  useLensCommand(
+
+    [
+
+      { id: 'tab-arguments', keys: 'a', description: 'Arguments', category: 'navigation', action: () => setActiveTab('Arguments') },
+
+      { id: 'tab-dashboard', keys: 'd', description: 'Dashboard', category: 'navigation', action: () => setActiveTab('Dashboard') },
+
+    ],
+
+    { lensId: 'philosophy' }
+
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [branchFilter, setBranchFilter] = useState<Branch | ''>('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -152,6 +172,8 @@ export default function PhilosophyLensPage() {
   }
 
   return (
+    <LensShell lensId="philosophy" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="philosophy" className="p-6 space-y-6">
       <header className="flex items-center gap-3">
         <BookOpen className="w-6 h-6 text-neon-purple" />
@@ -525,5 +547,6 @@ export default function PhilosophyLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

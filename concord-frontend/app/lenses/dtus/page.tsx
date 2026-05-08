@@ -12,8 +12,11 @@
  */
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import type { DTU, DTUTier } from '@/lib/api/generated-types';
@@ -30,6 +33,8 @@ import {
 } from 'lucide-react';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useLensData } from '@/lib/hooks/use-lens-data';
+import { DomainProbeCard } from '@/components/system/DomainProbeCard';
+import { probesByGroup } from '@/lib/headless-probes';
 
 const PAGE_SIZE = 20;
 
@@ -48,6 +53,18 @@ export default function DTUBrowserPage() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [showFeed, setShowFeed] = useState(true);
+
+  // Lens-scoped keyboard commands. Roam / Obsidian-graph idiom: l/g
+  // toggle list/grid, n new DTU, f toggles the live feed.
+  useLensCommand(
+    [
+      { id: 'view-list', keys: 'l', description: 'List view', category: 'view', action: () => setViewMode('list') },
+      { id: 'view-grid', keys: 'g', description: 'Grid view', category: 'view', action: () => setViewMode('grid') },
+      { id: 'new-dtu', keys: 'n', description: 'New DTU', category: 'actions', action: () => setShowCreateForm(true) },
+      { id: 'toggle-feed', keys: 'f', description: 'Toggle live feed', category: 'view', action: () => setShowFeed((v) => !v) },
+    ],
+    { lensId: 'dtus' }
+  );
 
   // Backend action wiring
   const runAction = useRunArtifact('dtus');
@@ -138,6 +155,8 @@ export default function DTUBrowserPage() {
   }, [queryClient, refetch]);
 
   return (
+    <LensShell lensId="dtus" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="dtus" className="min-h-screen bg-lattice-void text-white">
       {/* Header */}
       <header className="sticky top-0 z-30 bg-lattice-surface/80 backdrop-blur border-b border-lattice-border">
@@ -600,6 +619,30 @@ export default function DTUBrowserPage() {
         </div>
       </div>
 
+      {/* DTU operations — surfaces the substrate-class macro domains
+          that act on or emit DTUs (promotion queue, dream cycle,
+          autotag classifier, multimodal vision, etc.). Each card is a
+          live probe of its primary macro. */}
+      <section
+        className="mx-auto mt-8 max-w-7xl px-4 md:px-6"
+        aria-labelledby="dtu-ops-heading"
+        data-lens-section="dtu-operations"
+      >
+        <header className="mb-3 flex items-baseline justify-between">
+          <h2 id="dtu-ops-heading" className="text-base font-semibold text-white">
+            DTU operations
+          </h2>
+          <span className="text-[11px] text-gray-500">
+            substrate macros · live probes
+          </span>
+        </header>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {probesByGroup('dtu').map((p) => (
+            <DomainProbeCard key={`${p.domain}.${p.macro}`} probe={p} />
+          ))}
+        </div>
+      </section>
+
       {/* DTU Detail View (modal) */}
       {selectedDtuId && (
         <DTUDetailView
@@ -617,5 +660,6 @@ export default function DTUBrowserPage() {
         />
       )}
     </div>
+    </LensShell>
   );
 }

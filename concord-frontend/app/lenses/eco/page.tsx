@@ -1,7 +1,10 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import {
@@ -129,6 +132,29 @@ export default function EcoLensPage() {
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('eco');
 
   const [activeTab, setActiveTab] = useState<EcoTab>('overview');
+
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+
+  useLensCommand(
+
+    [
+
+      { id: 'tab-overview', keys: 'o', description: 'Overview', category: 'navigation', action: () => setActiveTab('overview') },
+
+      { id: 'tab-populations', keys: 'p', description: 'Populations', category: 'navigation', action: () => setActiveTab('populations') },
+
+      { id: 'tab-climate', keys: 'c', description: 'Climate', category: 'navigation', action: () => setActiveTab('climate') },
+
+      { id: 'tab-biodiversity', keys: 'b', description: 'Biodiversity', category: 'navigation', action: () => setActiveTab('biodiversity') },
+
+      { id: 'tab-impact', keys: 'i', description: 'Impact', category: 'navigation', action: () => setActiveTab('impact') },
+
+    ],
+
+    { lensId: 'eco' }
+
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [expandedImpact, setExpandedImpact] = useState<string | null>(null);
@@ -917,6 +943,8 @@ export default function EcoLensPage() {
   // ── Main Render ─────────────────────────────────────────────────────────────
 
   return (
+    <LensShell lensId="eco" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="eco" className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -1183,5 +1211,6 @@ export default function EcoLensPage() {
       {activeTab === 'biodiversity' && renderBiodiversity()}
       {activeTab === 'impact' && renderImpact()}
     </div>
+    </LensShell>
   );
 }

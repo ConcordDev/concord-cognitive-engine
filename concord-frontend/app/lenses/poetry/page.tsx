@@ -1,7 +1,10 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useLensDTUs } from '@/hooks/useLensDTUs';
 import { api } from '@/lib/api/client';
@@ -273,6 +276,27 @@ export default function PoetryPage() {
   }, [poemItems, runAction]);
 
   const [tab, setTab] = useState<PoetryTab>('collection');
+
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+
+  useLensCommand(
+
+    [
+
+      { id: 'tab-collection', keys: 'c', description: 'Collection', category: 'navigation', action: () => setTab('collection') },
+
+      { id: 'tab-compose', keys: 'o', description: 'Compose', category: 'navigation', action: () => setTab('compose') },
+
+      { id: 'tab-forms', keys: 'f', description: 'Forms', category: 'navigation', action: () => setTab('forms') },
+
+      { id: 'tab-workshop', keys: 'w', description: 'Workshop', category: 'navigation', action: () => setTab('workshop') },
+
+    ],
+
+    { lensId: 'poetry' }
+
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [showFeatures, setShowFeatures] = useState(true);
   const [formFilter, setFormFilter] = useState<PoemForm | null>(null);
@@ -364,6 +388,8 @@ export default function PoetryPage() {
   ];
 
   return (
+    <LensShell lensId="poetry" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="poetry" className="min-h-screen">
       {/* Reading Mode Overlay */}
       <AnimatePresence>
@@ -631,5 +657,6 @@ export default function PoetryPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

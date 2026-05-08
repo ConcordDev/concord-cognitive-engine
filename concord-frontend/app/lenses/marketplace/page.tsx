@@ -1,6 +1,9 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { LensShell } from '@/components/lens/LensShell';
+import { BandcampGrid } from '@/components/marketplace/BandcampGrid';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { api, apiHelpers } from '@/lib/api/client';
@@ -647,6 +650,20 @@ export default function MarketplaceLensPage() {
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [showFeatures, setShowFeatures] = useState(true);
+
+  // Lens-scoped keyboard commands. Etsy / Bandcamp idiom: single-letter
+  // tab jumps; v swaps grid/list; n opens the new-listing composer.
+  useLensCommand(
+    [
+      { id: 'goto-browse', keys: 'b', description: 'Browse', category: 'navigation', action: () => setTab('browse') },
+      { id: 'goto-myshop', keys: 'm', description: 'My shop', category: 'navigation', action: () => setTab('myshop') },
+      { id: 'goto-cart', keys: 'c', description: 'Cart', category: 'navigation', action: () => setTab('cart') },
+      { id: 'goto-purchases', keys: 'p', description: 'Purchases', category: 'navigation', action: () => setTab('purchases') },
+      { id: 'view-toggle', keys: 'v', description: 'Toggle grid / list', category: 'view', action: () => setViewMode((v) => (v === 'grid' ? 'list' : 'grid')) },
+      { id: 'new-listing', keys: 'n', description: 'New listing', category: 'actions', action: () => setShowNewListing(true) },
+    ],
+    { lensId: 'marketplace' }
+  );
   const [showCheckoutConfirm, setShowCheckoutConfirm] = useState(false);
   const [selectedArtifactId, setSelectedArtifactId] = useState<string | null>(null);
 
@@ -1197,6 +1214,7 @@ export default function MarketplaceLensPage() {
     );
   }
   return (
+    <LensShell lensId="marketplace" asMain={false}>
     <div className="lens-marketplace space-y-6 pb-24" data-lens-theme="marketplace">
       {/* ---- Header ---- */}
       <div className="flex items-center justify-between">
@@ -1276,6 +1294,20 @@ export default function MarketplaceLensPage() {
         >
           {/* Main content */}
           <div className="flex-1 min-w-0 space-y-6">
+            {/* Bandcamp-shape cover-grid: chunky covers, hover audio
+                preview, name-your-price + 95/5 royalty cascade reminder.
+                Mock seed until the live listings query is wired in. */}
+            <BandcampGrid
+              columns={3}
+              items={[
+                { id: 'demo-1', title: 'Stance Against the Cold', creator: 'Aria Voss',  minPriceCc: 25, suggestedPriceCc: 45, royaltyRate: 0.21, tags: ['fighting-style', 'ice', 'beginner'] },
+                { id: 'demo-2', title: 'Smith&rsquo;s Firefall',     creator: 'Orin',      minPriceCc: 30, suggestedPriceCc: 60, royaltyRate: 0.21, tags: ['blueprint', 'forge', 'advanced'] },
+                { id: 'demo-3', title: 'Bridge of Echoes',        creator: 'Sael',      minPriceCc: 15, suggestedPriceCc: 25, royaltyRate: 0.21, tags: ['quest', 'lore'] },
+                { id: 'demo-4', title: 'Dome-Buckler Stance',     creator: 'Vex',       minPriceCc: 50, suggestedPriceCc: 90, royaltyRate: 0.21, tags: ['fighting-style', 'refusal'] },
+                { id: 'demo-5', title: 'Twilight Commune',        creator: 'Mira',      minPriceCc: 10, suggestedPriceCc: 20, royaltyRate: 0.21, tags: ['commune', 'gentle'] },
+                { id: 'demo-6', title: 'The Wrath Phase',         creator: 'Concordia', minPriceCc: 80, suggestedPriceCc: 120, royaltyRate: 0.21, tags: ['arc', 'wrathful'] },
+              ]}
+            />
             {/* Hero / Featured Carousel */}
             {featuredItems.length > 0 && featuredItems[featuredIdx] && (
               <div className="relative panel p-0 overflow-hidden rounded-xl">
@@ -2569,5 +2601,6 @@ export default function MarketplaceLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

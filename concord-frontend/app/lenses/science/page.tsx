@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -1745,6 +1746,7 @@ export default function ScienceLensPage() {
   }
 
   return (
+    <LensShell lensId="science" asMain={false}>
     <div data-lens-theme="science" className={ds.pageContainer}>
       {/* Header */}
       <header className={ds.sectionHeader}>
@@ -2153,5 +2155,6 @@ export default function ScienceLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

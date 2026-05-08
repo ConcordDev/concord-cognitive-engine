@@ -17,6 +17,9 @@
  */
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
+import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useState } from 'react';
@@ -34,6 +37,18 @@ export default function WorldmodelLensPage() {
   const qc = useQueryClient();
   const [activeTab, setActiveTab] = useState<TabKey>('status');
 
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+  useLensCommand(
+    [
+      { id: 'tab-status', keys: 's', description: 'Status', category: 'navigation', action: () => setActiveTab('status') },
+      { id: 'tab-entities', keys: 'e', description: 'Entities', category: 'navigation', action: () => setActiveTab('entities') },
+      { id: 'tab-relations', keys: 'r', description: 'Relations', category: 'navigation', action: () => setActiveTab('relations') },
+      { id: 'tab-simulate', keys: 'i', description: 'Simulate', category: 'navigation', action: () => setActiveTab('simulate') },
+      { id: 'tab-snapshots', keys: 'n', description: 'Snapshots', category: 'navigation', action: () => setActiveTab('snapshots') },
+    ],
+    { lensId: 'worldmodel' }
+  );
   // ── Status ─────────────────────────────────────────────────────────────
   const status = useQuery({
     queryKey: ['worldmodel-status'],
@@ -134,6 +149,8 @@ export default function WorldmodelLensPage() {
   ];
 
   return (
+    <LensShell lensId="worldmodel" asMain={false}>
+      <ManifestActionBar />
     <div className="min-h-screen bg-black pb-12 text-emerald-50">
       <header className="sticky top-0 z-10 border-b border-emerald-900/50 bg-black/95 px-4 py-3 backdrop-blur md:px-8">
         <div className="mx-auto flex max-w-7xl items-center gap-3">
@@ -347,6 +364,7 @@ export default function WorldmodelLensPage() {
         </AnimatePresence>
       </main>
     </div>
+    </LensShell>
   );
 }
 
