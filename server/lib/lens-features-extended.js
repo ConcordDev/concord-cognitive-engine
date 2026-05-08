@@ -1063,6 +1063,6 @@ export const EXTENDED_FEATURES = {
       f("export_download", "Export / Download", "Export the generated single-file TypeScript app + Dockerfile + systemd unit", "creation", ["dtu"]),
       f("dtu_publish", "DTU Publish", "Publish a generated app as a marketplace DTU with citation cascade", "marketplace", ["dtu", "concord_coin"]),
     ],
-    featureCount: 6, economicIntegrations: ["concord_coin", "creator_royalties"], emergentAccess: true, botAccess: true, usbIntegration: false,
+    featureCount: 6, economicIntegrations: ["concord_coin", "citation_royalties"], emergentAccess: true, botAccess: true, usbIntegration: false,
   },
 };

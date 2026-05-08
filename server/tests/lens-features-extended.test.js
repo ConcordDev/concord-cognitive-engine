@@ -251,10 +251,11 @@ describe("UNIVERSAL_FEATURES", () => {
 // ═════════════════════════════════════════════════════════════════════════════
 
 describe("EXTENDED_FEATURES — structural invariants", () => {
-  it("is a plain object with 58 lens entries", () => {
+  it("is a plain object with 59 lens entries", () => {
     assert.equal(typeof EXTENDED_FEATURES, "object");
     assert.ok(!Array.isArray(EXTENDED_FEATURES));
-    assert.equal(ALL_LENS_KEYS.length, 58);
+    // 58 (lensNumber 66–123) + forge (lensNumber 124, AI_EXT, Phase B).
+    assert.equal(ALL_LENS_KEYS.length, 59);
   });
 
   it("every entry has the standard lens shape", () => {
@@ -288,10 +289,11 @@ describe("EXTENDED_FEATURES — structural invariants", () => {
     assert.equal(new Set(numbers).size, numbers.length, "duplicate lens numbers");
   });
 
-  it("lens numbers span 66 to 123", () => {
+  it("lens numbers span 66 to 124", () => {
     const numbers = ALL_LENS_KEYS.map((k) => EXTENDED_FEATURES[k].lensNumber);
     assert.equal(Math.min(...numbers), 66);
-    assert.equal(Math.max(...numbers), 123);
+    // 124 = forge (AI_EXT, added in Phase B). Pre-Phase-B max was 123.
+    assert.equal(Math.max(...numbers), 124);
   });
 
   it("all lens numbers are contiguous (no gaps)", () => {
@@ -320,12 +322,15 @@ describe("EXTENDED_FEATURES — structural invariants", () => {
     }
   });
 
-  it("total extended features equal 274", () => {
+  it("total extended features equal 280", () => {
     let total = 0;
     for (const key of ALL_LENS_KEYS) {
       total += EXTENDED_FEATURES[key].features.length;
     }
-    assert.equal(total, 274);
+    // 274 pre-Phase-B + 6 forge features (template_picker,
+    // section_configurator, config_validator, live_preview,
+    // export_download, dtu_publish) = 280.
+    assert.equal(total, 280);
   });
 
   it("every category is one of the expected values", () => {
@@ -1724,6 +1729,7 @@ describe("Cross-cutting feature coverage", () => {
       "emergency-services",
       "film_studios",
       "forestry",
+      "forge",
       "law-enforcement",
       "mining",
       "ocean",
