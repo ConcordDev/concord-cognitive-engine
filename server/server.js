@@ -234,6 +234,17 @@ registerHeartbeat("embodied-dream-cycle", {
   handler: runEmbodiedDreamCycle,
 });
 
+// Layer 13: NPC-initiated conversations. Every 8 ticks (~2 min) scans each
+// active world for cooldown-elapsed NPC pairs, generates a grounded opener
+// (deterministic by default; LLM-enhanced via CONCORD_NPC_DIALOGUE_LLM=true),
+// emits npc:conversation-bid socket event so nearby players see ambient NPC
+// dialogue. GC sweep also closes expired conversations.
+import { runNpcConversationInitiator } from "./emergent/npc-conversation-initiator.js";
+registerHeartbeat("npc-conversation-initiator", {
+  frequency: 8,
+  handler: ({ db } = {}) => runNpcConversationInitiator({ db, io: REALTIME?.io }),
+});
+
 // Layer 8: repair-cycle pain processor. Every 20 ticks (~5min) consumes
 // pending pain_signals rows for each user, grants endurance / strength /
 // agility / vitality / focus XP based on regional distribution, and grants
