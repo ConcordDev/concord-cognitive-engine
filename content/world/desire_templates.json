@@ -1,0 +1,12 @@
+[
+  { "target_archetype": "concord_alignment_high",   "template": "Vouch for my brother in the upcoming council vote — your reputation will carry weight where mine cannot.", "reward_kind": "opinion_shift" },
+  { "target_archetype": "concord_alignment_high",   "template": "Speak at the Pinewood summit. They listen to those whose alignment runs clean.", "reward_kind": "opinion_shift" },
+  { "target_archetype": "concordia_alignment_high", "template": "Plant a sapling at the southern grove, in my mother's name. I'm not allowed near that ground anymore.", "reward_kind": "opinion_shift" },
+  { "target_archetype": "concordia_alignment_high", "template": "Carry word to the goddess's emissary that her shrine still stands. She'll trust you where she'd doubt me.", "reward_kind": "alignment_shift" },
+  { "target_archetype": "ecosystem_low",            "template": "Find the runoff source poisoning the Thornwood stream. I've watched it brown for a season.", "reward_kind": "quest_unlock" },
+  { "target_archetype": "ecosystem_low",            "template": "The wolves have been thinning. Track the pack-leader and bring me what you find — I won't ask why.", "reward_kind": "quest_unlock" },
+  { "target_archetype": "refusal_debt_high",        "template": "Speak the Sovereign's refusal at the western gate before sundown. Your debt makes the words land.", "reward_kind": "alignment_shift" },
+  { "target_archetype": "refusal_debt_high",        "template": "Stand in my place at the Refusal Archive. I cannot enter; you can.", "reward_kind": "alignment_shift" },
+  { "target_archetype": "default",                  "template": "Bring me a token from beyond this district. I want to know the world is still wider than the gate.", "reward_kind": "opinion_shift" },
+  { "target_archetype": "default",                  "template": "Witness me train tomorrow at dawn. A worked move with no audience is a half-move." }
+]

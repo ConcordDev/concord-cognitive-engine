@@ -904,6 +904,13 @@ export default function createWorldsRouter({ requireAuth, db }) {
       const state   = _tryParseJSON(npc.state, {});
       const npcName = state.name || npc.archetype || 'NPC';
 
+      // Phase 2: idempotent seed of grudge/preoccupation/desire on first
+      // dialogue. Best-effort — never blocks the dialogue path.
+      try {
+        const asymmetry = await import("../lib/npc-asymmetry.js");
+        await asymmetry.seedNPCAsymmetry(db, { ...npc, ...state });
+      } catch { /* asymmetry tables may be absent */ }
+
       // 2. Player reputation
       const reputation = getWorldReputation(db, worldId, playerId);
 
@@ -1878,6 +1885,26 @@ export default function createWorldsRouter({ requireAuth, db }) {
         bar_used: barType === 'multi' ? 'mana' : barType,
         bar_cost: barCost,
       });
+
+      // Phase 2: NPC asymmetry. If the player kills this NPC, every other
+      // NPC in this NPC's faction gets a grudge. Best-effort; tables may
+      // not exist on minimal builds.
+      if (kill) {
+        try {
+          const asymmetry = await import("../lib/npc-asymmetry.js");
+          const targetNpc = db.prepare(`SELECT faction FROM world_npcs WHERE id = ?`).get(npcId);
+          if (targetNpc?.faction) {
+            const factionMates = db.prepare(`
+              SELECT id FROM world_npcs
+              WHERE faction = ? AND id != ? AND COALESCE(is_dead, 0) = 0
+              LIMIT 12
+            `).all(targetNpc.faction, npcId);
+            for (const mate of factionMates) {
+              asymmetry.recordPlayerImpactEvent(db, mate.id, userId, "killed_by_player");
+            }
+          }
+        } catch { /* asymmetry tables may be missing */ }
+      }
 
       // Phase 1 + 1.5: emit skill:tier-witnessed when an evolved skill
       // (revision_num >= 1) is cast in combat. AND record a demonstration

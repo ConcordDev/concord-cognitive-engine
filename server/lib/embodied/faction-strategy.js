@@ -323,6 +323,20 @@ export function applyMove(db, factionId, picked, peerStates) {
 
   try { tx(); }
   catch { return null; }
+
+  // Phase 2 — refresh NPC preoccupations when the faction's stance changes.
+  // Best-effort; never throws back into the strategy cycle.
+  if (picked.newStance && picked.newStance !== "consolidate") {
+    (async () => {
+      try {
+        const asymmetry = await import("../npc-asymmetry.js");
+        if (asymmetry?.refreshFactionPreoccupations) {
+          await asymmetry.refreshFactionPreoccupations(db, factionId, picked.newStance);
+        }
+      } catch { /* asymmetry tables may be missing on minimal builds */ }
+    })();
+  }
+
   return { moveId, ...picked };
 }
 

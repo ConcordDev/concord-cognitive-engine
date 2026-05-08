@@ -20,6 +20,11 @@ import { getAuthoredNPC, getAuthoredFaction, getQuestsForNPC, getAuthoredDialogu
 import { getFactionPolicyState } from "./council-world-bridge.js";
 import { getKnowledgeForRole } from "./npc-knowledge-bridge.js";
 import { recentFacts as _recentWorldFacts } from "./world-facts.js";
+// Phase 2 — NPC asymmetry. Direct top-level import is fine: asymmetry
+// doesn't import narrative-bridge, so no cycle. composeAsymmetryContext
+// is a pure read against the npc_grudges/preoccupations/desires tables;
+// it tolerates missing tables and returns nulls.
+import { composeAsymmetryContext as _composeAsymmetryContext } from "./npc-asymmetry.js";
 
 const DIALOGUE_TTL_MS   = 5 * 60 * 1000;   // 5 minutes
 const QUEST_TTL_MS      = 10 * 60 * 1000;  // 10 minutes
@@ -106,7 +111,7 @@ function buildSocialSignals(npcId, _db = null, maxBytes = 1024, maxItems = 5) {
  * Exported so the secret-leakage contract test can call it directly
  * with a fixture NPC instead of having to seed the authored registry.
  */
-export function buildNPCTraits(npcId, db = null) {
+export function buildNPCTraits(npcId, db = null, opts = {}) {
   const npc = getAuthoredNPC(npcId);
   if (!npc) {
     return {
@@ -163,8 +168,28 @@ export function buildNPCTraits(npcId, db = null) {
     // happened recently. Pre-this, NPC A and NPC B could independently
     // generate contradictory claims about the same event.
     worldFacts: buildWorldFacts(npc, db),
+    // Phase 2: NPC asymmetry. Three structured fields injected into the
+    // dialogue prompt so the LLM physically cannot drift into
+    // generic-NPC mode. opts.userId + opts.playerMetrics let the desire
+    // be tailored to THIS player; without them only grudge + preoccupation
+    // are populated.
+    persistent_grudge:        null,
+    current_preoccupation:    null,
+    desire_for_this_player:   null,
     // Deliberately exclude secrets from LLM context — those are for human authors only
   };
+
+  // Compose asymmetry context if the substrate is wired (Phase 2 migration).
+  if (db) {
+    try {
+      const ctx = _composeAsymmetryContext(db, npcId, opts.userId, opts.playerMetrics);
+      if (ctx) {
+        if (ctx.persistent_grudge)        traits.persistent_grudge = ctx.persistent_grudge;
+        if (ctx.current_preoccupation)    traits.current_preoccupation = ctx.current_preoccupation;
+        if (ctx.desire_for_this_player)   traits.desire_for_this_player = ctx.desire_for_this_player;
+      }
+    } catch { /* asymmetry tables may not exist on minimal builds */ }
+  }
 
   // Defense-in-depth: scan the materialized traits for the secret canary.
   // If the secret string ever sneaks into the output (via a future field

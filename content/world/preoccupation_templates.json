@@ -1,0 +1,9 @@
+[
+  { "phase": "expand",      "template": "My faction is pushing east; we expect new territory before the next moon. Eyes are forward, hands are ready." },
+  { "phase": "war",         "template": "We are at war. Half my kin are wounded; the rest are sharpening blades. Sleep finds none of us." },
+  { "phase": "rebuild",     "template": "We lost the last skirmish. I'm rationing my own training to feed the rebuild — it'll be a season before we move again." },
+  { "phase": "alliance",    "template": "We're courting an alliance. My cousin walks as envoy now; she sends word every third day." },
+  { "phase": "consolidate", "template": "We're holding what we have. No new fronts until the elders agree, and the elders take their time." },
+  { "phase": "isolation",   "template": "We've withdrawn from the field. The silence is by choice. Don't ask whose." },
+  { "phase": "default",     "template": "My faction is between phases. I keep my eyes open and my count low." }
+]

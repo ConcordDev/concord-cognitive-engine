@@ -1,0 +1,17 @@
+[
+  { "archetype": "warrior",        "template": "{target_name} stood on my brother's flag at the Pinewood crossing. {severity_word}." },
+  { "archetype": "warrior",        "template": "{target_name} broke a duel-pact and ran. The cowardice still stings." },
+  { "archetype": "guard",          "template": "{target_name} crossed my checkpoint with no toll and wouldn't say their business." },
+  { "archetype": "guard",          "template": "{target_name} drew steel within the gate when I was on watch. I remember every detail." },
+  { "archetype": "scholar",        "template": "{target_name} dismissed my paper before the council read it. They won't make that mistake twice." },
+  { "archetype": "scholar",        "template": "{target_name} cited my work without attribution. The error compounds." },
+  { "archetype": "trader",         "template": "{target_name} undercut me on a deal worth {magnitude} sparks. I keep the ledger." },
+  { "archetype": "trader",         "template": "{target_name} sold me weighted dice once. Once was enough to know." },
+  { "archetype": "mystic",         "template": "{target_name} walked out of my circle uninitiated. The thread between us is frayed." },
+  { "archetype": "mystic",         "template": "{target_name} mocked the Eight Refusals at the festival. The grove remembers." },
+  { "archetype": "healer",         "template": "{target_name} brought me a wounded enemy and asked me to refuse the work. I refused them instead." },
+  { "archetype": "hunter",         "template": "{target_name} spooked the herd at the eastern blind. Three days of tracking, ruined." },
+  { "archetype": "refusal_keeper", "template": "{target_name} refused a refusal that wasn't theirs to refuse. The verb-debt still stands." },
+  { "archetype": "cyber",          "template": "{target_name} forked my repo and renamed it. The signature still runs through their build." },
+  { "archetype": "default",        "template": "{target_name} crossed me. {severity_word}." }
+]
