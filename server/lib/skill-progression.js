@@ -2,6 +2,7 @@
 // Open-ended, anti-grinding skill progression for DTU skills.
 
 import crypto from "crypto";
+import { tryUnlockEvolution } from "./skill-evolution.js";
 
 export const EXPERIENCE_RATES = {
   practice:              1,
@@ -72,6 +73,7 @@ export async function awardExperience(skill, eventType, context, db) {
   const diminish = 1 / (1 + Math.log10(currentLevel + 1) * 0.1);
   xp *= diminish;
 
+  const previousLevel = skill.skill_level || 1;
   const newTotalExp = (skill.total_experience || 0) + xp;
   const newLevel    = computeLevelFromExperience(newTotalExp);
 
@@ -94,6 +96,20 @@ export async function awardExperience(skill, eventType, context, db) {
     skill.id,
   );
 
+  // Phase 1: every 10 levels, unlock a skill-evolution slot. Player gets
+  // the modal via the `skill:evolution-available` socket event; NPCs auto-
+  // commit on the next npc-skill-evolve-cycle tick.
+  let evolutionUnlock = null;
+  try {
+    if (process.env.CONCORD_SKILL_EVOLUTION !== "0") {
+      const entityKind = context.userId ? "player" : "npc";
+      const entityId = context.userId || context.npcId;
+      if (entityId) {
+        evolutionUnlock = tryUnlockEvolution(db, entityKind, entityId, skill.id, previousLevel, newLevel);
+      }
+    }
+  } catch { /* unlock is best-effort — must never break XP grant */ }
+
   // Record event
   db.prepare(`
     INSERT INTO skill_experience_events
@@ -111,7 +127,14 @@ export async function awardExperience(skill, eventType, context, db) {
     meaningful ? 1 : 0,
   );
 
-  return { awarded: xp, newLevel, grinding: false };
+  return {
+    awarded: xp,
+    newLevel,
+    grinding: false,
+    evolutionUnlocked: !!evolutionUnlock?.unlocked,
+    evolutionLevel: evolutionUnlock?.level || null,
+    evolutionUnlockId: evolutionUnlock?.unlockId || null,
+  };
 }
 
 /**

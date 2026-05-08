@@ -1822,6 +1822,26 @@ export default function createWorldsRouter({ requireAuth, db }) {
 
       const damageResult = computeDamage(attackerStats, defenderStats, skillData);
 
+      // ── Phase 1: procedural-biomechanics limb gate ─────────────────────────
+      // Reads the caster's limbHealth / activeDebuffs (set by zone-armor hits
+      // in city-presence.js) and applies a multiplier from skill-evolution's
+      // LIMB_DEBUFF_TABLE. A broken arm cuts a fighting-style cast to 30%
+      // damage and adds 500ms of stagger. A severed limb blocks the cast.
+      try {
+        const { evaluateLimbReadiness } = await import("../lib/skill-evolution.js");
+        const casterPresence = cityPresence.getUserPosition?.(userId);
+        if (casterPresence && (casterPresence.activeDebuffs || casterPresence.limbHealth)) {
+          const limbCheck = evaluateLimbReadiness(skillData, casterPresence);
+          if (!limbCheck.ok) {
+            return res.status(422).json({ ok: false, error: "limb_unusable", reason: limbCheck.reason, cause: limbCheck.cause });
+          }
+          if (limbCheck.dmgMul && limbCheck.dmgMul < 1.0 && Number.isFinite(damageResult.finalDamage)) {
+            damageResult.finalDamage = Math.max(0, Math.round(damageResult.finalDamage * limbCheck.dmgMul));
+            damageResult.limbDebuff = { dmgMul: limbCheck.dmgMul, cause: limbCheck.cause, staggerMs: limbCheck.staggerMs };
+          }
+        }
+      } catch { /* limb gate is best-effort — must never break combat */ }
+
       // ── Anti-cheat: damage cap ─────────────────────────────────────────────
       // Defends against future bugs in computeDamage that might drop a
       // sanity check. Cap = skillData.max_damage * 2.5 (crit) OR a hard
@@ -1858,6 +1878,27 @@ export default function createWorldsRouter({ requireAuth, db }) {
         bar_used: barType === 'multi' ? 'mana' : barType,
         bar_cost: barCost,
       });
+
+      // Phase 1: emit skill:tier-witnessed when an evolved skill (revision_num >= 1)
+      // is cast in combat. NPCs in chunk record this in nemesis_records.combat_memory
+      // so dialogue / asymmetry can reference it later.
+      try {
+        const revisionNum = Number(skillData?.revision_num ?? 0);
+        if (revisionNum >= 1 && req.app?.locals?.io) {
+          req.app.locals.io.to(`world:${worldId}`).emit("skill:tier-witnessed", {
+            userId,
+            npcId,
+            worldId,
+            skillId: skillDtuId,
+            skillName: skillData.current_name || skillData.name,
+            revisionNum,
+            element: skillData.element || 'none',
+            damage: damageResult.finalDamage,
+            position: npcPosRow ? { x: npcPosRow.x, z: npcPosRow.z } : null,
+            ts: Date.now(),
+          });
+        }
+      } catch { /* tier-witnessed is best-effort */ }
 
       // ── Layer 7.5: write feedback signals + check terrain stagger ──────────
       try {

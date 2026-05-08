@@ -369,6 +369,17 @@ registerHeartbeat("embodied-dream-cycle", {
   handler: runEmbodiedDreamCycle,
 });
 
+// Phase 1: NPC skill evolution. Every 80 ticks (~20 min) auto-evolves any
+// NPC whose level crossed a 10-boundary in the last cycle. NPC skill
+// authoring happens lazily — milestoned NPCs (lvl 5/25/100) get a
+// deterministic recipe + start the lineage chain. Sovereign at level 20,000
+// is seeded lazily on first marketplace view.
+import { runNpcSkillEvolveCycle } from "./emergent/npc-skill-evolve-cycle.js";
+registerHeartbeat("npc-skill-evolve-cycle", {
+  frequency: 80,
+  handler: runNpcSkillEvolveCycle,
+});
+
 // Layer 13: NPC-initiated conversations. Every 8 ticks (~2 min) scans each
 // active world for cooldown-elapsed NPC pairs, generates a grounded opener
 // (deterministic by default; LLM-enhanced via CONCORD_NPC_DIALOGUE_LLM=true),
@@ -9201,6 +9212,10 @@ async function runMacro(domain, name, input, ctx) {
     // Code-quality detector suite — read-only inspection. See
     // server/lib/detectors/* and server/domains/detectors.js.
     detectors: new Set(["list", "summary", "findings", "run", "runAll", "history", "baseline", "diff", "macro_telemetry", "flush_telemetry"]),
+    // Phase 1: skill evolution macros — read-only preview/list + commit. The
+    // commit path mutates only the caller's own recipe DTU under the
+    // existing personal_dtus_never_leak invariant (see CLAUDE.md).
+    skill_evolution: new Set(["list_unlocks", "preview", "commit", "history"]),
     // Phase 7 — Code substrate. Read-only macros for the code-DTU view.
     code: new Set(["dtu_for", "dtu_query", "cluster_for", "refresh"]),
   };
@@ -22621,6 +22636,14 @@ register("system", "cartograph", async (_ctx, input = {}) => {
 // See server/lib/detectors/index.js for the registry + filterFindings helper.
 import registerDetectorMacros from "./domains/detectors.js";
 registerDetectorMacros(register);
+
+// Phase 1 — Skill Evolution. The lifelong content engine for player AND NPC
+// progression. Every 10 levels of XP, an entity can commit a revision that
+// mutates the recipe's max_damage / range_m / costs / current_name on top
+// of a coherence-bounded envelope. NPCs auto-evolve on a heartbeat; players
+// see a modal triggered by the `skill:evolution-available` socket event.
+import registerSkillEvolutionMacros from "./domains/skill-evolution.js";
+registerSkillEvolutionMacros(register);
 
 // Phase 7 / T2 — Code substrate macros: routes / migrations / modules /
 // macros become DTUs under kind='code_artifact'. See lib/code-substrate/.
