@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
@@ -819,6 +820,7 @@ export default function WhiteboardLensPage() {
   }
   return (
     <LensShell lensId="whiteboard" asMain={false}>
+      <RivalShapePreview lensId="whiteboard" />
     <div className="h-full flex bg-lattice-bg">
       {/* ===== Sidebar ===== */}
       <aside className="w-64 border-r border-lattice-border bg-lattice-surface p-4 flex flex-col">

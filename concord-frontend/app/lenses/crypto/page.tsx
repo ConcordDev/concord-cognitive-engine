@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useState, useCallback } from 'react';
@@ -444,6 +445,7 @@ export default function CryptoLensPage() {
   return (
     <LensShell lensId="crypto" asMain={false}>
       <ManifestActionBar />
+      <RivalShapePreview lensId="crypto" />
     <div data-lens-theme="crypto" className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">

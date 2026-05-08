@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useMutation } from '@tanstack/react-query';
@@ -760,6 +761,7 @@ export default function CodeLensPage() {
   return (
     <LensShell lensId="code" asMain={false}>
       <ManifestActionBar />
+      <RivalShapePreview lensId="code" />
     <div data-lens-theme="code" className={`flex flex-col font-mono ${isFullscreen ? 'fixed inset-0 z-50 bg-[#0d1117]' : 'h-full bg-[#0d1117]'}`}>
       {/* Header */}
       <header className="flex items-center justify-between px-4 py-2 border-b border-green-900/40 bg-[#161b22]">

@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
+import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
 import { useState, useMemo, useCallback } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -1467,6 +1468,7 @@ export default function HealthcareLensPage() {
 
   return (
     <LensShell lensId="healthcare" asMain={false}>
+      <RivalShapePreview lensId="healthcare" />
     <div
       data-lens-theme="healthcare"
       className="p-6 space-y-6 bg-gradient-to-b from-blue-950/20 to-transparent"
