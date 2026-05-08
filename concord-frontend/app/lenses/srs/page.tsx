@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -147,6 +148,19 @@ export default function SRSLensPage() {
   const [view, setView] = useState<ViewMode>('study');
   const [studyMode, setStudyMode] = useState<StudyMode>('normal');
   const [currentIndex, setCurrentIndex] = useState(0);
+
+  // Lens-scoped keyboard commands. Anki idiom: letters jump to
+  // spaced-repetition workflow stages.
+  useLensCommand(
+    [
+      { id: 'view-study', keys: 's', description: 'Study', category: 'navigation', action: () => setView('study') },
+      { id: 'view-decks', keys: 'd', description: 'Decks', category: 'navigation', action: () => setView('decks') },
+      { id: 'view-browse', keys: 'b', description: 'Browse', category: 'navigation', action: () => setView('browse') },
+      { id: 'view-stats', keys: 't', description: 'Stats', category: 'navigation', action: () => setView('stats') },
+      { id: 'view-create', keys: 'n', description: 'New card', category: 'actions', action: () => setView('create') },
+    ],
+    { lensId: 'srs' }
+  );
   const [showAnswer, setShowAnswer] = useState(false);
   const [selectedDeck, setSelectedDeck] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
