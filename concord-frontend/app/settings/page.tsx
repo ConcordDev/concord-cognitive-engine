@@ -21,6 +21,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Settings as SettingsIcon } from 'lucide-react';
 import SettingsPanel from '@/components/world-lens/SettingsPanel';
+import { SettingsNav } from './SettingsNav';
 
 const STORAGE_KEY = 'concord:settings';
 
@@ -150,6 +151,9 @@ export default function SettingsPage() {
               Graphics · Audio · Controls · Notifications · Privacy · Language
             </p>
           </div>
+        </div>
+        <div className="mx-auto mt-3 max-w-screen-md">
+          <SettingsNav active="general" />
         </div>
       </motion.header>
 

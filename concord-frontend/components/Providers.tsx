@@ -7,6 +7,9 @@ import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { PermissionProvider } from '@/components/common/PermissionGate';
 import { I18nProvider } from '@/components/providers/I18nProvider';
 import { GlobalMediaController } from '@/components/media/GlobalMediaController';
+import SoundSystem from '@/components/world-lens/SoundSystem';
+import AdaptiveComplexity from '@/components/world-lens/AdaptiveComplexity';
+import HiddenAssistance from '@/components/world-lens/HiddenAssistance';
 import { observeWebVitals } from '@/lib/perf';
 import { connectSocket, disconnectSocket } from '@/lib/realtime/socket';
 import { api } from '@/lib/api/client';
@@ -83,11 +86,35 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <I18nProvider>
         <QueryClientProvider client={queryClient}>
           <PermissionProvider scopes={userScopes}>
-            <AppShell>{children}</AppShell>
+            {/*
+              AdaptiveComplexity + HiddenAssistance are Provider-shaped
+              wrappers — they expose context APIs (useAdaptiveComplexity,
+              useHiddenAssistance) that lens pages can consume to adapt
+              UI complexity by inferred expertise level and surface
+              just-in-time near-miss suggestions. Mounted at the
+              Providers level so every lens has access without per-page
+              wiring. AdaptiveComplexity outermost so HiddenAssistance
+              can read expertise level via context if needed.
+            */}
+            <AdaptiveComplexity>
+              <HiddenAssistance>
+                <AppShell>{children}</AppShell>
+              </HiddenAssistance>
+            </AdaptiveComplexity>
             {/* Global media layer — mounts once, survives all navigation.
                 Owns the <audio> element so playback continues across
                 lens switches. */}
             <GlobalMediaController />
+            {/*
+              SoundSystem is the district-aware ambient audio API
+              (separate from GlobalMediaController which owns global
+              music playback). Mounted with no props so the
+              useSoundSystem() hook is callable from any page; pages
+              with district context call setSoundscape(districtId) to
+              drive the soundscape. The component itself returns null —
+              it's an API initializer, not a UI element.
+            */}
+            <SoundSystem />
           </PermissionProvider>
         </QueryClientProvider>
       </I18nProvider>
