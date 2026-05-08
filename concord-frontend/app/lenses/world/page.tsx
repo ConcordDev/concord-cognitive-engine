@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { useRouter } from 'next/navigation';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { useSocket } from '@/hooks/useSocket';
@@ -1147,6 +1148,83 @@ const DISTRICT_TOOLS: {
 
 export default function WorldLensPage() {
   useLensNav('world');
+
+  // Fullscreen + pointer-lock for the explore mode. When active,
+  // ConcordiaScene takes the whole viewport; HUD overlays stay
+  // pointer-events-auto so the user can still click theme swatches,
+  // emote wheel, etc. Escape exits both.
+  const exploreShellRef = useRef<HTMLDivElement | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isPointerLocked, setIsPointerLocked] = useState(false);
+
+  useEffect(() => {
+    const onFsChange = () => {
+      const isFs = document.fullscreenElement === exploreShellRef.current;
+      setIsFullscreen(isFs);
+      if (!isFs && document.pointerLockElement) {
+        document.exitPointerLock?.();
+      }
+    };
+    const onPlChange = () => {
+      setIsPointerLocked(document.pointerLockElement === exploreShellRef.current);
+    };
+    document.addEventListener('fullscreenchange', onFsChange);
+    document.addEventListener('pointerlockchange', onPlChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', onFsChange);
+      document.removeEventListener('pointerlockchange', onPlChange);
+    };
+  }, []);
+
+  const enterFullscreen = useCallback(async () => {
+    if (!exploreShellRef.current) return;
+    try {
+      await exploreShellRef.current.requestFullscreen();
+    } catch {
+      // Fullscreen blocked (e.g. iframe without allow="fullscreen") —
+      // fall back to a CSS-only "pseudo-fullscreen" that pins the
+      // shell to the viewport.
+      setIsFullscreen(true);
+    }
+  }, []);
+  const exitFullscreen = useCallback(async () => {
+    if (document.fullscreenElement) {
+      try { await document.exitFullscreen(); } catch { /* ignore */ }
+    }
+    setIsFullscreen(false);
+  }, []);
+  const togglePointerLock = useCallback(() => {
+    if (!exploreShellRef.current) return;
+    if (document.pointerLockElement) {
+      document.exitPointerLock?.();
+    } else {
+      exploreShellRef.current.requestPointerLock?.();
+    }
+  }, []);
+
+  // Skyrim-shape keys: F to toggle fullscreen, P to capture mouse for
+  // FPS-style aim. The lens-scoped shortcut won't fire when the user
+  // is typing in a chat input thanks to useLensCommand's default
+  // form-tag exclusion.
+  useLensCommand(
+    [
+      {
+        id: 'toggle-fullscreen',
+        keys: 'f',
+        description: 'Toggle fullscreen (Skyrim immersion)',
+        category: 'view',
+        action: () => (isFullscreen ? exitFullscreen() : enterFullscreen()),
+      },
+      {
+        id: 'toggle-aim',
+        keys: 'p',
+        description: 'Toggle mouse capture (FPS aim)',
+        category: 'view',
+        action: togglePointerLock,
+      },
+    ],
+    { lensId: 'world' }
+  );
 
   const router = useRouter();
   const { isLive, lastUpdated } = useRealtimeLens('world');
@@ -3330,7 +3408,46 @@ export default function WorldLensPage() {
         </div>
       ) : viewMode === 'explore' ? (
         /* ── 3D Explore Mode ── */
-        <div className="flex-1 relative min-h-0">
+        <div
+          ref={exploreShellRef}
+          className={
+            isFullscreen
+              ? 'fixed inset-0 z-50 bg-black'
+              : 'flex-1 relative min-h-0'
+          }
+          data-fullscreen={isFullscreen ? 'true' : undefined}
+          data-pointer-locked={isPointerLocked ? 'true' : undefined}
+        >
+          {/* Fullscreen + pointer-lock toggle. Mounted absolute so it
+              floats above the canvas in either windowed or fullscreen
+              mode. Skyrim-shape immersion: F to toggle full, P to
+              capture mouse for FPS-style aim. */}
+          <div className="absolute top-4 left-4 z-30 flex items-center gap-1.5 bg-black/60 border border-white/10 rounded-xl px-2 py-1.5 pointer-events-auto">
+            <button
+              onClick={isFullscreen ? exitFullscreen : enterFullscreen}
+              title={isFullscreen ? 'Exit fullscreen (Esc)' : 'Enter fullscreen (F)'}
+              aria-pressed={isFullscreen}
+              className={
+                isFullscreen
+                  ? 'inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs bg-amber-500/20 border border-amber-500/40 text-amber-200'
+                  : 'inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs border border-white/10 text-white/70 hover:bg-white/10'
+              }
+            >
+              {isFullscreen ? '⤢ exit' : '⤢ play'}
+            </button>
+            <button
+              onClick={togglePointerLock}
+              title={isPointerLocked ? 'Release mouse (Esc)' : 'Capture mouse for FPS aim (P)'}
+              aria-pressed={isPointerLocked}
+              className={
+                isPointerLocked
+                  ? 'inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs bg-rose-500/20 border border-rose-500/40 text-rose-200'
+                  : 'inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs border border-white/10 text-white/70 hover:bg-white/10'
+              }
+            >
+              {isPointerLocked ? '◉ aim on' : '○ aim off'}
+            </button>
+          </div>
           <ConcordiaScene
             districtId={activeDistrict.id}
             quality={getStoredQualityPreset()}
