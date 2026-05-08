@@ -34,6 +34,25 @@ interface MyListing {
   listedAt: string;
 }
 
+interface PendingWithdrawal {
+  id: string;
+  amount: number;
+  status: string;
+  createdAt: string;
+}
+
+interface WithdrawalStatus {
+  ok: boolean;
+  balance: number;
+  eligibleAmount: number;
+  pendingHoldAmount: number;
+  nextEligibleAt: string | null;
+  pendingWithdrawals: PendingWithdrawal[];
+  minWithdraw: number;
+  holdHours: number;
+  error?: string;
+}
+
 interface Leader {
   userId: string;
   dtuCount: number;
@@ -66,11 +85,22 @@ export default function CreatorDashboardPage() {
   const [trending, setTrending] = useState<TrendingHit[]>([]);
   const [drift, setDrift] = useState<DriftHit[]>([]);
   const [myListings, setMyListings] = useState<MyListing[]>([]);
+  const [withdrawal, setWithdrawal] = useState<WithdrawalStatus | null>(null);
+  const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [withdrawError, setWithdrawError] = useState<string | null>(null);
+  const [withdrawing, setWithdrawing] = useState(false);
 
   const refreshListings = useCallback(() => {
     fetch('/api/creator/listings', { credentials: 'include' })
       .then(r => r.json())
       .then(d => setMyListings((d?.listings ?? []) as MyListing[]))
+      .catch(() => {});
+  }, []);
+
+  const refreshWithdrawal = useCallback(() => {
+    fetch('/api/creator/withdrawal-status', { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => setWithdrawal(d as WithdrawalStatus))
       .catch(() => {});
   }, []);
 
@@ -87,7 +117,37 @@ export default function CreatorDashboardPage() {
       setDrift((d?.drift ?? []) as DriftHit[]);
     });
     refreshListings();
-  }, [refreshListings]);
+    refreshWithdrawal();
+  }, [refreshListings, refreshWithdrawal]);
+
+  const requestWithdrawal = useCallback(async () => {
+    setWithdrawError(null);
+    const amount = Number(withdrawAmount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setWithdrawError('Enter a positive amount.');
+      return;
+    }
+    setWithdrawing(true);
+    try {
+      const res = await fetch('/api/economy/withdraw', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ amount }),
+      });
+      const body = await res.json().catch(() => null);
+      if (!res.ok || body?.ok === false) {
+        setWithdrawError(body?.error ?? `Request failed (${res.status}).`);
+      } else {
+        setWithdrawAmount('');
+        refreshWithdrawal();
+      }
+    } catch (e) {
+      setWithdrawError(e instanceof Error ? e.message : 'Request failed.');
+    } finally {
+      setWithdrawing(false);
+    }
+  }, [withdrawAmount, refreshWithdrawal]);
 
   const updateListing = useCallback(async (id: string, patch: Partial<MyListing>) => {
     await fetch(`/api/marketplace/listings/${encodeURIComponent(id)}`, {
@@ -144,6 +204,72 @@ export default function CreatorDashboardPage() {
         <div className={`${PANEL} mb-6 text-gray-500 italic`}>
           {me?.error ? `Sign in to see your dashboard.` : 'Loading your stats...'}
         </div>
+      )}
+
+      {/* Withdrawal eligibility — turns the 48h hold into a tangible
+          earnings-unlock surface so creators see exactly when their
+          royalties become spendable. */}
+      {withdrawal?.ok && (
+        <section className={`${PANEL} mb-6`}>
+          <div className="flex flex-wrap items-baseline justify-between gap-2 mb-3">
+            <h2 className="text-emerald-300 font-semibold">Earnings &amp; withdrawal</h2>
+            <span className="text-[11px] text-gray-500">
+              {withdrawal.holdHours}h hold · min {withdrawal.minWithdraw} CC
+            </span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+            <div>
+              <div className="text-[10px] text-gray-500 uppercase tracking-wider">Total balance</div>
+              <div className="text-2xl text-emerald-300 font-mono mt-1">{withdrawal.balance.toFixed(2)} CC</div>
+            </div>
+            <div>
+              <div className="text-[10px] text-gray-500 uppercase tracking-wider">Eligible to withdraw</div>
+              <div className="text-2xl text-emerald-200 font-mono mt-1">{withdrawal.eligibleAmount.toFixed(2)} CC</div>
+            </div>
+            <div>
+              <div className="text-[10px] text-gray-500 uppercase tracking-wider">In {withdrawal.holdHours}h hold</div>
+              <div className="text-2xl text-amber-300 font-mono mt-1">{withdrawal.pendingHoldAmount.toFixed(2)} CC</div>
+              {withdrawal.nextEligibleAt && (
+                <div className="text-[11px] text-gray-500 mt-1">
+                  next unlock {new Date(withdrawal.nextEligibleAt).toLocaleString()}
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              value={withdrawAmount}
+              onChange={(e) => setWithdrawAmount(e.target.value)}
+              inputMode="decimal"
+              placeholder={`Amount (max ${withdrawal.eligibleAmount.toFixed(2)})`}
+              className="flex-1 min-w-[200px] bg-black/60 border border-white/10 rounded px-3 py-2 text-sm text-gray-200 focus:border-emerald-400/60 focus:outline-none"
+            />
+            <button
+              onClick={requestWithdrawal}
+              disabled={withdrawing || withdrawal.eligibleAmount < withdrawal.minWithdraw}
+              className="px-4 py-2 text-sm font-medium bg-emerald-700 hover:bg-emerald-600 disabled:bg-stone-800 disabled:text-gray-500 rounded text-white"
+            >
+              {withdrawing ? 'Requesting…' : 'Request withdrawal'}
+            </button>
+          </div>
+          {withdrawError && (
+            <p role="alert" className="mt-2 text-xs text-rose-300">
+              {withdrawError}
+            </p>
+          )}
+          {withdrawal.pendingWithdrawals.length > 0 && (
+            <div className="mt-4 space-y-1.5">
+              <div className="text-[11px] text-gray-500 uppercase tracking-wider">In review</div>
+              {withdrawal.pendingWithdrawals.map((w) => (
+                <div key={w.id} className="flex items-center justify-between text-sm border-l-2 border-emerald-500/40 pl-3">
+                  <span className="text-gray-200 font-mono">{w.amount.toFixed(2)} CC</span>
+                  <span className="text-gray-500 capitalize">{w.status}</span>
+                  <span className="text-gray-600 text-xs">{new Date(w.createdAt).toLocaleDateString()}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
       )}
 
       {/* My listings — edit / withdraw / relist */}

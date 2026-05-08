@@ -205,6 +205,109 @@ export function computeTrendingCitations(STATE) {
 }
 
 /**
+ * Withdrawal eligibility for the creator dashboard.
+ *
+ * The 48-hour hold (`server/economy/withdrawals.js#WITHDRAWAL_HOLD_HOURS`)
+ * is a constitutional anti-refund-exploit invariant. This helper turns
+ * the gate into a tangible "what's available, what's still held"
+ * surface so creators see exactly when their earnings unlock.
+ *
+ * @param {object} db
+ * @param {string} userId
+ * @returns {{
+ *   ok: boolean,
+ *   balance: number,
+ *   eligibleAmount: number,
+ *   pendingHoldAmount: number,
+ *   nextEligibleAt: string | null,
+ *   pendingWithdrawals: Array<{ id, amount, status, createdAt }>,
+ *   minWithdraw: number,
+ *   holdHours: number,
+ * }}
+ */
+export function computeWithdrawalEligibility(db, userId) {
+  if (!userId) return { ok: false, error: "user_id_required" };
+  const HOLD_HOURS = 48;
+  try {
+    // Total wallet balance via economy_ledger.
+    const balRow = db.prepare(
+      `SELECT COALESCE(SUM(amount), 0) AS bal
+       FROM economy_ledger
+       WHERE user_id = ?`
+    ).get(userId);
+    const balance = Number(balRow?.bal || 0);
+
+    // Credits older than HOLD_HOURS are eligible to withdraw.
+    const eligibleRow = db.prepare(
+      `SELECT COALESCE(SUM(amount), 0) AS bal
+       FROM economy_ledger
+       WHERE user_id = ?
+         AND amount > 0
+         AND created_at <= datetime('now', '-${HOLD_HOURS} hours')`
+    ).get(userId);
+    const eligibleCredits = Number(eligibleRow?.bal || 0);
+
+    // Subtract debits + already-withdrawn / pending withdrawals from
+    // the eligible bucket so a creator can't double-spend their hold.
+    const debitsRow = db.prepare(
+      `SELECT COALESCE(SUM(amount), 0) AS bal
+       FROM economy_ledger
+       WHERE user_id = ? AND amount < 0`
+    ).get(userId);
+    const debits = Math.abs(Number(debitsRow?.bal || 0));
+    const eligibleAmount = Math.max(0, eligibleCredits - debits);
+    const pendingHoldAmount = Math.max(0, balance - eligibleAmount);
+
+    // The next credit that will unlock — earliest credit with age < HOLD_HOURS.
+    let nextEligibleAt = null;
+    try {
+      const nextRow = db.prepare(
+        `SELECT created_at AS ts
+         FROM economy_ledger
+         WHERE user_id = ?
+           AND amount > 0
+           AND created_at > datetime('now', '-${HOLD_HOURS} hours')
+         ORDER BY created_at ASC
+         LIMIT 1`
+      ).get(userId);
+      if (nextRow?.ts) {
+        const t = new Date(nextRow.ts).getTime();
+        if (Number.isFinite(t)) {
+          nextEligibleAt = new Date(t + HOLD_HOURS * 3600 * 1000).toISOString();
+        }
+      }
+    } catch { /* fall through */ }
+
+    // Open withdrawal requests in the queue.
+    let pendingWithdrawals = [];
+    try {
+      pendingWithdrawals = db.prepare(
+        `SELECT id, amount, status, created_at AS createdAt
+         FROM economy_withdrawals
+         WHERE user_id = ? AND status IN ('pending','approved','processing')
+         ORDER BY created_at DESC
+         LIMIT 10`
+      ).all(userId);
+    } catch { /* table may not exist on minimal builds */ }
+
+    const minWithdraw = Number(process.env.MIN_WITHDRAW_TOKENS) || 20;
+
+    return {
+      ok: true,
+      balance,
+      eligibleAmount,
+      pendingHoldAmount,
+      nextEligibleAt,
+      pendingWithdrawals,
+      minWithdraw,
+      holdHours: HOLD_HOURS,
+    };
+  } catch (e) {
+    return { ok: false, error: String(e?.message || e) };
+  }
+}
+
+/**
  * Influence drift: which creators are gaining/losing citation share fastest.
  */
 export function computeInfluenceDrift(STATE) {

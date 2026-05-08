@@ -42573,6 +42573,12 @@ app.get("/api/creator/influence-drift", asyncHandler(async (_req, res) => {
   const cd = await import("./lib/creator-dashboard.js");
   res.json(cd.computeInfluenceDrift(STATE));
 }));
+// Withdrawal eligibility — turns the 48h hold gate into a tangible
+// "eligible vs pending" surface for the creator dashboard.
+app.get("/api/creator/withdrawal-status", requireAuth(), asyncHandler(async (req, res) => {
+  const cd = await import("./lib/creator-dashboard.js");
+  res.json(cd.computeWithdrawalEligibility(db, req.user?.id));
+}));
 
 // Federation: peer list, trust graph visualization, cross-instance search.
 // All read-only for now — peering itself goes through the existing
