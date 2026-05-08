@@ -178,37 +178,35 @@ function _resolveBrainInteractionForDtu(db, dtuId) {
 /**
  * Get the complete ancestor chain for a piece of content.
  * Returns all ancestors with their generation distance.
+ *
+ * Phase 2 perf fix (May 2026): single recursive CTE replaces N round-trips.
+ * The MIN(generation) GROUP BY preserves BFS-shortest-path dedup semantics
+ * of the prior queue-based implementation. Pinned by
+ * tests/royalty-cascade-parity.test.js.
  */
 export function getAncestorChain(db, contentId, maxDepth = MAX_CASCADE_DEPTH) {
-  const ancestors = [];
-  const visited = new Set();
-  const queue = [{ id: contentId, generation: 0 }];
-
-  while (queue.length > 0) {
-    const current = queue.shift();
-    if (visited.has(current.id) || current.generation > maxDepth) continue;
-    visited.add(current.id);
-
-    const parents = db.prepare(`
+  const rows = db.prepare(`
+    WITH RECURSIVE chain(content_id, creator_id, generation) AS (
       SELECT parent_id, parent_creator, generation
-      FROM royalty_lineage WHERE child_id = ?
-    `).all(current.id);
+        FROM royalty_lineage WHERE child_id = ?
+      UNION ALL
+      SELECT rl.parent_id, rl.parent_creator, c.generation + rl.generation
+        FROM royalty_lineage rl JOIN chain c ON rl.child_id = c.content_id
+       WHERE c.generation + rl.generation <= ?
+    )
+    SELECT content_id, creator_id, MIN(generation) AS generation
+      FROM chain
+     WHERE content_id != ?
+     GROUP BY content_id
+     ORDER BY generation ASC, content_id ASC
+  `).all(contentId, maxDepth, contentId);
 
-    for (const parent of parents) {
-      const totalGeneration = current.generation + parent.generation;
-      if (totalGeneration <= maxDepth && !visited.has(parent.parent_id)) {
-        ancestors.push({
-          contentId: parent.parent_id,
-          creatorId: parent.parent_creator,
-          generation: totalGeneration,
-          rate: calculateGenerationalRate(totalGeneration),
-        });
-        queue.push({ id: parent.parent_id, generation: totalGeneration });
-      }
-    }
-  }
-
-  return ancestors;
+  return rows.map(r => ({
+    contentId: r.content_id,
+    creatorId: r.creator_id,
+    generation: r.generation,
+    rate: calculateGenerationalRate(r.generation),
+  }));
 }
 
 /**
@@ -459,67 +457,55 @@ export function getContentRoyalties(db, contentId, { limit = 50 } = {}) {
 
 /**
  * Get all descendants of a content item (items that cite it).
+ *
+ * Phase 2 perf fix: symmetric CTE shape to getAncestorChain, walking
+ * parent_id → child_id instead.
  */
 export function getDescendants(db, contentId, maxDepth = MAX_CASCADE_DEPTH) {
-  const descendants = [];
-  const visited = new Set();
-  const queue = [{ id: contentId, generation: 0 }];
-
-  while (queue.length > 0) {
-    const current = queue.shift();
-    if (visited.has(current.id) || current.generation > maxDepth) continue;
-    visited.add(current.id);
-
-    const children = db.prepare(`
+  const rows = db.prepare(`
+    WITH RECURSIVE chain(content_id, creator_id, generation) AS (
       SELECT child_id, creator_id, generation
-      FROM royalty_lineage WHERE parent_id = ?
-    `).all(current.id);
+        FROM royalty_lineage WHERE parent_id = ?
+      UNION ALL
+      SELECT rl.child_id, rl.creator_id, c.generation + rl.generation
+        FROM royalty_lineage rl JOIN chain c ON rl.parent_id = c.content_id
+       WHERE c.generation + rl.generation <= ?
+    )
+    SELECT content_id, creator_id, MIN(generation) AS generation
+      FROM chain
+     WHERE content_id != ?
+     GROUP BY content_id
+     ORDER BY generation ASC, content_id ASC
+  `).all(contentId, maxDepth, contentId);
 
-    for (const child of children) {
-      const totalGeneration = current.generation + child.generation;
-      if (!visited.has(child.child_id)) {
-        descendants.push({
-          contentId: child.child_id,
-          creatorId: child.creator_id,
-          generation: totalGeneration,
-        });
-        queue.push({ id: child.child_id, generation: totalGeneration });
-      }
-    }
-  }
-
-  return descendants;
+  return rows.map(r => ({
+    contentId: r.content_id,
+    creatorId: r.creator_id,
+    generation: r.generation,
+  }));
 }
 
 /**
  * Check if adding a citation from childId → parentId would create a cycle.
+ *
+ * Phase 2 perf fix: single recursive CTE with LIMIT 1 short-circuit.
+ * Walks UP from parentId looking for childId — if reachable, the citation
+ * would close a cycle.
  */
 function wouldCreateCycle(db, childId, parentId) {
-  // Check if parentId is already a descendant of childId
-  const visited = new Set();
-  const queue = [parentId];
-
-  while (queue.length > 0) {
-    const current = queue.shift();
-    if (current === childId) return true;
-    if (visited.has(current)) continue;
-    visited.add(current);
-
-    const parents = db.prepare(
-      "SELECT parent_id FROM royalty_lineage WHERE child_id = ?"
-    ).all(current);
-
-    for (const p of parents) {
-      if (!visited.has(p.parent_id)) {
-        queue.push(p.parent_id);
-      }
-    }
-
-    // Safety: don't traverse more than MAX_CASCADE_DEPTH
-    if (visited.size > MAX_CASCADE_DEPTH) break;
-  }
-
-  return false;
+  // Self-cycle: parent === child means citation creates a 1-step cycle.
+  if (childId === parentId) return true;
+  const hit = db.prepare(`
+    WITH RECURSIVE up(id, depth) AS (
+      SELECT CAST(? AS TEXT), 0
+      UNION
+      SELECT rl.parent_id, up.depth + 1
+        FROM royalty_lineage rl JOIN up ON rl.child_id = up.id
+       WHERE up.depth < ?
+    )
+    SELECT 1 AS hit FROM up WHERE id = ? LIMIT 1
+  `).get(parentId, MAX_CASCADE_DEPTH, childId);
+  return !!hit;
 }
 
 export {

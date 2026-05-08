@@ -201,6 +201,11 @@ export default function registerDomainRoutes(app, {
     }
     res.json({ ok: true, macros: all, domainCount: domains.length, totalMacros: all.length });
   });
+  // @macro-dispatcher
+  // Open dispatcher: every registered (domain, name) macro is reachable
+  // through this endpoint with variable identifiers. The MacroUsageDetector
+  // and StaleCodeDetector scan for this annotation and treat all macros
+  // as live via this path. Don't remove without updating the detectors.
   app.post("/api/macros/run", asyncHandler(async (req, res) => {
     const ctx = makeCtx(req);
     let domain = req.body?.domain;

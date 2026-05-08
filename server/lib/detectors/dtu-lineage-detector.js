@@ -31,7 +31,8 @@ export async function runDtuLineageDetector({ db, opts = {} } = {}) {
       return makeReport("dtu-lineage", [{
         id: "dtu_table_missing",
         severity: "info",
-        kind: "dtu-lineage",
+        kind: "semantic",
+          category: "dtu-lineage",
         message: "dtus table not present (fresh install or test DB)",
       }], t0);
     }
@@ -58,7 +59,8 @@ export async function runDtuLineageDetector({ db, opts = {} } = {}) {
         findings.push({
           id: "dtu_orphan",
           severity: "medium",
-          kind: "dtu-lineage",
+          kind: "semantic",
+          category: "dtu-lineage",
           subject: { kind: "dtu", id: r.id },
           message: `DTU ${r.id} references missing parent ${r.parent}`,
           fixHint: "null_parent_or_attach_replacement",
@@ -87,7 +89,8 @@ export async function runDtuLineageDetector({ db, opts = {} } = {}) {
           findings.push({
             id: "dtu_citation_loop",
             severity: "high",
-            kind: "dtu-lineage",
+            kind: "semantic",
+          category: "dtu-lineage",
             subject: { kind: "dtu_pair", a: r.x, b: r.y },
             message: `Bidirectional citation loop ${r.x} ↔ ${r.y}`,
             fixHint: "break_one_edge",
@@ -123,7 +126,8 @@ export async function runDtuLineageDetector({ db, opts = {} } = {}) {
           findings.push({
             id: "dtu_cascade_overflow",
             severity: "high",
-            kind: "dtu-lineage",
+            kind: "semantic",
+          category: "dtu-lineage",
             subject: { kind: "dtu", id: row.id },
             message: `DTU ${row.id} cascade depth ≥ ${depth} exceeds MAX_CASCADE_DEPTH=${MAX_DEPTH}`,
             evidence: { depth },
@@ -150,7 +154,8 @@ export async function runDtuLineageDetector({ db, opts = {} } = {}) {
           findings.push({
             id: "royalty_ledger_orphan",
             severity: "medium",
-            kind: "dtu-lineage",
+            kind: "semantic",
+          category: "dtu-lineage",
             subject: { kind: "ledger_entry", id: r.id },
             message: `Ledger entry ${r.id} references missing DTU ${r.ref}`,
             evidence: { ref: r.ref },
@@ -163,7 +168,8 @@ export async function runDtuLineageDetector({ db, opts = {} } = {}) {
     findings.unshift({
       id: "dtu_lineage_summary",
       severity: "info",
-      kind: "dtu-lineage",
+      kind: "semantic",
+          category: "dtu-lineage",
       message: `Found ${findings.length} lineage issues`,
       evidence: { byKind: countByRule(findings) },
     });

@@ -12,7 +12,7 @@ import { subscribe, type SocketEvent } from '@/lib/realtime/socket';
 // Authored events (combat-hit, marketplace-purchase, chat:token) are
 // intentionally excluded — those have their own surfaces (CombatHUD,
 // CurrencyHUD, chat panel).
-type EmergentChannel = 'world' | 'entity' | 'agent' | 'evo' | 'weather' | 'crisis' | 'companion';
+type EmergentChannel = 'world' | 'entity' | 'agent' | 'evo' | 'weather' | 'crisis' | 'companion' | 'system_health';
 
 const TRACKED_EVENTS: { name: SocketEvent; channel: EmergentChannel; label: string }[] = [
   { name: 'entity:death',                channel: 'entity',  label: 'NPC died' },
@@ -44,16 +44,19 @@ const TRACKED_EVENTS: { name: SocketEvent; channel: EmergentChannel; label: stri
   { name: 'dtu:promoted',                channel: 'agent',   label: 'DTU promoted' },
   { name: 'pain:wound_created',          channel: 'agent',   label: 'Pain wound' },
   { name: 'pain:wound_healed',           channel: 'agent',   label: 'Wound healed' },
+  // Phase 3 — system health channel surfaces detector-emitted invariant warnings.
+  { name: 'world:invariant-warning' as SocketEvent, channel: 'system_health', label: 'System invariant warning' },
 ];
 
 const CHANNEL_COLORS: Record<EmergentChannel, string> = {
-  world:     'text-emerald-300',
-  entity:    'text-amber-300',
-  agent:     'text-sky-300',
-  evo:       'text-violet-300',
-  weather:   'text-slate-300',
-  crisis:    'text-rose-300',
-  companion: 'text-pink-300',
+  world:         'text-emerald-300',
+  entity:        'text-amber-300',
+  agent:         'text-sky-300',
+  evo:           'text-violet-300',
+  weather:       'text-slate-300',
+  crisis:        'text-rose-300',
+  companion:     'text-pink-300',
+  system_health: 'text-red-400',
 };
 
 const MAX_FEED_ITEMS = 50;

@@ -12,7 +12,10 @@
 // auto-fixes (e.g. wrap in batch query, switch to async fs API, etc.).
 
 import path from "node:path";
-import { walk, readSafe, makeReport, makeError, lineOf, relPath, snippet } from "./_framework.js";
+import {
+  walk, readSafe, makeReport, makeError, lineOf, relPath, snippet,
+  syncFsExempt,
+} from "./_framework.js";
 
 const PATTERNS = [
   {
@@ -107,21 +110,30 @@ export async function runPerformanceHotspotDetector({ root, opts = {} } = {}) {
       const rel = relPath(root, f);
       const c = await readSafe(f);
       if (!c) continue;
+      // Files annotated `// @sync-fs-ok: <reason>` OR matching startup
+      // path patterns get sync-fs findings demoted from high → low.
+      const exemptFromSyncFs = syncFsExempt(rel, c);
 
       for (const p of PATTERNS) {
         if ((p.skipFiles || []).some(re => re.test(rel))) continue;
+
+        // For sync_fs_in_handler specifically, demote severity for exempt
+        // files instead of skipping outright — we still want visibility.
+        const effectiveSeverity = (p.id === "sync_fs_in_handler" && exemptFromSyncFs) ? "low" : p.severity;
 
         if (p.customScan) {
           const hits = p.customScan(c, f) || [];
           for (const h of hits) {
             findings.push({
               id: `perf_${p.id}`,
-              severity: p.severity,
-              kind: "performance",
+              severity: effectiveSeverity,
+              kind: "static",
+              category: "performance",
               subject: { kind: "file", path: rel, line: h.line },
               message: `${p.description}`,
               location: `${rel}:${h.line}`,
               evidence: h,
+              fixHint: p.id === "sync_fs_in_handler" ? "sync_fs_to_promises" : null,
             });
             if (findings.length > 800) break;
           }
@@ -131,12 +143,16 @@ export async function runPerformanceHotspotDetector({ root, opts = {} } = {}) {
           while ((m = p.regex.exec(c)) != null) {
             findings.push({
               id: `perf_${p.id}`,
-              severity: p.severity,
-              kind: "performance",
+              severity: effectiveSeverity,
+              kind: "static",
+              category: "performance",
               subject: { kind: "file", path: rel, line: lineOf(c, m.index) },
               message: p.description,
               location: `${rel}:${lineOf(c, m.index)}`,
-              evidence: { snippet: snippet(m[0], 80) },
+              evidence: { snippet: snippet(m[0], 80), exempt: exemptFromSyncFs },
+              fixHint: p.id === "sync_fs_in_handler" ? "sync_fs_to_promises"
+                     : p.id === "select_star_hot" ? "replace_select_star"
+                     : null,
             });
             if (findings.length > 800) break;
           }

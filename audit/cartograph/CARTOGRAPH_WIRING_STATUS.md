@@ -2,7 +2,7 @@
 
 _Source for the `Current Wiring Status` section in CLAUDE.md. Human merges; cartographer never auto-rewrites CLAUDE.md._
 
-Generated 2026-05-08T20:01:43.830Z.
+Generated 2026-05-08T21:25:36.834Z.
 
 ## Heartbeat-registered modules
 
@@ -31,7 +31,12 @@ Generated 2026-05-08T20:01:43.830Z.
 - `culture-drift-pass` (frequency 120)
 - `faction-strategy-cycle` (frequency 200)
 - `lattice-breakthrough-pass` (frequency 240)
+- `reflex-architectural-drift` (frequency 360)
 - `forgetting-health-check` (frequency 480)
+- `reflex-scaling-pressure` (frequency 480)
+- `reflex-unsafe-expansion` (frequency 720)
+- `reflex-dependency-entropy` (frequency 1440)
+- `code-substrate-refresh` (frequency 1440)
 - `detectors-sweep` (frequency 2880)
 
 ## Macro domains with macro counts
@@ -173,6 +178,6 @@ Generated 2026-05-08T20:01:43.830Z.
 
 - Orphan modules: 0
 - Dormant modules: 0
-- Dead tables: 24
+- Dead tables: 22
 - Headless backends: 1
 - Orphan lenses: 4

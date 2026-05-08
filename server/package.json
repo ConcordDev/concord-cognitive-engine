@@ -27,7 +27,17 @@
     "cartograph:graph": "node scripts/cartograph.js --static && (which dot >/dev/null 2>&1 && dot -Tsvg ../audit/cartograph/systems-graph.dot -o ../audit/cartograph/systems-graph.svg && echo 'systems-graph.svg rendered' || echo 'graphviz dot not on PATH; .dot source committed')",
     "detectors": "node scripts/run-detectors.js",
     "detectors:report": "node scripts/run-detectors.js --out ../audit/detectors/REPORT.md",
-    "detectors:json": "node scripts/run-detectors.js --json"
+    "detectors:json": "node scripts/run-detectors.js --json",
+    "detectors:diff": "node scripts/run-detectors.js --diff",
+    "detectors:ci": "node scripts/run-detectors.js --ci",
+    "detectors:baseline": "node scripts/run-detectors.js --rewrite-baseline",
+    "detectors:history": "node scripts/run-detectors.js --append-history",
+    "detectors:autofix": "node scripts/repair-cortex-apply.js --apply-all-low-risk",
+    "repair-cortex:scan": "node scripts/repair-cortex-scan.js",
+    "repair-cortex:apply": "node scripts/repair-cortex-apply.js",
+    "cartograph:reason": "node scripts/cartograph-reason.js",
+    "cartograph:reason:stress": "node scripts/cartograph-reason.js --stress-only",
+    "cartograph:reason:diff": "node scripts/cartograph-reason.js --diff"
   },
   "lint-staged": {
     "*.{js,mjs,cjs}": [

@@ -22,6 +22,7 @@ import { economyAudit } from "./audit.js";
 import { validateBalance } from "./validators.js";
 import { grantLicense as grantDtuLicense } from "./rights-enforcement.js";
 import { validatePricing as validateTierPricing, getTier as getLicenseTier } from "./license-tiers.js";
+import { batchLookup } from "./_batch-lookup.js";
 import {
   ARTIFACT_TYPES, CREATIVE_MARKETPLACE, CREATIVE_FEDERATION,
   CREATIVE_QUESTS, CREATIVE_LEADERBOARD, CREATOR_RIGHTS, LICENSE_TYPES,
@@ -247,22 +248,31 @@ export function publishDerivativeArtifact(db, { creatorId, artifact, parentDecla
     return { ok: false, error: "derivative_must_declare_parents" };
   }
 
+  // Phase 2 perf fix: batched IN-list lookups replace per-iteration .get()
+  const parentIds = parentDeclarations.map(p => p.artifactId);
+  const parentArtifacts = batchLookup(db, "creative_artifacts", "id", parentIds, {
+    columns: ["id", "creator_id", "type", "lineage_depth"],
+  });
+  // Build (artifactId, licensee) lookup in one shot per artifact list.
+  const licenseRows = (() => {
+    if (parentIds.length === 0) return [];
+    const placeholders = parentIds.map(() => "?").join(",");
+    return db.prepare(
+      `SELECT id, artifact_id FROM creative_usage_licenses
+        WHERE licensee_id = ? AND status = 'active' AND artifact_id IN (${placeholders})`,
+    ).all(creatorId, ...parentIds);
+  })();
+  const licensedSet = new Set(licenseRows.map(r => r.artifact_id));
+
   // Validate all declared parents exist and creator has usage rights
   for (const parent of parentDeclarations) {
-    const parentArtifact = db.prepare(
-      "SELECT id, creator_id, type FROM creative_artifacts WHERE id = ?"
-    ).get(parent.artifactId);
-
+    const parentArtifact = parentArtifacts.get(parent.artifactId);
     if (!parentArtifact) {
       return { ok: false, error: "parent_artifact_not_found", artifactId: parent.artifactId };
     }
 
-    // Check creator has purchased usage rights to parent
-    const hasLicense = db.prepare(
-      "SELECT id FROM creative_usage_licenses WHERE artifact_id = ? AND licensee_id = ? AND status = 'active'"
-    ).get(parent.artifactId, creatorId);
-
     // Creator of parent doesn't need a license to their own work
+    const hasLicense = licensedSet.has(parent.artifactId);
     if (!hasLicense && parentArtifact.creator_id !== creatorId) {
       return {
         ok: false,
@@ -284,11 +294,10 @@ export function publishDerivativeArtifact(db, { creatorId, artifact, parentDecla
     }
   }
 
-  // Calculate lineage depth (max depth of any parent + 1)
-  const parentDepths = parentDeclarations.map(p => {
-    const pa = db.prepare("SELECT lineage_depth FROM creative_artifacts WHERE id = ?").get(p.artifactId);
-    return pa?.lineage_depth || 0;
-  });
+  // Calculate lineage depth (max depth of any parent + 1) — reuse batch lookup
+  const parentDepths = parentDeclarations.map(p =>
+    parentArtifacts.get(p.artifactId)?.lineage_depth || 0,
+  );
   const maxParentDepth = Math.max(...parentDepths);
 
   // Check for cycles
@@ -316,9 +325,9 @@ export function publishDerivativeArtifact(db, { creatorId, artifact, parentDecla
     WHERE id = ?
   `).run(maxParentDepth + 1, newArtifactId);
 
-  // Record derivative relationships
+  // Record derivative relationships — reuse parentArtifacts map from above.
   for (const parent of parentDeclarations) {
-    const pa = db.prepare("SELECT lineage_depth FROM creative_artifacts WHERE id = ?").get(parent.artifactId);
+    const pa = parentArtifacts.get(parent.artifactId);
     db.prepare(`
       INSERT INTO creative_artifact_derivatives (id, child_artifact_id, parent_artifact_id, derivative_type, generation, created_at)
       VALUES (?, ?, ?, ?, ?, ?)

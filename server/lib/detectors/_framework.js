@@ -19,10 +19,13 @@
 //   {
 //     id: string,            // stable rule-key, e.g. "macro_unused"
 //     severity: "info"|"low"|"medium"|"high"|"critical",
-//     kind: string,          // category, e.g. "stale-code", "secret"
-//     message: string,       // human-readable
+//     kind: "static"|"semantic"|"historical"|"predictive"|"architectural",  // T1 axis
+//     category?: string,     // legacy free-form tag (e.g. "stale-code"); kept for back-compat
+//     message: string,
 //     location?: string,     // "file:line" when applicable
 //     evidence?: any,        // small extra payload; keep < 256 chars per finding
+//     subject?: any,         // routing target for repair-cortex / Concordia
+//     fixHint?: string,      // hint for repair-cortex registry routing
 //   }
 //
 // Detectors must be exception-safe — wrap their body in try/catch and report
@@ -33,6 +36,7 @@ import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 
 export const SEVERITY_ORDER = { info: 0, low: 1, medium: 2, high: 3, critical: 4 };
+export const FINDING_KINDS = new Set(["static", "semantic", "historical", "predictive", "architectural"]);
 
 export function makeReport(id, findings, t0) {
   const arr = Array.isArray(findings) ? findings : [];
@@ -40,6 +44,8 @@ export function makeReport(id, findings, t0) {
   for (const f of arr) {
     const sev = SEVERITY_ORDER[f.severity] != null ? f.severity : "info";
     summary[sev] = (summary[sev] ?? 0) + 1;
+    // Default kind to "static" for back-compat. New detectors set it explicitly.
+    if (!f.kind || !FINDING_KINDS.has(f.kind)) f.kind = "static";
   }
   return {
     id,
@@ -109,4 +115,72 @@ export function snippet(s, max = 160) {
   const str = String(s);
   if (str.length <= max) return str;
   return str.slice(0, max - 1) + "…";
+}
+
+// ── Open-dispatcher recognition ───────────────────────────────────────────
+// Files that contain `// @macro-dispatcher` AND a `runMacro(<ident>, <ident>, …)`
+// callsite are open dispatchers — every registered (domain, name) pair is
+// reachable via them. Detectors consult this so dynamically-dispatched
+// macros aren't reported as dead.
+
+const RUN_MACRO_DYN_RE = /runMacro\s*\(\s*([a-zA-Z_]\w*)\s*,\s*([a-zA-Z_]\w*)\s*,/g;
+const DISPATCHER_MARK = /@macro-dispatcher\b/;
+
+export async function loadOpenDispatchers(root) {
+  if (!root) return [];
+  const dispatchers = [];
+  const files = await walk(path.join(root, "server"), [".js"]);
+  for (const f of files) {
+    const c = await readSafe(f);
+    if (!c || !DISPATCHER_MARK.test(c)) continue;
+    RUN_MACRO_DYN_RE.lastIndex = 0;
+    let m;
+    while ((m = RUN_MACRO_DYN_RE.exec(c)) != null) {
+      dispatchers.push({
+        file: relPath(root, f),
+        line: lineOf(c, m.index),
+        domainVar: m[1],
+        nameVar: m[2],
+      });
+    }
+  }
+  return dispatchers;
+}
+
+// ── Lens-manifest macro scanner ───────────────────────────────────────────
+// Reads server/lib/lens-manifest.js for { lensId, domain, actions: [...] }
+// shapes and returns the set of (domain, action) pairs it mentions.
+
+export async function loadLensManifestMacros(root) {
+  if (!root) return new Set();
+  const manifestPath = path.join(root, "server", "lib", "lens-manifest.js");
+  const c = await readSafe(manifestPath);
+  if (!c) return new Set();
+  const set = new Set();
+  const blockRe = /domain\s*:\s*['"`]([a-zA-Z0-9_-]+)['"`][\s\S]{0,500}?actions\s*:\s*\[([^\]]+)\]/g;
+  let m;
+  while ((m = blockRe.exec(c)) != null) {
+    const domain = m[1];
+    const actionsBlob = m[2];
+    const actionRe = /['"`]([a-zA-Z0-9_.\-]+)['"`]/g;
+    let am;
+    while ((am = actionRe.exec(actionsBlob)) != null) set.add(`${domain}.${am[1]}`);
+  }
+  // Also catch `lensId: 'foo', domain: 'foo'` shape — those lenses use the
+  // lensId as the domain by convention with a default `.run` action.
+  const lensIdRe = /lensId\s*:\s*['"`]([a-zA-Z0-9_-]+)['"`]/g;
+  while ((m = lensIdRe.exec(c)) != null) set.add(`${m[1]}.run`);
+  return set;
+}
+
+// ── Sync-fs annotation scanner ─────────────────────────────────────────────
+// Files that contain `// @sync-fs-ok: <reason>` are exempt from the
+// PerformanceHotspotDetector sync-fs rule. Path-based defaults still apply.
+
+const SYNC_FS_OK_MARK = /@sync-fs-ok\b/;
+const STARTUP_PATH_HINT = /[/\\](?:persistence|bootstrap|seed|init|migration|repair-cortex|prophet)/i;
+
+export function syncFsExempt(filePath, content) {
+  if (SYNC_FS_OK_MARK.test(content)) return true;
+  return STARTUP_PATH_HINT.test(filePath);
 }

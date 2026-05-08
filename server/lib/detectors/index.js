@@ -29,6 +29,9 @@ import { runDtuLineageDetector } from "./dtu-lineage-detector.js";
 import { runHeartbeatMonitor } from "./heartbeat-monitor.js";
 import { runSecretLeakDetector } from "./secret-leak-detector.js";
 import { runPerformanceHotspotDetector } from "./performance-hotspot-detector.js";
+import { runHistoricalTrendDetector } from "./historical-trend-detector.js";
+import { runPredictiveGrowthDetector } from "./predictive-growth-detector.js";
+import { runArchitecturalHubDetector } from "./architectural-hub-detector.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -222,6 +225,32 @@ registerDetector({
   dataNeeds: ["fs"],
   description: "Flags slow queries, sync fs in handlers, N+1 patterns, unbounded caches.",
   run: runPerformanceHotspotDetector,
+});
+
+// ── T1 Phase 6: semantic / historical / predictive / architectural ─────
+registerDetector({
+  id: "historical-trend",
+  label: "HistoricalTrendDetector",
+  consumers: ["code-quality", "repair-cortex", "reflex"],
+  dataNeeds: ["fs"],
+  description: "Trend slopes from history.jsonl — flags finding count growth, severity explosion.",
+  run: runHistoricalTrendDetector,
+});
+registerDetector({
+  id: "predictive-growth",
+  label: "PredictiveGrowthDetector",
+  consumers: ["code-quality", "repair-cortex", "reflex"],
+  dataNeeds: ["db", "runtime-state"],
+  description: "Linear-regression projection of table size, heap pressure, DTU corpus growth.",
+  run: runPredictiveGrowthDetector,
+});
+registerDetector({
+  id: "architectural-hub",
+  label: "ArchitecturalHubDetector",
+  consumers: ["code-quality", "repair-cortex", "reflex"],
+  dataNeeds: ["fs"],
+  description: "Module fan-in / fan-out / centrality + import-cycle detection.",
+  run: runArchitecturalHubDetector,
 });
 
 // Shared across modules so repair-cortex / Concordia / HUD see the same

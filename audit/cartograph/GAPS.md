@@ -1,8 +1,8 @@
 # Gaps & Wire Targets
 
-_Generated 2026-05-08T20:01:43.830Z. Each gap proposes a concrete wire action._
+_Generated 2026-05-08T21:25:36.834Z. Each gap proposes a concrete wire action._
 
-## Dead tables (24)
+## Dead tables (22)
 
 | Table | Migration | Wire option | Archive option |
 |---|---|---|---|
@@ -10,8 +10,6 @@ _Generated 2026-05-08T20:01:43.830Z. Each gap proposes a concrete wire action._
 | `preserved` | server/migrations/009_brain_want_engine.js | `analytics.preservedStats` macro | // REPLACED_BY: migration_NN |
 | `personality_state` | server/migrations/009_brain_want_engine.js | `analytics.personality_stateStats` macro | // REPLACED_BY: migration_NN |
 | `personality_evolution_log` | server/migrations/009_brain_want_engine.js | `analytics.personality_evolution_logStats` macro | // REPLACED_BY: migration_NN |
-| `wants` | server/migrations/009_brain_want_engine.js | `analytics.wantsStats` macro | // REPLACED_BY: migration_NN |
-| `want_audit_log` | server/migrations/009_brain_want_engine.js | `analytics.want_audit_logStats` macro | // REPLACED_BY: migration_NN |
 | `want_suppressions` | server/migrations/009_brain_want_engine.js | `analytics.want_suppressionsStats` macro | // REPLACED_BY: migration_NN |
 | `spontaneous_queue` | server/migrations/009_brain_want_engine.js | `analytics.spontaneous_queueStats` macro | // REPLACED_BY: migration_NN |
 | `spontaneous_user_prefs` | server/migrations/009_brain_want_engine.js | `analytics.spontaneous_user_prefsStats` macro | // REPLACED_BY: migration_NN |
@@ -60,9 +58,11 @@ _None — every module either has a heartbeat or is invoked by a macro callsite.
 
 _None._
 
-## Unshaped socket events (0)
+## Unshaped socket events (1)
 
-_None — every emit is registered in `event-shapes.js`._
+| Event | First emitter | Action |
+|---|---|---|
+| `world:invariant-warning` | server/server.js:295 | add to event-shapes.js |
 
 ## Universe-coverage gaps (in-scope categories)
 

@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "generatedAt": "2026-05-08T20:59:53.923Z",
+  "maxTotal": 1300,
+  "rationale": "Initial budget set to current baseline + small grace. Reduces over time as Phase 4 (table drops), Phase 2 (perf fixes), and Phase 5 (auto-fixes) land.",
+  "perDetector": {
+    "stale-code": 240,
+    "performance-hotspot": 810,
+    "macro-usage": 260,
+    "lens-health": 5,
+    "invariant-guardian": 0,
+    "secret-leak": 0,
+    "heartbeat-monitor": 5,
+    "dtu-lineage": 10
+  }
+}

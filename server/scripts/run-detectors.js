@@ -25,6 +25,14 @@ import {
   filterFindings,
   listDetectors,
 } from "../lib/detectors/index.js";
+import {
+  loadBaseline,
+  saveBaseline,
+  diffAgainstBaseline,
+  appendHistory,
+  loadBudget,
+  ciDecision,
+} from "../lib/detectors/baseline.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, "../../");
@@ -38,6 +46,10 @@ function arg(name, fallback) {
 const flags = {
   json: process.argv.includes("--json"),
   list: process.argv.includes("--list"),
+  diff: process.argv.includes("--diff"),
+  rewriteBaseline: process.argv.includes("--rewrite-baseline"),
+  appendHistory: process.argv.includes("--append-history"),
+  ci: process.argv.includes("--ci"),
   id: arg("--id"),
   consumer: arg("--consumer"),
   severity: arg("--severity", "info"),
@@ -124,6 +136,57 @@ async function main() {
       root: REPO_ROOT,
       consumer: flags.consumer,
     });
+  }
+
+  // ── Phase 1 modes: --rewrite-baseline / --diff / --ci / --append-history
+  if (flags.rewriteBaseline) {
+    const r = await saveBaseline(REPO_ROOT, report);
+    console.log(`Wrote BASELINE.json with ${r.fingerprintCount} fingerprints → ${r.path}`);
+    return;
+  }
+
+  if (flags.diff || flags.ci) {
+    const baseline = await loadBaseline(REPO_ROOT);
+    const delta = diffAgainstBaseline(report, baseline);
+    const budget = await loadBudget(REPO_ROOT);
+
+    if (flags.json) {
+      process.stdout.write(JSON.stringify({
+        report: { generatedAt: report.generatedAt, totals: report.totals },
+        delta, budget,
+      }, null, 2));
+      return;
+    }
+
+    console.log(`Detector diff vs BASELINE.json (${baseline.generatedAt || "no baseline"}):`);
+    console.log(`  added:     ${delta.addedCount} (critical=${delta.addedBySeverity.critical}, high=${delta.addedBySeverity.high}, medium=${delta.addedBySeverity.medium}, low=${delta.addedBySeverity.low}, info=${delta.addedBySeverity.info})`);
+    console.log(`  removed:   ${delta.removedCount}`);
+    console.log(`  unchanged: ${delta.unchangedCount}`);
+    if (delta.addedCount > 0) {
+      console.log("\nNew findings:");
+      for (const a of delta.added.slice(0, 50)) {
+        console.log(`  [${a.finding.severity}] ${a.detector}: ${a.finding.message} ${a.finding.location || ""}`);
+      }
+      if (delta.added.length > 50) console.log(`  …and ${delta.added.length - 50} more`);
+    }
+
+    if (flags.ci) {
+      const decision = ciDecision(delta, report.totals, budget);
+      if (!decision.pass) {
+        console.error(`\nCI check FAILED: ${decision.reason}`, decision);
+        process.exit(1);
+      }
+      console.log("\nCI check PASSED");
+    }
+    return;
+  }
+
+  if (flags.appendHistory) {
+    const baseline = await loadBaseline(REPO_ROOT);
+    const delta = baseline.fingerprints ? diffAgainstBaseline(report, baseline) : null;
+    const r = await appendHistory(REPO_ROOT, report, { delta });
+    console.log(`Appended history row → ${r.path}`);
+    return;
   }
 
   if (flags.severity && flags.severity !== "info") {

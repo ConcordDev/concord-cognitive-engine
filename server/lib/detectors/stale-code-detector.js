@@ -11,11 +11,15 @@
 // dispatch isn't reported as dead.
 
 import path from "node:path";
-import { walk, readSafe, makeReport, makeError, lineOf, relPath, snippet } from "./_framework.js";
+import {
+  walk, readSafe, makeReport, makeError, lineOf, relPath, snippet,
+  loadOpenDispatchers, loadLensManifestMacros,
+} from "./_framework.js";
 
 // Macros that are public via the lens manifest / chat router are dispatched
 // dynamically; the static parse can miss them. We treat them as live if
-// their domain appears in the lens manifest.
+// their domain appears in the lens manifest. Used as a defense-in-depth
+// fallback when the dispatcher annotation isn't present.
 const DYNAMIC_DOMAINS_HINT = new Set([
   "chat", "lens", "atlas", "dtu", "system", "settings",
 ]);
@@ -59,6 +63,12 @@ export async function runStaleCodeDetector({ root, opts = {} } = {}) {
     const serverFiles = await walk(serverDir, [".js"]);
     const frontendFiles = await walk(frontendDir, [".js", ".ts", ".tsx", ".jsx"]);
 
+    // Open dispatchers + lens manifest entries — macros reachable via these
+    // are NOT dead even if no static callsite mentions them by name.
+    const dispatchers = await loadOpenDispatchers(root);
+    const dispatcherActive = dispatchers.length > 0;
+    const manifestKeys = await loadLensManifestMacros(root);
+
     const findings = [];
 
     // ── 1. Dead macros ────────────────────────────────────────────────────
@@ -101,10 +111,14 @@ export async function runStaleCodeDetector({ root, opts = {} } = {}) {
       // Whole-domain consumer (chat / atlas / dtu) — they're called via
       // pattern dispatch from lens manifests; allow.
       if (DYNAMIC_DOMAINS_HINT.has(domain)) continue;
+      // Reachable via open dispatcher (POST /api/macros/run) OR lens manifest?
+      // These are not dead — they're dynamically invokable.
+      if (dispatcherActive || manifestKeys.has(key)) continue;
       findings.push({
         id: "macro_unused",
         severity: "low",
-        kind: "stale-code",
+        kind: "static",
+        category: "stale-code",
         message: `Macro ${key} is registered but never called by name`,
         location: `${loc.file}:${loc.line}`,
         evidence: { domain, name: key.split(".").slice(1).join(".") },
@@ -117,6 +131,10 @@ export async function runStaleCodeDetector({ root, opts = {} } = {}) {
 
     const migrationsDir = path.join(serverDir, "migrations");
     const migrationFiles = serverFiles.filter(f => f.startsWith(migrationsDir + path.sep));
+    // Track which migration files each table is touched in — used to
+    // detect `_fix` staging tables (created and renamed back within the
+    // same migration; e.g. mig 107).
+    const tableMigrations = new Map(); // tableName -> Set<migration file content>
     for (const f of migrationFiles) {
       const c = await readSafe(f);
       if (!c) continue;
@@ -126,6 +144,8 @@ export async function runStaleCodeDetector({ root, opts = {} } = {}) {
         const t = m[1].toLowerCase();
         if (SYSTEM_TABLES.has(t)) continue;
         if (!tables.has(t)) tables.set(t, { file: relPath(root, f), line: lineOf(c, m.index) });
+        if (!tableMigrations.has(t)) tableMigrations.set(t, new Set());
+        tableMigrations.get(t).add(c);
       }
     }
     for (const f of serverFiles) {
@@ -140,13 +160,26 @@ export async function runStaleCodeDetector({ root, opts = {} } = {}) {
     }
     for (const [t, loc] of tables.entries()) {
       if (tableUses.has(t)) continue;
+      // `_fix` staging tables — created in a migration that ALSO renames
+      // or drops them in the same file (mig 107 pattern). Skip.
+      if (t.endsWith("_fix")) {
+        const base = t.slice(0, -"_fix".length);
+        const migrationsContent = Array.from(tableMigrations.get(t) || []);
+        const renamesOrDrops = migrationsContent.some(mc =>
+          new RegExp(`ALTER\\s+TABLE\\s+${t}\\s+RENAME\\s+TO\\s+${base}\\b`, "i").test(mc) ||
+          new RegExp(`DROP\\s+TABLE(?:\\s+IF\\s+EXISTS)?\\s+${t}\\b`, "i").test(mc),
+        );
+        if (renamesOrDrops) continue;
+      }
       findings.push({
         id: "table_orphan",
         severity: "medium",
-        kind: "stale-code",
+        kind: "static",
+        category: "stale-code",
         message: `Table ${t} is created but never read or written outside migrations`,
         location: `${loc.file}:${loc.line}`,
         evidence: { table: t },
+        fixHint: "drop_via_migration_or_wire_consumer",
       });
     }
 
@@ -185,7 +218,8 @@ export async function runStaleCodeDetector({ root, opts = {} } = {}) {
       findings.push({
         id: "module_orphan",
         severity: "low",
-        kind: "stale-code",
+        kind: "static",
+        category: "stale-code",
         message: `Module is never imported`,
         location: relPath(root, cand),
         evidence: { hint: "verify before deletion — may be loaded dynamically" },
@@ -238,7 +272,8 @@ export async function runStaleCodeDetector({ root, opts = {} } = {}) {
       findings.push({
         id: "route_orphan",
         severity: "info",
-        kind: "stale-code",
+        kind: "static",
+        category: "stale-code",
         message: `Route ${key} has no frontend caller`,
         location: `${loc.file}:${loc.line}`,
         evidence: snippet(key),

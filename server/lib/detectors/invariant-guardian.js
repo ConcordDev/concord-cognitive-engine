@@ -173,7 +173,8 @@ export async function runInvariantGuardian({ root, opts = {} } = {}) {
         findings.push({
           id: "invariant_file_missing",
           severity: "high",
-          kind: "invariant",
+          kind: "semantic",
+            category: "invariant",
           message: `Required invariant source file missing: ${block.file}`,
           location: block.file,
         });
@@ -185,7 +186,8 @@ export async function runInvariantGuardian({ root, opts = {} } = {}) {
           findings.push({
             id: "invariant_constant_unset",
             severity: "high",
-            kind: "invariant",
+            kind: "semantic",
+            category: "invariant",
             message: `${rule.name} is not declared in ${block.file}`,
             location: block.file,
             evidence: { name: rule.name, expected: rule.expected },
@@ -196,7 +198,8 @@ export async function runInvariantGuardian({ root, opts = {} } = {}) {
           findings.push({
             id: "invariant_constant_drift",
             severity: "critical",
-            kind: "invariant",
+            kind: "semantic",
+            category: "invariant",
             message: `${rule.name} = ${m[1]} but invariant expects ${rule.expected}`,
             location: `${block.file}:${lineOf(content, m.index)}`,
             evidence: { name: rule.name, actual: m[1], expected: rule.expected },
@@ -215,7 +218,8 @@ export async function runInvariantGuardian({ root, opts = {} } = {}) {
           findings.push({
             id: "invariant_violated",
             severity: inv.severity,
-            kind: "invariant",
+            kind: "semantic",
+            category: "invariant",
             message: `${inv.id}: required pattern not found in ${r.file}`,
             location: r.file,
             evidence: { invariant: inv.id, description: inv.description },
@@ -236,7 +240,8 @@ export async function runInvariantGuardian({ root, opts = {} } = {}) {
               findings.push({
                 id: "invariant_violated",
                 severity: inv.severity,
-                kind: "invariant",
+                kind: "semantic",
+            category: "invariant",
                 message: `${inv.id}: forbidden pattern present`,
                 location: `${rel}:${lineOf(c, m.index)}`,
                 evidence: { invariant: inv.id, snippet: m[0].slice(0, 120) },
@@ -253,7 +258,8 @@ export async function runInvariantGuardian({ root, opts = {} } = {}) {
           findings.push({
             id: "invariant_violated",
             severity: inv.severity,
-            kind: "invariant",
+            kind: "semantic",
+            category: "invariant",
             message: `${inv.id}: ${r.reason || "violated"}`,
             location: r.file || null,
             evidence: { invariant: inv.id, ...r },

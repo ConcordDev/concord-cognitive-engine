@@ -202,17 +202,115 @@ registerHeartbeat("forgetting-health-check", {
 // heartbeat health). Results land on globalThis.__CONCORD_DETECTORS__
 // and are queryable via runMacro("detectors", "summary"|"findings"|"runAll").
 // Repair Cortex subscribes to this output for auto-fix routing.
+// Phase 8 / T3 — Reflex Cortex. Four governance handlers consume detector
+// findings and route them into council proposals + repair-cortex dispatch.
+// Sovereign retains override at every step.
+import {
+  initReflexCortex,
+  runArchitecturalDrift,
+  runScalingPressure,
+  runDependencyEntropy,
+  runUnsafeExpansion,
+} from "./emergent/reflex-cortex.js";
+
+registerHeartbeat("reflex-architectural-drift", {
+  frequency: 360,
+  handler: runArchitecturalDrift,
+});
+registerHeartbeat("reflex-scaling-pressure", {
+  frequency: 480,
+  handler: runScalingPressure,
+});
+registerHeartbeat("reflex-dependency-entropy", {
+  frequency: 1440,
+  handler: runDependencyEntropy,
+});
+registerHeartbeat("reflex-unsafe-expansion", {
+  frequency: 720,
+  handler: runUnsafeExpansion,
+});
+
+// Phase 7 / T2 — Code substrate refresh. Every 1440 ticks (~6h) re-emits
+// code-artifact DTUs (idempotent on id). The DTU consolidation pipeline
+// then forms code-MEGAs (economy substrate cluster, persistence cluster, …).
+registerHeartbeat("code-substrate-refresh", {
+  frequency: 1440,
+  handler: async ({ db }) => {
+    if (!db) return { ok: false, reason: "no_db" };
+    try {
+      const url = await import("node:url");
+      const here = path.dirname(url.fileURLToPath(import.meta.url));
+      const root = path.resolve(here, "..");
+      const mod = await import("./lib/code-substrate/code-dtu-emitter.js");
+      const r = await mod.emitCodeDtus(db, root);
+      return { ok: r.ok, modules: r.modules, migrations: r.migrations, routes: r.routes, macros: r.macros };
+    } catch (err) {
+      return { ok: false, reason: "code_substrate_refresh_failed", error: err?.message };
+    }
+  },
+});
+
 registerHeartbeat("detectors-sweep", {
   frequency: 2880,
   handler: async ({ db, state }) => {
     try {
       const mod = await import("./lib/detectors/index.js");
+      const baseline = await import("./lib/detectors/baseline.js");
       const report = await mod.runAllDetectors({ db, state });
+
+      // Compute delta vs baseline for the history record.
+      let delta = null;
+      try {
+        const url = await import("node:url");
+        const here = path.dirname(url.fileURLToPath(import.meta.url));
+        const root = path.resolve(here, "..");
+        const base = await baseline.loadBaseline(root);
+        if (base?.fingerprints) delta = baseline.diffAgainstBaseline(report, base);
+        await baseline.appendHistory(root, report, { delta });
+      } catch (_e) { /* history append is best-effort */ }
+
       // Stash latest report for HUD consumers — read-only snapshot.
       globalThis.__CONCORD_DETECTORS__ = Object.assign(
         globalThis.__CONCORD_DETECTORS__ || {},
-        { latestReport: report, latestRunAt: Date.now() },
+        { latestReport: report, latestRunAt: Date.now(), latestDelta: delta },
       );
+
+      // Phase 5 hook: feed delta into repair-cortex bridge if available.
+      try {
+        const bridge = await import("./emergent/repair-cortex/detector-bridge.js").catch(() => null);
+        if (bridge?.ingestDetectorDelta) {
+          await bridge.ingestDetectorDelta(report, delta);
+        }
+      } catch (_e) { /* bridge optional */ }
+
+      // Phase 3 hook: emit world:invariant-warning for critical invariant
+      // findings so EmergentEventFeed and the goddess can surface them.
+      try {
+        const criticals = (report.reports || [])
+          .filter(r => r.id === "invariant-guardian")
+          .flatMap(r => (r.findings || []).filter(f => f.severity === "critical").map(x => ({ ...x, detector: r.id })));
+        if (criticals.length > 0 && process.env.CONCORD_WORLD_WARNINGS !== "0") {
+          if (typeof realtimeEmit === "function") {
+            for (const f of criticals) {
+              realtimeEmit("world:invariant-warning", {
+                id: f.id,
+                message: f.message,
+                location: f.location,
+                severity: f.severity,
+                generatedAt: report.generatedAt,
+              });
+            }
+          }
+          // Phase 3.3 — auto-proposal for critical invariant violations.
+          if (process.env.CONCORD_AUTO_GOVERNANCE !== "0") {
+            try {
+              const ap = await import("./lib/governance/auto-proposal.js");
+              ap.bulkPostFromFindings(db, criticals);
+            } catch (_e) { /* auto-proposal optional */ }
+          }
+        }
+      } catch (_e) { /* warning emit best-effort */ }
+
       return { ok: true, totals: report.totals, detectorCount: report.detectorCount };
     } catch (err) {
       return { ok: false, reason: "detector_sweep_failed", error: err?.message };
@@ -9083,7 +9181,9 @@ async function runMacro(domain, name, input, ctx) {
     city: new Set(["list", "get", "status", "startStream", "endStream", "followStream", "unfollowStream", "listStreams", "getStream"]),
     // Code-quality detector suite — read-only inspection. See
     // server/lib/detectors/* and server/domains/detectors.js.
-    detectors: new Set(["list", "summary", "findings", "run", "runAll"]),
+    detectors: new Set(["list", "summary", "findings", "run", "runAll", "history", "baseline", "diff"]),
+    // Phase 7 — Code substrate. Read-only macros for the code-DTU view.
+    code: new Set(["dtu_for", "dtu_query", "cluster_for", "refresh"]),
   };
   const _domainSet = publicReadDomains[domain];
   const _domainNameAllowed = _domainSet ? _domainSet.has(name) : false;
@@ -22482,6 +22582,11 @@ register("system", "cartograph", async (_ctx, input = {}) => {
 // See server/lib/detectors/index.js for the registry + filterFindings helper.
 import registerDetectorMacros from "./domains/detectors.js";
 registerDetectorMacros(register);
+
+// Phase 7 / T2 — Code substrate macros: routes / migrations / modules /
+// macros become DTUs under kind='code_artifact'. See lib/code-substrate/.
+import registerCodeSubstrateMacros from "./domains/code-substrate.js";
+registerCodeSubstrateMacros(register);
 
 // ===================== Phase 4 backend macros (close-the-gaps) =====================
 // Five macros backing the Productivity + Tools lens scaffolds shipped in
@@ -53851,6 +53956,15 @@ STATE._circuitBreakers = circuitBreakers;
 // reads STATE; without this call drift-monitor can't run. Idempotent —
 // safe to call multiple times.
 try { initLatticeOrchestrator(STATE); } catch { /* non-fatal — orchestrator handles unset STATE with reason */ }
+
+// Phase 8 / T3 — initialise Reflex Cortex with STATE + db + root so its
+// four handlers can read live data. Idempotent.
+try {
+  const url = await import("node:url");
+  const here = path.dirname(url.fileURLToPath(import.meta.url));
+  const root = path.resolve(here, "..");
+  initReflexCortex(STATE, { db: db || STATE?.db || null, root });
+} catch (_e) { /* non-fatal — handlers tolerate missing init */ }
 
 app.get("/api/circuits", (_req, res) => {
   const states = {};

@@ -5,13 +5,19 @@
 // 0-callsite macros are dead weight; 1-2 callsite macros may be hidden APIs;
 // the long tail is healthy.
 //
-// We deliberately count only static callsites (runMacro / { domain, name }
-// payloads / chat router pattern dispatch hints). Dynamic macro calls via
-// a variable are reported as "unknown" — they count as live for any
-// macro whose domain matches a known dynamic-dispatch domain.
+// Recognizes three reach paths:
+//   1. Static calls — runMacro("d", "n", …) and { domain: "d", name: "n" } payloads.
+//   2. Open dispatchers — files annotated `// @macro-dispatcher` that do
+//      runMacro(<var>, <var>, …) reach EVERY registered macro. Macros with
+//      only this reach path are downgraded to severity:info with a
+//      `dispatcher_reach` note.
+//   3. Lens manifests — server/lib/lens-manifest.js declarations.
 
 import path from "node:path";
-import { walk, readSafe, makeReport, makeError, lineOf, relPath } from "./_framework.js";
+import {
+  walk, readSafe, makeReport, makeError, lineOf, relPath,
+  loadOpenDispatchers, loadLensManifestMacros,
+} from "./_framework.js";
 
 const REGISTER_RE = /register\s*\(\s*['"`]([a-zA-Z0-9_-]+)['"`]\s*,\s*['"`]([a-zA-Z0-9_.\-]+)['"`]/g;
 const RUN_MACRO_RE = /runMacro\s*\(\s*['"`]([a-zA-Z0-9_-]+)['"`]\s*,\s*['"`]([a-zA-Z0-9_.\-]+)['"`]/g;
@@ -28,6 +34,9 @@ export async function runMacroUsageDetector({ root, opts = {} } = {}) {
       ...await walk(serverDir, [".js"]),
       ...await walk(frontendDir, [".js", ".ts", ".tsx", ".jsx"]),
     ];
+
+    const dispatchers = await loadOpenDispatchers(root);
+    const manifestKeys = await loadLensManifestMacros(root);
 
     const declared = new Map();           // domain.name -> {file, line}
     const usageCounts = new Map();        // domain.name -> n
@@ -66,22 +75,49 @@ export async function runMacroUsageDetector({ root, opts = {} } = {}) {
     let dead = 0;
     let solo = 0;
     let popular = 0;
+    let dispatcherReach = 0;
     const histogram = { "0": 0, "1": 0, "2-5": 0, "6-20": 0, "21+": 0 };
+
+    const dispatcherActive = dispatchers.length > 0;
 
     for (const [key, loc] of declared.entries()) {
       const n = usageCounts.get(key) ?? 0;
       const samples = Array.from(callerSamples.get(key) || []).slice(0, 3);
+      const inManifest = manifestKeys.has(key);
+
       if (n === 0) {
-        dead++;
         histogram["0"]++;
-        findings.push({
-          id: "macro_zero_calls",
-          severity: "low",
-          kind: "macro-usage",
-          message: `Macro ${key} is registered but has no static callers`,
-          location: `${loc.file}:${loc.line}`,
-          evidence: { domain: key.split(".")[0], samples },
-        });
+        // Reachable via dispatcher OR lens manifest? Downgrade.
+        if (dispatcherActive || inManifest) {
+          dispatcherReach++;
+          findings.push({
+            id: "macro_dispatcher_reach",
+            severity: "info",
+            kind: "static",
+            category: "macro-usage",
+            message: `Macro ${key} has no static callers but is reachable via ${
+              inManifest ? "lens manifest" : "open dispatcher"
+            }`,
+            location: `${loc.file}:${loc.line}`,
+            evidence: {
+              domain: key.split(".")[0],
+              dispatcher: dispatchers[0]?.file ?? null,
+              inManifest,
+            },
+          });
+        } else {
+          dead++;
+          findings.push({
+            id: "macro_zero_calls",
+            severity: "low",
+            kind: "static",
+            category: "macro-usage",
+            message: `Macro ${key} is registered but has no static callers`,
+            location: `${loc.file}:${loc.line}`,
+            evidence: { domain: key.split(".")[0], samples },
+            fixHint: "verify_dynamic_dispatch_or_remove",
+          });
+        }
       } else if (n === 1) {
         solo++;
         histogram["1"]++;
@@ -94,10 +130,29 @@ export async function runMacroUsageDetector({ root, opts = {} } = {}) {
     findings.unshift({
       id: "macro_usage_summary",
       severity: "info",
-      kind: "macro-usage",
-      message: `${declared.size} macros · ${dead} dead · ${solo} single-caller · ${popular} popular`,
-      evidence: { histogram, declared: declared.size, dead, solo, popular },
+      kind: "static",
+      category: "macro-usage",
+      message: `${declared.size} macros · ${dead} dead · ${solo} single-caller · ${popular} popular · ${dispatcherReach} dispatcher-reach`,
+      evidence: {
+        histogram, declared: declared.size, dead, solo, popular, dispatcherReach,
+        dispatchers: dispatchers.map(d => d.file),
+        manifestMacroCount: manifestKeys.size,
+      },
     });
+
+    // One dispatcher_reach finding per registered dispatcher so the
+    // mechanism is observable in reports.
+    for (const d of dispatchers) {
+      findings.push({
+        id: "dispatcher_reach",
+        severity: "info",
+        kind: "static",
+        category: "macro-usage",
+        message: `Open dispatcher detected — all macros reachable via ${d.file}:${d.line}`,
+        location: `${d.file}:${d.line}`,
+        evidence: { domainVar: d.domainVar, nameVar: d.nameVar },
+      });
+    }
 
     return makeReport("macro-usage", findings, t0);
   } catch (err) {

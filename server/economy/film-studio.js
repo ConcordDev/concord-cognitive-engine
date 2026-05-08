@@ -23,6 +23,7 @@
 import { randomUUID, createHash } from "crypto";
 import { registerCitation } from "./royalty-cascade.js";
 import { economyAudit } from "./audit.js";
+import { batchLookup } from "./_batch-lookup.js";
 import {
   FILM_DTU_TYPES, FILM_RESOLUTIONS, FILM_PREVIEW,
   FILM_REMIX_TYPES, FILM_REMIX_TYPE_IDS,
@@ -131,10 +132,14 @@ export function createFilmDTU(db, {
       now, now,
     );
 
-    // Register citations for parent references
+    // Register citations for parent references — Phase 2 perf fix:
+    // single batched IN-list replaces N round-trips.
     if (parentCitations && parentCitations.length > 0) {
+      const parentMap = batchLookup(db, "film_dtus", "id", parentCitations, {
+        columns: ["id", "creator_id"],
+      });
       for (const parentId of parentCitations) {
-        const parentDtu = db.prepare("SELECT creator_id FROM film_dtus WHERE id = ?").get(parentId);
+        const parentDtu = parentMap.get(parentId);
         if (parentDtu) {
           registerCitation(db, {
             childId: id,

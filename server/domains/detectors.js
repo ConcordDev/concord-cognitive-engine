@@ -11,6 +11,17 @@ import {
   runAllDetectors,
   filterFindings,
 } from "../lib/detectors/index.js";
+import {
+  loadBaseline,
+  diffAgainstBaseline,
+  loadHistory,
+  loadBudget,
+} from "../lib/detectors/baseline.js";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const REPO_ROOT = path.resolve(__dirname, "../../");
 
 export default function registerDetectorMacros(register) {
   /**
@@ -73,6 +84,57 @@ export default function registerDetectorMacros(register) {
       findings,
     };
   }, { note: "filtered, flattened findings list" });
+
+  /**
+   * detectors.history — return the recent N rows from history.jsonl. Lens
+   * UI consumes this to render a sparkline trend per detector / severity.
+   */
+  register("detectors", "history", async (_ctx, input = {}) => {
+    const n = Math.min(Math.max(Number(input.n) || 30, 1), 200);
+    const rows = await loadHistory(REPO_ROOT, n);
+    return { ok: true, rows };
+  }, { note: "recent detector history rows" });
+
+  /**
+   * detectors.baseline — load BASELINE.json. Used by HUD to show
+   * acknowledged finding count.
+   */
+  register("detectors", "baseline", async (_ctx, _input = {}) => {
+    const baseline = await loadBaseline(REPO_ROOT);
+    return {
+      ok: true,
+      generatedAt: baseline.generatedAt,
+      totals: baseline.totals,
+      fingerprintCount: Object.keys(baseline.fingerprints || {}).length,
+    };
+  }, { note: "current detector baseline summary" });
+
+  /**
+   * detectors.diff — compute live delta vs BASELINE.json without persisting.
+   */
+  register("detectors", "diff", async (ctx, input = {}) => {
+    const report = await runAllDetectors({
+      db: ctx?.db,
+      state: ctx?.state,
+      consumer: input?.consumer,
+    });
+    const baseline = await loadBaseline(REPO_ROOT);
+    const delta = diffAgainstBaseline(report, baseline);
+    const budget = await loadBudget(REPO_ROOT);
+    return {
+      ok: true,
+      generatedAt: report.generatedAt,
+      totals: report.totals,
+      delta: {
+        addedCount: delta.addedCount,
+        removedCount: delta.removedCount,
+        unchangedCount: delta.unchangedCount,
+        addedBySeverity: delta.addedBySeverity,
+        added: delta.added.slice(0, 200),
+      },
+      budget,
+    };
+  }, { note: "delta vs committed baseline" });
 
   /**
    * detectors.summary — short totals-only payload for the HUD.

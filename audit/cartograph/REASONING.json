@@ -1,0 +1,1874 @@
+{
+  "generatedAt": "2026-05-08T21:25:12.995Z",
+  "stats": {
+    "fileCount": 1511,
+    "totalFindings": 1296
+  },
+  "loadBearing": [
+    {
+      "path": "server/logger.js",
+      "directImporters": 176,
+      "cascadeSize": 281
+    },
+    {
+      "path": "server/emergent/schema.js",
+      "directImporters": 7,
+      "cascadeSize": 63
+    },
+    {
+      "path": "server/emergent/store.js",
+      "directImporters": 44,
+      "cascadeSize": 61
+    },
+    {
+      "path": "server/lib/brain-config.js",
+      "directImporters": 12,
+      "cascadeSize": 46
+    },
+    {
+      "path": "server/lib/errors.js",
+      "directImporters": 9,
+      "cascadeSize": 43
+    },
+    {
+      "path": "server/lib/async-handler.js",
+      "directImporters": 39,
+      "cascadeSize": 39
+    },
+    {
+      "path": "server/lib/consent.js",
+      "directImporters": 6,
+      "cascadeSize": 35
+    },
+    {
+      "path": "server/economy/ledger.js",
+      "directImporters": 13,
+      "cascadeSize": 31
+    },
+    {
+      "path": "server/economy/fees.js",
+      "directImporters": 10,
+      "cascadeSize": 26
+    },
+    {
+      "path": "server/lib/personal-locker/crypto.js",
+      "directImporters": 6,
+      "cascadeSize": 26
+    },
+    {
+      "path": "server/economy/balances.js",
+      "directImporters": 5,
+      "cascadeSize": 23
+    },
+    {
+      "path": "server/lib/inference/tracer.js",
+      "directImporters": 6,
+      "cascadeSize": 22
+    },
+    {
+      "path": "server/lib/agentic/worktree.js",
+      "directImporters": 2,
+      "cascadeSize": 21
+    },
+    {
+      "path": "server/lib/artifact-schemas.js",
+      "directImporters": 12,
+      "cascadeSize": 21
+    },
+    {
+      "path": "server/economy/validators.js",
+      "directImporters": 3,
+      "cascadeSize": 20
+    },
+    {
+      "path": "server/lib/agentic/trust-trajectory.js",
+      "directImporters": 1,
+      "cascadeSize": 20
+    },
+    {
+      "path": "server/lib/conversation-summarizer.js",
+      "directImporters": 3,
+      "cascadeSize": 20
+    },
+    {
+      "path": "server/lib/detectors/_framework.js",
+      "directImporters": 13,
+      "cascadeSize": 20
+    },
+    {
+      "path": "server/lib/inference/agent-loop.js",
+      "directImporters": 2,
+      "cascadeSize": 19
+    },
+    {
+      "path": "server/lib/agentic/memory-bank.js",
+      "directImporters": 1,
+      "cascadeSize": 18
+    },
+    {
+      "path": "server/lib/chat-context-pipeline.js",
+      "directImporters": 2,
+      "cascadeSize": 18
+    },
+    {
+      "path": "server/lib/freshness-engine.js",
+      "directImporters": 1,
+      "cascadeSize": 18
+    },
+    {
+      "path": "server/lib/inference/ollama-client.js",
+      "directImporters": 1,
+      "cascadeSize": 18
+    },
+    {
+      "path": "server/lib/ssrf-guard.js",
+      "directImporters": 6,
+      "cascadeSize": 18
+    },
+    {
+      "path": "server/economy/audit.js",
+      "directImporters": 10,
+      "cascadeSize": 17
+    },
+    {
+      "path": "server/lib/inference/context-assembler.js",
+      "directImporters": 1,
+      "cascadeSize": 17
+    },
+    {
+      "path": "server/lib/inference/router.js",
+      "directImporters": 2,
+      "cascadeSize": 17
+    },
+    {
+      "path": "server/lib/inference/royalty-hook.js",
+      "directImporters": 1,
+      "cascadeSize": 17
+    },
+    {
+      "path": "server/lib/inference/semaphore.js",
+      "directImporters": 1,
+      "cascadeSize": 17
+    },
+    {
+      "path": "server/lib/inference/tool-picker.js",
+      "directImporters": 1,
+      "cascadeSize": 17
+    },
+    {
+      "path": "server/lib/inference/index.js",
+      "directImporters": 7,
+      "cascadeSize": 16
+    },
+    {
+      "path": "server/economy/transfer.js",
+      "directImporters": 6,
+      "cascadeSize": 14
+    },
+    {
+      "path": "server/lib/storage-quota.js",
+      "directImporters": 3,
+      "cascadeSize": 13
+    },
+    {
+      "path": "server/lib/vision-inference.js",
+      "directImporters": 10,
+      "cascadeSize": 13
+    },
+    {
+      "path": "server/economy/royalty-cascade.js",
+      "directImporters": 6,
+      "cascadeSize": 12
+    },
+    {
+      "path": "server/emergent/atlas-epistemic.js",
+      "directImporters": 12,
+      "cascadeSize": 12
+    },
+    {
+      "path": "server/lib/id-factory.js",
+      "directImporters": 5,
+      "cascadeSize": 12
+    },
+    {
+      "path": "server/economy/_batch-lookup.js",
+      "directImporters": 3,
+      "cascadeSize": 11
+    },
+    {
+      "path": "server/lib/quality-gate.js",
+      "directImporters": 8,
+      "cascadeSize": 10
+    },
+    {
+      "path": "server/lib/skill-domains.js",
+      "directImporters": 1,
+      "cascadeSize": 10
+    },
+    {
+      "path": "server/emergent/atlas-antigaming.js",
+      "directImporters": 5,
+      "cascadeSize": 9
+    },
+    {
+      "path": "server/emergent/atlas-store.js",
+      "directImporters": 6,
+      "cascadeSize": 9
+    },
+    {
+      "path": "server/emergent/edges.js",
+      "directImporters": 6,
+      "cascadeSize": 9
+    },
+    {
+      "path": "server/grc/schema.js",
+      "directImporters": 3,
+      "cascadeSize": 9
+    },
+    {
+      "path": "server/lib/agentic/sub-cognition.js",
+      "directImporters": 5,
+      "cascadeSize": 9
+    },
+    {
+      "path": "server/lib/cross-world-effectiveness.js",
+      "directImporters": 3,
+      "cascadeSize": 9
+    },
+    {
+      "path": "server/lib/refusal-algebra/glyphs.js",
+      "directImporters": 2,
+      "cascadeSize": 9
+    },
+    {
+      "path": "server/embeddings.js",
+      "directImporters": 8,
+      "cascadeSize": 8
+    },
+    {
+      "path": "server/lib/concord-link-walkers.js",
+      "directImporters": 3,
+      "cascadeSize": 8
+    },
+    {
+      "path": "server/lib/detectors/baseline.js",
+      "directImporters": 5,
+      "cascadeSize": 8
+    },
+    {
+      "path": "server/lib/refusal-algebra/conversion.js",
+      "directImporters": 1,
+      "cascadeSize": 8
+    },
+    {
+      "path": "server/economy/fee-split.js",
+      "directImporters": 2,
+      "cascadeSize": 7
+    },
+    {
+      "path": "server/emergent/atlas-config.js",
+      "directImporters": 7,
+      "cascadeSize": 7
+    },
+    {
+      "path": "server/emergent/atlas-invariants.js",
+      "directImporters": 3,
+      "cascadeSize": 7
+    },
+    {
+      "path": "server/emergent/atlas-rights.js",
+      "directImporters": 3,
+      "cascadeSize": 7
+    },
+    {
+      "path": "server/emergent/atlas-scope-router.js",
+      "directImporters": 5,
+      "cascadeSize": 7
+    },
+    {
+      "path": "server/emergent/atlas-write-guard.js",
+      "directImporters": 4,
+      "cascadeSize": 7
+    },
+    {
+      "path": "server/emergent/council-voices.js",
+      "directImporters": 3,
+      "cascadeSize": 7
+    },
+    {
+      "path": "server/emergent/empirical-gates.js",
+      "directImporters": 3,
+      "cascadeSize": 7
+    },
+    {
+      "path": "server/emergent/quest-engine.js",
+      "directImporters": 3,
+      "cascadeSize": 7
+    },
+    {
+      "path": "server/emergent/subjective-time.js",
+      "directImporters": 6,
+      "cascadeSize": 7
+    },
+    {
+      "path": "server/grc/formatter.js",
+      "directImporters": 1,
+      "cascadeSize": 7
+    },
+    {
+      "path": "server/grc/invariants.js",
+      "directImporters": 1,
+      "cascadeSize": 7
+    },
+    {
+      "path": "server/lib/detectors/architectural-hub-detector.js",
+      "directImporters": 1,
+      "cascadeSize": 7
+    },
+    {
+      "path": "server/lib/detectors/dtu-lineage-detector.js",
+      "directImporters": 1,
+      "cascadeSize": 7
+    },
+    {
+      "path": "server/lib/detectors/heartbeat-monitor.js",
+      "directImporters": 1,
+      "cascadeSize": 7
+    },
+    {
+      "path": "server/lib/detectors/historical-trend-detector.js",
+      "directImporters": 1,
+      "cascadeSize": 7
+    },
+    {
+      "path": "server/lib/detectors/invariant-guardian.js",
+      "directImporters": 1,
+      "cascadeSize": 7
+    },
+    {
+      "path": "server/lib/detectors/lens-health-detector.js",
+      "directImporters": 1,
+      "cascadeSize": 7
+    },
+    {
+      "path": "server/lib/detectors/macro-usage-detector.js",
+      "directImporters": 1,
+      "cascadeSize": 7
+    },
+    {
+      "path": "server/lib/detectors/performance-hotspot-detector.js",
+      "directImporters": 1,
+      "cascadeSize": 7
+    },
+    {
+      "path": "server/lib/detectors/predictive-growth-detector.js",
+      "directImporters": 1,
+      "cascadeSize": 7
+    },
+    {
+      "path": "server/lib/detectors/secret-leak-detector.js",
+      "directImporters": 1,
+      "cascadeSize": 7
+    },
+    {
+      "path": "server/lib/detectors/stale-code-detector.js",
+      "directImporters": 1,
+      "cascadeSize": 7
+    },
+    {
+      "path": "server/lib/refusal-algebra/operations.js",
+      "directImporters": 1,
+      "cascadeSize": 7
+    },
+    {
+      "path": "server/lib/skills/character-level.js",
+      "directImporters": 2,
+      "cascadeSize": 7
+    },
+    {
+      "path": "server/lib/source-attribution.js",
+      "directImporters": 3,
+      "cascadeSize": 7
+    },
+    {
+      "path": "server/economy/coin-service.js",
+      "directImporters": 3,
+      "cascadeSize": 6
+    },
+    {
+      "path": "server/economy/lens-economy-wiring.js",
+      "directImporters": 3,
+      "cascadeSize": 6
+    },
+    {
+      "path": "server/economy/reserves.js",
+      "directImporters": 2,
+      "cascadeSize": 6
+    },
+    {
+      "path": "server/emergent/activation.js",
+      "directImporters": 3,
+      "cascadeSize": 6
+    },
+    {
+      "path": "server/emergent/constitution.js",
+      "directImporters": 5,
+      "cascadeSize": 6
+    },
+    {
+      "path": "server/emergent/feed.js",
+      "directImporters": 4,
+      "cascadeSize": 6
+    },
+    {
+      "path": "server/emergent/history-engine.js",
+      "directImporters": 4,
+      "cascadeSize": 6
+    },
+    {
+      "path": "server/emergent/name-validation.js",
+      "directImporters": 1,
+      "cascadeSize": 6
+    },
+    {
+      "path": "server/grc/index.js",
+      "directImporters": 2,
+      "cascadeSize": 6
+    },
+    {
+      "path": "server/lib/concord-link.js",
+      "directImporters": 2,
+      "cascadeSize": 6
+    },
+    {
+      "path": "server/lib/detectors/index.js",
+      "directImporters": 5,
+      "cascadeSize": 6
+    },
+    {
+      "path": "server/lib/evo-asset/registry.js",
+      "directImporters": 5,
+      "cascadeSize": 6
+    },
+    {
+      "path": "server/lib/lens-features-extended.js",
+      "directImporters": 1,
+      "cascadeSize": 6
+    },
+    {
+      "path": "server/lib/lens-manifest.js",
+      "directImporters": 4,
+      "cascadeSize": 6
+    },
+    {
+      "path": "server/lib/refusal-field.js",
+      "directImporters": 5,
+      "cascadeSize": 6
+    },
+    {
+      "path": "server/lib/skills/skill-engine.js",
+      "directImporters": 5,
+      "cascadeSize": 6
+    },
+    {
+      "path": "server/affect/schema.js",
+      "directImporters": 3,
+      "cascadeSize": 5
+    },
+    {
+      "path": "server/economy/chargeback-handler.js",
+      "directImporters": 1,
+      "cascadeSize": 5
+    },
+    {
+      "path": "server/economy/license-tiers.js",
+      "directImporters": 1,
+      "cascadeSize": 5
+    },
+    {
+      "path": "server/economy/purchases.js",
+      "directImporters": 3,
+      "cascadeSize": 5
+    },
+    {
+      "path": "server/economy/rights-enforcement.js",
+      "directImporters": 2,
+      "cascadeSize": 5
+    },
+    {
+      "path": "server/emergent/autogen-pipeline.js",
+      "directImporters": 3,
+      "cascadeSize": 5
+    },
+    {
+      "path": "server/emergent/communication.js",
+      "directImporters": 3,
+      "cascadeSize": 5
+    }
+  ],
+  "stress": [
+    {
+      "path": "server/migrations/010_learning_verification.js",
+      "loc": 95,
+      "findingCount": 6,
+      "weight": 12,
+      "stress": 0.126
+    },
+    {
+      "path": "server/migrations/009_brain_want_engine.js",
+      "loc": 128,
+      "findingCount": 7,
+      "weight": 14,
+      "stress": 0.109
+    },
+    {
+      "path": "server/domains/exportdomain.js",
+      "loc": 41,
+      "findingCount": 2,
+      "weight": 4,
+      "stress": 0.08
+    },
+    {
+      "path": "server/domains/linguistics.js",
+      "loc": 46,
+      "findingCount": 2,
+      "weight": 4,
+      "stress": 0.08
+    },
+    {
+      "path": "server/migrations/052_guild_persistence.js",
+      "loc": 39,
+      "findingCount": 2,
+      "weight": 4,
+      "stress": 0.08
+    },
+    {
+      "path": "server/domains/nonprofit.js",
+      "loc": 60,
+      "findingCount": 2,
+      "weight": 4,
+      "stress": 0.067
+    },
+    {
+      "path": "server/domains/paper.js",
+      "loc": 90,
+      "findingCount": 3,
+      "weight": 6,
+      "stress": 0.067
+    },
+    {
+      "path": "server/domains/voice.js",
+      "loc": 170,
+      "findingCount": 5,
+      "weight": 10,
+      "stress": 0.059
+    },
+    {
+      "path": "server/emergent/ghost-threads.js",
+      "loc": 473,
+      "findingCount": 12,
+      "weight": 24,
+      "stress": 0.051
+    },
+    {
+      "path": "server/emergent/hlm-engine.js",
+      "loc": 1252,
+      "findingCount": 31,
+      "weight": 62,
+      "stress": 0.05
+    },
+    {
+      "path": "server/domains/news.js",
+      "loc": 500,
+      "findingCount": 12,
+      "weight": 24,
+      "stress": 0.048
+    },
+    {
+      "path": "server/domains/studio.js",
+      "loc": 87,
+      "findingCount": 2,
+      "weight": 4,
+      "stress": 0.046
+    },
+    {
+      "path": "server/domains/commonsense.js",
+      "loc": 541,
+      "findingCount": 12,
+      "weight": 24,
+      "stress": 0.044
+    },
+    {
+      "path": "server/emergent/atlas-antigaming.js",
+      "loc": 419,
+      "findingCount": 9,
+      "weight": 18,
+      "stress": 0.043
+    },
+    {
+      "path": "server/domains/docs.js",
+      "loc": 496,
+      "findingCount": 10,
+      "weight": 20,
+      "stress": 0.04
+    },
+    {
+      "path": "server/domains/reflection.js",
+      "loc": 546,
+      "findingCount": 11,
+      "weight": 22,
+      "stress": 0.04
+    },
+    {
+      "path": "server/economy/_batch-lookup.js",
+      "loc": 43,
+      "findingCount": 1,
+      "weight": 2,
+      "stress": 0.04
+    },
+    {
+      "path": "server/migrations/044_substrate_diffusion.js",
+      "loc": 50,
+      "findingCount": 1,
+      "weight": 2,
+      "stress": 0.04
+    },
+    {
+      "path": "server/domains/creativewriting.js",
+      "loc": 51,
+      "findingCount": 1,
+      "weight": 2,
+      "stress": 0.039
+    },
+    {
+      "path": "server/domains/crafting.js",
+      "loc": 56,
+      "findingCount": 1,
+      "weight": 2,
+      "stress": 0.036
+    },
+    {
+      "path": "server/migrations/085_plugin_gallery.js",
+      "loc": 57,
+      "findingCount": 1,
+      "weight": 2,
+      "stress": 0.035
+    },
+    {
+      "path": "server/domains/events.js",
+      "loc": 59,
+      "findingCount": 1,
+      "weight": 2,
+      "stress": 0.034
+    },
+    {
+      "path": "server/migrations/006_embedding_column.js",
+      "loc": 59,
+      "findingCount": 1,
+      "weight": 2,
+      "stress": 0.034
+    },
+    {
+      "path": "server/emergent/faction-strategy-cycle.js",
+      "loc": 61,
+      "findingCount": 2,
+      "weight": 2,
+      "stress": 0.033
+    },
+    {
+      "path": "server/domains/alliance.js",
+      "loc": 434,
+      "findingCount": 7,
+      "weight": 14,
+      "stress": 0.032
+    },
+    {
+      "path": "server/domains/appmaker.js",
+      "loc": 372,
+      "findingCount": 6,
+      "weight": 12,
+      "stress": 0.032
+    },
+    {
+      "path": "server/migrations/059_reasoning_sessions.js",
+      "loc": 62,
+      "findingCount": 1,
+      "weight": 2,
+      "stress": 0.032
+    },
+    {
+      "path": "server/domains/chat.js",
+      "loc": 392,
+      "findingCount": 6,
+      "weight": 12,
+      "stress": 0.031
+    },
+    {
+      "path": "server/emergent/bootstrap-ingestion.js",
+      "loc": 850,
+      "findingCount": 15,
+      "weight": 26,
+      "stress": 0.031
+    },
+    {
+      "path": "server/logger.js",
+      "loc": 96,
+      "findingCount": 1,
+      "weight": 3,
+      "stress": 0.031
+    },
+    {
+      "path": "server/durable.js",
+      "loc": 1005,
+      "findingCount": 23,
+      "weight": 30,
+      "stress": 0.03
+    },
+    {
+      "path": "server/domains/dtus.js",
+      "loc": 344,
+      "findingCount": 5,
+      "weight": 10,
+      "stress": 0.029
+    },
+    {
+      "path": "server/domains/offline.js",
+      "loc": 481,
+      "findingCount": 7,
+      "weight": 14,
+      "stress": 0.029
+    },
+    {
+      "path": "server/emergent/entity-autonomy.js",
+      "loc": 1231,
+      "findingCount": 18,
+      "weight": 36,
+      "stress": 0.029
+    },
+    {
+      "path": "server/domains/grounding.js",
+      "loc": 500,
+      "findingCount": 7,
+      "weight": 14,
+      "stress": 0.028
+    },
+    {
+      "path": "server/domains/ingest.js",
+      "loc": 71,
+      "findingCount": 1,
+      "weight": 2,
+      "stress": 0.028
+    },
+    {
+      "path": "server/migrations/056_messaging_adapters.js",
+      "loc": 75,
+      "findingCount": 1,
+      "weight": 2,
+      "stress": 0.027
+    },
+    {
+      "path": "server/domains/resonance.js",
+      "loc": 466,
+      "findingCount": 6,
+      "weight": 12,
+      "stress": 0.026
+    },
+    {
+      "path": "server/economy/withdrawals.js",
+      "loc": 232,
+      "findingCount": 6,
+      "weight": 6,
+      "stress": 0.026
+    },
+    {
+      "path": "server/emergent/atlas-autogen-v2.js",
+      "loc": 761,
+      "findingCount": 10,
+      "weight": 20,
+      "stress": 0.026
+    },
+    {
+      "path": "server/emergent/autogen-pipeline.js",
+      "loc": 1388,
+      "findingCount": 18,
+      "weight": 36,
+      "stress": 0.026
+    },
+    {
+      "path": "server/domains/commandcenter.js",
+      "loc": 407,
+      "findingCount": 5,
+      "weight": 10,
+      "stress": 0.025
+    },
+    {
+      "path": "server/emergent/history-engine.js",
+      "loc": 1287,
+      "findingCount": 16,
+      "weight": 32,
+      "stress": 0.025
+    },
+    {
+      "path": "server/domains/graph.js",
+      "loc": 592,
+      "findingCount": 7,
+      "weight": 14,
+      "stress": 0.024
+    },
+    {
+      "path": "server/emergent/environment-sensor.js",
+      "loc": 125,
+      "findingCount": 1,
+      "weight": 3,
+      "stress": 0.024
+    },
+    {
+      "path": "server/emergent/merge.js",
+      "loc": 246,
+      "findingCount": 3,
+      "weight": 6,
+      "stress": 0.024
+    },
+    {
+      "path": "server/emergent/persistence.js",
+      "loc": 414,
+      "findingCount": 9,
+      "weight": 10,
+      "stress": 0.024
+    },
+    {
+      "path": "server/domains/transfer.js",
+      "loc": 527,
+      "findingCount": 6,
+      "weight": 12,
+      "stress": 0.023
+    },
+    {
+      "path": "server/emergent/heartbeat-registry.js",
+      "loc": 86,
+      "findingCount": 1,
+      "weight": 2,
+      "stress": 0.023
+    },
+    {
+      "path": "server/domains/importdomain.js",
+      "loc": 538,
+      "findingCount": 6,
+      "weight": 12,
+      "stress": 0.022
+    },
+    {
+      "path": "server/economy/lens-features-service.js",
+      "loc": 270,
+      "findingCount": 6,
+      "weight": 6,
+      "stress": 0.022
+    },
+    {
+      "path": "server/economy/marketplace-lens-service.js",
+      "loc": 272,
+      "findingCount": 4,
+      "weight": 6,
+      "stress": 0.022
+    },
+    {
+      "path": "server/economy/purchases.js",
+      "loc": 224,
+      "findingCount": 5,
+      "weight": 5,
+      "stress": 0.022
+    },
+    {
+      "path": "server/emergent/artifacts.js",
+      "loc": 134,
+      "findingCount": 2,
+      "weight": 3,
+      "stress": 0.022
+    },
+    {
+      "path": "server/domains/anon.js",
+      "loc": 378,
+      "findingCount": 4,
+      "weight": 8,
+      "stress": 0.021
+    },
+    {
+      "path": "server/domains/code.js",
+      "loc": 283,
+      "findingCount": 3,
+      "weight": 6,
+      "stress": 0.021
+    },
+    {
+      "path": "server/domains/schema.js",
+      "loc": 469,
+      "findingCount": 5,
+      "weight": 10,
+      "stress": 0.021
+    },
+    {
+      "path": "server/economy/commission-service.js",
+      "loc": 629,
+      "findingCount": 13,
+      "weight": 13,
+      "stress": 0.021
+    },
+    {
+      "path": "server/domains/affect.js",
+      "loc": 505,
+      "findingCount": 5,
+      "weight": 10,
+      "stress": 0.02
+    },
+    {
+      "path": "server/domains/thread.js",
+      "loc": 99,
+      "findingCount": 1,
+      "weight": 2,
+      "stress": 0.02
+    },
+    {
+      "path": "server/economy/film-studio.js",
+      "loc": 1162,
+      "findingCount": 18,
+      "weight": 23,
+      "stress": 0.02
+    },
+    {
+      "path": "server/economy/lens-culture.js",
+      "loc": 1124,
+      "findingCount": 20,
+      "weight": 22,
+      "stress": 0.02
+    },
+    {
+      "path": "server/affect/schema.js",
+      "loc": 107,
+      "findingCount": 1,
+      "weight": 2,
+      "stress": 0.019
+    },
+    {
+      "path": "server/domains/debug.js",
+      "loc": 422,
+      "findingCount": 4,
+      "weight": 8,
+      "stress": 0.019
+    },
+    {
+      "path": "server/domains/legacy.js",
+      "loc": 321,
+      "findingCount": 3,
+      "weight": 6,
+      "stress": 0.019
+    },
+    {
+      "path": "server/domains/organ.js",
+      "loc": 451,
+      "findingCount": 4,
+      "weight": 8,
+      "stress": 0.018
+    },
+    {
+      "path": "server/economy/legal-liability.js",
+      "loc": 558,
+      "findingCount": 10,
+      "weight": 10,
+      "stress": 0.018
+    },
+    {
+      "path": "server/economy/storage.js",
+      "loc": 442,
+      "findingCount": 6,
+      "weight": 8,
+      "stress": 0.018
+    },
+    {
+      "path": "server/domains/vote.js",
+      "loc": 481,
+      "findingCount": 4,
+      "weight": 8,
+      "stress": 0.017
+    },
+    {
+      "path": "server/economy/creative-marketplace.js",
+      "loc": 1662,
+      "findingCount": 19,
+      "weight": 28,
+      "stress": 0.017
+    },
+    {
+      "path": "server/lib/sqlite-retry.js",
+      "loc": 58,
+      "findingCount": 1,
+      "weight": 1,
+      "stress": 0.017
+    },
+    {
+      "path": "server/domains/admin.js",
+      "loc": 487,
+      "findingCount": 4,
+      "weight": 8,
+      "stress": 0.016
+    },
+    {
+      "path": "server/domains/bio.js",
+      "loc": 368,
+      "findingCount": 3,
+      "weight": 6,
+      "stress": 0.016
+    },
+    {
+      "path": "server/domains/inference.js",
+      "loc": 514,
+      "findingCount": 4,
+      "weight": 8,
+      "stress": 0.016
+    },
+    {
+      "path": "server/domains/lock.js",
+      "loc": 376,
+      "findingCount": 3,
+      "weight": 6,
+      "stress": 0.016
+    },
+    {
+      "path": "server/domains/ml.js",
+      "loc": 125,
+      "findingCount": 1,
+      "weight": 2,
+      "stress": 0.016
+    },
+    {
+      "path": "server/economics.js",
+      "loc": 243,
+      "findingCount": 2,
+      "weight": 4,
+      "stress": 0.016
+    },
+    {
+      "path": "server/emergent/agent-system.js",
+      "loc": 1006,
+      "findingCount": 8,
+      "weight": 16,
+      "stress": 0.016
+    },
+    {
+      "path": "server/emergent/creative-generation.js",
+      "loc": 787,
+      "findingCount": 6,
+      "weight": 12,
+      "stress": 0.015
+    },
+    {
+      "path": "server/emergent/ingest-engine.js",
+      "loc": 1223,
+      "findingCount": 9,
+      "weight": 18,
+      "stress": 0.015
+    },
+    {
+      "path": "server/lib/evo-asset/npc-shadow-bridge.js",
+      "loc": 65,
+      "findingCount": 1,
+      "weight": 1,
+      "stress": 0.015
+    },
+    {
+      "path": "server/domains/metalearning.js",
+      "loc": 434,
+      "findingCount": 3,
+      "weight": 6,
+      "stress": 0.014
+    },
+    {
+      "path": "server/emergent/conflict-resolution.js",
+      "loc": 1326,
+      "findingCount": 9,
+      "weight": 18,
+      "stress": 0.014
+    },
+    {
+      "path": "server/emergent/meta-derivation.js",
+      "loc": 1154,
+      "findingCount": 8,
+      "weight": 16,
+      "stress": 0.014
+    },
+    {
+      "path": "server/domains/crypto.js",
+      "loc": 310,
+      "findingCount": 2,
+      "weight": 4,
+      "stress": 0.013
+    },
+    {
+      "path": "server/economy/chargeback-handler.js",
+      "loc": 152,
+      "findingCount": 2,
+      "weight": 2,
+      "stress": 0.013
+    },
+    {
+      "path": "server/economy/ledger.js",
+      "loc": 236,
+      "findingCount": 3,
+      "weight": 3,
+      "stress": 0.013
+    },
+    {
+      "path": "server/economy/stripe.js",
+      "loc": 633,
+      "findingCount": 4,
+      "weight": 8,
+      "stress": 0.013
+    },
+    {
+      "path": "server/emergent/breakthrough-clusters.js",
+      "loc": 447,
+      "findingCount": 3,
+      "weight": 6,
+      "stress": 0.013
+    },
+    {
+      "path": "server/emergent/forge-template-engine.js",
+      "loc": 1473,
+      "findingCount": 8,
+      "weight": 19,
+      "stress": 0.013
+    },
+    {
+      "path": "server/emergent/goals.js",
+      "loc": 468,
+      "findingCount": 3,
+      "weight": 6,
+      "stress": 0.013
+    },
+    {
+      "path": "server/emergent/lens-learning.js",
+      "loc": 153,
+      "findingCount": 1,
+      "weight": 2,
+      "stress": 0.013
+    },
+    {
+      "path": "server/emergent/outcomes.js",
+      "loc": 464,
+      "findingCount": 3,
+      "weight": 6,
+      "stress": 0.013
+    },
+    {
+      "path": "server/economy/royalty-cascade.js",
+      "loc": 519,
+      "findingCount": 4,
+      "weight": 6,
+      "stress": 0.012
+    },
+    {
+      "path": "server/emergent/atlas-store.js",
+      "loc": 668,
+      "findingCount": 4,
+      "weight": 8,
+      "stress": 0.012
+    },
+    {
+      "path": "server/emergent/repair-cortex.js",
+      "loc": 5120,
+      "findingCount": 60,
+      "weight": 60,
+      "stress": 0.012
+    },
+    {
+      "path": "server/domains/fractal.js",
+      "loc": 539,
+      "findingCount": 3,
+      "weight": 6,
+      "stress": 0.011
+    },
+    {
+      "path": "server/domains/healthcare.js",
+      "loc": 352,
+      "findingCount": 2,
+      "weight": 4,
+      "stress": 0.011
+    },
+    {
+      "path": "server/economy/reconciliation.js",
+      "loc": 632,
+      "findingCount": 5,
+      "weight": 7,
+      "stress": 0.011
+    },
+    {
+      "path": "server/emergent/atlas-heartbeat.js",
+      "loc": 363,
+      "findingCount": 2,
+      "weight": 4,
+      "stress": 0.011
+    }
+  ],
+  "opportunity": [
+    {
+      "path": "server/scripts/cartograph-reason.js",
+      "loc": 291,
+      "tags": [
+        "economy",
+        "narrative",
+        "self-care",
+        "world",
+        "persistence",
+        "governance"
+      ],
+      "score": 309
+    },
+    {
+      "path": "server/migrations/098_concordia_hub_id_reconciliation.js",
+      "loc": 40,
+      "tags": [
+        "world",
+        "persistence"
+      ],
+      "score": 160
+    },
+    {
+      "path": "server/migrations/083_creature_crossbreeding.js",
+      "loc": 49,
+      "tags": [
+        "narrative",
+        "world"
+      ],
+      "score": 151
+    },
+    {
+      "path": "server/lib/combat/match-chronicle.js",
+      "loc": 154,
+      "tags": [
+        "economy",
+        "narrative",
+        "world"
+      ],
+      "score": 146
+    },
+    {
+      "path": "server/migrations/023_lens_features.js",
+      "loc": 62,
+      "tags": [
+        "economy",
+        "governance"
+      ],
+      "score": 138
+    },
+    {
+      "path": "server/tests/analytics-route.test.js",
+      "loc": 172,
+      "tags": [
+        "economy",
+        "world",
+        "governance"
+      ],
+      "score": 128
+    },
+    {
+      "path": "server/migrations/064_crafting_and_skills.js",
+      "loc": 110,
+      "tags": [
+        "world",
+        "governance"
+      ],
+      "score": 90
+    },
+    {
+      "path": "server/migrations/124_drop_dead_mig059_085.js",
+      "loc": 19,
+      "tags": [
+        "persistence"
+      ],
+      "score": 81
+    },
+    {
+      "path": "server/migrations/122_drop_dead_mig010.js",
+      "loc": 22,
+      "tags": [
+        "economy"
+      ],
+      "score": 78
+    },
+    {
+      "path": "server/migrations/004_ledger_idempotency.js",
+      "loc": 27,
+      "tags": [
+        "economy"
+      ],
+      "score": 73
+    },
+    {
+      "path": "server/migrations/048_sparks.js",
+      "loc": 27,
+      "tags": [
+        "world"
+      ],
+      "score": 73
+    },
+    {
+      "path": "server/migrations/092_npc_knowledge.js",
+      "loc": 28,
+      "tags": [
+        "world"
+      ],
+      "score": 72
+    },
+    {
+      "path": "server/migrations/075_faction_events.js",
+      "loc": 29,
+      "tags": [
+        "world"
+      ],
+      "score": 71
+    },
+    {
+      "path": "server/migrations/078_faction_policy_state.js",
+      "loc": 29,
+      "tags": [
+        "world"
+      ],
+      "score": 71
+    },
+    {
+      "path": "server/migrations/097_refusal_fields.js",
+      "loc": 30,
+      "tags": [
+        "world"
+      ],
+      "score": 70
+    },
+    {
+      "path": "server/migrations/077_users_current_world.js",
+      "loc": 31,
+      "tags": [
+        "world"
+      ],
+      "score": 69
+    },
+    {
+      "path": "server/migrations/003_economy_stripe.js",
+      "loc": 34,
+      "tags": [
+        "economy"
+      ],
+      "score": 66
+    },
+    {
+      "path": "server/migrations/086_search_persistence.js",
+      "loc": 34,
+      "tags": [
+        "persistence"
+      ],
+      "score": 66
+    },
+    {
+      "path": "server/migrations/067_character_levels.js",
+      "loc": 37,
+      "tags": [
+        "world"
+      ],
+      "score": 63
+    },
+    {
+      "path": "server/migrations/096_player_world_metrics.js",
+      "loc": 38,
+      "tags": [
+        "world"
+      ],
+      "score": 62
+    },
+    {
+      "path": "server/migrations/052_guild_persistence.js",
+      "loc": 39,
+      "tags": [
+        "persistence"
+      ],
+      "score": 61
+    },
+    {
+      "path": "server/migrations/101_player_inventory_world_scope.js",
+      "loc": 39,
+      "tags": [
+        "world"
+      ],
+      "score": 61
+    },
+    {
+      "path": "server/migrations/047_game_mode_tables.js",
+      "loc": 40,
+      "tags": [
+        "world"
+      ],
+      "score": 60
+    },
+    {
+      "path": "server/migrations/053_lens_portals.js",
+      "loc": 40,
+      "tags": [
+        "world"
+      ],
+      "score": 60
+    },
+    {
+      "path": "server/migrations/091_world_buildings.js",
+      "loc": 41,
+      "tags": [
+        "world"
+      ],
+      "score": 59
+    },
+    {
+      "path": "server/migrations/102_world_facts.js",
+      "loc": 41,
+      "tags": [
+        "world"
+      ],
+      "score": 59
+    },
+    {
+      "path": "server/migrations/118_npc_conversations.js",
+      "loc": 41,
+      "tags": [
+        "world"
+      ],
+      "score": 59
+    },
+    {
+      "path": "server/migrations/104_player_companions.js",
+      "loc": 42,
+      "tags": [
+        "world"
+      ],
+      "score": 58
+    },
+    {
+      "path": "server/migrations/079_concord_link_walker_journeys.js",
+      "loc": 44,
+      "tags": [
+        "world"
+      ],
+      "score": 56
+    },
+    {
+      "path": "server/migrations/046_nemesis_crises.js",
+      "loc": 45,
+      "tags": [
+        "world"
+      ],
+      "score": 55
+    },
+    {
+      "path": "server/migrations/125_code_artifact_kind.js",
+      "loc": 46,
+      "tags": [
+        "economy"
+      ],
+      "score": 54
+    },
+    {
+      "path": "server/migrations/081_vehicles.js",
+      "loc": 48,
+      "tags": [
+        "world"
+      ],
+      "score": 52
+    },
+    {
+      "path": "server/migrations/106_minigame_matches.js",
+      "loc": 48,
+      "tags": [
+        "world"
+      ],
+      "score": 52
+    },
+    {
+      "path": "server/migrations/094_creature_population.js",
+      "loc": 49,
+      "tags": [
+        "world"
+      ],
+      "score": 51
+    },
+    {
+      "path": "server/tests/weather.test.js",
+      "loc": 49,
+      "tags": [
+        "world"
+      ],
+      "score": 51
+    },
+    {
+      "path": "server/migrations/044_substrate_diffusion.js",
+      "loc": 50,
+      "tags": [
+        "world"
+      ],
+      "score": 50
+    },
+    {
+      "path": "server/migrations/111_qualia_state.js",
+      "loc": 50,
+      "tags": [
+        "persistence"
+      ],
+      "score": 50
+    },
+    {
+      "path": "server/migrations/115_dreams.js",
+      "loc": 51,
+      "tags": [
+        "world"
+      ],
+      "score": 49
+    },
+    {
+      "path": "server/migrations/119_world_invites.js",
+      "loc": 51,
+      "tags": [
+        "world"
+      ],
+      "score": 49
+    },
+    {
+      "path": "server/plugins/templates/emergent-gen-plugin.js",
+      "loc": 51,
+      "tags": [
+        "governance"
+      ],
+      "score": 49
+    },
+    {
+      "path": "server/migrations/043_skill_progression.js",
+      "loc": 53,
+      "tags": [
+        "world"
+      ],
+      "score": 47
+    },
+    {
+      "path": "server/migrations/112_embodied_signals.js",
+      "loc": 53,
+      "tags": [
+        "world"
+      ],
+      "score": 47
+    },
+    {
+      "path": "server/tests/e2e/all-lenses-walk.test.js",
+      "loc": 153,
+      "tags": [
+        "economy",
+        "world"
+      ],
+      "score": 47
+    },
+    {
+      "path": "server/tests/narrative-bridge-secret-leakage.test.js",
+      "loc": 155,
+      "tags": [
+        "narrative",
+        "world"
+      ],
+      "score": 45
+    },
+    {
+      "path": "server/migrations/051_wagers.js",
+      "loc": 56,
+      "tags": [
+        "world"
+      ],
+      "score": 44
+    },
+    {
+      "path": "server/migrations/062_npc_families_and_spawning.js",
+      "loc": 56,
+      "tags": [
+        "world"
+      ],
+      "score": 44
+    },
+    {
+      "path": "server/migrations/116_forward_predictions.js",
+      "loc": 56,
+      "tags": [
+        "world"
+      ],
+      "score": 44
+    },
+    {
+      "path": "server/migrations/114_pain_signals.js",
+      "loc": 57,
+      "tags": [
+        "world"
+      ],
+      "score": 43
+    },
+    {
+      "path": "server/plugins/templates/basic-plugin.js",
+      "loc": 58,
+      "tags": [
+        "world"
+      ],
+      "score": 42
+    },
+    {
+      "path": "server/migrations/089_training_matches.js",
+      "loc": 60,
+      "tags": [
+        "world"
+      ],
+      "score": 40
+    },
+    {
+      "path": "server/tests/refusal-algebra/strength-gating.test.js",
+      "loc": 160,
+      "tags": [
+        "world",
+        "persistence"
+      ],
+      "score": 40
+    },
+    {
+      "path": "server/migrations/002_economy_tables.js",
+      "loc": 62,
+      "tags": [
+        "economy"
+      ],
+      "score": 38
+    },
+    {
+      "path": "server/migrations/059_reasoning_sessions.js",
+      "loc": 62,
+      "tags": [
+        "persistence"
+      ],
+      "score": 38
+    },
+    {
+      "path": "server/migrations/060_npc_enhancements.js",
+      "loc": 63,
+      "tags": [
+        "world"
+      ],
+      "score": 37
+    },
+    {
+      "path": "server/lib/governance/auto-proposal.js",
+      "loc": 170,
+      "tags": [
+        "persistence",
+        "governance"
+      ],
+      "score": 30
+    },
+    {
+      "path": "server/tests/invariants/existential-hooks-coverage.test.js",
+      "loc": 170,
+      "tags": [
+        "world",
+        "persistence"
+      ],
+      "score": 30
+    },
+    {
+      "path": "server/tests/migrations/098-hub-id-reconciliation.test.js",
+      "loc": 170,
+      "tags": [
+        "world",
+        "persistence"
+      ],
+      "score": 30
+    },
+    {
+      "path": "server/lib/goddess-arcs.js",
+      "loc": 177,
+      "tags": [
+        "narrative",
+        "world"
+      ],
+      "score": 23
+    },
+    {
+      "path": "server/tests/integration/ecosystem-chain.test.js",
+      "loc": 77,
+      "tags": [
+        "world"
+      ],
+      "score": 23
+    },
+    {
+      "path": "server/migrations/110_affect_state.js",
+      "loc": 78,
+      "tags": [
+        "world"
+      ],
+      "score": 22
+    },
+    {
+      "path": "server/migrations/013_federation_marketplace_dedup.js",
+      "loc": 79,
+      "tags": [
+        "economy"
+      ],
+      "score": 21
+    },
+    {
+      "path": "server/migrations/117_faction_strategy.js",
+      "loc": 79,
+      "tags": [
+        "world"
+      ],
+      "score": 21
+    },
+    {
+      "path": "server/tests/personal-locker/encryption.test.js",
+      "loc": 79,
+      "tags": [
+        "world"
+      ],
+      "score": 21
+    },
+    {
+      "path": "server/migrations/120_understandings.js",
+      "loc": 81,
+      "tags": [
+        "world"
+      ],
+      "score": 19
+    },
+    {
+      "path": "server/migrations/113_embodied_signal_log_unification.js",
+      "loc": 82,
+      "tags": [
+        "world"
+      ],
+      "score": 18
+    },
+    {
+      "path": "server/lib/soundscape-bridge.js",
+      "loc": 83,
+      "tags": [
+        "world"
+      ],
+      "score": 17
+    },
+    {
+      "path": "server/migrations/108_lattice_train_consent.js",
+      "loc": 84,
+      "tags": [
+        "world"
+      ],
+      "score": 16
+    },
+    {
+      "path": "server/migrations/063_world_environment.js",
+      "loc": 85,
+      "tags": [
+        "world"
+      ],
+      "score": 15
+    },
+    {
+      "path": "server/migrations/068_quest_state_machine.js",
+      "loc": 86,
+      "tags": [
+        "world"
+      ],
+      "score": 14
+    },
+    {
+      "path": "server/tests/world-clock-and-schedules.test.js",
+      "loc": 89,
+      "tags": [
+        "world"
+      ],
+      "score": 11
+    },
+    {
+      "path": "server/lib/quest-emergence.js",
+      "loc": 190,
+      "tags": [
+        "narrative",
+        "world"
+      ],
+      "score": 10
+    },
+    {
+      "path": "server/migrations/073_evo_assets.js",
+      "loc": 93,
+      "tags": [
+        "world"
+      ],
+      "score": 7
+    },
+    {
+      "path": "server/migrations/061_npc_gear_and_knowledge.js",
+      "loc": 94,
+      "tags": [
+        "world"
+      ],
+      "score": 6
+    },
+    {
+      "path": "server/lib/macro-response-cache.js",
+      "loc": 95,
+      "tags": [
+        "world"
+      ],
+      "score": 5
+    },
+    {
+      "path": "server/migrations/010_learning_verification.js",
+      "loc": 95,
+      "tags": [
+        "economy"
+      ],
+      "score": 5
+    },
+    {
+      "path": "server/tests/agentic/hooks.test.js",
+      "loc": 95,
+      "tags": [
+        "governance"
+      ],
+      "score": 5
+    },
+    {
+      "path": "server/tests/npc-knowledge-bridge.test.js",
+      "loc": 97,
+      "tags": [
+        "world"
+      ],
+      "score": 3
+    },
+    {
+      "path": "server/tests/score-engine.test.js",
+      "loc": 97,
+      "tags": [
+        "world"
+      ],
+      "score": 3
+    },
+    {
+      "path": "server/tests/three-gate-consistency.test.js",
+      "loc": 97,
+      "tags": [
+        "economy"
+      ],
+      "score": 3
+    },
+    {
+      "path": "server/migrations/105_kingdoms.js",
+      "loc": 98,
+      "tags": [
+        "world"
+      ],
+      "score": 2
+    }
+  ]
+}

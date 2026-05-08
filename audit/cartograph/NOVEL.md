@@ -2,7 +2,7 @@
 
 _Auto-seeded by cartographer; hand-curate after each pass. Each entry documents a substrate primitive that doesn't exist elsewhere or that Concord composes in a distinctive way._
 
-Generated 2026-05-08T20:01:43.830Z. Source: `server/scripts/cartographer/novelty-tags.js`.
+Generated 2026-05-08T21:25:36.834Z. Source: `server/scripts/cartographer/novelty-tags.js`.
 
 ## DTU substrate (4-layer self-compressing knowledge units)
 
