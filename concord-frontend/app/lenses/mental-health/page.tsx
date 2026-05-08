@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useState } from 'react';
@@ -48,6 +49,18 @@ export default function MentalHealthLensPage() {
   const [activeTab, setActiveTab] = useState<'mood' | 'journal' | 'coping' | 'resources'>('mood');
   const [showFeatures, setShowFeatures] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Lens-scoped keyboard commands. Headspace / Calm idiom: gentle
+  // single-letter section jumps.
+  useLensCommand(
+    [
+      { id: 'tab-mood', keys: 'm', description: 'Mood', category: 'navigation', action: () => setActiveTab('mood') },
+      { id: 'tab-journal', keys: 'j', description: 'Journal', category: 'navigation', action: () => setActiveTab('journal') },
+      { id: 'tab-coping', keys: 'c', description: 'Coping', category: 'navigation', action: () => setActiveTab('coping') },
+      { id: 'tab-resources', keys: 'r', description: 'Resources', category: 'navigation', action: () => setActiveTab('resources') },
+    ],
+    { lensId: 'mental-health' }
+  );
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('mental-health');
 
   const { items: moodItems, isLoading, isError, error, refetch, create, update, remove } = useLensData<Record<string, unknown>>('mental-health', 'mood', { seed: [] });

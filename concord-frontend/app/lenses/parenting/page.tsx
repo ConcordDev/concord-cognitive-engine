@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ds } from '@/lib/design-system';
@@ -63,6 +64,19 @@ export default function ParentingLensPage() {
   const [activeTab, setActiveTab] = useState<ModeTab>('milestones');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+
+  // Lens-scoped keyboard commands.
+  useLensCommand(
+    [
+      { id: 'tab-milestones', keys: 'm', description: 'Milestones', category: 'navigation', action: () => setActiveTab('milestones') },
+      { id: 'tab-schedules', keys: 's', description: 'Schedules', category: 'navigation', action: () => setActiveTab('schedules') },
+      { id: 'tab-health', keys: 'h', description: 'Health', category: 'navigation', action: () => setActiveTab('health') },
+      { id: 'tab-activities', keys: 'a', description: 'Activities', category: 'navigation', action: () => setActiveTab('activities') },
+      { id: 'tab-growth', keys: 'g', description: 'Growth', category: 'navigation', action: () => setActiveTab('growth') },
+      { id: 'tab-education', keys: 'e', description: 'Education', category: 'navigation', action: () => setActiveTab('education') },
+    ],
+    { lensId: 'parenting' }
+  );
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<LensItem<ParentingArtifact> | null>(null);
   const [showDashboard, setShowDashboard] = useState(false);

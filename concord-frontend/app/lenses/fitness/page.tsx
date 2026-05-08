@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ds } from '@/lib/design-system';
@@ -509,6 +510,20 @@ export default function FitnessLensPage() {
   const [activeTab, setActiveTab] = useState<ModeTab>('Clients');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<Status | 'all'>('all');
+
+  // Lens-scoped keyboard commands. MyFitnessPal / Strava-coach idiom:
+  // letters jump between coaching tabs.
+  useLensCommand(
+    [
+      { id: 'tab-clients', keys: 'c', description: 'Clients', category: 'navigation', action: () => setActiveTab('Clients') },
+      { id: 'tab-programs', keys: 'p', description: 'Programs', category: 'navigation', action: () => setActiveTab('Programs') },
+      { id: 'tab-workouts', keys: 'w', description: 'Workouts', category: 'navigation', action: () => setActiveTab('Workouts') },
+      { id: 'tab-classes', keys: 'l', description: 'Classes', category: 'navigation', action: () => setActiveTab('Classes') },
+      { id: 'tab-teams', keys: 't', description: 'Teams', category: 'navigation', action: () => setActiveTab('Teams') },
+      { id: 'tab-recruiting', keys: 'r', description: 'Recruiting', category: 'navigation', action: () => setActiveTab('Recruiting') },
+    ],
+    { lensId: 'fitness' }
+  );
   const [showEditor, setShowEditor] = useState(false);
   const [editingItem, setEditingItem] = useState<LensItem<FitnessArtifact> | null>(null);
   const [selectedClient, setSelectedClient] = useState<LensItem<FitnessArtifact> | null>(null);

@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
 import { useState, useMemo, useCallback } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { api } from '@/lib/api/client';
@@ -546,6 +547,21 @@ export default function HealthcareLensPage() {
 
   /* ---------- core state ---------- */
   const [activeTab, setActiveTab] = useState<ModeTab>('Patients');
+
+  // Lens-scoped keyboard commands. EHR idiom (Epic / Cerner): single
+  // letters jump between clinical tabs.
+  useLensCommand(
+    [
+      { id: 'tab-patients', keys: 'p', description: 'Patients', category: 'navigation', action: () => setActiveTab('Patients') },
+      { id: 'tab-encounters', keys: 'e', description: 'Encounters', category: 'navigation', action: () => setActiveTab('Encounters') },
+      { id: 'tab-protocols', keys: 'r', description: 'Protocols', category: 'navigation', action: () => setActiveTab('Protocols') },
+      { id: 'tab-pharmacy', keys: 'm', description: 'Pharmacy', category: 'navigation', action: () => setActiveTab('Pharmacy') },
+      { id: 'tab-lab', keys: 'l', description: 'Lab', category: 'navigation', action: () => setActiveTab('Lab') },
+      { id: 'tab-therapy', keys: 't', description: 'Therapy', category: 'navigation', action: () => setActiveTab('Therapy') },
+      { id: 'tab-symptoms', keys: 's', description: 'Symptoms', category: 'navigation', action: () => setActiveTab('Symptoms') },
+    ],
+    { lensId: 'healthcare' }
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<Status | 'all'>('all');
   const [filterType, setFilterType] = useState<ArtifactType | 'all'>('all');
