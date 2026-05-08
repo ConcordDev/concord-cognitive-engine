@@ -14171,6 +14171,77 @@ async function initGhostFleet() {
   }
   await _ghostFleetYield();
 
+  // 2.5. Understanding Engine — `understand(x) → model` primitive.
+  // Composes DTU.machine layer → HLM topology → HLR reasoning into a
+  // typed Understanding artifact (entities, claims, relations, constraints,
+  // consistency, contradictions, gaps, predictions, confidence). The
+  // discrete primitive any lens can call instead of orchestrating five
+  // engines. Persisted in the `understandings` table (migration 120).
+  try {
+    const und = await import("./lib/understanding-engine.js");
+    GHOST_FLEET_STATUS.modules["understanding-engine"] = { loaded: true, loadedAt: new Date().toISOString() };
+
+    register("understanding", "parse", async (_ctx, input = {}) => {
+      try {
+        // Resolve DTU from STATE if subjectId is given without an inline DTU.
+        let dtu = input.dtu;
+        if (!dtu && input.subjectId && typeof STATE?.dtus?.get === "function") {
+          dtu = STATE.dtus.get(input.subjectId);
+        }
+        const u = und.parseUnderstanding({ ...input, dtu });
+        return { ok: true, understanding: u };
+      } catch (e) {
+        return { ok: false, error: e?.message || "understanding_parse_failed" };
+      }
+    });
+
+    register("understanding", "compose", async (_ctx, input = {}) => {
+      try {
+        let dtu = input.dtu;
+        if (!dtu && input.subjectId && typeof STATE?.dtus?.get === "function") {
+          dtu = STATE.dtus.get(input.subjectId);
+        }
+        const r = und.composeAndSave(db, { ...input, dtu });
+        return r.ok
+          ? { ok: true, id: r.understanding.id, understanding: r.understanding }
+          : { ok: false, error: r.error };
+      } catch (e) {
+        return { ok: false, error: e?.message || "understanding_compose_failed" };
+      }
+    });
+
+    register("understanding", "get", (_ctx, input = {}) => {
+      const u = und.getUnderstanding(db, input.id);
+      return u ? { ok: true, understanding: u } : { ok: false, error: "not_found" };
+    });
+
+    register("understanding", "list", (_ctx, input = {}) =>
+      ({ ok: true, rows: und.listUnderstandings(db, input) }));
+
+    register("understanding", "recompose", async (_ctx, input = {}) => {
+      try {
+        let dtu = input.dtu;
+        if (!dtu && input.subjectId && typeof STATE?.dtus?.get === "function") {
+          dtu = STATE.dtus.get(input.subjectId);
+        }
+        return und.recomposeUnderstanding(db, input.id, { ...input, dtu });
+      } catch (e) {
+        return { ok: false, error: e?.message || "understanding_recompose_failed" };
+      }
+    });
+
+    register("understanding", "sweep", () => und.sweepExpiredUnderstandings(db));
+
+    register("understanding", "subject_kinds", () =>
+      ({ ok: true, kinds: und.SUBJECT_KINDS }));
+
+    structuredLog("info", "ghost_fleet_module_loaded", { name: "understanding-engine", macros: 7 });
+  } catch (err) {
+    GHOST_FLEET_STATUS.modules["understanding-engine"] = { loaded: false, error: err.message };
+    structuredLog("warn", "ghost_fleet_module_failed", { name: "understanding-engine", error: err.message });
+  }
+  await _ghostFleetYield();
+
   // 3. Agent System — Lattice immune system (6 agent types)
   try {
     const agents = await import("./emergent/agent-system.js");
