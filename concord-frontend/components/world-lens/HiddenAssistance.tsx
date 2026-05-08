@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { ds } from '@/lib/design-system';
 
 /* ── Types ─────────────────────────────────────────────────────── */
 
@@ -171,7 +172,7 @@ export function useHiddenAssistance(): HiddenAssistanceAPI {
 
 /* ── Component ────────────────────────────────────────────────── */
 
-const panel = 'bg-black/80 backdrop-blur-sm border border-white/10 rounded-lg';
+const panel = ds.panelFloating;
 
 export default function HiddenAssistance({
   children,

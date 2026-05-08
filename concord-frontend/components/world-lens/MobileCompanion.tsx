@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
+import { ds } from '@/lib/design-system';
 
-const panel = 'bg-black/80 backdrop-blur-sm border border-white/10 rounded-lg';
+const panel = ds.panelFloating;
 
 // ── Types ──────────────────────────────────────────────────────────
 

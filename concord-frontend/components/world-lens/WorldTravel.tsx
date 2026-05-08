@@ -6,6 +6,7 @@ import {
   Bookmark, BookmarkCheck, Home, Sparkles, Filter, ChevronDown,
   X, Eye, Lock, Building2, Palette, Swords, TreePine,
 } from 'lucide-react';
+import { ds } from '@/lib/design-system';
 
 /* ── Types ─────────────────────────────────────────────────────── */
 
@@ -49,7 +50,7 @@ interface WorldTravelProps {
 
 /* ── Constants ─────────────────────────────────────────────────── */
 
-const panel = 'bg-black/80 backdrop-blur-sm border border-white/10 rounded-lg';
+const panel = ds.panelFloating;
 
 const MODE_META: Record<WorldMode, { label: string; icon: React.ComponentType<{ className?: string }>; color: string }> = {
   realistic:   { label: 'Realistic',   icon: TreePine,  color: 'text-green-400' },

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { ds } from '@/lib/design-system';
 
 /* ── Types ─────────────────────────────────────────────────────── */
 
@@ -154,7 +155,7 @@ function inferExpertise(signals: BehaviorSignal[]): { level: ExpertiseLevel; sco
 
 /* ── Component ────────────────────────────────────────────────── */
 
-const panel = 'bg-black/80 backdrop-blur-sm border border-white/10 rounded-lg';
+const panel = ds.panelFloating;
 
 export default function AdaptiveComplexity({ children, userId }: AdaptiveComplexityProps) {
   const [signals, setSignals] = useState<BehaviorSignal[]>([]);

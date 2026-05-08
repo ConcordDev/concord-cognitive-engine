@@ -3,8 +3,9 @@
 import React, { useState } from 'react';
 import { Clock, Building2, Users, Zap, Leaf } from 'lucide-react';
 import type { DistrictSnapshot } from '@/lib/world-lens/types';
+import { ds } from '@/lib/design-system';
 
-const panel = 'bg-black/80 backdrop-blur-sm border border-white/10 rounded-lg';
+const panel = ds.panelFloating;
 
 const SEED_SNAPSHOTS: DistrictSnapshot[] = [
   { timestamp: '2025-10-01', buildingCount: 0, populationCapacity: 0, powerCapacity: 0, waterCapacity: 0, environmentalScore: 100 },

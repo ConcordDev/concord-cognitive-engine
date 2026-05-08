@@ -6,6 +6,7 @@ import {
   Globe,
   Cpu, Info, ChevronDown, ChevronUp,
 } from 'lucide-react';
+import { ds } from '@/lib/design-system';
 
 /* ── Types ─────────────────────────────────────────────────────── */
 
@@ -49,7 +50,7 @@ interface SaveSystemProps {
 
 /* ── Constants ─────────────────────────────────────────────────── */
 
-const panel = 'bg-black/80 backdrop-blur-sm border border-white/10 rounded-lg';
+const panel = ds.panelFloating;
 
 const STATUS_STYLES: Record<SubsystemStatus, { color: string; label: string }> = {
   saved: { color: 'text-green-400', label: 'Saved' },

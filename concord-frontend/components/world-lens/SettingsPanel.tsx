@@ -6,6 +6,7 @@ import {
   Sun, Cloud, Users, Sparkles, Trees, Headphones,
   Save, X, RotateCcw, Keyboard,
 } from 'lucide-react';
+import { ds } from '@/lib/design-system';
 
 /* ── Types ─────────────────────────────────────────────────────── */
 
@@ -79,7 +80,7 @@ interface SettingsPanelProps {
 
 /* ── Constants ─────────────────────────────────────────────────── */
 
-const panel = 'bg-black/80 backdrop-blur-sm border border-white/10 rounded-lg';
+const panel = ds.panelFloating;
 
 const TABS: { id: SettingsTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: 'graphics', label: 'Graphics', icon: Monitor },

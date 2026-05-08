@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import { ds } from '@/lib/design-system';
 
 // ── Types ──────────────────────────────────────────────────────────
 
@@ -110,7 +111,7 @@ export default function AnalyticsDashboard({
   };
 
   return (
-    <div className="bg-black/80 backdrop-blur-sm border border-white/10 rounded-lg p-4 space-y-4">
+    <div className={`${ds.panelFloating} p-4 space-y-4`}>
       {/* Tabs */}
       <div className="flex items-center justify-between">
         <div className="flex gap-2">

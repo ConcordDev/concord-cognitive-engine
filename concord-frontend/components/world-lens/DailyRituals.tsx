@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
+import { ds } from '@/lib/design-system';
 
 /* ── Types ─────────────────────────────────────────────────────── */
 
@@ -80,7 +81,7 @@ interface DailyRitualsProps {
 
 /* ── Constants ────────────────────────────────────────────────── */
 
-const panel = 'bg-black/80 backdrop-blur-sm border border-white/10 rounded-lg';
+const panel = ds.panelFloating;
 
 const CATEGORY_COLORS: Record<NewspaperHeadline['category'], string> = {
   construction: 'text-cyan-400',

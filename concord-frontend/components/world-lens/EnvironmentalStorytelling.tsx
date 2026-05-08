@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useCallback, useContext, useMemo } from 'react';
+import { ds } from '@/lib/design-system';
 
 /* ── Types ─────────────────────────────────────────────────────── */
 
@@ -128,7 +129,7 @@ export function useEnvironmentalStorytelling(): EnvironmentalStorytellingAPI {
 
 /* ── Component ────────────────────────────────────────────────── */
 
-const panel = 'bg-black/80 backdrop-blur-sm border border-white/10 rounded-lg';
+const panel = ds.panelFloating;
 
 interface EnvironmentalStorytellingProps {
   buildings?: {

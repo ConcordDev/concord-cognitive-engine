@@ -6,6 +6,7 @@ import {
   Lock, Unlock, Trophy, Users, Building2, Cpu, Zap,
   Compass, GraduationCap, Landmark, Hammer,
 } from 'lucide-react';
+import { ds } from '@/lib/design-system';
 
 /* ── Types ─────────────────────────────────────────────────────── */
 
@@ -70,7 +71,7 @@ interface ProgressionPanelProps {
 
 /* ── Constants ─────────────────────────────────────────────────── */
 
-const panel = 'bg-black/80 backdrop-blur-sm border border-white/10 rounded-lg';
+const panel = ds.panelFloating;
 
 const TIER_ORDER: TierName[] = ['Novice', 'Apprentice', 'Journeyman', 'Expert', 'Master', 'Grandmaster'];
 

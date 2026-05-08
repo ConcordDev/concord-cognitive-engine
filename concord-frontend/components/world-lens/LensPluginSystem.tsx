@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { ds } from '@/lib/design-system';
 
 type WidgetType = 'data-feed' | 'search-terminal' | 'visualization' | 'control-panel';
 type PluginCategory = 'Science' | 'Engineering' | 'Economics' | 'Social' | 'Entertainment' | 'Education';
@@ -104,7 +105,7 @@ export default function LensPluginSystem({
     { name: 'dataSource', type: 'string' },
   ]);
 
-  const panelStyle = 'bg-black/80 backdrop-blur-sm border border-white/10 rounded-lg';
+  const panelStyle = ds.panelFloating;
 
   const filteredMarketplace = selectedCategory === 'All'
     ? marketplace

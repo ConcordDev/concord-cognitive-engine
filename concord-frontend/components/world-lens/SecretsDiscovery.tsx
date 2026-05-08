@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { ds } from '@/lib/design-system';
 
 /* ── Types ─────────────────────────────────────────────────────── */
 
@@ -159,7 +160,7 @@ export function useDiscovery(): SecretsDiscoveryAPI {
 
 /* ── Component ────────────────────────────────────────────────── */
 
-const panel = 'bg-black/80 backdrop-blur-sm border border-white/10 rounded-lg';
+const panel = ds.panelFloating;
 
 interface SecretsDiscoveryProps {
   children?: React.ReactNode;

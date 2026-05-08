@@ -5,6 +5,7 @@ import {
   Eye, Type, Ear, Keyboard, Zap, MessageSquare, Hand, Gauge,
   Contrast, RotateCcw, Circle, Triangle, Square,
 } from 'lucide-react';
+import { ds } from '@/lib/design-system';
 
 /* ── Types ─────────────────────────────────────────────────────── */
 
@@ -31,7 +32,7 @@ interface AccessibilityPanelProps {
 
 /* ── Constants ─────────────────────────────────────────────────── */
 
-const panel = 'bg-black/80 backdrop-blur-sm border border-white/10 rounded-lg';
+const panel = ds.panelFloating;
 
 const COLORBLIND_OPTIONS: { value: ColorblindMode; label: string; description: string }[] = [
   { value: 'none',          label: 'None',          description: 'Default color vision' },

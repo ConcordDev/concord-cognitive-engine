@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { ds } from '@/lib/design-system';
 
 type Rarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
 type AchievementCategory = 'Creation' | 'Validation' | 'Citation' | 'Social' | 'Exploration' | 'Mentorship' | 'Governance' | 'Mastery';
@@ -96,7 +97,7 @@ export default function AchievementSystem({ achievements: propAchievements, prog
   const [notification, setNotification] = useState<Achievement | null>(null);
   const [notificationVisible, setNotificationVisible] = useState(false);
 
-  const panelStyle = 'bg-black/80 backdrop-blur-sm border border-white/10 rounded-lg';
+  const panelStyle = ds.panelFloating;
 
   const unlockedCount = achievements.filter((a) => a.unlocked).length;
   const totalCount = achievements.length;

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
+import { ds } from '@/lib/design-system';
 
 type ScalePreset = '1:1' | '1:50' | '1:200';
 type TrackingState = 'none' | 'limited' | 'normal';
@@ -53,7 +54,7 @@ export default function ARPreview({ dtuId, dtuData, onCapture, supported = true 
   const [permissionRequested, setPermissionRequested] = useState(false);
   const [capturing, setCapturing] = useState(false);
 
-  const panelStyle = 'bg-black/80 backdrop-blur-sm border border-white/10 rounded-lg';
+  const panelStyle = ds.panelFloating;
 
   const dims = dtuData.dimensions ?? { width: 10, height: 15, depth: 8 };
   const factor = SCALE_FACTORS[scale];

@@ -18,6 +18,24 @@ const panel =
 const panelHover =
   'bg-lattice-surface border border-lattice-border rounded-xl p-4 shadow-lattice-sm hover:shadow-lattice-md hover:border-white/15 transition-all duration-150 cursor-pointer';
 
+/**
+ * Panel without padding — for components that manage their own inner
+ * padding (typically game-UI overlays, world-lens HUDs, or absorbed
+ * components with custom internal layout). Same surface tokens as
+ * `panel` so they sit cleanly next to each other; no `p-4`, slightly
+ * smaller `rounded-lg` to match overlay aesthetic.
+ */
+const panelBare =
+  'bg-lattice-surface border border-lattice-border rounded-lg shadow-lattice-sm';
+
+/**
+ * Panel for floating overlays / popovers / HUD chrome — translucent
+ * with backdrop-blur so the world-lens 3D scene shows faintly behind
+ * it. Use for in-game panels mounted over the canvas.
+ */
+const panelFloating =
+  'bg-lattice-surface/90 backdrop-blur-sm border border-lattice-border rounded-lg shadow-lattice-md';
+
 /** Buttons */
 const btnBase =
   'inline-flex items-center justify-center gap-2 font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-lattice-void disabled:opacity-50 disabled:pointer-events-none';
@@ -91,6 +109,8 @@ const modalPanel =
 export const ds = {
   panel,
   panelHover,
+  panelBare,
+  panelFloating,
   btnBase,
   btnPrimary,
   btnSecondary,

@@ -223,7 +223,7 @@ export default function AgentBuilder() {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="w-full min-h-screen bg-black/80 backdrop-blur-xl text-white p-6">
+    <div className="w-full min-h-screen bg-lattice-void backdrop-blur-xl text-white p-6">
       <h1 className="text-2xl font-bold mb-1">Agent Builder</h1>
       <p className="text-sm text-gray-400 mb-6">Configure and monitor autonomous agents</p>
 
@@ -423,7 +423,7 @@ export default function AgentBuilder() {
                   <select
                     value={alertMetric}
                     onChange={(e) => setAlertMetric(e.target.value)}
-                    className="w-full bg-black/60 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-white/30"
+                    className="w-full bg-lattice-elevated border border-lattice-border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-white/30"
                   >
                     {ALERT_METRICS.map((m) => (
                       <option key={m} value={m}>{m}</option>
@@ -436,7 +436,7 @@ export default function AgentBuilder() {
                     <select
                       value={alertOperator}
                       onChange={(e) => setAlertOperator(e.target.value as 'above' | 'below')}
-                      className="w-full bg-black/60 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-white/30"
+                      className="w-full bg-lattice-elevated border border-lattice-border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-white/30"
                     >
                       <option value="above">Above</option>
                       <option value="below">Below</option>
@@ -448,7 +448,7 @@ export default function AgentBuilder() {
                       type="number"
                       value={alertThreshold}
                       onChange={(e) => setAlertThreshold(e.target.value)}
-                      className="w-full bg-black/60 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-white/30"
+                      className="w-full bg-lattice-elevated border border-lattice-border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-white/30"
                     />
                   </div>
                 </div>
@@ -506,7 +506,7 @@ export default function AgentBuilder() {
                     value={mwQuery}
                     onChange={(e) => setMwQuery(e.target.value)}
                     placeholder="e.g. structural beams, concrete panels..."
-                    className="w-full bg-black/60 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-white/30"
+                    className="w-full bg-lattice-elevated border border-lattice-border rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-white/30"
                   />
                 </div>
                 <div>
@@ -528,7 +528,7 @@ export default function AgentBuilder() {
                   <select
                     value={mwMaterial}
                     onChange={(e) => setMwMaterial(e.target.value)}
-                    className="w-full bg-black/60 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-white/30"
+                    className="w-full bg-lattice-elevated border border-lattice-border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-white/30"
                   >
                     {MATERIAL_FILTERS.map((m) => (
                       <option key={m} value={m}>{m}</option>
@@ -555,21 +555,21 @@ export default function AgentBuilder() {
                     value={ruleTrigger}
                     onChange={(e) => setRuleTrigger(e.target.value)}
                     placeholder="Trigger (e.g. sensor:anomaly-detected)"
-                    className="w-full bg-black/60 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-white/30"
+                    className="w-full bg-lattice-elevated border border-lattice-border rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-white/30"
                   />
                   <input
                     type="text"
                     value={ruleCondition}
                     onChange={(e) => setRuleCondition(e.target.value)}
                     placeholder="Condition (e.g. severity > 7)"
-                    className="w-full bg-black/60 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-white/30"
+                    className="w-full bg-lattice-elevated border border-lattice-border rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-white/30"
                   />
                   <input
                     type="text"
                     value={ruleAction}
                     onChange={(e) => setRuleAction(e.target.value)}
                     placeholder="Action (e.g. notify #ops)"
-                    className="w-full bg-black/60 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-white/30"
+                    className="w-full bg-lattice-elevated border border-lattice-border rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-white/30"
                   />
                   <button
                     onClick={addCustomRule}
@@ -599,7 +599,7 @@ export default function AgentBuilder() {
                 value={agentName}
                 onChange={(e) => setAgentName(e.target.value)}
                 placeholder="My New Agent"
-                className="w-full bg-black/60 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-white/30"
+                className="w-full bg-lattice-elevated border border-lattice-border rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-white/30"
               />
             </div>
             <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer whitespace-nowrap">
