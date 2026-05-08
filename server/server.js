@@ -28627,6 +28627,24 @@ app.post("/api/world/npc-schedule", requireAuth, (req, res) => {
 app.get("/api/world/npc-archetypes", (_req, res) => {
   res.json({ ok: true, archetypes: NPC_SCHEDULE_ARCHETYPES });
 });
+// User-authored NPC registration. Returns the validate-and-seed result;
+// the seeded NPC immediately participates in dialogue (oracle-brain
+// reads it via narrative-bridge) without a server restart. Secrets in
+// narrative_context.secret stay server-side only — narrative-bridge
+// omits them from LLM prompts.
+app.post("/api/world/npc-author", requireAuth, asyncHandler(async (req, res) => {
+  const seeder = await import("./lib/content-seeder.js");
+  if (!seeder.addAuthoredNPC) {
+    return res.status(501).json({ ok: false, error: "addAuthoredNPC_unavailable" });
+  }
+  const npc = req.body || {};
+  // Stamp the authoring user into the NPC so the dashboard / royalty
+  // path can find downstream usage credit.
+  if (req.user?.id && !npc.author_id) npc.author_id = req.user.id;
+  const result = seeder.addAuthoredNPC(npc);
+  if (!result.ok) return res.status(400).json(result);
+  res.json({ ok: true, npcId: npc.id });
+}));
 
 // ── Performance telemetry: aggregate FPS / frame budget breaches ──────────
 // Frontend posts a rolling sample every 30s. We keep an in-memory ring

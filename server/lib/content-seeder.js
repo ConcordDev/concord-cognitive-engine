@@ -429,6 +429,38 @@ export function seedContent({ db = null } = {}) {
 
 // ── Registry Accessors ────────────────────────────────────────────────────────
 
+/**
+ * Register a user-authored NPC at runtime.
+ *
+ * The platform ships ~24 authored NPCs at startup; this is the surface
+ * that lets the community add more without restarting the server.
+ *
+ * Returns { ok, reason? } — the same shape as validateNpc.
+ *
+ * Importantly: narrative_context.secret stays server-side only. The
+ * narrative-bridge omits secrets when it builds LLM prompts, and any
+ * caller that later passes a secret-bearing context to an oracle
+ * brain is treated as a bug. The composer surfaces this invariant in
+ * the UI as a warning so authors don't put gameplay-sensitive info
+ * into "secret" expecting it to drive dialogue — secrets are for
+ * branch conditions and human authors only.
+ */
+export function addAuthoredNPC(npc) {
+  const v = validateNpc(npc);
+  if (!v.ok) return v;
+  _authoredNPCs.set(npc.id, npc);
+  if (npc.schedule && typeof npc.schedule === "object") {
+    import("./npc-schedules.js")
+      .then(m => m.setNPCSchedule(npc.id, npc.schedule))
+      .catch(err => {
+        if (typeof console !== "undefined") {
+          console.warn("[content-seeder] schedule apply failed", { npcId: npc.id, err: err?.message });
+        }
+      });
+  }
+  return { ok: true };
+}
+
 /** Look up an authored NPC by id. Returns null if not found or not yet seeded. */
 export function getAuthoredNPC(npcId) {
   return _authoredNPCs.get(npcId) ?? null;
