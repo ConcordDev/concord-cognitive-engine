@@ -36,6 +36,44 @@ function uid(prefix = "forge") {
 }
 function nowISO() { return new Date().toISOString(); }
 
+// ── Sanitisation helpers ────────────────────────────────────────────────────
+// User-supplied template specs land verbatim inside generated TypeScript
+// source. Three classes of risk:
+//   1. String literals: backslashes + quotes + newlines must be escaped
+//      OR the generator emits broken code / closes the literal early.
+//   2. Identifiers (function names, route paths, column names): must match
+//      a strict charset OR the generator emits a syntax error / injects code.
+//   3. Object property writes keyed by user input: prototype-pollution risk
+//      if the key is "__proto__" / "constructor" / "prototype".
+// CodeQL flagged all three classes in the absorbed engine; these helpers
+// close them at the generator's entry points.
+const _IDENT_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
+const _ROUTE_RE = /^[A-Za-z0-9_\-]+$/;
+const _UNSAFE_PROTO_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+
+function _escapeStringLiteral(s) {
+  return String(s ?? "")
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/\r/g, "\\r")
+    .replace(/\n/g, "\\n");
+}
+function _safeIdent(s, kind = "identifier") {
+  const v = String(s ?? "");
+  if (!_IDENT_RE.test(v)) throw new Error(`forge: unsafe ${kind} "${v}" — must match ${_IDENT_RE}`);
+  return v;
+}
+function _safeRouteSegment(s) {
+  const v = String(s ?? "");
+  if (!_ROUTE_RE.test(v)) throw new Error(`forge: unsafe route segment "${v}" — must match ${_ROUTE_RE}`);
+  return v;
+}
+function _safePropKey(s) {
+  const v = String(s ?? "");
+  if (_UNSAFE_PROTO_KEYS.has(v)) throw new Error(`forge: refusing to write to prototype-polluting key "${v}"`);
+  return v;
+}
+
 // ── Constants ───────────────────────────────────────────────────────────────
 
 const TEMPLATE_STAGES = ["draft", "preview", "generated", "published"];
@@ -331,7 +369,7 @@ const Config = {
 function generateSection3_Database(spec) {
   const tables = spec.database?.tables || [];
   const tableDefs = tables.map(t => {
-    const idxStr = (t.indexes || []).map(i => `      "${i.replace(/"/g, '\\"')}"`).join(",\n");
+    const idxStr = (t.indexes || []).map(i => `      "${_escapeStringLiteral(i)}"`).join(",\n");
     return `  {
     name: "${t.name}",
     columns: \`${t.columns}\`,
@@ -723,8 +761,9 @@ function generateSection7_Frontend(spec) {
   });
 
   const routeMappings = pages.map(p => {
-    const path = p === "home" ? "/" : `/${p.replace(/_/g, "-")}`;
-    return `  router.get("${path}", (_, res) => res.send(${p}Page()));`;
+    const safeP = _safeIdent(p, "page name");
+    const path = safeP === "home" ? "/" : `/${safeP.replace(/_/g, "-")}`;
+    return `  router.get("${path}", (_, res) => res.send(${safeP}Page()));`;
   }).join("\n");
 
   return `
@@ -874,7 +913,12 @@ function generateSection9_BackgroundJobs(spec) {
 function initBackgroundJobs(): void {}`;
   }
 
-  const jobDefs = jobs.map(j => `  { name: "${j.name}", schedule: "${j.schedule}", handler: async () => { log.info("Job: ${j.name}"); /* TODO: ${j.description} */ } }`).join(",\n");
+  const jobDefs = jobs.map(j => {
+    const name = _escapeStringLiteral(j.name);
+    const schedule = _escapeStringLiteral(j.schedule);
+    const description = _escapeStringLiteral(j.description || "");
+    return `  { name: "${name}", schedule: "${schedule}", handler: async () => { log.info("Job: ${name}"); /* TODO: ${description} */ } }`;
+  }).join(",\n");
 
   return `
 // ============================================================================
@@ -1358,11 +1402,16 @@ export function publishTemplate(id) {
 
 export function getForgeStats() {
   const templates = Array.from(_templates.values());
-  const byStatus = {};
-  const byCategory = {};
+  // Object.create(null) — prototype-less accumulator. Prevents writes to
+  // user-controlled keys from polluting Object.prototype (CodeQL flagged
+  // bracket-write of t.category/t.status as remote-property-injection).
+  const byStatus = Object.create(null);
+  const byCategory = Object.create(null);
   for (const t of templates) {
-    byStatus[t.status] = (byStatus[t.status] || 0) + 1;
-    byCategory[t.category] = (byCategory[t.category] || 0) + 1;
+    const status = _safePropKey(t.status);
+    const category = _safePropKey(t.category);
+    byStatus[status] = (byStatus[status] || 0) + 1;
+    byCategory[category] = (byCategory[category] || 0) + 1;
   }
 
   return {
