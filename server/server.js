@@ -23182,6 +23182,24 @@ register("dtu", "dedupeSweep", async (ctx, input) => {
   return { ok:true, merges, threshold };
 }, { description: "Merge near-duplicate DTUs by similarity; keeps lineage." });
 
+// ── Phase C: dtu.protocol_validate ─────────────────────────────────────────
+// Surfaces the absorbed dtu-protocol.js (canonical envelope/hash spec).
+// Does NOT replace the existing DTU writer pipeline — it's a validator that
+// callers can use to check whether an external/imported DTU conforms to the
+// canonical envelope shape before persistence. Returns { ok, valid, errors,
+// canonicalHash }. Unlike most macros this one is deliberately validation-
+// only (read-shape, no DB writes) so it stays in publicReadDomains.
+import { DTUProtocol as _DTUProtocol, computeContentHash as _computeContentHash } from "./lib/dtu-protocol.js";
+const _dtuProtocol = new _DTUProtocol();
+register("dtu", "protocol_validate", (_ctx, input = {}) => {
+  try {
+    const dtu = input.dtu || input;
+    const result = _dtuProtocol.validate(dtu);
+    const canonicalHash = dtu?.content ? _computeContentHash(dtu.content) : null;
+    return { ok: true, ...result, canonicalHash };
+  } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+}, { description: "Validate an external DTU against the canonical envelope spec; returns errors + canonical content hash." });
+
 // ── Unified Context Engine ─────────────────────────────────────────────────
 // Every lens, entity, and chat interaction uses this to retrieve knowledge
 // across all tiers with diversity guarantees.

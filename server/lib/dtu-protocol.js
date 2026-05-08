@@ -18,7 +18,7 @@
  *   - Serialization is canonical (sorted keys) for deterministic hashing
  */
 
-const { createHash, randomUUID } = require("crypto");
+import { createHash, randomUUID } from "node:crypto";
 
 // ══════════════════════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -473,4 +473,7 @@ class DTUProtocol {
   }
 }
 
-module.exports = DTUProtocol;
+// Phase C — converted from CommonJS to ESM. Original `module.exports`
+// retained as named + default export for callers that want either form.
+export default DTUProtocol;
+export { DTUProtocol, canonicalStringify, computeContentHash, generateId };

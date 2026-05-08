@@ -17,7 +17,7 @@
 
 'use strict';
 
-const crypto = require('crypto');
+import crypto from 'node:crypto';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -442,4 +442,5 @@ class ConcordModerate {
   }
 }
 
-module.exports = ConcordModerate;
+export default ConcordModerate;
+export { ConcordModerate };
