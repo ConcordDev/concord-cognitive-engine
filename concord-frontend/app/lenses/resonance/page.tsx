@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
+import { LensShell } from '@/components/lens/LensShell';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -1005,6 +1006,7 @@ export default function ResonanceBoundaryPage() {
   }
 
   return (
+    <LensShell lensId="resonance" asMain={false}>
     <div data-lens-theme="resonance" className="h-[calc(100vh-4rem)] flex flex-col" style={{ background: '#050510' }}>
       {/* Header */}
       <header className="flex items-center justify-between px-6 py-3 border-b border-white/5"
@@ -1458,5 +1460,6 @@ export default function ResonanceBoundaryPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

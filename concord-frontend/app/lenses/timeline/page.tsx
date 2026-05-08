@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState, useCallback, useRef, useMemo } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
+import { LensShell } from '@/components/lens/LensShell';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
@@ -360,6 +361,7 @@ export default function TimelineLensPage() {
     );
   }
   return (
+    <LensShell lensId="timeline" asMain={false}>
     <div data-lens-theme="timeline" className="min-h-full bg-[#18191a]">
       <div className="max-w-7xl mx-auto px-4 pt-4">
         <div className="bg-[#242526] rounded-lg p-3 flex items-center justify-between text-sm">
@@ -1157,5 +1159,6 @@ export default function TimelineLensPage() {
         )}
       </AnimatePresence>
     </div>
+    </LensShell>
   );
 }
