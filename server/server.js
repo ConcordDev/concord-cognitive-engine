@@ -453,6 +453,7 @@ import registerChatRoutes from "./routes/chat.js";
 import registerDomainRoutes from "./routes/domain.js";
 import registerDtuRoutes from "./routes/dtus.js";
 import { registerSaveRoutes } from "./routes/save.js";
+import { registerWorldInviteRoutes } from "./routes/world-invites.js";
 import createEmergentRouter from "./routes/emergent.js";
 import registerOperationRoutes from "./routes/operations.js";
 import createQualiaRouter from "./routes/qualia.js";
@@ -26546,6 +26547,9 @@ registerDtuRoutes(app, { STATE, makeCtx, runMacro, dtuForClient, dtusArray, user
 
 // ---- Save status + manual snapshot (extracted to routes/save.js) ----
 registerSaveRoutes(app, { db, asyncHandler, STATE });
+
+// ---- World invites (extracted to routes/world-invites.js) ----
+registerWorldInviteRoutes(app, { db, asyncHandler, requireAuth });
 
 // ---- Chat + Ask Endpoints (extracted to routes/chat.js) ----
 registerChatRoutes(app, {
