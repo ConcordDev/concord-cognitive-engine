@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useGamepad, type GamepadButton } from '@/hooks/useGamepad';
+import { useConsolePing } from '@/hooks/useConsolePing';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { useSocket } from '@/hooks/useSocket';
@@ -1265,6 +1266,10 @@ export default function WorldLensPage() {
     RT: 'KeyF',      // heavy attack
   };
 
+  // Public console-demand telemetry. Anonymous (UA + optional
+  // gamepad-id only). Fires once per session + once on first gamepad
+  // detection so the public stats page reflects real reach.
+  // Defined before useGamepad so we can pass the flavor in.
   const { connected: gamepadConnected, pad: gamepadInfo, flavor: gamepadFlavor } = useGamepad(
     {
       onConnect: () => {
@@ -1291,6 +1296,7 @@ export default function WorldLensPage() {
     },
     { paused: !exploreShellRef.current /* polling auto-quietens when no shell yet */ }
   );
+  useConsolePing({ gamepadId: gamepadInfo?.id ?? null });
 
   // Skyrim-shape keys: F to toggle fullscreen, P to capture mouse for
   // FPS-style aim. The lens-scoped shortcut won't fire when the user

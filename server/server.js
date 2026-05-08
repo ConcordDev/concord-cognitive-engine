@@ -28730,6 +28730,21 @@ app.post("/api/world/arc-author", requireAuth, asyncHandler(async (req, res) => 
   if (!result.ok) return res.status(400).json(result);
   res.json({ ok: true, arcId: arc.id });
 }));
+// Console / device-class telemetry — public-facing demand counter.
+// Records device class derived from User-Agent (with optional
+// gamepad-id confirmation from the client). Public read so platform
+// holders can see the demand they're not yet serving natively.
+app.post("/api/telemetry/console-ping", express.json({ limit: "2kb" }), asyncHandler(async (req, res) => {
+  const cs = await import("./lib/console-stats.js");
+  const userAgent = req.headers["user-agent"] || "";
+  const gamepadId = String(req.body?.gamepadId || "");
+  const result = cs.recordConsolePing({ userAgent, gamepadId });
+  res.json(result);
+}));
+app.get("/api/telemetry/console-stats", asyncHandler(async (_req, res) => {
+  const cs = await import("./lib/console-stats.js");
+  res.json({ ok: true, ...cs.getConsoleStats() });
+}));
 
 // ── Performance telemetry: aggregate FPS / frame budget breaches ──────────
 // Frontend posts a rolling sample every 30s. We keep an in-memory ring
