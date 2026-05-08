@@ -271,7 +271,7 @@ export default function registerBillingActions(registerLensAction) {
         const remainingRevenue = totalValue - proRataRevenue;
         const monthlyRecognition = remainingMonths > 0 ? Math.round((remainingRevenue / remainingMonths) * 100) / 100 : 0;
 
-        let currentDate = new Date(recognitionDate);
+        const currentDate = new Date(recognitionDate);
         for (let m = 0; m < remainingMonths && m < 36; m++) {
           const monthStart = new Date(currentDate);
           monthStart.setMonth(monthStart.getMonth() + m);

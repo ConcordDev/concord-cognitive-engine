@@ -351,7 +351,7 @@ class ComponentRegistry {
     requirements.keywords = keywords;
 
     // Match packages
-    let results = Array.from(this.packages.values()).filter(pkg => !pkg.deprecated);
+    const results = Array.from(this.packages.values()).filter(pkg => !pkg.deprecated);
     const scored = results.map(pkg => {
       let score = 0;
       if (requirements.materials.length && requirements.materials.includes(pkg.material)) score += 3;

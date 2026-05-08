@@ -251,7 +251,7 @@ export default function registerArtistryActions(registerLensAction) {
 
     const scored = styles.map((style) => {
       let score = 0;
-      let matchedKeywords = [];
+      const matchedKeywords = [];
 
       for (const kw of style.keywords) {
         if (inputStr.includes(kw)) {

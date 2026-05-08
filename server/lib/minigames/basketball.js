@@ -109,7 +109,7 @@ export function recordShot(db, matchId, { shooterId, shooterPos, hitRim = false,
     VALUES (?, ?, ?, ?, ?)
   `).run(_newId(), matchId, shooterId, eventKind, JSON.stringify({ distance, points }));
 
-  let scoresUpdated = JSON.parse(m.scores_json);
+  const scoresUpdated = JSON.parse(m.scores_json);
   scoresUpdated[shooterId] = (scoresUpdated[shooterId] || 0) + points;
   db.prepare(`UPDATE minigame_matches SET scores_json = ? WHERE id = ?`).run(JSON.stringify(scoresUpdated), matchId);
 

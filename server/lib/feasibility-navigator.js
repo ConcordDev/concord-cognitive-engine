@@ -69,7 +69,7 @@ function* iterateStore(store) {
     }
     if (typeof store[Symbol.iterator] === 'function') {
       for (const v of store) yield v;
-      return;
+      
     }
   } catch (_e) { /* swallow */ }
 }

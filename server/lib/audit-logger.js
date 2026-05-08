@@ -33,12 +33,12 @@ function ensureStream() {
     if (!fs.existsSync(LOG_DIR)) fs.mkdirSync(LOG_DIR, { recursive: true });
     logStream = fs.createWriteStream(LOG_FILE, { flags: "a", encoding: "utf8" });
     logStream.on("error", (err) => {
-      // eslint-disable-next-line no-console
+       
       console.error("[audit-logger] stream error:", err.message);
       logStream = null;
     });
   } catch (err) {
-    // eslint-disable-next-line no-console
+     
     console.error("[audit-logger] could not open log file:", err.message);
   }
 }

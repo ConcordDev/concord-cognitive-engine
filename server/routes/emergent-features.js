@@ -127,7 +127,7 @@ export default function createEmergentFeaturesRouter({ STATE, requireAuth } = {}
   const router = Router();
 
   function _userId(req) {
-    // eslint-disable-next-line no-restricted-syntax
+     
     // eslint-disable-next-line no-restricted-syntax
     return req.user?.userId ?? req.actor?.userId ?? req.body?.userId ?? null; // safe: target-identifier
   }

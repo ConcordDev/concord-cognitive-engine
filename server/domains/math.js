@@ -125,9 +125,9 @@ export default function registerMathActions(registerLensAction) {
       const r1 = M1.length, c1 = M1[0].length, c2 = M2[0].length;
       const result = Array.from({ length: r1 }, () => new Array(c2).fill(0));
       for (let i = 0; i < r1; i++)
-        for (let j = 0; j < c2; j++)
-          for (let k = 0; k < c1; k++)
-            result[i][j] += M1[i][k] * M2[k][j];
+        {for (let j = 0; j < c2; j++)
+          {for (let k = 0; k < c1; k++)
+            {result[i][j] += M1[i][k] * M2[k][j];}}}
       return result;
     }
 
@@ -234,9 +234,9 @@ export default function registerMathActions(registerLensAction) {
           Q = multiply(R, Qm.map(row => [...row]));
           // Extract from the correct orientation
           const temp = Array.from({ length: n }, () => new Array(n).fill(0));
-          for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+          for (let i = 0; i < n; i++) {for (let j = 0; j < n; j++) {
             for (let k = 0; k < n; k++) temp[i][j] += R[i][k] * Qm[k][j];
-          }
+          }}
           Q = temp;
         }
         const eigenvalues = Array.from({ length: rows }, (_, i) => r(Q[i][i]));

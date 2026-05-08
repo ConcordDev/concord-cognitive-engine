@@ -9,10 +9,10 @@ function makeMockDb() {
     prepare: (sql) => ({
       run: (...args) => rows.push({ sql, args }),
       all: (...args) => {
-        if (sql.includes("emergent_activity_feed")) return rows.filter(r => r.sql?.includes("emergent_activity_feed")).map(r => ({
+        if (sql.includes("emergent_activity_feed")) {return rows.filter(r => r.sql?.includes("emergent_activity_feed")).map(r => ({
           id: r.args[0], emergent_id: r.args[1], event_type: r.args[2],
           event_data: r.args[3], created_at: r.args[4],
-        }));
+        }));}
         return [];
       },
     }),

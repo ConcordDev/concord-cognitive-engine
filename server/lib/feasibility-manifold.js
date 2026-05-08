@@ -502,7 +502,7 @@ export { tokenize, flattenPoint, invariantFamily, heuristicViolates, invariantSl
 
 // Module-level metrics — a thin wrapper so callers that don't hold a
 // reference to a FeasibilityManifold instance can still report basics.
-let _moduleMetrics = { instancesCreated: 0 };
+const _moduleMetrics = { instancesCreated: 0 };
 const _origCreate = createFeasibilityManifold;
 export function getMetrics() {
   return { ..._moduleMetrics };

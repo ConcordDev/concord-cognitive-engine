@@ -80,7 +80,7 @@ export function updateMarketPrice(db, worldId, resourceId, supplyDelta, demandDe
   const basePrice = BASE_PRICES[resourceId] ?? 10;
 
   // Fetch existing row or start with defaults
-  let row = db.prepare(
+  const row = db.prepare(
     'SELECT * FROM world_market WHERE world_id = ? AND resource_id = ?'
   ).get(worldId, resourceId);
 

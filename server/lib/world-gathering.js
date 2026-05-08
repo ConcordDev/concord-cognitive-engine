@@ -277,7 +277,7 @@ export function respawnExpiredNodes(db) {
     WHERE is_depleted = 1 AND respawn_at IS NOT NULL AND respawn_at <= ?
   `).run(now);
   if (result.changes > 0)
-    logger.debug('world-gathering', 'nodes_respawned', { count: result.changes });
+    {logger.debug('world-gathering', 'nodes_respawned', { count: result.changes });}
   return result.changes;
 }
 

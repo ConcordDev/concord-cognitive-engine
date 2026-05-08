@@ -304,7 +304,7 @@ function vecNorm(v) {
 export function powerIteration(matrix, { iterations = 100, tolerance = 1e-8 } = {}) {
   const n = matrix.length;
   let v = new Array(n).fill(0).map(() => Math.random() + 0.5);
-  let norm = vecNorm(v);
+  const norm = vecNorm(v);
   v = v.map((x) => x / norm);
   let lambda = 0;
   let converged = false;
@@ -352,7 +352,7 @@ export function gradientDescent(
 ) {
   let x = Array.isArray(x0) ? x0.slice() : [x0];
   const isScalar = !Array.isArray(x0);
-  let history = [];
+  const history = [];
   let converged = false;
   let iter = 0;
   for (iter = 1; iter <= iterations; iter++) {

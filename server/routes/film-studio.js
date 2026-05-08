@@ -140,7 +140,7 @@ export default function createFilmStudioRouter({ db, requireAuth }) {
   });
 
   router.get("/:filmDtuId/preview/analytics", (req, res) => {
-    // eslint-disable-next-line no-restricted-syntax
+     
     // eslint-disable-next-line no-restricted-syntax
     const creatorId = req.user?.id || req.query.creatorId; // safe: public-filter
     const result = getPreviewAnalytics(db, req.params.filmDtuId, creatorId);
@@ -309,7 +309,7 @@ export default function createFilmStudioRouter({ db, requireAuth }) {
 
   // ─── Creator Analytics ────────────────────────────────────────────
 
-  // eslint-disable-next-line no-restricted-syntax
+   
   router.get("/analytics/creator", (req, res) => {
     // eslint-disable-next-line no-restricted-syntax
     const creatorId = req.user?.id || req.query.creatorId; // safe: public-filter

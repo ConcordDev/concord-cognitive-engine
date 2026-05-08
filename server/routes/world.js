@@ -195,7 +195,7 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
   const router = Router();
 
   function _userId(req) {
-    // eslint-disable-next-line no-restricted-syntax
+     
     // eslint-disable-next-line no-restricted-syntax
     return req.user?.userId ?? req.actor?.userId ?? req.body?.userId ?? null; // safe: target-identifier
   }
@@ -427,7 +427,7 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
   // ── Progression ──────────────────────────────────────────────────────────
 
   // GET /progression/me — get mastery profile for the authenticated user
-  // eslint-disable-next-line no-restricted-syntax
+   
   router.get("/progression/me", wrap((req, res) => {
     // eslint-disable-next-line no-restricted-syntax
     const userId = _userId(req) || req.user?.id || req.query.userId; // safe: public-filter

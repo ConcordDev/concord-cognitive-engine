@@ -6,7 +6,7 @@ export function up(db) {
   const npcCols = db.prepare("PRAGMA table_info(world_npcs)").all().map(c => c.name);
   const addNpcCol = (col, def) => {
     if (!npcCols.includes(col))
-      db.prepare(`ALTER TABLE world_npcs ADD COLUMN ${col} ${def}`).run();
+      {db.prepare(`ALTER TABLE world_npcs ADD COLUMN ${col} ${def}`).run();}
   };
   addNpcCol('wealth_sparks',      'REAL    DEFAULT 0');
   addNpcCol('gear_level',         'INTEGER DEFAULT 1');

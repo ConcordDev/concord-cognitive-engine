@@ -47,8 +47,8 @@ describe("spreadsheet.eval — formula grid", () => {
       if (!s || !e) return [];
       const out = [];
       for (let row = s.row; row <= e.row; row++)
-        for (let col = s.col; col <= e.col; col++)
-          out.push(cellAt(col, row));
+        {for (let col = s.col; col <= e.col; col++)
+          {out.push(cellAt(col, row));}}
       return out;
     };
     const evalF = (f) => {
@@ -67,12 +67,12 @@ describe("spreadsheet.eval — formula grid", () => {
       }
       return "#NAME?";
     };
-    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    for (let r = 0; r < rows; r++) {for (let c = 0; c < cols; c++) {
       const v = values[r][c];
       if (typeof v === "string" && v.startsWith("=")) {
         try { values[r][c] = evalF(v); } catch (e) { errors.push(`R${r+1}C${c+1}: ${e?.message}`); values[r][c] = "#ERR"; }
       }
-    }
+    }}
     return { ok: true, values, errors };
   }
 

@@ -19,7 +19,7 @@ export default function registerAnonActions(registerLensAction) {
     const k = params.k || 3;
 
     // Auto-detect quasi-identifiers if not specified
-    let qids = artifact.data?.quasiIdentifiers || [];
+    const qids = artifact.data?.quasiIdentifiers || [];
     const sensitiveFields = new Set(artifact.data?.sensitiveFields || []);
 
     if (qids.length === 0) {

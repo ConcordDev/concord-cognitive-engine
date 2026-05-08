@@ -71,11 +71,11 @@ export function up(db) {
   // Track per-visit position and swim state (written on movement, read by gather).
   const visitCols = db.prepare('PRAGMA table_info(world_visits)').all().map(c => c.name);
   if (!visitCols.includes('is_swimming'))
-    db.prepare('ALTER TABLE world_visits ADD COLUMN is_swimming INTEGER DEFAULT 0').run();
+    {db.prepare('ALTER TABLE world_visits ADD COLUMN is_swimming INTEGER DEFAULT 0').run();}
   if (!visitCols.includes('swim_depth'))
-    db.prepare('ALTER TABLE world_visits ADD COLUMN swim_depth  REAL    DEFAULT 0').run();
+    {db.prepare('ALTER TABLE world_visits ADD COLUMN swim_depth  REAL    DEFAULT 0').run();}
   if (!visitCols.includes('last_position'))
-    db.prepare('ALTER TABLE world_visits ADD COLUMN last_position TEXT   DEFAULT "{}"').run();
+    {db.prepare('ALTER TABLE world_visits ADD COLUMN last_position TEXT   DEFAULT "{}"').run();}
 }
 
 export function down(db) {

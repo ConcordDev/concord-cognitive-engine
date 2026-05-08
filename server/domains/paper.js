@@ -29,7 +29,7 @@ export default function registerPaperActions(registerLensAction) {
     const syllableCount = w => {
       const word = w.toLowerCase().replace(/[^a-z]/g, "");
       if (word.length <= 3) return 1;
-      let count = word.replace(/(?:[^laeiouy]es|ed|[^laeiouy]e)$/, "").match(/[aeiouy]{1,2}/g);
+      const count = word.replace(/(?:[^laeiouy]es|ed|[^laeiouy]e)$/, "").match(/[aeiouy]{1,2}/g);
       return count ? count.length : 1;
     };
     const totalSyllables = words.reduce((s, w) => s + syllableCount(w), 0);

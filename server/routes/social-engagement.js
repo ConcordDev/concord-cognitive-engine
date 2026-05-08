@@ -69,7 +69,7 @@ export default function createSocialEngagementRoutes({ db, requireAuth }) {
   // ── Helpers ─────────────────────────────────────────────────────────────────
 
   function resolveUserId(req) {
-    // eslint-disable-next-line no-restricted-syntax
+     
     // eslint-disable-next-line no-restricted-syntax
     return req.user?.id || req.body?.userId || req.query?.userId || "anonymous"; // safe: target-identifier
   }

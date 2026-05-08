@@ -48,7 +48,7 @@ function nowISO() { return new Date().toISOString(); }
 // CodeQL flagged all three classes in the absorbed engine; these helpers
 // close them at the generator's entry points.
 const _IDENT_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
-const _ROUTE_RE = /^[A-Za-z0-9_\-]+$/;
+const _ROUTE_RE = /^[A-Za-z0-9_-]+$/;
 const _UNSAFE_PROTO_KEYS = new Set(["__proto__", "constructor", "prototype"]);
 
 function _escapeStringLiteral(s) {
@@ -1402,17 +1402,22 @@ export function publishTemplate(id) {
 
 export function getForgeStats() {
   const templates = Array.from(_templates.values());
-  // Object.create(null) — prototype-less accumulator. Prevents writes to
-  // user-controlled keys from polluting Object.prototype (CodeQL flagged
-  // bracket-write of t.category/t.status as remote-property-injection).
-  const byStatus = Object.create(null);
-  const byCategory = Object.create(null);
+  // Use Map<string,number> for the accumulators. CodeQL does not trace
+  // through the _safePropKey guard for bracket-writes, so it kept flagging
+  // the previous Object.create(null) form even though prototype pollution
+  // was already impossible. Map.set() doesn't trip the alert and the
+  // Object.fromEntries(...) at the end serialises cleanly to the same
+  // public shape.
+  const byStatusMap = new Map();
+  const byCategoryMap = new Map();
   for (const t of templates) {
     const status = _safePropKey(t.status);
     const category = _safePropKey(t.category);
-    byStatus[status] = (byStatus[status] || 0) + 1;
-    byCategory[category] = (byCategory[category] || 0) + 1;
+    byStatusMap.set(status, (byStatusMap.get(status) || 0) + 1);
+    byCategoryMap.set(category, (byCategoryMap.get(category) || 0) + 1);
   }
+  const byStatus = Object.fromEntries(byStatusMap);
+  const byCategory = Object.fromEntries(byCategoryMap);
 
   return {
     ok: true,

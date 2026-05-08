@@ -120,7 +120,7 @@ async function main() {
   console.log(`[cartograph] wrote ${jsonPath} (${stable.length} bytes)`);
 
   if (flags.diff) {
-    return await runDiff(jsonPath, stable);
+    return runDiff(jsonPath, stable);
   }
 
   if (!flags.jsonOnly) {

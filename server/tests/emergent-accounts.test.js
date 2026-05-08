@@ -27,7 +27,7 @@ function canWithdrawToFiat(accountId) {
 
 function createMockDb() {
   const accounts = [];
-  let txIdCounter = 0;
+  const txIdCounter = 0;
   const ledgerEntries = [];
   const refIdMap = {};
 

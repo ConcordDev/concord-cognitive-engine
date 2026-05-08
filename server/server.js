@@ -11774,7 +11774,7 @@ function archiveDTUToDisk(dtu) {
         `INSERT OR REPLACE INTO archived_dtus (id, data, tier, consolidated_into, archived_at) VALUES (?, ?, ?, ?, ?)`
       );
       stmt.run(dtu.id, JSON.stringify(dtu), dtu.tier || "regular", dtu.meta?.consolidatedInto || null, new Date().toISOString());
-      return;
+      
     }
   } catch (e) { structuredLog("error", "archive_dtu_to_disk_failed", { id: dtu?.id, error: String(e) }); }
 }
@@ -26917,7 +26917,7 @@ function startHeartbeat() {
     // ── v5.8: Biological Systems Tick (every 3rd tick ~30s) ────────────────
     // Wire all 12 emergent modules into the heartbeat for living biology
     if (_heartbeatTickCount % 3 !== 0) { /* skip biology this tick */ }
-    else try {
+    else {try {
       const entities = STATE.__emergent
         ? Array.from(STATE.__emergent.emergents.values()).filter(e => e.active)
         : [];
@@ -26946,7 +26946,7 @@ function startHeartbeat() {
       if (_heartbeatCount % 5 === 0) {
         try { runDriftScan(STATE); } catch (_e) { logger.debug('server', 'silent', { error: _e?.message }); }
       }
-    } catch (err) { console.error('[system] Biological systems tick error:', err); }
+    } catch (err) { console.error('[system] Biological systems tick error:', err); }}
 
     // Plugin system tick — runs tick() on all loaded plugins.
     // tickPlugins is async and enforces a per-plugin timeout so one
@@ -33804,7 +33804,7 @@ app.get("/api/shadow/dtus/:id/context", asyncHandler(async (req, res) => {
 app.post("/api/shadow/dtus/:id/interact", asyncHandler(async (req, res) => {
   const result = recordShadowInteraction(STATE, req.params.id, {
     type: req.body?.type,
-    // eslint-disable-next-line no-restricted-syntax
+     
     // eslint-disable-next-line no-restricted-syntax
     userId: req.body?.userId, // safe: target-identifier
     claim: req.body?.claim,
@@ -41602,12 +41602,12 @@ app.post("/api/cache", asyncHandler(async (req, res) => res.json(await runMacro(
 app.delete("/api/cache", asyncHandler(async (req, res) => res.json(await runMacro("cache", "invalidate", req.body, makeCtx(req)))));
 app.get("/api/cache/stats", asyncHandler(async (req, res) => res.json(await runMacro("cache", "stats", {}, makeCtx(req)))));
 app.post("/api/cache/clear", asyncHandler(async (req, res) => res.json(await runMacro("cache", "clear", {}, makeCtx(req)))));
-// eslint-disable-next-line no-restricted-syntax
+ 
 // eslint-disable-next-line no-restricted-syntax
 app.get("/api/shard/route", asyncHandler(async (req, res) => res.json(await runMacro("shard", "route", { userId: req.query.userId, orgId: req.query.orgId }, makeCtx(req))))); // safe: public-filter
 app.get("/api/shard/stats", asyncHandler(async (req, res) => res.json(await runMacro("shard", "stats", {}, makeCtx(req)))));
 app.post("/api/governor/configure", asyncHandler(async (req, res) => res.json(await runMacro("governor", "configure", req.body, makeCtx(req)))));
-// eslint-disable-next-line no-restricted-syntax
+ 
 // eslint-disable-next-line no-restricted-syntax
 app.get("/api/governor/check", asyncHandler(async (req, res) => res.json(await runMacro("governor", "check", { userId: req.query.userId, action: req.query.action }, makeCtx(req))))); // safe: public-filter
 app.get("/api/perf/metrics", asyncHandler(async (req, res) => res.json(await runMacro("perf", "metrics", {}, makeCtx(req)))));
@@ -43173,7 +43173,7 @@ app.post("/api/workspaces/:id/members", (req, res) => {
     // an invite, not a self-action), but the inviter must be authenticated.
     const inviterId = req.user?.id;
     if (!inviterId) return res.status(401).json({ ok: false, error: "Authentication required" });
-    // eslint-disable-next-line no-restricted-syntax
+     
     // eslint-disable-next-line no-restricted-syntax
     const result = addWorkspaceMember(req.params.id, req.body.userId, req.body.role, { inviterId }); // safe: target-identifier
     res.json(result);
@@ -43399,7 +43399,7 @@ app.get("/api/shared/:token", (req, res) => {
 // ---- Wave 4: Activity Log ----
 app.get("/api/activity", (req, res) => {
   const result = getActivityLog({
-    // eslint-disable-next-line no-restricted-syntax
+     
     // eslint-disable-next-line no-restricted-syntax
     userId: req.query.userId, // safe: public-filter
     action: req.query.action,
@@ -43444,7 +43444,7 @@ app.get("/api/sw-config", (req, res) => {
 });
 
 app.get("/api/onboarding", (req, res) => {
-  // eslint-disable-next-line no-restricted-syntax
+   
   // eslint-disable-next-line no-restricted-syntax
   const userId = req.user?.id || req.query.userId || "anonymous"; // safe: public-filter
   res.json(getOnboardingProgress(userId));
@@ -45948,7 +45948,7 @@ app.get("/api/economy/status", (req, res) => {
 // GET /api/economy/balance — return wallet balance for current user (marketplace)
 app.get("/api/economy/balance", (req, res) => {
   ensureEconomicState();
-  // eslint-disable-next-line no-restricted-syntax
+   
   // eslint-disable-next-line no-restricted-syntax
   const userId = req.user?.id || req.query.user_id || "default"; // safe: admin-only
   const wallet = STATE.economic?.wallets?.get(userId);
@@ -46705,7 +46705,7 @@ app.get("/api/global/feed/:lensId", (req, res) => {
   const lensId = String(req.params.lensId || "").toLowerCase();
   const { limit = 50, offset = 0 } = req.query;
 
-  let feed = Array.from(STATE.dtus?.values() || [])
+  const feed = Array.from(STATE.dtus?.values() || [])
     .filter(d => d.scope === "global" && !isShadowDTU(d))
     .filter(d => {
       // Match by published lens, tags, or domain
@@ -47116,7 +47116,7 @@ app.get("/api/social/following/:userId", (req, res) => {
 });
 
 app.get("/api/social/feed", (req, res) => {
-  // eslint-disable-next-line no-restricted-syntax
+   
   // eslint-disable-next-line no-restricted-syntax
   try { res.json(getFeed(STATE, req.user?.id || req.query.userId, { limit: Number(req.query.limit || 30), offset: Number(req.query.offset || 0) })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } // safe: public-filter
 });
@@ -47128,7 +47128,7 @@ app.get("/api/social/trending", (req, res) => {
 // Social analytics + trending extensions
 app.get("/api/social/analytics/creator", (req, res) => {
   try {
-    // eslint-disable-next-line no-restricted-syntax
+     
     // eslint-disable-next-line no-restricted-syntax
     const userId = req.user?.id || req.query.userId || "anon"; // safe: public-filter
     const profile = getProfile(STATE, userId);
@@ -47254,7 +47254,7 @@ app.post("/api/social/react", requireAuth(), (req, res) => {
 
 app.get("/api/social/reactions/:postId", (req, res) => {
   try {
-    // eslint-disable-next-line no-restricted-syntax
+     
     // eslint-disable-next-line no-restricted-syntax
     const currentUserId = req.user?.id || req.query.userId || null; // safe: public-filter
     res.json(socialGetReactions(STATE, req.params.postId, currentUserId));
@@ -47302,7 +47302,7 @@ app.post("/api/social/bookmark", requireAuth(), (req, res) => {
 
 app.get("/api/social/bookmarks", (req, res) => {
   try {
-    // eslint-disable-next-line no-restricted-syntax
+     
     // eslint-disable-next-line no-restricted-syntax
     const userId = req.user?.id || req.query.userId || "anon"; // safe: public-filter
     res.json(socialGetUserBookmarks(STATE, userId, { limit: Number(req.query.limit || 30), offset: Number(req.query.offset || 0) }));
@@ -47312,7 +47312,7 @@ app.get("/api/social/bookmarks", (req, res) => {
 // ---- Social Feeds (For-You, Following, Explore) ----
 app.get("/api/social/feed/foryou", (req, res) => {
   try {
-    // eslint-disable-next-line no-restricted-syntax
+     
     // eslint-disable-next-line no-restricted-syntax
     const userId = req.user?.id || req.query.userId || "anon"; // safe: public-filter
     res.json(getForYouFeed(STATE, userId, { limit: Number(req.query.limit || 30), offset: Number(req.query.offset || 0) }));
@@ -47321,7 +47321,7 @@ app.get("/api/social/feed/foryou", (req, res) => {
 
 app.get("/api/social/feed/following", (req, res) => {
   try {
-    // eslint-disable-next-line no-restricted-syntax
+     
     // eslint-disable-next-line no-restricted-syntax
     const userId = req.user?.id || req.query.userId || "anon"; // safe: public-filter
     res.json(getFollowingFeed(STATE, userId, { limit: Number(req.query.limit || 30), offset: Number(req.query.offset || 0) }));
@@ -47338,7 +47338,7 @@ app.get("/api/social/feed/explore", (req, res) => {
 app.post("/api/social/dm", requireAuth(), (req, res) => {
   try {
     const fromUserId = req.user?.id || req.actor?.userId || "anon";
-    // eslint-disable-next-line no-restricted-syntax
+     
     // eslint-disable-next-line no-restricted-syntax
     res.json(socialSendMessage(STATE, { fromUserId, toUserId: req.body?.toUserId, content: req.body?.content, mediaUrl: req.body?.mediaUrl })); // safe: target-identifier
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
@@ -47373,7 +47373,7 @@ app.post("/api/social/dm/:conversationId/read", requireAuth(), (req, res) => {
 // ---- Social Stories ----
 app.get("/api/social/stories", (req, res) => {
   try {
-    // eslint-disable-next-line no-restricted-syntax
+     
     // eslint-disable-next-line no-restricted-syntax
     const userId = req.user?.id || req.query.userId || "anon"; // safe: public-filter
     res.json(getActiveStories(STATE, userId));
@@ -47486,13 +47486,13 @@ app.get("/api/collab/workspace/:id", (req, res) => {
 });
 
 app.get("/api/collab/workspaces", (req, res) => {
-  // eslint-disable-next-line no-restricted-syntax
+   
   // eslint-disable-next-line no-restricted-syntax
   try { res.json(collabListWorkspaces(STATE, req.user?.id || req.query.userId)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } // safe: public-filter
 });
 
 app.post("/api/collab/workspace/:id/member", (req, res) => {
-  // eslint-disable-next-line no-restricted-syntax
+   
   // eslint-disable-next-line no-restricted-syntax
   try { res.json(collabAddWorkspaceMember(STATE, req.params.id, req.body?.userId, req.body?.role, req.user?.id)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } // safe: target-identifier
 });
@@ -47563,7 +47563,7 @@ app.get("/api/collab/metrics", (req, res) => {
 
 // ---- RBAC & Enterprise Access Controls ----
 app.post("/api/rbac/org", (req, res) => {
-  // eslint-disable-next-line no-restricted-syntax
+   
   // eslint-disable-next-line no-restricted-syntax
   try { res.json(createOrgWorkspace(STATE, { ...req.body, ownerId: req.body?.ownerId || req.user?.id })); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } // safe: target-identifier
 });
@@ -47573,13 +47573,13 @@ app.get("/api/rbac/org/:orgId", (req, res) => {
 });
 
 app.post("/api/rbac/role", requireAuth(), (req, res) => {
-  // eslint-disable-next-line no-restricted-syntax
+   
   // eslint-disable-next-line no-restricted-syntax
   try { res.json(assignRole(STATE, req.body?.orgId, req.body?.userId, req.body?.role, req.user?.id)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } // safe: target-identifier
 });
 
 app.delete("/api/rbac/role", requireAuth(), (req, res) => {
-  // eslint-disable-next-line no-restricted-syntax
+   
   // eslint-disable-next-line no-restricted-syntax
   try { res.json(revokeRole(STATE, req.body?.orgId, req.body?.userId, req.user?.id)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } // safe: target-identifier
 });
@@ -47597,7 +47597,7 @@ app.get("/api/rbac/permissions/:orgId/:userId", (req, res) => {
 });
 
 app.post("/api/rbac/check-permission", (req, res) => {
-  // eslint-disable-next-line no-restricted-syntax
+   
   // eslint-disable-next-line no-restricted-syntax
   try { res.json(checkPermission(STATE, req.body?.orgId, req.body?.userId, req.body?.permission)); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } // safe: target-identifier
 });
@@ -49481,7 +49481,7 @@ app.get("/api/freshness/batch", (req, res) => {
   const limit = Math.min(Number(lim) || 50, 200);
   const all = dtusArray();
 
-  let pool = domain ? all.filter(d => (d.tags || []).includes(String(domain))) : all;
+  const pool = domain ? all.filter(d => (d.tags || []).includes(String(domain))) : all;
 
   const scored = pool.map(d => ({
     id: d.id,
@@ -49659,7 +49659,7 @@ app.post("/api/capture/quick", asyncHandler(async (req, res) => {
   const trimmed = String(content).trim();
 
   // Auto-detect domain from content using utility brain (fast, background)
-  let detectedTags = Array.isArray(userTags) ? [...userTags] : [];
+  const detectedTags = Array.isArray(userTags) ? [...userTags] : [];
   if (detectedTags.length === 0) {
     // Quick heuristic domain detection (no brain call needed)
     const domainKeywords = {
@@ -51521,7 +51521,7 @@ async function bloomGarden(gardenId) {
   const dtus = garden.dtus.slice(0, 15).map(id => STATE.dtus.get(id)).filter(Boolean);
   const titles = dtus.map(d => d.title || "untitled").join(", ");
 
-  let insight = {
+  const insight = {
     content: `Garden "${garden.name}" contains ${garden.dtus.length} DTUs around the theme "${garden.theme}". Key topics: ${titles}`,
     generatedAt: new Date().toISOString(),
   };
@@ -52211,7 +52211,7 @@ function setSubscription(userId, tier) {
 }
 
 app.get("/api/subscription", (req, res) => {
-  // eslint-disable-next-line no-restricted-syntax
+   
   // eslint-disable-next-line no-restricted-syntax
   const sub = getSubscription(req.query.userId); // safe: public-filter
   res.json({ ok: true, ...sub, details: SUBSCRIPTION_TIERS[sub.tier] });
@@ -52361,14 +52361,14 @@ function updateCognitiveDigitalTwin(userId) {
 // Digital Twin API routes
 app.get("/api/twin", (req, res) => {
   try {
-    // eslint-disable-next-line no-restricted-syntax
+     
     // eslint-disable-next-line no-restricted-syntax
     const userId = req.user?.id || req.query.userId || "default"; // safe: public-filter
     let twin = STATE.cognitiveDigitalTwins?.get(userId);
     if (!twin) twin = updateCognitiveDigitalTwin(userId);
     res.json({ ok: true, twin });
   } catch (e) {
-    // eslint-disable-next-line no-restricted-syntax
+     
     // eslint-disable-next-line no-restricted-syntax
     res.status(500).json({ ok: false, error: String(e?.message || e), twin: { userId: req.query.userId || "default", insights: [], patterns: [] } }); // safe: public-filter
   }
@@ -52387,7 +52387,7 @@ app.post("/api/twin/update", (req, res) => {
 });
 
 app.get("/api/twin/circadian", (req, res) => {
-  // eslint-disable-next-line no-restricted-syntax
+   
   // eslint-disable-next-line no-restricted-syntax
   const userId = req.user?.id || req.query.userId || "default"; // safe: public-filter
   const twin = STATE.cognitiveDigitalTwins.get(userId) || initializeTwin(userId);
@@ -53656,7 +53656,7 @@ function recordCost(userId, brainName, tokensIn, tokensOut, durationMs) {
 }
 
 app.get("/api/rate-limits", (req, res) => {
-  // eslint-disable-next-line no-restricted-syntax
+   
   // eslint-disable-next-line no-restricted-syntax
   const userId = req.user?.id || req.query.userId || "default"; // safe: public-filter
   const limits = STATE._rateLimits.get(userId);
@@ -53666,7 +53666,7 @@ app.get("/api/rate-limits", (req, res) => {
 });
 
 app.get("/api/costs", (req, res) => {
-  // eslint-disable-next-line no-restricted-syntax
+   
   // eslint-disable-next-line no-restricted-syntax
   const userId = req.user?.id || req.query.userId || "default"; // safe: public-filter
   const account = STATE._costAccounting.get(userId) || { daily: {}, total: 0, calls: [] };
@@ -54221,7 +54221,7 @@ function getAdaptiveLayout(userId) {
 }
 
 app.get("/api/adaptive/layout", (req, res) => {
-  // eslint-disable-next-line no-restricted-syntax
+   
   // eslint-disable-next-line no-restricted-syntax
   res.json({ ok: true, ...getAdaptiveLayout(req.user?.id || req.query.userId) }); // safe: public-filter
 });
@@ -54403,13 +54403,13 @@ app.post("/api/compile", async (req, res) => {
 // Connects emergent governance agents with knowledge organisms (DTU swarms).
 // Emergents validate organism output; organisms provide domain expertise to emergents.
 
-if (!STATE._bridge) STATE._bridge = {
+if (!STATE._bridge) {STATE._bridge = {
   log: [],           // Interaction history (bounded)
   quarantine: [],    // DTUs rejected by governance
   birthCerts: [],    // Organism birth certificates
   deathRecords: [],  // Organism death records
   debates: [],       // Bridge debates
-};
+};}
 
 const BRIDGE_MAX_LOG = 500;
 const BRIDGE_MAX_QUARANTINE = 200;

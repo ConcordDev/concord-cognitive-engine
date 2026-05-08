@@ -180,7 +180,7 @@ export default function registerCommandCenterActions(registerLensAction) {
         const keysB = Object.keys(b._attrs);
         const allKeys = new Set([...keysA, ...keysB]);
         let sharedValues = 0;
-        let totalKeys = allKeys.size;
+        const totalKeys = allKeys.size;
         const matchedAttrs = [];
 
         for (const key of allKeys) {

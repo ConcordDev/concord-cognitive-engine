@@ -13,6 +13,7 @@
     "test:behavior": "node --test --test-force-exit --test-timeout=120000 tests/behavior/lens-behavior-smoke.behavior.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "lint:ci": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",
     "check-deps": "node scripts/check-emergent-deps.js",
     "migrate": "node migrate.js",
@@ -24,6 +25,11 @@
     "cartograph:static": "node scripts/cartograph.js --static",
     "cartograph:diff": "node scripts/cartograph.js --static --diff",
     "cartograph:graph": "node scripts/cartograph.js --static && (which dot >/dev/null 2>&1 && dot -Tsvg ../audit/cartograph/systems-graph.dot -o ../audit/cartograph/systems-graph.svg && echo 'systems-graph.svg rendered' || echo 'graphviz dot not on PATH; .dot source committed')"
+  },
+  "lint-staged": {
+    "*.{js,mjs,cjs}": [
+      "eslint --fix --max-warnings=0"
+    ]
   },
   "dependencies": {
     "@sentry/node": "^10.50.0",

@@ -494,7 +494,7 @@ export function purchaseArtifact(db, { buyerId, artifactId, tier, requestId, ip 
   let concordDeduction = 0;
   if (concordSplit) {
     // Concord split also counts against the 30% cap
-    let concordAllowance = Math.round((maxRoyaltyPool - totalCascade) * 100) / 100;
+    const concordAllowance = Math.round((maxRoyaltyPool - totalCascade) * 100) / 100;
     if (concordAllowance > 0) {
       concordDeduction = Math.min(concordSplit.totalConcordRoyalty, concordAllowance);
       // Proportionally adjust passthrough payments if capped

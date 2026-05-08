@@ -345,7 +345,7 @@ export function runFEA(input) {
     const nodeIdx = Math.floor(i / DOF_PER_NODE);
     const dofLocal = i % DOF_PER_NODE;
     const dofName = Object.keys(DOF_MAP)[dofLocal];
-    let rxnForce = 0;
+    const rxnForce = 0;
     for (let j = 0; j < size; j++) {
       // K_original was mutated; use u to back-compute (penalty row = large value * u[i])
       // Since we penalized, reaction ≈ K[i*size+i] * u[i] which ≈ 0 for constrained

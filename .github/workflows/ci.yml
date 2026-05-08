@@ -36,10 +36,10 @@ jobs:
         working-directory: ./concord-frontend
         run: npm ci || (sleep 5 && npm ci) || (sleep 10 && npm ci)
 
-      - name: Lint server
+      - name: Lint server (zero-warnings gate)
         id: lint_server
         working-directory: ./server
-        run: npm run lint
+        run: npm run lint:ci
 
       - name: Typecheck server
         id: typecheck_server

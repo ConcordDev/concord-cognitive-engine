@@ -364,7 +364,7 @@ export function runContextHarvest(STATE, opts = {}) {
 
 // ── Metrics ──────────────────────────────────────────────────────────────────
 
-let _harvestMetrics = {
+const _harvestMetrics = {
   totalHarvests: 0,
   avgWorkingSetSize: 0,
   summariesAvailable: 0,

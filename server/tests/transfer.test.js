@@ -48,7 +48,7 @@ const MOCK_PLATFORM_ACCOUNT_ID = "__PLATFORM__";
 
 const mockValidateAmount = (amount) => {
   if (typeof amount !== "number" || !Number.isFinite(amount))
-    return { ok: false, error: "amount_must_be_number" };
+    {return { ok: false, error: "amount_must_be_number" };}
   if (amount < 0.01) return { ok: false, error: "amount_below_minimum", min: 0.01 };
   if (amount > 1_000_000) return { ok: false, error: "amount_exceeds_maximum", max: 1_000_000 };
   return { ok: true };
@@ -402,7 +402,7 @@ describe("executeTransfer", () => {
 
   it("handles idempotent result inside transaction (dupe check)", () => {
     // First call: not processed. Inside transaction: processed.
-    let callCount = 0;
+    const callCount = 0;
     const origMock = mockCheckRefIdProcessed;
     const savedResult = mockCheckRefIdResult;
     // Override: first call returns false, second returns true
@@ -411,7 +411,7 @@ describe("executeTransfer", () => {
     mockCheckRefIdResult = { exists: false };
 
     // Monkey-patch for this test: after first invocation, flip
-    let firstCall = true;
+    const firstCall = true;
     const origFn = mockCheckRefIdProcessed;
 
     // Redefine _executeTransfer inline to test the inner dupe path
