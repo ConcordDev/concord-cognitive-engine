@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useState, useCallback } from 'react';
 import { UniversalActions } from '@/components/lens/UniversalActions';
@@ -442,6 +443,7 @@ export default function CryptoLensPage() {
 
   return (
     <LensShell lensId="crypto" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="crypto" className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">

@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery } from '@tanstack/react-query';
@@ -223,6 +224,7 @@ export default function GameDesignPage() {
 
   return (
     <LensShell lensId="game-design" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="game-design" className="min-h-screen">
       <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
         {/* Header */}

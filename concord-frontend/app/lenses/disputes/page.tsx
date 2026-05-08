@@ -10,6 +10,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -709,6 +710,7 @@ export default function DisputesPage() {
 
   return (
     <LensShell lensId="disputes" asMain={false}>
+      <ManifestActionBar />
     <div className={ds.pageContainer}>
       {/* Header */}
       <div className={ds.sectionHeader}>

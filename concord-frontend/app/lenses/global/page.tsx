@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Search, ChevronsLeft, ChevronsRight, RefreshCw, Globe, TrendingUp, Map, Loader2, BarChart3, Network, GitBranch } from 'lucide-react';
@@ -161,6 +162,7 @@ export default function GlobalLensPage() {
 
   return (
     <LensShell lensId="global" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="global" className="p-6 space-y-5">
       <motion.header
         initial={{ opacity: 0, y: -10 }}

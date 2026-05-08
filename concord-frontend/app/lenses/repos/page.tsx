@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery } from '@tanstack/react-query';
@@ -234,6 +235,7 @@ export default function ReposLensPage() {
   }
   return (
     <LensShell lensId="repos" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="repos" className="min-h-full bg-[#0d1117]">
       {/* Header */}
       <header className="bg-[#161b22] border-b border-gray-700">

@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 
 import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 interface CreatorSummary {
   dtuCount: number;
   listingCount: number;
@@ -177,6 +178,7 @@ export default function CreatorDashboardPage() {
 
   return (
     <LensShell lensId="creator" asMain={false}>
+      <ManifestActionBar />
     <div className="min-h-screen bg-[#0b0f17] text-gray-100 p-6">
       <header className="mb-6">
         <h1 className="text-3xl font-semibold text-amber-300">Creator Dashboard</h1>

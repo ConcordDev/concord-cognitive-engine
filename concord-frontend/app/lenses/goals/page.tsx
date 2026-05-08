@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -440,6 +441,7 @@ export default function GoalsLensPage() {
   }
   return (
     <LensShell lensId="goals" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="goals" className="p-6 space-y-6 max-w-5xl mx-auto">
       {/* ---- Header ---- */}
       <header className="flex items-center justify-between flex-wrap gap-3">

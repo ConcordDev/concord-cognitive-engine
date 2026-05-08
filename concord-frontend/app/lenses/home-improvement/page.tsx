@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -212,6 +213,7 @@ export default function HomeImprovementLensPage() {
 
   return (
     <LensShell lensId="home-improvement" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="home-improvement" className="p-6 space-y-6">
       <motion.header
         initial={{ opacity: 0, y: -10 }}

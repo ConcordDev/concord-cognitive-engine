@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { use70Lock } from '@/hooks/use70Lock';
 import { useState } from 'react';
 import {
@@ -151,6 +152,7 @@ export default function LockLensPage() {
   }
   return (
     <LensShell lensId="lock" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="lock" className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">

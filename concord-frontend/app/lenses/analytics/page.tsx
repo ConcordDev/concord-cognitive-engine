@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
@@ -260,6 +261,7 @@ export default function AnalyticsPage() {
 
   return (
     <LensShell lensId="analytics" asMain={false}>
+      <ManifestActionBar />
     <div className="min-h-screen bg-lattice-void text-white">
       {/* Header */}
       <header className="bg-lattice-surface border-b border-lattice-border">

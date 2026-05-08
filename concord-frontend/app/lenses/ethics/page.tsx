@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -767,6 +768,7 @@ export default function EthicsLensPage() {
 
   return (
     <LensShell lensId="ethics" asMain={false}>
+      <ManifestActionBar />
     <LensPageShell
       domain="ethics"
       title="Ethics"

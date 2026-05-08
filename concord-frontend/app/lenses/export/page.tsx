@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { useState } from 'react';
@@ -186,6 +187,7 @@ export default function ExportLensPage() {
 
   return (
     <LensShell lensId="export" asMain={false}>
+      <ManifestActionBar />
     <div className="p-6 space-y-6">
       <header className="flex items-center gap-3">
         <Download className="w-7 h-7 text-neon-green" />

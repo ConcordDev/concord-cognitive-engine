@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
@@ -118,6 +119,7 @@ export default function QueueLensPage() {
   }
   return (
     <LensShell lensId="queue" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="queue" className="p-6 space-y-6">
       <header className="flex items-center gap-3">
         <span className="text-2xl">📥</span>

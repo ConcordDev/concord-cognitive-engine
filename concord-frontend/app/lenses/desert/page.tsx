@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -170,6 +171,7 @@ export default function DesertLensPage() {
 
   return (
     <LensShell lensId="desert" asMain={false}>
+      <ManifestActionBar />
     <LensPageShell
       domain="desert"
       title="Desert Operations"

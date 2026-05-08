@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
@@ -226,6 +227,7 @@ export default function CommonsenseLensPage() {
 
   return (
     <LensShell lensId="commonsense" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="commonsense" className="p-6 space-y-6">
       {/* Header */}
       <header className="flex items-center justify-between">

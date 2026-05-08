@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { api } from '@/lib/api/client';
@@ -157,6 +158,7 @@ export default function BridgeLens() {
 
   return (
     <LensShell lensId="bridge" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="bridge" className="min-h-screen bg-zinc-950 text-zinc-100 p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">

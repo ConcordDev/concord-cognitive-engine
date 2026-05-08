@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -155,6 +156,7 @@ export default function VeterinaryLensPage() {
 
   return (
     <LensShell lensId="veterinary" asMain={false}>
+      <ManifestActionBar />
     <LensPageShell
       domain="veterinary"
       title="Veterinary Medicine"

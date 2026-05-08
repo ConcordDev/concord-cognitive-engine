@@ -3,6 +3,7 @@
 import dynamic from 'next/dynamic';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useState, useCallback } from 'react';
@@ -167,6 +168,7 @@ export default function GeologyLensPage() {
 
   return (
     <LensShell lensId="geology" asMain={false}>
+      <ManifestActionBar />
     <LensPageShell
       domain="geology"
       title="Geology Lens"

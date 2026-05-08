@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import dynamic from 'next/dynamic';
 
 const TrustGraphView = dynamic(
@@ -44,6 +45,7 @@ export default function FederationPage() {
 
   return (
     <LensShell lensId="federation" asMain={false}>
+      <ManifestActionBar />
     <div className="min-h-screen bg-[#0b0f17] text-gray-100 p-6">
       <header className="mb-6">
         <h1 className="text-3xl font-semibold text-amber-300">Federation</h1>

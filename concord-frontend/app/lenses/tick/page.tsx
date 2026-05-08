@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
@@ -533,6 +534,7 @@ export default function TickLensPage() {
 
   return (
     <LensShell lensId="tick" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="tick" className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-4">

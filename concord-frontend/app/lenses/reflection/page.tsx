@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useState, useEffect, useMemo } from 'react';
@@ -119,6 +120,7 @@ export default function ReflectionLensPage() {
   }
   return (
     <LensShell lensId="reflection" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="reflection" className="p-6 space-y-6">
       <header className="flex items-center gap-3">
         <span className="text-2xl">🪞</span>

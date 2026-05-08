@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -174,6 +175,7 @@ export default function UrbanPlanningLensPage() {
 
   return (
     <LensShell lensId="urban-planning" asMain={false}>
+      <ManifestActionBar />
     <LensPageShell
       domain="urban-planning"
       title="Urban Planning"

@@ -19,6 +19,7 @@
 
 import { useState, useEffect } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import {
   Atom,
@@ -502,6 +503,7 @@ export default function AnswersLensPage() {
 
   return (
     <LensShell lensId="answers" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="answers" className={cn(ds.pageContainer, 'space-y-6')}>
       {/* ── Header ─────────────────────────────────────────────────── */}
       <header className="space-y-4">

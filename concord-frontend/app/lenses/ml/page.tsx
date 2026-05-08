@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -415,6 +416,7 @@ export default function MLLensPage() {
   }
   return (
     <LensShell lensId="ml" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="ml" className="p-6 space-y-6">
       {/* Header */}
       <header className="flex items-center justify-between">

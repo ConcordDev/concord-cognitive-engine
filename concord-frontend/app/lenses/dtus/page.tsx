@@ -13,6 +13,7 @@
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -155,6 +156,7 @@ export default function DTUBrowserPage() {
 
   return (
     <LensShell lensId="dtus" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="dtus" className="min-h-screen bg-lattice-void text-white">
       {/* Header */}
       <header className="sticky top-0 z-30 bg-lattice-surface/80 backdrop-blur border-b border-lattice-border">

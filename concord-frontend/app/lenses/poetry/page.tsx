@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -388,6 +389,7 @@ export default function PoetryPage() {
 
   return (
     <LensShell lensId="poetry" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="poetry" className="min-h-screen">
       {/* Reading Mode Overlay */}
       <AnimatePresence>

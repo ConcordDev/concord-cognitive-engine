@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery } from '@tanstack/react-query';
 import { useRunArtifact, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { api } from '@/lib/api/client';
@@ -343,6 +344,7 @@ export default function EngineeringPage() {
 
   return (
     <LensShell lensId="engineering" asMain={false}>
+      <ManifestActionBar />
     <div className="min-h-screen bg-lattice-void text-white p-4 space-y-4 max-w-6xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between">

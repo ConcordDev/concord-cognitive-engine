@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { Upload, FileJson, Database, Check, AlertTriangle, Loader2, FileText, Archive, RefreshCw, Layers, ChevronDown, Clock, CheckCircle2, Download, BarChart3, Map, Search, GitMerge } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -420,6 +421,7 @@ export default function ImportLens() {
   }
   return (
     <LensShell lensId="import" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="import" className="lens-container">
       <div className="lens-header">
         <div className="flex items-center gap-3">

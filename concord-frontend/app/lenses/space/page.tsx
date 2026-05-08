@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -259,6 +260,7 @@ export default function SpaceLensPage() {
 
   return (
     <LensShell lensId="space" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="space" className={cn(ds.pageContainer, 'space-y-4')}>
 
       {/* ── Header with starfield gradient ── */}

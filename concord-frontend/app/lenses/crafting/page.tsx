@@ -6,6 +6,7 @@
 import { useEffect, useState } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import dynamic from 'next/dynamic';
 import { api } from '@/lib/api/client';
 import { Hammer, ShoppingBag, Plus, Loader2, Flame, Sparkles } from 'lucide-react';
@@ -171,6 +172,7 @@ export default function CraftingPage() {
 
   return (
     <LensShell lensId="crafting" asMain={false}>
+      <ManifestActionBar />
     <main className="min-h-screen p-6 max-w-4xl mx-auto text-white">
       <header className="flex items-center gap-3 mb-6">
         <Hammer className="w-7 h-7 text-amber-400" />

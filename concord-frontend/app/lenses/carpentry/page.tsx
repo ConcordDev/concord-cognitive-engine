@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ds } from '@/lib/design-system';
@@ -623,6 +624,7 @@ export default function CarpentryLensPage() {
 
   return (
     <LensShell lensId="carpentry" asMain={false}>
+      <ManifestActionBar />
     <LensPageShell
       domain="carpentry"
       title="Carpentry"

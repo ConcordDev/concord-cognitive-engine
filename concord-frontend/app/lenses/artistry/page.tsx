@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import dynamic from 'next/dynamic';
 
 const Excalidraw = dynamic(
@@ -162,6 +163,7 @@ export default function ArtistryLensPage() {
 
   return (
     <LensShell lensId="artistry" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="artistry" className="min-h-screen">
       <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
         {/* Header */}

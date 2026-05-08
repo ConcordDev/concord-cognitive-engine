@@ -2,7 +2,7 @@
 
 _Source for the `Current Wiring Status` section in CLAUDE.md. Human merges; cartographer never auto-rewrites CLAUDE.md._
 
-Generated 2026-05-08T13:33:09.976Z.
+Generated 2026-05-08T17:55:36.053Z.
 
 ## Heartbeat-registered modules
 

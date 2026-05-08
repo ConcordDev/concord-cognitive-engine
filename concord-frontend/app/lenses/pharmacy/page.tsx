@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useState } from 'react';
@@ -141,6 +142,7 @@ export default function PharmacyLensPage() {
 
   return (
     <LensShell lensId="pharmacy" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="pharmacy" className="p-6 space-y-6">
       {/* Disclaimer */}
       <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3 flex items-start gap-3">

@@ -18,12 +18,14 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { Hammer, Sparkles } from 'lucide-react';
 import ForgeWorkbench from '@/components/forge/ForgeWorkbench';
 
 export default function ForgeLensPage() {
   return (
     <LensShell lensId="forge" asMain={false}>
+      <ManifestActionBar />
     <main className="min-h-screen bg-gradient-to-br from-slate-950 via-zinc-950 to-amber-950/10 text-slate-100">
       <motion.header
         initial={{ opacity: 0, y: -8 }}

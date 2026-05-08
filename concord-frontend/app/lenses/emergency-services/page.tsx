@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
@@ -201,6 +202,7 @@ export default function EmergencyServicesLensPage() {
 
   return (
     <LensShell lensId="emergency-services" asMain={false}>
+      <ManifestActionBar />
     <LensPageShell
       domain="emergency-services"
       title="Emergency Services"

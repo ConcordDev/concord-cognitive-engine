@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -282,6 +283,7 @@ export default function CreativeWritingPage() {
 
   return (
     <LensShell lensId="creative-writing" asMain={false}>
+      <ManifestActionBar />
     <div data-lens-theme="creative-writing" className="min-h-screen">
       {/* Focus mode exit button */}
       <AnimatePresence>

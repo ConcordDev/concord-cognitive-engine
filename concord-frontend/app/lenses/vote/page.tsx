@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { apiHelpers } from '@/lib/api/client';
@@ -193,6 +194,7 @@ export default function VoteLensPage() {
 
   return (
     <LensShell lensId="vote" asMain={false}>
+      <ManifestActionBar />
     <div className="p-6 space-y-6">
       {/* Header */}
       <header className="flex items-center justify-between">

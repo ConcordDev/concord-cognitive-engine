@@ -20,6 +20,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { Swords, RotateCcw, Plus, Minus } from 'lucide-react';
@@ -266,6 +267,7 @@ function CombatSandboxInner() {
 export default function CombatSandboxPage() {
   return (
     <LensShell lensId="sandbox" asMain={false}>
+      <ManifestActionBar />
     <Suspense fallback={<div className="h-screen w-screen bg-slate-900" />}>
       <CombatSandboxInner />
     </Suspense>
