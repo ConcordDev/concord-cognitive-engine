@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -229,6 +230,35 @@ export default function GameLensPage() {
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('game');
 
   const [activeTab, setActiveTab] = useState<MainTab>('dashboard');
+
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+
+  useLensCommand(
+
+    [
+
+      { id: 'tab-dashboard', keys: 'd', description: 'Dashboard', category: 'navigation', action: () => setActiveTab('dashboard') },
+
+      { id: 'tab-skills', keys: 's', description: 'Skills', category: 'navigation', action: () => setActiveTab('skills') },
+
+      { id: 'tab-quests', keys: 'q', description: 'Quests', category: 'navigation', action: () => setActiveTab('quests') },
+
+      { id: 'tab-achievements', keys: 'a', description: 'Achievements', category: 'navigation', action: () => setActiveTab('achievements') },
+
+      { id: 'tab-leaderboard', keys: 'l', description: 'Leaderboard', category: 'navigation', action: () => setActiveTab('leaderboard') },
+
+      { id: 'tab-shop', keys: 'h', description: 'Shop', category: 'navigation', action: () => setActiveTab('shop') },
+
+      { id: 'tab-history', keys: 'i', description: 'History', category: 'navigation', action: () => setActiveTab('history') },
+
+      { id: 'tab-minigame', keys: 'm', description: 'Minigame', category: 'navigation', action: () => setActiveTab('minigame') },
+
+    ],
+
+    { lensId: 'game' }
+
+  );
   const [lbPeriod, setLbPeriod] = useState<LeaderboardPeriod>('alltime');
   const { items: shopLensItems, update: updateShopItem } = useLensData<ShopItem>('game', 'shop-item', { noSeed: true });
 

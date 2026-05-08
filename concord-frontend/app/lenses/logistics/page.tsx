@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { useState, useMemo, useCallback } from 'react';
 import dynamic from 'next/dynamic';
@@ -227,6 +228,20 @@ function StatCard({
 // ---------------------------------------------------------------------------
 export default function LogisticsLensPage() {
   const [mode, setMode] = useState<ModeTab>('fleet');
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+  useLensCommand(
+    [
+      { id: 'tab-shipments', keys: 's', description: 'Shipments', category: 'navigation', action: () => setMode('shipments') },
+      { id: 'tab-routes', keys: 'r', description: 'Routes', category: 'navigation', action: () => setMode('routes') },
+      { id: 'tab-fleet', keys: 'f', description: 'Fleet', category: 'navigation', action: () => setMode('fleet') },
+      { id: 'tab-drivers', keys: 'd', description: 'Drivers', category: 'navigation', action: () => setMode('drivers') },
+      { id: 'tab-warehouse', keys: 'w', description: 'Warehouse', category: 'navigation', action: () => setMode('warehouse') },
+      { id: 'tab-compliance', keys: 'c', description: 'Compliance', category: 'navigation', action: () => setMode('compliance') },
+      { id: 'tab-map', keys: 'm', description: 'Map', category: 'navigation', action: () => setMode('map') },
+    ],
+    { lensId: 'logistics' }
+  );
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [editing, setEditing] = useState<string | null>(null);

@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { UniversalActions } from '@/components/lens/UniversalActions';
@@ -68,6 +69,16 @@ export default function FashionLensPage() {
   useLensNav('fashion');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('fashion');
   const [tab, setTab] = useState<Tab>('wardrobe');
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+  useLensCommand(
+    [
+      { id: 'tab-wardrobe', keys: 'w', description: 'Wardrobe', category: 'navigation', action: () => setTab('wardrobe') },
+      { id: 'tab-outfits', keys: 'o', description: 'Outfits', category: 'navigation', action: () => setTab('outfits') },
+      { id: 'tab-wishlist', keys: 'i', description: 'Wishlist', category: 'navigation', action: () => setTab('wishlist') },
+    ],
+    { lensId: 'fashion' }
+  );
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [search, setSearch] = useState('');
   const [catFilter, setCatFilter] = useState('');

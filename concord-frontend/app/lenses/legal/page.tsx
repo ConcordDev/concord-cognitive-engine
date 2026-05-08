@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
 import { useState, useMemo, useCallback } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ds } from '@/lib/design-system';
@@ -434,6 +435,35 @@ export default function LegalLensPage() {
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('legal');
 
   const [activeTab, setActiveTab] = useState<ModeTab>('Dashboard');
+
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+
+  useLensCommand(
+
+    [
+
+      { id: 'tab-dashboard', keys: 'd', description: 'Dashboard', category: 'navigation', action: () => setActiveTab('Dashboard') },
+
+      { id: 'tab-cases', keys: 'c', description: 'Cases', category: 'navigation', action: () => setActiveTab('Cases') },
+
+      { id: 'tab-documents', keys: 'o', description: 'Documents', category: 'navigation', action: () => setActiveTab('Documents') },
+
+      { id: 'tab-timebilling', keys: 't', description: 'TimeBilling', category: 'navigation', action: () => setActiveTab('TimeBilling') },
+
+      { id: 'tab-calendar', keys: 'a', description: 'Calendar', category: 'navigation', action: () => setActiveTab('Calendar') },
+
+      { id: 'tab-contacts', keys: 'n', description: 'Contacts', category: 'navigation', action: () => setActiveTab('Contacts') },
+
+      { id: 'tab-contracts', keys: 'r', description: 'Contracts', category: 'navigation', action: () => setActiveTab('Contracts') },
+
+      { id: 'tab-compliance', keys: 'm', description: 'Compliance', category: 'navigation', action: () => setActiveTab('Compliance') },
+
+    ],
+
+    { lensId: 'legal' }
+
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [showEditor, setShowEditor] = useState(false);

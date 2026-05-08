@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
@@ -332,6 +333,17 @@ export default function TickLensPage() {
   const [isLive, setIsLive] = useState(true);
   const [tickHistory, setTickHistory] = useState<TickEvent[]>([]);
   const [activeTab, setActiveTab] = useState<TickViewTab>('stream');
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+  useLensCommand(
+    [
+      { id: 'tab-stream', keys: 's', description: 'Stream', category: 'navigation', action: () => setActiveTab('stream') },
+      { id: 'tab-stats', keys: 't', description: 'Stats', category: 'navigation', action: () => setActiveTab('stats') },
+      { id: 'tab-timeline', keys: 'i', description: 'Timeline', category: 'navigation', action: () => setActiveTab('timeline') },
+      { id: 'tab-health', keys: 'h', description: 'Health', category: 'navigation', action: () => setActiveTab('health') },
+    ],
+    { lensId: 'tick' }
+  );
   const [showFeatures, setShowFeatures] = useState(true);
   const { items: tickItems } = useLensData<Record<string, unknown>>('tick', 'heartbeat');
   const runTickAction = useRunArtifact('tick');

@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -135,6 +136,25 @@ export default function RoboticsLensPage() {
   useLensNav('robotics');
 
   const [activeTab, setActiveTab] = useState<'fleet' | 'tasks' | 'diagnostics'>('fleet');
+
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+
+  useLensCommand(
+
+    [
+
+      { id: 'tab-fleet', keys: 'f', description: 'Fleet', category: 'navigation', action: () => setActiveTab('fleet') },
+
+      { id: 'tab-tasks', keys: 't', description: 'Tasks', category: 'navigation', action: () => setActiveTab('tasks') },
+
+      { id: 'tab-diagnostics', keys: 'd', description: 'Diagnostics', category: 'navigation', action: () => setActiveTab('diagnostics') },
+
+    ],
+
+    { lensId: 'robotics' }
+
+  );
   const [showFeatures, setShowFeatures] = useState(true);
   const [expandedRobot, setExpandedRobot] = useState<string | null>(null);
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('robotics');

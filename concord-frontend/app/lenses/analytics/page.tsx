@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -76,6 +77,17 @@ export default function AnalyticsPage() {
     'overview'
   );
 
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+  useLensCommand(
+    [
+      { id: 'tab-overview', keys: 'o', description: 'Overview', category: 'navigation', action: () => setActiveSection('overview') },
+      { id: 'tab-revenue', keys: 'r', description: 'Revenue', category: 'navigation', action: () => setActiveSection('revenue') },
+      { id: 'tab-dtus', keys: 'd', description: 'Dtus', category: 'navigation', action: () => setActiveSection('dtus') },
+      { id: 'tab-actions', keys: 'a', description: 'Actions', category: 'navigation', action: () => setActiveSection('actions') },
+    ],
+    { lensId: 'analytics' }
+  );
   // Backend action wiring
   const runAction = useRunArtifact('analytics');
   const { items: analyticsItems } = useLensData<Record<string, unknown>>('analytics', 'dataset', {

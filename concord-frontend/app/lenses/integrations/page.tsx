@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, apiHelpers } from '@/lib/api/client';
@@ -23,6 +24,16 @@ export default function IntegrationsLensPage() {
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('integrations');
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<'webhooks' | 'automations' | 'services'>('webhooks');
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+  useLensCommand(
+    [
+      { id: 'tab-automations', keys: 'a', description: 'Automations', category: 'navigation', action: () => setActiveTab('automations') },
+      { id: 'tab-webhooks', keys: 'w', description: 'Webhooks', category: 'navigation', action: () => setActiveTab('webhooks') },
+      { id: 'tab-services', keys: 's', description: 'Services', category: 'navigation', action: () => setActiveTab('services') },
+    ],
+    { lensId: 'integrations' }
+  );
   const [showCreate, setShowCreate] = useState(false);
   const [showFeatures, setShowFeatures] = useState(true);
   const [webhookTestResults, setWebhookTestResults] = useState<Record<string, { status: 'loading' | 'success' | 'error'; message: string }>>({});

@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useState, useMemo, useEffect } from 'react';
@@ -101,6 +102,17 @@ export default function MetacognitionLensPage() {
 
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<TabId>('dashboard');
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+  useLensCommand(
+    [
+      { id: 'tab-dashboard', keys: 'd', description: 'Dashboard', category: 'navigation', action: () => setActiveTab('dashboard') },
+      { id: 'tab-introspection', keys: 'i', description: 'Introspection', category: 'navigation', action: () => setActiveTab('introspection') },
+      { id: 'tab-predictions', keys: 'p', description: 'Predictions', category: 'navigation', action: () => setActiveTab('predictions') },
+      { id: 'tab-learning', keys: 'l', description: 'Learning', category: 'navigation', action: () => setActiveTab('learning') },
+    ],
+    { lensId: 'metacognition' }
+  );
   const [predictionClaim, setPredictionClaim] = useState('');
   const [predictionConfidence, setPredictionConfidence] = useState(0.7);
   const [predictionDomain, setPredictionDomain] = useState('');

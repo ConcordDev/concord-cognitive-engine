@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { UniversalActions } from '@/components/lens/UniversalActions';
@@ -108,6 +109,16 @@ export default function HomeImprovementLensPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [showFeatures, setShowFeatures] = useState(true);
   const [activeTab, setActiveTab] = useState<'projects' | 'budget' | 'contractors'>('projects');
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+  useLensCommand(
+    [
+      { id: 'tab-projects', keys: 'p', description: 'Projects', category: 'navigation', action: () => setActiveTab('projects') },
+      { id: 'tab-budget', keys: 'b', description: 'Budget', category: 'navigation', action: () => setActiveTab('budget') },
+      { id: 'tab-contractors', keys: 'c', description: 'Contractors', category: 'navigation', action: () => setActiveTab('contractors') },
+    ],
+    { lensId: 'home-improvement' }
+  );
   const [beforeAfterView, setBeforeAfterView] = useState<'before' | 'after'>('before');
   const [newProject, setNewProject] = useState({ name: '', room: 'Kitchen', priority: 'medium' as 'low' | 'medium' | 'high', budget: 0 });
 

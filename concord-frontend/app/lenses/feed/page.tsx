@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo, useRef } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Virtuoso } from 'react-virtuoso';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -455,6 +456,16 @@ export default function FeedLensPage() {
 
   const [newPost, setNewPost] = useState('');
   const [activeTab, setActiveTab] = useState<FeedTab>('for-you');
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+  useLensCommand(
+    [
+      { id: 'tab-for-you', keys: 'f', description: 'For You', category: 'navigation', action: () => setActiveTab('for-you') },
+      { id: 'tab-trending', keys: 't', description: 'Trending', category: 'navigation', action: () => setActiveTab('trending') },
+      { id: 'tab-releases', keys: 'r', description: 'Releases', category: 'navigation', action: () => setActiveTab('releases') },
+    ],
+    { lensId: 'feed' }
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [showProfile, setShowProfile] = useState(false);
   const composeRef = useRef<HTMLTextAreaElement>(null);

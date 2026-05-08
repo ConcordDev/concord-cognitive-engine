@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -358,6 +359,27 @@ export default function CollabLensPage() {
   });
 
   const [activeTab, setActiveTab] = useState<MainTab>('active');
+
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+
+  useLensCommand(
+
+    [
+
+      { id: 'tab-active', keys: 'a', description: 'Active', category: 'navigation', action: () => setActiveTab('active') },
+
+      { id: 'tab-mine', keys: 'm', description: 'Mine', category: 'navigation', action: () => setActiveTab('mine') },
+
+      { id: 'tab-invitations', keys: 'i', description: 'Invitations', category: 'navigation', action: () => setActiveTab('invitations') },
+
+      { id: 'tab-history', keys: 'h', description: 'History', category: 'navigation', action: () => setActiveTab('history') },
+
+    ],
+
+    { lensId: 'collab' }
+
+  );
   const [filterPill, setFilterPill] = useState<FilterPill>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [activeSession, setActiveSession] = useState<CollabSession | null>(null);

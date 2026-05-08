@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { useQuery } from '@tanstack/react-query';
 import { useRunArtifact, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -131,6 +132,15 @@ const DEFAULT_FEA_MODEL: FEAModel = {
 
 export default function EngineeringPage() {
   const [tab, setTab] = useState<Tab>('Model');
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+  useLensCommand(
+    [
+      { id: 'tab-results', keys: 'r', description: 'Results', category: 'navigation', action: () => setTab('Results') },
+      { id: 'tab-analysis', keys: 'a', description: 'Analysis', category: 'navigation', action: () => setTab('Analysis') },
+    ],
+    { lensId: 'engineering' }
+  );
   const [model, setModel] = useState<FEAModel>(DEFAULT_FEA_MODEL);
   const [feaResult, setFeaResult] = useState<Record<string, unknown> | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);

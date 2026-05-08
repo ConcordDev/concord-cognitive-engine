@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
@@ -85,6 +86,17 @@ export default function InferenceLensPage() {
   const [minorPremise, setMinorPremise] = useState('');
   const [results, setResults] = useState<unknown>(null);
   const [tab, setTab] = useState<'facts' | 'query' | 'syllogism' | 'forward'>('facts');
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+  useLensCommand(
+    [
+      { id: 'tab-facts', keys: 'f', description: 'Facts', category: 'navigation', action: () => setTab('facts') },
+      { id: 'tab-query', keys: 'q', description: 'Query', category: 'navigation', action: () => setTab('query') },
+      { id: 'tab-syllogism', keys: 's', description: 'Syllogism', category: 'navigation', action: () => setTab('syllogism') },
+      { id: 'tab-forward', keys: 'o', description: 'Forward', category: 'navigation', action: () => setTab('forward') },
+    ],
+    { lensId: 'inference' }
+  );
   const [selectedModel, setSelectedModel] = useState('default');
   const [inferenceHistory, setInferenceHistory] = useState<InferenceHistoryEntry[]>([]);
   const [showHistory, setShowHistory] = useState(true);

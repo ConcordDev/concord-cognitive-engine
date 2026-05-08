@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -37,6 +38,25 @@ export default function PharmacyLensPage() {
   useLensNav('pharmacy');
 
   const [activeTab, setActiveTab] = useState<'medications' | 'interactions' | 'refills'>('medications');
+
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+
+  useLensCommand(
+
+    [
+
+      { id: 'tab-medications', keys: 'm', description: 'Medications', category: 'navigation', action: () => setActiveTab('medications') },
+
+      { id: 'tab-interactions', keys: 'i', description: 'Interactions', category: 'navigation', action: () => setActiveTab('interactions') },
+
+      { id: 'tab-refills', keys: 'r', description: 'Refills', category: 'navigation', action: () => setActiveTab('refills') },
+
+    ],
+
+    { lensId: 'pharmacy' }
+
+  );
   const [showFeatures, setShowFeatures] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('pharmacy');

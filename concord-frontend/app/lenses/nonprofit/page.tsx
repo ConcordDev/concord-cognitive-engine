@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
 import { useState, useMemo, useCallback } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ds } from '@/lib/design-system';
@@ -137,6 +138,20 @@ export default function NonprofitLensPage() {
 
   const [showFeatures, setShowFeatures] = useState(true);
   const [mode, setMode] = useState<ModeTab>('dashboard');
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+  useLensCommand(
+    [
+      { id: 'tab-dashboard', keys: 'd', description: 'Dashboard', category: 'navigation', action: () => setMode('dashboard') },
+      { id: 'tab-gifts', keys: 'g', description: 'Gifts', category: 'navigation', action: () => setMode('gifts') },
+      { id: 'tab-grants', keys: 'r', description: 'Grants', category: 'navigation', action: () => setMode('grants') },
+      { id: 'tab-donors', keys: 'o', description: 'Donors', category: 'navigation', action: () => setMode('donors') },
+      { id: 'tab-campaigns', keys: 'c', description: 'Campaigns', category: 'navigation', action: () => setMode('campaigns') },
+      { id: 'tab-volunteers', keys: 'v', description: 'Volunteers', category: 'navigation', action: () => setMode('volunteers') },
+      { id: 'tab-impact', keys: 'i', description: 'Impact', category: 'navigation', action: () => setMode('impact') },
+    ],
+    { lensId: 'nonprofit' }
+  );
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [editing, setEditing] = useState<string | null>(null);

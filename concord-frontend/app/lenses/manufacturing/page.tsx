@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { motion } from 'framer-motion';
 import { LensPageShell } from '@/components/lens/LensPageShell';
@@ -422,6 +423,16 @@ function ScheduleTimeline({ schedule }: { schedule: LensItem }) {
 // ---------------------------------------------------------------------------
 export default function ManufacturingLensPage() {
   const [mode, setMode] = useState<ModeTab>('dashboard');
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+  useLensCommand(
+    [
+      { id: 'tab-work-orders', keys: 'w', description: 'Work Orders', category: 'navigation', action: () => setMode('work_orders') },
+      { id: 'tab-safety', keys: 's', description: 'Safety', category: 'navigation', action: () => setMode('safety') },
+      { id: 'tab-machines', keys: 'm', description: 'Machines', category: 'navigation', action: () => setMode('machines') },
+    ],
+    { lensId: 'manufacturing' }
+  );
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [editing, setEditing] = useState<string | null>(null);

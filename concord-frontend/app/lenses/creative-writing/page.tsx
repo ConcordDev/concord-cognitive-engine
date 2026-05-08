@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useLensDTUs } from '@/hooks/useLensDTUs';
@@ -111,6 +112,27 @@ export default function CreativeWritingPage() {
   }, [workItems, runAction]);
 
   const [tab, setTab] = useState<WritingTab>('works');
+
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+
+  useLensCommand(
+
+    [
+
+      { id: 'tab-editor', keys: 'e', description: 'Editor', category: 'navigation', action: () => setTab('editor') },
+
+      { id: 'tab-works', keys: 'w', description: 'Works', category: 'navigation', action: () => setTab('works') },
+
+      { id: 'tab-prompts', keys: 'p', description: 'Prompts', category: 'navigation', action: () => setTab('prompts') },
+
+      { id: 'tab-workshop', keys: 'o', description: 'Workshop', category: 'navigation', action: () => setTab('workshop') },
+
+    ],
+
+    { lensId: 'creative-writing' }
+
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [showFeatures, setShowFeatures] = useState(true);
   const [genreFilter, setGenreFilter] = useState<WritingGenre | null>(null);

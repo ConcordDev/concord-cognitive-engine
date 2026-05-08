@@ -9,6 +9,7 @@ const Excalidraw = dynamic(
   { ssr: false },
 );
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
@@ -59,6 +60,29 @@ export default function ArtistryLensPage() {
   };
 
   const [tab, setTab] = useState<ArtistryTab>('feed');
+
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+
+  useLensCommand(
+
+    [
+
+      { id: 'tab-marketplace', keys: 'm', description: 'Marketplace', category: 'navigation', action: () => setTab('marketplace') },
+
+      { id: 'tab-studio', keys: 's', description: 'Studio', category: 'navigation', action: () => setTab('studio') },
+
+      { id: 'tab-feed', keys: 'f', description: 'Feed', category: 'navigation', action: () => setTab('feed') },
+
+      { id: 'tab-assets', keys: 'a', description: 'Assets', category: 'navigation', action: () => setTab('assets') },
+
+      { id: 'tab-stats', keys: 't', description: 'Stats', category: 'navigation', action: () => setTab('stats') },
+
+    ],
+
+    { lensId: 'artistry' }
+
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [showFeatures, setShowFeatures] = useState(true);
   const [showUpload, setShowUpload] = useState(false);

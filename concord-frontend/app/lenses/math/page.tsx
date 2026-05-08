@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { useState, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
@@ -180,6 +181,17 @@ export default function MathLensPage() {
 
   /* ─── Active tab ─── */
   const [activeTab, setActiveTab] = useState<'evaluator' | 'solver' | 'formulas' | 'plotter'>('evaluator');
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+  useLensCommand(
+    [
+      { id: 'tab-evaluator', keys: 'e', description: 'Evaluator', category: 'navigation', action: () => setActiveTab('evaluator') },
+      { id: 'tab-solver', keys: 's', description: 'Solver', category: 'navigation', action: () => setActiveTab('solver') },
+      { id: 'tab-formulas', keys: 'f', description: 'Formulas', category: 'navigation', action: () => setActiveTab('formulas') },
+      { id: 'tab-plotter', keys: 'p', description: 'Plotter', category: 'navigation', action: () => setActiveTab('plotter') },
+    ],
+    { lensId: 'math' }
+  );
   const [showFeatures, setShowFeatures] = useState(true);
 
   /* ─── Data from backend ─── */

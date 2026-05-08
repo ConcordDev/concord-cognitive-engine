@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
@@ -465,6 +466,19 @@ export default function ReasoningLensPage() {
 
   // ----- Mode / Tab state -----
   const [mode, setMode] = useState<ModeTab>('arguments');
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+  useLensCommand(
+    [
+      { id: 'tab-arguments', keys: 'a', description: 'Arguments', category: 'navigation', action: () => setMode('arguments') },
+      { id: 'tab-premises', keys: 'p', description: 'Premises', category: 'navigation', action: () => setMode('premises') },
+      { id: 'tab-evidence', keys: 'e', description: 'Evidence', category: 'navigation', action: () => setMode('evidence') },
+      { id: 'tab-fallacies', keys: 'f', description: 'Fallacies', category: 'navigation', action: () => setMode('fallacies') },
+      { id: 'tab-templates', keys: 't', description: 'Templates', category: 'navigation', action: () => setMode('templates') },
+      { id: 'tab-analysis', keys: 'n', description: 'Analysis', category: 'navigation', action: () => setMode('analysis') },
+    ],
+    { lensId: 'reasoning' }
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [showFeatures, setShowFeatures] = useState(true);
 

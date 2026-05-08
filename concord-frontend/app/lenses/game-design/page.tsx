@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -80,6 +81,31 @@ export default function GameDesignPage() {
   });
 
   const [tab, setTab] = useState<DesignTab>('projects');
+
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+
+  useLensCommand(
+
+    [
+
+      { id: 'tab-projects', keys: 'p', description: 'Projects', category: 'navigation', action: () => setTab('projects') },
+
+      { id: 'tab-gdd', keys: 'g', description: 'Gdd', category: 'navigation', action: () => setTab('gdd') },
+
+      { id: 'tab-mechanics', keys: 'm', description: 'Mechanics', category: 'navigation', action: () => setTab('mechanics') },
+
+      { id: 'tab-narrative', keys: 'n', description: 'Narrative', category: 'navigation', action: () => setTab('narrative') },
+
+      { id: 'tab-levels', keys: 'l', description: 'Levels', category: 'navigation', action: () => setTab('levels') },
+
+      { id: 'tab-balance', keys: 'b', description: 'Balance', category: 'navigation', action: () => setTab('balance') },
+
+    ],
+
+    { lensId: 'game-design' }
+
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [showFeatures, setShowFeatures] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);

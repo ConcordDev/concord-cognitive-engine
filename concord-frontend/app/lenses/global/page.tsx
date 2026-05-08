@@ -7,6 +7,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Search, ChevronsLeft, ChevronsRight, RefreshCw, Globe, TrendingUp, Map, Loader2, BarChart3, Network, GitBranch } from 'lucide-react';
 import { apiHelpers } from '@/lib/api/client';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { getCommandPaletteLenses } from '@/lib/lens-registry';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -63,6 +64,17 @@ export default function GlobalLensPage() {
   const [tags, setTags] = useState('');
   const [offset, setOffset] = useState(0);
   const [activeTab, setActiveTab] = useState<'regions' | 'trends' | 'indicators' | 'actions'>('regions');
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+  useLensCommand(
+    [
+      { id: 'tab-regions', keys: 'r', description: 'Regions', category: 'navigation', action: () => setActiveTab('regions') },
+      { id: 'tab-trends', keys: 't', description: 'Trends', category: 'navigation', action: () => setActiveTab('trends') },
+      { id: 'tab-indicators', keys: 'i', description: 'Indicators', category: 'navigation', action: () => setActiveTab('indicators') },
+      { id: 'tab-actions', keys: 'a', description: 'Actions', category: 'navigation', action: () => setActiveTab('actions') },
+    ],
+    { lensId: 'global' }
+  );
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('global');
 
   // --- Action wiring ---

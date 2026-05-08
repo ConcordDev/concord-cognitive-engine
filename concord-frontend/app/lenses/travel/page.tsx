@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import dynamic from 'next/dynamic';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -58,6 +59,17 @@ export default function TravelLensPage() {
   useLensNav('travel');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('travel');
   const [tab, setTab] = useState<ModeTab>('trips');
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+  useLensCommand(
+    [
+      { id: 'tab-trips', keys: 't', description: 'Trips', category: 'navigation', action: () => setTab('trips') },
+      { id: 'tab-packing', keys: 'p', description: 'Packing', category: 'navigation', action: () => setTab('packing') },
+      { id: 'tab-bookings', keys: 'b', description: 'Bookings', category: 'navigation', action: () => setTab('bookings') },
+      { id: 'tab-map', keys: 'm', description: 'Map', category: 'navigation', action: () => setTab('map') },
+    ],
+    { lensId: 'travel' }
+  );
   const [search, setSearch] = useState('');
   const [showCreate, setShowCreate] = useState(false);
   const [showFeatures, setShowFeatures] = useState(true);

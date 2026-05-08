@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
@@ -429,6 +430,16 @@ export default function EnvironmentLensPage() {
   const [showEditor, setShowEditor] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [view, setView] = useState<'library' | 'dashboard' | 'actions'>('library');
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+  useLensCommand(
+    [
+      { id: 'tab-library', keys: 'l', description: 'Library', category: 'navigation', action: () => setView('library') },
+      { id: 'tab-dashboard', keys: 'd', description: 'Dashboard', category: 'navigation', action: () => setView('dashboard') },
+      { id: 'tab-actions', keys: 'a', description: 'Actions', category: 'navigation', action: () => setView('actions') },
+    ],
+    { lensId: 'environment' }
+  );
   const [detailItem, setDetailItem] = useState<string | null>(null);
   const [selectedAction, setSelectedAction] = useState<string | null>(null);
 

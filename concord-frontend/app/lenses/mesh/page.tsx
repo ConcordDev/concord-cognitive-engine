@@ -12,6 +12,7 @@
  */
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
@@ -41,6 +42,17 @@ export default function MeshLensPage() {
   useLensNav('mesh');
   const [activeTab, setActiveTab] = useState<TabKey>('status');
 
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+  useLensCommand(
+    [
+      { id: 'tab-status', keys: 's', description: 'Status', category: 'navigation', action: () => setActiveTab('status') },
+      { id: 'tab-channels', keys: 'c', description: 'Channels', category: 'navigation', action: () => setActiveTab('channels') },
+      { id: 'tab-peers', keys: 'p', description: 'Peers', category: 'navigation', action: () => setActiveTab('peers') },
+      { id: 'tab-transfers', keys: 't', description: 'Transfers', category: 'navigation', action: () => setActiveTab('transfers') },
+    ],
+    { lensId: 'mesh' }
+  );
   const status = useQuery({
     queryKey: ['mesh-status'],
     queryFn: async () => {

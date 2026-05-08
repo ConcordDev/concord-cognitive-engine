@@ -42,6 +42,7 @@ import {
   Clock,
 } from 'lucide-react';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ds } from '@/lib/design-system';
@@ -1128,6 +1129,18 @@ function TransferFlow({
   const [recipientId, setRecipientId] = useState('');
   const [amount, setAmount] = useState('');
   const [step, setStep] = useState<'input' | 'confirm' | 'loading' | 'success' | 'error'>('input');
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+  useLensCommand(
+    [
+      { id: 'tab-loading', keys: 'l', description: 'Loading', category: 'navigation', action: () => setStep('loading') },
+      { id: 'tab-success', keys: 's', description: 'Success', category: 'navigation', action: () => setStep('success') },
+      { id: 'tab-error', keys: 'e', description: 'Error', category: 'navigation', action: () => setStep('error') },
+      { id: 'tab-confirm', keys: 'c', description: 'Confirm', category: 'navigation', action: () => setStep('confirm') },
+      { id: 'tab-input', keys: 'i', description: 'Input', category: 'navigation', action: () => setStep('input') },
+    ],
+    { lensId: 'wallet' }
+  );
   const [errorMessage, setErrorMessage] = useState('');
   const transferAbortRef = useRef<AbortController | null>(null);
 

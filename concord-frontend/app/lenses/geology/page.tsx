@@ -1,6 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -56,6 +57,17 @@ const ROCK_COLORS: Record<RockType, string> = {
 export default function GeologyLensPage() {
   const [activeTab, setActiveTab] = useState<'samples' | 'sites' | 'stratigraphy' | 'map'>(
     'samples'
+  );
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+  useLensCommand(
+    [
+      { id: 'tab-samples', keys: 's', description: 'Samples', category: 'navigation', action: () => setActiveTab('samples') },
+      { id: 'tab-sites', keys: 'i', description: 'Sites', category: 'navigation', action: () => setActiveTab('sites') },
+      { id: 'tab-map', keys: 'm', description: 'Map', category: 'navigation', action: () => setActiveTab('map') },
+      { id: 'tab-stratigraphy', keys: 't', description: 'Stratigraphy', category: 'navigation', action: () => setActiveTab('stratigraphy') },
+    ],
+    { lensId: 'geology' }
   );
   const [searchQuery, setSearchQuery] = useState('');
 

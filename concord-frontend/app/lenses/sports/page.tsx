@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -84,6 +85,25 @@ export default function SportsLensPage() {
   const [sportsActiveAction, setSportsActiveAction] = useState<string | null>(null);
 
   const [tab, setTab] = useState<Tab>('games');
+
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+
+  useLensCommand(
+
+    [
+
+      { id: 'tab-games', keys: 'g', description: 'Games', category: 'navigation', action: () => setTab('games') },
+
+      { id: 'tab-stats', keys: 's', description: 'Stats', category: 'navigation', action: () => setTab('stats') },
+
+      { id: 'tab-training', keys: 't', description: 'Training', category: 'navigation', action: () => setTab('training') },
+
+    ],
+
+    { lensId: 'sports' }
+
+  );
   const [search, setSearch] = useState('');
   const [showCreate, setShowCreate] = useState(false);
   const [showFeatures, setShowFeatures] = useState(true);

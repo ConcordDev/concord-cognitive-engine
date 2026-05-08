@@ -5,6 +5,7 @@ import { LensShell } from '@/components/lens/LensShell';
 import { useState, useMemo, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { ds } from '@/lib/design-system';
 import { UniversalActions } from '@/components/lens/UniversalActions';
@@ -396,6 +397,15 @@ export default function RealEstateLensPage() {
 
   const [showFeatures, setShowFeatures] = useState(true);
   const [activeTab, setActiveTab] = useState<ModeTab>('Dashboard');
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+  useLensCommand(
+    [
+      { id: 'tab-listings', keys: 'l', description: 'Listings', category: 'navigation', action: () => setActiveTab('Listings') },
+      { id: 'tab-transactions', keys: 't', description: 'Transactions', category: 'navigation', action: () => setActiveTab('Transactions') },
+    ],
+    { lensId: 'realestate' }
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [showEditor, setShowEditor] = useState(false);

@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -147,6 +148,18 @@ export default function MLLensPage() {
 
   // State
   const [tab, setTab] = useState<Tab>('models');
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+  useLensCommand(
+    [
+      { id: 'tab-models', keys: 'm', description: 'Models', category: 'navigation', action: () => setTab('models') },
+      { id: 'tab-experiments', keys: 'e', description: 'Experiments', category: 'navigation', action: () => setTab('experiments') },
+      { id: 'tab-datasets', keys: 'd', description: 'Datasets', category: 'navigation', action: () => setTab('datasets') },
+      { id: 'tab-deployments', keys: 'p', description: 'Deployments', category: 'navigation', action: () => setTab('deployments') },
+      { id: 'tab-playground', keys: 'l', description: 'Playground', category: 'navigation', action: () => setTab('playground') },
+    ],
+    { lensId: 'ml' }
+  );
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [search, setSearch] = useState('');
   const [selectedModel, setSelectedModel] = useState<Model | null>(null);

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
@@ -120,6 +121,15 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function DesertLensPage() {
   const [activeMode, setActiveMode] = useState<ModeTab>('Dashboard');
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+  useLensCommand(
+    [
+      { id: 'tab-dashboard', keys: 'd', description: 'Dashboard', category: 'navigation', action: () => setActiveMode('Dashboard') },
+      { id: 'tab-map', keys: 'm', description: 'Map', category: 'navigation', action: () => setActiveMode('Map') },
+    ],
+    { lensId: 'desert' }
+  );
   const [searchQuery, setSearchQuery] = useState('');
 
   const currentType = getTypeForTab(activeMode);

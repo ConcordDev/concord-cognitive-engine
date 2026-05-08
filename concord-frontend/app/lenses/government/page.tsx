@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
 import { useState, useMemo, useCallback } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ds } from '@/lib/design-system';
@@ -588,6 +589,18 @@ export default function GovernmentLensPage() {
 
   const [showFeatures, setShowFeatures] = useState(true);
   const [mode, setMode] = useState<ModeTab>('Permits');
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+  useLensCommand(
+    [
+      { id: 'tab-permits', keys: 'p', description: 'Permits', category: 'navigation', action: () => setMode('Permits') },
+      { id: 'tab-public-works', keys: 'u', description: 'Public Works', category: 'navigation', action: () => setMode('Public Works') },
+      { id: 'tab-code-enforcement', keys: 'c', description: 'Code Enforcement', category: 'navigation', action: () => setMode('Code Enforcement') },
+      { id: 'tab-records', keys: 'r', description: 'Records', category: 'navigation', action: () => setMode('Records') },
+      { id: 'tab-court', keys: 'o', description: 'Court', category: 'navigation', action: () => setMode('Court') },
+    ],
+    { lensId: 'government' }
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showEditor, setShowEditor] = useState(false);

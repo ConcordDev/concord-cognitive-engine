@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
 import { useState, useMemo, useCallback } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
@@ -244,6 +245,27 @@ export default function RetailLensPage() {
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('retail');
 
   const [mode, setMode] = useState<ModeTab>('Products');
+
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+
+  useLensCommand(
+
+    [
+
+      { id: 'tab-products', keys: 'p', description: 'Products', category: 'navigation', action: () => setMode('Products') },
+
+      { id: 'tab-pipeline', keys: 'i', description: 'Pipeline', category: 'navigation', action: () => setMode('Pipeline') },
+
+      { id: 'tab-customers', keys: 'c', description: 'Customers', category: 'navigation', action: () => setMode('Customers') },
+
+      { id: 'tab-support', keys: 's', description: 'Support', category: 'navigation', action: () => setMode('Support') },
+
+    ],
+
+    { lensId: 'retail' }
+
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showEditor, setShowEditor] = useState(false);

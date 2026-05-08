@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -534,6 +535,16 @@ export default function SimLensPage() {
 
   // ── State ──────────────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState<SimTab>('scenarios');
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+  useLensCommand(
+    [
+      { id: 'tab-runs', keys: 'r', description: 'Runs', category: 'navigation', action: () => setActiveTab('runs') },
+      { id: 'tab-results', keys: 'e', description: 'Results', category: 'navigation', action: () => setActiveTab('results') },
+      { id: 'tab-scenarios', keys: 's', description: 'Scenarios', category: 'navigation', action: () => setActiveTab('scenarios') },
+    ],
+    { lensId: 'sim' }
+  );
   const [editingScenario, setEditingScenario] = useState<Scenario | null>(null);
   const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(null);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);

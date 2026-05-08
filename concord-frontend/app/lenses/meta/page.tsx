@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
@@ -1128,6 +1129,20 @@ export default function MetaLensPage() {
   const { isLive, lastUpdated } = useRealtimeLens('meta');
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
 
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+  useLensCommand(
+    [
+      { id: 'tab-overview', keys: 'o', description: 'Overview', category: 'navigation', action: () => setActiveTab('overview') },
+      { id: 'tab-components', keys: 'c', description: 'Components', category: 'navigation', action: () => setActiveTab('components') },
+      { id: 'tab-lenses', keys: 'l', description: 'Lenses', category: 'navigation', action: () => setActiveTab('lenses') },
+      { id: 'tab-orphans', keys: 'r', description: 'Orphans', category: 'navigation', action: () => setActiveTab('orphans') },
+      { id: 'tab-wiring', keys: 'w', description: 'Wiring', category: 'navigation', action: () => setActiveTab('wiring') },
+      { id: 'tab-search', keys: 's', description: 'Search', category: 'navigation', action: () => setActiveTab('search') },
+      { id: 'tab-lens-infra', keys: 'e', description: 'Lens Infra', category: 'navigation', action: () => setActiveTab('lens-infra') },
+    ],
+    { lensId: 'meta' }
+  );
   return (
     <LensShell lensId="meta" asMain={false}>
     <div data-lens-theme="meta" className="p-6 space-y-6">

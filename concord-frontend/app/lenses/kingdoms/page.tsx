@@ -9,6 +9,7 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { Crown, Flag, Hammer, Users, Plus, ChevronRight, AlertTriangle } from 'lucide-react';
 
@@ -46,6 +47,16 @@ interface DecreeKindMeta {
 
 export default function KingdomsPage() {
   const [view, setView] = useState<'list' | 'detail' | 'create'>('list');
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+  useLensCommand(
+    [
+      { id: 'tab-list', keys: 'l', description: 'List', category: 'navigation', action: () => setView('list') },
+      { id: 'tab-create', keys: 'c', description: 'Create', category: 'navigation', action: () => setView('create') },
+      { id: 'tab-detail', keys: 'd', description: 'Detail', category: 'navigation', action: () => setView('detail') },
+    ],
+    { lensId: 'kingdoms' }
+  );
   const [kingdoms, setKingdoms] = useState<Kingdom[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [detail, setDetail] = useState<{ kingdom: Kingdom; decrees: Decree[]; residents: Resident[] } | null>(null);

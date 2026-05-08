@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useLensDTUs } from '@/hooks/useLensDTUs';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -244,6 +245,20 @@ export default function MusicLensPage() {
 
   // ---- View State ----
   const [view, setView] = useState<MusicLensView>('home');
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+  useLensCommand(
+    [
+      { id: 'tab-artist', keys: 'a', description: 'Artist', category: 'navigation', action: () => setView('artist') },
+      { id: 'tab-album', keys: 'l', description: 'Album', category: 'navigation', action: () => setView('album') },
+      { id: 'tab-playlist', keys: 'p', description: 'Playlist', category: 'navigation', action: () => setView('playlist') },
+      { id: 'tab-home', keys: 'h', description: 'Home', category: 'navigation', action: () => setView('home') },
+      { id: 'tab-upload', keys: 'u', description: 'Upload', category: 'navigation', action: () => setView('upload') },
+      { id: 'tab-revenue', keys: 'r', description: 'Revenue', category: 'navigation', action: () => setView('revenue') },
+      { id: 'tab-browse', keys: 'b', description: 'Browse', category: 'navigation', action: () => setView('browse') },
+    ],
+    { lensId: 'music' }
+  );
   const [selectedArtistId, setSelectedArtistId] = useState<string | null>(null);
   const [selectedAlbumId, setSelectedAlbumId] = useState<string | null>(null);
   const [selectedPlaylistId, setSelectedPlaylistId] = useState<string | null>(null);

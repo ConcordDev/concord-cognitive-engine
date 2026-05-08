@@ -15,6 +15,7 @@
  */
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { useQuery } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
@@ -89,6 +90,35 @@ export default function SystemLensPage() {
   useLensNav('system');
 
   const [activeTab, setActiveTab] = useState<'overview' | 'heartbeats' | 'gaps' | 'coverage' | 'drift' | 'analytics' | 'plugins' | 'substrate'>('overview');
+
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+
+  useLensCommand(
+
+    [
+
+      { id: 'tab-overview', keys: 'o', description: 'Overview', category: 'navigation', action: () => setActiveTab('overview') },
+
+      { id: 'tab-heartbeats', keys: 'h', description: 'Heartbeats', category: 'navigation', action: () => setActiveTab('heartbeats') },
+
+      { id: 'tab-gaps', keys: 'g', description: 'Gaps', category: 'navigation', action: () => setActiveTab('gaps') },
+
+      { id: 'tab-coverage', keys: 'c', description: 'Coverage', category: 'navigation', action: () => setActiveTab('coverage') },
+
+      { id: 'tab-drift', keys: 'd', description: 'Drift', category: 'navigation', action: () => setActiveTab('drift') },
+
+      { id: 'tab-analytics', keys: 'a', description: 'Analytics', category: 'navigation', action: () => setActiveTab('analytics') },
+
+      { id: 'tab-plugins', keys: 'p', description: 'Plugins', category: 'navigation', action: () => setActiveTab('plugins') },
+
+      { id: 'tab-substrate', keys: 's', description: 'Substrate', category: 'navigation', action: () => setActiveTab('substrate') },
+
+    ],
+
+    { lensId: 'system' }
+
+  );
   const [coverageFilter, setCoverageFilter] = useState<'all' | 'present' | 'partial' | 'missing'>('all');
   const [refreshKey, setRefreshKey] = useState(0);
 

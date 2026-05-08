@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
@@ -101,6 +102,25 @@ export default function ReposLensPage() {
   };
 
   const [activeTab, setActiveTab] = useState<ActiveTab>('code');
+
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+
+  useLensCommand(
+
+    [
+
+      { id: 'tab-issues', keys: 'i', description: 'Issues', category: 'navigation', action: () => setActiveTab('issues') },
+
+      { id: 'tab-code', keys: 'c', description: 'Code', category: 'navigation', action: () => setActiveTab('code') },
+
+      { id: 'tab-pulls', keys: 'p', description: 'Pulls', category: 'navigation', action: () => setActiveTab('pulls') },
+
+    ],
+
+    { lensId: 'repos' }
+
+  );
   const [selectedRepo, setSelectedRepo] = useState<string | null>(null);
 
   const { data: repos, isLoading, isError: isError, error: error, refetch: refetch,} = useQuery({

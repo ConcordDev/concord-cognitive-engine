@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensData } from '@/lib/hooks/use-lens-data';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useState, useCallback } from 'react';
@@ -66,6 +67,16 @@ const SOURCE_CONFIG: Record<EnergySource, { icon: React.ElementType; color: stri
 export default function EnergyLensPage() {
   const [activeTab, setActiveTab] = useState<'assets' | 'consumption' | 'mix'>('assets');
 
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+  useLensCommand(
+    [
+      { id: 'tab-assets', keys: 'a', description: 'Assets', category: 'navigation', action: () => setActiveTab('assets') },
+      { id: 'tab-consumption', keys: 'c', description: 'Consumption', category: 'navigation', action: () => setActiveTab('consumption') },
+      { id: 'tab-mix', keys: 'm', description: 'Mix', category: 'navigation', action: () => setActiveTab('mix') },
+    ],
+    { lensId: 'energy' }
+  );
   const {
     items: assetItems,
     isLoading,

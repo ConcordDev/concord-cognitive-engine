@@ -17,6 +17,7 @@
  */
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
@@ -35,6 +36,18 @@ export default function WorldmodelLensPage() {
   const qc = useQueryClient();
   const [activeTab, setActiveTab] = useState<TabKey>('status');
 
+
+  // Lens-scoped keyboard commands (auto-wired by codemod).
+  useLensCommand(
+    [
+      { id: 'tab-status', keys: 's', description: 'Status', category: 'navigation', action: () => setActiveTab('status') },
+      { id: 'tab-entities', keys: 'e', description: 'Entities', category: 'navigation', action: () => setActiveTab('entities') },
+      { id: 'tab-relations', keys: 'r', description: 'Relations', category: 'navigation', action: () => setActiveTab('relations') },
+      { id: 'tab-simulate', keys: 'i', description: 'Simulate', category: 'navigation', action: () => setActiveTab('simulate') },
+      { id: 'tab-snapshots', keys: 'n', description: 'Snapshots', category: 'navigation', action: () => setActiveTab('snapshots') },
+    ],
+    { lensId: 'worldmodel' }
+  );
   // ── Status ─────────────────────────────────────────────────────────────
   const status = useQuery({
     queryKey: ['worldmodel-status'],
