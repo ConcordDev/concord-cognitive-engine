@@ -14277,6 +14277,72 @@ async function initGhostFleet() {
     register("understanding", "evolution_stats", () =>
       ({ ok: true, stats: evolve.getEvolutionStats(db) }));
 
+    // Consumer-side unifiers — single entry points for the natural
+    // consumer lenses. Each is a thin wrapper around the consumer helper
+    // (server/lib/understanding-consumers.js) so call sites stay readable.
+    const consumers = await import("./lib/understanding-consumers.js");
+
+    // cognition.understand — the unifier the cognition lens has been
+    // missing. One call composes the typed Understanding instead of
+    // orchestrating hlr/hlm/breakthrough/forgetting/drift by hand.
+    register("cognition", "understand", async (_ctx, input = {}) => {
+      let dtu = input.dtu;
+      if (!dtu && input.subjectId && typeof STATE?.dtus?.get === "function") {
+        dtu = STATE.dtus.get(input.subjectId);
+      }
+      const r = consumers.composeForCognition(db, { ...input, dtu });
+      return r.ok
+        ? { ok: true, understanding: r.understanding, id: r.understanding?.id }
+        : { ok: false, error: r.error };
+    });
+
+    register("cognition", "live_understanding", (_ctx, input = {}) => {
+      const u = consumers.liveUnderstandingForSubject(db, input);
+      return u ? { ok: true, understanding: u } : { ok: true, understanding: null };
+    });
+
+    // forge.verify_constraints — the gate forge.generate calls before
+    // publish. Surfaces constraint blockers as a typed list so the
+    // workbench can refuse to ship a recipe whose stated constraints
+    // aren't met.
+    register("forge", "verify_constraints", (_ctx, input = {}) =>
+      consumers.verifyAgainstConstraints(db, input, { persist: !!input.persist }));
+
+    // council.understanding_for_proposal — vote-prep helper. Surfaces
+    // gaps + contradictions to voters BEFORE the ballot opens so they
+    // don't vote on incoherent proposals.
+    register("council", "understanding_for_proposal", async (_ctx, input = {}) => {
+      const subjectId = input.proposalId || input.subjectId;
+      if (!subjectId) return { ok: false, error: "proposalId_required" };
+      let dtu = input.dtu;
+      if (!dtu && typeof STATE?.dtus?.get === "function") {
+        dtu = STATE.dtus.get(subjectId);
+      }
+      const r = consumers.composeForCognition(db, {
+        subjectId, subjectKind: "dtu", dtu, claims: input.claims,
+        question: `Is the proposal ${subjectId} coherent and complete?`,
+      });
+      return r.ok
+        ? {
+            ok: true,
+            understanding: r.understanding,
+            satisfied: (r.understanding?.gaps?.length || 0) === 0
+                       && (r.understanding?.contradictions?.length || 0) === 0,
+            blockers: [
+              ...((r.understanding?.gaps || []).map((g) => ({ kind: "gap", detail: g }))),
+              ...((r.understanding?.contradictions || []).map((c) => ({ kind: "contradiction", detail: c }))),
+            ],
+          }
+        : { ok: false, error: r.error };
+    });
+
+    // chat.compose_thread_understanding — chat send-pipeline hook.
+    // Caller passes verdict='compose' on first turn (or topic shift),
+    // 'confirm' on subsequent turns that extend the thread, 'contradict'
+    // when the user explicitly rejects the prior turn.
+    register("chat", "compose_thread_understanding", (_ctx, input = {}) =>
+      consumers.composeForChatTurn(db, input));
+
     // Heartbeat: every 40 ticks (~10 min). Cheap, bounded, idempotent.
     // Runs the evolution sweep + consolidation pass. The handler is
     // try/catch-wrapped per CLAUDE.md heartbeat invariants.

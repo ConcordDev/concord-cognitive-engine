@@ -12,17 +12,17 @@ Every number below comes from a `grep` or `ls` against the working tree at the h
 |---|---|---|
 | Lens directories (frontend) | 203 | `ls -d concord-frontend/app/lenses/*/ \| wc -l` |
 | Backend domain files | 182 | `ls server/domains/*.js \| wc -l` |
-| Migrations applied | 119 | `ls server/migrations/*.js \| wc -l` |
-| Latest migration | 119_world_invites.js | `ls server/migrations/ \| sort \| tail -1` |
+| Migrations applied | 121 | `ls server/migrations/*.js \| wc -l` |
+| Latest migration | 121_understanding_evolution.js | `ls server/migrations/ \| sort \| tail -1` |
 | Route files | 129 | `ls server/routes/*.js \| wc -l` |
 | Emergent modules | 146 | `ls server/emergent/*.js \| wc -l` |
-| Lib modules | 252 | `ls server/lib/*.js \| wc -l` |
+| Lib modules | 255 | `ls server/lib/*.js \| wc -l` |
 | HTTP routes in server.js | 1086 | `grep -hcE '^\s*app\.(get\|post\|put\|delete\|patch)\(' server/server.js` |
 | HTTP routes in routes/*.js | 1313 | `grep -hcE '^\s*router\.(get\|post\|put\|delete\|patch)\(' server/routes/*.js` |
-| Unique macro domains (server.js) | 127 | `grep -hE "^\s*register\(\s*['\"][a-z_]+" server/server.js` |
-| Unique (domain, macro) pairs (server.js) | 661 | grep+sed against `register('domain','name')` |
-| Distinct CREATE TABLE statements across migrations | 317 | grep CREATE TABLE in migrations/*.js + sort -u |
-| Unique heartbeats registered | 25 | grep registerHeartbeat across server.js + lib/ + emergent/ |
+| Unique macro domains (server.js) | 129 | `grep -hE "^\s*register\(\s*['\"][a-z_]+" server/server.js` |
+| Unique (domain, macro) pairs (server.js) | 682 | grep+sed against `register('domain','name')` |
+| Distinct CREATE TABLE statements across migrations | 318 | grep CREATE TABLE in migrations/*.js + sort -u |
+| Unique heartbeats registered | 26 | grep registerHeartbeat across server.js + lib/ + emergent/ |
 
 Direct contradictions of CLAUDE.md as of HEAD:
 
