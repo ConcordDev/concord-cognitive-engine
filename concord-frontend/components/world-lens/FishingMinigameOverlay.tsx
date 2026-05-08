@@ -86,13 +86,9 @@ export function FishingMinigameOverlay({ open, worldId, position, onClose }: Pro
     return () => clearInterval(id);
   }, [phase, tension]);
 
-  // Auto-submit reel after 3s
-  useEffect(() => {
-    if (phase !== 'reeling' || !sessionId) return;
-    const t = setTimeout(() => submitReel(), 3000);
-    return () => clearTimeout(t);
-  }, [phase, sessionId, submitReel]);
-
+  // Define submitReel BEFORE the auto-submit useEffect so it can sit in
+  // the dependency array without TDZ ("used before declaration"). Wrapped
+  // in useCallback so the useEffect doesn't re-fire on every render.
   const submitReel = useCallback(async () => {
     if (!sessionId) return;
     const reactionMs = Date.now() - reelStartRef.current;
@@ -119,6 +115,13 @@ export function FishingMinigameOverlay({ open, worldId, position, onClose }: Pro
       setPhase('missed');
     }
   }, [sessionId]);
+
+  // Auto-submit reel after 3s
+  useEffect(() => {
+    if (phase !== 'reeling' || !sessionId) return;
+    const t = setTimeout(() => submitReel(), 3000);
+    return () => clearTimeout(t);
+  }, [phase, sessionId, submitReel]);
 
   // Keyboard: Up arrow / W = pull (more tension), Down / S = release
   useEffect(() => {
