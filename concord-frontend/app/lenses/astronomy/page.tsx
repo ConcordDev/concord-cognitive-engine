@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useState, useMemo, useCallback } from 'react';
@@ -113,6 +114,15 @@ export default function AstronomyLensPage() {
   const [activeTab, setActiveTab] = useState<'catalog' | 'observations' | 'planning'>('catalog');
   const [showFeatures, setShowFeatures] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+
+  useLensCommand(
+    [
+      { id: 'tab-catalog', keys: 'c', description: 'Catalog', category: 'navigation', action: () => setActiveTab('catalog') },
+      { id: 'tab-observations', keys: 'o', description: 'Observations', category: 'navigation', action: () => setActiveTab('observations') },
+      { id: 'tab-planning', keys: 'p', description: 'Planning', category: 'navigation', action: () => setActiveTab('planning') },
+    ],
+    { lensId: 'astronomy' }
+  );
   const [groupByConstellation, setGroupByConstellation] = useState(false);
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('astronomy');
 

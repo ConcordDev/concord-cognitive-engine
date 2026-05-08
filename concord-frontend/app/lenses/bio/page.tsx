@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { UniversalActions } from '@/components/lens/UniversalActions';
@@ -35,6 +36,15 @@ export default function BioLensPage() {
   const [showFeatures, setShowFeatures] = useState(true);
   const [activeTab, setActiveTab] = useState<'organisms' | 'experiments' | 'sequences'>('organisms');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('bio');
+
+  useLensCommand(
+    [
+      { id: 'tab-organisms', keys: 'o', description: 'Organisms', category: 'navigation', action: () => setActiveTab('organisms') },
+      { id: 'tab-experiments', keys: 'e', description: 'Experiments', category: 'navigation', action: () => setActiveTab('experiments') },
+      { id: 'tab-sequences', keys: 's', description: 'Sequences', category: 'navigation', action: () => setActiveTab('sequences') },
+    ],
+    { lensId: 'bio' }
+  );
 
   const { items: bioItems, isLoading, isError: isError, error: error, refetch: refetch, create, update, remove } = useLensData<Record<string, unknown>>('bio', 'system', { seed: [] });
   const bioData = useMemo(() => {
