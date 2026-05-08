@@ -60,6 +60,11 @@ const ImpactFeedback = dynamic(
   () => import('@/components/world/ImpactFeedback').then((m) => ({ default: m.ImpactFeedback })),
   { ssr: false }
 );
+const DistrictTimeline = dynamic(
+  () => import('@/components/world-lens/DistrictTimeline'),
+  { ssr: false },
+);
+
 const DistrictActivityFeed = dynamic(
   () =>
     import('@/components/world/DistrictActivityFeed').then((m) => ({
@@ -1223,6 +1228,7 @@ export default function WorldLensPage() {
     | 'jobs'
     | 'lore'
     | 'character'
+    | 'timeline'
   >('none');
   // Local player avatar — mutable so moves update it in place. On
   // first mount we ask the server for saved state (via player:load)
@@ -4021,6 +4027,7 @@ export default function WorldLensPage() {
                 { key: 'arena', label: 'Arena', icon: Swords },
                 { key: 'jobs', label: 'Jobs', icon: Briefcase },
                 { key: 'lore', label: 'Lore', icon: BookOpen },
+                { key: 'timeline', label: 'Timeline', icon: History },
               ] as const
             ).map(({ key, label, icon: Icon }) => (
               <button
@@ -4046,6 +4053,22 @@ export default function WorldLensPage() {
           {showPanel === 'inventory' && (
             <div className="absolute top-4 left-4 z-20 w-80 max-h-[70vh] overflow-auto pointer-events-auto">
               <InventoryPanel onClose={() => setShowPanel('none')} />
+            </div>
+          )}
+          {showPanel === 'timeline' && (
+            <div className="absolute top-4 left-4 z-20 w-[28rem] max-w-[90vw] max-h-[70vh] overflow-auto pointer-events-auto rounded-lg border border-cyan-500/20 bg-zinc-950/90 backdrop-blur shadow-xl">
+              <div className="flex items-center justify-between border-b border-cyan-500/15 px-3 py-2">
+                <div className="text-xs font-semibold tracking-wide text-cyan-200">District Timeline</div>
+                <button
+                  type="button"
+                  onClick={() => setShowPanel('none')}
+                  className="text-xs text-slate-400 hover:text-white"
+                  aria-label="Close timeline"
+                >
+                  ×
+                </button>
+              </div>
+              <DistrictTimeline districtId={activeDistrict.id} />
             </div>
           )}
           {showPanel === 'quests' && (
