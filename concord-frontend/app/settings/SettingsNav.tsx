@@ -20,7 +20,7 @@ export function SettingsNav({ active }: { active: SettingsTabKey }) {
   return (
     <nav
       aria-label="Settings sections"
-      className="flex flex-wrap gap-1 rounded-lg border border-cyan-500/15 bg-zinc-950/40 p-1"
+      className="flex flex-wrap gap-1 rounded-lg border border-lattice-border bg-lattice-elevated/40 p-1"
     >
       {TABS.map((tab) => {
         const isActive = tab.key === active;
@@ -30,8 +30,8 @@ export function SettingsNav({ active }: { active: SettingsTabKey }) {
             href={tab.href}
             className={
               isActive
-                ? 'rounded-md bg-cyan-500/20 px-3 py-1.5 text-xs font-medium text-cyan-100 ring-1 ring-cyan-500/40'
-                : 'rounded-md px-3 py-1.5 text-xs font-medium text-slate-400 transition hover:bg-cyan-500/10 hover:text-cyan-200'
+                ? 'rounded-md bg-neon-cyan/20 px-3 py-1.5 text-xs font-medium text-cyan-100 ring-1 ring-neon-cyan/40'
+                : 'rounded-md px-3 py-1.5 text-xs font-medium text-slate-400 transition hover:bg-neon-cyan/10 hover:text-cyan-200'
             }
             aria-current={isActive ? 'page' : undefined}
           >

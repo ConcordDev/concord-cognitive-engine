@@ -18,12 +18,11 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
-import { Settings as SettingsIcon } from 'lucide-react';
+import { Settings as SettingsIcon, Download, Upload, RotateCcw } from 'lucide-react';
 import SettingsPanel from '@/components/world-lens/SettingsPanel';
 import { SettingsNav } from './SettingsNav';
 import { LensActionBar, type LensAction } from '@/components/lens/LensActionBar';
-import { Download, Upload, RotateCcw } from 'lucide-react';
+import { UtilityPageShell } from '@/components/shell/UtilityPageShell';
 
 const STORAGE_KEY = 'concord:settings';
 
@@ -168,44 +167,29 @@ export default function SettingsPage() {
 
   if (!hydrated) {
     return (
-      <main className="min-h-screen bg-gradient-to-br from-slate-950 via-zinc-950 to-cyan-950/10 text-slate-100">
+      <main className="min-h-screen bg-gradient-to-br from-lattice-void via-lattice-deep to-cyan-950/10 text-slate-100">
         <div className="flex min-h-screen items-center justify-center">
-          <SettingsIcon className="h-6 w-6 animate-pulse text-cyan-400" aria-hidden="true" />
+          <SettingsIcon className="h-6 w-6 animate-pulse text-neon-cyan" aria-hidden="true" />
         </div>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-950 via-zinc-950 to-cyan-950/10 text-slate-100">
-      <motion.header
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="border-b border-cyan-500/20 bg-zinc-950/60 px-4 py-3 backdrop-blur sm:px-6"
-      >
-        <div className="mx-auto flex max-w-screen-md items-center gap-3">
-          <div className="rounded-lg border border-cyan-500/40 bg-cyan-500/10 p-2">
-            <SettingsIcon className="h-5 w-5 text-cyan-400" aria-hidden="true" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-base font-semibold tracking-tight sm:text-lg">Settings</h1>
-            <p className="mt-0.5 hidden truncate text-xs text-slate-400 sm:block">
-              Graphics · Audio · Controls · Notifications · Privacy · Language
-            </p>
-          </div>
-        </div>
-        <div className="mx-auto mt-3 max-w-screen-md">
+    <UtilityPageShell
+      icon={SettingsIcon}
+      title="Settings"
+      subtitle="Graphics · Audio · Controls · Notifications · Privacy · Language"
+      belowHeader={
+        <>
           <SettingsNav active="general" />
-        </div>
-        <div className="mx-auto mt-2 max-w-screen-md">
-          <LensActionBar actions={lensActions} />
-        </div>
-      </motion.header>
-
-      <section className="mx-auto max-w-screen-md px-3 py-4 sm:px-6 sm:py-5">
-        <SettingsPanel settings={settings} onSave={handleSave} onCancel={handleCancel} />
-      </section>
-    </main>
+          <div className="mt-2">
+            <LensActionBar actions={lensActions} />
+          </div>
+        </>
+      }
+    >
+      <SettingsPanel settings={settings} onSave={handleSave} onCancel={handleCancel} />
+    </UtilityPageShell>
   );
 }

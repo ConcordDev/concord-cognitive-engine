@@ -11,15 +11,14 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
 import {
-  Cloud, ArrowLeft, Database, Globe, Coins, Users,
+  Cloud, Database, Globe, Coins, Users,
   Backpack, Award, CalendarDays,
   type LucideIcon,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { api } from '@/lib/api/client';
+import { UtilityPageShell } from '@/components/shell/UtilityPageShell';
 
 // Mirror the SaveSystem prop shape locally — extracting via
 // Parameters<typeof X> on a dynamic-imported component is blocked by
@@ -76,7 +75,6 @@ const DEFAULT_PERSISTENCE: WorldPersistence = {
 };
 
 export default function SaveSystemPage() {
-  const router = useRouter();
   const [saveState, setSaveState] = useState<SaveState>(DEFAULT_SAVE_STATE);
   const [offlineCalcs, setOfflineCalcs] = useState<OfflineCalc[] | null>(null);
   const [worldPersistence, setWorldPersistence] = useState<WorldPersistence>(DEFAULT_PERSISTENCE);
@@ -128,42 +126,18 @@ export default function SaveSystemPage() {
   }, []);
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-950 via-zinc-950 to-cyan-950/10 text-slate-100">
-      <motion.header
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="border-b border-cyan-500/20 bg-zinc-950/60 px-4 py-3 backdrop-blur sm:px-6"
-      >
-        <div className="mx-auto flex max-w-screen-md items-center gap-3">
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className="rounded-lg border border-cyan-500/40 bg-cyan-500/10 p-2 transition hover:bg-cyan-500/20"
-            aria-label="Go back"
-          >
-            <ArrowLeft className="h-5 w-5 text-cyan-400" aria-hidden="true" />
-          </button>
-          <div className="flex-1 min-w-0">
-            <h1 className="flex items-center gap-2 text-base font-semibold tracking-tight sm:text-lg">
-              <Cloud className="h-4 w-4 text-cyan-400" aria-hidden="true" />
-              Save &amp; Sync
-            </h1>
-            <p className="mt-0.5 truncate text-xs text-slate-400">
-              Autosave runs on the governor tick · Manual sync available
-            </p>
-          </div>
-        </div>
-      </motion.header>
-
-      <section className="mx-auto max-w-screen-md px-3 py-4 sm:px-6 sm:py-5">
-        <SaveSystem
-          saveState={saveState}
-          offlineCalcs={offlineCalcs}
-          worldPersistence={worldPersistence}
-          onManualSave={handleManualSave}
-        />
-      </section>
-    </main>
+    <UtilityPageShell
+      icon={Cloud}
+      title="Save & Sync"
+      subtitle="Autosave runs on the governor tick · Manual sync available"
+      showBackButton
+    >
+      <SaveSystem
+        saveState={saveState}
+        offlineCalcs={offlineCalcs}
+        worldPersistence={worldPersistence}
+        onManualSave={handleManualSave}
+      />
+    </UtilityPageShell>
   );
 }

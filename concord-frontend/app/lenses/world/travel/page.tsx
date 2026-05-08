@@ -15,10 +15,11 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
 import { Train } from 'lucide-react';
 import WorldTravel from '@/components/world-lens/WorldTravel';
 import { api } from '@/lib/api/client';
+import { UtilityPageShell } from '@/components/shell/UtilityPageShell';
+import { ds } from '@/lib/design-system';
 
 type WorldEntry = NonNullable<Parameters<typeof WorldTravel>[0]['worlds']>[number];
 type WorldInvite = NonNullable<Parameters<typeof WorldTravel>[0]['invites']>[number];
@@ -134,48 +135,31 @@ export default function WorldTravelPage() {
   const bookmarkedWorlds = worlds.filter((w) => bookmarkIds.has(w.id));
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-950 via-zinc-950 to-cyan-950/10 text-slate-100">
-      <motion.header
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="border-b border-cyan-500/20 bg-zinc-950/60 px-4 py-3 backdrop-blur sm:px-6"
-      >
-        <div className="mx-auto flex max-w-screen-md items-center gap-3">
-          <div className="rounded-lg border border-cyan-500/40 bg-cyan-500/10 p-2">
-            <Train className="h-5 w-5 text-cyan-400" aria-hidden="true" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-base font-semibold tracking-tight sm:text-lg">World Terminal</h1>
-            <p className="mt-0.5 hidden truncate text-xs text-slate-400 sm:block">
-              Travel between worlds · Bookmarks · Invites
-            </p>
-          </div>
+    <UtilityPageShell
+      icon={Train}
+      title="World Terminal"
+      subtitle="Travel between worlds · Bookmarks · Invites"
+    >
+      {loading ? (
+        <div className={`${ds.panelBare} p-6 text-center text-sm text-slate-400`}>
+          Loading worlds…
         </div>
-      </motion.header>
-
-      <section className="mx-auto max-w-screen-md px-3 py-4 sm:px-6 sm:py-5">
-        {loading ? (
-          <div className="rounded-lg border border-cyan-500/20 bg-zinc-950/40 p-6 text-center text-sm text-slate-400">
-            Loading worlds…
-          </div>
-        ) : error ? (
-          <div className="rounded-lg border border-rose-500/40 bg-rose-950/30 p-4 text-sm text-rose-200">
-            {error}
-          </div>
-        ) : (
-          <WorldTravel
-            worlds={worlds}
-            bookmarks={bookmarkedWorlds}
-            recentWorlds={[]}
-            invites={invites}
-            onTravel={handleTravel}
-            onBookmark={handleBookmark}
-            onAcceptInvite={handleAcceptInvite}
-            onDeclineInvite={handleDeclineInvite}
-          />
-        )}
-      </section>
-    </main>
+      ) : error ? (
+        <div className="rounded-lg border border-rose-500/40 bg-rose-950/30 p-4 text-sm text-rose-200">
+          {error}
+        </div>
+      ) : (
+        <WorldTravel
+          worlds={worlds}
+          bookmarks={bookmarkedWorlds}
+          recentWorlds={[]}
+          invites={invites}
+          onTravel={handleTravel}
+          onBookmark={handleBookmark}
+          onAcceptInvite={handleAcceptInvite}
+          onDeclineInvite={handleDeclineInvite}
+        />
+      )}
+    </UtilityPageShell>
   );
 }

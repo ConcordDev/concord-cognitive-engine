@@ -10,11 +10,12 @@
  */
 
 import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
-import { Box, ArrowLeft } from 'lucide-react';
+import { useParams } from 'next/navigation';
+import { Box } from 'lucide-react';
 import ARPreview from '@/components/world-lens/ARPreview';
 import { api } from '@/lib/api/client';
+import { UtilityPageShell } from '@/components/shell/UtilityPageShell';
+import { ds } from '@/lib/design-system';
 
 type ARPreviewDTU = Parameters<typeof ARPreview>[0]['dtuData'];
 
@@ -36,7 +37,6 @@ function detectWebXR(): boolean {
 
 export default function ARPreviewPage() {
   const params = useParams<{ dtuId: string }>();
-  const router = useRouter();
   const dtuId = params?.dtuId ?? '';
   const [dtuData, setDtuData] = useState<ARPreviewDTU | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -78,47 +78,24 @@ export default function ARPreviewPage() {
   }, [dtuId]);
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-950 via-zinc-950 to-cyan-950/10 text-slate-100">
-      <motion.header
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="border-b border-cyan-500/20 bg-zinc-950/60 px-4 py-3 backdrop-blur sm:px-6"
-      >
-        <div className="mx-auto flex max-w-screen-lg items-center gap-3">
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className="rounded-lg border border-cyan-500/40 bg-cyan-500/10 p-2 transition hover:bg-cyan-500/20"
-            aria-label="Go back"
-          >
-            <ArrowLeft className="h-5 w-5 text-cyan-400" aria-hidden="true" />
-          </button>
-          <div className="flex-1 min-w-0">
-            <h1 className="flex items-center gap-2 text-base font-semibold tracking-tight sm:text-lg">
-              <Box className="h-4 w-4 text-cyan-400" aria-hidden="true" />
-              AR Preview
-            </h1>
-            <p className="mt-0.5 truncate text-xs text-slate-400">
-              {supported ? 'WebXR detected — tap-and-hold to place' : 'WebXR not available — static fallback'}
-            </p>
-          </div>
+    <UtilityPageShell
+      icon={Box}
+      title="AR Preview"
+      subtitle={supported ? 'WebXR detected — tap-and-hold to place' : 'WebXR not available — static fallback'}
+      showBackButton
+      maxWidth="max-w-screen-lg"
+    >
+      {loading ? (
+        <div className={`${ds.panelBare} p-6 text-center text-sm text-slate-400`}>
+          Loading DTU…
         </div>
-      </motion.header>
-
-      <section className="mx-auto max-w-screen-lg px-3 py-4 sm:px-6 sm:py-5">
-        {loading ? (
-          <div className="rounded-lg border border-cyan-500/20 bg-zinc-950/40 p-6 text-center text-sm text-slate-400">
-            Loading DTU…
-          </div>
-        ) : error || !dtuData ? (
-          <div className="rounded-lg border border-rose-500/40 bg-rose-950/30 p-4 text-sm text-rose-200">
-            {error ?? 'DTU not found'}
-          </div>
-        ) : (
-          <ARPreview dtuId={dtuId} dtuData={dtuData} supported={supported} />
-        )}
-      </section>
-    </main>
+      ) : error || !dtuData ? (
+        <div className="rounded-lg border border-rose-500/40 bg-rose-950/30 p-4 text-sm text-rose-200">
+          {error ?? 'DTU not found'}
+        </div>
+      ) : (
+        <ARPreview dtuId={dtuId} dtuData={dtuData} supported={supported} />
+      )}
+    </UtilityPageShell>
   );
 }
