@@ -1,6 +1,6 @@
 # Gaps & Wire Targets
 
-_Generated 2026-05-08T06:23:59.953Z. Each gap proposes a concrete wire action._
+_Generated 2026-05-08T06:41:49.685Z. Each gap proposes a concrete wire action._
 
 ## Dead tables (25)
 
@@ -157,13 +157,9 @@ _None — every module either has a heartbeat or is invoked by a macro callsite.
 
 _None._
 
-## Unshaped socket events (3)
+## Unshaped socket events (0)
 
-| Event | First emitter | Action |
-|---|---|---|
-| `forge:template:created` | server/emergent/forge-template-engine.js:1206 | add to event-shapes.js |
-| `forge:template:generated` | server/emergent/forge-template-engine.js:1293 | add to event-shapes.js |
-| `forge:template:published` | server/emergent/forge-template-engine.js:1383 | add to event-shapes.js |
+_None — every emit is registered in `event-shapes.js`._
 
 ## Universe-coverage gaps (in-scope categories)
 

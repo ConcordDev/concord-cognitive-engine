@@ -13,8 +13,8 @@ before wiring.
 | `dtu-protocol.js` | 476 | **WIRE** | Fills a real gap. Concord has a DTU substrate but no formal envelope/hash spec. Canonical impl with content-hash determinism + append-only citations + semver versioning. Low risk (additive). |
 | `concord-test.js` | 437 | **WIRE** | Novel — DTU physics testing (Jest-like API for structural simulation: seismic, wind, thermal, combined load). Engineering-domain DTUs (architecture, legal blueprints) get simulated validation. Doesn't duplicate anything. |
 | `concord-moderate.js` | 445 | **WIRE** | Fills a gap. Concord has refusal-field for actions but no text-content moderation (block/flag policies, batch moderation, review queue). Pairs with the existing repair-cortex / drift-monitor for content drift. |
-| `concord-observe.js` | 459 | **EVAL** | Overlaps with `prom counters + structuredLog + repair-cortex` but the auto-repair brain (pattern-matched diagnostics → fix suggestions) is novel. Future merge candidate; not blocking. |
-| `cpm-manager.js` | 785 | **EVAL** | Overlaps with `plugin-loader + plugin-gallery` (migration 085) but the citation-mandatory invariant ("every install creates a citation record") aligns with our royalty cascade. Future merge candidate. |
+| `concord-observe.js` | 459 | **DROP** | Overlap dominates: prom counters + structuredLog + repair-cortex cover tracing/metrics/health-check/auto-repair. The novel piece (7-pattern error matcher: ECONNREFUSED / ENOMEM / ETIMEOUT / ENOSPC / SQLITE_BUSY / rate-limit / TLS) has no caller in tree. Re-extractable from git if a future need surfaces. |
+| `cpm-manager.js` | 785 | **DROP** | Plugin-gallery (migration 085) + plugin-loader is the canonical install/registry surface. The novel piece (citation-mandatory install) can drop into plugin-gallery's install path as a one-line change when called for; doesn't justify a parallel 785-LOC manager. |
 | `concord-identity.js` | 655 | **DROP** | Mock identity layer with simulated OAuth 2.0. We have real auth (JWT + bcrypt + sessions). The "simulated" comment in the file header confirms it's a dev-time stand-in, not production code. |
 | `concord-lens.js` | 518 | **DROP** | Knowledge-lens content authoring with a sections/data-sources/interactives model. Different mental model from our macro + lens-manifest pattern. Wiring would fork the lens authoring story. |
 | `concord-procgen.js` | 570 | **DROP** | Name pools + procgen helpers. We have full content-seeder + npc-spawning + fauna-spawner. Name pools could be merged into existing seeders if needed; the rest duplicates. |
@@ -34,17 +34,19 @@ before wiring.
   `lib/concord-moderate.js` for follow-on `register("moderate", ...)`
   macro pass.
 
-## Dropped (deleted from tree this commit)
+## Dropped (deleted from tree)
 
-`concord-identity.js`, `concord-lens.js`, `concord-procgen.js`,
-`concord-sync.js`, `brain-service.js`, `component-registry.js`.
+Phase C drops: `concord-identity.js`, `concord-lens.js`,
+`concord-procgen.js`, `concord-sync.js`, `brain-service.js`,
+`component-registry.js`.
+
+Queue-resolution drops: `concord-observe.js`, `cpm-manager.js` — both
+EVAL'd through and dropped (overlap dominates; novel pieces are
+small and extractable from git if a future caller appears).
 
 ## Eval queue (kept dormant for now, decision deferred to follow-on)
 
-- `concord-observe.js` — until we know if the auto-repair brain pattern
-  matcher is novel-enough vs repair-cortex.
-- `cpm-manager.js` — until we know if the citation-mandatory install
-  invariant should fold into plugin-gallery or become its own surface.
+_Empty — all 11 absorbed libs have a final keep/drop/merge decision._
 
 ## Convention going forward
 

@@ -2,7 +2,7 @@
 
 _Comment-vs-truth discrepancies in the codebase. Each entry pairs a comment with the actual count from cartographer recon._
 
-Generated 2026-05-08T06:23:59.953Z.
+Generated 2026-05-08T06:41:49.685Z.
 
 | File | Line | Comment claims | Cartographer counts | Δ |
 |---|---:|---|---:|---:|

@@ -2813,26 +2813,7 @@
     "routesNeverHit": {
       "todo": "requires_prod_traffic_data"
     },
-    "unshapedEvents": [
-      {
-        "emitterFile": "server/emergent/forge-template-engine.js",
-        "emitterLine": 1206,
-        "event": "forge:template:created",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/emergent/forge-template-engine.js",
-        "emitterLine": 1293,
-        "event": "forge:template:generated",
-        "reason": "not_in_event_shapes_registry"
-      },
-      {
-        "emitterFile": "server/emergent/forge-template-engine.js",
-        "emitterLine": 1383,
-        "event": "forge:template:published",
-        "reason": "not_in_event_shapes_registry"
-      }
-    ],
+    "unshapedEvents": [],
     "unusedMacros": []
   },
   "drift": [
@@ -2851,7 +2832,7 @@
       "line": 73
     }
   ],
-  "generatedAt": "2026-05-08T06:23:59.953Z",
+  "generatedAt": "2026-05-08T06:41:49.685Z",
   "generatedBy": "cartographer-v22.22.2",
   "novelty": [
     {

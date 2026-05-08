@@ -106,6 +106,23 @@ export const EVENT_SHAPES = Object.freeze({
 
   // ── GameJuice fanfare ─────────────────────────────────────────────
   "gameJuice:fanfare":    { required: ["userId", "kind"], optional: ["magnitude", "tone", "label"] },
+
+  // ── Forge — polyglot template engine lifecycle ────────────────────
+  // Emitted by emergent/forge-template-engine.js when a template is
+  // created/generated/published. Surfaces to the ForgeWorkbench UI for
+  // live status updates without polling.
+  "forge:template:created":   { required: ["id", "name"], optional: [] },
+  "forge:template:generated": { required: ["id", "genId", "lineCount"], optional: [] },
+  "forge:template:published": { required: ["id", "name"], optional: [] },
+
+  // ── Layer 13 — NPC ambient conversations ──────────────────────────
+  // Emitted by emergent/npc-conversation-initiator.js when a new NPC↔NPC
+  // conversation opens. Surfaces to nearby players (subscribed to
+  // world:${worldId}) so ambient NPC dialogue is visible.
+  "npc:conversation-bid": {
+    required: ["id", "worldId", "npcA", "npcB", "opener"],
+    optional: ["expiresAt"],
+  },
 });
 
 /**
