@@ -181,6 +181,11 @@ async function main() {
     }
   }
 
+  // Markdown-table cell escape: backslash first, then pipe. CodeQL flagged the
+  // pipe-only form as incomplete encoding (a subject containing "\|" would
+  // produce "\\|", which markdown re-parses as escaped backslash + raw pipe).
+  const mdCell = (s) => String(s ?? "").replace(/\\/g, "\\\\").replace(/\|/g, "\\|");
+
   // Sort: branches with novel commits first, then by file delta, then by recency
   results.sort((a, b) => {
     if (a.mergedIntoMain !== b.mergedIntoMain) return a.mergedIntoMain ? 1 : -1;
@@ -212,7 +217,7 @@ async function main() {
     lines.push("|--:|---|--:|--:|--:|--:|--:|--:|--:|---|");
     for (let n = 0; n < unmerged.length; n++) {
       const r = unmerged[n];
-      lines.push(`| ${n + 1} | \`${r.branch}\` | ${r.ageDays ?? "?"} | **${r.commitsAheadOfMain}** | ${r.filesVsMain} | ${r.migrations} (max ${r.maxMigrationId}) | ${r.macros}/${r.macroDomains} | ${r.heartbeats} | ${r.lenses} | ${r.subject.replace(/\|/g, "\\|")} |`);
+      lines.push(`| ${n + 1} | \`${r.branch}\` | ${r.ageDays ?? "?"} | **${r.commitsAheadOfMain}** | ${r.filesVsMain} | ${r.migrations} (max ${r.maxMigrationId}) | ${r.macros}/${r.macroDomains} | ${r.heartbeats} | ${r.lenses} | ${mdCell(r.subject)} |`);
     }
   }
   lines.push("");
@@ -225,7 +230,7 @@ async function main() {
   lines.push("| Branch | Age (d) | Last subject |");
   lines.push("|---|--:|---|");
   for (const r of merged) {
-    lines.push(`| \`${r.branch}\` | ${r.ageDays ?? "?"} | ${r.subject.replace(/\|/g, "\\|")} |`);
+    lines.push(`| \`${r.branch}\` | ${r.ageDays ?? "?"} | ${mdCell(r.subject)} |`);
   }
   lines.push("");
   lines.push("</details>");
