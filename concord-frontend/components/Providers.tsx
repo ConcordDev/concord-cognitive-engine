@@ -10,6 +10,7 @@ import { GlobalMediaController } from '@/components/media/GlobalMediaController'
 import SoundSystem from '@/components/world-lens/SoundSystem';
 import AdaptiveComplexity from '@/components/world-lens/AdaptiveComplexity';
 import HiddenAssistance from '@/components/world-lens/HiddenAssistance';
+import SecretsDiscovery from '@/components/world-lens/SecretsDiscovery';
 import { observeWebVitals } from '@/lib/perf';
 import { connectSocket, disconnectSocket } from '@/lib/realtime/socket';
 import { api } from '@/lib/api/client';
@@ -98,7 +99,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
             */}
             <AdaptiveComplexity>
               <HiddenAssistance>
-                <AppShell>{children}</AppShell>
+                <SecretsDiscovery>
+                  <AppShell>{children}</AppShell>
+                </SecretsDiscovery>
               </HiddenAssistance>
             </AdaptiveComplexity>
             {/* Global media layer — mounts once, survives all navigation.

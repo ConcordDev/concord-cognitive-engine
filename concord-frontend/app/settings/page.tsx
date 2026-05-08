@@ -22,6 +22,8 @@ import { motion } from 'framer-motion';
 import { Settings as SettingsIcon } from 'lucide-react';
 import SettingsPanel from '@/components/world-lens/SettingsPanel';
 import { SettingsNav } from './SettingsNav';
+import { LensActionBar, type LensAction } from '@/components/lens/LensActionBar';
+import { Download, Upload, RotateCcw } from 'lucide-react';
 
 const STORAGE_KEY = 'concord:settings';
 
@@ -123,6 +125,47 @@ export default function SettingsPage() {
     router.back();
   }, [router]);
 
+  const handleExport = useCallback(() => {
+    const blob = new Blob([JSON.stringify(settings, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `concord-settings-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [settings]);
+
+  const handleImport = useCallback(() => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/json';
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const next = JSON.parse(String(reader.result)) as SettingsPanelSettings;
+          handleSave(next);
+        } catch {
+          // Malformed JSON — surface a toast in a follow-on; silent for now.
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  }, [handleSave]);
+
+  const handleReset = useCallback(() => {
+    handleSave(DEFAULT_SETTINGS);
+  }, [handleSave]);
+
+  const lensActions: LensAction[] = [
+    { id: 'export', label: 'Export', icon: <Download className="h-3.5 w-3.5" />, onClick: handleExport },
+    { id: 'import', label: 'Import', icon: <Upload className="h-3.5 w-3.5" />, onClick: handleImport },
+    { id: 'reset', label: 'Reset to defaults', icon: <RotateCcw className="h-3.5 w-3.5" />, onClick: handleReset },
+  ];
+
   if (!hydrated) {
     return (
       <main className="min-h-screen bg-gradient-to-br from-slate-950 via-zinc-950 to-cyan-950/10 text-slate-100">
@@ -154,6 +197,9 @@ export default function SettingsPage() {
         </div>
         <div className="mx-auto mt-3 max-w-screen-md">
           <SettingsNav active="general" />
+        </div>
+        <div className="mx-auto mt-2 max-w-screen-md">
+          <LensActionBar actions={lensActions} />
         </div>
       </motion.header>
 
