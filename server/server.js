@@ -14242,6 +14242,63 @@ async function initGhostFleet() {
   }
   await _ghostFleetYield();
 
+  // 2.6. Understanding Evolution — the compounding loop.
+  // Mirrors the Evo asset scheduler shape (candidate → version → gate
+  // → promote / dispute) and adds consolidation (the MEGA→HYPER analog
+  // for understandings). Heartbeat-driven; idempotent; safe-skip.
+  try {
+    const evolve = await import("./lib/understanding-evolve.js");
+    GHOST_FLEET_STATUS.modules["understanding-evolve"] = { loaded: true, loadedAt: new Date().toISOString() };
+
+    register("understanding", "record_evidence", (_ctx, input = {}) =>
+      evolve.recordEvidence(db, input));
+
+    register("understanding", "evaluate_promotion", (_ctx, input = {}) =>
+      evolve.evaluatePromotion(db, input.id));
+
+    register("understanding", "apply_promotion", (_ctx, input = {}) =>
+      evolve.applyPromotion(db, input.id, input.decision));
+
+    register("understanding", "consolidate", (_ctx, input = {}) =>
+      evolve.consolidateUnderstandings(db, input.childIds || [], input));
+
+    register("understanding", "consolidation_candidates", (_ctx, input = {}) =>
+      ({ ok: true, candidates: evolve.findConsolidationCandidates(db, input) }));
+
+    register("understanding", "lineage", (_ctx, input = {}) =>
+      ({ ok: true, lineage: evolve.getUnderstandingLineage(db, input.id, input.maxDepth) }));
+
+    register("understanding", "evolution_tick", (_ctx, input = {}) =>
+      evolve.runUnderstandingEvolutionTick(db, input));
+
+    register("understanding", "promoted_by_composer", (_ctx, input = {}) =>
+      ({ ok: true, rows: evolve.listPromotedByComposer(db, input.userId, input.limit) }));
+
+    register("understanding", "evolution_stats", () =>
+      ({ ok: true, stats: evolve.getEvolutionStats(db) }));
+
+    // Heartbeat: every 40 ticks (~10 min). Cheap, bounded, idempotent.
+    // Runs the evolution sweep + consolidation pass. The handler is
+    // try/catch-wrapped per CLAUDE.md heartbeat invariants.
+    try {
+      registerHeartbeat("understanding-evolve", {
+        frequency: 40,
+        handler: () => {
+          try { return evolve.runUnderstandingEvolutionTick(db); }
+          catch (e) { return { ok: false, error: e?.message || "tick_threw" }; }
+        },
+      });
+    } catch (e) {
+      structuredLog("warn", "understanding_evolve_heartbeat_register_failed", { error: e?.message });
+    }
+
+    structuredLog("info", "ghost_fleet_module_loaded", { name: "understanding-evolve", macros: 9, heartbeat: "understanding-evolve@40" });
+  } catch (err) {
+    GHOST_FLEET_STATUS.modules["understanding-evolve"] = { loaded: false, error: err.message };
+    structuredLog("warn", "ghost_fleet_module_failed", { name: "understanding-evolve", error: err.message });
+  }
+  await _ghostFleetYield();
+
   // 3. Agent System — Lattice immune system (6 agent types)
   try {
     const agents = await import("./emergent/agent-system.js");
