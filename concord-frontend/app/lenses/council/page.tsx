@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { useState, useMemo, useCallback } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
+import { LensShell } from '@/components/lens/LensShell';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -2499,6 +2500,7 @@ export default function CouncilLensPage() {
 
   // ===== MAIN RENDER =====
   return (
+    <LensShell lensId="council" asMain={false}>
     <div data-lens-theme="council" className={ds.pageContainer}>
       {/* Header */}
       <header>
@@ -3438,5 +3440,6 @@ export default function CouncilLensPage() {
         </div>
       )}
     </div>
+    </LensShell>
   );
 }

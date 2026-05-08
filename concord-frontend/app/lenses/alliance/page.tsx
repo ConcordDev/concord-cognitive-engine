@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { LensShell } from '@/components/lens/LensShell';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { Loading } from '@/components/common/Loading';
@@ -179,6 +180,7 @@ export default function AllianceLensPage() {
     );
   }
   return (
+    <LensShell lensId="alliance" asMain={false}>
     <div data-lens-theme="alliance" className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -665,5 +667,6 @@ export default function AllianceLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

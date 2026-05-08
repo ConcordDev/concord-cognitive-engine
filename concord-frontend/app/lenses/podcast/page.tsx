@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
+import { LensShell } from '@/components/lens/LensShell';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useLensDTUs } from '@/hooks/useLensDTUs';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -350,6 +351,7 @@ export default function PodcastLensPage() {
   ];
 
   return (
+    <LensShell lensId="podcast" asMain={false}>
     <div data-lens-theme="podcast" className="min-h-screen bg-lattice-void text-white">
       {/* Header */}
       <header className="border-b border-white/10 bg-lattice-surface/50 backdrop-blur-xl sticky top-0 z-30">
@@ -884,5 +886,6 @@ export default function PodcastLensPage() {
         </div>
       </main>
     </div>
+    </LensShell>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
+import { LensShell } from '@/components/lens/LensShell';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { api, apiHelpers } from '@/lib/api/client';
@@ -460,6 +461,7 @@ export default function VoiceLensPage() {
     );
   }
   return (
+    <LensShell lensId="voice" asMain={false}>
     <div data-lens-theme="voice" className="h-[calc(100vh-4rem)] flex flex-col bg-gradient-to-b from-purple-900/10 to-black">
       {/* Header */}
       <header className="flex items-center justify-between px-6 py-3 border-b border-lattice-border bg-black/40">
@@ -1075,5 +1077,6 @@ export default function VoiceLensPage() {
       )}
       </div>
     </div>
+    </LensShell>
   );
 }

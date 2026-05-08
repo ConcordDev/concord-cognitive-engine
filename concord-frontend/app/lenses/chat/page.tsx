@@ -3,6 +3,8 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import Image from 'next/image';
 import { useLensNav } from '@/hooks/useLensNav';
+import { LensShell } from '@/components/lens/LensShell';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, apiHelpers } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
@@ -1931,6 +1933,7 @@ export default function ChatLensPage() {
   // ──────────────────────────────────────────────
 
   return (
+    <LensShell lensId="chat" asMain={false}>
     <div data-lens-theme="chat" className="h-full flex flex-col bg-lattice-bg">
       {/* Real-time Enhancement Toolbar */}
       <div className="flex items-center gap-2 px-4 py-1 border-b border-lattice-border/30 flex-wrap">
@@ -3285,5 +3288,6 @@ export default function ChatLensPage() {
         </div>
       )}
     </div>
+    </LensShell>
   );
 }

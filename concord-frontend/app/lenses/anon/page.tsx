@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { LensShell } from '@/components/lens/LensShell';
 import { useMutation } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -112,6 +113,7 @@ export default function AnonLensPage() {
     );
   }
   return (
+    <LensShell lensId="anon" asMain={false}>
     <div data-lens-theme="anon" className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -442,5 +444,6 @@ export default function AnonLensPage() {
       )}
       </div>
     </div>
+    </LensShell>
   );
 }
