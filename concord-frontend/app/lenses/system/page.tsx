@@ -130,6 +130,56 @@ export default function SystemLensPage() {
     installed?: boolean;
   };
 
+  // Analytics types mirrored locally — Parameters<typeof X> breaks on
+  // dynamic-imported components.
+  type PersonalStats = {
+    totalCitations: number;
+    totalRoyalties: number;
+    mostCitedDTU: { name: string; citations: number };
+    mostUsedMaterial: { name: string; uses: number };
+    reputationByDomain: Record<string, number>;
+    buildCount: number;
+    playtime: number;
+    loginStreak: number;
+  };
+  type WorldStats = {
+    worldId: string;
+    population: number;
+    buildingCount: number;
+    infraCoverage: number;
+    envScore: number;
+    economicActivity: number;
+    visitorCount: number;
+    timeseries?: { date: string; visitors: number; buildings: number }[];
+  };
+  type GlobalStats = {
+    activeDistricts: number;
+    totalBuildings: number;
+    totalCitations: number;
+    activeUsers: number;
+    totalWorlds: number;
+    trendingComponents: { name: string; creator: string; citationsThisWeek: number }[];
+    topCreators: { userId: string; name: string; citations: number; rank: number }[];
+  };
+  type AnalyticsResp = {
+    ok: boolean;
+    personalStats?: PersonalStats;
+    worldStats?: WorldStats | null;
+    globalStats?: GlobalStats;
+  };
+  const analyticsQ = useQuery({
+    queryKey: ['system-analytics'],
+    queryFn: async () => {
+      try {
+        const r = await fetch('/api/analytics', { credentials: 'same-origin' });
+        if (!r.ok) return null;
+        return (await r.json()) as AnalyticsResp;
+      } catch {
+        return null;
+      }
+    },
+  });
+
   const pluginsQ = useQuery({
     queryKey: ['system-plugins'],
     queryFn: async () => {
@@ -521,9 +571,13 @@ export default function SystemLensPage() {
             >
               <h2 className="mb-3 text-base font-semibold text-cyan-200">Personal · World · Global activity</h2>
               <p className="mb-3 text-xs text-cyan-700">
-                Distinct from cartograph stats above (system structure). This is per-player + per-world + global activity over time. Connects to /api/analytics/* macros once landed.
+                Distinct from cartograph stats above (system structure). This is per-player + per-world + global activity from /api/analytics.
               </p>
-              <AnalyticsDashboard />
+              <AnalyticsDashboard
+                personalStats={analyticsQ.data?.personalStats}
+                worldStats={analyticsQ.data?.worldStats ?? undefined}
+                globalStats={analyticsQ.data?.globalStats}
+              />
             </motion.section>
           )}
           {activeTab === 'plugins' && (
