@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { BandcampGrid } from '@/components/marketplace/BandcampGrid';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -1293,6 +1294,20 @@ export default function MarketplaceLensPage() {
         >
           {/* Main content */}
           <div className="flex-1 min-w-0 space-y-6">
+            {/* Bandcamp-shape cover-grid: chunky covers, hover audio
+                preview, name-your-price + 95/5 royalty cascade reminder.
+                Mock seed until the live listings query is wired in. */}
+            <BandcampGrid
+              columns={3}
+              items={[
+                { id: 'demo-1', title: 'Stance Against the Cold', creator: 'Aria Voss',  minPriceCc: 25, suggestedPriceCc: 45, royaltyRate: 0.21, tags: ['fighting-style', 'ice', 'beginner'] },
+                { id: 'demo-2', title: 'Smith&rsquo;s Firefall',     creator: 'Orin',      minPriceCc: 30, suggestedPriceCc: 60, royaltyRate: 0.21, tags: ['blueprint', 'forge', 'advanced'] },
+                { id: 'demo-3', title: 'Bridge of Echoes',        creator: 'Sael',      minPriceCc: 15, suggestedPriceCc: 25, royaltyRate: 0.21, tags: ['quest', 'lore'] },
+                { id: 'demo-4', title: 'Dome-Buckler Stance',     creator: 'Vex',       minPriceCc: 50, suggestedPriceCc: 90, royaltyRate: 0.21, tags: ['fighting-style', 'refusal'] },
+                { id: 'demo-5', title: 'Twilight Commune',        creator: 'Mira',      minPriceCc: 10, suggestedPriceCc: 20, royaltyRate: 0.21, tags: ['commune', 'gentle'] },
+                { id: 'demo-6', title: 'The Wrath Phase',         creator: 'Concordia', minPriceCc: 80, suggestedPriceCc: 120, royaltyRate: 0.21, tags: ['arc', 'wrathful'] },
+              ]}
+            />
             {/* Hero / Featured Carousel */}
             {featuredItems.length > 0 && featuredItems[featuredIdx] && (
               <div className="relative panel p-0 overflow-hidden rounded-xl">

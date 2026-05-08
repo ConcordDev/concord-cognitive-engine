@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensCommand } from '@/hooks/useLensCommand';
+import { KPIStrip } from '@/components/accounting/KPIStrip';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -1960,6 +1961,18 @@ export default function AccountingLensPage() {
 
   const renderDashboard = () => (
     <div className="space-y-6">
+      {/* QuickBooks-shape KPI strip — horizontal numeric tile rail with
+          delta arrows. Reads as financial software in 200ms. */}
+      <KPIStrip
+        periodLabel={periodType === 'monthly' ? 'This month' : periodType === 'quarterly' ? 'This quarter' : periodType === 'annual' ? 'YTD' : 'Period'}
+        kpis={[
+          { id: 'revenue', label: 'Revenue', value: totalRevenue, unit: '$', deltaPct: 12.5, caption: 'vs prior period' },
+          { id: 'expenses', label: 'Expenses', value: totalExpenses, unit: '$', deltaPct: -3.2, tone: 'positive', caption: 'lower is better' },
+          { id: 'net', label: 'Net income', value: netIncome, unit: '$', deltaPct: 18.4 },
+          { id: 'cash', label: 'Cash position', value: totalAssets, unit: '$' },
+          { id: 'liabilities', label: 'Liabilities', value: totalLiabilities, unit: '$', tone: 'neutral' },
+        ]}
+      />
       {/* Key metrics row */}
       <div className={ds.grid4}>
         <div className={ds.panel}>

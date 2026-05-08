@@ -39,7 +39,9 @@ import {
   Layers,
   Filter,
   Loader2,
+  Music2,
 } from 'lucide-react';
+import { SessionView } from '@/components/music/SessionView';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
@@ -588,6 +590,7 @@ export default function MusicLensPage() {
           {[
             { id: 'home' as MusicLensView, icon: Home, label: 'Home' },
             { id: 'browse' as MusicLensView, icon: Disc3, label: 'Browse' },
+            { id: 'session' as MusicLensView, icon: Music2, label: 'Session' },
             { id: 'marketplace' as MusicLensView, icon: ShoppingBag, label: 'Marketplace' },
             { id: 'library' as MusicLensView, icon: Library, label: 'Library' },
             { id: 'search' as MusicLensView, icon: Search, label: 'Search' },
@@ -936,6 +939,42 @@ export default function MusicLensPage() {
                     ))}
                   </div>
                 </section>
+              </div>
+            )}
+
+            {/* ---- SESSION (Ableton-shape clip launcher) ---- */}
+            {view === 'session' && (
+              <div className="h-[calc(100vh-12rem)]">
+                <SessionView
+                  tracks={[
+                    { id: 'drums',  name: 'Drums',  armed: false },
+                    { id: 'bass',   name: 'Bass' },
+                    { id: 'keys',   name: 'Keys' },
+                    { id: 'pads',   name: 'Pads' },
+                    { id: 'lead',   name: 'Lead',   armed: true },
+                    { id: 'fx',     name: 'FX' },
+                  ]}
+                  scenes={[
+                    { id: 'intro',  name: 'Intro' },
+                    { id: 'verse',  name: 'Verse' },
+                    { id: 'chorus', name: 'Chorus' },
+                    { id: 'bridge', name: 'Bridge' },
+                    { id: 'outro',  name: 'Outro' },
+                  ]}
+                  clips={{
+                    'drums:intro':   { trackId: 'drums', sceneId: 'intro',  hasContent: true,  label: 'kick-only', durationBeats: 8 },
+                    'drums:verse':   { trackId: 'drums', sceneId: 'verse',  hasContent: true,  label: 'half-time', durationBeats: 16 },
+                    'drums:chorus':  { trackId: 'drums', sceneId: 'chorus', hasContent: true,  label: 'four-floor', durationBeats: 16 },
+                    'bass:verse':    { trackId: 'bass',  sceneId: 'verse',  hasContent: true,  label: 'sub roll', durationBeats: 16 },
+                    'bass:chorus':   { trackId: 'bass',  sceneId: 'chorus', hasContent: true,  label: 'sub punch', durationBeats: 16 },
+                    'keys:verse':    { trackId: 'keys',  sceneId: 'verse',  hasContent: true,  label: 'rhodes', durationBeats: 16 },
+                    'keys:bridge':   { trackId: 'keys',  sceneId: 'bridge', hasContent: true,  label: 'pad swell', durationBeats: 32 },
+                    'lead:chorus':   { trackId: 'lead',  sceneId: 'chorus', hasContent: true,  label: 'hook A', durationBeats: 16 },
+                    'fx:intro':      { trackId: 'fx',    sceneId: 'intro',  hasContent: true,  label: 'riser', durationBeats: 4 },
+                    'fx:outro':      { trackId: 'fx',    sceneId: 'outro',  hasContent: true,  label: 'tail', durationBeats: 8 },
+                  }}
+                  tempo={120}
+                />
               </div>
             )}
 

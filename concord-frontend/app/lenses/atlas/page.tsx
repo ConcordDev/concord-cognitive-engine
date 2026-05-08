@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
+import { GraphView } from '@/components/atlas/GraphView';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -273,6 +274,37 @@ export default function AtlasLensPage() {
       <div className="space-y-4">
         {tab === 'terrain' && (
           <>
+            {/* Roam / Obsidian-shape force-directed knowledge graph
+                anchoring the terrain view. Pulsing constellation that
+                animates into stable clumps. Mock seed data until the
+                live DTU graph endpoint is wired. */}
+            <GraphView
+              nodes={[
+                { id: 'self',     label: 'Self',     group: 'core',     weight: 1.0 },
+                { id: 'concord',  label: 'Concord',  group: 'core',     weight: 1.0 },
+                { id: 'dream',    label: 'Dream',    group: 'cognition', weight: 0.8 },
+                { id: 'forging',  label: 'Forging',  group: 'creator',  weight: 0.7 },
+                { id: 'cascade',  label: 'Cascade',  group: 'economy',  weight: 0.85 },
+                { id: 'commune',  label: 'Commune',  group: 'social',   weight: 0.6 },
+                { id: 'arc',      label: 'Arc',      group: 'narrative', weight: 0.6 },
+                { id: 'shield',   label: 'Shield',   group: 'defense',  weight: 0.55 },
+                { id: 'cortex',   label: 'Cortex',   group: 'defense',  weight: 0.55 },
+                { id: 'embodied', label: 'Embodied', group: 'cognition', weight: 0.7 },
+              ]}
+              edges={[
+                { source: 'self',    target: 'concord',  kind: 'parent' },
+                { source: 'concord', target: 'dream',    kind: 'parent' },
+                { source: 'concord', target: 'embodied', kind: 'parent' },
+                { source: 'concord', target: 'shield',   kind: 'parent' },
+                { source: 'concord', target: 'cortex',   kind: 'parent' },
+                { source: 'forging', target: 'cascade',  kind: 'citation' },
+                { source: 'forging', target: 'commune',  kind: 'citation' },
+                { source: 'commune', target: 'arc',      kind: 'citation' },
+                { source: 'embodied', target: 'dream',   kind: 'sibling' },
+                { source: 'arc',     target: 'concord',  kind: 'citation' },
+              ]}
+              focusedId="concord"
+            />
             <AtlasPublicView
               data={tileData ? { ok: true, view: 'terrain', terrain: { tile: tileData.tile } } : coverageData ? { ok: true, view: 'coverage', coverage: coverageData } : null}
               loading={tileLoading || coverageLoading}
