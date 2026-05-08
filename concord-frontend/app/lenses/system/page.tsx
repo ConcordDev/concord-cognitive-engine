@@ -19,10 +19,23 @@ import { useQuery } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import dynamic from 'next/dynamic';
+
+// Absorbed UX components — analytics dashboard + plugin marketplace
+// surface, mounted as new tabs in the system lens. Using empty/default
+// inputs until /api/analytics and /api/plugins macros land.
+const AnalyticsDashboard = dynamic(
+  () => import('@/components/world-lens/AnalyticsDashboard'),
+  { ssr: false },
+);
+const LensPluginSystem = dynamic(
+  () => import('@/components/world-lens/LensPluginSystem'),
+  { ssr: false },
+);
 import {
   Activity, Database, Globe, Heart, Layers, Map as MapIcon,
   RefreshCw, AlertTriangle, CheckCircle2, XCircle, Loader2,
-  Zap, BookOpen, GitBranch,
+  Zap, BookOpen, GitBranch, BarChart3, Puzzle,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -72,7 +85,7 @@ interface SystemsReport {
 export default function SystemLensPage() {
   useLensNav('system');
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'heartbeats' | 'gaps' | 'coverage' | 'drift'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'heartbeats' | 'gaps' | 'coverage' | 'drift' | 'analytics' | 'plugins'>('overview');
   const [coverageFilter, setCoverageFilter] = useState<'all' | 'present' | 'partial' | 'missing'>('all');
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -197,6 +210,8 @@ export default function SystemLensPage() {
             { key: 'gaps', label: `Gaps (${data.crossRef.dormantModules.length + data.crossRef.headlessBackends.length})`, icon: AlertTriangle as LucideIcon },
             { key: 'coverage', label: `Coverage (${coveragePct}%)`, icon: MapIcon as LucideIcon },
             { key: 'drift', label: `Drift (${data.drift.length})`, icon: GitBranch as LucideIcon },
+            { key: 'analytics', label: 'Analytics', icon: BarChart3 as LucideIcon },
+            { key: 'plugins', label: 'Plugins', icon: Puzzle as LucideIcon },
           ] as const).map(({ key, label, icon: Icon }) => (
             <button
               key={key}
@@ -403,6 +418,40 @@ export default function SystemLensPage() {
                   </table>
                 </div>
               )}
+            </motion.section>
+          )}
+          {activeTab === 'analytics' && (
+            <motion.section
+              key="analytics"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+            >
+              <h2 className="mb-3 text-base font-semibold text-cyan-200">Personal · World · Global activity</h2>
+              <p className="mb-3 text-xs text-cyan-700">
+                Distinct from cartograph stats above (system structure). This is per-player + per-world + global activity over time. Connects to /api/analytics/* macros once landed.
+              </p>
+              <AnalyticsDashboard />
+            </motion.section>
+          )}
+          {activeTab === 'plugins' && (
+            <motion.section
+              key="plugins"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+            >
+              <h2 className="mb-3 text-base font-semibold text-cyan-200">Lens plugin marketplace</h2>
+              <p className="mb-3 text-xs text-cyan-700">
+                Browse + install + create lens plugins. Backed by the plugin gallery (migration 085) — the marketplace queries are stubbed until /api/plugins surfaces.
+              </p>
+              <LensPluginSystem
+                installedPlugins={[]}
+                marketplace={[]}
+                activeWidgets={[]}
+              />
             </motion.section>
           )}
         </AnimatePresence>

@@ -19,6 +19,15 @@ import { useQuery } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import dynamic from 'next/dynamic';
+
+// Absorbed UX component — agent authoring UI for the society autonomy
+// substrate. Mounted in the autonomy tab so authoring sits next to
+// monitoring (refusal/dissent counts, sovereign overrides).
+const AgentBuilder = dynamic(
+  () => import('@/components/world-lens/AgentBuilder'),
+  { ssr: false },
+);
 import {
   Users, Coins, Scale, GraduationCap, Gavel, Sparkles, Loader2,
   type LucideIcon,
@@ -223,6 +232,12 @@ function SectionAutonomy({ data, loading }: { data?: { totalRefusals?: number; a
       <p className="mt-4 text-xs text-amber-700">
         NPCs file refusals when asked to do something against their declared rights; dissents when they object to a council decision; sovereign overrides bypass the rights gate with explicit justification.
       </p>
+
+      <h3 className="mt-6 mb-2 text-sm font-semibold text-amber-200">Author a new agent</h3>
+      <p className="mb-3 text-xs text-amber-700">
+        Author a custom NPC agent — declare its archetype, rights, refusal triggers, and starting beliefs. The agent joins the world's NPC roster and is governed by the same autonomy substrate above.
+      </p>
+      <AgentBuilder />
     </SectionWrap>
   );
 }
