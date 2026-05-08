@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useQuery } from '@tanstack/react-query';
 import { api, apiHelpers } from '@/lib/api/client';
@@ -334,6 +335,7 @@ export default function PlatformPage() {
   };
 
   return (
+    <LensShell lensId="platform" asMain={false}>
     <div data-lens-theme="platform" className="min-h-screen bg-lattice-void text-gray-200">
       {/* Top Bar */}
       <div className="border-b border-lattice-border bg-lattice-deep/50 backdrop-blur-sm sticky top-0 z-10">
@@ -535,5 +537,6 @@ export default function PlatformPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

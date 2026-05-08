@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -190,6 +191,7 @@ export default function OceanLensPage() {
   }
 
   return (
+    <LensShell lensId="ocean" asMain={false}>
     <div data-lens-theme="ocean" className={cn(ds.pageContainer, 'space-y-4')}>
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -498,5 +500,6 @@ export default function OceanLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

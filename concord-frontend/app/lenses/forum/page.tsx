@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useQuery } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -781,6 +782,7 @@ export default function ForumLensPage() {
     );
   }
   return (
+    <LensShell lensId="forum" asMain={false}>
     <div className="lens-forum min-h-full bg-lattice-bg" data-lens-theme="forum">
       {/* Header */}
       <header className="sticky top-0 z-30 bg-lattice-surface/95 backdrop-blur border-b border-orange-500/10">
@@ -1155,5 +1157,6 @@ export default function ForumLensPage() {
         )}
       </AnimatePresence>
     </div>
+    </LensShell>
   );
 }

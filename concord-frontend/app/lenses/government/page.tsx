@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { LensShell } from '@/components/lens/LensShell';
 import { useState, useMemo, useCallback } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -3146,6 +3147,7 @@ export default function GovernmentLensPage() {
   }
 
   return (
+    <LensShell lensId="government" asMain={false}>
     <div data-lens-theme="government" className={ds.pageContainer}>
       {/* Header */}
       <header className={ds.sectionHeader}>
@@ -3489,5 +3491,6 @@ export default function GovernmentLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

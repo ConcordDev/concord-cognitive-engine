@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { LensShell } from '@/components/lens/LensShell';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
@@ -246,6 +247,7 @@ export default function AnalyticsPage() {
   }
 
   return (
+    <LensShell lensId="analytics" asMain={false}>
     <div className="min-h-screen bg-lattice-void text-white">
       {/* Header */}
       <header className="bg-lattice-surface border-b border-lattice-border">
@@ -891,6 +893,7 @@ export default function AnalyticsPage() {
         )}
       </main>
     </div>
+    </LensShell>
   );
 }
 

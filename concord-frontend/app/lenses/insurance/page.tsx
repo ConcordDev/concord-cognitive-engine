@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -942,6 +943,7 @@ export default function InsuranceLensPage() {
   }
 
   return (
+    <LensShell lensId="insurance" asMain={false}>
     <div data-lens-theme="insurance" className={ds.pageContainer}>
       {/* Header */}
       <header className={ds.sectionHeader}>
@@ -1281,5 +1283,6 @@ export default function InsuranceLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

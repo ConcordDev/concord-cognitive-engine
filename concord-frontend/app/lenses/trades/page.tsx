@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { LensShell } from '@/components/lens/LensShell';
 import { useState, useMemo, useCallback } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -2208,6 +2209,7 @@ export default function TradesLensPage() {
   }
 
   return (
+    <LensShell lensId="trades" asMain={false}>
     <div className={cn(ds.pageContainer, 'lens-trades')} data-lens-theme="trades">
       {/* Header */}
       <header className={ds.sectionHeader}>
@@ -2450,5 +2452,6 @@ export default function TradesLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

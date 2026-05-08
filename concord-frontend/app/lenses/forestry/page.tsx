@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -169,6 +170,7 @@ export default function ForestryLensPage() {
   );
 
   return (
+    <LensShell lensId="forestry" asMain={false}>
     <LensPageShell
       domain="forestry"
       title="Forestry Management"
@@ -370,5 +372,6 @@ export default function ForestryLensPage() {
         <UniversalActions domain="forestry" artifactId={items[0]?.id} />
       </div>
     </LensPageShell>
+    </LensShell>
   );
 }

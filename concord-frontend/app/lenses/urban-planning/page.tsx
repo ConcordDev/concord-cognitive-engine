@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -162,6 +163,7 @@ export default function UrbanPlanningLensPage() {
   );
 
   return (
+    <LensShell lensId="urban-planning" asMain={false}>
     <LensPageShell
       domain="urban-planning"
       title="Urban Planning"
@@ -418,5 +420,6 @@ export default function UrbanPlanningLensPage() {
 
       <UniversalActions domain="urban-planning" artifactId={items[0]?.id} />
     </LensPageShell>
+    </LensShell>
   );
 }

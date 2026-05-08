@@ -13,6 +13,7 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import { Trophy, Users, Coins, Plus, Play, ChevronRight } from 'lucide-react';
 
 interface Rules {
@@ -87,6 +88,7 @@ export default function TournamentsPage() {
   }, [view, activeId, fetchList, fetchDetail]);
 
   return (
+    <LensShell lensId="tournaments" asMain={false}>
     <div className="min-h-screen bg-slate-950 p-6 text-slate-100">
       <div className="mx-auto max-w-6xl">
         <header className="mb-6 flex items-center justify-between">
@@ -115,6 +117,7 @@ export default function TournamentsPage() {
         {view === 'create' && <TournamentCreate onCreated={(id) => { setActiveId(id); setView('detail'); }} />}
       </div>
     </div>
+    </LensShell>
   );
 }
 

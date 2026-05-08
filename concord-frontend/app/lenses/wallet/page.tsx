@@ -12,6 +12,7 @@
  */
 
 import { useState, useCallback, useRef, useMemo, useEffect, Suspense } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import { useSearchParams } from 'next/navigation';
 import { useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -886,6 +887,7 @@ function WalletPageInner() {
 
 export default function WalletPage() {
   return (
+    <LensShell lensId="wallet" asMain={false}>
     <Suspense
       fallback={
         <div className={cn(ds.pageContainer, 'max-w-6xl mx-auto')}>
@@ -899,6 +901,7 @@ export default function WalletPage() {
     >
       <WalletPageInner />
     </Suspense>
+    </LensShell>
   );
 }
 

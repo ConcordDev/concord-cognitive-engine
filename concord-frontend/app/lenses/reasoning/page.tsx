@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { LensShell } from '@/components/lens/LensShell';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -969,6 +970,7 @@ export default function ReasoningLensPage() {
   /* ================================================================ */
 
   return (
+    <LensShell lensId="reasoning" asMain={false}>
     <div data-lens-theme="reasoning" className={ds.pageContainer}>
       {/* ---- Header ---- */}
       <header className={ds.sectionHeader}>
@@ -2508,5 +2510,6 @@ export default function ReasoningLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

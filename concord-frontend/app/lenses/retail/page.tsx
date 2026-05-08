@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { LensShell } from '@/components/lens/LensShell';
 import { useState, useMemo, useCallback } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -1831,6 +1832,7 @@ export default function RetailLensPage() {
   }
 
   return (
+    <LensShell lensId="retail" asMain={false}>
     <div data-lens-theme="retail" className={ds.pageContainer}>
       {/* Header */}
       <header className={ds.sectionHeader}>
@@ -1964,5 +1966,6 @@ export default function RetailLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

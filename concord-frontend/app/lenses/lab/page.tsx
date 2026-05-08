@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { LensShell } from '@/components/lens/LensShell';
 import { useMutation } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
@@ -73,6 +74,7 @@ export default function LabLensPage() {
     );
   }
   return (
+    <LensShell lensId="lab" asMain={false}>
     <div className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -235,6 +237,7 @@ export default function LabLensPage() {
         </div>
       </div>
     </div>
+    </LensShell>
   );
 }
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -275,6 +276,7 @@ export default function CookingLensPage() {
   if (isError) return <div className="flex items-center justify-center h-full p-8"><ErrorState error={error?.message} onRetry={refetch} /></div>;
 
   return (
+    <LensShell lensId="cooking" asMain={false}>
     <div data-lens-theme="cooking" className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -603,5 +605,6 @@ export default function CookingLensPage() {
         {showFeatures && <div className="px-4 pb-4"><LensFeaturePanel lensId="cooking" /></div>}
       </div>
     </div>
+    </LensShell>
   );
 }

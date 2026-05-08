@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
@@ -896,6 +897,7 @@ export default function GameLensPage() {
     );
   }
   return (
+    <LensShell lensId="game" asMain={false}>
     <div className="p-6 space-y-6 min-h-screen">
       {/* Header */}
       <header className="flex items-center justify-between flex-wrap gap-4">
@@ -1826,5 +1828,6 @@ export default function GameLensPage() {
         )}
       </AnimatePresence>
     </div>
+    </LensShell>
   );
 }

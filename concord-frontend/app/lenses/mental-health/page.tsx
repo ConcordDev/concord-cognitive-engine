@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { LensShell } from '@/components/lens/LensShell';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useState } from 'react';
@@ -132,6 +133,7 @@ export default function MentalHealthLensPage() {
   }
 
   return (
+    <LensShell lensId="mental-health" asMain={false}>
     <div data-lens-theme="mental-health" className="p-6 space-y-6">
       {/* Disclaimer */}
       <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-start gap-3">
@@ -648,5 +650,6 @@ export default function MentalHealthLensPage() {
         {showFeatures && <div className="px-4 pb-4"><LensFeaturePanel lensId="mental-health" /></div>}
       </div>
     </div>
+    </LensShell>
   );
 }

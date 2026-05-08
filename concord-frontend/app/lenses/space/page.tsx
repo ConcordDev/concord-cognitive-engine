@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -233,6 +234,7 @@ export default function SpaceLensPage() {
   }
 
   return (
+    <LensShell lensId="space" asMain={false}>
     <div data-lens-theme="space" className={cn(ds.pageContainer, 'space-y-4')}>
 
       {/* ── Header with starfield gradient ── */}
@@ -607,5 +609,6 @@ export default function SpaceLensPage() {
         {showFeatures && <div className="px-4 pb-4"><LensFeaturePanel lensId="space" /></div>}
       </div>
     </div>
+    </LensShell>
   );
 }

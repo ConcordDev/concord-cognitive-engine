@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import { useLensNav } from '@/hooks/useLensNav';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -1500,6 +1501,7 @@ export default function StudioLensPage() {
 
   // ---- Render: Active project ----
   return (
+    <LensShell lensId="studio" asMain={false}>
     <div
       className="lens-studio h-full flex flex-col bg-gradient-to-b from-violet-950/20 via-black to-black"
       data-lens-theme="studio"
@@ -2546,5 +2548,6 @@ export default function StudioLensPage() {
         )}
       </AnimatePresence>
     </div>
+    </LensShell>
   );
 }

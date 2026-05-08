@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import { useQuery } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -125,6 +126,7 @@ export default function AtlasLensPage() {
   ];
 
   return (
+    <LensShell lensId="atlas" asMain={false}>
     <div data-lens-theme="atlas" className="min-h-screen bg-zinc-950 text-zinc-100 p-6 space-y-6">
       {/* Error banner */}
       {(coverageError || anomalyError) && (
@@ -426,5 +428,6 @@ export default function AtlasLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

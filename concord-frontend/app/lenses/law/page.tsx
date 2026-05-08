@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { LensShell } from '@/components/lens/LensShell';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useState } from 'react';
@@ -142,6 +143,7 @@ export default function LawLensPage() {
     );
   }
   return (
+    <LensShell lensId="law" asMain={false}>
     <div data-lens-theme="law" className="p-6 space-y-6">
       <header className="flex items-center gap-3">
         <span className="text-2xl">⚖️</span>
@@ -703,5 +705,6 @@ export default function LawLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

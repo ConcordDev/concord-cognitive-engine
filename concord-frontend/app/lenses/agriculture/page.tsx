@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -1399,6 +1400,7 @@ export default function AgricultureLensPage() {
     );
   }
   return (
+    <LensShell lensId="agriculture" asMain={false}>
     <div data-lens-theme="agriculture" className={ds.pageContainer}>
       <header className={ds.sectionHeader}>
         <div className="flex items-center gap-3">
@@ -1764,5 +1766,6 @@ export default function AgricultureLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

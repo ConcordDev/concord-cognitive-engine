@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { LensShell } from '@/components/lens/LensShell';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
@@ -578,6 +579,7 @@ export default function BoardLensPage() {
   }
 
   return (
+    <LensShell lensId="board" asMain={false}>
     <div className="flex flex-col h-full overflow-hidden">
       <div className="flex flex-1 overflow-hidden">
         {/* Main content area */}
@@ -1436,6 +1438,7 @@ export default function BoardLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }
 

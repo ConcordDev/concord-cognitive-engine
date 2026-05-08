@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -190,6 +191,7 @@ export default function DefenseLensPage() {
   }
 
   return (
+    <LensShell lensId="defense" asMain={false}>
     <div className={cn(ds.pageContainer, 'space-y-4')}>
       {/* Header */}
       <header className="flex items-center justify-between">
@@ -343,6 +345,7 @@ export default function DefenseLensPage() {
         {showFeatures && <div className="px-4 pb-4"><LensFeaturePanel lensId="defense" /></div>}
       </div>
     </div>
+    </LensShell>
   );
 }
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { LensShell } from '@/components/lens/LensShell';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -246,6 +247,7 @@ export default function InferenceLensPage() {
   }
 
   return (
+    <LensShell lensId="inference" asMain={false}>
     <div data-lens-theme="inference" className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -777,5 +779,6 @@ export default function InferenceLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

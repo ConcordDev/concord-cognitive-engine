@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { LensShell } from '@/components/lens/LensShell';
 import { useMutation } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -99,6 +100,7 @@ export default function ChemLensPage() {
     );
   }
   return (
+    <LensShell lensId="chem" asMain={false}>
     <div data-lens-theme="chem" className="p-6 space-y-6">
       {/* Sub-Lenses */}
       <SubLensQuickNav lensId="chem" />
@@ -600,5 +602,6 @@ export default function ChemLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

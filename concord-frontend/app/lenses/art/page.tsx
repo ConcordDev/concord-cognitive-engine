@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, apiHelpers } from '@/lib/api/client';
@@ -1022,6 +1023,7 @@ export default function ArtLensPage() {
     );
   }
   return (
+    <LensShell lensId="art" asMain={false}>
     <div data-lens-theme="art" className="h-[calc(100vh-4rem)] flex flex-col bg-gradient-to-b from-rose-950/10 via-neutral-950 to-black">
       {renderNav()}
       <div className="flex-1 overflow-hidden flex">
@@ -1243,5 +1245,6 @@ export default function ArtLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

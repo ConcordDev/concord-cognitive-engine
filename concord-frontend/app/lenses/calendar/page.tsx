@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
+import { LensShell } from '@/components/lens/LensShell';
 import { useUIStore } from '@/store/ui';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -1144,6 +1145,7 @@ export default function CalendarLensPage() {
     );
   }
   return (
+    <LensShell lensId="calendar" asMain={false}>
     <div data-lens-theme="calendar" className="h-[calc(100vh-4rem)] flex flex-col">
       {/* Header */}
       <header className="flex items-center justify-between px-4 py-3 border-b border-lattice-border">
@@ -2009,5 +2011,6 @@ export default function CalendarLensPage() {
         )}
       </AnimatePresence>
     </div>
+    </LensShell>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { LensShell } from '@/components/lens/LensShell';
 import { useState, useMemo, useCallback } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -1449,6 +1450,7 @@ export default function HealthcareLensPage() {
   };
 
   return (
+    <LensShell lensId="healthcare" asMain={false}>
     <div
       data-lens-theme="healthcare"
       className="p-6 space-y-6 bg-gradient-to-b from-blue-950/20 to-transparent"
@@ -3929,5 +3931,6 @@ export default function HealthcareLensPage() {
         </p>
       </div>
     </div>
+    </LensShell>
   );
 }

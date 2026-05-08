@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { LensShell } from '@/components/lens/LensShell';
 import { useState, useMemo, useCallback } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -2575,6 +2576,7 @@ export default function FoodLensPage() {
   }
 
   return (
+    <LensShell lensId="food" asMain={false}>
     <div data-lens-theme="food" className={ds.pageContainer}>
       {/* Nutrition Disclaimer */}
       <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-start gap-3">
@@ -2718,5 +2720,6 @@ export default function FoodLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

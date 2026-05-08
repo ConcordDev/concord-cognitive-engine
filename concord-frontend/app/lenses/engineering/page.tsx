@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import { useQuery } from '@tanstack/react-query';
 import { useRunArtifact, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { api } from '@/lib/api/client';
@@ -331,6 +332,7 @@ export default function EngineeringPage() {
   // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
+    <LensShell lensId="engineering" asMain={false}>
     <div className="min-h-screen bg-lattice-void text-white p-4 space-y-4 max-w-6xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -799,5 +801,6 @@ export default function EngineeringPage() {
         </div>
       )}
     </div>
+    </LensShell>
   );
 }

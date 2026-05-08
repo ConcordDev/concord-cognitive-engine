@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
@@ -251,6 +252,7 @@ export default function BillingPage() {
   }
 
   return (
+    <LensShell lensId="billing" asMain={false}>
     <div data-lens-theme="billing" className="p-6 max-w-6xl mx-auto space-y-8">
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -989,6 +991,7 @@ export default function BillingPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }
 

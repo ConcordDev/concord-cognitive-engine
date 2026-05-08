@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import { motion } from 'framer-motion';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -612,6 +613,7 @@ export default function MasonryLensPage() {
   );
 
   return (
+    <LensShell lensId="masonry" asMain={false}>
     <LensPageShell
       domain="masonry"
       title="Masonry"
@@ -694,5 +696,6 @@ export default function MasonryLensPage() {
       {showDashboard ? renderDashboard() : renderLibrary()}
       {renderEditor()}
     </LensPageShell>
+    </LensShell>
   );
 }

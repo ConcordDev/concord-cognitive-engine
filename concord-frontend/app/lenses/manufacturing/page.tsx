@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import { motion } from 'framer-motion';
 import { LensPageShell } from '@/components/lens/LensPageShell';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -2284,6 +2285,7 @@ export default function ManufacturingLensPage() {
   };
 
   return (
+    <LensShell lensId="manufacturing" asMain={false}>
     <LensPageShell
       domain="manufacturing"
       title="Manufacturing"
@@ -2647,5 +2649,6 @@ export default function ManufacturingLensPage() {
         </>
       )}
     </LensPageShell>
+    </LensShell>
   );
 }

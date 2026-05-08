@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -319,6 +320,7 @@ export default function HRLensPage() {
   const maxDeptCount = Math.max(1, ...Object.values(deptCounts));
 
   return (
+    <LensShell lensId="hr" asMain={false}>
     <div data-lens-theme="hr" className="space-y-6 p-6">
       <motion.header initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -399,5 +401,6 @@ export default function HRLensPage() {
         {showFeatures && <div className="px-4 pb-4"><LensFeaturePanel lensId="hr" /></div>}
       </div>
     </div>
+    </LensShell>
   );
 }

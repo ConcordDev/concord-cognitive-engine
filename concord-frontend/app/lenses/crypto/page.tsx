@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { LensShell } from '@/components/lens/LensShell';
 import { useState, useCallback } from 'react';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
@@ -427,6 +428,7 @@ export default function CryptoLensPage() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
+    <LensShell lensId="crypto" asMain={false}>
     <div data-lens-theme="crypto" className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -1342,5 +1344,6 @@ export default function CryptoLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

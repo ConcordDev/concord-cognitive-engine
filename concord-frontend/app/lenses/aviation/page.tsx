@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { LensShell } from '@/components/lens/LensShell';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -1633,6 +1634,7 @@ export default function AviationLensPage() {
   // Main render
   // -----------------------------------------------------------------------
   return (
+    <LensShell lensId="aviation" asMain={false}>
     <div className={ds.pageContainer}>
       {/* Header */}
       <header className={ds.sectionHeader}>
@@ -1948,5 +1950,6 @@ export default function AviationLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import { LensShell } from '@/components/lens/LensShell';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useState, useCallback } from 'react';
@@ -153,6 +154,7 @@ export default function GeologyLensPage() {
   };
 
   return (
+    <LensShell lensId="geology" asMain={false}>
     <LensPageShell
       domain="geology"
       title="Geology Lens"
@@ -544,5 +546,6 @@ export default function GeologyLensPage() {
         <LensFeedPanel lensId="geology" />
       </div>
     </LensPageShell>
+    </LensShell>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import { motion } from 'framer-motion';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -718,6 +719,7 @@ export default function QuestmarketLensPage() {
   );
 
   return (
+    <LensShell lensId="questmarket" asMain={false}>
     <LensPageShell
       domain="questmarket"
       title="Questmarket"
@@ -799,5 +801,6 @@ export default function QuestmarketLensPage() {
       {showDashboard ? renderDashboard() : renderLibrary()}
       {renderEditor()}
     </LensPageShell>
+    </LensShell>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useQuery } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
@@ -1083,6 +1084,7 @@ export default function GraphLensPage() {
     );
   }
   return (
+    <LensShell lensId="graph" asMain={false}>
     <div data-lens-theme="graph" className="h-full flex flex-col bg-[#0a0e14]">
       {/* Stat Cards Row */}
       <div className="flex items-center gap-3 px-4 py-2 border-b border-cyan-900/20 bg-[#0a0e14]/90 backdrop-blur-sm flex-wrap">
@@ -1983,5 +1985,6 @@ export default function GraphLensPage() {
         })()}
       </div>
     </div>
+    </LensShell>
   );
 }

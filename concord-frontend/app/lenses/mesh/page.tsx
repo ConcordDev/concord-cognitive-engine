@@ -12,6 +12,7 @@
  */
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { LensShell } from '@/components/lens/LensShell';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useState } from 'react';
@@ -100,6 +101,7 @@ export default function MeshLensPage() {
   ];
 
   return (
+    <LensShell lensId="mesh" asMain={false}>
     <div className="min-h-screen bg-black pb-12 text-teal-50">
       <header className="sticky top-0 z-10 border-b border-teal-900/50 bg-black/95 px-4 py-3 backdrop-blur md:px-8">
         <div className="mx-auto flex max-w-7xl items-center gap-3">
@@ -230,6 +232,7 @@ export default function MeshLensPage() {
         </AnimatePresence>
       </main>
     </div>
+    </LensShell>
   );
 }
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -184,6 +185,7 @@ export default function EmergencyServicesLensPage() {
   );
 
   return (
+    <LensShell lensId="emergency-services" asMain={false}>
     <LensPageShell
       domain="emergency-services"
       title="Emergency Services"
@@ -458,5 +460,6 @@ export default function EmergencyServicesLensPage() {
 
       <UniversalActions domain="emergency-services" artifactId={items[0]?.id} />
     </LensPageShell>
+    </LensShell>
   );
 }

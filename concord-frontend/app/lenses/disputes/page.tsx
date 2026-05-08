@@ -8,6 +8,7 @@
  */
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { LensShell } from '@/components/lens/LensShell';
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -697,6 +698,7 @@ export default function DisputesPage() {
   }, [activeTab, myDisputes, adminQueue]);
 
   return (
+    <LensShell lensId="disputes" asMain={false}>
     <div className={ds.pageContainer}>
       {/* Header */}
       <div className={ds.sectionHeader}>
@@ -1009,5 +1011,6 @@ export default function DisputesPage() {
         )}
       </AnimatePresence>
     </div>
+    </LensShell>
   );
 }

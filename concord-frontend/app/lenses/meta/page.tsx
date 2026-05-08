@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { LensShell } from '@/components/lens/LensShell';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { useState, useMemo, useCallback } from 'react';
@@ -1128,6 +1129,7 @@ export default function MetaLensPage() {
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
 
   return (
+    <LensShell lensId="meta" asMain={false}>
     <div data-lens-theme="meta" className="p-6 space-y-6">
       {/* Header */}
       <motion.header
@@ -1188,5 +1190,6 @@ export default function MetaLensPage() {
         </motion.div>
       </AnimatePresence>
     </div>
+    </LensShell>
   );
 }

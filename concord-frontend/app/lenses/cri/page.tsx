@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useQuery } from '@tanstack/react-query';
@@ -160,6 +161,7 @@ export default function CRILensPage() {
   }
 
   return (
+    <LensShell lensId="cri" asMain={false}>
     <div data-lens-theme="cri" className="p-6 space-y-6">
       <header className="flex items-center gap-3">
         <BarChart3 className="w-6 h-6 text-neon-cyan" />
@@ -708,5 +710,6 @@ export default function CRILensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { LensShell } from '@/components/lens/LensShell';
 import { useLensNav } from '@/hooks/useLensNav';
 import { showToast } from '@/components/common/Toasts';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -476,6 +477,7 @@ export default function PaperLensPage() {
   // ====================================================================
 
   return (
+    <LensShell lensId="paper" asMain={false}>
     <div className={ds.pageContainer}>
       {/* ---- Header ---- */}
       <header className={ds.sectionHeader}>
@@ -951,6 +953,7 @@ export default function PaperLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }
 

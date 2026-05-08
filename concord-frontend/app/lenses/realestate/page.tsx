@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { LensShell } from '@/components/lens/LensShell';
 import { useState, useMemo, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -888,6 +889,7 @@ export default function RealEstateLensPage() {
   }
 
   return (
+    <LensShell lensId="realestate" asMain={false}>
     <div className={ds.pageContainer}>
       {/* Header */}
       <header className={ds.sectionHeader}>
@@ -3308,5 +3310,6 @@ export default function RealEstateLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

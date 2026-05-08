@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { LensShell } from '@/components/lens/LensShell';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useState, useMemo, useCallback } from 'react';
@@ -194,6 +195,7 @@ export default function AstronomyLensPage() {
   }
 
   return (
+    <LensShell lensId="astronomy" asMain={false}>
     <div data-lens-theme="astronomy" className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -388,5 +390,6 @@ export default function AstronomyLensPage() {
         {showFeatures && <div className="px-4 pb-4"><LensFeaturePanel lensId="astronomy" /></div>}
       </div>
     </div>
+    </LensShell>
   );
 }

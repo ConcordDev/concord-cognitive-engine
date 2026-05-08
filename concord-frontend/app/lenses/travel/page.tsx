@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import dynamic from 'next/dynamic';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -156,6 +157,7 @@ export default function TravelLensPage() {
   }
 
   return (
+    <LensShell lensId="travel" asMain={false}>
     <div data-lens-theme="travel" className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -560,5 +562,6 @@ export default function TravelLensPage() {
         {showFeatures && <div className="px-4 pb-4"><LensFeaturePanel lensId="travel" /></div>}
       </div>
     </div>
+    </LensShell>
   );
 }

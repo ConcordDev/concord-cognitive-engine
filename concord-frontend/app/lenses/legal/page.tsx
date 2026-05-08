@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { LensShell } from '@/components/lens/LensShell';
 import { useState, useMemo, useCallback } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -3010,6 +3011,7 @@ export default function LegalLensPage() {
   /* ---------- main render ---------- */
 
   return (
+    <LensShell lensId="legal" asMain={false}>
     <div data-lens-theme="legal" className={ds.pageContainer}>
       {/* Legal Disclaimer */}
       <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-start gap-3">
@@ -3307,5 +3309,6 @@ export default function LegalLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

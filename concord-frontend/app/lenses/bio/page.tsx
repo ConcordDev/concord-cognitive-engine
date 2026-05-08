@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { LensShell } from '@/components/lens/LensShell';
 import { useQuery } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { UniversalActions } from '@/components/lens/UniversalActions';
@@ -107,6 +108,7 @@ export default function BioLensPage() {
     );
   }
   return (
+    <LensShell lensId="bio" asMain={false}>
     <div data-lens-theme="bio" className="p-6 space-y-6">
       {/* Disclaimer */}
       <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-start gap-3">
@@ -415,5 +417,6 @@ export default function BioLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

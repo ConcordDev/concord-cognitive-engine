@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { LensShell } from '@/components/lens/LensShell';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
@@ -372,6 +373,7 @@ export default function MetacognitionLensPage() {
   // --- Render ---
 
   return (
+    <LensShell lensId="metacognition" asMain={false}>
     <div data-lens-theme="metacognition" className="p-6 space-y-6">
       {/* Header */}
       <header className="flex items-center gap-3">
@@ -1446,5 +1448,6 @@ export default function MetacognitionLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -887,6 +888,7 @@ export default function FitnessLensPage() {
   }
 
   return (
+    <LensShell lensId="fitness" asMain={false}>
     <div className={ds.pageContainer}>
       {/* Fitness Disclaimer */}
       <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-start gap-3">
@@ -2169,5 +2171,6 @@ export default function FitnessLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

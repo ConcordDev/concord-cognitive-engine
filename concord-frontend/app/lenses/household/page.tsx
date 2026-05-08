@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { LensShell } from '@/components/lens/LensShell';
 import { useState, useMemo, useCallback } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -1591,6 +1592,7 @@ export default function HouseholdLensPage() {
   }
 
   return (
+    <LensShell lensId="household" asMain={false}>
     <div data-lens-theme="household" className={ds.pageContainer}>
       {/* Header */}
       <header className={ds.sectionHeader}>
@@ -1807,5 +1809,6 @@ export default function HouseholdLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

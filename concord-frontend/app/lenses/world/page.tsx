@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import { useRouter } from 'next/navigation';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -3266,6 +3267,7 @@ export default function WorldLensPage() {
   }, []);
 
   return (
+    <LensShell lensId="world" asMain={false}>
     <div data-lens-theme="world" className="flex flex-col h-full min-h-0">
       {/* Header */}
       <header className="flex items-center justify-between px-4 py-2 border-b border-white/10">
@@ -5099,6 +5101,7 @@ export default function WorldLensPage() {
       {/* Post-tutorial hints — rotates contextual tips after first visit */}
       {!showOnboarding && <PostTutorialHints />}
     </div>
+    </LensShell>
   );
 }
 

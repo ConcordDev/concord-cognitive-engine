@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { UniversalActions } from '@/components/lens/UniversalActions';
@@ -246,6 +247,7 @@ export default function SportsLensPage() {
     );
 
   return (
+    <LensShell lensId="sports" asMain={false}>
     <div data-lens-theme="sports" className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -991,5 +993,6 @@ export default function SportsLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

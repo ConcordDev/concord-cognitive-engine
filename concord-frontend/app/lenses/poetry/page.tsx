@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useLensDTUs } from '@/hooks/useLensDTUs';
@@ -364,6 +365,7 @@ export default function PoetryPage() {
   ];
 
   return (
+    <LensShell lensId="poetry" asMain={false}>
     <div data-lens-theme="poetry" className="min-h-screen">
       {/* Reading Mode Overlay */}
       <AnimatePresence>
@@ -631,5 +633,6 @@ export default function PoetryPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

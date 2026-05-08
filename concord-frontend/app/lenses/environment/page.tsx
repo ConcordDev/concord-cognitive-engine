@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { LensPageShell } from '@/components/lens/LensPageShell';
@@ -3304,6 +3305,7 @@ export default function EnvironmentLensPage() {
   /* ================================================================ */
 
   return (
+    <LensShell lensId="environment" asMain={false}>
     <LensPageShell
       domain="environment"
       title="Environmental Monitoring"
@@ -3678,5 +3680,6 @@ export default function EnvironmentLensPage() {
         <LensFeedPanel lensId="environment" />
       </div>
     </LensPageShell>
+    </LensShell>
   );
 }

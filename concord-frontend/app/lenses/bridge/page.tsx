@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import { useLensNav } from '@/hooks/useLensNav';
 import { api } from '@/lib/api/client';
 import { motion } from 'framer-motion';
@@ -142,6 +143,7 @@ export default function BridgeLens() {
   };
 
   return (
+    <LensShell lensId="bridge" asMain={false}>
     <div data-lens-theme="bridge" className="min-h-screen bg-zinc-950 text-zinc-100 p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
@@ -549,6 +551,7 @@ export default function BridgeLens() {
         />
       )}
     </div>
+    </LensShell>
   );
 }
 

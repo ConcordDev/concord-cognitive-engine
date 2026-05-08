@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useLensDTUs } from '@/hooks/useLensDTUs';
@@ -564,6 +565,7 @@ export default function MusicLensPage() {
 
   // ---- Render ----
   return (
+    <LensShell lensId="music" asMain={false}>
     <div className="lens-music flex flex-col h-full overflow-hidden" data-lens-theme="music">
       {/* Top Navigation */}
       <header className="flex items-center justify-between px-6 py-3 border-b border-purple-500/10 bg-gradient-to-r from-purple-950/20 via-transparent to-indigo-950/20 flex-shrink-0">
@@ -2167,5 +2169,6 @@ export default function MusicLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

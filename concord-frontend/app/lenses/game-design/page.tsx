@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
@@ -195,6 +196,7 @@ export default function GameDesignPage() {
   ];
 
   return (
+    <LensShell lensId="game-design" asMain={false}>
     <div data-lens-theme="game-design" className="min-h-screen">
       <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
         {/* Header */}
@@ -701,5 +703,6 @@ export default function GameDesignPage() {
         </AnimatePresence>
       </div>
     </div>
+    </LensShell>
   );
 }

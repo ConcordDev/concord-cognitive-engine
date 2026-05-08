@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { LensShell } from '@/components/lens/LensShell';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
@@ -971,6 +972,7 @@ export default function SimLensPage() {
   // ═══════════════════════════════════════════════════════════════════════════
 
   return (
+    <LensShell lensId="sim" asMain={false}>
     <div className={ds.pageContainer}>
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <header className={ds.sectionHeader}>
@@ -1820,6 +1822,7 @@ export default function SimLensPage() {
         </div>
       )}
     </div>
+    </LensShell>
   );
 }
 

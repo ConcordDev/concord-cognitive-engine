@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -152,6 +153,7 @@ export default function PhilosophyLensPage() {
   }
 
   return (
+    <LensShell lensId="philosophy" asMain={false}>
     <div data-lens-theme="philosophy" className="p-6 space-y-6">
       <header className="flex items-center gap-3">
         <BookOpen className="w-6 h-6 text-neon-purple" />
@@ -525,5 +527,6 @@ export default function PhilosophyLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

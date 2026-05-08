@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
@@ -190,6 +191,7 @@ export default function FilmStudiosPage() {
   }, {});
 
   return (
+    <LensShell lensId="film-studios" asMain={false}>
     <div data-lens-theme="film-studios" className="min-h-screen">
       <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
         {/* Header */}
@@ -811,5 +813,6 @@ export default function FilmStudiosPage() {
         </AnimatePresence>
       </div>
     </div>
+    </LensShell>
   );
 }

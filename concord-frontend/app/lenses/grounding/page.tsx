@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { LensShell } from '@/components/lens/LensShell';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -135,6 +136,7 @@ export default function GroundingLensPage() {
     );
   }
   return (
+    <LensShell lensId="grounding" asMain={false}>
     <div data-lens-theme="grounding" className="p-6 space-y-6">
       <header className="flex items-center gap-3">
         <span className="text-2xl">🌍</span>
@@ -583,5 +585,6 @@ export default function GroundingLensPage() {
         })()}
       </div>
     </div>
+    </LensShell>
   );
 }

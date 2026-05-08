@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { LensShell } from '@/components/lens/LensShell';
 import { useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -32,6 +33,7 @@ export default function AllLensesPage() {
   const total = Object.values(grouped).reduce((sum, ls) => sum + ls.length, 0);
 
   return (
+    <LensShell lensId="all" asMain={false}>
     <div data-lens-theme="all" className="p-6 space-y-5">
       <header>
         <p className="text-xs uppercase text-gray-400 tracking-wider">Lens Hub</p>
@@ -82,5 +84,6 @@ export default function AllLensesPage() {
 
       </div>
     </div>
+    </LensShell>
   );
 }

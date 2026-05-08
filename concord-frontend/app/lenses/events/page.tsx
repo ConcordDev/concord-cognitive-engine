@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { LensShell } from '@/components/lens/LensShell';
 import { useState, useMemo } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -2487,6 +2488,7 @@ export default function EventsLensPage() {
   // Main return
   // ---------------------------------------------------------------------------
   return (
+    <LensShell lensId="events" asMain={false}>
     <div data-lens-theme="events" className={ds.pageContainer}>
       {/* Header */}
       <header className={ds.sectionHeader}>
@@ -2855,5 +2857,6 @@ export default function EventsLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { LensShell } from '@/components/lens/LensShell';
 import { useState, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { UniversalActions } from '@/components/lens/UniversalActions';
@@ -381,6 +382,7 @@ export default function MathLensPage() {
   }
 
   return (
+    <LensShell lensId="math" asMain={false}>
     <div data-lens-theme="math" className="p-6 space-y-6">
       <header className="flex items-center gap-3">
         <Calculator className="w-7 h-7 text-neon-blue" />
@@ -1134,5 +1136,6 @@ export default function MathLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

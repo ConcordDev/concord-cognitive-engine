@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
@@ -362,6 +363,7 @@ export default function PhotographyPage() {
   ];
 
   return (
+    <LensShell lensId="photography" asMain={false}>
     <div data-lens-theme="photography" className="min-h-screen">
       <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
         {/* Header */}
@@ -925,5 +927,6 @@ export default function PhotographyPage() {
         </AnimatePresence>
       </div>
     </div>
+    </LensShell>
   );
 }

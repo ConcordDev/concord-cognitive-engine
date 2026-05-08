@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { LensShell } from '@/components/lens/LensShell';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -258,6 +259,7 @@ export default function AgentsLensPage() {
     );
   }
   return (
+    <LensShell lensId="agents" asMain={false}>
     <div data-lens-theme="agents" className="min-h-full bg-lattice-bg">
       {/* Header */}
       <header className="sticky top-0 z-10 bg-lattice-surface border-b border-lattice-border">
@@ -1135,5 +1137,6 @@ export default function AgentsLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { LensShell } from '@/components/lens/LensShell';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers, api } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
@@ -1850,6 +1851,7 @@ export default function CommandCenterPage() {
   };
 
   return (
+    <LensShell lensId="command-center" asMain={false}>
     <div data-lens-theme="dashboard" className="min-h-screen bg-[#070b10] text-white">
       {/* Header */}
       <div className="sticky top-0 z-50 bg-[#0a0f18]/95 backdrop-blur-md border-b border-cyan-900/20 px-4 py-3">
@@ -1985,6 +1987,7 @@ export default function CommandCenterPage() {
         />
       )}
     </div>
+    </LensShell>
   );
 }
 

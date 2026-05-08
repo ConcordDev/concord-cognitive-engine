@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -258,6 +259,7 @@ export default function CreativeWritingPage() {
   ];
 
   return (
+    <LensShell lensId="creative-writing" asMain={false}>
     <div data-lens-theme="creative-writing" className="min-h-screen">
       {/* Focus mode exit button */}
       <AnimatePresence>
@@ -808,5 +810,6 @@ export default function CreativeWritingPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

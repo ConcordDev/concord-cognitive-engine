@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -1263,6 +1264,7 @@ export default function EducationLensPage() {
   /* ================================================================== */
 
   return (
+    <LensShell lensId="education" asMain={false}>
     <div data-lens-theme="education" className="p-6 space-y-6 bg-gradient-to-b from-amber-950/10 to-transparent">
       {/* Header */}
       <header className={ds.sectionHeader}>
@@ -3122,6 +3124,7 @@ export default function EducationLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }
 

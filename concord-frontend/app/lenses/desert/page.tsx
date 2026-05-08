@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -158,6 +159,7 @@ export default function DesertLensPage() {
   );
 
   return (
+    <LensShell lensId="desert" asMain={false}>
     <LensPageShell
       domain="desert"
       title="Desert Operations"
@@ -348,5 +350,6 @@ export default function DesertLensPage() {
 
       <UniversalActions domain="desert" artifactId={items[0]?.id} />
     </LensPageShell>
+    </LensShell>
   );
 }

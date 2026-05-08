@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useQuery } from '@tanstack/react-query';
@@ -89,6 +90,7 @@ export default function SufferingLensPage() {
     );
   }
   return (
+    <LensShell lensId="suffering" asMain={false}>
     <div className="p-6 space-y-6">
       {/* Wellbeing Disclaimer */}
       <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 flex items-start gap-3">
@@ -337,6 +339,7 @@ export default function SufferingLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }
 

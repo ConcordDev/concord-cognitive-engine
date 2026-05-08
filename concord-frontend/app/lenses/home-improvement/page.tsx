@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -199,6 +200,7 @@ export default function HomeImprovementLensPage() {
   ];
 
   return (
+    <LensShell lensId="home-improvement" asMain={false}>
     <div data-lens-theme="home-improvement" className="p-6 space-y-6">
       <motion.header
         initial={{ opacity: 0, y: -10 }}
@@ -696,5 +698,6 @@ export default function HomeImprovementLensPage() {
         {showFeatures && <div className="px-4 pb-4"><LensFeaturePanel lensId="home-improvement" /></div>}
       </div>
     </div>
+    </LensShell>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensData } from '@/lib/hooks/use-lens-data';
+import { LensShell } from '@/components/lens/LensShell';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
@@ -148,6 +149,7 @@ export default function EnergyLensPage() {
   };
 
   return (
+    <LensShell lensId="energy" asMain={false}>
     <LensPageShell
       domain="energy"
       title="Energy Lens"
@@ -549,5 +551,6 @@ export default function EnergyLensPage() {
         <LensFeedPanel lensId="energy" />
       </div>
     </LensPageShell>
+    </LensShell>
   );
 }

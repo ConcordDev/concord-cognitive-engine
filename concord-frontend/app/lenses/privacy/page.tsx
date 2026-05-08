@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { LensShell } from '@/components/lens/LensShell';
 import { useState, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -533,6 +534,7 @@ export default function PrivacySharingPage() {
   }
 
   return (
+    <LensShell lensId="privacy" asMain={false}>
     <div className={ds.pageContainer}>
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -808,5 +810,6 @@ export default function PrivacySharingPage() {
         />
       </AnimatePresence>
     </div>
+    </LensShell>
   );
 }

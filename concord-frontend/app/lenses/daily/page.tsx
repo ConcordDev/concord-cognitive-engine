@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { LensShell } from '@/components/lens/LensShell';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -360,6 +361,7 @@ export default function DailyLensPage() {
     );
   }
   return (
+    <LensShell lensId="daily" asMain={false}>
     <div data-lens-theme="daily" className="h-[calc(100vh-4rem)] flex bg-lattice-deep text-white overflow-hidden">
       {/* =================== LEFT SIDEBAR =================== */}
       <aside className="w-72 border-r border-lattice-border bg-lattice-surface/40 flex flex-col shrink-0">
@@ -945,5 +947,6 @@ export default function DailyLensPage() {
         </div>
       </main>
     </div>
+    </LensShell>
   );
 }

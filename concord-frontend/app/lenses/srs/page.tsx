@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { LensShell } from '@/components/lens/LensShell';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -319,6 +320,7 @@ export default function SRSLensPage() {
     );
   }
   return (
+    <LensShell lensId="srs" asMain={false}>
     <div data-lens-theme="srs" className="min-h-full bg-lattice-bg">
       {/* Header */}
       <header className="sticky top-0 z-10 bg-lattice-surface border-b border-lattice-border">
@@ -1236,5 +1238,6 @@ export default function SRSLensPage() {
         )}
       </AnimatePresence>
     </div>
+    </LensShell>
   );
 }

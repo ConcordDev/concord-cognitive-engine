@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { LensShell } from '@/components/lens/LensShell';
 import { useState, useMemo, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { LensPageShell } from '@/components/lens/LensPageShell';
@@ -2067,6 +2068,7 @@ export default function LogisticsLensPage() {
   // ---------------------------------------------------------------------------
 
   return (
+    <LensShell lensId="logistics" asMain={false}>
     <LensPageShell
       domain="logistics"
       title="Transportation &amp; Logistics"
@@ -2699,5 +2701,6 @@ export default function LogisticsLensPage() {
         </div>
       )}
     </LensPageShell>
+    </LensShell>
   );
 }

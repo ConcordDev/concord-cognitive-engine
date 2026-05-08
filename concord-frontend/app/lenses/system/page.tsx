@@ -15,6 +15,7 @@
  */
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { LensShell } from '@/components/lens/LensShell';
 import { useQuery } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useState, useMemo } from 'react';
@@ -318,6 +319,7 @@ export default function SystemLensPage() {
     : 0;
 
   return (
+    <LensShell lensId="system" asMain={false}>
     <div className="min-h-screen bg-black pb-12 text-cyan-50">
       {/* Header */}
       <header className="sticky top-0 z-10 border-b border-cyan-900/50 bg-black/95 px-4 py-3 backdrop-blur md:px-8">
@@ -629,6 +631,7 @@ export default function SystemLensPage() {
         </AnimatePresence>
       </main>
     </div>
+    </LensShell>
   );
 }
 

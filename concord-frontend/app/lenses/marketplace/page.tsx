@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { LensShell } from '@/components/lens/LensShell';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { api, apiHelpers } from '@/lib/api/client';
@@ -1197,6 +1198,7 @@ export default function MarketplaceLensPage() {
     );
   }
   return (
+    <LensShell lensId="marketplace" asMain={false}>
     <div className="lens-marketplace space-y-6 pb-24" data-lens-theme="marketplace">
       {/* ---- Header ---- */}
       <div className="flex items-center justify-between">
@@ -2569,5 +2571,6 @@ export default function MarketplaceLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }

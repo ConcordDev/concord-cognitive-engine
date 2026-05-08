@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useQuery } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
@@ -212,6 +213,7 @@ export default function ReposLensPage() {
     );
   }
   return (
+    <LensShell lensId="repos" asMain={false}>
     <div data-lens-theme="repos" className="min-h-full bg-[#0d1117]">
       {/* Header */}
       <header className="bg-[#161b22] border-b border-gray-700">
@@ -630,6 +632,7 @@ export default function ReposLensPage() {
       </div>
       </div>
     </div>
+    </LensShell>
   );
 }
 

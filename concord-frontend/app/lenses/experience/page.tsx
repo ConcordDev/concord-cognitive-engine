@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { LensShell } from '@/components/lens/LensShell';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useQuery } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
@@ -452,6 +453,7 @@ export default function ExperienceLensPage() {
     );
   }
   return (
+    <LensShell lensId="experience" asMain={false}>
     <div data-lens-theme="experience" className="p-6 space-y-6 max-w-6xl mx-auto">
       {/* ========== Header ========== */}
       <motion.header
@@ -1149,6 +1151,7 @@ export default function ExperienceLensPage() {
         )}
       </div>
     </div>
+    </LensShell>
   );
 }
 

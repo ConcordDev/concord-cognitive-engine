@@ -9,6 +9,7 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import { Crown, Flag, Hammer, Users, Plus, ChevronRight, AlertTriangle } from 'lucide-react';
 
 interface Kingdom {
@@ -81,6 +82,7 @@ export default function KingdomsPage() {
   }, [view, activeId, fetchList, fetchDetail, fetchDecreeKinds]);
 
   return (
+    <LensShell lensId="kingdoms" asMain={false}>
     <div className="min-h-screen bg-slate-950 p-6 text-slate-100">
       <div className="mx-auto max-w-6xl">
         <header className="mb-6 flex items-center justify-between">
@@ -109,6 +111,7 @@ export default function KingdomsPage() {
         {view === 'create' && <KingdomCreate onCreated={(id) => { setActiveId(id); setView('detail'); fetchList(); }} />}
       </div>
     </div>
+    </LensShell>
   );
 }
 
