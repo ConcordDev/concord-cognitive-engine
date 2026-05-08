@@ -1879,24 +1879,70 @@ export default function createWorldsRouter({ requireAuth, db }) {
         bar_cost: barCost,
       });
 
-      // Phase 1: emit skill:tier-witnessed when an evolved skill (revision_num >= 1)
-      // is cast in combat. NPCs in chunk record this in nemesis_records.combat_memory
-      // so dialogue / asymmetry can reference it later.
+      // Phase 1 + 1.5: emit skill:tier-witnessed when an evolved skill
+      // (revision_num >= 1) is cast in combat. AND record a demonstration
+      // entry for the target NPC + any friendly NPC in chunk so the
+      // npc-skill-evolve-cycle can bias their next revision toward the
+      // player's branch (player-teaches-NPC via demonstration).
       try {
         const revisionNum = Number(skillData?.revision_num ?? 0);
-        if (revisionNum >= 1 && req.app?.locals?.io) {
-          req.app.locals.io.to(`world:${worldId}`).emit("skill:tier-witnessed", {
-            userId,
-            npcId,
-            worldId,
-            skillId: skillDtuId,
-            skillName: skillData.current_name || skillData.name,
-            revisionNum,
-            element: skillData.element || 'none',
-            damage: damageResult.finalDamage,
-            position: npcPosRow ? { x: npcPosRow.x, z: npcPosRow.z } : null,
-            ts: Date.now(),
-          });
+        if (revisionNum >= 1) {
+          if (req.app?.locals?.io) {
+            req.app.locals.io.to(`world:${worldId}`).emit("skill:tier-witnessed", {
+              userId,
+              npcId,
+              worldId,
+              skillId: skillDtuId,
+              skillName: skillData.current_name || skillData.name,
+              revisionNum,
+              element: skillData.element || 'none',
+              damage: damageResult.finalDamage,
+              position: npcPosRow ? { x: npcPosRow.x, z: npcPosRow.z } : null,
+              ts: Date.now(),
+            });
+          }
+          // Record demonstration for the target NPC + any friendly NPCs in
+          // a small radius. The npc-skill-evolve-cycle reads consumed_at
+          // IS NULL rows on the next pass.
+          if (skillDtuId) {
+            const mentorship = await import("../lib/mentorship.js").catch(() => null);
+            if (mentorship?.recordDemonstration) {
+              mentorship.recordDemonstration(db, {
+                witnessedNpcId: npcId,
+                casterUserId: userId,
+                casterNpcId: null,
+                recipeDtuId: skillDtuId,
+                revisionNum,
+                element: skillData.element || null,
+                worldId,
+              });
+              // Also record for any other friendly NPCs in the same chunk.
+              try {
+                if (npcPosRow && typeof npcPosRow.x === "number" && typeof npcPosRow.z === "number") {
+                  const nearbyFriendlies = db.prepare(`
+                    SELECT id FROM world_npcs
+                    WHERE world_id = ?
+                      AND id != ?
+                      AND COALESCE(is_dead, 0) = 0
+                      AND ABS(COALESCE(x, 0) - ?) < 50
+                      AND ABS(COALESCE(z, 0) - ?) < 50
+                    LIMIT 5
+                  `).all(worldId, npcId, npcPosRow.x, npcPosRow.z);
+                  for (const f of nearbyFriendlies) {
+                    mentorship.recordDemonstration(db, {
+                      witnessedNpcId: f.id,
+                      casterUserId: userId,
+                      casterNpcId: null,
+                      recipeDtuId: skillDtuId,
+                      revisionNum,
+                      element: skillData.element || null,
+                      worldId,
+                    });
+                  }
+                }
+              } catch { /* nearby-friendly query may not be available on minimal schema */ }
+            }
+          }
         }
       } catch { /* tier-witnessed is best-effort */ }
 

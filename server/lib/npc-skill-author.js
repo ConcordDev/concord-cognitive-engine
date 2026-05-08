@@ -200,8 +200,42 @@ export async function autoEvolveNpcSkills(db, npcId, ctx = {}) {
       LIMIT 50
     `).all(recipe.id);
 
-    const description = `Tier-${(history.length || 0) + 1} drill at level ${unlock.level_at_unlock}.`;
+    // Phase 1.5 — read demonstrations this NPC has witnessed, bias the
+    // evolution narrative toward the witnessed branch (player teaches NPC).
+    let demonstrations = [];
+    try {
+      const mentorship = await import("./mentorship.js");
+      demonstrations = mentorship.consumeDemonstrationsForNpc(db, npcId);
+    } catch { /* mentorship module optional in some builds */ }
+
+    let description = `Tier-${(history.length || 0) + 1} drill at level ${unlock.level_at_unlock}.`;
+    if (demonstrations.length > 0) {
+      const sources = demonstrations.map(d => d.caster_user_id || d.caster_npc_id).filter(Boolean);
+      const tiers = demonstrations.map(d => `tier-${d.revision_num}`);
+      description = `Adapting from witnessed ${tiers.join(", ")} demonstration(s) by ${sources.join(", ")}.`;
+    }
     const evolution = await maybeLLMEvolve(recipe, unlock.level_at_unlock, description, history, ctx);
+
+    // If the NPC witnessed a demonstration of a player's recipe, bias the
+    // name continuation toward the player's lineage. Royalty-cascade-wise
+    // this means the NPC's revision cites the player's recipe as parent
+    // (registered separately by the cycle caller via royalty-cascade).
+    if (demonstrations.length > 0) {
+      const witnessedRecipe = db.prepare(`SELECT meta_json FROM dtus WHERE id = ?`).get(demonstrations[0].recipe_dtu_id);
+      try {
+        const witnessedMeta = JSON.parse(witnessedRecipe?.meta_json || "{}");
+        const witnessedCurrent = witnessedMeta.current_name;
+        if (witnessedCurrent && typeof witnessedCurrent === "string") {
+          // Append a token from the witnessed name to the NPC's continuation.
+          const witnessedTokens = witnessedCurrent.split(/[\s_\-]+/);
+          const lastTok = witnessedTokens[witnessedTokens.length - 1];
+          if (lastTok && !evolution.nameAfter.includes(lastTok)) {
+            evolution.nameAfter = `${evolution.nameAfter}_${lastTok}`;
+          }
+          evolution.witnessedFrom = demonstrations[0].recipe_dtu_id;
+        }
+      } catch { /* ignore parse errors */ }
+    }
 
     const result = applyEvolution(db, "npc", npcId, evolution, { unlockId: unlock.id });
     if (result?.ok) applied++;

@@ -380,6 +380,16 @@ registerHeartbeat("npc-skill-evolve-cycle", {
   handler: runNpcSkillEvolveCycle,
 });
 
+// Phase 1.5: NPC marketplace participation. Every 240 ticks (~60 min) lists
+// eligible NPC recipes for sale + has surplus-wealth NPCs buy from other
+// factions. The marketplace lights up with NPC sellers; players see depth
+// they can grind toward.
+import { runNpcMarketplaceCycle } from "./emergent/npc-marketplace-cycle.js";
+registerHeartbeat("npc-marketplace-cycle", {
+  frequency: 240,
+  handler: runNpcMarketplaceCycle,
+});
+
 // Layer 13: NPC-initiated conversations. Every 8 ticks (~2 min) scans each
 // active world for cooldown-elapsed NPC pairs, generates a grounded opener
 // (deterministic by default; LLM-enhanced via CONCORD_NPC_DIALOGUE_LLM=true),
@@ -9216,6 +9226,14 @@ async function runMacro(domain, name, input, ctx) {
     // commit path mutates only the caller's own recipe DTU under the
     // existing personal_dtus_never_leak invariant (see CLAUDE.md).
     skill_evolution: new Set(["list_unlocks", "preview", "commit", "history"]),
+    // Phase 1.5: knowledge trade — mentorship + demonstration. Read-only
+    // list macros plus commit macros that touch only the caller's own
+    // mentorship rows + dtus they own.
+    knowledge_trade: new Set([
+      "mentorship_request", "mentorship_complete_session",
+      "mentorship_list_for_student", "mentorship_list_for_mentor",
+      "witness",
+    ]),
     // Phase 7 — Code substrate. Read-only macros for the code-DTU view.
     code: new Set(["dtu_for", "dtu_query", "cluster_for", "refresh"]),
   };
@@ -22644,6 +22662,13 @@ registerDetectorMacros(register);
 // see a modal triggered by the `skill:evolution-available` socket event.
 import registerSkillEvolutionMacros from "./domains/skill-evolution.js";
 registerSkillEvolutionMacros(register);
+
+// Phase 1.5 — Knowledge Trade. NPCs sell skills + buy from each other
+// + teach players via mentorship + learn from player demonstrations
+// witnessed in combat. The royalty cascade pays NPCs' factions on every
+// transfer. See server/lib/{npc-marketplace,mentorship}.js.
+import registerKnowledgeTradeMacros from "./domains/knowledge-trade.js";
+registerKnowledgeTradeMacros(register);
 
 // Phase 7 / T2 — Code substrate macros: routes / migrations / modules /
 // macros become DTUs under kind='code_artifact'. See lib/code-substrate/.
