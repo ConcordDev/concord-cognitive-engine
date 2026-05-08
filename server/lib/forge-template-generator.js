@@ -348,7 +348,7 @@ function registerAuthRoutes(app) {
     const { token, newPassword } = req.body;
     if (!token || !newPassword) return res.status(400).json({ error: 'Token and new password required' });
 
-    const reset = STATE.db.prepare('SELECT * FROM password_resets WHERE token = ? AND used = 0 AND expires_at > datetime(\"now\")').get(token);
+    const reset = STATE.db.prepare('SELECT * FROM password_resets WHERE token = ? AND used = 0 AND expires_at > datetime("now")').get(token);
     if (!reset) return res.status(400).json({ error: 'Invalid or expired reset token' });
 
     const hash = await auth.hashPassword(newPassword);
