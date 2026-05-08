@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { useState, useMemo, useCallback } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -652,6 +653,18 @@ export default function CouncilLensPage() {
       votingMethod: 'simple_majority',
     });
   }, [newProposal, addAuditEntry, createProposalItem]);
+
+  // Lens-scoped keyboard commands. Vim-style "g <letter>" jumps between
+  // tabs; n opens the new-proposal composer.
+  useLensCommand(
+    [
+      { id: 'new-proposal', keys: 'n', description: 'New proposal', category: 'actions', action: () => setShowCreateProposal(true) },
+      { id: 'goto-proposals', keys: 'g p', description: 'Go to Proposals', category: 'navigation', action: () => setActiveTab('proposals') },
+      { id: 'goto-voting', keys: 'g v', description: 'Go to Voting', category: 'navigation', action: () => setActiveTab('voting') },
+      { id: 'goto-debates', keys: 'g d', description: 'Go to Debates', category: 'navigation', action: () => setActiveTab('debates') },
+    ],
+    { lensId: 'council' }
+  );
 
   const handleAdvanceStatus = useCallback(
     (proposalId: string) => {

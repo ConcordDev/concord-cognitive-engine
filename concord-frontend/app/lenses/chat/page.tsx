@@ -1283,6 +1283,17 @@ export default function ChatLensPage() {
     sendMutation.mutate(input);
   }, [input, sendMutation, executeSlashCommand]);
 
+  // Lens-scoped keyboard commands. Send via mod+enter is the power-user
+  // shortcut (Enter still sends from inside the textarea); slash focuses
+  // the message input from anywhere on the page (Slack-style).
+  useLensCommand(
+    [
+      { id: 'send', keys: 'mod+enter', description: 'Send message', category: 'actions', action: handleSend, global: true },
+      { id: 'focus-input', keys: '/', description: 'Focus message input', category: 'navigation', action: () => inputRef.current?.focus() },
+    ],
+    { lensId: 'chat' }
+  );
+
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       // Slash menu navigation

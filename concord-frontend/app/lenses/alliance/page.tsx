@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { Loading } from '@/components/common/Loading';
@@ -123,6 +124,15 @@ export default function AllianceLensPage() {
     development: 'border-blue-500/60',
     governance: 'border-amber-500/60',
   };
+
+  // Lens-scoped keyboard commands.
+  useLensCommand(
+    [
+      { id: 'new-alliance', keys: 'n', description: 'New alliance', category: 'actions', action: () => setShowCreate(true) },
+      { id: 'clear-selection', keys: 'escape', description: 'Clear selection', category: 'navigation', action: () => setSelectedAlliance(null) },
+    ],
+    { lensId: 'alliance' }
+  );
 
   const selectedAllianceData = alliances.find((a) => a.id === selectedAlliance);
   const allianceMessages = messages.filter((m) => m.allianceId === selectedAlliance);

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { api, apiHelpers } from '@/lib/api/client';
@@ -349,6 +350,28 @@ export default function VoiceLensPage() {
       }
     }
   }, [status, activeTakeId, isPlaying]);
+
+  // Lens-scoped keyboard commands. Space toggles record/stop; K toggles
+  // playback (shotcut convention from video editors).
+  useLensCommand(
+    [
+      {
+        id: 'record-toggle',
+        keys: 'space',
+        description: 'Start / stop recording',
+        category: 'actions',
+        action: () => (status === 'recording' ? handleStop() : handleRecord()),
+      },
+      {
+        id: 'play-toggle',
+        keys: 'k',
+        description: 'Play / pause active take',
+        category: 'actions',
+        action: handlePlayPause,
+      },
+    ],
+    { lensId: 'voice' }
+  );
 
   // Take actions
   const toggleStar = (id: string) =>

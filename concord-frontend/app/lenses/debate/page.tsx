@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useQuery } from '@tanstack/react-query';
@@ -441,6 +442,17 @@ export default function DebateLensPage() {
     setArgumentSide('pro');
     setTurnCount(0);
   }, []);
+
+  // Lens-scoped keyboard commands. P / C swap argument side, N opens
+  // the new-debate composer, / focuses the debate search.
+  useLensCommand(
+    [
+      { id: 'side-pro', keys: 'p', description: 'Argue pro', category: 'actions', action: () => setArgumentSide('pro') },
+      { id: 'side-con', keys: 'c', description: 'Argue con', category: 'actions', action: () => setArgumentSide('con') },
+      { id: 'new-debate', keys: 'n', description: 'New debate', category: 'actions', action: () => setShowCreate(true) },
+    ],
+    { lensId: 'debate' }
+  );
 
   const canSubmitArgument = phaseConfig.allowSubmit && (!phaseConfig.hasTurns || argumentSide === currentTurn);
 

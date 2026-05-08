@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useMutation } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -49,6 +50,15 @@ export default function AnonLensPage() {
   const messages = messageItems.map(i => ({ id: i.id, ...(i.data || {}) })) as unknown as AnonMessage[];
 
   const { items: identityItems, isError: isError2, error: error2, refetch: refetch2, create: createIdentity, remove: removeIdentity } = useLensData<Record<string, unknown>>('anon', 'identity', { seed: [] });
+
+  // Lens-scoped keyboard commands.
+  useLensCommand(
+    [
+      { id: 'toggle-ephemeral', keys: 'mod+e', description: 'Toggle ephemeral mode', category: 'actions', action: () => setEphemeral((v) => !v) },
+      { id: 'toggle-messages', keys: 'm', description: 'Toggle messages panel', category: 'view', action: () => setShowMessages((v) => !v) },
+    ],
+    { lensId: 'anon' }
+  );
 
   // Backend action wiring
   const runAction = useRunArtifact('anon');
