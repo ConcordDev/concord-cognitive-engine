@@ -10,7 +10,7 @@
  *      reactionMs + tensionAccuracy
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Anchor, Fish, X } from 'lucide-react';
 import { subscribe } from '@/lib/realtime/socket';
 
@@ -91,9 +91,9 @@ export function FishingMinigameOverlay({ open, worldId, position, onClose }: Pro
     if (phase !== 'reeling' || !sessionId) return;
     const t = setTimeout(() => submitReel(), 3000);
     return () => clearTimeout(t);
-  }, [phase, sessionId]);
+  }, [phase, sessionId, submitReel]);
 
-  const submitReel = async () => {
+  const submitReel = useCallback(async () => {
     if (!sessionId) return;
     const reactionMs = Date.now() - reelStartRef.current;
     const samples = tensionSamplesRef.current;
@@ -114,11 +114,11 @@ export function FishingMinigameOverlay({ open, worldId, position, onClose }: Pro
         setOutcome({ fishName: j?.error || 'no_fish' });
         setPhase('missed');
       }
-    } catch (e) {
+    } catch {
       setOutcome({ fishName: 'network_error' });
       setPhase('missed');
     }
-  };
+  }, [sessionId]);
 
   // Keyboard: Up arrow / W = pull (more tension), Down / S = release
   useEffect(() => {

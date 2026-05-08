@@ -13,7 +13,7 @@
  * Tap 2: User executes the action.
  */
 
-import { ReactNode, useRef, useCallback } from 'react';
+import { ReactNode, useRef } from 'react';
 import { cn } from '@/lib/utils';
 
 // ── Types ────────────────────────────────────────────────────────────────────
