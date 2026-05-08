@@ -14,6 +14,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -31,6 +32,20 @@ type TabKey = 'notebook' | 'spreadsheet' | 'diagram' | 'mindmap' | 'outliner' | 
 export default function ProductivityLensPage() {
   useLensNav('productivity');
   const [activeTab, setActiveTab] = useState<TabKey>('notebook');
+
+  // Lens-scoped keyboard commands. Vim-style "g <letter>" jumps between
+  // workspaces; each productivity tool gets a single-letter alias.
+  useLensCommand(
+    [
+      { id: 'goto-notebook', keys: 'g n', description: 'Notebook', category: 'navigation', action: () => setActiveTab('notebook') },
+      { id: 'goto-spreadsheet', keys: 'g s', description: 'Spreadsheet', category: 'navigation', action: () => setActiveTab('spreadsheet') },
+      { id: 'goto-diagram', keys: 'g d', description: 'Diagram', category: 'navigation', action: () => setActiveTab('diagram') },
+      { id: 'goto-mindmap', keys: 'g m', description: 'Mind-map', category: 'navigation', action: () => setActiveTab('mindmap') },
+      { id: 'goto-outliner', keys: 'g o', description: 'Outliner', category: 'navigation', action: () => setActiveTab('outliner') },
+      { id: 'goto-slides', keys: 'g p', description: 'Slides', category: 'navigation', action: () => setActiveTab('slides') },
+    ],
+    { lensId: 'productivity' }
+  );
 
   // Notebook scaffolding — uses code-engine.js (existing) for cell execution
   const [notebookCode, setNotebookCode] = useState('// JS notebook cell\n1 + 1');

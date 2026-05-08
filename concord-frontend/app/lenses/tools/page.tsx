@@ -10,6 +10,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
@@ -24,6 +25,16 @@ type TabKey = 'web' | 'compile' | 'esign';
 export default function ToolsLensPage() {
   useLensNav('tools');
   const [activeTab, setActiveTab] = useState<TabKey>('web');
+
+  // Lens-scoped keyboard commands. Single-letter aliases per tool.
+  useLensCommand(
+    [
+      { id: 'goto-web', keys: 'w', description: 'Web research', category: 'navigation', action: () => setActiveTab('web') },
+      { id: 'goto-compile', keys: 'c', description: 'Compile / transpile', category: 'navigation', action: () => setActiveTab('compile') },
+      { id: 'goto-esign', keys: 's', description: 'E-signature', category: 'navigation', action: () => setActiveTab('esign') },
+    ],
+    { lensId: 'tools' }
+  );
 
   // ── Web research ──────────────────────────────────────────────────────
   const [webQuery, setWebQuery] = useState('');

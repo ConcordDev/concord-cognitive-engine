@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
@@ -317,7 +318,19 @@ export default function BoardLensPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [showFeatures, setShowFeatures] = useState(true);
 
-  // --- Board AI actions ---
+    // Lens-scoped keyboard commands. Standard kanban verbs: b/t/g switch
+  // view, / focuses search, f toggles filter panel.
+  useLensCommand(
+    [
+      { id: 'view-board', keys: 'b', description: 'Board view', category: 'view', action: () => setViewMode('board') },
+      { id: 'view-timeline', keys: 't', description: 'Timeline view', category: 'view', action: () => setViewMode('timeline') },
+      { id: 'view-table', keys: 'g', description: 'Table view', category: 'view', action: () => setViewMode('table') },
+      { id: 'toggle-filters', keys: 'f', description: 'Toggle filters', category: 'view', action: () => setShowFilters((v) => !v) },
+    ],
+    { lensId: 'board' }
+  );
+
+// --- Board AI actions ---
   const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
   const [isRunning, setIsRunning] = useState<string | null>(null);
   const runAction = useRunArtifact('board');

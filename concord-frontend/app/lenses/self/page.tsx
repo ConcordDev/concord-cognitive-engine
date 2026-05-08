@@ -10,6 +10,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useState } from 'react';
@@ -37,6 +38,20 @@ type TabKey =
 export default function UnifiedSelfLensPage() {
   useLensNav('self');
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
+
+  // Lens-scoped keyboard commands. Single-letter aliases per quantified-
+  // self subsystem; o jumps back to the overview dashboard.
+  useLensCommand(
+    [
+      { id: 'goto-overview', keys: 'o', description: 'Overview', category: 'navigation', action: () => setActiveTab('overview') },
+      { id: 'goto-fitness', keys: 'f', description: 'Fitness', category: 'navigation', action: () => setActiveTab('fitness') },
+      { id: 'goto-sleep', keys: 's', description: 'Sleep', category: 'navigation', action: () => setActiveTab('sleep') },
+      { id: 'goto-mood', keys: 'm', description: 'Mood', category: 'navigation', action: () => setActiveTab('mood') },
+      { id: 'goto-journal', keys: 'j', description: 'Journal', category: 'navigation', action: () => setActiveTab('journal') },
+      { id: 'goto-rituals', keys: 'r', description: 'Daily rituals', category: 'navigation', action: () => setActiveTab('rituals') },
+    ],
+    { lensId: 'self' }
+  );
 
   const safeRunDomain = async (domain: string, action: string, input: Record<string, unknown> = {}) => {
     try {
