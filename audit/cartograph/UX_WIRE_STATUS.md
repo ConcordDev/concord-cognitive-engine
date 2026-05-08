@@ -8,40 +8,46 @@ decision before mounting — same pattern as Phase C for libs.
 
 ## Decision matrix (the 21 newly-absorbed components)
 
-| Component | Decision | Target mount | Effort | Rationale |
+All EVAL decisions resolved; remaining work is per-component product
+integration (real data, real semantic mount). The ux-suite lens at
+`/lenses/ux-suite` is the showcase mount for everything not yet wired
+to its semantic home.
+
+| Component | Decision | Target mount | Status | Rationale |
 |---|---|---|---|---|
-| `LocalizationProvider.tsx` | **DROP** | n/a | 0 | Duplicates existing `I18nProvider` already mounted in `Providers.tsx`. Two providers would diverge. |
-| `SoundSystem.tsx` | **EVAL** | Providers.tsx (replaces or augments GlobalMediaController) | 0.5d | Likely overlaps with existing `GlobalMediaController`; need to compare APIs before deciding merge or replace. |
-| `SettingsPanel.tsx` | **EVAL** | `app/settings/page.tsx` | 0.5d | Overlap with whatever existing settings surface lives at /settings (need to inspect). |
-| `AnalyticsDashboard.tsx` | **EVAL** | system lens stats tab | 0.5d | Overlaps with system-lens cartograph stats; could replace or fold. |
-| `LensPluginSystem.tsx` | **DROP-or-merge** | n/a | — | Overlaps with `module-registry.js` + `plugin-loader.js` server-side and the existing plugin gallery surface. Frontend duplicate of backend authority. |
-| `ProgressionPanel.tsx` | **EVAL** | concordia HUD | 0.5d | Likely overlaps with existing skill-XP progression UI (`SkillProgression`). Compare. |
-| `SaveSystem.tsx` | **EVAL** | concordia HUD pause-menu | 0.5d | Likely duplicates the existing autosave + cloud-save pattern in concord-frontend/lib/persistence. |
-| `AgentBuilder.tsx` | **WIRE** | society lens autonomy tab | 1d | Novel surface — agent-system has the backend (oracle-brain + npc-autonomy) but no authoring UI. Fits Society Lens. |
-| `AccessibilityPanel.tsx` | **WIRE** | new `app/settings/accessibility/page.tsx` | 0.5d | Novel — full WCAG settings (colorblind 5-mode, one-handed, reduced-motion, screen-reader, subtitle font scale). Real gap, no overlap. |
-| `AchievementSystem.tsx` | **WIRE** | concordia HUD achievement tab | 0.5d | Novel — we don't have an achievement surface, just skill-XP. Pairs with the breakthrough-clusters substrate. |
-| `DailyRituals.tsx` | **WIRE** | self lens (`app/lenses/self/`) | 0.5d | Novel ritual / habit-tracking surface. Slots into the existing self-aggregator lens. |
-| `DistrictTimeline.tsx` | **WIRE** | world lens district panel | 0.5d | Novel — timeline of district events. Pairs with `DistrictActivityFeed` already mounted. |
-| `EnvironmentalStorytelling.tsx` | **WIRE** | concordia HUD ambient layer | 1d | Novel — surfaces world ambient state (weather, refusal-field, faction-war banners) in narrative voice. |
-| `HiddenAssistance.tsx` | **WIRE** | onboarding overlay | 0.5d | Novel — context-sensitive hint system. Slots into existing FirstWinWizard / PostTutorialHints. |
-| `MobileCompanion.tsx` | **EVAL** | concord-mobile or web responsive | 1d | Need to compare with existing `concord-mobile/` React Native app — may be a web-side companion or a duplicate. |
-| `SeasonalContent.tsx` | **WIRE** | concordia HUD calendar tab | 0.5d | Novel — seasonal content scheduler. Pairs with content-seeder + world-event-scheduler. |
-| `SecretsDiscovery.tsx` | **WIRE** | concordia HUD discovery tab | 0.5d | Novel — explorer/secret-find tracker. Pairs with concord-link-walkers + reality-explorer. |
-| `WorldTravel.tsx` | **EVAL** | concordia HUD portal selector | 0.5d | Likely overlaps with the existing avatar/world-switcher (`AvatarSwitcher`); compare. |
-| `AdaptiveComplexity.tsx` | **WIRE** | settings → adaptive UI tab | 0.5d | Novel — UI complexity slider (beginner/intermediate/expert reveal). Real gap. |
-| `ARPreview.tsx` | **WIRE** | world lens AR mode | 1d | Novel — AR preview of buildings/avatars. Will need WebXR availability check. |
-| `LensActionBar.tsx` | **WIRE** | shared `<LensShell />` wrapper | 0.5d | Novel — standardised action bar for lens pages (refresh, search, filter, settings). Could become the canonical lens chrome. |
+| `LocalizationProvider.tsx` | **DROP** | n/a | done | Duplicates `I18nProvider`. Deleted in Phase D. |
+| `LensPluginSystem.tsx` | **WIRE** | system lens plugins tab | ux-suite | Surfaces backend plugin-gallery (migration 085) to frontend. Different from server-side module-registry — that's runtime dep graph; this is user-installable plugins. Real surface is product-design work. |
+| `SoundSystem.tsx` | **WIRE** | Providers.tsx (alongside GlobalMediaController) | ux-suite | Different role from GlobalMediaController. SoundSystem = district-aware ambient audio (weather, interior/exterior, district SFX). GlobalMediaController = global music playback persistence. Complementary, not duplicate. |
+| `SettingsPanel.tsx` | **WIRE** | `app/settings/page.tsx` | **shipped** | New canonical settings page with localStorage-backed persistence (graphics / audio / controls / notifications / privacy / language). |
+| `AnalyticsDashboard.tsx` | **WIRE** | system lens stats tab | ux-suite | Different from cartograph stats (system structure); this is personal/world/global activity. Real surface needs backend macro for the stats payload. |
+| `ProgressionPanel.tsx` | **WIRE** | concordia HUD progression tab | ux-suite | No `SkillProgression` component exists — only the inline XP bars in CombatHUD. Progression panel is the dedicated milestone/unlock surface. Real wire needs backend macro. |
+| `SaveSystem.tsx` | **WIRE** | concordia HUD pause-menu | ux-suite | No existing save UI. Backend persistence runs on a heartbeat; this is the user-visible save status + manual cloud-sync trigger. |
+| `MobileCompanion.tsx` | **WIRE** | web responsive shell | ux-suite | Different role from `concord-mobile` (React Native native app). MobileCompanion = web-side responsive mode for users without the native app. |
+| `WorldTravel.tsx` | **WIRE** | concordia HUD portal selector | ux-suite | Different from `AvatarSwitcher` (avatar swap within world); WorldTravel is full world warp + invite/bookmark management. |
+| `AgentBuilder.tsx` | **WIRE** | society lens autonomy tab | ux-suite | Novel — agent-system has the backend (oracle-brain + npc-autonomy) but no authoring UI. |
+| `AccessibilityPanel.tsx` | **WIRE** | settings (sub-tab in SettingsPanel) | ux-suite | Now reachable via `app/settings/page.tsx` accessibility tab. Still a separate component for embedding in onboarding. |
+| `AchievementSystem.tsx` | **WIRE** | concordia HUD achievements tab | ux-suite | Novel surface. Pairs with the breakthrough-clusters substrate. |
+| `DailyRituals.tsx` | **WIRE** | self lens (`app/lenses/self/`) | ux-suite | Novel ritual / habit-tracking surface. |
+| `DistrictTimeline.tsx` | **WIRE** | world lens district panel | ux-suite | Pairs with `DistrictActivityFeed` already mounted. |
+| `EnvironmentalStorytelling.tsx` | **WIRE** | concordia HUD ambient layer | ux-suite | Surfaces world ambient state in narrative voice. |
+| `HiddenAssistance.tsx` | **WIRE** | onboarding overlay | ux-suite | Slots into FirstWinWizard / PostTutorialHints. Wrapper component. |
+| `SeasonalContent.tsx` | **WIRE** | concordia HUD calendar tab | ux-suite | Pairs with content-seeder + world-event-scheduler. |
+| `SecretsDiscovery.tsx` | **WIRE** | concordia HUD discovery tab | ux-suite | Pairs with concord-link-walkers + reality-explorer. Wrapper component. |
+| `AdaptiveComplexity.tsx` | **WIRE** | settings → adaptive UI tab | ux-suite | UI complexity slider (beginner/intermediate/expert reveal). Wrapper component. |
+| `ARPreview.tsx` | **WIRE** | world lens AR mode | ux-suite | AR preview of buildings/avatars. Needs WebXR availability check. |
+| `LensActionBar.tsx` | **WIRE** | shared `<LensShell />` wrapper | ux-suite | Standardised action bar. Could become the canonical lens chrome — design decision for a future commit. |
 
-## Phase D scope (this commit)
+## Status (post-queue-resolution)
 
-**WIRE** column has 11 components × ~0.5–1d each = **~7 focused days**.
-**EVAL** has 7 components × ~0.5d each = **~3.5 focused days**.
-**DROP** has 1 (LocalizationProvider) + 1 likely-drop (LensPluginSystem) = trivial.
+- **DROP**: 1 (LocalizationProvider — Phase D)
+- **WIRE → ux-suite (showcase)**: 20 (Phase D)
+- **WIRE → semantic home (real)**: 1 shipped (SettingsPanel → /settings)
+- **EVAL queue**: empty — every component has a final decision
 
-Phase D ships only the audit doc + the LocalizationProvider drop +
-1 quick low-risk wire (AccessibilityPanel as a settings page) so the
-methodology is demonstrated. The remaining 19 mounts are real per-
-component design work that needs its own commit window each.
+Remaining work is product integration: each component connects to
+real backend data and moves from the ux-suite showcase to its
+semantic-home parent. That's per-component design work, not queue
+work — see the Status column for current mount.
 
 ## Component-by-component next-action playbook
 
