@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useState, useCallback } from 'react';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
@@ -112,6 +113,18 @@ export default function CryptoLensPage() {
   const [selectedChain, setSelectedChain] = useState<string | null>(null);
   const [transacting, setTransacting] = useState(false);
   const [showBalances, setShowBalances] = useState(true);
+
+  // Lens-scoped keyboard commands. Coinbase / Binance idiom: single-
+  // letter tab jumps and a balance-blur toggle (privacy hotkey).
+  useLensCommand(
+    [
+      { id: 'goto-portfolio', keys: 'p', description: 'Portfolio', category: 'navigation', action: () => setActiveTab('portfolio') },
+      { id: 'goto-transactions', keys: 't', description: 'Transactions', category: 'navigation', action: () => setActiveTab('transactions') },
+      { id: 'goto-wallets', keys: 'w', description: 'Wallets', category: 'navigation', action: () => setActiveTab('wallets') },
+      { id: 'toggle-balances', keys: 'h', description: 'Hide / show balances', category: 'view', action: () => setShowBalances((v) => !v) },
+    ],
+    { lensId: 'crypto' }
+  );
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
   const [txFilter, setTxFilter] = useState<'all' | 'earn' | 'spend' | 'transfer'>('all');
   const [showSendModal, setShowSendModal] = useState(false);

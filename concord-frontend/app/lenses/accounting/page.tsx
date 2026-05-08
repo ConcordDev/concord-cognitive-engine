@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -135,6 +136,20 @@ export default function AccountingLensPage() {
   const [view, setView] = useState<'library' | 'dashboard'>('dashboard');
   const [ledgerSubType, setLedgerSubType] = useState<'Account' | 'Transaction'>('Account');
   const [showFeatures, setShowFeatures] = useState(true);
+
+  // Lens-scoped keyboard commands. QuickBooks-style mode switching;
+  // n opens the editor.
+  useLensCommand(
+    [
+      { id: 'mode-ledger', keys: 'l', description: 'Ledger', category: 'navigation', action: () => setMode('Ledger') },
+      { id: 'mode-invoicing', keys: 'i', description: 'Invoicing', category: 'navigation', action: () => setMode('Invoicing') },
+      { id: 'mode-payroll', keys: 'p', description: 'Payroll', category: 'navigation', action: () => setMode('Payroll') },
+      { id: 'mode-budget', keys: 'b', description: 'Budget', category: 'navigation', action: () => setMode('Budget') },
+      { id: 'mode-tax', keys: 't', description: 'Tax', category: 'navigation', action: () => setMode('Tax') },
+      { id: 'new-entry', keys: 'n', description: 'New entry', category: 'actions', action: () => setShowEditor(true) },
+    ],
+    { lensId: 'accounting' }
+  );
 
   /* ---- sub-views per tab ---- */
   const [ledgerView, setLedgerView] = useState<LedgerView>('accounts');

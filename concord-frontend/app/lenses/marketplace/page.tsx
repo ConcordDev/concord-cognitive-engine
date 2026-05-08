@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { api, apiHelpers } from '@/lib/api/client';
@@ -648,6 +649,20 @@ export default function MarketplaceLensPage() {
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [showFeatures, setShowFeatures] = useState(true);
+
+  // Lens-scoped keyboard commands. Etsy / Bandcamp idiom: single-letter
+  // tab jumps; v swaps grid/list; n opens the new-listing composer.
+  useLensCommand(
+    [
+      { id: 'goto-browse', keys: 'b', description: 'Browse', category: 'navigation', action: () => setTab('browse') },
+      { id: 'goto-myshop', keys: 'm', description: 'My shop', category: 'navigation', action: () => setTab('myshop') },
+      { id: 'goto-cart', keys: 'c', description: 'Cart', category: 'navigation', action: () => setTab('cart') },
+      { id: 'goto-purchases', keys: 'p', description: 'Purchases', category: 'navigation', action: () => setTab('purchases') },
+      { id: 'view-toggle', keys: 'v', description: 'Toggle grid / list', category: 'view', action: () => setViewMode((v) => (v === 'grid' ? 'list' : 'grid')) },
+      { id: 'new-listing', keys: 'n', description: 'New listing', category: 'actions', action: () => setShowNewListing(true) },
+    ],
+    { lensId: 'marketplace' }
+  );
   const [showCheckoutConfirm, setShowCheckoutConfirm] = useState(false);
   const [selectedArtifactId, setSelectedArtifactId] = useState<string | null>(null);
 
