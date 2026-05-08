@@ -22,8 +22,8 @@ import { apiHelpers } from '@/lib/api/client';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Globe2, Loader2, Plus, Play, Camera, RefreshCw,
-  Network, Boxes, GitFork, Eye,
+  Globe2, Loader2, Plus, Play, Camera,
+  Network, Boxes, GitFork,
   type LucideIcon,
 } from 'lucide-react';
 

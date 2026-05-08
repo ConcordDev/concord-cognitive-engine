@@ -17,7 +17,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Notebook, Grid3x3, GitBranch, Brain, ListTree, Presentation,
-  Code, Play, Loader2,
+  Play, Loader2,
   type LucideIcon,
 } from 'lucide-react';
 import { useMutation } from '@tanstack/react-query';

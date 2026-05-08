@@ -18,13 +18,12 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { apiHelpers } from '@/lib/api/client';
 import {
-  Hammer, Download, Play, Check, X, ChevronDown, ChevronRight,
-  Shield, Cpu, Database, Lock, CreditCard, Globe, Wifi, Clock,
-  Layers, TestTube, Rocket, Heart, Settings, Plus, Trash2,
-  FileCode, AlertTriangle, Eye, EyeOff, Copy, Loader2,
-  Zap, RefreshCw
+  Hammer, Download, Check, X, ChevronDown, ChevronRight,
+  Cpu, Database, Lock, CreditCard, Globe, Wifi, Clock,
+  Layers, TestTube, Rocket, Heart, Settings, Plus,
+  FileCode, AlertTriangle, Eye, Copy, Loader2,
+  Zap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -129,7 +128,10 @@ export function ForgeWorkbench() {
   });
 
   const templates: ForgeTemplate[] = templatesData?.templates || [];
-  const allSections: ForgeSection[] = sectionsData?.sections || [];
+  const allSections: ForgeSection[] = useMemo(
+    () => sectionsData?.sections || [],
+    [sectionsData],
+  );
   const currentTemplate = templates.find(t => t.id === selectedTemplate);
 
   // ── Mutations ───────────────────────────────────────────────────────
