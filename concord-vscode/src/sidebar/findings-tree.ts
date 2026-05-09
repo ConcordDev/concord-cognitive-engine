@@ -5,6 +5,7 @@
 // severity badge + message; clicking jumps to the location.
 
 import * as vscode from "vscode";
+import * as path from "path";
 import type { Finding } from "../api/socket-stream";
 
 type Node =
@@ -40,11 +41,12 @@ export class FindingsTreeProvider implements vscode.TreeDataProvider<Node> {
     item.tooltip = `${node.finding.location || node.finding.subject?.file || ""}\n\n${node.finding.fixHint || ""}`.trim();
     item.contextValue = "finding";
     item.iconPath = new vscode.ThemeIcon(iconForSeverity(node.finding.severity));
-    if (node.finding.location || node.finding.subject?.file) {
+    const fileUri = resolveFindingUri(node.finding);
+    if (fileUri) {
       item.command = {
         command: "vscode.open",
         title: "Open",
-        arguments: [vscode.Uri.file(parseLocationFile(node.finding))],
+        arguments: [fileUri],
       };
     }
     return item;
@@ -82,4 +84,17 @@ function parseLocationFile(f: Finding): string {
     if (m) return m[1];
   }
   return f.subject?.file || "";
+}
+
+// Build a URI that VS Code can open. When detector payloads carry
+// a relative path (the common case), resolve against the active
+// workspace root — otherwise vscode.Uri.file() resolves against the
+// process CWD and the click opens nothing or the wrong file.
+function resolveFindingUri(f: Finding): vscode.Uri | null {
+  const raw = parseLocationFile(f);
+  if (!raw) return null;
+  if (path.isAbsolute(raw)) return vscode.Uri.file(raw);
+  const root = vscode.workspace.workspaceFolders?.[0]?.uri;
+  if (!root) return vscode.Uri.file(raw);
+  return vscode.Uri.joinPath(root, raw);
 }

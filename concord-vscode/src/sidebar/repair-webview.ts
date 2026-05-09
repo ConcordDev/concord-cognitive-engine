@@ -16,12 +16,24 @@ export interface ProphetProposal {
   fix: { description?: string; diff?: string; reasoning?: string } | unknown;
 }
 
+// Maps webview button commands to the API contract enum.
+const DECISION_FROM_COMMAND: Record<string, "accepted" | "rejected" | "ignored"> = {
+  accept: "accepted",
+  reject: "rejected",
+  ignore: "ignored",
+};
+
 export class RepairWebview {
   private panel: vscode.WebviewPanel | null = null;
+  // Track the active proposal at the class level so the message handler
+  // (registered once when the panel is created) always operates on the
+  // most recently shown repair, not the one captured the first time.
+  private currentProposal: ProphetProposal | null = null;
 
   constructor(private readonly client: ConcordClient) {}
 
   show(proposal: ProphetProposal): void {
+    this.currentProposal = proposal;
     if (!this.panel) {
       this.panel = vscode.window.createWebviewPanel(
         "concord.repair",
@@ -29,25 +41,31 @@ export class RepairWebview {
         vscode.ViewColumn.Beside,
         { enableScripts: true, retainContextWhenHidden: true },
       );
-      this.panel.onDidDispose(() => { this.panel = null; });
-      this.panel.webview.onDidReceiveMessage((msg) => this.onMessage(msg, proposal));
+      this.panel.onDidDispose(() => {
+        this.panel = null;
+        this.currentProposal = null;
+      });
+      // Register once; the handler reads `this.currentProposal` so
+      // showing a second proposal in the same panel works correctly.
+      this.panel.webview.onDidReceiveMessage((msg) => this.onMessage(msg));
     }
     this.panel.webview.html = this.render(proposal);
     this.panel.title = `Concord — ${shortenId(proposal.repairId)}`;
     this.panel.reveal();
   }
 
-  private async onMessage(msg: { command?: string }, proposal: ProphetProposal): Promise<void> {
-    if (msg?.command === "accept" || msg?.command === "reject" || msg?.command === "ignore") {
-      await this.client.recordFixDecision({
-        codebaseId: proposal.codebaseId,
-        repairId: proposal.repairId,
-        detectorId: proposal.finding.category || proposal.finding.id || "unknown",
-        ruleId: proposal.finding.id || "unknown",
-        decision: msg.command as "accepted" | "rejected" | "ignored",
-      });
-      this.panel?.dispose();
-    }
+  private async onMessage(msg: { command?: string }): Promise<void> {
+    const decision = msg?.command ? DECISION_FROM_COMMAND[msg.command] : undefined;
+    const proposal = this.currentProposal;
+    if (!decision || !proposal) return;
+    await this.client.recordFixDecision({
+      codebaseId: proposal.codebaseId,
+      repairId: proposal.repairId,
+      detectorId: proposal.finding.category || proposal.finding.id || "unknown",
+      ruleId: proposal.finding.id || "unknown",
+      decision,
+    });
+    this.panel?.dispose();
   }
 
   private render(proposal: ProphetProposal): string {

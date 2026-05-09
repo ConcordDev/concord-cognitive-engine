@@ -30,6 +30,11 @@ interface PluginState {
   codebaseId: string;
   repoRoot: string;
   status: vscode.StatusBarItem;
+  // Per-bootstrap disposables (save listener, tree view) so a
+  // re-bootstrap after login or `concord.syncCodebase` tears down the
+  // previous wiring instead of stacking listeners and triggering
+  // duplicate detector runs on every save.
+  disposables: vscode.Disposable[];
 }
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
@@ -57,13 +62,26 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 }
 
 export function deactivate(): void {
-  _state?.stream.disconnect();
-  _state?.diagnostics.dispose();
-  _state?.status.dispose();
+  teardown();
+}
+
+function teardown(): void {
+  if (!_state) return;
+  for (const d of _state.disposables) {
+    try { d.dispose(); } catch { /* swallow */ }
+  }
+  try { _state.stream.disconnect(); } catch { /* swallow */ }
+  try { _state.diagnostics.dispose(); } catch { /* swallow */ }
+  try { _state.status.dispose(); } catch { /* swallow */ }
   _state = null;
 }
 
 async function bootstrap(apiKey: string, context: vscode.ExtensionContext): Promise<void> {
+  // Tear down any prior bootstrap before standing up a new one — repeat
+  // bootstraps (login → switch account, `concord.syncCodebase`) used to
+  // stack save listeners and parallel socket subscriptions.
+  teardown();
+
   const cfg = vscode.workspace.getConfiguration("concord");
   const serverUrl = String(cfg.get("serverUrl") || "http://localhost:5050");
   const streamPath = String(cfg.get("streamPath") || "/dx");
@@ -88,8 +106,11 @@ async function bootstrap(apiKey: string, context: vscode.ExtensionContext): Prom
   status.text = "$(eye) Concord";
   status.show();
 
+  const disposables: vscode.Disposable[] = [];
+
   const treeView = vscode.window.createTreeView("concord.findings", { treeDataProvider: findings });
   context.subscriptions.push(treeView);
+  disposables.push(treeView);
 
   const stream = new DxSocketStream(
     serverUrl, streamPath, apiKey,
@@ -99,7 +120,8 @@ async function bootstrap(apiKey: string, context: vscode.ExtensionContext): Prom
   stream.connect();
   stream.subscribeCodebase(codebaseId);
 
-  // File save → trigger detector run (debounced 500ms).
+  // File save → trigger detector run (debounced 500ms). Tracked in
+  // `disposables` so a re-bootstrap removes it before adding a new one.
   let debounce: NodeJS.Timeout | null = null;
   const onSave = vscode.workspace.onDidSaveTextDocument(() => {
     if (!cfg.get("runOnSave", true)) return;
@@ -107,8 +129,9 @@ async function bootstrap(apiKey: string, context: vscode.ExtensionContext): Prom
     debounce = setTimeout(() => { void onRunDetectors(); }, 500);
   });
   context.subscriptions.push(onSave);
+  disposables.push(onSave);
 
-  _state = { client, stream, diagnostics, findings, repairWebview, codebaseId, repoRoot, status };
+  _state = { client, stream, diagnostics, findings, repairWebview, codebaseId, repoRoot, status, disposables };
   void vscode.window.showInformationMessage(`Concord DX connected (codebase ${codebaseId.slice(0, 12)}…).`);
 }
 
@@ -131,9 +154,7 @@ async function onLogin(keyStore: ApiKeyStore, context: vscode.ExtensionContext):
 
 async function onLogout(keyStore: ApiKeyStore): Promise<void> {
   await keyStore.clear();
-  _state?.stream.disconnect();
-  _state?.diagnostics.clearAll();
-  _state = null;
+  teardown();
   void vscode.window.showInformationMessage("Concord DX: signed out.");
 }
 
