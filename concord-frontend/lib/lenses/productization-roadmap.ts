@@ -1169,9 +1169,325 @@ export const PRODUCTIZATION_PHASES: ProductionPhase[] = [
     status: 'in_progress',
   },
 
-  // ── PHASE 27: Game ──────────────────────────────────────────────
+  // ── PHASE 27: Code ──────────────────────────────────────────────
   {
     order: 27,
+    lensId: 'code',
+    name: 'Code',
+    rationale: 'Production-grade IDE in the browser. Monaco editor + multi-file project + multi-script-type (snippet/project/pipeline/notebook/algorithm/library) + DTU exhaust + execution + lint + diff + review. Rivals VS Code Web, GitHub Codespaces, and Replit.',
+    dependsOn: [],
+    incumbents: ['VS Code Web', 'GitHub Codespaces', 'Replit', 'CodeSandbox'],
+    artifacts: [
+      { name: 'File',       persistsWithoutDTU: true, storageDomain: 'code', requiredFields: ['id', 'name', 'language', 'content'] },
+      { name: 'Snippet',    persistsWithoutDTU: true, storageDomain: 'code', requiredFields: ['id', 'name', 'language', 'content', 'scriptType'] },
+      { name: 'Project',    persistsWithoutDTU: true, storageDomain: 'code', requiredFields: ['id', 'files', 'rootDir', 'createdAt'] },
+      { name: 'Diff',       persistsWithoutDTU: true, storageDomain: 'code', requiredFields: ['id', 'fromSha', 'toSha', 'patch'] },
+      { name: 'Review',     persistsWithoutDTU: true, storageDomain: 'code', requiredFields: ['id', 'projectId', 'reviewer', 'comments', 'status'] },
+    ],
+    engines: [
+      { name: 'monaco-editor',   description: 'Browser-side syntax highlighting + LSP-lite IntelliSense', trigger: 'on_demand' },
+      { name: 'lint-runner',     description: 'Runs configured linter against active file/project', trigger: 'on_demand' },
+      { name: 'diff-engine',     description: 'Computes patch between two project snapshots', trigger: 'on_demand' },
+      { name: 'execute-runner',  description: 'Sandboxed execution + stdout capture for snippets / pipelines', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'author-execute-package',  steps: ['edit', 'lint', 'execute', 'capture-output', 'package-as-dtu'], engines: ['monaco-editor', 'lint-runner', 'execute-runner'] },
+      { name: 'review-cycle',            steps: ['snapshot-project', 'request-review', 'collect-comments', 'patch', 'merge'], engines: ['diff-engine'] },
+      { name: 'pipeline-run',            steps: ['load-pipeline', 'validate-stages', 'execute-each', 'collect-artifacts', 'emit-dtu'], engines: ['execute-runner'] },
+    ],
+    acceptanceCriteria: [
+      'Monaco editor with multi-tab + dirty-buffer state',
+      'File-tree CRUD with drag-and-drop reorder',
+      'Six script types (snippet / project / pipeline / notebook / algorithm / library)',
+      'Real /api/lens/code persistence via useLensData',
+      'Vision analyse button accepts screenshots of code',
+      'DTU export of any file or project',
+    ],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 28: Chat ──────────────────────────────────────────────
+  {
+    order: 28,
+    lensId: 'chat',
+    name: 'Chat',
+    rationale: 'Production-grade conversational interface with branching, summarization, multi-thread merge, persona switching, and DTU citation. Rivals ChatGPT, Claude, and Gemini.',
+    dependsOn: [],
+    incumbents: ['ChatGPT', 'Claude.ai', 'Gemini', 'Poe'],
+    artifacts: [
+      { name: 'Conversation', persistsWithoutDTU: true, storageDomain: 'chat', requiredFields: ['id', 'title', 'messages', 'createdAt', 'updatedAt'] },
+      { name: 'Message',      persistsWithoutDTU: true, storageDomain: 'chat', requiredFields: ['id', 'role', 'content', 'timestamp', 'conversationId'] },
+      { name: 'Session',      persistsWithoutDTU: true, storageDomain: 'chat', requiredFields: ['id', 'userId', 'persona', 'startedAt'] },
+      { name: 'Branch',       persistsWithoutDTU: true, storageDomain: 'chat', requiredFields: ['id', 'parentMessageId', 'forkedAt'] },
+    ],
+    engines: [
+      { name: 'streaming-completion', description: 'Streams token output from the conscious brain via WebSocket', trigger: 'on_demand' },
+      { name: 'summarizer',           description: 'Compresses conversation tail into archived summary when SESSION_HISTORY cap nears', trigger: 'automatic' },
+      { name: 'thread-merger',        description: 'Merges two conversation branches preserving lineage', trigger: 'on_demand' },
+      { name: 'history-search',       description: 'Full-text + embedding search across conversation history', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'send-receive-cite',   steps: ['user-message', 'route-to-brain', 'stream-tokens', 'extract-citations', 'persist'], engines: ['streaming-completion'] },
+      { name: 'branch-from-message', steps: ['fork-at-message', 'spawn-new-conversation', 'inherit-context'], engines: ['thread-merger'] },
+      { name: 'export-transcript',   steps: ['load-conversation', 'render-format', 'attach-citations', 'package'], engines: [] },
+    ],
+    acceptanceCriteria: [
+      'WebSocket streaming with tokens visible as generated',
+      'Branch any message into a new conversation',
+      'Search history with embedding similarity',
+      'Persona switching mid-conversation',
+      'Export to json / md / txt / pdf',
+      'DTU citations inline in responses',
+    ],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 29: Healthcare ────────────────────────────────────────
+  {
+    order: 29,
+    lensId: 'healthcare',
+    name: 'Healthcare',
+    rationale: 'Production-grade EHR-shape. Patient record + encounter + protocol + interaction check + risk flagging + discharge package. Rivals Epic + Cerner with FHIR import/export and HL7 v2 messaging.',
+    dependsOn: [],
+    incumbents: ['Epic', 'Cerner', 'AthenaHealth', 'OpenEMR'],
+    artifacts: [
+      { name: 'Patient',        persistsWithoutDTU: true, storageDomain: 'healthcare', requiredFields: ['id', 'name', 'dob', 'allergies', 'history'] },
+      { name: 'Encounter',      persistsWithoutDTU: true, storageDomain: 'healthcare', requiredFields: ['id', 'patientId', 'date', 'kind', 'notes'] },
+      { name: 'CareProtocol',   persistsWithoutDTU: true, storageDomain: 'healthcare', requiredFields: ['id', 'condition', 'steps', 'evidence'] },
+      { name: 'Prescription',   persistsWithoutDTU: true, storageDomain: 'healthcare', requiredFields: ['id', 'patientId', 'drug', 'dose', 'duration'] },
+      { name: 'LabResult',      persistsWithoutDTU: true, storageDomain: 'healthcare', requiredFields: ['id', 'patientId', 'analyte', 'value', 'units'] },
+    ],
+    engines: [
+      { name: 'interaction-checker', description: 'Cross-references active prescriptions for known interactions', trigger: 'automatic' },
+      { name: 'protocol-matcher',    description: 'Matches a presentation to evidence-graded care protocols', trigger: 'on_demand' },
+      { name: 'risk-flagger',        description: 'Scans labs + history for risk signals (sepsis, cardiac, oncology)', trigger: 'automatic' },
+      { name: 'fhir-bridge',         description: 'Imports / exports artifacts in FHIR R4 / HL7 v2 envelopes', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'intake-flag-protocol',    steps: ['intake', 'check-interactions', 'flag-risk', 'match-protocol', 'emit-care-plan'], engines: ['interaction-checker', 'risk-flagger', 'protocol-matcher'] },
+      { name: 'lab-import-trend',        steps: ['fhir-import', 'normalize', 'trend-vs-baseline', 'flag-out-of-range'], engines: ['fhir-bridge', 'risk-flagger'] },
+      { name: 'discharge-package',       steps: ['summarize-encounter', 'attach-prescriptions', 'attach-instructions', 'export-pdf-fhir'], engines: ['fhir-bridge'] },
+    ],
+    acceptanceCriteria: [
+      'Patient record persists with full CRUD',
+      'Drug-interaction check fires on prescription add',
+      'Lab import accepts FHIR R4',
+      'Discharge package exports PDF + FHIR',
+      'Protocol-match returns evidence-graded recommendations',
+    ],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 30: Legal ─────────────────────────────────────────────
+  {
+    order: 30,
+    lensId: 'legal',
+    name: 'Legal',
+    rationale: 'Production-grade matter management with clause checker, citation packager, deadline calendar, conflict check, and brief export. Rivals Clio + LexisNexis + Westlaw.',
+    dependsOn: [],
+    incumbents: ['Clio', 'LexisNexis', 'Westlaw', 'PracticePanther'],
+    artifacts: [
+      { name: 'Case',           persistsWithoutDTU: true, storageDomain: 'legal', requiredFields: ['id', 'caption', 'jurisdiction', 'parties', 'status'] },
+      { name: 'Contract',       persistsWithoutDTU: true, storageDomain: 'legal', requiredFields: ['id', 'title', 'parties', 'clauses', 'effectiveDate'] },
+      { name: 'ComplianceItem', persistsWithoutDTU: true, storageDomain: 'legal', requiredFields: ['id', 'title', 'jurisdiction', 'status', 'dueDate'] },
+      { name: 'BriefBundle',    persistsWithoutDTU: true, storageDomain: 'legal', requiredFields: ['id', 'caseId', 'sections', 'citations'] },
+    ],
+    engines: [
+      { name: 'deadline-watcher',    description: 'Tracks filing deadlines + sends warnings 48h / 24h / 4h before', trigger: 'automatic' },
+      { name: 'clause-checker',      description: 'Compares contract clauses against firm template + flags drift', trigger: 'on_demand' },
+      { name: 'citation-packager',   description: 'Bundles cited authorities with hyperlinked Bluebook formatting', trigger: 'on_demand' },
+      { name: 'conflict-check',      description: 'Cross-references new matter against current + closed cases', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'matter-intake-cycle',    steps: ['intake', 'conflict-check', 'open-matter', 'attach-template'], engines: ['conflict-check'] },
+      { name: 'contract-review',        steps: ['ingest', 'clause-by-clause', 'flag-drift', 'redline-export'], engines: ['clause-checker'] },
+      { name: 'brief-package',          steps: ['compose', 'attach-citations', 'bluebook-format', 'export-pdf-docx'], engines: ['citation-packager'] },
+    ],
+    acceptanceCriteria: [
+      'Case + contract + compliance item CRUD',
+      'Deadline watcher fires alerts at 48h / 24h / 4h windows',
+      'Clause checker compares against firm template',
+      'Brief bundle exports to PDF + DOCX with Bluebook citations',
+    ],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 31: Accounting ────────────────────────────────────────
+  {
+    order: 31,
+    lensId: 'accounting',
+    name: 'Accounting',
+    rationale: 'Production-grade general ledger + AP/AR + payroll + tax engine. Rivals QuickBooks + Xero + Wave with KPI strip rival-shape.',
+    dependsOn: [],
+    incumbents: ['QuickBooks', 'Xero', 'Wave', 'FreshBooks'],
+    artifacts: [
+      { name: 'Account',        persistsWithoutDTU: true, storageDomain: 'accounting', requiredFields: ['id', 'name', 'type', 'parentId'] },
+      { name: 'Transaction',    persistsWithoutDTU: true, storageDomain: 'accounting', requiredFields: ['id', 'date', 'debits', 'credits', 'memo'] },
+      { name: 'Invoice',        persistsWithoutDTU: true, storageDomain: 'accounting', requiredFields: ['id', 'customerId', 'lineItems', 'total', 'status'] },
+      { name: 'Reconciliation', persistsWithoutDTU: true, storageDomain: 'accounting', requiredFields: ['id', 'accountId', 'period', 'matched', 'discrepancies'] },
+    ],
+    engines: [
+      { name: 'trial-balance',     description: 'Walks every account and asserts debits === credits', trigger: 'on_demand' },
+      { name: 'reconciler',        description: 'Matches statement lines against ledger transactions', trigger: 'on_demand' },
+      { name: 'tax-estimator',     description: 'Projects quarterly + annual tax liability from current ledger', trigger: 'on_demand' },
+      { name: 'aging-analyzer',    description: 'Buckets receivables / payables by 30/60/90/120+ day windows', trigger: 'automatic' },
+    ],
+    pipelines: [
+      { name: 'monthly-close',       steps: ['categorize', 'reconcile', 'trial-balance', 'p-and-l', 'export'], engines: ['reconciler', 'trial-balance'] },
+      { name: 'invoice-collect',     steps: ['issue-invoice', 'send', 'track-aging', 'remind', 'reconcile-payment'], engines: ['aging-analyzer', 'reconciler'] },
+      { name: 'tax-package',         steps: ['close-period', 'estimate', 'generate-1099', 'export-qbo'], engines: ['tax-estimator'] },
+    ],
+    acceptanceCriteria: [
+      'Chart of accounts CRUD',
+      'Double-entry transaction posting',
+      'Trial balance + P&L + balance sheet exports',
+      'Invoice aging report (30/60/90/120+)',
+      'Reconciliation against bank statement',
+    ],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 32: Ingest ────────────────────────────────────────────
+  {
+    order: 32,
+    lensId: 'ingest',
+    name: 'Ingest',
+    rationale: 'Production-grade ETL workbench. Source connectors, transform pipelines, validation rules, batch scheduler. Rivals Airbyte + Fivetran + dbt.',
+    dependsOn: [],
+    incumbents: ['Airbyte', 'Fivetran', 'dbt', 'Stitch'],
+    artifacts: [
+      { name: 'Source',     persistsWithoutDTU: true, storageDomain: 'ingest', requiredFields: ['id', 'kind', 'config', 'schedule'] },
+      { name: 'Pipeline',   persistsWithoutDTU: true, storageDomain: 'ingest', requiredFields: ['id', 'name', 'stages', 'sourceId'] },
+      { name: 'Transform',  persistsWithoutDTU: true, storageDomain: 'ingest', requiredFields: ['id', 'pipelineId', 'kind', 'spec'] },
+      { name: 'Validation', persistsWithoutDTU: true, storageDomain: 'ingest', requiredFields: ['id', 'pipelineId', 'rule', 'lastResult'] },
+      { name: 'Batch',      persistsWithoutDTU: true, storageDomain: 'ingest', requiredFields: ['id', 'pipelineId', 'startedAt', 'finishedAt', 'rowsIn', 'rowsOut'] },
+    ],
+    engines: [
+      { name: 'source-poller',     description: 'Polls source on schedule + emits raw rows', trigger: 'scheduled' },
+      { name: 'transform-runner',  description: 'Executes transform stages in declared order', trigger: 'on_demand' },
+      { name: 'validator',         description: 'Runs validation rules + raises a failed batch on violation', trigger: 'automatic' },
+    ],
+    pipelines: [
+      { name: 'source-to-dtu',     steps: ['poll-source', 'transform', 'validate', 'persist', 'emit-dtu'], engines: ['source-poller', 'transform-runner', 'validator'] },
+      { name: 'replay-batch',      steps: ['load-batch', 'rerun-transforms', 'compare-output', 'tag-drift'], engines: ['transform-runner'] },
+    ],
+    acceptanceCriteria: [
+      'Source CRUD with multiple kinds (api / s3 / db / file)',
+      'Pipeline with ordered transform stages',
+      'Validation rules with on-fail policy',
+      'Scheduler with cron-shape config',
+      'Batch history with row counts in / out',
+    ],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 33: Art ───────────────────────────────────────────────
+  {
+    order: 33,
+    lensId: 'art',
+    name: 'Art',
+    rationale: 'Production-grade generative art workbench. Generate, remix, style-transfer, gallery, exhibition. Rivals Midjourney + DALL·E + Artbreeder + Layer.',
+    dependsOn: [],
+    incumbents: ['Midjourney', 'DALL·E', 'Artbreeder', 'Layer.ai'],
+    artifacts: [
+      { name: 'Artwork',    persistsWithoutDTU: true, storageDomain: 'art', requiredFields: ['id', 'title', 'image', 'prompt', 'createdAt'] },
+      { name: 'Collection', persistsWithoutDTU: true, storageDomain: 'art', requiredFields: ['id', 'title', 'works', 'curator'] },
+      { name: 'Style',      persistsWithoutDTU: true, storageDomain: 'art', requiredFields: ['id', 'name', 'reference', 'parameters'] },
+      { name: 'Gallery',    persistsWithoutDTU: true, storageDomain: 'art', requiredFields: ['id', 'name', 'works', 'visibility'] },
+      { name: 'Exhibition', persistsWithoutDTU: true, storageDomain: 'art', requiredFields: ['id', 'title', 'galleryId', 'openAt', 'closeAt'] },
+    ],
+    engines: [
+      { name: 'generate',         description: 'Text → image via LLaVA-vision or external model', trigger: 'on_demand' },
+      { name: 'style-transfer',   description: 'Applies a registered style to an existing artwork', trigger: 'on_demand' },
+      { name: 'curator',          description: 'Composes a collection from a query against the gallery', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'generate-publish',   steps: ['prompt', 'generate', 'select', 'publish-to-gallery'], engines: ['generate'] },
+      { name: 'remix-cycle',        steps: ['pick-source', 'pick-style', 'transfer', 'mint-derivative-dtu'], engines: ['style-transfer'] },
+      { name: 'exhibition-cycle',   steps: ['curate', 'open', 'invite', 'close'], engines: ['curator'] },
+    ],
+    acceptanceCriteria: [
+      'Artwork generation from prompt',
+      'Style transfer between artworks',
+      'Gallery + exhibition workflow',
+      'PNG / SVG export',
+      'Citation cascade on remix (royalties)',
+    ],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 34: Podcast ───────────────────────────────────────────
+  {
+    order: 34,
+    lensId: 'podcast',
+    name: 'Podcast',
+    rationale: 'Production-grade podcast publishing. Episode authoring, RSS generation, scheduling, transcription, listener analytics. Rivals Anchor + Buzzsprout + Transistor.',
+    dependsOn: [],
+    incumbents: ['Anchor', 'Buzzsprout', 'Transistor', 'Captivate'],
+    artifacts: [
+      { name: 'Episode',     persistsWithoutDTU: true, storageDomain: 'podcast', requiredFields: ['id', 'title', 'audioUrl', 'duration', 'publishedAt'] },
+      { name: 'Subscriber',  persistsWithoutDTU: true, storageDomain: 'podcast', requiredFields: ['id', 'platform', 'subscribedAt'] },
+      { name: 'Analytics',   persistsWithoutDTU: true, storageDomain: 'podcast', requiredFields: ['episodeId', 'listens', 'completion', 'geo'] },
+      { name: 'Feed',        persistsWithoutDTU: true, storageDomain: 'podcast', requiredFields: ['id', 'title', 'rss', 'updatedAt'] },
+    ],
+    engines: [
+      { name: 'rss-generator',    description: 'Renders the show feed as iTunes-compatible RSS 2.0', trigger: 'on_demand' },
+      { name: 'transcriber',      description: 'Calls Whisper-equivalent for episode transcript', trigger: 'on_demand' },
+      { name: 'distributor',      description: 'Pushes episode to configured directories (Apple, Spotify, etc.)', trigger: 'on_demand' },
+      { name: 'analytics-roll',   description: 'Rolls listen events into per-episode + per-day buckets', trigger: 'automatic' },
+    ],
+    pipelines: [
+      { name: 'episode-publish',   steps: ['upload-audio', 'transcribe', 'generate-show-notes', 'render-rss', 'distribute'], engines: ['transcriber', 'rss-generator', 'distributor'] },
+      { name: 'analytics-cycle',   steps: ['ingest-events', 'roll-up', 'detect-trend', 'notify-creator'], engines: ['analytics-roll'] },
+    ],
+    acceptanceCriteria: [
+      'Episode CRUD with audio upload',
+      'RSS generation with iTunes tags',
+      'Transcription pipeline',
+      'Listener analytics roll-up',
+      'Distribution to multiple platforms',
+    ],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 35: DTUs ──────────────────────────────────────────────
+  {
+    order: 35,
+    lensId: 'dtus',
+    name: 'DTU Manager',
+    rationale: 'Production-grade DTU management. Validate envelope hashes, walk lineage, register citations, audit consolidation. The substrate console for the whole platform.',
+    dependsOn: [],
+    incumbents: ['IPFS pinning UIs', 'Pinecone admin', 'Chroma admin'],
+    artifacts: [
+      { name: 'DTU',         persistsWithoutDTU: true,  storageDomain: 'dtus', requiredFields: ['id', 'kind', 'tier', 'creator_id', 'meta'] },
+      { name: 'Validation',  persistsWithoutDTU: true,  storageDomain: 'dtus', requiredFields: ['id', 'dtuId', 'ok', 'reason', 'at'] },
+      { name: 'Citation',    persistsWithoutDTU: true,  storageDomain: 'dtus', requiredFields: ['parentId', 'childId', 'kind', 'at'] },
+      { name: 'Lineage',     persistsWithoutDTU: true,  storageDomain: 'dtus', requiredFields: ['rootId', 'depth', 'descendants'] },
+      { name: 'Hash',        persistsWithoutDTU: true,  storageDomain: 'dtus', requiredFields: ['dtuId', 'algorithm', 'value'] },
+    ],
+    engines: [
+      { name: 'envelope-validator',  description: 'Verifies SHA-256 content hash + DTU protocol envelope', trigger: 'on_demand' },
+      { name: 'lineage-walker',      description: 'BFS through citations to compute lineage tree + projected royalty share', trigger: 'on_demand' },
+      { name: 'consolidator',        description: 'Compresses regular DTUs into MEGA / HYPER tiers (33:1)', trigger: 'scheduled' },
+    ],
+    pipelines: [
+      { name: 'import-validate-persist',  steps: ['receive-envelope', 'validate-hash', 'check-citations', 'persist'], engines: ['envelope-validator'] },
+      { name: 'lineage-explore',          steps: ['select-root', 'walk-citations', 'project-royalties', 'render-tree'], engines: ['lineage-walker'] },
+      { name: 'tier-consolidation',       steps: ['cluster', 'gap-promote', 'transfer-edges', 'demote-source'], engines: ['consolidator'] },
+    ],
+    acceptanceCriteria: [
+      'DTU CRUD + envelope validation',
+      'Citation walk with royalty projection',
+      'Tier filter (regular / MEGA / HYPER)',
+      'Hash verification button',
+      'Consolidation history + audit trail',
+    ],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 36: Game ──────────────────────────────────────────────
+  {
+    order: 36,
     lensId: 'game',
     name: 'Game',
     rationale: 'Gamification engine. Adds progression, achievements, and quests to all lenses.',
