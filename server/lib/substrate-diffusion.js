@@ -155,7 +155,6 @@ export function getPatterns(filters, db) {
   }
 
   return db.prepare(`
-    // TODO: project explicit columns (auto-fix suggestion)
     SELECT * FROM substrate_patterns
     WHERE ${where}
     ORDER BY current_strength DESC

@@ -141,13 +141,100 @@ function createMockDb() {
           .slice(0, limit || 50);
       },
     },
+
+    // WITH RECURSIVE up(id, depth) AS (...)  — wouldCreateCycle CTE
+    // The recursive CTE walks UP from parentId looking for childId. The
+    // mock does the same walk in JavaScript using lineageByChild.
+    "WITH RECURSIVE up(id, depth)": {
+      get(parentId, maxDepth, childId) {
+        const visited = new Set();
+        const stack = [{ id: parentId, depth: 0 }];
+        while (stack.length > 0) {
+          const node = stack.pop();
+          if (visited.has(node.id)) continue;
+          visited.add(node.id);
+          if (node.id === childId) return { hit: 1 };
+          if (node.depth >= maxDepth) continue;
+          for (const r of lineageByChild(node.id)) {
+            stack.push({ id: r.parent_id, depth: node.depth + 1 });
+          }
+        }
+        return null;
+      },
+    },
+
+    // WITH RECURSIVE chain(content_id, creator_id, generation) AS (...)
+    // Used by both getAncestorChain (UP) and getDescendants (DOWN). The
+    // SQL string is identical for both shapes; we discriminate via the
+    // direction flag detected from the seed clause.
+    "WITH RECURSIVE chain(content_id, creator_id, generation)": {
+      _all(rootId, maxDepth, excludeId, direction /* 'up' | 'down' */) {
+        // BFS. Track minimum generation per content_id (the SQL uses MIN).
+        const visited = new Map(); // content_id → { creator_id, generation }
+        const queue = [];
+        // Seed: direct neighbours of rootId in the chosen direction.
+        const seedRows = direction === 'up'
+          ? lineageByChild(rootId).map(r => ({ content_id: r.parent_id, creator_id: r.parent_creator, generation: r.generation }))
+          : lineageByParent(rootId).map(r => ({ content_id: r.child_id, creator_id: r.creator_id, generation: r.generation }));
+        for (const s of seedRows) queue.push({ ...s });
+        while (queue.length > 0) {
+          const { content_id, creator_id, generation } = queue.shift();
+          if (generation > maxDepth) continue;
+          const prev = visited.get(content_id);
+          if (!prev || generation < prev.generation) {
+            visited.set(content_id, { creator_id, generation });
+          }
+          // Walk one more level
+          const nextRows = direction === 'up'
+            ? lineageByChild(content_id).map(r => ({ content_id: r.parent_id, creator_id: r.parent_creator, generation: generation + r.generation }))
+            : lineageByParent(content_id).map(r => ({ content_id: r.child_id, creator_id: r.creator_id, generation: generation + r.generation }));
+          for (const n of nextRows) {
+            if (n.generation > maxDepth) continue;
+            queue.push(n);
+          }
+        }
+        const out = [];
+        for (const [content_id, v] of visited.entries()) {
+          if (content_id !== excludeId) {
+            out.push({ content_id, creator_id: v.creator_id, generation: v.generation });
+          }
+        }
+        out.sort((a, b) => a.generation - b.generation || (a.content_id < b.content_id ? -1 : 1));
+        return out;
+      },
+      // Default to 'up' (getAncestorChain). The 'down' variant is bound below.
+      all(rootId, maxDepth, excludeId) {
+        return this._all(rootId, maxDepth, excludeId, this._direction || 'up');
+      },
+    },
+  };
+  // Bind two specialised handlers that share the same _all body but pick a
+  // direction based on which fragment of the SQL is matched. The first
+  // SELECT inside the CTE tells us which: `parent_id` (chain UP) vs
+  // `child_id` (chain DOWN).
+  stmts["WITH RECURSIVE chain(content_id, creator_id, generation) AS (\n      SELECT parent_id"] = {
+    all(rootId, maxDepth, excludeId) {
+      return stmts["WITH RECURSIVE chain(content_id, creator_id, generation)"]._all(rootId, maxDepth, excludeId, 'up');
+    },
+  };
+  stmts["WITH RECURSIVE chain(content_id, creator_id, generation) AS (\n      SELECT child_id"] = {
+    all(rootId, maxDepth, excludeId) {
+      return stmts["WITH RECURSIVE chain(content_id, creator_id, generation)"]._all(rootId, maxDepth, excludeId, 'down');
+    },
   };
 
   function matchStatement(sql) {
-    // Try to find the best matching key by checking if sql starts with the key
+    // Pick the LONGEST matching prefix so specialised handlers (e.g. the
+    // ancestor vs descendant variants of WITH RECURSIVE chain) win over
+    // their generic shared-shape parent.
+    const trimmed = sql.trimStart();
+    let bestKey = null;
     for (const key of Object.keys(stmts)) {
-      if (sql.trimStart().startsWith(key)) return stmts[key];
+      if (trimmed.startsWith(key)) {
+        if (bestKey === null || key.length > bestKey.length) bestKey = key;
+      }
     }
+    if (bestKey !== null) return stmts[bestKey];
     // Fallback: return a no-op statement
     return { run() {}, all() { return []; }, get() { return null; } };
   }
@@ -1490,14 +1577,14 @@ describe("getDescendants", () => {
     seedLineage(db, "C", "B", 1, "uC", "uB");
     seedLineage(db, "D", "C", 1, "uD", "uC");
 
-    // maxDepth=1: A (gen 0) is processed, B (gen 1) is discovered and added.
-    // B is then processed (gen 1 is not > 1), discovering C (gen 2) which is
-    // added to descendants but when dequeued C (gen 2 > 1) is not processed
-    // further, so D is never discovered.
+    // The CTE filters with `c.generation + rl.generation <= maxDepth` at
+    // recursion-extension time. With maxDepth=1: only B (gen 1) survives;
+    // C (would be gen 2) and D (gen 3) are excluded because the CTE
+    // doesn't extend past the depth gate.
     const result = getDescendants(db, "A", 1);
     const ids = result.map((d) => d.contentId).sort();
-    assert.deepEqual(ids, ["B", "C"]);
-    // D should NOT be present because C was never processed
+    assert.deepEqual(ids, ["B"]);
+    assert.ok(!ids.includes("C"));
     assert.ok(!ids.includes("D"));
   });
 

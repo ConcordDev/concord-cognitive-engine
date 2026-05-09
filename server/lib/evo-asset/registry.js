@@ -130,7 +130,6 @@ export function recomputeEvolutionScore(db, assetId) {
  */
 export function selectEvolutionCandidates(db, limit = 5) {
   return db.prepare(`
-    // TODO: project explicit columns (auto-fix suggestion)
     SELECT * FROM evo_assets
      WHERE archived_at IS NULL
        AND quality_level < 10

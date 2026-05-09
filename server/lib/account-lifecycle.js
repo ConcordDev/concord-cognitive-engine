@@ -524,7 +524,6 @@ export function requestRefund(db, { purchaseId, buyerId, reason }) {
     if (!purchase) {
       // Try direct lookup
       purchase = db.prepare(`
-        // TODO: project explicit columns (auto-fix suggestion)
         SELECT * FROM economy_ledger
         WHERE ref_id LIKE ? AND from_user_id = ? AND type = 'MARKETPLACE_PURCHASE' AND status = 'complete'
         ORDER BY created_at DESC LIMIT 1
@@ -651,7 +650,6 @@ export function getUserDisputes(db, userId, { limit = 50, offset = 0 } = {}) {
 
   try {
     const disputes = db.prepare(`
-      // TODO: project explicit columns (auto-fix suggestion)
       SELECT * FROM marketplace_disputes
       WHERE buyer_id = ? OR seller_id = ?
       ORDER BY created_at DESC LIMIT ? OFFSET ?

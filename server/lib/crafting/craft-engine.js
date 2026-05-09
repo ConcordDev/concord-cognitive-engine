@@ -108,7 +108,6 @@ export function executeCraft(db, userId, worldId, recipeId, opts = {}) {
     for (const req of resourceRequirements) {
       let remaining = req.quantity;
       const slots = db.prepare(`
-        // TODO: project explicit columns (auto-fix suggestion)
         SELECT * FROM player_inventory
         WHERE user_id = ? AND item_id = ?
         ORDER BY acquired_at ASC

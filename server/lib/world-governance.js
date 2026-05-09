@@ -190,7 +190,6 @@ export function tickDirectiveVoting(db, worldId) {
 
   // Get active directives created within the last hour (voting window)
   const directives = db.prepare(`
-    // TODO: project explicit columns (auto-fix suggestion)
     SELECT * FROM world_directives
     WHERE world_id = ? AND status = 'active' AND created_at > ?
   `).all(worldId, now - oneHour);
@@ -242,7 +241,6 @@ export function tickDirectiveVoting(db, worldId) {
  */
 export function getActiveDirectives(db, worldId) {
   return db.prepare(`
-    // TODO: project explicit columns (auto-fix suggestion)
     SELECT * FROM world_directives
     WHERE world_id = ? AND status = 'active'
     ORDER BY created_at DESC
@@ -259,7 +257,6 @@ export function getActiveDirectives(db, worldId) {
  */
 export function getDirectiveHistory(db, worldId, limit = 20) {
   return db.prepare(`
-    // TODO: project explicit columns (auto-fix suggestion)
     SELECT * FROM world_directives
     WHERE world_id = ? AND status != 'active'
     ORDER BY resolved_at DESC

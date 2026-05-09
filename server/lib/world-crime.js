@@ -251,7 +251,6 @@ export function detectiveTick(db, npcId, worldId) {
 
   // Find open crimes this detective is assigned to OR unassigned crimes
   const crimes = db.prepare(`
-    // TODO: project explicit columns (auto-fix suggestion)
     SELECT * FROM crime_events
     WHERE world_id = ? AND status = 'open'
       AND (detective_id = ? OR detective_id IS NULL)
@@ -268,7 +267,6 @@ export function detectiveTick(db, npcId, worldId) {
 
     // Collect uncollected evidence
     const uncollected = db.prepare(`
-      // TODO: project explicit columns (auto-fix suggestion)
       SELECT * FROM evidence_items
       WHERE crime_event_id = ? AND collected_by IS NULL
         AND (decay_at IS NULL OR decay_at > ?)
@@ -361,7 +359,6 @@ export function guardTick(db, npcId, worldId, npcLocation) {
 
   // Check recent crimes in nearby buildings (within last hour)
   const recentCrimes = db.prepare(`
-    // TODO: project explicit columns (auto-fix suggestion)
     SELECT * FROM crime_events
     WHERE world_id = ? AND status = 'open' AND occurred_at > ?
     ORDER BY occurred_at DESC LIMIT 3

@@ -298,7 +298,6 @@ export function sendMessage(db, opts, deps = {}) {
  */
 export function listInbox(db, receiverId, { limit = 50 } = {}) {
   return db.prepare(`
-    // TODO: project explicit columns (auto-fix suggestion)
     SELECT * FROM concord_link_messages
      WHERE receiver_id = ?
      ORDER BY sent_at DESC
@@ -320,7 +319,6 @@ export function markRead(db, messageId, readerId) {
  */
 export function listAnchorsForWorld(db, worldId) {
   return db.prepare(`
-    // TODO: project explicit columns (auto-fix suggestion)
     SELECT * FROM concord_link_anchors WHERE world_id = ? ORDER BY name
   `).all(worldId);
 }

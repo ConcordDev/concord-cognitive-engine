@@ -96,7 +96,6 @@ export function startCrisisWatch(db, realtimeEmit) {
 
     // Auto-trigger knowledge_extinction if a pattern has been declining
     const decliningPatterns = db.prepare(`
-      // TODO: project explicit columns (auto-fix suggestion)
       SELECT * FROM substrate_patterns WHERE trajectory = 'declining' AND current_strength < 0.2
     `).all();
     if (decliningPatterns.length > 0) {

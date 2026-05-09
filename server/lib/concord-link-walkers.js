@@ -211,7 +211,6 @@ export function advanceJourneyTick(db, { onDelivered = null, onIntercepted = nul
   let advanced = 0, delivered = 0, intercepted = 0, errors = 0;
 
   const inTransit = db.prepare(`
-    // TODO: project explicit columns (auto-fix suggestion)
     SELECT * FROM concord_link_walkers WHERE status = 'in_transit'
   `).all();
 

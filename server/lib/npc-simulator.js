@@ -776,7 +776,6 @@ Choose one action for this NPC. Return JSON only:
   async _maybeEvaluateCreations() {
     if (Math.random() > 0.1) return; // 10% chance per tick
     const nearby = this._db.prepare(`
-      // TODO: project explicit columns (auto-fix suggestion)
       SELECT * FROM dtus
       WHERE type = 'concordia_creation' AND world_id = ?
       LIMIT 5

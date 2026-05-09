@@ -173,6 +173,20 @@ function createMockDb() {
               ...d, tags_json: d.tags_json || "[]",
             }));
           }
+          // Phase 2 perf fix: batchLookup uses
+          //   SELECT <cols> FROM dtus WHERE id IN (?, ?, ?, ...)
+          // Match the IN-list shape and return matching rows.
+          if (sql.includes("SELECT id, title, content_type, creti_score, tier FROM dtus WHERE id IN")) {
+            return tables.dtus
+              .filter(d => params.includes(d.id))
+              .map(d => ({
+                id: d.id, title: d.title, content_type: d.content_type,
+                creti_score: d.creti_score, tier: d.tier,
+              }));
+          }
+          if (sql.includes("FROM dtus WHERE id IN")) {
+            return tables.dtus.filter(d => params.includes(d.id)).map(d => ({ ...d }));
+          }
           return [];
         },
       };

@@ -1512,8 +1512,8 @@ export function getLeaderboard(db, { scope, scopeId, category, season = null, li
   if (!scope || !scopeId || !category) return { ok: false, error: "missing_required_fields" };
 
   const seasonKey = season || "";
+  // TODO: project explicit columns (auto-fix suggestion)
   const rows = db.prepare(`
-    // TODO: project explicit columns (auto-fix suggestion)
     SELECT * FROM leaderboard_entries
     WHERE scope = ? AND scope_id = ? AND category = ? AND COALESCE(season,'') = ?
     ORDER BY rank ASC LIMIT ?

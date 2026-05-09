@@ -97,7 +97,6 @@ export function saveCheckpoint(db, threadId, stepIndex, { messages, toolCalls, t
 export function loadLatestCheckpoint(db, threadId) {
   try {
     const row = db.prepare(`
-      // TODO: project explicit columns (auto-fix suggestion)
       SELECT * FROM agent_thread_checkpoints
       WHERE thread_id = ?
       ORDER BY step_index DESC

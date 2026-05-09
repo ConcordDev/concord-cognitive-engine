@@ -17,9 +17,15 @@ import {
   getDescendants,
 } from "../economy/royalty-cascade.js";
 
-// ── Reference (queue-based) implementations — kept here as fixtures.
+// ── Reference (BFS) implementations — kept as fixtures.
+//
+// Important: each ancestor / descendant must appear EXACTLY ONCE at its
+// MIN generation. A naive BFS that pushes on every discovery double-pays
+// diamond-reachable ancestors, which is a royalty bug, not a feature.
+// The CTE implementation in production uses GROUP BY ... MIN(generation)
+// to de-dup. The reference here matches that semantic.
 function refAncestorChain(db, contentId, maxDepth = 50) {
-  const ancestors = [];
+  const best = new Map(); // id -> { creatorId, generation }
   const visited = new Set();
   const queue = [{ id: contentId, generation: 0 }];
   while (queue.length > 0) {
@@ -32,21 +38,26 @@ function refAncestorChain(db, contentId, maxDepth = 50) {
     `).all(current.id);
     for (const parent of parents) {
       const totalGeneration = current.generation + parent.generation;
-      if (totalGeneration <= maxDepth && !visited.has(parent.parent_id)) {
-        ancestors.push({
-          contentId: parent.parent_id,
-          creatorId: parent.parent_creator,
-          generation: totalGeneration,
-        });
+      if (totalGeneration > maxDepth) continue;
+      const prev = best.get(parent.parent_id);
+      if (!prev || totalGeneration < prev.generation) {
+        best.set(parent.parent_id, { creatorId: parent.parent_creator, generation: totalGeneration });
+      }
+      if (!visited.has(parent.parent_id)) {
         queue.push({ id: parent.parent_id, generation: totalGeneration });
       }
     }
   }
-  return ancestors;
+  const out = [];
+  for (const [id, v] of best.entries()) {
+    out.push({ contentId: id, creatorId: v.creatorId, generation: v.generation });
+  }
+  out.sort((a, b) => a.generation - b.generation || (a.contentId < b.contentId ? -1 : 1));
+  return out;
 }
 
 function refDescendants(db, contentId, maxDepth = 50) {
-  const out = [];
+  const best = new Map();
   const visited = new Set();
   const queue = [{ id: contentId, generation: 0 }];
   while (queue.length > 0) {
@@ -59,16 +70,21 @@ function refDescendants(db, contentId, maxDepth = 50) {
     `).all(current.id);
     for (const child of children) {
       const totalGeneration = current.generation + child.generation;
+      if (totalGeneration > maxDepth) continue;
+      const prev = best.get(child.child_id);
+      if (!prev || totalGeneration < prev.generation) {
+        best.set(child.child_id, { creatorId: child.creator_id, generation: totalGeneration });
+      }
       if (!visited.has(child.child_id)) {
-        out.push({
-          contentId: child.child_id,
-          creatorId: child.creator_id,
-          generation: totalGeneration,
-        });
         queue.push({ id: child.child_id, generation: totalGeneration });
       }
     }
   }
+  const out = [];
+  for (const [id, v] of best.entries()) {
+    out.push({ contentId: id, creatorId: v.creatorId, generation: v.generation });
+  }
+  out.sort((a, b) => a.generation - b.generation || (a.contentId < b.contentId ? -1 : 1));
   return out;
 }
 

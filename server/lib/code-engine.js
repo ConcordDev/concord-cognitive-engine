@@ -888,7 +888,6 @@ function _prepareStatements(db) {
     // TODO: project explicit columns (auto-fix suggestion)
     getRepoByUrl: db.prepare(`SELECT * FROM code_repositories WHERE url = ?`),
     listRepos: db.prepare(`
-      // TODO: project explicit columns (auto-fix suggestion)
       SELECT * FROM code_repositories ORDER BY ingested_at DESC LIMIT ? OFFSET ?
     `),
     countRepos: db.prepare(`SELECT COUNT(*) as count FROM code_repositories`),
@@ -902,29 +901,23 @@ function _prepareStatements(db) {
     // TODO: project explicit columns (auto-fix suggestion)
     getPatternById: db.prepare(`SELECT * FROM code_patterns WHERE id = ?`),
     listPatterns: db.prepare(`
-      // TODO: project explicit columns (auto-fix suggestion)
       SELECT * FROM code_patterns ORDER BY created_at DESC LIMIT ? OFFSET ?
     `),
     listPatternsByCategory: db.prepare(`
-      // TODO: project explicit columns (auto-fix suggestion)
       SELECT * FROM code_patterns WHERE category = ? ORDER BY created_at DESC LIMIT ? OFFSET ?
     `),
     listPatternsByLanguage: db.prepare(`
-      // TODO: project explicit columns (auto-fix suggestion)
       SELECT * FROM code_patterns WHERE language = ? ORDER BY created_at DESC LIMIT ? OFFSET ?
     `),
     listPatternsByRepo: db.prepare(`
-      // TODO: project explicit columns (auto-fix suggestion)
       SELECT * FROM code_patterns WHERE repository_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?
     `),
     searchPatternsByKeyword: db.prepare(`
-      // TODO: project explicit columns (auto-fix suggestion)
       SELECT * FROM code_patterns
       WHERE name LIKE ? OR description LIKE ?
       ORDER BY created_at DESC LIMIT ? OFFSET ?
     `),
     listPatternsByCategoryAndLanguage: db.prepare(`
-      // TODO: project explicit columns (auto-fix suggestion)
       SELECT * FROM code_patterns WHERE category = ? AND language = ? ORDER BY created_at DESC LIMIT ? OFFSET ?
     `),
     countPatterns: db.prepare(`SELECT COUNT(*) as count FROM code_patterns`),
@@ -943,7 +936,6 @@ function _prepareStatements(db) {
     // TODO: project explicit columns (auto-fix suggestion)
     getMegaById: db.prepare(`SELECT * FROM code_megas WHERE id = ?`),
     listMegas: db.prepare(`
-      // TODO: project explicit columns (auto-fix suggestion)
       SELECT * FROM code_megas ORDER BY created_at DESC LIMIT ? OFFSET ?
     `),
     countMegas: db.prepare(`SELECT COUNT(*) as count FROM code_megas`),
@@ -963,11 +955,9 @@ function _prepareStatements(db) {
     // TODO: project explicit columns (auto-fix suggestion)
     getGenerationById: db.prepare(`SELECT * FROM lens_generations WHERE id = ?`),
     listGenerations: db.prepare(`
-      // TODO: project explicit columns (auto-fix suggestion)
       SELECT * FROM lens_generations ORDER BY created_at DESC LIMIT ? OFFSET ?
     `),
     listGenerationsByStatus: db.prepare(`
-      // TODO: project explicit columns (auto-fix suggestion)
       SELECT * FROM lens_generations WHERE status = ? ORDER BY created_at DESC LIMIT ? OFFSET ?
     `),
     countGenerations: db.prepare(`SELECT COUNT(*) as count FROM lens_generations`),
@@ -983,15 +973,12 @@ function _prepareStatements(db) {
     // TODO: project explicit columns (auto-fix suggestion)
     getErrorById: db.prepare(`SELECT * FROM code_errors WHERE id = ?`),
     listErrors: db.prepare(`
-      // TODO: project explicit columns (auto-fix suggestion)
       SELECT * FROM code_errors ORDER BY created_at DESC LIMIT ? OFFSET ?
     `),
     listErrorsByLens: db.prepare(`
-      // TODO: project explicit columns (auto-fix suggestion)
       SELECT * FROM code_errors WHERE lens_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?
     `),
     listErrorsByType: db.prepare(`
-      // TODO: project explicit columns (auto-fix suggestion)
       SELECT * FROM code_errors WHERE error_type = ? ORDER BY created_at DESC LIMIT ? OFFSET ?
     `),
     countErrors: db.prepare(`SELECT COUNT(*) as count FROM code_errors`),

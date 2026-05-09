@@ -266,7 +266,6 @@ export function handleNPCKilledPlayer(db, { npcId, playerId, worldId, x = 0, y =
 export function reclaimExpiredBags(db) {
   const now = Math.floor(Date.now() / 1000);
   const expired = db.prepare(`
-    // TODO: project explicit columns (auto-fix suggestion)
     SELECT * FROM death_loot_bags WHERE claimed_by IS NULL AND expires_at < ?
   `).all(now);
 
