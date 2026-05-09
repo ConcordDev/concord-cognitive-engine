@@ -84,6 +84,17 @@ const ZONE_MATERIALS: Record<TerrainZone, {
  * - Rolling hills east (~50-80m)
  * - Fall Kill Creek valley cutting through (~20m depression)
  */
+// Theme: deferred (procgen Simplex terrain). Replaces sine-wave-only
+// per-vertex noise with seeded 4-octave fractal Simplex noise so the
+// terrain actually looks like terrain — small ridges, irregular humps,
+// no obvious sin() banding. The base west-to-east cross-section + creek
+// valley remain sine/programmatic since they're authored landmarks
+// (river bluff, central plateau, creek). Only the natural-feel
+// perturbation switches to Simplex.
+import { createSimplexNoise2D, octaveNoise2D } from '@/lib/world-lens/simplex-noise';
+const TERRAIN_SEED = 0xc0ffee;
+const _terrainNoise = createSimplexNoise2D(TERRAIN_SEED);
+
 function generatePoughkeepsieHeightmap(width: number, height: number): Float32Array {
   const data = new Float32Array(width * height);
   const maxElev = 80;
@@ -107,14 +118,15 @@ function generatePoughkeepsieHeightmap(width: number, height: number): Float32Ar
       }
       // Central plateau (0.2-0.6)
       else if (nx < 0.6) {
-        elev = 40 + Math.sin(nx * Math.PI * 3) * 5;
+        // Simplex mid-frequency adds plateau lumpiness; was sin-band before.
+        elev = 40 + octaveNoise2D(_terrainNoise, nx * 4, nz * 4, 3) * 5;
       }
       // Eastern hills (0.6-1.0)
       else {
         elev = 45 + (nx - 0.6) * 80;
-        // Rolling hills via sine waves
-        elev += Math.sin(nx * 12 + nz * 8) * 6;
-        elev += Math.sin(nx * 7 - nz * 5) * 4;
+        // Rolling hills via 4-octave Simplex (was layered sine waves).
+        // Output ~[-1,1] × 8 = ±8m of natural-feeling height.
+        elev += octaveNoise2D(_terrainNoise, nx * 6, nz * 6, 4) * 8;
       }
 
       // Fall Kill Creek valley: a depression running roughly SW to NE
@@ -125,10 +137,9 @@ function generatePoughkeepsieHeightmap(width: number, height: number): Float32Ar
         elev -= creekDepth;
       }
 
-      // Minor terrain noise for natural feel
-      const noise1 = Math.sin(nx * 47.3 + nz * 31.7) * 0.5;
-      const noise2 = Math.sin(nx * 97.1 + nz * 73.3) * 0.3;
-      elev += noise1 + noise2;
+      // Minor terrain micro-noise for natural feel — Simplex at high
+      // frequency keeps grass-mound scale variation without banding.
+      elev += octaveNoise2D(_terrainNoise, nx * 60, nz * 60, 2) * 0.6;
 
       // Clamp and normalize
       elev = Math.max(0, Math.min(maxElev, elev));
