@@ -412,6 +412,17 @@ registerHeartbeat("npc-routine-cycle", {
   handler: runNpcRoutineCycle,
 });
 
+// Phase 4b: NPC living economy. Every 8 ticks (~2min, staggered behind
+// the routine cycle so most NPCs have arrived) NPCs at their workplaces
+// gather / craft / trade / consume. Every action writes to economy_flows;
+// regional_scarcity refreshes per pass and modulates marketplace prices.
+// Kill-switch: CONCORD_NPC_ECONOMY=0.
+import { runNpcEconomyCycle } from "./emergent/npc-economy-cycle.js";
+registerHeartbeat("npc-economy-cycle", {
+  frequency: 8,
+  handler: runNpcEconomyCycle,
+});
+
 // Layer 13: NPC-initiated conversations. Every 8 ticks (~2 min) scans each
 // active world for cooldown-elapsed NPC pairs, generates a grounded opener
 // (deterministic by default; LLM-enhanced via CONCORD_NPC_DIALOGUE_LLM=true),

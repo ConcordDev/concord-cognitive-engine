@@ -3,6 +3,9 @@
 // Bounded at MAX_PURCHASES_PER_PASS=15 per heartbeat tick.
 // server/lib/npc-marketplace.js
 //
+// Phase 4b note: imports priceModulator from npc-economy. No cycle —
+// npc-economy doesn't import this module.
+//
 // Phase 1.5 — NPCs participate in the recipe marketplace as both sellers
 // and buyers. The world feels alive because the marketplace listings
 // aren't only player-authored: any NPC at level ≥ 25 with at least 3
@@ -23,6 +26,7 @@
 
 import crypto from "node:crypto";
 import logger from "../logger.js";
+import { priceModulator as _priceModulator } from "./npc-economy.js";
 
 const MIN_NPC_LEVEL_FOR_LISTING = 25;
 const MIN_REVISIONS_FOR_LISTING = 3;
@@ -74,6 +78,34 @@ function recipeRevisionNum(metaJson) {
 
 function priceForRecipe(revisionNum) {
   return Math.round(SELL_LISTING_PRICE_FLOOR * Math.pow(PRICE_PER_REVISION_MULT, revisionNum));
+}
+
+// Phase 4b — NPC marketplace listings honor regional scarcity. The
+// resourceKind hint comes from the recipe's element/skill_kind via a
+// loose mapping (warriors' weapons couple to 'weapon' scarcity, mystics'
+// remedies to 'remedy', etc.). Best-effort; defaults to 1.0× if scarcity
+// is unavailable.
+function priceForRecipeWithScarcity(db, worldId, revisionNum, recipeMeta) {
+  const base = priceForRecipe(revisionNum);
+  if (!db || !worldId) return base;
+  try {
+    const resourceHint = recipeResourceHint(recipeMeta);
+    if (!resourceHint) return base;
+    const mod = _priceModulator(db, worldId, resourceHint);
+    return Math.round(base * mod);
+  } catch { return base; }
+}
+
+function recipeResourceHint(meta) {
+  if (!meta) return null;
+  const kind = String(meta.skill_kind || "").toLowerCase();
+  const element = String(meta.element || "").toLowerCase();
+  if (kind === "fighting_style") return "weapon";
+  if (kind === "spell" && (element === "bio" || element === "water")) return "remedy";
+  if (kind === "spell") return "weapon";
+  if (kind === "psionic") return "tool";
+  if (kind === "biopower") return "remedy";
+  return null;
 }
 
 function ensureMarketplaceListing(db, recipeId, npcId, price) {
