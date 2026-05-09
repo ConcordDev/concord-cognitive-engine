@@ -1124,8 +1124,8 @@
     "quest_hooks": ["nurse_training", "the_pronouncement", "the_research_seat"]
   },
   {
-    "id": "scribe_tollan",
-    "name": "Scribe Tollan",
+    "id": "junior_scribe_pen",
+    "name": "Pen Hollowmark",
     "archetype": "scholar",
     "faction_id": "scholars_guild",
     "role": "Junior archivist, vault seventeen reconstruction project",
@@ -1164,8 +1164,8 @@
     }
   },
   {
-    "id": "blackroot_thorne",
-    "name": "Blackroot Thorne",
+    "id": "eastern_blind_forester",
+    "name": "Reeve Linden",
     "archetype": "hunter",
     "faction_id": "verdant_veil_remnant",
     "role": "Forester at the eastern blind",

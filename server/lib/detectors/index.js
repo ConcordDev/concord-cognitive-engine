@@ -32,6 +32,7 @@ import { runPerformanceHotspotDetector } from "./performance-hotspot-detector.js
 import { runHistoricalTrendDetector } from "./historical-trend-detector.js";
 import { runPredictiveGrowthDetector } from "./predictive-growth-detector.js";
 import { runArchitecturalHubDetector } from "./architectural-hub-detector.js";
+import { runConcordiaSubstrateDetector } from "./concordia-substrate-detector.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -251,6 +252,20 @@ registerDetector({
   dataNeeds: ["fs"],
   description: "Module fan-in / fan-out / centrality + import-cycle detection.",
   run: runArchitecturalHubDetector,
+});
+
+// Concordia substrate health — referential integrity in authored content,
+// cross-phase invariants (Phase 5b legacy ↔ death, Phase 4c quest ↔ Phase 5e
+// region cascade, Phase 3 single-open-beat invariant, etc.), and
+// distribution sanity (faction population imbalance, procgen overspawn,
+// scarcity index out of clamp).
+registerDetector({
+  id: "concordia-substrate",
+  label: "ConcordiaSubstrateDetector",
+  consumers: ["code-quality", "repair-cortex", "concordia"],
+  dataNeeds: ["db", "fs"],
+  description: "Referential integrity + cross-phase invariants + distribution sanity for the world's data.",
+  run: runConcordiaSubstrateDetector,
 });
 
 // Shared across modules so repair-cortex / Concordia / HUD see the same
