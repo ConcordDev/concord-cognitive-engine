@@ -27,8 +27,8 @@ export function useBeats(): UseBeatsResult {
   const refresh = useCallback(async () => {
     const r = await Beats.list(20);
     if (cancelled.current) return;
-    if (r.ok && Array.isArray((r as { beats?: BeatPayload[] }).beats)) {
-      const beats = (r as { beats: BeatPayload[] }).beats;
+    const beats = (r as unknown as { beats?: BeatPayload[] }).beats;
+    if (r.ok && Array.isArray(beats)) {
       setHistory(beats);
       setOpenBeat(beats.find(b => !b.completed_at) || null);
     }

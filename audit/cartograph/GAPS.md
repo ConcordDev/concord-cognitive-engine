@@ -1,6 +1,6 @@
 # Gaps & Wire Targets
 
-_Generated 2026-05-08T21:25:36.834Z. Each gap proposes a concrete wire action._
+_Generated 2026-05-09T10:22:19.727Z. Each gap proposes a concrete wire action._
 
 ## Dead tables (22)
 
@@ -58,11 +58,17 @@ _None — every module either has a heartbeat or is invoked by a macro callsite.
 
 _None._
 
-## Unshaped socket events (1)
+## Unshaped socket events (7)
 
 | Event | First emitter | Action |
 |---|---|---|
-| `world:invariant-warning` | server/server.js:295 | add to event-shapes.js |
+| `quest:lattice-born` | server/emergent/lattice-quest-cycle.js:85 | add to event-shapes.js |
+| `beat:offered` | server/emergent/personal-beat-scheduler.js:115 | add to event-shapes.js |
+| `combat:polish` | server/lib/combat-polish.js:489 | add to event-shapes.js |
+| `world:region-spawned` | server/lib/procgen-regions.js:99 | add to event-shapes.js |
+| `world:season-transition` | server/lib/seasons.js:109 | add to event-shapes.js |
+| `skill:tier-witnessed` | server/routes/worlds.js:1970 | add to event-shapes.js |
+| `world:invariant-warning` | server/server.js:308 | add to event-shapes.js |
 
 ## Universe-coverage gaps (in-scope categories)
 

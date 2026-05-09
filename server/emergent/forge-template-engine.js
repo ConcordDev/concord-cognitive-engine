@@ -660,7 +660,7 @@ function generateSection6_Api(spec) {
     const auth = r.auth ? "requireAuth, " : "";
     return `  // ${r.description || r.path}
   router.${r.method.toLowerCase()}("${r.path}", ${auth}(req, res) => {
-    // TODO: Implement ${r.description || r.path}
+    // TODO: Implement ${r.description || r.path} @fake-data-ok: emitted-template-string
     res.json({ message: "Not implemented yet" });
   });`;
   }).join("\n\n");
