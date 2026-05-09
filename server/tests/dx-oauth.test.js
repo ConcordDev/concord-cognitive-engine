@@ -36,7 +36,7 @@ function startApp({ user = null, getUserById = null } = {}) {
       const port = server.address().port;
       resolve({
         url: `http://127.0.0.1:${port}`,
-        close: () => new Promise((r) => server.close(r)),
+        close: () => new Promise((r) => { server.close(r); }),
       });
     });
   });

@@ -9485,9 +9485,18 @@ async function runMacro(domain, name, input, ctx) {
     reflection: new Set(["status", "list"]),
     temporal: new Set(["status", "get"]),
     inference: new Set(["status", "traces", "spans", "threads", "checkpoints", "sandboxes", "costs", "query"]),
-    // dx — DX Platform onboarding lens reads `onboarding_progress` for any
-    // signed-in user; anonymous browsers also resolve (returns zero progress).
-    dx: new Set(["onboarding_progress", "welcome"]),
+    // dx — DX Platform: onboarding lens (`onboarding_progress`, `welcome`),
+    // codebase registry + repair-feedback evo (Phase A2), shadow DTU helpers.
+    // Plugin clients call these via API key; cookie-auth web users see the
+    // same surface for the onboarding lens + dashboard. Mutating macros
+    // (record_*, upsert_*) are caller-scoped via codebase ownership in
+    // the handler.
+    dx: new Set([
+      "onboarding_progress", "welcome",
+      "register_codebase", "touch_codebase", "list_codebases",
+      "record_fix_decision", "list_weights", "weighted_findings",
+      "upsert_shadow", "list_shadows", "get_weight",
+    ]),
     messaging: new Set(["status", "bindings", "connect", "verify", "messages"]),
     sandbox: new Set(["create", "status", "action", "list", "pause", "resume"]),
     collab: new Set(["comments", "revisions", "workspace", "edit-session", "create", "update", "delete", "join"]),
@@ -9615,15 +9624,11 @@ async function runMacro(domain, name, input, ctx) {
     // API keys with the `billing.balance` scope hit these from the
     // editor status bar and the dashboard lens.
     billing: new Set(["usage", "balance", "history", "getCurrentQuota", "priceForMacro"]),
-    // DX Platform Phase A2 — codebase registry + repair-feedback evo.
-    // Plugin clients call these via API key; cookie-auth web users see
-    // the same surface for the dashboard lens. Mutating macros (record_*,
-    // upsert_*) are caller-scoped via codebase ownership in the handler.
-    dx: new Set([
-      "register_codebase", "touch_codebase", "list_codebases",
-      "record_fix_decision", "list_weights", "weighted_findings",
-      "upsert_shadow", "list_shadows", "get_weight",
-    ]),
+    // DX Platform Phase A2 macros are merged into the `dx:` entry above
+    // (around line 9490) — JS object literals coalesce duplicate keys
+    // and the latter wins, which silently dropped onboarding_progress
+    // + welcome from the publicReadDomains gate. The merged Set lives
+    // at line ~9490.
     // Governance: read-mostly + caller-driven write macros.
     governance: new Set([
       "open_proposal", "cast_vote", "tally", "resolve",

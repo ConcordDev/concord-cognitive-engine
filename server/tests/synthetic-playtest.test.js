@@ -118,7 +118,7 @@ $describe("Synthetic multi-day playtest", () => {
       } catch (err) {
         console.error(`[playtest] forward-sim day ${day}: ${err.message}`);
       }
-      await new Promise(r => setTimeout(r, 1100));
+      await new Promise(r => { setTimeout(r, 1100); });
     }
 
     // We expect at least 1 prediction across 7 days. With test-grade

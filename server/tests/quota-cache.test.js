@@ -94,7 +94,7 @@ describe("quota-cache — batching writes", () => {
   it("automatic flush fires on the timer interval", async () => {
     for (let i = 0; i < 25; i++) cache.enqueue(db, rowFor(i));
     // Wait for at least one flush cycle (100ms interval + slack)
-    await new Promise(r => setTimeout(r, 250));
+    await new Promise(r => { setTimeout(r, 250); });
     assert.equal(db.prepare("SELECT COUNT(*) c FROM api_usage_log").get().c, 25);
     assert.ok(observed.some(e => e.kind === "ok" && e.rows === 25));
   });
