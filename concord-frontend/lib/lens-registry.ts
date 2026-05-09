@@ -2586,6 +2586,18 @@ export const LENS_REGISTRY: LensEntry[] = [
     order: 14,
     keywords: ['message', 'dm', 'inbox', 'mail'],
   },
+  {
+    id: 'ux-suite',
+    name: 'UX Suite',
+    icon: Sparkles,
+    description: '20 absorbed UX components in a tabbed suite (settings / progress / world / ops / shell).',
+    category: 'system',
+    showInSidebar: false,
+    showInCommandPalette: true,
+    path: '/lenses/ux-suite',
+    order: 90,
+    keywords: ['ux', 'suite', 'absorbed', 'components'],
+  },
 
   // ── System pages ───────────────────────────────────────────────
   {

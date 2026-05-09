@@ -23,9 +23,10 @@
  * roving tabindex). Dark-mode default.
  */
 
-import { useState, type ComponentType } from 'react';
+import { useState, useEffect, useRef, type ComponentType } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
+import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Settings as SettingsIcon, Sliders, Save, Volume2,
@@ -196,6 +197,25 @@ export default function UxSuiteLensPage() {
   const [activeId, setActiveId] = useState<string>(TABS[0].id);
   const activeTab = TABS.find(t => t.id === activeId)!;
   const PreBuilt = activeTab?.Component;
+
+  // Persist tab visits as a 'tab-visit' lens artifact so the suite has
+  // real backend evidence of usage. One row per session-mount per tab
+  // first-visit (StrictMode-tolerant via mountedTabsRef).
+  const recentVisits = useArtifacts<{ tab: string; at: string }>('ux-suite', { type: 'tab-visit', limit: 5 });
+  const recordVisit = useCreateArtifact<{ tab: string; at: string }>('ux-suite');
+  const mountedTabsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (mountedTabsRef.current.has(activeId)) return;
+    mountedTabsRef.current.add(activeId);
+    recordVisit.mutate({
+      type: 'tab-visit',
+      title: `tab → ${activeId}`,
+      data: { tab: activeId, at: new Date().toISOString() },
+      meta: { tags: ['ux-suite', 'tab'], status: 'completed', visibility: 'private' },
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeId]);
+  void recentVisits;
 
   return (
     <LensShell lensId="ux-suite" asMain={false}>

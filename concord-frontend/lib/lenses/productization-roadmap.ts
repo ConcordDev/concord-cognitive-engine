@@ -3088,9 +3088,33 @@ export const PRODUCTIZATION_PHASES: ProductionPhase[] = [
     status: 'in_progress',
   },
 
-  // ── PHASE 96: Game ──────────────────────────────────────────────
+  // ── PHASE 96: UX Suite ──────────────────────────────────────────
   {
     order: 96,
+    lensId: 'ux-suite',
+    name: 'UX Suite',
+    rationale: 'Tabbed surface mounting 20 absorbed UX components (accessibility / adaptive complexity / save / sound / achievements / progression / daily rituals / secrets / seasonal / district timeline / env. storytelling / world travel / AR preview / agent builder / analytics / lens plugins / hidden assistance / mobile companion). The single home for absorbed-from-elsewhere UX primitives.',
+    dependsOn: [],
+    incumbents: ['Storybook', 'Bit.dev'],
+    artifacts: [
+      { name: 'TabVisit',   persistsWithoutDTU: true, storageDomain: 'ux-suite', requiredFields: ['tab', 'at'] },
+      { name: 'Tab',        persistsWithoutDTU: true, storageDomain: 'ux-suite', requiredFields: ['id', 'label', 'group'] },
+      { name: 'Component',  persistsWithoutDTU: true, storageDomain: 'ux-suite', requiredFields: ['name', 'group', 'mountedAt'] },
+    ],
+    engines: [
+      { name: 'tab-router',     description: 'Routes the active tab + lazy-mounts the component', trigger: 'on_demand' },
+      { name: 'visit-recorder', description: 'Records first-visit-per-mount as a tab-visit artifact', trigger: 'automatic' },
+    ],
+    pipelines: [
+      { name: 'visit-cycle', steps: ['select-tab', 'mount-component', 'record-visit', 'render'], engines: ['tab-router', 'visit-recorder'] },
+    ],
+    acceptanceCriteria: ['20 components mounted', 'Tab routing', 'Per-tab visit log', 'Mobile-responsive'],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 97: Game ──────────────────────────────────────────────
+  {
+    order: 97,
     lensId: 'game',
     name: 'Game',
     rationale: 'Gamification engine. Adds progression, achievements, and quests to all lenses.',

@@ -2047,10 +2047,18 @@ export const LENS_MANIFESTS: LensManifest[] = [
   {
     domain: 'ux-suite',
     label: 'UX Suite',
-    artifacts: ['component', 'preset', 'demo'],
-    macros: { list: 'lens.ux-suite.list', get: 'lens.ux-suite.get', run: 'lens.ux-suite.run', export: 'lens.ux-suite.export' },
+    artifacts: ['component', 'preset', 'demo', 'tab-visit'],
+    macros: {
+      list:   'lens.ux-suite.list',
+      get:    'lens.ux-suite.get',
+      create: 'lens.ux-suite.create',
+      update: 'lens.ux-suite.update',
+      delete: 'lens.ux-suite.delete',
+      run:    'lens.ux-suite.run',
+      export: 'lens.ux-suite.export',
+    },
     exports: ['json'],
-    actions: ['list_components', 'render_demo', 'apply_preset'],
+    actions: ['list_components', 'render_demo', 'apply_preset', 'record_visit'],
     category: 'system',
   },
   {
