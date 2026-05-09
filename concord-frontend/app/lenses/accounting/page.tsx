@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { KPIStrip } from '@/components/accounting/KPIStrip';
@@ -139,15 +139,17 @@ export default function AccountingLensPage() {
   const [showFeatures, setShowFeatures] = useState(true);
 
   // Lens-scoped keyboard commands. QuickBooks-style mode switching;
-  // n opens the editor.
+  // n opens the editor; / focuses the search box.
+  const searchInputRef = useRef<HTMLInputElement>(null);
   useLensCommand(
     [
-      { id: 'mode-ledger', keys: 'l', description: 'Ledger', category: 'navigation', action: () => setMode('Ledger') },
+      { id: 'mode-ledger',    keys: 'l', description: 'Ledger',    category: 'navigation', action: () => setMode('Ledger') },
       { id: 'mode-invoicing', keys: 'i', description: 'Invoicing', category: 'navigation', action: () => setMode('Invoicing') },
-      { id: 'mode-payroll', keys: 'p', description: 'Payroll', category: 'navigation', action: () => setMode('Payroll') },
-      { id: 'mode-budget', keys: 'b', description: 'Budget', category: 'navigation', action: () => setMode('Budget') },
-      { id: 'mode-tax', keys: 't', description: 'Tax', category: 'navigation', action: () => setMode('Tax') },
-      { id: 'new-entry', keys: 'n', description: 'New entry', category: 'actions', action: () => setShowEditor(true) },
+      { id: 'mode-payroll',   keys: 'p', description: 'Payroll',   category: 'navigation', action: () => setMode('Payroll') },
+      { id: 'mode-budget',    keys: 'b', description: 'Budget',    category: 'navigation', action: () => setMode('Budget') },
+      { id: 'mode-tax',       keys: 't', description: 'Tax',       category: 'navigation', action: () => setMode('Tax') },
+      { id: 'new-entry',      keys: 'n', description: 'New entry', category: 'actions',    action: () => setShowEditor(true) },
+      { id: 'focus-search',   keys: '/', description: 'Focus search', category: 'navigation', action: () => searchInputRef.current?.focus() },
     ],
     { lensId: 'accounting' }
   );
@@ -2480,8 +2482,9 @@ export default function AccountingLensPage() {
         <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
+            ref={searchInputRef}
             className={cn(ds.input, 'pl-10')}
-            placeholder={`Search ${currentType.toLowerCase()}s...`}
+            placeholder={`Search ${currentType.toLowerCase()}s…  /`}
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
           />

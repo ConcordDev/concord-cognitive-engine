@@ -467,15 +467,17 @@ export default function ReasoningLensPage() {
   // ----- Mode / Tab state -----
   const [mode, setMode] = useState<ModeTab>('arguments');
 
-  // Lens-scoped keyboard commands (auto-wired by codemod).
+  // Lens-scoped keyboard commands. Single-letter tab jumps + / for search.
+  const searchInputRef = useRef<HTMLInputElement>(null);
   useLensCommand(
     [
       { id: 'tab-arguments', keys: 'a', description: 'Arguments', category: 'navigation', action: () => setMode('arguments') },
-      { id: 'tab-premises', keys: 'p', description: 'Premises', category: 'navigation', action: () => setMode('premises') },
-      { id: 'tab-evidence', keys: 'e', description: 'Evidence', category: 'navigation', action: () => setMode('evidence') },
+      { id: 'tab-premises',  keys: 'p', description: 'Premises',  category: 'navigation', action: () => setMode('premises') },
+      { id: 'tab-evidence',  keys: 'e', description: 'Evidence',  category: 'navigation', action: () => setMode('evidence') },
       { id: 'tab-fallacies', keys: 'f', description: 'Fallacies', category: 'navigation', action: () => setMode('fallacies') },
       { id: 'tab-templates', keys: 't', description: 'Templates', category: 'navigation', action: () => setMode('templates') },
-      { id: 'tab-analysis', keys: 'n', description: 'Analysis', category: 'navigation', action: () => setMode('analysis') },
+      { id: 'tab-analysis',  keys: 'n', description: 'Analysis',  category: 'navigation', action: () => setMode('analysis') },
+      { id: 'focus-search',  keys: '/', description: 'Focus search', category: 'navigation', action: () => searchInputRef.current?.focus() },
     ],
     { lensId: 'reasoning' }
   );
@@ -1012,10 +1014,11 @@ export default function ReasoningLensPage() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
             <input
+              ref={searchInputRef}
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search..."
+              placeholder="Search…  /"
               className={cn(ds.input, 'pl-9 w-64')}
             />
           </div>
