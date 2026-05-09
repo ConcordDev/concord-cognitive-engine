@@ -454,6 +454,16 @@ registerHeartbeat("land-claims-cycle", {
   handler: runLandClaimsCycle,
 });
 
+// Phase 7: Procedural NPC spawner. Every 360 ticks (~90min) tops up
+// faction populations to a configurable target (default 8 per faction
+// per active world). Generated NPCs plug into Phase 2/4a/4b/5b without
+// any per-NPC authoring. Kill-switch: CONCORD_PROCGEN_NPCS=0.
+import { runProceduralNpcSpawner } from "./emergent/procedural-npc-spawner.js";
+registerHeartbeat("procedural-npc-spawner", {
+  frequency: 360,
+  handler: runProceduralNpcSpawner,
+});
+
 // Layer 13: NPC-initiated conversations. Every 8 ticks (~2 min) scans each
 // active world for cooldown-elapsed NPC pairs, generates a grounded opener
 // (deterministic by default; LLM-enhanced via CONCORD_NPC_DIALOGUE_LLM=true),
