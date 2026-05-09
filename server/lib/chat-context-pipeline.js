@@ -274,7 +274,6 @@ export function consolidateMegaHypers(workingSet, STATE) {
 export function fetchPersonalSubstrate(userId, lockerKey, queryText, db) {
   if (!userId || !lockerKey || !db) return [];
   try {
-    // TODO: project explicit columns (auto-fix suggestion)
     const rows = db.prepare("SELECT * FROM personal_dtus WHERE user_id = ? ORDER BY created_at DESC LIMIT 50").all(userId);
     if (!rows.length) return [];
 

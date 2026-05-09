@@ -71,7 +71,6 @@ export function createCanonicalStore(db, dtuStore, opts = {}) {
     try {
       _stmts = {
         lookup: db.prepare(
-          // TODO: project explicit columns (auto-fix suggestion)
           "SELECT * FROM canonical_registry WHERE content_hash = ?"
         ),
         insert: db.prepare(`
@@ -99,18 +98,15 @@ export function createCanonicalStore(db, dtuStore, opts = {}) {
           FROM canonical_registry
         `),
         topDuplicates: db.prepare(
-          // TODO: project explicit columns (auto-fix suggestion)
           "SELECT * FROM canonical_registry WHERE reference_count > 1 ORDER BY reference_count DESC LIMIT ?"
         ),
         byDtuId: db.prepare(
-          // TODO: project explicit columns (auto-fix suggestion)
           "SELECT * FROM canonical_registry WHERE canonical_dtu_id = ?"
         ),
         deleteEntry: db.prepare(
           "DELETE FROM canonical_registry WHERE content_hash = ?"
         ),
         all: db.prepare(
-          // TODO: project explicit columns (auto-fix suggestion)
           "SELECT * FROM canonical_registry ORDER BY created_at DESC"
         ),
       };

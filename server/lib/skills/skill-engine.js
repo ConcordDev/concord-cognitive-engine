@@ -128,7 +128,6 @@ export function canCreateSkillInWorld(skillType, worldType) {
  */
 export function getPlayerSkills(db, userId) {
   return db.prepare(
-    // TODO: project explicit columns (auto-fix suggestion)
     'SELECT * FROM player_skill_levels WHERE user_id = ? ORDER BY skill_type, level DESC'
   ).all(userId);
 }
@@ -174,7 +173,6 @@ export function gainSkillXP(db, userId, skillType, worldType, xpGain, opts = {})
 
   // Re-read current state
   const row = db.prepare(
-    // TODO: project explicit columns (auto-fix suggestion)
     'SELECT * FROM player_skill_levels WHERE user_id = ? AND skill_type = ? AND native_world_type = ?'
   ).get(userId, skillType, worldType);
 

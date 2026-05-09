@@ -294,7 +294,6 @@ function _prepareStatements(db) {
   return {
     // ── Settings ──────────────────────────────────────────────────────
     getSettings: db.prepare(
-      // TODO: project explicit columns (auto-fix suggestion)
       "SELECT * FROM initiative_settings WHERE user_id = ?"
     ),
     insertSettings: db.prepare(`
@@ -328,7 +327,6 @@ function _prepareStatements(db) {
          @status, @channel, @metadata_json, @created_at)
     `),
     getInitiative: db.prepare(
-      // TODO: project explicit columns (auto-fix suggestion)
       "SELECT * FROM initiatives WHERE id = ?"
     ),
     updateInitiativeStatus: db.prepare(`
@@ -341,15 +339,12 @@ function _prepareStatements(db) {
       WHERE id = @id
     `),
     getPending: db.prepare(
-      // TODO: project explicit columns (auto-fix suggestion)
       "SELECT * FROM initiatives WHERE user_id = ? AND status = 'pending' ORDER BY score DESC, created_at ASC"
     ),
     getHistory: db.prepare(
-      // TODO: project explicit columns (auto-fix suggestion)
       "SELECT * FROM initiatives WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?"
     ),
     getHistoryWithStatus: db.prepare(
-      // TODO: project explicit columns (auto-fix suggestion)
       "SELECT * FROM initiatives WHERE user_id = ? AND status = ? ORDER BY created_at DESC LIMIT ? OFFSET ?"
     ),
     countHistory: db.prepare(
@@ -365,17 +360,14 @@ function _prepareStatements(db) {
       "SELECT COUNT(*) as count FROM initiatives WHERE user_id = ? AND created_at >= ? AND status != 'expired'"
     ),
     getLastInitiative: db.prepare(
-      // TODO: project explicit columns (auto-fix suggestion)
       "SELECT * FROM initiatives WHERE user_id = ? AND status != 'expired' ORDER BY created_at DESC LIMIT 1"
     ),
     getLastDelivered: db.prepare(
-      // TODO: project explicit columns (auto-fix suggestion)
       "SELECT * FROM initiatives WHERE user_id = ? AND delivered_at IS NOT NULL ORDER BY delivered_at DESC LIMIT 1"
     ),
 
     // ── Backoff ───────────────────────────────────────────────────────
     getBackoff: db.prepare(
-      // TODO: project explicit columns (auto-fix suggestion)
       "SELECT * FROM initiative_backoff WHERE user_id = ?"
     ),
     upsertBackoff: db.prepare(`
@@ -394,7 +386,6 @@ function _prepareStatements(db) {
 
     // ── Style profile ─────────────────────────────────────────────────
     getStyleProfile: db.prepare(
-      // TODO: project explicit columns (auto-fix suggestion)
       "SELECT * FROM user_style_profile WHERE user_id = ?"
     ),
     upsertStyleProfile: db.prepare(`

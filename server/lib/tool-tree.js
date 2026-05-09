@@ -218,7 +218,6 @@ export function getBestToolQuality(db, userId, tier) {
  * Returns { ok, tool } or { ok: false, error }.
  */
 export function craftTool(db, userId, recipeId, worldId = "concordia-hub") {
-  // TODO: project explicit columns (auto-fix suggestion)
   const recipe = db.prepare(`SELECT * FROM tool_recipes WHERE id = ?`).get(recipeId);
   if (!recipe) return { ok: false, error: "recipe_not_found" };
 

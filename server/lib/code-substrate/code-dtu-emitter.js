@@ -253,7 +253,6 @@ export async function emitCodeDtus(db, root, opts = {}) {
 export function getCodeDtuForPath(db, p) {
   if (!db || !p) return null;
   const rows = db.prepare(
-    // TODO: project explicit columns (auto-fix suggestion)
     `SELECT * FROM dtus WHERE kind='code_artifact' AND (content LIKE ? OR title LIKE ?) LIMIT 50`,
   ).all(`%${p}%`, `%${p}%`);
   // Prefer module-kind rows for path matches (route/macro entries can also match path).

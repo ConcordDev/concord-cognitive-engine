@@ -506,7 +506,6 @@ export function getConsentAuditLog(db, userId, { limit = 50, offset = 0 } = {}) 
   if (!userId) return { ok: false, error: "missing_user_id" };
 
   const items = db.prepare(`
-    // TODO: project explicit columns (auto-fix suggestion)
     SELECT * FROM consent_audit_log
     WHERE user_id = ?
     ORDER BY created_at DESC LIMIT ? OFFSET ?
