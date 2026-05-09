@@ -304,6 +304,10 @@ const DamageBillboard = dynamic(
   () => import('@/components/world/DamageBillboard').then((m) => ({ default: m.DamageBillboard })),
   { ssr: false },
 );
+const WorldSigns = dynamic(
+  () => import('@/components/world/WorldSigns').then((m) => ({ default: m.WorldSigns })),
+  { ssr: false },
+);
 const DiegeticSurfaces = dynamic(
   () => import('@/components/world-lens/DiegeticSurfaces'),
   { ssr: false },
@@ -2940,6 +2944,14 @@ export default function WorldLensPage() {
       window.dispatchEvent(new CustomEvent('concordia:sonic-pulse', { detail: data }));
     };
     worldSocket.on('world:sonic-pulse', handleSonicPulse);
+    // Theme deferred (game-feel pass): bridge world:sign-placed → window
+    // event so WorldSigns can listen with the same pattern as the rest
+    // of the world overlays.
+    const handleSignPlaced = (...args: unknown[]) => {
+      const sign = args[0] as Record<string, unknown> | undefined;
+      if (sign) window.dispatchEvent(new CustomEvent('concordia:sign-placed', { detail: sign }));
+    };
+    worldSocket.on('world:sign-placed', handleSignPlaced);
 
     return () => {
       worldSocket.off('player:load:ack', handleLoadAck);
@@ -2957,6 +2969,7 @@ export default function WorldLensPage() {
       worldSocket.off('weather:update', handleWeatherUpdate);
       worldSocket.off('world:deformation', handleWorldDeformation);
       worldSocket.off('world:sonic-pulse', handleSonicPulse);
+      worldSocket.off('world:sign-placed', handleSignPlaced);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [worldSocket.isConnected, activeDistrict.id]);
@@ -3809,6 +3822,10 @@ export default function WorldLensPage() {
             playerPosition={{ x: playerAvatar.position.x, z: playerAvatar.position.z }}
           />
           <DamageBillboard />
+          <WorldSigns
+            worldId={activeDistrict.id}
+            playerPosition={{ x: playerAvatar.position.x, y: 0, z: playerAvatar.position.z }}
+          />
           <CurrencyHUD onClick={() => setShowPanel('profile')} />
           <DiegeticSurfaces
             playerPosition={playerAvatar.position}
