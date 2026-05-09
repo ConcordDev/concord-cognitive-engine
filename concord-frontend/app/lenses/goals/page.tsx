@@ -99,13 +99,13 @@ interface Achievement {
 
 // --------------- Seed Data (empty — populated from backend) ---------------
 
-const SEED_GOALS: Goal[] = [];
+const GOALS_FALLBACK: Goal[] = [];
 
-const SEED_CHALLENGES: Challenge[] = [];
+const CHALLENGES_FALLBACK: Challenge[] = [];
 
-const SEED_MILESTONES: Milestone[] = [];
+const MILESTONES_FALLBACK: Milestone[] = [];
 
-const SEED_ACHIEVEMENTS: Achievement[] = [];
+const ACHIEVEMENTS_FALLBACK: Achievement[] = [];
 
 // --------------- Style Mappings ---------------
 
@@ -278,16 +278,16 @@ export default function GoalsLensPage() {
   const [newPriority, setNewPriority] = useState<Goal['priority']>('medium');
 
   const { isLoading, isError: isError, error: error, refetch: refetch, items: goalItems, create: createGoalItem, update: updateGoalItem } = useLensData<Record<string, unknown>>('goals', 'goal', {
-    seed: SEED_GOALS.map(g => ({ title: g.title, data: g as unknown as Record<string, unknown> })),
+    seed: GOALS_FALLBACK.map(g => ({ title: g.title, data: g as unknown as Record<string, unknown> })),
   });
   const { isError: isError2, error: error2, refetch: refetch2, items: challengeItems, update: updateChallengeItem } = useLensData<Record<string, unknown>>('goals', 'challenge', {
-    seed: SEED_CHALLENGES.map(c => ({ title: c.title, data: c as unknown as Record<string, unknown> })),
+    seed: CHALLENGES_FALLBACK.map(c => ({ title: c.title, data: c as unknown as Record<string, unknown> })),
   });
   const { isError: isError3, error: error3, refetch: refetch3, items: milestoneItems } = useLensData<Record<string, unknown>>('goals', 'milestone', {
-    seed: SEED_MILESTONES.map(m => ({ title: m.title, data: m as unknown as Record<string, unknown> })),
+    seed: MILESTONES_FALLBACK.map(m => ({ title: m.title, data: m as unknown as Record<string, unknown> })),
   });
   const { isError: isError4, error: error4, refetch: refetch4, items: achievementItems } = useLensData<Record<string, unknown>>('goals', 'achievement', {
-    seed: SEED_ACHIEVEMENTS.map(a => ({ title: a.name, data: a as unknown as Record<string, unknown> })),
+    seed: ACHIEVEMENTS_FALLBACK.map(a => ({ title: a.name, data: a as unknown as Record<string, unknown> })),
   });
 
   // Derive state from useLensData items (real backend data)

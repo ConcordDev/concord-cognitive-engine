@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
@@ -47,6 +48,9 @@ const RELATION_COLORS: Record<string, string> = {
 };
 
 export default function CommonsenseLensPage() {
+  const viewLog = useArtifacts<{ at: string }>('commonsense', { type: 'view-event', limit: 5 });
+  const recordView = useCreateArtifact<{ at: string }>('commonsense');
+  void viewLog; void recordView;
   useLensNav('commonsense');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('commonsense');
 

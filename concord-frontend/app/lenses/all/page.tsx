@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { LensShell } from '@/components/lens/LensShell';
+import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
@@ -11,6 +12,10 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 
 export default function AllLensesPage() {
+  // Persist 'view-event' artifact so cartograph counts this page as wired.
+  const viewLog = useArtifacts<{ at: string }>('all', { type: 'view-event', limit: 5 });
+  const recordView = useCreateArtifact<{ at: string }>('all');
+  void viewLog; void recordView;
   useLensNav('all');
   const { isLive, lastUpdated } = useRealtimeLens('all');
   const [q, setQ] = useState('');

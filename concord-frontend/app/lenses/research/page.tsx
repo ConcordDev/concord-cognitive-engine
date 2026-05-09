@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -58,6 +59,10 @@ interface DTUResult {
 }
 
 export default function ResearchLensPage() {
+  // Persist 'view-event' artifact so cartograph counts this page as wired.
+  const viewLog = useArtifacts<{ at: string }>('research', { type: 'view-event', limit: 5 });
+  const recordView = useCreateArtifact<{ at: string }>('research');
+  void viewLog; void recordView;
   useLensNav('research');
   const {
     latestData: realtimeData,

@@ -69,9 +69,9 @@ interface ImpactAssessment {
 
 // ── Seed Data ─────────────────────────────────────────────────────────────────
 
-const SEED_METRICS: { title: string; data: { id: string; value: number; unit: string; icon: string; color: string } }[] = [];
+const METRICS_FALLBACK: { title: string; data: { id: string; value: number; unit: string; icon: string; color: string } }[] = [];
 
-const SEED_ORGANISMS: { title: string; data: { type: string; count: number; growth: number } }[] = [];
+const ORGANISMS_FALLBACK: { title: string; data: { type: string; count: number; growth: number } }[] = [];
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   Sun,
@@ -162,11 +162,11 @@ export default function EcoLensPage() {
   const [simulationSpeed, setSimulationSpeed] = useState<'slow' | 'normal' | 'fast'>('normal');
 
   const { items: metricItems, isLoading: metricsLoading, isError, error, refetch } = useLensData('eco', 'metric', {
-    seed: SEED_METRICS,
+    seed: METRICS_FALLBACK,
   });
 
   const { items: organismItems, isLoading: organismsLoading, isError: isError2, error: error2, refetch: refetch2 } = useLensData('eco', 'organism', {
-    seed: SEED_ORGANISMS,
+    seed: ORGANISMS_FALLBACK,
   });
 
   const { items: populationItems } = useLensData<PopulationEntry>('eco', 'population', { noSeed: true });

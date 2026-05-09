@@ -213,7 +213,7 @@ const projects: string[] = [];
 // Seed data (auto-created on first use, then persisted via backend)
 // ---------------------------------------------------------------------------
 
-const SEED_TASKS: { title: string; data: Record<string, unknown> }[] = [];
+const TASKS_FALLBACK: { title: string; data: Record<string, unknown> }[] = [];
 
 /** Convert a LensItem to the local Task type */
 function lensItemToTask(item: LensItem<Record<string, unknown>>): Task {
@@ -295,7 +295,7 @@ export default function BoardLensPage() {
     update: updateLens,
     remove: removeLens,
   } = useLensData<Record<string, unknown>>('board', 'task', {
-    seed: SEED_TASKS,
+    seed: TASKS_FALLBACK,
   });
 
   const tasks: Task[] = useMemo(() => lensItems.map(lensItemToTask), [lensItems]);

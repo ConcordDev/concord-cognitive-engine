@@ -3112,9 +3112,1376 @@ export const PRODUCTIZATION_PHASES: ProductionPhase[] = [
     status: 'in_progress',
   },
 
-  // ── PHASE 97: Game ──────────────────────────────────────────────
+  // ── PHASES 97-119: Hybrid lenses (group 1) ──────────────────────
+  // Each hybrid is scheduled to merge into a product target eventually, but
+  // ships standalone today. Roadmap entry captures TODAY's behaviour.
   {
-    order: 97,
+    order: 97, lensId: 'entity', name: 'Entity (resolution)', rationale: 'Entity-resolution workbench. Profile / link / evidence / relationship / resolution. Merges into graph; standalone today.',
+    dependsOn: [], incumbents: ['Senzing', 'Reltio', 'Tamr'],
+    artifacts: [
+      { name: 'EntityProfile', persistsWithoutDTU: true, storageDomain: 'entity', requiredFields: ['id', 'kind', 'attributes'] },
+      { name: 'Link', persistsWithoutDTU: true, storageDomain: 'entity', requiredFields: ['fromId', 'toId', 'kind'] },
+      { name: 'Evidence', persistsWithoutDTU: true, storageDomain: 'entity', requiredFields: ['linkId', 'source', 'confidence'] },
+    ],
+    engines: [
+      { name: 'matcher', description: 'Resolves duplicate entities via name + attribute similarity', trigger: 'on_demand' },
+      { name: 'link-builder', description: 'Builds typed links with evidence', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'resolve-link', steps: ['ingest', 'match', 'link', 'attach-evidence', 'export-graph'], engines: ['matcher', 'link-builder'] },
+    ],
+    acceptanceCriteria: ['Entity CRUD', 'Linking with evidence', 'GraphML export'],
+    status: 'in_progress',
+  },
+  {
+    order: 98, lensId: 'repos', name: 'Repos', rationale: 'Repository snapshot + issue + patchset + release tracker. Merges into code; standalone today.',
+    dependsOn: [], incumbents: ['GitHub', 'GitLab', 'Bitbucket'],
+    artifacts: [
+      { name: 'RepoSnapshot', persistsWithoutDTU: true, storageDomain: 'repos', requiredFields: ['id', 'sha', 'capturedAt'] },
+      { name: 'IssueSet', persistsWithoutDTU: true, storageDomain: 'repos', requiredFields: ['repoId', 'issues'] },
+      { name: 'Patchset', persistsWithoutDTU: true, storageDomain: 'repos', requiredFields: ['id', 'patches', 'baseSha'] },
+    ],
+    engines: [
+      { name: 'snapshot-engine', description: 'Captures repo at a sha', trigger: 'on_demand' },
+      { name: 'patch-applier', description: 'Applies patchset to a snapshot', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'snapshot-patch-release', steps: ['snapshot', 'apply-patches', 'tag-release', 'export-tar'], engines: ['snapshot-engine', 'patch-applier'] },
+    ],
+    acceptanceCriteria: ['Repo snapshot', 'Issue set', 'Patch apply', 'Release tag'],
+    status: 'in_progress',
+  },
+  {
+    order: 100, lensId: 'ar', name: 'AR', rationale: 'Scene / anchor / overlay / capture / 3D asset. Merges into studio; standalone today.',
+    dependsOn: [], incumbents: ['Adobe Aero', 'Reality Composer', '8th Wall'],
+    artifacts: [
+      { name: 'Scene', persistsWithoutDTU: true, storageDomain: 'ar', requiredFields: ['id', 'anchors'] },
+      { name: 'Anchor', persistsWithoutDTU: true, storageDomain: 'ar', requiredFields: ['id', 'transform'] },
+      { name: 'Asset3D', persistsWithoutDTU: true, storageDomain: 'ar', requiredFields: ['id', 'gltfUrl'] },
+    ],
+    engines: [
+      { name: 'placer', description: 'Places anchors in world space', trigger: 'on_demand' },
+      { name: 'lighting', description: 'Estimates ambient + bounce lighting', trigger: 'automatic' },
+    ],
+    pipelines: [
+      { name: 'place-render-export', steps: ['place', 'estimate-light', 'render', 'export-usdz'], engines: ['placer', 'lighting'] },
+    ],
+    acceptanceCriteria: ['Anchor placement', 'Asset upload', 'USDZ export'],
+    status: 'in_progress',
+  },
+  {
+    order: 101, lensId: 'market', name: 'Market', rationale: 'Token-market order book + bid/offer + settlement. Merges into marketplace; standalone today.',
+    dependsOn: [], incumbents: ['OpenSea', 'Foundation', 'Magic Eden'],
+    artifacts: [
+      { name: 'Offer', persistsWithoutDTU: true, storageDomain: 'market', requiredFields: ['id', 'price', 'token'] },
+      { name: 'Bid', persistsWithoutDTU: true, storageDomain: 'market', requiredFields: ['id', 'offerId', 'amount'] },
+      { name: 'Settlement', persistsWithoutDTU: true, storageDomain: 'market', requiredFields: ['offerId', 'bidId', 'at'] },
+    ],
+    engines: [
+      { name: 'matcher', description: 'Matches bids to offers', trigger: 'automatic' },
+      { name: 'settler', description: 'Atomic settlement with fee split', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'list-bid-settle', steps: ['list', 'collect-bids', 'match', 'settle'], engines: ['matcher', 'settler'] },
+    ],
+    acceptanceCriteria: ['Order book', 'Bid placement', 'Atomic settlement'],
+    status: 'in_progress',
+  },
+  {
+    order: 102, lensId: 'questmarket', name: 'Quest Market', rationale: 'Bounty + quest + submission + payout. Merges into marketplace; standalone today.',
+    dependsOn: [], incumbents: ['Gitcoin', 'Layer3', 'Kleoverse'],
+    artifacts: [
+      { name: 'Quest', persistsWithoutDTU: true, storageDomain: 'questmarket', requiredFields: ['id', 'reward', 'spec'] },
+      { name: 'Submission', persistsWithoutDTU: true, storageDomain: 'questmarket', requiredFields: ['id', 'questId', 'proof'] },
+      { name: 'Payout', persistsWithoutDTU: true, storageDomain: 'questmarket', requiredFields: ['submissionId', 'amount', 'at'] },
+    ],
+    engines: [
+      { name: 'verifier', description: 'Verifies submission against spec', trigger: 'on_demand' },
+      { name: 'payer', description: 'Releases payout on verify-pass', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'post-submit-pay', steps: ['post', 'submit', 'verify', 'pay'], engines: ['verifier', 'payer'] },
+    ],
+    acceptanceCriteria: ['Quest CRUD', 'Submission flow', 'Payout on verify'],
+    status: 'in_progress',
+  },
+  {
+    order: 103, lensId: 'vote', name: 'Vote', rationale: 'Proposal + ballot + tally + audit trail. Merges into council; standalone today.',
+    dependsOn: [], incumbents: ['Snapshot', 'Tally', 'Aragon'],
+    artifacts: [
+      { name: 'Proposal', persistsWithoutDTU: true, storageDomain: 'vote', requiredFields: ['id', 'title', 'choices'] },
+      { name: 'Ballot', persistsWithoutDTU: true, storageDomain: 'vote', requiredFields: ['id', 'proposalId', 'choice', 'voterId'] },
+      { name: 'Tally', persistsWithoutDTU: true, storageDomain: 'vote', requiredFields: ['proposalId', 'counts', 'at'] },
+    ],
+    engines: [
+      { name: 'tallier', description: 'Counts ballots and emits tally', trigger: 'on_demand' },
+      { name: 'auditor', description: 'Verifies ballot signatures + voter eligibility', trigger: 'automatic' },
+    ],
+    pipelines: [
+      { name: 'propose-vote-resolve', steps: ['propose', 'collect-ballots', 'tally', 'resolve'], engines: ['tallier', 'auditor'] },
+    ],
+    acceptanceCriteria: ['Proposal CRUD', 'Ballot collection', 'Tally', 'Audit trail'],
+    status: 'in_progress',
+  },
+  {
+    order: 104, lensId: 'ethics', name: 'Ethics', rationale: 'Case file + decision tree + policy check + review. Merges into council; standalone today.',
+    dependsOn: [], incumbents: ['Convercent', 'NAVEX EthicsPoint'],
+    artifacts: [
+      { name: 'CaseFile', persistsWithoutDTU: true, storageDomain: 'ethics', requiredFields: ['id', 'subject', 'status'] },
+      { name: 'PolicyCheck', persistsWithoutDTU: true, storageDomain: 'ethics', requiredFields: ['caseId', 'policy', 'pass'] },
+      { name: 'Review', persistsWithoutDTU: true, storageDomain: 'ethics', requiredFields: ['caseId', 'reviewer', 'verdict'] },
+    ],
+    engines: [
+      { name: 'policy-evaluator', description: 'Walks decision tree against case', trigger: 'on_demand' },
+      { name: 'reviewer-router', description: 'Routes to qualified reviewers', trigger: 'automatic' },
+    ],
+    pipelines: [
+      { name: 'intake-review-resolve', steps: ['intake', 'policy-check', 'route', 'review', 'resolve'], engines: ['policy-evaluator', 'reviewer-router'] },
+    ],
+    acceptanceCriteria: ['Case CRUD', 'Policy check', 'Review flow'],
+    status: 'in_progress',
+  },
+  {
+    order: 105, lensId: 'lab', name: 'Lab', rationale: 'Experiment notebook + protocol + run + result + reagent. Merges into paper; standalone today.',
+    dependsOn: [], incumbents: ['LabArchives', 'Benchling', 'OSF'],
+    artifacts: [
+      { name: 'ExperimentNotebook', persistsWithoutDTU: true, storageDomain: 'lab', requiredFields: ['id', 'title', 'pages'] },
+      { name: 'Protocol', persistsWithoutDTU: true, storageDomain: 'lab', requiredFields: ['id', 'steps'] },
+      { name: 'Run', persistsWithoutDTU: true, storageDomain: 'lab', requiredFields: ['id', 'protocolId', 'startedAt'] },
+    ],
+    engines: [
+      { name: 'protocol-runner', description: 'Walks protocol steps + records each', trigger: 'on_demand' },
+      { name: 'replicator', description: 'Replicates a run with the same protocol', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'plan-run-replicate', steps: ['plan', 'execute', 'record', 'replicate'], engines: ['protocol-runner', 'replicator'] },
+    ],
+    acceptanceCriteria: ['Notebook CRUD', 'Protocol versioning', 'Run log', 'Reagent inventory'],
+    status: 'in_progress',
+  },
+  {
+    order: 106, lensId: 'travel', name: 'Travel', rationale: 'Trip + itinerary + booking + packing list. Merges into lifestyle; standalone today.',
+    dependsOn: [], incumbents: ['TripIt', 'Wanderlog', 'Roam'],
+    artifacts: [
+      { name: 'Trip', persistsWithoutDTU: true, storageDomain: 'travel', requiredFields: ['id', 'destination', 'dates'] },
+      { name: 'Itinerary', persistsWithoutDTU: true, storageDomain: 'travel', requiredFields: ['tripId', 'days'] },
+      { name: 'Booking', persistsWithoutDTU: true, storageDomain: 'travel', requiredFields: ['id', 'tripId', 'kind', 'confirmation'] },
+    ],
+    engines: [
+      { name: 'itinerary-builder', description: 'Builds day-by-day schedule from constraints', trigger: 'on_demand' },
+      { name: 'packing-list', description: 'Generates packing list from trip kind + duration', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'plan-book-pack', steps: ['plan', 'book', 'pack', 'export-ics'], engines: ['itinerary-builder', 'packing-list'] },
+    ],
+    acceptanceCriteria: ['Trip CRUD', 'Itinerary', 'Bookings', 'Packing list'],
+    status: 'in_progress',
+  },
+  {
+    order: 107, lensId: 'fashion', name: 'Fashion', rationale: 'Garment + outfit + wardrobe + wishlist. Merges into lifestyle; standalone today.',
+    dependsOn: [], incumbents: ['Whering', 'Cladwell', 'Stylebook'],
+    artifacts: [
+      { name: 'Garment', persistsWithoutDTU: true, storageDomain: 'fashion', requiredFields: ['id', 'kind', 'image'] },
+      { name: 'Outfit', persistsWithoutDTU: true, storageDomain: 'fashion', requiredFields: ['id', 'garments'] },
+      { name: 'Wardrobe', persistsWithoutDTU: true, storageDomain: 'fashion', requiredFields: ['userId', 'garments'] },
+    ],
+    engines: [
+      { name: 'outfit-builder', description: 'Suggests outfits from wardrobe + occasion', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'curate-outfit-cycle', steps: ['inventory', 'select-occasion', 'suggest', 'save-outfit'], engines: ['outfit-builder'] },
+    ],
+    acceptanceCriteria: ['Wardrobe CRUD', 'Outfit composer', 'Wishlist'],
+    status: 'in_progress',
+  },
+  {
+    order: 108, lensId: 'cooking', name: 'Cooking', rationale: 'Recipe + meal plan + ingredient + technique. Merges into food; standalone today.',
+    dependsOn: [], incumbents: ['Paprika', 'Plan to Eat', 'Mealime'],
+    artifacts: [
+      { name: 'Recipe', persistsWithoutDTU: true, storageDomain: 'cooking', requiredFields: ['id', 'name', 'ingredients'] },
+      { name: 'MealPlan', persistsWithoutDTU: true, storageDomain: 'cooking', requiredFields: ['id', 'days'] },
+      { name: 'Technique', persistsWithoutDTU: true, storageDomain: 'cooking', requiredFields: ['id', 'name', 'steps'] },
+    ],
+    engines: [
+      { name: 'scaler', description: 'Scales recipe yield', trigger: 'on_demand' },
+      { name: 'meal-planner', description: 'Builds 7-day plan from recipes', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'plan-shop-cook', steps: ['plan', 'generate-shopping-list', 'cook', 'rate'], engines: ['scaler', 'meal-planner'] },
+    ],
+    acceptanceCriteria: ['Recipe CRUD', 'Meal plan', 'Shopping list', 'Substitutions'],
+    status: 'in_progress',
+  },
+  {
+    order: 109, lensId: 'parenting', name: 'Parenting', rationale: 'Milestone + schedule + health + activity. Merges into household; standalone today.',
+    dependsOn: [], incumbents: ['BabyCenter', 'Huckleberry', 'Cozi'],
+    artifacts: [
+      { name: 'Milestone', persistsWithoutDTU: true, storageDomain: 'parenting', requiredFields: ['id', 'kind', 'achievedAt'] },
+      { name: 'HealthRecord', persistsWithoutDTU: true, storageDomain: 'parenting', requiredFields: ['id', 'kind', 'date'] },
+      { name: 'Activity', persistsWithoutDTU: true, storageDomain: 'parenting', requiredFields: ['id', 'kind', 'duration'] },
+    ],
+    engines: [
+      { name: 'milestone-tracker', description: 'Tracks per-age milestones', trigger: 'automatic' },
+      { name: 'sleep-analyzer', description: 'Analyses sleep patterns', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'track-analyze-share', steps: ['log', 'analyze', 'compare-norms', 'share'], engines: ['milestone-tracker', 'sleep-analyzer'] },
+    ],
+    acceptanceCriteria: ['Milestone log', 'Vaccine schedule', 'Sleep analytics'],
+    status: 'in_progress',
+  },
+  {
+    order: 110, lensId: 'pets', name: 'Pets', rationale: 'Pet + vet record + feeding + medication. Merges into household; standalone today.',
+    dependsOn: [], incumbents: ['11pets', 'Pawtrack', 'Vetster'],
+    artifacts: [
+      { name: 'Pet', persistsWithoutDTU: true, storageDomain: 'pets', requiredFields: ['id', 'name', 'species'] },
+      { name: 'VetRecord', persistsWithoutDTU: true, storageDomain: 'pets', requiredFields: ['id', 'petId', 'visitDate'] },
+      { name: 'Medication', persistsWithoutDTU: true, storageDomain: 'pets', requiredFields: ['id', 'petId', 'name', 'schedule'] },
+    ],
+    engines: [
+      { name: 'reminder', description: 'Reminds for vet, feeding, medication', trigger: 'scheduled' },
+    ],
+    pipelines: [
+      { name: 'pet-care-cycle', steps: ['log-weight', 'remind-vet', 'track-meds', 'export-record'], engines: ['reminder'] },
+    ],
+    acceptanceCriteria: ['Pet CRUD', 'Vet records', 'Medication schedule', 'Feeding plan'],
+    status: 'in_progress',
+  },
+  {
+    order: 111, lensId: 'sports', name: 'Sports', rationale: 'Game + team + player + training session. Merges into fitness; standalone today.',
+    dependsOn: [], incumbents: ['TeamSnap', 'GameChanger', 'Hudl'],
+    artifacts: [
+      { name: 'Game', persistsWithoutDTU: true, storageDomain: 'sports', requiredFields: ['id', 'date', 'score'] },
+      { name: 'Team', persistsWithoutDTU: true, storageDomain: 'sports', requiredFields: ['id', 'name', 'roster'] },
+      { name: 'Player', persistsWithoutDTU: true, storageDomain: 'sports', requiredFields: ['id', 'name', 'position'] },
+    ],
+    engines: [
+      { name: 'stats-engine', description: 'Computes per-game / season stats', trigger: 'automatic' },
+      { name: 'training-planner', description: 'Builds training plan from gaps', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'season-cycle', steps: ['draft', 'play', 'record-stats', 'rank', 'recap'], engines: ['stats-engine'] },
+    ],
+    acceptanceCriteria: ['Team + player CRUD', 'Game log', 'Stats', 'Training plan'],
+    status: 'in_progress',
+  },
+  {
+    order: 112, lensId: 'diy', name: 'DIY', rationale: 'Project + material + tool + technique. Merges into home-improvement; standalone today.',
+    dependsOn: [], incumbents: ['Instructables', 'Houzz Project', 'Hometalk'],
+    artifacts: [
+      { name: 'Project', persistsWithoutDTU: true, storageDomain: 'diy', requiredFields: ['id', 'title', 'steps'] },
+      { name: 'Material', persistsWithoutDTU: true, storageDomain: 'diy', requiredFields: ['projectId', 'name', 'qty'] },
+      { name: 'Tool', persistsWithoutDTU: true, storageDomain: 'diy', requiredFields: ['projectId', 'name'] },
+    ],
+    engines: [
+      { name: 'cost-estimator', description: 'Estimates project cost', trigger: 'on_demand' },
+      { name: 'difficulty-scorer', description: 'Scores difficulty + skill required', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'plan-execute-share', steps: ['plan', 'gather', 'execute', 'photo', 'publish'], engines: ['cost-estimator', 'difficulty-scorer'] },
+    ],
+    acceptanceCriteria: ['Project CRUD', 'Materials list', 'Cost estimate', 'Step-by-step'],
+    status: 'in_progress',
+  },
+  {
+    order: 113, lensId: 'debate', name: 'Debate', rationale: 'Debate + argument + rebuttal + verdict. Merges into reasoning; standalone today.',
+    dependsOn: [], incumbents: ['Kialo', 'Reddit r/changemyview'],
+    artifacts: [
+      { name: 'Debate', persistsWithoutDTU: true, storageDomain: 'debate', requiredFields: ['id', 'topic', 'sides'] },
+      { name: 'Argument', persistsWithoutDTU: true, storageDomain: 'debate', requiredFields: ['id', 'debateId', 'side', 'text'] },
+      { name: 'Rebuttal', persistsWithoutDTU: true, storageDomain: 'debate', requiredFields: ['id', 'argumentId', 'text'] },
+    ],
+    engines: [
+      { name: 'fact-checker', description: 'Cross-references claims against trusted sources', trigger: 'on_demand' },
+      { name: 'logic-analyzer', description: 'Detects fallacies', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'argue-rebut-verdict', steps: ['propose', 'rebut', 'fact-check', 'verdict'], engines: ['fact-checker', 'logic-analyzer'] },
+    ],
+    acceptanceCriteria: ['Debate CRUD', 'Argument tree', 'Fact check', 'Logic analysis'],
+    status: 'in_progress',
+  },
+  {
+    order: 114, lensId: 'mentorship', name: 'Mentorship', rationale: 'Relation + session + goal + feedback. Merges into education; standalone today.',
+    dependsOn: [], incumbents: ['Mentorcam', 'GrowthMentor', 'MentorCruise'],
+    artifacts: [
+      { name: 'Relation', persistsWithoutDTU: true, storageDomain: 'mentorship', requiredFields: ['mentorId', 'menteeId', 'startedAt'] },
+      { name: 'SessionNote', persistsWithoutDTU: true, storageDomain: 'mentorship', requiredFields: ['relationId', 'date', 'notes'] },
+      { name: 'Goal', persistsWithoutDTU: true, storageDomain: 'mentorship', requiredFields: ['relationId', 'description', 'status'] },
+    ],
+    engines: [
+      { name: 'matcher', description: 'Matches mentor + mentee', trigger: 'on_demand' },
+      { name: 'gap-analyzer', description: 'Analyses skill gaps + suggests goals', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'match-meet-progress', steps: ['match', 'session', 'set-goal', 'review'], engines: ['matcher', 'gap-analyzer'] },
+    ],
+    acceptanceCriteria: ['Relation CRUD', 'Session notes', 'Goal tracking'],
+    status: 'in_progress',
+  },
+  {
+    order: 115, lensId: 'disputes', name: 'Disputes', rationale: 'Case + claim + resolution + mediation + ruling. Merges into law; standalone today.',
+    dependsOn: [], incumbents: ['Kleros', 'Modria', 'CourtCorrect'],
+    artifacts: [
+      { name: 'DisputeCase', persistsWithoutDTU: true, storageDomain: 'disputes', requiredFields: ['id', 'parties', 'subject'] },
+      { name: 'Claim', persistsWithoutDTU: true, storageDomain: 'disputes', requiredFields: ['id', 'caseId', 'text'] },
+      { name: 'Ruling', persistsWithoutDTU: true, storageDomain: 'disputes', requiredFields: ['caseId', 'verdict', 'rationale'] },
+    ],
+    engines: [
+      { name: 'mediator', description: 'Routes to mediation before adjudication', trigger: 'automatic' },
+      { name: 'arbiter', description: 'Issues a ruling', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'file-mediate-rule', steps: ['file', 'mediate', 'arbitrate', 'rule'], engines: ['mediator', 'arbiter'] },
+    ],
+    acceptanceCriteria: ['Case CRUD', 'Mediation', 'Ruling export'],
+    status: 'in_progress',
+  },
+  {
+    order: 116, lensId: 'privacy', name: 'Privacy', rationale: 'Policy + consent + request + audit. Merges into security; standalone today.',
+    dependsOn: [], incumbents: ['OneTrust', 'TrustArc', 'DataGrail'],
+    artifacts: [
+      { name: 'PrivacyPolicy', persistsWithoutDTU: true, storageDomain: 'privacy', requiredFields: ['id', 'version', 'text'] },
+      { name: 'Consent', persistsWithoutDTU: true, storageDomain: 'privacy', requiredFields: ['userId', 'policyId', 'grantedAt'] },
+      { name: 'PrivacyRequest', persistsWithoutDTU: true, storageDomain: 'privacy', requiredFields: ['id', 'kind', 'status'] },
+    ],
+    engines: [
+      { name: 'consent-tracker', description: 'Tracks per-user consent state', trigger: 'automatic' },
+      { name: 'request-router', description: 'Routes DSAR + erasure requests', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'dsar-cycle', steps: ['receive', 'verify-identity', 'fulfil', 'audit'], engines: ['consent-tracker', 'request-router'] },
+    ],
+    acceptanceCriteria: ['Policy CRUD', 'Consent log', 'DSAR flow'],
+    status: 'in_progress',
+  },
+  {
+    order: 117, lensId: 'automotive', name: 'Automotive', rationale: 'Vehicle + part + service + diagnostic. Merges into trades; standalone today.',
+    dependsOn: [], incumbents: ['CarMD', 'Mitchell1', 'AllData'],
+    artifacts: [
+      { name: 'Vehicle', persistsWithoutDTU: true, storageDomain: 'automotive', requiredFields: ['id', 'vin', 'make', 'model'] },
+      { name: 'Service', persistsWithoutDTU: true, storageDomain: 'automotive', requiredFields: ['id', 'vehicleId', 'kind'] },
+      { name: 'Diagnostic', persistsWithoutDTU: true, storageDomain: 'automotive', requiredFields: ['id', 'vehicleId', 'codes'] },
+    ],
+    engines: [
+      { name: 'obdii-decoder', description: 'Decodes OBD-II codes', trigger: 'on_demand' },
+      { name: 'service-scheduler', description: 'Schedules upcoming service from mileage', trigger: 'automatic' },
+    ],
+    pipelines: [
+      { name: 'diagnose-service-record', steps: ['scan-codes', 'decode', 'service', 'log'], engines: ['obdii-decoder', 'service-scheduler'] },
+    ],
+    acceptanceCriteria: ['Vehicle CRUD', 'Service log', 'OBD-II decode', 'Recall check'],
+    status: 'in_progress',
+  },
+  {
+    order: 118, lensId: 'carpentry', name: 'Carpentry', rationale: 'Joint + material + plan + cut + assembly. Merges into trades; standalone today.',
+    dependsOn: [], incumbents: ['SketchUp Shop', 'Cutlist Optimizer', 'Knowyourwoods'],
+    artifacts: [
+      { name: 'Plan', persistsWithoutDTU: true, storageDomain: 'carpentry', requiredFields: ['id', 'title', 'cuts'] },
+      { name: 'Cut', persistsWithoutDTU: true, storageDomain: 'carpentry', requiredFields: ['planId', 'dimensions', 'count'] },
+      { name: 'Joint', persistsWithoutDTU: true, storageDomain: 'carpentry', requiredFields: ['planId', 'kind', 'parts'] },
+    ],
+    engines: [
+      { name: 'cutlist-optimiser', description: 'Optimises cut layout from board sizes', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'plan-cut-assemble', steps: ['plan', 'optimise-cuts', 'cut', 'assemble', 'finish'], engines: ['cutlist-optimiser'] },
+    ],
+    acceptanceCriteria: ['Plan CRUD', 'Cut list', 'Joint catalog', 'Assembly steps'],
+    status: 'in_progress',
+  },
+  {
+    order: 119, lensId: 'consulting', name: 'Consulting', rationale: 'Engagement + deliverable + proposal + client + timesheet. Merges into services; standalone today.',
+    dependsOn: [], incumbents: ['Bonsai', 'Harvest', 'AND.CO'],
+    artifacts: [
+      { name: 'Engagement', persistsWithoutDTU: true, storageDomain: 'consulting', requiredFields: ['id', 'clientId', 'scope'] },
+      { name: 'Deliverable', persistsWithoutDTU: true, storageDomain: 'consulting', requiredFields: ['engagementId', 'title', 'status'] },
+      { name: 'Timesheet', persistsWithoutDTU: true, storageDomain: 'consulting', requiredFields: ['engagementId', 'hours', 'date'] },
+    ],
+    engines: [
+      { name: 'time-tracker', description: 'Tracks billable + non-billable hours', trigger: 'automatic' },
+      { name: 'proposal-builder', description: 'Builds proposal from scope', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'pitch-deliver-bill', steps: ['pitch', 'sign', 'deliver', 'invoice'], engines: ['time-tracker', 'proposal-builder'] },
+    ],
+    acceptanceCriteria: ['Engagement CRUD', 'Deliverable log', 'Timesheet', 'Proposal export'],
+    status: 'in_progress',
+  },
+
+  // ── PHASES 120-139: Hybrid lenses (group 2) ─────────────────────
+  {
+    order: 120, lensId: 'defense', name: 'Defense', rationale: 'Threat / asset / strategy / operation / intel. Merges into government; standalone today.',
+    dependsOn: [], incumbents: ['Palantir', 'Anduril', 'Janes'],
+    artifacts: [
+      { name: 'Threat', persistsWithoutDTU: true, storageDomain: 'defense', requiredFields: ['id', 'kind', 'severity'] },
+      { name: 'Asset', persistsWithoutDTU: true, storageDomain: 'defense', requiredFields: ['id', 'kind', 'status'] },
+      { name: 'Operation', persistsWithoutDTU: true, storageDomain: 'defense', requiredFields: ['id', 'objective', 'status'] },
+    ],
+    engines: [
+      { name: 'threat-correlator', description: 'Correlates intel into threats', trigger: 'automatic' },
+      { name: 'tasker', description: 'Tasks assets to operations', trigger: 'on_demand' },
+    ],
+    pipelines: [{ name: 'sense-task-act', steps: ['ingest-intel', 'correlate', 'task-asset', 'execute'], engines: ['threat-correlator', 'tasker'] }],
+    acceptanceCriteria: ['Threat CRUD', 'Asset roster', 'Operation log'],
+    status: 'in_progress',
+  },
+  {
+    order: 121, lensId: 'electrical', name: 'Electrical', rationale: 'Circuit / component / load / panel / wiring. Merges into trades; standalone today.',
+    dependsOn: [], incumbents: ['Eaton xPert', 'AutoCAD Electrical', 'SimplerCircuits'],
+    artifacts: [
+      { name: 'Circuit', persistsWithoutDTU: true, storageDomain: 'electrical', requiredFields: ['id', 'amperage', 'volts'] },
+      { name: 'Panel', persistsWithoutDTU: true, storageDomain: 'electrical', requiredFields: ['id', 'circuits'] },
+      { name: 'Component', persistsWithoutDTU: true, storageDomain: 'electrical', requiredFields: ['id', 'partNumber'] },
+    ],
+    engines: [
+      { name: 'load-calc', description: 'Computes total load + flags overload', trigger: 'on_demand' },
+      { name: 'code-checker', description: 'Cross-references against NEC code', trigger: 'on_demand' },
+    ],
+    pipelines: [{ name: 'design-load-inspect', steps: ['design', 'compute-load', 'check-code', 'inspect'], engines: ['load-calc', 'code-checker'] }],
+    acceptanceCriteria: ['Panel CRUD', 'Load calc', 'NEC compliance'],
+    status: 'in_progress',
+  },
+  {
+    order: 122, lensId: 'emergency-services', name: 'Emergency Services', rationale: 'Incident / dispatch / resource / protocol. Merges into services; standalone today.',
+    dependsOn: [], incumbents: ['CentralSquare CAD', 'Motorola PremierOne'],
+    artifacts: [
+      { name: 'Incident', persistsWithoutDTU: true, storageDomain: 'emergency-services', requiredFields: ['id', 'kind', 'severity'] },
+      { name: 'Dispatch', persistsWithoutDTU: true, storageDomain: 'emergency-services', requiredFields: ['incidentId', 'unitsAssigned'] },
+      { name: 'Resource', persistsWithoutDTU: true, storageDomain: 'emergency-services', requiredFields: ['id', 'kind', 'status'] },
+    ],
+    engines: [
+      { name: 'dispatcher', description: 'Routes nearest available unit', trigger: 'on_demand' },
+      { name: 'protocol-engine', description: 'Walks response protocol', trigger: 'on_demand' },
+    ],
+    pipelines: [{ name: 'incident-cycle', steps: ['receive', 'classify', 'dispatch', 'respond', 'close'], engines: ['dispatcher', 'protocol-engine'] }],
+    acceptanceCriteria: ['Incident CRUD', 'Dispatch', 'Resource roster'],
+    status: 'in_progress',
+  },
+  {
+    order: 123, lensId: 'energy', name: 'Energy', rationale: 'Source / grid / consumption / forecast / efficiency. Merges into engineering; standalone today.',
+    dependsOn: [], incumbents: ['Siemens EnergyIP', 'OSIsoft PI', 'Grid Edge'],
+    artifacts: [
+      { name: 'EnergySource', persistsWithoutDTU: true, storageDomain: 'energy', requiredFields: ['id', 'kind', 'capacity'] },
+      { name: 'Grid', persistsWithoutDTU: true, storageDomain: 'energy', requiredFields: ['id', 'topology'] },
+      { name: 'Consumption', persistsWithoutDTU: true, storageDomain: 'energy', requiredFields: ['nodeId', 'kwh', 'at'] },
+    ],
+    engines: [
+      { name: 'load-forecaster', description: 'Forecasts next-day load', trigger: 'scheduled' },
+      { name: 'efficiency-analyzer', description: 'Spots inefficiency', trigger: 'on_demand' },
+    ],
+    pipelines: [{ name: 'monitor-forecast-optimise', steps: ['monitor', 'forecast', 'rebalance', 'log'], engines: ['load-forecaster', 'efficiency-analyzer'] }],
+    acceptanceCriteria: ['Source CRUD', 'Grid topology', 'Consumption log'],
+    status: 'in_progress',
+  },
+  {
+    order: 124, lensId: 'forestry', name: 'Forestry', rationale: 'Plot / species / harvest / inventory / growth. Merges into agriculture; standalone today.',
+    dependsOn: [], incumbents: ['Trimble Forestry', 'Esri Forest', 'TimberCruise'],
+    artifacts: [
+      { name: 'Plot', persistsWithoutDTU: true, storageDomain: 'forestry', requiredFields: ['id', 'geometry', 'acres'] },
+      { name: 'Species', persistsWithoutDTU: true, storageDomain: 'forestry', requiredFields: ['plotId', 'taxonomy', 'count'] },
+      { name: 'Harvest', persistsWithoutDTU: true, storageDomain: 'forestry', requiredFields: ['id', 'plotId', 'date', 'volume'] },
+    ],
+    engines: [
+      { name: 'growth-projector', description: 'Projects timber growth', trigger: 'on_demand' },
+      { name: 'cruise-tool', description: 'Calculates timber cruise from sample plots', trigger: 'on_demand' },
+    ],
+    pipelines: [{ name: 'cruise-harvest-replant', steps: ['cruise', 'harvest', 'replant', 'monitor-growth'], engines: ['cruise-tool', 'growth-projector'] }],
+    acceptanceCriteria: ['Plot CRUD', 'Species inventory', 'Harvest log'],
+    status: 'in_progress',
+  },
+  {
+    order: 125, lensId: 'hvac', name: 'HVAC', rationale: 'System / zone / sensor / schedule / maintenance. Merges into trades; standalone today.',
+    dependsOn: [], incumbents: ['ServiceTitan HVAC', 'BuildOps', 'WorkWave'],
+    artifacts: [
+      { name: 'System', persistsWithoutDTU: true, storageDomain: 'hvac', requiredFields: ['id', 'kind', 'tonnage'] },
+      { name: 'Zone', persistsWithoutDTU: true, storageDomain: 'hvac', requiredFields: ['systemId', 'name'] },
+      { name: 'Sensor', persistsWithoutDTU: true, storageDomain: 'hvac', requiredFields: ['zoneId', 'kind', 'value'] },
+    ],
+    engines: [
+      { name: 'scheduler', description: 'Schedules per-zone setpoints', trigger: 'scheduled' },
+      { name: 'maintenance-predictor', description: 'Predicts maintenance from runtime + telemetry', trigger: 'automatic' },
+    ],
+    pipelines: [{ name: 'monitor-control-service', steps: ['monitor', 'control-zone', 'detect-fault', 'service'], engines: ['scheduler', 'maintenance-predictor'] }],
+    acceptanceCriteria: ['System CRUD', 'Zone control', 'Sensor stream', 'Maintenance schedule'],
+    status: 'in_progress',
+  },
+  {
+    order: 126, lensId: 'landscaping', name: 'Landscaping', rationale: 'Design / plant / zone / irrigation / material. Merges into home-improvement; standalone today.',
+    dependsOn: [], incumbents: ['LandscapePro', 'Realtime Landscaping', 'PRO Landscape'],
+    artifacts: [
+      { name: 'Design', persistsWithoutDTU: true, storageDomain: 'landscaping', requiredFields: ['id', 'plot', 'plants'] },
+      { name: 'Plant', persistsWithoutDTU: true, storageDomain: 'landscaping', requiredFields: ['id', 'species', 'placement'] },
+      { name: 'Irrigation', persistsWithoutDTU: true, storageDomain: 'landscaping', requiredFields: ['designId', 'zones', 'schedule'] },
+    ],
+    engines: [
+      { name: 'plant-selector', description: 'Suggests plants by climate + sun zone', trigger: 'on_demand' },
+      { name: 'irrigation-planner', description: 'Plans drip + sprinkler zones', trigger: 'on_demand' },
+    ],
+    pipelines: [{ name: 'design-install-water', steps: ['design', 'select-plants', 'install', 'irrigate'], engines: ['plant-selector', 'irrigation-planner'] }],
+    acceptanceCriteria: ['Design CRUD', 'Plant catalog', 'Irrigation schedule'],
+    status: 'in_progress',
+  },
+  {
+    order: 127, lensId: 'law-enforcement', name: 'Law Enforcement', rationale: 'Case / officer / report / evidence / warrant. Merges into government; standalone today.',
+    dependsOn: [], incumbents: ['Mark43', 'Axon Records', 'Niche RMS'],
+    artifacts: [
+      { name: 'LECase', persistsWithoutDTU: true, storageDomain: 'law-enforcement', requiredFields: ['id', 'kind', 'status'] },
+      { name: 'Report', persistsWithoutDTU: true, storageDomain: 'law-enforcement', requiredFields: ['caseId', 'officerId', 'narrative'] },
+      { name: 'Evidence', persistsWithoutDTU: true, storageDomain: 'law-enforcement', requiredFields: ['caseId', 'kind', 'chain'] },
+    ],
+    engines: [
+      { name: 'evidence-chain', description: 'Maintains tamper-evident chain of custody', trigger: 'automatic' },
+      { name: 'warrant-builder', description: 'Builds warrant doc from probable cause', trigger: 'on_demand' },
+    ],
+    pipelines: [{ name: 'investigate-warrant-charge', steps: ['intake', 'investigate', 'request-warrant', 'execute', 'charge'], engines: ['evidence-chain', 'warrant-builder'] }],
+    acceptanceCriteria: ['Case CRUD', 'Report log', 'Evidence chain'],
+    status: 'in_progress',
+  },
+  {
+    order: 128, lensId: 'masonry', name: 'Masonry', rationale: 'Wall / block / mortar / pattern / foundation. Merges into trades; standalone today.',
+    dependsOn: [], incumbents: ['Masonry Estimating Pro', 'BLOCKwerx'],
+    artifacts: [
+      { name: 'Wall', persistsWithoutDTU: true, storageDomain: 'masonry', requiredFields: ['id', 'dimensions', 'block'] },
+      { name: 'Block', persistsWithoutDTU: true, storageDomain: 'masonry', requiredFields: ['id', 'size', 'kind'] },
+      { name: 'Pattern', persistsWithoutDTU: true, storageDomain: 'masonry', requiredFields: ['id', 'name', 'spec'] },
+    ],
+    engines: [
+      { name: 'block-counter', description: 'Counts blocks needed for a wall', trigger: 'on_demand' },
+      { name: 'pattern-renderer', description: 'Renders pattern preview', trigger: 'on_demand' },
+    ],
+    pipelines: [{ name: 'design-quantify-build', steps: ['design', 'quantify', 'order', 'build'], engines: ['block-counter', 'pattern-renderer'] }],
+    acceptanceCriteria: ['Wall CRUD', 'Block count', 'Pattern catalog'],
+    status: 'in_progress',
+  },
+  {
+    order: 129, lensId: 'materials', name: 'Materials', rationale: 'Sample / property / test / specification / grade. Merges into engineering; standalone today.',
+    dependsOn: [], incumbents: ['Granta Selector', 'MatWeb', 'Total Materia'],
+    artifacts: [
+      { name: 'Sample', persistsWithoutDTU: true, storageDomain: 'materials', requiredFields: ['id', 'material', 'date'] },
+      { name: 'Property', persistsWithoutDTU: true, storageDomain: 'materials', requiredFields: ['sampleId', 'name', 'value'] },
+      { name: 'Test', persistsWithoutDTU: true, storageDomain: 'materials', requiredFields: ['sampleId', 'kind', 'result'] },
+    ],
+    engines: [
+      { name: 'property-tester', description: 'Runs material property test', trigger: 'on_demand' },
+      { name: 'spec-comparer', description: 'Compares sample to specification', trigger: 'on_demand' },
+    ],
+    pipelines: [{ name: 'sample-test-grade', steps: ['receive-sample', 'test', 'grade', 'export-cert'], engines: ['property-tester', 'spec-comparer'] }],
+    acceptanceCriteria: ['Sample CRUD', 'Property log', 'Spec compare'],
+    status: 'in_progress',
+  },
+  {
+    order: 130, lensId: 'mining', name: 'Mining', rationale: 'Deposit / extraction / survey / safety / yield. Merges into geology; standalone today.',
+    dependsOn: [], incumbents: ['Maptek', 'Datamine', 'Surpac'],
+    artifacts: [
+      { name: 'Deposit', persistsWithoutDTU: true, storageDomain: 'mining', requiredFields: ['id', 'mineral', 'estimate'] },
+      { name: 'Extraction', persistsWithoutDTU: true, storageDomain: 'mining', requiredFields: ['depositId', 'date', 'tonnage'] },
+      { name: 'Safety', persistsWithoutDTU: true, storageDomain: 'mining', requiredFields: ['extractionId', 'kind', 'severity'] },
+    ],
+    engines: [
+      { name: 'survey-renderer', description: 'Renders 3D deposit model', trigger: 'on_demand' },
+      { name: 'safety-checker', description: 'Audits safety per shift', trigger: 'automatic' },
+    ],
+    pipelines: [{ name: 'survey-extract-recover', steps: ['survey', 'extract', 'process', 'recover'], engines: ['survey-renderer', 'safety-checker'] }],
+    acceptanceCriteria: ['Deposit CRUD', 'Extraction log', 'Safety audit'],
+    status: 'in_progress',
+  },
+  {
+    order: 131, lensId: 'ocean', name: 'Ocean', rationale: 'Sample / depth / current / species / survey. Merges into environment; standalone today.',
+    dependsOn: [], incumbents: ['NOAA portals', 'Seabed 2030', 'OBIS'],
+    artifacts: [
+      { name: 'OceanSample', persistsWithoutDTU: true, storageDomain: 'ocean', requiredFields: ['id', 'depth', 'collectedAt'] },
+      { name: 'Current', persistsWithoutDTU: true, storageDomain: 'ocean', requiredFields: ['lat', 'lon', 'speed', 'direction'] },
+      { name: 'OceanSpecies', persistsWithoutDTU: true, storageDomain: 'ocean', requiredFields: ['taxonomy', 'depth', 'count'] },
+    ],
+    engines: [
+      { name: 'depth-renderer', description: 'Renders bathymetry', trigger: 'on_demand' },
+      { name: 'current-tracker', description: 'Tracks current vectors', trigger: 'automatic' },
+    ],
+    pipelines: [{ name: 'survey-analyze-share', steps: ['survey', 'analyze', 'render', 'share'], engines: ['depth-renderer', 'current-tracker'] }],
+    acceptanceCriteria: ['Sample CRUD', 'Current log', 'Species inventory'],
+    status: 'in_progress',
+  },
+  {
+    order: 132, lensId: 'pharmacy', name: 'Pharmacy', rationale: 'Drug / prescription / interaction / inventory / dosage. Merges into healthcare; standalone today.',
+    dependsOn: [], incumbents: ['PioneerRx', 'Liberty Pharmacy', 'Speed Script'],
+    artifacts: [
+      { name: 'Drug', persistsWithoutDTU: true, storageDomain: 'pharmacy', requiredFields: ['id', 'name', 'rxnorm'] },
+      { name: 'PharmRx', persistsWithoutDTU: true, storageDomain: 'pharmacy', requiredFields: ['id', 'patientId', 'drugId', 'dosage'] },
+      { name: 'Interaction', persistsWithoutDTU: true, storageDomain: 'pharmacy', requiredFields: ['drugA', 'drugB', 'severity'] },
+    ],
+    engines: [
+      { name: 'interaction-checker', description: 'Detects drug-drug interactions', trigger: 'automatic' },
+      { name: 'dosage-calc', description: 'Calculates per-patient dosage', trigger: 'on_demand' },
+    ],
+    pipelines: [{ name: 'prescribe-check-dispense', steps: ['prescribe', 'check-interactions', 'dose', 'dispense'], engines: ['interaction-checker', 'dosage-calc'] }],
+    acceptanceCriteria: ['Drug catalog', 'Rx flow', 'Interaction check'],
+    status: 'in_progress',
+  },
+  {
+    order: 133, lensId: 'plumbing', name: 'Plumbing', rationale: 'Pipe / fixture / code / inspection / material. Merges into trades; standalone today.',
+    dependsOn: [], incumbents: ['ServiceTitan Plumbing', 'Housecall Pro'],
+    artifacts: [
+      { name: 'PipeRun', persistsWithoutDTU: true, storageDomain: 'plumbing', requiredFields: ['id', 'diameter', 'material'] },
+      { name: 'Fixture', persistsWithoutDTU: true, storageDomain: 'plumbing', requiredFields: ['id', 'kind', 'flow'] },
+      { name: 'PlumbingInspection', persistsWithoutDTU: true, storageDomain: 'plumbing', requiredFields: ['id', 'pipeRunId', 'pass'] },
+    ],
+    engines: [
+      { name: 'flow-calc', description: 'Calculates flow + pressure drop', trigger: 'on_demand' },
+      { name: 'code-checker', description: 'Cross-references against IPC code', trigger: 'on_demand' },
+    ],
+    pipelines: [{ name: 'design-install-inspect', steps: ['design', 'install', 'pressure-test', 'inspect'], engines: ['flow-calc', 'code-checker'] }],
+    acceptanceCriteria: ['Pipe CRUD', 'Fixture catalog', 'Code check', 'Inspection log'],
+    status: 'in_progress',
+  },
+  {
+    order: 134, lensId: 'supplychain', name: 'Supply Chain', rationale: 'Order / shipment / warehouse / route / forecast. Merges into logistics; standalone today.',
+    dependsOn: [], incumbents: ['SAP IBP', 'Oracle SCM', 'Blue Yonder'],
+    artifacts: [
+      { name: 'PurchaseOrder', persistsWithoutDTU: true, storageDomain: 'supplychain', requiredFields: ['id', 'supplierId', 'lineItems'] },
+      { name: 'Shipment', persistsWithoutDTU: true, storageDomain: 'supplychain', requiredFields: ['id', 'orderId', 'status'] },
+      { name: 'Warehouse', persistsWithoutDTU: true, storageDomain: 'supplychain', requiredFields: ['id', 'location', 'capacity'] },
+    ],
+    engines: [
+      { name: 'demand-forecaster', description: 'Forecasts demand by SKU + region', trigger: 'scheduled' },
+      { name: 'route-optimiser', description: 'Optimises shipment routes', trigger: 'on_demand' },
+    ],
+    pipelines: [{ name: 'forecast-order-fulfil', steps: ['forecast', 'order', 'ship', 'receive'], engines: ['demand-forecaster', 'route-optimiser'] }],
+    acceptanceCriteria: ['PO CRUD', 'Shipment tracking', 'Demand forecast'],
+    status: 'in_progress',
+  },
+  {
+    order: 135, lensId: 'telecommunications', name: 'Telecommunications', rationale: 'Network / device / signal / plan / coverage. Merges into engineering; standalone today.',
+    dependsOn: [], incumbents: ['Cisco DNAC', 'Ericsson Network Manager'],
+    artifacts: [
+      { name: 'TelecomNetwork', persistsWithoutDTU: true, storageDomain: 'telecommunications', requiredFields: ['id', 'name', 'topology'] },
+      { name: 'Device', persistsWithoutDTU: true, storageDomain: 'telecommunications', requiredFields: ['id', 'kind', 'location'] },
+      { name: 'Coverage', persistsWithoutDTU: true, storageDomain: 'telecommunications', requiredFields: ['areaId', 'signalDb'] },
+    ],
+    engines: [
+      { name: 'signal-mapper', description: 'Maps signal coverage', trigger: 'on_demand' },
+      { name: 'plan-builder', description: 'Builds capacity plan', trigger: 'on_demand' },
+    ],
+    pipelines: [{ name: 'plan-deploy-monitor', steps: ['plan', 'deploy-devices', 'measure-coverage', 'optimise'], engines: ['signal-mapper', 'plan-builder'] }],
+    acceptanceCriteria: ['Network CRUD', 'Device roster', 'Coverage map'],
+    status: 'in_progress',
+  },
+  {
+    order: 136, lensId: 'urban-planning', name: 'Urban Planning', rationale: 'Zone / permit / project / assessment / regulation. Merges into government; standalone today.',
+    dependsOn: [], incumbents: ['Esri Urban', 'CityZenith', 'Procore Public Sector'],
+    artifacts: [
+      { name: 'ZoningArea', persistsWithoutDTU: true, storageDomain: 'urban-planning', requiredFields: ['id', 'kind', 'geometry'] },
+      { name: 'UrbanPermit', persistsWithoutDTU: true, storageDomain: 'urban-planning', requiredFields: ['id', 'kind', 'status'] },
+      { name: 'Assessment', persistsWithoutDTU: true, storageDomain: 'urban-planning', requiredFields: ['projectId', 'kind', 'verdict'] },
+    ],
+    engines: [
+      { name: 'zoning-checker', description: 'Validates project against zoning', trigger: 'on_demand' },
+      { name: 'impact-modeler', description: 'Models traffic + environmental impact', trigger: 'on_demand' },
+    ],
+    pipelines: [{ name: 'plan-permit-build', steps: ['plan', 'zone-check', 'public-comment', 'permit', 'build'], engines: ['zoning-checker', 'impact-modeler'] }],
+    acceptanceCriteria: ['Zoning CRUD', 'Permit flow', 'Impact assessment'],
+    status: 'in_progress',
+  },
+  {
+    order: 137, lensId: 'veterinary', name: 'Veterinary', rationale: 'Patient / treatment / vaccine / record / prescription. Merges into healthcare; standalone today.',
+    dependsOn: [], incumbents: ['Cornerstone', 'Avimark', 'eVetPractice'],
+    artifacts: [
+      { name: 'VetPatient', persistsWithoutDTU: true, storageDomain: 'veterinary', requiredFields: ['id', 'name', 'species', 'owner'] },
+      { name: 'VetTreatment', persistsWithoutDTU: true, storageDomain: 'veterinary', requiredFields: ['patientId', 'kind', 'date'] },
+      { name: 'Vaccine', persistsWithoutDTU: true, storageDomain: 'veterinary', requiredFields: ['patientId', 'name', 'date'] },
+    ],
+    engines: [
+      { name: 'vaccine-scheduler', description: 'Schedules vaccines per species', trigger: 'automatic' },
+      { name: 'dose-calculator', description: 'Calculates per-weight dose', trigger: 'on_demand' },
+    ],
+    pipelines: [{ name: 'intake-treat-followup', steps: ['intake', 'examine', 'treat', 'schedule-follow-up'], engines: ['vaccine-scheduler', 'dose-calculator'] }],
+    acceptanceCriteria: ['Patient CRUD', 'Treatment log', 'Vaccine schedule'],
+    status: 'in_progress',
+  },
+  {
+    order: 138, lensId: 'welding', name: 'Welding', rationale: 'Joint / procedure / inspection / material / certification. Merges into trades; standalone today.',
+    dependsOn: [], incumbents: ['ESAB CutPro', 'Lincoln WeldCloud', 'Miller Insight'],
+    artifacts: [
+      { name: 'WeldJoint', persistsWithoutDTU: true, storageDomain: 'welding', requiredFields: ['id', 'kind', 'thickness'] },
+      { name: 'Procedure', persistsWithoutDTU: true, storageDomain: 'welding', requiredFields: ['id', 'wps', 'parameters'] },
+      { name: 'WeldInspection', persistsWithoutDTU: true, storageDomain: 'welding', requiredFields: ['jointId', 'method', 'pass'] },
+    ],
+    engines: [
+      { name: 'wps-generator', description: 'Generates WPS from joint + material', trigger: 'on_demand' },
+      { name: 'cert-tracker', description: 'Tracks welder certs', trigger: 'automatic' },
+    ],
+    pipelines: [{ name: 'plan-weld-inspect', steps: ['design', 'wps', 'weld', 'inspect', 'cert'], engines: ['wps-generator', 'cert-tracker'] }],
+    acceptanceCriteria: ['Joint CRUD', 'Procedure log', 'Inspection trail'],
+    status: 'in_progress',
+  },
+  {
+    order: 139, lensId: 'desert', name: 'Desert', rationale: 'Species / habitat / climate / resource / adaptation. Merges into environment; standalone today.',
+    dependsOn: [], incumbents: ['IUCN Drylands', 'BLM RAS'],
+    artifacts: [
+      { name: 'DesertSpecies', persistsWithoutDTU: true, storageDomain: 'desert', requiredFields: ['id', 'taxonomy', 'range'] },
+      { name: 'Habitat', persistsWithoutDTU: true, storageDomain: 'desert', requiredFields: ['id', 'kind', 'geometry'] },
+      { name: 'Climate', persistsWithoutDTU: true, storageDomain: 'desert', requiredFields: ['habitatId', 'rainfallMm', 'temp'] },
+    ],
+    engines: [
+      { name: 'range-mapper', description: 'Maps species range', trigger: 'on_demand' },
+      { name: 'adaptation-tracker', description: 'Tracks adaptation traits', trigger: 'automatic' },
+    ],
+    pipelines: [{ name: 'observe-map-protect', steps: ['observe', 'classify', 'map', 'recommend-protection'], engines: ['range-mapper', 'adaptation-tracker'] }],
+    acceptanceCriteria: ['Species CRUD', 'Habitat map', 'Climate log'],
+    status: 'in_progress',
+  },
+
+  // ── PHASES 140-164: Hybrid lenses (group 3 — creative/lifestyle/system) ───
+  {
+    order: 140, lensId: 'animation', name: 'Animation', rationale: 'Keyframe / timeline / sprite / sequence / rig. Standalone today.',
+    dependsOn: [], incumbents: ['Spine', 'Animate CC', 'Toon Boom'],
+    artifacts: [
+      { name: 'Keyframe', persistsWithoutDTU: true, storageDomain: 'animation', requiredFields: ['t', 'value'] },
+      { name: 'Timeline', persistsWithoutDTU: true, storageDomain: 'animation', requiredFields: ['id', 'tracks'] },
+      { name: 'Sprite', persistsWithoutDTU: true, storageDomain: 'animation', requiredFields: ['id', 'image'] },
+    ],
+    engines: [
+      { name: 'tweener', description: 'Interpolates between keyframes', trigger: 'automatic' },
+      { name: 'rig-engine', description: 'Drives rigs with constraints', trigger: 'on_demand' },
+    ],
+    pipelines: [{ name: 'rig-key-render', steps: ['rig', 'key', 'tween', 'render'], engines: ['tweener', 'rig-engine'] }],
+    acceptanceCriteria: ['Keyframe editor', 'Timeline scrubbing', 'Render export'],
+    status: 'in_progress',
+  },
+  {
+    order: 141, lensId: 'artistry', name: 'Artistry', rationale: 'Artwork / gallery / exhibit / collection / medium. Standalone today.',
+    dependsOn: [], incumbents: ['ArtStation', 'DeviantArt'],
+    artifacts: [
+      { name: 'Artwork', persistsWithoutDTU: true, storageDomain: 'artistry', requiredFields: ['id', 'title', 'image'] },
+      { name: 'Exhibit', persistsWithoutDTU: true, storageDomain: 'artistry', requiredFields: ['id', 'title', 'works'] },
+      { name: 'Collection', persistsWithoutDTU: true, storageDomain: 'artistry', requiredFields: ['id', 'name', 'pieces'] },
+    ],
+    engines: [
+      { name: 'curator', description: 'Composes exhibit from query', trigger: 'on_demand' },
+    ],
+    pipelines: [{ name: 'create-curate-show', steps: ['create-work', 'tag-medium', 'curate', 'show'], engines: ['curator'] }],
+    acceptanceCriteria: ['Artwork CRUD', 'Exhibit composer', 'Gallery view'],
+    status: 'in_progress',
+  },
+  {
+    order: 142, lensId: 'creative-writing', name: 'Creative Writing', rationale: 'Story / character / plot / draft / revision. Standalone today.',
+    dependsOn: [], incumbents: ['Scrivener', 'Plottr', 'Novlr'],
+    artifacts: [
+      { name: 'Story', persistsWithoutDTU: true, storageDomain: 'creative-writing', requiredFields: ['id', 'title', 'chapters'] },
+      { name: 'Character', persistsWithoutDTU: true, storageDomain: 'creative-writing', requiredFields: ['id', 'name', 'arc'] },
+      { name: 'Draft', persistsWithoutDTU: true, storageDomain: 'creative-writing', requiredFields: ['storyId', 'version', 'text'] },
+    ],
+    engines: [
+      { name: 'plot-checker', description: 'Detects plot holes via outline + scene graph', trigger: 'on_demand' },
+    ],
+    pipelines: [{ name: 'outline-draft-revise', steps: ['outline', 'draft', 'revise', 'export'], engines: ['plot-checker'] }],
+    acceptanceCriteria: ['Story CRUD', 'Character bible', 'Draft history'],
+    status: 'in_progress',
+  },
+  {
+    order: 143, lensId: 'game-design', name: 'Game Design', rationale: 'Mechanic / level / balance / playtest / asset. Standalone today.',
+    dependsOn: [], incumbents: ['articy:draft', 'Twine', 'Yarn Spinner'],
+    artifacts: [
+      { name: 'Mechanic', persistsWithoutDTU: true, storageDomain: 'game-design', requiredFields: ['id', 'name', 'rules'] },
+      { name: 'Level', persistsWithoutDTU: true, storageDomain: 'game-design', requiredFields: ['id', 'layout', 'objectives'] },
+      { name: 'Playtest', persistsWithoutDTU: true, storageDomain: 'game-design', requiredFields: ['id', 'levelId', 'feedback'] },
+    ],
+    engines: [
+      { name: 'balance-sim', description: 'Simulates balance across builds', trigger: 'on_demand' },
+    ],
+    pipelines: [{ name: 'design-test-iterate', steps: ['design', 'simulate', 'playtest', 'iterate'], engines: ['balance-sim'] }],
+    acceptanceCriteria: ['Mechanic CRUD', 'Level editor', 'Playtest log'],
+    status: 'in_progress',
+  },
+  {
+    order: 144, lensId: 'poetry', name: 'Poetry', rationale: 'Poem / collection / form / analysis / workshop. Standalone today.',
+    dependsOn: [], incumbents: ['Poetry Foundation tools', 'Litcharts'],
+    artifacts: [
+      { name: 'Poem', persistsWithoutDTU: true, storageDomain: 'poetry', requiredFields: ['id', 'title', 'text', 'form'] },
+      { name: 'PoetryForm', persistsWithoutDTU: true, storageDomain: 'poetry', requiredFields: ['id', 'name', 'rules'] },
+      { name: 'Workshop', persistsWithoutDTU: true, storageDomain: 'poetry', requiredFields: ['id', 'poemId', 'critiques'] },
+    ],
+    engines: [
+      { name: 'meter-analyzer', description: 'Analyses meter + rhyme scheme', trigger: 'on_demand' },
+    ],
+    pipelines: [{ name: 'compose-workshop-publish', steps: ['compose', 'analyze', 'workshop', 'publish'], engines: ['meter-analyzer'] }],
+    acceptanceCriteria: ['Poem CRUD', 'Form catalog', 'Workshop flow'],
+    status: 'in_progress',
+  },
+  {
+    order: 145, lensId: 'astronomy', name: 'Astronomy', rationale: 'Star / planet / constellation / observation / catalog. Standalone today.',
+    dependsOn: [], incumbents: ['Stellarium', 'SkySafari', 'AstroBin'],
+    artifacts: [
+      { name: 'AstroObject', persistsWithoutDTU: true, storageDomain: 'astronomy', requiredFields: ['id', 'kind', 'ra', 'dec'] },
+      { name: 'AstroObservation', persistsWithoutDTU: true, storageDomain: 'astronomy', requiredFields: ['id', 'objectId', 'date'] },
+      { name: 'Catalog', persistsWithoutDTU: true, storageDomain: 'astronomy', requiredFields: ['id', 'name', 'entries'] },
+    ],
+    engines: [
+      { name: 'sky-renderer', description: 'Renders sky chart', trigger: 'on_demand' },
+    ],
+    pipelines: [{ name: 'plan-observe-log', steps: ['plan', 'observe', 'log', 'export'], engines: ['sky-renderer'] }],
+    acceptanceCriteria: ['Object catalog', 'Observation log', 'Sky chart'],
+    status: 'in_progress',
+  },
+  {
+    order: 146, lensId: 'history', name: 'History', rationale: 'Event / era / figure / source / timeline. Standalone today.',
+    dependsOn: [], incumbents: ['Tiki-Toki', 'Preceden', 'TimeGraphics'],
+    artifacts: [
+      { name: 'HistoricalEvent', persistsWithoutDTU: true, storageDomain: 'history', requiredFields: ['id', 'title', 'date'] },
+      { name: 'HistoricalFigure', persistsWithoutDTU: true, storageDomain: 'history', requiredFields: ['id', 'name', 'lifespan'] },
+      { name: 'PrimarySource', persistsWithoutDTU: true, storageDomain: 'history', requiredFields: ['id', 'kind', 'citation'] },
+    ],
+    engines: [
+      { name: 'timeline-builder', description: 'Builds timeline from events', trigger: 'on_demand' },
+    ],
+    pipelines: [{ name: 'cite-arrange-publish', steps: ['cite', 'arrange', 'render-timeline', 'publish'], engines: ['timeline-builder'] }],
+    acceptanceCriteria: ['Event CRUD', 'Source citation', 'Timeline render'],
+    status: 'in_progress',
+  },
+  {
+    order: 147, lensId: 'linguistics', name: 'Linguistics', rationale: 'Corpus / analysis / grammar / phoneme / translation. Standalone today.',
+    dependsOn: [], incumbents: ['SketchEngine', 'AntConc'],
+    artifacts: [
+      { name: 'Corpus', persistsWithoutDTU: true, storageDomain: 'linguistics', requiredFields: ['id', 'name', 'tokens'] },
+      { name: 'LinguisticAnalysis', persistsWithoutDTU: true, storageDomain: 'linguistics', requiredFields: ['corpusId', 'kind', 'output'] },
+      { name: 'Grammar', persistsWithoutDTU: true, storageDomain: 'linguistics', requiredFields: ['id', 'language', 'rules'] },
+    ],
+    engines: [
+      { name: 'tokenizer', description: 'Tokenises corpus', trigger: 'on_demand' },
+    ],
+    pipelines: [{ name: 'corpus-analyze-export', steps: ['ingest', 'tokenise', 'analyze', 'export'], engines: ['tokenizer'] }],
+    acceptanceCriteria: ['Corpus CRUD', 'Analysis pipeline', 'Grammar editor'],
+    status: 'in_progress',
+  },
+  {
+    order: 148, lensId: 'philosophy', name: 'Philosophy', rationale: 'Argument / concept / tradition / text / debate. Standalone today.',
+    dependsOn: [], incumbents: ['SEP', 'IEP', 'PhilPapers'],
+    artifacts: [
+      { name: 'PhilArgument', persistsWithoutDTU: true, storageDomain: 'philosophy', requiredFields: ['id', 'premises', 'conclusion'] },
+      { name: 'Concept', persistsWithoutDTU: true, storageDomain: 'philosophy', requiredFields: ['id', 'name', 'definitions'] },
+      { name: 'Tradition', persistsWithoutDTU: true, storageDomain: 'philosophy', requiredFields: ['id', 'name', 'keyFigures'] },
+    ],
+    engines: [
+      { name: 'argument-mapper', description: 'Renders argument tree', trigger: 'on_demand' },
+    ],
+    pipelines: [{ name: 'state-map-debate', steps: ['state-thesis', 'map-arguments', 'debate', 'synthesise'], engines: ['argument-mapper'] }],
+    acceptanceCriteria: ['Argument CRUD', 'Concept catalog', 'Tradition browser'],
+    status: 'in_progress',
+  },
+  {
+    order: 149, lensId: 'robotics', name: 'Robotics', rationale: 'Robot / sensor / actuator / program / simulation. Standalone today.',
+    dependsOn: [], incumbents: ['ROS', 'Webots', 'Gazebo'],
+    artifacts: [
+      { name: 'Robot', persistsWithoutDTU: true, storageDomain: 'robotics', requiredFields: ['id', 'kind', 'urdf'] },
+      { name: 'Sensor', persistsWithoutDTU: true, storageDomain: 'robotics', requiredFields: ['robotId', 'kind', 'topic'] },
+      { name: 'RobotProgram', persistsWithoutDTU: true, storageDomain: 'robotics', requiredFields: ['robotId', 'language', 'source'] },
+    ],
+    engines: [
+      { name: 'simulator', description: 'Runs URDF in physics sim', trigger: 'on_demand' },
+    ],
+    pipelines: [{ name: 'design-program-simulate', steps: ['design', 'program', 'simulate', 'deploy'], engines: ['simulator'] }],
+    acceptanceCriteria: ['Robot CRUD', 'Program editor', 'Sim run'],
+    status: 'in_progress',
+  },
+  {
+    order: 150, lensId: 'marketing', name: 'Marketing', rationale: 'Campaign / audience / content / channel / metric. Merges into creator; standalone today.',
+    dependsOn: [], incumbents: ['HubSpot', 'Marketo', 'Mailchimp'],
+    artifacts: [
+      { name: 'Campaign', persistsWithoutDTU: true, storageDomain: 'marketing', requiredFields: ['id', 'name', 'channel'] },
+      { name: 'Audience', persistsWithoutDTU: true, storageDomain: 'marketing', requiredFields: ['id', 'rules', 'size'] },
+      { name: 'CampaignMetric', persistsWithoutDTU: true, storageDomain: 'marketing', requiredFields: ['campaignId', 'kind', 'value'] },
+    ],
+    engines: [
+      { name: 'audience-builder', description: 'Builds audience from rules', trigger: 'on_demand' },
+      { name: 'metric-roller', description: 'Rolls metrics by campaign', trigger: 'automatic' },
+    ],
+    pipelines: [{ name: 'plan-launch-measure', steps: ['plan', 'segment', 'launch', 'measure', 'iterate'], engines: ['audience-builder', 'metric-roller'] }],
+    acceptanceCriteria: ['Campaign CRUD', 'Audience segments', 'Metric dashboard'],
+    status: 'in_progress',
+  },
+  {
+    order: 151, lensId: 'mental-health', name: 'Mental Health', rationale: 'Session / assessment / plan / progress / resource. Merges into healthcare; standalone today.',
+    dependsOn: [], incumbents: ['SimplePractice', 'TherapyNotes', 'TheraNest'],
+    artifacts: [
+      { name: 'TherapySession', persistsWithoutDTU: true, storageDomain: 'mental-health', requiredFields: ['id', 'patientId', 'date'] },
+      { name: 'MentalAssessment', persistsWithoutDTU: true, storageDomain: 'mental-health', requiredFields: ['id', 'patientId', 'kind', 'score'] },
+      { name: 'CarePlan', persistsWithoutDTU: true, storageDomain: 'mental-health', requiredFields: ['patientId', 'goals'] },
+    ],
+    engines: [
+      { name: 'risk-assessor', description: 'Scores risk + escalates', trigger: 'automatic' },
+    ],
+    pipelines: [{ name: 'intake-session-progress', steps: ['intake', 'assess', 'session', 'progress-review'], engines: ['risk-assessor'] }],
+    acceptanceCriteria: ['Session log', 'Assessment battery', 'Care plan'],
+    status: 'in_progress',
+  },
+  {
+    order: 152, lensId: 'projects', name: 'Projects', rationale: 'Task / milestone / resource / timeline / dependency. Merges into goals; standalone today.',
+    dependsOn: [], incumbents: ['Asana', 'Linear', 'Jira'],
+    artifacts: [
+      { name: 'Task', persistsWithoutDTU: true, storageDomain: 'projects', requiredFields: ['id', 'title', 'status'] },
+      { name: 'ProjectMilestone', persistsWithoutDTU: true, storageDomain: 'projects', requiredFields: ['id', 'projectId', 'dueDate'] },
+      { name: 'Dependency', persistsWithoutDTU: true, storageDomain: 'projects', requiredFields: ['fromTaskId', 'toTaskId'] },
+    ],
+    engines: [
+      { name: 'cpm', description: 'Computes critical path', trigger: 'on_demand' },
+    ],
+    pipelines: [{ name: 'plan-execute-deliver', steps: ['plan', 'assign', 'execute', 'deliver'], engines: ['cpm'] }],
+    acceptanceCriteria: ['Task CRUD', 'Milestone tracking', 'CPM critical path'],
+    status: 'in_progress',
+  },
+  {
+    order: 153, lensId: 'board', name: 'Board', rationale: 'Board / card / lane / workflow / label / sprint. Merges into whiteboard; standalone today.',
+    dependsOn: [], incumbents: ['Trello', 'Jira Boards', 'Notion Boards'],
+    artifacts: [
+      { name: 'Board', persistsWithoutDTU: true, storageDomain: 'board', requiredFields: ['id', 'name', 'lanes'] },
+      { name: 'Card', persistsWithoutDTU: true, storageDomain: 'board', requiredFields: ['id', 'boardId', 'laneId', 'title'] },
+      { name: 'Sprint', persistsWithoutDTU: true, storageDomain: 'board', requiredFields: ['id', 'boardId', 'startsAt'] },
+    ],
+    engines: [
+      { name: 'workflow-engine', description: 'Enforces lane transitions', trigger: 'automatic' },
+    ],
+    pipelines: [{ name: 'plan-do-review', steps: ['add-card', 'pull-into-progress', 'review', 'done'], engines: ['workflow-engine'] }],
+    acceptanceCriteria: ['Board CRUD', 'Card transitions', 'Sprint cycle'],
+    status: 'in_progress',
+  },
+  {
+    order: 154, lensId: 'goals', name: 'Goals', rationale: 'Goal / challenge / milestone / achievement / progress. Standalone today.',
+    dependsOn: [], incumbents: ['OKR Tracker', 'Lattice', 'WorkBoard'],
+    artifacts: [
+      { name: 'Goal', persistsWithoutDTU: true, storageDomain: 'goals', requiredFields: ['id', 'title', 'target'] },
+      { name: 'Challenge', persistsWithoutDTU: true, storageDomain: 'goals', requiredFields: ['id', 'goalId', 'description'] },
+      { name: 'Achievement', persistsWithoutDTU: true, storageDomain: 'goals', requiredFields: ['goalId', 'unlockedAt'] },
+    ],
+    engines: [
+      { name: 'progress-tracker', description: 'Tracks per-goal progress', trigger: 'automatic' },
+    ],
+    pipelines: [{ name: 'set-track-celebrate', steps: ['set-goal', 'track', 'achieve', 'celebrate'], engines: ['progress-tracker'] }],
+    acceptanceCriteria: ['Goal CRUD', 'Progress tracking', 'Achievement unlocks'],
+    status: 'in_progress',
+  },
+  {
+    order: 155, lensId: 'alliance', name: 'Alliance', rationale: 'Coalition charter + agreement + member + governance. Merges into council; standalone today.',
+    dependsOn: [], incumbents: ['Concord-native — coalition substrate'],
+    artifacts: [
+      { name: 'AllianceProposal', persistsWithoutDTU: true, storageDomain: 'alliance', requiredFields: ['id', 'parties', 'terms'] },
+      { name: 'Charter', persistsWithoutDTU: true, storageDomain: 'alliance', requiredFields: ['id', 'allianceId', 'rules'] },
+      { name: 'AllianceMember', persistsWithoutDTU: true, storageDomain: 'alliance', requiredFields: ['allianceId', 'memberId', 'role'] },
+    ],
+    engines: [
+      { name: 'governance-engine', description: 'Enforces governance rules', trigger: 'automatic' },
+    ],
+    pipelines: [{ name: 'propose-form-govern', steps: ['propose', 'sign-charter', 'admit-members', 'govern'], engines: ['governance-engine'] }],
+    acceptanceCriteria: ['Proposal CRUD', 'Charter management', 'Member roles'],
+    status: 'in_progress',
+  },
+  {
+    order: 156, lensId: 'genesis', name: 'Genesis', rationale: 'Emergent identity + birth event + lineage + legendary skill. Merges into world; standalone today.',
+    dependsOn: [], incumbents: ['Concord-native — emergent identity substrate'],
+    artifacts: [
+      { name: 'EmergentIdentity', persistsWithoutDTU: true, storageDomain: 'genesis', requiredFields: ['id', 'name', 'lineage'] },
+      { name: 'BirthEvent', persistsWithoutDTU: true, storageDomain: 'genesis', requiredFields: ['identityId', 'at'] },
+      { name: 'LegendarySkill', persistsWithoutDTU: true, storageDomain: 'genesis', requiredFields: ['identityId', 'skillId', 'unlockedAt'] },
+    ],
+    engines: [
+      { name: 'identity-namer', description: 'Names emergents on birth', trigger: 'automatic' },
+    ],
+    pipelines: [{ name: 'birth-name-record', steps: ['observe-birth', 'name', 'record-lineage', 'feed'], engines: ['identity-namer'] }],
+    acceptanceCriteria: ['Identity CRUD', 'Birth feed', 'Legendary unlocks'],
+    status: 'in_progress',
+  },
+  {
+    order: 157, lensId: 'research', name: 'Research', rationale: 'Paper / dataset / experiment / citation / review. Merges into paper; standalone today.',
+    dependsOn: [], incumbents: ['Zotero', 'Semantic Scholar', 'Connected Papers'],
+    artifacts: [
+      { name: 'ResearchPaper', persistsWithoutDTU: true, storageDomain: 'research', requiredFields: ['id', 'title', 'authors'] },
+      { name: 'Dataset', persistsWithoutDTU: true, storageDomain: 'research', requiredFields: ['id', 'rows', 'schema'] },
+      { name: 'PeerReview', persistsWithoutDTU: true, storageDomain: 'research', requiredFields: ['paperId', 'reviewerId', 'verdict'] },
+    ],
+    engines: [
+      { name: 'citation-walker', description: 'Walks citation graph', trigger: 'on_demand' },
+    ],
+    pipelines: [{ name: 'cite-experiment-publish', steps: ['cite', 'experiment', 'review', 'publish'], engines: ['citation-walker'] }],
+    acceptanceCriteria: ['Paper CRUD', 'Dataset attach', 'Review flow'],
+    status: 'in_progress',
+  },
+  {
+    order: 158, lensId: 'answers', name: 'Answers', rationale: 'Answer / problem / equation / implementation. Merges into chat; standalone today.',
+    dependsOn: [], incumbents: ['StackOverflow', 'Quora', 'Wolfram Alpha'],
+    artifacts: [
+      { name: 'Problem', persistsWithoutDTU: true, storageDomain: 'answers', requiredFields: ['id', 'question'] },
+      { name: 'Answer', persistsWithoutDTU: true, storageDomain: 'answers', requiredFields: ['id', 'problemId', 'text'] },
+      { name: 'Equation', persistsWithoutDTU: true, storageDomain: 'answers', requiredFields: ['id', 'latex'] },
+    ],
+    engines: [
+      { name: 'solver', description: 'Solves equations', trigger: 'on_demand' },
+    ],
+    pipelines: [{ name: 'ask-solve-explain', steps: ['ask', 'parse', 'solve', 'explain'], engines: ['solver'] }],
+    acceptanceCriteria: ['Problem CRUD', 'Answer flow', 'Equation render'],
+    status: 'in_progress',
+  },
+  {
+    order: 159, lensId: 'all', name: 'All (mega-lens)', rationale: 'Cross-lens overview + summary. Merges into hub; standalone today.',
+    dependsOn: [], incumbents: ['Concord-native — meta lens'],
+    artifacts: [
+      { name: 'AllLensOverview', persistsWithoutDTU: true, storageDomain: 'all', requiredFields: ['lensId', 'count', 'lastActive'] },
+      { name: 'AllSummary', persistsWithoutDTU: true, storageDomain: 'all', requiredFields: ['kind', 'value', 'at'] },
+    ],
+    engines: [
+      { name: 'aggregator', description: 'Aggregates per-lens metrics', trigger: 'automatic' },
+    ],
+    pipelines: [{ name: 'observe-roll-render', steps: ['observe', 'roll-up', 'render'], engines: ['aggregator'] }],
+    acceptanceCriteria: ['Overview render', 'Summary export'],
+    status: 'in_progress',
+  },
+  {
+    order: 160, lensId: 'black-market', name: 'Black Market', rationale: 'Gray listing + anon offer + reputation bond + escrow + audit. Merges into marketplace; standalone today.',
+    dependsOn: [], incumbents: ['LocalBitcoins', 'Hodl Hodl'],
+    artifacts: [
+      { name: 'GrayListing', persistsWithoutDTU: true, storageDomain: 'black-market', requiredFields: ['id', 'kind', 'price'] },
+      { name: 'AnonOffer', persistsWithoutDTU: true, storageDomain: 'black-market', requiredFields: ['id', 'listingId'] },
+      { name: 'Escrow', persistsWithoutDTU: true, storageDomain: 'black-market', requiredFields: ['id', 'amount', 'status'] },
+    ],
+    engines: [
+      { name: 'reputation-bond', description: 'Manages bonded reputation', trigger: 'automatic' },
+    ],
+    pipelines: [{ name: 'list-bond-settle', steps: ['list', 'bond', 'escrow', 'settle'], engines: ['reputation-bond'] }],
+    acceptanceCriteria: ['Listing CRUD', 'Escrow', 'Audit trail'],
+    status: 'in_progress',
+  },
+  {
+    order: 161, lensId: 'anon', name: 'Anon', rationale: 'Anonymous room + identity mask + provenance rule. Merges into security; standalone today.',
+    dependsOn: [], incumbents: ['Tor + IRC patterns'],
+    artifacts: [
+      { name: 'AnonymousRoom', persistsWithoutDTU: true, storageDomain: 'anon', requiredFields: ['id', 'rules'] },
+      { name: 'IdentityMask', persistsWithoutDTU: true, storageDomain: 'anon', requiredFields: ['userId', 'maskId'] },
+      { name: 'AnonMessage', persistsWithoutDTU: true, storageDomain: 'anon', requiredFields: ['roomId', 'maskId', 'text'] },
+    ],
+    engines: [
+      { name: 'mask-issuer', description: 'Issues per-room masks', trigger: 'on_demand' },
+    ],
+    pipelines: [{ name: 'enter-speak-leave', steps: ['enter', 'mask', 'speak', 'leave'], engines: ['mask-issuer'] }],
+    acceptanceCriteria: ['Room CRUD', 'Mask issuance', 'Provenance log'],
+    status: 'in_progress',
+  },
+  {
+    order: 162, lensId: 'timeline', name: 'Timeline', rationale: 'Timeline object + event node + span + replay session. Merges into temporal; standalone today.',
+    dependsOn: [], incumbents: ['Tiki-Toki', 'TimelineJS'],
+    artifacts: [
+      { name: 'TimelineObject', persistsWithoutDTU: true, storageDomain: 'timeline', requiredFields: ['id', 'title'] },
+      { name: 'EventNode', persistsWithoutDTU: true, storageDomain: 'timeline', requiredFields: ['id', 'timelineId', 'at'] },
+      { name: 'Span', persistsWithoutDTU: true, storageDomain: 'timeline', requiredFields: ['id', 'startsAt', 'endsAt'] },
+    ],
+    engines: [
+      { name: 'replay-engine', description: 'Replays events in order', trigger: 'on_demand' },
+    ],
+    pipelines: [{ name: 'compose-replay-share', steps: ['compose', 'replay', 'annotate', 'share'], engines: ['replay-engine'] }],
+    acceptanceCriteria: ['Timeline CRUD', 'Event node', 'Replay flow'],
+    status: 'in_progress',
+  },
+  {
+    order: 163, lensId: 'temporal', name: 'Temporal', rationale: 'Temporal assertion + diff record + causality chain + replay. Standalone today.',
+    dependsOn: [], incumbents: ['Concord-native — temporal substrate'],
+    artifacts: [
+      { name: 'TemporalAssertion', persistsWithoutDTU: true, storageDomain: 'temporal', requiredFields: ['id', 'fact', 'at'] },
+      { name: 'DiffRecord', persistsWithoutDTU: true, storageDomain: 'temporal', requiredFields: ['id', 'before', 'after'] },
+      { name: 'CausalityChain', persistsWithoutDTU: true, storageDomain: 'temporal', requiredFields: ['id', 'links'] },
+    ],
+    engines: [
+      { name: 'causality-walker', description: 'Walks causality chain', trigger: 'on_demand' },
+    ],
+    pipelines: [{ name: 'assert-diff-walk', steps: ['assert', 'diff', 'walk-cause', 'replay'], engines: ['causality-walker'] }],
+    acceptanceCriteria: ['Assertion log', 'Diff record', 'Causality chain'],
+    status: 'in_progress',
+  },
+  {
+    order: 164, lensId: 'fractal', name: 'Fractal', rationale: 'Structure + parameter set + render + animation + exploration. Standalone today.',
+    dependsOn: [], incumbents: ['Mandelbulber', 'Fragmentarium', 'Apophysis'],
+    artifacts: [
+      { name: 'FractalStructure', persistsWithoutDTU: true, storageDomain: 'fractal', requiredFields: ['id', 'kind'] },
+      { name: 'ParameterSet', persistsWithoutDTU: true, storageDomain: 'fractal', requiredFields: ['id', 'structureId', 'params'] },
+      { name: 'Render', persistsWithoutDTU: true, storageDomain: 'fractal', requiredFields: ['id', 'paramSetId', 'image'] },
+    ],
+    engines: [
+      { name: 'fractal-engine', description: 'Renders fractal at given params', trigger: 'on_demand' },
+    ],
+    pipelines: [{ name: 'param-render-export', steps: ['set-params', 'render', 'animate', 'export'], engines: ['fractal-engine'] }],
+    acceptanceCriteria: ['Structure CRUD', 'Param tweaker', 'Render export'],
+    status: 'in_progress',
+  },
+
+  // ── PHASES 165-190: Viewers + deprecated lenses ─────────────────
+  // These lenses ship working pages today even when scheduled to merge.
+  // Each entry lets the score-lenses gate count today's behaviour.
+  {
+    order: 165, lensId: 'eco', name: 'Eco (viewer)', rationale: 'Ecosystem health metrics + organism counts viewer. Merges into graph; standalone today.',
+    dependsOn: [], incumbents: ['Concord-native'],
+    artifacts: [
+      { name: 'EcoMetric', persistsWithoutDTU: true, storageDomain: 'eco', requiredFields: ['id', 'value', 'unit'] },
+      { name: 'EcoOrganism', persistsWithoutDTU: true, storageDomain: 'eco', requiredFields: ['type', 'count'] },
+    ],
+    engines: [{ name: 'eco-roller', description: 'Rolls metric values', trigger: 'automatic' }],
+    pipelines: [{ name: 'observe-roll-render', steps: ['observe', 'roll', 'render'], engines: ['eco-roller'] }],
+    acceptanceCriteria: ['Metric stream', 'Organism count'],
+    status: 'in_progress',
+  },
+  {
+    order: 166, lensId: 'meta', name: 'Meta (viewer)', rationale: 'Cross-domain meta-graph viewer. Merges into graph; standalone today.',
+    dependsOn: [], incumbents: ['Concord-native'],
+    artifacts: [
+      { name: 'MetaNode', persistsWithoutDTU: true, storageDomain: 'meta', requiredFields: ['id', 'kind'] },
+    ],
+    engines: [{ name: 'meta-walker', description: 'Walks meta graph', trigger: 'on_demand' }],
+    pipelines: [{ name: 'walk-render', steps: ['walk', 'classify', 'render'], engines: ['meta-walker'] }],
+    acceptanceCriteria: ['Meta render'],
+    status: 'in_progress',
+  },
+  {
+    order: 167, lensId: 'invariant', name: 'Invariant (viewer)', rationale: 'Invariant-status viewer. Merges into graph; standalone today.',
+    dependsOn: [], incumbents: ['Concord-native'],
+    artifacts: [
+      { name: 'Invariant', persistsWithoutDTU: true, storageDomain: 'invariant', requiredFields: ['id', 'name', 'status'] },
+    ],
+    engines: [{ name: 'invariant-checker', description: 'Checks each invariant', trigger: 'automatic' }],
+    pipelines: [{ name: 'check-render', steps: ['check', 'render', 'alert'], engines: ['invariant-checker'] }],
+    acceptanceCriteria: ['Invariant table', 'Pass/fail status'],
+    status: 'in_progress',
+  },
+  {
+    order: 168, lensId: 'news', name: 'News (deprecated)', rationale: 'News-feed surface; merges into whiteboard. Standalone today.',
+    dependsOn: [], incumbents: ['Reddit', 'HN', 'Feedly'],
+    artifacts: [
+      { name: 'NewsArticle', persistsWithoutDTU: true, storageDomain: 'news', requiredFields: ['id', 'title', 'source'] },
+    ],
+    engines: [{ name: 'aggregator', description: 'Aggregates feeds', trigger: 'scheduled' }],
+    pipelines: [{ name: 'fetch-rank-show', steps: ['fetch', 'rank', 'show'], engines: ['aggregator'] }],
+    acceptanceCriteria: ['Article CRUD', 'Source list'],
+    status: 'in_progress',
+  },
+  {
+    order: 169, lensId: 'docs', name: 'Docs (deprecated)', rationale: 'Doc browser; merges into whiteboard. Standalone today.',
+    dependsOn: [], incumbents: ['Notion', 'GoogleDocs'],
+    artifacts: [
+      { name: 'Doc', persistsWithoutDTU: true, storageDomain: 'docs', requiredFields: ['id', 'title', 'content'] },
+    ],
+    engines: [{ name: 'doc-renderer', description: 'Renders doc tree', trigger: 'on_demand' }],
+    pipelines: [{ name: 'browse-edit-export', steps: ['browse', 'edit', 'export'], engines: ['doc-renderer'] }],
+    acceptanceCriteria: ['Doc CRUD', 'Tree browse'],
+    status: 'in_progress',
+  },
+  {
+    order: 170, lensId: 'bio', name: 'Bio (deprecated)', rationale: 'Biology simulation; merges into sim. Standalone today.',
+    dependsOn: [], incumbents: ['NetLogo', 'BioModels'],
+    artifacts: [
+      { name: 'Organism', persistsWithoutDTU: true, storageDomain: 'bio', requiredFields: ['id', 'species', 'state'] },
+    ],
+    engines: [{ name: 'bio-sim', description: 'Simulates organism population', trigger: 'on_demand' }],
+    pipelines: [{ name: 'seed-simulate-analyze', steps: ['seed', 'simulate', 'analyze'], engines: ['bio-sim'] }],
+    acceptanceCriteria: ['Population sim', 'Trait tracking'],
+    status: 'in_progress',
+  },
+  {
+    order: 171, lensId: 'chem', name: 'Chem (deprecated)', rationale: 'Chemistry simulation; merges into sim. Standalone today.',
+    dependsOn: [], incumbents: ['Avogadro', 'PyMOL'],
+    artifacts: [
+      { name: 'Molecule', persistsWithoutDTU: true, storageDomain: 'chem', requiredFields: ['id', 'formula', 'smiles'] },
+    ],
+    engines: [{ name: 'reaction-sim', description: 'Simulates reaction', trigger: 'on_demand' }],
+    pipelines: [{ name: 'build-react-analyze', steps: ['build', 'react', 'analyze'], engines: ['reaction-sim'] }],
+    acceptanceCriteria: ['Molecule CRUD', 'Reaction sim'],
+    status: 'in_progress',
+  },
+  {
+    order: 172, lensId: 'physics', name: 'Physics (deprecated)', rationale: 'Physics simulation; merges into sim. Standalone today.',
+    dependsOn: [], incumbents: ['MATLAB', 'Mathematica'],
+    artifacts: [
+      { name: 'PhysicsScenario', persistsWithoutDTU: true, storageDomain: 'physics', requiredFields: ['id', 'system', 'params'] },
+    ],
+    engines: [{ name: 'integrator', description: 'Integrates equations of motion', trigger: 'on_demand' }],
+    pipelines: [{ name: 'set-integrate-plot', steps: ['set', 'integrate', 'plot'], engines: ['integrator'] }],
+    acceptanceCriteria: ['Scenario CRUD', 'Plot output'],
+    status: 'in_progress',
+  },
+  {
+    order: 173, lensId: 'math', name: 'Math (deprecated)', rationale: 'Math workbook; merges into sim. Standalone today.',
+    dependsOn: [], incumbents: ['Mathematica', 'SymPy', 'GeoGebra'],
+    artifacts: [
+      { name: 'MathExpr', persistsWithoutDTU: true, storageDomain: 'math', requiredFields: ['id', 'expr'] },
+    ],
+    engines: [{ name: 'evaluator', description: 'Evaluates symbolic expressions', trigger: 'on_demand' }],
+    pipelines: [{ name: 'enter-eval-plot', steps: ['enter', 'eval', 'plot'], engines: ['evaluator'] }],
+    acceptanceCriteria: ['Expr eval', 'Plot'],
+    status: 'in_progress',
+  },
+  {
+    order: 174, lensId: 'quantum', name: 'Quantum (deprecated)', rationale: 'Quantum circuit sim; merges into sim. Standalone today.',
+    dependsOn: [], incumbents: ['Qiskit', 'Cirq'],
+    artifacts: [
+      { name: 'QCircuit', persistsWithoutDTU: true, storageDomain: 'quantum', requiredFields: ['id', 'gates'] },
+    ],
+    engines: [{ name: 'circuit-sim', description: 'Simulates circuit', trigger: 'on_demand' }],
+    pipelines: [{ name: 'design-simulate-measure', steps: ['design', 'simulate', 'measure'], engines: ['circuit-sim'] }],
+    acceptanceCriteria: ['Circuit CRUD', 'Measurement'],
+    status: 'in_progress',
+  },
+  {
+    order: 175, lensId: 'neuro', name: 'Neuro (deprecated)', rationale: 'Neural sim; merges into sim. Standalone today.',
+    dependsOn: [], incumbents: ['NEST', 'Brian2'],
+    artifacts: [
+      { name: 'NeuralModel', persistsWithoutDTU: true, storageDomain: 'neuro', requiredFields: ['id', 'topology'] },
+    ],
+    engines: [{ name: 'neural-sim', description: 'Simulates spiking network', trigger: 'on_demand' }],
+    pipelines: [{ name: 'design-simulate-record', steps: ['design', 'simulate', 'record'], engines: ['neural-sim'] }],
+    acceptanceCriteria: ['Network CRUD', 'Spike record'],
+    status: 'in_progress',
+  },
+  {
+    order: 176, lensId: 'hypothesis', name: 'Hypothesis (deprecated)', rationale: 'Hypothesis tracker; merges into paper. Standalone today.',
+    dependsOn: [], incumbents: ['Concord-native'],
+    artifacts: [
+      { name: 'Hypothesis', persistsWithoutDTU: true, storageDomain: 'hypothesis', requiredFields: ['id', 'statement', 'status'] },
+    ],
+    engines: [{ name: 'hypothesis-mutator', description: 'Mutates hypothesis on evidence', trigger: 'automatic' }],
+    pipelines: [{ name: 'propose-test-update', steps: ['propose', 'test', 'update'], engines: ['hypothesis-mutator'] }],
+    acceptanceCriteria: ['Hypothesis CRUD', 'Status tracking'],
+    status: 'in_progress',
+  },
+  {
+    order: 177, lensId: 'inference', name: 'Inference (deprecated)', rationale: 'Inference workbench; merges into reasoning. Standalone today.',
+    dependsOn: [], incumbents: ['Concord-native'],
+    artifacts: [
+      { name: 'Inference', persistsWithoutDTU: true, storageDomain: 'inference', requiredFields: ['id', 'premises', 'conclusion'] },
+    ],
+    engines: [{ name: 'inference-engine', description: 'Derives conclusion from premises', trigger: 'on_demand' }],
+    pipelines: [{ name: 'state-derive-explain', steps: ['state', 'derive', 'explain'], engines: ['inference-engine'] }],
+    acceptanceCriteria: ['Inference CRUD'],
+    status: 'in_progress',
+  },
+  {
+    order: 178, lensId: 'metacognition', name: 'Metacognition (deprecated)', rationale: 'Metacognition tracking; merges into paper. Standalone today.',
+    dependsOn: [], incumbents: ['Concord-native'],
+    artifacts: [
+      { name: 'MetaThought', persistsWithoutDTU: true, storageDomain: 'metacognition', requiredFields: ['id', 'kind', 'content'] },
+    ],
+    engines: [{ name: 'meta-reflector', description: 'Reflects on thinking process', trigger: 'on_demand' }],
+    pipelines: [{ name: 'observe-reflect-revise', steps: ['observe', 'reflect', 'revise'], engines: ['meta-reflector'] }],
+    acceptanceCriteria: ['MetaThought CRUD'],
+    status: 'in_progress',
+  },
+  {
+    order: 179, lensId: 'metalearning', name: 'Metalearning (deprecated)', rationale: 'Meta-learning surface; merges into paper. Standalone today.',
+    dependsOn: [], incumbents: ['Concord-native'],
+    artifacts: [
+      { name: 'LearningGoal', persistsWithoutDTU: true, storageDomain: 'metalearning', requiredFields: ['id', 'topic', 'plan'] },
+    ],
+    engines: [{ name: 'progress-rolling', description: 'Rolls metalearning progress', trigger: 'automatic' }],
+    pipelines: [{ name: 'plan-learn-reflect', steps: ['plan', 'learn', 'reflect'], engines: ['progress-rolling'] }],
+    acceptanceCriteria: ['Goal CRUD', 'Progress'],
+    status: 'in_progress',
+  },
+  {
+    order: 180, lensId: 'reflection', name: 'Reflection (deprecated)', rationale: 'Reflection journal; merges into paper. Standalone today.',
+    dependsOn: [], incumbents: ['Day One', 'Reflect'],
+    artifacts: [
+      { name: 'ReflectionEntry', persistsWithoutDTU: true, storageDomain: 'reflection', requiredFields: ['id', 'date', 'text'] },
+    ],
+    engines: [{ name: 'pattern-detector', description: 'Detects patterns in entries', trigger: 'automatic' }],
+    pipelines: [{ name: 'write-detect-share', steps: ['write', 'detect', 'share'], engines: ['pattern-detector'] }],
+    acceptanceCriteria: ['Entry CRUD', 'Pattern surface'],
+    status: 'in_progress',
+  },
+  {
+    order: 181, lensId: 'attention', name: 'Attention (deprecated)', rationale: 'Attention allocation viewer; merges into paper. Standalone today.',
+    dependsOn: [], incumbents: ['Concord-native'],
+    artifacts: [
+      { name: 'AttentionAllocation', persistsWithoutDTU: true, storageDomain: 'attention', requiredFields: ['id', 'target', 'weight'] },
+    ],
+    engines: [{ name: 'attention-tracker', description: 'Tracks attention allocations', trigger: 'automatic' }],
+    pipelines: [{ name: 'observe-rank-render', steps: ['observe', 'rank', 'render'], engines: ['attention-tracker'] }],
+    acceptanceCriteria: ['Allocation log'],
+    status: 'in_progress',
+  },
+  {
+    order: 182, lensId: 'transfer', name: 'Transfer (deprecated)', rationale: 'Knowledge-transfer surface; merges into paper. Standalone today.',
+    dependsOn: [], incumbents: ['Concord-native'],
+    artifacts: [
+      { name: 'TransferEvent', persistsWithoutDTU: true, storageDomain: 'transfer', requiredFields: ['fromDomain', 'toDomain', 'at'] },
+    ],
+    engines: [{ name: 'transfer-tracker', description: 'Tracks knowledge transfers', trigger: 'automatic' }],
+    pipelines: [{ name: 'observe-link-render', steps: ['observe', 'link', 'render'], engines: ['transfer-tracker'] }],
+    acceptanceCriteria: ['Transfer log'],
+    status: 'in_progress',
+  },
+  {
+    order: 183, lensId: 'grounding', name: 'Grounding (deprecated)', rationale: 'Grounding-evidence viewer; merges into graph. Standalone today.',
+    dependsOn: [], incumbents: ['Concord-native'],
+    artifacts: [
+      { name: 'GroundingEvidence', persistsWithoutDTU: true, storageDomain: 'grounding', requiredFields: ['claimId', 'evidence'] },
+    ],
+    engines: [{ name: 'grounding-checker', description: 'Checks evidence-claim alignment', trigger: 'on_demand' }],
+    pipelines: [{ name: 'cite-check-render', steps: ['cite', 'check', 'render'], engines: ['grounding-checker'] }],
+    acceptanceCriteria: ['Evidence CRUD'],
+    status: 'in_progress',
+  },
+  {
+    order: 185, lensId: 'suffering', name: 'Suffering (deprecated)', rationale: 'Suffering signal viewer; merges into paper. Standalone today.',
+    dependsOn: [], incumbents: ['Concord-native'],
+    artifacts: [
+      { name: 'SufferingSignal', persistsWithoutDTU: true, storageDomain: 'suffering', requiredFields: ['userId', 'kind', 'severity'] },
+    ],
+    engines: [{ name: 'signal-tracker', description: 'Tracks signals + alerts', trigger: 'automatic' }],
+    pipelines: [{ name: 'observe-alert-resolve', steps: ['observe', 'alert', 'resolve'], engines: ['signal-tracker'] }],
+    acceptanceCriteria: ['Signal log', 'Alert flow'],
+    status: 'in_progress',
+  },
+  {
+    order: 186, lensId: 'organ', name: 'Organ (deprecated)', rationale: 'Organ system viewer; merges into paper. Standalone today.',
+    dependsOn: [], incumbents: ['Concord-native'],
+    artifacts: [
+      { name: 'OrganSystem', persistsWithoutDTU: true, storageDomain: 'organ', requiredFields: ['id', 'name', 'state'] },
+    ],
+    engines: [{ name: 'organ-monitor', description: 'Monitors organ state', trigger: 'automatic' }],
+    pipelines: [{ name: 'observe-render', steps: ['observe', 'classify', 'render'], engines: ['organ-monitor'] }],
+    acceptanceCriteria: ['Organ CRUD'],
+    status: 'in_progress',
+  },
+  {
+    order: 187, lensId: 'affect', name: 'Affect (deprecated)', rationale: 'Affect / sentiment viewer; merges into paper. Standalone today.',
+    dependsOn: [], incumbents: ['Concord-native'],
+    artifacts: [
+      { name: 'AffectReading', persistsWithoutDTU: true, storageDomain: 'affect', requiredFields: ['id', 'kind', 'intensity'] },
+    ],
+    engines: [{ name: 'affect-classifier', description: 'Classifies affect', trigger: 'on_demand' }],
+    pipelines: [{ name: 'sample-classify-render', steps: ['sample', 'classify', 'render'], engines: ['affect-classifier'] }],
+    acceptanceCriteria: ['Affect CRUD'],
+    status: 'in_progress',
+  },
+  {
+    order: 188, lensId: 'commonsense', name: 'Commonsense (deprecated)', rationale: 'Commonsense knowledge viewer; merges into graph. Standalone today.',
+    dependsOn: [], incumbents: ['Concord-native'],
+    artifacts: [
+      { name: 'CommonsenseFact', persistsWithoutDTU: true, storageDomain: 'commonsense', requiredFields: ['id', 'fact'] },
+    ],
+    engines: [{ name: 'fact-retriever', description: 'Retrieves matching facts', trigger: 'on_demand' }],
+    pipelines: [{ name: 'query-render', steps: ['query', 'rank', 'render'], engines: ['fact-retriever'] }],
+    acceptanceCriteria: ['Fact CRUD'],
+    status: 'in_progress',
+  },
+  {
+    order: 189, lensId: 'world-creator/anomalies', name: 'World-Creator Anomalies', rationale: 'Per-world anomaly viewer. Public counts + creator-gated resolve/dismiss. Merges into world; standalone today.',
+    dependsOn: [], incumbents: ['Concord-native'],
+    artifacts: [
+      { name: 'Anomaly', persistsWithoutDTU: true, storageDomain: 'world-creator', requiredFields: ['id', 'kind', 'worldId', 'status'] },
+      { name: 'Resolution', persistsWithoutDTU: true, storageDomain: 'world-creator', requiredFields: ['anomalyId', 'verdict', 'at'] },
+    ],
+    engines: [{ name: 'anomaly-detector', description: 'Detects anomalies per world', trigger: 'automatic' }],
+    pipelines: [{ name: 'detect-route-resolve', steps: ['detect', 'classify', 'route', 'resolve'], engines: ['anomaly-detector'] }],
+    acceptanceCriteria: ['Anomaly stream', 'Creator-gated resolution'],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 190: Game ─────────────────────────────────────────────
+  {
+    order: 190,
     lensId: 'game',
     name: 'Game',
     rationale: 'Gamification engine. Adds progression, achievements, and quests to all lenses.',

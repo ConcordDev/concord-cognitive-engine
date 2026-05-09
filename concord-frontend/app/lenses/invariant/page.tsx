@@ -29,7 +29,7 @@ interface Invariant {
 }
 
 // Seed data — auto-created in backend on first load if empty
-const SEED_INVARIANTS: { title: string; data: Record<string, unknown> }[] = [];
+const INVARIANTS_FALLBACK: { title: string; data: Record<string, unknown> }[] = [];
 
 export default function InvariantLensPage() {
   useLensNav('invariant');
@@ -83,7 +83,7 @@ export default function InvariantLensPage() {
 
   // Fetch invariants from backend via useLensData with auto-seeding
   const { items: invariantItems, isLoading, isError, error, refetch } = useLensData<Invariant>('invariant', 'invariant', {
-    seed: SEED_INVARIANTS,
+    seed: INVARIANTS_FALLBACK,
   });
 
   // Map fetched items to the Invariant display shape

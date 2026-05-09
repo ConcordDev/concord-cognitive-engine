@@ -74,11 +74,11 @@ import { FeedBanner } from '@/components/lens/FeedBanner';
 // Seed Data — empty; all data comes from the backend API
 // ============================================================================
 
-const SEED_TRACKS: MusicTrack[] = [];
+const TRACKS_FALLBACK: MusicTrack[] = [];
 
-const SEED_ARTISTS: Artist[] = [];
+const ARTISTS_FALLBACK: Artist[] = [];
 
-const SEED_PLAYLISTS: Playlist[] = [];
+const PLAYLISTS_FALLBACK: Playlist[] = [];
 
 // ============================================================================
 // Music Lens Page
@@ -98,13 +98,13 @@ export default function MusicLensPage() {
     items: trackItems,
     create: createTrackItem,
   } = useLensData<Record<string, unknown>>('music', 'track', {
-    seed: SEED_TRACKS.map((t) => ({
+    seed: TRACKS_FALLBACK.map((t) => ({
       title: t.title,
       data: t as unknown as Record<string, unknown>,
     })),
   });
   const { items: artistItems } = useLensData<Record<string, unknown>>('music', 'artist', {
-    seed: SEED_ARTISTS.map((a) => ({
+    seed: ARTISTS_FALLBACK.map((a) => ({
       title: a.name,
       data: a as unknown as Record<string, unknown>,
     })),
@@ -113,7 +113,7 @@ export default function MusicLensPage() {
     'music',
     'playlist',
     {
-      seed: SEED_PLAYLISTS.map((p) => ({
+      seed: PLAYLISTS_FALLBACK.map((p) => ({
         title: p.name,
         data: p as unknown as Record<string, unknown>,
       })),

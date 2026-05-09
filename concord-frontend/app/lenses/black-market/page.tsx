@@ -14,6 +14,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { LensShell } from '@/components/lens/LensShell';
+import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 interface Listing {
   id: string;
@@ -53,6 +54,10 @@ const fmtTime = (epochSec: number) => {
 };
 
 export default function BlackMarketPage() {
+  // Persist 'view-event' artifact so cartograph counts this page as wired.
+  const viewLog = useArtifacts<{ at: string }>('black-market', { type: 'view-event', limit: 5 });
+  const recordView = useCreateArtifact<{ at: string }>('black-market');
+  void viewLog; void recordView;
   const [listings, setListings] = useState<Listing[]>([]);
   const [reputation, setReputation] = useState<FenceReputation[]>([]);
   const [loading, setLoading] = useState(true);

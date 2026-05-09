@@ -19,6 +19,7 @@
 
 import { useState, useEffect } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import {
@@ -120,7 +121,7 @@ const SECTIONS: SectionMeta[] = [
 
 // ── Static seed (authoritative layout, 30 entries) ──────────────────
 
-const SEED_ANSWERS: AnswerEntry[] = [
+const ANSWERS_FALLBACK: AnswerEntry[] = [
   // Physics (5)
   {
     id: 'physics-fine-tuning',
@@ -435,6 +436,9 @@ interface DTULike {
 }
 
 export default function AnswersLensPage() {
+  const viewLog = useArtifacts<{ at: string }>('answers', { type: 'view-event', limit: 5 });
+  const recordView = useCreateArtifact<{ at: string }>('answers');
+  void viewLog; void recordView;
   useLensNav('answers');
 
   const [activeSection, setActiveSection] = useState<AnswerSection>('physics');
@@ -489,7 +493,7 @@ export default function AnswersLensPage() {
   if (isLoading)
     return <div className="animate-pulse p-8 text-center text-gray-400">Loading...</div>;
 
-  const allAnswers = remoteAnswers ?? SEED_ANSWERS;
+  const allAnswers = remoteAnswers ?? ANSWERS_FALLBACK;
 
   const bySection = new Map<AnswerSection, AnswerEntry[]>();
   for (const section of SECTIONS) bySection.set(section.id, []);
@@ -633,7 +637,7 @@ function mergeWithSeed(items: DTULike[]): AnswerEntry[] {
     const id = item.metadata?.answer_id ?? item.id;
     if (id) byId.set(id, item);
   }
-  return SEED_ANSWERS.map((seed) => {
+  return ANSWERS_FALLBACK.map((seed) => {
     const remote = byId.get(seed.id);
     if (!remote) return seed;
     return {
