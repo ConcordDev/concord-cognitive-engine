@@ -47,6 +47,9 @@ let _codebaseId: string | null = null;
 let _socket: Socket | null = null;
 let _repoRoot: string | null = null;
 const _diagsByFile = new Map<string, Diagnostic[]>();
+// URIs that received diagnostics in the previous run, so we can clear
+// them when a subsequent run produces zero findings for that file.
+let _lastRunUris = new Set<string>();
 
 function severityFor(s: Finding["severity"]): DiagnosticSeverity {
   switch (s) {
@@ -60,7 +63,12 @@ function severityFor(s: Finding["severity"]): DiagnosticSeverity {
 
 connection.onInitialize((params) => {
   _initOpts = (params.initializationOptions || {}) as InitOpts;
-  _repoRoot = params.workspaceFolders?.[0]?.uri.replace(/^file:\/\//, "") || params.rootUri || null;
+  // Strip `file://` from BOTH workspaceFolders and rootUri — clients that
+  // only send rootUri (no workspaceFolders) would otherwise produce
+  // malformed `file://file:///...` URIs in diagnostics + an invalid
+  // repoRoot in dx.register_codebase.
+  const rawRoot = params.workspaceFolders?.[0]?.uri || params.rootUri || null;
+  _repoRoot = rawRoot ? rawRoot.replace(/^file:\/\//, "") : null;
 
   return {
     capabilities: {
@@ -126,9 +134,20 @@ connection.onInitialized(async () => {
     _diagsByFile.set(uri, arr);
   });
   _socket.on("detector:run.complete", () => {
+    // Send fresh diagnostics for every URI that has findings this run.
+    const thisRunUris = new Set<string>();
     for (const [uri, list] of _diagsByFile.entries()) {
       void connection.sendDiagnostics({ uri, diagnostics: list });
+      thisRunUris.add(uri);
     }
+    // Clear stale diagnostics for files that had findings last run but
+    // none this run — otherwise old highlights persist after fixes.
+    for (const uri of _lastRunUris) {
+      if (!thisRunUris.has(uri)) {
+        void connection.sendDiagnostics({ uri, diagnostics: [] });
+      }
+    }
+    _lastRunUris = thisRunUris;
     _diagsByFile.clear();
   });
   _socket.on("repair:prophet.proposed", async (msg: { repairId: string; finding: Finding; fix: { description?: string; diff?: string } }) => {
