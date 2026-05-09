@@ -91,6 +91,17 @@ registerHeartbeat("fauna-spawner", {
   handler: runFaunaSpawner,
 });
 
+// Concordia Mount System Phase B4: care heartbeat. Backstop pass
+// applies decay to mount loyalty / hunger for offline mounts. Most
+// decay flows through the lazy-read path on `mounts.care_state`, so
+// this cycle is the safety net for mounts the player hasn't visited.
+// FF_MOUNT_CARE=0 turns the cycle into a no-op.
+import { runMountCareCycle } from "./emergent/mount-care-cycle.js";
+registerHeartbeat("mount-care-cycle", {
+  frequency: 60,
+  handler: runMountCareCycle,
+});
+
 // EvoEcosystem W3: spoiled inventory + expired buff sweep every 5 ticks.
 import { runEcoExpirySweep, applyConsumable, cookRecipe, getActiveEffects } from "./lib/ecosystem/cook-engine.js";
 registerHeartbeat("eco-expiry-sweep", {
@@ -9495,13 +9506,16 @@ async function runMacro(domain, name, input, ctx) {
     dtu_portability: new Set(["export", "validate", "import"]),
     // Phase 6c: discovery — read-only.
     discovery: new Set(["search", "facets", "trending"]),
-    // Concordia Mount System Phase B1+B2+B3 — species lookup + proximity
-    // browse + riding state machine + gear authoring + stat folding.
-    // Mutating macros are caller-scoped via ownership checks in the handler.
+    // Concordia Mount System Phase B1+B2+B3+B4 — species + riding +
+    // gear + care + evolution + mounted-combat overlay. All mutating
+    // macros caller-scoped via ownership checks in the handler.
     mounts: new Set([
       "list_species", "get_species", "get_gait", "list_mountable", "list_eligible_nearby",
       "tame", "mount", "dismount", "get_active_mount", "history",
       "validate_gear_recipe", "equip_gear", "unequip_gear", "compute_stats", "get_equipped_gear",
+      "feed", "groom", "rest", "care_state",
+      "evolution_state", "gain_xp",
+      "combat_overlay", "applied_profile",
     ]),
     // DX Platform Phase A1: billing — read-only macros for usage,
     // balance, history, current quota, and per-macro pricing. Plugin
