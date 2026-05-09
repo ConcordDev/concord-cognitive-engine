@@ -64,7 +64,9 @@ const SEVERITY_STYLE: Record<Severity, string> = {
 
 async function postLensRun<T>(domain: string, name: string, input: object): Promise<T> {
   const res = await api.post('/api/lens/run', { domain, name, input });
-  return res.data as T;
+  // Server wraps handler output under `result`; fall back to bare envelope
+  // for forward compat with handlers that already return at the top level.
+  return ((res.data?.result ?? res.data) as T);
 }
 
 export default function CodeQualityLensPage() {

@@ -1,4 +1,11 @@
-// Migration 121 — Drop dead tables from migration 009 (Phase 4).
+// Migration 142 — Drop dead tables from migration 009 (Phase 4).
+//
+// Renamed from 121_drop_dead_mig009.js — collided with 121_understanding_evolution.js
+// (which shipped first at 09277c4e). Same pattern as the 120→141 rename:
+// the debt-cleanup commit (257b72c3) silently took numbers already
+// occupied by the understanding wave. Re-numbered to 142. Idempotent
+// (DROP TABLE IF EXISTS), so envs already at 121 with this content safely
+// re-apply at 142 with no data effect.
 //
 // The brain-want-engine subsystem was superseded by the persona substrate
 // and affect engine. STATE.wants is now in-memory only; the original
@@ -19,7 +26,7 @@ export function up(db) {
     "spontaneous_user_prefs",
     "want_actions",
   ]);
-  if (!result.ok) console.warn("[migration 121]", result);
+  if (!result.ok) console.warn("[migration 142]", result);
 }
 
 export function down(_db) { /* forward-only — see _drop-with-rescue.js */ }

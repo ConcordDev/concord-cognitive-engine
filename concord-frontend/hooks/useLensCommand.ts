@@ -56,9 +56,22 @@ export function useLensCommand(commands: LensCommand[], options: UseLensCommandO
     [commands, lensId]
   );
 
+  // Reconcile on shape changes only, not on every action identity tick.
+  // Extracted from the dep array so the static dep-checker can see it.
+  const commandShapeKey = useMemo(
+    () =>
+      namespacedCommands
+        .map((c) => `${c.namespacedId}|${c.keys}|${c.description}|${c.enabled ?? true}|${c.global ?? false}`)
+        .join(','),
+    [namespacedCommands]
+  );
+
   useEffect(() => {
+    // Capture the ref-Map at effect-run time so the cleanup closes over
+    // the same Map instance even if the ref is reassigned later.
+    const liveMap = liveActions.current;
     namespacedCommands.forEach((cmd) => {
-      liveActions.current.set(cmd.namespacedId, cmd.action);
+      liveMap.set(cmd.namespacedId, cmd.action);
       registerShortcut({
         id: cmd.namespacedId,
         keys: cmd.keys,
@@ -67,23 +80,18 @@ export function useLensCommand(commands: LensCommand[], options: UseLensCommandO
         enabled: cmd.enabled ?? true,
         global: cmd.global ?? false,
         // Indirection so re-renders update the action without re-registering.
-        action: () => liveActions.current.get(cmd.namespacedId)?.(),
+        action: () => liveMap.get(cmd.namespacedId)?.(),
       });
     });
 
     const registeredIds = namespacedCommands.map((c) => c.namespacedId);
     return () => {
       registeredIds.forEach((id) => {
-        liveActions.current.delete(id);
+        liveMap.delete(id);
         unregisterShortcut(id);
       });
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    lensId,
-    // Reconcile on shape changes only, not on every action identity tick.
-    namespacedCommands.map((c) => `${c.namespacedId}|${c.keys}|${c.description}|${c.enabled ?? true}|${c.global ?? false}`).join(','),
-  ]);
+  }, [lensId, commandShapeKey, namespacedCommands, registerShortcut, unregisterShortcut]);
 
   // Keep liveActions in sync without re-registering.
   useEffect(() => {

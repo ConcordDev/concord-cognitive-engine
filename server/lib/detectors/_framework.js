@@ -162,7 +162,7 @@ export async function loadLensManifestMacros(root) {
   while ((m = blockRe.exec(c)) != null) {
     const domain = m[1];
     const actionsBlob = m[2];
-    const actionRe = /['"`]([a-zA-Z0-9_.\-]+)['"`]/g;
+    const actionRe = /['"`]([a-zA-Z0-9_.-]+)['"`]/g;
     let am;
     while ((am = actionRe.exec(actionsBlob)) != null) set.add(`${domain}.${am[1]}`);
   }

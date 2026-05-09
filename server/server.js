@@ -35241,15 +35241,31 @@ app.get("/api/lens/stats", (req, res) => {
 // Must be defined before wildcard :domain routes so Express doesn't match "run" as :domain
 app.post("/api/lens/run", async (req, res) => {
   try {
-    const { domain, action, ...rest } = req.body || {};
+    const body = req.body || {};
+    const { domain } = body;
+    // Accept both macro-style {domain, name, input} and legacy lens-action
+    // {domain, action, ...rest}. `name` and `action` are aliases.
+    const action = body.action || body.name;
+    const rest = body.input && typeof body.input === "object"
+      ? body.input
+      : (() => {
+          const { domain: _d, action: _a, name: _n, input: _i, ...r } = body;
+          return r;
+        })();
     if (!domain || !action) return res.status(400).json({ ok: false, error: "domain and action required" });
     const ctx = makeCtx(req);
-    // Check if there's a registered handler for this domain action
-    const handler = LENS_ACTIONS.get(`${domain}.${action}`);
-    if (handler) {
-      // Run the handler with a virtual artifact (no specific artifact for domain-level actions)
+    // Prefer LENS_ACTIONS (legacy lens-action style: registerLensAction(...)).
+    const lensHandler = LENS_ACTIONS.get(`${domain}.${action}`);
+    if (lensHandler) {
       const virtualArtifact = { id: null, domain, type: "domain_action", data: rest, meta: {} };
-      const result = await handler(ctx, virtualArtifact, rest);
+      const result = await lensHandler(ctx, virtualArtifact, rest);
+      return res.json({ ok: true, result });
+    }
+    // Fall back to MACROS (canonical macro registry: register(domain, name, ...)).
+    // Many domains (detectors, dtu, lens, scope, agents, etc.) only register
+    // here — the legacy LENS_ACTIONS path can't see them.
+    if (MACROS.get(domain)?.get(action)) {
+      const result = await runMacro(domain, action, rest, ctx);
       return res.json({ ok: true, result });
     }
     // AI-powered catch-all: route unregistered domain actions to utility brain

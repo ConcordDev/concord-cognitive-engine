@@ -1,4 +1,12 @@
-// Migration 120 — Drop dead tables from migration 006 (Phase 4).
+// Migration 141 — Drop dead tables from migration 006 (Phase 4).
+//
+// Renamed from 120_drop_dead_mig006.js — collided with 120_understandings.js
+// (which shipped first at 37178671, while this migration shipped later at
+// 257b72c3 and silently took the same number). The collision blocked
+// fresh-DB boot at the second 120 row with UNIQUE constraint failed:
+// schema_version.version. Re-numbered to 141 (next free after 140).
+// Idempotent (DROP TABLE IF EXISTS), so envs that already applied this
+// at version 120 will safely re-apply at 141 with no data effect.
 //
 // `dtu_embeddings` is superseded by the `embedding` column on `dtus`.
 // The migration 006 comment itself documents the death.
@@ -18,7 +26,7 @@ export function up(db) {
     "dtu_embeddings",
   ]);
   if (!result.ok) {
-    console.warn("[migration 120]", result);
+    console.warn("[migration 141]", result);
   }
 }
 

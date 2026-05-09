@@ -15,6 +15,7 @@ import { Box } from 'lucide-react';
 import ARPreview from '@/components/world-lens/ARPreview';
 import { api } from '@/lib/api/client';
 import { UtilityPageShell } from '@/components/shell/UtilityPageShell';
+import { LensShell } from '@/components/lens/LensShell';
 import { ds } from '@/lib/design-system';
 
 type ARPreviewDTU = Parameters<typeof ARPreview>[0]['dtuData'];
@@ -78,24 +79,26 @@ export default function ARPreviewPage() {
   }, [dtuId]);
 
   return (
-    <UtilityPageShell
-      icon={Box}
-      title="AR Preview"
-      subtitle={supported ? 'WebXR detected — tap-and-hold to place' : 'WebXR not available — static fallback'}
-      showBackButton
-      maxWidth="max-w-screen-lg"
-    >
-      {loading ? (
-        <div className={`${ds.panelBare} p-6 text-center text-sm text-slate-400`}>
-          Loading DTU…
-        </div>
-      ) : error || !dtuData ? (
-        <div className="rounded-lg border border-rose-500/40 bg-rose-950/30 p-4 text-sm text-rose-200">
-          {error ?? 'DTU not found'}
-        </div>
-      ) : (
-        <ARPreview dtuId={dtuId} dtuData={dtuData} supported={supported} />
-      )}
-    </UtilityPageShell>
+    <LensShell lensId="world" asMain={false}>
+      <UtilityPageShell
+        icon={Box}
+        title="AR Preview"
+        subtitle={supported ? 'WebXR detected — tap-and-hold to place' : 'WebXR not available — static fallback'}
+        showBackButton
+        maxWidth="max-w-screen-lg"
+      >
+        {loading ? (
+          <div className={`${ds.panelBare} p-6 text-center text-sm text-slate-400`}>
+            Loading DTU…
+          </div>
+        ) : error || !dtuData ? (
+          <div className="rounded-lg border border-rose-500/40 bg-rose-950/30 p-4 text-sm text-rose-200">
+            {error ?? 'DTU not found'}
+          </div>
+        ) : (
+          <ARPreview dtuId={dtuId} dtuData={dtuData} supported={supported} />
+        )}
+      </UtilityPageShell>
+    </LensShell>
   );
 }

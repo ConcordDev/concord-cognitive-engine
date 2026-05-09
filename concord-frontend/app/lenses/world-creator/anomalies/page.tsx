@@ -15,6 +15,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 
 interface Anomaly {
   id: string;
@@ -82,6 +83,7 @@ export default function AnomaliesPage() {
   };
 
   return (
+    <LensShell lensId="world-creator" asMain={false}>
     <main className="min-h-screen p-6 max-w-5xl mx-auto text-gray-100">
       <h1 className="text-2xl font-bold mb-2">Inventory anomaly review</h1>
       <p className="text-sm text-gray-400 mb-6">
@@ -185,5 +187,6 @@ export default function AnomaliesPage() {
         </ul>
       </section>
     </main>
+    </LensShell>
   );
 }

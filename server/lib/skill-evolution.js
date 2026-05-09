@@ -360,11 +360,11 @@ function composeNameContinuation(shape, revisionNum, seedBuf) {
   const family = fam ? ELEMENT_FAMILIES[fam] : new Set();
   const usedTokens = new Set();
   for (const r of shape.revisionHistory) {
-    for (const tok of String(r?.name_after || "").toLowerCase().split(/[\s_\-]+/)) {
+    for (const tok of String(r?.name_after || "").toLowerCase().split(/[\s_-]+/)) {
       usedTokens.add(tok);
     }
   }
-  for (const tok of shape.name.toLowerCase().split(/[\s_\-]+/)) usedTokens.add(tok);
+  for (const tok of shape.name.toLowerCase().split(/[\s_-]+/)) usedTokens.add(tok);
 
   const candidates = Array.from(family).filter(t => !usedTokens.has(t));
   if (candidates.length > 0) {
@@ -396,7 +396,7 @@ export async function composeLLMEvolution(recipe, levelAtRevision, description, 
     const prompt = buildLLMPrompt(recipe, levelAtRevision, description, history, envelope);
     const raw = await Promise.race([
       ctx.llmCall(prompt),
-      new Promise((_, rej) => setTimeout(() => rej(new Error("llm_timeout")), 8000)),
+      new Promise((_, rej) => { setTimeout(() => rej(new Error("llm_timeout")), 8000); }),
     ]);
     const parsed = parseLLMResponse(raw, envelope);
     if (!parsed) return envelope;
@@ -487,7 +487,7 @@ export function validateRevisionCoherence(recipe, evolution, history) {
 }
 
 function tokenize(s) {
-  return new Set(String(s || "").toLowerCase().split(/[\s_\-]+/).filter(Boolean));
+  return new Set(String(s || "").toLowerCase().split(/[\s_-]+/).filter(Boolean));
 }
 
 function nameTokenOverlap(a, b) {

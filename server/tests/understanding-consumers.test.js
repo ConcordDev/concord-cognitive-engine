@@ -206,7 +206,7 @@ describe("liveUnderstandingForSubject — UI surface helper", () => {
   it("returns the most recent live understanding for a subject", async () => {
     const u1 = parseUnderstanding({ subjectId: "topic_q", subjectKind: "dtu", claims: ["Old draft"] });
     saveUnderstanding(db, u1);
-    await new Promise((r) => setTimeout(r, 1100));
+    await new Promise((r) => { setTimeout(r, 1100); });
     const u2 = parseUnderstanding({ subjectId: "topic_q", subjectKind: "dtu", claims: ["Newer take"] });
     saveUnderstanding(db, u2);
 

@@ -227,7 +227,7 @@ export async function autoEvolveNpcSkills(db, npcId, ctx = {}) {
         const witnessedCurrent = witnessedMeta.current_name;
         if (witnessedCurrent && typeof witnessedCurrent === "string") {
           // Append a token from the witnessed name to the NPC's continuation.
-          const witnessedTokens = witnessedCurrent.split(/[\s_\-]+/);
+          const witnessedTokens = witnessedCurrent.split(/[\s_-]+/);
           const lastTok = witnessedTokens[witnessedTokens.length - 1];
           if (lastTok && !evolution.nameAfter.includes(lastTok)) {
             evolution.nameAfter = `${evolution.nameAfter}_${lastTok}`;

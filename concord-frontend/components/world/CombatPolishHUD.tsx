@@ -19,7 +19,7 @@
  * the user's asset systems.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { subscribe } from '@/lib/realtime/socket';
 
 interface CombatActorState {

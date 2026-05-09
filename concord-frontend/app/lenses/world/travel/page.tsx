@@ -19,6 +19,7 @@ import { Train } from 'lucide-react';
 import WorldTravel from '@/components/world-lens/WorldTravel';
 import { api } from '@/lib/api/client';
 import { UtilityPageShell } from '@/components/shell/UtilityPageShell';
+import { LensShell } from '@/components/lens/LensShell';
 import { ds } from '@/lib/design-system';
 
 type WorldEntry = NonNullable<Parameters<typeof WorldTravel>[0]['worlds']>[number];
@@ -135,11 +136,12 @@ export default function WorldTravelPage() {
   const bookmarkedWorlds = worlds.filter((w) => bookmarkIds.has(w.id));
 
   return (
-    <UtilityPageShell
-      icon={Train}
-      title="World Terminal"
-      subtitle="Travel between worlds · Bookmarks · Invites"
-    >
+    <LensShell lensId="world" asMain={false}>
+      <UtilityPageShell
+        icon={Train}
+        title="World Terminal"
+        subtitle="Travel between worlds · Bookmarks · Invites"
+      >
       {loading ? (
         <div className={`${ds.panelBare} p-6 text-center text-sm text-slate-400`}>
           Loading worlds…
@@ -160,6 +162,7 @@ export default function WorldTravelPage() {
           onDeclineInvite={handleDeclineInvite}
         />
       )}
-    </UtilityPageShell>
+      </UtilityPageShell>
+    </LensShell>
   );
 }

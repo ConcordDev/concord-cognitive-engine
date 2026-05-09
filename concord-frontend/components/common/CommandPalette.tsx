@@ -110,13 +110,13 @@ export function CommandPalette({ isOpen: isOpenProp, onClose }: CommandPalettePr
   const setStoreOpen = useUIStore((s) => s.setCommandPaletteOpen);
   const isControlled = isOpenProp !== undefined;
   const isOpen = isControlled ? isOpenProp : storeIsOpen;
-  const setOpen = (next: boolean) => {
+  const setOpen = useCallback((next: boolean) => {
     if (isControlled) {
       if (!next) onClose?.();
     } else {
       setStoreOpen(next);
     }
-  };
+  }, [isControlled, onClose, setStoreOpen]);
 
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);

@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { getLensById } from '@/lib/lens-registry';
+import { LensShell } from '@/components/lens/LensShell';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -184,6 +185,8 @@ export default function SubLensPage() {
   const parentDisplay = parentEntry?.name || formatParentName(parent);
 
   return (
+    // eslint-disable-next-line lensManifest/lens-shell-id-matches-path -- dynamic route: lensId is the [parent] segment at runtime, not a string literal.
+    <LensShell lensId={parent} asMain={false}>
     <div data-lens-theme={parent} className="px-3 py-4 sm:p-6 space-y-6">
       {/* ── Breadcrumb Header ─────────────────────────── */}
       <header className="space-y-3">
@@ -424,5 +427,6 @@ export default function SubLensPage() {
         )}
       </section>
     </div>
+    </LensShell>
   );
 }

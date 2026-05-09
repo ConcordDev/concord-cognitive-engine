@@ -45,9 +45,9 @@ function makeFakeDb() {
     if (sql.startsWith("INSERT INTO npc_legacies")) {
       const [id, npcId, worldId, cause, lastWords, tombX, tombZ, faction, archetype] = args;
       // UNIQUE on npc_id
-      for (const r of tables.npc_legacies.values()) if (r.npc_id === npcId) {
+      for (const r of tables.npc_legacies.values()) {if (r.npc_id === npcId) {
         const err = new Error("UNIQUE constraint failed: npc_legacies.npc_id"); throw err;
-      }
+      }}
       tables.npc_legacies.set(id, {
         id, npc_id: npcId, world_id: worldId,
         died_at: Math.floor(Date.now() / 1000),

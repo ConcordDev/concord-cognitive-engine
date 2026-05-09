@@ -70,7 +70,6 @@ export function useLensRealtime(
     return () => {
       unsubs.forEach((u) => u());
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventKey, lensId, onlyWhenActive]);
 
   // Join/leave rooms.

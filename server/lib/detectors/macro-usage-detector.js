@@ -20,9 +20,9 @@ import {
 } from "./_framework.js";
 import { loadAggregated, MACRO_LIVE_WINDOW_DAYS } from "./macro-telemetry.js";
 
-const REGISTER_RE = /register\s*\(\s*['"`]([a-zA-Z0-9_-]+)['"`]\s*,\s*['"`]([a-zA-Z0-9_.\-]+)['"`]/g;
-const RUN_MACRO_RE = /runMacro\s*\(\s*['"`]([a-zA-Z0-9_-]+)['"`]\s*,\s*['"`]([a-zA-Z0-9_.\-]+)['"`]/g;
-const LENS_RUN_BODY_RE = /domain\s*:\s*['"`]([a-zA-Z0-9_-]+)['"`]\s*,\s*name\s*:\s*['"`]([a-zA-Z0-9_.\-]+)['"`]/g;
+const REGISTER_RE = /register\s*\(\s*['"`]([a-zA-Z0-9_-]+)['"`]\s*,\s*['"`]([a-zA-Z0-9_.-]+)['"`]/g;
+const RUN_MACRO_RE = /runMacro\s*\(\s*['"`]([a-zA-Z0-9_-]+)['"`]\s*,\s*['"`]([a-zA-Z0-9_.-]+)['"`]/g;
+const LENS_RUN_BODY_RE = /domain\s*:\s*['"`]([a-zA-Z0-9_-]+)['"`]\s*,\s*name\s*:\s*['"`]([a-zA-Z0-9_.-]+)['"`]/g;
 
 export async function runMacroUsageDetector({ root, opts = {} } = {}) {
   const t0 = Date.now();
