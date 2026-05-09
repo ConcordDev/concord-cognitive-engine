@@ -401,6 +401,17 @@ registerHeartbeat("personal-beat-scheduler", {
   handler: runPersonalBeatScheduler,
 });
 
+// Phase 4a: NPC daily routines. Every 5 ticks (~75s) advances NPC
+// schedules — sleep/train/craft/gather/trade/commune/socialize/patrol.
+// Generates today's schedule lazily (deterministic from
+// sha1(npc_id+day_seed+preoccupation_signature)) and writes embodied
+// signals (Layer 7) per activity. Kill-switch: CONCORD_NPC_ROUTINES=0.
+import { runNpcRoutineCycle } from "./emergent/npc-routine-cycle.js";
+registerHeartbeat("npc-routine-cycle", {
+  frequency: 5,
+  handler: runNpcRoutineCycle,
+});
+
 // Layer 13: NPC-initiated conversations. Every 8 ticks (~2 min) scans each
 // active world for cooldown-elapsed NPC pairs, generates a grounded opener
 // (deterministic by default; LLM-enhanced via CONCORD_NPC_DIALOGUE_LLM=true),

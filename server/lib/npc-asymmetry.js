@@ -248,6 +248,19 @@ export async function refreshFactionPreoccupations(db, factionId, newPhase) {
     });
     refreshed++;
   }
+
+  // Phase 4a — cascade into NPC routines: a phase change visibly reshapes
+  // every NPC's daily schedule. Best-effort, never blocks.
+  try {
+    const routines = await import("./npc-routines.js");
+    if (routines?.regenerateSchedulesForFaction) {
+      routines.regenerateSchedulesForFaction(db, factionId, {
+        kind: "faction_phase",
+        narrative: picked.template,
+      });
+    }
+  } catch { /* npc_schedules table may be absent on minimal builds */ }
+
   return { ok: true, refreshed };
 }
 

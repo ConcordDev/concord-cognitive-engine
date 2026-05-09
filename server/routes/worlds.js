@@ -921,6 +921,19 @@ export default function createWorldsRouter({ requireAuth, db }) {
         }
       } catch { /* beat realisation best-effort */ }
 
+      // Phase 4a: pull current activity from npc_routine_state so the
+      // dialogue prompt reflects what the NPC is doing right now. State
+      // attached as a synthetic field; downstream LLM-prompt builders read
+      // it without changing their schema.
+      try {
+        const routines = await import("../lib/npc-routines.js");
+        const active = routines.getActiveRoutine?.(db, npcId);
+        if (active) {
+          state.current_activity = active.activity_kind;
+          state.current_location_kind = active.location_kind;
+        }
+      } catch { /* routines table optional */ }
+
       // 2. Player reputation
       const reputation = getWorldReputation(db, worldId, playerId);
 
