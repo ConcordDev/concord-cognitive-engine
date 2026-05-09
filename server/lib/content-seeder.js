@@ -378,7 +378,10 @@ export function seedContent({ db = null } = {}) {
 
   // Hand-authored side quests — each is its own file under content/quests/
   // and may have a paired authored dialogue tree under content/dialogues/.
-  for (const sideFile of ["quests/kael-torchlight.json"]) {
+  for (const sideFile of [
+    "quests/kael-torchlight.json",
+    "quests/first-day-arc.json",
+  ]) {
     const side = readJSON(sideFile);
     if (Array.isArray(side)) results.quests += seedQuestFile(side);
   }
