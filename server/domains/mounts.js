@@ -1,14 +1,11 @@
 // server/domains/mounts.js
 //
-// Concordia Procedural Mount System — read-only domain surface.
+// Concordia Procedural Mount System — domain surface.
 //
-// B1 (this commit): list_species, get_species, get_gait, list_mountable,
-//                   list_eligible_nearby
-// B2 will add: tame, mount, dismount, get_active_mount
+// B1: list_species, get_species, get_gait, list_mountable, list_eligible_nearby
+// B2 (this commit): tame, mount, dismount, get_active_mount, mount_history
 // B3 will add: author_gear, equip_gear, unequip_gear, compute_stats
 // B4 will add: feed, groom, evolve, care_state
-//
-// All B1 macros are pure reads — safe to put in `publicReadDomains`.
 
 import {
   listMountableSpecies,
@@ -16,6 +13,14 @@ import {
   getGaitProfile,
   listMountableCompanionsForOwner,
 } from "../lib/ecosystem/mount-eligibility.js";
+import {
+  tameForMount,
+  mount as mountAction,
+  dismount as dismountAction,
+  getActiveMountPayload,
+  listMountHistory,
+} from "../lib/companions-mount.js";
+import { getFlag } from "../lib/feature-flags.js";
 
 export default function registerMountMacros(register) {
   // mount.list_species — full mount_species table for the lens picker.
@@ -100,4 +105,75 @@ export default function registerMountMacros(register) {
       return { ok: false, reason: err.message };
     }
   }, { note: "mountable creatures within radius around (x, z) in a world" });
+
+  // ---------- B2: taming + riding ----------
+
+  // mounts.tame — wraps companions.attemptTame with mount-eligibility flip.
+  // Returns { ok, companionId, mountEligible, speciesId, successProbability }.
+  register("mounts", "tame", async (ctx, input = {}) => {
+    if (!getFlag("FF_MOUNTS_RIDING", 1)) return { ok: false, reason: "feature_disabled" };
+    const db = ctx?.db;
+    const userId = ctx?.actor?.userId || ctx?.userId;
+    if (!db) return { ok: false, reason: "no_db" };
+    if (!userId) return { ok: false, reason: "no_user" };
+    if (!input.creatureId) return { ok: false, reason: "missing_creature_id" };
+    return tameForMount(db, {
+      ownerId: userId,
+      creatureId: input.creatureId,
+      creatureName: input.creatureName,
+      worldId: input.worldId,
+      lureItem: input.lureItem,
+      tameSkill: input.tameSkill,
+    });
+  }, { note: "tame a creature; if mountable, flip mount_eligible=1" });
+
+  // mounts.mount — open mounted_instances ledger row + return seat offset.
+  // Server validates ownership + eligibility + one-active-per-world.
+  register("mounts", "mount", async (ctx, input = {}) => {
+    if (!getFlag("FF_MOUNTS_RIDING", 1)) return { ok: false, reason: "feature_disabled" };
+    const db = ctx?.db;
+    const userId = ctx?.actor?.userId || ctx?.userId;
+    if (!db) return { ok: false, reason: "no_db" };
+    if (!userId) return { ok: false, reason: "no_user" };
+    if (!input.companionId) return { ok: false, reason: "missing_companion_id" };
+    return mountAction(db, {
+      riderId: userId,
+      companionId: input.companionId,
+      worldId: input.worldId,
+    });
+  }, { note: "open a mounted_instances row, return seat offset + species" });
+
+  // mounts.dismount — idempotent close on the rider's active instance.
+  register("mounts", "dismount", async (ctx, input = {}) => {
+    if (!getFlag("FF_MOUNTS_RIDING", 1)) return { ok: false, reason: "feature_disabled" };
+    const db = ctx?.db;
+    const userId = ctx?.actor?.userId || ctx?.userId;
+    if (!db) return { ok: false, reason: "no_db" };
+    if (!userId) return { ok: false, reason: "no_user" };
+    return dismountAction(db, userId, input.worldId || "concordia-hub");
+  }, { note: "close the rider's active mounted_instance (idempotent)" });
+
+  // mounts.get_active_mount — full payload (instance + companion + species
+  // + gait + seat offset) for the MountedHUD on connect / reconnect.
+  register("mounts", "get_active_mount", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    const userId = ctx?.actor?.userId || ctx?.userId;
+    if (!db) return { ok: false, reason: "no_db" };
+    if (!userId) return { ok: false, reason: "no_user" };
+    const payload = getActiveMountPayload(db, userId, input.worldId || "concordia-hub");
+    if (!payload) return { ok: true, mounted: false };
+    return { ok: true, mounted: true, ...payload };
+  }, { note: "rider's active mount payload (HUD bootstrap)" });
+
+  // mounts.history — closed mounted_instances rows for the caller.
+  register("mounts", "history", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    const userId = ctx?.actor?.userId || ctx?.userId;
+    if (!db) return { ok: false, reason: "no_db" };
+    if (!userId) return { ok: false, reason: "no_user" };
+    return { ok: true, history: listMountHistory(db, userId, {
+      worldId: input.worldId || null,
+      limit: Math.max(1, Math.min(input.limit || 50, 200)),
+    }) };
+  }, { note: "rider's closed mount instances (recent-first)" });
 }
