@@ -4336,6 +4336,19 @@ if (db) {
   } catch (e) {
     console.warn("[Concord] Refusal field reload skipped:", e.message);
   }
+
+  // Concordia Procedural Mount System (Phase B1) — seed mount_species +
+  // mount_gait_profiles from server/seeds/mount_species.json. Idempotent
+  // (INSERT OR IGNORE), so re-running on startup is safe. Failure here
+  // does NOT block boot.
+  try {
+    const { seedMountSpecies } = await import("./lib/ecosystem/mount-species-seeder.js");
+    const r = seedMountSpecies(db);
+    if (r?.ok) structuredLog("info", "mount_species_seeded", { ...r.inserted, total: r.total });
+    else if (r?.reason) structuredLog("warn", "mount_species_seed_skipped", { reason: r.reason });
+  } catch (e) {
+    console.warn("[Concord] Mount species seed skipped:", e.message);
+  }
 }
 
 // ---- DTU Write-Through Store (persistent-first) ----
@@ -9371,6 +9384,14 @@ async function runMacro(domain, name, input, ctx) {
     dtu_portability: new Set(["export", "validate", "import"]),
     // Phase 6c: discovery — read-only.
     discovery: new Set(["search", "facets", "trending"]),
+    // Concordia Mount System Phase B1+B2+B3 — species lookup + proximity
+    // browse + riding state machine + gear authoring + stat folding.
+    // Mutating macros are caller-scoped via ownership checks in the handler.
+    mounts: new Set([
+      "list_species", "get_species", "get_gait", "list_mountable", "list_eligible_nearby",
+      "tame", "mount", "dismount", "get_active_mount", "history",
+      "validate_gear_recipe", "equip_gear", "unequip_gear", "compute_stats", "get_equipped_gear",
+    ]),
     // Governance: read-mostly + caller-driven write macros.
     governance: new Set([
       "open_proposal", "cast_vote", "tally", "resolve",
@@ -22858,6 +22879,13 @@ registerGovernanceMacros(register);
 // Phase 8 — Combat polish surface for the HUD.
 import registerCombatPolishMacros from "./domains/combat-polish.js";
 registerCombatPolishMacros(register);
+
+// Concordia Procedural Mount System Phase B1 — read-only macros for
+// mount species lookup + eligible-companion + nearby-creature browsing.
+// B2/B3/B4 will extend this domain with taming/riding/customization/care
+// macros. See lib/ecosystem/mount-eligibility.js + mount-species-seeder.
+import registerMountMacros from "./domains/mounts.js";
+registerMountMacros(register);
 
 // Phase 7 / T2 — Code substrate macros: routes / migrations / modules /
 // macros become DTUs under kind='code_artifact'. See lib/code-substrate/.
