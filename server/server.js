@@ -91,6 +91,15 @@ registerHeartbeat("fauna-spawner", {
   handler: runFaunaSpawner,
 });
 
+// Theme 2 (game-feel pass): boid steering for spawned fauna so creatures
+// flock/herd/scatter rather than sitting where the spawner placed them.
+// Frequency 4 (~60s) = visibly responsive without churning the DB.
+import { runCreatureFlockCycle } from "./emergent/creature-flock-cycle.js";
+registerHeartbeat("creature-flock-cycle", {
+  frequency: 4,
+  handler: runCreatureFlockCycle,
+});
+
 // EvoEcosystem W3: spoiled inventory + expired buff sweep every 5 ticks.
 import { runEcoExpirySweep, applyConsumable, cookRecipe, getActiveEffects } from "./lib/ecosystem/cook-engine.js";
 registerHeartbeat("eco-expiry-sweep", {
