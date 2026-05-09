@@ -455,6 +455,17 @@ registerHeartbeat("npc-perception-snapshot", {
   handler: runNpcPerceptionSnapshot,
 });
 
+// Sprint B Phase 11.4 — procgen settlement cycle. Every 240 ticks
+// (~60min) ensures every active procgen region has a populated 3-5
+// NPC settlement, and cascades decay when a region's drift alert
+// resolves. Pairs with lib/procgen-settlements.js + the existing
+// procgen-regions.js (Phase 5e).
+import { runProcgenSettlementCycle } from "./emergent/procgen-settlement-cycle.js";
+registerHeartbeat("procgen-settlement-cycle", {
+  frequency: 240,
+  handler: runProcgenSettlementCycle,
+});
+
 // Phase 4b: NPC living economy. Every 8 ticks (~2min, staggered behind
 // the routine cycle so most NPCs have arrived) NPCs at their workplaces
 // gather / craft / trade / consume. Every action writes to economy_flows;
@@ -9530,6 +9541,10 @@ async function runMacro(domain, name, input, ctx) {
     // recent_moves + get_relation; witness_next_move is the cross-
     // world signature quest's objective-completion macro.
     faction_strategy: new Set(["recent_moves", "get_relation", "witness_next_move"]),
+    // procgen (Sprint B Phase 11.4) — settlement NPC reads for the
+    // world page. The substrate populates via heartbeat; this is
+    // the read surface.
+    procgen: new Set(["npcs_for_world", "npcs_in_region"]),
     messaging: new Set(["status", "bindings", "connect", "verify", "messages"]),
     sandbox: new Set(["create", "status", "action", "list", "pause", "resume"]),
     collab: new Set(["comments", "revisions", "workspace", "edit-session", "create", "update", "delete", "join"]),
@@ -23237,6 +23252,12 @@ registerNpcLegacyMacros(register);
 // recent_moves / get_relation reads.
 import registerFactionStrategyMacros from "./domains/faction-strategy.js";
 registerFactionStrategyMacros(register);
+
+// Sprint B Phase 11.4 — procgen settlement NPC reads for the world
+// page. The substrate fills these via the procgen-settlement-cycle
+// heartbeat above; this domain is the player-facing read surface.
+import registerProcgenSettlementMacros from "./domains/procgen-settlements.js";
+registerProcgenSettlementMacros(register);
 
 // Concordia Procedural Mount System Phase B1 — read-only macros for
 // mount species lookup + eligible-companion + nearby-creature browsing.
