@@ -393,6 +393,22 @@ export function completeStep(questId, stepId) {
         else if (typeof globalThis.realtimeEmit === "function") globalThis.realtimeEmit("quest:completed", payload);
       } catch { /* realtime best-effort */ }
 
+      // Phase 3 — beat realisation. If this completion matches an open
+      // beat (subject_kind='quest', subject_id=quest.id), realise it so
+      // the player metric shifts + cascade marks the underlying
+      // forward-sim prediction realised. Best-effort, never blocks.
+      (async () => {
+        try {
+          const userId = quest.progress?.userId;
+          const db = globalThis._concordDB || globalThis.__CONCORD_DB__;
+          if (userId && db) {
+            const beats = await import("./personal-beat-scheduler.js");
+            const open = beats.findOpenBeatBySubject?.(db, userId, "quest", quest.id);
+            if (open?.id) await beats.realiseBeat(db, open.id, "realised");
+          }
+        } catch { /* beat realisation best-effort */ }
+      })();
+
       // Quest-level reward grant. Requires both a known userId on the quest
       // progress and a registered db reference (set at server boot via
       // setQuestRewardDB). Idempotent at the lib layer; safe to call on

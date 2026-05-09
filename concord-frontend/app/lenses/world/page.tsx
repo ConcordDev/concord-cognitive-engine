@@ -84,6 +84,13 @@ const EmergentEventFeed = dynamic(
     })),
   { ssr: false }
 );
+const PersonalBeatWidget = dynamic(
+  () =>
+    import('@/components/world/PersonalBeatWidget').then((m) => ({
+      default: m.PersonalBeatWidget,
+    })),
+  { ssr: false }
+);
 const LockOnController = dynamic(
   () =>
     import('@/components/world-lens/LockOnController').then((m) => ({
@@ -4125,6 +4132,7 @@ export default function WorldLensPage() {
               previously fired silently (NPC death, evo-promotion, refusal
               fields, weather rolls, agent insights, etc.) */}
           <EmergentEventFeed />
+          <PersonalBeatWidget />
 
           {/* Body-language overlay — surfaces combat:telegraph (server
               fires immediately before applyAttack resolves) so the player

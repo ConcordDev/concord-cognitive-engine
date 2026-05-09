@@ -390,6 +390,17 @@ registerHeartbeat("npc-marketplace-cycle", {
   handler: runNpcMarketplaceCycle,
 });
 
+// Phase 3: Personal Beat Scheduler. Every 60 ticks (~15 min) surfaces a
+// forward-sim prediction to each online user as an in-world beat through
+// the goddess HUD. Beat realisation cascades into the prediction +
+// shifts player metrics (concordia_alignment +0.05 on realised, refusal
+// debt +0.02 on rejected). Kill-switch: CONCORD_PERSONAL_BEATS=0.
+import { runPersonalBeatScheduler } from "./emergent/personal-beat-scheduler.js";
+registerHeartbeat("personal-beat-scheduler", {
+  frequency: 60,
+  handler: runPersonalBeatScheduler,
+});
+
 // Layer 13: NPC-initiated conversations. Every 8 ticks (~2 min) scans each
 // active world for cooldown-elapsed NPC pairs, generates a grounded opener
 // (deterministic by default; LLM-enhanced via CONCORD_NPC_DIALOGUE_LLM=true),
@@ -9234,6 +9245,9 @@ async function runMacro(domain, name, input, ctx) {
       "mentorship_list_for_student", "mentorship_list_for_mentor",
       "witness",
     ]),
+    // Phase 3: beats — read-only listing + caller-driven realisation. Each
+    // macro is scoped to the caller's own user_id by the macro handler.
+    beats: new Set(["list", "realise", "find_open_for_subject"]),
     // Phase 7 — Code substrate. Read-only macros for the code-DTU view.
     code: new Set(["dtu_for", "dtu_query", "cluster_for", "refresh"]),
   };
@@ -22669,6 +22683,12 @@ registerSkillEvolutionMacros(register);
 // transfer. See server/lib/{npc-marketplace,mentorship}.js.
 import registerKnowledgeTradeMacros from "./domains/knowledge-trade.js";
 registerKnowledgeTradeMacros(register);
+
+// Phase 3 — Personal beats. Three macros for the goddess HUD widget:
+// list / realise / find_open_for_subject. The scheduler heartbeat (above)
+// inserts beats; these macros let the player surface and resolve them.
+import registerBeatsMacros from "./domains/beats.js";
+registerBeatsMacros(register);
 
 // Phase 7 / T2 — Code substrate macros: routes / migrations / modules /
 // macros become DTUs under kind='code_artifact'. See lib/code-substrate/.

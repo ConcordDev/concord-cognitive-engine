@@ -911,6 +911,16 @@ export default function createWorldsRouter({ requireAuth, db }) {
         await asymmetry.seedNPCAsymmetry(db, { ...npc, ...state });
       } catch { /* asymmetry tables may be absent */ }
 
+      // Phase 3: if the player has an open beat targeting THIS NPC, talking
+      // to the NPC realises the beat. Best-effort.
+      try {
+        if (playerId) {
+          const beats = await import("../emergent/personal-beat-scheduler.js");
+          const open = beats.findOpenBeatBySubject?.(db, playerId, "npc", npcId);
+          if (open?.id) await beats.realiseBeat(db, open.id, "realised");
+        }
+      } catch { /* beat realisation best-effort */ }
+
       // 2. Player reputation
       const reputation = getWorldReputation(db, worldId, playerId);
 
