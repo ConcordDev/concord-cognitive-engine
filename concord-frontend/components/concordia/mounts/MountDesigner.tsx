@@ -17,7 +17,15 @@
 
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef, Suspense } from "react";
+import dynamic from "next/dynamic";
+import type { MountSpecies, MountGaitProfile, MountedFrame } from "@/lib/concordia/mounts/mount-types";
+
+// Three.js/R3F is heavy; lazy-load so the rest of the lens stays light.
+const MountPreviewCanvas = dynamic(
+  () => import("./MountPreviewCanvas").then((m) => m.default),
+  { ssr: false, loading: () => <span className="text-zinc-500">Loading 3D preview…</span> },
+);
 
 type Slot = "saddle" | "bridle" | "barding";
 
@@ -80,6 +88,8 @@ export function MountDesigner() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [stats, setStats] = useState<MountStats | null>(null);
   const [gear, setGear] = useState<EquippedGear | null>(null);
+  const [species, setSpecies] = useState<MountSpecies | null>(null);
+  const [gaitProfile, setGaitProfile] = useState<MountGaitProfile | null>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -108,6 +118,17 @@ export function MountDesigner() {
         ]);
         setStats(s);
         setGear(g.gear);
+        // Pull species + gait for the 3D preview pane.
+        if (s?.speciesId) {
+          try {
+            const [sp, gp] = await Promise.all([
+              runMacro<{ ok: boolean; species: MountSpecies }>("mounts", "get_species", { speciesId: s.speciesId }),
+              runMacro<{ ok: boolean; gait: MountGaitProfile }>("mounts", "get_gait", { speciesId: s.speciesId }),
+            ]);
+            if (sp?.species) setSpecies(sp.species);
+            if (gp?.gait) setGaitProfile(gp.gait);
+          } catch { /* preview is best-effort; render falls back to placeholder */ }
+        }
       } catch (e) {
         setErr((e as Error).message);
       }
@@ -142,13 +163,19 @@ export function MountDesigner() {
         </ul>
       </aside>
 
-      {/* Center pane: preview placeholder */}
+      {/* Center pane: 3D preview */}
       <section className="col-span-5 border-r border-zinc-800 pr-3">
         <h2 className="text-base font-semibold mb-2">Preview</h2>
-        <div className="aspect-video rounded bg-zinc-900 border border-zinc-800 grid place-items-center text-zinc-500">
-          {selectedId
-            ? <span>3D preview placeholder — full render lands in B4</span>
-            : <span>Select a mount</span>}
+        <div className="aspect-video rounded bg-zinc-950 border border-zinc-800 overflow-hidden">
+          {selectedId && species && gaitProfile ? (
+            <Suspense fallback={<div className="grid place-items-center h-full text-zinc-500">Loading 3D…</div>}>
+              <MountPreviewCanvas species={species} gait={gaitProfile} />
+            </Suspense>
+          ) : (
+            <div className="grid place-items-center h-full text-zinc-500">
+              {selectedId ? "Loading mount…" : "Select a mount"}
+            </div>
+          )}
         </div>
 
         {stats?.ok && stats.base && stats.effective && (
