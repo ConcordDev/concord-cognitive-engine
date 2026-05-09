@@ -108,7 +108,7 @@ export function CombatPolishHUD({ userId }: { userId: string | null }) {
 
         // Update local state from the event.
         const detail = ev.detail || {};
-        setState((prev) => {
+        setState((prev: CombatActorState | null) => {
           if (!prev) return prev;
           const next = { ...prev };
           switch (ev.eventKind) {
@@ -158,7 +158,7 @@ export function CombatPolishHUD({ userId }: { userId: string | null }) {
     if (!state) return;
     const isRocked = state.rocked_until_ms > Date.now();
     if (!isRocked) return;
-    const t = setInterval(() => setRockedTick((n) => n + 1), 100);
+    const t = setInterval(() => setRockedTick((n: number) => n + 1), 100);
     return () => clearInterval(t);
   }, [state, rockedTick]);
 
