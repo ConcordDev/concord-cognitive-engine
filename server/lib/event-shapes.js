@@ -177,6 +177,30 @@ export const EVENT_SHAPES = Object.freeze({
     required: ["id", "message", "severity"],
     optional: ["location", "generatedAt"],
   },
+
+  // ── Sprint B Phase 8 — combat juice events promoted from lenient ──
+  // Both events were emitted by the substrate but never had registered
+  // shapes; the audit pass exposed them via cartograph drift, and the
+  // combat-juice bridge subscribes to them now.
+
+  // DBZ-style stagger when a high-magnitude (≥30) hit projects through
+  // a building. Fires from routes/worlds.js#/combat/attack right after
+  // the env-multiplier step, post-cap. The frontend
+  // CombatStaggerCameraBridge consumes this for the camera punch-in.
+  "combat:stagger": {
+    required: ["attackerId", "targetId", "durationMs"],
+    optional: ["worldId", "buildingId", "structuralStress", "elementContrib"],
+  },
+
+  // Geo-Mod-light building state transitions. Fires from
+  // lib/embodied/skill-environment.js#applyStructuralStress when a
+  // building goes standing → damaged → collapsed. The
+  // BuildingCollapseBridge listens for the 'collapsed' transition
+  // specifically; the 'damaged' transition gets a smaller VFX cue.
+  "world:building-state": {
+    required: ["worldId", "buildingId", "state"],
+    optional: ["healthPct", "position", "structuralStress"],
+  },
 });
 
 /**

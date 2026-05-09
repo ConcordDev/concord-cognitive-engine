@@ -31,6 +31,15 @@
 
 import { useEffect } from 'react';
 import { subscribe } from '@/lib/realtime/socket';
+// Phase 8 add-ons: the ImpactFeedback layer exposes three global emit
+// functions the bridges call inline. ImpactFeedback itself is mounted
+// once at app/lenses/world/page.tsx; the emitters are no-ops until
+// then. See components/world/ImpactFeedback.tsx.
+import {
+  emitHitNumber,
+  emitScreenShake,
+  emitHitStop,
+} from '@/components/world/ImpactFeedback';
 
 interface CombatPolishEvent {
   id: string;
@@ -208,25 +217,53 @@ export function CombatJuiceBridge({ userId }: { userId: string | null }) {
         case 'combo_start':
           fireJuice('combat-hit', { magnitude: 10, targetId: ev.actorId });
           callAudio(ev.actorId, 'strike_hit', {});
+          // Phase 8 add-ons: hit-stop + screen shake + damage number.
+          // Damage estimate from event detail when present, else fallback by combo.
+          {
+            const damage = Number(ev.detail.magnitude) || Number(ev.detail.damage) || 12;
+            const element = String(ev.detail.element || 'physical') as 'physical';
+            emitHitNumber(Math.round(damage), element, false);
+            emitScreenShake(Math.min(10, Math.max(1, Math.round(damage / 10))));
+            emitHitStop(80, 'light');
+          }
           break;
         case 'combo_extend': {
           const combo = Number(ev.detail.combo) || 1;
-          if (combo >= 5) {
+          const isCrit = combo >= 5;
+          if (isCrit) {
             fireJuice('combat-crit', { magnitude: 30 + combo * 2, targetId: ev.actorId });
           } else {
             fireJuice('combat-hit', { magnitude: 12 + combo * 3, targetId: ev.actorId });
           }
           callAudio(ev.actorId, 'combo_chime', { combo, pitch_step: Math.min(12, combo) });
+          // Phase 8 add-ons: damage scales with combo; crit branch gets longer hit-stop + bigger shake.
+          {
+            const damage = Number(ev.detail.magnitude) || (isCrit ? 30 + combo * 4 : 12 + combo * 3);
+            const element = String(ev.detail.element || 'physical') as 'physical';
+            emitHitNumber(Math.round(damage), element, isCrit);
+            emitScreenShake(Math.min(10, Math.max(1, Math.round(damage / 10))));
+            emitHitStop(isCrit ? 120 : 80, isCrit ? 'heavy' : 'light');
+          }
           break;
         }
         case 'combo_finish':
           fireJuice('combat-kill', { magnitude: 50, targetId: ev.actorId });
           callAudio(ev.actorId, 'finisher_boom', { combo: ev.detail.combo });
+          // Phase 8: finisher gets the strongest juice — kill-tier hit-stop + max shake + crit number.
+          {
+            const damage = Number(ev.detail.magnitude) || 50;
+            const element = String(ev.detail.element || 'physical') as 'physical';
+            emitHitNumber(Math.round(damage), element, true);
+            emitScreenShake(10);
+            emitHitStop(220, 'kill');
+          }
           break;
         case 'parry':
         case 'parry_perfect':
           fireJuice('combat-block', { targetId: ev.actorId });
           callAudio(ev.actorId, ev.eventKind === 'parry_perfect' ? 'perfect_parry' : 'strike_hit', {});
+          // Phase 8: parry_perfect freezes the frame harder than a regular parry.
+          emitHitStop(ev.eventKind === 'parry_perfect' ? 140 : 60, ev.eventKind === 'parry_perfect' ? 'crit' : 'light');
           break;
         case 'dodge':
         case 'dodge_perfect':
@@ -237,6 +274,18 @@ export function CombatJuiceBridge({ userId }: { userId: string | null }) {
           const mag = Number(ev.detail.magnitude) || 0;
           fireJuice(mag > 50 ? 'combat-crit' : 'combat-hit', { magnitude: mag, targetId: ev.actorId });
           callAudio(ev.actorId, 'rocked_thud', { magnitude: mag });
+          // Phase 8 add-ons: rocked is the hit-reaction event — biggest perceptible feedback.
+          // Magnitude > 80 triggers death clip via dispatchHitReaction (knockback ragdoll).
+          {
+            const element = String(ev.detail.element || 'physical') as 'physical';
+            emitHitNumber(Math.round(mag), element, mag > 50);
+            emitScreenShake(Math.min(10, Math.max(3, Math.round(mag / 10))));
+            emitHitStop(mag > 80 ? 180 : mag > 50 ? 140 : 100, mag > 80 ? 'kill' : mag > 50 ? 'crit' : 'heavy');
+            // Knockback ragdoll on near-fatal hits — combat-clips.ts already has 'death'.
+            if (mag > 80) {
+              dispatchHitReaction(String(ev.detail.target_id || ev.actorId), 'crit');
+            }
+          }
           break;
         }
         case 'grapple_environmental':
@@ -245,6 +294,13 @@ export function CombatJuiceBridge({ userId }: { userId: string | null }) {
             targetId: String(ev.detail.target_id || ev.actorId),
           });
           callAudio(ev.actorId, 'grapple_slam', { surface: ev.detail.surface, damage: ev.detail.env_damage });
+          // Phase 8: environmental grapple = guaranteed crit feel — full kill-tier juice.
+          {
+            const dmg = Number(ev.detail.env_damage) || 30;
+            emitHitNumber(Math.round(dmg), 'physical', true);
+            emitScreenShake(8);
+            emitHitStop(160, 'crit');
+          }
           break;
         case 'gassed_out':
           if (ev.actorId === userId) callAudio(ev.actorId, 'gassed_wheeze', {});
@@ -384,6 +440,137 @@ export function CombatTimeDilationOverlay() {
   return null;
 }
 
+// ── Phase 8 add-on: weapon glow during combat:telegraph anticipation ────────
+
+/**
+ * Phase 8 add-on: when an attacker telegraphs a strike, the weapon
+ * mesh emits a ramp-up glow during the anticipationMs window. Pure
+ * CustomEvent dispatch — AvatarSystem3D's weapon-mesh listener
+ * (`concordia:weapon-glow`) reads it and tweaks the material
+ * `emissiveIntensity` for the duration. The substrate event already
+ * carries the timing window from combat-biomechanics.ts (anticipationMs
+ * scales with skill tier).
+ *
+ * If the attacker mesh isn't loaded yet (NPC outside view chunk), the
+ * dispatch is a no-op — the weapon-mesh listener filters by entityId.
+ */
+export function CombatTelegraphGlowBridge() {
+  useEffect(() => {
+    const off = subscribe('combat:telegraph' as Parameters<typeof subscribe>[0], (payload: unknown) => {
+      const ev = payload as {
+        attackerId?: string;
+        anticipationMs?: number;
+        severity?: number;
+        style?: string;
+        tier?: number;
+      };
+      if (!ev?.attackerId || !ev?.anticipationMs) return;
+      // Severity 1–10 → glow intensity 0.4–1.6 (0.4 baseline so even a
+      // light telegraph reads as "something is happening").
+      const intensity = 0.4 + Math.min(1.2, (Number(ev.severity) || 1) / 8);
+      window.dispatchEvent(new CustomEvent('concordia:weapon-glow', {
+        detail: {
+          entityId: ev.attackerId,
+          duration_ms: Math.max(60, Math.min(400, Number(ev.anticipationMs))),
+          intensity,
+          style: ev.style || 'default',
+        },
+      }));
+    });
+    return () => off?.();
+  }, []);
+  return null;
+}
+
+// ── Phase 8 add-on: post-stagger camera punch-in ────────────────────────────
+
+/**
+ * Phase 8 add-on: combat:stagger fires when a high-magnitude hit
+ * (≥30) projects through a building (DBZ-style). The substrate has
+ * the data (durationMs, structuralStress); the camera should punch
+ * in for the stagger window — slight zoom + roll toward the
+ * impacted building so the player perceives the world responding.
+ *
+ * Implemented as a CustomEvent the camera component
+ * (CameraControls / similar) consumes via `concordia:camera-punch`.
+ */
+export function CombatStaggerCameraBridge() {
+  useEffect(() => {
+    const off = subscribe('combat:stagger' as Parameters<typeof subscribe>[0], (payload: unknown) => {
+      const ev = payload as {
+        worldId?: string;
+        attackerId?: string;
+        targetId?: string;
+        buildingId?: string;
+        durationMs?: number;
+        structuralStress?: number;
+      };
+      if (!ev?.durationMs) return;
+      const dur = Math.max(400, Math.min(4000, Number(ev.durationMs)));
+      const stress = Math.max(0, Math.min(1, Number(ev.structuralStress) || 0.4));
+      window.dispatchEvent(new CustomEvent('concordia:camera-punch', {
+        detail: {
+          duration_ms: dur,
+          zoom: 1.05 + stress * 0.1, // 1.05–1.15× depending on impact strength
+          shake: stress * 6,         // pairs with screen-shake emitter
+          buildingId: ev.buildingId || null,
+          targetId: ev.targetId || null,
+        },
+      }));
+      // Also fire the screen-shake emitter directly for HUD-layer feedback —
+      // the camera punch is scene-camera; emitScreenShake is overlay-layer.
+      emitScreenShake(Math.max(4, Math.round(stress * 10)));
+    });
+    return () => off?.();
+  }, []);
+  return null;
+}
+
+// ── Phase 8 add-on: building collapse VFX on world:building-state ───────────
+
+/**
+ * Phase 8 add-on: when world:building-state transitions a building
+ * to 'collapsed', dispatch a CustomEvent that the world scene's
+ * BuildingCollapseVFX layer (mounted alongside the building meshes)
+ * consumes — gravity-fall on the mesh + dust particle burst at the
+ * impact point.
+ *
+ * The substrate emit at routes/worlds.js:2078 carries the
+ * buildingId + new state. We only react to the collapsed transition
+ * (the standing → damaged transition gets a smaller VFX cue handled
+ * by CombatVFXLayer).
+ */
+export function BuildingCollapseBridge() {
+  useEffect(() => {
+    const off = subscribe('world:building-state' as Parameters<typeof subscribe>[0], (payload: unknown) => {
+      const ev = payload as {
+        worldId?: string;
+        buildingId?: string;
+        state?: 'standing' | 'damaged' | 'collapsed';
+        position?: { x: number; y?: number; z: number };
+      };
+      if (!ev?.buildingId || ev.state !== 'collapsed') return;
+      window.dispatchEvent(new CustomEvent('concordia:building-collapse', {
+        detail: {
+          buildingId: ev.buildingId,
+          worldId: ev.worldId || null,
+          position: ev.position || null,
+          // Collapse animation duration (ms). The renderer should run
+          // gravity-fall + dust particles for this duration before
+          // unmounting the mesh (or freezing it at ground level).
+          duration_ms: 2000,
+        },
+      }));
+      // Big screen shake — a building falling within view is one of
+      // the strongest world-state signals the player will witness.
+      emitScreenShake(10);
+      emitHitStop(180, 'crit');
+    });
+    return () => off?.();
+  }, []);
+  return null;
+}
+
 // ── Convenience: mount everything ───────────────────────────────────────────
 
 export function CombatPolishLayer({ userId }: { userId: string | null }) {
@@ -394,6 +581,10 @@ export function CombatPolishLayer({ userId }: { userId: string | null }) {
       <CombatCameraDirector userId={userId} />
       <CombatVFXLayer userId={userId} />
       <CombatTimeDilationOverlay />
+      {/* Phase 8 Sprint-B add-ons */}
+      <CombatTelegraphGlowBridge />
+      <CombatStaggerCameraBridge />
+      <BuildingCollapseBridge />
     </>
   );
 }
