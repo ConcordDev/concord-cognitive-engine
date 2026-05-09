@@ -445,6 +445,15 @@ registerHeartbeat("season-cycle", {
   handler: runSeasonCycle,
 });
 
+// Phase 5a: Player land claims. Every 240 ticks (~1h) ticks maintenance
+// against bonds; expired claims revert to open territory. Kill-switch:
+// CONCORD_LAND_CLAIMS=0.
+import { runLandClaimsCycle } from "./emergent/land-claims-cycle.js";
+registerHeartbeat("land-claims-cycle", {
+  frequency: 240,
+  handler: runLandClaimsCycle,
+});
+
 // Layer 13: NPC-initiated conversations. Every 8 ticks (~2 min) scans each
 // active world for cooldown-elapsed NPC pairs, generates a grounded opener
 // (deterministic by default; LLM-enhanced via CONCORD_NPC_DIALOGUE_LLM=true),
@@ -9292,6 +9301,10 @@ async function runMacro(domain, name, input, ctx) {
     // Phase 3: beats — read-only listing + caller-driven realisation. Each
     // macro is scoped to the caller's own user_id by the macro handler.
     beats: new Set(["list", "realise", "find_open_for_subject"]),
+    // Phase 5a: land_claims — read-mostly + caller-driven write macros.
+    land_claims: new Set([
+      "claim", "invite", "topup", "claim_at", "can_act_in", "list_for_user",
+    ]),
     // Phase 7 — Code substrate. Read-only macros for the code-DTU view.
     code: new Set(["dtu_for", "dtu_query", "cluster_for", "refresh"]),
   };
@@ -22733,6 +22746,11 @@ registerKnowledgeTradeMacros(register);
 // inserts beats; these macros let the player surface and resolve them.
 import registerBeatsMacros from "./domains/beats.js";
 registerBeatsMacros(register);
+
+// Phase 5a — Land claims. claim / invite / topup / claim_at / can_act_in /
+// list_for_user macros for the world lens to interrogate the substrate.
+import registerLandClaimsMacros from "./domains/land-claims.js";
+registerLandClaimsMacros(register);
 
 // Phase 7 / T2 — Code substrate macros: routes / migrations / modules /
 // macros become DTUs under kind='code_artifact'. See lib/code-substrate/.
