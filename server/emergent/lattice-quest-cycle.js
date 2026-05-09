@@ -19,7 +19,8 @@
 // Returns { ok, scanned, spawned, skipped, reason? } never throws.
 
 import logger from "../logger.js";
-import { spawnQuestFromAlert } from "../lib/lattice-quest-composer.js";
+import { spawnQuestFromAlert, alertSignature } from "../lib/lattice-quest-composer.js";
+import { generateRegionFromAlert } from "../lib/procgen-regions.js";
 
 const MAX_QUESTS_PER_PASS = 6;
 const ELIGIBLE_SEVERITIES = new Set(["warning", "alert", "critical"]);
@@ -72,6 +73,12 @@ export async function runLatticeQuestCycle({ db, state, tickCount: _t } = {}) {
       if (r?.ok) {
         if (r.action === "inserted") {
           spawned++;
+          // Phase 5e: also spawn a procgen region. Best-effort; idempotent
+          // by signature so re-running won't duplicate.
+          try {
+            const sig = alertSignature(alert);
+            generateRegionFromAlert(db, { worldId, alert, signature: sig });
+          } catch { /* region spawn is best-effort */ }
           // Emit so the EmergentEventFeed can show it.
           try {
             if (globalThis?.__CONCORD_REALTIME__?.io) {

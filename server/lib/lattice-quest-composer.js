@@ -382,6 +382,20 @@ export function realiseLatticeBornQuest(db, questId, outcome = "completed") {
       SET realised_at = unixepoch(), realisation_outcome = ?
       WHERE quest_id = ? AND realised_at IS NULL
     `).run(outcome, questId);
+
+    // Phase 5e cascade: decay the procgen region this drift spawned.
+    // Best-effort, never blocks. Async dynamic import so this module
+    // doesn't cycle with procgen-regions.js.
+    (async () => {
+      try {
+        const row = db.prepare(`SELECT drift_alert_signature FROM lattice_born_quests WHERE quest_id = ?`).get(questId);
+        if (!row?.drift_alert_signature) return;
+        const region = db.prepare(`SELECT id FROM procgen_regions WHERE drift_alert_signature = ?`).get(row.drift_alert_signature);
+        if (!region?.id) return;
+        const procgen = await import("./procgen-regions.js");
+        procgen.decayRegion?.(db, region.id, "drift_resolved");
+      } catch { /* procgen tables optional */ }
+    })();
     return { ok: true };
   } catch (err) { return { ok: false, reason: "update_failed", error: err?.message }; }
 }
