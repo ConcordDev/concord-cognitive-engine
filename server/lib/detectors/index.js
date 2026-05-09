@@ -33,6 +33,11 @@ import { runHistoricalTrendDetector } from "./historical-trend-detector.js";
 import { runPredictiveGrowthDetector } from "./predictive-growth-detector.js";
 import { runArchitecturalHubDetector } from "./architectural-hub-detector.js";
 import { runConcordiaSubstrateDetector } from "./concordia-substrate-detector.js";
+import { runFakeDataDetector } from "./fake-data-detector.js";
+import { runResourceLeakDetector } from "./resource-leak-detector.js";
+import { runEnvConfigDriftDetector } from "./env-config-drift-detector.js";
+import { runObservabilityGapDetector } from "./observability-gap-detector.js";
+import { runAgentBudgetDetector } from "./agent-budget-detector.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -266,6 +271,62 @@ registerDetector({
   dataNeeds: ["db", "fs"],
   description: "Referential integrity + cross-phase invariants + distribution sanity for the world's data.",
   run: runConcordiaSubstrateDetector,
+});
+
+// Fake-data detector — catches mock/fake/stub/placeholder data living
+// in production paths, test mocks of production modules without
+// fixture-loaders, and TODO/FIXME markers that have outlived their
+// context. Closes the gap that allowed the CommandPalette test suite
+// to drift from its real component for multiple PRs.
+registerDetector({
+  id: "fake-data",
+  label: "FakeDataDetector",
+  consumers: ["code-quality", "repair-cortex"],
+  dataNeeds: ["fs"],
+  description: "Flags mock/fake/stub/placeholder data in production paths + test mocks of real modules.",
+  run: runFakeDataDetector,
+});
+
+// Category #2 — production resource leaks (setInterval without clear,
+// db.prepare in loops, listeners without remove, fs.open without close).
+registerDetector({
+  id: "resource-leak",
+  label: "ResourceLeakDetector",
+  consumers: ["code-quality", "repair-cortex"],
+  dataNeeds: ["fs"],
+  description: "Production resource leaks that surface only under sustained load.",
+  run: runResourceLeakDetector,
+});
+
+// Category #4 — env / config drift (hardcoded URLs, ports, timeouts).
+registerDetector({
+  id: "env-config-drift",
+  label: "EnvConfigDriftDetector",
+  consumers: ["code-quality", "repair-cortex"],
+  dataNeeds: ["fs"],
+  description: "Hardcoded URLs, magic ports, magic timeouts that should live in env.",
+  run: runEnvConfigDriftDetector,
+});
+
+// Category #7 — observability gaps in production paths.
+registerDetector({
+  id: "observability-gap",
+  label: "ObservabilityGapDetector",
+  consumers: ["code-quality", "repair-cortex"],
+  dataNeeds: ["fs"],
+  description: "Production paths missing try/catch, telemetry, error logging.",
+  run: runObservabilityGapDetector,
+});
+
+// Category #10 — AI/agent-specific risks (cost spirals, recursion,
+// LLM passthrough). New for the AI-native era.
+registerDetector({
+  id: "agent-budget",
+  label: "AgentBudgetDetector",
+  consumers: ["code-quality", "repair-cortex"],
+  dataNeeds: ["fs"],
+  description: "Unbounded agent loops, recursive LLM calls without caps, throttle-less heartbeats, output passthrough.",
+  run: runAgentBudgetDetector,
 });
 
 // Shared across modules so repair-cortex / Concordia / HUD see the same
