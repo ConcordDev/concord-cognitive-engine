@@ -45,7 +45,7 @@ interface LockEventData {
   level: number;
 }
 
-const SEED_LOCK_HISTORY: {
+const LOCK_HISTORY_FALLBACK: {
   title: string;
   data: Record<string, unknown>;
 }[] = [];
@@ -78,7 +78,7 @@ export default function LockLensPage() {
     refetch: refetch,
     create: addEvent,
   } = useLensData<LockEventData>('lock', 'lock-event', {
-    seed: SEED_LOCK_HISTORY,
+    seed: LOCK_HISTORY_FALLBACK,
   });
 
   const lockHistory = historyItems.map((item) => ({

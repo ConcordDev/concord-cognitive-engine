@@ -4,8 +4,9 @@ import { useState, useMemo, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
-import { Hash, ArrowRightLeft, X, BookOpen, AlertCircle } from 'lucide-react';
+import { Hash, ArrowRightLeft, X, BookOpen, AlertCircle, History } from 'lucide-react';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 
 /* ─── Refusal Algebra types ─── */
 interface AlgebraResult {
@@ -136,6 +137,26 @@ export default function RootLens() {
     setGlyphInput(dec2glyph || '');
   }, [dec2glyph, decInput]);
 
+  // Persist saved computations as 'computation' lens artifacts so the
+  // user can build a working notebook of glyph algebra.
+  const recent = useArtifacts<{
+    a: number; b: number; op: string; result: AlgebraResult;
+  }>('root', { type: 'computation', limit: 8 });
+  const createComputation = useCreateArtifact<{
+    a: number; b: number; op: string; result: AlgebraResult;
+  }>('root');
+
+  const saveResult = useCallback(() => {
+    const a = parseFloat(opA); const b = parseFloat(opB);
+    if (isNaN(a) || isNaN(b) || !opResult) return;
+    createComputation.mutate({
+      type: 'computation',
+      title: `${a} ${op} ${b} = ${opResult.numerical}`,
+      data: { a, b, op, result: opResult },
+      meta: { tags: ['root', 'glyph-algebra'], status: 'completed', visibility: 'private' },
+    });
+  }, [opA, opB, op, opResult, createComputation]);
+
   return (
     <LensShell lensId="root" asMain={false}>
       <ManifestActionBar />
@@ -239,8 +260,16 @@ export default function RootLens() {
 
           {opResult && (
             <div className="space-y-2">
-              <div className="text-sm text-gray-400">
-                <span className="text-gray-600">decimal: </span>{isFinite(opResult.decimal) ? opResult.decimal : '∞'}
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-sm text-gray-400">
+                  <span className="text-gray-600">decimal: </span>{isFinite(opResult.decimal) ? opResult.decimal : '∞'}
+                </div>
+                <button
+                  onClick={saveResult}
+                  className="text-[11px] px-2 py-1 bg-violet-700/40 hover:bg-violet-700/60 border border-violet-700 rounded text-violet-200 inline-flex items-center gap-1"
+                >
+                  <History className="w-3 h-3" /> Save to notebook
+                </button>
               </div>
               {showSemantic && (
                 <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
@@ -248,6 +277,18 @@ export default function RootLens() {
                   {opResult.semantic}
                 </motion.div>
               )}
+            </div>
+          )}
+          {recent.data?.artifacts && recent.data.artifacts.length > 0 && (
+            <div className="mt-4 border-t border-gray-800 pt-3">
+              <div className="text-[10px] uppercase tracking-wide text-gray-500 mb-1.5 inline-flex items-center gap-1">
+                <History className="w-3 h-3" /> Recent computations
+              </div>
+              <ul className="space-y-0.5 text-xs text-gray-400 font-mono">
+                {recent.data.artifacts.slice(0, 8).map((a) => (
+                  <li key={a.id} className="truncate">{a.title}</li>
+                ))}
+              </ul>
             </div>
           )}
         </section>

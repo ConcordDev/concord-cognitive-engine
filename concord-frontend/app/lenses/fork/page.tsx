@@ -30,7 +30,7 @@ interface ForkData {
   lastActivity: string;
 }
 
-const SEED_FORKS: {
+const FORKS_FALLBACK: {
   title: string;
   data: Record<string, unknown>;
 }[] = [];
@@ -43,7 +43,7 @@ export default function ForkLensPage() {
   const [showFeatures, setShowFeatures] = useState(true);
 
   const { items: forkItems, isLoading, isError: isError, error: error, refetch: refetch, create, update } = useLensData<ForkData>('fork', 'fork', {
-    seed: SEED_FORKS,
+    seed: FORKS_FALLBACK,
   });
 
   // Backend action wiring

@@ -27,7 +27,7 @@ interface SyncItem {
 }
 
 // Seed data for pending sync items
-const SEED_SYNC_ITEMS: {
+const SYNC_ITEMS_FALLBACK: {
   title: string;
   data: Record<string, unknown>;
 }[] = [];
@@ -71,7 +71,7 @@ export default function OfflineLensPage() {
     remove: removeSyncItem,
     refetch: refetchSync,
   } = useLensData<SyncItem>('offline', 'sync-item', {
-    seed: SEED_SYNC_ITEMS,
+    seed: SYNC_ITEMS_FALLBACK,
   });
 
   const runAction = useRunArtifact('offline');

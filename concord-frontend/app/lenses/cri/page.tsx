@@ -4,7 +4,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
+import { useRunArtifact, useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { motion } from 'framer-motion';
@@ -55,6 +55,9 @@ export default function CRILensPage() {
   const [showFeatures, setShowFeatures] = useState(true);
 
   const runAction = useRunArtifact('cri');
+  // Persist run results so the operator has an audit trail of CRI actions.
+  const cri_runs = useArtifacts<{ action: string; at: string }>('cri', { type: 'run', limit: 5 });
+  const createCriRun = useCreateArtifact<{ action: string; at: string }>('cri');
   const [actionResult, setActionResult] = useState<{ action: string; result: unknown } | null>(null);
   const [isRunning, setIsRunning] = useState(false);
 
@@ -69,13 +72,20 @@ export default function CRILensPage() {
         setActionResult({ action, result: { message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` } });
       } else {
         setActionResult({ action, result: res.result });
+        createCriRun.mutate({
+          type: 'run',
+          title: `${action} on ${selectedDtu?.title ?? targetId}`,
+          data: { action, at: new Date().toISOString() },
+          meta: { tags: ['cri', action], status: 'completed', visibility: 'private' },
+        });
       }
     } catch (err) {
       setActionResult({ action, result: `Error: ${err instanceof Error ? err.message : String(err)}` });
     } finally {
       setIsRunning(false);
     }
-  }, [selectedDtu, runAction]);
+  }, [selectedDtu, runAction, createCriRun]);
+  void cri_runs;
 
   const { data: dtusData, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['cri-dtus'],

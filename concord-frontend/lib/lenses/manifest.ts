@@ -456,10 +456,18 @@ export const LENS_MANIFESTS: LensManifest[] = [
   {
     domain: 'resonance',
     label: 'Resonance',
-    artifacts: ['alert', 'metric'],
-    macros: { list: 'lens.resonance.list', get: 'lens.resonance.get', update: 'lens.resonance.update' },
-    exports: ['json'],
-    actions: ['acknowledge', 'dismiss'],
+    artifacts: ['alert', 'metric', 'acknowledgement'],
+    macros: {
+      list:   'lens.resonance.list',
+      get:    'lens.resonance.get',
+      create: 'lens.resonance.create',
+      update: 'lens.resonance.update',
+      delete: 'lens.resonance.delete',
+      run:    'lens.resonance.run',
+      export: 'lens.resonance.export',
+    },
+    exports: ['json', 'csv'],
+    actions: ['acknowledge', 'dismiss', 'snooze', 'escalate'],
     category: 'system',
   },
 

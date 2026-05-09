@@ -2423,9 +2423,249 @@ export const PRODUCTIZATION_PHASES: ProductionPhase[] = [
     status: 'in_progress',
   },
 
-  // ── PHASE 69: Game ──────────────────────────────────────────────
+  // ── PHASE 69: Hub ───────────────────────────────────────────────
   {
     order: 69,
+    lensId: 'hub',
+    name: 'Hub',
+    rationale: 'Lens explorer + favourites + recently-used. The front door to the city of 200+ lenses. Rivals macOS Launchpad + GNOME Activities + a launcher.',
+    dependsOn: [],
+    incumbents: ['macOS Launchpad', 'GNOME Activities', 'Spotlight'],
+    artifacts: [
+      { name: 'Favourite',    persistsWithoutDTU: true, storageDomain: 'hub', requiredFields: ['lensId', 'at'] },
+      { name: 'RecentVisit',  persistsWithoutDTU: true, storageDomain: 'hub', requiredFields: ['lensId', 'at'] },
+      { name: 'CategoryView', persistsWithoutDTU: true, storageDomain: 'hub', requiredFields: ['category', 'at'] },
+    ],
+    engines: [
+      { name: 'lens-search',     description: 'Full-text + tag search across the lens registry', trigger: 'on_demand' },
+      { name: 'category-filter', description: 'Filters lenses by category + product/hybrid/system status', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'discover-pin-launch', steps: ['search', 'filter', 'pin-favourite', 'launch-lens'], engines: ['lens-search', 'category-filter'] },
+    ],
+    acceptanceCriteria: ['Search + filter all lenses', 'Pin favourites', 'Recent-visit history', 'Per-category view'],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 70: Resonance ─────────────────────────────────────────
+  {
+    order: 70,
+    lensId: 'resonance',
+    name: 'Resonance',
+    rationale: 'Production-grade alert + metric console. Acknowledge, snooze, escalate. Rivals PagerDuty + Opsgenie + Splunk on-call.',
+    dependsOn: [],
+    incumbents: ['PagerDuty', 'Opsgenie', 'Splunk on-call', 'Datadog'],
+    artifacts: [
+      { name: 'Alert',           persistsWithoutDTU: true, storageDomain: 'resonance', requiredFields: ['id', 'severity', 'channel', 'at'] },
+      { name: 'Metric',          persistsWithoutDTU: true, storageDomain: 'resonance', requiredFields: ['id', 'name', 'value', 'at'] },
+      { name: 'Acknowledgement', persistsWithoutDTU: true, storageDomain: 'resonance', requiredFields: ['alertId', 'by', 'at'] },
+    ],
+    engines: [
+      { name: 'alert-router',     description: 'Routes alerts by severity to acknowledgers', trigger: 'automatic' },
+      { name: 'snooze-engine',    description: 'Suppresses alerts for a window + auto-rearms', trigger: 'on_demand' },
+      { name: 'escalation-tree',  description: 'Walks oncall hierarchy when ack times out', trigger: 'automatic' },
+    ],
+    pipelines: [
+      { name: 'fire-ack-resolve', steps: ['fire', 'route', 'ack-or-escalate', 'resolve'], engines: ['alert-router', 'escalation-tree'] },
+      { name: 'snooze-cycle',     steps: ['snooze', 'wait', 'auto-rearm', 're-fire'], engines: ['snooze-engine'] },
+    ],
+    acceptanceCriteria: ['Alert + metric stream', 'Acknowledge / snooze / escalate', 'Severity routing', 'Audit log'],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 71: Lock ──────────────────────────────────────────────
+  {
+    order: 71,
+    lensId: 'lock',
+    name: 'Lock',
+    rationale: '70% sovereignty lock + invariant audit. Tracks data sovereignty across lenses, runs the Sovereign audit, freezes substrate when locked. Rivals nothing — Concord-native.',
+    dependsOn: [],
+    incumbents: ['Concord-native — no equivalent'],
+    artifacts: [
+      { name: 'LockEvent',       persistsWithoutDTU: true, storageDomain: 'lock', requiredFields: ['id', 'event', 'level', 'at'] },
+      { name: 'InvariantStatus', persistsWithoutDTU: true, storageDomain: 'lock', requiredFields: ['name', 'satisfied', 'evidence'] },
+      { name: 'AuditRun',        persistsWithoutDTU: true, storageDomain: 'lock', requiredFields: ['id', 'date', 'pass', 'percentage'] },
+    ],
+    engines: [
+      { name: 'sovereignty-audit', description: 'Runs the 70-invariant audit and reports pass / fail', trigger: 'on_demand' },
+      { name: 'lock-controller',   description: 'Freezes substrate on dome / declares phase if invariants drop', trigger: 'automatic' },
+    ],
+    pipelines: [
+      { name: 'audit-cycle',     steps: ['enumerate-invariants', 'check-each', 'compute-percentage', 'log-event'], engines: ['sovereignty-audit'] },
+      { name: 'lock-trigger',    steps: ['observe-percentage', 'cross-threshold', 'declare-lock', 'broadcast'], engines: ['lock-controller'] },
+    ],
+    acceptanceCriteria: ['Audit runs on demand', 'Invariant status display', 'Lock-event log', '70% threshold trigger'],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 72: Offline ───────────────────────────────────────────
+  {
+    order: 72,
+    lensId: 'offline',
+    name: 'Offline',
+    rationale: 'Sync queue + offline-first state. Lists pending sync items, replays queue when network returns. Rivals Notion offline + Obsidian sync.',
+    dependsOn: [],
+    incumbents: ['Notion offline', 'Obsidian sync', 'Bear sync'],
+    artifacts: [
+      { name: 'SyncItem',  persistsWithoutDTU: true, storageDomain: 'offline', requiredFields: ['id', 'kind', 'payload', 'queuedAt'] },
+      { name: 'SyncBatch', persistsWithoutDTU: true, storageDomain: 'offline', requiredFields: ['id', 'items', 'startedAt', 'finishedAt'] },
+    ],
+    engines: [
+      { name: 'queue-replayer',  description: 'Replays queued mutations when network reconnects', trigger: 'automatic' },
+      { name: 'conflict-resolver', description: 'Reconciles offline edits with server state', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'queue-replay',    steps: ['detect-online', 'load-queue', 'replay-each', 'resolve-conflicts', 'clear'], engines: ['queue-replayer', 'conflict-resolver'] },
+    ],
+    acceptanceCriteria: ['Sync-item queue', 'Replay on reconnect', 'Conflict UI', 'Last-sync timestamp'],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 73: Root ──────────────────────────────────────────────
+  {
+    order: 73,
+    lensId: 'root',
+    name: 'Root (Refusal Algebra)',
+    rationale: 'Base-6 numeral system + glyph algebra workbench. Decimal ↔ glyph + arithmetic with semantic layer. The math substrate that powers Refusal Field. Rivals nothing — Concord-native.',
+    dependsOn: [],
+    incumbents: ['Concord-native — no equivalent'],
+    artifacts: [
+      { name: 'Computation',    persistsWithoutDTU: true, storageDomain: 'root', requiredFields: ['a', 'b', 'op', 'result'] },
+      { name: 'GlyphReference', persistsWithoutDTU: true, storageDomain: 'root', requiredFields: ['digit', 'glyph', 'name'] },
+    ],
+    engines: [
+      { name: 'glyph-arithmetic', description: 'Performs +/-/×/÷ in base-6 with semantic interpretation', trigger: 'on_demand' },
+      { name: 'glyph-converter',  description: 'Converts decimal ↔ glyph string', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'compute-and-save', steps: ['enter-operands', 'compute', 'interpret-semantic', 'save-to-notebook'], engines: ['glyph-arithmetic', 'glyph-converter'] },
+    ],
+    acceptanceCriteria: ['Decimal ↔ glyph conversion', 'Operations with semantic layer', 'Saved-computation notebook', 'Glyph reference table'],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 74: CRI ───────────────────────────────────────────────
+  {
+    order: 74,
+    lensId: 'cri',
+    name: 'CRI (Coherence-Relevance-Evidence-Timeliness-Integration)',
+    rationale: 'Production-grade DTU quality scoring console. Filter / sort / select DTUs by per-axis CRETI score, run lens actions against selected. Rivals nothing — substrate-native.',
+    dependsOn: [],
+    incumbents: ['Concord-native — no equivalent'],
+    artifacts: [
+      { name: 'CRETIScore',  persistsWithoutDTU: true, storageDomain: 'cri', requiredFields: ['dtuId', 'composite', 'breakdown'] },
+      { name: 'Run',         persistsWithoutDTU: true, storageDomain: 'cri', requiredFields: ['action', 'dtuId', 'at'] },
+      { name: 'Threshold',   persistsWithoutDTU: true, storageDomain: 'cri', requiredFields: ['value', 'setBy'] },
+    ],
+    engines: [
+      { name: 'creti-scorer',  description: 'Computes 5-axis CRETI score per DTU', trigger: 'automatic' },
+      { name: 'action-runner', description: 'Runs lens.cri.run macros against selected DTU', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'sort-filter-act', steps: ['load-dtus-with-creti', 'sort-by-axis', 'filter-by-threshold', 'select', 'run-action'], engines: ['creti-scorer', 'action-runner'] },
+    ],
+    acceptanceCriteria: ['CRETI score per DTU', 'Per-axis sort + threshold filter', 'Action runner with audit trail', 'Real-time updates'],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 75: Fork ──────────────────────────────────────────────
+  {
+    order: 75,
+    lensId: 'fork',
+    name: 'Fork',
+    rationale: 'Substrate fork manager. Creates a parallel branch of state, lets the operator experiment without polluting main. Rivals git-style branching but for the live substrate.',
+    dependsOn: [],
+    incumbents: ['Git branches', 'Database snapshot/restore'],
+    artifacts: [
+      { name: 'Fork',         persistsWithoutDTU: true, storageDomain: 'fork', requiredFields: ['id', 'name', 'parent', 'createdAt'] },
+      { name: 'MergeRequest', persistsWithoutDTU: true, storageDomain: 'fork', requiredFields: ['id', 'forkId', 'status', 'reviewers'] },
+    ],
+    engines: [
+      { name: 'snapshot-engine', description: 'Captures substrate state as immutable snapshot', trigger: 'on_demand' },
+      { name: 'merge-engine',    description: 'Walks the diff and merges fork into main', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'fork-experiment-merge', steps: ['snapshot', 'fork', 'experiment', 'review', 'merge-or-discard'], engines: ['snapshot-engine', 'merge-engine'] },
+    ],
+    acceptanceCriteria: ['Fork creation', 'Diff view', 'Merge request flow', 'Snapshot history'],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 76: Legacy ────────────────────────────────────────────
+  {
+    order: 76,
+    lensId: 'legacy',
+    name: 'Legacy',
+    rationale: 'Lifetime milestone tracker + post-mortem ledger. Captures career milestones, posthumous wishes, knowledge handoff. Rivals nothing.',
+    dependsOn: [],
+    incumbents: ['Concord-native — no equivalent'],
+    artifacts: [
+      { name: 'Milestone',    persistsWithoutDTU: true, storageDomain: 'legacy', requiredFields: ['id', 'title', 'date', 'reflection'] },
+      { name: 'Handoff',      persistsWithoutDTU: true, storageDomain: 'legacy', requiredFields: ['id', 'topic', 'recipient', 'releaseAt'] },
+    ],
+    engines: [
+      { name: 'milestone-archiver', description: 'Crystallises a milestone DTU + links lineage', trigger: 'on_demand' },
+      { name: 'handoff-releaser',   description: 'Releases handoff DTUs at the configured time', trigger: 'scheduled' },
+    ],
+    pipelines: [
+      { name: 'milestone-cycle', steps: ['author', 'reflect', 'archive', 'link-lineage'], engines: ['milestone-archiver'] },
+      { name: 'handoff-cycle',   steps: ['compose', 'set-release', 'wait', 'release'], engines: ['handoff-releaser'] },
+    ],
+    acceptanceCriteria: ['Milestone CRUD', 'Handoff with release schedule', 'Lineage links', 'Reflection text'],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 77: Command Center ────────────────────────────────────
+  {
+    order: 77,
+    lensId: 'command-center',
+    name: 'Command Center',
+    rationale: 'Operations cockpit. 12-tab live view of vitals / brains / cognitive / loaf / affect / emergents / lattice / shield / attention / forgetting / repair / promotions. Rivals Datadog + Grafana but specifically tuned to the Concord substrate.',
+    dependsOn: [],
+    incumbents: ['Datadog', 'Grafana', 'Splunk Observability'],
+    artifacts: [
+      { name: 'SystemHealth', persistsWithoutDTU: true, storageDomain: 'command-center', requiredFields: ['version', 'uptime', 'memory'] },
+      { name: 'Session',      persistsWithoutDTU: true, storageDomain: 'command-center', requiredFields: ['kind', 'at'] },
+      { name: 'Foundation',   persistsWithoutDTU: true, storageDomain: 'command-center', requiredFields: ['layer', 'status'] },
+    ],
+    engines: [
+      { name: 'vitals-poller',     description: 'Polls /api/admin/system + tier counts at 10s cadence', trigger: 'scheduled' },
+      { name: 'foundation-status', description: 'Reports per-layer foundation health (chat/dtu/economy/etc.)', trigger: 'automatic' },
+      { name: 'realtime-bridge',   description: 'Subscribes to socket events and surfaces alerts inline', trigger: 'automatic' },
+    ],
+    pipelines: [
+      { name: 'observe-tab-act',   steps: ['poll-vitals', 'switch-tab', 'inspect', 'run-action', 'log'], engines: ['vitals-poller', 'foundation-status'] },
+      { name: 'alert-cycle',       steps: ['receive-alert', 'classify', 'preview-action', 'execute', 'log-undo'], engines: ['realtime-bridge'] },
+    ],
+    acceptanceCriteria: ['12 tabs render', 'Live vitals 10s poll', 'Foundation status', 'Alert preview + undo timeline', 'Operator session log'],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 78: Settings ──────────────────────────────────────────
+  {
+    order: 78,
+    lensId: 'settings',
+    name: 'Settings',
+    rationale: 'Production-grade preferences manager with snapshot + rollback. Quality preset, mouse sensitivity, etc. Rivals macOS System Settings + game-engine quality presets.',
+    dependsOn: [],
+    incumbents: ['macOS System Settings', 'Steam quality presets'],
+    artifacts: [
+      { name: 'PresetSnapshot', persistsWithoutDTU: true, storageDomain: 'settings', requiredFields: ['qualityPreset', 'mouseSensitivity', 'takenAt'] },
+    ],
+    engines: [
+      { name: 'snapshot-capture', description: 'Reads current localStorage prefs + persists as artifact', trigger: 'on_demand' },
+      { name: 'rollback-engine',  description: 'Restores a previous snapshot (future iteration)', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'capture-rollback', steps: ['edit-prefs', 'capture-snapshot', 'change-mind', 'rollback'], engines: ['snapshot-capture', 'rollback-engine'] },
+    ],
+    acceptanceCriteria: ['Quality preset selector', 'Mouse sensitivity slider', 'Snapshot capture', 'Recent snapshots'],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 79: Game ──────────────────────────────────────────────
+  {
+    order: 79,
     lensId: 'game',
     name: 'Game',
     rationale: 'Gamification engine. Adds progression, achievements, and quests to all lenses.',

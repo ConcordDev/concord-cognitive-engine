@@ -24,7 +24,7 @@ interface MilestoneData {
   confidence: number;
 }
 
-const SEED_MILESTONES: { title: string; data: Record<string, unknown> }[] = [];
+const MILESTONES_FALLBACK: { title: string; data: Record<string, unknown> }[] = [];
 
 export default function LegacyLensPage() {
   useLensNav('legacy');
@@ -32,7 +32,7 @@ export default function LegacyLensPage() {
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('legacy');
 
   const { items: milestoneItems, isLoading, isError, error, refetch } = useLensData<MilestoneData>('legacy', 'milestone', {
-    seed: SEED_MILESTONES,
+    seed: MILESTONES_FALLBACK,
   });
 
   const milestones = milestoneItems.map((item) => ({
