@@ -24,6 +24,25 @@ cd concord-cognitive-engine
 docker-compose up           # starts backend + frontend + 4 Ollama instances + LLaVA
 ```
 
+### RunPod + Cloudflare Tunnel (recommended for solo operators)
+
+If you're renting GPU on RunPod (or any GPU box without a stable inbound IP), the easiest deploy shape is a Cloudflare Tunnel sidecar — outbound-only connection from the GPU container to Cloudflare's edge, free TLS, your-own-domain, no inbound ports.
+
+1. Boot a RunPod pod with Docker support.
+2. Mount a Network Volume at `/workspace` and set `DB_PATH=/workspace/concord.db` so your DTU corpus survives restarts. Mount another to `/root/.ollama` so the ~70GB of brain models persist.
+3. Clone the repo into the pod, run `./setup.sh`.
+4. Run `bash infra/cloudflare/setup-tunnel.sh` — interactive helper that walks you through tunnel creation in the Cloudflare Zero Trust dashboard.
+5. Bring up the stack including the tunnel sidecar:
+
+   ```bash
+   docker compose \
+     -f docker-compose.yml \
+     -f infra/cloudflare/docker-compose.cloudflared.yml \
+     up -d
+   ```
+
+Within ~5 seconds, `https://concord.<your-domain>.com` is live with TLS. See `infra/cloudflare/README.md` for full RunPod-specific notes (storage, GPU sizing, ~$310-520/mo cost estimate, troubleshooting).
+
 ### Required env vars (production)
 
 ```bash
