@@ -9384,12 +9384,13 @@ async function runMacro(domain, name, input, ctx) {
     dtu_portability: new Set(["export", "validate", "import"]),
     // Phase 6c: discovery — read-only.
     discovery: new Set(["search", "facets", "trending"]),
-    // Concordia Mount System Phase B1+B2 — species lookup + proximity
-    // browse + the riding state machine (tame/mount/dismount/active/history).
+    // Concordia Mount System Phase B1+B2+B3 — species lookup + proximity
+    // browse + riding state machine + gear authoring + stat folding.
     // Mutating macros are caller-scoped via ownership checks in the handler.
     mounts: new Set([
       "list_species", "get_species", "get_gait", "list_mountable", "list_eligible_nearby",
       "tame", "mount", "dismount", "get_active_mount", "history",
+      "validate_gear_recipe", "equip_gear", "unequip_gear", "compute_stats", "get_equipped_gear",
     ]),
     // Governance: read-mostly + caller-driven write macros.
     governance: new Set([

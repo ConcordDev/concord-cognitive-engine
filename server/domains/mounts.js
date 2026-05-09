@@ -3,8 +3,9 @@
 // Concordia Procedural Mount System — domain surface.
 //
 // B1: list_species, get_species, get_gait, list_mountable, list_eligible_nearby
-// B2 (this commit): tame, mount, dismount, get_active_mount, mount_history
-// B3 will add: author_gear, equip_gear, unequip_gear, compute_stats
+// B2: tame, mount, dismount, get_active_mount, history
+// B3 (this commit): equip_gear, unequip_gear, compute_stats, get_equipped_gear,
+//                   validate_gear_recipe (pre-author shape check)
 // B4 will add: feed, groom, evolve, care_state
 
 import {
@@ -20,6 +21,13 @@ import {
   getActiveMountPayload,
   listMountHistory,
 } from "../lib/companions-mount.js";
+import {
+  equipGear,
+  unequipGear,
+  computeMountStats,
+  getEquippedGear,
+} from "../lib/mount-gear.js";
+import { validateMountGear, MOUNT_GEAR_SLOTS } from "../lib/dtu-validators/mount-gear-validators.js";
 import { getFlag } from "../lib/feature-flags.js";
 
 export default function registerMountMacros(register) {
@@ -176,4 +184,79 @@ export default function registerMountMacros(register) {
       limit: Math.max(1, Math.min(input.limit || 50, 200)),
     }) };
   }, { note: "rider's closed mount instances (recent-first)" });
+
+  // ---------- B3: gear authoring + equipping ----------
+
+  // mounts.validate_gear_recipe — pre-author validation. Plugin / UI can
+  // call this before submitting `dtu.create` to surface validation errors
+  // without writing a row. Read-only, no auth needed.
+  register("mounts", "validate_gear_recipe", async (_ctx, input = {}) => {
+    if (!getFlag("FF_MOUNT_GEAR", 1)) return { ok: false, reason: "feature_disabled" };
+    if (!input.recipe || typeof input.recipe !== "object") {
+      return { ok: false, reason: "missing_recipe" };
+    }
+    const recipe = { kind: "mount_gear", meta: input.recipe.meta || input.recipe };
+    return validateMountGear(recipe);
+  }, { note: "validate a mount_gear recipe shape pre-author" });
+
+  // mounts.equip_gear — equip a previously-authored gear DTU into one of
+  // saddle/bridle/barding slots on a mount the caller owns.
+  register("mounts", "equip_gear", async (ctx, input = {}) => {
+    if (!getFlag("FF_MOUNT_GEAR", 1)) return { ok: false, reason: "feature_disabled" };
+    const db = ctx?.db;
+    const userId = ctx?.actor?.userId || ctx?.userId;
+    if (!db) return { ok: false, reason: "no_db" };
+    if (!userId) return { ok: false, reason: "no_user" };
+    if (!input.mountId || !input.gearDtuId || !input.slot) {
+      return { ok: false, reason: "missing_args" };
+    }
+    return equipGear(db, {
+      mountId: input.mountId,
+      gearDtuId: input.gearDtuId,
+      slot: input.slot,
+      ownerId: userId,
+    });
+  }, { note: "equip a mount_gear DTU into one of {saddle, bridle, barding}" });
+
+  // mounts.unequip_gear — clear a slot. Idempotent.
+  register("mounts", "unequip_gear", async (ctx, input = {}) => {
+    if (!getFlag("FF_MOUNT_GEAR", 1)) return { ok: false, reason: "feature_disabled" };
+    const db = ctx?.db;
+    const userId = ctx?.actor?.userId || ctx?.userId;
+    if (!db) return { ok: false, reason: "no_db" };
+    if (!userId) return { ok: false, reason: "no_user" };
+    if (!input.mountId || !input.slot) return { ok: false, reason: "missing_args" };
+    return unequipGear(db, { mountId: input.mountId, slot: input.slot, ownerId: userId });
+  }, { note: "clear a slot (idempotent)" });
+
+  // mounts.compute_stats — fold base + equipped gear into the effective
+  // stat block. Used by the MountedHUD speedometer + carry indicator.
+  register("mounts", "compute_stats", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    const userId = ctx?.actor?.userId || ctx?.userId;
+    if (!db) return { ok: false, reason: "no_db" };
+    if (!userId) return { ok: false, reason: "no_user" };
+    if (!input.mountId) return { ok: false, reason: "missing_mount_id" };
+    // Cheap ownership check — read companion's owner.
+    const owner = db.prepare(`SELECT owner_id FROM player_companions WHERE id = ?`).get(input.mountId);
+    if (!owner) return { ok: false, reason: "mount_not_found" };
+    if (owner.owner_id !== userId) return { ok: false, reason: "not_owner" };
+    const stats = computeMountStats(db, input.mountId);
+    if (!stats) return { ok: false, reason: "compute_failed" };
+    return { ok: true, ...stats };
+  }, { note: "fold base species stats + equipped gear modifiers" });
+
+  // mounts.get_equipped_gear — slot map for the MountDesigner panel.
+  register("mounts", "get_equipped_gear", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    const userId = ctx?.actor?.userId || ctx?.userId;
+    if (!db) return { ok: false, reason: "no_db" };
+    if (!userId) return { ok: false, reason: "no_user" };
+    if (!input.mountId) return { ok: false, reason: "missing_mount_id" };
+    const owner = db.prepare(`SELECT owner_id FROM player_companions WHERE id = ?`).get(input.mountId);
+    if (!owner) return { ok: false, reason: "mount_not_found" };
+    if (owner.owner_id !== userId) return { ok: false, reason: "not_owner" };
+    const gear = getEquippedGear(db, input.mountId);
+    return { ok: true, slots: [...MOUNT_GEAR_SLOTS], gear };
+  }, { note: "currently-equipped gear loadout for a mount" });
 }
