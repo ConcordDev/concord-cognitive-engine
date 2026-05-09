@@ -22915,6 +22915,13 @@ registerHeartbeat("player-signs-cleanup", {
   handler: runPlayerSignsCleanup,
 });
 
+// Theme deferred (game-feel pass): hidden quest triggers — substrate
+// for unmarked, environment-gated quest activation. Pure runMacro
+// surface; no heartbeat (callers evaluate inline as players move /
+// talk / hand items).
+import registerHiddenQuestsMacros from "./domains/hidden-quests.js";
+registerHiddenQuestsMacros(register);
+
 // Governance — proposals + votes on constitutional constants. The
 // constants themselves remain code-level; this layer is the audit trail.
 import registerGovernanceMacros from "./domains/governance.js";
