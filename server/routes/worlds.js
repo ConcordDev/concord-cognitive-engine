@@ -1902,6 +1902,35 @@ export default function createWorldsRouter({ requireAuth, db }) {
         }
       } catch { /* Layer 7 disabled / migration not applied — neutral pass-through */ }
 
+      // Phase 8 — combat-polish substrate. Player spends gas, records a
+      // strike (combo + multiplier), and the multiplier amplifies damage
+      // before applyDamageToNPC. NPC may be triggered into rocked state
+      // if the post-multiplier damage crosses their profile threshold.
+      // Best-effort; combat path proceeds even if the polish layer
+      // fails (it just won't have polish-event side-effects).
+      try {
+        const polish = await import("../lib/combat-polish.js");
+        const playerProfile = polish.profileFor(db, { actorKind: "player", actorId: userId });
+        // Spend gas based on the strike cost. We don't yet detect a "miss"
+        // (the existing combat path doesn't expose that signal), so we
+        // charge the hit-cost. Future: pass a hit boolean.
+        polish.spendGas(db, { actorKind: "player", actorId: userId, amount: playerProfile.gas_strike_cost });
+        const strike = polish.recordStrike(db, { actorKind: "player", actorId: userId, nowMs: Date.now() });
+        if (strike?.ok && strike.multiplier > 1) {
+          damageResult.finalDamage = Math.round(damageResult.finalDamage * strike.multiplier * 10) / 10;
+          damageResult.comboMultiplier = strike.multiplier;
+          damageResult.comboCount = strike.combo;
+          damageResult.finisherUnlocked = strike.finisher_unlocked;
+        }
+        // Trigger rocked state on NPC if magnitude crosses their threshold.
+        polish.triggerRocked(db, { actorKind: "npc", actorId: npcId, magnitude: damageResult.finalDamage });
+        // Bring the NPC's awareness into combat (idempotent on repeat).
+        polish.transitionAwareness(db, { actorKind: "npc", actorId: npcId, to: "alert" });
+        polish.transitionAwareness(db, { actorKind: "npc", actorId: npcId, to: "combat", target: userId });
+      } catch (err) {
+        // Phase 8 substrate optional; fall through.
+      }
+
       const { eventId, kill } = applyDamageToNPC(db, worldId, userId, 'player', npcId, damageResult, {
         skill_dtu_id: skillDtuId, item_dtu_id: itemDtuId,
         element: skillData.element || 'none',

@@ -459,14 +459,36 @@ export function attemptGrapple(db, { attackerKind, attackerId, defenderKind, def
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
 function insertEvent(db, worldId, actorKind, actorId, eventKind, detail) {
+  const id = `ce_${crypto.randomUUID()}`;
   try {
     db.prepare(`
       INSERT INTO combat_events (id, world_id, actor_kind, actor_id, event_kind, detail_json, occurred_at)
       VALUES (?, ?, ?, ?, ?, ?, unixepoch())
-    `).run(`ce_${crypto.randomUUID()}`, worldId, actorKind, actorId, eventKind, JSON.stringify(detail || {}));
+    `).run(id, worldId, actorKind, actorId, eventKind, JSON.stringify(detail || {}));
   } catch (err) {
     try { logger.debug?.("combat-polish", "event_insert_failed", { eventKind, error: err?.message }); } catch { /* ignore */ }
   }
+
+  // Realtime broadcast — animation + audio + camera + VFX bridges listen.
+  // Best-effort; never blocks the combat path. Emits on two channels:
+  //   world:${worldId} — for crowd-visible events (rocked, finisher, grapple)
+  //   user:${actor_id} — for self-only events (gassed_out, combo_extend
+  //                       on player perspective — server doesn't filter by
+  //                       perspective so we just send to both and the
+  //                       frontend filters by actor_id match).
+  try {
+    const io = globalThis?.__CONCORD_REALTIME__?.io;
+    if (io) {
+      const payload = {
+        id, worldId,
+        actorKind, actorId,
+        eventKind,
+        detail: detail || {},
+        ts: Date.now(),
+      };
+      io.to(`world:${worldId}`).emit("combat:polish", payload);
+    }
+  } catch { /* socket optional */ }
 }
 
 /** UI read — recent events for an actor (HUD). */

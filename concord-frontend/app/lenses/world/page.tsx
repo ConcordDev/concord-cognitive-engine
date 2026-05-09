@@ -91,6 +91,20 @@ const PersonalBeatWidget = dynamic(
     })),
   { ssr: false }
 );
+const CombatPolishHUD = dynamic(
+  () =>
+    import('@/components/world/CombatPolishHUD').then((m) => ({
+      default: m.CombatPolishHUD,
+    })),
+  { ssr: false }
+);
+const CombatPolishLayer = dynamic(
+  () =>
+    import('@/components/world/CombatBridges').then((m) => ({
+      default: m.CombatPolishLayer,
+    })),
+  { ssr: false }
+);
 const LockOnController = dynamic(
   () =>
     import('@/components/world-lens/LockOnController').then((m) => ({
@@ -4133,6 +4147,10 @@ export default function WorldLensPage() {
               fields, weather rolls, agent insights, etc.) */}
           <EmergentEventFeed />
           <PersonalBeatWidget />
+
+          {/* Phase 8 — combat polish HUD + animation/audio/camera/VFX bridges */}
+          <CombatPolishHUD userId={playerAvatar?.id || null} />
+          <CombatPolishLayer userId={playerAvatar?.id || null} />
 
           {/* Body-language overlay — surfaces combat:telegraph (server
               fires immediately before applyAttack resolves) so the player
