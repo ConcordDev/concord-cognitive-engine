@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -532,6 +533,12 @@ export default function CodeLensPage() {
 
   const [savingOutputDTU, setSavingOutputDTU] = useState(false);
 
+  // ── Command palette (⌘P / ⌘Shift+P) ────────────────────────────
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [paletteQuery, setPaletteQuery] = useState('');
+  const [paletteIdx, setPaletteIdx] = useState(0);
+  const paletteInputRef = useRef<HTMLInputElement>(null);
+
   // Backend action wiring
   const runCodeAction = useRunArtifact('code');
   const [codeActionResult, setCodeActionResult] = useState<Record<string, unknown> | null>(null);
@@ -738,6 +745,73 @@ export default function CodeLensPage() {
       </div>
     );
   };
+
+  // ── Command palette commands (computed) ──────────────────────────
+  // Must be declared BEFORE early returns to keep hook order stable.
+  type PaletteCommand = { id: string; label: string; hint: string; action: () => void };
+  const flattenFiles = useCallback((nodes: FileNode[]): FileNode[] => {
+    const out: FileNode[] = [];
+    const walk = (n: FileNode) => {
+      if (n.type === 'file') out.push(n);
+      n.children?.forEach(walk);
+    };
+    nodes.forEach(walk);
+    return out;
+  }, []);
+
+  const paletteCommands: PaletteCommand[] = useMemo(() => {
+    const fileCmds: PaletteCommand[] = flattenFiles(files).map((f) => ({
+      id: `open:${f.id}`,
+      label: f.name,
+      hint: f.language || 'file',
+      action: () => { openFile(f); setPaletteOpen(false); },
+    }));
+    const tabCmds: PaletteCommand[] = tabs.map((t) => ({
+      id: `tab:${t.id}`,
+      label: `→ ${t.name}`,
+      hint: 'switch to open tab',
+      action: () => { setActiveTabId(t.id); setPaletteOpen(false); },
+    }));
+    const actionCmds: PaletteCommand[] = [
+      { id: 'run',         label: 'Run script',                  hint: '⌘ Enter',   action: () => { runScriptMutation.mutate(); setPaletteOpen(false); } },
+      { id: 'tree',        label: 'Toggle file tree',            hint: showFileTree ? 'on'  : 'off', action: () => { setShowFileTree(!showFileTree); setPaletteOpen(false); } },
+      { id: 'output',      label: 'Toggle output panel',         hint: showOutput   ? 'on'  : 'off', action: () => { setShowOutput(!showOutput); setPaletteOpen(false); } },
+      { id: 'apiref',      label: 'Toggle API reference',        hint: showApiRef   ? 'on'  : 'off', action: () => { setShowApiRef(!showApiRef); setPaletteOpen(false); } },
+      { id: 'fullscreen',  label: 'Toggle fullscreen',           hint: isFullscreen ? 'on'  : 'off', action: () => { setIsFullscreen(!isFullscreen); setPaletteOpen(false); } },
+      { id: 'forge',       label: 'Open Forge (AI scaffold)',    hint: '✨',        action: () => { setShowForge(true); setPaletteOpen(false); } },
+      { id: 'console',     label: 'Show console output',         hint: '',          action: () => { setOutputTab('console'); setPaletteOpen(false); } },
+      { id: 'output-tab',  label: 'Show script output',          hint: '',          action: () => { setOutputTab('output'); setPaletteOpen(false); } },
+    ];
+    return [...actionCmds, ...tabCmds, ...fileCmds];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [files, tabs, showFileTree, showOutput, showApiRef, isFullscreen]);
+
+  const filteredPalette = useMemo(() => {
+    const q = paletteQuery.trim().toLowerCase();
+    if (!q) return paletteCommands.slice(0, 50);
+    return paletteCommands.filter((c) =>
+      c.label.toLowerCase().includes(q) || c.hint.toLowerCase().includes(q)
+    ).slice(0, 50);
+  }, [paletteCommands, paletteQuery]);
+
+  useEffect(() => { setPaletteIdx(0); }, [paletteQuery, paletteOpen]);
+  useEffect(() => {
+    if (paletteOpen) {
+      requestAnimationFrame(() => paletteInputRef.current?.focus());
+    }
+  }, [paletteOpen]);
+
+  useLensCommand(
+    [
+      { id: 'palette',          keys: 'mod+p',       description: 'Command palette (Quick open)', category: 'navigation', action: () => setPaletteOpen(true), global: true },
+      { id: 'palette-shift',    keys: 'mod+shift+p', description: 'Command palette (commands)',   category: 'navigation', action: () => setPaletteOpen(true), global: true },
+      { id: 'run',              keys: 'mod+enter',   description: 'Run script',                    category: 'actions',    action: () => runScriptMutation.mutate(), global: true },
+      { id: 'toggle-tree',      keys: 'mod+b',       description: 'Toggle file tree',              category: 'navigation', action: () => setShowFileTree((v) => !v), global: true },
+      { id: 'toggle-output',    keys: 'mod+j',       description: 'Toggle output panel',           category: 'navigation', action: () => setShowOutput((v) => !v),   global: true },
+      { id: 'fullscreen',       keys: 'f11',         description: 'Toggle fullscreen',             category: 'actions',    action: () => setIsFullscreen((v) => !v), global: true },
+    ],
+    { lensId: 'code' }
+  );
 
   if (isLoading) {
     return (
@@ -1450,6 +1524,71 @@ export default function CodeLensPage() {
       </div>
       </div>
     </div>
+
+    {/* ── Command palette modal (⌘P) ──────────────────────────── */}
+    {paletteOpen && (
+      <div
+        className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-start justify-center z-[100] pt-[14vh]"
+        onClick={() => setPaletteOpen(false)}
+      >
+        <div
+          className="bg-[#0d1117] border border-cyan-500/40 rounded-xl w-full max-w-xl shadow-2xl overflow-hidden"
+          onClick={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Command palette"
+        >
+          <div className="flex items-center gap-2 px-4 py-3 border-b border-white/10">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-cyan-400">
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.35-4.35" />
+            </svg>
+            <input
+              ref={paletteInputRef}
+              value={paletteQuery}
+              onChange={(e) => setPaletteQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') { setPaletteOpen(false); return; }
+                if (e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  setPaletteIdx((i) => Math.min(i + 1, filteredPalette.length - 1));
+                } else if (e.key === 'ArrowUp') {
+                  e.preventDefault();
+                  setPaletteIdx((i) => Math.max(i - 1, 0));
+                } else if (e.key === 'Enter') {
+                  e.preventDefault();
+                  filteredPalette[paletteIdx]?.action();
+                }
+              }}
+              placeholder="Type to search files, tabs, commands…"
+              className="flex-1 bg-transparent outline-none text-sm text-white placeholder:text-white/30"
+            />
+            <kbd className="text-[10px] text-white/40 bg-white/5 border border-white/10 rounded px-1.5 py-0.5 font-mono">esc</kbd>
+          </div>
+          <ul className="max-h-[50vh] overflow-y-auto py-1">
+            {filteredPalette.length === 0 ? (
+              <li className="px-4 py-3 text-xs text-white/40 italic">No matches.</li>
+            ) : filteredPalette.map((c, i) => (
+              <li
+                key={c.id}
+                onMouseEnter={() => setPaletteIdx(i)}
+                onClick={c.action}
+                className={`px-4 py-2 flex items-center justify-between gap-3 cursor-pointer transition-colors ${
+                  i === paletteIdx ? 'bg-cyan-500/10 border-l-2 border-cyan-400' : 'border-l-2 border-transparent hover:bg-white/5'
+                }`}
+              >
+                <span className="text-sm text-white truncate">{c.label}</span>
+                <span className="text-[10px] text-white/40 shrink-0 font-mono">{c.hint}</span>
+              </li>
+            ))}
+          </ul>
+          <div className="px-4 py-2 border-t border-white/10 text-[10px] text-white/40 flex items-center justify-between">
+            <span>↑↓ navigate · ↵ run</span>
+            <span>{filteredPalette.length} {filteredPalette.length === 1 ? 'result' : 'results'}</span>
+          </div>
+        </div>
+      </div>
+    )}
     </LensShell>
   );
 }

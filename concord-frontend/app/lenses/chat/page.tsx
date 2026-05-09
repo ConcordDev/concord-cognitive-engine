@@ -1417,12 +1417,21 @@ export default function ChatLensPage() {
         }
       }
 
+      // Esc stops generation if streaming or pending
+      if (e.key === 'Escape' && (isStreaming || sendMutation.isPending || regenerateMutation.isPending)) {
+        e.preventDefault();
+        chatAbortControllerRef.current?.abort();
+        setIsStreaming(false);
+        return;
+      }
+
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         handleSend();
       }
     },
-    [showSlashMenu, filteredSlashCommands, slashSelectedIndex, handleSend, executeSlashCommand]
+    [showSlashMenu, filteredSlashCommands, slashSelectedIndex, handleSend, executeSlashCommand,
+     isStreaming, sendMutation.isPending, regenerateMutation.isPending]
   );
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -3039,13 +3048,32 @@ export default function ChatLensPage() {
                       </AnimatePresence>
                     </div>
                   </div>
-                  <button
-                    onClick={handleSend}
-                    disabled={(!input.trim() && attachments.length === 0) || sendMutation.isPending}
-                    className="p-4 bg-neon-cyan text-black rounded-2xl hover:bg-neon-cyan/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <Send className="w-5 h-5" />
-                  </button>
+                  {/* Send / Stop toggle — when streaming, swap to a stop
+                      button (ChatGPT / Claude pattern). Aborts in-flight
+                      send + regenerate via the abort controller ref. */}
+                  {(isStreaming || sendMutation.isPending || regenerateMutation.isPending) ? (
+                    <button
+                      onClick={() => {
+                        chatAbortControllerRef.current?.abort();
+                        setIsStreaming(false);
+                      }}
+                      className="p-4 bg-rose-500 text-white rounded-2xl hover:bg-rose-400 transition-colors animate-pulse"
+                      title="Stop generating (Esc)"
+                      aria-label="Stop generating"
+                    >
+                      <PauseCircle className="w-5 h-5" />
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleSend}
+                      disabled={!input.trim() && attachments.length === 0}
+                      className="p-4 bg-neon-cyan text-black rounded-2xl hover:bg-neon-cyan/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      title="Send (⌘ Enter)"
+                      aria-label="Send message"
+                    >
+                      <Send className="w-5 h-5" />
+                    </button>
+                  )}
                 </div>
               </div>
 
