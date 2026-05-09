@@ -731,3 +731,38 @@ button, a, input, textarea, select {
     padding-top: env(safe-area-inset-top);
   }
 }
+
+/* ── Phase 8 — combat polish time-dilation overlay ───────────────────────
+   Applied to <body> by CombatTimeDilationOverlay when a perfect dodge fires
+   on a high-dilation profile (Cyberpunk = 0.35, Sifu = 0.15, etc).
+
+   Two effects:
+     1. Slow CSS animations by ~3× via animation-duration multiplier.
+     2. Subtle blue tint via a fixed pseudo-element overlay.
+
+   3D scene's own animation loop doesn't slow from this; that requires a
+   renderer-level hook (asset systems can listen to the same
+   `concordia:time-dilation` event from their renderer scope). */
+body.concord-time-dilated *,
+body.concord-time-dilated *::before,
+body.concord-time-dilated *::after {
+  animation-duration: 3s !important;
+  transition-duration: 0.6s !important;
+}
+
+body.concord-time-dilated::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: rgba(80, 140, 255, 0.06);
+  pointer-events: none;
+  z-index: 9997;
+  mix-blend-mode: screen;
+  animation: concord-dilation-pulse 1s ease-out;
+}
+
+@keyframes concord-dilation-pulse {
+  0%   { opacity: 0; }
+  20%  { opacity: 1; }
+  100% { opacity: 0.3; }
+}

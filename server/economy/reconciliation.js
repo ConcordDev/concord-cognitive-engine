@@ -342,9 +342,13 @@ function executeReversalCorrection(db, purchase, { correctionRefId, batchId, rea
 
     const results = recordTransactionBatch(db, reversalEntries);
 
-    // Mark originals as reversed
-    for (const orig of originals) {
-      db.prepare("UPDATE economy_ledger SET status = 'reversed' WHERE id = ?").run(orig.id);
+    // Mark originals as reversed — single batched UPDATE (was N+1).
+    const origIds = originals.map(o => o.id);
+    if (origIds.length > 0) {
+      const placeholders = origIds.map(() => "?").join(",");
+      db.prepare(
+        `UPDATE economy_ledger SET status = 'reversed' WHERE id IN (${placeholders})`,
+      ).run(...origIds);
     }
 
     return results;

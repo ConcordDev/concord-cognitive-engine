@@ -51,6 +51,7 @@ export function ensureFactionState(db, factionId, opts = {}) {
   if (!db || !factionId) return null;
   let row;
   try {
+    // TODO: project explicit columns (auto-fix suggestion)
     row = db.prepare(`SELECT * FROM faction_strategy_state WHERE faction_id = ?`).get(factionId);
   } catch {
     return null;
@@ -68,6 +69,7 @@ export function ensureFactionState(db, factionId, opts = {}) {
       Number(opts.nextMoveAt ?? now), // ready to move immediately
       now,
     );
+    // TODO: project explicit columns (auto-fix suggestion)
     return db.prepare(`SELECT * FROM faction_strategy_state WHERE faction_id = ?`).get(factionId);
   } catch {
     return null;
@@ -278,6 +280,7 @@ export function applyMove(db, factionId, picked, peerStates) {
     );
 
     // Read current state, compute new momentum + stance
+    // TODO: project explicit columns (auto-fix suggestion)
     const cur = db.prepare(`SELECT * FROM faction_strategy_state WHERE faction_id = ?`).get(factionId);
     const newMomentum = Math.max(-1, Math.min(1, Number(cur?.momentum ?? 0) + Number(picked.deltaMomentum ?? 0)));
     const newStance = picked.newStance ?? cur?.stance ?? "consolidate";
@@ -320,6 +323,20 @@ export function applyMove(db, factionId, picked, peerStates) {
 
   try { tx(); }
   catch { return null; }
+
+  // Phase 2 — refresh NPC preoccupations when the faction's stance changes.
+  // Best-effort; never throws back into the strategy cycle.
+  if (picked.newStance && picked.newStance !== "consolidate") {
+    (async () => {
+      try {
+        const asymmetry = await import("../npc-asymmetry.js");
+        if (asymmetry?.refreshFactionPreoccupations) {
+          await asymmetry.refreshFactionPreoccupations(db, factionId, picked.newStance);
+        }
+      } catch { /* asymmetry tables may be missing on minimal builds */ }
+    })();
+  }
+
   return { moveId, ...picked };
 }
 

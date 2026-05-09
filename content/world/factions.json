@@ -28,7 +28,7 @@
     "controlled_districts": ["market_district", "trade_road", "warehouse_row"],
     "rival_factions": [],
     "allied_factions": ["iron_wardens"],
-    "npc_ids": ["factor_cade", "broker_sael"],
+    "npc_ids": ["factor_cade"],
     "dialogue_style": "terse",
     "reputation_currency": "trade_marks",
     "faction_state": {
@@ -133,6 +133,25 @@
       "factionName": "Anti-Corporate Resistance",
       "reputation": 40,
       "tensions": "The resistance is forced to use criminal infrastructure (Iron Rose) for some operations — Nyx hates this."
+    }
+  },
+  {
+    "id": "verdant_veil_remnant",
+    "name": "The Verdant Veil",
+    "motto": "What grows quietest grows longest.",
+    "goal": "Tend the goddess Concordia's grove and codify the Eight Refusals across generations.",
+    "values": ["patience", "silence", "long memory", "the eight refusals"],
+    "fears": ["the upper grove going silent", "a ninth refusal they cannot teach", "the goddess answering wrong", "the third keeper's path being walked again"],
+    "controlled_districts": ["upper_grove", "temple_of_the_second_hour", "eastern_lantern_path"],
+    "rival_factions": [],
+    "allied_factions": ["scholars_guild"],
+    "npc_ids": ["lyra_silentchant", "sister_bell", "blackroot_thorne", "concordia_first_breath"],
+    "dialogue_style": "spare",
+    "reputation_currency": "kept_silences",
+    "faction_state": {
+      "factionName": "Verdant Veil",
+      "reputation": 55,
+      "tensions": "The third keeper walked into the goddess seven years ago and Sister Bell still keeps a fourth bed made up. The grove has not yet decided what that means."
     }
   }
 ]

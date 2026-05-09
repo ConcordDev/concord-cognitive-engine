@@ -1,0 +1,48 @@
+[
+  { "archetype": "warrior", "template": "{target_name} stood on my brother's flag at the Pinewood crossing. {severity_word}." },
+  { "archetype": "warrior", "template": "{target_name} broke a duel-pact and ran. The cowardice still stings." },
+  { "archetype": "warrior", "template": "{target_name} sold the location of our camp before the second moon. We never recovered the scouts." },
+  { "archetype": "warrior", "template": "{target_name} laughed when my master fell. I do not laugh in their direction." },
+  { "archetype": "warrior", "template": "{target_name} took the last stand-down deal and called us cowards for refusing it. The line still holds; their version doesn't." },
+
+  { "archetype": "guard", "template": "{target_name} crossed my checkpoint with no toll and wouldn't say their business." },
+  { "archetype": "guard", "template": "{target_name} drew steel within the gate when I was on watch. I remember every detail." },
+  { "archetype": "guard", "template": "{target_name} bribed my replacement to look the other way. I know which night, which coin, which way." },
+  { "archetype": "guard", "template": "{target_name} brought a refusal-marked contract through my post and lied about its weight. The dome remembers what they said." },
+
+  { "archetype": "scholar", "template": "{target_name} dismissed my paper before the council read it. They won't make that mistake twice." },
+  { "archetype": "scholar", "template": "{target_name} cited my work without attribution. The error compounds." },
+  { "archetype": "scholar", "template": "{target_name} burned the third copy. The other two survive in places they don't know." },
+  { "archetype": "scholar", "template": "{target_name} called my method 'memetic drift' in front of the council. The drift was theirs." },
+  { "archetype": "scholar", "template": "{target_name} left my correspondence open on the lectern, where the wrong faction read it. I learned what loyalty looks like." },
+
+  { "archetype": "trader", "template": "{target_name} undercut me on a deal worth {magnitude} sparks. I keep the ledger." },
+  { "archetype": "trader", "template": "{target_name} sold me weighted dice once. Once was enough to know." },
+  { "archetype": "trader", "template": "{target_name} signed a contract in three voices and answered for none of them. I remember every signature." },
+  { "archetype": "trader", "template": "{target_name} broke the salt embargo. I held the line. The sting lasted a season." },
+
+  { "archetype": "mystic", "template": "{target_name} walked out of my circle uninitiated. The thread between us is frayed." },
+  { "archetype": "mystic", "template": "{target_name} mocked the Eight Refusals at the festival. The grove remembers." },
+  { "archetype": "mystic", "template": "{target_name} crossed the inner glyph in boots. The work I had to redo took the better half of a season." },
+  { "archetype": "mystic", "template": "{target_name} asked for the Sovereign's name and laughed when I gave it. Laughter that returned to them, in time." },
+
+  { "archetype": "healer", "template": "{target_name} brought me a wounded enemy and asked me to refuse the work. I refused them instead." },
+  { "archetype": "healer", "template": "{target_name} stole the second-shift herbs. Three patients walked the long road for nothing." },
+  { "archetype": "healer", "template": "{target_name} asked me to forge a death certificate. I would not, but the asking left a residue." },
+
+  { "archetype": "hunter", "template": "{target_name} spooked the herd at the eastern blind. Three days of tracking, ruined." },
+  { "archetype": "hunter", "template": "{target_name} crossed my snare-line at dawn. I had to reset every line for a week." },
+  { "archetype": "hunter", "template": "{target_name} hunted in our quarter and called the kill theirs. The skin still hangs in their hut, marked wrong." },
+
+  { "archetype": "refusal_keeper", "template": "{target_name} refused a refusal that wasn't theirs to refuse. The verb-debt still stands." },
+  { "archetype": "refusal_keeper", "template": "{target_name} spoke the count past the dome and counted wrong on purpose. The miscount echoes." },
+  { "archetype": "refusal_keeper", "template": "{target_name} entered the Archive without the eight-fold pause. The book closed itself in their hand." },
+
+  { "archetype": "cyber", "template": "{target_name} forked my repo and renamed it. The signature still runs through their build." },
+  { "archetype": "cyber", "template": "{target_name} routed a deprecated patch into production. Three releases were rolled back. They never named the root cause." },
+  { "archetype": "cyber", "template": "{target_name} closed my pull request without a review and called the merge a 'maintenance pass'. I keep the diff." },
+
+  { "archetype": "default", "template": "{target_name} crossed me. {severity_word}." },
+  { "archetype": "default", "template": "{target_name} took something I needed and left a worse version of it where it had been." },
+  { "archetype": "default", "template": "{target_name} promised to be there. Wasn't. The day went the way the day was going to go anyway, but I noticed." }
+]

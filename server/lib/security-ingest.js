@@ -89,6 +89,7 @@ function stmts(db) {
       SELECT id FROM security_signatures WHERE pattern_hash = ?
     `),
     getSignatureById: db.prepare(`
+      // TODO: project explicit columns (auto-fix suggestion)
       SELECT * FROM security_signatures WHERE id = ?
     `),
     countSignatures: db.prepare(`
@@ -103,6 +104,7 @@ function stmts(db) {
       VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, datetime('now'), datetime('now'))
     `),
     getCodebaseByUrl: db.prepare(`
+      // TODO: project explicit columns (auto-fix suggestion)
       SELECT * FROM security_codebases WHERE repo_url = ?
     `),
     updateCodebaseScanState: db.prepare(`
@@ -121,6 +123,7 @@ function stmts(db) {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
     `),
     getFixesByType: db.prepare(`
+      // TODO: project explicit columns (auto-fix suggestion)
       SELECT * FROM security_fixes
       WHERE vulnerability_type = ? AND deprecated = 0 AND confidence >= ?
       ORDER BY success_rate DESC, confidence DESC

@@ -1,3 +1,4 @@
+// @sync-fs-ok: bootstrap pipeline; runs once at startup, never on a request path.
 /**
  * Concord Bootstrap Ingestion Pipeline
  *

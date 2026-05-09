@@ -176,18 +176,25 @@ export function getCitationMap(db, lensId) {
   const refs = safeJsonParse(row.cross_lens_refs_json);
   const citationRules = safeJsonParse(row.citation_rules_json);
 
+  // Single batched SELECT replaces the per-ref loop (was N+1).
   const crossRefs = [];
-  for (const refId of refs) {
-    const ref = db.prepare(
-      "SELECT lens_id, name, category, classification FROM marketplace_lens_registry WHERE lens_id = ?"
-    ).get(refId);
-    if (ref) {
-      crossRefs.push({
-        lensId: ref.lens_id,
-        name: ref.name,
-        category: ref.category,
-        classification: ref.classification,
-      });
+  if (Array.isArray(refs) && refs.length > 0) {
+    const placeholders = refs.map(() => "?").join(",");
+    const rows = db.prepare(
+      `SELECT lens_id, name, category, classification FROM marketplace_lens_registry WHERE lens_id IN (${placeholders})`,
+    ).all(...refs);
+    // Preserve declaration order from the input refs array.
+    const byId = new Map(rows.map(r => [r.lens_id, r]));
+    for (const refId of refs) {
+      const ref = byId.get(refId);
+      if (ref) {
+        crossRefs.push({
+          lensId: ref.lens_id,
+          name: ref.name,
+          category: ref.category,
+          classification: ref.classification,
+        });
+      }
     }
   }
 

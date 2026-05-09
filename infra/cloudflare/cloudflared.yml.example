@@ -1,0 +1,44 @@
+# Cloudflared config-file template (use only in CONFIG-FILE MODE).
+#
+# Copy to cloudflared.yml, fill in <TUNNEL_UUID> and <YOUR_DOMAIN>,
+# then place credentials.json (downloaded from Cloudflare's Zero Trust
+# dashboard) next to this file.
+#
+# In TOKEN MODE the entire ingress block lives in the Cloudflare
+# dashboard instead, and you don't need this file.
+
+tunnel: <TUNNEL_UUID>
+credentials-file: /etc/cloudflared/credentials.json
+
+# Outbound origin connections from cloudflared → your services.
+# Cloudflared resolves these names against the docker network, so use
+# the SERVICE name (concord-backend), not localhost.
+ingress:
+  # Main app — public concord.<your-domain>
+  - hostname: concord.<YOUR_DOMAIN>
+    service: http://concord-backend:5050
+    originRequest:
+      noTLSVerify: false
+      connectTimeout: 30s
+      keepAliveTimeout: 90s
+
+  # WebSocket / real-time — same backend, but Cloudflare needs the
+  # path so it doesn't try to upgrade unrelated traffic. Concord uses
+  # socket.io; if you're on plain WS, change accordingly.
+  - hostname: concord.<YOUR_DOMAIN>
+    path: /socket.io/.*
+    service: http://concord-backend:5050
+
+  # Optional — expose Ollama brains through the tunnel only if you
+  # need remote brain access (most operators do NOT — keep brains
+  # private). Uncomment + customize if needed.
+  # - hostname: brain.<YOUR_DOMAIN>
+  #   service: http://ollama-conscious:11434
+
+  # Optional — Grafana dashboard at metrics.<YOUR_DOMAIN>.
+  # - hostname: metrics.<YOUR_DOMAIN>
+  #   service: http://grafana:3000
+
+  # CATCH-ALL — required. Anything that doesn't match the rules above
+  # gets a 404 from cloudflared without hitting your origin.
+  - service: http_status:404

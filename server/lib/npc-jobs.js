@@ -139,6 +139,7 @@ export const JOB_TYPES = {
  * Creates or updates the npc_jobs record.
  */
 export function assignJob(db, npcId, worldId) {
+  // TODO: project explicit columns (auto-fix suggestion)
   const npc = db.prepare('SELECT * FROM world_npcs WHERE id = ?').get(npcId);
   if (!npc) return null;
 
@@ -353,6 +354,7 @@ export function seedJobsForWorld(db, worldId) {
  * Get the current task description for display.
  */
 export function getNPCCurrentActivity(db, npcId) {
+  // TODO: project explicit columns (auto-fix suggestion)
   const job = db.prepare('SELECT * FROM npc_jobs WHERE npc_id = ?').get(npcId);
   if (!job) return 'wandering';
   const task = JSON.parse(job.current_task || '{}');

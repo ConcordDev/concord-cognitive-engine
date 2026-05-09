@@ -38,13 +38,16 @@ export function inferWeaponClass(itemName = "") {
  */
 export function getLoadout(db, userId) {
   if (!db || !userId) return null;
+  // TODO: project explicit columns (auto-fix suggestion)
   let row = db.prepare(`SELECT * FROM player_equipment WHERE user_id = ?`).get(userId);
   if (!row) {
     db.prepare(`INSERT INTO player_equipment (user_id) VALUES (?)`).run(userId);
+    // TODO: project explicit columns (auto-fix suggestion)
     row = db.prepare(`SELECT * FROM player_equipment WHERE user_id = ?`).get(userId);
   }
   function loadItem(invId) {
     if (!invId) return null;
+    // TODO: project explicit columns (auto-fix suggestion)
     const it = db.prepare(`SELECT * FROM player_inventory WHERE id = ? AND user_id = ?`).get(invId, userId);
     if (!it) return null;
     // Lazily fill weapon_class + handedness from the name if missing
@@ -98,6 +101,8 @@ export function equipItem(db, userId, slot, itemId) {
     return { ok: true, slot, itemId: null };
   }
 
+  // TODO: project explicit columns (auto-fix suggestion)
+
   const item = db.prepare(`SELECT * FROM player_inventory WHERE id = ? AND user_id = ?`).get(itemId, userId);
   if (!item) return { ok: false, error: "item_not_found" };
 
@@ -124,6 +129,7 @@ export function equipItem(db, userId, slot, itemId) {
 
   // One-handed equip — first clear any two-handed weapon currently in the
   // hands so we don't end up with a half-equipped two-hander.
+  // TODO: project explicit columns (auto-fix suggestion)
   const eq = db.prepare(`SELECT * FROM player_equipment WHERE user_id = ?`).get(userId);
   if (eq && eq.right_hand_id && eq.right_hand_id === eq.left_hand_id) {
     db.prepare(`
@@ -141,6 +147,7 @@ export function equipItem(db, userId, slot, itemId) {
   const col = target === "right_hand" ? "right_hand_id" : "left_hand_id";
   // Prevent duplicating one item across both slots
   const otherCol = target === "right_hand" ? "left_hand_id" : "right_hand_id";
+  // TODO: project explicit columns (auto-fix suggestion)
   const eqAfter = db.prepare(`SELECT * FROM player_equipment WHERE user_id = ?`).get(userId);
   if (eqAfter && eqAfter[otherCol] === item.id) {
     db.prepare(`UPDATE player_equipment SET ${otherCol} = NULL WHERE user_id = ?`).run(userId);

@@ -48,6 +48,13 @@ jobs:
         working-directory: ./concord-frontend
         run: npm run lint -- --fix || true
 
+      # Phase 10 — detector gate. Runs the suite and fails the workflow
+      # (blocking the auto-PR) when NEW critical/high findings appear
+      # vs BASELINE.json. This is the debt-budget enforcement.
+      - name: Detector diff vs baseline
+        working-directory: ./server
+        run: node scripts/run-detectors.js --ci
+
       - name: Detect changes
         id: diff
         run: |

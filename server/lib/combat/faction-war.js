@@ -295,6 +295,7 @@ function endWar(db, war, victoriousSide) {
 
 export function listActiveWars(db) {
   ensureSchema(db);
+  // TODO: project explicit columns (auto-fix suggestion)
   const rows = db.prepare(`SELECT * FROM faction_wars WHERE status = 'active'`).all();
   return rows.map((r) => {
     const npcs = db.prepare(

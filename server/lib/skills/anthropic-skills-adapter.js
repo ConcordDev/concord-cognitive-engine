@@ -1,3 +1,4 @@
+// @sync-fs-ok: skill loader runs at boot and on first invocation; small file count
 // server/lib/skills/anthropic-skills-adapter.js
 // Bidirectional adapter between Anthropic Agent Skills format (SKILL.md)
 // and Concord's EMERGENT.md format.

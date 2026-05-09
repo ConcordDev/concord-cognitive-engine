@@ -904,6 +904,36 @@ export default function createWorldsRouter({ requireAuth, db }) {
       const state   = _tryParseJSON(npc.state, {});
       const npcName = state.name || npc.archetype || 'NPC';
 
+      // Phase 2: idempotent seed of grudge/preoccupation/desire on first
+      // dialogue. Best-effort — never blocks the dialogue path.
+      try {
+        const asymmetry = await import("../lib/npc-asymmetry.js");
+        await asymmetry.seedNPCAsymmetry(db, { ...npc, ...state });
+      } catch { /* asymmetry tables may be absent */ }
+
+      // Phase 3: if the player has an open beat targeting THIS NPC, talking
+      // to the NPC realises the beat. Best-effort.
+      try {
+        if (playerId) {
+          const beats = await import("../emergent/personal-beat-scheduler.js");
+          const open = beats.findOpenBeatBySubject?.(db, playerId, "npc", npcId);
+          if (open?.id) await beats.realiseBeat(db, open.id, "realised");
+        }
+      } catch { /* beat realisation best-effort */ }
+
+      // Phase 4a: pull current activity from npc_routine_state so the
+      // dialogue prompt reflects what the NPC is doing right now. State
+      // attached as a synthetic field; downstream LLM-prompt builders read
+      // it without changing their schema.
+      try {
+        const routines = await import("../lib/npc-routines.js");
+        const active = routines.getActiveRoutine?.(db, npcId);
+        if (active) {
+          state.current_activity = active.activity_kind;
+          state.current_location_kind = active.location_kind;
+        }
+      } catch { /* routines table optional */ }
+
       // 2. Player reputation
       const reputation = getWorldReputation(db, worldId, playerId);
 
@@ -1822,6 +1852,26 @@ export default function createWorldsRouter({ requireAuth, db }) {
 
       const damageResult = computeDamage(attackerStats, defenderStats, skillData);
 
+      // ── Phase 1: procedural-biomechanics limb gate ─────────────────────────
+      // Reads the caster's limbHealth / activeDebuffs (set by zone-armor hits
+      // in city-presence.js) and applies a multiplier from skill-evolution's
+      // LIMB_DEBUFF_TABLE. A broken arm cuts a fighting-style cast to 30%
+      // damage and adds 500ms of stagger. A severed limb blocks the cast.
+      try {
+        const { evaluateLimbReadiness } = await import("../lib/skill-evolution.js");
+        const casterPresence = cityPresence.getUserPosition?.(userId);
+        if (casterPresence && (casterPresence.activeDebuffs || casterPresence.limbHealth)) {
+          const limbCheck = evaluateLimbReadiness(skillData, casterPresence);
+          if (!limbCheck.ok) {
+            return res.status(422).json({ ok: false, error: "limb_unusable", reason: limbCheck.reason, cause: limbCheck.cause });
+          }
+          if (limbCheck.dmgMul && limbCheck.dmgMul < 1.0 && Number.isFinite(damageResult.finalDamage)) {
+            damageResult.finalDamage = Math.max(0, Math.round(damageResult.finalDamage * limbCheck.dmgMul));
+            damageResult.limbDebuff = { dmgMul: limbCheck.dmgMul, cause: limbCheck.cause, staggerMs: limbCheck.staggerMs };
+          }
+        }
+      } catch { /* limb gate is best-effort — must never break combat */ }
+
       // ── Anti-cheat: damage cap ─────────────────────────────────────────────
       // Defends against future bugs in computeDamage that might drop a
       // sanity check. Cap = skillData.max_damage * 2.5 (crit) OR a hard
@@ -1852,12 +1902,128 @@ export default function createWorldsRouter({ requireAuth, db }) {
         }
       } catch { /* Layer 7 disabled / migration not applied — neutral pass-through */ }
 
+      // Phase 8 — combat-polish substrate. Player spends gas, records a
+      // strike (combo + multiplier), and the multiplier amplifies damage
+      // before applyDamageToNPC. NPC may be triggered into rocked state
+      // if the post-multiplier damage crosses their profile threshold.
+      // Best-effort; combat path proceeds even if the polish layer
+      // fails (it just won't have polish-event side-effects).
+      try {
+        const polish = await import("../lib/combat-polish.js");
+        const playerProfile = polish.profileFor(db, { actorKind: "player", actorId: userId });
+        // Spend gas based on the strike cost. We don't yet detect a "miss"
+        // (the existing combat path doesn't expose that signal), so we
+        // charge the hit-cost. Future: pass a hit boolean.
+        polish.spendGas(db, { actorKind: "player", actorId: userId, amount: playerProfile.gas_strike_cost });
+        const strike = polish.recordStrike(db, { actorKind: "player", actorId: userId, nowMs: Date.now() });
+        if (strike?.ok && strike.multiplier > 1) {
+          damageResult.finalDamage = Math.round(damageResult.finalDamage * strike.multiplier * 10) / 10;
+          damageResult.comboMultiplier = strike.multiplier;
+          damageResult.comboCount = strike.combo;
+          damageResult.finisherUnlocked = strike.finisher_unlocked;
+        }
+        // Trigger rocked state on NPC if magnitude crosses their threshold.
+        polish.triggerRocked(db, { actorKind: "npc", actorId: npcId, magnitude: damageResult.finalDamage });
+        // Bring the NPC's awareness into combat (idempotent on repeat).
+        polish.transitionAwareness(db, { actorKind: "npc", actorId: npcId, to: "alert" });
+        polish.transitionAwareness(db, { actorKind: "npc", actorId: npcId, to: "combat", target: userId });
+      } catch (err) {
+        // Phase 8 substrate optional; fall through.
+      }
+
       const { eventId, kill } = applyDamageToNPC(db, worldId, userId, 'player', npcId, damageResult, {
         skill_dtu_id: skillDtuId, item_dtu_id: itemDtuId,
         element: skillData.element || 'none',
         bar_used: barType === 'multi' ? 'mana' : barType,
         bar_cost: barCost,
       });
+
+      // Phase 2: NPC asymmetry. If the player kills this NPC, every other
+      // NPC in this NPC's faction gets a grudge. Best-effort; tables may
+      // not exist on minimal builds.
+      if (kill) {
+        try {
+          const asymmetry = await import("../lib/npc-asymmetry.js");
+          const targetNpc = db.prepare(`SELECT faction FROM world_npcs WHERE id = ?`).get(npcId);
+          if (targetNpc?.faction) {
+            const factionMates = db.prepare(`
+              SELECT id FROM world_npcs
+              WHERE faction = ? AND id != ? AND COALESCE(is_dead, 0) = 0
+              LIMIT 12
+            `).all(targetNpc.faction, npcId);
+            for (const mate of factionMates) {
+              asymmetry.recordPlayerImpactEvent(db, mate.id, userId, "killed_by_player");
+            }
+          }
+        } catch { /* asymmetry tables may be missing */ }
+      }
+
+      // Phase 1 + 1.5: emit skill:tier-witnessed when an evolved skill
+      // (revision_num >= 1) is cast in combat. AND record a demonstration
+      // entry for the target NPC + any friendly NPC in chunk so the
+      // npc-skill-evolve-cycle can bias their next revision toward the
+      // player's branch (player-teaches-NPC via demonstration).
+      try {
+        const revisionNum = Number(skillData?.revision_num ?? 0);
+        if (revisionNum >= 1) {
+          if (req.app?.locals?.io) {
+            req.app.locals.io.to(`world:${worldId}`).emit("skill:tier-witnessed", {
+              userId,
+              npcId,
+              worldId,
+              skillId: skillDtuId,
+              skillName: skillData.current_name || skillData.name,
+              revisionNum,
+              element: skillData.element || 'none',
+              damage: damageResult.finalDamage,
+              position: npcPosRow ? { x: npcPosRow.x, z: npcPosRow.z } : null,
+              ts: Date.now(),
+            });
+          }
+          // Record demonstration for the target NPC + any friendly NPCs in
+          // a small radius. The npc-skill-evolve-cycle reads consumed_at
+          // IS NULL rows on the next pass.
+          if (skillDtuId) {
+            const mentorship = await import("../lib/mentorship.js").catch(() => null);
+            if (mentorship?.recordDemonstration) {
+              mentorship.recordDemonstration(db, {
+                witnessedNpcId: npcId,
+                casterUserId: userId,
+                casterNpcId: null,
+                recipeDtuId: skillDtuId,
+                revisionNum,
+                element: skillData.element || null,
+                worldId,
+              });
+              // Also record for any other friendly NPCs in the same chunk.
+              try {
+                if (npcPosRow && typeof npcPosRow.x === "number" && typeof npcPosRow.z === "number") {
+                  const nearbyFriendlies = db.prepare(`
+                    SELECT id FROM world_npcs
+                    WHERE world_id = ?
+                      AND id != ?
+                      AND COALESCE(is_dead, 0) = 0
+                      AND ABS(COALESCE(x, 0) - ?) < 50
+                      AND ABS(COALESCE(z, 0) - ?) < 50
+                    LIMIT 5
+                  `).all(worldId, npcId, npcPosRow.x, npcPosRow.z);
+                  for (const f of nearbyFriendlies) {
+                    mentorship.recordDemonstration(db, {
+                      witnessedNpcId: f.id,
+                      casterUserId: userId,
+                      casterNpcId: null,
+                      recipeDtuId: skillDtuId,
+                      revisionNum,
+                      element: skillData.element || null,
+                      worldId,
+                    });
+                  }
+                }
+              } catch { /* nearby-friendly query may not be available on minimal schema */ }
+            }
+          }
+        }
+      } catch { /* tier-witnessed is best-effort */ }
 
       // ── Layer 7.5: write feedback signals + check terrain stagger ──────────
       try {

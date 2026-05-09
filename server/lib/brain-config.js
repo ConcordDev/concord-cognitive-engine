@@ -143,5 +143,47 @@ export const BRAIN_PRIORITY = Object.freeze({
  */
 export function getBrainForSystem(systemName) {
   const brainName = SYSTEM_TO_BRAIN[systemName] || "conscious";
-  return { brainName, config: BRAIN_CONFIG[brainName] };
+  return { brainName, config: getActiveBrainConfig()[brainName] };
+}
+
+// ── Hardware-adaptive profile ────────────────────────────────────────────
+//
+// The static BRAIN_CONFIG above targets the RTX PRO 4500 Blackwell deploy.
+// For workstations / smaller GPUs / CPU-only test runs, the profile system
+// in `brain-profiles.js` probes the hardware and selects appropriate model
+// + concurrency settings. Resolution order: env override → nvidia-smi
+// probe → 32GB default. Explicit BRAIN_*_MODEL / BRAIN_*_CONCURRENT env
+// vars still win.
+
+let _activeConfig = null;
+let _activeProfile = null;
+let _activeSource = null;
+
+/**
+ * One-time initialization. Must be awaited before getActiveBrainConfig
+ * returns the hardware-tuned config. Safe to call multiple times — second
+ * call is a no-op. Until called, getActiveBrainConfig() returns the static
+ * BRAIN_CONFIG.
+ */
+export async function initBrainProfile(opts = {}) {
+  if (_activeConfig && !opts.force) return { profile: _activeProfile, source: _activeSource };
+  const { resolveProfile, applyProfile } = await import("./brain-profiles.js");
+  const r = await resolveProfile(opts);
+  _activeProfile = r.profile;
+  _activeSource = r.source;
+  _activeConfig = applyProfile(BRAIN_CONFIG, r.profile);
+  return { profile: r.profile, source: r.source, choice: r.choice, gpuInfo: r.gpuInfo };
+}
+
+/**
+ * Get the active (possibly profile-merged) brain config. Falls back to the
+ * static BRAIN_CONFIG when initBrainProfile() hasn't been called yet.
+ */
+export function getActiveBrainConfig() {
+  return _activeConfig || BRAIN_CONFIG;
+}
+
+/** Diagnostic — returns the resolved profile metadata. */
+export function getActiveBrainProfile() {
+  return { profile: _activeProfile, source: _activeSource };
 }

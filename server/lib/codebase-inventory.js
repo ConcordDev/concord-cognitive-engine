@@ -1,3 +1,4 @@
+// @sync-fs-ok: static codebase scanner with TTL cache — runs at boot and on cache-miss only
 /**
  * @fileoverview Codebase Inventory & Wiring Map System
  *

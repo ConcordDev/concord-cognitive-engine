@@ -1,6 +1,7 @@
 #!/bin/sh
 # Pre-commit checks — runs on every commit
 # To skip in an emergency: git commit --no-verify
+# (Phase 10 — bypass usage is logged as a DTU by the post-commit hook.)
 
 # Frontend: lint-staged (ESLint + Prettier on staged files)
 (cd concord-frontend && npx lint-staged) || exit 1
@@ -11,3 +12,16 @@
 
 # Backend: syntax check of the server entry point
 (cd server && node --check server.js) || exit 1
+
+# Phase 10 — fast detector diff against BASELINE.json. Blocks the commit
+# only when NEW critical/high findings are introduced. Existing baseline
+# findings are acknowledged.
+if [ -f server/scripts/run-detectors.js ] && [ -f audit/detectors/BASELINE.json ]; then
+  (cd server && node scripts/run-detectors.js --ci) || {
+    echo ""
+    echo "✗ Detector diff blocked the commit."
+    echo "  Either fix the new finding, or update BASELINE.json deliberately"
+    echo "  (npm run detectors:baseline) and commit the baseline change."
+    exit 1
+  }
+fi

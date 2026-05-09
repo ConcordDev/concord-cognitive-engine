@@ -2,7 +2,7 @@
 
 _Source for the `Current Wiring Status` section in CLAUDE.md. Human merges; cartographer never auto-rewrites CLAUDE.md._
 
-Generated 2026-05-08T17:55:36.053Z.
+Generated 2026-05-08T21:25:36.834Z.
 
 ## Heartbeat-registered modules
 
@@ -21,6 +21,7 @@ Generated 2026-05-08T17:55:36.053Z.
 - `repair-cycle` (frequency 20)
 - `brain-outcome-resolver` (frequency 20)
 - `fauna-spawner` (frequency 30)
+- `understanding-evolve` (frequency 40)
 - `lattice-drift-scan` (frequency 60)
 - `brain-daily-refresh` (frequency 60)
 - `qualia-persist` (frequency 60)
@@ -30,12 +31,19 @@ Generated 2026-05-08T17:55:36.053Z.
 - `culture-drift-pass` (frequency 120)
 - `faction-strategy-cycle` (frequency 200)
 - `lattice-breakthrough-pass` (frequency 240)
+- `reflex-architectural-drift` (frequency 360)
 - `forgetting-health-check` (frequency 480)
+- `reflex-scaling-pressure` (frequency 480)
+- `reflex-unsafe-expansion` (frequency 720)
+- `reflex-dependency-entropy` (frequency 1440)
+- `code-substrate-refresh` (frequency 1440)
+- `detectors-sweep` (frequency 2880)
 
 ## Macro domains with macro counts
 
 - `hypothesis` — 20 macros
 - `worldmodel` — 16 macros
+- `understanding` — 16 macros
 - `culture` — 16 macros
 - `agents` — 13 macros
 - `ingest` — 13 macros
@@ -60,27 +68,27 @@ Generated 2026-05-08T17:55:36.053Z.
 - `persona` — 9 macros
 - `marketplace` — 9 macros
 - `metalearning` — 8 macros
+- `forge` — 8 macros
 - `physical` — 8 macros
 - `intel` — 8 macros
 - `system` — 8 macros
 - `semantic` — 7 macros
 - `transfer` — 7 macros
 - `reasoning` — 7 macros
+- `chat` — 7 macros
 - `breakthrough` — 7 macros
 - `forgetting` — 7 macros
-- `forge` — 7 macros
 - `lens` — 7 macros
 - `experience` — 6 macros
 - `attention` — 6 macros
 - `commonsense` — 6 macros
 - `inference` — 6 macros
+- `council` — 6 macros
 - `attention_alloc` — 6 macros
 - `promotion` — 6 macros
-- `chat` — 6 macros
 - `cortex` — 6 macros
 - `reflection` — 5 macros
 - `hlr` — 5 macros
-- `council` — 5 macros
 - `dream` — 5 macros
 - `schema` — 5 macros
 - `autotag` — 5 macros
@@ -114,6 +122,7 @@ Generated 2026-05-08T17:55:36.053Z.
 - `entity` — 2 macros
 - `multimodal` — 2 macros
 - `tools` — 2 macros
+- `cognition` — 2 macros
 - `style` — 2 macros
 - `quality` — 2 macros
 - `settings` — 2 macros
@@ -163,12 +172,12 @@ Generated 2026-05-08T17:55:36.053Z.
 
 ## Frontend lens count
 
-- 202 directories under `concord-frontend/app/lenses/`
+- 204 directories under `concord-frontend/app/lenses/`
 
 ## Orphan / Dormant inventory
 
 - Orphan modules: 0
 - Dormant modules: 0
-- Dead tables: 25
-- Headless backends: 0
-- Orphan lenses: 3
+- Dead tables: 22
+- Headless backends: 1
+- Orphan lenses: 4

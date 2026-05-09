@@ -22,6 +22,7 @@ import { economyAudit } from "./audit.js";
 import { validateBalance } from "./validators.js";
 import { grantLicense as grantDtuLicense } from "./rights-enforcement.js";
 import { validatePricing as validateTierPricing, getTier as getLicenseTier } from "./license-tiers.js";
+import { batchLookup } from "./_batch-lookup.js";
 import {
   ARTIFACT_TYPES, CREATIVE_MARKETPLACE, CREATIVE_FEDERATION,
   CREATIVE_QUESTS, CREATIVE_LEADERBOARD, CREATOR_RIGHTS, LICENSE_TYPES,
@@ -247,22 +248,31 @@ export function publishDerivativeArtifact(db, { creatorId, artifact, parentDecla
     return { ok: false, error: "derivative_must_declare_parents" };
   }
 
+  // Phase 2 perf fix: batched IN-list lookups replace per-iteration .get()
+  const parentIds = parentDeclarations.map(p => p.artifactId);
+  const parentArtifacts = batchLookup(db, "creative_artifacts", "id", parentIds, {
+    columns: ["id", "creator_id", "type", "lineage_depth"],
+  });
+  // Build (artifactId, licensee) lookup in one shot per artifact list.
+  const licenseRows = (() => {
+    if (parentIds.length === 0) return [];
+    const placeholders = parentIds.map(() => "?").join(",");
+    return db.prepare(
+      `SELECT id, artifact_id FROM creative_usage_licenses
+        WHERE licensee_id = ? AND status = 'active' AND artifact_id IN (${placeholders})`,
+    ).all(creatorId, ...parentIds);
+  })();
+  const licensedSet = new Set(licenseRows.map(r => r.artifact_id));
+
   // Validate all declared parents exist and creator has usage rights
   for (const parent of parentDeclarations) {
-    const parentArtifact = db.prepare(
-      "SELECT id, creator_id, type FROM creative_artifacts WHERE id = ?"
-    ).get(parent.artifactId);
-
+    const parentArtifact = parentArtifacts.get(parent.artifactId);
     if (!parentArtifact) {
       return { ok: false, error: "parent_artifact_not_found", artifactId: parent.artifactId };
     }
 
-    // Check creator has purchased usage rights to parent
-    const hasLicense = db.prepare(
-      "SELECT id FROM creative_usage_licenses WHERE artifact_id = ? AND licensee_id = ? AND status = 'active'"
-    ).get(parent.artifactId, creatorId);
-
     // Creator of parent doesn't need a license to their own work
+    const hasLicense = licensedSet.has(parent.artifactId);
     if (!hasLicense && parentArtifact.creator_id !== creatorId) {
       return {
         ok: false,
@@ -284,11 +294,10 @@ export function publishDerivativeArtifact(db, { creatorId, artifact, parentDecla
     }
   }
 
-  // Calculate lineage depth (max depth of any parent + 1)
-  const parentDepths = parentDeclarations.map(p => {
-    const pa = db.prepare("SELECT lineage_depth FROM creative_artifacts WHERE id = ?").get(p.artifactId);
-    return pa?.lineage_depth || 0;
-  });
+  // Calculate lineage depth (max depth of any parent + 1) — reuse batch lookup
+  const parentDepths = parentDeclarations.map(p =>
+    parentArtifacts.get(p.artifactId)?.lineage_depth || 0,
+  );
   const maxParentDepth = Math.max(...parentDepths);
 
   // Check for cycles
@@ -316,18 +325,31 @@ export function publishDerivativeArtifact(db, { creatorId, artifact, parentDecla
     WHERE id = ?
   `).run(maxParentDepth + 1, newArtifactId);
 
-  // Record derivative relationships
-  for (const parent of parentDeclarations) {
-    const pa = db.prepare("SELECT lineage_depth FROM creative_artifacts WHERE id = ?").get(parent.artifactId);
-    db.prepare(`
-      INSERT INTO creative_artifact_derivatives (id, child_artifact_id, parent_artifact_id, derivative_type, generation, created_at)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).run(uid("cad"), newArtifactId, parent.artifactId, parent.derivativeType, (pa?.lineage_depth || 0) + 1, nowISO());
-
-    // Increment parent's derivative count
+  // Record derivative relationships — single batched INSERT + single batched
+  // UPDATE replace the per-parent loop (was 2N queries → 2 queries).
+  if (parentDeclarations.length > 0) {
+    const ts = nowISO();
+    const insertCols = "(id, child_artifact_id, parent_artifact_id, derivative_type, generation, created_at)";
+    const insertRow = "(?, ?, ?, ?, ?, ?)";
+    const insertPlaceholders = parentDeclarations.map(() => insertRow).join(", ");
+    const insertParams = [];
+    for (const parent of parentDeclarations) {
+      const pa = parentArtifacts.get(parent.artifactId);
+      insertParams.push(
+        uid("cad"), newArtifactId, parent.artifactId, parent.derivativeType,
+        (pa?.lineage_depth || 0) + 1, ts,
+      );
+    }
     db.prepare(
-      "UPDATE creative_artifacts SET derivative_count = derivative_count + 1, updated_at = ? WHERE id = ?"
-    ).run(nowISO(), parent.artifactId);
+      `INSERT INTO creative_artifact_derivatives ${insertCols} VALUES ${insertPlaceholders}`,
+    ).run(...insertParams);
+
+    // Increment derivative_count for every parent in one UPDATE.
+    const parentIds = parentDeclarations.map(p => p.artifactId);
+    const updPlaceholders = parentIds.map(() => "?").join(",");
+    db.prepare(
+      `UPDATE creative_artifacts SET derivative_count = derivative_count + 1, updated_at = ? WHERE id IN (${updPlaceholders})`,
+    ).run(ts, ...parentIds);
   }
 
   result.artifact.isDerivative = true;
@@ -1543,32 +1565,26 @@ export function updateArtifactPrice(db, { artifactId, creatorId, newPrice }) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Check if adding a parent link would create a cycle.
+ * Check if adding a parent link would create a cycle. Single recursive
+ * CTE walks the ancestor chain in one round-trip, replacing the BFS
+ * loop that issued one query per node (was N+1).
  */
 function wouldCreateCycle(db, childId, parentId) {
-  const visited = new Set();
-  const queue = [parentId];
-
-  while (queue.length > 0) {
-    const current = queue.shift();
-    if (current === childId) return true;
-    if (visited.has(current)) continue;
-    visited.add(current);
-
-    const parents = db.prepare(
-      "SELECT parent_artifact_id FROM creative_artifact_derivatives WHERE child_artifact_id = ?"
-    ).all(current);
-
-    for (const p of parents) {
-      if (!visited.has(p.parent_artifact_id)) {
-        queue.push(p.parent_artifact_id);
-      }
-    }
-
-    if (visited.size > CREATIVE_MARKETPLACE.MAX_CASCADE_DEPTH) break;
-  }
-
-  return false;
+  // The proposed edge is parentId → childId. A cycle exists iff childId
+  // already appears as an ancestor of parentId.
+  const maxDepth = CREATIVE_MARKETPLACE.MAX_CASCADE_DEPTH || 50;
+  const row = db.prepare(`
+    WITH RECURSIVE ancestors(id, depth) AS (
+      SELECT ?, 0
+      UNION
+      SELECT cad.parent_artifact_id, ancestors.depth + 1
+        FROM creative_artifact_derivatives cad
+        JOIN ancestors ON cad.child_artifact_id = ancestors.id
+       WHERE ancestors.depth < ?
+    )
+    SELECT 1 AS hit FROM ancestors WHERE id = ? LIMIT 1
+  `).get(parentId, maxDepth, childId);
+  return !!row;
 }
 
 /**

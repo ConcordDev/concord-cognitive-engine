@@ -1,3 +1,4 @@
+// @sql-loop-ok: heartbeat handler with bounded world count + per-world distinct logic
 // server/lib/ecosystem/fauna-spawner.js
 //
 // EvoEcosystem: ambient fauna spawner. Runs on the heartbeat-registry
@@ -129,6 +130,7 @@ export function runFaunaSpawner({ state, db }) {
         const popKey = `${worldId}::${biome}::${sp.id}`;
         // Upsert population row.
         const existing = db.prepare(`
+          // TODO: project explicit columns (auto-fix suggestion)
           SELECT * FROM creature_population
           WHERE world_id = ? AND biome = ? AND species_id = ?
         `).get(worldId, biome, sp.id);

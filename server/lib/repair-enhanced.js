@@ -272,18 +272,23 @@ export function createRepairBrain(db) {
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `),
       getAllPatterns: db.prepare(
+        // TODO: project explicit columns (auto-fix suggestion)
         `SELECT * FROM repair_patterns ORDER BY created_at DESC`
       ),
       getPatternsByCategory: db.prepare(
+        // TODO: project explicit columns (auto-fix suggestion)
         `SELECT * FROM repair_patterns WHERE category = ? ORDER BY created_at DESC`
       ),
       getPatternsBySeverity: db.prepare(
+        // TODO: project explicit columns (auto-fix suggestion)
         `SELECT * FROM repair_patterns WHERE severity = ? ORDER BY created_at DESC`
       ),
       getPatternsByCategoryAndSeverity: db.prepare(
+        // TODO: project explicit columns (auto-fix suggestion)
         `SELECT * FROM repair_patterns WHERE category = ? AND severity = ? ORDER BY created_at DESC`
       ),
       getPatternById: db.prepare(
+        // TODO: project explicit columns (auto-fix suggestion)
         `SELECT * FROM repair_patterns WHERE id = ?`
       ),
       countPatterns: db.prepare(
@@ -301,12 +306,15 @@ export function createRepairBrain(db) {
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `),
       getHistoryById: db.prepare(
+        // TODO: project explicit columns (auto-fix suggestion)
         `SELECT * FROM repair_history WHERE id = ?`
       ),
       getHistory: db.prepare(
+        // TODO: project explicit columns (auto-fix suggestion)
         `SELECT * FROM repair_history ORDER BY created_at DESC LIMIT ? OFFSET ?`
       ),
       getHistoryBySuccess: db.prepare(
+        // TODO: project explicit columns (auto-fix suggestion)
         `SELECT * FROM repair_history WHERE success = ? ORDER BY created_at DESC LIMIT ? OFFSET ?`
       ),
       countHistory: db.prepare(
@@ -336,12 +344,15 @@ export function createRepairBrain(db) {
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `),
       getPredictionById: db.prepare(
+        // TODO: project explicit columns (auto-fix suggestion)
         `SELECT * FROM repair_predictions WHERE id = ?`
       ),
       getPredictions: db.prepare(
+        // TODO: project explicit columns (auto-fix suggestion)
         `SELECT * FROM repair_predictions ORDER BY confidence DESC, created_at DESC LIMIT ? OFFSET ?`
       ),
       getPredictionsByMinConfidence: db.prepare(
+        // TODO: project explicit columns (auto-fix suggestion)
         `SELECT * FROM repair_predictions WHERE confidence >= ? ORDER BY confidence DESC, created_at DESC LIMIT ? OFFSET ?`
       ),
       countPredictions: db.prepare(
@@ -362,12 +373,15 @@ export function createRepairBrain(db) {
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `),
       getKnowledgeByCategory: db.prepare(
+        // TODO: project explicit columns (auto-fix suggestion)
         `SELECT * FROM repair_knowledge WHERE category = ? ORDER BY success_count DESC`
       ),
       getAllKnowledge: db.prepare(
+        // TODO: project explicit columns (auto-fix suggestion)
         `SELECT * FROM repair_knowledge ORDER BY success_count DESC`
       ),
       getKnowledgeByIssueType: db.prepare(
+        // TODO: project explicit columns (auto-fix suggestion)
         `SELECT * FROM repair_knowledge WHERE issue_type = ? ORDER BY success_count DESC`
       ),
       updateKnowledgeSuccess: db.prepare(
@@ -385,9 +399,11 @@ export function createRepairBrain(db) {
         `INSERT INTO system_metrics_history (metric_type, value, metadata, recorded_at) VALUES (?, ?, ?, ?)`
       ),
       getMetricTrend: db.prepare(
+        // TODO: project explicit columns (auto-fix suggestion)
         `SELECT * FROM system_metrics_history WHERE metric_type = ? AND recorded_at >= ? ORDER BY recorded_at ASC`
       ),
       getLatestMetric: db.prepare(
+        // TODO: project explicit columns (auto-fix suggestion)
         `SELECT * FROM system_metrics_history WHERE metric_type = ? ORDER BY recorded_at DESC LIMIT 1`
       ),
       countMetrics: db.prepare(

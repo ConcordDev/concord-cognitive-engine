@@ -68,6 +68,7 @@ export function spawnQuestNPC(db, questId, worldId, opts = {}) {
  * @returns {{ ok: boolean, npcId, fromWorld, toWorld }}
  */
 export function recruitFromWorld(db, npcId, targetWorldId, recruiterId, recruiterType = 'player') {
+  // TODO: project explicit columns (auto-fix suggestion)
   const npc = db.prepare('SELECT * FROM world_npcs WHERE id = ? AND is_dead = 0').get(npcId);
   if (!npc) return { ok: false, error: 'npc_not_found' };
   if (npc.is_immortal) return { ok: false, error: 'immortal_cannot_be_recruited' };
@@ -77,6 +78,7 @@ export function recruitFromWorld(db, npcId, targetWorldId, recruiterId, recruite
 
   // Check consent: NPC is willing if recruiter is allied faction or high-reputation player
   // Simplified: NPCs of the same faction or neutral NPCs are willing
+  // TODO: project explicit columns (auto-fix suggestion)
   const targetWorld = db.prepare('SELECT * FROM worlds WHERE id = ?').get(targetWorldId);
   if (!targetWorld) return { ok: false, error: 'target_world_not_found' };
 
@@ -110,7 +112,9 @@ export function recruitFromWorld(db, npcId, targetWorldId, recruiterId, recruite
  * @returns {{ recruited: boolean, newFaction?: string, reason?: string }}
  */
 export function attemptCivilianRecruitment(db, recruiterId, civilianId) {
+  // TODO: project explicit columns (auto-fix suggestion)
   const recruiter = db.prepare('SELECT * FROM world_npcs WHERE id = ? AND is_dead = 0').get(recruiterId);
+  // TODO: project explicit columns (auto-fix suggestion)
   const civilian  = db.prepare('SELECT * FROM world_npcs WHERE id = ? AND is_dead = 0').get(civilianId);
 
   if (!recruiter || !civilian) return { recruited: false };

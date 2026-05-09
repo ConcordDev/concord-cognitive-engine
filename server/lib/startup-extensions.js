@@ -1,3 +1,4 @@
+// @sync-fs-ok: startup extension loader — runs once at boot
 /**
  * Startup Extensions — optional capability modules initialized at server start.
  *

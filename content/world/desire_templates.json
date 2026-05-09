@@ -1,0 +1,31 @@
+[
+  { "target_archetype": "concord_alignment_high", "template": "Vouch for my brother in the upcoming council vote — your reputation will carry weight where mine cannot.", "reward_kind": "opinion_shift" },
+  { "target_archetype": "concord_alignment_high", "template": "Speak at the Pinewood summit. They listen to those whose alignment runs clean.", "reward_kind": "opinion_shift" },
+  { "target_archetype": "concord_alignment_high", "template": "Carry my proposal across the gate without opening the seal. My name on it would close the door before it opened.", "reward_kind": "alignment_shift" },
+  { "target_archetype": "concord_alignment_high", "template": "Witness the tally at the third hall. Three witnesses are needed, and the third has not arrived.", "reward_kind": "opinion_shift" },
+  { "target_archetype": "concord_alignment_high", "template": "Walk the procession beside me to the granaries. The crowd knows your face; mine they have stopped reading.", "reward_kind": "opinion_shift" },
+
+  { "target_archetype": "concordia_alignment_high", "template": "Plant a sapling at the southern grove, in my mother's name. I'm not allowed near that ground anymore.", "reward_kind": "opinion_shift" },
+  { "target_archetype": "concordia_alignment_high", "template": "Carry word to the goddess's emissary that her shrine still stands. She'll trust you where she'd doubt me.", "reward_kind": "alignment_shift" },
+  { "target_archetype": "concordia_alignment_high", "template": "Light the eastern lantern before dawn. The path it shows isn't for me to walk anymore, but it should be lit for whoever does.", "reward_kind": "alignment_shift" },
+  { "target_archetype": "concordia_alignment_high", "template": "Sit through the third silence. Most break before the second; the goddess hears those who hold the third.", "reward_kind": "alignment_shift" },
+  { "target_archetype": "concordia_alignment_high", "template": "Speak the eight refusals at the river. Your voice will reach further than you think.", "reward_kind": "alignment_shift" },
+
+  { "target_archetype": "ecosystem_low", "template": "Find the runoff source poisoning the Thornwood stream. I've watched it brown for a season.", "reward_kind": "quest_unlock" },
+  { "target_archetype": "ecosystem_low", "template": "The wolves have been thinning. Track the pack-leader and bring me what you find — I won't ask why.", "reward_kind": "quest_unlock" },
+  { "target_archetype": "ecosystem_low", "template": "The bees haven't returned to the third hive. Walk the meadow before frost and tell me what's missing.", "reward_kind": "quest_unlock" },
+  { "target_archetype": "ecosystem_low", "template": "Carry these saplings to the burnt ridge. They'll take where the others didn't because the soil knows your boots aren't the ones that started the fire.", "reward_kind": "alignment_shift" },
+  { "target_archetype": "ecosystem_low", "template": "The herd is grazing the wrong side of the ridge. I can't go up there. You can.", "reward_kind": "quest_unlock" },
+
+  { "target_archetype": "refusal_debt_high", "template": "Speak the Sovereign's refusal at the western gate before sundown. Your debt makes the words land.", "reward_kind": "alignment_shift" },
+  { "target_archetype": "refusal_debt_high", "template": "Stand in my place at the Refusal Archive. I cannot enter; you can.", "reward_kind": "alignment_shift" },
+  { "target_archetype": "refusal_debt_high", "template": "Refuse the count at the Mass Raid threshold. The number you refuse is the number that remembers you.", "reward_kind": "alignment_shift" },
+  { "target_archetype": "refusal_debt_high", "template": "Walk into the dome and hold your breath through the eighth glyph. The dome will know if you didn't.", "reward_kind": "alignment_shift" },
+  { "target_archetype": "refusal_debt_high", "template": "Carry this sealed letter to the Concordia herself. Don't read it. The seal will know.", "reward_kind": "alignment_shift" },
+
+  { "target_archetype": "default", "template": "Bring me a token from beyond this district. I want to know the world is still wider than the gate.", "reward_kind": "opinion_shift" },
+  { "target_archetype": "default", "template": "Witness me train tomorrow at dawn. A worked move with no audience is a half-move." },
+  { "target_archetype": "default", "template": "Carry a message I've been afraid to send. The recipient will understand even if you don't.", "reward_kind": "opinion_shift" },
+  { "target_archetype": "default", "template": "Eat at my table once before the season turns. The conversation matters more than the food, but the food matters too.", "reward_kind": "opinion_shift" },
+  { "target_archetype": "default", "template": "Wear something I made for one day. I'll know if you did, and I'll forget the asking once I see it.", "reward_kind": "opinion_shift" }
+]

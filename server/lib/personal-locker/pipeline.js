@@ -65,7 +65,7 @@ async function analyzeAudio(buffer, mimeType) {
   // Write to temp file for whisper.cpp (it reads from disk)
   const tmpFile = path.join(os.tmpdir(), `concord-audio-${crypto.randomBytes(6).toString("hex")}.wav`);
   try {
-    fs.writeFileSync(tmpFile, buffer, { mode: 0o600 });
+    await fs.promises.writeFile(tmpFile, buffer, { mode: 0o600 });
     // Call whisper via the existing voice.transcribe path through spawn
     const { spawnSync } = await import("node:child_process");
     const whisperBin = process.env.WHISPER_CPP_BIN || "";
@@ -124,7 +124,7 @@ async function analyzeVideo(buffer, mimeType) {
   const tmpDir = path.join(os.tmpdir(), `concord-frames-${crypto.randomBytes(6).toString("hex")}`);
 
   try {
-    fs.writeFileSync(tmpInput, buffer, { mode: 0o600 });
+    await fs.promises.writeFile(tmpInput, buffer, { mode: 0o600 });
     fs.mkdirSync(tmpDir, { recursive: true, mode: 0o700 });
 
     const ffmpeg = await getFFmpeg();
@@ -143,7 +143,7 @@ async function analyzeVideo(buffer, mimeType) {
     const frameFiles = fs.readdirSync(tmpDir).filter(f => f.endsWith(".jpg")).sort();
     const frameAnalyses = await Promise.all(
       frameFiles.map(async (f) => {
-        const frameB64 = fs.readFileSync(path.join(tmpDir, f)).toString("base64");
+        const frameB64 = await fs.promises.readFile(path.join(tmpDir, f)).toString("base64");
         const r = await callVision(frameB64, "Describe this video frame: subjects, action, setting, mood, cinematography.");
         return r.ok ? r.content : "";
       })

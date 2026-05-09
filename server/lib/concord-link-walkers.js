@@ -142,6 +142,8 @@ export function hireWalker(db, { walkerId, payerId, sourceWorld, destWorld, mess
     return { ok: false, reason: "missing_required_fields" };
   }
 
+  // TODO: project explicit columns (auto-fix suggestion)
+
   const walker = db.prepare(`SELECT * FROM concord_link_walkers WHERE id = ?`).get(walkerId);
   if (!walker)                  return { ok: false, reason: "walker_not_found" };
   if (walker.status !== "available") return { ok: false, reason: "walker_unavailable" };
@@ -176,7 +178,10 @@ export function hireWalker(db, { walkerId, payerId, sourceWorld, destWorld, mess
   });
   tx();
 
+  // TODO: project explicit columns (auto-fix suggestion)
+
   const contract = db.prepare(`SELECT * FROM concord_link_contracts WHERE id = ?`).get(contractId);
+  // TODO: project explicit columns (auto-fix suggestion)
   const updatedWalker = db.prepare(`SELECT * FROM concord_link_walkers WHERE id = ?`).get(walkerId);
   return { ok: true, contract, walker: updatedWalker };
 }
@@ -206,6 +211,7 @@ export function advanceJourneyTick(db, { onDelivered = null, onIntercepted = nul
   let advanced = 0, delivered = 0, intercepted = 0, errors = 0;
 
   const inTransit = db.prepare(`
+    // TODO: project explicit columns (auto-fix suggestion)
     SELECT * FROM concord_link_walkers WHERE status = 'in_transit'
   `).all();
 
@@ -308,8 +314,10 @@ function completeJourney(db, walker, outcome, finalWorld) {
  * Read-only journey/contract view by contract id.
  */
 export function trackWalker(db, contractId) {
+  // TODO: project explicit columns (auto-fix suggestion)
   const contract = db.prepare(`SELECT * FROM concord_link_contracts WHERE id=?`).get(contractId);
   if (!contract) return null;
+  // TODO: project explicit columns (auto-fix suggestion)
   const walker = db.prepare(`SELECT * FROM concord_link_walkers WHERE id=?`).get(contract.walker_id);
   let route = [];
   if (walker?.route_anchors) {

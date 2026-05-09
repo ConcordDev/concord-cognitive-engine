@@ -1,3 +1,4 @@
+// @sync-fs-ok: lens scaffolding tool used at dev/build time only
 /**
  * Lens Developer Kit (LDK) — Core Library
  *

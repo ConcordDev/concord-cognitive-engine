@@ -1,8 +1,8 @@
 # Gaps & Wire Targets
 
-_Generated 2026-05-08T17:55:36.053Z. Each gap proposes a concrete wire action._
+_Generated 2026-05-08T21:25:36.834Z. Each gap proposes a concrete wire action._
 
-## Dead tables (25)
+## Dead tables (22)
 
 | Table | Migration | Wire option | Archive option |
 |---|---|---|---|
@@ -10,13 +10,10 @@ _Generated 2026-05-08T17:55:36.053Z. Each gap proposes a concrete wire action._
 | `preserved` | server/migrations/009_brain_want_engine.js | `analytics.preservedStats` macro | // REPLACED_BY: migration_NN |
 | `personality_state` | server/migrations/009_brain_want_engine.js | `analytics.personality_stateStats` macro | // REPLACED_BY: migration_NN |
 | `personality_evolution_log` | server/migrations/009_brain_want_engine.js | `analytics.personality_evolution_logStats` macro | // REPLACED_BY: migration_NN |
-| `wants` | server/migrations/009_brain_want_engine.js | `analytics.wantsStats` macro | // REPLACED_BY: migration_NN |
-| `want_audit_log` | server/migrations/009_brain_want_engine.js | `analytics.want_audit_logStats` macro | // REPLACED_BY: migration_NN |
 | `want_suppressions` | server/migrations/009_brain_want_engine.js | `analytics.want_suppressionsStats` macro | // REPLACED_BY: migration_NN |
 | `spontaneous_queue` | server/migrations/009_brain_want_engine.js | `analytics.spontaneous_queueStats` macro | // REPLACED_BY: migration_NN |
 | `spontaneous_user_prefs` | server/migrations/009_brain_want_engine.js | `analytics.spontaneous_user_prefsStats` macro | // REPLACED_BY: migration_NN |
 | `want_actions` | server/migrations/009_brain_want_engine.js | `analytics.want_actionsStats` macro | // REPLACED_BY: migration_NN |
-| `dtu_citations` | server/migrations/010_learning_verification.js | `analytics.dtu_citationsStats` macro | // REPLACED_BY: migration_NN |
 | `dtu_helpfulness` | server/migrations/010_learning_verification.js | `analytics.dtu_helpfulnessStats` macro | // REPLACED_BY: migration_NN |
 | `retrieval_metrics` | server/migrations/010_learning_verification.js | `analytics.retrieval_metricsStats` macro | // REPLACED_BY: migration_NN |
 | `novelty_daily` | server/migrations/010_learning_verification.js | `analytics.novelty_dailyStats` macro | // REPLACED_BY: migration_NN |
@@ -40,14 +37,17 @@ _None._
 
 _None — every module either has a heartbeat or is invoked by a macro callsite._
 
-## Headless backend domains (0)
+## Headless backend domains (1)
 
-_None — every macro domain has a matching frontend lens dir._
+| Domain | Macro count | Suggested frontend lens dir |
+|---|---:|---|
+| `understanding` | 16 | `concord-frontend/app/lenses/understanding/page.tsx` |
 
-## Orphan lenses (3)
+## Orphan lenses (4)
 
 | Lens dir | Reason | Action |
 |---|---|---|
+| `message` | no_backend_evidence_in_page_tsx | wire backend OR remove |
 | `root` | no_backend_evidence_in_page_tsx | wire backend OR remove |
 | `ux-suite` | no_backend_evidence_in_page_tsx | wire backend OR remove |
 | `world-creator` | page_tsx_empty_or_missing | wire backend OR remove |
@@ -58,9 +58,11 @@ _None — every macro domain has a matching frontend lens dir._
 
 _None._
 
-## Unshaped socket events (0)
+## Unshaped socket events (1)
 
-_None — every emit is registered in `event-shapes.js`._
+| Event | First emitter | Action |
+|---|---|---|
+| `world:invariant-warning` | server/server.js:295 | add to event-shapes.js |
 
 ## Universe-coverage gaps (in-scope categories)
 

@@ -1,0 +1,71 @@
+# Cloudflare Tunnel — Concord on RunPod (or any GPU box)
+#
+# What this does: routes a public hostname (concord.example.com) to the
+# Concord backend running on a private RunPod GPU container. No inbound
+# ports needed on the GPU box — cloudflared makes an outbound connection
+# to Cloudflare's edge.
+#
+# Two deploy modes:
+#
+#   ┌──────────────────────────────────────────────────────────────┐
+#   │  TOKEN MODE (recommended) — single env var, no config files  │
+#   │  See infra/cloudflare/README.md → "Token mode setup"         │
+#   └──────────────────────────────────────────────────────────────┘
+#
+#   ┌──────────────────────────────────────────────────────────────┐
+#   │  CONFIG-FILE MODE — JSON credentials + cloudflared.yml       │
+#   │  See infra/cloudflare/README.md → "Config-file mode setup"   │
+#   └──────────────────────────────────────────────────────────────┘
+#
+# This compose file is a SIDECAR — drop it next to your existing
+# docker-compose.yml and either run both via:
+#
+#   docker compose \
+#     -f docker-compose.yml \
+#     -f infra/cloudflare/docker-compose.cloudflared.yml \
+#     up -d
+#
+# Or merge the cloudflared service into your main docker-compose.yml
+# manually if you prefer one file.
+
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: concord-cloudflared
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+    # Pick ONE of the two command shapes below:
+    #
+    # ── TOKEN MODE ─────────────────────────────────────────────────
+    # Everything except the token comes from your Cloudflare dashboard
+    # (Zero Trust → Networks → Tunnels). Set CF_TUNNEL_TOKEN in your
+    # .env or RunPod secrets.
+    command: tunnel --no-autoupdate run --token ${CF_TUNNEL_TOKEN}
+    #
+    # ── CONFIG-FILE MODE ───────────────────────────────────────────
+    # Comment out the line above and uncomment the next two if you
+    # want explicit ingress rules in cloudflared.yml. You'll also
+    # need to mount the credentials JSON.
+    # command: tunnel --no-autoupdate --config /etc/cloudflared/cloudflared.yml run
+    # volumes:
+    #   - ./infra/cloudflare/cloudflared.yml:/etc/cloudflared/cloudflared.yml:ro
+    #   - ./infra/cloudflare/credentials.json:/etc/cloudflared/credentials.json:ro
+    networks:
+      - concord-network
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD", "cloudflared", "--version"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+
+# Re-declare the network so this file works standalone or merged.
+networks:
+  concord-network:
+    external: true
+    name: concord-network

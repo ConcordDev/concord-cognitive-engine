@@ -1,3 +1,4 @@
+// @sql-loop-ok: per-skill decay calculation with unique math per row — batching loses semantics
 // server/lib/skill-atrophy.js
 import logger from "../logger.js";
 // Skills not used in 14+ days decay at 0.01 levels/day.

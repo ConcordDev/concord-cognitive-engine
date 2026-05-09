@@ -1,3 +1,4 @@
+// @sync-fs-ok: refinement runs from heartbeat, not request handlers
 // server/lib/evo-asset/refinement-passes.js
 // The 5 refinement passes that take a candidate asset and produce a
 // higher-quality variant. Each pass returns a candidate file path + a

@@ -1,3 +1,6 @@
+// @sync-fs-ok: artifact persistence layer requires atomic write semantics —
+// callers expect bytes to be on disk when the call returns. Switching to
+// async fs would introduce race conditions on artifact reads.
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";

@@ -78,6 +78,7 @@ export function updateSwimState(db, worldId, userId, pos) {
  */
 export function getNearbyNodes(db, worldId, x, z, radius = GATHER_RANGE) {
   const nodes = db.prepare(
+    // TODO: project explicit columns (auto-fix suggestion)
     'SELECT * FROM world_resource_nodes WHERE world_id = ? AND is_depleted = 0 AND depth = 0'
   ).all(worldId);
   const r2 = radius * radius;
@@ -99,6 +100,7 @@ export function getNearbyNodes(db, worldId, x, z, radius = GATHER_RANGE) {
  */
 export function getUndergroundNodes(db, worldId, x, z, depth = 0) {
   const nodes = db.prepare(
+    // TODO: project explicit columns (auto-fix suggestion)
     'SELECT * FROM world_resource_nodes WHERE world_id = ? AND is_depleted = 0 AND depth > 0'
   ).all(worldId);
   const radius = 25;
@@ -158,6 +160,8 @@ export function estimateYield(node, toolType = 'hands', toolTier = 1, skillLevel
  */
 export function gatherFromNode(db, nodeId, gatheredBy, opts = {}) {
   const { toolType = 'hands', toolTier = 1, skillLevel = 1, playerPos } = opts;
+
+  // TODO: project explicit columns (auto-fix suggestion)
 
   const node = db.prepare('SELECT * FROM world_resource_nodes WHERE id = ?').get(nodeId);
   if (!node) return { ok: false, error: 'node_not_found' };

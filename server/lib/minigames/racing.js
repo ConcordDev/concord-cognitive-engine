@@ -48,6 +48,7 @@ export function recordCheckpoint(db, raceId, {
   racerId, checkpointIdx, checkpointPos, prevCheckpointPos = null,
   vehicleClass = "car", t = Date.now(),
 } = {}) {
+  // TODO: project explicit columns (auto-fix suggestion)
   const m = db.prepare(`SELECT * FROM minigame_matches WHERE id = ?`).get(raceId);
   if (!m) return { ok: false, error: "race_not_found" };
   if (m.status !== "active") return { ok: false, error: "race_not_active" };
@@ -103,6 +104,7 @@ export function recordCheckpoint(db, raceId, {
 }
 
 export function getRace(db, raceId) {
+  // TODO: project explicit columns (auto-fix suggestion)
   const m = db.prepare(`SELECT * FROM minigame_matches WHERE id = ? AND kind = 'racing'`).get(raceId);
   if (!m) return null;
   return {

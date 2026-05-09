@@ -48,6 +48,7 @@ import { Worker } from "node:worker_threads";
 import { initAll as initLoaf } from "./loaf/index.js";
 import { init as initEmergent } from "./emergent/index.js";
 import { tickAllRegistered, registerHeartbeat } from "./emergent/heartbeat-registry.js";
+import * as _macroTelemetry from "./lib/detectors/macro-telemetry.js";
 import { runSocialNpcBridge } from "./emergent/social-npc-bridge.js";
 import { runNpcKnowledgeBridge } from "./lib/npc-knowledge-bridge.js";
 import {
@@ -196,6 +197,140 @@ registerHeartbeat("forgetting-health-check", {
   handler: runForgettingHealthCheck,
 });
 
+// Code-quality detector sweep. Every 2880 ticks (~12h) runs the static
+// detector suite (stale code, invariants, macro usage, lens health,
+// secret-leak, perf hotspots) plus the runtime DB scans (DTU lineage,
+// heartbeat health). Results land on globalThis.__CONCORD_DETECTORS__
+// and are queryable via runMacro("detectors", "summary"|"findings"|"runAll").
+// Repair Cortex subscribes to this output for auto-fix routing.
+// Phase 8 / T3 — Reflex Cortex. Four governance handlers consume detector
+// findings and route them into council proposals + repair-cortex dispatch.
+// Sovereign retains override at every step.
+import {
+  initReflexCortex,
+  runArchitecturalDrift,
+  runScalingPressure,
+  runDependencyEntropy,
+  runUnsafeExpansion,
+} from "./emergent/reflex-cortex.js";
+
+registerHeartbeat("reflex-architectural-drift", {
+  frequency: 360,
+  handler: runArchitecturalDrift,
+});
+registerHeartbeat("reflex-scaling-pressure", {
+  frequency: 480,
+  handler: runScalingPressure,
+});
+registerHeartbeat("reflex-dependency-entropy", {
+  frequency: 1440,
+  handler: runDependencyEntropy,
+});
+registerHeartbeat("reflex-unsafe-expansion", {
+  frequency: 720,
+  handler: runUnsafeExpansion,
+});
+
+// Phase 7 / T2 — Code substrate refresh. Every 1440 ticks (~6h) re-emits
+// code-artifact DTUs (idempotent on id). The DTU consolidation pipeline
+// then forms code-MEGAs (economy substrate cluster, persistence cluster, …).
+registerHeartbeat("code-substrate-refresh", {
+  frequency: 1440,
+  handler: async ({ db }) => {
+    if (!db) return { ok: false, reason: "no_db" };
+    try {
+      const url = await import("node:url");
+      const here = path.dirname(url.fileURLToPath(import.meta.url));
+      const root = path.resolve(here, "..");
+      const mod = await import("./lib/code-substrate/code-dtu-emitter.js");
+      const r = await mod.emitCodeDtus(db, root);
+      return { ok: r.ok, modules: r.modules, migrations: r.migrations, routes: r.routes, macros: r.macros };
+    } catch (err) {
+      return { ok: false, reason: "code_substrate_refresh_failed", error: err?.message };
+    }
+  },
+});
+
+// Start macro telemetry — periodic flush to audit/detectors/macro-telemetry.jsonl
+// so MacroUsageDetector can resolve dispatcher-reach by runtime fact, not regex.
+// import.meta.dirname is Node 21+; we already require Node 18+ but fall back.
+try {
+  const _modDir = import.meta.dirname || path.resolve(".");
+  _macroTelemetry.startTelemetry(path.resolve(_modDir, ".."));
+} catch (_e) { /* telemetry optional */ }
+
+registerHeartbeat("detectors-sweep", {
+  frequency: 2880,
+  handler: async ({ db, state }) => {
+    try {
+      // Force a telemetry flush before the sweep so the latest in-memory
+      // counts are visible to MacroUsageDetector.
+      await _macroTelemetry.flush().catch(() => {});
+
+      const mod = await import("./lib/detectors/index.js");
+      const baseline = await import("./lib/detectors/baseline.js");
+      const report = await mod.runAllDetectors({ db, state });
+
+      // Compute delta vs baseline for the history record.
+      let delta = null;
+      try {
+        const url = await import("node:url");
+        const here = path.dirname(url.fileURLToPath(import.meta.url));
+        const root = path.resolve(here, "..");
+        const base = await baseline.loadBaseline(root);
+        if (base?.fingerprints) delta = baseline.diffAgainstBaseline(report, base);
+        await baseline.appendHistory(root, report, { delta });
+      } catch (_e) { /* history append is best-effort */ }
+
+      // Stash latest report for HUD consumers — read-only snapshot.
+      globalThis.__CONCORD_DETECTORS__ = Object.assign(
+        globalThis.__CONCORD_DETECTORS__ || {},
+        { latestReport: report, latestRunAt: Date.now(), latestDelta: delta },
+      );
+
+      // Phase 5 hook: feed delta into repair-cortex bridge if available.
+      try {
+        const bridge = await import("./emergent/repair-cortex/detector-bridge.js").catch(() => null);
+        if (bridge?.ingestDetectorDelta) {
+          await bridge.ingestDetectorDelta(report, delta);
+        }
+      } catch (_e) { /* bridge optional */ }
+
+      // Phase 3 hook: emit world:invariant-warning for critical invariant
+      // findings so EmergentEventFeed and the goddess can surface them.
+      try {
+        const criticals = (report.reports || [])
+          .filter(r => r.id === "invariant-guardian")
+          .flatMap(r => (r.findings || []).filter(f => f.severity === "critical").map(x => ({ ...x, detector: r.id })));
+        if (criticals.length > 0 && process.env.CONCORD_WORLD_WARNINGS !== "0") {
+          if (typeof realtimeEmit === "function") {
+            for (const f of criticals) {
+              realtimeEmit("world:invariant-warning", {
+                id: f.id,
+                message: f.message,
+                location: f.location,
+                severity: f.severity,
+                generatedAt: report.generatedAt,
+              });
+            }
+          }
+          // Phase 3.3 — auto-proposal for critical invariant violations.
+          if (process.env.CONCORD_AUTO_GOVERNANCE !== "0") {
+            try {
+              const ap = await import("./lib/governance/auto-proposal.js");
+              ap.bulkPostFromFindings(db, criticals);
+            } catch (_e) { /* auto-proposal optional */ }
+          }
+        }
+      } catch (_e) { /* warning emit best-effort */ }
+
+      return { ok: true, totals: report.totals, detectorCount: report.detectorCount };
+    } catch (err) {
+      return { ok: false, reason: "detector_sweep_failed", error: err?.message };
+    }
+  },
+});
+
 // Layer 11: faction emergent strategy. Every 200 ticks (~50 min) advances
 // each faction whose next_move_at clock has elapsed — picks a deterministic
 // move from the {expand, war, alliance, rebuild, isolation, consolidate}
@@ -232,6 +367,112 @@ import { runEmbodiedDreamCycle } from "./emergent/embodied-dream-cycle.js";
 registerHeartbeat("embodied-dream-cycle", {
   frequency: 80,
   handler: runEmbodiedDreamCycle,
+});
+
+// Phase 1: NPC skill evolution. Every 80 ticks (~20 min) auto-evolves any
+// NPC whose level crossed a 10-boundary in the last cycle. NPC skill
+// authoring happens lazily — milestoned NPCs (lvl 5/25/100) get a
+// deterministic recipe + start the lineage chain. Sovereign at level 20,000
+// is seeded lazily on first marketplace view.
+import { runNpcSkillEvolveCycle } from "./emergent/npc-skill-evolve-cycle.js";
+registerHeartbeat("npc-skill-evolve-cycle", {
+  frequency: 80,
+  handler: runNpcSkillEvolveCycle,
+});
+
+// Phase 1.5: NPC marketplace participation. Every 240 ticks (~60 min) lists
+// eligible NPC recipes for sale + has surplus-wealth NPCs buy from other
+// factions. The marketplace lights up with NPC sellers; players see depth
+// they can grind toward.
+import { runNpcMarketplaceCycle } from "./emergent/npc-marketplace-cycle.js";
+registerHeartbeat("npc-marketplace-cycle", {
+  frequency: 240,
+  handler: runNpcMarketplaceCycle,
+});
+
+// Phase 3: Personal Beat Scheduler. Every 60 ticks (~15 min) surfaces a
+// forward-sim prediction to each online user as an in-world beat through
+// the goddess HUD. Beat realisation cascades into the prediction +
+// shifts player metrics (concordia_alignment +0.05 on realised, refusal
+// debt +0.02 on rejected). Kill-switch: CONCORD_PERSONAL_BEATS=0.
+import { runPersonalBeatScheduler } from "./emergent/personal-beat-scheduler.js";
+registerHeartbeat("personal-beat-scheduler", {
+  frequency: 60,
+  handler: runPersonalBeatScheduler,
+});
+
+// Phase 4a: NPC daily routines. Every 5 ticks (~75s) advances NPC
+// schedules — sleep/train/craft/gather/trade/commune/socialize/patrol.
+// Generates today's schedule lazily (deterministic from
+// sha1(npc_id+day_seed+preoccupation_signature)) and writes embodied
+// signals (Layer 7) per activity. Kill-switch: CONCORD_NPC_ROUTINES=0.
+import { runNpcRoutineCycle } from "./emergent/npc-routine-cycle.js";
+registerHeartbeat("npc-routine-cycle", {
+  frequency: 5,
+  handler: runNpcRoutineCycle,
+});
+
+// Phase 4b: NPC living economy. Every 8 ticks (~2min, staggered behind
+// the routine cycle so most NPCs have arrived) NPCs at their workplaces
+// gather / craft / trade / consume. Every action writes to economy_flows;
+// regional_scarcity refreshes per pass and modulates marketplace prices.
+// Kill-switch: CONCORD_NPC_ECONOMY=0.
+import { runNpcEconomyCycle } from "./emergent/npc-economy-cycle.js";
+registerHeartbeat("npc-economy-cycle", {
+  frequency: 8,
+  handler: runNpcEconomyCycle,
+});
+
+// Phase 4c: Lattice-Born Quests. Every 180 ticks (~45min, staggered well
+// behind the lattice drift-scan at frequency 60) surfaces drift findings
+// (goodhart / memetic_drift / capability_creep / self_reference /
+// echo_chamber / metric_divergence) as procedural 3-step quests planted
+// on archetype-matched NPCs. Idempotent by alert signature.
+// Kill-switch: CONCORD_LATTICE_QUESTS=0.
+import { runLatticeQuestCycle } from "./emergent/lattice-quest-cycle.js";
+registerHeartbeat("lattice-quest-cycle", {
+  frequency: 180,
+  handler: runLatticeQuestCycle,
+});
+
+// Phase 5c: Seasons + Long-cycle Time. Every 480 ticks (~2h) advances
+// world seasons (6 seasons × 7 days each = 42-day Concordia year).
+// Bias env signals via seasonalBias and modulate gather yield via
+// seasonalYieldMultiplier. Kill-switch: CONCORD_SEASONS=0.
+import { runSeasonCycle } from "./emergent/season-cycle.js";
+registerHeartbeat("season-cycle", {
+  frequency: 480,
+  handler: runSeasonCycle,
+});
+
+// Phase 5a: Player land claims. Every 240 ticks (~1h) ticks maintenance
+// against bonds; expired claims revert to open territory. Kill-switch:
+// CONCORD_LAND_CLAIMS=0.
+import { runLandClaimsCycle } from "./emergent/land-claims-cycle.js";
+registerHeartbeat("land-claims-cycle", {
+  frequency: 240,
+  handler: runLandClaimsCycle,
+});
+
+// Phase 7: Procedural NPC spawner. Every 360 ticks (~90min) tops up
+// faction populations to a configurable target (default 8 per faction
+// per active world). Generated NPCs plug into Phase 2/4a/4b/5b without
+// any per-NPC authoring. Kill-switch: CONCORD_PROCGEN_NPCS=0.
+import { runProceduralNpcSpawner } from "./emergent/procedural-npc-spawner.js";
+registerHeartbeat("procedural-npc-spawner", {
+  frequency: 360,
+  handler: runProceduralNpcSpawner,
+});
+
+// Phase 8: Combat polish substrate. Every 2 ticks (~30s) recovers gas
+// for non-combat-active actors and decays stale combos. The substrate
+// itself (gas spending, parry/dodge windows, combo encoding, rocked
+// states, environmental grapples) is invoked from the existing combat
+// path. Kill-switch: CONCORD_COMBAT_RECOVERY=0.
+import { runCombatRecoveryCycle } from "./emergent/combat-recovery-cycle.js";
+registerHeartbeat("combat-recovery-cycle", {
+  frequency: 2,
+  handler: runCombatRecoveryCycle,
 });
 
 // Layer 13: NPC-initiated conversations. Every 8 ticks (~2 min) scans each
@@ -927,7 +1168,7 @@ try {
   }
 } catch (_e) { console.warn("[DomainLogic] Failed to merge extended rules:", _e?.message); }
 
-// ---- Rate Limiting for Expensive Macros (Phase 5.2) ----
+// ---- Rate Limiting for Expensive Macros (Phase 5.2 + Phase 1-6 hardening) ----
 const _macroRateLimits = new Map();
 const EXPENSIVE_MACROS = new Map([
   ["scope.metrics", { maxPerMinute: 30, windowMs: 60000 }],
@@ -935,6 +1176,40 @@ const EXPENSIVE_MACROS = new Map([
   ["system.dream", { maxPerMinute: 10, windowMs: 60000 }],
   ["system.evolution", { maxPerMinute: 10, windowMs: 60000 }],
   ["atlas.autogen", { maxPerMinute: 15, windowMs: 60000 }],
+
+  // Phase 1 — skill evolution. commit() can route through LLM if env-gated.
+  ["skill_evolution.commit", { maxPerMinute: 6, windowMs: 60000 }],
+
+  // Phase 1.5 — knowledge trade. mentorship_request mutates DB + pays NPC;
+  // witness writes a demonstration log per friendly-NPC in chunk.
+  ["knowledge_trade.mentorship_request",          { maxPerMinute: 12, windowMs: 60000 }],
+  ["knowledge_trade.mentorship_complete_session", { maxPerMinute: 6,  windowMs: 60000 }],
+  ["knowledge_trade.witness",                     { maxPerMinute: 60, windowMs: 60000 }],
+
+  // Phase 3 — beats. realise mutates metrics + cascades to forward-sim.
+  ["beats.realise", { maxPerMinute: 30, windowMs: 60000 }],
+
+  // Phase 5a — land claims. claim is a real-estate write.
+  ["land_claims.claim",  { maxPerMinute: 6,  windowMs: 60000 }],
+  ["land_claims.invite", { maxPerMinute: 20, windowMs: 60000 }],
+  ["land_claims.topup",  { maxPerMinute: 20, windowMs: 60000 }],
+
+  // Phase 5d — glyph spells. mint creates DTU + player_glyph_spells row.
+  ["glyph_spells.mint",    { maxPerMinute: 10, windowMs: 60000 }],
+  ["glyph_spells.preview", { maxPerMinute: 60, windowMs: 60000 }],
+
+  // Phase 6a — forge marketplace. mint registers a citation through cascade.
+  ["forge_marketplace.mint", { maxPerMinute: 6, windowMs: 60000 }],
+  ["forge_marketplace.list", { maxPerMinute: 10, windowMs: 60000 }],
+
+  // Phase 6b — DTU portability. export packs the corpus; import writes many rows.
+  ["dtu_portability.export", { maxPerMinute: 4,  windowMs: 60000 }],
+  ["dtu_portability.import", { maxPerMinute: 4,  windowMs: 60000 }],
+
+  // Phase 6c — discovery. LIKE-scan on dtus is expensive at scale.
+  ["discovery.search",   { maxPerMinute: 30, windowMs: 60000 }],
+  ["discovery.facets",   { maxPerMinute: 30, windowMs: 60000 }],
+  ["discovery.trending", { maxPerMinute: 30, windowMs: 60000 }],
 ]);
 
 function checkMacroRateLimit(domain, name) {
@@ -8921,6 +9196,12 @@ globalThis.__CARTOGRAPHER__ = Object.assign(globalThis.__CARTOGRAPHER__ || {}, {
 });
 
 async function runMacro(domain, name, input, ctx) {
+  // Macro telemetry — single Map.set, ~50ns hot-path cost. Resolves the
+  // dispatcher-reach mystery: macros that never fire in 30 days are
+  // genuinely dead even when the static parse can't tell.
+  try { _macroTelemetry.recordInvocation(domain, name, ctx); }
+  catch { /* telemetry must never throw */ }
+
   // v3: permissioned cognition (macro-level ACL).
   //
   // A note on the default actor: previously this defaulted to
@@ -9057,6 +9338,52 @@ async function runMacro(domain, name, input, ctx) {
     intel: new Set(["weather", "geology", "energy", "ocean", "seismic", "agriculture", "environment", "research.status", "research.data", "research.synthesis", "research.archive", "classifier.status", "metrics"]),
     cortex: new Set(["taxonomy", "unknown", "anomalies", "classify", "spectrum", "privacy.zones", "privacy.verify", "privacy.stats", "metrics"]),
     city: new Set(["list", "get", "status", "startStream", "endStream", "followStream", "unfollowStream", "listStreams", "getStream"]),
+    // Code-quality detector suite — read-only inspection. See
+    // server/lib/detectors/* and server/domains/detectors.js.
+    detectors: new Set(["list", "summary", "findings", "run", "runAll", "history", "baseline", "diff", "macro_telemetry", "flush_telemetry"]),
+    // Phase 1: skill evolution macros — read-only preview/list + commit. The
+    // commit path mutates only the caller's own recipe DTU under the
+    // existing personal_dtus_never_leak invariant (see CLAUDE.md).
+    skill_evolution: new Set(["list_unlocks", "preview", "commit", "history"]),
+    // Phase 1.5: knowledge trade — mentorship + demonstration. Read-only
+    // list macros plus commit macros that touch only the caller's own
+    // mentorship rows + dtus they own.
+    knowledge_trade: new Set([
+      "mentorship_request", "mentorship_complete_session",
+      "mentorship_list_for_student", "mentorship_list_for_mentor",
+      "witness",
+    ]),
+    // Phase 3: beats — read-only listing + caller-driven realisation. Each
+    // macro is scoped to the caller's own user_id by the macro handler.
+    beats: new Set(["list", "realise", "find_open_for_subject"]),
+    // Phase 5a: land_claims — read-mostly + caller-driven write macros.
+    land_claims: new Set([
+      "claim", "invite", "topup", "claim_at", "can_act_in", "list_for_user",
+    ]),
+    // Phase 5d: glyph_spells.
+    glyph_spells: new Set([
+      "list_components", "preview", "mint", "list_for_user", "seed_library",
+    ]),
+    // Phase 6a: forge_marketplace — mint + list + read for caller's own apps.
+    forge_marketplace: new Set(["mint", "list", "list_for_user"]),
+    // Phase 6b: dtu_portability — read-only for export+validate; import
+    // gated by actor's user_id binding upstream.
+    dtu_portability: new Set(["export", "validate", "import"]),
+    // Phase 6c: discovery — read-only.
+    discovery: new Set(["search", "facets", "trending"]),
+    // Governance: read-mostly + caller-driven write macros.
+    governance: new Set([
+      "open_proposal", "cast_vote", "tally", "resolve",
+      "list_open", "list_all", "list_governed_constants",
+    ]),
+    // Phase 8: combat polish — read-mostly + caller-driven combat inputs.
+    combat_polish: new Set([
+      "state_for_actor", "attempt_parry", "attempt_dodge",
+      "change_stance", "attempt_grapple", "recent_events",
+      "list_profiles",
+    ]),
+    // Phase 7 — Code substrate. Read-only macros for the code-DTU view.
+    code: new Set(["dtu_for", "dtu_query", "cluster_for", "refresh"]),
   };
   const _domainSet = publicReadDomains[domain];
   const _domainNameAllowed = _domainSet ? _domainSet.has(name) : false;
@@ -13995,6 +14322,26 @@ const BRAIN = {
  * Falls back gracefully to single-Ollama if multi-brain isn't deployed.
  */
 async function initFiveBrains() {
+  // Resolve hardware-adaptive brain profile FIRST so the model + concurrency
+  // selections in BRAIN reflect the actual GPU. CPU / 12GB / 16GB / 24GB /
+  // 32GB profiles in lib/brain-profiles.js. Honours CONCORD_GPU_PROFILE
+  // env override and explicit BRAIN_*_MODEL overrides.
+  try {
+    const { initBrainProfile, getActiveBrainProfile } = await import("./lib/brain-config.js");
+    const r = await initBrainProfile();
+    structuredLog("info", "brain_profile_resolved", {
+      source: r.source, choice: r.choice,
+      gpuInfo: r.gpuInfo ? { gb: r.gpuInfo.gb, gpus: r.gpuInfo.gpus?.length } : null,
+      label: r.profile?.label,
+    });
+    const _ap = getActiveBrainProfile();
+    if (_ap?.profile?.bandGb != null) {
+      structuredLog("info", "brain_profile_band", { bandGb: _ap.profile.bandGb });
+    }
+  } catch (err) {
+    structuredLog("warn", "brain_profile_resolve_failed", { error: err?.message });
+  }
+
   for (const [name, brain] of Object.entries(BRAIN)) {
     try {
       const r = await fetch(`${brain.url}/api/tags`, { signal: AbortSignal.timeout(15000) });
@@ -22444,6 +22791,78 @@ register("system", "cartograph", async (_ctx, input = {}) => {
     return { ok: false, reason: "cartograph_not_run", hint: "run `npm run cartograph:static` to generate audit/cartograph/SYSTEMS.json", error: err?.message };
   }
 }, { description: "Returns the latest cartographer SYSTEMS.json (input: { section?: 'static'|'runtime'|'crossRef'|'coverage'|'stats', statsOnly?: boolean })" });
+
+// ===================== Code-quality detector suite =====================
+// Multi-purpose detector registry — used by:
+//   - the Code Quality lens (HUD)
+//   - repair-cortex (drives auto-fix decisions)
+//   - Concordia/NPC observers (e.g. surface invariant violations as
+//     "world health" warnings)
+//   - the heartbeat sweep at frequency 2880 (~12h)
+// See server/lib/detectors/index.js for the registry + filterFindings helper.
+import registerDetectorMacros from "./domains/detectors.js";
+registerDetectorMacros(register);
+
+// Phase 1 — Skill Evolution. The lifelong content engine for player AND NPC
+// progression. Every 10 levels of XP, an entity can commit a revision that
+// mutates the recipe's max_damage / range_m / costs / current_name on top
+// of a coherence-bounded envelope. NPCs auto-evolve on a heartbeat; players
+// see a modal triggered by the `skill:evolution-available` socket event.
+import registerSkillEvolutionMacros from "./domains/skill-evolution.js";
+registerSkillEvolutionMacros(register);
+
+// Phase 1.5 — Knowledge Trade. NPCs sell skills + buy from each other
+// + teach players via mentorship + learn from player demonstrations
+// witnessed in combat. The royalty cascade pays NPCs' factions on every
+// transfer. See server/lib/{npc-marketplace,mentorship}.js.
+import registerKnowledgeTradeMacros from "./domains/knowledge-trade.js";
+registerKnowledgeTradeMacros(register);
+
+// Phase 3 — Personal beats. Three macros for the goddess HUD widget:
+// list / realise / find_open_for_subject. The scheduler heartbeat (above)
+// inserts beats; these macros let the player surface and resolve them.
+import registerBeatsMacros from "./domains/beats.js";
+registerBeatsMacros(register);
+
+// Phase 5a — Land claims. claim / invite / topup / claim_at / can_act_in /
+// list_for_user macros for the world lens to interrogate the substrate.
+import registerLandClaimsMacros from "./domains/land-claims.js";
+registerLandClaimsMacros(register);
+
+// Phase 5d — Magic Glyph Composition. Players compose spells from base-6
+// glyph components. The composed spell is minted as a kind='spell_recipe'
+// DTU so it flows through Phase 1 / 1.5 (evolution + marketplace).
+import registerGlyphSpellMacros from "./domains/glyph-spells.js";
+registerGlyphSpellMacros(register);
+
+// Phase 6a — Forge → Marketplace. Mint Forge-generated apps as DTUs +
+// list on marketplace. Plugs into royalty cascade for citation chains.
+import registerForgeMarketplaceMacros from "./domains/forge-marketplace.js";
+registerForgeMarketplaceMacros(register);
+
+// Phase 6b — DTU Portability. Pack/validate/import a user's corpus for
+// sovereign migration to another Concord instance.
+import registerDtuPortabilityMacros from "./domains/dtu-portability.js";
+registerDtuPortabilityMacros(register);
+
+// Phase 6c — Cross-lens Discovery. Search/browse all DTUs across the 203
+// lenses with one query.
+import registerDiscoveryMacros from "./domains/discovery.js";
+registerDiscoveryMacros(register);
+
+// Governance — proposals + votes on constitutional constants. The
+// constants themselves remain code-level; this layer is the audit trail.
+import registerGovernanceMacros from "./domains/governance.js";
+registerGovernanceMacros(register);
+
+// Phase 8 — Combat polish surface for the HUD.
+import registerCombatPolishMacros from "./domains/combat-polish.js";
+registerCombatPolishMacros(register);
+
+// Phase 7 / T2 — Code substrate macros: routes / migrations / modules /
+// macros become DTUs under kind='code_artifact'. See lib/code-substrate/.
+import registerCodeSubstrateMacros from "./domains/code-substrate.js";
+registerCodeSubstrateMacros(register);
 
 // ===================== Phase 4 backend macros (close-the-gaps) =====================
 // Five macros backing the Productivity + Tools lens scaffolds shipped in
@@ -53813,6 +54232,15 @@ STATE._circuitBreakers = circuitBreakers;
 // reads STATE; without this call drift-monitor can't run. Idempotent —
 // safe to call multiple times.
 try { initLatticeOrchestrator(STATE); } catch { /* non-fatal — orchestrator handles unset STATE with reason */ }
+
+// Phase 8 / T3 — initialise Reflex Cortex with STATE + db + root so its
+// four handlers can read live data. Idempotent.
+try {
+  const url = await import("node:url");
+  const here = path.dirname(url.fileURLToPath(import.meta.url));
+  const root = path.resolve(here, "..");
+  initReflexCortex(STATE, { db: db || STATE?.db || null, root });
+} catch (_e) { /* non-fatal — handlers tolerate missing init */ }
 
 app.get("/api/circuits", (_req, res) => {
   const states = {};

@@ -103,6 +103,7 @@ export function evaluateSkillInWorld(skill, world) {
  * @returns {Promise<object>}  new student skill DTU
  */
 export async function teachSkillToPlayer(teacherId, studentId, skillDtuId, worldContext, db, selectBrain) {
+  // TODO: project explicit columns (auto-fix suggestion)
   const teacherSkill = db.prepare("SELECT * FROM dtus WHERE id = ?").get(skillDtuId);
   if (!teacherSkill) throw Object.assign(new Error("Skill not found"), { status: 404 });
 
@@ -162,6 +163,8 @@ Return a JSON object with the adapted skill content for the student, preserving 
       db,
     );
   } catch (_e) { /* non-fatal */ }
+
+  // TODO: project explicit columns (auto-fix suggestion)
 
   return db.prepare("SELECT * FROM dtus WHERE id = ?").get(newId);
 }

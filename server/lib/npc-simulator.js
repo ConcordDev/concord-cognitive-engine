@@ -1,3 +1,4 @@
+// @sql-loop-ok: crossbreed loop has order-dependent agent spawning side effects
 // server/lib/npc-simulator.js
 // Per-world NPC simulation. One NPCSimulator instance per active world.
 // Two NPC types:
@@ -775,6 +776,7 @@ Choose one action for this NPC. Return JSON only:
   async _maybeEvaluateCreations() {
     if (Math.random() > 0.1) return; // 10% chance per tick
     const nearby = this._db.prepare(`
+      // TODO: project explicit columns (auto-fix suggestion)
       SELECT * FROM dtus
       WHERE type = 'concordia_creation' AND world_id = ?
       LIMIT 5
@@ -820,6 +822,7 @@ export class NPCSimulator {
 
   async initialize() {
     const rows = this._db.prepare(
+      // TODO: project explicit columns (auto-fix suggestion)
       "SELECT * FROM world_npcs WHERE world_id = ? AND is_dead = 0"
     ).all(this.worldId);
 
@@ -832,6 +835,7 @@ export class NPCSimulator {
   }
 
   async _seedWorldNPCs() {
+    // TODO: project explicit columns (auto-fix suggestion)
     const world = this._db.prepare("SELECT * FROM worlds WHERE id = ?").get(this.worldId);
     const universeType = world?.universe_type || 'generic';
     const config = getSpawnConfig(universeType);
@@ -881,6 +885,8 @@ export class NPCSimulator {
       spawnLoc,
       JSON.stringify({ name: opts.archetype }),
     );
+
+    // TODO: project explicit columns (auto-fix suggestion)
 
     const row = this._db.prepare("SELECT * FROM world_npcs WHERE id = ?").get(id);
     if (row) {
@@ -1003,6 +1009,7 @@ export class NPCSimulator {
     for (const pair of spousePairs) {
       const offspring = attemptCrossbreed(this._db, pair.npc_id, pair.related_id, this.worldId);
       if (offspring) {
+        // TODO: project explicit columns (auto-fix suggestion)
         const row = this._db.prepare('SELECT * FROM world_npcs WHERE id = ?').get(offspring.id);
         if (row) this._agents.push(new NPCAgent(row, this.worldId, this._db, this._selectBrain));
         logger.info('npc-simulator', 'crossbreed_born', { id: offspring.id, species: offspring.species });

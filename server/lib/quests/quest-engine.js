@@ -19,9 +19,11 @@ export function getActiveQuests(db, userId, worldId) {
   return rows.map(q => ({
     ...q,
     objectives: db.prepare(
+      // TODO: project explicit columns (auto-fix suggestion)
       'SELECT * FROM quest_objectives WHERE quest_id = ? ORDER BY order_index'
     ).all(q.id),
     rewards: db.prepare(
+      // TODO: project explicit columns (auto-fix suggestion)
       'SELECT * FROM quest_rewards WHERE quest_id = ?'
     ).all(q.id),
   }));
@@ -76,6 +78,7 @@ export function recordObjectiveProgress(db, userId, worldId, questId, type, targ
 
   for (const obj of objectives) {
     const existing = db.prepare(`
+      // TODO: project explicit columns (auto-fix suggestion)
       SELECT * FROM player_quest_progress
       WHERE user_id = ? AND world_id = ? AND quest_id = ? AND objective_id = ?
     `).get(userId, worldId, obj.quest_id, obj.id);
@@ -140,6 +143,7 @@ export function checkQuestCompletion(db, userId, worldId, questId) {
  */
 export function claimQuestRewards(db, userId, worldId, questId) {
   const pq = db.prepare(`
+    // TODO: project explicit columns (auto-fix suggestion)
     SELECT * FROM player_quests
     WHERE user_id = ? AND world_id = ? AND quest_id = ? AND status = 'completed'
   `).get(userId, worldId, questId);
@@ -148,6 +152,7 @@ export function claimQuestRewards(db, userId, worldId, questId) {
   if (pq.rewarded_at) return { ok: false, error: 'Rewards already claimed' };
 
   const rewards = db.prepare(
+    // TODO: project explicit columns (auto-fix suggestion)
     'SELECT * FROM quest_rewards WHERE quest_id = ?'
   ).all(questId);
 

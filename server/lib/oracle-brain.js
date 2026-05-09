@@ -341,3 +341,57 @@ function _buildFallbackDialogue(npcTraits = {}, questContext = {}, _playerRelati
     ],
   };
 }
+
+// ── Phase 3 — System warden augmentation ──────────────────────────────────
+// Authored "warden" NPCs (Sovereign, Concordia goddess) read the latest
+// detector report from globalThis.__CONCORD_DETECTORS__ and surface
+// invariant warnings + reasoning context as in-world dialogue.
+//
+// Usage: const augmentedCtx = injectSystemWarden(ctx, { sovereignTier: true });
+//   Caller passes the ctx to writeDialogueTree / generateQuestChain.
+
+/**
+ * Inject system-warden context into a dialogue/quest ctx. Reads the latest
+ * detector report and the cartograph reasoning maps (when available).
+ *
+ * @param {object} ctx — existing dialogue/quest ctx (may be {})
+ * @param {object} [opts]
+ * @param {boolean} [opts.sovereignTier] — only sovereign-tier players see
+ *   the deep system warnings. Default false.
+ * @param {number}  [opts.maxFindings] — cap how many findings inject (default 5).
+ * @returns {object} ctx augmented with `systemWarden` field
+ */
+export function injectSystemWarden(ctx = {}, opts = {}) {
+  if (process.env.CONCORD_WORLD_WARNINGS === "0") return ctx;
+  const det = globalThis.__CONCORD_DETECTORS__;
+  if (!det?.latestReport) return ctx;
+
+  const report = det.latestReport;
+  const findings = (report.reports || [])
+    .filter(r => r.id === "invariant-guardian" || r.id === "secret-leak")
+    .flatMap(r => r.findings || [])
+    .filter(f => f.severity === "critical" || f.severity === "high");
+
+  if (findings.length === 0) return ctx;
+
+  const visible = opts.sovereignTier === true ? findings : findings.slice(0, 1);
+  const max = Math.min(opts.maxFindings ?? 5, visible.length);
+
+  const reasoning = det.latestReasoning || null;
+  return {
+    ...ctx,
+    systemWarden: {
+      warningCount: findings.length,
+      findings: visible.slice(0, max).map(f => ({
+        severity: f.severity,
+        message: f.message,
+        location: f.location,
+      })),
+      generatedAt: report.generatedAt,
+      sovereignTier: !!opts.sovereignTier,
+      // T4: include load-bearing / stress map highlights when available.
+      loadBearing: reasoning?.loadBearing?.slice?.(0, 3) ?? null,
+      stressedModule: reasoning?.stress?.[0] ?? null,
+    },
+  };
+}

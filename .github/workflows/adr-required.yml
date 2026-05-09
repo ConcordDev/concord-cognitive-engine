@@ -1,0 +1,54 @@
+name: ADR Required for New Dependencies
+# Phase 10 — Permanence layer enforcement.
+#
+# Blocks PRs that introduce a new top-level dependency in either server/
+# or concord-frontend/ without an Architecture Decision Record (ADR) under
+# docs/adr/. Encourages "stop and write down WHY" before pulling in a new
+# package — combats the dependency-entropy class of debt.
+
+on:
+  pull_request:
+    paths:
+      - "server/package.json"
+      - "concord-frontend/package.json"
+
+permissions:
+  contents: read
+
+jobs:
+  check-adr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Diff package.json against base
+        run: |
+          set -e
+          DIFF_OUT=$(git diff origin/${{ github.base_ref }} -- server/package.json concord-frontend/package.json || true)
+          NEW_DEPS=$(echo "$DIFF_OUT" | grep -E '^\+ +"[^"]+":' | sed -E 's/.*"([^"]+)".*/\1/' | sort -u || true)
+          if [ -z "$NEW_DEPS" ]; then
+            echo "No new dependencies detected."
+            exit 0
+          fi
+
+          echo "New dependencies detected:"
+          echo "$NEW_DEPS"
+          MISSING_ADR=""
+          for dep in $NEW_DEPS; do
+            slug=$(echo "$dep" | tr -d '@/' | tr A-Z a-z)
+            if ! ls docs/adr/ 2>/dev/null | tr A-Z a-z | grep -q "$slug"; then
+              MISSING_ADR="$MISSING_ADR $dep"
+            fi
+          done
+
+          if [ -n "$MISSING_ADR" ]; then
+            echo ""
+            echo "✗ The following new dependencies have no ADR under docs/adr/:"
+            for d in $MISSING_ADR; do echo "    $d"; done
+            echo ""
+            echo "Add a docs/adr/<NNN>-<dep-slug>.md file describing why this dep is needed,"
+            echo "what it replaces or augments, and why a smaller solution wouldn't work."
+            exit 1
+          fi

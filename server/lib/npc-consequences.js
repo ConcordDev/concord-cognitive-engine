@@ -26,6 +26,7 @@ const DISREPAIR_TICK_MS   = 86_400_000; // 24h in production, configurable via e
  * @returns {{ died: boolean, migrated: boolean, consequence: object }}
  */
 export async function triggerNPCDeath(db, npcId, killerId, realtimeEmit) {
+  // TODO: project explicit columns (auto-fix suggestion)
   const npc = db.prepare("SELECT * FROM world_npcs WHERE id = ?").get(npcId);
   if (!npc) return { died: false, reason: 'not_found' };
 
@@ -61,6 +62,14 @@ export async function triggerNPCDeath(db, npcId, killerId, realtimeEmit) {
   db.prepare(
     "INSERT INTO npc_deaths (id, npc_id, world_id, killer_id, consequence) VALUES (?,?,?,?,?)"
   ).run(deathId, npcId, npc.world_id, killerId, JSON.stringify(consequence));
+
+  // Phase 5b: legacy + inheritance. Best-effort, never blocks. Idempotent.
+  (async () => {
+    try {
+      const legacy = await import("./npc-legacy.js");
+      legacy.onNpcDeath?.(db, npc, { cause: "combat" });
+    } catch { /* legacy tables optional on minimal builds */ }
+  })();
 
   // Quest impact — mark quests from this NPC as needing alternative path
   _impactQuests(db, npcId);
@@ -98,6 +107,7 @@ export async function triggerNPCDeath(db, npcId, killerId, realtimeEmit) {
  */
 export function processDisrepairTick(db) {
   const deadNpcs = db.prepare(
+    // TODO: project explicit columns (auto-fix suggestion)
     "SELECT * FROM world_npcs WHERE is_dead = 1 AND disrepair_level < 1 AND home_dtu_id IS NOT NULL"
   ).all();
 

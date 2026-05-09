@@ -1,3 +1,4 @@
+// @sync-fs-ok: serialized snapshotter; runs off-request on the heartbeat path.
 /**
  * Emergent Agent Governance — State Persistence Layer
  *

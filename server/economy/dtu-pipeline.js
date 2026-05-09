@@ -7,6 +7,7 @@ import { randomUUID } from "crypto";
 import { registerCitation } from "./royalty-cascade.js";
 import { awardMeritCredit } from "./lens-economy-wiring.js";
 import { canEmergentCiteUser } from "../lib/consent.js";
+import { batchLookup } from "./_batch-lookup.js";
 
 function uid(prefix = "dtu") {
   return `${prefix}_` + randomUUID().replace(/-/g, "").slice(0, 16);
@@ -333,12 +334,13 @@ export function compressToDMega(db, {
   const now = nowISO();
 
   const doCompress = db.transaction(() => {
-    // Verify all children exist and belong to creator
+    // Phase 2 perf fix: single batched IN-list lookup replaces N round-trips.
+    const childMap = batchLookup(db, "dtus", "id", childDtuIds, {
+      columns: ["id", "title", "content_type", "creti_score", "tier"],
+    });
     const children = [];
     for (const childId of childDtuIds) {
-      const child = db.prepare(
-        "SELECT id, title, content_type, creti_score, tier FROM dtus WHERE id = ?"
-      ).get(childId);
+      const child = childMap.get(childId);
       if (!child) throw new Error(`child_dtu_not_found: ${childId}`);
       children.push(child);
     }
@@ -406,9 +408,13 @@ export function compressToHyper(db, {
   const now = nowISO();
 
   const doCompress = db.transaction(() => {
+    // Phase 2 perf fix: batched IN-list with extra MEGA-tier filter.
+    const megaMap = batchLookup(db, "dtus", "id", megaDtuIds, {
+      whereExtra: "tier = 'MEGA'",
+    });
     const megas = [];
     for (const megaId of megaDtuIds) {
-      const mega = db.prepare("SELECT * FROM dtus WHERE id = ? AND tier = 'MEGA'").get(megaId);
+      const mega = megaMap.get(megaId);
       if (!mega) throw new Error(`mega_dtu_not_found: ${megaId}`);
       megas.push(mega);
     }

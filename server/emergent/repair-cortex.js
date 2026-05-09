@@ -1,3 +1,4 @@
+// @sync-fs-ok: pre-build repair runs once at startup; off the request path.
 /**
  * System 14: Repair Cortex — Organ 169
  *
@@ -2187,6 +2188,69 @@ const PRE_BUILD_CHECKS = {
 
         return { issues, autoFixable };
       } catch {
+        return { issues: [], autoFixable: [] };
+      }
+    },
+  },
+
+  // ── Detector suite — multi-purpose, baseline-aware ───────────────────
+  // Runs the full detector suite, diffs against BASELINE.json, and treats
+  // baseline-known findings as `acknowledged` (info severity here) and
+  // NEW findings as `blocking`. This is the CI-grade signal that prevents
+  // debt regression.
+  detector_suite: {
+    name: "detector_suite",
+    description: "Static + runtime code-quality detectors with baseline gating",
+    action: async (projectRoot) => {
+      try {
+        const mod = await import("../lib/detectors/index.js").catch(() => null);
+        if (!mod?.runAllDetectors) return { issues: [], autoFixable: [] };
+        const baseline = await import("../lib/detectors/baseline.js").catch(() => null);
+
+        const report = await mod.runAllDetectors({
+          root: projectRoot,
+          consumer: "repair-cortex",
+        });
+
+        // Compute baseline-known fingerprint set.
+        let baseFingerprints = new Set();
+        if (baseline?.loadBaseline) {
+          try {
+            const base = await baseline.loadBaseline(projectRoot);
+            baseFingerprints = new Set(Object.keys(base?.fingerprints || {}));
+          } catch (_e) { /* no baseline yet — first run */ }
+        }
+
+        const issues = [];
+        const autoFixable = [];
+        for (const r of report.reports || []) {
+          for (const f of r.findings || []) {
+            if (f.severity === "info") continue;
+            const fp = baseline?.fingerprint ? baseline.fingerprint(f, r.id) : null;
+            const acknowledged = fp && baseFingerprints.has(fp);
+            const severityMap = {
+              critical: "critical",
+              high: "warning",
+              medium: "warning",
+              low: "info",
+            };
+            issues.push({
+              file: (f.location || "").split(":")[0] || null,
+              severity: acknowledged ? "info" : (severityMap[f.severity] || "info"),
+              message: `[${r.id}]${acknowledged ? " (baseline)" : ""} ${f.message}`,
+              autoFixed: false,
+              acknowledged,
+              detector: r.id,
+              findingId: f.id,
+              fingerprint: fp,
+              fixHint: f.fixHint,
+              subject: f.subject,
+            });
+          }
+        }
+        return { issues, autoFixable };
+      } catch (_e) {
+        // Silent — repair cortex never crashes the build.
         return { issues: [], autoFixable: [] };
       }
     },

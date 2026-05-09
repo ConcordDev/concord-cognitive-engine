@@ -152,20 +152,37 @@ export function leaderEnsuresFactionGear(db, leaderId, memberIds) {
   const leaderLevel = leader.gear_level ?? 1;
   const leaderWealth = leader.wealth_sparks ?? 0;
 
-  for (const memberId of memberIds) {
-    const member = db.prepare(
-      'SELECT wealth_sparks, gear_level FROM world_npcs WHERE id = ?'
-    ).get(memberId);
-    if (!member) continue;
+  // Single batched SELECT for member gear/wealth replaces the per-member
+  // lookup (was N+1).
+  const memberPlaceholders = memberIds.map(() => "?").join(",");
+  const memberRows = db.prepare(
+    `SELECT id, wealth_sparks, gear_level FROM world_npcs WHERE id IN (${memberPlaceholders})`,
+  ).all(...memberIds);
+  const memberById = new Map(memberRows.map(r => [r.id, r]));
 
+  // Collect qualifying members first; transfer amount is computed from a
+  // wealth snapshot so it's identical for every recipient. Single batched
+  // UPDATE replaces the per-member loop (was 2N queries → 2 queries total).
+  const transfer = Math.min(leaderWealth * LEADER_TRANSFER_FRACTION, 50);
+  if (transfer < 1) return;
+  const recipients = [];
+  for (const memberId of memberIds) {
+    const member = memberById.get(memberId);
+    if (!member) continue;
     const gap = leaderLevel - (member.gear_level ?? 1);
     if (gap < UNDERGEAR_GAP_THRESHOLD) continue;
+    recipients.push({ memberId, gap });
+  }
+  if (recipients.length === 0) return;
 
-    const transfer = Math.min(leaderWealth * LEADER_TRANSFER_FRACTION, 50);
-    if (transfer < 1) continue;
-
-    db.prepare('UPDATE world_npcs SET wealth_sparks = wealth_sparks - ? WHERE id = ?').run(transfer, leaderId);
-    db.prepare('UPDATE world_npcs SET wealth_sparks = wealth_sparks + ? WHERE id = ?').run(transfer, memberId);
+  const totalDebit = transfer * recipients.length;
+  db.prepare('UPDATE world_npcs SET wealth_sparks = wealth_sparks - ? WHERE id = ?').run(totalDebit, leaderId);
+  const recipientIds = recipients.map(r => r.memberId);
+  const ph = recipientIds.map(() => "?").join(",");
+  db.prepare(
+    `UPDATE world_npcs SET wealth_sparks = wealth_sparks + ? WHERE id IN (${ph})`,
+  ).run(transfer, ...recipientIds);
+  for (const { memberId, gap } of recipients) {
     logger.debug('npc-gear', 'leader_transfer', { leaderId, memberId, transfer, gap });
   }
 }
@@ -222,6 +239,7 @@ export function enforceGearCeiling(db) {
  * Return all gear rows for an NPC (used by loot generator).
  */
 export function getNPCGear(db, npcId) {
+  // TODO: project explicit columns (auto-fix suggestion)
   return db.prepare('SELECT * FROM npc_gear WHERE npc_id = ? AND equipped = 1').all(npcId);
 }
 

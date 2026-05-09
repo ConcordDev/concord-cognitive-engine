@@ -48,6 +48,7 @@ export async function practiceSkill(npc, skillId, db) {
   // Dynamically pull skill-progression if it has been initialised
   try {
     const { awardExperience } = await import("./skill-progression.js");
+    // TODO: project explicit columns (auto-fix suggestion)
     const skill = db.prepare("SELECT * FROM dtus WHERE id = ?").get(skillId);
     if (skill) {
       await awardExperience(skill, "practice", { worldId: npc.worldId, npcId: npc.id }, db);

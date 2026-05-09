@@ -33,6 +33,7 @@ export function loadOrCreate(db, entityId, worldId = DEFAULT_WORLD) {
   if (!db || !entityId) return { E: createState(), M: createMomentum() };
   try {
     const row = db.prepare(
+      // TODO: project explicit columns (auto-fix suggestion)
       `SELECT * FROM affect_state WHERE entity_id = ? AND world_id = ?`,
     ).get(entityId, worldId);
     if (row) {

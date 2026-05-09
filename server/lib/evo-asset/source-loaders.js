@@ -1,3 +1,5 @@
+// @sql-loop-ok: evo-asset boot loaders — startup-only, bounded source count
+// @sync-fs-ok: evo asset loaders run from heartbeat, not request handlers
 // server/lib/evo-asset/source-loaders.js
 // Pluggable loaders for CC0 asset sources. Each loader fetches a manifest,
 // downloads any missing assets, and registers them in the EvoAsset registry

@@ -17,6 +17,7 @@ import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import DistrictViewport from '@/components/world-lens/DistrictViewport';
 import CreationToolbar from '@/components/world-lens/CreationToolbar';
 import InspectorPanel from '@/components/world-lens/InspectorPanel';
+import EvolutionModal from '@/components/skills/EvolutionModal';
 import StatusBar from '@/components/world-lens/StatusBar';
 import GuidedCreator from '@/components/world-lens/GuidedCreator';
 import ComponentCreator from '@/components/world-lens/ComponentCreator';
@@ -80,6 +81,27 @@ const EmergentEventFeed = dynamic(
   () =>
     import('@/components/world/EmergentEventFeed').then((m) => ({
       default: m.EmergentEventFeed,
+    })),
+  { ssr: false }
+);
+const PersonalBeatWidget = dynamic(
+  () =>
+    import('@/components/world/PersonalBeatWidget').then((m) => ({
+      default: m.PersonalBeatWidget,
+    })),
+  { ssr: false }
+);
+const CombatPolishHUD = dynamic(
+  () =>
+    import('@/components/world/CombatPolishHUD').then((m) => ({
+      default: m.CombatPolishHUD,
+    })),
+  { ssr: false }
+);
+const CombatPolishLayer = dynamic(
+  () =>
+    import('@/components/world/CombatBridges').then((m) => ({
+      default: m.CombatPolishLayer,
     })),
   { ssr: false }
 );
@@ -846,6 +868,9 @@ function CityStreamingSection() {
 
   return (
     <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      {/* Phase 1: globally-listening skill evolution modal */}
+      <EvolutionModal />
+
       {/* Connection status */}
       <div className="flex items-center gap-2 text-xs text-gray-500">
         <div
@@ -4121,6 +4146,11 @@ export default function WorldLensPage() {
               previously fired silently (NPC death, evo-promotion, refusal
               fields, weather rolls, agent insights, etc.) */}
           <EmergentEventFeed />
+          <PersonalBeatWidget />
+
+          {/* Phase 8 — combat polish HUD + animation/audio/camera/VFX bridges */}
+          <CombatPolishHUD userId={playerAvatar?.id || null} />
+          <CombatPolishLayer userId={playerAvatar?.id || null} />
 
           {/* Body-language overlay — surfaces combat:telegraph (server
               fires immediately before applyAttack resolves) so the player

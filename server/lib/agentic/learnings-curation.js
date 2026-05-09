@@ -1,3 +1,4 @@
+// @sql-loop-ok: curation pass with conditional per-row archive logic
 // server/lib/agentic/learnings-curation.js
 // Daily/weekly curation: each emergent reviews observations from shadow DTUs,
 // identifies recurring patterns, and promotes them to learning DTUs.

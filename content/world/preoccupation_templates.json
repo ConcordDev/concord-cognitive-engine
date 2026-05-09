@@ -1,0 +1,24 @@
+[
+  { "phase": "expand", "template": "My faction is pushing east; we expect new territory before the next moon. Eyes are forward, hands are ready." },
+  { "phase": "expand", "template": "We've staked the new boundary. The flags are up. The arguments are not done." },
+
+  { "phase": "war", "template": "We are at war. Half my kin are wounded; the rest are sharpening blades. Sleep finds none of us." },
+  { "phase": "war", "template": "The drum has been beating for three days. I have not yet heard it stop." },
+  { "phase": "war", "template": "The line broke near the second ridge. My cousin walked back with two arrows in their cloak. They didn't say where the third one was." },
+
+  { "phase": "rebuild", "template": "We lost the last skirmish. I'm rationing my own training to feed the rebuild — it'll be a season before we move again." },
+  { "phase": "rebuild", "template": "Three of our forges are cold. The fourth is taking double work. I am the fourth." },
+  { "phase": "rebuild", "template": "We're picking through what we left behind, one ridge at a time. What we find isn't always what we lost." },
+
+  { "phase": "alliance", "template": "We're courting an alliance. My cousin walks as envoy now; she sends word every third day." },
+  { "phase": "alliance", "template": "The treaty is being read aloud in seven halls. I have heard the third reading; it doesn't say what the first one did." },
+
+  { "phase": "consolidate", "template": "We're holding what we have. No new fronts until the elders agree, and the elders take their time." },
+  { "phase": "consolidate", "template": "My job this season is to do nothing well. It is harder than it sounds." },
+
+  { "phase": "isolation", "template": "We've withdrawn from the field. The silence is by choice. Don't ask whose." },
+  { "phase": "isolation", "template": "The gate is closed to outsiders. I am told not to say which gate, or which outside." },
+
+  { "phase": "default", "template": "My faction is between phases. I keep my eyes open and my count low." },
+  { "phase": "default", "template": "Nothing has been decided this week. Next week, perhaps." }
+]

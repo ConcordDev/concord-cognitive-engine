@@ -1,0 +1,19 @@
+#!/bin/sh
+# Phase 10 — pre-push detector gate.
+#
+# Runs the full detector suite and blocks the push if NEW critical/high
+# findings are present compared to BASELINE.json.
+#
+# Bypass: git push --no-verify
+# (Bypass usage triggers a DTU log entry on the next server boot when the
+# detectors heartbeat sees an unexpected baseline drift.)
+
+if [ -f server/scripts/run-detectors.js ] && [ -f audit/detectors/BASELINE.json ]; then
+  (cd server && node scripts/run-detectors.js --ci) || {
+    echo ""
+    echo "✗ Detector gate blocked the push."
+    echo "  Run \`npm run detectors:diff\` to see what's new."
+    echo "  If you really meant to ship: \`npm run detectors:baseline\` then push again."
+    exit 1
+  }
+fi

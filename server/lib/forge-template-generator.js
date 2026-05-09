@@ -306,6 +306,8 @@ function registerAuthRoutes(app) {
       const { email, password } = req.body;
       if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
 
+      // TODO: project explicit columns (auto-fix suggestion)
+
       const user = STATE.db.prepare('SELECT * FROM users WHERE email = ?').get(email);
       if (!user) return res.status(401).json({ error: 'Invalid credentials' });
 
@@ -347,6 +349,8 @@ function registerAuthRoutes(app) {
   app.post('/api/auth/password-reset/confirm', async (req, res) => {
     const { token, newPassword } = req.body;
     if (!token || !newPassword) return res.status(400).json({ error: 'Token and new password required' });
+
+    // TODO: project explicit columns (auto-fix suggestion)
 
     const reset = STATE.db.prepare('SELECT * FROM password_resets WHERE token = ? AND used = 0 AND expires_at > datetime("now")').get(token);
     if (!reset) return res.status(400).json({ error: 'Invalid or expired reset token' });
@@ -481,6 +485,7 @@ function generateAPI() {
  *     path: '/api/items',
  *     auth: true,
  *     handler: async (req, res) => {
+ // TODO: project explicit columns (auto-fix suggestion)
  *       const items = STATE.db.prepare('SELECT * FROM items WHERE user_id = ?').all(req.user.id);
  *       res.json({ ok: true, items });
  *     }
