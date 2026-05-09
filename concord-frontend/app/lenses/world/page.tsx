@@ -5561,6 +5561,14 @@ function _mapNPCToAvatarData(npc: {
   bodyType?: string;
   faction?: string;
   isConscious?: boolean;
+  // Sprint B.6 — immortal flag from authored npcs.json (e.g.
+  // concordia_first_breath has `is_immortal: true`). Promotes the
+  // NPC to the legend body type even if archetype isn't 'legend'.
+  // The worlds API returns this as camelCase `isImmortal`
+  // (server/routes/worlds.js:716); we accept both shapes for
+  // robustness against API drift.
+  isImmortal?: boolean;
+  is_immortal?: boolean;
   // Behavioral state fields from updated worlds.js API
   griefLevel?: number;
   criminalRep?: number;
@@ -5595,7 +5603,7 @@ function _mapNPCToAvatarData(npc: {
     medic: 'read',
     journalist: 'read',
   };
-  const bodyTypeMap: Record<string, 'slim' | 'average' | 'stocky' | 'tall'> = {
+  const bodyTypeMap: Record<string, 'slim' | 'average' | 'stocky' | 'tall' | 'legend'> = {
     large: 'stocky',
     small: 'slim',
     giant: 'stocky',
@@ -5605,8 +5613,22 @@ function _mapNPCToAvatarData(npc: {
     cyborg: 'average',
     demon: 'stocky',
     dragon: 'stocky',
+    // Sprint B.6 — `legend` is the immortal-NPC body type. 1.5× scale +
+    // emissive material in createAvatarMesh. Used for archetypes
+    // explicitly marked legendary in npcs.json (concordia_first_breath,
+    // sovereign_first_refusal, concord_first_thought, weaver_of_echoes).
+    legend: 'legend',
   };
   const occ = npc.occupation ?? npc.archetype ?? npc.jobType ?? 'guard';
+
+  // Sprint B.6 — archetype-based legend override. Authored NPCs with
+  // archetype === 'legend' OR is_immortal === true become the legend
+  // body type regardless of any other bodyType field. Keeps the
+  // numinous-NPC presentation consistent across data shapes.
+  const isLegendNpc =
+    npc.archetype === 'legend' ||
+    npc.isImmortal === true ||
+    npc.is_immortal === true;
 
   // Hair color reflects behavioral state
   let hairColor = '#333333';
@@ -5632,7 +5654,7 @@ function _mapNPCToAvatarData(npc: {
       skinColor,
       hairColor,
       hairStyle: npc.isConscious ? 'long' : 'short',
-      bodyType: bodyTypeMap[npc.bodyType ?? ''] ?? 'average',
+      bodyType: isLegendNpc ? 'legend' : (bodyTypeMap[npc.bodyType ?? ''] ?? 'average'),
       clothing: {
         top: { color: skinColor, type: clothingTop },
         bottom: { color: '#374151', type: 'pants' },

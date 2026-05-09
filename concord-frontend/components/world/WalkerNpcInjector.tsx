@@ -26,7 +26,7 @@ import { subscribe } from '@/lib/realtime/socket';
 // Match the existing AvatarSystem3D NPCData shape so the parent can
 // pass injected walkers straight through.
 interface AppearanceConfig {
-  bodyType: 'slim' | 'average' | 'stocky' | 'tall';
+  bodyType: 'slim' | 'average' | 'stocky' | 'tall' | 'legend';
   skinTone: number;
   hairStyle: number;
   hairColor: number;
@@ -95,6 +95,8 @@ function fallbackAppearance(walkerId: string): { name: string; appearance: Appea
   let h = 0;
   for (let i = 0; i < walkerId.length; i++) h = ((h << 5) - h + walkerId.charCodeAt(i)) | 0;
   const abs = Math.abs(h);
+  // Walkers are mortals — legend reserved for the immortal NPC class
+  // (concordia_first_breath, sovereign_first_refusal, etc).
   const bodies: AppearanceConfig['bodyType'][] = ['slim', 'average', 'stocky', 'tall'];
   return {
     name: `Walker ${walkerId.slice(-4).toUpperCase()}`,

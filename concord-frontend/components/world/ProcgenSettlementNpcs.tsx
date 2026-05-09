@@ -23,7 +23,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { subscribe } from '@/lib/realtime/socket';
 
 interface AppearanceConfig {
-  bodyType: 'slim' | 'average' | 'stocky' | 'tall';
+  bodyType: 'slim' | 'average' | 'stocky' | 'tall' | 'legend';
   skinTone: number;
   hairStyle: number;
   hairColor: number;
@@ -80,6 +80,8 @@ function appearanceFromId(npcId: string): AppearanceConfig {
   let h = 0;
   for (let i = 0; i < npcId.length; i++) h = ((h << 5) - h + npcId.charCodeAt(i)) | 0;
   const abs = Math.abs(h);
+  // Procgen settlers are mortals — `legend` is reserved for the
+  // authored immortal class only.
   const bodies: AppearanceConfig['bodyType'][] = ['slim', 'average', 'stocky', 'tall'];
   return {
     bodyType: bodies[abs % bodies.length],
