@@ -43,6 +43,25 @@ export interface RagdollHandle {
   spawnedAt: number;
 }
 
+// Theme 5/6 (game-feel pass): per-controller kinematic state. Lives outside
+// the Rapier capsule so we can integrate manual velocities (knockback,
+// jump, glide) into moveCharacter without migrating the player to a
+// dynamic body. Kinematic bodies don't accept applyImpulse / setLinvel
+// — those are silent no-ops on this controller type.
+interface KinematicState {
+  /** Active knockback velocity in world space (m/s). Decays linearly to 0
+   *  by expiresAt; capped per-axis so total displacement ≤ MAX_KB_M. */
+  kbVx: number;
+  kbVz: number;
+  kbStartedAt: number;
+  kbExpiresAt: number;
+  /** Total displacement so far from the current knockback impulse. */
+  kbTravelled: number;
+}
+
+const MAX_KB_M = 1.5;       // total knockback displacement cap (metres)
+const KB_DEFAULT_MS = 220;  // default knockback duration
+
 class PhysicsWorld {
   private RAPIER: RapierType | null         = null;
   private THREE:  ThreeType | null          = null;
@@ -50,6 +69,7 @@ class PhysicsWorld {
   private controllers: Map<string, CharCtrl>  = new Map();
   private bodies:      Map<string, RigidBody>  = new Map();
   private colliders:   Map<string, Collider>   = new Map();
+  private kinematic:   Map<string, KinematicState> = new Map();
 
   /** Load Rapier WASM and create the physics world. Call once at scene startup. */
   async init(): Promise<void> {
@@ -393,7 +413,45 @@ class PhysicsWorld {
       if (c.parent()?.handle === body.handle) charCollider = c;
     });
 
-    ctrl.computeColliderMovement(charCollider, desiredTranslation, undefined, undefined);
+    // Theme 5 (game-feel pass): kinematic knockback. Add the active
+    // knockback velocity (×dt) to the desired translation. Linearly
+    // decay during its lifetime so the impulse "lands" rather than
+    // teleports. Cap total displacement at MAX_KB_M.
+    let kbDx = 0;
+    let kbDz = 0;
+    const ks = this.kinematic.get(id);
+    if (ks && ks.kbExpiresAt > 0) {
+      const now = performance.now();
+      if (now < ks.kbExpiresAt) {
+        const remainingMs = ks.kbExpiresAt - now;
+        const totalMs     = ks.kbExpiresAt - ks.kbStartedAt;
+        // Linear ramp: 1.0 at start → 0.0 at end.
+        const frac = totalMs > 0 ? Math.max(0, Math.min(1, remainingMs / totalMs)) : 0;
+        kbDx = ks.kbVx * frac * dt;
+        kbDz = ks.kbVz * frac * dt;
+        // Enforce displacement cap.
+        const stepMag = Math.hypot(kbDx, kbDz);
+        const remaining = MAX_KB_M - ks.kbTravelled;
+        if (stepMag > remaining) {
+          const k = remaining / stepMag;
+          kbDx *= k;
+          kbDz *= k;
+          ks.kbExpiresAt = 0; // no more travel from this impulse
+        }
+        ks.kbTravelled += Math.hypot(kbDx, kbDz);
+      } else {
+        ks.kbExpiresAt = 0;
+        ks.kbTravelled = 0;
+      }
+    }
+
+    const finalDesired = {
+      x: desiredTranslation.x + kbDx,
+      y: desiredTranslation.y,
+      z: desiredTranslation.z + kbDz,
+    };
+
+    ctrl.computeColliderMovement(charCollider, finalDesired, undefined, undefined);
     const corrected = ctrl.computedMovement();
 
     // Apply to kinematic body
@@ -407,6 +465,57 @@ class PhysicsWorld {
     return { x: corrected.x / dt, y: corrected.y / dt, z: corrected.z / dt };
   }
 
+  /**
+   * Theme 5 (game-feel pass): apply a kinematic knockback impulse to a
+   * character controller. moveCharacter folds the velocity into desired
+   * translation per frame for `durationMs`; total displacement capped at
+   * MAX_KB_M (1.5 m). No-op for non-existent controllers.
+   *
+   * Use case: combat-hit-heavy → knock the target back from the impact
+   * direction. Player capsule is kinematicPositionBased so applyImpulse
+   * is silently ignored — this is the right path.
+   *
+   * @param id           controller id (player / NPC)
+   * @param direction    {x, z} unit vector pointing AWAY from impactor
+   * @param magnitude    target initial speed in m/s (clamped to a sane range)
+   * @param durationMs   total time for the impulse (default 220ms)
+   */
+  knockbackKinematic(
+    id: string,
+    direction: { x: number; z: number },
+    magnitude: number,
+    durationMs: number = KB_DEFAULT_MS,
+  ): boolean {
+    if (!this.controllers.has(id)) return false;
+    const m = Math.max(0, Math.min(8, Number(magnitude)));
+    if (m === 0) return false;
+    const dx = Number(direction?.x) || 0;
+    const dz = Number(direction?.z) || 0;
+    const mag = Math.hypot(dx, dz);
+    if (mag === 0) return false;
+    const ux = dx / mag;
+    const uz = dz / mag;
+    const dur = Math.max(50, Math.min(800, Number(durationMs)));
+    const now = performance.now();
+    this.kinematic.set(id, {
+      kbVx: ux * m,
+      kbVz: uz * m,
+      kbStartedAt: now,
+      kbExpiresAt: now + dur,
+      kbTravelled: 0,
+    });
+    return true;
+  }
+
+  /** Returns true when `id` has an active knockback impulse. Useful for
+   *  the avatar update loop to suspend other steering forces during
+   *  knockback so the impulse reads as a clean recoil. */
+  isKnockedBack(id: string): boolean {
+    const ks = this.kinematic.get(id);
+    if (!ks) return false;
+    return ks.kbExpiresAt > performance.now();
+  }
+
   /** Remove a character controller and its body. */
   removeCharacter(id: string): void {
     if (!this.world) return;
@@ -416,6 +525,7 @@ class PhysicsWorld {
     const ctrl = this.controllers.get(id);
     if (ctrl) this.world.removeCharacterController(ctrl);
     this.controllers.delete(id);
+    this.kinematic.delete(id);
   }
 
   // ── Projectiles ────────────────────────────────────────────────────────────

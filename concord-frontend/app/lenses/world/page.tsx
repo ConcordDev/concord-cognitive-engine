@@ -300,6 +300,10 @@ const NPCActivityTag = dynamic(
   () => import('@/components/world/NPCActivityTag').then((m) => ({ default: m.NPCActivityTag })),
   { ssr: false },
 );
+const DamageBillboard = dynamic(
+  () => import('@/components/world/DamageBillboard').then((m) => ({ default: m.DamageBillboard })),
+  { ssr: false },
+);
 const DiegeticSurfaces = dynamic(
   () => import('@/components/world-lens/DiegeticSurfaces'),
   { ssr: false },
@@ -2711,8 +2715,30 @@ export default function WorldLensPage() {
         isCrit: boolean;
         targetHealth: number;
         targetMaxHealth: number;
+        targetPosition?: { x?: number; y?: number; z?: number };
+        attackerPosition?: { x?: number; y?: number; z?: number };
       };
       if (!data) return;
+
+      // Theme 5 (game-feel pass): world-anchored damage billboard fires
+      // for every hit (us OR others) within view of the player. Position
+      // is server-provided when available; fall back to local lookups.
+      try {
+        const tp = data.targetPosition && Number.isFinite(Number(data.targetPosition.x))
+          ? { x: Number(data.targetPosition.x), y: Number(data.targetPosition.y ?? 0), z: Number(data.targetPosition.z ?? 0) }
+          : null;
+        if (tp) {
+          window.dispatchEvent(new CustomEvent('concordia:damage-billboard', {
+            detail: {
+              position: tp,
+              value: String(Math.max(0, Math.round(Number(data.damage) || 0))),
+              kind: data.isCrit ? 'crit' : (data.damage > 25 ? 'crit' : 'hit'),
+              ttlMs: data.isCrit ? 1500 : 1100,
+            },
+          }));
+        }
+      } catch { /* billboard best-effort */ }
+
       if (data.targetId !== playerAvatar.id) return; // not us
       setCombatState((prev) => ({
         ...prev,
@@ -3781,6 +3807,7 @@ export default function WorldLensPage() {
             }))}
             playerPosition={{ x: playerAvatar.position.x, z: playerAvatar.position.z }}
           />
+          <DamageBillboard />
           <CurrencyHUD onClick={() => setShowPanel('profile')} />
           <DiegeticSurfaces
             playerPosition={playerAvatar.position}

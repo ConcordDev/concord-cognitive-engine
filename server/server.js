@@ -7433,6 +7433,18 @@ async function tryInitWebSockets(server) {
 
         // Broadcast the hit event so everyone in the attacker's
         // chunk sees it — damage numbers, blood, etc.
+        // Theme 5 (game-feel pass): include target + attacker positions
+        // so the client damage-billboard layer can world-anchor the
+        // damage number and the kinematic knockback can derive its
+        // direction without a second lookup. Best-effort — both fields
+        // are listed as optional in event-shapes.js.
+        let _hitTargetPos = null, _hitAttackerPos = null;
+        try {
+          _hitTargetPos = cityPresence.getPositionFor?.(data.targetId)
+            || cityPresence.getUserPosition?.(data.targetId)
+            || null;
+          _hitAttackerPos = cityPresence.getUserPosition?.(userId) || null;
+        } catch { /* position lookup best-effort */ }
         realtimeEmit("combat:hit", {
           attackerId: userId,
           targetId: data.targetId,
@@ -7441,6 +7453,8 @@ async function tryInitWebSockets(server) {
           targetHealth: result.targetHealth,
           targetMaxHealth: result.targetMaxHealth,
           targetKilled: result.targetKilled,
+          targetPosition: _hitTargetPos,
+          attackerPosition: _hitAttackerPos,
         });
 
         // Companion assist XP: deployed companions of the attacker get

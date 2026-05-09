@@ -272,6 +272,9 @@ export default function AvatarSystem3D({
   const deathFadeTickRef = useRef<(() => void) | null>(null);
   // Tier 2 deferral 10: per-frame tick for all active ragdolls.
   const ragdollTickRef = useRef<(() => void) | null>(null);
+  // Theme 5 (game-feel pass): hit-pause window per entity. While
+  // performance.now() < entry, the entity's mixer freezes (delta=0).
+  const hitPauseUntilRef = useRef<Map<string, number>>(new Map());
   const keysRef = useRef<Set<string>>(new Set());
   const playerPositionRef = useRef({ ...playerAvatar.position });
   const playerRotationRef = useRef(playerAvatar.rotation);
@@ -1005,6 +1008,35 @@ export default function AvatarSystem3D({
       }
       window.addEventListener('concordia:hit-reaction', handleHitReaction);
 
+      // Theme 5 (game-feel pass): hit-pause + knockback. GameJuice fires
+      // these on combat-hit-heavy / combat-crit / combat-kill so the
+      // impact reads as weight (animation freezes) and the target
+      // recoils through the kinematic capsule.
+      function handleHitPause(e: Event) {
+        const detail = (e as CustomEvent).detail as { entityId?: string; durationMs?: number } | undefined;
+        if (!detail?.entityId || !Number.isFinite(Number(detail.durationMs))) return;
+        const dur = Math.max(0, Math.min(400, Number(detail.durationMs)));
+        if (dur === 0) return;
+        hitPauseUntilRef.current.set(detail.entityId, performance.now() + dur);
+      }
+      window.addEventListener('concordia:hit-pause', handleHitPause);
+
+      function handleKnockback(e: Event) {
+        const detail = (e as CustomEvent).detail as
+          | { entityId?: string; direction?: { x?: number; z?: number }; magnitude?: number; durationMs?: number }
+          | undefined;
+        if (!detail?.entityId || !detail.direction) return;
+        const dx = Number(detail.direction.x) || 0;
+        const dz = Number(detail.direction.z) || 0;
+        const m  = Number(detail.magnitude) || 0;
+        const ms = Number(detail.durationMs) || 220;
+        if (m <= 0 || (dx === 0 && dz === 0)) return;
+        try {
+          physicsWorld.knockbackKinematic?.(detail.entityId, { x: dx, z: dz }, m, ms);
+        } catch { /* physics-world load race; best-effort */ }
+      }
+      window.addEventListener('concordia:knockback', handleKnockback);
+
       // Polish: NPCs face the player when within 5m. NPCBehaviorHooks ticks
       // every 250ms and dispatches `concordia:npc-look-at` with the desired
       // yaw — we update the existing per-NPC targetRot which the frame loop
@@ -1506,9 +1538,23 @@ export default function AvatarSystem3D({
       // ── Update loop (called by parent scene's game loop) ───
 
       avatarGroup.userData.update = (delta: number, elapsed: number) => {
-        // Update all animation mixers
-        for (const mixer of mixersRef.current.values()) {
-          (mixer as { update: (d: number) => void }).update(delta);
+        // Theme 5 (game-feel pass): respect concordia:hit-pause window
+        // events. While a target/attacker is in their hit-pause window,
+        // their mixer freezes (delta=0) so the impact reads as weight.
+        // hitPauseUntilRef is keyed by entity id; managed by the listener
+        // installed below.
+        const now = performance.now();
+        const pauseMap = hitPauseUntilRef.current;
+        for (const [id, mixer] of mixersRef.current.entries()) {
+          const pauseUntil = pauseMap.get(id) ?? 0;
+          const effectiveDelta = pauseUntil > now ? 0 : delta;
+          (mixer as { update: (d: number) => void }).update(effectiveDelta);
+        }
+        // GC expired pauses lazily.
+        if (pauseMap.size > 0) {
+          for (const [k, until] of pauseMap) {
+            if (until <= now) pauseMap.delete(k);
+          }
         }
 
         // Phase 5: per-frame opacity fade on dying meshes
@@ -1892,6 +1938,8 @@ export default function AvatarSystem3D({
         window.removeEventListener('keydown', handleKeyDown);
         window.removeEventListener('keyup', handleKeyUp);
         window.removeEventListener('concordia:hit-reaction', handleHitReaction);
+        window.removeEventListener('concordia:hit-pause', handleHitPause);
+        window.removeEventListener('concordia:knockback', handleKnockback);
         window.removeEventListener('concordia:combat-anim', handleCombatAnim);
         window.removeEventListener('concordia:death-collapse', handleDeathCollapse);
         window.removeEventListener('concordia:npc-look-at', handleNPCLookAt);
