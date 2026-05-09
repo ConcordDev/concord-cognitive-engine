@@ -17,9 +17,9 @@
 
 "use client";
 
-import { useCallback, useEffect, useState, useRef, Suspense } from "react";
+import { useCallback, useEffect, useState, Suspense } from "react";
 import dynamic from "next/dynamic";
-import type { MountSpecies, MountGaitProfile, MountedFrame } from "@/lib/concordia/mounts/mount-types";
+import type { MountSpecies, MountGaitProfile } from "@/lib/concordia/mounts/mount-types";
 
 // Three.js/R3F is heavy; lazy-load so the rest of the lens stays light.
 const MountPreviewCanvas = dynamic(
