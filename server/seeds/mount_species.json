@@ -1,0 +1,157 @@
+{
+  "_comment": "B1 starter set of mountable species. Inserted via INSERT OR IGNORE so re-running is a no-op. base_speed_mps tuned so the warhorse (8.5 m/s ≈ 30 km/h) is the speed reference; size_class drives carry_capacity_kg roughly. flight_capable=1 only on hippogriff/gryphon/wyvern; B2 riding requires a flight-capable physics integration (deferred to B4 polish).",
+  "species": [
+    {
+      "species_id": "warhorse",
+      "display_name": "Warhorse",
+      "size_class": "large",
+      "base_speed_mps": 8.5,
+      "base_stamina": 120,
+      "carry_capacity_kg": 120,
+      "saddle_anchor_bone": "spine_03",
+      "reins_anchor_bone": "head",
+      "flight_capable": 0,
+      "rider_seat_offset": { "x": 0, "y": 1.45, "z": -0.05, "yaw": 0 },
+      "aesthetic_tags": ["medieval", "war", "common"],
+      "gait": {
+        "walk":   { "phase_offsets": [0.00, 0.50, 0.25, 0.75], "stride_m": 1.20, "ground_clearance_m": 0.05 },
+        "trot":   { "phase_offsets": [0.00, 0.50, 0.50, 0.00], "stride_m": 2.00, "ground_clearance_m": 0.15 },
+        "gallop": { "phase_offsets": [0.00, 0.10, 0.55, 0.65], "stride_m": 4.50, "ground_clearance_m": 0.55 }
+      },
+      "turn_radius_m": 4.0
+    },
+    {
+      "species_id": "dire_wolf",
+      "display_name": "Dire Wolf",
+      "size_class": "large",
+      "base_speed_mps": 9.2,
+      "base_stamina": 100,
+      "carry_capacity_kg": 90,
+      "saddle_anchor_bone": "spine_02",
+      "reins_anchor_bone": "neck",
+      "flight_capable": 0,
+      "rider_seat_offset": { "x": 0, "y": 1.20, "z": 0.05, "yaw": 0 },
+      "aesthetic_tags": ["wild", "feral", "rare"],
+      "gait": {
+        "walk":   { "phase_offsets": [0.00, 0.50, 0.25, 0.75], "stride_m": 1.05, "ground_clearance_m": 0.04 },
+        "trot":   { "phase_offsets": [0.00, 0.50, 0.50, 0.00], "stride_m": 1.80, "ground_clearance_m": 0.18 },
+        "gallop": { "phase_offsets": [0.00, 0.10, 0.55, 0.65], "stride_m": 4.20, "ground_clearance_m": 0.65 }
+      },
+      "turn_radius_m": 3.0
+    },
+    {
+      "species_id": "chimera",
+      "display_name": "Chimera",
+      "size_class": "huge",
+      "base_speed_mps": 6.0,
+      "base_stamina": 200,
+      "carry_capacity_kg": 200,
+      "saddle_anchor_bone": "spine_04",
+      "reins_anchor_bone": "head",
+      "flight_capable": 0,
+      "rider_seat_offset": { "x": 0, "y": 1.80, "z": -0.10, "yaw": 0 },
+      "aesthetic_tags": ["mythic", "eldritch", "epic"],
+      "gait": {
+        "walk":   { "phase_offsets": [0.00, 0.50, 0.25, 0.75], "stride_m": 1.40, "ground_clearance_m": 0.06 },
+        "trot":   { "phase_offsets": [0.00, 0.50, 0.50, 0.00], "stride_m": 2.30, "ground_clearance_m": 0.20 },
+        "gallop": { "phase_offsets": [0.00, 0.15, 0.55, 0.70], "stride_m": 4.80, "ground_clearance_m": 0.40 }
+      },
+      "turn_radius_m": 6.5
+    },
+    {
+      "species_id": "giant_elk",
+      "display_name": "Giant Elk",
+      "size_class": "large",
+      "base_speed_mps": 8.0,
+      "base_stamina": 140,
+      "carry_capacity_kg": 110,
+      "saddle_anchor_bone": "spine_03",
+      "reins_anchor_bone": "head",
+      "flight_capable": 0,
+      "rider_seat_offset": { "x": 0, "y": 1.50, "z": 0.00, "yaw": 0 },
+      "aesthetic_tags": ["forest", "noble", "common"],
+      "gait": {
+        "walk":   { "phase_offsets": [0.00, 0.50, 0.25, 0.75], "stride_m": 1.30, "ground_clearance_m": 0.06 },
+        "trot":   { "phase_offsets": [0.00, 0.50, 0.50, 0.00], "stride_m": 2.10, "ground_clearance_m": 0.20 },
+        "gallop": { "phase_offsets": [0.00, 0.10, 0.55, 0.65], "stride_m": 4.40, "ground_clearance_m": 0.50 }
+      },
+      "turn_radius_m": 4.5
+    },
+    {
+      "species_id": "salamander_mount",
+      "display_name": "Crag Salamander",
+      "size_class": "medium",
+      "base_speed_mps": 6.5,
+      "base_stamina": 90,
+      "carry_capacity_kg": 80,
+      "saddle_anchor_bone": "spine_02",
+      "reins_anchor_bone": "neck",
+      "flight_capable": 0,
+      "rider_seat_offset": { "x": 0, "y": 0.95, "z": 0.10, "yaw": 0 },
+      "aesthetic_tags": ["volcanic", "reptilian", "rare"],
+      "gait": {
+        "walk":   { "phase_offsets": [0.00, 0.50, 0.50, 0.00], "stride_m": 0.85, "ground_clearance_m": 0.03 },
+        "trot":   { "phase_offsets": [0.00, 0.50, 0.50, 0.00], "stride_m": 1.40, "ground_clearance_m": 0.08 },
+        "gallop": { "phase_offsets": [0.00, 0.10, 0.55, 0.65], "stride_m": 2.80, "ground_clearance_m": 0.22 }
+      },
+      "turn_radius_m": 2.5
+    },
+    {
+      "species_id": "hippogriff",
+      "display_name": "Hippogriff",
+      "size_class": "large",
+      "base_speed_mps": 11.0,
+      "base_stamina": 110,
+      "carry_capacity_kg": 95,
+      "saddle_anchor_bone": "spine_03",
+      "reins_anchor_bone": "head",
+      "flight_capable": 1,
+      "rider_seat_offset": { "x": 0, "y": 1.55, "z": -0.10, "yaw": 0 },
+      "aesthetic_tags": ["mythic", "aerial", "epic"],
+      "gait": {
+        "walk":   { "phase_offsets": [0.00, 0.50, 0.25, 0.75], "stride_m": 1.10, "ground_clearance_m": 0.05 },
+        "trot":   { "phase_offsets": [0.00, 0.50, 0.50, 0.00], "stride_m": 1.85, "ground_clearance_m": 0.14 },
+        "gallop": { "phase_offsets": [0.00, 0.10, 0.55, 0.65], "stride_m": 4.00, "ground_clearance_m": 0.50 }
+      },
+      "turn_radius_m": 5.0
+    },
+    {
+      "species_id": "gryphon",
+      "display_name": "Gryphon",
+      "size_class": "huge",
+      "base_speed_mps": 12.0,
+      "base_stamina": 130,
+      "carry_capacity_kg": 130,
+      "saddle_anchor_bone": "spine_03",
+      "reins_anchor_bone": "head",
+      "flight_capable": 1,
+      "rider_seat_offset": { "x": 0, "y": 1.70, "z": -0.10, "yaw": 0 },
+      "aesthetic_tags": ["mythic", "aerial", "epic"],
+      "gait": {
+        "walk":   { "phase_offsets": [0.00, 0.50, 0.25, 0.75], "stride_m": 1.20, "ground_clearance_m": 0.05 },
+        "trot":   { "phase_offsets": [0.00, 0.50, 0.50, 0.00], "stride_m": 2.00, "ground_clearance_m": 0.15 },
+        "gallop": { "phase_offsets": [0.00, 0.10, 0.55, 0.65], "stride_m": 4.50, "ground_clearance_m": 0.60 }
+      },
+      "turn_radius_m": 6.0
+    },
+    {
+      "species_id": "juvenile_wyvern",
+      "display_name": "Juvenile Wyvern",
+      "size_class": "huge",
+      "base_speed_mps": 10.5,
+      "base_stamina": 160,
+      "carry_capacity_kg": 150,
+      "saddle_anchor_bone": "spine_04",
+      "reins_anchor_bone": "neck",
+      "flight_capable": 1,
+      "rider_seat_offset": { "x": 0, "y": 1.85, "z": -0.05, "yaw": 0 },
+      "aesthetic_tags": ["mythic", "aerial", "legendary"],
+      "gait": {
+        "walk":   { "phase_offsets": [0.00, 0.50, 0.50, 0.00], "stride_m": 1.30, "ground_clearance_m": 0.06 },
+        "trot":   { "phase_offsets": [0.00, 0.50, 0.50, 0.00], "stride_m": 2.20, "ground_clearance_m": 0.18 },
+        "gallop": { "phase_offsets": [0.00, 0.10, 0.55, 0.65], "stride_m": 4.80, "ground_clearance_m": 0.55 }
+      },
+      "turn_radius_m": 7.5
+    }
+  ]
+}
