@@ -82,6 +82,9 @@ export async function runConcordiaSubstrateDetector({ db, root, opts = {} } = {}
     if (has("procedural_npcs")) checkProcgenSanity(db, findings, cap);
     if (has("player_glyph_spells")) checkGlyphSpellSanity(db, findings, cap);
 
+    // ── COMBAT POLISH (Phase 8) ───────────────────────────────────────────
+    if (has("combat_actor_state")) checkCombatPolishInvariants(db, findings, cap);
+
   } catch (err) {
     return makeError(CATEGORY, "detector_threw", err, t0);
   }
@@ -558,6 +561,83 @@ function checkProcgenSanity(db, findings, cap) {
         message: `World ${r.world_id} has ${r.n} procedural NPCs — probably mis-tuned spawner cap`,
         subject: { kind: "procedural_npcs", world: r.world_id, count: r.n },
         fixHint: "lower CONCORD_FACTION_TARGET_POPULATION or sweep dead NPCs",
+      });
+    }
+  } catch { /* ignore */ }
+}
+
+function checkCombatPolishInvariants(db, findings, cap) {
+  // Gas out of bounds (CHECK constraint should have caught, but the
+  // detector bar is "trust nothing").
+  try {
+    const oob = db.prepare(`
+      SELECT actor_kind, actor_id, gas, max_gas FROM combat_actor_state
+      WHERE gas < 0 OR gas > max_gas + 0.01
+      LIMIT ?
+    `).all(cap);
+    for (const r of oob) {
+      findings.push({
+        id: "combat_gas_oob",
+        severity: "high",
+        kind: "semantic",
+        category: CATEGORY,
+        message: `${r.actor_kind} ${r.actor_id} has gas=${r.gas} (max=${r.max_gas}) outside [0, max]`,
+        subject: { kind: "combat_actor_state", actor: r.actor_id },
+      });
+    }
+
+    // Combo overflow — CHECK at 999 catches the worst case but flag at >100.
+    const wildCombos = db.prepare(`
+      SELECT actor_kind, actor_id, combo_count FROM combat_actor_state
+      WHERE combo_count > 100
+      LIMIT ?
+    `).all(cap);
+    for (const r of wildCombos) {
+      findings.push({
+        id: "combat_combo_unrealistic",
+        severity: "medium",
+        kind: "semantic",
+        category: CATEGORY,
+        message: `${r.actor_kind} ${r.actor_id} combo_count=${r.combo_count} — likely combo decay broken`,
+        subject: { kind: "combat_actor_state", actor: r.actor_id },
+        fixHint: "verify combat-recovery-cycle is firing; check profile.combo_decay_after_ms",
+      });
+    }
+
+    // Awareness 'combat' without target → state machine drift.
+    const targetless = db.prepare(`
+      SELECT actor_kind, actor_id FROM combat_actor_state
+      WHERE awareness = 'combat' AND (awareness_target IS NULL OR awareness_target = '')
+      LIMIT ?
+    `).all(cap);
+    for (const r of targetless) {
+      findings.push({
+        id: "combat_awareness_no_target",
+        severity: "low",
+        kind: "semantic",
+        category: CATEGORY,
+        message: `${r.actor_kind} ${r.actor_id} awareness='combat' but awareness_target is null`,
+        subject: { kind: "combat_actor_state", actor: r.actor_id },
+        fixHint: "transition to 'alert' or set awareness_target",
+      });
+    }
+
+    // Stale rocked_until_ms — was set in past but state still treats actor
+    // as rocked elsewhere. We just flag rows where rocked_until_ms is far
+    // in the future (> 1h) — likely a unit-confusion bug.
+    const farFuture = db.prepare(`
+      SELECT actor_kind, actor_id, rocked_until_ms FROM combat_actor_state
+      WHERE rocked_until_ms > ? + 3600000
+      LIMIT ?
+    `).all(Date.now(), cap);
+    for (const r of farFuture) {
+      findings.push({
+        id: "combat_rocked_far_future",
+        severity: "medium",
+        kind: "semantic",
+        category: CATEGORY,
+        message: `${r.actor_kind} ${r.actor_id} rocked_until_ms=${r.rocked_until_ms} > 1h in future — unit confusion?`,
+        subject: { kind: "combat_actor_state", actor: r.actor_id },
       });
     }
   } catch { /* ignore */ }

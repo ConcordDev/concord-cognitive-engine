@@ -464,6 +464,17 @@ registerHeartbeat("procedural-npc-spawner", {
   handler: runProceduralNpcSpawner,
 });
 
+// Phase 8: Combat polish substrate. Every 2 ticks (~30s) recovers gas
+// for non-combat-active actors and decays stale combos. The substrate
+// itself (gas spending, parry/dodge windows, combo encoding, rocked
+// states, environmental grapples) is invoked from the existing combat
+// path. Kill-switch: CONCORD_COMBAT_RECOVERY=0.
+import { runCombatRecoveryCycle } from "./emergent/combat-recovery-cycle.js";
+registerHeartbeat("combat-recovery-cycle", {
+  frequency: 2,
+  handler: runCombatRecoveryCycle,
+});
+
 // Layer 13: NPC-initiated conversations. Every 8 ticks (~2 min) scans each
 // active world for cooldown-elapsed NPC pairs, generates a grounded opener
 // (deterministic by default; LLM-enhanced via CONCORD_NPC_DIALOGUE_LLM=true),
@@ -9364,6 +9375,12 @@ async function runMacro(domain, name, input, ctx) {
     governance: new Set([
       "open_proposal", "cast_vote", "tally", "resolve",
       "list_open", "list_all", "list_governed_constants",
+    ]),
+    // Phase 8: combat polish — read-mostly + caller-driven combat inputs.
+    combat_polish: new Set([
+      "state_for_actor", "attempt_parry", "attempt_dodge",
+      "change_stance", "attempt_grapple", "recent_events",
+      "list_profiles",
     ]),
     // Phase 7 — Code substrate. Read-only macros for the code-DTU view.
     code: new Set(["dtu_for", "dtu_query", "cluster_for", "refresh"]),
@@ -22837,6 +22854,10 @@ registerDiscoveryMacros(register);
 // constants themselves remain code-level; this layer is the audit trail.
 import registerGovernanceMacros from "./domains/governance.js";
 registerGovernanceMacros(register);
+
+// Phase 8 — Combat polish surface for the HUD.
+import registerCombatPolishMacros from "./domains/combat-polish.js";
+registerCombatPolishMacros(register);
 
 // Phase 7 / T2 — Code substrate macros: routes / migrations / modules /
 // macros become DTUs under kind='code_artifact'. See lib/code-substrate/.
