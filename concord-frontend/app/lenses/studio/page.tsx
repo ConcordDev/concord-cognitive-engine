@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useQueryClient } from '@tanstack/react-query';
@@ -748,6 +749,40 @@ export default function StudioLensPage() {
       showToast('error', `Failed to start recorder: ${reason}`);
     }
   }, [recordedUrl]);
+
+  // ── DAW transport shortcuts (Logic / Ableton idiom) ──────────────
+  // Space toggles play/pause, R records, . stops, Enter rewinds.
+  useLensCommand(
+    [
+      { id: 'transport-play',   keys: 'space', description: 'Play / pause',  category: 'actions',
+        action: () => {
+          if (transportState === 'playing') handlePause();
+          else handlePlay();
+        }, global: true },
+      { id: 'transport-record', keys: 'r',     description: 'Record',        category: 'actions',
+        action: () => {
+          if (isRecording) {
+            recorderRef.current?.stopRecording();
+            if (recordingTimerRef.current) {
+              clearInterval(recordingTimerRef.current);
+              recordingTimerRef.current = null;
+            }
+            setIsRecording(false);
+          } else {
+            handleRecord();
+          }
+        } },
+      { id: 'transport-stop',   keys: '.',     description: 'Stop',          category: 'actions',
+        action: () => handleStop() },
+      { id: 'transport-rewind', keys: 'enter', description: 'Rewind to 0',   category: 'actions',
+        action: () => transportRef.current?.seekTo(0) },
+      { id: 'studio-save',      keys: 'mod+s', description: 'Save project',  category: 'actions',
+        action: () => handleSave(), global: true },
+      { id: 'studio-new',       keys: 'mod+n', description: 'New project',   category: 'actions',
+        action: () => handleCreateProject(), global: true },
+    ],
+    { lensId: 'studio' }
+  );
 
   const handleSeek = useCallback((beat: number) => {
     transportRef.current?.seekTo(beat);
