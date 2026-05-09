@@ -6910,6 +6910,21 @@ async function tryInitWebSockets(server) {
   REALTIME.ready = true;
   globalThis._concordREALTIME = REALTIME;
 
+  // DX Platform Phase A3 — attach the /dx namespace for editor-plugin
+  // clients. Plugin clients connect with a JWT or a `csk_*` API key,
+  // join `codebase:${id}` rooms, and receive detector/repair events
+  // streamed live (no polling). Per-user connection cap prevents
+  // accidental reconnect-storm loops in plugin development.
+  // FF_DX_SOCKET=0 disables the namespace (clients receive 503 on connect).
+  try {
+    const { attachDxStream } = await import("./lib/dx/dx-socket-bus.js");
+    const dxr = attachDxStream(io);
+    if (dxr?.ok) structuredLog("info", "dx_socket_attached", { ns: "/dx" });
+    else if (dxr?.reason) structuredLog("warn", "dx_socket_skipped", { reason: dxr.reason });
+  } catch (e) {
+    console.warn("[Concord] DX socket attach failed:", e.message);
+  }
+
   // Horizontal scaling: attach Redis pub/sub adapter when REDIS_URL is set
   if (process.env.REDIS_URL) {
     try {
