@@ -22905,6 +22905,16 @@ registerDtuPortabilityMacros(register);
 import registerDiscoveryMacros from "./domains/discovery.js";
 registerDiscoveryMacros(register);
 
+// Theme deferred (game-feel pass): async-cooperation player signs.
+// Register the macro domain + the cleanup heartbeat.
+import registerPlayerSignsMacros from "./domains/player-signs.js";
+registerPlayerSignsMacros(register);
+import { runPlayerSignsCleanup } from "./emergent/player-signs-cleanup.js";
+registerHeartbeat("player-signs-cleanup", {
+  frequency: 240,
+  handler: runPlayerSignsCleanup,
+});
+
 // Governance — proposals + votes on constitutional constants. The
 // constants themselves remain code-level; this layer is the audit trail.
 import registerGovernanceMacros from "./domains/governance.js";
