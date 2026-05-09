@@ -57,7 +57,7 @@ export function useLensCommand(commands: LensCommand[], options: UseLensCommandO
   );
 
   // Reconcile on shape changes only, not on every action identity tick.
-  // Extracted from the dep array so the static dep-checker can see it.
+  // Extracted to its own useMemo so the static dep-checker can see it.
   const commandShapeKey = useMemo(
     () =>
       namespacedCommands
@@ -66,13 +66,27 @@ export function useLensCommand(commands: LensCommand[], options: UseLensCommandO
     [namespacedCommands]
   );
 
+  // Refs to access the latest namespacedCommands + keyboard hooks inside
+  // the registration effect WITHOUT pulling them into the dep array. The
+  // contract: re-register only when shape changes; action identity must
+  // not trigger re-registration (covered by tests/hooks/useLensCommand.test.tsx).
+  const commandsRef = useRef(namespacedCommands);
+  commandsRef.current = namespacedCommands;
+  const registerRef = useRef(registerShortcut);
+  registerRef.current = registerShortcut;
+  const unregisterRef = useRef(unregisterShortcut);
+  unregisterRef.current = unregisterShortcut;
+
   useEffect(() => {
-    // Capture the ref-Map at effect-run time so the cleanup closes over
-    // the same Map instance even if the ref is reassigned later.
+    // Snapshot the live-actions Map so the cleanup closes over the same
+    // instance even if the ref were reassigned later.
     const liveMap = liveActions.current;
-    namespacedCommands.forEach((cmd) => {
+    const cmds = commandsRef.current;
+    const register = registerRef.current;
+    const unregister = unregisterRef.current;
+    cmds.forEach((cmd) => {
       liveMap.set(cmd.namespacedId, cmd.action);
-      registerShortcut({
+      register({
         id: cmd.namespacedId,
         keys: cmd.keys,
         description: cmd.description,
@@ -84,14 +98,14 @@ export function useLensCommand(commands: LensCommand[], options: UseLensCommandO
       });
     });
 
-    const registeredIds = namespacedCommands.map((c) => c.namespacedId);
+    const registeredIds = cmds.map((c) => c.namespacedId);
     return () => {
       registeredIds.forEach((id) => {
         liveMap.delete(id);
-        unregisterShortcut(id);
+        unregister(id);
       });
     };
-  }, [lensId, commandShapeKey, namespacedCommands, registerShortcut, unregisterShortcut]);
+  }, [lensId, commandShapeKey]);
 
   // Keep liveActions in sync without re-registering.
   useEffect(() => {
