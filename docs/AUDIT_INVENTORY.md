@@ -1,8 +1,8 @@
 # Concord Cognitive Engine — Audit Inventory (verified by direct codebase inspection)
 
-Generated: 2026-05-08T18:25:25Z
-Branch: claude/audit-and-plan-lenses-bYg1h
-Head:   f942f26
+Generated: 2026-05-09T15:17:00Z
+Branch: claude/github-workflow-setup-86pW2
+Head:   6b065388 (post-#309 merge to main; `144_mount_gear` is the latest migration on disk; the 142 collision is fixed in this branch by renaming `142_drop_dead_mig009.js` → `143_drop_dead_mig009.js`)
 
 Every number below comes from a `grep` or `ls` against the working tree at the head above. Numbers in CLAUDE.md / audit/cartograph/* that disagree are stale — trust this file.
 
@@ -10,45 +10,55 @@ Every number below comes from a `grep` or `ls` against the working tree at the h
 
 | Surface | Count | How to reproduce |
 |---|---|---|
-| Lens directories (frontend) | 203 | `ls -d concord-frontend/app/lenses/*/ \| wc -l` |
-| Backend domain files | 182 | `ls server/domains/*.js \| wc -l` |
-| Migrations applied | 121 | `ls server/migrations/*.js \| wc -l` |
-| Latest migration | 121_understanding_evolution.js | `ls server/migrations/ \| sort \| tail -1` |
+| Lens directories (frontend) | 205 | `ls -d concord-frontend/app/lenses/*/ \| wc -l` |
+| Backend domain files | 195 | `ls server/domains/*.js \| wc -l` |
+| Migrations applied | 145 | `ls server/migrations/*.js \| wc -l` |
+| Latest migration | 144_mount_gear.js | `ls server/migrations/ \| grep -E '^[0-9]{3}_' \| sort \| tail -1` |
 | Route files | 129 | `ls server/routes/*.js \| wc -l` |
-| Emergent modules | 146 | `ls server/emergent/*.js \| wc -l` |
-| Lib modules | 255 | `ls server/lib/*.js \| wc -l` |
+| Emergent modules | 158 | `ls server/emergent/*.js \| wc -l` |
+| Lib modules | 278 | `ls server/lib/*.js \| wc -l` |
 | HTTP routes in server.js | 1086 | `grep -hcE '^\s*app\.(get\|post\|put\|delete\|patch)\(' server/server.js` |
-| HTTP routes in routes/*.js | 1313 | `grep -hcE '^\s*router\.(get\|post\|put\|delete\|patch)\(' server/routes/*.js` |
+| HTTP routes in routes/*.js | 1313 | `grep -hcE '^\s*router\.(get\|post\|put\|delete\|patch)\(' server/routes/*.js \| paste -sd+ - \| bc` |
 | Unique macro domains (server.js) | 129 | `grep -hE "^\s*register\(\s*['\"][a-z_]+" server/server.js` |
-| Unique (domain, macro) pairs (server.js) | 682 | grep+sed against `register('domain','name')` |
-| Distinct CREATE TABLE statements across migrations | 318 | grep CREATE TABLE in migrations/*.js + sort -u |
-| Unique heartbeats registered | 26 | grep registerHeartbeat across server.js + lib/ + emergent/ |
+| Unique (domain, macro) pairs (server.js) | 684 | grep+sed against `register('domain','name')` |
+| Distinct CREATE TABLE statements across migrations | 353 | grep CREATE TABLE in migrations/*.js + sort -u |
+| Unique heartbeats registered | 42 | grep registerHeartbeat across server.js + lib/ + emergent/ |
 
-Direct contradictions of CLAUDE.md as of HEAD:
+## Drift since 2026-05-08 (delta against the previous inventory)
 
-| Stale claim | Verified | Where it appears |
-|---|---|---|
-| 175+ lenses / 188 / 190 / 200 / 205 frontend dirs | **203 lens directories** | `What This Is` opener; `Cartographer ground truth` |
-| 175+ domains / 181 backend domains | **182 backend domain files** | `What This Is`; `Recent shipped work` |
-| 101 migrations through `101_player_inventory_world_scope` | **119 migrations**, latest `119_world_invites.js` | `Database` section |
-| 127 route files | **129 route files** | `Cartographer ground truth` |
-| 599+ macros across 123+ domains | **661 unique (domain,macro) pairs across 127 domains in server.js** | `Cartographer ground truth` |
-| 17 / 18 heartbeats registered | **25 unique heartbeats** | `Cartographer ground truth`; `Recent shipped work` |
-| 322 tables (25 dead) | **317 distinct CREATE TABLE statements** | `Cartographer ground truth` |
-| 2993 endpoint registrations | **2,399 (1086 in server.js + 1313 in routes/*.js)** | `Cartographer ground truth` |
-| 33+ emergent modules | **146 emergent module files** | `Heartbeat tick` section |
+| Surface | Was | Now | Δ | Cause |
+|---|---|---|---|---|
+| Lens directories | 203 | 205 | +2 | dx-platform sub-routes (`billing`, `web-editor`) added in #307 |
+| Backend domain files | 182 | 195 | +13 | A1-A5 + B1-B3 wave landed new domains |
+| Migrations | 121 | 145 | +24 | A1-A5 + B1-B3 + Phase 7-8 + procgen NPCs + governance + combat polish |
+| Latest migration | 121_understanding_evolution | 144_mount_gear | — | B3 capstone |
+| Emergent modules | 146 | 158 | +12 | new heartbeats below |
+| Lib modules | 255 | 278 | +23 | concord-lsp, mounts, NPC routines, etc. |
+| (domain, macro) pairs | 682 | 684 | +2 | minor surface growth |
+| CREATE TABLE statements | 318 | 353 | +35 | new substrate + procgen tables |
+| Heartbeats | 26 | 42 | +16 | new heartbeats below |
+
+**Migration collisions fixed since the previous inventory:**
+- `120_drop_dead_mig006.js` → `141_drop_dead_mig006.js` (collided with `120_understandings.js`; commit `5303bff4`, PR #305)
+- `121_drop_dead_mig009.js` → `142_drop_dead_mig009.js` (collided with `121_understanding_evolution.js`; same commit/PR)
+- `142_drop_dead_mig009.js` → `143_drop_dead_mig009.js` (collided with `142_mount_substrate.js` from B1; this branch — caught by the fresh-DB boot rerun while updating this inventory)
+
+Net: every numeric claim in CLAUDE.md older than this inventory line is potentially stale. The cross-check pass against CLAUDE.md follows.
 
 ## Heartbeats — verified by direct grep
 
-Each heartbeat is registered via `registerHeartbeat(name, { frequency, handler })`. Frequency is in tick units (1 tick = 15s, see `governorTick()` in server.js). The list below comes from grep against `server/server.js`, `server/lib/*.js`, and `server/emergent/*.js`.
+Each heartbeat is registered via `registerHeartbeat(name, { frequency, handler })`. Frequency is in tick units (1 tick = 15s, see `governorTick()` in server.js). The list below comes from grep against `server/server.js`, `server/lib/*.js`, and `server/emergent/*.js` — every registration call lives in `server.js`; the handler implementations live in the modules under `server/emergent/` and `server/lib/`.
 
-| Heartbeat | Source file |
+| Heartbeat | Registered in |
 |---|---|
 | `affect-tick` | `server.js` |
 | `brain-daily-refresh` | `server.js` |
 | `brain-outcome-resolver` | `server.js` |
+| `code-substrate-refresh` | `server.js` |
+| `combat-recovery-cycle` | `server.js` |
 | `corpse-cleanup` | `server.js` |
 | `culture-drift-pass` | `server.js` |
+| `detectors-sweep` | `server.js` |
 | `eco-expiry-sweep` | `server.js` |
 | `embodied-dream-cycle` | `server.js` |
 | `environment-sense` | `server.js` |
@@ -57,18 +67,32 @@ Each heartbeat is registered via `registerHeartbeat(name, { frequency, handler }
 | `fauna-spawner` | `server.js` |
 | `forgetting-health-check` | `server.js` |
 | `forward-sim-cycle` | `server.js` |
+| `land-claims-cycle` | `server.js` |
 | `lattice-breakthrough-pass` | `server.js` |
 | `lattice-drift-scan` | `server.js` |
 | `lattice-federation-poll` | `server.js` |
+| `lattice-quest-cycle` | `server.js` |
 | `metrics-decay` | `server.js` |
 | `npc-conversation-initiator` | `server.js` |
+| `npc-economy-cycle` | `server.js` |
 | `npc-knowledge-bridge` | `server.js` |
+| `npc-marketplace-cycle` | `server.js` |
+| `npc-routine-cycle` | `server.js` |
+| `npc-skill-evolve-cycle` | `server.js` |
+| `personal-beat-scheduler` | `server.js` |
 | `presence-stale-sweep` | `server.js` |
+| `procedural-npc-spawner` | `server.js` |
 | `qualia-persist` | `server.js` |
+| `reflex-architectural-drift` | `server.js` |
+| `reflex-dependency-entropy` | `server.js` |
+| `reflex-scaling-pressure` | `server.js` |
+| `reflex-unsafe-expansion` | `server.js` |
 | `refusal-field-sweep` | `server.js` |
 | `repair-cycle` | `server.js` |
 | `scheduled-posts` | `server.js` |
+| `season-cycle` | `server.js` |
 | `social-npc-bridge` | `server.js` |
+| `understanding-evolve` | `server.js` |
 
 ## Macro inventory — domain → macro count
 
