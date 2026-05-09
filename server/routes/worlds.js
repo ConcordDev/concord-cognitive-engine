@@ -665,20 +665,45 @@ export default function createWorldsRouter({ requireAuth, db }) {
   router.get("/:worldId/npcs", requireAuth, (req, res) => {
     try {
       const { worldId } = req.params;
-      const rows = db.prepare(`
-        SELECT id, npc_type, archetype, body_type, faction, is_conscious, is_immortal,
-               quest_giver, level, current_location, state, universe_type,
-               grief_level, criminal_rep, is_wanted, schedule_phase, job_type,
-               current_hp, max_hp, bounty, status_effects
-        FROM world_npcs
-        WHERE world_id = ? AND is_dead = 0
-        ORDER BY created_at ASC
-        LIMIT 200
-      `).all(worldId);
+      // Theme 4 (game-feel pass): LEFT JOIN npc_routine_state so the
+      // routine-cycle's authoritative activity_kind surfaces to the
+      // client. Falls back to the older state.currentActivity JSON
+      // field if no routine row exists. Both paths populated by
+      // npc-routine-cycle / npc-simulator respectively.
+      let rows;
+      try {
+        rows = db.prepare(`
+          SELECT n.id, n.npc_type, n.archetype, n.body_type, n.faction, n.is_conscious, n.is_immortal,
+                 n.quest_giver, n.level, n.current_location, n.state, n.universe_type,
+                 n.grief_level, n.criminal_rep, n.is_wanted, n.schedule_phase, n.job_type,
+                 n.current_hp, n.max_hp, n.bounty, n.status_effects,
+                 r.activity_kind AS routine_activity_kind,
+                 r.location_kind AS routine_location_kind
+          FROM world_npcs n
+          LEFT JOIN npc_routine_state r ON r.npc_id = n.id
+          WHERE n.world_id = ? AND n.is_dead = 0
+          ORDER BY n.created_at ASC
+          LIMIT 200
+        `).all(worldId);
+      } catch {
+        // npc_routine_state missing on minimal/legacy deployments — fall back.
+        rows = db.prepare(`
+          SELECT id, npc_type, archetype, body_type, faction, is_conscious, is_immortal,
+                 quest_giver, level, current_location, state, universe_type,
+                 grief_level, criminal_rep, is_wanted, schedule_phase, job_type,
+                 current_hp, max_hp, bounty, status_effects
+          FROM world_npcs
+          WHERE world_id = ? AND is_dead = 0
+          ORDER BY created_at ASC
+          LIMIT 200
+        `).all(worldId);
+      }
 
       const npcs = rows.map(r => {
         const state    = _tryParseJSON(r.state, {});
         const location = _tryParseJSON(r.current_location, { x: 0, y: 0, z: 0 });
+        // Routine-cycle activity wins; fall back to JSON state for legacy NPCs.
+        const currentActivity = r.routine_activity_kind || state.currentActivity || null;
         return {
           id:           r.id,
           name:         state.name || r.archetype || `${r.npc_type}-${r.id.slice(0, 4)}`,
@@ -693,7 +718,8 @@ export default function createWorldsRouter({ requireAuth, db }) {
           position:     location,
           rotation:     state.rotation || 0,
           occupation:   state.occupation || r.archetype,
-          currentActivity: state.currentActivity || null,
+          currentActivity,
+          locationKind: r.routine_location_kind || null,
           factionTactic:   state.factionTactic || null,
           // Behavioural state fields
           griefLevel:    r.grief_level   ?? 0,

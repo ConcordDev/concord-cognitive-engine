@@ -296,6 +296,10 @@ const BazaarLayer = dynamic(
   () => import('@/components/world-lens/BazaarLayer'),
   { ssr: false },
 );
+const NPCActivityTag = dynamic(
+  () => import('@/components/world/NPCActivityTag').then((m) => ({ default: m.NPCActivityTag })),
+  { ssr: false },
+);
 const DiegeticSurfaces = dynamic(
   () => import('@/components/world-lens/DiegeticSurfaces'),
   { ssr: false },
@@ -2042,20 +2046,30 @@ export default function WorldLensPage() {
           // Store both avatar-mapped and raw NPC data
           setWorldNPCs(d.npcs.map(_mapNPCToAvatarData));
           setRawWorldNPCs(
-            d.npcs.map((n: Record<string, unknown>) => ({
-              id: n.id as string,
-              name: (n.name as string) ?? 'Unknown',
-              archetype: (n.archetype as string) ?? 'guard',
-              faction: n.faction as string | undefined,
-              isConscious: n.isConscious as boolean | undefined,
-              griefLevel: n.griefLevel as number | undefined,
-              criminalRep: n.criminalRep as number | undefined,
-              isWanted: n.isWanted as boolean | undefined,
-              jobType: n.jobType as string | undefined,
-              currentHp: n.currentHp as number | undefined,
-              maxHp: n.maxHp as number | undefined,
-              position: { x: (n.x as number) ?? 0, y: (n.y as number) ?? 0 },
-            }))
+            d.npcs.map((n: Record<string, unknown>) => {
+              const pos = (n.position as { x?: number; y?: number; z?: number } | undefined) ?? {};
+              return {
+                id: n.id as string,
+                name: (n.name as string) ?? 'Unknown',
+                archetype: (n.archetype as string) ?? 'guard',
+                faction: n.faction as string | undefined,
+                isConscious: n.isConscious as boolean | undefined,
+                griefLevel: n.griefLevel as number | undefined,
+                criminalRep: n.criminalRep as number | undefined,
+                isWanted: n.isWanted as boolean | undefined,
+                jobType: n.jobType as string | undefined,
+                currentHp: n.currentHp as number | undefined,
+                maxHp: n.maxHp as number | undefined,
+                // Theme 4 (game-feel pass): activity surfaced from the
+                // npc-routine-cycle for the floating activity icon.
+                currentActivity: (n.currentActivity as string | null) ?? null,
+                position: {
+                  x: (n.x as number) ?? pos.x ?? 0,
+                  y: (n.y as number) ?? pos.y ?? 0,
+                  z: (n.z as number) ?? pos.z ?? 0,
+                },
+              };
+            })
           );
         })
         .catch(() => {});
@@ -3758,6 +3772,15 @@ export default function WorldLensPage() {
           <CinematicCaptureBootstrap />
           <PerformanceOverlay />
           <BazaarLayer worldId="concordia" />
+          <NPCActivityTag
+            npcs={rawWorldNPCs.map((n) => ({
+              id: n.id,
+              name: n.name,
+              currentActivity: (n as { currentActivity?: string | null }).currentActivity ?? null,
+              position: { x: n.position.x, y: 0, z: (n.position as { z?: number }).z ?? 0 },
+            }))}
+            playerPosition={{ x: playerAvatar.position.x, z: playerAvatar.position.z }}
+          />
           <CurrencyHUD onClick={() => setShowPanel('profile')} />
           <DiegeticSurfaces
             playerPosition={playerAvatar.position}
