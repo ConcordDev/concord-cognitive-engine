@@ -2892,6 +2892,13 @@ export default function WorldLensPage() {
     worldSocket.on('world:action', handleWorldAction);
     worldSocket.on('weather:update', handleWeatherUpdate);
     worldSocket.on('world:deformation', handleWorldDeformation);
+    // Embodied sonic-pulse → window event for SoundscapeEngine. Server emits
+    // when a non-sensor source writes a loud sonic_os.ambient_db delta (skill
+    // cast / combat). Engine briefly accents master gain in proportion.
+    const handleSonicPulse = (data: { value?: number; source?: string; cellX?: number; cellZ?: number }) => {
+      window.dispatchEvent(new CustomEvent('concordia:sonic-pulse', { detail: data }));
+    };
+    worldSocket.on('world:sonic-pulse', handleSonicPulse);
 
     return () => {
       worldSocket.off('player:load:ack', handleLoadAck);
@@ -2908,6 +2915,7 @@ export default function WorldLensPage() {
       worldSocket.off('world:action', handleWorldAction);
       worldSocket.off('weather:update', handleWeatherUpdate);
       worldSocket.off('world:deformation', handleWorldDeformation);
+      worldSocket.off('world:sonic-pulse', handleSonicPulse);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [worldSocket.isConnected, activeDistrict.id]);

@@ -42,6 +42,12 @@ interface SoundscapeAPI {
   setMusicDistrict: (district: string) => void;
   /** Duck the procedural music during combat. 0 = no duck, 1 = full duck (35% volume). */
   setMusicCombatIntensity: (intensity: number) => void;
+  /**
+   * Set master ambient gain. 0 = silent, 1 = full. Smoothly ramps over ~150ms.
+   * Used by the embodied sonic-pulse channel to briefly accent loud events
+   * (lightning casts, big hits) and by debug overlays.
+   */
+  setAmbientVolume: (level: number) => void;
 }
 
 /* ── District ambient config (base freq + texture) ────────────── */
@@ -114,6 +120,10 @@ const SFX_MAP: Record<string, SFXDef> = {
   'footstep-stone':    { freq: 320,  type: 'square',   duration: 0.05, attack: 0.001, decay: 0.045 },
   'footstep-wood':     { freq: 260,  type: 'triangle', duration: 0.07, attack: 0.001, decay: 0.065 },
   'footstep-water':    { freq: 420,  type: 'sine',     duration: 0.10, attack: 0.001, decay: 0.090 },
+  // Wet ground in high-humidity cells. Lower than grass, longer decay, sawtooth
+  // bite so the squelch reads. Selected by AvatarSystem3D when the env signal
+  // for the player's cell shows humidity > 75.
+  'footstep-mud-squelch': { freq: 95, type: 'sawtooth', duration: 0.13, attack: 0.002, decay: 0.115 },
   // UI feedback — short, dry, distinct from snap-click so the ear separates
   // "I clicked a button" from "I placed a thing in the world".
   'ui-click':          { freq: 1500, type: 'square',   duration: 0.03, attack: 0.001, decay: 0.025 },
@@ -239,6 +249,7 @@ const SoundscapeContext = createContext<SoundscapeAPI>({
   stopMusicTrack: () => {},
   setMusicDistrict: () => {},
   setMusicCombatIntensity: () => {},
+  setAmbientVolume: () => {},
 });
 
 /* ── Procedural ambient music — per-district loops ─────────────── */
@@ -990,17 +1001,28 @@ export default function SoundscapeEngine({
     } catch { /* ok */ }
   }, []);
 
+  const setAmbientVolume = useCallback((level: number) => {
+    const clamped = Math.max(0, Math.min(1, Number(level)));
+    const ctx = audioCtxRef.current;
+    const master = masterGainRef.current;
+    if (!ctx || !master || ctx.state === 'closed') return;
+    try {
+      master.gain.cancelScheduledValues(ctx.currentTime);
+      master.gain.setTargetAtTime(clamped, ctx.currentTime, 0.05); // ~150ms ramp
+    } catch { /* gain ramp best-effort */ }
+  }, []);
+
   const api: SoundscapeAPI = {
     setDistrict, setTimeOfDay, setInterior, setWeather,
     triggerSFX, playSpatialSFX, playMusicTrack, stopMusicTrack,
-    setMusicDistrict, setMusicCombatIntensity,
+    setMusicDistrict, setMusicCombatIntensity, setAmbientVolume,
   };
 
   // Allow any sibling or parent component to call SoundscapeEngine APIs via
   // window events — avoids requiring everything to live inside this provider.
   useEffect(() => {
     const handler = (e: Event) => {
-      const { action, district, time, interior, weather, intensity, sfxId, position } =
+      const { action, district, time, interior, weather, intensity, sfxId, position, volume } =
         (e as CustomEvent).detail ?? {};
       if (action === 'setDistrict' && district) setDistrict(district);
       else if (action === 'setTimeOfDay' && time) setTimeOfDay(time);
@@ -1013,8 +1035,42 @@ export default function SoundscapeEngine({
       // Polish: per-district procedural music with crossfade + combat duck
       else if (action === 'setMusicDistrict' && district) setMusicDistrict(district);
       else if (action === 'setMusicCombatIntensity' && typeof intensity === 'number') setMusicCombatIntensity(intensity);
+      else if (action === 'setAmbientVolume' && typeof volume === 'number') setAmbientVolume(volume);
     };
     window.addEventListener('concordia:soundscape-command', handler);
+
+    // Embodied sonic-pulse: server emits `world:sonic-pulse` for loud signal
+    // writes (skill casts, combat). The world page bridges that socket event
+    // to this window event. We briefly raise master ambient gain in
+    // proportion to the pulse, then settle back to the previous level.
+    let pulseRestoreTimer: ReturnType<typeof setTimeout> | null = null;
+    const pulseHandler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { value?: number } | undefined;
+      const v = Math.max(0, Math.min(40, Number(detail?.value ?? 0)));
+      if (v <= 5) return;
+      const ctx = audioCtxRef.current;
+      const master = masterGainRef.current;
+      if (!ctx || !master || ctx.state === 'closed') return;
+      // Pulse target rises with magnitude: 5dB → 0.65, 20dB → 0.85, 40dB → 1.0
+      const pulseTarget = Math.min(1.0, 0.6 + (v - 5) * 0.012);
+      try {
+        master.gain.cancelScheduledValues(ctx.currentTime);
+        master.gain.setTargetAtTime(pulseTarget, ctx.currentTime, 0.04);
+      } catch { /* gain ramp best-effort */ }
+      if (pulseRestoreTimer) clearTimeout(pulseRestoreTimer);
+      // Hold the pulse for ~value × 25ms (≤1s), then ease back to 0.6 baseline.
+      const holdMs = Math.min(1000, Math.max(120, v * 25));
+      pulseRestoreTimer = setTimeout(() => {
+        const ctx2 = audioCtxRef.current;
+        const m2 = masterGainRef.current;
+        if (!ctx2 || !m2 || ctx2.state === 'closed') return;
+        try {
+          m2.gain.setTargetAtTime(0.6, ctx2.currentTime, 0.18);
+        } catch { /* ok */ }
+        pulseRestoreTimer = null;
+      }, holdMs);
+    };
+    window.addEventListener('concordia:sonic-pulse', pulseHandler);
 
     // Phase 15: dynamic ambient ducking on combat events. The ambient
     // drone fades to ~30% during sustained combat and back up after a
@@ -1067,13 +1123,15 @@ export default function SoundscapeEngine({
 
     return () => {
       window.removeEventListener('concordia:soundscape-command', handler);
+      window.removeEventListener('concordia:sonic-pulse', pulseHandler);
       window.removeEventListener('concordia:hit-reaction', combatHandler);
       window.removeEventListener('concordia:death-collapse', combatHandler);
       window.removeEventListener('concordia:dialogue-active', dialogueOnHandler);
       window.removeEventListener('concordia:dialogue-ended', dialogueOffHandler);
       if (duckExpireTimer) clearTimeout(duckExpireTimer);
+      if (pulseRestoreTimer) clearTimeout(pulseRestoreTimer);
     };
-  }, [setDistrict, setTimeOfDay, setInterior, setWeather, triggerSFX, playSpatialSFX, setMusicDistrict, setMusicCombatIntensity]);
+  }, [setDistrict, setTimeOfDay, setInterior, setWeather, triggerSFX, playSpatialSFX, setMusicDistrict, setMusicCombatIntensity, setAmbientVolume]);
 
   return (
     <SoundscapeContext.Provider value={api}>

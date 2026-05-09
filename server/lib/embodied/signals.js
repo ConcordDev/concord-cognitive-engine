@@ -91,6 +91,33 @@ export function recordSignal(db, opts) {
       source, sourceId,
       now, now, now + ttl,
     );
+    // Loud delta on the sonic channel from a non-sensor source = audible event.
+    // Fan out so the client SoundscapeEngine can briefly raise/duck ambient
+    // volume in response. Sensor/seed baselines are the floor and don't pulse.
+    if (
+      channel === "sonic_os.ambient_db" &&
+      source !== "sensor" && source !== "world_seed" &&
+      Number(value) > 5
+    ) {
+      try {
+        const io = globalThis?.__CONCORD_REALTIME__?.io;
+        if (io) {
+          io.to(`world:${worldId}`).emit("world:sonic-pulse", {
+            worldId,
+            x: Number(x ?? 0),
+            z: Number(z ?? 0),
+            cellX: cell_x,
+            cellZ: cell_z,
+            value: Number(value),
+            source,
+            sourceId,
+            at: now,
+          });
+        }
+      } catch {
+        // realtime emit best-effort; never poison the signal write
+      }
+    }
     return { id, cell_x, cell_z };
   } catch {
     return null;
