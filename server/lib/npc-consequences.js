@@ -63,6 +63,14 @@ export async function triggerNPCDeath(db, npcId, killerId, realtimeEmit) {
     "INSERT INTO npc_deaths (id, npc_id, world_id, killer_id, consequence) VALUES (?,?,?,?,?)"
   ).run(deathId, npcId, npc.world_id, killerId, JSON.stringify(consequence));
 
+  // Phase 5b: legacy + inheritance. Best-effort, never blocks. Idempotent.
+  (async () => {
+    try {
+      const legacy = await import("./npc-legacy.js");
+      legacy.onNpcDeath?.(db, npc, { cause: "combat" });
+    } catch { /* legacy tables optional on minimal builds */ }
+  })();
+
   // Quest impact — mark quests from this NPC as needing alternative path
   _impactQuests(db, npcId);
 
