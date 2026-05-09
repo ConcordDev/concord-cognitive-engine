@@ -7477,6 +7477,36 @@ async function tryInitWebSockets(server) {
             targetId: data.targetId,
           });
 
+          // Theme deferred (game-feel pass): drop a shadow corpse for
+          // PLAYER deaths only. NPCs leave loot via a different path.
+          // Look up target as user — if found, drop a corpse at the
+          // last known position. Skipped inside training matches
+          // (handled below) where loot stakes are explicitly off.
+          try {
+            const isPlayer = !!db.prepare(`SELECT 1 FROM users WHERE id = ?`).get(data.targetId);
+            const inTraining = !!db.prepare(`
+              SELECT 1 FROM training_matches
+              WHERE status IN ('active', 'reset')
+                AND ((initiator_id = ? AND opponent_id = ?) OR (initiator_id = ? AND opponent_id = ?))
+              LIMIT 1
+            `).get(userId, data.targetId, data.targetId, userId);
+            if (isPlayer && !inTraining) {
+              const tp = (typeof cityPresence?.getUserPosition === "function")
+                ? cityPresence.getUserPosition(data.targetId)
+                : null;
+              if (tp && Number.isFinite(tp.x) && Number.isFinite(tp.z)) {
+                import("./lib/player-corpse.js").then(({ dropCorpseOnDeath }) => {
+                  dropCorpseOnDeath(db, {
+                    userId: data.targetId,
+                    worldId: tp.cityId || data.worldId || "concordia-hub",
+                    position: { x: tp.x, y: tp.y, z: tp.z },
+                    cause: "combat",
+                  });
+                }).catch(() => { /* corpse drop best-effort */ });
+              }
+            }
+          } catch { /* corpse drop best-effort */ }
+
           // PvP training match round end. If attacker + target are both in
           // an active training match together, record the round and let the
           // client decide whether to auto-trigger Safe Reset for the next
@@ -22921,6 +22951,11 @@ registerHeartbeat("player-signs-cleanup", {
 // talk / hand items).
 import registerHiddenQuestsMacros from "./domains/hidden-quests.js";
 registerHiddenQuestsMacros(register);
+
+// Theme deferred (game-feel pass): shadow-corpse substrate (Dark Souls
+// loss/recovery on player death). Three macros: drop / active / recover.
+import registerPlayerCorpseMacros from "./domains/player-corpse.js";
+registerPlayerCorpseMacros(register);
 
 // Governance — proposals + votes on constitutional constants. The
 // constants themselves remain code-level; this layer is the audit trail.
