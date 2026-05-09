@@ -131,6 +131,17 @@ export function runFaunaSpawner({ state, db }) {
   if (!db) return { ok: false, reason: "no_db" };
   if (!state) return { ok: false, reason: "no_state" };
 
+  // Prepared INSERT — re-used across every spawn in the pass. The 8 args
+  // align with the world_npcs columns this spawner cares about (id,
+  // world_id, archetype, species_id, x, y, z, is_dead). Older builds
+  // with a stricter schema throw on the .run; the catch in the loop
+  // skips gracefully (spawner is best-effort, never fatal).
+  const insert = db.prepare(`
+    INSERT INTO world_npcs
+      (id, world_id, archetype, species_id, x, y, z, is_dead)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
   // Discover active worlds. We piggyback on world_npcs (any world with
   // an NPC presence is "alive") rather than introducing a new active-
   // worlds table.
