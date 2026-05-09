@@ -2037,6 +2037,15 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['create_scenario', 'run_simulation', 'view_forecast', 'compare_counterfactuals'],
     category: 'system',
   },
+  {
+    domain: 'dx-platform',
+    label: 'DX Platform',
+    artifacts: ['codebase', 'finding', 'repair_proposal', 'usage_row', 'quota'],
+    macros: { list: 'lens.dx-platform.list', get: 'lens.dx-platform.get', run: 'lens.dx-platform.run', export: 'lens.dx-platform.export' },
+    exports: ['json', 'csv'],
+    actions: ['register_codebase', 'run_detectors', 'view_billing', 'top_up_wallet', 'web_editor_demo', 'record_fix_decision'],
+    category: 'system',
+  },
 ];
 
 // ---- Sub-lens auto-registration ----

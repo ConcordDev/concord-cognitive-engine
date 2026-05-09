@@ -13,6 +13,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { LensShell } from "@/components/lens/LensShell";
 
 interface UsageRow {
   ts_day: number;
@@ -97,6 +98,7 @@ export default function BillingDashboardPage() {
     .slice(0, 12);
 
   return (
+    <LensShell lensId="dx-platform" asMain={false}>
     <div className="p-6 space-y-6 text-sm">
       <header className="flex items-baseline justify-between">
         <h1 className="text-2xl font-semibold">DX Platform — Billing</h1>
@@ -211,6 +213,7 @@ export default function BillingDashboardPage() {
         </div>
       </section>
     </div>
+    </LensShell>
   );
 }
 

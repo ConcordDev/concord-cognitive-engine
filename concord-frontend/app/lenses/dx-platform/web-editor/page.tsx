@@ -12,6 +12,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { LensShell } from "@/components/lens/LensShell";
 
 const MONACO_VERSION = "0.45.0";
 
@@ -142,6 +143,7 @@ export default function WebEditorPage() {
   };
 
   return (
+    <LensShell lensId="dx-platform" asMain={false}>
     <div className="grid grid-rows-[auto_1fr_auto] h-screen text-sm">
       <header className="flex items-center justify-between p-3 border-b border-zinc-800">
         <h1 className="text-base font-medium">Concord DX — Web editor (demo)</h1>
@@ -170,6 +172,7 @@ export default function WebEditorPage() {
         </ul>
       </footer>
     </div>
+    </LensShell>
   );
 }
 

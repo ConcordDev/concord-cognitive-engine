@@ -85,6 +85,13 @@ export function stepTowards(current: MountedState, target: MountedState): Mounte
   if (current === "mounted_combat" && target !== "mounted_combat") {
     return "mounted_idle";
   }
+  // Symmetric entry bridge: gait → mounted_combat is illegal directly,
+  // but reachable via mounted_idle. Without this the state machine
+  // returns `current` indefinitely when gaitForSpeed(...inCombat=true)
+  // targets combat at a higher gait.
+  if (target === "mounted_combat" && current !== "mounted_idle" && isMounted(current)) {
+    return "mounted_idle";
+  }
   // mounting/dismounting are one-step states; the caller drives them.
   return current;
 }

@@ -98,6 +98,10 @@ export function mount(db, args) {
   if (!comp) return { ok: false, reason: "companion_not_found" };
   if (comp.owner_id !== riderId) return { ok: false, reason: "not_owner" };
   if (!comp.mount_eligible) return { ok: false, reason: "not_mountable" };
+  // Companion must live in the world we're mounting into — otherwise a
+  // single companion could open `mounted_instances` rows in multiple
+  // worlds simultaneously, breaking world consistency.
+  if (comp.world_id !== worldId) return { ok: false, reason: "wrong_world" };
 
   // One active per world.
   const existing = getActiveMountFor(db, riderId, worldId);
