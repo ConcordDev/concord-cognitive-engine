@@ -62,7 +62,6 @@ export function spendUpgradePoint(db, userId, worldId, barType) {
   }
 
   const row = db.prepare(`
-    // TODO: project explicit columns (auto-fix suggestion)
     SELECT * FROM player_resource_bars WHERE user_id = ? AND world_id = ?
   `).get(userId, worldId);
 
@@ -98,7 +97,6 @@ export function spendUpgradePoint(db, userId, worldId, barType) {
   `).run(crypto.randomUUID(), userId, worldId, barType, UPGRADE_AMOUNT, row.character_level ?? 0);
 
   const updated = db.prepare(`
-    // TODO: project explicit columns (auto-fix suggestion)
     SELECT * FROM player_resource_bars WHERE user_id = ? AND world_id = ?
   `).get(userId, worldId);
 
@@ -119,7 +117,6 @@ export function spendUpgradePoint(db, userId, worldId, barType) {
  */
 export function getCharacterProgress(db, userId, worldId) {
   const bars = db.prepare(`
-    // TODO: project explicit columns (auto-fix suggestion)
     SELECT * FROM player_resource_bars WHERE user_id = ? AND world_id = ?
   `).get(userId, worldId);
 

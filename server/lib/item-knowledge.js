@@ -37,7 +37,6 @@ const MASTERY_BONUS_MAX  = 0.20;  // up to +20% from mastery on top of base
 export function getKnowledge(db, playerId, schemaId) {
   if (!schemaId) return null;
   return db.prepare(
-    // TODO: project explicit columns (auto-fix suggestion)
     'SELECT * FROM player_knowledge WHERE player_id = ? AND schema_id = ?'
   ).get(playerId, schemaId) ?? null;
 }
@@ -160,7 +159,6 @@ export function tryLearnFromLoot(db, playerId, lootItem) {
  */
 export function listPlayerKnowledge(db, playerId) {
   return db.prepare(
-    // TODO: project explicit columns (auto-fix suggestion)
     'SELECT * FROM player_knowledge WHERE player_id = ? ORDER BY learned_at DESC'
   ).all(playerId);
 }

@@ -76,7 +76,6 @@ export function createMatch(db, { challengerId, opponentId, worldId = "concordia
  * a 50m made shot.
  */
 export function recordShot(db, matchId, { shooterId, shooterPos, hitRim = false, made = false, ballVelocity = null } = {}) {
-  // TODO: project explicit columns (auto-fix suggestion)
   const m = db.prepare(`SELECT * FROM minigame_matches WHERE id = ?`).get(matchId);
   if (!m) return { ok: false, error: "match_not_found" };
   if (m.status !== "active") return { ok: false, error: "match_not_active" };
@@ -129,7 +128,6 @@ export function recordShot(db, matchId, { shooterId, shooterPos, hitRim = false,
 }
 
 export function endMatch(db, matchId, { reason = "manual" } = {}) {
-  // TODO: project explicit columns (auto-fix suggestion)
   const m = db.prepare(`SELECT * FROM minigame_matches WHERE id = ?`).get(matchId);
   if (!m) return { ok: false, error: "match_not_found" };
   if (m.status === "ended") return { ok: true, alreadyEnded: true };
@@ -150,7 +148,6 @@ export function endMatch(db, matchId, { reason = "manual" } = {}) {
 }
 
 export function getMatch(db, matchId) {
-  // TODO: project explicit columns (auto-fix suggestion)
   const m = db.prepare(`SELECT * FROM minigame_matches WHERE id = ?`).get(matchId);
   if (!m) return null;
   return {

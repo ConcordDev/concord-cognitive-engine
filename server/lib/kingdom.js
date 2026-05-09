@@ -123,7 +123,6 @@ export function foundKingdom(db, {
 
 export function listKingdoms(db, { worldId = null } = {}) {
   if (!db) return [];
-  // TODO: project explicit columns (auto-fix suggestion)
   let sql = `SELECT * FROM kingdoms`;
   const params = [];
   if (worldId) { sql += " WHERE world_id = ?"; params.push(worldId); }
@@ -138,7 +137,6 @@ export function listKingdoms(db, { worldId = null } = {}) {
 
 export function getKingdom(db, kingdomId) {
   if (!db) return null;
-  // TODO: project explicit columns (auto-fix suggestion)
   const row = db.prepare(`SELECT * FROM kingdoms WHERE id = ?`).get(kingdomId);
   if (!row) return null;
   return { ...row, region_polygon: _safeJson(row.region_polygon_json, []) };
@@ -220,7 +218,6 @@ export async function enactDecree(db, kingdomId, decreeKind, parameters = {}, { 
 }
 
 export function listDecrees(db, kingdomId, { activeOnly = false } = {}) {
-  // TODO: project explicit columns (auto-fix suggestion)
   let sql = `SELECT * FROM kingdom_decrees WHERE kingdom_id = ?`;
   const params = [kingdomId];
   if (activeOnly) { sql += " AND activation_state IN ('enforced', 'tension') AND (expires_at IS NULL OR expires_at > unixepoch())"; }
@@ -254,7 +251,6 @@ export function contributeContestStrength(db, contestId, amount) {
 }
 
 export function resolveContest(db, contestId) {
-  // TODO: project explicit columns (auto-fix suggestion)
   const c = db.prepare(`SELECT * FROM kingdom_claims WHERE id = ?`).get(contestId);
   if (!c) return { ok: false, error: "contest_not_found" };
   if (c.resolution_state !== "active") return { ok: true, alreadyResolved: true };
@@ -305,7 +301,6 @@ export function joinKingdom(db, kingdomId, userId, role = "citizen") {
 
 export function listResidents(db, kingdomId) {
   try {
-    // TODO: project explicit columns (auto-fix suggestion)
     return db.prepare(`SELECT * FROM kingdom_residents WHERE kingdom_id = ? ORDER BY joined_at ASC`).all(kingdomId);
   } catch { return []; }
 }

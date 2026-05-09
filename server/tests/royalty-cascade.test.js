@@ -85,6 +85,92 @@ function createMockDb() {
       },
     },
 
+    // CTE: getAncestorChain — WITH RECURSIVE chain(...) walking child_id → parent_id.
+    // The mock walks the lineage in JS to mimic SQLite's recursive CTE since
+    // better-sqlite3 isn't running here. Produces the same shape: one row per
+    // unique ancestor with the MINIMUM cumulative generation, sorted by
+    // (generation, content_id).
+    "WITH RECURSIVE chain(content_id, creator_id, generation) AS (\n      SELECT parent_id, parent_creator, generation": {
+      all(rootId, maxDepth, _rootIdAgain) {
+        const minGen = new Map();
+        const creator = new Map();
+        const queue = [];
+        for (const r of lineageByChild(rootId)) {
+          queue.push({ contentId: r.parent_id, creatorId: r.parent_creator, gen: r.generation });
+        }
+        while (queue.length) {
+          const { contentId, creatorId, gen } = queue.shift();
+          if (gen > maxDepth) continue;
+          if (contentId === rootId) continue;
+          const cur = minGen.get(contentId);
+          if (cur == null || gen < cur) {
+            minGen.set(contentId, gen);
+            creator.set(contentId, creatorId);
+          }
+          for (const r of lineageByChild(contentId)) {
+            queue.push({ contentId: r.parent_id, creatorId: r.parent_creator, gen: gen + r.generation });
+          }
+        }
+        const out = [];
+        for (const [contentId, generation] of minGen) {
+          out.push({ content_id: contentId, creator_id: creator.get(contentId), generation });
+        }
+        out.sort((a, b) => a.generation - b.generation || (a.content_id > b.content_id ? 1 : -1));
+        return out;
+      },
+    },
+
+    // CTE: wouldCreateCycle — walks UP from parentId seeking childId.
+    // Returns { hit: 1 } if reachable (cycle would close), undefined otherwise.
+    "WITH RECURSIVE up(id, depth) AS (\n      SELECT CAST(? AS TEXT)": {
+      get(parentId, maxDepth, targetChildId) {
+        const visited = new Set();
+        const queue = [{ id: parentId, depth: 0 }];
+        while (queue.length) {
+          const { id, depth } = queue.shift();
+          if (id === targetChildId) return { hit: 1 };
+          if (depth >= maxDepth) continue;
+          if (visited.has(id)) continue;
+          visited.add(id);
+          for (const r of lineageByChild(id)) {
+            queue.push({ id: r.parent_id, depth: depth + 1 });
+          }
+        }
+        return undefined;
+      },
+    },
+
+    // CTE: getDescendants — symmetric, parent_id → child_id walk.
+    "WITH RECURSIVE chain(content_id, creator_id, generation) AS (\n      SELECT child_id, creator_id, generation": {
+      all(rootId, maxDepth, _rootIdAgain) {
+        const minGen = new Map();
+        const creator = new Map();
+        const queue = [];
+        for (const r of lineageByParent(rootId)) {
+          queue.push({ contentId: r.child_id, creatorId: r.creator_id, gen: r.generation });
+        }
+        while (queue.length) {
+          const { contentId, creatorId, gen } = queue.shift();
+          if (gen > maxDepth) continue;
+          if (contentId === rootId) continue;
+          const cur = minGen.get(contentId);
+          if (cur == null || gen < cur) {
+            minGen.set(contentId, gen);
+            creator.set(contentId, creatorId);
+          }
+          for (const r of lineageByParent(contentId)) {
+            queue.push({ contentId: r.child_id, creatorId: r.creator_id, gen: gen + r.generation });
+          }
+        }
+        const out = [];
+        for (const [contentId, generation] of minGen) {
+          out.push({ content_id: contentId, creator_id: creator.get(contentId), generation });
+        }
+        out.sort((a, b) => a.generation - b.generation || (a.content_id > b.content_id ? 1 : -1));
+        return out;
+      },
+    },
+
     // PRAGMA table_info(economy_ledger) — used by recordTransactionBatch
     "PRAGMA table_info(economy_ledger)": {
       all() {
@@ -1490,14 +1576,13 @@ describe("getDescendants", () => {
     seedLineage(db, "C", "B", 1, "uC", "uB");
     seedLineage(db, "D", "C", 1, "uD", "uC");
 
-    // maxDepth=1: A (gen 0) is processed, B (gen 1) is discovered and added.
-    // B is then processed (gen 1 is not > 1), discovering C (gen 2) which is
-    // added to descendants but when dequeued C (gen 2 > 1) is not processed
-    // further, so D is never discovered.
+    // The CTE filters via `WHERE c.generation + rl.generation <= maxDepth`,
+    // so at maxDepth=1 only generation ≤ 1 rows enter the chain.
+    // B is admitted (gen 1); C would be gen 2, fails the check, NOT admitted.
     const result = getDescendants(db, "A", 1);
     const ids = result.map((d) => d.contentId).sort();
-    assert.deepEqual(ids, ["B", "C"]);
-    // D should NOT be present because C was never processed
+    assert.deepEqual(ids, ["B"]);
+    assert.ok(!ids.includes("C"));
     assert.ok(!ids.includes("D"));
   });
 

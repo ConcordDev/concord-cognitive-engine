@@ -97,7 +97,6 @@ export function cancelAccountDeletion(db, userId) {
   if (!userId) return { ok: false, error: "missing_user_id" };
 
   const request = db.prepare(
-    // TODO: project explicit columns (auto-fix suggestion)
     "SELECT * FROM account_deletion_requests WHERE user_id = ? AND status = 'scheduled'"
   ).get(userId);
 
@@ -524,7 +523,6 @@ export function requestRefund(db, { purchaseId, buyerId, reason }) {
     if (!purchase) {
       // Try direct lookup
       purchase = db.prepare(`
-        // TODO: project explicit columns (auto-fix suggestion)
         SELECT * FROM economy_ledger
         WHERE ref_id LIKE ? AND from_user_id = ? AND type = 'MARKETPLACE_PURCHASE' AND status = 'complete'
         ORDER BY created_at DESC LIMIT 1
@@ -593,7 +591,6 @@ export function resolveDispute(db, { disputeId, resolution, adminId, partialAmou
   }
 
   const dispute = db.prepare(
-    // TODO: project explicit columns (auto-fix suggestion)
     "SELECT * FROM marketplace_disputes WHERE id = ? AND status IN ('open', 'under_review')"
   ).get(disputeId);
 
@@ -651,7 +648,6 @@ export function getUserDisputes(db, userId, { limit = 50, offset = 0 } = {}) {
 
   try {
     const disputes = db.prepare(`
-      // TODO: project explicit columns (auto-fix suggestion)
       SELECT * FROM marketplace_disputes
       WHERE buyer_id = ? OR seller_id = ?
       ORDER BY created_at DESC LIMIT ? OFFSET ?

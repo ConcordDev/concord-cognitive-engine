@@ -27,7 +27,6 @@ export async function processInboundMessage({ adapter, normalized, db, infer, cr
   let binding = null;
   try {
     binding = db.prepare(`
-      // TODO: project explicit columns (auto-fix suggestion)
       SELECT * FROM messaging_bindings
       WHERE platform = ? AND external_id = ? AND verified = 1
     `).get(platform, normalized.externalId);
@@ -149,7 +148,6 @@ export function createBinding(db, userId, platform, externalId, displayName) {
  */
 export function verifyBinding(db, userId, platform, token) {
   const binding = db.prepare(`
-    // TODO: project explicit columns (auto-fix suggestion)
     SELECT * FROM messaging_bindings
     WHERE user_id = ? AND platform = ? AND verification_token = ? AND verified = 0
   `).get(userId, platform, token);
