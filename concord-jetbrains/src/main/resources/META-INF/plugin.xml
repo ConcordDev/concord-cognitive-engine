@@ -1,0 +1,26 @@
+<idea-plugin>
+  <id>ai.concord.jetbrains</id>
+  <name>Concord DX</name>
+  <vendor email="hello@concord-os.org" url="https://concord-os.org">Concord OS</vendor>
+
+  <description><![CDATA[
+    Concord DX in JetBrains IDEs (IntelliJ IDEA, WebStorm, PyCharm, GoLand, etc.).<br/>
+    Detector findings stream as inline highlights; repair-cortex proposals
+    appear as Accept / Ignore / Reject prompts. Backed by the same
+    <a href="https://github.com/ryttps94jq-gif/concord-cognitive-engine/tree/main/concord-lsp">concord-lsp</a>
+    that powers the VS Code extension.
+  ]]></description>
+
+  <depends>com.intellij.modules.platform</depends>
+  <depends>com.redhat.devtools.lsp4ij</depends>
+
+  <extensions defaultExtensionNs="com.intellij">
+    <!-- LSP server registration via LSP4IJ. The actual server.js binary
+         is bundled with the plugin; LSP4IJ launches it via stdio. -->
+  </extensions>
+
+  <applicationListeners>
+    <!-- Future: API key / sign-in listener wires here once the
+         settings panel ships in v0.2. -->
+  </applicationListeners>
+</idea-plugin>
