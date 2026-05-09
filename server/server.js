@@ -9527,7 +9527,7 @@ async function runMacro(domain, name, input, ctx) {
 
   // ── NUCLEAR FIX: Authenticated users bypass c2 guard entirely ──────────
   // The c2 guard exists to prevent autonomous/system operations from creating
-  // garbage, NOT to prevent humans from using the product. 175 lenses × N
+  // garbage, NOT to prevent humans from using the product. 205 lenses × N
   // operations = too many combinations to allowlist. If a user is logged in
   // and clicking buttons, let them through. Period.
   const _isAuthenticatedUser =

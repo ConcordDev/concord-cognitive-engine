@@ -72,7 +72,7 @@ Every frontend API call passes three gates in `server.js`:
 3. **Chicken2** — `_safeReadPaths` + `safeReadBypass` boolean
 
 ### The macro system
-Frontend calls `POST /api/lens/run` with `{ domain, name, input }`. This routes to `runMacro(domain, name, input, ctx)` in `server.js`. All 175 lenses expose their functionality as domain macros (e.g., `runMacro("chat", "respond", {...})`). Domain logic lives in `server/domains/<domain>.js`.
+Frontend calls `POST /api/lens/run` with `{ domain, name, input }`. This routes to `runMacro(domain, name, input, ctx)` in `server.js`. All 205 lenses expose their functionality as domain macros (e.g., `runMacro("chat", "respond", {...})`). Domain logic lives in `server/domains/<domain>.js`.
 
 ### Heartbeat tick (every 15s)
 `governorTick()` in `server.js` drives all emergent simulation. Two registration patterns coexist:
@@ -139,7 +139,7 @@ The cartographer outputs (`audit/cartograph/SYSTEMS.json`, `SYSTEMS.md`, `CARTOG
 - **Migrations**: 145, latest `144_mount_gear.js`.
 - **Route files**: 129 under `server/routes/*.js`.
 - **Emergent modules**: 158 in `server/emergent/*.js`.
-- **Lib modules**: 278 in `server/lib/*.js`.
+- **Lib modules**: 272 in `server/lib/*.js` (audit pass 2026-05-09 added `http-errors.js` and archived 11 orphan modules to `server/lib/_archived/`).
 
 When this file disagrees with `docs/AUDIT_INVENTORY.md`, the inventory wins.
 
