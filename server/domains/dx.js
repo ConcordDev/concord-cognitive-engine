@@ -223,4 +223,96 @@ export default function registerDxMacros(register, STATE) {
     }
     return { ok: true, weight: getWeight(db, input.codebaseId, input.detectorId, input.ruleId) };
   }, { note: "single (codebase, detector, rule) weight lookup" });
+
+  // ── Audit-phase 7.5 onboarding macros ───────────────────────────────
+  // Powers the step-by-step onboarding view at /lenses/dx-platform.
+  // Anonymous browsers also resolve (returns zero progress) so the
+  // step cards render before sign-in.
+
+  register("dx", "onboarding_progress", async (ctx) => {
+    const userId = ctx?.actor?.userId || ctx?.userId;
+    if (!userId) {
+      return { ok: true, progress: { signedIn: false, firstDetector: false, firstDebit: false } };
+    }
+    const db = ctx?.db;
+    if (!db) {
+      return { ok: true, progress: { signedIn: false, firstDetector: false, firstDebit: false } };
+    }
+
+    let signedIn = false;
+    let firstDetector = false;
+    let firstDebit = false;
+    const installed = { vscode: false, jetbrains: false };
+
+    // (1) Signed in: any non-revoked api_keys row for this user.
+    try {
+      const row = db.prepare(
+        `SELECT COUNT(*) AS c FROM api_keys WHERE user_id = ? AND status = 'active'`
+      ).get(userId);
+      signedIn = (row?.c ?? 0) > 0;
+    } catch { /* table may not exist on a fresh DB */ }
+
+    // (2) First detector: any api_usage_log row for this user.
+    try {
+      const row = db.prepare(
+        `SELECT COUNT(*) AS c FROM api_usage_log WHERE user_id = ?`
+      ).get(userId);
+      firstDetector = (row?.c ?? 0) > 0;
+    } catch { /* best-effort */ }
+
+    // (3) First debit: any DEBIT economy_ledger row for this user.
+    try {
+      const row = db.prepare(`
+        SELECT COUNT(*) AS c FROM economy_ledger
+         WHERE user_id = ? AND type = 'debit' AND amount > 0
+      `).get(userId);
+      firstDebit = (row?.c ?? 0) > 0;
+    } catch { /* schema may differ across envs */ }
+
+    // (4) Installed-extension hint: latest 25 usage rows' metadata.
+    try {
+      const recent = db.prepare(`
+        SELECT metadata_json FROM api_usage_log
+         WHERE user_id = ?
+         ORDER BY created_at DESC
+         LIMIT 25
+      `).all(userId);
+      for (const r of recent) {
+        try {
+          const meta = JSON.parse(r.metadata_json || "{}");
+          if (meta.client === "vscode") installed.vscode = true;
+          else if (meta.client === "jetbrains") installed.jetbrains = true;
+        } catch { /* skip malformed metadata rows */ }
+        if (installed.vscode && installed.jetbrains) break;
+      }
+    } catch { /* best-effort */ }
+
+    return {
+      ok: true,
+      progress: { signedIn, firstDetector, firstDebit, installed },
+    };
+  });
+
+  register("dx", "welcome", async (ctx) => {
+    const userId = ctx?.actor?.userId || ctx?.userId;
+    if (!userId) return { ok: false, error: "auth_required" };
+    const db = ctx?.db;
+    if (!db) return { ok: true, userId, monthlyUsage: null };
+
+    let monthly = null;
+    try {
+      const yearMonth = new Date().toISOString().slice(0, 7);
+      monthly = db.prepare(`
+        SELECT * FROM api_monthly_usage
+         WHERE user_id = ? AND month = ?
+      `).get(userId, yearMonth);
+    } catch { /* table may not exist */ }
+
+    return {
+      ok: true,
+      userId,
+      monthlyUsage: monthly,
+      message: "Signed in. Your DX session is active.",
+    };
+  });
 }

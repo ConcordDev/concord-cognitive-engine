@@ -123,6 +123,60 @@ export const EVENT_SHAPES = Object.freeze({
     required: ["id", "worldId", "npcA", "npcB", "opener"],
     optional: ["expiresAt"],
   },
+
+  // ── Lattice-born quests (Phase 4c) ────────────────────────────────
+  // Emitted by emergent/lattice-quest-cycle.js when a drift alert promotes
+  // into a player-facing quest. Surfaces to EmergentEventFeed.
+  "quest:lattice-born": {
+    required: ["questId", "hostNpcId", "title"],
+    optional: ["driftType", "driftSeverity"],
+  },
+
+  // ── Personal beat scheduler (Phase 3) ─────────────────────────────
+  // Emitted by emergent/personal-beat-scheduler.js when a forward-sim
+  // prediction surfaces as a goddess beat. Per-user (room user:${id}).
+  "beat:offered": {
+    required: ["id", "userId", "predictionId", "prose"],
+    optional: ["worldId", "subjectKind"],
+  },
+
+  // ── Combat polish ladder ──────────────────────────────────────────
+  // Emitted by lib/combat-polish.js#emitCombatEvent. The detail object is
+  // event-kind-specific; validator allows it as a free-form object.
+  "combat:polish": {
+    required: ["id", "worldId", "actorKind", "actorId", "eventKind"],
+    optional: ["detail"],
+  },
+
+  // ── Procgen wilderness regions (Phase 5e) ─────────────────────────
+  // Emitted by lib/procgen-regions.js when a drift alert spawns a region.
+  "world:region-spawned": {
+    required: ["regionId", "worldId", "regionKind", "anchor"],
+    optional: ["radius", "narrative"],
+  },
+
+  // ── Seasons (Phase 5c) ────────────────────────────────────────────
+  // Emitted by lib/seasons.js#advanceSeasonForWorld on each transition.
+  "world:season-transition": {
+    required: ["worldId", "seasonIdx", "seasonName", "year"],
+    optional: ["narrative"],
+  },
+
+  // ── Skill tier witnessed (Phase 1) ────────────────────────────────
+  // Emitted by routes/worlds.js when a player casts a skill of revision
+  // ≥ 1 in combat. Powers the npc-skill-evolve-cycle witness path.
+  "skill:tier-witnessed": {
+    required: ["userId", "npcId", "worldId", "skillId", "skillName", "revisionNum"],
+    optional: ["element", "damage", "position"],
+  },
+
+  // ── World-wide invariant warning ──────────────────────────────────
+  // Emitted by server.js when invariant-guardian detector reports a
+  // critical finding; surfaces to all clients (no room scope).
+  "world:invariant-warning": {
+    required: ["id", "message", "severity"],
+    optional: ["location", "generatedAt"],
+  },
 });
 
 /**

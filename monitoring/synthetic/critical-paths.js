@@ -116,6 +116,24 @@ const CHECKS = [
     expectedStatus: 200,
     validate: (body) => body.ok === true && Array.isArray(body.listings),
   },
+  // Brain health — surfaces Ollama reachability per brain. We don't
+  // require all five to be online (the system has deterministic
+  // fallbacks) but if zero brains are online and LLM_READY=false the
+  // endpoint should still return 200 — the page-on-zero-brains decision
+  // is a Grafana alert, not a synthetic-monitor decision.
+  {
+    name: "brain-health",
+    url: `${BASE_URL}/api/brain/health`,
+    expectedStatus: 200,
+    validate: (body) => body.ok === true && body.brains && Object.keys(body.brains).length >= 4,
+  },
+  // Top-level /health includes per-brain status alongside DB / Redis.
+  {
+    name: "health-includes-brains",
+    url: `${BASE_URL}/health`,
+    expectedStatus: 200,
+    validate: (body) => body.checks && (body.checks.brains === undefined || typeof body.checks.brains === "object"),
+  },
 ];
 
 async function runCheck(check) {

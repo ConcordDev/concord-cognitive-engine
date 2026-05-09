@@ -69,6 +69,10 @@ const DistrictTimeline = dynamic(
   () => import('@/components/world-lens/DistrictTimeline'),
   { ssr: false },
 );
+const EnvironmentalStorytelling = dynamic(
+  () => import('@/components/world-lens/EnvironmentalStorytelling'),
+  { ssr: false },
+);
 
 const DistrictActivityFeed = dynamic(
   () =>
@@ -4402,6 +4406,17 @@ export default function WorldLensPage() {
                 </button>
               </div>
               <DistrictTimeline districtId={activeDistrict.id} />
+              {/*
+                EnvironmentalStorytelling — surfaces ambient lore + season
+                + drift hints in narrative voice for the active district.
+                Sits below the timeline so the player gets both the
+                "what just happened" timeline and the "what this place
+                feels like right now" ambient voice.
+              */}
+              <EnvironmentalStorytelling
+                districtId={activeDistrict.id}
+                worldId={(activeDistrict as { world_id?: string }).world_id || 'concordia-hub'}
+              />
             </div>
           )}
           {showPanel === 'quests' && (

@@ -189,6 +189,22 @@ function createMockDb() {
               ...d, tags_json: d.tags_json || "[]",
             }));
           }
+          // batchLookup pattern (economy/_batch-lookup.js):
+          //   SELECT <cols> FROM dtus WHERE id IN (?, ?, ...)
+          // Production code's compressToDMega / compressToHyper hit this
+          // path. Mock returns the projected columns for each matched row.
+          if (/SELECT .* FROM dtus WHERE id IN/.test(sql)) {
+            const ids = new Set(params);
+            return tables.dtus
+              .filter(d => ids.has(d.id))
+              .map(d => ({
+                id: d.id,
+                title: d.title,
+                content_type: d.content_type,
+                creti_score: d.creti_score,
+                tier: d.tier,
+              }));
+          }
           return [];
         },
       };

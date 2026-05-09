@@ -10,8 +10,16 @@
 // VS Code marketplace policy: this plugin NEVER auto-applies a fix.
 // Repair proposals are only suggested via Code Action menu + the
 // repair-webview Accept button.
+//
+// Two sign-in paths:
+//   - `concord.signIn`  (recommended) — browser-based OAuth, RFC 8252
+//     loopback redirect. Pairs with /oauth/dx + /api/dx/exchange.
+//   - `concord.login`   (legacy)      — paste a csk_* key directly.
+// Both end up storing the token via ApiKeyStore (vscode.SecretStorage).
 
 import * as vscode from "vscode";
+import * as http from "node:http";
+import * as crypto from "node:crypto";
 import { ApiKeyStore } from "./auth/api-key-store";
 import { ConcordClient } from "./api/concord-client";
 import { DxSocketStream, type StreamEvent } from "./api/socket-stream";
@@ -41,20 +49,26 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const keyStore = new ApiKeyStore(context.secrets);
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("concord.login",        () => onLogin(keyStore, context)),
-    vscode.commands.registerCommand("concord.logout",       () => onLogout(keyStore)),
-    vscode.commands.registerCommand("concord.syncCodebase", () => onSyncCodebase(context)),
-    vscode.commands.registerCommand("concord.runDetectors", () => onRunDetectors()),
-    vscode.commands.registerCommand("concord.openSidebar",  () => vscode.commands.executeCommand("workbench.view.explorer")),
+    vscode.commands.registerCommand("concord.signIn",        () => onSignIn(keyStore, context)),
+    vscode.commands.registerCommand("concord.login",         () => onLogin(keyStore, context)),
+    vscode.commands.registerCommand("concord.signOut",       () => onLogout(keyStore)),
+    vscode.commands.registerCommand("concord.logout",        () => onLogout(keyStore)),
+    vscode.commands.registerCommand("concord.syncCodebase",  () => onSyncCodebase(context)),
+    vscode.commands.registerCommand("concord.runDetectors",  () => onRunDetectors()),
+    vscode.commands.registerCommand("concord.openSidebar",   () => vscode.commands.executeCommand("workbench.view.explorer")),
+    vscode.commands.registerCommand("concord.openWallet",    () => onOpenWallet()),
+    vscode.commands.registerCommand("concord.repairPreview", () => onRepairPreview()),
   );
 
   const apiKey = await keyStore.get();
   if (!apiKey) {
     void vscode.window.showInformationMessage(
-      "Concord DX: no API key. Run `Concord: Sign In` from the Command Palette.",
-      "Sign In",
+      "Concord DX: not signed in. Use `Concord: Sign in with Concord (OAuth)` from the Command Palette.",
+      "Sign in",
+      "Paste API key (legacy)",
     ).then(choice => {
-      if (choice === "Sign In") void onLogin(keyStore, context);
+      if (choice === "Sign in") void onSignIn(keyStore, context);
+      else if (choice === "Paste API key (legacy)") void onLogin(keyStore, context);
     });
     return;
   }
@@ -104,6 +118,8 @@ async function bootstrap(apiKey: string, context: vscode.ExtensionContext): Prom
   const repairWebview = new RepairWebview(client);
   const status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
   status.text = "$(eye) Concord";
+  status.command = "concord.openWallet";
+  status.tooltip = "Concord DX — click to open wallet";
   status.show();
 
   const disposables: vscode.Disposable[] = [];
@@ -133,6 +149,74 @@ async function bootstrap(apiKey: string, context: vscode.ExtensionContext): Prom
 
   _state = { client, stream, diagnostics, findings, repairWebview, codebaseId, repoRoot, status, disposables };
   void vscode.window.showInformationMessage(`Concord DX connected (codebase ${codebaseId.slice(0, 12)}…).`);
+}
+
+// ── OAuth sign-in (RFC 8252 loopback redirect) ────────────────────────
+//
+// Pairs with server/routes/dx-oauth.js. Opens a one-shot HTTP listener
+// on 127.0.0.1:<random>, points the browser at /oauth/dx?client=vscode&
+// state=&port=, exchanges the returned code via /api/dx/exchange, and
+// stores the resulting csk_* token in ApiKeyStore.
+
+async function onSignIn(keyStore: ApiKeyStore, context: vscode.ExtensionContext): Promise<void> {
+  const cfg = vscode.workspace.getConfiguration("concord");
+  const apiUrl = String(cfg.get("serverUrl") || "http://localhost:5050").replace(/\/+$/, "");
+  const state = crypto.randomBytes(16).toString("hex");
+
+  const token = await new Promise<string | null>((resolve) => {
+    const server = http.createServer((req, res) => {
+      try {
+        const url = new URL(req.url || "/", "http://127.0.0.1");
+        if (url.pathname !== "/callback") {
+          res.writeHead(404).end("not_found");
+          return;
+        }
+        const code  = url.searchParams.get("code");
+        const rState = url.searchParams.get("state");
+        const html =
+          "<!doctype html><body style=\"font:16px/1.5 system-ui;text-align:center;padding:8vh\">" +
+          "<h1>Concord — Authorized</h1><p>You can close this tab. Return to VS Code.</p></body>";
+        res.writeHead(200, { "content-type": "text/html" }).end(html);
+
+        if (code && rState && rState === state) {
+          exchangeCode(apiUrl, code, state).then(resolve).catch(() => resolve(null));
+        } else {
+          resolve(null);
+        }
+      } catch {
+        resolve(null);
+      } finally {
+        try { server.close(); } catch { /* swallow */ }
+      }
+    });
+    server.listen(0, "127.0.0.1", () => {
+      const port = (server.address() as { port: number }).port;
+      const consent = `${apiUrl}/oauth/dx?client=vscode&state=${state}&port=${port}`;
+      void vscode.env.openExternal(vscode.Uri.parse(consent));
+    });
+    setTimeout(() => { try { server.close(); } catch { /* noop */ } resolve(null); }, 5 * 60 * 1000);
+  });
+
+  if (!token) {
+    void vscode.window.showWarningMessage("Concord sign-in did not complete.");
+    return;
+  }
+
+  await keyStore.set(token);
+  void vscode.window.showInformationMessage("Signed in to Concord. Token stored in OS keychain.");
+  await bootstrap(token, context);
+}
+
+async function exchangeCode(apiUrl: string, code: string, state: string): Promise<string | null> {
+  const res = await fetch(`${apiUrl}/api/dx/exchange`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ code, state }),
+  });
+  if (!res.ok) return null;
+  const body = await res.json() as { ok?: boolean; token?: string };
+  if (!body?.ok || !body.token) return null;
+  return body.token;
 }
 
 async function onLogin(keyStore: ApiKeyStore, context: vscode.ExtensionContext): Promise<void> {
@@ -179,6 +263,28 @@ async function onRunDetectors(): Promise<void> {
   } catch (err) {
     void vscode.window.showErrorMessage(`Concord DX: runAll failed: ${(err as Error).message}`);
   }
+}
+
+function onOpenWallet(): void {
+  const cfg = vscode.workspace.getConfiguration("concord");
+  const apiUrl = String(cfg.get("serverUrl") || "http://localhost:5050").replace(/\/+$/, "");
+  void vscode.env.openExternal(vscode.Uri.parse(`${apiUrl}/lenses/dx-platform/billing`));
+}
+
+function onRepairPreview(): void {
+  if (!_state) {
+    void vscode.window.showWarningMessage("Concord DX: not connected.");
+    return;
+  }
+  // The repair webview is driven by stream events — when the server's
+  // repair-cortex proposes a fix, the webview reveals itself
+  // automatically. This command is a no-op affordance for users who
+  // expect a "show me the latest proposal" command; it surfaces a
+  // hint instead of failing silently.
+  void vscode.window.showInformationMessage(
+    "Concord DX: repair previews appear automatically when the server proposes a fix. " +
+    "Save a file to trigger a detector run.",
+  );
 }
 
 function onStreamEvent(

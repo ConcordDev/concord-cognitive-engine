@@ -80,6 +80,18 @@ jobs:
           fi
           echo "Auth bypass gate: PASS (0 violations)"
 
+      - name: Route auth coverage gate
+        id: route_auth
+        working-directory: ./server
+        run: |
+          echo "Scanning server/routes/*.js for mutation routes missing auth middleware..."
+          npm run check-route-auth
+          # Exit code 0: 0 NEW gaps vs baseline at audit/route-auth.baseline.json.
+          # Pre-existing gaps are grandfathered until rewritten via:
+          #   npm run check-route-auth:update
+          # That command requires a separate review commit; do not bake it
+          # into the gate workflow.
+
       - name: Cartograph drift gate
         id: cartograph_diff
         working-directory: ./server

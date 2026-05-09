@@ -1,0 +1,16 @@
+Concord DX VS Code Extension License
+
+Copyright (c) 2026 Concord OS / ryttps94jq-gif
+
+This extension is part of the Concord Cognitive Engine project.
+It is published under the same terms as the parent repository's LICENSE.txt
+at the root of this monorepo. See ../LICENSE.txt for the full license text.
+
+Brief summary (NOT a substitute for the full license):
+- Source available; copy + modify allowed for personal, research, and
+  internal-use purposes.
+- Re-distribution under a different name or as a competing product
+  requires explicit permission.
+- Use of the Concord network's paid services (API calls, federation
+  participation) is governed by the Concord Terms of Service at
+  https://concord-os.org/terms.

@@ -17,59 +17,76 @@ import {
   getDescendants,
 } from "../economy/royalty-cascade.js";
 
-// ── Reference (queue-based) implementations — kept here as fixtures.
+// ── Reference (BFS-based) implementations — kept here as fixtures.
+//
+// The CTE-based production functions both use MIN(generation) on the
+// recursive accumulation: when a node is reachable through multiple
+// paths in a DAG, the SHORTEST cumulative generation wins (see
+// economy/royalty-cascade.js#getAncestorChain and #getDescendants where
+// the recursive CTE concludes with `GROUP BY content_id` + MIN()).
+//
+// The reference must use the same min-generation semantics or it
+// diverges on diamond-shaped DAGs. Pre-2026 the reference used
+// "first-seen" semantics (visited-skip), which only matches the CTE in
+// pure trees — not in the random DAGs this test generates. Updated to
+// shortest-path BFS so parity holds across all DAG shapes.
 function refAncestorChain(db, contentId, maxDepth = 50) {
-  const ancestors = [];
-  const visited = new Set();
+  const minGen = new Map();   // id → shortest cumulative generation
+  const creators = new Map(); // id → creator (set when minGen first lands)
   const queue = [{ id: contentId, generation: 0 }];
   while (queue.length > 0) {
     const current = queue.shift();
-    if (visited.has(current.id) || current.generation > maxDepth) continue;
-    visited.add(current.id);
+    if (current.generation > maxDepth) continue;
+    if (minGen.has(current.id) && minGen.get(current.id) <= current.generation) continue;
+    minGen.set(current.id, current.generation);
     const parents = db.prepare(`
       SELECT parent_id, parent_creator, generation
       FROM royalty_lineage WHERE child_id = ?
     `).all(current.id);
     for (const parent of parents) {
       const totalGeneration = current.generation + parent.generation;
-      if (totalGeneration <= maxDepth && !visited.has(parent.parent_id)) {
-        ancestors.push({
-          contentId: parent.parent_id,
-          creatorId: parent.parent_creator,
-          generation: totalGeneration,
-        });
+      if (totalGeneration <= maxDepth) {
+        if (!creators.has(parent.parent_id)) creators.set(parent.parent_id, parent.parent_creator);
         queue.push({ id: parent.parent_id, generation: totalGeneration });
       }
     }
   }
-  return ancestors;
+  // Drop the seed itself (generation 0) — the chain returns ancestors only.
+  minGen.delete(contentId);
+  return [...minGen.entries()].map(([id, gen]) => ({
+    contentId: id,
+    creatorId: creators.get(id),
+    generation: gen,
+  }));
 }
 
 function refDescendants(db, contentId, maxDepth = 50) {
-  const out = [];
-  const visited = new Set();
+  const minGen = new Map();
+  const creators = new Map();
   const queue = [{ id: contentId, generation: 0 }];
   while (queue.length > 0) {
     const current = queue.shift();
-    if (visited.has(current.id) || current.generation > maxDepth) continue;
-    visited.add(current.id);
+    if (current.generation > maxDepth) continue;
+    if (minGen.has(current.id) && minGen.get(current.id) <= current.generation) continue;
+    minGen.set(current.id, current.generation);
     const children = db.prepare(`
       SELECT child_id, creator_id, generation
       FROM royalty_lineage WHERE parent_id = ?
     `).all(current.id);
     for (const child of children) {
       const totalGeneration = current.generation + child.generation;
-      if (!visited.has(child.child_id)) {
-        out.push({
-          contentId: child.child_id,
-          creatorId: child.creator_id,
-          generation: totalGeneration,
-        });
+      if (totalGeneration <= maxDepth) {
+        if (!creators.has(child.child_id)) creators.set(child.child_id, child.creator_id);
         queue.push({ id: child.child_id, generation: totalGeneration });
       }
     }
   }
-  return out;
+  minGen.delete(contentId);
+  return [...minGen.entries()].map(([id, gen]) => ({
+    contentId: id,
+    creatorId: creators.get(id),
+    generation: gen,
+  }));
 }
 
 function buildLineageDb(Database, edges) {

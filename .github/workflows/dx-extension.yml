@@ -1,0 +1,70 @@
+name: dx-extension
+
+# Builds + packages the Concord DX VS Code extension on every push that
+# touches concord-vscode/ or concord-lsp/. Uploads the .vsix as an
+# artifact; release tags publish to the Marketplace via vsce publish.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'concord-vscode/**'
+      - 'concord-lsp/**'
+      - '.github/workflows/dx-extension.yml'
+  pull_request:
+    paths:
+      - 'concord-vscode/**'
+      - 'concord-lsp/**'
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install LSP dependencies + compile
+        working-directory: ./concord-lsp
+        run: |
+          npm ci
+          npm run compile
+
+      - name: Install extension dependencies
+        working-directory: ./concord-vscode
+        run: npm ci
+
+      - name: Compile extension
+        working-directory: ./concord-vscode
+        run: npm run compile
+
+      - name: Package .vsix
+        working-directory: ./concord-vscode
+        run: npx vsce package --no-yarn --out concord-dx.vsix
+
+      - name: Upload .vsix artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: concord-dx-vsix
+          path: concord-vscode/concord-dx.vsix
+
+      - name: Publish to Marketplace (release only)
+        if: github.event_name == 'release'
+        working-directory: ./concord-vscode
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: |
+          if [ -z "$VSCE_PAT" ]; then
+            echo "VSCE_PAT not set; skipping publish. Add the personal access token from"
+            echo "https://marketplace.visualstudio.com/manage to repository secrets to enable."
+            exit 0
+          fi
+          npx vsce publish --no-yarn --pat "$VSCE_PAT"

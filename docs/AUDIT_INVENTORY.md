@@ -1,8 +1,8 @@
 # Concord Cognitive Engine — Audit Inventory (verified by direct codebase inspection)
 
-Generated: 2026-05-09T15:17:00Z
-Branch: claude/github-workflow-setup-86pW2
-Head:   6b065388 (post-#309 merge to main; `144_mount_gear` is the latest migration on disk; the 142 collision is fixed in this branch by renaming `142_drop_dead_mig009.js` → `143_drop_dead_mig009.js`)
+Generated: 2026-05-09T16:00:00Z (refreshed during major audit phase 3.1)
+Branch: claude/codebase-audit-blockers-WEY8p
+Head:   post-#316 (audit phases 1.2 + 2.1–2.4 + 3.1 + 4.1–4.3 + 5.2 + 5.4 landed)
 
 Every number below comes from a `grep` or `ls` against the working tree at the head above. Numbers in CLAUDE.md / audit/cartograph/* that disagree are stale — trust this file.
 
@@ -12,11 +12,13 @@ Every number below comes from a `grep` or `ls` against the working tree at the h
 |---|---|---|
 | Lens directories (frontend) | 205 | `ls -d concord-frontend/app/lenses/*/ \| wc -l` |
 | Backend domain files | 195 | `ls server/domains/*.js \| wc -l` |
-| Migrations applied | 145 | `ls server/migrations/*.js \| wc -l` |
+| Migrations applied | 144 | `ls server/migrations/[0-9]*.js \| wc -l` (numbered only — `_drop-with-rescue.js` is a helper) |
 | Latest migration | 144_mount_gear.js | `ls server/migrations/ \| grep -E '^[0-9]{3}_' \| sort \| tail -1` |
 | Route files | 129 | `ls server/routes/*.js \| wc -l` |
 | Emergent modules | 158 | `ls server/emergent/*.js \| wc -l` |
-| Lib modules | 278 | `ls server/lib/*.js \| wc -l` |
+| Lib modules | 272 | `ls server/lib/*.js \| wc -l` (added `http-errors.js` in audit phase 4.1; archived 11 orphans to `_archived/` in phase 3.2) |
+| Test files | 353 | `find server/tests -name "*.test.js" -o -name "*-tests.js" \| wc -l` |
+| Test cases (it/test() blocks) | 11125 | `grep -rE "^\s*(it\|test)\(" server/tests --include="*.js" \| wc -l` |
 | HTTP routes in server.js | 1086 | `grep -hcE '^\s*app\.(get\|post\|put\|delete\|patch)\(' server/server.js` |
 | HTTP routes in routes/*.js | 1313 | `grep -hcE '^\s*router\.(get\|post\|put\|delete\|patch)\(' server/routes/*.js \| paste -sd+ - \| bc` |
 | Unique macro domains (server.js) | 129 | `grep -hE "^\s*register\(\s*['\"][a-z_]+" server/server.js` |

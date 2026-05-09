@@ -1,0 +1,50 @@
+name: synthetic-playtest
+
+# Synthetic multi-day playtest — exercises the deep substrate (forward-sim,
+# faction-strategy, NPC asymmetry) by compressing 7 in-game days into seconds.
+# Runs nightly so substrate drift surfaces before real players do.
+#
+# Default-off in PR CI (the test file is gated by CONCORD_SYNTHETIC_PLAYTEST);
+# this workflow flips the flag and runs it on a schedule.
+
+on:
+  schedule:
+    # 04:13 UTC every day. Off-peak vs. main CI / lint-sweep.
+    - cron: '13 4 * * *'
+  workflow_dispatch:
+    # Manual trigger from the Actions tab.
+
+jobs:
+  synthetic-playtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'server/package-lock.json'
+
+      - name: Install server dependencies
+        working-directory: ./server
+        run: npm ci
+
+      - name: Run synthetic playtest (CONCORD_SYNTHETIC_PLAYTEST=1)
+        working-directory: ./server
+        env:
+          CONCORD_SYNTHETIC_PLAYTEST: '1'
+          CONCORD_FORWARD_SIM_MIN_INTERVAL_S: '1'
+        run: node --test --test-timeout=600000 tests/synthetic-playtest.test.js
+
+      - name: Upload trace on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: synthetic-playtest-trace
+          path: |
+            server/playtest-*.log
+            /tmp/prophet-check-error.log
+          if-no-files-found: ignore

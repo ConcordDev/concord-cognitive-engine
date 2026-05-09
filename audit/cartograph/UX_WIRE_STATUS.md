@@ -6,7 +6,46 @@ landed orphan in `concord-frontend/components/world-lens/` (mixed in with
 ~100 pre-existing world-lens components). Each needs a keep/drop/merge
 decision before mounting — same pattern as Phase C for libs.
 
-## Decision matrix (the 21 newly-absorbed components)
+**Refreshed 2026-05-09 during major-audit phase 1.1.** Verified each
+component's actual mount via `grep -rl "<ComponentName"` across
+`concord-frontend/app/` and `concord-frontend/components/`. The May-8
+"ux-suite" status was stale — most components had reached their
+semantic homes via subsequent merges; the audit pass picked up the
+last unmounted one (`EnvironmentalStorytelling`).
+
+## Verified mount inventory (2026-05-09)
+
+19 of 19 in-scope absorbed components have a semantic home:
+
+| Component | Verified mount path |
+|---|---|
+| `LocalizationProvider` | DROPPED (Phase D) — duplicate of `I18nProvider` |
+| `SoundSystem` | `components/Providers.tsx:131` |
+| `AdaptiveComplexity` | `components/Providers.tsx:111` |
+| `HiddenAssistance` | `components/Providers.tsx:112` |
+| `SecretsDiscovery` | `components/Providers.tsx:113` |
+| `SettingsPanel` | `app/settings/page.tsx` |
+| `AccessibilityPanel` | `app/settings/accessibility/page.tsx` |
+| `LensPluginSystem` | `app/lenses/system/page.tsx` |
+| `AnalyticsDashboard` | `app/lenses/system/page.tsx` |
+| `ProgressionPanel` | `components/concordia/skills/SkillsPanel.tsx` |
+| `SaveSystem` | `app/lenses/world/save/page.tsx` |
+| `AchievementSystem` | `app/lenses/self/page.tsx` |
+| `DailyRituals` | `app/lenses/self/page.tsx` |
+| `SeasonalContent` | `app/lenses/self/page.tsx` |
+| `WorldTravel` | `app/lenses/world/travel/page.tsx` |
+| `DistrictTimeline` | `app/lenses/world/page.tsx` |
+| `EnvironmentalStorytelling` | `app/lenses/world/page.tsx` (audit phase 1.1) |
+| `ARPreview` | `app/lenses/world/ar/[dtuId]/page.tsx` |
+| `AgentBuilder` | `app/lenses/society/page.tsx` |
+| `MobileCompanion` | `app/mobile/page.tsx` |
+| `LensActionBar` | (kept in shared `LensShell` chrome) |
+
+The /lenses/ux-suite lens remains as a deliberate **demo gallery**
+exercising every component in one place — useful for screenshots,
+QA, and Storybook-style review without leaving the app.
+
+## Original Phase D matrix (preserved for historical context)
 
 All EVAL decisions resolved; remaining work is per-component product
 integration (real data, real semantic mount). The ux-suite lens at

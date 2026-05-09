@@ -1,0 +1,93 @@
+{
+  "world_id": "lattice-crucible",
+  "world_name": "The Crucible",
+  "world_description": "The world the lattice-orchestrator cycles into existence. Drift events here are not flavor — they are the actual federation drift-monitor surfacing as terrain.",
+  "history": [
+    {
+      "id": "crucible_lore_first_alert",
+      "title": "The First Lattice-Born Quest",
+      "type": "founding",
+      "era": "Year 4 of the Crucible",
+      "description": "The first lattice-born quest in the Crucible was a goodhart-type alert: the federation's macro-call counter had begun to rise without corresponding user activity. The lattice composed a quest titled 'Whose macros are these?' and routed a Witness to investigate. The Witness traced the count to a misconfigured load-test runner. The runner was retired; the alert resolved; the lattice published the resolution as a breakthrough cluster.",
+      "significance": "founding"
+    },
+    {
+      "id": "crucible_lore_seven_doors",
+      "title": "The Seven Doors",
+      "type": "monument",
+      "era": "Year 5 of the Crucible",
+      "description": "Constructed by the first three Witnesses; each door corresponds to one of seven drift types the federation defined. Walking through a door drops the player into a procgen region tied to a real recent alert of that type. The seventh door — 'unclassified' — is the one most often used, because new drift types appear faster than they are classified.",
+      "significance": "major"
+    },
+    {
+      "id": "crucible_lore_charter_question",
+      "title": "The Charter Question",
+      "type": "philosophical",
+      "era": "current",
+      "description": "The Witness Charter says: observe; document; do not intervene. Sael has formally proposed an amendment that would permit intervention when a drift event endangers a player. Orla considers the amendment a violation of the charter's purpose; Pem is wavering. Player decisions in the Crucible are scored against this open question — players who intervene to save NPCs in active drift events accumulate Sael's favor and risk Orla's.",
+      "significance": "active",
+      "factions_involved": ["crucible_witnesses"]
+    },
+    {
+      "id": "crucible_lore_orla_observation",
+      "title": "Orla's Quiet Observation",
+      "type": "philosophical",
+      "era": "current",
+      "description": "Orla has identified a class of drift alerts that the lattice produces only when a player is in the Crucible. She has not told the other Witnesses. She has, however, started compiling a private corpus that she will release if the Charter Question resolves in favor of intervention.",
+      "significance": "minor",
+      "known_by": ["witness_orla"],
+      "hidden_truth": "The class of alerts Orla has identified is real. The lattice IS producing player-conditional drift. The cause is unclear; the federation has not been notified."
+    },
+    {
+      "id": "crucible_lore_drift_walker",
+      "title": "The Drift Walker's Patrol",
+      "type": "active",
+      "era": "current",
+      "description": "An autonomous walker has been pacing the Crucible perimeter for four years. It is not affiliated with the Couriers' Guild. It does not deliver. It does not respond to standard handshake protocols. Sael believes it is delivering something to whoever can authenticate themselves; Orla believes it is malfunctioning.",
+      "significance": "minor",
+      "factions_involved": []
+    },
+    {
+      "id": "crucible_lore_breakthrough_cycle",
+      "title": "The First Breakthrough Cycle",
+      "type": "discovery",
+      "era": "Year 6 of the Crucible",
+      "description": "The first breakthrough cluster the Crucible produced was a synthesis of drift-monitor + cnet-federation findings: the lattice realized that drift events in one city corresponded to undelivered Frontier parcels six weeks later. The Witnesses published the finding to the federation; the Couriers' Guild adopted a six-week delay tolerance for parcel investigations.",
+      "significance": "major",
+      "factions_involved": ["crucible_witnesses", "frontier_couriers_guild"]
+    },
+    {
+      "id": "crucible_lore_concordia_skepticism",
+      "title": "Concordia's Skepticism of the Crucible",
+      "type": "conflict",
+      "era": "Year 7",
+      "description": "Concordia's Iron Wardens proposed quarantining the Crucible after a drift event killed a Concordian envoy. The motion failed at the Council of Twelve, but the Wardens have maintained an unofficial travel advisory for two years. Witnesses are still permitted in Concordia, but their drift-marks cannot be redeemed for Concord Coin without a Warden signature.",
+      "significance": "major",
+      "factions_involved": ["iron_wardens", "crucible_witnesses"]
+    },
+    {
+      "id": "crucible_lore_yorin_arrival",
+      "title": "Yorin's Arrival",
+      "type": "minor",
+      "era": "current",
+      "description": "Yorin Cheval walked into the Crucible six weeks ago and has not left. They have refused to join the Witnesses, refused to leave, and refused to stop taking notes. Orla has stopped trying to recruit them; Sael has started.",
+      "significance": "minor"
+    },
+    {
+      "id": "crucible_lore_seventh_door_origin",
+      "title": "The Seventh Door's Origin",
+      "type": "discovery",
+      "era": "Year 6 of the Crucible",
+      "description": "The Seventh Door — 'unclassified' — was added when the lattice produced a drift alert that did not fit any of the six existing types. The Witnesses voted whether to extend the typology or add an unclassified door. They added the door. Six new drift types have emerged since; only one has been promoted out of unclassified.",
+      "significance": "major"
+    },
+    {
+      "id": "crucible_lore_player_first_visit",
+      "title": "The First Player Visit",
+      "type": "founding",
+      "era": "Year 4 of the Crucible",
+      "description": "The first player to visit the Crucible was an unnamed glyph-reader from the Sovereign Ruins. They walked through the seventh door, witnessed an unclassified drift event, and walked out three days later without speaking. The Witnesses logged the visit and have been unable to reach them since. They are believed to have returned to the Ruins but have not been confirmed there.",
+      "significance": "minor"
+    }
+  ]
+}

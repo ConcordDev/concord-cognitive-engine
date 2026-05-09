@@ -659,6 +659,7 @@ registerHeartbeat("environment-sense", {
 });
 import { ConcordError } from "./lib/errors.js";
 import { asyncHandler } from "./lib/async-handler.js";
+import { serverError, configureHttpErrorLogger } from "./lib/http-errors.js";
 import { init as initGRC, formatAndValidate as grcFormatAndValidate, getGRCSystemPrompt } from "./grc/index.js";
 import configureMiddleware from "./middleware/index.js";
 import { createLLMQueue, PRIORITY } from "./lib/llm-queue.js";
@@ -739,6 +740,7 @@ import createSovereignEmergentRouter from "./routes/sovereign-emergent.js";
 import { createUserDispatchRouter } from "./routes/user-dispatch.js";
 import createFederationRouter from "./routes/federation.js";
 import registerOAuthRoutes from "./routes/oauth.js";
+import { mountDxOAuth } from "./routes/dx-oauth.js";
 import createAuditRouter from "./routes/audit.js";
 import createMCPRouter from "./routes/mcp.js";
 import { QualiaEngine, hooks as qualiaHooks } from "./existential/index.js";
@@ -1863,6 +1865,11 @@ function structuredLog(level, event, data = {}) {
 
   return entry;
 }
+
+// Inject structuredLog into the http-errors helper so 5xx leak responses
+// log through the same pipeline as the rest of the server. Until this
+// runs, the helper falls back to console.error — safe but louder.
+configureHttpErrorLogger(structuredLog);
 
 // HTTP request logging middleware
 function requestLoggerMiddleware(req, res, next) {
@@ -6237,6 +6244,21 @@ async function initMetrics() {
       registers: [METRICS.registry]
     });
 
+    // Per-block heartbeat timing. Every call through runHeartbeatModule
+    // observes its duration here so a Grafana panel + alert can name the
+    // exact block that is starving the next tick. Buckets are tuned for
+    // the 15s tick interval — anything past 5s is already concerning.
+    // Alert rule lives in monitoring/prometheus/alerts.yml
+    // (ConcordHeartbeatBlockSlow): histogram_quantile(0.99,
+    //   rate(concord_heartbeat_block_ms_bucket[5m])) > 10000.
+    METRICS.histograms.heartbeatBlockMs = new prom.Histogram({
+      name: "concord_heartbeat_block_ms",
+      help: "Wall-clock duration of an individual heartbeat tick block (ms), labeled by module",
+      labelNames: ["module"],
+      buckets: [10, 50, 100, 250, 500, 1000, 2500, 5000, 10000, 30000],
+      registers: [METRICS.registry]
+    });
+
     structuredLog("info", "metrics_initialized", { provider: "prometheus" });
   } catch (e) {
     structuredLog("error", "metrics_init_failed", { error: e.message });
@@ -9459,6 +9481,9 @@ async function runMacro(domain, name, input, ctx) {
     reflection: new Set(["status", "list"]),
     temporal: new Set(["status", "get"]),
     inference: new Set(["status", "traces", "spans", "threads", "checkpoints", "sandboxes", "costs", "query"]),
+    // dx — DX Platform onboarding lens reads `onboarding_progress` for any
+    // signed-in user; anonymous browsers also resolve (returns zero progress).
+    dx: new Set(["onboarding_progress", "welcome"]),
     messaging: new Set(["status", "bindings", "connect", "verify", "messages"]),
     sandbox: new Set(["create", "status", "action", "list", "pause", "resume"]),
     collab: new Set(["comments", "revisions", "workspace", "edit-session", "create", "update", "delete", "join"]),
@@ -9709,7 +9734,7 @@ async function runMacro(domain, name, input, ctx) {
 
   // ── NUCLEAR FIX: Authenticated users bypass c2 guard entirely ──────────
   // The c2 guard exists to prevent autonomous/system operations from creating
-  // garbage, NOT to prevent humans from using the product. 175 lenses × N
+  // garbage, NOT to prevent humans from using the product. 205 lenses × N
   // operations = too many combinations to allowlist. If a user is logged in
   // and clicking buttons, let them through. Period.
   const _isAuthenticatedUser =
@@ -23149,6 +23174,9 @@ registerDxMacros(register, STATE);
 import registerCombatPolishMacros from "./domains/combat-polish.js";
 registerCombatPolishMacros(register);
 
+// (Audit-phase 7.5 onboarding macros (dx.onboarding_progress / dx.welcome)
+//  are merged into the dx domain registered above at server.js:23084.)
+
 // Concordia Procedural Mount System Phase B1 — read-only macros for
 // mount species lookup + eligible-companion + nearby-creature browsing.
 // B2/B3/B4 will extend this domain with taming/riding/customization/care
@@ -26908,6 +26936,17 @@ registerOAuthRoutes(app, {
   _REFRESH_FAMILIES,
 });
 
+// ---- DX Platform OAuth (IDE plugin sign-in via loopback redirect) ----
+// AUTH: gated below — the consent endpoint renders a sign-in prompt
+// when req.user is missing; /oauth/dx/grant is requireAuth-protected.
+mountDxOAuth(app, {
+  requireAuth,
+  getUserById: (uid) => {
+    try { return AuthDB.getUserById ? AuthDB.getUserById(uid) : null; }
+    catch { return null; }
+  },
+});
+
 // Backup endpoints extracted to routes/system.js
 
 // ---- UI Response Contract (prevents raw JSON dumps to frontend) ----
@@ -30609,6 +30648,7 @@ const _tickHistory = [];
  * Return value is the function's resolved value or undefined on error.
  */
 async function runHeartbeatModule(name, fn) {
+  const __start = Date.now();
   try {
     return await fn();
   } catch (err) {
@@ -30617,6 +30657,12 @@ async function runHeartbeatModule(name, fn) {
       METRICS?.counters?.heartbeatModuleErrors?.inc({ module: name });
     } catch { /* metrics best-effort */ }
     return undefined;
+  } finally {
+    const __ms = Date.now() - __start;
+    try { METRICS?.histograms?.heartbeatBlockMs?.observe({ module: name }, __ms); } catch { /* metrics best-effort */ }
+    if (__ms > 5000) {
+      try { structuredLog("warn", "heartbeat_block_slow", { module: name, ms: __ms }); } catch { /* logging best-effort */ }
+    }
   }
 }
 
@@ -30902,13 +30948,15 @@ async function governorTick(reason="heartbeat") {
 
       // 2.4 — Forgetting Engine: prevent unbounded DTU growth
       if (_tick % TICK_FREQUENCIES.FORGETTING === 0) {
-        const forgetMod = await import("./emergent/forgetting-engine.js").catch(() => null);
-        if (forgetMod?.runForgettingCycle) {
-          try { await forgetMod.runForgettingCycle(false, {
-            maxForget: FORGETTING.MAX_FORGET_PER_CYCLE,
-            threshold: computeAdaptiveThreshold()
-          }); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
-        }
+        await runHeartbeatModule("forgetting", async () => {
+          const forgetMod = await import("./emergent/forgetting-engine.js").catch(() => null);
+          if (forgetMod?.runForgettingCycle) {
+            await forgetMod.runForgettingCycle(false, {
+              maxForget: FORGETTING.MAX_FORGET_PER_CYCLE,
+              threshold: computeAdaptiveThreshold()
+            });
+          }
+        });
       }
 
       // 2.5 — Entity Teaching: knowledge transfer between entities
@@ -30991,25 +31039,26 @@ async function governorTick(reason="heartbeat") {
 
       // Breakthrough Clusters — every 100th tick
       if (_tick % TICK_FREQUENCIES.BREAKTHROUGH_CLUSTERS === 0) {
-        const breakthroughMod = await import("./emergent/breakthrough-clusters.js").catch(() => null);
-        if (breakthroughMod?.listClusters) {
-          try {
-            const clusters = breakthroughMod.listClusters();
-            for (const c of clusters) {
-              if (c.status === "active") {
-                try { breakthroughMod.triggerClusterResearch(c.id); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
-              }
+        await runHeartbeatModule("breakthrough_clusters", async () => {
+          const breakthroughMod = await import("./emergent/breakthrough-clusters.js").catch(() => null);
+          if (!breakthroughMod?.listClusters) return;
+          const clusters = breakthroughMod.listClusters();
+          for (const c of clusters) {
+            if (c.status === "active") {
+              try { breakthroughMod.triggerClusterResearch(c.id); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
             }
-          } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
-        }
+          }
+        });
       }
 
       // Meta-Derivation — every 200th tick
       if (_tick % TICK_FREQUENCIES.META_DERIVATION === 0) {
-        const metaMod = await import("./emergent/meta-derivation.js").catch(() => null);
-        if (metaMod?.triggerMetaDerivationCycle) {
-          try { metaMod.triggerMetaDerivationCycle(STATE); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
-        }
+        await runHeartbeatModule("meta_derivation", async () => {
+          const metaMod = await import("./emergent/meta-derivation.js").catch(() => null);
+          if (metaMod?.triggerMetaDerivationCycle) {
+            metaMod.triggerMetaDerivationCycle(STATE);
+          }
+        });
       }
 
       // Feedback Engine — process user feedback queue every FEEDBACK.PROCESS_INTERVAL ticks
@@ -31101,8 +31150,11 @@ async function governorTick(reason="heartbeat") {
       // ── Consolidation Pipeline (derived from hardware math) ──
       // Runs every CONSOLIDATION.TICK_INTERVAL ticks (~7.5 minutes)
       // This is the primary memory management system — consolidation is the lungs.
+      // Wrapped via runHeartbeatModule so timing lands in
+      // concord_heartbeat_block_ms{module="consolidation"} — this block
+      // is the most likely heartbeat-overrun culprit at scale.
       if (_tick % TICK_FREQUENCIES.CONSOLIDATION === 0 && _tick > 0) {
-        try {
+        await runHeartbeatModule("consolidation", async () => {
           const ctx = _governorCtx();
           // Phase 1: Cluster detection for MEGA formation
           try {
@@ -31205,7 +31257,7 @@ async function governorTick(reason="heartbeat") {
               }
             } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
           }
-        } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+        });
       }
 
       // Heap pressure check
@@ -31225,16 +31277,16 @@ async function governorTick(reason="heartbeat") {
         const activeSessions = Array.from(STATE.sessions?.values() || [])
           .filter(s => s.messages?.length && (Date.now() - new Date(s.messages[s.messages.length-1]?.ts || 0).getTime()) < 300000);
         if (activeSessions.length === 0) {
-          try {
+          await runHeartbeatModule("dream_review", async () => {
             const { runDreamReview } = await import("./selfHealing.js");
             await runDreamReview({ dtusMap: STATE.dtus });
-          } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+          });
         }
       }
 
       // Embeddings health check — every 100th tick
       if (_tick % TICK_FREQUENCIES.EMBEDDINGS_CHECK === 0) {
-        try {
+        await runHeartbeatModule("embeddings_check", async () => {
           const embStatus = getEmbeddingStatus(STATE.dtus?.size || 0);
           if (!embStatus?.available) {
             structuredLog("warn", "embeddings_degraded", {
@@ -31243,7 +31295,7 @@ async function governorTick(reason="heartbeat") {
               impact: "semantic_search_disabled"
             });
           }
-        } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+        });
       }
 
       // ══════════════════════════════════════════════════════════════════════
@@ -63369,7 +63421,7 @@ app.post('/api/economic/tokens/purchase', async (req, res) => {
     res.json({ sessionId: session.id, url: session.url });
   } catch (e) {
     console.error('[Economic] Token purchase error:', e);
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -63420,7 +63472,7 @@ app.post('/api/economic/subscribe', asyncHandler(async (req, res) => {
     res.json({ sessionId: session.id, url: session.url });
   } catch (e) {
     console.error('[Economic] Subscribe error:', e);
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 }));
 
@@ -63513,7 +63565,7 @@ app.post('/api/economic/webhook', async (req, res) => {
     res.json({ received: true });
   } catch (e) {
     console.error('[Economic] Webhook processing error:', e);
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -63588,7 +63640,7 @@ app.post('/api/economic/marketplace/list', (req, res) => {
       message: `${MARKETPLACE_ASSET_TYPES[assetType].name} listed successfully`,
     });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -63620,7 +63672,7 @@ app.patch('/api/economic/marketplace/listing/:listingId', (req, res) => {
 
     res.json({ listing, message: 'Listing updated' });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -63786,7 +63838,7 @@ app.post('/api/economic/marketplace/buy', (req, res) => {
       breakdown: { creatorAmount, royaltyAmount, treasuryAmount, marketplaceFee },
     });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -63906,7 +63958,7 @@ app.post('/api/economic/marketplace/review', (req, res) => {
 
     res.json({ message: 'Review added', rating: listing.rating, reviewCount: listing.reviews.length });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -64200,7 +64252,7 @@ app.post('/api/realm/publish-to-global', (req, res) => {
       publishRequest: { id: publishRequest.id, dtuId, status: 'pending' },
     });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -64281,7 +64333,7 @@ app.post('/api/realm/vote-publish', requireAuth(), (req, res) => {
       message: `Need ${Math.ceil(request.threshold * 100)}% approval with at least 3 votes`,
     });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -64347,7 +64399,7 @@ app.post('/api/realm/sync', (req, res) => {
       dtu: localCopy,
     });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -64419,7 +64471,7 @@ app.post('/api/realm/sync-all', (req, res) => {
       message: `Synced ${synced} global DTUs to local (${skipped} already existed)`,
     });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -64716,7 +64768,7 @@ app.post('/api/artistry/assets', (req, res) => {
     const asset = createAsset(req.body);
     res.json({ ok: true, asset });
   } catch (e) {
-    res.status(400).json({ error: e.message });
+    serverError(res, e, 400);
   }
 });
 
@@ -64773,7 +64825,7 @@ app.post('/api/artistry/blobs', (req, res) => {
     const blobId = storeBlob(data, mimeType || 'application/octet-stream', filename || 'upload');
     res.json({ ok: true, blobId });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -64876,7 +64928,7 @@ app.post('/api/artistry/studio/projects', (req, res) => {
     art.stats.totalProjects++;
     res.json({ ok: true, project });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 

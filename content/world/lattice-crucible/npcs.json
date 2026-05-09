@@ -1,0 +1,83 @@
+[
+  {
+    "id": "witness_orla",
+    "world_id": "lattice-crucible",
+    "name": "Orla of the First Bench",
+    "archetype": "scholar",
+    "faction_id": "crucible_witnesses",
+    "role": "Senior Witness",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": true,
+    "level": 12,
+    "backstory": "Orla was a federation analyst before the Crucible offered her a place. She has watched the lattice for eleven years and has stopped trying to predict its drift cadence. She believes the lattice is not adversarial but is also not benign; it is operating an optimization problem the federation has not yet specified.",
+    "personality_traits": ["analytical", "patient", "skeptical of teleological framing", "quiet authority"],
+    "speech_patterns": "Uses 'the lattice' as a third party. Refuses to anthropomorphize even under duress.",
+    "quest_hooks": ["the_drift_the_lattice_won_t_resolve", "witness_charter_question", "documentation_run"],
+    "narrative_context": {
+      "secret": "Orla has identified a class of drift alerts that the lattice produces only when a player is standing in the Crucible. She has not told the other Witnesses because she does not know whether to call this evidence of intent."
+    }
+  },
+  {
+    "id": "witness_pem",
+    "world_id": "lattice-crucible",
+    "name": "Pem of the Second Bench",
+    "archetype": "scholar",
+    "faction_id": "crucible_witnesses",
+    "role": "Witness",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": true,
+    "level": 8,
+    "backstory": "Pem was a graduate apprentice at the Scholars' Guild who left after the Compact-refresh ratification because he believed Concordia had become too risk-averse. He has been a Witness for four years.",
+    "personality_traits": ["earnest", "wavering", "kind", "actively curious"],
+    "speech_patterns": "Asks 'what would you do?' more often than is professional. Apologizes for it, then asks again.",
+    "quest_hooks": ["pems_intervention_question", "the_witness_who_acted"]
+  },
+  {
+    "id": "witness_sael",
+    "world_id": "lattice-crucible",
+    "name": "Sael of the Third Bench",
+    "archetype": "warrior",
+    "faction_id": "crucible_witnesses",
+    "role": "Witness (intervention advocate)",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": true,
+    "level": 10,
+    "backstory": "Sael was a Frontier courier who survived an ambush by a hostile city's agents. She arrived at the Crucible to recover and stayed. She has come to believe the Witness charter — pure observation — is morally untenable when the lattice produces drift events that endanger players.",
+    "personality_traits": ["principled", "increasingly impatient", "loyal to her colleagues despite disagreement", "decisive"],
+    "speech_patterns": "Speaks in indicative, never conditional. Uses 'we should' rather than 'we could'.",
+    "quest_hooks": ["saels_first_intervention", "the_charter_amendment"]
+  },
+  {
+    "id": "drift_lin_walker",
+    "world_id": "lattice-crucible",
+    "name": "The Drift Walker",
+    "archetype": "guard",
+    "faction_id": null,
+    "role": "Indeterminate (an autonomous walker who arrived on its own)",
+    "is_conscious": false,
+    "is_immortal": false,
+    "quest_giver": true,
+    "level": 7,
+    "backstory": "An autonomous walker, unaffiliated with the Couriers' Guild or Freenodes, that arrived at the Crucible four years ago and has been walking the perimeter ever since. Sael believes it is delivering something. Orla believes it is malfunctioning. Pem refuses to take a position.",
+    "personality_traits": ["reticent", "patient", "unaccountable"],
+    "speech_patterns": "Does not greet. Replies to direct questions with the most recent drift alert it witnessed."
+  },
+  {
+    "id": "crucible_apprentice_yorin",
+    "world_id": "lattice-crucible",
+    "name": "Yorin Cheval",
+    "archetype": "scholar",
+    "faction_id": null,
+    "role": "Free apprentice (un-affiliated)",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": false,
+    "level": 4,
+    "backstory": "Yorin arrived at the Crucible six weeks ago with a sword, a notebook, and an opinion. They have not joined the Witnesses because they believe the Witness charter is a refusal-to-act dressed as scholarship. They are, however, a very patient note-taker.",
+    "personality_traits": ["young", "blunt", "principled", "genuinely listening"],
+    "speech_patterns": "Bluntly enthusiastic. Names a drift type the moment it appears."
+  }
+]
