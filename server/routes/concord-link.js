@@ -18,7 +18,7 @@ import {
 } from "../lib/concord-link.js";
 import { getCurrentWorld } from "../lib/world-travel.js";
 
-export default function createConcordLinkRouter({ requireAuth, db, emitToUser }) {
+export default function createConcordLinkRouter({ requireAuth, db, emitToUser, emitToWorld }) {
   const router = Router();
   const auth = typeof requireAuth === "function" && requireAuth.length === 0 ? requireAuth() : requireAuth;
   const _userId = (req) => req.user?.id || req.headers["x-user-id"] || null;
@@ -80,7 +80,7 @@ export default function createConcordLinkRouter({ requireAuth, db, emitToUser })
         messageType, payload,
         encryption,
         emotionalWeight: Math.max(0, Math.min(1, Number(emotionalWeight) || 0)),
-      }, { emitToUser });
+      }, { emitToUser, emitToWorld });
 
       if (!result.ok) {
         const status = result.reason === "shadow_burn_cooldown" ? 429 : 400;

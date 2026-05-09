@@ -102,7 +102,7 @@ export const EVENT_SHAPES = Object.freeze({
   "marketplace:purchase": { required: ["buyerId", "sellerId", "contentId", "amount"], optional: ["currency", "txId"] },
 
   // ── Walker journeys ───────────────────────────────────────────────
-  "walker:dispatched":    { required: ["walkerId"], optional: ["fromWorld", "toWorld", "messageId"] },
+  "walker:dispatched":    { required: ["walkerId"], optional: ["fromWorld", "toWorld", "messageId", "contractId", "route", "dispatchedAt"] },
 
   // ── GameJuice fanfare ─────────────────────────────────────────────
   "gameJuice:fanfare":    { required: ["userId", "kind"], optional: ["magnitude", "tone", "label"] },

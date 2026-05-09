@@ -6863,6 +6863,28 @@ function emitToUser(userId, event, payload) {
   }
 }
 
+/**
+ * Sprint B Phase 11.3 helper — broadcast to every client subscribed to
+ * a world room. Used by walker:dispatched (cross-world journeys) and by
+ * future per-world events that don't fit through realtimeEmit's global
+ * fanout. Same enrichment pattern (ts/_seq/_evt) as emitToUser.
+ */
+function emitToWorld(worldId, event, payload) {
+  if (!worldId || !REALTIME?.io) return { ok: false, reason: "no_target_or_realtime" };
+  try {
+    const enriched = {
+      ...payload,
+      ts: nowISO(),
+      _seq: ++_eventSeqCounter,
+      _evt: event,
+    };
+    REALTIME.io.to(`world:${worldId}`).emit(event, enriched);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, reason: String(e?.message || e) };
+  }
+}
+
 function realtimeEmit(event, payload, { sessionId = "", orgId = "", requestId = "" } = {}) {
   // ---- Event Ordering & Correlation (Category 2+5: Concurrency + Observability) ----
   const enrichedPayload = {
@@ -29017,7 +29039,7 @@ app.use("/api/anomalies", createAnomaliesRouter({ requireAuth, db }));
 
 // The Concord Link — cross-world communication substrate.
 import createConcordLinkRouter from "./routes/concord-link.js";
-app.use("/api/concord-link", createConcordLinkRouter({ requireAuth, db, emitToUser }));
+app.use("/api/concord-link", createConcordLinkRouter({ requireAuth, db, emitToUser, emitToWorld }));
 
 // Link Walker bazaar + journey tracking. Mounted as a sub-path under
 // concord-link so the panel UI can stay co-located.
