@@ -1131,9 +1131,47 @@ export const PRODUCTIZATION_PHASES: ProductionPhase[] = [
     status: 'in_progress',
   },
 
-  // ── PHASE 26: Game ──────────────────────────────────────────────
+  // ── PHASE 26: Federation ────────────────────────────────────────
   {
     order: 26,
+    lensId: 'federation',
+    name: 'Federation',
+    rationale: 'Production-grade peer manager + cross-instance search. Surfaces every federation surface (status, peers, sync, search, trust graph) in one workspace. Rivals ActivityPub admin tools and Mastodon federation UI.',
+    dependsOn: [],
+    incumbents: ['Mastodon admin', 'ActivityPub Relay UI', 'Matrix federation tester'],
+    artifacts: [
+      { name: 'Peer',           persistsWithoutDTU: true, storageDomain: 'federation', requiredFields: ['instanceId', 'name', 'registryUrl', 'lastSeen', 'status'] },
+      { name: 'PeerEvent',      persistsWithoutDTU: true, storageDomain: 'federation', requiredFields: ['kind', 'at', 'instanceId'] },
+      { name: 'TrustEdge',      persistsWithoutDTU: true, storageDomain: 'federation', requiredFields: ['fromId', 'toId', 'weight', 'observedAt'] },
+      { name: 'ShadowDTU',      persistsWithoutDTU: true, storageDomain: 'federation', requiredFields: ['id', 'sourceInstanceId', 'title', 'snippet'] },
+      { name: 'FederationToken', persistsWithoutDTU: true, storageDomain: 'federation', requiredFields: ['token', 'createdAt', 'scope'] },
+    ],
+    engines: [
+      { name: 'peer-prober',       description: 'Probes peer URL → returns instanceId + name + capabilities', trigger: 'on_demand' },
+      { name: 'sync-pass',         description: 'Pulls new shadow DTUs from peers, pushes pending posts', trigger: 'scheduled' },
+      { name: 'trust-aggregator',  description: 'Maintains trust edge weights from rolling DTU exchange', trigger: 'automatic' },
+      { name: 'cross-search',      description: 'Fans search query across all federated instances + merges', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'probe-register-peer',     steps: ['probe-url', 'verify-capabilities', 'register-peer', 'mint-peer-event'], engines: ['peer-prober'] },
+      { name: 'manual-sync-pass',        steps: ['enumerate-peers', 'pull-shadows', 'push-pending', 'update-last-seen', 'mint-sync-event'], engines: ['sync-pass'] },
+      { name: 'cross-instance-search',   steps: ['fan-out-query', 'collect-hits', 'rank-by-score', 'render-results'], engines: ['cross-search'] },
+      { name: 'trust-graph-update',      steps: ['observe-exchange', 'roll-weights', 'emit-graph-delta'], engines: ['trust-aggregator'] },
+    ],
+    acceptanceCriteria: [
+      'Status strip shows enabled, instanceId, peer count, pending posts',
+      'Peers tab probes / registers / removes peers with last-seen timestamps',
+      'Search tab fans across instances and lets the operator scope local vs remote',
+      'Sync tab triggers /api/federation/sync and persists a peer-event artifact per pass',
+      'Trust graph rendered on the Network tab',
+      'Probe + register + sync events persist in lens-artifact runtime',
+    ],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 27: Game ──────────────────────────────────────────────
+  {
+    order: 27,
     lensId: 'game',
     name: 'Game',
     rationale: 'Gamification engine. Adds progression, achievements, and quests to all lenses.',
