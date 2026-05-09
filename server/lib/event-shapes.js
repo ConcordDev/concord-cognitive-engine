@@ -187,19 +187,23 @@ export const EVENT_SHAPES = Object.freeze({
   // a building. Fires from routes/worlds.js#/combat/attack right after
   // the env-multiplier step, post-cap. The frontend
   // CombatStaggerCameraBridge consumes this for the camera punch-in.
+  // Required fields match the actual emit at routes/worlds.js:2127;
+  // attackerId is attached so the client can scope camera punches to
+  // events the local player is involved in.
   "combat:stagger": {
-    required: ["attackerId", "targetId", "durationMs"],
-    optional: ["worldId", "buildingId", "structuralStress", "elementContrib"],
+    required: ["worldId", "targetId", "durationMs"],
+    optional: ["attackerId", "targetType", "buildingId", "structuralStress", "elementContrib"],
   },
 
   // Geo-Mod-light building state transitions. Fires from
-  // lib/embodied/skill-environment.js#applyStructuralStress when a
-  // building goes standing → damaged → collapsed. The
-  // BuildingCollapseBridge listens for the 'collapsed' transition
+  // routes/worlds.js when applyStructuralStress reports a state change.
+  // The BuildingCollapseBridge listens for the 'collapsed' transition
   // specifically; the 'damaged' transition gets a smaller VFX cue.
+  // attackerId + position are attached so the client can dial full-
+  // screen feedback to collapses near the local player.
   "world:building-state": {
     required: ["worldId", "buildingId", "state"],
-    optional: ["healthPct", "position", "structuralStress"],
+    optional: ["healthPct", "position", "structuralStress", "attackerId"],
   },
 });
 

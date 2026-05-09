@@ -26,25 +26,37 @@ describe('Sprint B Phase 8 — combat:stagger event shape', () => {
     assert.ok(EVENT_SHAPES['combat:stagger'], 'combat:stagger must have a registered shape');
   });
 
-  it('validates a payload matching routes/worlds.js#/combat/attack emit', () => {
-    // From server/routes/worlds.js:2071 (the post-env-boost stagger emit).
+  it('validates the actual emit payload from routes/worlds.js#/combat/attack', () => {
+    // Mirrors server/routes/worlds.js:2127 — attackerId is added to
+    // the emit so the client-side bridge can apply locality gating.
+    // targetType is included as the substrate distinguishes npc / user.
     const payload = {
+      worldId: 'concordia-hub',
       attackerId: 'user_a',
       targetId: 'npc_dorvik',
-      worldId: 'concordia-hub',
+      targetType: 'npc',
       buildingId: 'bldg_42',
       durationMs: 1200,
       structuralStress: 0.6,
-      elementContrib: 0.4,
     };
     const r = validateEvent('combat:stagger', payload);
     assert.equal(r.ok, true, `expected ok=true, got ${JSON.stringify(r)}`);
   });
 
-  it('rejects a payload missing attackerId / targetId / durationMs', () => {
-    const r = validateEvent('combat:stagger', { worldId: 'concordia-hub' });
+  it('validates a minimal payload without optional attackerId', () => {
+    // Backward compatibility — older callers may not yet emit attackerId.
+    const r = validateEvent('combat:stagger', {
+      worldId: 'concordia-hub',
+      targetId: 'npc_x',
+      durationMs: 800,
+    });
+    assert.equal(r.ok, true);
+  });
+
+  it('rejects a payload missing the required worldId / targetId / durationMs', () => {
+    const r = validateEvent('combat:stagger', { attackerId: 'user_a' });
     assert.equal(r.ok, false);
-    assert.deepEqual(r.missing, ['attackerId', 'targetId', 'durationMs']);
+    assert.deepEqual(r.missing, ['worldId', 'targetId', 'durationMs']);
   });
 });
 
@@ -54,13 +66,16 @@ describe('Sprint B Phase 8 — world:building-state event shape', () => {
   });
 
   it('validates a collapsed-transition payload', () => {
-    // From server/lib/embodied/skill-environment.js#applyStructuralStress.
+    // Mirrors server/routes/worlds.js:2134 — position + attackerId are
+    // attached so the client-side BuildingCollapseBridge can dial full-
+    // screen feedback to nearby / player-caused collapses.
     const payload = {
       worldId: 'concordia-hub',
       buildingId: 'bldg_42',
       state: 'collapsed',
       healthPct: 0,
-      position: { x: 12.5, y: 0, z: -7.2 },
+      position: { x: 12.5, z: -7.2 },
+      attackerId: 'user_a',
       structuralStress: 1.0,
     };
     const r = validateEvent('world:building-state', payload);

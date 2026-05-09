@@ -2124,16 +2124,32 @@ export default function createWorldsRouter({ requireAuth, db }) {
           }
           try {
             const io = req.app.locals.io;
+            // Sprint B Phase 8 (post-codex review): include attackerId so
+            // the client-side CombatStaggerCameraBridge can apply local-
+            // relevance gating and skip camera-punching unrelated players.
             io?.to(`world:${worldId}`).emit('combat:stagger', {
-              worldId, targetId: npcId, targetType: 'npc',
+              worldId,
+              attackerId: req.user?.id ?? null,
+              targetId: npcId,
+              targetType: 'npc',
               buildingId: stagger.buildingId,
               durationMs: stagger.durationMs,
               structuralStress: stagger.structuralStress,
             });
             if (stress?.transitioned) {
+              // Include the building's position (when available) so the
+              // BuildingCollapseBridge can scope full-screen feedback to
+              // collapses near the local player.
+              const bldgPos = (typeof targetPos === 'object' && targetPos)
+                ? { x: targetPos.x, z: targetPos.z }
+                : null;
               io?.to(`world:${worldId}`).emit('world:building-state', {
-                worldId, buildingId: stagger.buildingId,
-                state: stress.state, healthPct: stress.healthPct,
+                worldId,
+                buildingId: stagger.buildingId,
+                state: stress.state,
+                healthPct: stress.healthPct,
+                position: bldgPos,
+                attackerId: req.user?.id ?? null,
               });
             }
           } catch { /* realtime best-effort */ }

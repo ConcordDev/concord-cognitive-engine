@@ -491,10 +491,18 @@ export function CombatTelegraphGlowBridge() {
  * in for the stagger window — slight zoom + roll toward the
  * impacted building so the player perceives the world responding.
  *
- * Implemented as a CustomEvent the camera component
- * (CameraControls / similar) consumes via `concordia:camera-punch`.
+ * Local-relevance gate (per codex review P1, 2026-05-09): the server
+ * broadcasts `combat:stagger` to the entire `world:${worldId}` room.
+ * Without a locality filter, every connected client would camera-punch
+ * for every staggered NPC anywhere in the world. We require that the
+ * local player is the attacker OR target — `combat:stagger` now
+ * carries `attackerId` (server emit augmented at routes/worlds.js:2127).
+ * Other staggers are still dispatched as a CustomEvent (the scene's
+ * mesh-effects can decide to render dust particles in the distance,
+ * for example) but the camera-punch + screen-shake stay scoped to the
+ * local player.
  */
-export function CombatStaggerCameraBridge() {
+export function CombatStaggerCameraBridge({ userId }: { userId: string | null }) {
   useEffect(() => {
     const off = subscribe('combat:stagger' as Parameters<typeof subscribe>[0], (payload: unknown) => {
       const ev = payload as {
@@ -506,23 +514,33 @@ export function CombatStaggerCameraBridge() {
         structuralStress?: number;
       };
       if (!ev?.durationMs) return;
+
       const dur = Math.max(400, Math.min(4000, Number(ev.durationMs)));
       const stress = Math.max(0, Math.min(1, Number(ev.structuralStress) || 0.4));
+
+      // Always dispatch the scene-side CustomEvent so distant mesh
+      // effects (dust particles, secondary-physics rumble) can render
+      // an ambient cue. Camera-punch + HUD shake are gated below.
       window.dispatchEvent(new CustomEvent('concordia:camera-punch', {
         detail: {
           duration_ms: dur,
-          zoom: 1.05 + stress * 0.1, // 1.05–1.15× depending on impact strength
-          shake: stress * 6,         // pairs with screen-shake emitter
+          zoom: 1.05 + stress * 0.1,
+          shake: stress * 6,
           buildingId: ev.buildingId || null,
           targetId: ev.targetId || null,
+          attackerId: ev.attackerId || null,
+          // Hint to the renderer: full effect or ambient-only.
+          local_relevance: !!userId && (ev.attackerId === userId || ev.targetId === userId),
         },
       }));
-      // Also fire the screen-shake emitter directly for HUD-layer feedback —
-      // the camera punch is scene-camera; emitScreenShake is overlay-layer.
-      emitScreenShake(Math.max(4, Math.round(stress * 10)));
+
+      const isLocallyRelevant = !!userId && (ev.attackerId === userId || ev.targetId === userId);
+      if (isLocallyRelevant) {
+        emitScreenShake(Math.max(4, Math.round(stress * 10)));
+      }
     });
     return () => off?.();
-  }, []);
+  }, [userId]);
   return null;
 }
 
@@ -535,39 +553,77 @@ export function CombatStaggerCameraBridge() {
  * consumes — gravity-fall on the mesh + dust particle burst at the
  * impact point.
  *
- * The substrate emit at routes/worlds.js:2078 carries the
- * buildingId + new state. We only react to the collapsed transition
- * (the standing → damaged transition gets a smaller VFX cue handled
- * by CombatVFXLayer).
+ * The substrate emit at routes/worlds.js:2134 carries buildingId +
+ * state + healthPct + (when available) position + attackerId.
+ * We only react to the collapsed transition (the standing → damaged
+ * transition gets a smaller VFX cue handled by CombatVFXLayer).
+ *
+ * Local-relevance gate (per codex review P1, 2026-05-09): the server
+ * broadcasts `world:building-state` to the entire world room. Without
+ * a filter, every client would max-shake + crit hit-stop on every
+ * collapse anywhere in the world. We apply two gates:
+ *   1. attackerId === userId → full feedback (you broke it, you feel it).
+ *   2. Position within ~80m of the local player's last known position
+ *      → full feedback (the collapse is in your scene).
+ *   3. Otherwise → render a soft ambient cue (smaller shake, no
+ *      hit-stop). The CustomEvent still dispatches so distant scene
+ *      mesh-effects (dust on the horizon) can fire.
+ *
+ * Player position is read from a window-attached store
+ * (`globalThis.__CONCORD_PLAYER_POS__`) that AvatarSystem3D updates.
+ * Fallback: if no position is known, treat as ambient.
  */
-export function BuildingCollapseBridge() {
+export function BuildingCollapseBridge({ userId }: { userId: string | null }) {
   useEffect(() => {
     const off = subscribe('world:building-state' as Parameters<typeof subscribe>[0], (payload: unknown) => {
       const ev = payload as {
         worldId?: string;
         buildingId?: string;
         state?: 'standing' | 'damaged' | 'collapsed';
-        position?: { x: number; y?: number; z: number };
+        position?: { x?: number; z?: number } | null;
+        attackerId?: string | null;
+        healthPct?: number;
       };
       if (!ev?.buildingId || ev.state !== 'collapsed') return;
+
+      // Local-relevance check.
+      let localRelevance: 'full' | 'soft' = 'soft';
+      if (userId && ev.attackerId === userId) {
+        localRelevance = 'full';
+      } else if (ev.position) {
+        const playerPos = (globalThis as { __CONCORD_PLAYER_POS__?: { x: number; z: number } }).__CONCORD_PLAYER_POS__;
+        if (playerPos && typeof ev.position.x === 'number' && typeof ev.position.z === 'number') {
+          const dx = ev.position.x - playerPos.x;
+          const dz = ev.position.z - playerPos.z;
+          const distSq = dx * dx + dz * dz;
+          if (distSq <= 80 * 80) localRelevance = 'full';
+        }
+      }
+
       window.dispatchEvent(new CustomEvent('concordia:building-collapse', {
         detail: {
           buildingId: ev.buildingId,
           worldId: ev.worldId || null,
           position: ev.position || null,
-          // Collapse animation duration (ms). The renderer should run
-          // gravity-fall + dust particles for this duration before
-          // unmounting the mesh (or freezing it at ground level).
           duration_ms: 2000,
+          local_relevance: localRelevance,
         },
       }));
-      // Big screen shake — a building falling within view is one of
-      // the strongest world-state signals the player will witness.
-      emitScreenShake(10);
-      emitHitStop(180, 'crit');
+
+      if (localRelevance === 'full') {
+        // The player is involved or close enough for the building
+        // collapse to be a perceptible scene event.
+        emitScreenShake(10);
+        emitHitStop(180, 'crit');
+      } else {
+        // Distant collapse — ambient cue only. A small shake reads
+        // as "something fell over there" without disorienting the
+        // player. No hit-stop.
+        emitScreenShake(3);
+      }
     });
     return () => off?.();
-  }, []);
+  }, [userId]);
   return null;
 }
 
@@ -583,8 +639,8 @@ export function CombatPolishLayer({ userId }: { userId: string | null }) {
       <CombatTimeDilationOverlay />
       {/* Phase 8 Sprint-B add-ons */}
       <CombatTelegraphGlowBridge />
-      <CombatStaggerCameraBridge />
-      <BuildingCollapseBridge />
+      <CombatStaggerCameraBridge userId={userId} />
+      <BuildingCollapseBridge userId={userId} />
     </>
   );
 }

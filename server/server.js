@@ -9485,9 +9485,13 @@ async function runMacro(domain, name, input, ctx) {
     reflection: new Set(["status", "list"]),
     temporal: new Set(["status", "get"]),
     inference: new Set(["status", "traces", "spans", "threads", "checkpoints", "sandboxes", "costs", "query"]),
-    // dx — DX Platform onboarding lens reads `onboarding_progress` for any
-    // signed-in user; anonymous browsers also resolve (returns zero progress).
-    dx: new Set(["onboarding_progress", "welcome"]),
+    // (The dx domain is registered later in this file with the
+    //  full DX-Platform macro set; the onboarding macros
+    //  `onboarding_progress` and `welcome` are appended to that
+    //  Set to avoid a duplicate-key lint error.)
+    // npc_legacy (Sprint B Phase 11.1) — read-only tomb / last-words /
+    // inheritance surface for the frontend TombMarker + InheritanceLog UI.
+    npc_legacy: new Set(["tombs_for_world", "get", "inheritance_for_heir"]),
     messaging: new Set(["status", "bindings", "connect", "verify", "messages"]),
     sandbox: new Set(["create", "status", "action", "list", "pause", "resume"]),
     collab: new Set(["comments", "revisions", "workspace", "edit-session", "create", "update", "delete", "join"]),
@@ -9623,6 +9627,8 @@ async function runMacro(domain, name, input, ctx) {
       "register_codebase", "touch_codebase", "list_codebases",
       "record_fix_decision", "list_weights", "weighted_findings",
       "upsert_shadow", "list_shadows", "get_weight",
+      // Audit-phase 7.5 onboarding lens macros — same domain.
+      "onboarding_progress", "welcome",
     ]),
     // Governance: read-mostly + caller-driven write macros.
     governance: new Set([
@@ -23180,6 +23186,13 @@ registerCombatPolishMacros(register);
 
 // (Audit-phase 7.5 onboarding macros (dx.onboarding_progress / dx.welcome)
 //  are merged into the dx domain registered above at server.js:23084.)
+
+// Sprint B Phase 11.1 — NPC legacy / tomb / inheritance surface for the
+// frontend. The substrate (Phase 5b: lib/npc-legacy.js + migration 133)
+// shipped the data; this domain is the read-only lookup surface so
+// players can see tombs, last words, and inheritance lineage.
+import registerNpcLegacyMacros from "./domains/npc-legacy.js";
+registerNpcLegacyMacros(register);
 
 // Concordia Procedural Mount System Phase B1 — read-only macros for
 // mount species lookup + eligible-companion + nearby-creature browsing.
