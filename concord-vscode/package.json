@@ -1,0 +1,61 @@
+{
+  "name": "concord-dx",
+  "displayName": "Concord DX",
+  "description": "Detectors + repair-cortex proposals + per-codebase severity tuning, streamed live from your Concord instance.",
+  "version": "0.1.0",
+  "publisher": "concord-os",
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Linters", "Other"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./out/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "Concord DX",
+      "properties": {
+        "concord.serverUrl": {
+          "type": "string",
+          "default": "http://localhost:5050",
+          "description": "Concord server origin (HTTP + Socket.IO)."
+        },
+        "concord.streamPath": {
+          "type": "string",
+          "default": "/dx",
+          "description": "Socket.IO namespace for the DX stream."
+        },
+        "concord.runOnSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "Run detectors automatically on file save (debounced 500ms)."
+        }
+      }
+    },
+    "commands": [
+      { "command": "concord.login",          "title": "Concord: Sign In (paste API key)" },
+      { "command": "concord.logout",         "title": "Concord: Sign Out" },
+      { "command": "concord.syncCodebase",   "title": "Concord: Register Codebase" },
+      { "command": "concord.runDetectors",   "title": "Concord: Run Detectors on Workspace" },
+      { "command": "concord.openSidebar",    "title": "Concord: Show Findings Sidebar" }
+    ],
+    "views": {
+      "explorer": [
+        {
+          "id": "concord.findings",
+          "name": "Concord Findings"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "vscode:prepublish": "npm run compile"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.4.0"
+  },
+  "dependencies": {
+    "socket.io-client": "^4.7.0"
+  }
+}
