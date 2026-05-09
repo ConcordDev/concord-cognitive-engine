@@ -15,12 +15,43 @@
   <depends>com.redhat.devtools.lsp4ij</depends>
 
   <extensions defaultExtensionNs="com.intellij">
+    <!-- Persistent application-level settings -->
+    <applicationService
+      serviceImplementation="ai.concord.jetbrains.settings.ConcordSettingsState"/>
+
+    <!-- Settings → Tools → Concord -->
+    <applicationConfigurable
+      parentId="tools"
+      instance="ai.concord.jetbrains.settings.ConcordSettingsConfigurable"
+      id="ai.concord.jetbrains.settings.ConcordSettingsConfigurable"
+      displayName="Concord"/>
+
+    <!-- View → Tool Windows → Concord -->
+    <toolWindow
+      id="Concord"
+      anchor="right"
+      icon="AllIcons.Actions.Find"
+      factoryClass="ai.concord.jetbrains.toolwindow.ConcordToolWindowFactory"/>
+
     <!-- LSP server registration via LSP4IJ. The actual server.js binary
-         is bundled with the plugin; LSP4IJ launches it via stdio. -->
+         is bundled with the plugin; LSP4IJ launches it via stdio. The
+         LSP definition is registered programmatically in a follow-up
+         commit so we can read the apiUrl + token from PasswordSafe at
+         server-start time. -->
   </extensions>
 
+  <actions>
+    <action
+      id="ai.concord.jetbrains.SignIn"
+      class="ai.concord.jetbrains.actions.ConcordSignInAction"
+      text="Concord: Sign in"
+      description="Sign in to Concord via browser-based OAuth (RFC 8252 loopback redirect).">
+      <add-to-group group-id="ToolsMenu" anchor="last"/>
+    </action>
+  </actions>
+
   <applicationListeners>
-    <!-- Future: API key / sign-in listener wires here once the
-         settings panel ships in v0.2. -->
+    <!-- Future: project-open listener wires the LSP startup hook once
+         lsp4ij integration lands in v0.3. -->
   </applicationListeners>
 </idea-plugin>

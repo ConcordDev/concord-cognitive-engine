@@ -27,6 +27,9 @@ dependencies {
   implementation("com.redhat.devtools.lsp4ij:lsp4ij:0.5.0") {
     isTransitive = false
   }
+  // org.json — used by ConcordSettingsConfigurable + ConcordSignInAction
+  // for JSON parse/serialize in the OAuth loopback callback.
+  implementation("org.json:json:20231013")
 }
 
 kotlin {
