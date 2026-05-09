@@ -23,6 +23,7 @@ import {
   checkQuestCompletion,
 } from "../lib/quests/quest-engine.js";
 import * as cityPresence from "../lib/city-presence.js";
+import { serverError } from "../lib/http-errors.js";
 
 // Combat anti-cheat constants. Server-side validation prevents a modified
 // client from claiming impossible reach or damage. The values are tuned
@@ -91,7 +92,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       // Keep backward-compat `worlds` key alongside new `data` key
       res.json({ worlds: data, data, pagination: { page, limit, total, hasMore: offset + limit < total } });
     } catch (e) {
-      res.status(500).json({ error: e.message });
+      serverError(res, e);
     }
   });
 
@@ -102,7 +103,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       const world   = loadWorld(db, worldId);
       res.json({ worldId, world });
     } catch (e) {
-      res.status(500).json({ error: e.message });
+      serverError(res, e);
     }
   });
 
@@ -113,7 +114,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       if (!world) return res.status(404).json({ error: "World not found" });
       res.json({ world });
     } catch (e) {
-      res.status(500).json({ error: e.message });
+      serverError(res, e);
     }
   });
 
@@ -141,7 +142,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
         skillDtusCreated,
       });
     } catch (e) {
-      res.status(500).json({ error: e.message });
+      serverError(res, e);
     }
   });
 
@@ -171,7 +172,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       );
       res.status(201).json({ world });
     } catch (e) {
-      res.status(500).json({ error: e.message });
+      serverError(res, e);
     }
   });
 
@@ -185,7 +186,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       db.prepare(`UPDATE worlds SET ${field} = ? WHERE id = ?`).run(value, req.params.id);
       res.json({ ok: true, field, value });
     } catch (e) {
-      res.status(500).json({ error: e.message });
+      serverError(res, e);
     }
   });
 
@@ -248,7 +249,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       // Progress update is handled by quest-emergence.js; acknowledge receipt here
       res.json({ ok: true, questId: req.params.questId, event: req.body });
     } catch (e) {
-      res.status(500).json({ error: e.message });
+      serverError(res, e);
     }
   });
 
@@ -336,7 +337,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       const { evaluateSkillInWorld } = await import("../lib/skill-effectiveness.js");
       res.json({ skillId: req.params.dtuId, worldId, ...evaluateSkillInWorld(skill, world) });
     } catch (e) {
-      res.status(500).json({ error: e.message });
+      serverError(res, e);
     }
   });
 
@@ -353,7 +354,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       }, db);
       res.json(result);
     } catch (e) {
-      res.status(500).json({ error: e.message });
+      serverError(res, e);
     }
   });
 
@@ -412,7 +413,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       }));
       res.json({ skills: shaped, worldId });
     } catch (e) {
-      res.status(500).json({ error: e.message });
+      serverError(res, e);
     }
   });
 
@@ -429,7 +430,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       `).all(req.params.worldId);
       res.json({ leaderboard: rows });
     } catch (e) {
-      res.status(500).json({ error: e.message });
+      serverError(res, e);
     }
   });
 
@@ -443,7 +444,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
         ORDER BY d.skill_level DESC LIMIT 20
       `).all();
       res.json({ legends: rows });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { serverError(res, e); }
   });
 
   // GET /api/worlds/crises — active civilization crises
@@ -451,7 +452,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
     try {
       const { getActiveCrises } = await import("../lib/world-crisis.js");
       res.json({ crises: getActiveCrises(db) });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { serverError(res, e); }
   });
 
   // POST /api/worlds/crises/:id/respond — player contributes to crisis resolution
@@ -464,7 +465,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
         outcome: req.body.outcome || "Resolved by player intervention.",
       }, () => {});
       res.json(result);
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { serverError(res, e); }
   });
 
   // POST /api/worlds/loot/:nodeId — claim a loot node
@@ -486,7 +487,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
 
       const contents = JSON.parse(node.contents || "[]");
       res.json({ ok: true, contents });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { serverError(res, e); }
   });
 
   // GET /api/worlds/:worldId/nemesis — get the caller's nemesis in a world
@@ -494,7 +495,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
     try {
       const record = db.prepare("SELECT * FROM nemesis_records WHERE player_id = ?").get(req.user.id);
       res.json({ nemesis: record || null });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { serverError(res, e); }
   });
 
   // GET /api/worlds/:worldId/difficulty — player's effective resistance curve
@@ -520,7 +521,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
 
       const scalingFactor = Math.min(2.0, avgLevel / Math.max(1, populationAvg));
       res.json({ worldId: req.params.worldId, playerAvgLevel: avgLevel, populationAvg, scalingFactor });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { serverError(res, e); }
   });
 
   // POST /api/worlds/:worldId/prestige — reset skills for prestige badge
@@ -557,7 +558,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       } catch { /* lore append best-effort */ }
 
       res.json({ ok: true, prestigedSkills: playerSkills.length, fromAvgLevel: avgLevel.toFixed(1) });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { serverError(res, e); }
   });
 
   // GET /api/substrate/patterns — substrate pattern feed
@@ -577,7 +578,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       ).all(req.user.id).map(r => r.world_id);
       res.json({ visited });
     } catch (e) {
-      res.status(500).json({ error: e.message });
+      serverError(res, e);
     }
   });
 
@@ -590,7 +591,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       ).run(req.user.id, Date.now());
       res.json({ achievement: 'world_walker', awarded: true });
     } catch (e) {
-      res.status(500).json({ error: e.message });
+      serverError(res, e);
     }
   });
 
@@ -610,7 +611,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       const state = npc ? _tryParseJSON(npc.state_json, {}) : {};
       res.json({ location: state.zone ?? null, npcId: record.npc_id, title: record.npc_title });
     } catch (e) {
-      res.status(500).json({ error: e.message });
+      serverError(res, e);
     }
   });
 
@@ -625,7 +626,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       }));
       res.json({ patterns });
     } catch (e) {
-      res.status(500).json({ error: e.message });
+      serverError(res, e);
     }
   });
 
@@ -636,7 +637,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       const emergents = await getWorldEmergents(req.params.worldId, db);
       res.json({ ok: true, emergents });
     } catch (e) {
-      res.status(500).json({ error: e.message });
+      serverError(res, e);
     }
   });
 
@@ -645,7 +646,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       const emergents = await getCrossWorldEmergents(db);
       res.json({ ok: true, emergents });
     } catch (e) {
-      res.status(500).json({ error: e.message });
+      serverError(res, e);
     }
   });
 
@@ -655,7 +656,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       await growAffinity(req.params.emergentId, req.params.worldId, delta, db);
       res.json({ ok: true });
     } catch (e) {
-      res.status(500).json({ error: e.message });
+      serverError(res, e);
     }
   });
 

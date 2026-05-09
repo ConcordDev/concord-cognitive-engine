@@ -628,6 +628,7 @@ registerHeartbeat("environment-sense", {
 });
 import { ConcordError } from "./lib/errors.js";
 import { asyncHandler } from "./lib/async-handler.js";
+import { serverError, configureHttpErrorLogger } from "./lib/http-errors.js";
 import { init as initGRC, formatAndValidate as grcFormatAndValidate, getGRCSystemPrompt } from "./grc/index.js";
 import configureMiddleware from "./middleware/index.js";
 import { createLLMQueue, PRIORITY } from "./lib/llm-queue.js";
@@ -1820,6 +1821,11 @@ function structuredLog(level, event, data = {}) {
 
   return entry;
 }
+
+// Inject structuredLog into the http-errors helper so 5xx leak responses
+// log through the same pipeline as the rest of the server. Until this
+// runs, the helper falls back to console.error — safe but louder.
+configureHttpErrorLogger(structuredLog);
 
 // HTTP request logging middleware
 function requestLoggerMiddleware(req, res, next) {
@@ -63123,7 +63129,7 @@ app.post('/api/economic/tokens/purchase', async (req, res) => {
     res.json({ sessionId: session.id, url: session.url });
   } catch (e) {
     console.error('[Economic] Token purchase error:', e);
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -63174,7 +63180,7 @@ app.post('/api/economic/subscribe', asyncHandler(async (req, res) => {
     res.json({ sessionId: session.id, url: session.url });
   } catch (e) {
     console.error('[Economic] Subscribe error:', e);
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 }));
 
@@ -63267,7 +63273,7 @@ app.post('/api/economic/webhook', async (req, res) => {
     res.json({ received: true });
   } catch (e) {
     console.error('[Economic] Webhook processing error:', e);
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -63342,7 +63348,7 @@ app.post('/api/economic/marketplace/list', (req, res) => {
       message: `${MARKETPLACE_ASSET_TYPES[assetType].name} listed successfully`,
     });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -63374,7 +63380,7 @@ app.patch('/api/economic/marketplace/listing/:listingId', (req, res) => {
 
     res.json({ listing, message: 'Listing updated' });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -63540,7 +63546,7 @@ app.post('/api/economic/marketplace/buy', (req, res) => {
       breakdown: { creatorAmount, royaltyAmount, treasuryAmount, marketplaceFee },
     });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -63660,7 +63666,7 @@ app.post('/api/economic/marketplace/review', (req, res) => {
 
     res.json({ message: 'Review added', rating: listing.rating, reviewCount: listing.reviews.length });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -63954,7 +63960,7 @@ app.post('/api/realm/publish-to-global', (req, res) => {
       publishRequest: { id: publishRequest.id, dtuId, status: 'pending' },
     });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -64035,7 +64041,7 @@ app.post('/api/realm/vote-publish', requireAuth(), (req, res) => {
       message: `Need ${Math.ceil(request.threshold * 100)}% approval with at least 3 votes`,
     });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -64101,7 +64107,7 @@ app.post('/api/realm/sync', (req, res) => {
       dtu: localCopy,
     });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -64173,7 +64179,7 @@ app.post('/api/realm/sync-all', (req, res) => {
       message: `Synced ${synced} global DTUs to local (${skipped} already existed)`,
     });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -64470,7 +64476,7 @@ app.post('/api/artistry/assets', (req, res) => {
     const asset = createAsset(req.body);
     res.json({ ok: true, asset });
   } catch (e) {
-    res.status(400).json({ error: e.message });
+    serverError(res, e, 400);
   }
 });
 
@@ -64527,7 +64533,7 @@ app.post('/api/artistry/blobs', (req, res) => {
     const blobId = storeBlob(data, mimeType || 'application/octet-stream', filename || 'upload');
     res.json({ ok: true, blobId });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -64630,7 +64636,7 @@ app.post('/api/artistry/studio/projects', (req, res) => {
     art.stats.totalProjects++;
     res.json({ ok: true, project });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
