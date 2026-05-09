@@ -435,6 +435,16 @@ registerHeartbeat("lattice-quest-cycle", {
   handler: runLatticeQuestCycle,
 });
 
+// Phase 5c: Seasons + Long-cycle Time. Every 480 ticks (~2h) advances
+// world seasons (6 seasons × 7 days each = 42-day Concordia year).
+// Bias env signals via seasonalBias and modulate gather yield via
+// seasonalYieldMultiplier. Kill-switch: CONCORD_SEASONS=0.
+import { runSeasonCycle } from "./emergent/season-cycle.js";
+registerHeartbeat("season-cycle", {
+  frequency: 480,
+  handler: runSeasonCycle,
+});
+
 // Layer 13: NPC-initiated conversations. Every 8 ticks (~2 min) scans each
 // active world for cooldown-elapsed NPC pairs, generates a grounded opener
 // (deterministic by default; LLM-enhanced via CONCORD_NPC_DIALOGUE_LLM=true),
