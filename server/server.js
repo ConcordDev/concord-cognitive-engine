@@ -9314,6 +9314,8 @@ async function runMacro(domain, name, input, ctx) {
     // Phase 6b: dtu_portability — read-only for export+validate; import
     // gated by actor's user_id binding upstream.
     dtu_portability: new Set(["export", "validate", "import"]),
+    // Phase 6c: discovery — read-only.
+    discovery: new Set(["search", "facets", "trending"]),
     // Phase 7 — Code substrate. Read-only macros for the code-DTU view.
     code: new Set(["dtu_for", "dtu_query", "cluster_for", "refresh"]),
   };
@@ -22776,6 +22778,11 @@ registerForgeMarketplaceMacros(register);
 // sovereign migration to another Concord instance.
 import registerDtuPortabilityMacros from "./domains/dtu-portability.js";
 registerDtuPortabilityMacros(register);
+
+// Phase 6c — Cross-lens Discovery. Search/browse all DTUs across the 203
+// lenses with one query.
+import registerDiscoveryMacros from "./domains/discovery.js";
+registerDiscoveryMacros(register);
 
 // Phase 7 / T2 — Code substrate macros: routes / migrations / modules /
 // macros become DTUs under kind='code_artifact'. See lib/code-substrate/.
