@@ -120,7 +120,9 @@ export async function runAgentBudgetDetector({ root, opts = {} } = {}) {
       const recRe = new RegExp(RECURSE_RE.source, "gs");
       while ((m = recRe.exec(content)) !== null) {
         const fnBody = m[0];
-        if (!LLM_CALL_RE.test(fnBody)) continue;
+        // LLM_CALL_RE has the `g` flag, so .test() advances lastIndex —
+        // re-test on a fresh non-global copy to keep this stateless across calls.
+        if (!new RegExp(LLM_CALL_RE.source, "i").test(fnBody)) continue;
         // Require an explicit depth-cap parameter in signature OR
         // a depth-related guard in body to clear.
         if (/\b(maxDepth|depth\s*<|MAX_RECURSION|MAX_DEPTH|MAX_ITERATIONS|MAX_BUDGET|budgetRemaining)/i.test(fnBody)) continue;
@@ -144,7 +146,8 @@ export async function runAgentBudgetDetector({ root, opts = {} } = {}) {
       while ((m = hbRe.exec(content)) !== null) {
         const startLine = content.slice(0, m.index).split("\n").length;
         const window = lines.slice(startLine - 1, startLine + 80).join("\n");
-        const hasLlm = LLM_CALL_RE.test(window);
+        // Stateless test — see RECURSE_RE comment above.
+        const hasLlm = new RegExp(LLM_CALL_RE.source, "i").test(window);
         if (!hasLlm) continue;
         const hasThrottle = /\b(Date\.now\(\)\s*-\s*last|MIN_INTERVAL|throttle|rateLimit|MAX_PER_PASS|MAX_PER_CYCLE)\b/.test(window);
         if (hasThrottle) continue;
@@ -174,7 +177,7 @@ export async function runAgentBudgetDetector({ root, opts = {} } = {}) {
         const window = lines.slice(Math.max(0, lineNum - 4), lineNum + 4).join("\n");
         if (/\.slice\(\s*0\s*,|\.substring\(\s*0\s*,|\.substr\(\s*0\s*,|MAX_RESPONSE|truncate/.test(window)) continue;
         // Only report if there's also an LLM call in this file (correlate).
-        if (!LLM_CALL_RE.test(content)) continue;
+        if (!new RegExp(LLM_CALL_RE.source, "i").test(content)) continue;
         findings.push({
           id: "llm_output_without_length_cap",
           severity: "low",
