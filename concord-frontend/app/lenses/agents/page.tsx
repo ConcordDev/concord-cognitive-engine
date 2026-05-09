@@ -10,7 +10,7 @@ import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useMutation } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Bot, Plus, Play, Power, Activity, Clock, Zap, Settings, Search,
@@ -82,7 +82,10 @@ export default function AgentsLensPage() {
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [showCreate, setShowCreate] = useState(false);
 
-  // Lens-scoped keyboard commands.
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Lens-scoped keyboard commands. Linear/Raycast-style: jump to any
+  // view with a single letter, focus search with /, new agent with N.
   useLensCommand(
     [
       { id: 'view-dashboard', keys: 'd', description: 'Dashboard', category: 'navigation', action: () => setView('dashboard') },
@@ -90,6 +93,11 @@ export default function AgentsLensPage() {
       { id: 'view-logs', keys: 'l', description: 'Logs', category: 'navigation', action: () => setView('logs') },
       { id: 'view-workflows', keys: 'w', description: 'Workflows', category: 'navigation', action: () => setView('workflows') },
       { id: 'new-agent', keys: 'n', description: 'New agent', category: 'actions', action: () => setShowCreate(true) },
+      { id: 'focus-search', keys: '/', description: 'Focus search', category: 'navigation', action: () => searchInputRef.current?.focus() },
+      { id: 'filter-all',     keys: '1', description: 'All agents',     category: 'view', action: () => setFilter('all') },
+      { id: 'filter-active',  keys: '2', description: 'Active agents',  category: 'view', action: () => setFilter('active') },
+      { id: 'filter-dormant', keys: '3', description: 'Dormant agents', category: 'view', action: () => setFilter('dormant') },
+      { id: 'filter-error',   keys: '4', description: 'Error agents',   category: 'view', action: () => setFilter('error') },
     ],
     { lensId: 'agents' }
   );
@@ -356,10 +364,11 @@ export default function AgentsLensPage() {
               <div className="relative flex-1 min-w-[200px]">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                 <input
+                  ref={searchInputRef}
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search agents..."
+                  placeholder="Search agents…  /"
                   className="pl-10 pr-4 py-2 w-full bg-lattice-surface border border-lattice-border rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-neon-cyan"
                 />
               </div>

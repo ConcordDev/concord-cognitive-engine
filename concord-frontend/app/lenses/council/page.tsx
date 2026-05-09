@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -654,14 +654,22 @@ export default function CouncilLensPage() {
     });
   }, [newProposal, addAuditEntry, createProposalItem]);
 
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
   // Lens-scoped keyboard commands. Vim-style "g <letter>" jumps between
-  // tabs; n opens the new-proposal composer.
+  // tabs; n opens the new-proposal composer; / focuses search.
   useLensCommand(
     [
       { id: 'new-proposal', keys: 'n', description: 'New proposal', category: 'actions', action: () => setShowCreateProposal(true) },
       { id: 'goto-proposals', keys: 'g p', description: 'Go to Proposals', category: 'navigation', action: () => setActiveTab('proposals') },
-      { id: 'goto-voting', keys: 'g v', description: 'Go to Voting', category: 'navigation', action: () => setActiveTab('voting') },
-      { id: 'goto-debates', keys: 'g d', description: 'Go to Debates', category: 'navigation', action: () => setActiveTab('debates') },
+      { id: 'goto-voting',    keys: 'g v', description: 'Go to Voting',    category: 'navigation', action: () => setActiveTab('voting') },
+      { id: 'goto-debates',   keys: 'g d', description: 'Go to Debates',   category: 'navigation', action: () => setActiveTab('debates') },
+      { id: 'focus-search',   keys: '/',   description: 'Focus search',    category: 'navigation', action: () => searchInputRef.current?.focus() },
+      { id: 'status-all',         keys: '1', description: 'All statuses',         category: 'view', action: () => setStatusFilter('all') },
+      { id: 'status-draft',       keys: '2', description: 'Draft proposals',      category: 'view', action: () => setStatusFilter('draft') },
+      { id: 'status-discussion',  keys: '3', description: 'In discussion',        category: 'view', action: () => setStatusFilter('discussion') },
+      { id: 'status-voting',      keys: '4', description: 'Voting open',          category: 'view', action: () => setStatusFilter('voting') },
+      { id: 'status-decided',     keys: '5', description: 'Decided',              category: 'view', action: () => setStatusFilter('decided') },
     ],
     { lensId: 'council' }
   );
@@ -1114,10 +1122,11 @@ export default function CouncilLensPage() {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
               <input
+                ref={searchInputRef}
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search proposals..."
+                placeholder="Search proposals…  /"
                 className={cn(ds.input, 'pl-10 !w-64')}
               />
             </div>

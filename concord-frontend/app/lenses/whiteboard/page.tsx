@@ -720,13 +720,41 @@ export default function WhiteboardLensPage() {
     ctx.restore();
   }, [elements, currentElement, selectedElement, dimensions, zoom, offset, showGrid, tool, boardMode]);
 
-  /* ---------- keyboard shortcuts ---------- */
+  /* ---------- duplicate selected ---------- */
+  const duplicateSelected = useCallback(() => {
+    if (!selectedElement) return;
+    pushUndo();
+    const copy: Element = {
+      ...selectedElement,
+      id: `el_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      x: (selectedElement.x ?? 0) + 16,
+      y: (selectedElement.y ?? 0) + 16,
+    };
+    setElements((prev) => [...prev, copy]);
+    setSelectedElement(copy);
+  }, [selectedElement, pushUndo]);
+
+  /* ---------- keyboard shortcuts (Figma / Excalidraw idiom) ---------- */
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      const mod = e.ctrlKey || e.metaKey;
+
+      // Mod-key combos (don't double-trigger tool letters).
+      if (mod) {
+        if (e.key.toLowerCase() === 'z' && !e.shiftKey) { e.preventDefault(); undo(); return; }
+        if ((e.key.toLowerCase() === 'y') || (e.key.toLowerCase() === 'z' && e.shiftKey)) { e.preventDefault(); redo(); return; }
+        if (e.key.toLowerCase() === 'd') { e.preventDefault(); duplicateSelected(); return; }
+        if (e.key === '=' || e.key === '+') { e.preventDefault(); setZoom((z) => clamp(z * 1.2, 0.25, 4)); return; }
+        if (e.key === '-' || e.key === '_') { e.preventDefault(); setZoom((z) => clamp(z / 1.2, 0.25, 4)); return; }
+        if (e.key === '0') { e.preventDefault(); setZoom(1); setOffset({ x: 0, y: 0 }); return; }
+        // ⌘A intentionally not implemented yet — single-element selection
+        // model would need to extend to multi-select first. Skipping until
+        // that lands rather than silently mis-binding.
+        return;
+      }
+
       if (e.key === 'Delete' || e.key === 'Backspace') deleteSelected();
-      if (e.key === 'z' && (e.ctrlKey || e.metaKey) && !e.shiftKey) { e.preventDefault(); undo(); }
-      if ((e.key === 'y' && (e.ctrlKey || e.metaKey)) || (e.key === 'z' && (e.ctrlKey || e.metaKey) && e.shiftKey)) { e.preventDefault(); redo(); }
       if (e.key === 'v') setTool('select');
       if (e.key === 'p') setTool('draw');
       if (e.key === 'r') setTool('rectangle');
@@ -737,7 +765,7 @@ export default function WhiteboardLensPage() {
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [deleteSelected, undo, redo]);
+  }, [deleteSelected, undo, redo, duplicateSelected]);
 
   /* ---------- tools array ---------- */
   const tools: { id: Tool; icon: React.ElementType; label: string; key: string }[] = [

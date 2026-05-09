@@ -11,7 +11,7 @@
  *   - Real-time dtu:created events via socket
  */
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
@@ -54,6 +54,8 @@ export default function DTUBrowserPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [showFeed, setShowFeed] = useState(true);
 
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
   // Lens-scoped keyboard commands. Roam / Obsidian-graph idiom: l/g
   // toggle list/grid, n new DTU, f toggles the live feed.
   useLensCommand(
@@ -62,6 +64,11 @@ export default function DTUBrowserPage() {
       { id: 'view-grid', keys: 'g', description: 'Grid view', category: 'view', action: () => setViewMode('grid') },
       { id: 'new-dtu', keys: 'n', description: 'New DTU', category: 'actions', action: () => setShowCreateForm(true) },
       { id: 'toggle-feed', keys: 'f', description: 'Toggle live feed', category: 'view', action: () => setShowFeed((v) => !v) },
+      { id: 'focus-search', keys: '/', description: 'Focus search', category: 'navigation', action: () => searchInputRef.current?.focus() },
+      { id: 'tier-all',     keys: '1', description: 'All tiers',     category: 'view', action: () => setTierFilter('all') },
+      { id: 'tier-regular', keys: '2', description: 'Regular tier',  category: 'view', action: () => setTierFilter('regular') },
+      { id: 'tier-mega',    keys: '3', description: 'MEGA tier',     category: 'view', action: () => setTierFilter('mega') },
+      { id: 'tier-hyper',   keys: '4', description: 'HYPER tier',    category: 'view', action: () => setTierFilter('hyper') },
     ],
     { lensId: 'dtus' }
   );
@@ -211,10 +218,11 @@ export default function DTUBrowserPage() {
               <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-lattice-deep border border-lattice-border rounded-lg">
                 <Search className="w-4 h-4 text-gray-500" />
                 <input
+                  ref={searchInputRef}
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search DTUs by title, content, or tags..."
+                  placeholder="Search DTUs by title, content, or tags…  /"
                   className="flex-1 bg-transparent text-sm text-white placeholder-gray-500 focus:outline-none"
                 />
                 {searchQuery && (
