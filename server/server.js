@@ -6909,6 +6909,10 @@ async function tryInitWebSockets(server) {
   REALTIME.io = io;
   REALTIME.ready = true;
   globalThis._concordREALTIME = REALTIME;
+  // Alias for legacy consumers using the all-caps double-underscore form
+  // (combat-polish, lattice-quest-cycle, personal-beat-scheduler, procgen-regions,
+  // seasons, embodied/signals). Both names point at the same REALTIME object.
+  globalThis.__CONCORD_REALTIME__ = REALTIME;
 
   // Horizontal scaling: attach Redis pub/sub adapter when REDIS_URL is set
   if (process.env.REDIS_URL) {
