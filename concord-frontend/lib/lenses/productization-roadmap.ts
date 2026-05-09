@@ -1092,9 +1092,48 @@ export const PRODUCTIZATION_PHASES: ProductionPhase[] = [
     status: 'in_progress',
   },
 
-  // ── PHASE 25: Game ──────────────────────────────────────────────
+  // ── PHASE 25: Creator ───────────────────────────────────────────
   {
     order: 25,
+    lensId: 'creator',
+    name: 'Creator',
+    rationale: 'Production-grade creator dashboard. Earnings, royalty cascade, profile, followers, and listings management. Rivals Patreon + Substack + Bandcamp Artist Tools in one view.',
+    dependsOn: [],
+    incumbents: ['Patreon', 'Substack', 'Bandcamp', 'Gumroad'],
+    artifacts: [
+      { name: 'CreatorProfile',  persistsWithoutDTU: true, storageDomain: 'creator', requiredFields: ['userId', 'displayName', 'bio', 'avatar', 'isPublic', 'specialization'] },
+      { name: 'Broadcast',       persistsWithoutDTU: true, storageDomain: 'creator', requiredFields: ['id', 'kind', 'message', 'at'] },
+      { name: 'RoyaltyStream',   persistsWithoutDTU: true, storageDomain: 'creator', requiredFields: ['rootId', 'generations', 'totalDownstream', 'maxObservedDepth'] },
+      { name: 'TierListing',     persistsWithoutDTU: true, storageDomain: 'creator', requiredFields: ['id', 'price', 'tierPrices', 'status'] },
+      { name: 'CreatorScore',    persistsWithoutDTU: true, storageDomain: 'creator', requiredFields: ['userId', 'reputationScore', 'lineageDepth', 'citationsReceived'] },
+    ],
+    engines: [
+      { name: 'reputation-tracker',    description: 'Recomputes reputation/influence on each citation/download', trigger: 'automatic' },
+      { name: 'cascade-walker',        description: 'Walks downstream lineage to compute per-generation royalty share', trigger: 'on_demand' },
+      { name: 'withdrawal-eligibility', description: 'Filters credits by 48h hold gate, returns eligible vs pending', trigger: 'on_demand' },
+      { name: 'broadcast-publisher',    description: 'Publishes a creator broadcast that followers see across lenses', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'profile-broadcast-feed',   steps: ['upsert-profile', 'mint-broadcast', 'emit-realtime', 'fan-out-to-followers'], engines: ['broadcast-publisher'] },
+      { name: 'cascade-projection',       steps: ['load-top-cited', 'walk-lineage', 'project-shares', 'render-tree'], engines: ['cascade-walker'] },
+      { name: 'eligible-earnings-cycle',  steps: ['load-credits', 'apply-48h-gate', 'aggregate-eligible', 'request-withdrawal'], engines: ['withdrawal-eligibility'] },
+      { name: 'reputation-update',        steps: ['observe-event', 'recompute-score', 'emit-leaderboard-delta'], engines: ['reputation-tracker'] },
+    ],
+    acceptanceCriteria: [
+      'Profile artifact persists via /api/social/profile with full CRUD',
+      'Followers + Following lists rendered from /api/social/followers + /following',
+      'Top-3 earners surface from listing × downloads or totalEarnings',
+      'Tier-pricing edit flow (usage / remix / commercial) PATCHes /api/marketplace/listings/:id',
+      'Withdrawal eligibility distinguishes eligible vs pending vs hold',
+      'Cascade panel walks downstream lineage with per-generation share',
+      'Broadcast artifact persists in lens-artifact runtime on each profile save',
+    ],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 26: Game ──────────────────────────────────────────────
+  {
+    order: 26,
     lensId: 'game',
     name: 'Game',
     rationale: 'Gamification engine. Adds progression, achievements, and quests to all lenses.',
