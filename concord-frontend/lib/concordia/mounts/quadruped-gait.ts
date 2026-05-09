@@ -19,8 +19,6 @@
 
 import type { GaitCycleBlock, GaitMode, MountGaitProfile } from "./mount-types";
 
-const TWO_PI = Math.PI * 2;
-
 export type LegId = "fl" | "fr" | "rl" | "rr";
 const LEGS: LegId[] = ["fl", "fr", "rl", "rr"];
 
@@ -49,6 +47,8 @@ export interface LegFrame {
   inStance: boolean;
   /** Stance progress ∈ [0, 1] within stance phase (or 0 in swing). */
   stanceProgress: number;
+  /** Swing progress ∈ [0, 1] within swing phase (or 0 in stance). */
+  swingProgress: number;
   /** Foot world target. In stance: pinned to ground (set by IK pass). */
   footTarget: { x: number; y: number; z: number };
   /** Vertical lift above ground in swing phase. */
@@ -74,6 +74,7 @@ export function makeInitialGaitState(gaitMode: GaitMode = "walk"): QuadrupedGait
       phase: 0,
       inStance: true,
       stanceProgress: 0,
+      swingProgress: 0,
       footTarget: { x: 0, y: 0, z: 0 },
       swingHeightM: 0,
     };
@@ -146,6 +147,7 @@ export function stepGait(
       phase,
       inStance,
       stanceProgress,
+      swingProgress,
       footTarget: prev.legs[id]?.footTarget || { x: input.pos.x, y: input.pos.y, z: input.pos.z },
       swingHeightM,
     };
@@ -187,8 +189,12 @@ export function applyFootPlanting(
       cur.footTarget = before.footTarget;
     } else {
       // Swing — interpolate forward toward the next planned plant.
+      // Use the leg's actual swingProgress (computed in stepGait against
+      // the gait-mode-specific stance fraction) instead of hard-coded
+      // 0.45/0.55 — for walk (stance 0.65) the old constants started t
+      // at ~0.36 on the first swing frame and snapped the foot.
       const target = planter.nextStanceFor(id);
-      const t = cur.stanceProgress > 0 ? cur.stanceProgress : Math.max(0, Math.min(1, (cur.phase - 0.45) / 0.55));
+      const t = Math.max(0, Math.min(1, cur.swingProgress));
       cur.footTarget = {
         x: before.footTarget.x + (target.x - before.footTarget.x) * t,
         y: target.y + cur.swingHeightM,

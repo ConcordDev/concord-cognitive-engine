@@ -38,11 +38,17 @@ export async function runMountCareCycle({ db, state: _state } = {}) {
   const loyaltyLow = [];
 
   try {
+    // ORDER BY: NULL last_action_at falls back to caught_at, then 0.
+    // The prior `COALESCE(last_action_at, 0)` always sorted NULL rows
+    // to the front; combined with decayCare returning applied:false
+    // for those rows (which never updated last_action_at) they would
+    // permanently occupy the first MAX_PER_PASS slots, starving the
+    // older mounts behind them.
     const candidates = db.prepare(`
       SELECT id, owner_id, world_id, last_action_at, loyalty
       FROM player_companions
       WHERE mount_eligible = 1
-      ORDER BY COALESCE(last_action_at, 0) ASC
+      ORDER BY COALESCE(last_action_at, caught_at, 0) ASC
       LIMIT ?
     `).all(maxPerPass());
 

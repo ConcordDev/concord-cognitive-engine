@@ -1,4 +1,6 @@
-// Migration 145 — Concordia Procedural Mount System Phase B4: polish.
+// Migration 147 — Concordia Procedural Mount System Phase B4: polish.
+// (Renumbered from 145 on rebase: 145 reserved for PR #310's
+// macro_call_billing, 146 for PR #311's repair_feedback. Next free is 147.)
 //
 // Skill columns on player_companions for the mount-evolution path,
 // the mount_care_events ledger for the care heartbeat, and the

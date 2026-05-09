@@ -44,7 +44,7 @@ function _readCompanion(db, companionId) {
   try {
     return db.prepare(`
       SELECT id, owner_id, world_id, mount_eligible, mount_state, last_action_at,
-             last_ridden_at, loyalty
+             last_ridden_at, loyalty, caught_at
       FROM player_companions WHERE id = ?
     `).get(companionId) || null;
   } catch {
@@ -95,7 +95,12 @@ export function decayCare(db, companionId, { nowS = Math.floor(Date.now() / 1000
   if (!db) return { ok: false, reason: "no_db" };
   const comp = _readCompanion(db, companionId);
   if (!comp) return { ok: false, reason: "not_found" };
-  const last = Number(comp.last_action_at) || nowS;
+  // Companions caught before the mount-care heartbeat shipped have
+  // last_action_at = NULL. Treat the row's caught_at as the floor so
+  // they pick up neglect decay on the next cycle instead of being
+  // permanently stuck at "just acted" — otherwise mount-care-cycle
+  // sorts them to the front of every batch and never advances past.
+  const last = Number(comp.last_action_at) || Number(comp.caught_at) || nowS;
   const elapsedS = Math.max(0, Math.min(DAY_S, nowS - last));
   if (elapsedS < 60) return { ok: true, applied: false }; // sub-minute → skip
 

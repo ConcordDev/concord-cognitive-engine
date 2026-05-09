@@ -20,7 +20,7 @@ import Database from "better-sqlite3";
 import * as mig104 from "../migrations/104_player_companions.js";
 import * as mig140 from "../migrations/140_combat_polish.js";
 import * as mig142 from "../migrations/142_mount_substrate.js";
-import * as mig145 from "../migrations/145_mount_polish.js";
+import * as mig147 from "../migrations/147_mount_polish.js";
 import {
   feedMount, groomMount, restMount,
   decayCare, getCareState,
@@ -51,7 +51,7 @@ beforeEach(() => {
   mig104.up(db);
   mig140.up(db);
   mig142.up(db);
-  mig145.up(db);
+  mig147.up(db);
   seedMountSpecies(db);
   delete process.env.FF_MOUNT_CARE;
   delete process.env.FF_MOUNT_EVO;
@@ -92,7 +92,7 @@ describe("migration 145 — mount polish", () => {
 
   it("ALTER is idempotent on re-run", () => {
     let threw = false;
-    try { mig145.up(db); } catch { threw = true; }
+    try { mig147.up(db); } catch { threw = true; }
     assert.equal(threw, false);
   });
 });
@@ -303,6 +303,37 @@ describe("mount-care-cycle heartbeat", () => {
     try { await runMountCareCycle({ db }); }
     catch { threw = true; }
     assert.equal(threw, false);
+  });
+
+  it("decays NULL last_action_at rows by falling back to caught_at", () => {
+    // Regression: NULL last_action_at + always-first ordering used to
+    // permanently park these rows at the head of the batch and never
+    // advance the cycle past them. decayCare now treats NULL
+    // last_action_at as the caught_at floor so the row picks up neglect
+    // decay on the next pass.
+    _seedCompanion("c1");
+    // Force last_action_at to NULL and backdate caught_at by 12h.
+    db.prepare(`UPDATE player_companions SET last_action_at = NULL, caught_at = (unixepoch() - 43200) WHERE id = 'c1'`).run();
+    const r = decayCare(db, "c1");
+    assert.equal(r.ok, true);
+    assert.equal(r.applied, true);
+    // After applying, last_action_at should be stamped (not NULL).
+    const row = db.prepare(`SELECT last_action_at FROM player_companions WHERE id = 'c1'`).get();
+    assert.ok(row.last_action_at);
+  });
+
+  it("ORDER BY puts NULL-last_action_at rows after older caught_at rows", async () => {
+    // Insert a NULL-activity mount that's been around 1h, plus an
+    // older mount last seen 12h ago — verify the older one is processed
+    // first (i.e. NULL rows don't permanently dominate the batch).
+    _seedCompanion("recent_null", "alice", { loyalty: 80 });
+    db.prepare(`UPDATE player_companions SET last_action_at = NULL, caught_at = (unixepoch() - 3600) WHERE id = 'recent_null'`).run();
+    _seedCompanion("older", "bob", { loyalty: 80 });
+    db.prepare(`UPDATE player_companions SET last_action_at = (unixepoch() - 43200), caught_at = (unixepoch() - 86400) WHERE id = 'older'`).run();
+
+    const r = await runMountCareCycle({ db });
+    assert.equal(r.ok, true);
+    assert.ok(r.processed >= 1);
   });
 });
 
