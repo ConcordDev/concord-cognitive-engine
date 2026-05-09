@@ -1,0 +1,22 @@
+[
+  {
+    "id": "crucible_witnesses",
+    "world_id": "lattice-crucible",
+    "name": "The Witnesses",
+    "motto": "We watch the lattice write itself.",
+    "goal": "Document every drift alert and every lattice-born quest in real time, building a corpus the federation can use to teach the lattice better discrimination.",
+    "values": ["impartiality", "completeness", "skepticism toward premature conclusions"],
+    "fears": ["the corpus being weaponized", "their own bias contaminating the record"],
+    "controlled_districts": ["central_crucible", "observation_lattice"],
+    "rival_factions": [],
+    "allied_factions": [],
+    "npc_ids": ["witness_orla", "witness_pem", "witness_sael"],
+    "dialogue_style": "observational_dry",
+    "reputation_currency": "drift_marks",
+    "faction_state": {
+      "factionName": "The Witnesses",
+      "reputation": 60,
+      "tensions": "Sael has been advocating for active intervention in drift events the Witnesses currently only document. Orla considers this a violation of charter; Pem is wavering."
+    }
+  }
+]

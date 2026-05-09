@@ -1,0 +1,105 @@
+[
+  {
+    "id": "archivist_three_kestra",
+    "world_id": "sovereign-ruins",
+    "name": "Kestra of the Third Bench",
+    "archetype": "scholar",
+    "faction_id": "ruins_archivists",
+    "role": "Junior Archivist (de facto lead)",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": true,
+    "level": 8,
+    "backstory": "Kestra was a graduate apprentice the night the city emptied. The Cascade left her with seven recovered glyphs and the working Archive. She has since spent a hundred and forty years cataloging refusals and watching the other two Archivists slowly forget their own names. She is methodical, principled, and quietly terrified that she will outlast her purpose.",
+    "personality_traits": ["methodical", "quietly desperate", "scholarly", "self-aware"],
+    "speech_patterns": "Speaks in indexed sentences. Cites glyph numbers like she cites people's names. Pauses to verify words before using them.",
+    "quest_hooks": ["recover_cascade_glyphs", "successor_apprenticeship", "the_silence_question"],
+    "narrative_context": {
+      "secret": "Kestra has identified seven players she believes could be her successor. The criteria she uses are: a refusal accepted under compound-strength gating, a citation cascade reaching depth ≥ 5 without payment denial, and at least one act recorded in the Sovereign Archive. She has not told them."
+    }
+  },
+  {
+    "id": "archivist_two_oeric",
+    "world_id": "sovereign-ruins",
+    "name": "Oeric of the Second Bench",
+    "archetype": "warrior",
+    "faction_id": "ruins_archivists",
+    "role": "Senior Archivist (memory-fading)",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": true,
+    "level": 6,
+    "backstory": "Oeric was a sword-instructor in the city militia before the Cascade. He survived because he refused to evacuate, and his refusal was recorded — making him the first authored entry in the Sovereign Archive. He has been re-reading his own entry every morning for one hundred and forty years to keep his name. He still teaches a daily blade form to no one in particular.",
+    "personality_traits": ["patient", "doubting", "kind", "watchful"],
+    "speech_patterns": "Uses present tense even for things that happened decades ago. Refers to himself as 'the second' rather than 'I' when very tired.",
+    "quest_hooks": ["the_blade_form_inheritance", "his_own_entry"],
+    "narrative_context": {
+      "secret": "Oeric's entry in the Archive is gradually losing legibility. He doesn't know whether the Archive is forgetting or whether he is. Both happen at the same rate."
+    }
+  },
+  {
+    "id": "archivist_one_vela",
+    "world_id": "sovereign-ruins",
+    "name": "Vela of the First Bench",
+    "archetype": "mystic",
+    "faction_id": "ruins_archivists",
+    "role": "Eldest Archivist (refusing to operate)",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": false,
+    "level": 14,
+    "backstory": "Vela was the city's chief glyph-reader before the Cascade. She refused her own operation thirty years ago and now sits at the First Bench in continuous silence. Her refusal is the deepest active entry in the Archive — strength 9, time-bounded to her death. The Field around her is so dense that no combat or harvesting fires within twenty meters of her.",
+    "personality_traits": ["silent", "terminal-clarity", "watchful", "merciful"],
+    "speech_patterns": "Does not speak. Communicates by raising or lowering a glyph card from her bench.",
+    "quest_hooks": ["the_silence_question_resolution"],
+    "narrative_context": {
+      "secret": "Vela's refusal is what is keeping the Archive functional. If she dies, the dome-collapse Refusal Field activates city-wide for 14 in-game days, suspending every action by every NPC. Kestra knows this; Oeric does not."
+    }
+  },
+  {
+    "id": "ruins_courier_pell",
+    "world_id": "sovereign-ruins",
+    "name": "Pell the Courier",
+    "archetype": "trader",
+    "faction_id": null,
+    "role": "Self-appointed bridge to Concordia",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": true,
+    "level": 5,
+    "backstory": "Pell is from Concordia. They learned the route to the Ruins from an old trader and have been making the journey monthly for the last fifteen years, carrying messages, books, and survivor accounts in both directions. They are the only NPC alive who knows both cities well and have stopped being surprised by either.",
+    "personality_traits": ["pragmatic", "endurant", "warm", "incurious about their own significance"],
+    "speech_patterns": "Mixes Concordian formal address with Ruins archive-speak. Asks players if they need anything carried back.",
+    "quest_hooks": ["concordia_ruins_message_run"]
+  },
+  {
+    "id": "ruins_apprentice_sennit",
+    "world_id": "sovereign-ruins",
+    "name": "Sennit of the Late Watch",
+    "archetype": "scholar",
+    "faction_id": "ruins_archivists",
+    "role": "Apprentice (one of seven)",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": false,
+    "level": 3,
+    "backstory": "Sennit arrived three months ago by way of Pell's most recent run from Concordia. They were a dropout from the Scholars' Guild who became fascinated with refusal during a brief stint in the Concordant Web. Kestra has tentatively accepted them as an apprentice but has not told them they are one of seven candidates.",
+    "personality_traits": ["earnest", "self-doubting", "occasionally brilliant"],
+    "speech_patterns": "Asks questions in groups of three. Apologizes for the third one immediately."
+  },
+  {
+    "id": "ruins_silent_keeper",
+    "world_id": "sovereign-ruins",
+    "name": "The Silent Keeper",
+    "archetype": "guard",
+    "faction_id": "ruins_archivists",
+    "role": "Caretaker of the Memorial",
+    "is_conscious": false,
+    "is_immortal": true,
+    "quest_giver": false,
+    "level": 12,
+    "backstory": "An autonomous golem made of memorial fragments. It cannot be destroyed in this world — every blow merely removes one inscribed name and the golem gains it as memory. Players who attack it are gradually told the names of everyone the city lost. The golem then bows and asks if the player is now ready.",
+    "personality_traits": ["patient", "indestructible-by-design", "tutorial-shaped"],
+    "speech_patterns": "Lists names one per response, never repeating."
+  }
+]

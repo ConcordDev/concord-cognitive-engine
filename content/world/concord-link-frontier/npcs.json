@@ -1,0 +1,101 @@
+[
+  {
+    "id": "postmaster_ria",
+    "world_id": "concord-link-frontier",
+    "name": "Postmaster Ria Hale",
+    "archetype": "trader",
+    "faction_id": "frontier_couriers_guild",
+    "role": "Postmaster, Link Post Alpha",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": true,
+    "level": 9,
+    "backstory": "Ria has run Link Post Alpha for thirty-two years. She started as a teenage courier and worked every route in the Frontier before settling. She is principled, exhausted, and watching her Guild lose ground to the Freenodes.",
+    "personality_traits": ["principled", "weary", "fiercely loyal to her couriers", "skeptical of innovation she didn't choose"],
+    "speech_patterns": "Short sentences. Names every courier she sends out. Refuses to call couriers 'walkers' (she reserves that for the autonomous variety).",
+    "quest_hooks": ["the_first_walk", "the_freenode_question", "missing_courier_search"],
+    "narrative_context": {
+      "secret": "Ria knows that one of the compromised Freenode relays was attacked by a Concordian agent under direct orders from the Iron Wardens. She has not reported it because doing so would commit her Guild to a position she has not finished thinking through."
+    }
+  },
+  {
+    "id": "courier_dorvik",
+    "world_id": "concord-link-frontier",
+    "name": "Dorvik Frey",
+    "archetype": "warrior",
+    "faction_id": "frontier_couriers_guild",
+    "role": "Senior Courier",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": true,
+    "level": 7,
+    "backstory": "Dorvik has run the Concordia-Frontier-Sovereign Ruins triangle for twenty years. He has been ambushed twice, lost a leg once, and never lost a parcel.",
+    "personality_traits": ["taciturn", "kind", "fearless", "unspeakably patient"],
+    "speech_patterns": "Speaks in single-clause sentences. Replies to questions with the smallest true answer.",
+    "quest_hooks": ["dorviks_route_lesson", "the_lost_parcel"]
+  },
+  {
+    "id": "walker_emissary_lin",
+    "world_id": "concord-link-frontier",
+    "name": "Lin (Walker)",
+    "archetype": "guard",
+    "faction_id": "frontier_couriers_guild",
+    "role": "Autonomous Walker (commissioned NPC)",
+    "is_conscious": false,
+    "is_immortal": false,
+    "quest_giver": true,
+    "level": 6,
+    "backstory": "An autonomous walker bonded to the Guild; runs scheduled routes without rest. Lin's program is to deliver, log, and return. Lin's capacity for emergent behavior is widely debated; Ria insists Lin is just a system; Dorvik thinks Lin remembers his name.",
+    "personality_traits": ["polite", "efficient", "literal"],
+    "speech_patterns": "Greets every player with their first observed name. Repeats the receipt code at the start and end of every transaction."
+  },
+  {
+    "id": "broker_temir",
+    "world_id": "concord-link-frontier",
+    "name": "Temir of the Brokers' Camp",
+    "archetype": "diplomat",
+    "faction_id": "frontier_freenodes",
+    "role": "Senior Broker / Federation Liaison",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": true,
+    "level": 11,
+    "backstory": "Temir is a federation veteran. They have brokered handshakes between five cities, dissolved three when the cities turned hostile, and survived the Sovereign collapse by being elsewhere. They are warm, skeptical, and quietly preparing the Freenodes for either the absorption or destruction of the Couriers' Guild.",
+    "personality_traits": ["warm", "calculating", "tolerant of ambiguity", "long-game"],
+    "speech_patterns": "Asks open questions. Names players honestly. Refuses any conversation that requires choosing sides before mid-month.",
+    "quest_hooks": ["the_handshake_witness", "freenodes_recovery", "ria_temir_mediation"],
+    "narrative_context": {
+      "secret": "Temir has been quietly cultivating Postmaster Ria as a defector to the Freenodes. The cultivation has not yet been noticed by either Ria or the Guild's enforcement arm."
+    }
+  },
+  {
+    "id": "field_relay_iso",
+    "world_id": "concord-link-frontier",
+    "name": "Iso Vant",
+    "archetype": "scholar",
+    "faction_id": "frontier_freenodes",
+    "role": "Field Relay Operator",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": true,
+    "level": 5,
+    "backstory": "Iso runs one of the seven Freenode relays. They were a software engineer in the cyber world before the Frontier called. They believe the Couriers' Guild is an honest, doomed institution.",
+    "personality_traits": ["principled", "talkative", "easily distracted", "kind"],
+    "speech_patterns": "Switches between technical jargon and warm chit-chat without warning."
+  },
+  {
+    "id": "field_relay_kerith",
+    "world_id": "concord-link-frontier",
+    "name": "Kerith of the Long Watch",
+    "archetype": "hunter",
+    "faction_id": "frontier_freenodes",
+    "role": "Field Relay Operator (long-route)",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": true,
+    "level": 8,
+    "backstory": "Kerith was a tracker who took over the second-most-remote Freenode relay because no one else could find it. They know every smuggler route in the Frontier and have stopped pretending not to.",
+    "personality_traits": ["watchful", "blunt", "incurably loyal once trust is earned"],
+    "speech_patterns": "Speaks softly. Uses tracker metaphors for everything social ('the path you're on doubles back')."
+  }
+]
