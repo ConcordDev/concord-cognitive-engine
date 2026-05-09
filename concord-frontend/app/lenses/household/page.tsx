@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -171,6 +171,7 @@ export default function HouseholdLensPage() {
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
 
+  const searchInputRef = useRef<HTMLInputElement>(null);
   useLensCommand(
 
     [
@@ -191,7 +192,8 @@ export default function HouseholdLensPage() {
 
       { id: 'tab-family', keys: 'f', description: 'Family', category: 'navigation', action: () => setMode('Family') },
 
-      { id: 'tab-pets', keys: 'p', description: 'Pets', category: 'navigation', action: () => setMode('Pets') },
+      { id: 'tab-pets', keys: 'p', description: 'Pets', category: 'navigation', action: () => setMode('Pets') },      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
+
 
     ],
 
