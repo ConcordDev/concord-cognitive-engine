@@ -2935,7 +2935,8 @@ export default function WorldLensPage() {
     // Embodied sonic-pulse → window event for SoundscapeEngine. Server emits
     // when a non-sensor source writes a loud sonic_os.ambient_db delta (skill
     // cast / combat). Engine briefly accents master gain in proportion.
-    const handleSonicPulse = (data: { value?: number; source?: string; cellX?: number; cellZ?: number }) => {
+    const handleSonicPulse = (...args: unknown[]) => {
+      const data = args[0] as { value?: number; source?: string; cellX?: number; cellZ?: number } | undefined;
       window.dispatchEvent(new CustomEvent('concordia:sonic-pulse', { detail: data }));
     };
     worldSocket.on('world:sonic-pulse', handleSonicPulse);

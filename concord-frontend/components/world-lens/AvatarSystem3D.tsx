@@ -1516,13 +1516,36 @@ export default function AvatarSystem3D({
         });
       }
 
-      // ── Kinematic character controller (WASD) ──────────────
+      // ── Kinematic character controller (WASD + Space jump/glide) ──────────
 
       function handleKeyDown(e: KeyboardEvent) {
-        keysRef.current.add(e.key.toLowerCase());
+        const k = e.key.toLowerCase();
+        keysRef.current.add(k);
+        // Theme 6 (game-feel pass): Space = jump (when grounded) or
+        // toggle glide (when airborne already and falling). We trigger
+        // off keydown so a tap registers a single jump and a hold flips
+        // straight into glide once the apex starts.
+        if (k === ' ' || k === 'spacebar') {
+          // Skip when typing in a text input.
+          const tgt = e.target as HTMLElement | null;
+          if (tgt && (tgt.tagName === 'INPUT' || tgt.tagName === 'TEXTAREA' || tgt.isContentEditable)) return;
+          // Prevent default so Space doesn't scroll the page.
+          e.preventDefault();
+          const ok = physicsWorld.requestJump?.('player');
+          if (!ok) {
+            // Already airborne → start glide.
+            physicsWorld.setGlide?.('player', true);
+          }
+        }
       }
       function handleKeyUp(e: KeyboardEvent) {
-        keysRef.current.delete(e.key.toLowerCase());
+        const k = e.key.toLowerCase();
+        keysRef.current.delete(k);
+        if (k === ' ' || k === 'spacebar') {
+          // Release glide on key-up so the player can choose how long the
+          // sail lasts. Grounded glide is a no-op anyway.
+          physicsWorld.setGlide?.('player', false);
+        }
       }
       window.addEventListener('keydown', handleKeyDown);
       window.addEventListener('keyup', handleKeyUp);
@@ -1606,6 +1629,34 @@ export default function AvatarSystem3D({
         const isMoving = moveX !== 0 || moveZ !== 0;
         const exhausted = isExhausted(physics);
 
+        // Theme 6 (game-feel pass): airborne / swim state from physics-world.
+        // The kinematic capsule integrates verticalVel internally; we read
+        // these flags to decide whether to clamp Y to the heightfield
+        // (grounded path) or take Y from the physics step (airborne /
+        // swimming path).
+        const isAirborne = (physicsWorld as { isAirborne?: (id: string) => boolean }).isAirborne?.('player') ?? false;
+        const isSwimming = (physicsWorld as { isSwimming?: (id: string) => boolean }).isSwimming?.('player') ?? false;
+
+        // Theme 6: when not pressing WASD but airborne/swimming, still
+        // step physics so gravity / glide / buoyancy integrate. This
+        // runs ONCE before the existing if (isMoving) / else branch.
+        if (!isMoving && (isAirborne || isSwimming)) {
+          const pos = playerPositionRef.current;
+          const corrected = physicsWorld.moveCharacter('player', { x: 0, y: 0, z: 0 }, delta);
+          if (corrected) pos.y += corrected.y;
+        }
+
+        // Theme 6 swim toggle — compare player Y against registered water
+        // plane for the active world. No-op when no plane registered.
+        try {
+          const wid = (typeof window !== 'undefined' && (window.localStorage?.getItem('concordia:activeWorldId'))) || 'concordia-hub';
+          const waterY = (physicsWorld as { getWaterLevelFor?: (w: string) => number | null }).getWaterLevelFor?.(wid);
+          if (waterY != null) {
+            const below = playerPositionRef.current.y < waterY - 0.5;
+            if (below !== isSwimming) physicsWorld.setSwim?.('player', below);
+          }
+        } catch { /* swim toggle is best-effort */ }
+
         if (isMoving) {
           const len = Math.sqrt(moveX * moveX + moveZ * moveZ);
           moveX /= len;
@@ -1617,13 +1668,17 @@ export default function AvatarSystem3D({
           if (corrected) {
             pos.x += corrected.x;
             pos.z += corrected.z;
+            // Theme 6: airborne/swimming → Y from physics (jump arc /
+            // gravity / buoyancy). Grounded → still clamps to terrain
+            // a few lines down.
+            if (isAirborne || isSwimming) pos.y += corrected.y;
           } else {
             pos.x += desired.x;
             pos.z += desired.z;
           }
 
           // Momentum overshoot on sharp direction change (ice/wet = more slide)
-          if (!isRunning) {
+          if (!isRunning && !isAirborne) {
             const frictionScale = 1 / Math.max(0.1, weatherFriction);
             const overshoot = computeMomentumOvershoot(physics.mass, speed) * frictionScale;
             if (overshoot > 0.01) {
@@ -1633,9 +1688,11 @@ export default function AvatarSystem3D({
             }
           }
 
-          // Terrain elevation — clamp Y to ground
-          const elevation = elevationRef.current?.(pos.x, pos.z) ?? pos.y;
-          pos.y = elevation;
+          // Terrain elevation — clamp Y to ground (only when grounded).
+          if (!isAirborne && !isSwimming) {
+            const elevation = elevationRef.current?.(pos.x, pos.z) ?? pos.y;
+            pos.y = elevation;
+          }
 
           // Auto-face movement direction with smooth rotation.
           // In first-person, the player faces wherever the camera looks
