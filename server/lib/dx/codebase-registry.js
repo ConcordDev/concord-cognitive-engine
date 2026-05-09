@@ -32,14 +32,20 @@ export function ensureCodebase(db, userId, repoRoot, opts = {}) {
   if (!userId || !repoRoot) return { ok: false, reason: "missing_args" };
   const id = codebaseIdFor(userId, repoRoot);
   try {
-    const r = db.prepare(`
+    // SQLite's ON CONFLICT DO UPDATE reports `changes = 1` for both
+    // initial inserts AND conflict-updates, and `lastInsertRowid` carries
+    // over from prior inserts on the same connection. Probe for existence
+    // before the upsert so callers that key off `created` for one-time
+    // initialisation work correctly.
+    const existsBefore = db.prepare(`SELECT 1 FROM codebases WHERE id = ?`).get(id);
+    db.prepare(`
       INSERT INTO codebases (id, user_id, repo_root, detector_version, last_seen_at)
       VALUES (?, ?, ?, ?, unixepoch())
       ON CONFLICT(user_id, repo_root) DO UPDATE
         SET last_seen_at = unixepoch(),
             detector_version = COALESCE(excluded.detector_version, detector_version)
     `).run(id, userId, repoRoot, opts.detectorVersion || null);
-    return { ok: true, codebaseId: id, created: r.changes === 1 && r.lastInsertRowid !== 0 };
+    return { ok: true, codebaseId: id, created: !existsBefore };
   } catch (err) {
     return { ok: false, reason: err.message };
   }

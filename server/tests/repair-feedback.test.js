@@ -112,6 +112,18 @@ describe("codebase-registry", () => {
     assert.ok(row.last_seen_at > 0);
   });
 
+  it("ensureCodebase reports created=true only on first insert", () => {
+    // SQLite's INSERT-ON-CONFLICT-UPDATE reports changes=1 for both
+    // initial inserts AND conflict updates; the registry must probe for
+    // existence to keep `created` honest for one-time-init callers.
+    const r1 = ensureCodebase(db, "alice", "/repo/foo");
+    assert.equal(r1.created, true);
+    const r2 = ensureCodebase(db, "alice", "/repo/foo");
+    assert.equal(r2.created, false);
+    const r3 = ensureCodebase(db, "alice", "/repo/foo", { detectorVersion: "2026-05-09" });
+    assert.equal(r3.created, false);
+  });
+
   it("touchCodebase bumps last_seen_at", () => {
     const r = ensureCodebase(db, "alice", "/repo/foo");
     db.prepare(`UPDATE codebases SET last_seen_at = 0 WHERE id = ?`).run(r.codebaseId);
@@ -231,6 +243,34 @@ describe("severity-evo — counters", () => {
     // Counter for the post-bump decision should now be 1.
     assert.equal(after.accept_count, 1);
     assert.equal(after.reject_count, 0);
+  });
+
+  it("first detector_version stamp on a NULL row preserves counters", () => {
+    // First decision created the row without a detectorVersion.
+    for (let i = 0; i < 30; i++) {
+      recordDecision(db, { codebaseId: cb, detectorId: "d", ruleId: "r", decision: "rejected" });
+    }
+    const before = db.prepare(`SELECT * FROM codebase_severity_weights WHERE codebase_id = ?`).get(cb);
+    assert.equal(before.detector_version, null);
+    assert.ok(before.reject_count >= 30);
+    assert.ok(before.weight < 1.0);
+
+    // Now a decision arrives carrying a detectorVersion. The row should
+    // stamp the version WITHOUT zeroing counters or resetting weight —
+    // it's a first observation, not a real version bump.
+    recordDecision(db, { codebaseId: cb, detectorId: "d", ruleId: "r", decision: "rejected", detectorVersion: "v1" });
+    const after = db.prepare(`SELECT * FROM codebase_severity_weights WHERE codebase_id = ?`).get(cb);
+    assert.equal(after.detector_version, "v1");
+    assert.ok(after.reject_count >= 31, "counter increments, not resets");
+    assert.ok(after.weight < 1.0, "weight stays drifted");
+
+    // A real version change after this point should reset.
+    recordDecision(db, { codebaseId: cb, detectorId: "d", ruleId: "r", decision: "accepted", detectorVersion: "v2" });
+    const reset = db.prepare(`SELECT * FROM codebase_severity_weights WHERE codebase_id = ?`).get(cb);
+    assert.equal(reset.weight, 1.0);
+    assert.equal(reset.detector_version, "v2");
+    assert.equal(reset.accept_count, 1);
+    assert.equal(reset.reject_count, 0);
   });
 });
 

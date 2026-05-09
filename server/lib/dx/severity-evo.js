@@ -77,13 +77,25 @@ export function recordDecision(db, args) {
         SELECT detector_version FROM codebase_severity_weights
         WHERE codebase_id = ? AND detector_id = ? AND rule_id = ?
       `).get(codebaseId, detectorId, ruleId);
-      if (cur && cur.detector_version && cur.detector_version !== detectorVersion) {
-        db.prepare(`
-          UPDATE codebase_severity_weights
-          SET weight = 1.0, accept_count = 0, reject_count = 0, ignore_count = 0,
-              detector_version = ?, updated_at = unixepoch()
-          WHERE codebase_id = ? AND detector_id = ? AND rule_id = ?
-        `).run(detectorVersion, codebaseId, detectorId, ruleId);
+      if (cur && cur.detector_version !== detectorVersion) {
+        // First time we observe a version on this row (created from a
+        // decision that didn't pass detectorVersion) → stamp it without
+        // resetting accumulated counters. Real version change (existing
+        // version differs from new) → reset weights and counters.
+        if (!cur.detector_version) {
+          db.prepare(`
+            UPDATE codebase_severity_weights
+            SET detector_version = ?, updated_at = unixepoch()
+            WHERE codebase_id = ? AND detector_id = ? AND rule_id = ?
+          `).run(detectorVersion, codebaseId, detectorId, ruleId);
+        } else {
+          db.prepare(`
+            UPDATE codebase_severity_weights
+            SET weight = 1.0, accept_count = 0, reject_count = 0, ignore_count = 0,
+                detector_version = ?, updated_at = unixepoch()
+            WHERE codebase_id = ? AND detector_id = ? AND rule_id = ?
+          `).run(detectorVersion, codebaseId, detectorId, ruleId);
+        }
       }
     }
 
