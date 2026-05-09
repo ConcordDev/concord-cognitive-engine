@@ -125,15 +125,31 @@ function randomDag(seed, nodeCount) {
   return edges;
 }
 
+// Normalize a chain to its canonical shape: one row per unique contentId
+// at its MINIMUM generation, sorted by (generation, contentId). The CTE-
+// based impl uses GROUP BY to dedupe by content_id; the reference BFS
+// emits an edge per parent, so a diamond-lineage node gets pushed twice
+// before its `visited` flag flips. Comparing parity at the same canonical
+// shape verifies the CTE preserves reachable-set semantics.
 function sortChain(arr) {
-  return [...arr].sort((a, b) => {
+  const minGen = new Map();
+  const creator = new Map();
+  for (const x of arr) {
+    const cur = minGen.get(x.contentId);
+    if (cur == null || x.generation < cur) {
+      minGen.set(x.contentId, x.generation);
+      creator.set(x.contentId, x.creatorId);
+    }
+  }
+  const out = [];
+  for (const [contentId, generation] of minGen) {
+    out.push({ contentId, creatorId: creator.get(contentId), generation });
+  }
+  out.sort((a, b) => {
     if (a.generation !== b.generation) return a.generation - b.generation;
     return a.contentId.localeCompare(b.contentId);
-  }).map(x => ({
-    contentId: x.contentId,
-    creatorId: x.creatorId,
-    generation: x.generation,
-  }));
+  });
+  return out;
 }
 
 describe("royalty-cascade CTE parity (Phase 2)", () => {

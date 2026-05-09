@@ -115,7 +115,11 @@ describe("each detector survives the no-input path", () => {
 });
 
 describe("runAllDetectors", () => {
-  it("returns an envelope with reports + totals + durationMs", async () => {
+  // The first detector pass walks the 1.3M-LOC tree and can take 60-90s
+  // on the CI runners. Bumping the per-test timeout from the default 30s
+  // keeps the suite green; the cache means subsequent tests reuse the
+  // first run and complete in milliseconds.
+  it("returns an envelope with reports + totals + durationMs", { timeout: 180000 }, async () => {
     const report = await getAllReport();
     assert.ok(typeof report.generatedAt === "string");
     assert.ok(Array.isArray(report.reports));
@@ -127,7 +131,7 @@ describe("runAllDetectors", () => {
     for (const r of report.reports) assertReportShape(r);
   });
 
-  it("filters by consumer", async () => {
+  it("filters by consumer", { timeout: 180000 }, async () => {
     const all = await getAllReport();
     const repair = await runAllDetectors({ root: REPO_ROOT, consumer: "repair-cortex" });
     assert.ok(repair.reports.length <= all.reports.length);

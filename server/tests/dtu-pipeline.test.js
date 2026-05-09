@@ -168,6 +168,22 @@ function createMockDb() {
                 fork_creti: 30,
               }));
           }
+          // batchLookup pattern: SELECT <cols> FROM dtus WHERE id IN (?, ?, ...)
+          // (introduced when compressToDMega/compressToHyper switched to a
+          // single batched lookup instead of N round-trips). The mock now
+          // returns the projected row for each matching id.
+          if (sql.includes("FROM dtus WHERE id IN (")) {
+            const ids = new Set(params);
+            return tables.dtus
+              .filter(d => ids.has(d.id))
+              .map(d => ({
+                id: d.id,
+                title: d.title,
+                content_type: d.content_type,
+                creti_score: d.creti_score,
+                tier: d.tier,
+              }));
+          }
           if (sql.includes("FROM dtus WHERE status")) {
             return tables.dtus.filter(d => d.status === "published").map(d => ({
               ...d, tags_json: d.tags_json || "[]",
