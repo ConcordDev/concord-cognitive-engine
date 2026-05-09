@@ -33285,6 +33285,17 @@ register("marketplace", "purchaseWithRoyalties", async (ctx, input) => {
   if (!dtu?.marketplace?.listed) return { ok: false, error: "not_listed" };
 
   const price = dtu.marketplace.price || 0;
+  if (price > 0) {
+    // Server-side balance check — never trust client balance
+    const buyerId = ctx?.actor?.userId || ctx?.actor?.id;
+    if (!buyerId) return { ok: false, error: "authentication_required" };
+    try { ensureEconomicState(); } catch {}
+    const buyerWallet = STATE.economic?.wallets?.get(buyerId);
+    const buyerBalance = buyerWallet?.balance || 0;
+    if (buyerBalance < price) {
+      return { ok: false, error: "insufficient_balance", balance: buyerBalance, price };
+    }
+  }
   if (price === 0) {
     const clone = JSON.parse(JSON.stringify(dtu));
     clone.id = uid("dtu");
@@ -33309,13 +33320,18 @@ register("marketplace", "purchaseWithRoyalties", async (ctx, input) => {
     const amount = Math.round(creatorPool * royalty.rate * 100) / 100;
     remainingPool -= amount;
 
+    // Check if recipient wallet exists — hold in escrow if not
+    const recipientWallet = STATE.economic?.wallets?.get(royalty.originalCreator);
+    const paymentTarget = recipientWallet ? royalty.originalCreator : "escrow";
     payments.push({
-      recipient: royalty.originalCreator,
+      recipient: paymentTarget,
+      originalRecipient: recipientWallet ? undefined : royalty.originalCreator,
       amount,
       type: "royalty",
       citationType: royalty.citationType,
       sourceDtuId: royalty.sourceDtuId,
       depth: royalty.depth,
+      escrowed: !recipientWallet,
     });
 
     // Create royalty DTU for audit trail
