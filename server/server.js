@@ -9257,7 +9257,16 @@ async function runMacro(domain, name, input, ctx) {
   // cookie-auth users are not gated here.
   // Tracking start time for the macro:afterExecute billing hook below.
   const _macroStart = Date.now();
-  const _macroApiKeyId = ctx?.actor?.apiKeyId || ctx?.apiKeyId || null;
+  // API-key auth populates apiKeyId in reqMeta (see /api/v1/lens/:domain/:action
+  // route); cookie/JWT paths can also set it on actor or directly on ctx.
+  // Read from all three so paid traffic actually goes through quota + billing.
+  const _macroApiKeyId = ctx?.actor?.apiKeyId || ctx?.apiKeyId || ctx?.reqMeta?.apiKeyId || null;
+  // Client-supplied idempotency key (Idempotency-Key header threaded into
+  // reqMeta) used to deduplicate ledger writes on retries. Optional — when
+  // missing we mint a per-call UUID so each invocation still gets a unique
+  // refId, but a retrying client MUST pass the same Idempotency-Key for the
+  // ledger to deduplicate.
+  const _macroIdemKey = ctx?.reqMeta?.idempotencyKey || ctx?.idempotencyKey || null;
   const _macroUserId = actor?.userId && actor.userId !== "system" ? actor.userId : null;
   const _macroDb = ctx?.db || STATE?.db || null;
   if (_macroApiKeyId && _macroUserId && _macroDb) {
@@ -9272,7 +9281,9 @@ async function runMacro(domain, name, input, ctx) {
             name,
             durationMs: 0,
             status: "quota_exceeded",
-            refId: `${_macroApiKeyId}:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`,
+            refId: _macroIdemKey
+              ? `${_macroApiKeyId}:idem:${_macroIdemKey}:quota`
+              : `${_macroApiKeyId}:quota:${crypto.randomUUID()}`,
           });
         } catch (e) { observe(e, "macro_billing_log_quota_exceeded"); }
         return { ok: false, error: "quota_exceeded", retryAfterMs: q.retryAfterMs ?? 60000, limit: q.limit };
@@ -9666,8 +9677,15 @@ async function runMacro(domain, name, input, ctx) {
   // the call carried an api_key_id. Best-effort — never throws.
   if (_macroDb) {
     try {
+      // Prefer client-supplied idempotency key so retries collapse to one
+      // FEE entry; fall back to a per-call UUID when the client didn't
+      // pass one. Avoid Date.now() + Math.random() — the prior shape
+      // looked random but two retries always hashed differently and
+      // double-charged.
       const _refId = _macroApiKeyId
-        ? `${_macroApiKeyId}:${_macroStart}:${Math.random().toString(36).slice(2, 8)}`
+        ? (_macroIdemKey
+            ? `${_macroApiKeyId}:idem:${_macroIdemKey}`
+            : `${_macroApiKeyId}:${crypto.randomUUID()}`)
         : null;
       billMacroCall(_macroDb, {
         userId: _macroUserId,
@@ -40291,7 +40309,12 @@ app.post("/api/v1/lens/:domain/:action", requireApiKey(), async (req, res) => {
         role: req.apiKey.role || "member",
         scopes: Array.isArray(req.apiKey.scopes) ? req.apiKey.scopes : ["read", "write"],
       },
-      reqMeta: { path: req.path, method: req.method, apiKeyId: req.apiKey.id },
+      reqMeta: {
+        path: req.path,
+        method: req.method,
+        apiKeyId: req.apiKey.id,
+        idempotencyKey: req.get("idempotency-key") || req.get("x-idempotency-key") || null,
+      },
     };
     const result = await runMacro(domain, action, safeInput, apiCtx);
 
