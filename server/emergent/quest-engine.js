@@ -409,6 +409,19 @@ export function completeStep(questId, stepId) {
         } catch { /* beat realisation best-effort */ }
       })();
 
+      // Phase 4c — lattice-born quest realisation. If this quest came
+      // from a drift alert, mark the lattice_born_quests row realised
+      // so the same drift can stay quiet for a while. Best-effort.
+      (async () => {
+        try {
+          const db = globalThis._concordDB || globalThis.__CONCORD_DB__;
+          if (db) {
+            const lq = await import("../lib/lattice-quest-composer.js");
+            lq.realiseLatticeBornQuest?.(db, quest.id, "completed");
+          }
+        } catch { /* lattice-born quest realisation best-effort */ }
+      })();
+
       // Quest-level reward grant. Requires both a known userId on the quest
       // progress and a registered db reference (set at server boot via
       // setQuestRewardDB). Idempotent at the lib layer; safe to call on

@@ -423,6 +423,18 @@ registerHeartbeat("npc-economy-cycle", {
   handler: runNpcEconomyCycle,
 });
 
+// Phase 4c: Lattice-Born Quests. Every 180 ticks (~45min, staggered well
+// behind the lattice drift-scan at frequency 60) surfaces drift findings
+// (goodhart / memetic_drift / capability_creep / self_reference /
+// echo_chamber / metric_divergence) as procedural 3-step quests planted
+// on archetype-matched NPCs. Idempotent by alert signature.
+// Kill-switch: CONCORD_LATTICE_QUESTS=0.
+import { runLatticeQuestCycle } from "./emergent/lattice-quest-cycle.js";
+registerHeartbeat("lattice-quest-cycle", {
+  frequency: 180,
+  handler: runLatticeQuestCycle,
+});
+
 // Layer 13: NPC-initiated conversations. Every 8 ticks (~2 min) scans each
 // active world for cooldown-elapsed NPC pairs, generates a grounded opener
 // (deterministic by default; LLM-enhanced via CONCORD_NPC_DIALOGUE_LLM=true),
