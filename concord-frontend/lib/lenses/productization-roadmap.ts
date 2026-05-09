@@ -1485,9 +1485,295 @@ export const PRODUCTIZATION_PHASES: ProductionPhase[] = [
     status: 'in_progress',
   },
 
-  // ── PHASE 36: Game ──────────────────────────────────────────────
+  // ── PHASE 36: Trades ────────────────────────────────────────────
   {
     order: 36,
+    lensId: 'trades',
+    name: 'Trades & Construction',
+    rationale: 'Production-grade jobsite management. Estimate, materials, permits, equipment, inspections, change-orders, safety. Rivals Buildertrend + JobNimbus + ServiceTitan.',
+    dependsOn: [],
+    incumbents: ['Buildertrend', 'JobNimbus', 'ServiceTitan', 'Procore'],
+    artifacts: [
+      { name: 'Job',           persistsWithoutDTU: true, storageDomain: 'trades', requiredFields: ['id', 'address', 'status', 'crewId'] },
+      { name: 'Estimate',      persistsWithoutDTU: true, storageDomain: 'trades', requiredFields: ['id', 'jobId', 'lineItems', 'total'] },
+      { name: 'MaterialsList', persistsWithoutDTU: true, storageDomain: 'trades', requiredFields: ['id', 'jobId', 'items', 'cost'] },
+      { name: 'Permit',        persistsWithoutDTU: true, storageDomain: 'trades', requiredFields: ['id', 'jobId', 'jurisdiction', 'status'] },
+      { name: 'Inspection',    persistsWithoutDTU: true, storageDomain: 'trades', requiredFields: ['id', 'jobId', 'inspector', 'result', 'date'] },
+    ],
+    engines: [
+      { name: 'estimator',         description: 'Builds estimate from materials + labour rates + markup', trigger: 'on_demand' },
+      { name: 'compliance-scanner', description: 'Cross-references work against jurisdiction code requirements', trigger: 'on_demand' },
+      { name: 'photo-logger',      description: 'Stamps progress photos with GPS + timestamp + worker', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'estimate-to-permit',     steps: ['scope', 'estimate', 'pull-permits', 'order-materials'], engines: ['estimator', 'compliance-scanner'] },
+      { name: 'inspection-cycle',       steps: ['schedule', 'pre-check', 'inspect', 'log-photos', 'close-or-remediate'], engines: ['compliance-scanner', 'photo-logger'] },
+      { name: 'change-order-cycle',     steps: ['identify', 'estimate-delta', 'client-approve', 'amend-job'], engines: ['estimator'] },
+    ],
+    acceptanceCriteria: ['Job CRUD', 'Estimate generation', 'Permit + inspection log', 'Change-order workflow', 'Photo log with GPS'],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 37: Food ──────────────────────────────────────────────
+  {
+    order: 37,
+    lensId: 'food',
+    name: 'Food & Hospitality',
+    rationale: 'Production-grade restaurant + kitchen ops. Recipe scaling, plate cost, allergen validation, shift scheduling, supplier comparison. Rivals Toast + Square for Restaurants + MarketMan.',
+    dependsOn: [],
+    incumbents: ['Toast', 'Square for Restaurants', 'MarketMan', 'Resy'],
+    artifacts: [
+      { name: 'Recipe',        persistsWithoutDTU: true, storageDomain: 'food', requiredFields: ['id', 'name', 'ingredients', 'yield', 'method'] },
+      { name: 'Menu',          persistsWithoutDTU: true, storageDomain: 'food', requiredFields: ['id', 'name', 'items', 'effectiveDate'] },
+      { name: 'InventoryItem', persistsWithoutDTU: true, storageDomain: 'food', requiredFields: ['id', 'sku', 'quantity', 'reorderPoint'] },
+      { name: 'Booking',       persistsWithoutDTU: true, storageDomain: 'food', requiredFields: ['id', 'guestId', 'time', 'partySize'] },
+      { name: 'Shift',         persistsWithoutDTU: true, storageDomain: 'food', requiredFields: ['id', 'staffId', 'role', 'start', 'end'] },
+    ],
+    engines: [
+      { name: 'recipe-scaler',     description: 'Scales recipe yield up/down preserving ratios', trigger: 'on_demand' },
+      { name: 'plate-coster',      description: 'Prices a plated dish from current inventory cost + waste %', trigger: 'on_demand' },
+      { name: 'allergen-validator', description: 'Cross-checks recipe ingredients against guest allergens', trigger: 'automatic' },
+      { name: 'shift-optimizer',    description: 'Builds shift schedule satisfying coverage + max-hours constraints', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'menu-engineer',       steps: ['cost-each-plate', 'tag-popularity', 'classify-stars-puzzles-plowhorses-dogs', 'recommend'], engines: ['plate-coster'] },
+      { name: 'service-prep',        steps: ['load-bookings', 'forecast-covers', 'order-supplies', 'staff'], engines: ['shift-optimizer'] },
+      { name: 'allergen-flow',       steps: ['intake-allergens', 'cross-check', 'flag-substitutions'], engines: ['allergen-validator'] },
+    ],
+    acceptanceCriteria: ['Recipe scaling', 'Plate cost from inventory', 'Allergen validation', 'Shift schedule with constraints', 'Supplier compare'],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 38: Retail ────────────────────────────────────────────
+  {
+    order: 38,
+    lensId: 'retail',
+    name: 'Retail & Commerce',
+    rationale: 'Production-grade retail ops. Inventory forecasting, customer LTV, churn prediction, price optimization, promotion ROI. Rivals Shopify + Lightspeed + Vend.',
+    dependsOn: [],
+    incumbents: ['Shopify', 'Lightspeed', 'Vend', 'Square Retail'],
+    artifacts: [
+      { name: 'Product',   persistsWithoutDTU: true, storageDomain: 'retail', requiredFields: ['id', 'sku', 'name', 'price', 'stock'] },
+      { name: 'Order',     persistsWithoutDTU: true, storageDomain: 'retail', requiredFields: ['id', 'customerId', 'lineItems', 'status'] },
+      { name: 'Customer',  persistsWithoutDTU: true, storageDomain: 'retail', requiredFields: ['id', 'name', 'email', 'ltv'] },
+      { name: 'Promotion', persistsWithoutDTU: true, storageDomain: 'retail', requiredFields: ['id', 'code', 'discount', 'startsAt', 'endsAt'] },
+    ],
+    engines: [
+      { name: 'reorder-point-calc', description: 'Sets reorder point from rolling demand × lead time', trigger: 'automatic' },
+      { name: 'ltv-projector',      description: 'Projects per-customer lifetime value from purchase history', trigger: 'automatic' },
+      { name: 'price-optimizer',    description: 'Recommends price adjustments based on elasticity + competitor scrape', trigger: 'on_demand' },
+      { name: 'churn-predictor',    description: 'Flags customers likely to churn within 30 days', trigger: 'automatic' },
+    ],
+    pipelines: [
+      { name: 'reorder-cycle',          steps: ['observe-stock', 'forecast-demand', 'compute-reorder-point', 'place-order'], engines: ['reorder-point-calc'] },
+      { name: 'promotion-evaluation',   steps: ['design-promo', 'launch', 'track-redemption', 'compute-roi', 'iterate'], engines: ['price-optimizer'] },
+      { name: 'churn-rescue',           steps: ['flag-at-risk', 'segment-by-value', 'send-offer', 'measure-recovery'], engines: ['churn-predictor', 'ltv-projector'] },
+    ],
+    acceptanceCriteria: ['Product CRUD with stock', 'Order pipeline', 'Customer LTV', 'Promotion ROI', 'Reorder forecasting'],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 39: Household ─────────────────────────────────────────
+  {
+    order: 39,
+    lensId: 'household',
+    name: 'Home & Family',
+    rationale: 'Production-grade household manager. Meal planning, chore rotation, maintenance schedule, family budget, emergency contacts. Rivals OurHome + Cozi + AnyList.',
+    dependsOn: [],
+    incumbents: ['OurHome', 'Cozi', 'AnyList', 'Notion families'],
+    artifacts: [
+      { name: 'FamilyMember',   persistsWithoutDTU: true, storageDomain: 'household', requiredFields: ['id', 'name', 'role', 'allergies'] },
+      { name: 'MealPlan',       persistsWithoutDTU: true, storageDomain: 'household', requiredFields: ['id', 'weekOf', 'days'] },
+      { name: 'Chore',          persistsWithoutDTU: true, storageDomain: 'household', requiredFields: ['id', 'title', 'rotation', 'assignedTo'] },
+      { name: 'MaintenanceItem', persistsWithoutDTU: true, storageDomain: 'household', requiredFields: ['id', 'asset', 'cadence', 'lastDone', 'nextDue'] },
+      { name: 'Budget',         persistsWithoutDTU: true, storageDomain: 'household', requiredFields: ['id', 'category', 'monthly', 'spent'] },
+    ],
+    engines: [
+      { name: 'meal-planner',       description: 'Builds 7-day meal plan honouring allergies + budget + leftovers', trigger: 'on_demand' },
+      { name: 'chore-rotator',      description: 'Rotates chores across family members with fairness weighting', trigger: 'scheduled' },
+      { name: 'maintenance-watcher', description: 'Computes next-due date from cadence; warns at 14d / 7d / 1d', trigger: 'automatic' },
+    ],
+    pipelines: [
+      { name: 'weekly-meal-plan',   steps: ['inventory', 'plan-meals', 'generate-grocery-list', 'export-ics'], engines: ['meal-planner'] },
+      { name: 'maintenance-cycle',  steps: ['scan-assets', 'find-due', 'remind', 'log-completion'], engines: ['maintenance-watcher'] },
+      { name: 'chore-rotation',     steps: ['load-chores', 'rotate', 'notify', 'track-completion'], engines: ['chore-rotator'] },
+    ],
+    acceptanceCriteria: ['Family member roster', 'Meal plan with grocery list', 'Chore rotation', 'Maintenance schedule', 'Budget tracking'],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 40: Agriculture ───────────────────────────────────────
+  {
+    order: 40,
+    lensId: 'agriculture',
+    name: 'Agriculture & Farming',
+    rationale: 'Production-grade farm management. Crop rotation, yield analysis, soil health, water scheduling, certification audit. Rivals Granular + Climate FieldView + AgriWebb.',
+    dependsOn: [],
+    incumbents: ['Granular', 'Climate FieldView', 'AgriWebb', 'Bushel'],
+    artifacts: [
+      { name: 'Field',     persistsWithoutDTU: true, storageDomain: 'agriculture', requiredFields: ['id', 'acres', 'geometry', 'soilType'] },
+      { name: 'Crop',      persistsWithoutDTU: true, storageDomain: 'agriculture', requiredFields: ['id', 'fieldId', 'variety', 'plantedAt'] },
+      { name: 'Animal',    persistsWithoutDTU: true, storageDomain: 'agriculture', requiredFields: ['id', 'tag', 'species', 'birthDate'] },
+      { name: 'Harvest',   persistsWithoutDTU: true, storageDomain: 'agriculture', requiredFields: ['id', 'cropId', 'date', 'yield', 'quality'] },
+      { name: 'SoilTest',  persistsWithoutDTU: true, storageDomain: 'agriculture', requiredFields: ['id', 'fieldId', 'date', 'pH', 'NPK'] },
+    ],
+    engines: [
+      { name: 'rotation-planner',    description: 'Suggests crop rotation honouring soil + market signals', trigger: 'on_demand' },
+      { name: 'yield-analyzer',      description: 'Compares actual yield to forecast + field-level history', trigger: 'automatic' },
+      { name: 'water-scheduler',     description: 'Optimises irrigation against soil moisture + weather forecast', trigger: 'scheduled' },
+      { name: 'certification-auditor', description: 'Walks the audit checklist for organic / GAP / FairTrade', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'plant-to-harvest',   steps: ['rotate', 'plant', 'monitor', 'harvest', 'analyze-yield'], engines: ['rotation-planner', 'yield-analyzer'] },
+      { name: 'soil-health-cycle',  steps: ['test', 'amend', 'retest', 'recommend'], engines: ['rotation-planner'] },
+      { name: 'cert-audit',         steps: ['intake', 'walk-checklist', 'flag-gaps', 'package'], engines: ['certification-auditor'] },
+    ],
+    acceptanceCriteria: ['Field + crop CRUD', 'Yield tracking vs forecast', 'Soil test history', 'Water schedule with weather hook', 'Certification audit pack'],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 41: Logistics ─────────────────────────────────────────
+  {
+    order: 41,
+    lensId: 'logistics',
+    name: 'Transportation & Logistics',
+    rationale: 'Production-grade fleet + route ops. HOS compliance, route optimisation, ETA, load planning, EDI manifest. Rivals Samsara + KeepTruckin + Project44.',
+    dependsOn: [],
+    incumbents: ['Samsara', 'KeepTruckin', 'Project44', 'FleetComplete'],
+    artifacts: [
+      { name: 'Vehicle',    persistsWithoutDTU: true, storageDomain: 'logistics', requiredFields: ['id', 'plate', 'kind', 'odometer'] },
+      { name: 'Driver',     persistsWithoutDTU: true, storageDomain: 'logistics', requiredFields: ['id', 'license', 'hosRemaining'] },
+      { name: 'Shipment',   persistsWithoutDTU: true, storageDomain: 'logistics', requiredFields: ['id', 'origin', 'dest', 'status', 'eta'] },
+      { name: 'Route',      persistsWithoutDTU: true, storageDomain: 'logistics', requiredFields: ['id', 'stops', 'estDuration'] },
+      { name: 'Manifest',   persistsWithoutDTU: true, storageDomain: 'logistics', requiredFields: ['id', 'shipmentId', 'lineItems', 'sealNumber'] },
+    ],
+    engines: [
+      { name: 'route-optimizer',  description: 'Re-orders stops to minimize duration + fuel', trigger: 'on_demand' },
+      { name: 'hos-checker',      description: 'Verifies driver hours-of-service before dispatch', trigger: 'automatic' },
+      { name: 'eta-calculator',   description: 'Recomputes ETA from current location + traffic', trigger: 'automatic' },
+      { name: 'edi-bridge',       description: 'Translates manifest to / from EDI 204 / 214 / 990', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'plan-dispatch-deliver',   steps: ['load-orders', 'optimise-route', 'check-hos', 'dispatch', 'track', 'deliver'], engines: ['route-optimizer', 'hos-checker', 'eta-calculator'] },
+      { name: 'compliance-report',       steps: ['ingest-events', 'compute-hos-utilisation', 'flag-violations', 'export'], engines: ['hos-checker'] },
+    ],
+    acceptanceCriteria: ['Vehicle + driver roster', 'Route optimisation', 'HOS compliance', 'ETA recompute', 'EDI manifest export'],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 42: Education ─────────────────────────────────────────
+  {
+    order: 42,
+    lensId: 'education',
+    name: 'Education',
+    rationale: 'Production-grade SIS + LMS hybrid. Roster, gradebook, attendance, lesson plans, rubrics, parent reports. Rivals PowerSchool + Canvas + Schoology.',
+    dependsOn: [],
+    incumbents: ['PowerSchool', 'Canvas', 'Schoology', 'Google Classroom'],
+    artifacts: [
+      { name: 'Student',     persistsWithoutDTU: true, storageDomain: 'education', requiredFields: ['id', 'name', 'grade', 'guardian'] },
+      { name: 'Course',      persistsWithoutDTU: true, storageDomain: 'education', requiredFields: ['id', 'title', 'teacher', 'period'] },
+      { name: 'Assignment',  persistsWithoutDTU: true, storageDomain: 'education', requiredFields: ['id', 'courseId', 'title', 'dueDate', 'rubricId'] },
+      { name: 'Grade',       persistsWithoutDTU: true, storageDomain: 'education', requiredFields: ['id', 'studentId', 'assignmentId', 'score'] },
+      { name: 'Rubric',      persistsWithoutDTU: true, storageDomain: 'education', requiredFields: ['id', 'criteria', 'levels'] },
+    ],
+    engines: [
+      { name: 'gradebook-engine',    description: 'Computes weighted grade from rubric + criteria scores', trigger: 'automatic' },
+      { name: 'attendance-tracker',  description: 'Records per-period attendance + flags chronic absence', trigger: 'automatic' },
+      { name: 'differentiator',      description: 'Suggests differentiated assignments by student level', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'assign-grade-report',  steps: ['author-assignment', 'attach-rubric', 'collect-submissions', 'grade', 'export-parent-report'], engines: ['gradebook-engine', 'differentiator'] },
+      { name: 'attendance-cycle',     steps: ['take-attendance', 'aggregate', 'flag-chronic', 'notify-guardian'], engines: ['attendance-tracker'] },
+    ],
+    acceptanceCriteria: ['Roster + course CRUD', 'Gradebook with weighted rubrics', 'Attendance tracker', 'Parent report PDF', 'Differentiated lesson plan'],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 43: Fitness ───────────────────────────────────────────
+  {
+    order: 43,
+    lensId: 'fitness',
+    name: 'Fitness & Wellness',
+    rationale: 'Production-grade trainer + studio platform. Programming, periodisation, body comp, injury risk, nutrition. Rivals MindBody + Trainerize + TrueCoach.',
+    dependsOn: [],
+    incumbents: ['MindBody', 'Trainerize', 'TrueCoach', 'MyFitnessPal Pro'],
+    artifacts: [
+      { name: 'Client',     persistsWithoutDTU: true, storageDomain: 'fitness', requiredFields: ['id', 'name', 'goals', 'level'] },
+      { name: 'Program',    persistsWithoutDTU: true, storageDomain: 'fitness', requiredFields: ['id', 'clientId', 'weeks', 'phase'] },
+      { name: 'Workout',    persistsWithoutDTU: true, storageDomain: 'fitness', requiredFields: ['id', 'programId', 'day', 'sets'] },
+      { name: 'Assessment', persistsWithoutDTU: true, storageDomain: 'fitness', requiredFields: ['id', 'clientId', 'date', 'metrics'] },
+    ],
+    engines: [
+      { name: 'periodiser',      description: 'Builds 4/8/12-week periodised program from goal + level', trigger: 'on_demand' },
+      { name: 'body-comp-calc',  description: 'Tracks LBM / fat-mass / hydration over time', trigger: 'automatic' },
+      { name: 'injury-screener', description: 'Flags movement-pattern asymmetry from FMS-style screening', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'design-track-adjust',  steps: ['intake', 'periodise', 'execute', 'reassess', 'adjust'], engines: ['periodiser', 'body-comp-calc'] },
+      { name: 'screen-flag-prescribe', steps: ['screen', 'flag-asymmetry', 'prescribe-correctives'], engines: ['injury-screener'] },
+    ],
+    acceptanceCriteria: ['Client roster + goals', 'Periodised program', 'Workout CRUD', 'Assessment over time', 'Injury risk screening'],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 44: Creative ──────────────────────────────────────────
+  {
+    order: 44,
+    lensId: 'creative',
+    name: 'Creative Production',
+    rationale: 'Production-grade creative-shop ops. Shoot list, asset organise, deliverable package, client proof + review. Rivals Frame.io + Wipster + Air.',
+    dependsOn: [],
+    incumbents: ['Frame.io', 'Wipster', 'Air', 'Adobe Workfront'],
+    artifacts: [
+      { name: 'Project',     persistsWithoutDTU: true, storageDomain: 'creative', requiredFields: ['id', 'title', 'client', 'status'] },
+      { name: 'Shoot',       persistsWithoutDTU: true, storageDomain: 'creative', requiredFields: ['id', 'projectId', 'date', 'location'] },
+      { name: 'Asset',       persistsWithoutDTU: true, storageDomain: 'creative', requiredFields: ['id', 'projectId', 'kind', 'url'] },
+      { name: 'ClientProof', persistsWithoutDTU: true, storageDomain: 'creative', requiredFields: ['id', 'projectId', 'comments', 'status'] },
+    ],
+    engines: [
+      { name: 'shotlist-generator', description: 'Builds shot list from script / brief + auto-checks coverage', trigger: 'on_demand' },
+      { name: 'asset-organiser',    description: 'Auto-tags + folders assets by metadata + visual class', trigger: 'automatic' },
+      { name: 'proof-router',       description: 'Routes proofs to clients with comment-by-timecode UI', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'brief-to-deliverable',  steps: ['intake-brief', 'shotlist', 'shoot', 'organise', 'deliver-proof', 'iterate'], engines: ['shotlist-generator', 'asset-organiser', 'proof-router'] },
+      { name: 'client-review-cycle',   steps: ['publish-proof', 'collect-comments', 'compile-revisions', 'redeliver'], engines: ['proof-router'] },
+    ],
+    acceptanceCriteria: ['Project + shoot + asset CRUD', 'Shot list generation', 'Asset auto-organise', 'Client proof with comments', 'Deliverable package'],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 45: Manufacturing ─────────────────────────────────────
+  {
+    order: 45,
+    lensId: 'manufacturing',
+    name: 'Manufacturing',
+    rationale: 'Production-grade shop-floor ops. Work order, BOM, OEE, quality control, predictive maintenance. Rivals Plex + Fishbowl + Katana.',
+    dependsOn: [],
+    incumbents: ['Plex', 'Fishbowl', 'Katana', 'NetSuite Manufacturing'],
+    artifacts: [
+      { name: 'WorkOrder',     persistsWithoutDTU: true, storageDomain: 'manufacturing', requiredFields: ['id', 'partId', 'qty', 'status', 'dueDate'] },
+      { name: 'BOM',           persistsWithoutDTU: true, storageDomain: 'manufacturing', requiredFields: ['id', 'partId', 'components', 'cost'] },
+      { name: 'QCInspection',  persistsWithoutDTU: true, storageDomain: 'manufacturing', requiredFields: ['id', 'workOrderId', 'inspector', 'pass'] },
+      { name: 'Machine',       persistsWithoutDTU: true, storageDomain: 'manufacturing', requiredFields: ['id', 'name', 'oee', 'lastService'] },
+    ],
+    engines: [
+      { name: 'oee-calculator',       description: 'Aggregates availability × performance × quality into OEE', trigger: 'automatic' },
+      { name: 'maintenance-predictor', description: 'Predicts machine failure window from usage telemetry', trigger: 'automatic' },
+      { name: 'capacity-planner',      description: 'Builds work-center load chart from open work orders', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'work-order-cycle',    steps: ['release-wo', 'consume-materials', 'execute', 'qc-inspect', 'close'], engines: ['oee-calculator'] },
+      { name: 'predict-prevent',     steps: ['observe-telemetry', 'predict-failure', 'schedule-pm', 'execute-pm'], engines: ['maintenance-predictor'] },
+      { name: 'capacity-plan',       steps: ['load-orders', 'group-by-workcenter', 'detect-bottleneck', 'rebalance'], engines: ['capacity-planner'] },
+    ],
+    acceptanceCriteria: ['Work order + BOM CRUD', 'OEE per machine', 'QC inspection log', 'Maintenance prediction', 'Capacity load chart'],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 46: Game ──────────────────────────────────────────────
+  {
+    order: 46,
     lensId: 'game',
     name: 'Game',
     rationale: 'Gamification engine. Adds progression, achievements, and quests to all lenses.',
