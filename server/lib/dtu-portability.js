@@ -155,6 +155,9 @@ export function importEnvelope(db, envelope, opts = {}) {
 
   const stats = { dtus: 0, citations: 0, economy: 0, skipped: 0 };
 
+  // @sql-loop-ok: import is idempotent per dtu.id, so the per-row
+  // SELECT is the contract (skip-if-exists). Caller-bounded by
+  // envelope size + dtu_portability rate limit (4 imports/min).
   for (const dtu of envelope.dtus) {
     try {
       const exists = db.prepare(`SELECT id FROM dtus WHERE id = ?`).get(dtu.id);

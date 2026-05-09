@@ -1,0 +1,156 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "title": "Concord — Phases 1-6 (substrate health)",
+  "uid": "concord-phases-1-6",
+  "version": 1,
+  "schemaVersion": 38,
+  "tags": ["concord", "substrate", "phases-1-6"],
+  "time": { "from": "now-6h", "to": "now" },
+  "timezone": "browser",
+  "refresh": "30s",
+  "panels": [
+    {
+      "title": "Heartbeat tick rate (steady state ~0.067 Hz, alert at 0)",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [{ "expr": "rate(concord_heartbeat_ticks_total[5m])", "legendFormat": "ticks/sec" }],
+      "fieldConfig": { "defaults": { "unit": "hertz" } }
+    },
+    {
+      "title": "Heartbeat overruns (alert > 0)",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [{ "expr": "rate(concord_heartbeat_skipped_total[5m])", "legendFormat": "skipped/sec" }],
+      "fieldConfig": { "defaults": { "unit": "hertz", "color": { "mode": "fixed", "fixedColor": "red" } } }
+    },
+
+    {
+      "title": "Phase 1 — skill_revisions per hour",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 6 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [{ "expr": "increase(concord_skill_revisions_total[1h])", "legendFormat": "{{author_kind}}" }]
+    },
+    {
+      "title": "Phase 1.5 — NPC marketplace listings + intra-NPC purchases",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 6 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        { "expr": "rate(concord_npc_marketplace_listed_total[15m])", "legendFormat": "listings/sec" },
+        { "expr": "rate(concord_npc_marketplace_purchased_total[15m])", "legendFormat": "purchases/sec" }
+      ]
+    },
+    {
+      "title": "Phase 2 — grudges added vs softened",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 6 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        { "expr": "rate(concord_grudges_added_total[15m])", "legendFormat": "added/sec" },
+        { "expr": "rate(concord_grudges_softened_total[15m])", "legendFormat": "softened/sec" }
+      ]
+    },
+
+    {
+      "title": "Phase 3 — beats offered, realised, rejected",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        { "expr": "rate(concord_beats_offered_total[15m])", "legendFormat": "offered" },
+        { "expr": "rate(concord_beats_realised_total[15m])", "legendFormat": "realised" },
+        { "expr": "rate(concord_beats_rejected_total[15m])", "legendFormat": "rejected" }
+      ]
+    },
+    {
+      "title": "Phase 4a — NPCs advanced per heartbeat pass",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [{ "expr": "rate(concord_npc_routine_advanced_total[5m])", "legendFormat": "advanced/sec" }]
+    },
+
+    {
+      "title": "Phase 4b — economy flows by kind",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 18 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        { "expr": "rate(concord_economy_flows_total{flow_kind=\"gather\"}[15m])", "legendFormat": "gather" },
+        { "expr": "rate(concord_economy_flows_total{flow_kind=\"craft_output\"}[15m])", "legendFormat": "craft_output" },
+        { "expr": "rate(concord_economy_flows_total{flow_kind=\"trade_in\"}[15m])", "legendFormat": "trade_in" }
+      ]
+    },
+    {
+      "title": "Phase 4c+5e — drift→quest+region spawns",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 18 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        { "expr": "rate(concord_lattice_quest_spawned_total[1h])", "legendFormat": "quests" },
+        { "expr": "rate(concord_procgen_region_spawned_total[1h])", "legendFormat": "regions" },
+        { "expr": "rate(concord_procgen_region_decayed_total[1h])", "legendFormat": "regions decayed" }
+      ]
+    },
+
+    {
+      "title": "Phase 5b — NPC deaths + heir inheritance count",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 24 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        { "expr": "rate(concord_npc_legacy_recorded_total[1h])", "legendFormat": "legacies" },
+        { "expr": "rate(concord_npc_inheritance_links_total[1h])", "legendFormat": "inheritance links" }
+      ]
+    },
+    {
+      "title": "Phase 5c — current season per world",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 24 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [{ "expr": "concord_world_season{world_id=~\".+\"}", "legendFormat": "{{world_id}}" }]
+    },
+    {
+      "title": "Phase 5a — active land claims",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 24 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [{ "expr": "concord_land_claims_active", "legendFormat": "active" }]
+    },
+
+    {
+      "title": "Phase 6c — discovery search latency p95",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 30 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [{ "expr": "histogram_quantile(0.95, rate(concord_discovery_search_duration_seconds_bucket[5m]))", "legendFormat": "p95" }]
+    },
+    {
+      "title": "Phase 6a/6b — forge mints + corpus exports",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 30 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        { "expr": "rate(concord_forge_minted_total[1h])", "legendFormat": "forge mints" },
+        { "expr": "rate(concord_dtu_corpus_exported_total[1h])", "legendFormat": "exports" },
+        { "expr": "rate(concord_dtu_corpus_imported_total[1h])", "legendFormat": "imports" }
+      ]
+    },
+
+    {
+      "title": "Macro rate-limit blocks (spike = abuse)",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 36 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [{ "expr": "rate(concord_macro_rate_limited_total[5m])", "legendFormat": "{{domain}}.{{name}}" }]
+    }
+  ]
+}

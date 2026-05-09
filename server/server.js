@@ -1147,7 +1147,7 @@ try {
   }
 } catch (_e) { console.warn("[DomainLogic] Failed to merge extended rules:", _e?.message); }
 
-// ---- Rate Limiting for Expensive Macros (Phase 5.2) ----
+// ---- Rate Limiting for Expensive Macros (Phase 5.2 + Phase 1-6 hardening) ----
 const _macroRateLimits = new Map();
 const EXPENSIVE_MACROS = new Map([
   ["scope.metrics", { maxPerMinute: 30, windowMs: 60000 }],
@@ -1155,6 +1155,40 @@ const EXPENSIVE_MACROS = new Map([
   ["system.dream", { maxPerMinute: 10, windowMs: 60000 }],
   ["system.evolution", { maxPerMinute: 10, windowMs: 60000 }],
   ["atlas.autogen", { maxPerMinute: 15, windowMs: 60000 }],
+
+  // Phase 1 — skill evolution. commit() can route through LLM if env-gated.
+  ["skill_evolution.commit", { maxPerMinute: 6, windowMs: 60000 }],
+
+  // Phase 1.5 — knowledge trade. mentorship_request mutates DB + pays NPC;
+  // witness writes a demonstration log per friendly-NPC in chunk.
+  ["knowledge_trade.mentorship_request",          { maxPerMinute: 12, windowMs: 60000 }],
+  ["knowledge_trade.mentorship_complete_session", { maxPerMinute: 6,  windowMs: 60000 }],
+  ["knowledge_trade.witness",                     { maxPerMinute: 60, windowMs: 60000 }],
+
+  // Phase 3 — beats. realise mutates metrics + cascades to forward-sim.
+  ["beats.realise", { maxPerMinute: 30, windowMs: 60000 }],
+
+  // Phase 5a — land claims. claim is a real-estate write.
+  ["land_claims.claim",  { maxPerMinute: 6,  windowMs: 60000 }],
+  ["land_claims.invite", { maxPerMinute: 20, windowMs: 60000 }],
+  ["land_claims.topup",  { maxPerMinute: 20, windowMs: 60000 }],
+
+  // Phase 5d — glyph spells. mint creates DTU + player_glyph_spells row.
+  ["glyph_spells.mint",    { maxPerMinute: 10, windowMs: 60000 }],
+  ["glyph_spells.preview", { maxPerMinute: 60, windowMs: 60000 }],
+
+  // Phase 6a — forge marketplace. mint registers a citation through cascade.
+  ["forge_marketplace.mint", { maxPerMinute: 6, windowMs: 60000 }],
+  ["forge_marketplace.list", { maxPerMinute: 10, windowMs: 60000 }],
+
+  // Phase 6b — DTU portability. export packs the corpus; import writes many rows.
+  ["dtu_portability.export", { maxPerMinute: 4,  windowMs: 60000 }],
+  ["dtu_portability.import", { maxPerMinute: 4,  windowMs: 60000 }],
+
+  // Phase 6c — discovery. LIKE-scan on dtus is expensive at scale.
+  ["discovery.search",   { maxPerMinute: 30, windowMs: 60000 }],
+  ["discovery.facets",   { maxPerMinute: 30, windowMs: 60000 }],
+  ["discovery.trending", { maxPerMinute: 30, windowMs: 60000 }],
 ]);
 
 function checkMacroRateLimit(domain, name) {
@@ -9316,6 +9350,11 @@ async function runMacro(domain, name, input, ctx) {
     dtu_portability: new Set(["export", "validate", "import"]),
     // Phase 6c: discovery — read-only.
     discovery: new Set(["search", "facets", "trending"]),
+    // Governance: read-mostly + caller-driven write macros.
+    governance: new Set([
+      "open_proposal", "cast_vote", "tally", "resolve",
+      "list_open", "list_all", "list_governed_constants",
+    ]),
     // Phase 7 — Code substrate. Read-only macros for the code-DTU view.
     code: new Set(["dtu_for", "dtu_query", "cluster_for", "refresh"]),
   };
@@ -22783,6 +22822,11 @@ registerDtuPortabilityMacros(register);
 // lenses with one query.
 import registerDiscoveryMacros from "./domains/discovery.js";
 registerDiscoveryMacros(register);
+
+// Governance — proposals + votes on constitutional constants. The
+// constants themselves remain code-level; this layer is the audit trail.
+import registerGovernanceMacros from "./domains/governance.js";
+registerGovernanceMacros(register);
 
 // Phase 7 / T2 — Code substrate macros: routes / migrations / modules /
 // macros become DTUs under kind='code_artifact'. See lib/code-substrate/.

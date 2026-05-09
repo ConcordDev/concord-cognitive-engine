@@ -174,6 +174,66 @@
       "description": "Today the hub is shaped by the eight major figures who pass through its embassies: Elias Voss (the Enforcer) leading the Anti-Sovereign Movement; Vesper Kane (the Luminary) building a quiet empire under a hero's face; Thorne Blackroot tending dying forests and dreaming of vengeance; Lady Seraphine Voss running the Crimson Court's intelligence apparatus; Jax Rivera moving silently between worlds for whoever pays; Mama 'Iron Rose' Delgado holding her syndicate together across realities; Kael 'Zero' Nakamura studying the Sovereign's refusal mechanic; and Nyx 'Blackout' Torres organizing the resistance against him. They have rivalries, flirtations, debts, and ideological wars layered on top of each other. The three pillars watch — the Sovereign amused, Concord cataloging, Concordia wishing for more silence and less politics.",
       "significance": "major",
       "tags": ["concordant_web", "hub", "politics"]
+    },
+    {
+      "id": "lore_pinewood_crossing",
+      "title": "The Pinewood Crossing",
+      "type": "battle",
+      "era": "Year 80",
+      "description": "Three brothers — Kael, his elder, and his younger — were sent by the Wardens to hold the Pinewood crossing during the second Coalition skirmish. Captain Horne arrived with reinforcements after the line had already broken. Two brothers fell in a way the rolls do not specify. Kael walked back. Horne signed the duel-pact rolls without comment. Neither has spoken about which brother walked.",
+      "significance": "major",
+      "factions_involved": ["iron_wardens"],
+      "tags": ["pinewood", "duel_pact", "kael_torchlight", "captain_horne"]
+    },
+    {
+      "id": "lore_second_drought",
+      "title": "The Second Drought",
+      "type": "catastrophe",
+      "era": "Year 73",
+      "description": "Three years of failed rains. The Verdant Veil retreated from the upper grove for the first time in recorded history. The Merchants' salt route rerouted through Pinewood territory, opening a tariff dispute that has not yet closed. Marigold's sister walked east during the drought and did not return. The Three Refusals tavern is named for what she would not say before she left.",
+      "significance": "major",
+      "factions_involved": ["verdant_veil_remnant", "merchant_collective"],
+      "tags": ["drought", "marigold", "salt_route"]
+    },
+    {
+      "id": "lore_eight_refusals_codified",
+      "title": "The Eight Refusals Were Codified",
+      "type": "founding",
+      "era": "Year 12",
+      "description": "Twelve years after the Founding Compact, the Verdant Veil keepers met in the upper grove and codified the Eight Refusals — a structured set of acts the goddess will hear if spoken aloud at the inner glyph. The first seven are public: refuse death, harvest, hostility, consequence, numbers, dome, win. The eighth is taught only to the keeper of the second hour. Lyra Silentchant currently holds it. She has refused to teach a ninth.",
+      "significance": "major",
+      "factions_involved": ["verdant_veil_remnant"],
+      "tags": ["refusal_field", "eight_refusals", "lyra_silentchant"]
+    },
+    {
+      "id": "lore_third_keeper_walked",
+      "title": "The Third Keeper Walked Into the Goddess",
+      "type": "mystery",
+      "era": "Year 84",
+      "description": "Sister Bell's predecessor at the temple of the second hour walked into the goddess at sunset on the eighth Founding Day and was not seen again. The Verdant Veil officially recorded the keeper as 'reabsorbed', which is the polite Veil term for dead. Sister Bell has kept a fourth bed made up at the hospice for seven years. She has not said for whom.",
+      "significance": "minor",
+      "factions_involved": ["verdant_veil_remnant"],
+      "tags": ["sister_bell", "the_fourth_bed", "the_third_keeper"]
+    },
+    {
+      "id": "lore_seventeenth_toll",
+      "title": "The Seventeenth Toll",
+      "type": "current_event",
+      "era": "Year 91",
+      "description": "The Merchants' salt route has seventeen toll points; the seventeenth was added two years ago by Warden petition during a high-tension phase, and was never lifted. Vael Silvercoin has been pursuing a tariff exemption at the seventh toll since the last frost. The Merchants' Council vote is scheduled for the second harvest moon.",
+      "significance": "minor",
+      "factions_involved": ["merchant_collective", "iron_wardens"],
+      "tags": ["salt_route", "tariff", "vael_silvercoin"]
+    },
+    {
+      "id": "lore_lamplighter_lineage",
+      "title": "The Lamplighter Was Two People Once",
+      "type": "mystery",
+      "era": "Year 0 (?) - Year 91",
+      "description": "There has been a Lamplighter walking the eastern lantern path before dawn for as long as anyone in Concordia can remember. The temple records suggest the Lamplighter's lineage was originally two: a dawn-walker and a dusk-walker. The dusk-walker stopped showing up in Year 30, around the time the eight refusals were finalized. The current Lamplighter does not speak of either lineage. The lamps are lit on time every morning.",
+      "significance": "minor",
+      "factions_involved": [],
+      "tags": ["lamplighter", "lineage", "lanterns"]
     }
   ]
 }
