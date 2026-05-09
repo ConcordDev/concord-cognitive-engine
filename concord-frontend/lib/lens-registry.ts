@@ -2561,6 +2561,18 @@ export const LENS_REGISTRY: LensEntry[] = [
     order: 10,
     keywords: ['crafting', 'recipes', 'fighting style', 'spell', 'blueprint'],
   },
+  {
+    id: 'understanding',
+    name: 'Understanding',
+    icon: Lightbulb,
+    description: 'Compounding-knowledge substrate. Parse, compose, evolve, consolidate.',
+    category: 'knowledge',
+    showInSidebar: true,
+    showInCommandPalette: true,
+    path: '/lenses/understanding',
+    order: 12,
+    keywords: ['understanding', 'compose', 'parse', 'evolution', 'lineage', 'consolidate'],
+  },
 
   // ── System pages ───────────────────────────────────────────────
   {

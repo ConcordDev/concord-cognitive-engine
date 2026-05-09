@@ -3021,9 +3021,51 @@ export const PRODUCTIZATION_PHASES: ProductionPhase[] = [
     status: 'in_progress',
   },
 
-  // ── PHASE 94: Game ──────────────────────────────────────────────
+  // ── PHASE 94: Understanding ─────────────────────────────────────
   {
     order: 94,
+    lensId: 'understanding',
+    name: 'Understanding',
+    rationale: 'Production-grade workbench for the compounding-knowledge substrate. Parse subjects → compose → score (consistency × confidence) → record evidence → evaluate promotion → consolidate into higher-tier understandings. Wires the 16 backend macros that previously had no UI. Concord-native; no direct equivalent.',
+    dependsOn: [],
+    incumbents: ['Concord-native — no equivalent (parses any subject into a scored, evolveable knowledge unit)'],
+    artifacts: [
+      { name: 'Understanding',     persistsWithoutDTU: true, storageDomain: 'understanding', requiredFields: ['id', 'subjectId', 'subjectKind', 'composer', 'consistency', 'confidence', 'composedAt'] },
+      { name: 'Evidence',          persistsWithoutDTU: true, storageDomain: 'understanding', requiredFields: ['id', 'understandingId', 'text', 'at'] },
+      { name: 'PromotionDecision', persistsWithoutDTU: true, storageDomain: 'understanding', requiredFields: ['id', 'understandingId', 'decision', 'reason', 'at'] },
+      { name: 'Lineage',           persistsWithoutDTU: true, storageDomain: 'understanding', requiredFields: ['rootId', 'depth', 'descendants'] },
+      { name: 'Consolidation',     persistsWithoutDTU: true, storageDomain: 'understanding', requiredFields: ['id', 'parentId', 'childIds', 'similarity'] },
+    ],
+    engines: [
+      { name: 'parser',              description: 'Parses a subject (DTU / claims / raw / entity / world / faction) into a scored understanding', trigger: 'on_demand' },
+      { name: 'composer',            description: 'Saves a parsed understanding via deterministic rules or the subconscious LLM', trigger: 'on_demand' },
+      { name: 'promotion-gate',      description: 'Evaluates evidence + thresholds and decides promote / reject / pending', trigger: 'on_demand' },
+      { name: 'consolidator',        description: 'Detects similar understandings + merges them into a higher-tier consolidation', trigger: 'automatic' },
+      { name: 'evolution-tick',      description: 'Heartbeat-driven sweep over pending promotions + auto-decisions', trigger: 'scheduled' },
+      { name: 'expiry-sweeper',      description: 'GCs understandings past their TTL', trigger: 'scheduled' },
+    ],
+    pipelines: [
+      { name: 'parse-compose-save',     steps: ['parse', 'preview-scores', 'compose', 'persist', 'emit-id'], engines: ['parser', 'composer'] },
+      { name: 'evidence-promotion',     steps: ['record-evidence', 'evaluate', 'apply-decision', 'cascade-children'], engines: ['promotion-gate'] },
+      { name: 'consolidation-cycle',    steps: ['find-candidates', 'rank-similarity', 'consolidate', 'demote-children'], engines: ['consolidator'] },
+      { name: 'lineage-walk',           steps: ['select-root', 'walk-children', 'render-tree', 'export'], engines: [] },
+      { name: 'maintenance-tick',       steps: ['evolution-tick', 'sweep-expired', 'emit-stats'], engines: ['evolution-tick', 'expiry-sweeper'] },
+    ],
+    acceptanceCriteria: [
+      'Browse + filter all understandings by subject kind',
+      'Compose tab supports rules + LLM composer',
+      'Evidence + promotion ledger with apply-decision flow',
+      'Consolidation candidates surface and merge',
+      'Lineage walk to configurable depth',
+      'Manual evolution-tick + sweep triggers',
+      'Compose-session artifact persisted in lens-artifact runtime',
+    ],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 95: Game ──────────────────────────────────────────────
+  {
+    order: 95,
     lensId: 'game',
     name: 'Game',
     rationale: 'Gamification engine. Adds progression, achievements, and quests to all lenses.',

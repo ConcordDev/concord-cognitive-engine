@@ -1789,6 +1789,23 @@ export const LENS_MANIFESTS: LensManifest[] = [
     category: 'creative',
   },
   {
+    domain: 'understanding',
+    label: 'Understanding',
+    artifacts: ['understanding', 'evidence', 'lineage', 'consolidation', 'compose-session'],
+    macros: {
+      list:   'lens.understanding.list',
+      get:    'lens.understanding.get',
+      create: 'lens.understanding.create',
+      update: 'lens.understanding.update',
+      delete: 'lens.understanding.delete',
+      run:    'lens.understanding.run',
+      export: 'lens.understanding.export',
+    },
+    exports: ['json', 'csv'],
+    actions: ['parse', 'compose', 'recompose', 'record_evidence', 'evaluate_promotion', 'apply_promotion', 'consolidate', 'lineage', 'evolution_tick', 'sweep'],
+    category: 'knowledge',
+  },
+  {
     domain: 'creator',
     label: 'Creator',
     artifacts: ['profile', 'royalty_stream', 'tier_pricing', 'follower', 'creator_score'],
