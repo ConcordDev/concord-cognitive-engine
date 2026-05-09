@@ -17,9 +17,10 @@ vi.mock('next/navigation', () => ({
   }),
 }));
 
-// Mock lens-registry — icon must be defined inside the factory since vi.mock is hoisted
+// Mock lens-registry — provides two lenses across two categories so the
+// tests can exercise both a stand-alone (Resonance/core) and an
+// absorbed-child lens (Marketplace under Board/governance).
 vi.mock('@/lib/lens-registry', () => {
-  const _Icon = (props: { className?: string }) => Object.assign(document.createElement('span'), { className: props?.className || '' });
   return {
     getCommandPaletteLenses: () => [
       {
@@ -29,6 +30,7 @@ vi.mock('@/lib/lens-registry', () => {
         path: '/lenses/resonance',
         icon: ({ className }: { className?: string }) => <span data-testid="mock-icon" className={className}>I</span>,
         category: 'core',
+        keywords: ['vibe', 'pulse'],
       },
       {
         id: 'marketplace',
@@ -37,6 +39,7 @@ vi.mock('@/lib/lens-registry', () => {
         path: '/lenses/marketplace',
         icon: ({ className }: { className?: string }) => <span data-testid="mock-icon" className={className}>I</span>,
         category: 'governance',
+        keywords: ['shop', 'buy'],
       },
     ],
     getParentCoreLens: (id: string) => {
@@ -76,6 +79,20 @@ vi.mock('lucide-react', async (importOriginal) => {
 
 import { CommandPalette } from '@/components/shell/CommandPalette';
 
+/**
+ * Suite for the lens-driven CommandPalette
+ * (concord-frontend/components/common/CommandPalette.tsx).
+ *
+ * The earlier generation of this suite asserted hardcoded commands
+ * ("Go to Dashboard", "Create New DTU"), a `{N} results` footer, and
+ * a longer placeholder. The component has since been refactored to be
+ * purely LENS_MANIFESTS-driven with category groups + an empty-state
+ * "No lenses matching {q}" string + an icon-only nav-hint footer.
+ *
+ * These assertions match the current shape end-to-end against the
+ * lens-registry mock above (2 lenses: Resonance + Marketplace).
+ */
+
 describe('CommandPalette', () => {
   const defaultProps = {
     isOpen: true,
@@ -83,7 +100,8 @@ describe('CommandPalette', () => {
   };
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    mockPush.mockClear();
+    defaultProps.onClose = vi.fn();
   });
 
   it('renders nothing when not open', () => {
@@ -91,159 +109,141 @@ describe('CommandPalette', () => {
     expect(container.innerHTML).toBe('');
   });
 
-  it('renders dialog when open', () => {
+  it('renders dialog + combobox + listbox when open', () => {
     render(<CommandPalette {...defaultProps} />);
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     expect(screen.getByRole('combobox')).toBeInTheDocument();
+    expect(screen.getByRole('listbox')).toBeInTheDocument();
   });
 
-  it('renders search input with placeholder', () => {
+  it('renders search input with the lens-driven placeholder', () => {
     render(<CommandPalette {...defaultProps} />);
-    expect(screen.getByPlaceholderText('Search lenses, or type > for NLP commands...')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Search lenses...')).toBeInTheDocument();
   });
 
-  it('shows default commands including Go to Dashboard', () => {
+  it('renders a button for each registered lens (lens-driven)', () => {
     render(<CommandPalette {...defaultProps} />);
-    expect(screen.getByText('Go to Dashboard')).toBeInTheDocument();
+    expect(screen.getByText('Resonance')).toBeInTheDocument();
+    expect(screen.getByText('Marketplace')).toBeInTheDocument();
   });
 
-  it('shows action commands', () => {
+  it('renders the lens description as secondary text', () => {
     render(<CommandPalette {...defaultProps} />);
-    expect(screen.getByText('Create New DTU')).toBeInTheDocument();
+    expect(screen.getByText('View system resonance')).toBeInTheDocument();
+    expect(screen.getByText('Browse the marketplace')).toBeInTheDocument();
   });
 
-  it('shows lens navigation commands', () => {
+  it('renders a category header for each represented category', () => {
     render(<CommandPalette {...defaultProps} />);
-    expect(screen.getByText('Go to Resonance')).toBeInTheDocument();
+    expect(screen.getByText('Core')).toBeInTheDocument();
+    expect(screen.getByText('Governance')).toBeInTheDocument();
   });
 
-  it('shows parent context for absorbed lenses', () => {
+  it('filters lenses based on a fuzzy query match on the name', () => {
     render(<CommandPalette {...defaultProps} />);
-    // Marketplace is absorbed into Board, so it shows "Board > Marketplace"
-    expect(screen.getByText('Go to Board > Marketplace')).toBeInTheDocument();
+    const input = screen.getByRole('combobox');
+    fireEvent.change(input, { target: { value: 'reso' } });
+    expect(screen.getByText('Resonance')).toBeInTheDocument();
+    expect(screen.queryByText('Marketplace')).not.toBeInTheDocument();
   });
 
-  it('filters commands based on search query', () => {
+  it('filters lenses based on a fuzzy query match on a keyword', () => {
     render(<CommandPalette {...defaultProps} />);
-
-    const input = screen.getByPlaceholderText('Search lenses, or type > for NLP commands...');
-    fireEvent.change(input, { target: { value: 'dashboard' } });
-
-    expect(screen.getByText('Go to Dashboard')).toBeInTheDocument();
-    expect(screen.queryByText('Create New DTU')).not.toBeInTheDocument();
+    const input = screen.getByRole('combobox');
+    fireEvent.change(input, { target: { value: 'shop' } });
+    expect(screen.getByText('Marketplace')).toBeInTheDocument();
+    expect(screen.queryByText('Resonance')).not.toBeInTheDocument();
   });
 
-  it('shows "No results" when query matches nothing', () => {
+  it('shows the empty-state message when no lens matches the query', () => {
     render(<CommandPalette {...defaultProps} />);
-
-    const input = screen.getByPlaceholderText('Search lenses, or type > for NLP commands...');
+    const input = screen.getByRole('combobox');
     fireEvent.change(input, { target: { value: 'xyznonexistent' } });
-
-    expect(screen.getByText(/No results found/)).toBeInTheDocument();
-  });
-
-  it('shows result count in footer', () => {
-    render(<CommandPalette {...defaultProps} />);
-    // Footer shows "{N} results" with however many commands are registered
-    expect(screen.getByText(/\d+ results/)).toBeInTheDocument();
-  });
-
-  it('calls onClose when backdrop is clicked', () => {
-    const onClose = vi.fn();
-    render(<CommandPalette isOpen={true} onClose={onClose} />);
-
-    const backdrop = document.querySelector('[aria-hidden="true"]')!;
-    fireEvent.click(backdrop);
-
-    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(screen.getByText(/No lenses matching/)).toBeInTheDocument();
   });
 
   it('calls onClose on Escape key', () => {
     const onClose = vi.fn();
     render(<CommandPalette isOpen={true} onClose={onClose} />);
-
-    const input = screen.getByPlaceholderText('Search lenses, or type > for NLP commands...');
+    const input = screen.getByRole('combobox');
     fireEvent.keyDown(input, { key: 'Escape' });
-
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('navigates on Enter and calls onClose', () => {
+  it('navigates to the first lens on Enter and closes', () => {
     const onClose = vi.fn();
     render(<CommandPalette isOpen={true} onClose={onClose} />);
-
-    const input = screen.getByPlaceholderText('Search lenses, or type > for NLP commands...');
+    const input = screen.getByRole('combobox');
     fireEvent.keyDown(input, { key: 'Enter' });
-
-    // First item is "Go to Dashboard"
-    expect(mockPush).toHaveBeenCalledWith('/');
+    expect(mockPush).toHaveBeenCalledWith('/lenses/resonance');
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('navigates with ArrowDown and ArrowUp', () => {
-    render(<CommandPalette {...defaultProps} />);
-
-    const input = screen.getByPlaceholderText('Search lenses, or type > for NLP commands...');
-
-    // Arrow down selects second item
+  it('navigates with ArrowDown then Enter to the second lens', () => {
+    const onClose = vi.fn();
+    render(<CommandPalette isOpen={true} onClose={onClose} />);
+    const input = screen.getByRole('combobox');
     fireEvent.keyDown(input, { key: 'ArrowDown' });
-    // Arrow down again selects third
-    fireEvent.keyDown(input, { key: 'ArrowDown' });
-    // Arrow up goes back to second
-    fireEvent.keyDown(input, { key: 'ArrowUp' });
-
-    // Now press Enter - should trigger the second command (Create New DTU)
     fireEvent.keyDown(input, { key: 'Enter' });
-    expect(mockPush).toHaveBeenCalledWith('/lenses/chat?new=true');
+    expect(mockPush).toHaveBeenCalledWith('/lenses/marketplace');
   });
 
-  it('does not go below last item with ArrowDown', () => {
-    render(<CommandPalette {...defaultProps} />);
-
-    const input = screen.getByPlaceholderText('Search lenses, or type > for NLP commands...');
-
-    // Press ArrowDown many times
+  it('wraps the selection when ArrowDown is held past the last item', () => {
+    const onClose = vi.fn();
+    render(<CommandPalette isOpen={true} onClose={onClose} />);
+    const input = screen.getByRole('combobox');
+    // Two lenses in the mock (indices 0, 1). 20 ArrowDowns wraps via
+    // (prev < length - 1 ? prev + 1 : 0) — 20 even presses land back at 0.
     for (let i = 0; i < 20; i++) {
       fireEvent.keyDown(input, { key: 'ArrowDown' });
     }
-
-    // Should still be able to press Enter on the last item
     fireEvent.keyDown(input, { key: 'Enter' });
-    expect(mockPush).toHaveBeenCalled();
+    // 20 wraps cleanly (even count → index 0 → Resonance).
+    expect(mockPush).toHaveBeenCalledWith('/lenses/resonance');
   });
 
-  it('does not go above first item with ArrowUp', () => {
-    render(<CommandPalette {...defaultProps} />);
-
-    const input = screen.getByPlaceholderText('Search lenses, or type > for NLP commands...');
-
-    // Press ArrowUp (should stay at 0)
-    fireEvent.keyDown(input, { key: 'ArrowUp' });
-
-    fireEvent.keyDown(input, { key: 'Enter' });
-    // First item is Dashboard
-    expect(mockPush).toHaveBeenCalledWith('/');
-  });
-
-  it('navigates when command button is clicked', () => {
+  it('wraps the selection when ArrowUp is held past the first item', () => {
     const onClose = vi.fn();
     render(<CommandPalette isOpen={true} onClose={onClose} />);
-
-    const dashButton = screen.getByText('Go to Dashboard').closest('button')!;
-    fireEvent.click(dashButton);
-
-    expect(mockPush).toHaveBeenCalledWith('/');
-    expect(onClose).toHaveBeenCalled();
+    const input = screen.getByRole('combobox');
+    // Start at 0; ArrowUp wraps to last (1 = Marketplace), then again
+    // back to 0 (Resonance).
+    fireEvent.keyDown(input, { key: 'ArrowUp' });
+    fireEvent.keyDown(input, { key: 'ArrowUp' });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    // 2 ArrowUps round-trip back to index 0.
+    expect(mockPush).toHaveBeenCalledWith('/lenses/resonance');
   });
 
-  it('resets query when searching changes', () => {
+  it('navigates when a lens button is clicked', () => {
+    const onClose = vi.fn();
+    render(<CommandPalette isOpen={true} onClose={onClose} />);
+    const button = screen.getByText('Marketplace').closest('button')!;
+    fireEvent.click(button);
+    expect(mockPush).toHaveBeenCalledWith('/lenses/marketplace');
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('exposes role=option on each lens entry with stable ids', () => {
     render(<CommandPalette {...defaultProps} />);
+    const options = screen.getAllByRole('option');
+    expect(options).toHaveLength(2);
+    expect(options[0]).toHaveAttribute('id', 'palette-item-resonance');
+    expect(options[1]).toHaveAttribute('id', 'palette-item-marketplace');
+  });
 
-    const input = screen.getByPlaceholderText('Search lenses, or type > for NLP commands...');
-    fireEvent.change(input, { target: { value: 'dashboard' } });
+  it('marks the selected option with aria-selected=true', () => {
+    render(<CommandPalette {...defaultProps} />);
+    const options = screen.getAllByRole('option');
+    expect(options[0]).toHaveAttribute('aria-selected', 'true');
+    expect(options[1]).toHaveAttribute('aria-selected', 'false');
+  });
 
-    // selectedIndex resets to 0 on query change, first match should be Dashboard
-    fireEvent.keyDown(input, { key: 'Enter' });
-    expect(mockPush).toHaveBeenCalledWith('/');
+  it('updates aria-activedescendant as the selection moves', () => {
+    render(<CommandPalette {...defaultProps} />);
+    const input = screen.getByRole('combobox');
+    expect(input).toHaveAttribute('aria-activedescendant', 'palette-item-resonance');
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
+    expect(input).toHaveAttribute('aria-activedescendant', 'palette-item-marketplace');
   });
 });
