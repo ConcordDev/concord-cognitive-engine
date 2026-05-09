@@ -6194,6 +6194,21 @@ async function initMetrics() {
       registers: [METRICS.registry]
     });
 
+    // Per-block heartbeat timing. Every call through runHeartbeatModule
+    // observes its duration here so a Grafana panel + alert can name the
+    // exact block that is starving the next tick. Buckets are tuned for
+    // the 15s tick interval — anything past 5s is already concerning.
+    // Alert rule lives in monitoring/prometheus/alerts.yml
+    // (ConcordHeartbeatBlockSlow): histogram_quantile(0.99,
+    //   rate(concord_heartbeat_block_ms_bucket[5m])) > 10000.
+    METRICS.histograms.heartbeatBlockMs = new prom.Histogram({
+      name: "concord_heartbeat_block_ms",
+      help: "Wall-clock duration of an individual heartbeat tick block (ms), labeled by module",
+      labelNames: ["module"],
+      buckets: [10, 50, 100, 250, 500, 1000, 2500, 5000, 10000, 30000],
+      registers: [METRICS.registry]
+    });
+
     structuredLog("info", "metrics_initialized", { provider: "prometheus" });
   } catch (e) {
     structuredLog("error", "metrics_init_failed", { error: e.message });
@@ -30340,6 +30355,7 @@ const _tickHistory = [];
  * Return value is the function's resolved value or undefined on error.
  */
 async function runHeartbeatModule(name, fn) {
+  const __start = Date.now();
   try {
     return await fn();
   } catch (err) {
@@ -30348,6 +30364,12 @@ async function runHeartbeatModule(name, fn) {
       METRICS?.counters?.heartbeatModuleErrors?.inc({ module: name });
     } catch { /* metrics best-effort */ }
     return undefined;
+  } finally {
+    const __ms = Date.now() - __start;
+    try { METRICS?.histograms?.heartbeatBlockMs?.observe({ module: name }, __ms); } catch { /* metrics best-effort */ }
+    if (__ms > 5000) {
+      try { structuredLog("warn", "heartbeat_block_slow", { module: name, ms: __ms }); } catch { /* logging best-effort */ }
+    }
   }
 }
 
@@ -30633,13 +30655,15 @@ async function governorTick(reason="heartbeat") {
 
       // 2.4 — Forgetting Engine: prevent unbounded DTU growth
       if (_tick % TICK_FREQUENCIES.FORGETTING === 0) {
-        const forgetMod = await import("./emergent/forgetting-engine.js").catch(() => null);
-        if (forgetMod?.runForgettingCycle) {
-          try { await forgetMod.runForgettingCycle(false, {
-            maxForget: FORGETTING.MAX_FORGET_PER_CYCLE,
-            threshold: computeAdaptiveThreshold()
-          }); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
-        }
+        await runHeartbeatModule("forgetting", async () => {
+          const forgetMod = await import("./emergent/forgetting-engine.js").catch(() => null);
+          if (forgetMod?.runForgettingCycle) {
+            await forgetMod.runForgettingCycle(false, {
+              maxForget: FORGETTING.MAX_FORGET_PER_CYCLE,
+              threshold: computeAdaptiveThreshold()
+            });
+          }
+        });
       }
 
       // 2.5 — Entity Teaching: knowledge transfer between entities
@@ -30722,25 +30746,26 @@ async function governorTick(reason="heartbeat") {
 
       // Breakthrough Clusters — every 100th tick
       if (_tick % TICK_FREQUENCIES.BREAKTHROUGH_CLUSTERS === 0) {
-        const breakthroughMod = await import("./emergent/breakthrough-clusters.js").catch(() => null);
-        if (breakthroughMod?.listClusters) {
-          try {
-            const clusters = breakthroughMod.listClusters();
-            for (const c of clusters) {
-              if (c.status === "active") {
-                try { breakthroughMod.triggerClusterResearch(c.id); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
-              }
+        await runHeartbeatModule("breakthrough_clusters", async () => {
+          const breakthroughMod = await import("./emergent/breakthrough-clusters.js").catch(() => null);
+          if (!breakthroughMod?.listClusters) return;
+          const clusters = breakthroughMod.listClusters();
+          for (const c of clusters) {
+            if (c.status === "active") {
+              try { breakthroughMod.triggerClusterResearch(c.id); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
             }
-          } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
-        }
+          }
+        });
       }
 
       // Meta-Derivation — every 200th tick
       if (_tick % TICK_FREQUENCIES.META_DERIVATION === 0) {
-        const metaMod = await import("./emergent/meta-derivation.js").catch(() => null);
-        if (metaMod?.triggerMetaDerivationCycle) {
-          try { metaMod.triggerMetaDerivationCycle(STATE); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
-        }
+        await runHeartbeatModule("meta_derivation", async () => {
+          const metaMod = await import("./emergent/meta-derivation.js").catch(() => null);
+          if (metaMod?.triggerMetaDerivationCycle) {
+            metaMod.triggerMetaDerivationCycle(STATE);
+          }
+        });
       }
 
       // Feedback Engine — process user feedback queue every FEEDBACK.PROCESS_INTERVAL ticks
@@ -30832,8 +30857,11 @@ async function governorTick(reason="heartbeat") {
       // ── Consolidation Pipeline (derived from hardware math) ──
       // Runs every CONSOLIDATION.TICK_INTERVAL ticks (~7.5 minutes)
       // This is the primary memory management system — consolidation is the lungs.
+      // Wrapped via runHeartbeatModule so timing lands in
+      // concord_heartbeat_block_ms{module="consolidation"} — this block
+      // is the most likely heartbeat-overrun culprit at scale.
       if (_tick % TICK_FREQUENCIES.CONSOLIDATION === 0 && _tick > 0) {
-        try {
+        await runHeartbeatModule("consolidation", async () => {
           const ctx = _governorCtx();
           // Phase 1: Cluster detection for MEGA formation
           try {
@@ -30936,7 +30964,7 @@ async function governorTick(reason="heartbeat") {
               }
             } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
           }
-        } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+        });
       }
 
       // Heap pressure check
@@ -30956,16 +30984,16 @@ async function governorTick(reason="heartbeat") {
         const activeSessions = Array.from(STATE.sessions?.values() || [])
           .filter(s => s.messages?.length && (Date.now() - new Date(s.messages[s.messages.length-1]?.ts || 0).getTime()) < 300000);
         if (activeSessions.length === 0) {
-          try {
+          await runHeartbeatModule("dream_review", async () => {
             const { runDreamReview } = await import("./selfHealing.js");
             await runDreamReview({ dtusMap: STATE.dtus });
-          } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+          });
         }
       }
 
       // Embeddings health check — every 100th tick
       if (_tick % TICK_FREQUENCIES.EMBEDDINGS_CHECK === 0) {
-        try {
+        await runHeartbeatModule("embeddings_check", async () => {
           const embStatus = getEmbeddingStatus(STATE.dtus?.size || 0);
           if (!embStatus?.available) {
             structuredLog("warn", "embeddings_degraded", {
@@ -30974,7 +31002,7 @@ async function governorTick(reason="heartbeat") {
               impact: "semantic_search_disabled"
             });
           }
-        } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+        });
       }
 
       // ══════════════════════════════════════════════════════════════════════
