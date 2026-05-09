@@ -95,9 +95,9 @@ function makeFakeDb() {
     }
     if (sql.startsWith("INSERT INTO npc_legacies")) {
       const [id, npcId, worldId, cause, lastWords, tx, tz, faction, archetype] = args;
-      for (const r of tables.npc_legacies.values()) if (r.npc_id === npcId) {
+      for (const r of tables.npc_legacies.values()) {if (r.npc_id === npcId) {
         const err = new Error("UNIQUE constraint failed: npc_legacies.npc_id"); throw err;
-      }
+      }}
       tables.npc_legacies.set(id, { id, npc_id: npcId, world_id: worldId, cause_of_death: cause, last_words: lastWords, tomb_x: tx, tomb_z: tz, faction, archetype, died_at: Math.floor(Date.now() / 1000) });
       return { changes: 1 };
     }
@@ -126,9 +126,9 @@ function makeFakeDb() {
     }
     if (sql.startsWith("INSERT INTO lattice_born_quests")) {
       const [id, sig, driftType, sev, questId, worldId, npcId] = args;
-      for (const r of tables.lattice_born_quests.values()) if (r.drift_alert_signature === sig) {
+      for (const r of tables.lattice_born_quests.values()) {if (r.drift_alert_signature === sig) {
         const err = new Error("UNIQUE constraint failed"); throw err;
-      }
+      }}
       tables.lattice_born_quests.set(id, { id, drift_alert_signature: sig, drift_type: driftType, drift_severity: sev, quest_id: questId, world_id: worldId, target_npc_id: npcId, realised_at: null });
       return { changes: 1 };
     }
@@ -144,9 +144,9 @@ function makeFakeDb() {
     }
     if (sql.startsWith("INSERT INTO procgen_regions")) {
       const [id, worldId, sig, driftType, regionKind, ax, az, radius] = args;
-      for (const r of tables.procgen_regions.values()) if (r.drift_alert_signature === sig) {
+      for (const r of tables.procgen_regions.values()) {if (r.drift_alert_signature === sig) {
         const err = new Error("UNIQUE constraint failed"); throw err;
-      }
+      }}
       tables.procgen_regions.set(id, { id, world_id: worldId, drift_alert_signature: sig, drift_type: driftType, region_kind: regionKind, anchor_x: ax, anchor_z: az, radius_m: radius, decayed_at: null });
       return { changes: 1 };
     }
@@ -376,7 +376,7 @@ describe("E2E lattice quest + procgen region: drift → quest → region → rea
     // Realise the quest. Cascade should decay the region.
     realiseLatticeBornQuest(db, qResult.questId, "completed");
     // The cascade is async (fire-and-forget) — wait for the next microtask.
-    await new Promise(r => setTimeout(r, 50));
+    await new Promise(r => { setTimeout(r, 50); });
 
     // Region should now be decayed.
     const stillActive = regionAt(db, "w", regionResult.anchor.x, regionResult.anchor.z);

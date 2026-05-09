@@ -2,17 +2,20 @@
 
 _Source for the `Current Wiring Status` section in CLAUDE.md. Human merges; cartographer never auto-rewrites CLAUDE.md._
 
-Generated 2026-05-08T21:25:36.834Z.
+Generated 2026-05-09T10:22:19.727Z.
 
 ## Heartbeat-registered modules
 
 - `refusal-field-sweep` (frequency 1)
+- `combat-recovery-cycle` (frequency 2)
 - `scheduled-posts` (frequency 4)
 - `affect-tick` (frequency 4)
 - `social-npc-bridge` (frequency 5)
 - `eco-expiry-sweep` (frequency 5)
+- `npc-routine-cycle` (frequency 5)
 - `environment-sensor` (frequency 5)
 - `environment-sense` (frequency 5)
+- `npc-economy-cycle` (frequency 8)
 - `npc-conversation-initiator` (frequency 8)
 - `npc-knowledge-bridge` (frequency 10)
 - `corpse-cleanup` (frequency 10)
@@ -23,17 +26,24 @@ Generated 2026-05-08T21:25:36.834Z.
 - `fauna-spawner` (frequency 30)
 - `understanding-evolve` (frequency 40)
 - `lattice-drift-scan` (frequency 60)
+- `personal-beat-scheduler` (frequency 60)
 - `brain-daily-refresh` (frequency 60)
 - `qualia-persist` (frequency 60)
 - `embodied-dream-cycle` (frequency 80)
+- `npc-skill-evolve-cycle` (frequency 80)
 - `forward-sim-cycle` (frequency 100)
 - `lattice-federation-poll` (frequency 120)
 - `culture-drift-pass` (frequency 120)
+- `lattice-quest-cycle` (frequency 180)
 - `faction-strategy-cycle` (frequency 200)
 - `lattice-breakthrough-pass` (frequency 240)
+- `npc-marketplace-cycle` (frequency 240)
+- `land-claims-cycle` (frequency 240)
 - `reflex-architectural-drift` (frequency 360)
+- `procedural-npc-spawner` (frequency 360)
 - `forgetting-health-check` (frequency 480)
 - `reflex-scaling-pressure` (frequency 480)
+- `season-cycle` (frequency 480)
 - `reflex-unsafe-expansion` (frequency 720)
 - `reflex-dependency-entropy` (frequency 1440)
 - `code-substrate-refresh` (frequency 1440)

@@ -68,13 +68,13 @@ const PATTERNS = [
   {
     id: "google_api_key",
     severity: "high",
-    regex: /\bAIza[0-9A-Za-z_\-]{35}\b/g,
+    regex: /\bAIza[0-9A-Za-z_-]{35}\b/g,
     description: "Google API key",
   },
   {
     id: "jwt_token",
     severity: "medium",
-    regex: /\beyJ[A-Za-z0-9_\-]{10,}\.eyJ[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{10,}\b/g,
+    regex: /\beyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b/g,
     description: "JWT bearer token",
   },
   {

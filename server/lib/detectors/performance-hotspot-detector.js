@@ -157,11 +157,11 @@ const PATTERNS = [
         if (!m) continue;
         const [, name, kind, args] = m;
         // Constant initializer (`new Set([…])`) — not a cache.
-        if (/^\s*\[[^\[\]]*\]\s*$/.test(args)) continue;
+        if (/^\s*\[[^[\]]*\]\s*$/.test(args)) continue;
         // UPPER_SNAKE_CASE — convention says it's a constant.
         if (/^[A-Z][A-Z0-9_]*$/.test(name)) continue;
         // Bounded-cache annotation — explicit operator opt-out.
-        if (new RegExp(`@bounded-cache-ok\\b`).test(content) &&
+        if (/@bounded-cache-ok\b/.test(content) &&
             new RegExp(`\\b${name}\\b[^\\n]*@bounded-cache-ok`).test(content)) {
           continue;
         }

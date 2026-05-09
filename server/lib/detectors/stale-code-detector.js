@@ -25,9 +25,9 @@ const DYNAMIC_DOMAINS_HINT = new Set([
 ]);
 
 const ROUTE_RE = /\b(?:app|router)\.(get|post|put|patch|delete|head)\s*\(\s*['"`]([^'"`]+)['"`]/g;
-const REGISTER_RE = /register\s*\(\s*['"`]([a-zA-Z0-9_-]+)['"`]\s*,\s*['"`]([a-zA-Z0-9_.\-]+)['"`]/g;
-const RUN_MACRO_RE = /runMacro\s*\(\s*['"`]([a-zA-Z0-9_-]+)['"`]\s*,\s*['"`]([a-zA-Z0-9_.\-]+)['"`]/g;
-const LENS_RUN_BODY_RE = /domain\s*:\s*['"`]([a-zA-Z0-9_-]+)['"`]\s*,\s*name\s*:\s*['"`]([a-zA-Z0-9_.\-]+)['"`]/g;
+const REGISTER_RE = /register\s*\(\s*['"`]([a-zA-Z0-9_-]+)['"`]\s*,\s*['"`]([a-zA-Z0-9_.-]+)['"`]/g;
+const RUN_MACRO_RE = /runMacro\s*\(\s*['"`]([a-zA-Z0-9_-]+)['"`]\s*,\s*['"`]([a-zA-Z0-9_.-]+)['"`]/g;
+const LENS_RUN_BODY_RE = /domain\s*:\s*['"`]([a-zA-Z0-9_-]+)['"`]\s*,\s*name\s*:\s*['"`]([a-zA-Z0-9_.-]+)['"`]/g;
 const TABLE_DDL_RE = /CREATE\s+TABLE(?:\s+IF\s+NOT\s+EXISTS)?\s+([a-zA-Z_][a-zA-Z0-9_]*)/gi;
 const TABLE_REF_RE = /\b(?:FROM|JOIN|INTO|UPDATE|TABLE)\s+([a-zA-Z_][a-zA-Z0-9_]*)/gi;
 // Recognize tables retired by later migrations. A table flagged orphan
@@ -269,7 +269,7 @@ export async function runStaleCodeDetector({ root, opts = {} } = {}) {
     for (const f of frontendFiles) {
       const c = await readSafe(f);
       if (!c) continue;
-      const re = /['"`](\/api\/[a-zA-Z0-9_/:.\-]+)['"`]/g;
+      const re = /['"`](\/api\/[a-zA-Z0-9_/:.-]+)['"`]/g;
       let m;
       while ((m = re.exec(c)) != null) fetchTargets.add(m[1].split("?")[0]);
     }

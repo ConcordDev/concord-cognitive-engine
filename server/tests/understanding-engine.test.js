@@ -205,7 +205,7 @@ describe("save / get / list — persistence round-trip", () => {
     const u1 = parseUnderstanding({ claims: ["First insight"] });
     saveUnderstanding(db, u1);
     // Force a clock tick — composed_at has datetime('now') resolution.
-    await new Promise((r) => setTimeout(r, 1100));
+    await new Promise((r) => { setTimeout(r, 1100); });
     const u2 = parseUnderstanding({ claims: ["Second insight"] });
     saveUnderstanding(db, u2);
 

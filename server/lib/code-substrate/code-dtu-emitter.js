@@ -28,7 +28,7 @@ import crypto from "node:crypto";
 import { walk, readSafe, relPath } from "../detectors/_framework.js";
 
 const ROUTE_RE = /\b(?:app|router)\.(get|post|put|patch|delete|head)\s*\(\s*['"`]([^'"`]+)['"`]/g;
-const REGISTER_RE = /register\s*\(\s*['"`]([a-zA-Z0-9_-]+)['"`]\s*,\s*['"`]([a-zA-Z0-9_.\-]+)['"`]/g;
+const REGISTER_RE = /register\s*\(\s*['"`]([a-zA-Z0-9_-]+)['"`]\s*,\s*['"`]([a-zA-Z0-9_.-]+)['"`]/g;
 const EXPORT_RE = /^export\s+(?:async\s+)?(?:function|const|let|class)\s+(\w+)/gm;
 const FIRST_COMMENT_RE = /^(?:\s*\/\/[^\n]*\n|\s*\/\*[\s\S]*?\*\/\s*\n)+/;
 const JSDOC_FIRST_RE = /^\s*\/\*\*([\s\S]*?)\*\//;
