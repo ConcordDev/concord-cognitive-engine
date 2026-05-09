@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
@@ -83,6 +83,7 @@ export default function PhilosophyLensPage() {
 
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useLensCommand(
 
@@ -90,7 +91,8 @@ export default function PhilosophyLensPage() {
 
       { id: 'tab-arguments', keys: 'a', description: 'Arguments', category: 'navigation', action: () => setActiveTab('Arguments') },
 
-      { id: 'tab-dashboard', keys: 'd', description: 'Dashboard', category: 'navigation', action: () => setActiveTab('Dashboard') },
+      { id: 'tab-dashboard', keys: 'd', description: 'Dashboard', category: 'navigation', action: () => setActiveTab('Dashboard') },      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
+
 
     ],
 
@@ -315,7 +317,8 @@ export default function PhilosophyLensPage() {
             <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
               <input
-                value={searchQuery}
+                ref={searchInputRef}
+              value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 placeholder="Search..."
                 className="w-full pl-10 pr-4 py-2 bg-lattice-surface border border-lattice-border rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-neon-purple"

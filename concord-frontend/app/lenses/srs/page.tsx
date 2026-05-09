@@ -8,7 +8,7 @@ import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { apiHelpers } from '@/lib/api/client';
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef} from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   BookOpen, Clock, CheckCircle2, Brain, TrendingUp, Plus, Search,
@@ -152,13 +152,15 @@ export default function SRSLensPage() {
 
   // Lens-scoped keyboard commands. Anki idiom: letters jump to
   // spaced-repetition workflow stages.
+  const searchInputRef = useRef<HTMLInputElement>(null);
   useLensCommand(
     [
       { id: 'view-study', keys: 's', description: 'Study', category: 'navigation', action: () => setView('study') },
       { id: 'view-decks', keys: 'd', description: 'Decks', category: 'navigation', action: () => setView('decks') },
       { id: 'view-browse', keys: 'b', description: 'Browse', category: 'navigation', action: () => setView('browse') },
       { id: 'view-stats', keys: 't', description: 'Stats', category: 'navigation', action: () => setView('stats') },
-      { id: 'view-create', keys: 'n', description: 'New card', category: 'actions', action: () => setView('create') },
+      { id: 'view-create', keys: 'n', description: 'New card', category: 'actions', action: () => setView('create') },      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
+
     ],
     { lensId: 'srs' }
   );
@@ -679,7 +681,8 @@ export default function SRSLensPage() {
               <div className="relative flex-1 min-w-[200px]">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                 <input
-                  type="text"
+                  ref={searchInputRef}
+              type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search cards..."

@@ -84,6 +84,7 @@ export default function AnimationPage() {
 
   // Lens-scoped keyboard commands. After Effects / Blender idiom:
   // single-letter tab jumps, n new project.
+  const searchInputRef = useRef<HTMLInputElement>(null);
   useLensCommand(
     [
       { id: 'tab-projects', keys: 'p', description: 'Projects', category: 'navigation', action: () => setTab('projects') },
@@ -91,7 +92,8 @@ export default function AnimationPage() {
       { id: 'tab-assets', keys: 'a', description: 'Assets', category: 'navigation', action: () => setTab('assets') },
       { id: 'tab-render', keys: 'r', description: 'Render', category: 'navigation', action: () => setTab('render') },
       { id: 'tab-stats', keys: 's', description: 'Stats', category: 'navigation', action: () => setTab('stats') },
-      { id: 'new-project', keys: 'n', description: 'New project', category: 'actions', action: () => setShowCreateModal(true) },
+      { id: 'new-project', keys: 'n', description: 'New project', category: 'actions', action: () => setShowCreateModal(true) },      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
+
     ],
     { lensId: 'animation' }
   );
@@ -388,7 +390,8 @@ export default function AnimationPage() {
             {/* Search */}
             <div className="relative">
               <input
-                value={searchQuery}
+                ref={searchInputRef}
+              value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 placeholder="Search projects..."
                 className="w-full bg-white/5 border border-white/10 rounded-lg pl-3 pr-8 py-2 text-sm placeholder:text-gray-500 focus:outline-none focus:border-orange-500/30"

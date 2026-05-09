@@ -82,6 +82,7 @@ export default function PhotographyPage() {
   const [searchQuery, setSearchQuery] = useState('');
 
   // Lens-scoped keyboard commands. Lightroom / Capture One idiom.
+  const searchInputRef = useRef<HTMLInputElement>(null);
   useLensCommand(
     [
       { id: 'tab-gallery', keys: 'g', description: 'Gallery', category: 'navigation', action: () => setTab('gallery') },
@@ -89,7 +90,8 @@ export default function PhotographyPage() {
       { id: 'tab-capture', keys: 'c', description: 'Capture', category: 'navigation', action: () => setTab('capture') },
       { id: 'tab-collections', keys: 'l', description: 'Collections', category: 'navigation', action: () => setTab('collections') },
       { id: 'tab-editing', keys: 'e', description: 'Editing', category: 'navigation', action: () => setTab('editing') },
-      { id: 'tab-stats', keys: 's', description: 'Stats', category: 'navigation', action: () => setTab('stats') },
+      { id: 'tab-stats', keys: 's', description: 'Stats', category: 'navigation', action: () => setTab('stats') },      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
+
     ],
     { lensId: 'photography' }
   );
@@ -514,7 +516,8 @@ export default function PhotographyPage() {
             <div className="flex gap-2 flex-wrap">
               <div className="relative flex-1 min-w-[200px]">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-                <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search photos..." className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none focus:border-sky-500/50" />
+                <input ref={searchInputRef}
+              value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search photos..." className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none focus:border-sky-500/50" />
               </div>
               <div className="flex gap-1 flex-wrap">
                 <button onClick={() => setCategoryFilter(null)} className={cn('text-[10px] px-2 py-1 rounded', !categoryFilter ? 'bg-sky-500/20 text-sky-400' : 'text-gray-400 hover:text-white')}>All</button>

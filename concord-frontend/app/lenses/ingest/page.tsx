@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -87,6 +88,7 @@ export default function IngestLensPage() {
   const [showConfig, setShowConfig] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [showFeatures, setShowFeatures] = useState(true);
+  const titleInputRef = useRef<HTMLInputElement>(null);
 
   const { items: ingestArtifacts } = useLensData('ingest', 'ingest-job', { seed: [] });
   const runAction = useRunArtifact('ingest');
@@ -168,6 +170,20 @@ export default function IngestLensPage() {
   }, [handleFile]);
 
   const chunkCount = textInput.length > 0 ? Math.ceil(textInput.length / (chunkSize - chunkOverlap)) : 0;
+
+  // ── Ingest keyboard shortcuts (Airbyte / Fivetran idiom) ─────────
+  // ⌘Enter ingests the current text; t focuses the title field;
+  // c toggles config panel; r refetches history.
+  useLensCommand(
+    [
+      { id: 'ingest-submit', keys: 'mod+enter', description: 'Ingest current text', category: 'actions',
+        action: () => { if (textInput.trim() && !ingestText.isPending) ingestText.mutate(); }, global: true },
+      { id: 'focus-title',   keys: 't', description: 'Focus title',          category: 'navigation', action: () => titleInputRef.current?.focus() },
+      { id: 'toggle-config', keys: 'c', description: 'Toggle config panel',  category: 'view',       action: () => setShowConfig((v) => !v) },
+      { id: 'refresh',       keys: 'r', description: 'Refresh history',      category: 'actions',    action: () => refetch() },
+    ],
+    { lensId: 'ingest' }
+  );
 
   if (isError) {
     return (
@@ -301,10 +317,11 @@ export default function IngestLensPage() {
           {/* Title and domain */}
           <div className="flex gap-3">
             <input
+              ref={titleInputRef}
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Title (optional)"
+              placeholder="Title (optional · t to focus)"
               className="flex-1 px-4 py-2 bg-lattice-surface border border-lattice-border rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-neon-cyan"
             />
             <input

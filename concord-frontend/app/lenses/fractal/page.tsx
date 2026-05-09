@@ -60,6 +60,7 @@ export default function FractalLensPage() {
 
   const [activeTab, setActiveTab] = useState<ModeTab>('patterns');
   const [searchQuery, setSearchQuery] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useLensCommand(
     [
@@ -67,7 +68,8 @@ export default function FractalLensPage() {
       { id: 'tab-nodes', keys: 'n', description: 'Nodes', category: 'navigation', action: () => setActiveTab('nodes') },
       { id: 'tab-generators', keys: 'g', description: 'Generators', category: 'navigation', action: () => setActiveTab('generators') },
       { id: 'tab-iterations', keys: 'i', description: 'Iterations', category: 'navigation', action: () => setActiveTab('iterations') },
-      { id: 'tab-exports', keys: 'e', description: 'Exports', category: 'navigation', action: () => setActiveTab('exports') },
+      { id: 'tab-exports', keys: 'e', description: 'Exports', category: 'navigation', action: () => setActiveTab('exports') },      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
+
     ],
     { lensId: 'fractal' }
   );

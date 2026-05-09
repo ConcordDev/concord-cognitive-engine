@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -85,6 +85,7 @@ export default function GameDesignPage() {
 
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useLensCommand(
 
@@ -100,7 +101,8 @@ export default function GameDesignPage() {
 
       { id: 'tab-levels', keys: 'l', description: 'Levels', category: 'navigation', action: () => setTab('levels') },
 
-      { id: 'tab-balance', keys: 'b', description: 'Balance', category: 'navigation', action: () => setTab('balance') },
+      { id: 'tab-balance', keys: 'b', description: 'Balance', category: 'navigation', action: () => setTab('balance') },      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
+
 
     ],
 
@@ -398,7 +400,8 @@ export default function GameDesignPage() {
         {/* Search */}
         <div className="relative">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-          <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search projects, mechanics..." className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none focus:border-emerald-500/50" />
+          <input ref={searchInputRef}
+              value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search projects, mechanics..." className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none focus:border-emerald-500/50" />
         </div>
 
         {/* Tabs */}

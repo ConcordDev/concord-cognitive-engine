@@ -7,7 +7,7 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ds } from '@/lib/design-system';
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef} from 'react';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   Plane, Plus, Search, Clock, Users, Calendar, X, Navigation,
@@ -285,6 +285,7 @@ export default function AviationLensPage() {
   const [showFeatures, setShowFeatures] = useState(true);
   const [activeMode, setActiveMode] = useState<ModeTab>('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useLensCommand(
     [
@@ -294,7 +295,8 @@ export default function AviationLensPage() {
       { id: 'mode-fleet', keys: 'l', description: 'Fleet', category: 'navigation', action: () => setActiveMode('fleet') },
       { id: 'mode-maintenance', keys: 'm', description: 'Maintenance', category: 'navigation', action: () => setActiveMode('maintenance') },
       { id: 'mode-charter', keys: 'c', description: 'Charter', category: 'navigation', action: () => setActiveMode('charter') },
-      { id: 'mode-weather', keys: 'w', description: 'Weather', category: 'navigation', action: () => setActiveMode('weather') },
+      { id: 'mode-weather', keys: 'w', description: 'Weather', category: 'navigation', action: () => setActiveMode('weather') },      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
+
     ],
     { lensId: 'aviation' }
   );
@@ -1727,7 +1729,8 @@ export default function AviationLensPage() {
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
-                type="text" value={searchQuery}
+                ref={searchInputRef}
+              type="text" value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 placeholder={`Search ${MODE_TABS.find(t => t.key === activeMode)?.label.toLowerCase() || ''}...`}
                 className={cn(ds.input, 'pl-10')}

@@ -320,12 +320,14 @@ export default function BoardLensPage() {
 
     // Lens-scoped keyboard commands. Standard kanban verbs: b/t/g switch
   // view, / focuses search, f toggles filter panel.
+  const searchInputRef = useRef<HTMLInputElement>(null);
   useLensCommand(
     [
       { id: 'view-board', keys: 'b', description: 'Board view', category: 'view', action: () => setViewMode('board') },
       { id: 'view-timeline', keys: 't', description: 'Timeline view', category: 'view', action: () => setViewMode('timeline') },
       { id: 'view-table', keys: 'g', description: 'Table view', category: 'view', action: () => setViewMode('table') },
-      { id: 'toggle-filters', keys: 'f', description: 'Toggle filters', category: 'view', action: () => setShowFilters((v) => !v) },
+      { id: 'toggle-filters', keys: 'f', description: 'Toggle filters', category: 'view', action: () => setShowFilters((v) => !v) },      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
+
     ],
     { lensId: 'board' }
   );
@@ -721,7 +723,8 @@ export default function BoardLensPage() {
               <div className="relative flex-1 max-w-xs">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                 <input
-                  type="text"
+                  ref={searchInputRef}
+              type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search tasks..."

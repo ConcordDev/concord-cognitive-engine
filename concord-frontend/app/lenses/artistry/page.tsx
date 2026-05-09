@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import dynamic from 'next/dynamic';
@@ -64,6 +64,7 @@ export default function ArtistryLensPage() {
 
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useLensCommand(
 
@@ -77,7 +78,8 @@ export default function ArtistryLensPage() {
 
       { id: 'tab-assets', keys: 'a', description: 'Assets', category: 'navigation', action: () => setTab('assets') },
 
-      { id: 'tab-stats', keys: 't', description: 'Stats', category: 'navigation', action: () => setTab('stats') },
+      { id: 'tab-stats', keys: 't', description: 'Stats', category: 'navigation', action: () => setTab('stats') },      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
+
 
     ],
 
@@ -319,7 +321,8 @@ export default function ArtistryLensPage() {
           <div className="space-y-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-              <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search assets..." className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none focus:border-neon-pink/50" />
+              <input ref={searchInputRef}
+              value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search assets..." className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none focus:border-neon-pink/50" />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {(assets as Record<string, unknown>[]).map((asset: Record<string, unknown>) => (

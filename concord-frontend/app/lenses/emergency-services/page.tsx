@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -147,6 +147,7 @@ const STATUS_COLORS: Record<string, string> = {
 export default function EmergencyServicesLensPage() {
   const [activeMode, setActiveMode] = useState<ModeTab>('Dashboard');
   const [searchQuery, setSearchQuery] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useLensCommand(
     [
@@ -157,7 +158,8 @@ export default function EmergencyServicesLensPage() {
       { id: 'mode-ems', keys: 'e', description: 'EMS', category: 'navigation', action: () => setActiveMode('EMS') },
       { id: 'mode-dispatch', keys: 'p', description: 'Dispatch', category: 'navigation', action: () => setActiveMode('Dispatch') },
       { id: 'mode-resources', keys: 'r', description: 'Resources', category: 'navigation', action: () => setActiveMode('Resources') },
-      { id: 'mode-map', keys: 'm', description: 'Map', category: 'navigation', action: () => setActiveMode('Map') },
+      { id: 'mode-map', keys: 'm', description: 'Map', category: 'navigation', action: () => setActiveMode('Map') },      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
+
     ],
     { lensId: 'emergency-services' }
   );
@@ -325,7 +327,8 @@ export default function EmergencyServicesLensPage() {
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
           <input
-            value={searchQuery}
+            ref={searchInputRef}
+              value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={`Search ${currentType.toLowerCase()}s...`}
             className="w-full pl-9 pr-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-sm text-white placeholder-gray-500"

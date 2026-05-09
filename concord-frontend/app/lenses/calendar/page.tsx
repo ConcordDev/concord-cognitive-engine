@@ -415,15 +415,42 @@ export default function CalendarLensPage() {
 
   // Lens-scoped keyboard commands. Standard calendar verbs (Google
   // Calendar / Fantastical idiom): m/w/d/a switch view; n opens the
-  // event composer; t jumps to today.
+  // event composer; t jumps to today; j/k navigate by viewMode period;
+  // arrows do the same as j/k for non-Vim users.
+  const shiftDate = (days: number) => setSelectedDate((prev) => {
+    const next = new Date(prev);
+    next.setDate(next.getDate() + days);
+    return next;
+  });
+  const shiftMonth = (months: number) => setSelectedDate((prev) => {
+    const next = new Date(prev);
+    next.setMonth(next.getMonth() + months);
+    return next;
+  });
+  const periodForward = () => {
+    if (viewMode === 'month') shiftMonth(1);
+    else if (viewMode === 'week') shiftDate(7);
+    else shiftDate(1);
+  };
+  const periodBackward = () => {
+    if (viewMode === 'month') shiftMonth(-1);
+    else if (viewMode === 'week') shiftDate(-7);
+    else shiftDate(-1);
+  };
+
   useLensCommand(
     [
-      { id: 'view-month', keys: 'm', description: 'Month view', category: 'view', action: () => setViewMode('month') },
-      { id: 'view-week', keys: 'w', description: 'Week view', category: 'view', action: () => setViewMode('week') },
-      { id: 'view-day', keys: 'd', description: 'Day view', category: 'view', action: () => setViewMode('day') },
+      { id: 'view-month',  keys: 'm', description: 'Month view',  category: 'view', action: () => setViewMode('month') },
+      { id: 'view-week',   keys: 'w', description: 'Week view',   category: 'view', action: () => setViewMode('week') },
+      { id: 'view-day',    keys: 'd', description: 'Day view',    category: 'view', action: () => setViewMode('day') },
       { id: 'view-agenda', keys: 'a', description: 'Agenda view', category: 'view', action: () => setViewMode('agenda') },
-      { id: 'new-event', keys: 'n', description: 'New event', category: 'actions', action: () => setShowCreateModal(true) },
-      { id: 'goto-today', keys: 't', description: 'Jump to today', category: 'navigation', action: () => setSelectedDate(new Date()) },
+      { id: 'new-event',   keys: 'n', description: 'New event',   category: 'actions', action: () => setShowCreateModal(true) },
+      { id: 'goto-today',  keys: 't', description: 'Jump to today', category: 'navigation', action: () => setSelectedDate(new Date()) },
+      { id: 'next',        keys: 'j', description: 'Next period',     category: 'navigation', action: periodForward },
+      { id: 'prev',        keys: 'k', description: 'Previous period', category: 'navigation', action: periodBackward },
+      { id: 'next-arr',    keys: 'right', description: 'Next period',     category: 'navigation', action: periodForward },
+      { id: 'prev-arr',    keys: 'left',  description: 'Previous period', category: 'navigation', action: periodBackward },
+      { id: 'close-create', keys: 'esc', description: 'Close composer', category: 'navigation', action: () => setShowCreateModal(false) },
     ],
     { lensId: 'calendar' }
   );

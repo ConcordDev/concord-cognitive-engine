@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef} from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -591,13 +591,15 @@ export default function GovernmentLensPage() {
   const [mode, setMode] = useState<ModeTab>('Permits');
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
+  const searchInputRef = useRef<HTMLInputElement>(null);
   useLensCommand(
     [
       { id: 'tab-permits', keys: 'p', description: 'Permits', category: 'navigation', action: () => setMode('Permits') },
       { id: 'tab-public-works', keys: 'u', description: 'Public Works', category: 'navigation', action: () => setMode('Public Works') },
       { id: 'tab-code-enforcement', keys: 'c', description: 'Code Enforcement', category: 'navigation', action: () => setMode('Code Enforcement') },
       { id: 'tab-records', keys: 'r', description: 'Records', category: 'navigation', action: () => setMode('Records') },
-      { id: 'tab-court', keys: 'o', description: 'Court', category: 'navigation', action: () => setMode('Court') },
+      { id: 'tab-court', keys: 'o', description: 'Court', category: 'navigation', action: () => setMode('Court') },      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
+
     ],
     { lensId: 'government' }
   );

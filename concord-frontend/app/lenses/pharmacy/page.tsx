@@ -6,7 +6,7 @@ import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { useState } from 'react';
+import { useState, useRef} from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Pill, AlertTriangle, Plus, Trash2, Clock, ShieldCheck, Layers, ChevronDown, AlertCircle, Package, Search, Loader2, Activity, CheckCircle2 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -42,6 +42,7 @@ export default function PharmacyLensPage() {
 
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useLensCommand(
 
@@ -51,7 +52,8 @@ export default function PharmacyLensPage() {
 
       { id: 'tab-interactions', keys: 'i', description: 'Interactions', category: 'navigation', action: () => setActiveTab('interactions') },
 
-      { id: 'tab-refills', keys: 'r', description: 'Refills', category: 'navigation', action: () => setActiveTab('refills') },
+      { id: 'tab-refills', keys: 'r', description: 'Refills', category: 'navigation', action: () => setActiveTab('refills') },      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
+
 
     ],
 
@@ -471,7 +473,8 @@ export default function PharmacyLensPage() {
       {/* Search */}
       <div className="relative">
         <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-        <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search medications..." className="w-full bg-black/30 border border-white/10 rounded-lg pl-9 pr-3 py-2 text-sm" />
+        <input ref={searchInputRef}
+              value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search medications..." className="w-full bg-black/30 border border-white/10 rounded-lg pl-9 pr-3 py-2 text-sm" />
       </div>
 
       {/* Tab Navigation */}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef} from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -136,10 +136,12 @@ export default function ForestryLensPage() {
   const [activeMode, setActiveMode] = useState<ModeTab>('Dashboard');
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
+  const searchInputRef = useRef<HTMLInputElement>(null);
   useLensCommand(
     [
       { id: 'tab-dashboard', keys: 'd', description: 'Dashboard', category: 'navigation', action: () => setActiveMode('Dashboard') },
-      { id: 'tab-map', keys: 'm', description: 'Map', category: 'navigation', action: () => setActiveMode('Map') },
+      { id: 'tab-map', keys: 'm', description: 'Map', category: 'navigation', action: () => setActiveMode('Map') },      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
+
     ],
     { lensId: 'forestry' }
   );
@@ -247,6 +249,7 @@ export default function ForestryLensPage() {
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
             <input
+              ref={searchInputRef}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={`Search ${currentType.toLowerCase()}s...`}

@@ -6,7 +6,7 @@ import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef} from 'react';
 import { motion } from 'framer-motion';
 import { Star, Orbit as Telescope, Plus, Trash2, Search, Layers, ChevronDown, Globe, Target, Eye, EyeOff, Zap, Loader2 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -115,12 +115,14 @@ export default function AstronomyLensPage() {
   const [activeTab, setActiveTab] = useState<'catalog' | 'observations' | 'planning'>('catalog');
   const [showFeatures, setShowFeatures] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useLensCommand(
     [
       { id: 'tab-catalog', keys: 'c', description: 'Catalog', category: 'navigation', action: () => setActiveTab('catalog') },
       { id: 'tab-observations', keys: 'o', description: 'Observations', category: 'navigation', action: () => setActiveTab('observations') },
-      { id: 'tab-planning', keys: 'p', description: 'Planning', category: 'navigation', action: () => setActiveTab('planning') },
+      { id: 'tab-planning', keys: 'p', description: 'Planning', category: 'navigation', action: () => setActiveTab('planning') },      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
+
     ],
     { lensId: 'astronomy' }
   );
@@ -249,7 +251,8 @@ export default function AstronomyLensPage() {
         <div className="space-y-4">
           <div className="relative">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search celestial objects..." className="w-full bg-black/30 border border-white/10 rounded-lg pl-9 pr-3 py-2 text-sm" />
+            <input ref={searchInputRef}
+              value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search celestial objects..." className="w-full bg-black/30 border border-white/10 rounded-lg pl-9 pr-3 py-2 text-sm" />
           </div>
 
           <div className="panel p-4">

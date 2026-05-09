@@ -131,8 +131,11 @@ export default function ArtLensPage() {
   const [showUpload, setShowUpload] = useState(false);
   const [showCreateListing, setShowCreateListing] = useState(false);
 
-  // Lens-scoped keyboard commands. Procreate / Photoshop idiom: g
-  // (gallery), c (canvas), m (marketplace), u upload, l list.
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Lens-scoped keyboard commands. Procreate / Photoshop / Midjourney
+  // idiom: g (gallery), c (canvas), m (marketplace), u upload, l list,
+  // / focus search.
   useLensCommand(
     [
       { id: 'view-gallery', keys: 'g', description: 'Gallery', category: 'navigation', action: () => setViewMode('gallery') },
@@ -141,6 +144,7 @@ export default function ArtLensPage() {
       { id: 'view-myart', keys: 'a', description: 'My art', category: 'navigation', action: () => setViewMode('my-art') },
       { id: 'upload', keys: 'u', description: 'Upload artwork', category: 'actions', action: () => setShowUpload(true) },
       { id: 'list-piece', keys: 'l', description: 'List for sale', category: 'actions', action: () => setShowCreateListing(true) },
+      { id: 'focus-search', keys: '/', description: 'Focus search', category: 'navigation', action: () => searchInputRef.current?.focus() },
     ],
     { lensId: 'art' }
   );
@@ -611,10 +615,11 @@ export default function ArtLensPage() {
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
+            ref={searchInputRef}
             type="text"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Search artwork..."
+            placeholder="Search artwork…  /"
             className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none focus:border-neon-pink/50"
           />
         </div>

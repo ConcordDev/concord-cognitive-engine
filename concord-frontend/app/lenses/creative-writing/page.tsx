@@ -116,6 +116,7 @@ export default function CreativeWritingPage() {
 
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useLensCommand(
 
@@ -127,7 +128,8 @@ export default function CreativeWritingPage() {
 
       { id: 'tab-prompts', keys: 'p', description: 'Prompts', category: 'navigation', action: () => setTab('prompts') },
 
-      { id: 'tab-workshop', keys: 'o', description: 'Workshop', category: 'navigation', action: () => setTab('workshop') },
+      { id: 'tab-workshop', keys: 'o', description: 'Workshop', category: 'navigation', action: () => setTab('workshop') },      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
+
 
     ],
 
@@ -584,7 +586,8 @@ export default function CreativeWritingPage() {
             <div className="flex gap-2">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-                <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search works..." className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none focus:border-amber-500/50" />
+                <input ref={searchInputRef}
+              value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search works..." className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none focus:border-amber-500/50" />
               </div>
               <select value={genreFilter || ''} onChange={e => setGenreFilter((e.target.value || null) as WritingGenre | null)} className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm">
                 <option value="">All genres</option>

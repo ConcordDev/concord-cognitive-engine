@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -249,6 +249,7 @@ export default function MusicLensPage() {
   const [view, setView] = useState<MusicLensView>('home');
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
+  const searchInputRef = useRef<HTMLInputElement>(null);
   useLensCommand(
     [
       { id: 'tab-artist', keys: 'a', description: 'Artist', category: 'navigation', action: () => setView('artist') },
@@ -257,7 +258,8 @@ export default function MusicLensPage() {
       { id: 'tab-home', keys: 'h', description: 'Home', category: 'navigation', action: () => setView('home') },
       { id: 'tab-upload', keys: 'u', description: 'Upload', category: 'navigation', action: () => setView('upload') },
       { id: 'tab-revenue', keys: 'r', description: 'Revenue', category: 'navigation', action: () => setView('revenue') },
-      { id: 'tab-browse', keys: 'b', description: 'Browse', category: 'navigation', action: () => setView('browse') },
+      { id: 'tab-browse', keys: 'b', description: 'Browse', category: 'navigation', action: () => setView('browse') },      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
+
     ],
     { lensId: 'music' }
   );
@@ -1111,7 +1113,8 @@ export default function MusicLensPage() {
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
                   <input
-                    value={searchQuery}
+                    ref={searchInputRef}
+              value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-neon-cyan/50"
                     placeholder="Search tracks, artists, genres, tags..."

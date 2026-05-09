@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
@@ -67,6 +67,7 @@ export default function ParentingLensPage() {
   const [filterStatus, setFilterStatus] = useState<string>('all');
 
   // Lens-scoped keyboard commands.
+  const searchInputRef = useRef<HTMLInputElement>(null);
   useLensCommand(
     [
       { id: 'tab-milestones', keys: 'm', description: 'Milestones', category: 'navigation', action: () => setActiveTab('milestones') },
@@ -74,7 +75,8 @@ export default function ParentingLensPage() {
       { id: 'tab-health', keys: 'h', description: 'Health', category: 'navigation', action: () => setActiveTab('health') },
       { id: 'tab-activities', keys: 'a', description: 'Activities', category: 'navigation', action: () => setActiveTab('activities') },
       { id: 'tab-growth', keys: 'g', description: 'Growth', category: 'navigation', action: () => setActiveTab('growth') },
-      { id: 'tab-education', keys: 'e', description: 'Education', category: 'navigation', action: () => setActiveTab('education') },
+      { id: 'tab-education', keys: 'e', description: 'Education', category: 'navigation', action: () => setActiveTab('education') },      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
+
     ],
     { lensId: 'parenting' }
   );

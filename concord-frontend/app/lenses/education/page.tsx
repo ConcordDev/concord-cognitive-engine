@@ -499,6 +499,7 @@ export default function EducationLensPage() {
 
   // Lens-scoped keyboard commands. LMS idiom (Canvas / Schoology):
   // single-letter section jumps for the teaching workflow.
+  const searchInputRef = useRef<HTMLInputElement>(null);
   useLensCommand(
     [
       { id: 'tab-students', keys: 's', description: 'Students', category: 'navigation', action: () => setActiveTab('Students') },
@@ -506,7 +507,8 @@ export default function EducationLensPage() {
       { id: 'tab-assignments', keys: 'a', description: 'Assignments', category: 'navigation', action: () => setActiveTab('Assignments') },
       { id: 'tab-grades', keys: 'g', description: 'Grades', category: 'navigation', action: () => setActiveTab('Grades') },
       { id: 'tab-quizzes', keys: 'q', description: 'Quizzes', category: 'navigation', action: () => setActiveTab('Quizzes') },
-      { id: 'tab-resources', keys: 'r', description: 'Resources', category: 'navigation', action: () => setActiveTab('Resources') },
+      { id: 'tab-resources', keys: 'r', description: 'Resources', category: 'navigation', action: () => setActiveTab('Resources') },      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
+
     ],
     { lensId: 'education' }
   );
@@ -1670,7 +1672,8 @@ export default function EducationLensPage() {
             <div className="flex items-center gap-2">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search students..." className={cn(ds.input, 'pl-9 w-56')} />
+                <input ref={searchInputRef}
+              type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search students..." className={cn(ds.input, 'pl-9 w-56')} />
               </div>
               <select value={filterStatus} onChange={e => setFilterStatus(e.target.value as Status | 'all')} className={cn(ds.select, 'w-40')}>
                 <option value="all">All statuses</option>

@@ -290,14 +290,18 @@ export default function PodcastLensPage() {
     setIsPlayingPreview(false);
   }, [recordedUrl]);
 
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
   // Lens-scoped keyboard commands. Space toggles preview playback;
-  // Vim-style "g <letter>" jumps between podcast tabs.
+  // Vim-style "g <letter>" jumps between podcast tabs; / focuses search.
   useLensCommand(
     [
       { id: 'preview-toggle', keys: 'space', description: 'Play / pause preview', category: 'actions', action: handlePlayPreview },
-      { id: 'goto-episodes', keys: 'g e', description: 'Go to Episodes', category: 'navigation', action: () => setActiveTab('episodes') },
-      { id: 'goto-create', keys: 'g c', description: 'Go to Create', category: 'navigation', action: () => setActiveTab('create') },
-      { id: 'goto-analytics', keys: 'g a', description: 'Go to Analytics', category: 'navigation', action: () => setActiveTab('analytics') },
+      { id: 'goto-episodes',  keys: 'g e',   description: 'Go to Episodes',      category: 'navigation', action: () => setActiveTab('episodes') },
+      { id: 'goto-create',    keys: 'g c',   description: 'Go to Create',        category: 'navigation', action: () => setActiveTab('create') },
+      { id: 'goto-analytics', keys: 'g a',   description: 'Go to Analytics',     category: 'navigation', action: () => setActiveTab('analytics') },
+      { id: 'focus-search',   keys: '/',     description: 'Focus search',        category: 'navigation', action: () => searchInputRef.current?.focus() },
+      { id: 'new-episode',    keys: 'n',     description: 'New episode',          category: 'actions',    action: () => setActiveTab('create') },
     ],
     { lensId: 'podcast' }
   );
@@ -421,10 +425,11 @@ export default function PodcastLensPage() {
               <div className="relative mb-6">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                 <input
+                  ref={searchInputRef}
                   type="text"
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  placeholder="Search episodes..."
+                  placeholder="Search episodes…  /"
                   className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-purple-400/50"
                 />
                 {searchQuery && (

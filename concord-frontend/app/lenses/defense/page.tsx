@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
@@ -121,6 +121,7 @@ export default function DefenseLensPage() {
 
   const [activeMode, setActiveMode] = useState<ModeTab>('Dashboard');
   const [searchQuery, setSearchQuery] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useLensCommand(
     [
@@ -130,7 +131,8 @@ export default function DefenseLensPage() {
       { id: 'mode-personnel', keys: 'p', description: 'Personnel', category: 'navigation', action: () => setActiveMode('Personnel') },
       { id: 'mode-intel', keys: 'i', description: 'Intel', category: 'navigation', action: () => setActiveMode('Intel') },
       { id: 'mode-logistics', keys: 'l', description: 'Logistics', category: 'navigation', action: () => setActiveMode('Logistics') },
-      { id: 'mode-comms', keys: 'c', description: 'Communications', category: 'navigation', action: () => setActiveMode('Communications') },
+      { id: 'mode-comms', keys: 'c', description: 'Communications', category: 'navigation', action: () => setActiveMode('Communications') },      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
+
     ],
     { lensId: 'defense' }
   );
@@ -268,7 +270,8 @@ export default function DefenseLensPage() {
       <div className="flex items-center gap-2">
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-          <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+          <input ref={searchInputRef}
+              value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
             placeholder={`Search ${currentType.toLowerCase()}s...`}
             className="w-full pl-9 pr-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-sm text-white placeholder-gray-500" />
         </div>
