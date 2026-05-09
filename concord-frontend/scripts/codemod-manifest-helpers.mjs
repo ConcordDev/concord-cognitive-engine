@@ -46,7 +46,7 @@ function ensureImport(src, importLine, anchorRe) {
   return src.slice(0, at) + '\n' + importLine + src.slice(at);
 }
 
-async function processFile(file, lensId) {
+async function processFile(file, _lensId) {
   const src = await readFile(file, 'utf8');
   const loc = src.split('\n').length;
   if (loc >= DEEP_LENS_LOC_THRESHOLD) return { skipped: 'deep-lens-has-bespoke-chrome' };

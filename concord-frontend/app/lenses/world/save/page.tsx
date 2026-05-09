@@ -19,6 +19,7 @@ import {
 import dynamic from 'next/dynamic';
 import { api } from '@/lib/api/client';
 import { UtilityPageShell } from '@/components/shell/UtilityPageShell';
+import { LensShell } from '@/components/lens/LensShell';
 
 // Mirror the SaveSystem prop shape locally — extracting via
 // Parameters<typeof X> on a dynamic-imported component is blocked by
@@ -126,18 +127,20 @@ export default function SaveSystemPage() {
   }, []);
 
   return (
-    <UtilityPageShell
-      icon={Cloud}
-      title="Save & Sync"
-      subtitle="Autosave runs on the governor tick · Manual sync available"
-      showBackButton
-    >
-      <SaveSystem
-        saveState={saveState}
-        offlineCalcs={offlineCalcs}
-        worldPersistence={worldPersistence}
-        onManualSave={handleManualSave}
-      />
-    </UtilityPageShell>
+    <LensShell lensId="world" asMain={false}>
+      <UtilityPageShell
+        icon={Cloud}
+        title="Save & Sync"
+        subtitle="Autosave runs on the governor tick · Manual sync available"
+        showBackButton
+      >
+        <SaveSystem
+          saveState={saveState}
+          offlineCalcs={offlineCalcs}
+          worldPersistence={worldPersistence}
+          onManualSave={handleManualSave}
+        />
+      </UtilityPageShell>
+    </LensShell>
   );
 }

@@ -103,7 +103,7 @@ import MeshStatusCard from '@/components/chat/MeshStatusCard';
 import IntelligenceCard from '@/components/chat/IntelligenceCard';
 import AtlasPrivacyMonitor from '@/components/chat/AtlasPrivacyMonitor';
 import { InitiativeChip, type Initiative } from '@/components/chat/InitiativeChip';
-import { ToolPalette, type ToolEntry } from '@/components/chat/ToolPalette';
+import { ToolPalette } from '@/components/chat/ToolPalette';
 import { useEvent } from '@/lib/realtime/event-bus';
 import {
   recommendLenses,
