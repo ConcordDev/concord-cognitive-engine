@@ -9526,6 +9526,10 @@ async function runMacro(domain, name, input, ctx) {
     // npc_legacy (Sprint B Phase 11.1) — read-only tomb / last-words /
     // inheritance surface for the frontend TombMarker + InheritanceLog UI.
     npc_legacy: new Set(["tombs_for_world", "get", "inheritance_for_heir"]),
+    // faction_strategy (Sprint B Phase 10) — Crucible HUD reads
+    // recent_moves + get_relation; witness_next_move is the cross-
+    // world signature quest's objective-completion macro.
+    faction_strategy: new Set(["recent_moves", "get_relation", "witness_next_move"]),
     messaging: new Set(["status", "bindings", "connect", "verify", "messages"]),
     sandbox: new Set(["create", "status", "action", "list", "pause", "resume"]),
     collab: new Set(["comments", "revisions", "workspace", "edit-session", "create", "update", "delete", "join"]),
@@ -23227,6 +23231,12 @@ registerCombatPolishMacros(register);
 // players can see tombs, last words, and inheritance lineage.
 import registerNpcLegacyMacros from "./domains/npc-legacy.js";
 registerNpcLegacyMacros(register);
+
+// Sprint B Phase 10 — faction-strategy surface for the cross-world
+// signature quest's witness_next_move objective + the Crucible HUD's
+// recent_moves / get_relation reads.
+import registerFactionStrategyMacros from "./domains/faction-strategy.js";
+registerFactionStrategyMacros(register);
 
 // Concordia Procedural Mount System Phase B1 — read-only macros for
 // mount species lookup + eligible-companion + nearby-creature browsing.

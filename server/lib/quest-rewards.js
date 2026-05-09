@@ -163,6 +163,105 @@ export function grantQuestRewards(db, userId, questId, rewards = {}) {
     }).catch(() => { /* skill-progression import optional */ });
   }
 
+  // Sprint B Phase 10 — extended reward kinds for the cross-world
+  // signature quest (the_handshake_revelation). Each kind is
+  // best-effort: if its substrate isn't loaded, skip silently. The
+  // reward log row is already written above; these are side-effects.
+
+  // (1) lens_action_unlock — grants a permanent feature flag that
+  // lattice-quest-composer + HUD components can gate on.
+  if (rewards.lens_action_unlock && typeof rewards.lens_action_unlock === "string") {
+    try {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS user_features (
+          user_id     TEXT NOT NULL,
+          feature_id  TEXT NOT NULL,
+          granted_at  INTEGER NOT NULL DEFAULT (unixepoch()),
+          source      TEXT,
+          PRIMARY KEY (user_id, feature_id)
+        );
+      `);
+      db.prepare(`
+        INSERT OR IGNORE INTO user_features (user_id, feature_id, source)
+        VALUES (?, ?, ?)
+      `).run(userId, rewards.lens_action_unlock, `quest:${questId}`);
+    } catch (err) {
+      logger.warn({ err: err.message, userId, questId, feature: rewards.lens_action_unlock }, "quest_reward_feature_grant_failed");
+    }
+  }
+
+  // (2) governance_vote_weight_bonus — bumps the voter's weight on
+  // governance proposals. Read by governance.tally when summing votes.
+  if (typeof rewards.governance_vote_weight_bonus === "number" && rewards.governance_vote_weight_bonus > 0) {
+    try {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS governance_vote_weights (
+          user_id        TEXT PRIMARY KEY,
+          weight_bonus   INTEGER NOT NULL DEFAULT 0,
+          updated_at     INTEGER NOT NULL DEFAULT (unixepoch())
+        );
+      `);
+      db.prepare(`
+        INSERT INTO governance_vote_weights (user_id, weight_bonus)
+        VALUES (?, ?)
+        ON CONFLICT(user_id) DO UPDATE SET
+          weight_bonus = weight_bonus + excluded.weight_bonus,
+          updated_at   = unixepoch()
+      `).run(userId, Math.max(0, Math.floor(rewards.governance_vote_weight_bonus)));
+    } catch (err) {
+      logger.warn({ err: err.message, userId, questId }, "quest_reward_vote_weight_failed");
+    }
+  }
+
+  // (3) signature_artifact_dtu — mints a unique non-tradeable DTU
+  // tied to this player. Used by the Vela's Sealed Glyph reward.
+  // Schema-light: we write into the existing dtus table with
+  // kind='signature_artifact' so the citation cascade can already
+  // reference it via the standard royalty path.
+  if (rewards.signature_artifact_dtu && typeof rewards.signature_artifact_dtu === "object") {
+    const def = rewards.signature_artifact_dtu;
+    try {
+      const dtuId = `sig_${crypto.randomUUID().slice(0, 12)}`;
+      db.prepare(`
+        INSERT OR IGNORE INTO dtus (
+          id, owner_user_id, creator_id, title, kind, type,
+          body_json, tags_json, visibility, tier, data, created_at
+        ) VALUES (?, ?, ?, ?, 'signature_artifact', 'signature_artifact', ?, '[]', 'private', 'mega', ?, datetime('now'))
+      `).run(
+        dtuId,
+        userId,
+        userId,
+        String(def.title || `Signature: ${questId}`),
+        JSON.stringify({
+          quest_id: questId,
+          description: String(def.description || ""),
+          non_tradeable: true,
+        }),
+        JSON.stringify({
+          quest_id: questId,
+          non_tradeable: true,
+          unique: true,
+        }),
+      );
+    } catch (err) {
+      logger.warn({ err: err.message, userId, questId }, "quest_reward_signature_dtu_failed");
+    }
+  }
+
+  // (4) ecosystem_score_delta — permanent four-axis metric bump.
+  if (typeof rewards.ecosystem_score_delta === "number" && rewards.ecosystem_score_delta !== 0) {
+    try {
+      db.prepare(`
+        UPDATE player_world_metrics
+           SET ecosystem_score = MAX(0, MIN(1, ecosystem_score + ?)),
+               updated_at = unixepoch()
+         WHERE user_id = ?
+      `).run(rewards.ecosystem_score_delta, userId);
+    } catch (err) {
+      logger.warn({ err: err.message, userId, questId }, "quest_reward_ecosystem_delta_failed");
+    }
+  }
+
   // Realtime fanfare so the GameJuice bridge can fire client-side feedback.
   try {
     const realtimeEmit = globalThis.realtimeEmit;

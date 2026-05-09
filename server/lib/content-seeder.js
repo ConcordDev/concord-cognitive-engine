@@ -381,6 +381,7 @@ export function seedContent({ db = null } = {}) {
   for (const sideFile of [
     "quests/kael-torchlight.json",
     "quests/first-day-arc.json",
+    "quests/the-handshake-revelation.json",
   ]) {
     const side = readJSON(sideFile);
     if (Array.isArray(side)) results.quests += seedQuestFile(side);
