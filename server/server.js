@@ -9295,6 +9295,9 @@ async function runMacro(domain, name, input, ctx) {
     reflection: new Set(["status", "list"]),
     temporal: new Set(["status", "get"]),
     inference: new Set(["status", "traces", "spans", "threads", "checkpoints", "sandboxes", "costs", "query"]),
+    // dx — DX Platform onboarding lens reads `onboarding_progress` for any
+    // signed-in user; anonymous browsers also resolve (returns zero progress).
+    dx: new Set(["onboarding_progress", "welcome"]),
     messaging: new Set(["status", "bindings", "connect", "verify", "messages"]),
     sandbox: new Set(["create", "status", "action", "list", "pause", "resume"]),
     collab: new Set(["comments", "revisions", "workspace", "edit-session", "create", "update", "delete", "join"]),
@@ -22901,6 +22904,11 @@ registerGovernanceMacros(register);
 // Phase 8 — Combat polish surface for the HUD.
 import registerCombatPolishMacros from "./domains/combat-polish.js";
 registerCombatPolishMacros(register);
+
+// DX Platform — onboarding progress + welcome ping for the IDE plugins.
+// Pairs with concord-frontend/app/lenses/dx-platform/page.tsx.
+import registerDxMacros from "./domains/dx.js";
+registerDxMacros(register);
 
 // Concordia Procedural Mount System Phase B1 — read-only macros for
 // mount species lookup + eligible-companion + nearby-creature browsing.
