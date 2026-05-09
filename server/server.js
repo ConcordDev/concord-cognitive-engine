@@ -9522,6 +9522,15 @@ async function runMacro(domain, name, input, ctx) {
     // API keys with the `billing.balance` scope hit these from the
     // editor status bar and the dashboard lens.
     billing: new Set(["usage", "balance", "history", "getCurrentQuota", "priceForMacro"]),
+    // DX Platform Phase A2 — codebase registry + repair-feedback evo.
+    // Plugin clients call these via API key; cookie-auth web users see
+    // the same surface for the dashboard lens. Mutating macros (record_*,
+    // upsert_*) are caller-scoped via codebase ownership in the handler.
+    dx: new Set([
+      "register_codebase", "touch_codebase", "list_codebases",
+      "record_fix_decision", "list_weights", "weighted_findings",
+      "upsert_shadow", "list_shadows", "get_weight",
+    ]),
     // Governance: read-mostly + caller-driven write macros.
     governance: new Set([
       "open_proposal", "cast_vote", "tally", "resolve",
@@ -23042,6 +23051,13 @@ registerGovernanceMacros(register);
 // lib/macro-quota.js for the write side (called from runMacro hooks).
 import registerDxBillingMacros from "./domains/dx-billing.js";
 registerDxBillingMacros(register);
+
+// DX Platform Phase A2 — codebase registry + repair-feedback evo +
+// shadow DTU upsert. Plugin sidebar accept/reject signal feeds severity
+// weights so noisy rules quietly demote per codebase. See
+// lib/dx/codebase-registry.js + lib/dx/severity-evo.js.
+import registerDxMacros from "./domains/dx.js";
+registerDxMacros(register, STATE);
 
 // Phase 8 — Combat polish surface for the HUD.
 import registerCombatPolishMacros from "./domains/combat-polish.js";
