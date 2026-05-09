@@ -1,0 +1,1586 @@
+[
+  {
+    "file": "server/routes/api-billing.js",
+    "line": 51,
+    "method": "POST",
+    "signature": "router.post(\"/keys\", (req, res) => { const { userId, name, isTest } = req.body || {}; const result = createAPIKe"
+  },
+  {
+    "file": "server/routes/api-billing.js",
+    "line": 57,
+    "method": "DELETE",
+    "signature": "router.delete(\"/keys/:keyId\", (req, res) => { const { userId } = req.body || {}; const result = revokeAPIKey(db,"
+  },
+  {
+    "file": "server/routes/api-billing.js",
+    "line": 68,
+    "method": "POST",
+    "signature": "router.post(\"/keys/validate\", (req, res) => { const { rawKey } = req.body || {}; const result = validateAPIKey(d"
+  },
+  {
+    "file": "server/routes/api-billing.js",
+    "line": 83,
+    "method": "POST",
+    "signature": "router.post(\"/price\", (req, res) => { const { endpoint, method, metadata } = req.body || {}; if (!endpoint) retu"
+  },
+  {
+    "file": "server/routes/api-billing.js",
+    "line": 92,
+    "method": "POST",
+    "signature": "router.post(\"/meter\", (req, res) => { const { keyHash, userId, endpoint, method, metadata, balance } = req.body || {"
+  },
+  {
+    "file": "server/routes/api-billing.js",
+    "line": 140,
+    "method": "POST",
+    "signature": "router.post(\"/alerts\", (req, res) => { const result = createAlert(db, req.body || {}); res.status(result.ok ? 20"
+  },
+  {
+    "file": "server/routes/api-billing.js",
+    "line": 150,
+    "method": "DELETE",
+    "signature": "router.delete(\"/alerts/:alertId\", (req, res) => { const { userId } = req.body || {}; const result = deleteAlert("
+  },
+  {
+    "file": "server/routes/api-billing.js",
+    "line": 156,
+    "method": "POST",
+    "signature": "router.post(\"/alerts/check\", (req, res) => { const { userId, balance, dailySpend } = req.body || {}; const resul"
+  },
+  {
+    "file": "server/routes/api-keys.js",
+    "line": 40,
+    "method": "POST",
+    "signature": "router.post(\"/\", (req, res) => { // eslint-disable-next-line no-restricted-syntax const userId = req.user?"
+  },
+  {
+    "file": "server/routes/api-keys.js",
+    "line": 89,
+    "method": "PUT",
+    "signature": "router.put(\"/:id\", (req, res) => { const userId = req.user?.id; if (!userId) { return res.status(401).json"
+  },
+  {
+    "file": "server/routes/api-keys.js",
+    "line": 109,
+    "method": "DELETE",
+    "signature": "router.delete(\"/:id\", (req, res) => { const userId = req.user?.id; const result = revokeKey(req.params.id, userI"
+  },
+  {
+    "file": "server/routes/api-keys.js",
+    "line": 124,
+    "method": "POST",
+    "signature": "router.post(\"/validate\", (req, res) => { const { key } = req.body || {}; const result = validateKey(key); re"
+  },
+  {
+    "file": "server/routes/auth.js",
+    "line": 116,
+    "method": "POST",
+    "signature": "router.post(\"/register\", authRateLimitMiddleware, validate(\"userRegister\"), (req, res) => { const { username, email,"
+  },
+  {
+    "file": "server/routes/auth.js",
+    "line": 241,
+    "method": "POST",
+    "signature": "router.post(\"/login\", authRateLimitMiddleware, validate(\"userLogin\"), (req, res) => { // Defense-in-depth: per-IP AN"
+  },
+  {
+    "file": "server/routes/auth.js",
+    "line": 375,
+    "method": "POST",
+    "signature": "router.post(\"/choose-universe\", (req, res) => { if (!req.user) return res.status(401).json({ ok: false, error: \"Not "
+  },
+  {
+    "file": "server/routes/auth.js",
+    "line": 463,
+    "method": "POST",
+    "signature": "router.post(\"/logout\", (req, res) => { // Blacklist current access token so it can't be replayed const cookieTok"
+  },
+  {
+    "file": "server/routes/auth.js",
+    "line": 506,
+    "method": "POST",
+    "signature": "router.post(\"/refresh\", (req, res) => { const refreshCookie = req.cookies?.[REFRESH_TOKEN_COOKIE]; if (!refreshC"
+  },
+  {
+    "file": "server/routes/auth.js",
+    "line": 569,
+    "method": "POST",
+    "signature": "router.post(\"/revoke-all-sessions\", (req, res) => { if (!req.user) return res.status(401).json({ ok: false, error: \""
+  },
+  {
+    "file": "server/routes/auth.js",
+    "line": 637,
+    "method": "POST",
+    "signature": "router.post(\"/api-keys\", requireRole(\"owner\", \"admin\"), validate(\"apiKeyCreate\"), (req, res) => { const { name, scop"
+  },
+  {
+    "file": "server/routes/auth.js",
+    "line": 692,
+    "method": "DELETE",
+    "signature": "router.delete(\"/api-keys/:keyId\", (req, res) => { if (!req.user) return res.status(401).json({ ok: false, error: \"No"
+  },
+  {
+    "file": "server/routes/auth.js",
+    "line": 712,
+    "method": "POST",
+    "signature": "router.post(\"/api-keys/:keyId/rotate\", requireRole(\"owner\", \"admin\"), (req, res) => { const keyId = req.params.keyId"
+  },
+  {
+    "file": "server/routes/auth.js",
+    "line": 764,
+    "method": "POST",
+    "signature": "router.post(\"/change-password\", validate(\"changePassword\"), (req, res) => { if (!req.user) return res.status(401).js"
+  },
+  {
+    "file": "server/routes/brains.js",
+    "line": 65,
+    "method": "POST",
+    "signature": "router.post(\"/refresh\", adminGate, async (req, res) => { try { const force = req.body?.force !== false; "
+  },
+  {
+    "file": "server/routes/cdn.js",
+    "line": 91,
+    "method": "POST",
+    "signature": "router.post(\"/purge\", asyncHandler(async (req, res) => { requireAdmin(req); const { artifactHash, prefix } = re"
+  },
+  {
+    "file": "server/routes/cdn.js",
+    "line": 112,
+    "method": "POST",
+    "signature": "router.post(\"/purge-all\", asyncHandler(async (req, res) => { requireAdmin(req); // Purge by empty prefix matche"
+  },
+  {
+    "file": "server/routes/cdn.js",
+    "line": 237,
+    "method": "POST",
+    "signature": "router.post(\"/push\", asyncHandler(async (req, res) => { requireAdmin(req); const { artifactHash, contentType } "
+  },
+  {
+    "file": "server/routes/channels.js",
+    "line": 55,
+    "method": "POST",
+    "signature": "router.post(\"/telegram/webhook\", asyncHandler(async (req, res) => { // Verify webhook secret if configured const"
+  },
+  {
+    "file": "server/routes/channels.js",
+    "line": 109,
+    "method": "POST",
+    "signature": "router.post(\"/discord/interactions\", asyncHandler(async (req, res) => { // Discord requires signature verification "
+  },
+  {
+    "file": "server/routes/channels.js",
+    "line": 173,
+    "method": "POST",
+    "signature": "router.post(\"/email/inbound\", asyncHandler(async (req, res) => { const payload = req.body; if (!payload) { "
+  },
+  {
+    "file": "server/routes/compute.js",
+    "line": 161,
+    "method": "POST",
+    "signature": "router.post('/run', asyncHandler(async (req, res) => { const { module: moduleName, fn, args = [] } = req.body; c"
+  },
+  {
+    "file": "server/routes/consent.js",
+    "line": 51,
+    "method": "POST",
+    "signature": "router.post(\"/grant\", (req, res) => { const userId = req.user?.id; if (!userId) return res.status(401).json({ ok"
+  },
+  {
+    "file": "server/routes/consent.js",
+    "line": 68,
+    "method": "POST",
+    "signature": "router.post(\"/revoke\", (req, res) => { const userId = req.user?.id; if (!userId) return res.status(401).json({ o"
+  },
+  {
+    "file": "server/routes/consent.js",
+    "line": 85,
+    "method": "POST",
+    "signature": "router.post(\"/update\", (req, res) => { const userId = req.user?.id; if (!userId) return res.status(401).json({ o"
+  },
+  {
+    "file": "server/routes/consent.js",
+    "line": 104,
+    "method": "POST",
+    "signature": "router.post(\"/anonymize\", (req, res) => { const userId = req.user?.id; if (!userId) return res.status(401).json("
+  },
+  {
+    "file": "server/routes/consent.js",
+    "line": 117,
+    "method": "POST",
+    "signature": "router.post(\"/reclaim\", (req, res) => { const userId = req.user?.id; if (!userId) return res.status(401).json({ "
+  },
+  {
+    "file": "server/routes/crafting.js",
+    "line": 50,
+    "method": "POST",
+    "signature": "router.post(\"/validate\", (req, res) => { try { const { spec, worldId } = req.body; if (!spec) return res"
+  },
+  {
+    "file": "server/routes/crafting.js",
+    "line": 184,
+    "method": "POST",
+    "signature": "router.post(\"/skills/validate-quality\", (req, res) => { try { const { description, skill_type, properties } = "
+  },
+  {
+    "file": "server/routes/creative-marketplace.js",
+    "line": 107,
+    "method": "POST",
+    "signature": "router.post(\"/artifacts\", (req, res) => { const result = publishArtifact(db, req.body || {}); res.status(result."
+  },
+  {
+    "file": "server/routes/creative-marketplace.js",
+    "line": 112,
+    "method": "POST",
+    "signature": "router.post(\"/artifacts/derivative\", (req, res) => { const result = publishDerivativeArtifact(db, req.body || {}); "
+  },
+  {
+    "file": "server/routes/creative-marketplace.js",
+    "line": 148,
+    "method": "POST",
+    "signature": "router.post(\"/artifacts/:id/purchase\", (req, res) => { const { buyerId } = req.body; // ── Wash Trading Detecti"
+  },
+  {
+    "file": "server/routes/creative-marketplace.js",
+    "line": 211,
+    "method": "POST",
+    "signature": "router.post(\"/artifacts/:id/rate\", (req, res) => { const result = rateArtifact(db, { artifactId: req.params.id"
+  },
+  {
+    "file": "server/routes/creative-marketplace.js",
+    "line": 228,
+    "method": "POST",
+    "signature": "router.post(\"/artifacts/:id/promote\", (req, res) => { // SECURITY: promotedBy comes from the authenticated session —"
+  },
+  {
+    "file": "server/routes/creative-marketplace.js",
+    "line": 242,
+    "method": "POST",
+    "signature": "router.post(\"/artifacts/:id/pause\", (req, res) => { const creatorId = req.user?.id; if (!creatorId) return res.s"
+  },
+  {
+    "file": "server/routes/creative-marketplace.js",
+    "line": 249,
+    "method": "POST",
+    "signature": "router.post(\"/artifacts/:id/resume\", (req, res) => { const creatorId = req.user?.id; if (!creatorId) return res."
+  },
+  {
+    "file": "server/routes/creative-marketplace.js",
+    "line": 256,
+    "method": "POST",
+    "signature": "router.post(\"/artifacts/:id/delist\", (req, res) => { const creatorId = req.user?.id; if (!creatorId) return res."
+  },
+  {
+    "file": "server/routes/creative-marketplace.js",
+    "line": 263,
+    "method": "PUT",
+    "signature": "router.put(\"/artifacts/:id/price\", (req, res) => { const creatorId = req.user?.id; if (!creatorId) return res.st"
+  },
+  {
+    "file": "server/routes/creative-marketplace.js",
+    "line": 300,
+    "method": "POST",
+    "signature": "router.post(\"/xp/award\", (req, res) => { const result = awardCreativeXP(db, req.body || {}); res.status(result.o"
+  },
+  {
+    "file": "server/routes/creative-marketplace.js",
+    "line": 316,
+    "method": "POST",
+    "signature": "router.post(\"/quests/complete\", (req, res) => { const result = completeCreativeQuest(db, req.body || {}); res.st"
+  },
+  {
+    "file": "server/routes/disputes.js",
+    "line": 38,
+    "method": "POST",
+    "signature": "router.post(\"/create\", (req, res) => { try { const userId = req.user?.id; if (!userId) return res.status"
+  },
+  {
+    "file": "server/routes/disputes.js",
+    "line": 185,
+    "method": "PUT",
+    "signature": "router.put(\"/:id/seller-respond\", (req, res) => { try { const userId = req.user?.id; if (!userId) return"
+  },
+  {
+    "file": "server/routes/disputes.js",
+    "line": 283,
+    "method": "PUT",
+    "signature": "router.put(\"/:id/resolve\", (req, res) => { try { // Admin check const adminCheck = adminCheckSync(req); "
+  },
+  {
+    "file": "server/routes/dtu-format.js",
+    "line": 47,
+    "method": "POST",
+    "signature": "router.post(\"/encode\", (req, res) => { const result = encodeDTU(req.body || {}); if (!result.ok) return res.stat"
+  },
+  {
+    "file": "server/routes/dtu-format.js",
+    "line": 64,
+    "method": "POST",
+    "signature": "router.post(\"/decode\", (req, res) => { const { dtuBase64 } = req.body || {}; if (!dtuBase64) return res.status(4"
+  },
+  {
+    "file": "server/routes/dtu-format.js",
+    "line": 92,
+    "method": "POST",
+    "signature": "router.post(\"/verify\", (req, res) => { const { dtuBase64, expectedHash, expectedSignature } = req.body || {}; if"
+  },
+  {
+    "file": "server/routes/dtu-format.js",
+    "line": 107,
+    "method": "POST",
+    "signature": "router.post(\"/header\", (req, res) => { const { headerBase64 } = req.body || {}; if (!headerBase64) return res.st"
+  },
+  {
+    "file": "server/routes/dtu-format.js",
+    "line": 122,
+    "method": "POST",
+    "signature": "router.post(\"/registry\", (req, res) => { const result = registerDTUExport(db, req.body || {}); res.status(result"
+  },
+  {
+    "file": "server/routes/dtu-format.js",
+    "line": 139,
+    "method": "POST",
+    "signature": "router.post(\"/reimport\", (req, res) => { const { dtuBase64, importedBy, source } = req.body || {}; if (!dtuBase6"
+  },
+  {
+    "file": "server/routes/emergent.js",
+    "line": 40,
+    "method": "POST",
+    "signature": "router.post(\"/register\", asyncHandler(async (req, res) => { const out = await runMacro(\"emergent\", \"register\", req.b"
+  },
+  {
+    "file": "server/routes/emergent.js",
+    "line": 61,
+    "method": "POST",
+    "signature": "router.post(\"/:id/deactivate\", asyncHandler(async (req, res) => { const out = await runMacro(\"emergent\", \"deactivate"
+  },
+  {
+    "file": "server/routes/emergent.js",
+    "line": 67,
+    "method": "POST",
+    "signature": "router.post(\"/session/create\", asyncHandler(async (req, res) => { const out = await runMacro(\"emergent\", \"session.cr"
+  },
+  {
+    "file": "server/routes/emergent.js",
+    "line": 72,
+    "method": "POST",
+    "signature": "router.post(\"/session/turn\", asyncHandler(async (req, res) => { const out = await runMacro(\"emergent\", \"session.turn"
+  },
+  {
+    "file": "server/routes/emergent.js",
+    "line": 77,
+    "method": "POST",
+    "signature": "router.post(\"/session/complete\", asyncHandler(async (req, res) => { const out = await runMacro(\"emergent\", \"session."
+  },
+  {
+    "file": "server/routes/emergent.js",
+    "line": 87,
+    "method": "POST",
+    "signature": "router.post(\"/session/run\", asyncHandler(async (req, res) => { const out = await runMacro(\"emergent\", \"session.run\","
+  },
+  {
+    "file": "server/routes/emergent.js",
+    "line": 93,
+    "method": "POST",
+    "signature": "router.post(\"/review\", asyncHandler(async (req, res) => { const out = await runMacro(\"emergent\", \"review\", req.body,"
+  },
+  {
+    "file": "server/routes/emergent.js",
+    "line": 98,
+    "method": "POST",
+    "signature": "router.post(\"/specialize\", asyncHandler(async (req, res) => { const out = await runMacro(\"emergent\", \"specialize\", r"
+  },
+  {
+    "file": "server/routes/emergent.js",
+    "line": 103,
+    "method": "POST",
+    "signature": "router.post(\"/outreach\", asyncHandler(async (req, res) => { const out = await runMacro(\"emergent\", \"outreach\", req.b"
+  },
+  {
+    "file": "server/routes/emergent.js",
+    "line": 108,
+    "method": "POST",
+    "signature": "router.post(\"/consent/check\", asyncHandler(async (req, res) => { const out = await runMacro(\"emergent\", \"consent.che"
+  },
+  {
+    "file": "server/routes/emergent.js",
+    "line": 114,
+    "method": "POST",
+    "signature": "router.post(\"/growth/patterns\", asyncHandler(async (req, res) => { const out = await runMacro(\"emergent\", \"growth.pa"
+  },
+  {
+    "file": "server/routes/emergent.js",
+    "line": 119,
+    "method": "POST",
+    "signature": "router.post(\"/growth/distill\", asyncHandler(async (req, res) => { const out = await runMacro(\"emergent\", \"growth.dis"
+  },
+  {
+    "file": "server/routes/emergent.js",
+    "line": 166,
+    "method": "POST",
+    "signature": "router.post(\"/lattice/propose/dtu\", asyncHandler(async (req, res) => { const out = await runMacro(\"emergent\", \"latti"
+  },
+  {
+    "file": "server/routes/emergent.js",
+    "line": 171,
+    "method": "POST",
+    "signature": "router.post(\"/lattice/propose/edit\", asyncHandler(async (req, res) => { const out = await runMacro(\"emergent\", \"latt"
+  },
+  {
+    "file": "server/routes/emergent.js",
+    "line": 176,
+    "method": "POST",
+    "signature": "router.post(\"/lattice/propose/edge\", asyncHandler(async (req, res) => { const out = await runMacro(\"emergent\", \"latt"
+  },
+  {
+    "file": "server/routes/emergent.js",
+    "line": 181,
+    "method": "POST",
+    "signature": "router.post(\"/lattice/commit\", asyncHandler(async (req, res) => { const out = await runMacro(\"emergent\", \"lattice.co"
+  },
+  {
+    "file": "server/routes/emergent.js",
+    "line": 186,
+    "method": "POST",
+    "signature": "router.post(\"/lattice/reject\", asyncHandler(async (req, res) => { const out = await runMacro(\"emergent\", \"lattice.re"
+  },
+  {
+    "file": "server/routes/emergent.js",
+    "line": 202,
+    "method": "POST",
+    "signature": "router.post(\"/edge/create\", asyncHandler(async (req, res) => { const out = await runMacro(\"emergent\", \"edge.create\","
+  },
+  {
+    "file": "server/routes/emergent.js",
+    "line": 217,
+    "method": "POST",
+    "signature": "router.post(\"/edge/:id/update\", asyncHandler(async (req, res) => { const out = await runMacro(\"emergent\", \"edge.upda"
+  },
+  {
+    "file": "server/routes/emergent.js",
+    "line": 222,
+    "method": "POST",
+    "signature": "router.post(\"/edge/:id/remove\", asyncHandler(async (req, res) => { const out = await runMacro(\"emergent\", \"edge.remo"
+  },
+  {
+    "file": "server/routes/emergent.js",
+    "line": 243,
+    "method": "POST",
+    "signature": "router.post(\"/activation/activate\", asyncHandler(async (req, res) => { const out = await runMacro(\"emergent\", \"activ"
+  },
+  {
+    "file": "server/routes/emergent.js",
+    "line": 248,
+    "method": "POST",
+    "signature": "router.post(\"/activation/spread\", asyncHandler(async (req, res) => { const out = await runMacro(\"emergent\", \"activat"
+  },
+  {
+    "file": "server/routes/emergent.js",
+    "line": 263,
+    "method": "POST",
+    "signature": "router.post(\"/activation/decay\", asyncHandler(async (req, res) => { const out = await runMacro(\"emergent\", \"activati"
+  },
+  {
+    "file": "server/routes/emergent.js",
+    "line": 274,
+    "method": "POST",
+    "signature": "router.post(\"/merge/apply\", asyncHandler(async (req, res) => { const out = await runMacro(\"emergent\", \"merge.apply\","
+  },
+  {
+    "file": "server/routes/emergent.js",
+    "line": 279,
+    "method": "POST",
+    "signature": "router.post(\"/merge/resolve\", asyncHandler(async (req, res) => { const out = await runMacro(\"emergent\", \"merge.resol"
+  },
+  {
+    "file": "server/routes/emergent.js",
+    "line": 300,
+    "method": "POST",
+    "signature": "router.post(\"/journal/append\", asyncHandler(async (req, res) => { const out = await runMacro(\"emergent\", \"journal.ap"
+  },
+  {
+    "file": "server/routes/emergent.js",
+    "line": 335,
+    "method": "POST",
+    "signature": "router.post(\"/journal/compact\", asyncHandler(async (req, res) => { const out = await runMacro(\"emergent\", \"journal.c"
+  },
+  {
+    "file": "server/routes/emergent.js",
+    "line": 351,
+    "method": "POST",
+    "signature": "router.post(\"/reality/consequences\", asyncHandler(async (req, res) => { const out = await runMacro(\"emergent\", \"real"
+  },
+  {
+    "file": "server/routes/emergent.js",
+    "line": 387,
+    "method": "POST",
+    "signature": "router.post(\"/scheduler/item\", asyncHandler(async (req, res) => { const out = await runMacro(\"emergent\", \"scheduler."
+  },
+  {
+    "file": "server/routes/emergent.js",
+    "line": 392,
+    "method": "POST",
+    "signature": "router.post(\"/scheduler/scan\", asyncHandler(async (req, res) => { const out = await runMacro(\"emergent\", \"scheduler."
+  },
+  {
+    "file": "server/routes/emergent.js",
+    "line": 402,
+    "method": "POST",
+    "signature": "router.post(\"/scheduler/dequeue\", asyncHandler(async (req, res) => { const out = await runMacro(\"emergent\", \"schedul"
+  },
+  {
+    "file": "server/routes/emergent.js",
+    "line": 407,
+    "method": "POST",
+    "signature": "router.post(\"/scheduler/expire\", asyncHandler(async (req, res) => { const out = await runMacro(\"emergent\", \"schedule"
+  },
+  {
+    "file": "server/routes/emergent.js",
+    "line": 412,
+    "method": "POST",
+    "signature": "router.post(\"/scheduler/rescore\", asyncHandler(async (req, res) => { const out = await runMacro(\"emergent\", \"schedul"
+  },
+  {
+    "file": "server/routes/emergent.js",
+    "line": 417,
+    "method": "POST",
+    "signature": "router.post(\"/scheduler/weights\", asyncHandler(async (req, res) => { const out = await runMacro(\"emergent\", \"schedul"
+  },
+  {
+    "file": "server/routes/emergent.js",
+    "line": 432,
+    "method": "POST",
+    "signature": "router.post(\"/scheduler/budget/update\", asyncHandler(async (req, res) => { const out = await runMacro(\"emergent\", \"s"
+  },
+  {
+    "file": "server/routes/emergent.js",
+    "line": 437,
+    "method": "POST",
+    "signature": "router.post(\"/scheduler/allocate\", asyncHandler(async (req, res) => { const out = await runMacro(\"emergent\", \"schedu"
+  },
+  {
+    "file": "server/routes/emergent.js",
+    "line": 452,
+    "method": "POST",
+    "signature": "router.post(\"/scheduler/turn\", asyncHandler(async (req, res) => { const out = await runMacro(\"emergent\", \"scheduler."
+  },
+  {
+    "file": "server/routes/emergent.js",
+    "line": 457,
+    "method": "POST",
+    "signature": "router.post(\"/scheduler/proposal\", asyncHandler(async (req, res) => { const out = await runMacro(\"emergent\", \"schedu"
+  },
+  {
+    "file": "server/routes/emergent.js",
+    "line": 462,
+    "method": "POST",
+    "signature": "router.post(\"/scheduler/complete\", asyncHandler(async (req, res) => { const out = await runMacro(\"emergent\", \"schedu"
+  },
+  {
+    "file": "server/routes/emergent.js",
+    "line": 479,
+    "method": "POST",
+    "signature": "router.post(\"/proposals/:id/vote\", asyncHandler(async (req, res) => { const userId = req.user?.id; if (!userId) "
+  },
+  {
+    "file": "server/routes/emergent.js",
+    "line": 498,
+    "method": "POST",
+    "signature": "router.post(\"/proposals/:id/conflicts\", asyncHandler(async (req, res) => { const ctx = makeCtx(req); const resul"
+  },
+  {
+    "file": "server/routes/emergent.js",
+    "line": 504,
+    "method": "POST",
+    "signature": "router.post(\"/rules/add\", asyncHandler(async (req, res) => { const ctx = makeCtx(req); const result = await addR"
+  },
+  {
+    "file": "server/routes/emergent.js",
+    "line": 510,
+    "method": "POST",
+    "signature": "router.post(\"/actions/evaluate\", asyncHandler(async (req, res) => { const ctx = makeCtx(req); const result = eva"
+  },
+  {
+    "file": "server/routes/federation.js",
+    "line": 92,
+    "method": "POST",
+    "signature": "router.post(\"/nationals\", (req, res) => { const result = createNational(db, req.body || {}); res.status(result.o"
+  },
+  {
+    "file": "server/routes/federation.js",
+    "line": 108,
+    "method": "POST",
+    "signature": "router.post(\"/regions\", (req, res) => { const result = createRegion(db, req.body || {}); res.status(result.ok ? "
+  },
+  {
+    "file": "server/routes/federation.js",
+    "line": 124,
+    "method": "POST",
+    "signature": "router.post(\"/cri\", (req, res) => { const result = registerCRIInstance(db, req.body || {}); res.status(result.ok"
+  },
+  {
+    "file": "server/routes/federation.js",
+    "line": 137,
+    "method": "POST",
+    "signature": "router.post(\"/cri/:id/heartbeat\", (req, res) => { const result = recordCRIHeartbeat(db, req.params.id); res.stat"
+  },
+  {
+    "file": "server/routes/federation.js",
+    "line": 142,
+    "method": "POST",
+    "signature": "router.post(\"/cri/mark-stale\", (_req, res) => { res.json(markStaleCRIs(db)); }); // ── User Location Declaratio"
+  },
+  {
+    "file": "server/routes/federation.js",
+    "line": 148,
+    "method": "POST",
+    "signature": "router.post(\"/users/:userId/location\", (req, res) => { const result = declareUserLocation(db, { userId: req.params.u"
+  },
+  {
+    "file": "server/routes/federation.js",
+    "line": 160,
+    "method": "POST",
+    "signature": "router.post(\"/entities/:entityId/home-base\", (req, res) => { const result = setEntityHomeBase(db, { entityId: req.pa"
+  },
+  {
+    "file": "server/routes/federation.js",
+    "line": 172,
+    "method": "POST",
+    "signature": "router.post(\"/dtus/:dtuId/location\", (req, res) => { const result = tagDTULocation(db, { dtuId: req.params.dtuId, .."
+  },
+  {
+    "file": "server/routes/federation.js",
+    "line": 177,
+    "method": "POST",
+    "signature": "router.post(\"/dtus/:dtuId/promote\", (req, res) => { const result = promoteDTU(db, { dtuId: req.params.dtuId, ...req."
+  },
+  {
+    "file": "server/routes/federation.js",
+    "line": 207,
+    "method": "POST",
+    "signature": "router.post(\"/peers\", (req, res) => { const result = createPeer(db, req.body || {}); res.status(result.ok ? 201 "
+  },
+  {
+    "file": "server/routes/federation.js",
+    "line": 234,
+    "method": "POST",
+    "signature": "router.post(\"/quality-gate/check\", (req, res) => { const result = checkQualityGate(req.body || {}); res.json(res"
+  },
+  {
+    "file": "server/routes/federation.js",
+    "line": 239,
+    "method": "POST",
+    "signature": "router.post(\"/promotion/eligibility\", (req, res) => { const result = checkPromotionEligibility(req.body || {}); "
+  },
+  {
+    "file": "server/routes/federation.js",
+    "line": 246,
+    "method": "POST",
+    "signature": "router.post(\"/tier-content\", (req, res) => { const result = recordTierContent(db, req.body || {}); res.status(re"
+  },
+  {
+    "file": "server/routes/federation.js",
+    "line": 268,
+    "method": "POST",
+    "signature": "router.post(\"/xp/award\", (req, res) => { const result = awardXP(db, req.body || {}); res.status(result.ok ? 200 "
+  },
+  {
+    "file": "server/routes/federation.js",
+    "line": 284,
+    "method": "POST",
+    "signature": "router.post(\"/quests/complete\", (req, res) => { const result = completeQuest(db, req.body || {}); res.status(res"
+  },
+  {
+    "file": "server/routes/federation.js",
+    "line": 299,
+    "method": "POST",
+    "signature": "router.post(\"/race/seasons\", (req, res) => { const result = createRaceSeason(db, req.body || {}); res.status(res"
+  },
+  {
+    "file": "server/routes/federation.js",
+    "line": 324,
+    "method": "PUT",
+    "signature": "router.put(\"/users/:userId/preferences\", (req, res) => { const result = updateFederationPreferences(db, { user"
+  },
+  {
+    "file": "server/routes/federation.js",
+    "line": 342,
+    "method": "POST",
+    "signature": "router.post(\"/dedup/reviews\", (req, res) => { const result = createDedupReview(db, req.body || {}); res.status(r"
+  },
+  {
+    "file": "server/routes/federation.js",
+    "line": 354,
+    "method": "POST",
+    "signature": "router.post(\"/dedup/reviews/:reviewId/decide\", (req, res) => { const result = processDedupDecision(db, { revie"
+  },
+  {
+    "file": "server/routes/federation.js",
+    "line": 375,
+    "method": "PUT",
+    "signature": "router.put(\"/users/:userId/marketplace-filters\", (req, res) => { const result = updateMarketplaceFilters(db, { "
+  },
+  {
+    "file": "server/routes/federation.js",
+    "line": 390,
+    "method": "PUT",
+    "signature": "router.put(\"/users/:userId/wealth-preferences\", (req, res) => { const result = updateWealthPreferences(db, { u"
+  },
+  {
+    "file": "server/routes/federation.js",
+    "line": 400,
+    "method": "POST",
+    "signature": "router.post(\"/leaderboard/entry\", (req, res) => { const result = updateLeaderboardEntry(db, req.body || {}); res"
+  },
+  {
+    "file": "server/routes/film-studio.js",
+    "line": 104,
+    "method": "POST",
+    "signature": "router.post(\"/\", (req, res) => { const result = createFilmDTU(db, { ...req.body, creatorId: req.user?.id"
+  },
+  {
+    "file": "server/routes/film-studio.js",
+    "line": 118,
+    "method": "PATCH",
+    "signature": "router.patch(\"/:filmDtuId\", (req, res) => { const creatorId = req.user?.id; const result = updateFilmDTU(db, req"
+  },
+  {
+    "file": "server/routes/film-studio.js",
+    "line": 132,
+    "method": "POST",
+    "signature": "router.post(\"/:filmDtuId/preview/event\", (req, res) => { // Preview events can be recorded without auth (anonymous v"
+  },
+  {
+    "file": "server/routes/film-studio.js",
+    "line": 152,
+    "method": "POST",
+    "signature": "router.post(\"/:filmDtuId/components\", (req, res) => { const result = createFilmComponent(db, { filmDtuId: req."
+  },
+  {
+    "file": "server/routes/film-studio.js",
+    "line": 166,
+    "method": "PATCH",
+    "signature": "router.patch(\"/components/:componentId\", (req, res) => { const creatorId = req.user?.id; const result = updateFi"
+  },
+  {
+    "file": "server/routes/film-studio.js",
+    "line": 174,
+    "method": "POST",
+    "signature": "router.post(\"/:filmDtuId/crew\", (req, res) => { const result = addCrewMember(db, { filmDtuId: req.params.filmD"
+  },
+  {
+    "file": "server/routes/film-studio.js",
+    "line": 188,
+    "method": "DELETE",
+    "signature": "router.delete(\"/crew/:crewId\", (req, res) => { const creatorId = req.user?.id; const result = removeCrewMember(d"
+  },
+  {
+    "file": "server/routes/film-studio.js",
+    "line": 194,
+    "method": "POST",
+    "signature": "router.post(\"/:filmDtuId/crew-dtus\", (req, res) => { const result = createCrewDTU(db, { filmDtuId: req.params."
+  },
+  {
+    "file": "server/routes/film-studio.js",
+    "line": 209,
+    "method": "POST",
+    "signature": "router.post(\"/:seriesDtuId/bundles\", (req, res) => { const result = createSeriesBundle(db, { seriesDtuId: req."
+  },
+  {
+    "file": "server/routes/film-studio.js",
+    "line": 230,
+    "method": "POST",
+    "signature": "router.post(\"/remixes\", (req, res) => { const result = registerFilmRemix(db, req.body); res.status(result.ok ? 2"
+  },
+  {
+    "file": "server/routes/film-studio.js",
+    "line": 263,
+    "method": "POST",
+    "signature": "router.post(\"/:filmDtuId/compute-score\", (req, res) => { const result = computeDiscoveryScore(db, req.params.filmDtu"
+  },
+  {
+    "file": "server/routes/film-studio.js",
+    "line": 270,
+    "method": "POST",
+    "signature": "router.post(\"/watch-party\", (req, res) => { const result = createWatchParty(db, { filmDtuId: req.body.filmDtuI"
+  },
+  {
+    "file": "server/routes/film-studio.js",
+    "line": 278,
+    "method": "POST",
+    "signature": "router.post(\"/watch-party/:partyId/join\", (req, res) => { const userId = req.user?.id; const result = joinWatchP"
+  },
+  {
+    "file": "server/routes/film-studio.js",
+    "line": 284,
+    "method": "PATCH",
+    "signature": "router.patch(\"/watch-party/:partyId\", (req, res) => { const hostUserId = req.user?.id; const result = updateWatc"
+  },
+  {
+    "file": "server/routes/film-studio.js",
+    "line": 292,
+    "method": "POST",
+    "signature": "router.post(\"/gift\", (req, res) => { const result = giftFilm(db, { ...req.body, fromUserId: req.user?.id"
+  },
+  {
+    "file": "server/routes/film-studio.js",
+    "line": 300,
+    "method": "POST",
+    "signature": "router.post(\"/gift/:giftId/accept\", (req, res) => { const result = acceptGift(db, req.params.giftId, req.user?.id); "
+  },
+  {
+    "file": "server/routes/film-studio.js",
+    "line": 305,
+    "method": "POST",
+    "signature": "router.post(\"/gift/:giftId/decline\", (req, res) => { const result = declineGift(db, req.params.giftId, req.user?.id)"
+  },
+  {
+    "file": "server/routes/forge.js",
+    "line": 65,
+    "method": "POST",
+    "signature": "router.post(\"/generate\", (req, res) => { try { const { templateId = \"blank\", config = {}, "
+  },
+  {
+    "file": "server/routes/forge.js",
+    "line": 114,
+    "method": "POST",
+    "signature": "router.post(\"/validate\", (req, res) => { const { config = {} } = req.body; const merged = { ...JSON.parse("
+  },
+  {
+    "file": "server/routes/forge.js",
+    "line": 152,
+    "method": "POST",
+    "signature": "router.post(\"/export\", (req, res) => { try { const result = generateForgeApp(req.body); const filename ="
+  },
+  {
+    "file": "server/routes/forge.js",
+    "line": 166,
+    "method": "POST",
+    "signature": "router.post(\"/check-avoidance\", (req, res) => { const { code } = req.body; if (!code) return res.status(400).jso"
+  },
+  {
+    "file": "server/routes/inference-debug.js",
+    "line": 104,
+    "method": "POST",
+    "signature": "router.post(\"/spans/query\", (req, res) => { if (!db) return res.status(503).json({ ok: false, error: \"db_unavailable"
+  },
+  {
+    "file": "server/routes/inventory.js",
+    "line": 116,
+    "method": "POST",
+    "signature": "router.post(\"/refresh\", (_req, res) => { try { clearCache(); const summary = getInventorySummary(); "
+  },
+  {
+    "file": "server/routes/ldk.js",
+    "line": 39,
+    "method": "POST",
+    "signature": "router.post(\"/generate\", async (req, res) => { try { const config = req.body || {}; if (!config.domain) "
+  },
+  {
+    "file": "server/routes/ldk.js",
+    "line": 58,
+    "method": "POST",
+    "signature": "router.post(\"/validate\", (req, res) => { try { const { handler } = req.body || {}; if (!handler) { "
+  },
+  {
+    "file": "server/routes/ldk.js",
+    "line": 111,
+    "method": "POST",
+    "signature": "router.post(\"/lint\", (req, res) => { try { const { code } = req.body || {}; if (!code || typeof code !=="
+  },
+  {
+    "file": "server/routes/ldk.js",
+    "line": 126,
+    "method": "POST",
+    "signature": "router.post(\"/publish\", async (req, res) => { try { const lensData = req.body || {}; if (!lensData.domai"
+  },
+  {
+    "file": "server/routes/learning.js",
+    "line": 341,
+    "method": "POST",
+    "signature": "router.post(\"/credential/verify\", async (req, res) => { try { const body = req.body || {}; const { stude"
+  },
+  {
+    "file": "server/routes/learning.js",
+    "line": 482,
+    "method": "POST",
+    "signature": "router.post(\"/expand/category\", async (req, res) => { try { const { category } = req.body || {}; if (!ca"
+  },
+  {
+    "file": "server/routes/learning.js",
+    "line": 503,
+    "method": "POST",
+    "signature": "router.post(\"/expand/all\", async (_req, res) => { try { const { engine, error } = await loadExpansionEngine();"
+  },
+  {
+    "file": "server/routes/learning.js",
+    "line": 553,
+    "method": "POST",
+    "signature": "router.post(\"/hybrids/discover\", async (req, res) => { try { const { minDTUCount } = req.body || {}; con"
+  },
+  {
+    "file": "server/routes/learning.js",
+    "line": 594,
+    "method": "POST",
+    "signature": "router.post(\"/hybrids/register\", async (req, res) => { try { const hybrid = req.body || {}; if (!hybrid."
+  },
+  {
+    "file": "server/routes/learning.js",
+    "line": 703,
+    "method": "POST",
+    "signature": "router.post(\"/submit\", async (req, res) => { try { const body = req.body || {}; const studentId = String"
+  },
+  {
+    "file": "server/routes/learning.js",
+    "line": 736,
+    "method": "POST",
+    "signature": "router.post(\"/assessment/generate\", async (req, res) => { try { const body = req.body || {}; const stude"
+  },
+  {
+    "file": "server/routes/learning.js",
+    "line": 759,
+    "method": "POST",
+    "signature": "router.post(\"/assessment/grade\", async (req, res) => { try { const body = req.body || {}; const studentI"
+  },
+  {
+    "file": "server/routes/learning.js",
+    "line": 842,
+    "method": "POST",
+    "signature": "router.post(\"/tutor/ask\", async (req, res) => { try { const body = req.body || {}; const { domain, query"
+  },
+  {
+    "file": "server/routes/learning.js",
+    "line": 888,
+    "method": "POST",
+    "signature": "router.post(\"/tutor/socratic\", async (req, res) => { try { const body = req.body || {}; const { domain, "
+  },
+  {
+    "file": "server/routes/learning.js",
+    "line": 1078,
+    "method": "POST",
+    "signature": "router.post(\"/cohort/teach\", async (req, res) => { try { const body = req.body || {}; const { learnerId,"
+  },
+  {
+    "file": "server/routes/learning.js",
+    "line": 1119,
+    "method": "POST",
+    "signature": "router.post(\"/cohort/form\", async (req, res) => { try { const body = req.body || {}; const { studentIds,"
+  },
+  {
+    "file": "server/routes/learning.js",
+    "line": 1167,
+    "method": "POST",
+    "signature": "router.post(\"/cohort/peer-teach\", async (req, res) => { try { const body = req.body || {}; const { learn"
+  },
+  {
+    "file": "server/routes/legal-liability.js",
+    "line": 93,
+    "method": "POST",
+    "signature": "router.post(\"/disclaimers/acknowledge\", (req, res) => { const { userId, lensId } = req.body || {}; if (!userId |"
+  },
+  {
+    "file": "server/routes/legal-liability.js",
+    "line": 106,
+    "method": "POST",
+    "signature": "router.post(\"/agreements\", (req, res) => { const { userId, agreementType, ipAddress } = req.body || {}; if (!use"
+  },
+  {
+    "file": "server/routes/legal-liability.js",
+    "line": 130,
+    "method": "POST",
+    "signature": "router.post(\"/dmca/submit\", (req, res) => { const result = submitDMCANotice(db, req.body || {}); res.status(resu"
+  },
+  {
+    "file": "server/routes/legal-liability.js",
+    "line": 135,
+    "method": "POST",
+    "signature": "router.post(\"/dmca/:id/review\", (req, res) => { const { valid, notes } = req.body || {}; const result = reviewDM"
+  },
+  {
+    "file": "server/routes/legal-liability.js",
+    "line": 141,
+    "method": "POST",
+    "signature": "router.post(\"/dmca/:id/counter\", (req, res) => { const result = submitCounterNotification(db, req.params.id, req.bod"
+  },
+  {
+    "file": "server/routes/legal-liability.js",
+    "line": 159,
+    "method": "POST",
+    "signature": "router.post(\"/strikes\", (req, res) => { const { userId, dmcaNoticeId } = req.body || {}; if (!userId || !dmcaNot"
+  },
+  {
+    "file": "server/routes/legal-liability.js",
+    "line": 180,
+    "method": "POST",
+    "signature": "router.post(\"/strikes/:id/appeal\", (req, res) => { const { reason } = req.body || {}; if (!reason) return res.st"
+  },
+  {
+    "file": "server/routes/legal-liability.js",
+    "line": 187,
+    "method": "POST",
+    "signature": "router.post(\"/strikes/:id/resolve-appeal\", (req, res) => { const { result: appealResult } = req.body || {}; cons"
+  },
+  {
+    "file": "server/routes/legal-liability.js",
+    "line": 194,
+    "method": "POST",
+    "signature": "router.post(\"/disputes\", (req, res) => { const result = openDispute(db, req.body || {}); res.status(result.ok ? "
+  },
+  {
+    "file": "server/routes/legal-liability.js",
+    "line": 211,
+    "method": "PATCH",
+    "signature": "router.patch(\"/disputes/:id\", (req, res) => { const { status, resolution } = req.body || {}; if (!status) return"
+  },
+  {
+    "file": "server/routes/legal-liability.js",
+    "line": 219,
+    "method": "POST",
+    "signature": "router.post(\"/label\", (req, res) => { const label = getContentLabel(req.body || {}); res.json({ ok: true, label "
+  },
+  {
+    "file": "server/routes/lens-compliance.js",
+    "line": 82,
+    "method": "POST",
+    "signature": "router.post(\"/lenses/register\", (req, res) => { const { name, classification, version, protection_mode, creator_id, "
+  },
+  {
+    "file": "server/routes/lens-compliance.js",
+    "line": 92,
+    "method": "POST",
+    "signature": "router.post(\"/lenses/:id/submit\", (req, res) => { const lens = getLensById(db, req.params.id); if (!lens) return"
+  },
+  {
+    "file": "server/routes/lens-compliance.js",
+    "line": 100,
+    "method": "POST",
+    "signature": "router.post(\"/lenses/:id/validate\", (req, res) => { const lens = getLensById(db, req.params.id); if (!lens) retu"
+  },
+  {
+    "file": "server/routes/lens-compliance.js",
+    "line": 115,
+    "method": "POST",
+    "signature": "router.post(\"/lenses/:id/disable\", (req, res) => { const { reason } = req.body || {}; disableLens(req.params.id,"
+  },
+  {
+    "file": "server/routes/lens-compliance.js",
+    "line": 121,
+    "method": "POST",
+    "signature": "router.post(\"/lenses/:id/enable\", (req, res) => { enableLens(req.params.id, db); res.json({ ok: true, lensId: re"
+  },
+  {
+    "file": "server/routes/lens-compliance.js",
+    "line": 127,
+    "method": "POST",
+    "signature": "router.post(\"/audit/run\", (_req, res) => { const result = runNightlyAudit(db); res.json({ ok: true, result }); "
+  },
+  {
+    "file": "server/routes/lens-compliance.js",
+    "line": 145,
+    "method": "POST",
+    "signature": "router.post(\"/upgrades/propagate\", (req, res) => { const { name, description, newChecks, appliesTo, requiredByDate }"
+  },
+  {
+    "file": "server/routes/lens-culture.js",
+    "line": 74,
+    "method": "POST",
+    "signature": "router.post(\"/culture\", (req, res) => { const result = postCultureDTU(db, req.body || {}); res.status(result.ok "
+  },
+  {
+    "file": "server/routes/lens-culture.js",
+    "line": 101,
+    "method": "POST",
+    "signature": "router.post(\"/culture/:id/resonate\", (req, res) => { const userId = req.user?.id; if (!userId) return res.status"
+  },
+  {
+    "file": "server/routes/lens-culture.js",
+    "line": 108,
+    "method": "POST",
+    "signature": "router.post(\"/culture/:id/reflect\", (req, res) => { const userId = req.user?.id; if (!userId) return res.status("
+  },
+  {
+    "file": "server/routes/lens-culture.js",
+    "line": 129,
+    "method": "POST",
+    "signature": "router.post(\"/protection\", (req, res) => { const result = setLensProtection(db, req.body || {}); res.status(resu"
+  },
+  {
+    "file": "server/routes/lens-culture.js",
+    "line": 139,
+    "method": "POST",
+    "signature": "router.post(\"/protection/check\", (req, res) => { const result = checkProtectionAllows(db, req.body || {}); res.j"
+  },
+  {
+    "file": "server/routes/lens-culture.js",
+    "line": 145,
+    "method": "POST",
+    "signature": "router.post(\"/purchase\", (req, res) => { const result = oneTapPurchase(db, req.body || {}); res.status(result.ok"
+  },
+  {
+    "file": "server/routes/lens-culture.js",
+    "line": 151,
+    "method": "POST",
+    "signature": "router.post(\"/export\", (req, res) => { const result = exportArtifact(db, req.body || {}); res.status(result.ok ?"
+  },
+  {
+    "file": "server/routes/lens-culture.js",
+    "line": 167,
+    "method": "POST",
+    "signature": "router.post(\"/biomonitor\", (req, res) => { const result = recordBiomonitorReading(db, req.body || {}); res.statu"
+  },
+  {
+    "file": "server/routes/lens-culture.js",
+    "line": 187,
+    "method": "POST",
+    "signature": "router.post(\"/grief/init\", (_req, res) => { const result = initGriefProtocol(db); res.json(result); }); rou"
+  },
+  {
+    "file": "server/routes/lens-culture.js",
+    "line": 192,
+    "method": "POST",
+    "signature": "router.post(\"/grief/activate\", (req, res) => { const result = activateGriefProtocol(db, req.body || {}); res.sta"
+  },
+  {
+    "file": "server/routes/lens-culture.js",
+    "line": 202,
+    "method": "POST",
+    "signature": "router.post(\"/grief/transition\", (req, res) => { const result = transitionGriefPhase(db, req.body || {}); res.st"
+  },
+  {
+    "file": "server/routes/lens-culture.js",
+    "line": 208,
+    "method": "POST",
+    "signature": "router.post(\"/merge/init\", (req, res) => { const result = initGreatMerge(db, req.body || {}); res.status(result."
+  },
+  {
+    "file": "server/routes/lens-culture.js",
+    "line": 218,
+    "method": "POST",
+    "signature": "router.post(\"/merge/advance\", (req, res) => { const result = advanceMergePhase(db, req.body || {}); res.status(r"
+  },
+  {
+    "file": "server/routes/lens-culture.js",
+    "line": 224,
+    "method": "POST",
+    "signature": "router.post(\"/lenses/register\", (req, res) => { const result = registerLens(db, req.body || {}); res.status(resu"
+  },
+  {
+    "file": "server/routes/lens-culture.js",
+    "line": 229,
+    "method": "POST",
+    "signature": "router.post(\"/lenses/register-system\", (_req, res) => { const result = registerSystemLenses(db); res.json(result"
+  },
+  {
+    "file": "server/routes/lens-features.js",
+    "line": 104,
+    "method": "POST",
+    "signature": "router.post(\"/generate\", (req, res) => { const { template, config = {} } = req.body; const tmpl = LENS_TEMPLATES"
+  },
+  {
+    "file": "server/routes/lens-features.js",
+    "line": 118,
+    "method": "POST",
+    "signature": "router.post(\"/seed\", (_req, res) => { const result = seedLensFeatures(db, lensFeatures); res.json(result); });"
+  },
+  {
+    "file": "server/routes/media.js",
+    "line": 151,
+    "method": "POST",
+    "signature": "router.post(\"/upload\", asyncHandler(async (req, res) => { const authorId = req.user?.id; if (!authorId) return r"
+  },
+  {
+    "file": "server/routes/media.js",
+    "line": 240,
+    "method": "POST",
+    "signature": "router.post(\"/upload/url\", asyncHandler(async (req, res) => { // SECURITY: authorId comes ONLY from the authenticate"
+  },
+  {
+    "file": "server/routes/media.js",
+    "line": 447,
+    "method": "POST",
+    "signature": "router.post(\"/:id/transcode\", asyncHandler(async (req, res) => { const { quality } = req.body; if (!quality) thr"
+  },
+  {
+    "file": "server/routes/media.js",
+    "line": 495,
+    "method": "POST",
+    "signature": "router.post(\"/:id/view\", asyncHandler(async (req, res) => { // SECURITY: identity from authenticated session only. A"
+  },
+  {
+    "file": "server/routes/media.js",
+    "line": 515,
+    "method": "POST",
+    "signature": "router.post(\"/:id/like\", asyncHandler(async (req, res) => { // SECURITY: userId always comes from the authenticated "
+  },
+  {
+    "file": "server/routes/media.js",
+    "line": 537,
+    "method": "POST",
+    "signature": "router.post(\"/:id/comment\", asyncHandler(async (req, res) => { // SECURITY: userId always comes from the authenticat"
+  },
+  {
+    "file": "server/routes/media.js",
+    "line": 582,
+    "method": "DELETE",
+    "signature": "router.delete(\"/:id\", asyncHandler(async (req, res) => { // SECURITY: authorId from authenticated session — never fr"
+  },
+  {
+    "file": "server/routes/messaging.js",
+    "line": 90,
+    "method": "POST",
+    "signature": "router.post(\"/telegram/webhook\", webhookHandler(telegram)); router.post(\"/discord/interactions\", webhookHandler(discor"
+  },
+  {
+    "file": "server/routes/messaging.js",
+    "line": 91,
+    "method": "POST",
+    "signature": "router.post(\"/discord/interactions\", webhookHandler(discord)); router.post(\"/signal/webhook\", webhookHandler(signal));"
+  },
+  {
+    "file": "server/routes/messaging.js",
+    "line": 92,
+    "method": "POST",
+    "signature": "router.post(\"/signal/webhook\", webhookHandler(signal)); router.post(\"/slack/events\", webhookHandler(slack)); router."
+  },
+  {
+    "file": "server/routes/messaging.js",
+    "line": 93,
+    "method": "POST",
+    "signature": "router.post(\"/slack/events\", webhookHandler(slack)); router.post(\"/imessage/webhook\", webhookHandler(imessage)); //"
+  },
+  {
+    "file": "server/routes/messaging.js",
+    "line": 94,
+    "method": "POST",
+    "signature": "router.post(\"/imessage/webhook\", webhookHandler(imessage)); // ─── BINDING MANAGEMENT (authenticated) ───────────────"
+  },
+  {
+    "file": "server/routes/messaging.js",
+    "line": 105,
+    "method": "POST",
+    "signature": "router.post(\"/connect/:platform\", (req, res) => { const userId = req.user?.id; if (!userId) return res.status(40"
+  },
+  {
+    "file": "server/routes/messaging.js",
+    "line": 125,
+    "method": "POST",
+    "signature": "router.post(\"/verify\", (req, res) => { const userId = req.user?.id; if (!userId) return res.status(401).json({ e"
+  },
+  {
+    "file": "server/routes/messaging.js",
+    "line": 136,
+    "method": "DELETE",
+    "signature": "router.delete(\"/bindings/:bindingId\", (req, res) => { const userId = req.user?.id; if (!userId) return res.statu"
+  },
+  {
+    "file": "server/routes/messaging.js",
+    "line": 143,
+    "method": "PATCH",
+    "signature": "router.patch(\"/bindings/:bindingId\", (req, res) => { const userId = req.user?.id; if (!userId) return res.status"
+  },
+  {
+    "file": "server/routes/moderation.js",
+    "line": 52,
+    "method": "POST",
+    "signature": "router.post(\"/report\", asyncHandler(async (req, res) => { const reporterId = req.user?.id; if (!reporterId) { "
+  },
+  {
+    "file": "server/routes/moderation.js",
+    "line": 114,
+    "method": "POST",
+    "signature": "router.post(\"/resolve/:reportId\", requireRole(\"admin\", \"sovereign\"), asyncHandler(async (req, res) => { const { repo"
+  },
+  {
+    "file": "server/routes/moderation.js",
+    "line": 163,
+    "method": "POST",
+    "signature": "router.post(\"/appeal\", asyncHandler(async (req, res) => { const userId = req.user?.id; if (!userId) return res.s"
+  },
+  {
+    "file": "server/routes/password-reset.js",
+    "line": 35,
+    "method": "POST",
+    "signature": "router.post(\"/forgot-password\", rateLimit, async (req, res) => { const { email } = req.body; if (!email || typeo"
+  },
+  {
+    "file": "server/routes/password-reset.js",
+    "line": 70,
+    "method": "POST",
+    "signature": "router.post(\"/reset-password\", rateLimit, async (req, res) => { const { token, newPassword } = req.body; if (!t"
+  },
+  {
+    "file": "server/routes/personal-locker.js",
+    "line": 36,
+    "method": "POST",
+    "signature": "router.post(\"/upload\", async (req, res) => { try { const key = checkLockerKey(req, res); if (!key) retur"
+  },
+  {
+    "file": "server/routes/personal-locker.js",
+    "line": 141,
+    "method": "DELETE",
+    "signature": "router.delete(\"/dtus/:id\", (req, res) => { try { const row = db.prepare(\"SELECT user_id FROM personal_dtus WHE"
+  },
+  {
+    "file": "server/routes/personal-locker.js",
+    "line": 157,
+    "method": "PUT",
+    "signature": "router.put(\"/dtus/:id/publish\", async (req, res) => { try { const key = checkLockerKey(req, res); if (!k"
+  },
+  {
+    "file": "server/routes/personal-locker.js",
+    "line": 200,
+    "method": "POST",
+    "signature": "router.post(\"/dtus/:id/list-on-marketplace\", async (req, res) => { try { const userId = req.user?.id; if"
+  },
+  {
+    "file": "server/routes/personal-locker.js",
+    "line": 280,
+    "method": "PUT",
+    "signature": "router.put(\"/context/focus\", (req, res) => { const key = checkLockerKey(req, res); if (!key) return; const {"
+  },
+  {
+    "file": "server/routes/personal-locker.js",
+    "line": 299,
+    "method": "DELETE",
+    "signature": "router.delete(\"/context\", (req, res) => { try { db.prepare(\"DELETE FROM personal_dtus WHERE user_id = ? AND co"
+  },
+  {
+    "file": "server/routes/qualia.js",
+    "line": 67,
+    "method": "POST",
+    "signature": "router.post(\"/activate\", (req, res) => { const engine = getEngine(); if (!engine) return res.json({ ok: false, e"
+  },
+  {
+    "file": "server/routes/qualia.js",
+    "line": 81,
+    "method": "POST",
+    "signature": "router.post(\"/deactivate\", (req, res) => { const engine = getEngine(); if (!engine) return res.json({ ok: false,"
+  },
+  {
+    "file": "server/routes/qualia.js",
+    "line": 120,
+    "method": "POST",
+    "signature": "router.post(\"/senses/calibrate\", (req, res) => { const { entityId, sensitivity } = req.body || {}; if (!entityId"
+  },
+  {
+    "file": "server/routes/reasoning.js",
+    "line": 77,
+    "method": "POST",
+    "signature": "router.post('/execute', async (req, res) => { const { intent, brainRole = 'conscious', modelName, maxSteps = 10 } = "
+  },
+  {
+    "file": "server/routes/simulation.js",
+    "line": 95,
+    "method": "POST",
+    "signature": "router.post('/run', async (req, res) => { try { const { type, input = {} } = req.body || {}; if (!type "
+  },
+  {
+    "file": "server/routes/simulation.js",
+    "line": 145,
+    "method": "POST",
+    "signature": "router.post('/:id/cancel', (req, res) => { try { const result = cancelJob(req.params.id); return res.jso"
+  },
+  {
+    "file": "server/routes/social-groups.js",
+    "line": 509,
+    "method": "POST",
+    "signature": "router.post(\"/newsletter-subscribe\", (req, res) => { try { const email = typeof req.body?.email === \"string\" ?"
+  },
+  {
+    "file": "server/routes/sovereign-emergent.js",
+    "line": 79,
+    "method": "POST",
+    "signature": "router.post(\"/decree\", asyncHandler(async (req, res) => { const S = STATE || getSTATE(); if (!S) return res.json"
+  },
+  {
+    "file": "server/routes/sovereign-emergent.js",
+    "line": 1814,
+    "method": "POST",
+    "signature": "router.post(\"/ingest/submit\", asyncHandler(async (req, res) => { try { const mod = await loadModule(\"../emerge"
+  },
+  {
+    "file": "server/routes/sovereign-emergent.js",
+    "line": 1861,
+    "method": "POST",
+    "signature": "router.post(\"/research/submit\", asyncHandler(async (req, res) => { try { const mod = await loadModule(\"../emer"
+  },
+  {
+    "file": "server/routes/sovereign-emergent.js",
+    "line": 1911,
+    "method": "POST",
+    "signature": "router.post(\"/drafts/:draftId/review\", asyncHandler(async (req, res) => { try { const mod = await loadModule(\""
+  },
+  {
+    "file": "server/routes/sovereign.js",
+    "line": 204,
+    "method": "POST",
+    "signature": "router.post(\"/decree\", asyncHandler(async (req, res) => { const S = STATE || getSTATE(); if (!S) return res.json"
+  },
+  {
+    "file": "server/routes/sovereign.js",
+    "line": 774,
+    "method": "POST",
+    "signature": "router.post(\"/eval\", (req, res) => { const S = STATE || getSTATE(); const code = String(req.body?.code || \"\").tr"
+  },
+  {
+    "file": "server/routes/storage.js",
+    "line": 47,
+    "method": "POST",
+    "signature": "router.post(\"/vault/store\", validateBody(vaultStoreSchema), (req, res) => { try { const { fileBase64, mimeType"
+  },
+  {
+    "file": "server/routes/storage.js",
+    "line": 78,
+    "method": "POST",
+    "signature": "router.post(\"/vault/:hash/ref/increment\", (req, res) => { try { const { hash } = req.params; if (!hash |"
+  },
+  {
+    "file": "server/routes/storage.js",
+    "line": 92,
+    "method": "POST",
+    "signature": "router.post(\"/vault/:hash/ref/decrement\", (req, res) => { try { const { hash } = req.params; if (!hash |"
+  },
+  {
+    "file": "server/routes/storage.js",
+    "line": 106,
+    "method": "POST",
+    "signature": "router.post(\"/vault/cleanup\", (_req, res) => { try { const result = cleanupUnreferencedArtifacts(db); if"
+  },
+  {
+    "file": "server/routes/storage.js",
+    "line": 128,
+    "method": "POST",
+    "signature": "router.post(\"/download\", (req, res) => { const result = recordDownload(db, req.body || {}); res.status(result.ok"
+  },
+  {
+    "file": "server/routes/storage.js",
+    "line": 153,
+    "method": "POST",
+    "signature": "router.post(\"/cri/cache\", (req, res) => { const result = cacheInCRI(db, req.body || {}); res.status(result.ok ? "
+  },
+  {
+    "file": "server/routes/storage.js",
+    "line": 158,
+    "method": "POST",
+    "signature": "router.post(\"/cri/serve\", (req, res) => { const { criId, vaultHash } = req.body || {}; recordCRIServe(db, { criI"
+  },
+  {
+    "file": "server/routes/storage.js",
+    "line": 164,
+    "method": "DELETE",
+    "signature": "router.delete(\"/cri/cache\", (req, res) => { const result = evictFromCRI(db, req.body || {}); res.json(result); "
+  },
+  {
+    "file": "server/routes/storage.js",
+    "line": 179,
+    "method": "POST",
+    "signature": "router.post(\"/cri/:criId/evict-expired\", (req, res) => { const result = evictExpiredCRIEntries(db, req.params.criId)"
+  },
+  {
+    "file": "server/routes/transparency.js",
+    "line": 54,
+    "method": "POST",
+    "signature": "router.post(\"/admin/legal-requests\", adminOnly, (req, res) => { const { type, jurisdiction, dateRe"
+  },
+  {
+    "file": "server/routes/transparency.js",
+    "line": 84,
+    "method": "PUT",
+    "signature": "router.put(\"/admin/legal-requests/:id\", adminOnly, (req, res) => { const { id } = req.params; const { response, "
+  },
+  {
+    "file": "server/routes/universal-export.js",
+    "line": 94,
+    "method": "POST",
+    "signature": "router.post(\"/api/lens/:domain/export-dtu\", asyncHandler(async (req, res) => { try { const { domain } = req.pa"
+  },
+  {
+    "file": "server/routes/universal-export.js",
+    "line": 110,
+    "method": "POST",
+    "signature": "router.post(\"/api/lens/:domain/import-dtu\", asyncHandler(async (req, res) => { try { const { domain } = req.pa"
+  },
+  {
+    "file": "server/routes/universal-export.js",
+    "line": 145,
+    "method": "POST",
+    "signature": "router.post(\"/api/convert/to-dtu\", asyncHandler(async (req, res) => { try { const { format, data, title, domai"
+  },
+  {
+    "file": "server/routes/universal-export.js",
+    "line": 160,
+    "method": "POST",
+    "signature": "router.post(\"/api/convert/from-dtu\", asyncHandler(async (req, res) => { try { const { targetFormat } = req.bod"
+  },
+  {
+    "file": "server/routes/universal-export.js",
+    "line": 185,
+    "method": "POST",
+    "signature": "router.post(\"/api/import/universal\", asyncHandler(async (req, res) => { try { const { filename, mimeTy"
+  },
+  {
+    "file": "server/routes/universal-export.js",
+    "line": 256,
+    "method": "POST",
+    "signature": "router.post(\"/api/import/universal/batch\", asyncHandler(async (req, res) => { try { const { files = [] } = req"
+  },
+  {
+    "file": "server/routes/universal-export.js",
+    "line": 327,
+    "method": "POST",
+    "signature": "router.post(\"/api/export/universal\", asyncHandler(async (req, res) => { try { const { dtuId, targetFormat = \"j"
+  },
+  {
+    "file": "server/routes/user-dispatch.js",
+    "line": 57,
+    "method": "POST",
+    "signature": "router.post(\"/run\", asyncHandler(async (req, res) => { const { action, target, data } = req.body || {}; if (!ac"
+  },
+  {
+    "file": "server/routes/voice-agent.js",
+    "line": 26,
+    "method": "POST",
+    "signature": "router.post(\"/create\", (req, res) => { const userId = req.user?.id; if (!userId) return res.status(401).json({ o"
+  },
+  {
+    "file": "server/routes/voice-agent.js",
+    "line": 37,
+    "method": "POST",
+    "signature": "router.post(\"/turn\", asyncHandler(async (req, res) => { const userId = req.user?.id; if (!userId) return res.sta"
+  },
+  {
+    "file": "server/routes/voice-agent.js",
+    "line": 75,
+    "method": "POST",
+    "signature": "router.post(\"/barge-in\", (req, res) => { const userId = req.user?.id; if (!userId) return res.status(401).json({"
+  },
+  {
+    "file": "server/routes/voice-agent.js",
+    "line": 115,
+    "method": "DELETE",
+    "signature": "router.delete(\"/:id\", (req, res) => { const userId = req.user?.id; if (!userId) return res.status(401).json({ ok"
+  },
+  {
+    "file": "server/routes/world-narrative.js",
+    "line": 105,
+    "method": "POST",
+    "signature": "router.post(\"/lore/refresh\", admin, wrap(async (req, res) => { const worldId = String(req.body?.worldId || req.query"
+  },
+  {
+    "file": "server/routes/world.js",
+    "line": 640,
+    "method": "POST",
+    "signature": "router.post(\"/wizard/validate\", wrap((req, res) => { const { stepId, data } = req.body; const result = validateW"
+  },
+  {
+    "file": "server/routes/world.js",
+    "line": 2167,
+    "method": "POST",
+    "signature": "router.post(\"/sim/search/semantic\", wrap((req, res) => { const { query, limit, filters } = req.body; // Simulate"
+  },
+  {
+    "file": "server/routes/world.js",
+    "line": 2180,
+    "method": "POST",
+    "signature": "router.post(\"/sim/knowledge/query\", wrap((req, res) => { const { nodeType, edgeType, startId, depth } = req.body; "
+  }
+]

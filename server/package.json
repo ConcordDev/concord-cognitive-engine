@@ -16,6 +16,8 @@
     "lint:ci": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",
     "check-deps": "node scripts/check-emergent-deps.js",
+    "check-route-auth": "node scripts/check-route-auth.js",
+    "check-route-auth:update": "node scripts/check-route-auth.js --update",
     "migrate": "node migrate.js",
     "migrate:status": "node migrate.js --status",
     "smoke": "bash scripts/smoke.sh",
