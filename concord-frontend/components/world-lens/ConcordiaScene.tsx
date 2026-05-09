@@ -316,6 +316,37 @@ export default function ConcordiaScene({
       }
       window.addEventListener('concordia:terrain-ready', onTerrainPhysics);
 
+      // Theme 6 deferred follow-up (game-feel pass): water plane + swim
+      // registration. Adds a translucent blue plane at y=2 that covers
+      // the river-bluff valley west of origin, plus a Fall Kill Creek
+      // strip slightly south. Registers the water-Y so AvatarSystem3D's
+      // swim-mode toggle activates when the player walks below.
+      try {
+        const worldId = (typeof window !== 'undefined' && window.localStorage?.getItem('concordia:activeWorldId')) || 'concordia-hub';
+        const waterY = 2.0;
+        physicsWorld.registerWaterPlane?.(worldId, waterY);
+        const waterMat = new THREE.MeshStandardMaterial({
+          color: 0x2c6ea1,
+          transparent: true,
+          opacity: 0.55,
+          metalness: 0.1,
+          roughness: 0.35,
+          side: THREE.DoubleSide,
+        });
+        // River bluff: large strip west of origin, ~120m × 600m
+        const river = new THREE.Mesh(new THREE.PlaneGeometry(120, 600, 1, 1), waterMat);
+        river.rotation.x = -Math.PI / 2;
+        river.position.set(-700, waterY, 0);
+        river.name = 'water:river';
+        scene.add(river);
+        // Fall Kill Creek: small strip south of origin, 50m × 220m
+        const creek = new THREE.Mesh(new THREE.PlaneGeometry(50, 220, 1, 1), waterMat);
+        creek.rotation.x = -Math.PI / 2;
+        creek.position.set(150, waterY, -260);
+        creek.name = 'water:creek';
+        scene.add(creek);
+      } catch { /* water plane is cosmetic; never block scene init */ }
+
       const settings = QUALITY_SETTINGS[quality];
 
       // ── Renderer ─────────────────────────────────────────────────

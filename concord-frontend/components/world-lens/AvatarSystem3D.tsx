@@ -272,6 +272,9 @@ export default function AvatarSystem3D({
   const deathFadeTickRef = useRef<(() => void) | null>(null);
   // Tier 2 deferral 10: per-frame tick for all active ragdolls.
   const ragdollTickRef = useRef<(() => void) | null>(null);
+  // Theme 5 (game-feel pass): hit-pause window per entity. While
+  // performance.now() < entry, the entity's mixer freezes (delta=0).
+  const hitPauseUntilRef = useRef<Map<string, number>>(new Map());
   const keysRef = useRef<Set<string>>(new Set());
   const playerPositionRef = useRef({ ...playerAvatar.position });
   const playerRotationRef = useRef(playerAvatar.rotation);
@@ -1005,6 +1008,35 @@ export default function AvatarSystem3D({
       }
       window.addEventListener('concordia:hit-reaction', handleHitReaction);
 
+      // Theme 5 (game-feel pass): hit-pause + knockback. GameJuice fires
+      // these on combat-hit-heavy / combat-crit / combat-kill so the
+      // impact reads as weight (animation freezes) and the target
+      // recoils through the kinematic capsule.
+      function handleHitPause(e: Event) {
+        const detail = (e as CustomEvent).detail as { entityId?: string; durationMs?: number } | undefined;
+        if (!detail?.entityId || !Number.isFinite(Number(detail.durationMs))) return;
+        const dur = Math.max(0, Math.min(400, Number(detail.durationMs)));
+        if (dur === 0) return;
+        hitPauseUntilRef.current.set(detail.entityId, performance.now() + dur);
+      }
+      window.addEventListener('concordia:hit-pause', handleHitPause);
+
+      function handleKnockback(e: Event) {
+        const detail = (e as CustomEvent).detail as
+          | { entityId?: string; direction?: { x?: number; z?: number }; magnitude?: number; durationMs?: number }
+          | undefined;
+        if (!detail?.entityId || !detail.direction) return;
+        const dx = Number(detail.direction.x) || 0;
+        const dz = Number(detail.direction.z) || 0;
+        const m  = Number(detail.magnitude) || 0;
+        const ms = Number(detail.durationMs) || 220;
+        if (m <= 0 || (dx === 0 && dz === 0)) return;
+        try {
+          physicsWorld.knockbackKinematic?.(detail.entityId, { x: dx, z: dz }, m, ms);
+        } catch { /* physics-world load race; best-effort */ }
+      }
+      window.addEventListener('concordia:knockback', handleKnockback);
+
       // Polish: NPCs face the player when within 5m. NPCBehaviorHooks ticks
       // every 250ms and dispatches `concordia:npc-look-at` with the desired
       // yaw — we update the existing per-NPC targetRot which the frame loop
@@ -1484,13 +1516,36 @@ export default function AvatarSystem3D({
         });
       }
 
-      // ── Kinematic character controller (WASD) ──────────────
+      // ── Kinematic character controller (WASD + Space jump/glide) ──────────
 
       function handleKeyDown(e: KeyboardEvent) {
-        keysRef.current.add(e.key.toLowerCase());
+        const k = e.key.toLowerCase();
+        keysRef.current.add(k);
+        // Theme 6 (game-feel pass): Space = jump (when grounded) or
+        // toggle glide (when airborne already and falling). We trigger
+        // off keydown so a tap registers a single jump and a hold flips
+        // straight into glide once the apex starts.
+        if (k === ' ' || k === 'spacebar') {
+          // Skip when typing in a text input.
+          const tgt = e.target as HTMLElement | null;
+          if (tgt && (tgt.tagName === 'INPUT' || tgt.tagName === 'TEXTAREA' || tgt.isContentEditable)) return;
+          // Prevent default so Space doesn't scroll the page.
+          e.preventDefault();
+          const ok = physicsWorld.requestJump?.('player');
+          if (!ok) {
+            // Already airborne → start glide.
+            physicsWorld.setGlide?.('player', true);
+          }
+        }
       }
       function handleKeyUp(e: KeyboardEvent) {
-        keysRef.current.delete(e.key.toLowerCase());
+        const k = e.key.toLowerCase();
+        keysRef.current.delete(k);
+        if (k === ' ' || k === 'spacebar') {
+          // Release glide on key-up so the player can choose how long the
+          // sail lasts. Grounded glide is a no-op anyway.
+          physicsWorld.setGlide?.('player', false);
+        }
       }
       window.addEventListener('keydown', handleKeyDown);
       window.addEventListener('keyup', handleKeyUp);
@@ -1506,9 +1561,23 @@ export default function AvatarSystem3D({
       // ── Update loop (called by parent scene's game loop) ───
 
       avatarGroup.userData.update = (delta: number, elapsed: number) => {
-        // Update all animation mixers
-        for (const mixer of mixersRef.current.values()) {
-          (mixer as { update: (d: number) => void }).update(delta);
+        // Theme 5 (game-feel pass): respect concordia:hit-pause window
+        // events. While a target/attacker is in their hit-pause window,
+        // their mixer freezes (delta=0) so the impact reads as weight.
+        // hitPauseUntilRef is keyed by entity id; managed by the listener
+        // installed below.
+        const now = performance.now();
+        const pauseMap = hitPauseUntilRef.current;
+        for (const [id, mixer] of mixersRef.current.entries()) {
+          const pauseUntil = pauseMap.get(id) ?? 0;
+          const effectiveDelta = pauseUntil > now ? 0 : delta;
+          (mixer as { update: (d: number) => void }).update(effectiveDelta);
+        }
+        // GC expired pauses lazily.
+        if (pauseMap.size > 0) {
+          for (const [k, until] of pauseMap) {
+            if (until <= now) pauseMap.delete(k);
+          }
         }
 
         // Phase 5: per-frame opacity fade on dying meshes
@@ -1560,6 +1629,34 @@ export default function AvatarSystem3D({
         const isMoving = moveX !== 0 || moveZ !== 0;
         const exhausted = isExhausted(physics);
 
+        // Theme 6 (game-feel pass): airborne / swim state from physics-world.
+        // The kinematic capsule integrates verticalVel internally; we read
+        // these flags to decide whether to clamp Y to the heightfield
+        // (grounded path) or take Y from the physics step (airborne /
+        // swimming path).
+        const isAirborne = (physicsWorld as { isAirborne?: (id: string) => boolean }).isAirborne?.('player') ?? false;
+        const isSwimming = (physicsWorld as { isSwimming?: (id: string) => boolean }).isSwimming?.('player') ?? false;
+
+        // Theme 6: when not pressing WASD but airborne/swimming, still
+        // step physics so gravity / glide / buoyancy integrate. This
+        // runs ONCE before the existing if (isMoving) / else branch.
+        if (!isMoving && (isAirborne || isSwimming)) {
+          const pos = playerPositionRef.current;
+          const corrected = physicsWorld.moveCharacter('player', { x: 0, y: 0, z: 0 }, delta);
+          if (corrected) pos.y += corrected.y;
+        }
+
+        // Theme 6 swim toggle — compare player Y against registered water
+        // plane for the active world. No-op when no plane registered.
+        try {
+          const wid = (typeof window !== 'undefined' && (window.localStorage?.getItem('concordia:activeWorldId'))) || 'concordia-hub';
+          const waterY = (physicsWorld as { getWaterLevelFor?: (w: string) => number | null }).getWaterLevelFor?.(wid);
+          if (waterY != null) {
+            const below = playerPositionRef.current.y < waterY - 0.5;
+            if (below !== isSwimming) physicsWorld.setSwim?.('player', below);
+          }
+        } catch { /* swim toggle is best-effort */ }
+
         if (isMoving) {
           const len = Math.sqrt(moveX * moveX + moveZ * moveZ);
           moveX /= len;
@@ -1571,13 +1668,17 @@ export default function AvatarSystem3D({
           if (corrected) {
             pos.x += corrected.x;
             pos.z += corrected.z;
+            // Theme 6: airborne/swimming → Y from physics (jump arc /
+            // gravity / buoyancy). Grounded → still clamps to terrain
+            // a few lines down.
+            if (isAirborne || isSwimming) pos.y += corrected.y;
           } else {
             pos.x += desired.x;
             pos.z += desired.z;
           }
 
           // Momentum overshoot on sharp direction change (ice/wet = more slide)
-          if (!isRunning) {
+          if (!isRunning && !isAirborne) {
             const frictionScale = 1 / Math.max(0.1, weatherFriction);
             const overshoot = computeMomentumOvershoot(physics.mass, speed) * frictionScale;
             if (overshoot > 0.01) {
@@ -1587,9 +1688,11 @@ export default function AvatarSystem3D({
             }
           }
 
-          // Terrain elevation — clamp Y to ground
-          const elevation = elevationRef.current?.(pos.x, pos.z) ?? pos.y;
-          pos.y = elevation;
+          // Terrain elevation — clamp Y to ground (only when grounded).
+          if (!isAirborne && !isSwimming) {
+            const elevation = elevationRef.current?.(pos.x, pos.z) ?? pos.y;
+            pos.y = elevation;
+          }
 
           // Auto-face movement direction with smooth rotation.
           // In first-person, the player faces wherever the camera looks
@@ -1892,6 +1995,8 @@ export default function AvatarSystem3D({
         window.removeEventListener('keydown', handleKeyDown);
         window.removeEventListener('keyup', handleKeyUp);
         window.removeEventListener('concordia:hit-reaction', handleHitReaction);
+        window.removeEventListener('concordia:hit-pause', handleHitPause);
+        window.removeEventListener('concordia:knockback', handleKnockback);
         window.removeEventListener('concordia:combat-anim', handleCombatAnim);
         window.removeEventListener('concordia:death-collapse', handleDeathCollapse);
         window.removeEventListener('concordia:npc-look-at', handleNPCLookAt);

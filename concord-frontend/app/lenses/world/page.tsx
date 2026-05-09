@@ -296,6 +296,18 @@ const BazaarLayer = dynamic(
   () => import('@/components/world-lens/BazaarLayer'),
   { ssr: false },
 );
+const NPCActivityTag = dynamic(
+  () => import('@/components/world/NPCActivityTag').then((m) => ({ default: m.NPCActivityTag })),
+  { ssr: false },
+);
+const DamageBillboard = dynamic(
+  () => import('@/components/world/DamageBillboard').then((m) => ({ default: m.DamageBillboard })),
+  { ssr: false },
+);
+const WorldSigns = dynamic(
+  () => import('@/components/world/WorldSigns').then((m) => ({ default: m.WorldSigns })),
+  { ssr: false },
+);
 const DiegeticSurfaces = dynamic(
   () => import('@/components/world-lens/DiegeticSurfaces'),
   { ssr: false },
@@ -2042,20 +2054,30 @@ export default function WorldLensPage() {
           // Store both avatar-mapped and raw NPC data
           setWorldNPCs(d.npcs.map(_mapNPCToAvatarData));
           setRawWorldNPCs(
-            d.npcs.map((n: Record<string, unknown>) => ({
-              id: n.id as string,
-              name: (n.name as string) ?? 'Unknown',
-              archetype: (n.archetype as string) ?? 'guard',
-              faction: n.faction as string | undefined,
-              isConscious: n.isConscious as boolean | undefined,
-              griefLevel: n.griefLevel as number | undefined,
-              criminalRep: n.criminalRep as number | undefined,
-              isWanted: n.isWanted as boolean | undefined,
-              jobType: n.jobType as string | undefined,
-              currentHp: n.currentHp as number | undefined,
-              maxHp: n.maxHp as number | undefined,
-              position: { x: (n.x as number) ?? 0, y: (n.y as number) ?? 0 },
-            }))
+            d.npcs.map((n: Record<string, unknown>) => {
+              const pos = (n.position as { x?: number; y?: number; z?: number } | undefined) ?? {};
+              return {
+                id: n.id as string,
+                name: (n.name as string) ?? 'Unknown',
+                archetype: (n.archetype as string) ?? 'guard',
+                faction: n.faction as string | undefined,
+                isConscious: n.isConscious as boolean | undefined,
+                griefLevel: n.griefLevel as number | undefined,
+                criminalRep: n.criminalRep as number | undefined,
+                isWanted: n.isWanted as boolean | undefined,
+                jobType: n.jobType as string | undefined,
+                currentHp: n.currentHp as number | undefined,
+                maxHp: n.maxHp as number | undefined,
+                // Theme 4 (game-feel pass): activity surfaced from the
+                // npc-routine-cycle for the floating activity icon.
+                currentActivity: (n.currentActivity as string | null) ?? null,
+                position: {
+                  x: (n.x as number) ?? pos.x ?? 0,
+                  y: (n.y as number) ?? pos.y ?? 0,
+                  z: (n.z as number) ?? pos.z ?? 0,
+                },
+              };
+            })
           );
         })
         .catch(() => {});
@@ -2697,8 +2719,30 @@ export default function WorldLensPage() {
         isCrit: boolean;
         targetHealth: number;
         targetMaxHealth: number;
+        targetPosition?: { x?: number; y?: number; z?: number };
+        attackerPosition?: { x?: number; y?: number; z?: number };
       };
       if (!data) return;
+
+      // Theme 5 (game-feel pass): world-anchored damage billboard fires
+      // for every hit (us OR others) within view of the player. Position
+      // is server-provided when available; fall back to local lookups.
+      try {
+        const tp = data.targetPosition && Number.isFinite(Number(data.targetPosition.x))
+          ? { x: Number(data.targetPosition.x), y: Number(data.targetPosition.y ?? 0), z: Number(data.targetPosition.z ?? 0) }
+          : null;
+        if (tp) {
+          window.dispatchEvent(new CustomEvent('concordia:damage-billboard', {
+            detail: {
+              position: tp,
+              value: String(Math.max(0, Math.round(Number(data.damage) || 0))),
+              kind: data.isCrit ? 'crit' : (data.damage > 25 ? 'crit' : 'hit'),
+              ttlMs: data.isCrit ? 1500 : 1100,
+            },
+          }));
+        }
+      } catch { /* billboard best-effort */ }
+
       if (data.targetId !== playerAvatar.id) return; // not us
       setCombatState((prev) => ({
         ...prev,
@@ -2892,6 +2936,22 @@ export default function WorldLensPage() {
     worldSocket.on('world:action', handleWorldAction);
     worldSocket.on('weather:update', handleWeatherUpdate);
     worldSocket.on('world:deformation', handleWorldDeformation);
+    // Embodied sonic-pulse → window event for SoundscapeEngine. Server emits
+    // when a non-sensor source writes a loud sonic_os.ambient_db delta (skill
+    // cast / combat). Engine briefly accents master gain in proportion.
+    const handleSonicPulse = (...args: unknown[]) => {
+      const data = args[0] as { value?: number; source?: string; cellX?: number; cellZ?: number } | undefined;
+      window.dispatchEvent(new CustomEvent('concordia:sonic-pulse', { detail: data }));
+    };
+    worldSocket.on('world:sonic-pulse', handleSonicPulse);
+    // Theme deferred (game-feel pass): bridge world:sign-placed → window
+    // event so WorldSigns can listen with the same pattern as the rest
+    // of the world overlays.
+    const handleSignPlaced = (...args: unknown[]) => {
+      const sign = args[0] as Record<string, unknown> | undefined;
+      if (sign) window.dispatchEvent(new CustomEvent('concordia:sign-placed', { detail: sign }));
+    };
+    worldSocket.on('world:sign-placed', handleSignPlaced);
 
     return () => {
       worldSocket.off('player:load:ack', handleLoadAck);
@@ -2908,6 +2968,8 @@ export default function WorldLensPage() {
       worldSocket.off('world:action', handleWorldAction);
       worldSocket.off('weather:update', handleWeatherUpdate);
       worldSocket.off('world:deformation', handleWorldDeformation);
+      worldSocket.off('world:sonic-pulse', handleSonicPulse);
+      worldSocket.off('world:sign-placed', handleSignPlaced);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [worldSocket.isConnected, activeDistrict.id]);
@@ -3750,6 +3812,20 @@ export default function WorldLensPage() {
           <CinematicCaptureBootstrap />
           <PerformanceOverlay />
           <BazaarLayer worldId="concordia" />
+          <NPCActivityTag
+            npcs={rawWorldNPCs.map((n) => ({
+              id: n.id,
+              name: n.name,
+              currentActivity: (n as { currentActivity?: string | null }).currentActivity ?? null,
+              position: { x: n.position.x, y: 0, z: (n.position as { z?: number }).z ?? 0 },
+            }))}
+            playerPosition={{ x: playerAvatar.position.x, z: playerAvatar.position.z }}
+          />
+          <DamageBillboard />
+          <WorldSigns
+            worldId={activeDistrict.id}
+            playerPosition={{ x: playerAvatar.position.x, y: 0, z: playerAvatar.position.z }}
+          />
           <CurrencyHUD onClick={() => setShowPanel('profile')} />
           <DiegeticSurfaces
             playerPosition={playerAvatar.position}

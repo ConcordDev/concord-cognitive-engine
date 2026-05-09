@@ -91,6 +91,26 @@ registerHeartbeat("fauna-spawner", {
   handler: runFaunaSpawner,
 });
 
+// Theme 2 (game-feel pass): boid steering for spawned fauna so creatures
+// flock/herd/scatter rather than sitting where the spawner placed them.
+// Frequency 4 (~60s) = visibly responsive without churning the DB.
+import { runCreatureFlockCycle } from "./emergent/creature-flock-cycle.js";
+registerHeartbeat("creature-flock-cycle", {
+  frequency: 4,
+  handler: runCreatureFlockCycle,
+});
+
+// Theme 3 (game-feel pass): chemistry-cascade. Turns embodied_signal_log
+// from a write-only ledger into a real substrate — fire spreads to dry
+// adjacent cells, rain damps it, hot+humid produces steam (cleansing
+// poison), very-hot drops air quality, etc. Frequency 3 (~45s); spatial
+// pre-filter keeps cost bounded regardless of log size.
+import { runSignalPropagationCycle } from "./emergent/signal-propagation-cycle.js";
+registerHeartbeat("signal-propagation-cycle", {
+  frequency: 3,
+  handler: runSignalPropagationCycle,
+});
+
 // Concordia Mount System Phase B4: care heartbeat. Backstop pass
 // applies decay to mount loyalty / hunger for offline mounts. Most
 // decay flows through the lazy-read path on `mounts.care_state`, so
@@ -7494,6 +7514,18 @@ async function tryInitWebSockets(server) {
 
         // Broadcast the hit event so everyone in the attacker's
         // chunk sees it — damage numbers, blood, etc.
+        // Theme 5 (game-feel pass): include target + attacker positions
+        // so the client damage-billboard layer can world-anchor the
+        // damage number and the kinematic knockback can derive its
+        // direction without a second lookup. Best-effort — both fields
+        // are listed as optional in event-shapes.js.
+        let _hitTargetPos = null, _hitAttackerPos = null;
+        try {
+          _hitTargetPos = cityPresence.getPositionFor?.(data.targetId)
+            || cityPresence.getUserPosition?.(data.targetId)
+            || null;
+          _hitAttackerPos = cityPresence.getUserPosition?.(userId) || null;
+        } catch { /* position lookup best-effort */ }
         realtimeEmit("combat:hit", {
           attackerId: userId,
           targetId: data.targetId,
@@ -7502,6 +7534,8 @@ async function tryInitWebSockets(server) {
           targetHealth: result.targetHealth,
           targetMaxHealth: result.targetMaxHealth,
           targetKilled: result.targetKilled,
+          targetPosition: _hitTargetPos,
+          attackerPosition: _hitAttackerPos,
         });
 
         // Companion assist XP: deployed companions of the attacker get
@@ -7523,6 +7557,36 @@ async function tryInitWebSockets(server) {
             attackerId: userId,
             targetId: data.targetId,
           });
+
+          // Theme deferred (game-feel pass): drop a shadow corpse for
+          // PLAYER deaths only. NPCs leave loot via a different path.
+          // Look up target as user — if found, drop a corpse at the
+          // last known position. Skipped inside training matches
+          // (handled below) where loot stakes are explicitly off.
+          try {
+            const isPlayer = !!db.prepare(`SELECT 1 FROM users WHERE id = ?`).get(data.targetId);
+            const inTraining = !!db.prepare(`
+              SELECT 1 FROM training_matches
+              WHERE status IN ('active', 'reset')
+                AND ((initiator_id = ? AND opponent_id = ?) OR (initiator_id = ? AND opponent_id = ?))
+              LIMIT 1
+            `).get(userId, data.targetId, data.targetId, userId);
+            if (isPlayer && !inTraining) {
+              const tp = (typeof cityPresence?.getUserPosition === "function")
+                ? cityPresence.getUserPosition(data.targetId)
+                : null;
+              if (tp && Number.isFinite(tp.x) && Number.isFinite(tp.z)) {
+                import("./lib/player-corpse.js").then(({ dropCorpseOnDeath }) => {
+                  dropCorpseOnDeath(db, {
+                    userId: data.targetId,
+                    worldId: tp.cityId || data.worldId || "concordia-hub",
+                    position: { x: tp.x, y: tp.y, z: tp.z },
+                    cause: "combat",
+                  });
+                }).catch(() => { /* corpse drop best-effort */ });
+              }
+            }
+          } catch { /* corpse drop best-effort */ }
 
           // PvP training match round end. If attacker + target are both in
           // an active training match together, record the round and let the
@@ -23039,6 +23103,28 @@ registerDtuPortabilityMacros(register);
 // lenses with one query.
 import registerDiscoveryMacros from "./domains/discovery.js";
 registerDiscoveryMacros(register);
+
+// Theme deferred (game-feel pass): async-cooperation player signs.
+// Register the macro domain + the cleanup heartbeat.
+import registerPlayerSignsMacros from "./domains/player-signs.js";
+registerPlayerSignsMacros(register);
+import { runPlayerSignsCleanup } from "./emergent/player-signs-cleanup.js";
+registerHeartbeat("player-signs-cleanup", {
+  frequency: 240,
+  handler: runPlayerSignsCleanup,
+});
+
+// Theme deferred (game-feel pass): hidden quest triggers — substrate
+// for unmarked, environment-gated quest activation. Pure runMacro
+// surface; no heartbeat (callers evaluate inline as players move /
+// talk / hand items).
+import registerHiddenQuestsMacros from "./domains/hidden-quests.js";
+registerHiddenQuestsMacros(register);
+
+// Theme deferred (game-feel pass): shadow-corpse substrate (Dark Souls
+// loss/recovery on player death). Three macros: drop / active / recover.
+import registerPlayerCorpseMacros from "./domains/player-corpse.js";
+registerPlayerCorpseMacros(register);
 
 // Governance — proposals + votes on constitutional constants. The
 // constants themselves remain code-level; this layer is the audit trail.

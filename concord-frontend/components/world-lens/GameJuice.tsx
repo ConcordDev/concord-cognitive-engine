@@ -114,7 +114,18 @@ export default function GameJuice({ children, enabled = true, intensity: initial
   }, []);
 
   const triggerJuice = useCallback(
-    (trigger: JuiceTrigger, opts?: { magnitude?: number; value?: string; targetId?: string; position?: { x: number; y: number; z: number } }) => {
+    (
+      trigger: JuiceTrigger,
+      opts?: {
+        magnitude?: number;
+        value?: string;
+        targetId?: string;
+        attackerId?: string;
+        position?: { x: number; y: number; z: number };
+        /** World position of the attacker — drives knockback direction. */
+        sourcePosition?: { x: number; y: number; z: number };
+      },
+    ) => {
       if (!enabled) return;
 
       const feedback = FEEDBACK_MAP[trigger];
@@ -127,12 +138,53 @@ export default function GameJuice({ children, enabled = true, intensity: initial
       // Heavy-hit variant: combat-hit with magnitude > 25 plays the heavier
       // confirmation stack (transient + heavy + thump-deep) for genuine weight.
       let sfxId = TRIGGER_SFX[trigger];
-      if (trigger === 'combat-hit' && (opts?.magnitude ?? 0) > 25) {
+      const isHeavy = trigger === 'combat-hit' && (opts?.magnitude ?? 0) > 25;
+      if (isHeavy) {
         sfxId = 'hit-confirm-heavy';
       }
       if (sfxId) {
         if (opts?.position) soundscape.playSpatialSFX(sfxId, opts.position);
         else soundscape.triggerSFX(sfxId);
+      }
+
+      // Theme 5 (game-feel pass): heavy hits emit hit-pause + knockback
+      // window events so the avatar update loop can freeze its mixer
+      // briefly and physics-world.knockbackKinematic can fold an impulse
+      // into the kinematic capsule. Both are best-effort; consumers may
+      // be absent during non-combat lenses.
+      const isCombatLandedHit =
+        trigger === 'combat-hit' || trigger === 'combat-crit' || trigger === 'combat-kill';
+      if (isCombatLandedHit) {
+        const targetMs = trigger === 'combat-kill' ? 200 : (isHeavy || trigger === 'combat-crit' ? 80 : 0);
+        const attackerMs = trigger === 'combat-kill' ? 60 : (isHeavy || trigger === 'combat-crit' ? 50 : 0);
+        if (targetMs > 0 && opts?.targetId) {
+          window.dispatchEvent(new CustomEvent('concordia:hit-pause', {
+            detail: { entityId: opts.targetId, durationMs: targetMs },
+          }));
+        }
+        if (attackerMs > 0 && opts?.attackerId) {
+          window.dispatchEvent(new CustomEvent('concordia:hit-pause', {
+            detail: { entityId: opts.attackerId, durationMs: attackerMs },
+          }));
+        }
+        // Knockback only on heavy / crit / kill, only when both endpoints
+        // known (so we can derive a direction that points away from the
+        // attacker). Ignored for normal light hits.
+        if ((isHeavy || trigger === 'combat-crit' || trigger === 'combat-kill') &&
+            opts?.targetId && opts?.position && opts?.sourcePosition) {
+          const dx = opts.position.x - opts.sourcePosition.x;
+          const dz = opts.position.z - opts.sourcePosition.z;
+          const mag = Math.hypot(dx, dz) || 1;
+          const m = trigger === 'combat-kill' ? 6 : (trigger === 'combat-crit' ? 5 : 4);
+          window.dispatchEvent(new CustomEvent('concordia:knockback', {
+            detail: {
+              entityId: opts.targetId,
+              direction: { x: dx / mag, z: dz / mag },
+              magnitude: m,
+              durationMs: trigger === 'combat-kill' ? 320 : 220,
+            },
+          }));
+        }
       }
 
       const scaledDuration = feedback.duration * intensityValue;
