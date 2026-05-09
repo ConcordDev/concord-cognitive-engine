@@ -1054,9 +1054,47 @@ export const PRODUCTIZATION_PHASES: ProductionPhase[] = [
     status: 'blocked',
   },
 
-  // ── PHASE 24: Game ──────────────────────────────────────────────
+  // ── PHASE 24: Crafting ──────────────────────────────────────────
   {
     order: 24,
+    lensId: 'crafting',
+    name: 'Crafting',
+    rationale: 'Production-grade crafting workbench. Surfaces the full recipe substrate (food/style/spell/blueprint) plus the forge, marketplace, and skill progression. Rivals Paprika + the Skyrim crafting menu in one workspace.',
+    dependsOn: [],
+    incumbents: ['Paprika', 'Skyrim crafting', 'NoteBook LM cookbooks', 'Whetstone'],
+    artifacts: [
+      { name: 'Recipe',           persistsWithoutDTU: true, storageDomain: 'crafting', requiredFields: ['id', 'title', 'type', 'meta', 'created_at'] },
+      { name: 'CraftSession',     persistsWithoutDTU: true, storageDomain: 'crafting', requiredFields: ['id', 'recipeId', 'worldId', 'userId', 'output', 'created_at'] },
+      { name: 'TierListing',      persistsWithoutDTU: true, storageDomain: 'crafting', requiredFields: ['id', 'dtuId', 'price', 'tier_prices', 'creator_id'] },
+      { name: 'ResourceBar',      persistsWithoutDTU: true, storageDomain: 'crafting', requiredFields: ['user_id', 'world_id', 'bar_type', 'current', 'max'] },
+      { name: 'PlayerSkillLevel', persistsWithoutDTU: true, storageDomain: 'crafting', requiredFields: ['user_id', 'skill_type', 'level', 'experience'] },
+    ],
+    engines: [
+      { name: 'recipe-validator',        description: 'Validates recipe spec for skill + resource requirements', trigger: 'on_demand' },
+      { name: 'craft-engine',            description: 'Executes a recipe: deducts resources, mints output DTU, awards XP', trigger: 'on_demand' },
+      { name: 'skill-progression',       description: 'Awards XP, recomputes mastery thresholds, unlocks cross-skill flags', trigger: 'automatic' },
+      { name: 'royalty-cascade',         description: 'Half-rate royalty pass on derivative purchases (95/5 floor at 0.0005)', trigger: 'automatic' },
+    ],
+    pipelines: [
+      { name: 'author-validate-list',     steps: ['author-recipe', 'validate', 'mint-dtu', 'list-on-marketplace', 'announce'], engines: ['recipe-validator'] },
+      { name: 'forge-craft-cycle',        steps: ['load-recipe', 'check-skills', 'check-resources', 'execute', 'award-xp', 'emit-dtu'], engines: ['recipe-validator', 'craft-engine', 'skill-progression'] },
+      { name: 'cook-eat-buff',            steps: ['cook', 'add-to-inventory', 'consume', 'apply-active-effect', 'emit-buff'], engines: ['craft-engine'] },
+      { name: 'browse-buy-cascade',       steps: ['search-marketplace', 'purchase-with-royalties', 'cascade-ancestors', 'register-citation'], engines: ['royalty-cascade'] },
+    ],
+    acceptanceCriteria: [
+      'Recipe artifact persists in personal-locker with full CRUD',
+      'Forge tab executes crafting end-to-end with resource deduction',
+      'Browse tab purchases route through royalty cascade',
+      'Skills tab surfaces practiced skills + crafting skill levels',
+      'Resource bars upgrade via /api/crafting/upgrade-bar',
+      'DTU exhaust generated for every craft, cook, mint, and purchase',
+    ],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 25: Game ──────────────────────────────────────────────
+  {
+    order: 25,
     lensId: 'game',
     name: 'Game',
     rationale: 'Gamification engine. Adds progression, achievements, and quests to all lenses.',
