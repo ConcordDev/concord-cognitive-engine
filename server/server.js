@@ -9309,6 +9309,8 @@ async function runMacro(domain, name, input, ctx) {
     glyph_spells: new Set([
       "list_components", "preview", "mint", "list_for_user", "seed_library",
     ]),
+    // Phase 6a: forge_marketplace — mint + list + read for caller's own apps.
+    forge_marketplace: new Set(["mint", "list", "list_for_user"]),
     // Phase 7 — Code substrate. Read-only macros for the code-DTU view.
     code: new Set(["dtu_for", "dtu_query", "cluster_for", "refresh"]),
   };
@@ -22761,6 +22763,11 @@ registerLandClaimsMacros(register);
 // DTU so it flows through Phase 1 / 1.5 (evolution + marketplace).
 import registerGlyphSpellMacros from "./domains/glyph-spells.js";
 registerGlyphSpellMacros(register);
+
+// Phase 6a — Forge → Marketplace. Mint Forge-generated apps as DTUs +
+// list on marketplace. Plugs into royalty cascade for citation chains.
+import registerForgeMarketplaceMacros from "./domains/forge-marketplace.js";
+registerForgeMarketplaceMacros(register);
 
 // Phase 7 / T2 — Code substrate macros: routes / migrations / modules /
 // macros become DTUs under kind='code_artifact'. See lib/code-substrate/.
