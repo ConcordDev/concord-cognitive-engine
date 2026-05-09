@@ -705,6 +705,7 @@ import createSovereignEmergentRouter from "./routes/sovereign-emergent.js";
 import { createUserDispatchRouter } from "./routes/user-dispatch.js";
 import createFederationRouter from "./routes/federation.js";
 import registerOAuthRoutes from "./routes/oauth.js";
+import { mountDxOAuth } from "./routes/dx-oauth.js";
 import createAuditRouter from "./routes/audit.js";
 import createMCPRouter from "./routes/mcp.js";
 import { QualiaEngine, hooks as qualiaHooks } from "./existential/index.js";
@@ -26658,6 +26659,17 @@ registerOAuthRoutes(app, {
   structuredLog,
   jwt,
   _REFRESH_FAMILIES,
+});
+
+// ---- DX Platform OAuth (IDE plugin sign-in via loopback redirect) ----
+// AUTH: gated below — the consent endpoint renders a sign-in prompt
+// when req.user is missing; /oauth/dx/grant is requireAuth-protected.
+mountDxOAuth(app, {
+  requireAuth,
+  getUserById: (uid) => {
+    try { return AuthDB.getUserById ? AuthDB.getUserById(uid) : null; }
+    catch { return null; }
+  },
 });
 
 // Backup endpoints extracted to routes/system.js
