@@ -205,6 +205,23 @@ export const EVENT_SHAPES = Object.freeze({
     required: ["worldId", "buildingId", "state"],
     optional: ["healthPct", "position", "structuralStress", "attackerId"],
   },
+
+  // Sprint B Phase 9 — NPC visible sentience snapshot. Emitted by the
+  // npc-perception-snapshot heartbeat (frequency 8). Drives frontend
+  // head-turns, posture mirroring, and mood bias. The renderer
+  // applies the update only when the local player matches
+  // shouldLookAtPlayer (otherwise the perception is for someone else).
+  "npc:perception-update": {
+    required: ["npcId", "worldId", "moodBias"],
+    optional: [
+      "shouldLookAtPlayer",
+      "activeGrudgeSeverity",
+      "shouldMirrorPosture",
+      "shouldAvoidEyeContact",
+      "preoccupationKind",
+      "factionPhase",
+    ],
+  },
 });
 
 /**

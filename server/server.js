@@ -443,6 +443,18 @@ registerHeartbeat("npc-routine-cycle", {
   handler: runNpcRoutineCycle,
 });
 
+// Sprint B Phase 9 — NPC visible sentience. Every 8 ticks (~2 minutes)
+// snapshots per-NPC perception (active grudge severity / faction-strategy
+// allied posture / mood bias) and emits npc:perception-update so the
+// frontend can drive head-turns, gait posture, and facial blends from
+// existing substrate fields. No new data; just rendering existing fields.
+// Kill-switch: CONCORD_NPC_PERCEPTION=0 (handled inside the module).
+import { runNpcPerceptionSnapshot } from "./emergent/npc-perception-snapshot.js";
+registerHeartbeat("npc-perception-snapshot", {
+  frequency: 8,
+  handler: runNpcPerceptionSnapshot,
+});
+
 // Phase 4b: NPC living economy. Every 8 ticks (~2min, staggered behind
 // the routine cycle so most NPCs have arrived) NPCs at their workplaces
 // gather / craft / trade / consume. Every action writes to economy_flows;
