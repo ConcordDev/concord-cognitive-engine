@@ -17,6 +17,7 @@
 import {
   MessageSquare,
   MessageCircle,
+  Inbox,
   Code,
   FlaskConical,
   Store,
@@ -2572,6 +2573,18 @@ export const LENS_REGISTRY: LensEntry[] = [
     path: '/lenses/understanding',
     order: 12,
     keywords: ['understanding', 'compose', 'parse', 'evolution', 'lineage', 'consolidate'],
+  },
+  {
+    id: 'message',
+    name: 'Messages',
+    icon: Inbox,
+    description: 'Direct messaging — Gmail-shape inbox over the social DM substrate.',
+    category: 'system',
+    showInSidebar: true,
+    showInCommandPalette: true,
+    path: '/lenses/message',
+    order: 14,
+    keywords: ['message', 'dm', 'inbox', 'mail'],
   },
 
   // ── System pages ───────────────────────────────────────────────

@@ -896,6 +896,7 @@ export const LENS_STATUS_MAP: LensStatusEntry[] = [
   { id: 'command-center', status: 'system', mergeTarget: null, postMergeRole: 'standalone', rationale: 'Operations dashboard for live runtime; system lens.' },
   { id: 'crafting', status: 'product', mergeTarget: null, postMergeRole: 'standalone', rationale: 'Recipe substrate (cooking/spell/fighting/blueprint) with tier-pricing marketplace.' },
   { id: 'understanding', status: 'product', mergeTarget: null, postMergeRole: 'standalone', rationale: 'Compounding-knowledge substrate workbench. Parse / compose / evolve / consolidate.' },
+  { id: 'message',       status: 'system',  mergeTarget: null, postMergeRole: 'standalone', rationale: 'Direct messaging — Gmail-shape inbox over /api/social/dm/*.' },
   { id: 'settings', status: 'system', mergeTarget: null, postMergeRole: 'standalone', rationale: 'Cross-platform user preferences; system lens.' },
   { id: 'creator', status: 'product', mergeTarget: null, postMergeRole: 'standalone', rationale: 'Creator hub: royalty streams, tier pricing, creator score, follower graph.' },
   { id: 'federation', status: 'system', mergeTarget: null, postMergeRole: 'standalone', rationale: 'Cross-instance shadow DTU export/import; system lens.' },

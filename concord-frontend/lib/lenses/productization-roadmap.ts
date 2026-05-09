@@ -3063,9 +3063,34 @@ export const PRODUCTIZATION_PHASES: ProductionPhase[] = [
     status: 'in_progress',
   },
 
-  // ── PHASE 95: Game ──────────────────────────────────────────────
+  // ── PHASE 95: Message ───────────────────────────────────────────
   {
     order: 95,
+    lensId: 'message',
+    name: 'Messages',
+    rationale: 'Production-grade direct-messaging surface. Gmail-shape inbox + compose + read flow over the social DM substrate (/api/social/dm/*). Rivals Gmail / Twitter DMs / Discord DMs as the platform-native inbox.',
+    dependsOn: [],
+    incumbents: ['Gmail', 'Twitter DMs', 'Discord DMs', 'Signal'],
+    artifacts: [
+      { name: 'Conversation', persistsWithoutDTU: true, storageDomain: 'message', requiredFields: ['id', 'participantIds', 'lastMessage'] },
+      { name: 'Message',      persistsWithoutDTU: true, storageDomain: 'message', requiredFields: ['id', 'fromUserId', 'toUserId', 'content', 'createdAt'] },
+      { name: 'SentMessage',  persistsWithoutDTU: true, storageDomain: 'message', requiredFields: ['to', 'at'] },
+    ],
+    engines: [
+      { name: 'send-engine',  description: 'Routes a DM via /api/social/dm with media support', trigger: 'on_demand' },
+      { name: 'read-marker',  description: 'Marks conversation messages read on open', trigger: 'automatic' },
+    ],
+    pipelines: [
+      { name: 'compose-send-record', steps: ['compose', 'validate-recipient', 'send', 'mint-sent-artifact'], engines: ['send-engine'] },
+      { name: 'open-read-cycle',     steps: ['select-conversation', 'load-messages', 'mark-read', 'render'], engines: ['read-marker'] },
+    ],
+    acceptanceCriteria: ['Real /api/social/dm conversations + messages', 'Compose flow (recipient + body)', 'Read marker on open', 'Sent-message artifact ledger', 'Inbox-shape silhouette'],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 96: Game ──────────────────────────────────────────────
+  {
+    order: 96,
     lensId: 'game',
     name: 'Game',
     rationale: 'Gamification engine. Adds progression, achievements, and quests to all lenses.',
