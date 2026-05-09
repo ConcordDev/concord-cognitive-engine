@@ -37,7 +37,6 @@ export async function runFactionEventTick(STATE, db, deps = {}) {
   // 1) End any events past their ends_at
   try {
     const expired = db.prepare(`
-      // TODO: project explicit columns (auto-fix suggestion)
       SELECT * FROM faction_events_scheduled
        WHERE status = 'active' AND ends_at <= unixepoch()
     `).all();

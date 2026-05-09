@@ -160,7 +160,6 @@ export function applyDamageToPlayer(db, worldId, attackerId, attackerType, userI
 
   // Deduct from player resource bars
   const bars = db.prepare(`
-    // TODO: project explicit columns (auto-fix suggestion)
     SELECT * FROM player_resource_bars WHERE user_id = ? AND world_id = ?
   `).get(userId, worldId);
   if (bars) {
@@ -220,7 +219,6 @@ export function getOrCreateNPCResistances(db, npcId) {
 // ── getOrInitPlayerBars ───────────────────────────────────────────────────────
 export function getOrInitPlayerBars(db, userId, worldId) {
   let bars = db.prepare(`
-    // TODO: project explicit columns (auto-fix suggestion)
     SELECT * FROM player_resource_bars WHERE user_id = ? AND world_id = ?
   `).get(userId, worldId);
 
@@ -232,7 +230,6 @@ export function getOrInitPlayerBars(db, userId, worldId) {
          bio_power, max_bio_power, perception, max_perception)
       VALUES (?,?,?, 100,100, 100,100, 100,100, 100,100, 100,100)
     `).run(id, userId, worldId);
-    // TODO: project explicit columns (auto-fix suggestion)
     bars = db.prepare('SELECT * FROM player_resource_bars WHERE id = ?').get(id);
   }
 

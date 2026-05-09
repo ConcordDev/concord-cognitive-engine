@@ -121,7 +121,6 @@ export function onFamilyMemberKilled(db, killedNPCId, killerId, killerType, real
 
     for (const bond of family) {
       const survivorId = bond.npc_id;
-      // TODO: project explicit columns (auto-fix suggestion)
       const survivor   = db.prepare('SELECT * FROM world_npcs WHERE id = ? AND is_dead = 0').get(survivorId);
       if (!survivor) continue;
 
@@ -180,10 +179,8 @@ export function decayGrief(db, npcId) {
 export function attemptCrossbreed(db, npcIdA, npcIdB, worldId) {
   if (Math.random() > CROSSBREED_CHANCE) return null;
 
-  // TODO: project explicit columns (auto-fix suggestion)
 
   const npcA = db.prepare('SELECT * FROM world_npcs WHERE id = ? AND is_dead = 0').get(npcIdA);
-  // TODO: project explicit columns (auto-fix suggestion)
   const npcB = db.prepare('SELECT * FROM world_npcs WHERE id = ? AND is_dead = 0').get(npcIdB);
   if (!npcA || !npcB) return null;
 
@@ -200,9 +197,7 @@ export function attemptCrossbreed(db, npcIdA, npcIdB, worldId) {
  * Force a crossbreed — used by quest system or world events.
  */
 export function forceCrossbreed(db, npcIdA, npcIdB, worldId) {
-  // TODO: project explicit columns (auto-fix suggestion)
   const npcA = db.prepare('SELECT * FROM world_npcs WHERE id = ?').get(npcIdA);
-  // TODO: project explicit columns (auto-fix suggestion)
   const npcB = db.prepare('SELECT * FROM world_npcs WHERE id = ?').get(npcIdB);
   if (!npcA || !npcB) return null;
   return _spawnOffspring(db, npcA, npcB, worldId);

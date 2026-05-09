@@ -239,7 +239,6 @@ export function enforceGearCeiling(db) {
  * Return all gear rows for an NPC (used by loot generator).
  */
 export function getNPCGear(db, npcId) {
-  // TODO: project explicit columns (auto-fix suggestion)
   return db.prepare('SELECT * FROM npc_gear WHERE npc_id = ? AND equipped = 1').all(npcId);
 }
 

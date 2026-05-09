@@ -13,7 +13,6 @@ import crypto from "crypto";
  * @returns {object}  listing row
  */
 export function listSkillForSale(sellerId, dtuId, priceCC, description, db) {
-  // TODO: project explicit columns (auto-fix suggestion)
   const skill = db.prepare("SELECT * FROM dtus WHERE id = ? AND creator_id = ?").get(dtuId, sellerId);
   if (!skill) throw Object.assign(new Error("Skill not found or not owned by seller"), { status: 403 });
 
@@ -35,7 +34,6 @@ export function listSkillForSale(sellerId, dtuId, priceCC, description, db) {
     description || skill.title || "",
   );
 
-  // TODO: project explicit columns (auto-fix suggestion)
 
   return db.prepare("SELECT * FROM skill_listings WHERE id = ?").get(id);
 }
@@ -52,7 +50,6 @@ export function listSkillForSale(sellerId, dtuId, priceCC, description, db) {
  * @returns {Promise<{ listing: object, newSkill: object }>}
  */
 export async function purchaseSkill(buyerId, listingId, worldContext, db, selectBrain) {
-  // TODO: project explicit columns (auto-fix suggestion)
   const listing = db.prepare("SELECT * FROM skill_listings WHERE id = ? AND status = 'active'").get(listingId);
   if (!listing) throw Object.assign(new Error("Listing not found or no longer active"), { status: 404 });
 

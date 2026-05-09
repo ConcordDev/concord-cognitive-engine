@@ -57,7 +57,6 @@ export function computeMarketPrice(basePrice, supplyCount, demandCount) {
  */
 export function getWorldMarket(db, worldId) {
   const rows = db.prepare(
-    // TODO: project explicit columns (auto-fix suggestion)
     'SELECT * FROM world_market WHERE world_id = ? ORDER BY resource_id ASC'
   ).all(worldId);
 
@@ -82,7 +81,6 @@ export function updateMarketPrice(db, worldId, resourceId, supplyDelta, demandDe
 
   // Fetch existing row or start with defaults
   const row = db.prepare(
-    // TODO: project explicit columns (auto-fix suggestion)
     'SELECT * FROM world_market WHERE world_id = ? AND resource_id = ?'
   ).get(worldId, resourceId);
 
@@ -106,7 +104,6 @@ export function updateMarketPrice(db, worldId, resourceId, supplyDelta, demandDe
   }
 
   return db.prepare(
-    // TODO: project explicit columns (auto-fix suggestion)
     'SELECT * FROM world_market WHERE world_id = ? AND resource_id = ?'
   ).get(worldId, resourceId);
 }

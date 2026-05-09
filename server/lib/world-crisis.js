@@ -16,7 +16,6 @@ export const CRISIS_TYPES = {
 
 export function getActiveCrises(db) {
   const now = Date.now();
-  // TODO: project explicit columns (auto-fix suggestion)
   return db.prepare(`SELECT * FROM world_crises WHERE status = 'active' AND ends_at > ? ORDER BY started_at DESC`).all(now);
 }
 
@@ -44,7 +43,6 @@ export function triggerCrisis(db, type, worldId, realtimeEmit) {
 }
 
 export async function resolveCrisis(db, crisisId, resolution, realtimeEmit) {
-  // TODO: project explicit columns (auto-fix suggestion)
   const crisis = db.prepare("SELECT * FROM world_crises WHERE id = ?").get(crisisId);
   if (!crisis) return { ok: false, error: "not_found" };
 
@@ -79,7 +77,6 @@ export async function resolveCrisis(db, crisisId, resolution, realtimeEmit) {
 }
 
 export async function expireOldCrises(db, realtimeEmit) {
-  // TODO: project explicit columns (auto-fix suggestion)
   const expired = db.prepare(`SELECT * FROM world_crises WHERE status = 'active' AND ends_at <= ?`).all(Date.now());
   for (const crisis of expired) {
     await resolveCrisis(db, crisis.id, { outcome: "expired without resolution" }, realtimeEmit);
@@ -96,7 +93,6 @@ export function startCrisisWatch(db, realtimeEmit) {
 
     // Auto-trigger knowledge_extinction if a pattern has been declining
     const decliningPatterns = db.prepare(`
-      // TODO: project explicit columns (auto-fix suggestion)
       SELECT * FROM substrate_patterns WHERE trajectory = 'declining' AND current_strength < 0.2
     `).all();
     if (decliningPatterns.length > 0) {

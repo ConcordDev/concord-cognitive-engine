@@ -111,6 +111,17 @@ registerHeartbeat("signal-propagation-cycle", {
   handler: runSignalPropagationCycle,
 });
 
+// Concordia Mount System Phase B4: care heartbeat. Backstop pass
+// applies decay to mount loyalty / hunger for offline mounts. Most
+// decay flows through the lazy-read path on `mounts.care_state`, so
+// this cycle is the safety net for mounts the player hasn't visited.
+// FF_MOUNT_CARE=0 turns the cycle into a no-op.
+import { runMountCareCycle } from "./emergent/mount-care-cycle.js";
+registerHeartbeat("mount-care-cycle", {
+  frequency: 60,
+  handler: runMountCareCycle,
+});
+
 // EvoEcosystem W3: spoiled inventory + expired buff sweep every 5 ticks.
 import { runEcoExpirySweep, applyConsumable, cookRecipe, getActiveEffects } from "./lib/ecosystem/cook-engine.js";
 registerHeartbeat("eco-expiry-sweep", {
@@ -680,6 +691,10 @@ import { generateEntityName, migrateEntityNames as runEntityNameMigration, isFun
 import { validateSafeFetchUrl as _ssrfValidate, isUrlSafeAsync as _ssrfIsSafeAsync, fetchWithPinnedIp as _ssrfFetchPinned } from "./lib/ssrf-guard.js";
 import { registerCitation as economyRegisterCitation } from "./economy/royalty-cascade.js";
 import { checkAccess as economyCheckAccess } from "./economy/rights-enforcement.js";
+// DX Platform Phase A1 — per-call billing + per-user quota for macros.
+// Wired into runMacro below (rate-limit check + macro:afterExecute hook).
+import { billMacroCall } from "./lib/macro-billing.js";
+import { checkUserQuota, incrementUserQuota } from "./lib/macro-quota.js";
 // World Lens / MMO presence system
 import * as cityPresence from "./lib/city-presence.js";
 import * as worldMechanics from "./lib/world-mechanics.js";
@@ -1230,6 +1245,14 @@ const EXPENSIVE_MACROS = new Map([
   ["discovery.search",   { maxPerMinute: 30, windowMs: 60000 }],
   ["discovery.facets",   { maxPerMinute: 30, windowMs: 60000 }],
   ["discovery.trending", { maxPerMinute: 30, windowMs: 60000 }],
+
+  // DX Platform Phase A1 — global RPS caps for billing read-surface.
+  // Per-user caps live in lib/macro-quota.js (MACRO_USER_LIMITS).
+  ["billing.usage",            { maxPerMinute: 60,  windowMs: 60000 }],
+  ["billing.balance",          { maxPerMinute: 120, windowMs: 60000 }],
+  ["billing.history",          { maxPerMinute: 60,  windowMs: 60000 }],
+  ["billing.getCurrentQuota",  { maxPerMinute: 240, windowMs: 60000 }],
+  ["billing.priceForMacro",    { maxPerMinute: 240, windowMs: 60000 }],
 ]);
 
 function checkMacroRateLimit(domain, name) {
@@ -6930,6 +6953,64 @@ async function tryInitWebSockets(server) {
   REALTIME.ready = true;
   globalThis._concordREALTIME = REALTIME;
 
+  // DX Platform Phase A3 — attach the /dx namespace for editor-plugin
+  // clients. Plugin clients connect with a JWT or a `csk_*` API key,
+  // join `codebase:${id}` rooms, and receive detector/repair events
+  // streamed live (no polling). Per-user connection cap prevents
+  // accidental reconnect-storm loops in plugin development.
+  // FF_DX_SOCKET=0 disables the namespace (clients receive 503 on connect).
+  try {
+    const { attachDxStream } = await import("./lib/dx/dx-socket-bus.js");
+    // Custom socket.io namespaces do not share middleware with the root
+    // `/` namespace, so the root io.use() above does NOT authenticate
+    // /dx handshakes. Pass an explicit validator so the namespace
+    // verifies cookie / Bearer / API-key the same way the root middleware
+    // does — never trusting client-supplied auth.userId.
+    const dxValidateAuth = (socket) => {
+      const cookies = parseCookies(socket.handshake.headers?.cookie || "");
+      const cookieToken = cookies.concord_auth;
+      if (cookieToken) {
+        const decoded = verifyToken(cookieToken);
+        if (decoded?.userId) {
+          const u = AuthDB.getUser(decoded.userId);
+          if (u) return { userId: u.id, authMethod: "cookie" };
+        }
+      }
+      const bearer = socket.handshake.auth?.token
+        || socket.handshake.headers?.authorization?.replace("Bearer ", "");
+      if (bearer) {
+        const decoded = verifyToken(bearer);
+        if (decoded?.userId) {
+          const u = AuthDB.getUser(decoded.userId);
+          if (u) return { userId: u.id, authMethod: "bearer" };
+        }
+      }
+      const apiKey = socket.handshake.auth?.apiKey
+        || socket.handshake.headers?.["x-api-key"];
+      if (apiKey) {
+        // API keys are 256-bit random tokens (`crypto.randomBytes(32)` in
+        // `generateApiKey`), not human-chosen passwords. SHA-256 in
+        // `verifyApiKey` is correct for high-entropy tokens; slow KDFs only
+        // matter when the input is brute-forceable. CodeQL flags
+        // `js/insufficient-password-hash` on this dataflow — suppressed at
+        // the workflow level via `query-filters` in
+        // `.github/workflows/codeql.yml`.
+        for (const keyData of AuthDB.getAllApiKeys()) {
+          if (keyData.keyHash && verifyApiKey(apiKey, keyData.keyHash)) {
+            const u = AuthDB.getUser(keyData.userId);
+            if (u) return { userId: u.id, authMethod: "apiKey" };
+          }
+        }
+      }
+      return null;
+    };
+    const dxr = attachDxStream(io, { validateAuth: dxValidateAuth });
+    if (dxr?.ok) structuredLog("info", "dx_socket_attached", { ns: "/dx" });
+    else if (dxr?.reason) structuredLog("warn", "dx_socket_skipped", { reason: dxr.reason });
+  } catch (e) {
+    console.warn("[Concord] DX socket attach failed:", e.message);
+  }
+
   // Horizontal scaling: attach Redis pub/sub adapter when REDIS_URL is set
   if (process.env.REDIS_URL) {
     try {
@@ -9302,6 +9383,47 @@ async function runMacro(domain, name, input, ctx) {
     return { ok: false, error: "rate_limited", retryAfterMs: 60000 };
   }
 
+  // DX Platform Phase A1 — per-user quota check.
+  // Independent from the global EXPENSIVE_MACROS limit above. Plugin /
+  // SDK clients carry an api_key_id (set by the api-key auth middleware)
+  // and are subject to per-(user, macro, minute) caps. Free-tier
+  // cookie-auth users are not gated here.
+  // Tracking start time for the macro:afterExecute billing hook below.
+  const _macroStart = Date.now();
+  // API-key auth populates apiKeyId in reqMeta (see /api/v1/lens/:domain/:action
+  // route); cookie/JWT paths can also set it on actor or directly on ctx.
+  // Read from all three so paid traffic actually goes through quota + billing.
+  const _macroApiKeyId = ctx?.actor?.apiKeyId || ctx?.apiKeyId || ctx?.reqMeta?.apiKeyId || null;
+  // Client-supplied idempotency key (Idempotency-Key header threaded into
+  // reqMeta) used to deduplicate ledger writes on retries. Optional — when
+  // missing we mint a per-call UUID so each invocation still gets a unique
+  // refId, but a retrying client MUST pass the same Idempotency-Key for the
+  // ledger to deduplicate.
+  const _macroIdemKey = ctx?.reqMeta?.idempotencyKey || ctx?.idempotencyKey || null;
+  const _macroUserId = actor?.userId && actor.userId !== "system" ? actor.userId : null;
+  const _macroDb = ctx?.db || STATE?.db || null;
+  if (_macroApiKeyId && _macroUserId && _macroDb) {
+    try {
+      const q = checkUserQuota(_macroDb, _macroUserId, domain, name);
+      if (!q.ok) {
+        try {
+          billMacroCall(_macroDb, {
+            userId: _macroUserId,
+            apiKeyId: _macroApiKeyId,
+            domain,
+            name,
+            durationMs: 0,
+            status: "quota_exceeded",
+            refId: _macroIdemKey
+              ? `${_macroApiKeyId}:idem:${_macroIdemKey}:quota`
+              : `${_macroApiKeyId}:quota:${crypto.randomUUID()}`,
+          });
+        } catch (e) { observe(e, "macro_billing_log_quota_exceeded"); }
+        return { ok: false, error: "quota_exceeded", retryAfterMs: q.retryAfterMs ?? 60000, limit: q.limit };
+      }
+    } catch (e) { observe(e, "macro_user_quota_check"); /* fail-open */ }
+  }
+
   // Chicken2: reality guard (full blast) with founder recovery valve
   // NOTE: Read-only DTU hydration must never be blocked (frontend boot path).
   const _path = ctx?.reqMeta?.path || "";
@@ -9448,13 +9570,30 @@ async function runMacro(domain, name, input, ctx) {
     dtu_portability: new Set(["export", "validate", "import"]),
     // Phase 6c: discovery — read-only.
     discovery: new Set(["search", "facets", "trending"]),
-    // Concordia Mount System Phase B1+B2+B3 — species lookup + proximity
-    // browse + riding state machine + gear authoring + stat folding.
-    // Mutating macros are caller-scoped via ownership checks in the handler.
+    // Concordia Mount System Phase B1+B2+B3+B4 — species + riding +
+    // gear + care + evolution + mounted-combat overlay. All mutating
+    // macros caller-scoped via ownership checks in the handler.
     mounts: new Set([
       "list_species", "get_species", "get_gait", "list_mountable", "list_eligible_nearby",
       "tame", "mount", "dismount", "get_active_mount", "history",
       "validate_gear_recipe", "equip_gear", "unequip_gear", "compute_stats", "get_equipped_gear",
+      "feed", "groom", "rest", "care_state",
+      "evolution_state", "gain_xp",
+      "combat_overlay", "applied_profile",
+    ]),
+    // DX Platform Phase A1: billing — read-only macros for usage,
+    // balance, history, current quota, and per-macro pricing. Plugin
+    // API keys with the `billing.balance` scope hit these from the
+    // editor status bar and the dashboard lens.
+    billing: new Set(["usage", "balance", "history", "getCurrentQuota", "priceForMacro"]),
+    // DX Platform Phase A2 — codebase registry + repair-feedback evo.
+    // Plugin clients call these via API key; cookie-auth web users see
+    // the same surface for the dashboard lens. Mutating macros (record_*,
+    // upsert_*) are caller-scoped via codebase ownership in the handler.
+    dx: new Set([
+      "register_codebase", "touch_codebase", "list_codebases",
+      "record_fix_decision", "list_weights", "weighted_findings",
+      "upsert_shadow", "list_shadows", "get_weight",
     ]),
     // Governance: read-mostly + caller-driven write macros.
     governance: new Set([
@@ -9677,6 +9816,36 @@ async function runMacro(domain, name, input, ctx) {
     };
   }
   try { fireHook(STATE, "macro:afterExecute", { domain, name, result }); } catch (e) { observe(e, "macro_hook_after_execute_main"); }
+
+  // DX Platform Phase A1 — per-call billing. Logs every call to
+  // macro_call_log; charges the user wallet via FEE ledger entry when
+  // the call carried an api_key_id. Best-effort — never throws.
+  if (_macroDb) {
+    try {
+      // Prefer client-supplied idempotency key so retries collapse to one
+      // FEE entry; fall back to a per-call UUID when the client didn't
+      // pass one. Avoid Date.now() + Math.random() — the prior shape
+      // looked random but two retries always hashed differently and
+      // double-charged.
+      const _refId = _macroApiKeyId
+        ? (_macroIdemKey
+            ? `${_macroApiKeyId}:idem:${_macroIdemKey}`
+            : `${_macroApiKeyId}:${crypto.randomUUID()}`)
+        : null;
+      billMacroCall(_macroDb, {
+        userId: _macroUserId,
+        apiKeyId: _macroApiKeyId,
+        domain,
+        name,
+        durationMs: Date.now() - _macroStart,
+        status: result?.ok === false ? "error" : "ok",
+        refId: _refId,
+      });
+      if (_macroUserId && _macroApiKeyId) {
+        incrementUserQuota(_macroDb, _macroUserId, domain, name);
+      }
+    } catch (e) { observe(e, "macro_billing_after_execute"); }
+  }
 
   // Institutional memory: record significant actions
   if (!_domainNameAllowed && _method !== "GET") {
@@ -22961,6 +23130,20 @@ registerPlayerCorpseMacros(register);
 // constants themselves remain code-level; this layer is the audit trail.
 import registerGovernanceMacros from "./domains/governance.js";
 registerGovernanceMacros(register);
+
+// DX Platform Phase A1 — per-call billing read surface. Plugin / SDK
+// users hit billing.{usage,balance,history,getCurrentQuota,priceForMacro}
+// to render the status bar + dashboard. See lib/macro-billing.js +
+// lib/macro-quota.js for the write side (called from runMacro hooks).
+import registerDxBillingMacros from "./domains/dx-billing.js";
+registerDxBillingMacros(register);
+
+// DX Platform Phase A2 — codebase registry + repair-feedback evo +
+// shadow DTU upsert. Plugin sidebar accept/reject signal feeds severity
+// weights so noisy rules quietly demote per codebase. See
+// lib/dx/codebase-registry.js + lib/dx/severity-evo.js.
+import registerDxMacros from "./domains/dx.js";
+registerDxMacros(register, STATE);
 
 // Phase 8 — Combat polish surface for the HUD.
 import registerCombatPolishMacros from "./domains/combat-polish.js";
@@ -40300,7 +40483,12 @@ app.post("/api/v1/lens/:domain/:action", requireApiKey(), async (req, res) => {
         role: req.apiKey.role || "member",
         scopes: Array.isArray(req.apiKey.scopes) ? req.apiKey.scopes : ["read", "write"],
       },
-      reqMeta: { path: req.path, method: req.method, apiKeyId: req.apiKey.id },
+      reqMeta: {
+        path: req.path,
+        method: req.method,
+        apiKeyId: req.apiKey.id,
+        idempotencyKey: req.get("idempotency-key") || req.get("x-idempotency-key") || null,
+      },
     };
     const result = await runMacro(domain, action, safeInput, apiCtx);
 

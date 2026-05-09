@@ -169,7 +169,6 @@ export function runFaunaSpawner({ state, db }) {
         const popKey = `${worldId}::${biome}::${sp.id}`;
         // Upsert population row.
         const existing = db.prepare(`
-          // TODO: project explicit columns (auto-fix suggestion)
           SELECT * FROM creature_population
           WHERE world_id = ? AND biome = ? AND species_id = ?
         `).get(worldId, biome, sp.id);
