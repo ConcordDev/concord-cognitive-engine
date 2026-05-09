@@ -1771,9 +1771,316 @@ export const PRODUCTIZATION_PHASES: ProductionPhase[] = [
     status: 'in_progress',
   },
 
-  // ── PHASE 46: Game ──────────────────────────────────────────────
+  // ── PHASE 46: Nonprofit ─────────────────────────────────────────
   {
     order: 46,
+    lensId: 'nonprofit',
+    name: 'Nonprofit & Community',
+    rationale: 'Production-grade nonprofit ops. Donor retention, grant reporting, volunteer matching, impact metrics, tax receipts. Rivals Bloomerang + Salsa + DonorPerfect.',
+    dependsOn: [],
+    incumbents: ['Bloomerang', 'Salsa', 'DonorPerfect', 'Neon CRM'],
+    artifacts: [
+      { name: 'Donor',     persistsWithoutDTU: true, storageDomain: 'nonprofit', requiredFields: ['id', 'name', 'history', 'lifetimeGiving'] },
+      { name: 'Grant',     persistsWithoutDTU: true, storageDomain: 'nonprofit', requiredFields: ['id', 'funder', 'amount', 'milestones'] },
+      { name: 'Volunteer', persistsWithoutDTU: true, storageDomain: 'nonprofit', requiredFields: ['id', 'name', 'skills', 'availability'] },
+      { name: 'Campaign',  persistsWithoutDTU: true, storageDomain: 'nonprofit', requiredFields: ['id', 'goal', 'raised', 'startsAt', 'endsAt'] },
+    ],
+    engines: [
+      { name: 'donor-retention',  description: 'Computes per-donor retention probability', trigger: 'automatic' },
+      { name: 'grant-reporter',   description: 'Builds milestone-by-milestone grant report', trigger: 'on_demand' },
+      { name: 'impact-roller',    description: 'Aggregates per-program impact metrics', trigger: 'automatic' },
+    ],
+    pipelines: [
+      { name: 'donor-rescue',      steps: ['flag-lapsed', 'segment', 'send-appeal', 'measure-recovery'], engines: ['donor-retention'] },
+      { name: 'grant-cycle',       steps: ['apply', 'track-milestones', 'report', 'close'], engines: ['grant-reporter'] },
+      { name: 'campaign-cycle',    steps: ['plan', 'launch', 'track-progress', 'report-impact'], engines: ['impact-roller'] },
+    ],
+    acceptanceCriteria: ['Donor + grant + volunteer CRUD', 'Retention scoring', 'Grant milestone reporting', 'Impact aggregation', 'Tax-receipt export'],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 47: Real Estate ───────────────────────────────────────
+  {
+    order: 47,
+    lensId: 'realestate',
+    name: 'Real Estate',
+    rationale: 'Production-grade real-estate brokerage + investor toolkit. Cap rate, cash flow, comps, mortgage calc, vacancy. Rivals Buildium + AppFolio + Stessa.',
+    dependsOn: [],
+    incumbents: ['Buildium', 'AppFolio', 'Stessa', 'PropertyWare'],
+    artifacts: [
+      { name: 'Listing',     persistsWithoutDTU: true, storageDomain: 'realestate', requiredFields: ['id', 'address', 'price', 'beds', 'baths'] },
+      { name: 'Showing',     persistsWithoutDTU: true, storageDomain: 'realestate', requiredFields: ['id', 'listingId', 'agentId', 'date'] },
+      { name: 'Transaction', persistsWithoutDTU: true, storageDomain: 'realestate', requiredFields: ['id', 'listingId', 'closeDate', 'salePrice'] },
+      { name: 'RentalUnit',  persistsWithoutDTU: true, storageDomain: 'realestate', requiredFields: ['id', 'address', 'rent', 'tenantId'] },
+    ],
+    engines: [
+      { name: 'cap-rate-calc',    description: 'Computes cap rate from NOI / property value', trigger: 'on_demand' },
+      { name: 'cash-flow-engine', description: 'Projects cash flow from rent − expenses − debt service', trigger: 'on_demand' },
+      { name: 'comps-aggregator', description: 'Pulls comparable sold listings within radius + filters', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'investment-analysis',  steps: ['ingest', 'estimate-noi', 'compute-cap-rate', 'project-cashflow', 'output-report'], engines: ['cap-rate-calc', 'cash-flow-engine'] },
+      { name: 'closing-timeline',     steps: ['offer', 'inspection', 'appraisal', 'underwriting', 'close'], engines: [] },
+      { name: 'comp-pull',            steps: ['select-subject', 'radius-search', 'filter', 'rank', 'export'], engines: ['comps-aggregator'] },
+    ],
+    acceptanceCriteria: ['Listing + transaction CRUD', 'Cap rate + cash flow projection', 'Closing timeline tracker', 'Rental unit roll', 'Comp aggregation'],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 48: Environment ───────────────────────────────────────
+  {
+    order: 48,
+    lensId: 'environment',
+    name: 'Environmental & Outdoors',
+    rationale: 'Production-grade environmental management. Habitat assessment, species survey, compliance check, emissions calc, sample chain-of-custody. Rivals Ecocount + Survey123 + Trimble Forestry.',
+    dependsOn: [],
+    incumbents: ['Ecocount', 'ESRI Survey123', 'Trimble Forestry', 'Wildlife Insights'],
+    artifacts: [
+      { name: 'Site',                  persistsWithoutDTU: true, storageDomain: 'environment', requiredFields: ['id', 'geometry', 'classification'] },
+      { name: 'Species',               persistsWithoutDTU: true, storageDomain: 'environment', requiredFields: ['id', 'taxonomy', 'status'] },
+      { name: 'Survey',                persistsWithoutDTU: true, storageDomain: 'environment', requiredFields: ['id', 'siteId', 'date', 'observations'] },
+      { name: 'EnvironmentalSample',   persistsWithoutDTU: true, storageDomain: 'environment', requiredFields: ['id', 'kind', 'collectedAt', 'chainOfCustody'] },
+      { name: 'ComplianceRecord',      persistsWithoutDTU: true, storageDomain: 'environment', requiredFields: ['id', 'siteId', 'rule', 'status'] },
+    ],
+    engines: [
+      { name: 'population-trend',  description: 'Tracks species count over time + flags decline', trigger: 'automatic' },
+      { name: 'emissions-calc',    description: 'Computes scope-1/2/3 emissions from activity log', trigger: 'on_demand' },
+      { name: 'habitat-assessor',  description: 'Scores habitat quality from indicator-species presence', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'survey-to-trend',    steps: ['plan-survey', 'collect', 'enter-observations', 'compute-trend'], engines: ['population-trend'] },
+      { name: 'sample-chain',       steps: ['collect', 'label', 'transport', 'lab-receipt', 'analyze', 'archive'], engines: [] },
+      { name: 'compliance-cycle',   steps: ['load-rules', 'check-each', 'flag-violations', 'export-report'], engines: ['emissions-calc'] },
+    ],
+    acceptanceCriteria: ['Site + species + survey CRUD', 'Population trend chart', 'Sample chain-of-custody', 'Emissions calc', 'Compliance report (PDF/GeoJSON)'],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 49: Government ────────────────────────────────────────
+  {
+    order: 49,
+    lensId: 'government',
+    name: 'Government & Public Service',
+    rationale: 'Production-grade municipal + agency platform. Permit timeline, FOIA processing, ordinance package, public notice generation. Rivals OpenGov + Tyler Technologies + Granicus.',
+    dependsOn: [],
+    incumbents: ['OpenGov', 'Tyler Technologies', 'Granicus', 'CivicPlus'],
+    artifacts: [
+      { name: 'Permit',         persistsWithoutDTU: true, storageDomain: 'government', requiredFields: ['id', 'kind', 'applicant', 'status'] },
+      { name: 'Project',        persistsWithoutDTU: true, storageDomain: 'government', requiredFields: ['id', 'title', 'budget', 'milestones'] },
+      { name: 'Violation',      persistsWithoutDTU: true, storageDomain: 'government', requiredFields: ['id', 'subject', 'rule', 'status'] },
+      { name: 'EmergencyPlan',  persistsWithoutDTU: true, storageDomain: 'government', requiredFields: ['id', 'kind', 'resources', 'roles'] },
+      { name: 'Ordinance',      persistsWithoutDTU: true, storageDomain: 'government', requiredFields: ['id', 'number', 'text', 'enactedAt'] },
+    ],
+    engines: [
+      { name: 'permit-timeline',     description: 'Walks the permit lifecycle and flags overdue stages', trigger: 'automatic' },
+      { name: 'violation-escalator', description: 'Escalates violations through warning → fine → court referral', trigger: 'automatic' },
+      { name: 'foia-processor',      description: 'Routes FOIA requests through retention + redaction', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'permit-cycle',         steps: ['apply', 'review', 'public-comment', 'decide', 'issue'], engines: ['permit-timeline'] },
+      { name: 'enforcement-cycle',    steps: ['detect', 'warn', 'fine', 'refer-to-court'], engines: ['violation-escalator'] },
+      { name: 'foia-cycle',           steps: ['receive', 'classify', 'redact', 'fulfill', 'archive'], engines: ['foia-processor'] },
+    ],
+    acceptanceCriteria: ['Permit + violation CRUD', 'FOIA flow with redaction', 'Ordinance package export', 'Public notice generation', 'Emergency plan staging'],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 50: Aviation ──────────────────────────────────────────
+  {
+    order: 50,
+    lensId: 'aviation',
+    name: 'Aviation & Maritime',
+    rationale: 'Production-grade aircraft + vessel ops. Currency check, weight & balance, hobbs log, crew schedule. Rivals ForeFlight + Dock Master + Marine Traffic.',
+    dependsOn: [],
+    incumbents: ['ForeFlight', 'Dock Master', 'Marine Traffic', 'Garmin Pilot'],
+    artifacts: [
+      { name: 'Flight',       persistsWithoutDTU: true, storageDomain: 'aviation', requiredFields: ['id', 'aircraftId', 'route', 'status'] },
+      { name: 'Aircraft',     persistsWithoutDTU: true, storageDomain: 'aviation', requiredFields: ['id', 'tail', 'kind', 'hobbs'] },
+      { name: 'CrewMember',   persistsWithoutDTU: true, storageDomain: 'aviation', requiredFields: ['id', 'name', 'currency', 'ratings'] },
+      { name: 'LogbookEntry', persistsWithoutDTU: true, storageDomain: 'aviation', requiredFields: ['id', 'pilotId', 'date', 'hours', 'route'] },
+    ],
+    engines: [
+      { name: 'currency-checker',  description: 'Verifies pilot currency (recency, BFR, medical) before dispatch', trigger: 'automatic' },
+      { name: 'weight-balance',    description: 'Computes weight & balance for the loaded aircraft', trigger: 'on_demand' },
+      { name: 'maintenance-tracker', description: 'Tracks airworthiness directives + scheduled maintenance', trigger: 'automatic' },
+    ],
+    pipelines: [
+      { name: 'preflight-cycle',   steps: ['weight-balance', 'currency-check', 'maintenance-clear', 'fuel-plan', 'release'], engines: ['weight-balance', 'currency-checker', 'maintenance-tracker'] },
+      { name: 'logbook-cycle',     steps: ['capture-hobbs', 'log-route', 'auto-fill-totals', 'export-faa'], engines: [] },
+    ],
+    acceptanceCriteria: ['Aircraft + flight CRUD', 'Pilot currency check', 'Weight & balance calc', 'Logbook with hobbs', 'Maintenance ADs'],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 51: Events ────────────────────────────────────────────
+  {
+    order: 51,
+    lensId: 'events',
+    name: 'Events & Entertainment',
+    rationale: 'Production-grade event ops. Advance sheet, settlement calc, run of show, ticket forecast, vendor compare. Rivals Eventbrite + Cvent + Master Tour.',
+    dependsOn: [],
+    incumbents: ['Eventbrite', 'Cvent', 'Master Tour', 'Universe'],
+    artifacts: [
+      { name: 'Event',           persistsWithoutDTU: true, storageDomain: 'events', requiredFields: ['id', 'title', 'venue', 'date'] },
+      { name: 'Venue',           persistsWithoutDTU: true, storageDomain: 'events', requiredFields: ['id', 'name', 'capacity', 'address'] },
+      { name: 'Performer',       persistsWithoutDTU: true, storageDomain: 'events', requiredFields: ['id', 'name', 'rider', 'fee'] },
+      { name: 'SettlementRecord', persistsWithoutDTU: true, storageDomain: 'events', requiredFields: ['id', 'eventId', 'gross', 'expenses', 'net'] },
+    ],
+    engines: [
+      { name: 'advance-sheet',  description: 'Builds day-of advance sheet from rider + venue + crew', trigger: 'on_demand' },
+      { name: 'settlement-calc', description: 'Reconciles ticket gross − expenses − splits', trigger: 'on_demand' },
+      { name: 'tech-rider-matcher', description: 'Validates venue meets rider requirements', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'plan-execute-settle', steps: ['book', 'advance', 'load-in', 'show', 'load-out', 'settle'], engines: ['advance-sheet', 'settlement-calc'] },
+      { name: 'tour-package',         steps: ['route-cities', 'book-venues', 'tech-rider-match', 'publish'], engines: ['tech-rider-matcher'] },
+    ],
+    acceptanceCriteria: ['Event + venue + performer CRUD', 'Advance sheet generation', 'Settlement reconciliation', 'Run-of-show export', 'Tech rider match'],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 52: Science ───────────────────────────────────────────
+  {
+    order: 52,
+    lensId: 'science',
+    name: 'Science & Field Work',
+    rationale: 'Production-grade research workbench. Expedition planning, sample chain, lab protocol, statistical test, peer-review package. Rivals LabArchives + Open Science Framework + Benchling.',
+    dependsOn: [],
+    incumbents: ['LabArchives', 'Open Science Framework', 'Benchling', 'LabKey'],
+    artifacts: [
+      { name: 'Expedition',  persistsWithoutDTU: true, storageDomain: 'science', requiredFields: ['id', 'team', 'dates', 'site'] },
+      { name: 'Observation', persistsWithoutDTU: true, storageDomain: 'science', requiredFields: ['id', 'expeditionId', 'kind', 'value', 'at'] },
+      { name: 'Sample',      persistsWithoutDTU: true, storageDomain: 'science', requiredFields: ['id', 'kind', 'collectedAt', 'chainOfCustody'] },
+      { name: 'LabProtocol', persistsWithoutDTU: true, storageDomain: 'science', requiredFields: ['id', 'name', 'steps', 'version'] },
+      { name: 'Dataset',     persistsWithoutDTU: true, storageDomain: 'science', requiredFields: ['id', 'rows', 'schema', 'license'] },
+    ],
+    engines: [
+      { name: 'chain-of-custody', description: 'Maintains tamper-evident sample chain', trigger: 'automatic' },
+      { name: 'replication-checker', description: 'Re-runs protocol against fresh sample', trigger: 'on_demand' },
+      { name: 'statistical-engine', description: 'Runs registered tests (t / chi-sq / regression / ANOVA)', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'observe-analyze-publish', steps: ['plan', 'observe', 'sample', 'analyze', 'peer-review', 'publish'], engines: ['statistical-engine', 'replication-checker'] },
+      { name: 'protocol-revision',        steps: ['author', 'pilot', 'collect-feedback', 'revise', 'publish'], engines: [] },
+    ],
+    acceptanceCriteria: ['Expedition + observation CRUD', 'Sample chain-of-custody', 'Protocol versioning', 'Statistical test runner', 'Peer-review package export'],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 53: Security ──────────────────────────────────────────
+  {
+    order: 53,
+    lensId: 'security',
+    name: 'Security',
+    rationale: 'Production-grade physical + cyber security ops. Incident, patrol coverage, threat matrix, evidence chain, vulnerability scan. Rivals Splunk + Trackforce + Genetec.',
+    dependsOn: [],
+    incumbents: ['Splunk', 'Trackforce', 'Genetec', 'Resolver'],
+    artifacts: [
+      { name: 'Incident',          persistsWithoutDTU: true, storageDomain: 'security', requiredFields: ['id', 'kind', 'severity', 'status'] },
+      { name: 'Patrol',            persistsWithoutDTU: true, storageDomain: 'security', requiredFields: ['id', 'route', 'guard', 'completedAt'] },
+      { name: 'Threat',            persistsWithoutDTU: true, storageDomain: 'security', requiredFields: ['id', 'kind', 'severity', 'observedAt'] },
+      { name: 'Investigation',     persistsWithoutDTU: true, storageDomain: 'security', requiredFields: ['id', 'incidentId', 'lead', 'status'] },
+      { name: 'ComplianceReport',  persistsWithoutDTU: true, storageDomain: 'security', requiredFields: ['id', 'standard', 'gaps', 'date'] },
+    ],
+    engines: [
+      { name: 'incident-trender',    description: 'Detects rising incident kinds + emits alert', trigger: 'automatic' },
+      { name: 'patrol-coverage',     description: 'Validates that all checkpoints were hit on schedule', trigger: 'automatic' },
+      { name: 'vulnerability-scanner', description: 'Runs nmap-style scan against asset inventory', trigger: 'scheduled' },
+    ],
+    pipelines: [
+      { name: 'incident-cycle',     steps: ['report', 'classify', 'investigate', 'remediate', 'close'], engines: ['incident-trender'] },
+      { name: 'patrol-cycle',       steps: ['plan', 'execute', 'verify-coverage', 'log-anomalies'], engines: ['patrol-coverage'] },
+      { name: 'vuln-scan-cycle',    steps: ['enumerate', 'scan', 'rank', 'remediate', 'rescan'], engines: ['vulnerability-scanner'] },
+    ],
+    acceptanceCriteria: ['Incident + threat CRUD', 'Patrol coverage validation', 'Vulnerability scan history', 'Evidence chain', 'Compliance report (STIX export)'],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 54: Services ──────────────────────────────────────────
+  {
+    order: 54,
+    lensId: 'services',
+    name: 'Personal Services',
+    rationale: 'Production-grade salon / studio / shop scheduler. Provider revenue, client retention, supply check, waitlist. Rivals Square Appointments + Vagaro + Booksy.',
+    dependsOn: [],
+    incumbents: ['Square Appointments', 'Vagaro', 'Booksy', 'Acuity'],
+    artifacts: [
+      { name: 'Client',       persistsWithoutDTU: true, storageDomain: 'services', requiredFields: ['id', 'name', 'preferences', 'history'] },
+      { name: 'Appointment',  persistsWithoutDTU: true, storageDomain: 'services', requiredFields: ['id', 'clientId', 'providerId', 'serviceId', 'time'] },
+      { name: 'ServiceType',  persistsWithoutDTU: true, storageDomain: 'services', requiredFields: ['id', 'name', 'duration', 'price'] },
+      { name: 'Provider',     persistsWithoutDTU: true, storageDomain: 'services', requiredFields: ['id', 'name', 'specialties', 'schedule'] },
+    ],
+    engines: [
+      { name: 'schedule-optimizer', description: 'Minimises gaps + maximises utilisation across providers', trigger: 'on_demand' },
+      { name: 'reminder-sender',    description: 'Sends 48h / 24h / 4h SMS+email reminders', trigger: 'scheduled' },
+      { name: 'retention-tracker',  description: 'Scores client repeat probability + flags lapses', trigger: 'automatic' },
+    ],
+    pipelines: [
+      { name: 'book-confirm-fulfil',  steps: ['book', 'remind', 'execute', 'collect-feedback', 'rebook'], engines: ['schedule-optimizer', 'reminder-sender'] },
+      { name: 'rescue-lapsed-clients', steps: ['flag-lapsed', 'segment', 'send-offer', 'measure'], engines: ['retention-tracker'] },
+    ],
+    acceptanceCriteria: ['Client + appointment CRUD', 'Schedule optimisation', 'Reminder cadence', 'Provider revenue report', 'Waitlist'],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 55: Insurance ─────────────────────────────────────────
+  {
+    order: 55,
+    lensId: 'insurance',
+    name: 'Insurance & Risk',
+    rationale: 'Production-grade insurance ops. Coverage gap analysis, claim status, risk scoring, fraud indicators, ACORD export. Rivals Applied Epic + Vertafore + EZLynx.',
+    dependsOn: [],
+    incumbents: ['Applied Epic', 'Vertafore', 'EZLynx', 'AMS360'],
+    artifacts: [
+      { name: 'Policy',     persistsWithoutDTU: true, storageDomain: 'insurance', requiredFields: ['id', 'insured', 'coverage', 'premium', 'effectiveDate'] },
+      { name: 'Claim',      persistsWithoutDTU: true, storageDomain: 'insurance', requiredFields: ['id', 'policyId', 'kind', 'amount', 'status'] },
+      { name: 'Risk',       persistsWithoutDTU: true, storageDomain: 'insurance', requiredFields: ['id', 'kind', 'severity', 'factor'] },
+      { name: 'Renewal',    persistsWithoutDTU: true, storageDomain: 'insurance', requiredFields: ['id', 'policyId', 'date', 'premium'] },
+    ],
+    engines: [
+      { name: 'coverage-gap',     description: 'Compares portfolio against best-practice coverage matrix', trigger: 'on_demand' },
+      { name: 'risk-scorer',      description: 'Scores risk from factors (location, history, occupancy)', trigger: 'automatic' },
+      { name: 'fraud-detector',   description: 'Flags claims with patterns matching known fraud signatures', trigger: 'automatic' },
+    ],
+    pipelines: [
+      { name: 'quote-bind-issue',     steps: ['gather-info', 'risk-score', 'quote', 'bind', 'issue'], engines: ['risk-scorer'] },
+      { name: 'claim-cycle',          steps: ['fnol', 'investigate', 'reserve', 'pay-or-deny', 'close'], engines: ['fraud-detector'] },
+      { name: 'renewal-cycle',        steps: ['notify', 'review-loss', 'requote', 'renew-or-non-renew'], engines: ['risk-scorer'] },
+    ],
+    acceptanceCriteria: ['Policy + claim CRUD', 'Coverage-gap analysis', 'Risk scoring', 'Fraud-pattern detector', 'ACORD export'],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 56: Home Improvement ──────────────────────────────────
+  {
+    order: 56,
+    lensId: 'home-improvement',
+    name: 'Home Improvement',
+    rationale: 'Production-grade DIY + contractor coordination. Cost estimate, permit check, contractor compare, before/after gallery. Rivals Houzz + Angi + HomeAdvisor.',
+    dependsOn: [],
+    incumbents: ['Houzz', 'Angi', 'HomeAdvisor', 'Thumbtack'],
+    artifacts: [
+      { name: 'Project',    persistsWithoutDTU: true, storageDomain: 'home-improvement', requiredFields: ['id', 'name', 'scope', 'budget'] },
+      { name: 'Material',   persistsWithoutDTU: true, storageDomain: 'home-improvement', requiredFields: ['id', 'projectId', 'name', 'qty', 'unitCost'] },
+      { name: 'Contractor', persistsWithoutDTU: true, storageDomain: 'home-improvement', requiredFields: ['id', 'name', 'trade', 'rating'] },
+      { name: 'Inspection', persistsWithoutDTU: true, storageDomain: 'home-improvement', requiredFields: ['id', 'projectId', 'inspector', 'pass'] },
+    ],
+    engines: [
+      { name: 'cost-estimator',     description: 'Estimates project cost from materials + labour + region', trigger: 'on_demand' },
+      { name: 'permit-checker',     description: 'Validates whether work requires a permit by jurisdiction', trigger: 'on_demand' },
+      { name: 'contractor-compare', description: 'Ranks contractors by rating × proximity × bid', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'plan-bid-build',     steps: ['scope', 'estimate', 'permit-check', 'bid', 'select-contractor', 'execute'], engines: ['cost-estimator', 'permit-checker', 'contractor-compare'] },
+      { name: 'before-after',       steps: ['photo-before', 'execute', 'photo-after', 'package'], engines: [] },
+    ],
+    acceptanceCriteria: ['Project + material CRUD', 'Cost estimate', 'Permit check', 'Contractor compare', 'Before/after gallery'],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 57: Game ──────────────────────────────────────────────
+  {
+    order: 57,
     lensId: 'game',
     name: 'Game',
     rationale: 'Gamification engine. Adds progression, achievements, and quests to all lenses.',
