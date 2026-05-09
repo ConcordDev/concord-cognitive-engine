@@ -28,6 +28,15 @@ import {
   getEquippedGear,
 } from "../lib/mount-gear.js";
 import { validateMountGear, MOUNT_GEAR_SLOTS } from "../lib/dtu-validators/mount-gear-validators.js";
+import {
+  feedMount, groomMount, restMount, getCareState, decayCare, loyaltyForRiding,
+} from "../lib/mount-care.js";
+import {
+  gainRideDistance, gainCombatHits, gainFlightSeconds, getEvolutionState,
+} from "../lib/companions-mount-evo.js";
+import {
+  applyMountedOverlay, MOUNTED_MODIFIER, readMountState as readCombatMountState,
+} from "../lib/mount-combat-overlay.js";
 import { getFlag } from "../lib/feature-flags.js";
 
 export default function registerMountMacros(register) {
@@ -259,4 +268,119 @@ export default function registerMountMacros(register) {
     const gear = getEquippedGear(db, input.mountId);
     return { ok: true, slots: [...MOUNT_GEAR_SLOTS], gear };
   }, { note: "currently-equipped gear loadout for a mount" });
+
+  // ---------- B4: care, evolution, mounted-combat overlay ----------
+
+  function _ownsMount(db, userId, mountId) {
+    const r = db.prepare(`SELECT owner_id FROM player_companions WHERE id = ?`).get(mountId);
+    return !!r && r.owner_id === userId;
+  }
+
+  // mounts.feed — drop hunger, lift loyalty. 5-min anti-spam window.
+  register("mounts", "feed", async (ctx, input = {}) => {
+    if (!getFlag("FF_MOUNT_CARE", 1)) return { ok: false, reason: "feature_disabled" };
+    const db = ctx?.db;
+    const userId = ctx?.actor?.userId || ctx?.userId;
+    if (!db) return { ok: false, reason: "no_db" };
+    if (!userId) return { ok: false, reason: "no_user" };
+    if (!input.mountId) return { ok: false, reason: "missing_mount_id" };
+    return feedMount(db, { companionId: input.mountId, ownerId: userId, foodItemId: input.foodItemId });
+  }, { note: "feed mount (drops hunger, raises loyalty)" });
+
+  register("mounts", "groom", async (ctx, input = {}) => {
+    if (!getFlag("FF_MOUNT_CARE", 1)) return { ok: false, reason: "feature_disabled" };
+    const db = ctx?.db;
+    const userId = ctx?.actor?.userId || ctx?.userId;
+    if (!db) return { ok: false, reason: "no_db" };
+    if (!userId) return { ok: false, reason: "no_user" };
+    if (!input.mountId) return { ok: false, reason: "missing_mount_id" };
+    return groomMount(db, { companionId: input.mountId, ownerId: userId });
+  }, { note: "groom mount (raises loyalty)" });
+
+  register("mounts", "rest", async (ctx, input = {}) => {
+    if (!getFlag("FF_MOUNT_CARE", 1)) return { ok: false, reason: "feature_disabled" };
+    const db = ctx?.db;
+    const userId = ctx?.actor?.userId || ctx?.userId;
+    if (!db) return { ok: false, reason: "no_db" };
+    if (!userId) return { ok: false, reason: "no_user" };
+    if (!input.mountId) return { ok: false, reason: "missing_mount_id" };
+    return restMount(db, { companionId: input.mountId, ownerId: userId });
+  }, { note: "rest mount (refills stamina)" });
+
+  // mounts.care_state — HUD indicator (lazy decay applied on read).
+  register("mounts", "care_state", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    const userId = ctx?.actor?.userId || ctx?.userId;
+    if (!db) return { ok: false, reason: "no_db" };
+    if (!userId) return { ok: false, reason: "no_user" };
+    if (!input.mountId) return { ok: false, reason: "missing_mount_id" };
+    if (!_ownsMount(db, userId, input.mountId)) return { ok: false, reason: "not_owner" };
+    // Lazy decay — heartbeat is a backstop, the read path is the
+    // authoritative pull (see CLAUDE.md: heartbeat MAY trigger but
+    // MUST NOT be sole source).
+    decayCare(db, input.mountId);
+    const cs = getCareState(db, input.mountId);
+    if (!cs) return { ok: false, reason: "compute_failed" };
+    return { ok: true, ...cs };
+  }, { note: "current care state + lazy decay + ride gate" });
+
+  // mounts.evolution_state — HUD evolution indicator.
+  register("mounts", "evolution_state", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    const userId = ctx?.actor?.userId || ctx?.userId;
+    if (!db) return { ok: false, reason: "no_db" };
+    if (!userId) return { ok: false, reason: "no_user" };
+    if (!input.mountId) return { ok: false, reason: "missing_mount_id" };
+    if (!_ownsMount(db, userId, input.mountId)) return { ok: false, reason: "not_owner" };
+    const e = getEvolutionState(db, input.mountId);
+    if (!e) return { ok: false, reason: "mount_not_found" };
+    return { ok: true, ...e };
+  }, { note: "skill XP + evolution tier snapshot" });
+
+  // mounts.gain_xp — owner-side XP record. Game systems call this
+  // after a ride / combat hit / flight tick. Bounded magnitude per call
+  // (caller is expected to pass post-tick aggregates, not per-frame).
+  register("mounts", "gain_xp", async (ctx, input = {}) => {
+    if (!getFlag("FF_MOUNT_EVO", 1)) return { ok: false, reason: "feature_disabled" };
+    const db = ctx?.db;
+    const userId = ctx?.actor?.userId || ctx?.userId;
+    if (!db) return { ok: false, reason: "no_db" };
+    if (!userId) return { ok: false, reason: "no_user" };
+    if (!input.mountId || !input.kind || !Number.isFinite(Number(input.amount))) {
+      return { ok: false, reason: "missing_args" };
+    }
+    if (!_ownsMount(db, userId, input.mountId)) return { ok: false, reason: "not_owner" };
+    const amount = Math.max(0, Math.min(Number(input.amount), 5000));
+    if (input.kind === "ride")    return gainRideDistance(db, input.mountId, amount);
+    if (input.kind === "combat")  return gainCombatHits(db, input.mountId, amount);
+    if (input.kind === "flight")  return gainFlightSeconds(db, input.mountId, amount);
+    return { ok: false, reason: "invalid_kind" };
+  }, { note: "record ride / combat / flight XP for the mount" });
+
+  // mounts.combat_overlay — HUD lookup. Returns the effective combat
+  // profile after applying the mounted_modifier overlay for the
+  // archetype the rider is currently on. Read-only — does NOT toggle
+  // the overlay; toggling happens in the mount/dismount path.
+  register("mounts", "combat_overlay", async (ctx, input = {}) => {
+    if (!getFlag("FF_MOUNT_COMBAT", 1)) return { ok: false, reason: "feature_disabled" };
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    if (!input.archetype) return { ok: false, reason: "missing_archetype" };
+    const overlay = MOUNTED_MODIFIER[input.archetype] || MOUNTED_MODIFIER.generic;
+    const userId = ctx?.actor?.userId || ctx?.userId;
+    let combatState = null;
+    if (userId) combatState = readCombatMountState(db, "player", userId);
+    return { ok: true, archetype: input.archetype, overlay, combatState };
+  }, { note: "MOUNTED_MODIFIER overlay table for an archetype" });
+
+  // mounts.applied_profile — apply the overlay to a base profile.
+  // Pure compute — useful for the HUD to show effective gas/recovery
+  // numbers without re-implementing the math client-side.
+  register("mounts", "applied_profile", async (ctx, input = {}) => {
+    if (!getFlag("FF_MOUNT_COMBAT", 1)) return { ok: false, reason: "feature_disabled" };
+    if (!input.profile || typeof input.profile !== "object") return { ok: false, reason: "missing_profile" };
+    if (!input.archetype) return { ok: false, reason: "missing_archetype" };
+    const out = applyMountedOverlay(input.profile, input.archetype);
+    return { ok: true, profile: out };
+  }, { note: "apply MOUNTED_MODIFIER to a base profile" });
 }
