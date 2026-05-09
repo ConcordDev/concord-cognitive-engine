@@ -166,6 +166,88 @@ describe("auth gate + connection cap", () => {
     assert.equal(m.rejectedAuthTotal, 1);
   });
 
+  it("does NOT trust socket.handshake.auth.userId without a validator", () => {
+    // Regression: PR-#312 review flagged that the prior code accepted
+    // any `auth.userId` (client-controlled) when no upstream middleware
+    // had populated socket.data.userId. The /dx namespace must require
+    // either a real validateAuth callback or a server-trusted
+    // socket.data.userId — never the raw handshake auth field.
+    const ns = io._namespaces.get("/dx");
+    // Build a socket that has handshake.auth.userId set but socket.data
+    // empty (simulating a direct namespace connection from an
+    // unauthenticated client trying to impersonate "victim").
+    const id = "sock_forge_1";
+    const handlers = new Map();
+    const inbox = [];
+    const socket = {
+      id,
+      data: {},
+      handshake: { auth: { userId: "victim" }, headers: {} },
+      on(ev, fn) {
+        const arr = handlers.get(ev) || [];
+        arr.push(fn); handlers.set(ev, arr);
+      },
+      emit(ev, p) { inbox.push({ event: ev, payload: p }); },
+      _receive(ev, p) { socket.emit(ev, p); },
+      join() {},
+      leave() {},
+      _inbox: inbox,
+    };
+    ns._sockets.set(id, socket);
+    let err = null;
+    let i = 0;
+    function step(e) {
+      if (e) { err = e; return; }
+      if (i < ns._middlewares.length) ns._middlewares[i++](socket, step);
+    }
+    step();
+    assert.ok(err, "expected handshake to fail");
+    assert.match(err.message, /authentication_required/);
+  });
+
+  it("calls opts.validateAuth and uses the returned userId", () => {
+    _resetForTests();
+    io = makeStubIo();
+    let calls = 0;
+    attachDxStream(io, {
+      validateAuth: (s) => {
+        calls++;
+        return s.handshake?.auth?.token === "valid_jwt"
+          ? { userId: "alice", authMethod: "bearer" }
+          : null;
+      },
+    });
+    const ns = io._namespaces.get("/dx");
+    // No socket.data.userId, no auth.userId — only a real token.
+    const id = "sock_v1";
+    const handlers = new Map();
+    const socket = {
+      id,
+      data: {},
+      handshake: { auth: { token: "valid_jwt" }, headers: {} },
+      on(ev, fn) {
+        const arr = handlers.get(ev) || [];
+        arr.push(fn); handlers.set(ev, arr);
+      },
+      emit() {},
+      _receive() {},
+      join() {},
+      leave() {},
+    };
+    ns._sockets.set(id, socket);
+    let err = null;
+    let i = 0;
+    function step(e) {
+      if (e) { err = e; return; }
+      if (i < ns._middlewares.length) ns._middlewares[i++](socket, step);
+      else if (ns._connectionHandler) ns._connectionHandler(socket);
+    }
+    step();
+    assert.equal(err, null);
+    assert.equal(calls, 1);
+    assert.equal(socket.data.dxUserId, "alice");
+  });
+
   it("accepts an authenticated socket", () => {
     const ns = io._namespaces.get("/dx");
     const { socket, error } = connectStubSocket(ns, { userId: "alice" });

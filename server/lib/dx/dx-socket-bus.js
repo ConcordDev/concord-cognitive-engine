@@ -50,24 +50,55 @@ let _state = {
  * Attach the DX namespace + auth gate + per-user cap.
  * Caller passes the existing `io` from server.js after main namespace setup.
  *
+ * Socket.IO middleware is namespace-scoped: the root `io.use()` chain
+ * does NOT run on custom namespaces. The /dx namespace therefore MUST
+ * authenticate handshakes itself rather than trusting client-supplied
+ * `socket.handshake.auth.userId`. server.js passes the same verifiers
+ * the root namespace uses (verifyToken, verifyApiKey, AuthDB, parseCookies)
+ * via `opts.validateAuth(socket)`. Without that callback the namespace
+ * accepts only sockets whose `socket.data.userId` was already set by an
+ * external trusted source (test shims) and refuses any handshake that
+ * relies on `auth.userId` alone.
+ *
  * @param {object} io — socket.io Server instance.
+ * @param {object} [opts]
+ * @param {function} [opts.validateAuth] — `(socket) => { userId } | null`
+ *   called per handshake; returns the resolved userId or null to reject.
  * @returns {{ok: boolean, reason?: string}}
  */
-export function attachDxStream(io) {
+export function attachDxStream(io, opts = {}) {
   if (!getFlag("FF_DX_SOCKET", 1)) return { ok: false, reason: "flag_off" };
   if (!io || typeof io.of !== "function") return { ok: false, reason: "no_io" };
   if (_ns) return { ok: true, reason: "already_attached" };
 
+  const validateAuth = typeof opts.validateAuth === "function" ? opts.validateAuth : null;
   _ns = io.of(NAMESPACE);
 
-  // Auth gate. Reuses the main namespace's `socket.data.userId` if the
-  // root io middleware already authenticated; otherwise reads
-  // Authorization / x-api-key from the handshake.
+  // Auth gate. Custom namespaces don't share middleware with the root
+  // `/` namespace, so the root io.use() in server.js never runs here.
+  // We must validate the handshake ourselves — never trust
+  // `socket.handshake.auth.userId`, which is client-supplied.
   _ns.use((socket, next) => {
-    // The root io.use() middleware (server.js:6916) populated
-    // socket.data.userId for cookie / bearer / api-key already if the
-    // browser-side reused the same connection. Namespaces share state.
-    const userId = socket.data?.userId || socket.handshake?.auth?.userId;
+    let userId = null;
+
+    // Caller-supplied validator (production path) — verifies cookie / Bearer / API key.
+    if (validateAuth) {
+      try {
+        const r = validateAuth(socket);
+        userId = r?.userId || null;
+      } catch {
+        userId = null;
+      }
+    }
+
+    // Fallback: if a TRUSTED upstream middleware already populated
+    // socket.data.userId (test shims / the rare deployment that wires
+    // a root middleware that runs on this namespace), accept it.
+    // We deliberately do NOT read socket.handshake.auth.userId here —
+    // that field is forge-able by any client and was the impersonation
+    // vector flagged in PR-#312 review.
+    if (!userId && socket.data?.userId) userId = socket.data.userId;
+
     if (!userId) {
       _state.metrics.rejectedAuthTotal++;
       return next(new Error("authentication_required"));
@@ -81,6 +112,9 @@ export function attachDxStream(io) {
     }
     open.add(socket.id);
     _state.connections.set(userId, open);
+    // Stamp the resolved userId on the socket. Use a separate field
+    // (dxUserId) so downstream subscribe / disconnect handlers don't
+    // re-trust whatever was on socket.data.userId at handshake time.
     socket.data.dxUserId = userId;
     _state.metrics.connectsTotal++;
     return next();
