@@ -9305,6 +9305,10 @@ async function runMacro(domain, name, input, ctx) {
     land_claims: new Set([
       "claim", "invite", "topup", "claim_at", "can_act_in", "list_for_user",
     ]),
+    // Phase 5d: glyph_spells.
+    glyph_spells: new Set([
+      "list_components", "preview", "mint", "list_for_user", "seed_library",
+    ]),
     // Phase 7 — Code substrate. Read-only macros for the code-DTU view.
     code: new Set(["dtu_for", "dtu_query", "cluster_for", "refresh"]),
   };
@@ -22751,6 +22755,12 @@ registerBeatsMacros(register);
 // list_for_user macros for the world lens to interrogate the substrate.
 import registerLandClaimsMacros from "./domains/land-claims.js";
 registerLandClaimsMacros(register);
+
+// Phase 5d — Magic Glyph Composition. Players compose spells from base-6
+// glyph components. The composed spell is minted as a kind='spell_recipe'
+// DTU so it flows through Phase 1 / 1.5 (evolution + marketplace).
+import registerGlyphSpellMacros from "./domains/glyph-spells.js";
+registerGlyphSpellMacros(register);
 
 // Phase 7 / T2 — Code substrate macros: routes / migrations / modules /
 // macros become DTUs under kind='code_artifact'. See lib/code-substrate/.
