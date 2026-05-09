@@ -8,7 +8,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { api, apiHelpers } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Store,
@@ -661,9 +661,20 @@ export default function MarketplaceLensPage() {
       { id: 'goto-purchases', keys: 'p', description: 'Purchases', category: 'navigation', action: () => setTab('purchases') },
       { id: 'view-toggle', keys: 'v', description: 'Toggle grid / list', category: 'view', action: () => setViewMode((v) => (v === 'grid' ? 'list' : 'grid')) },
       { id: 'new-listing', keys: 'n', description: 'New listing', category: 'actions', action: () => setShowNewListing(true) },
+      { id: 'palette',     keys: 'mod+k', description: 'Quick search across all listings', category: 'navigation', action: () => setPaletteOpen(true), global: true },
     ],
     { lensId: 'marketplace' }
   );
+
+  // ── ⌘K palette state — Bandcamp-shape search across every listing ──
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [paletteQuery, setPaletteQuery] = useState('');
+  const [paletteIdx, setPaletteIdx] = useState(0);
+  const paletteInputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => { setPaletteIdx(0); }, [paletteQuery, paletteOpen]);
+  useEffect(() => {
+    if (paletteOpen) requestAnimationFrame(() => paletteInputRef.current?.focus());
+  }, [paletteOpen]);
   const [showCheckoutConfirm, setShowCheckoutConfirm] = useState(false);
   const [selectedArtifactId, setSelectedArtifactId] = useState<string | null>(null);
 
@@ -2601,6 +2612,108 @@ export default function MarketplaceLensPage() {
         )}
       </div>
     </div>
+
+    {/* ── ⌘K palette: search every listing across templates / components /
+        datasets / art / music. Bandcamp-style discovery shortcut. ── */}
+    {paletteOpen && (() => {
+      const q = paletteQuery.trim().toLowerCase();
+      const creatorName = (c: CreatorInfo | string | undefined): string => {
+        if (!c) return '';
+        if (typeof c === 'string') return c;
+        return c.name || '';
+      };
+      const hits = (q
+        ? allItems.filter((i) =>
+            (i.title || '').toLowerCase().includes(q) ||
+            creatorName(i.creator).toLowerCase().includes(q) ||
+            (i.tags || []).some((t) => String(t).toLowerCase().includes(q))
+          )
+        : allItems
+      ).slice(0, 50);
+
+      const lowestPrice = (it: MarketplaceItem): number | null => {
+        const p = it.prices as unknown as Record<string, number> | undefined;
+        if (!p) return null;
+        const nums = Object.values(p).filter((v) => typeof v === 'number') as number[];
+        return nums.length ? Math.min(...nums) : null;
+      };
+
+      const choose = (it: MarketplaceItem) => {
+        setSelectedArtifactId(String(it.id));
+        setPaletteOpen(false);
+        setPaletteQuery('');
+      };
+
+      return (
+        <div
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-start justify-center z-[100] pt-[14vh]"
+          onClick={() => setPaletteOpen(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Quick search marketplace"
+        >
+          <div
+            className="bg-[#0d1117] border border-emerald-500/40 rounded-xl w-full max-w-xl shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-white/10">
+              <ShoppingBag className="w-4 h-4 text-emerald-400" />
+              <input
+                ref={paletteInputRef}
+                value={paletteQuery}
+                onChange={(e) => setPaletteQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') { setPaletteOpen(false); return; }
+                  if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    setPaletteIdx((i) => Math.min(i + 1, hits.length - 1));
+                  } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    setPaletteIdx((i) => Math.max(i - 1, 0));
+                  } else if (e.key === 'Enter' && hits[paletteIdx]) {
+                    e.preventDefault();
+                    choose(hits[paletteIdx]);
+                  }
+                }}
+                placeholder="Search by title, creator, or tag…"
+                className="flex-1 bg-transparent outline-none text-sm text-white placeholder:text-white/30"
+              />
+              <kbd className="text-[10px] text-white/40 bg-white/5 border border-white/10 rounded px-1.5 py-0.5 font-mono">esc</kbd>
+            </div>
+            <ul className="max-h-[50vh] overflow-y-auto py-1">
+              {hits.length === 0 ? (
+                <li className="px-4 py-3 text-xs text-white/40 italic">No matches.</li>
+              ) : hits.map((it, i) => (
+                <li
+                  key={String(it.id)}
+                  onMouseEnter={() => setPaletteIdx(i)}
+                  onClick={() => choose(it)}
+                  className={`px-4 py-2 flex items-center justify-between gap-3 cursor-pointer transition-colors ${
+                    i === paletteIdx ? 'bg-emerald-500/10 border-l-2 border-emerald-400' : 'border-l-2 border-transparent hover:bg-white/5'
+                  }`}
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm text-white truncate">{it.title || String(it.id)}</div>
+                    <div className="text-[11px] text-white/40 truncate">
+                      {(() => { const cn2 = creatorName(it.creator); return cn2 ? `by ${cn2}` : ''; })()}
+                      {creatorName(it.creator) && it.type ? ' · ' : ''}
+                      {it.type ?? ''}
+                    </div>
+                  </div>
+                  {(() => { const lp = lowestPrice(it); return lp != null ? (
+                    <span className="text-xs text-emerald-300 font-mono shrink-0">{lp} CC</span>
+                  ) : null; })()}
+                </li>
+              ))}
+            </ul>
+            <div className="px-4 py-2 border-t border-white/10 text-[10px] text-white/40 flex items-center justify-between">
+              <span>↑↓ navigate · ↵ open · ⌘N new listing</span>
+              <span>{hits.length} {hits.length === 1 ? 'result' : 'results'}</span>
+            </div>
+          </div>
+        </div>
+      );
+    })()}
     </LensShell>
   );
 }

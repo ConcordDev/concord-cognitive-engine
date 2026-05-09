@@ -7,7 +7,7 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { showToast } from '@/components/common/Toasts';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import {
   FileText, Plus, Search, Calendar, FlaskConical, CheckCircle, AlertTriangle,
   BookOpen, Lightbulb, Beaker, Brain, Library, ChevronDown, ChevronRight,
@@ -203,6 +203,29 @@ export default function PaperLensPage() {
     ],
     { lensId: 'paper' }
   );
+
+  // ── ⌘K command palette + ⌘N new + / focus search (Notion idiom) ───
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [paletteQuery, setPaletteQuery] = useState('');
+  const [paletteIdx, setPaletteIdx] = useState(0);
+  const paletteInputRef = useRef<HTMLInputElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useLensCommand(
+    [
+      { id: 'palette',     keys: 'mod+k',     description: 'Quick search (across all types)', category: 'navigation', action: () => setPaletteOpen(true), global: true },
+      { id: 'new-item',    keys: 'mod+n',     description: 'New item in current tab',         category: 'actions',    action: () => { resetCreateForm(); setCreateModalOpen(true); }, global: true },
+      { id: 'focus-search', keys: '/',         description: 'Focus search',                    category: 'navigation', action: () => searchInputRef.current?.focus() },
+    ],
+    { lensId: 'paper' }
+  );
+
+  useEffect(() => { setPaletteIdx(0); }, [paletteQuery, paletteOpen]);
+  useEffect(() => {
+    if (paletteOpen) {
+      requestAnimationFrame(() => paletteInputRef.current?.focus());
+    }
+  }, [paletteOpen]);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
@@ -600,12 +623,14 @@ export default function PaperLensPage() {
         <div className="flex-1 min-w-[220px] relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
           <input
+            ref={searchInputRef}
             type="text"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder={`Search ${activeTab}...`}
-            className={cn(ds.input, 'pl-10')}
+            placeholder={`Search ${activeTab}…  (⌘K = all types)`}
+            className={cn(ds.input, 'pl-10 pr-16')}
           />
+          <kbd className="hidden sm:inline-block absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-white/30 bg-white/5 border border-white/10 rounded px-1.5 py-0.5 font-mono pointer-events-none">/</kbd>
         </div>
         <select value={selectedTag || ''} onChange={e => setSelectedTag(e.target.value || null)} className={cn(ds.select, 'w-auto min-w-[140px]')}>
           <option value="">All Tags</option>
@@ -968,6 +993,95 @@ export default function PaperLensPage() {
         )}
       </div>
     </div>
+
+    {/* ── ⌘K command palette — searches across all 6 artifact types ── */}
+    {paletteOpen && (() => {
+      // Build a unified, type-tagged list of every paper artifact.
+      const sources: { items: LensItem[]; tab: ModeTab; label: string; }[] = [
+        { items: allPapers,      tab: 'papers',       label: 'paper' },
+        { items: allHypotheses,  tab: 'hypotheses',   label: 'hypothesis' },
+        { items: allEvidence,    tab: 'evidence',     label: 'evidence' },
+        { items: allExperiments, tab: 'experiments',  label: 'experiment' },
+        { items: allCitations,   tab: 'bibliography', label: 'citation' },
+      ];
+      const q = paletteQuery.trim().toLowerCase();
+      const all = sources.flatMap((s) =>
+        s.items.map((it) => ({ id: `${s.tab}:${it.id}`, item: it, tab: s.tab, label: s.label }))
+      );
+      const filtered = q
+        ? all.filter((r) => r.item.title?.toLowerCase().includes(q))
+        : all.slice(0, 50);
+      const top = filtered.slice(0, 50);
+
+      const choose = (r: typeof top[number]) => {
+        setActiveTab(r.tab);
+        setSelectedItemId(r.item.id);
+        setDetailOpen(true);
+        setPaletteOpen(false);
+        setPaletteQuery('');
+      };
+
+      return (
+        <div
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-start justify-center z-[100] pt-[14vh]"
+          onClick={() => setPaletteOpen(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Quick search"
+        >
+          <div
+            className="bg-[#0d1117] border border-violet-500/40 rounded-xl w-full max-w-xl shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-white/10">
+              <Search className="w-4 h-4 text-violet-400" />
+              <input
+                ref={paletteInputRef}
+                value={paletteQuery}
+                onChange={(e) => setPaletteQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') { setPaletteOpen(false); return; }
+                  if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    setPaletteIdx((i) => Math.min(i + 1, top.length - 1));
+                  } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    setPaletteIdx((i) => Math.max(i - 1, 0));
+                  } else if (e.key === 'Enter' && top[paletteIdx]) {
+                    e.preventDefault();
+                    choose(top[paletteIdx]);
+                  }
+                }}
+                placeholder="Search papers, hypotheses, evidence, experiments, citations…"
+                className="flex-1 bg-transparent outline-none text-sm text-white placeholder:text-white/30"
+              />
+              <kbd className="text-[10px] text-white/40 bg-white/5 border border-white/10 rounded px-1.5 py-0.5 font-mono">esc</kbd>
+            </div>
+            <ul className="max-h-[50vh] overflow-y-auto py-1">
+              {top.length === 0 ? (
+                <li className="px-4 py-3 text-xs text-white/40 italic">No matches.</li>
+              ) : top.map((r, i) => (
+                <li
+                  key={r.id}
+                  onMouseEnter={() => setPaletteIdx(i)}
+                  onClick={() => choose(r)}
+                  className={`px-4 py-2 flex items-center justify-between gap-3 cursor-pointer transition-colors ${
+                    i === paletteIdx ? 'bg-violet-500/10 border-l-2 border-violet-400' : 'border-l-2 border-transparent hover:bg-white/5'
+                  }`}
+                >
+                  <span className="text-sm text-white truncate flex-1 min-w-0">{r.item.title || r.item.id.slice(0, 24)}</span>
+                  <span className="text-[10px] text-violet-300 shrink-0 font-mono uppercase tracking-wide">{r.label}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="px-4 py-2 border-t border-white/10 text-[10px] text-white/40 flex items-center justify-between">
+              <span>↑↓ navigate · ↵ open · ⌘N new</span>
+              <span>{top.length} {top.length === 1 ? 'result' : 'results'}</span>
+            </div>
+          </div>
+        </div>
+      );
+    })()}
     </LensShell>
   );
 }

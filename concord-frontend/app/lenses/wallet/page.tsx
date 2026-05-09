@@ -136,6 +136,30 @@ function WalletPageInner() {
   const [showTransfer, setShowTransfer] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // ── Main wallet keyboard shortcuts (Coinbase / Phantom-style) ──────
+  // Single-letter actions for the three core flows + tab navigation.
+  // Note: a separate useLensCommand inside TransferFlow handles its
+  // own internal step navigation; that one is scoped to the modal.
+  useLensCommand(
+    [
+      { id: 'wallet-buy',      keys: 'b', description: 'Buy CC',      category: 'actions',    action: () => setShowPurchase(true), global: true },
+      { id: 'wallet-withdraw', keys: 'w', description: 'Withdraw',    category: 'actions',    action: () => setShowWithdraw(true), global: true },
+      { id: 'wallet-send',     keys: 's', description: 'Send',        category: 'actions',    action: () => setShowTransfer(true), global: true },
+      { id: 'wallet-tab-all',         keys: '1', description: 'All transactions',        category: 'navigation', action: () => setActiveTab('all') },
+      { id: 'wallet-tab-purchase',    keys: '2', description: 'Purchases',                category: 'navigation', action: () => setActiveTab('purchase') },
+      { id: 'wallet-tab-tip',         keys: '3', description: 'Tips',                     category: 'navigation', action: () => setActiveTab('tip') },
+      { id: 'wallet-tab-withdrawal',  keys: '4', description: 'Withdrawals',              category: 'navigation', action: () => setActiveTab('withdrawal') },
+      { id: 'wallet-tab-earning',     keys: '5', description: 'Earnings',                 category: 'navigation', action: () => setActiveTab('earning') },
+      { id: 'wallet-esc-modals', keys: 'esc', description: 'Close any open flow', category: 'navigation',
+        action: () => {
+          if (showPurchase || showWithdraw || showTransfer) {
+            setShowPurchase(false); setShowWithdraw(false); setShowTransfer(false);
+          }
+        } },
+    ],
+    { lensId: 'wallet' }
+  );
+
   const { items: walletItems } = useLensData<Record<string, unknown>>('wallet', 'account');
   const runWalletAction = useRunArtifact('wallet');
   const [walletActionResult, setWalletActionResult] = useState<{ action: string; result: Record<string, unknown> } | null>(null);
@@ -396,6 +420,7 @@ function WalletPageInner() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => setShowPurchase(true)}
+              title="Buy CC (B)"
               className={cn(
                 ds.btnBase,
                 'px-5 py-3 bg-gradient-to-r from-neon-blue to-neon-purple text-white hover:opacity-90 focus:ring-neon-blue shadow-neon-blue'
@@ -403,12 +428,14 @@ function WalletPageInner() {
             >
               <CreditCard className="w-5 h-5" />
               Buy CC
+              <kbd className="hidden sm:inline ml-1 text-[10px] bg-black/20 border border-white/20 rounded px-1 py-0.5 font-mono">B</kbd>
             </motion.button>
 
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => setShowWithdraw(true)}
+              title="Withdraw (W)"
               className={cn(
                 ds.btnBase,
                 'px-5 py-3 bg-neon-green/20 text-neon-green border border-neon-green/50 hover:bg-neon-green/30 focus:ring-neon-green'
@@ -416,12 +443,14 @@ function WalletPageInner() {
             >
               <ArrowDownToLine className="w-5 h-5" />
               Withdraw
+              <kbd className="hidden sm:inline ml-1 text-[10px] bg-black/30 border border-white/20 rounded px-1 py-0.5 font-mono">W</kbd>
             </motion.button>
 
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => setShowTransfer(true)}
+              title="Send (S)"
               className={cn(
                 ds.btnBase,
                 'px-5 py-3 bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/50 hover:bg-neon-cyan/30 focus:ring-neon-cyan'
@@ -429,6 +458,7 @@ function WalletPageInner() {
             >
               <Send className="w-5 h-5" />
               Transfer
+              <kbd className="hidden sm:inline ml-1 text-[10px] bg-black/30 border border-white/20 rounded px-1 py-0.5 font-mono">S</kbd>
             </motion.button>
           </div>
         </div>
