@@ -2045,6 +2045,36 @@ export default function createWorldsRouter({ requireAuth, db }) {
               ttlSeconds: d.ttlSeconds,
             });
           }
+
+          // Theme 3 (game-feel pass): lightning chain. If the element is
+          // lightning AND the source cell is wet, propagate a fraction of
+          // the hit to nearby entities. Inline (not the heartbeat) so the
+          // chain feels immediate. Best-effort — never block the attack.
+          if ((skillData.element || 'none') === 'lightning') {
+            try {
+              const { propagateLightningChain } = await import('../lib/embodied/signal-propagation.js');
+              const chainRes = propagateLightningChain(
+                db, worldId,
+                { x: targetPos.x, z: targetPos.z },
+                damageResult.finalDamage,
+                npcId,
+              );
+              if (chainRes?.ok && chainRes.targets.length > 0) {
+                const io = req.app.locals.io;
+                for (const t of chainRes.targets) {
+                  io?.to(`world:${worldId}`).emit('combat:chain', {
+                    worldId,
+                    sourceTargetId: npcId,
+                    chainTargetId: t.id,
+                    chainTargetKind: t.kind,
+                    distance: Math.round(t.distance * 10) / 10,
+                    damage: chainRes.chainDamage,
+                    element: 'lightning',
+                  });
+                }
+              }
+            } catch { /* chain best-effort */ }
+          }
         }
 
         const stagger = shouldStaggerOnTerrain({

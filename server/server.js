@@ -100,6 +100,17 @@ registerHeartbeat("creature-flock-cycle", {
   handler: runCreatureFlockCycle,
 });
 
+// Theme 3 (game-feel pass): chemistry-cascade. Turns embodied_signal_log
+// from a write-only ledger into a real substrate — fire spreads to dry
+// adjacent cells, rain damps it, hot+humid produces steam (cleansing
+// poison), very-hot drops air quality, etc. Frequency 3 (~45s); spatial
+// pre-filter keeps cost bounded regardless of log size.
+import { runSignalPropagationCycle } from "./emergent/signal-propagation-cycle.js";
+registerHeartbeat("signal-propagation-cycle", {
+  frequency: 3,
+  handler: runSignalPropagationCycle,
+});
+
 // EvoEcosystem W3: spoiled inventory + expired buff sweep every 5 ticks.
 import { runEcoExpirySweep, applyConsumable, cookRecipe, getActiveEffects } from "./lib/ecosystem/cook-engine.js";
 registerHeartbeat("eco-expiry-sweep", {
