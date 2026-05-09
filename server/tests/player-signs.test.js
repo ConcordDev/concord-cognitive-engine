@@ -31,7 +31,7 @@ import {
   MAX_ACTIVE_PER_USER,
 } from "../lib/player-signs.js";
 import { runPlayerSignsCleanup } from "../emergent/player-signs-cleanup.js";
-import { up as up146 } from "../migrations/146_player_signs.js";
+import { up as up146 } from "../migrations/149_player_signs.js";
 
 function setupDb() {
   const db = new Database(":memory:");

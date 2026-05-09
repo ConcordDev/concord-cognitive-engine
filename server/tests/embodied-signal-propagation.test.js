@@ -33,7 +33,7 @@ import {
 import { runSignalPropagationCycle } from "../emergent/signal-propagation-cycle.js";
 import { up as up112 } from "../migrations/112_embodied_signals.js";
 import { up as up113 } from "../migrations/113_embodied_signal_log_unification.js";
-import { up as up145 } from "../migrations/145_signal_propagation_indexes.js";
+import { up as up145 } from "../migrations/148_signal_propagation_indexes.js";
 
 function setupDb({ withBuildings = true, withWorldNpcs = true, withPlayerState = true } = {}) {
   const db = new Database(":memory:");

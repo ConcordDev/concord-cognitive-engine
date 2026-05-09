@@ -27,7 +27,7 @@ import {
   fireTrigger,
   TRIGGER_KINDS,
 } from "../lib/quest-triggers.js";
-import { up as up147 } from "../migrations/147_quest_triggers.js";
+import { up as up147 } from "../migrations/150_quest_triggers.js";
 
 function setupDb() {
   const db = new Database(":memory:");

@@ -27,7 +27,7 @@ import {
   COIN_LOSS_MAX,
   RECOVER_RADIUS_M,
 } from "../lib/player-corpse.js";
-import { up as up148 } from "../migrations/148_player_corpses.js";
+import { up as up148 } from "../migrations/151_player_corpses.js";
 
 function setupDb(initialBalance = 0) {
   const db = new Database(":memory:");
