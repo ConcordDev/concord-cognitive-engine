@@ -1,24 +1,237 @@
 // server/domains/dx.js
 //
-// DX Platform domain — exposes onboarding progress + a small status query
-// surface for the dx-platform lens (concord-frontend/app/lenses/dx-platform).
+// DX Platform Phase A2 — read-mostly macros for the editor plugin's
+// codebase + repair-feedback surface.
 //
-// onboarding_progress reads a few authoritative signals:
-//   - api_keys table for the user → has at least one key issued (signed in)
-//   - api_usage_log for the user → has at least one logged call (first detector)
-//   - economy_ledger for the user → has at least one debit > 0 (first wallet debit)
+// Macros:
+//   dx.register_codebase     — UPSERT (user, repo_root) → codebase row.
+//                              Returns codebase id + created flag.
+//                              Plugin calls this on activation.
+//   dx.touch_codebase        — Refresh last_seen_at on file events.
+//   dx.list_codebases        — Caller's recent codebases (recent-first).
+//   dx.record_fix_decision   — Log a (accepted|rejected|ignored) decision
+//                              for a finding. Adjusts the per-codebase
+//                              severity weight (after MIN_SAMPLES).
+//   dx.list_weights          — Read-only snapshot of all weights for a
+//                              codebase (for the plugin tuning sidebar).
+//   dx.weighted_findings     — Apply per-codebase weights to a list of
+//                              findings (helpful for repair-cortex callers).
+//   dx.upsert_shadow         — Idempotent per-(codebase, path) shadow
+//                              DTU upsert. STATE.shadowDtus only — no DB
+//                              row written; shadow tier persists via the
+//                              existing backup path.
 //
-// "installed" is inferred from User-Agent on the request — if the same user
-// has hit /api/dx/exchange recently from a vscode/jetbrains client, mark
-// the corresponding box. We don't store an "installed" boolean because
-// the source of truth is whether the IDE has paired (which it has if it
-// signed in at all).
+// Auth: all macros require a user-bound ctx (ctx.actor.userId). The
+// codebase_id passed in any mutating call must belong to the caller.
 
-export default function registerDxMacros(register) {
+import crypto from "node:crypto";
+import {
+  ensureCodebase,
+  touchCodebase,
+  listCodebasesForUser,
+  attachShadowDtu,
+  getCodebase,
+} from "../lib/dx/codebase-registry.js";
+import {
+  recordDecision,
+  getWeight,
+  applyWeights,
+  listWeightsForCodebase,
+} from "../lib/dx/severity-evo.js";
+
+function _ownsCodebase(db, userId, codebaseId) {
+  if (!db || !userId || !codebaseId) return false;
+  const row = getCodebase(db, codebaseId);
+  return !!row && row.user_id === userId;
+}
+
+export default function registerDxMacros(register, STATE) {
+  register("dx", "register_codebase", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    const userId = ctx?.actor?.userId || ctx?.userId;
+    if (!db) return { ok: false, reason: "no_db" };
+    if (!userId) return { ok: false, reason: "no_user" };
+    if (!input.repoRoot) return { ok: false, reason: "missing_repo_root" };
+    return ensureCodebase(db, userId, input.repoRoot, {
+      detectorVersion: input.detectorVersion,
+    });
+  }, { note: "register a codebase or refresh last_seen_at" });
+
+  register("dx", "touch_codebase", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    const userId = ctx?.actor?.userId || ctx?.userId;
+    if (!db) return { ok: false, reason: "no_db" };
+    if (!userId) return { ok: false, reason: "no_user" };
+    if (!input.codebaseId) return { ok: false, reason: "missing_codebase_id" };
+    if (!_ownsCodebase(db, userId, input.codebaseId)) {
+      return { ok: false, reason: "not_owner" };
+    }
+    return touchCodebase(db, input.codebaseId);
+  }, { note: "bump codebase.last_seen_at" });
+
+  register("dx", "list_codebases", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    const userId = ctx?.actor?.userId || ctx?.userId;
+    if (!db) return { ok: false, reason: "no_db" };
+    if (!userId) return { ok: false, reason: "no_user" };
+    const limit = Math.max(1, Math.min(input.limit || 50, 200));
+    return { ok: true, codebases: listCodebasesForUser(db, userId, limit) };
+  }, { note: "caller's recent codebases" });
+
+  register("dx", "record_fix_decision", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    const userId = ctx?.actor?.userId || ctx?.userId;
+    if (!db) return { ok: false, reason: "no_db" };
+    if (!userId) return { ok: false, reason: "no_user" };
+    if (!input.codebaseId || !input.detectorId || !input.ruleId || !input.decision) {
+      return { ok: false, reason: "missing_args" };
+    }
+    if (!_ownsCodebase(db, userId, input.codebaseId)) {
+      return { ok: false, reason: "not_owner" };
+    }
+    return recordDecision(db, {
+      codebaseId: input.codebaseId,
+      repairId: input.repairId,
+      detectorId: input.detectorId,
+      ruleId: input.ruleId,
+      decision: input.decision,
+      detectorVersion: input.detectorVersion,
+    });
+  }, { note: "record accept/reject/ignore — bumps per-codebase weight" });
+
+  register("dx", "list_weights", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    const userId = ctx?.actor?.userId || ctx?.userId;
+    if (!db) return { ok: false, reason: "no_db" };
+    if (!userId) return { ok: false, reason: "no_user" };
+    if (!input.codebaseId) return { ok: false, reason: "missing_codebase_id" };
+    if (!_ownsCodebase(db, userId, input.codebaseId)) {
+      return { ok: false, reason: "not_owner" };
+    }
+    return { ok: true, weights: listWeightsForCodebase(db, input.codebaseId) };
+  }, { note: "per-codebase severity weight snapshot" });
+
+  register("dx", "weighted_findings", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    const userId = ctx?.actor?.userId || ctx?.userId;
+    if (!db) return { ok: false, reason: "no_db" };
+    if (!userId) return { ok: false, reason: "no_user" };
+    if (!input.codebaseId || !Array.isArray(input.findings)) {
+      return { ok: false, reason: "missing_args" };
+    }
+    if (!_ownsCodebase(db, userId, input.codebaseId)) {
+      return { ok: false, reason: "not_owner" };
+    }
+    return { ok: true, findings: applyWeights(input.findings, db, input.codebaseId) };
+  }, { note: "apply per-codebase severity weights to a list of findings" });
+
+  // dx.upsert_shadow — idempotent per-(codebase, path) shadow DTU upsert.
+  // Written into STATE.shadowDtus (Map<id, dtu>) under the same `tier:
+  // 'shadow'` shape the cross-reference path at server.js:2940/2954
+  // already expects. Dedup key is sha1(codebaseId + path); content hash
+  // updates the existing entry rather than creating a new one.
+  register("dx", "upsert_shadow", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    const state = STATE || ctx?.state;
+    const userId = ctx?.actor?.userId || ctx?.userId;
+    if (!state?.shadowDtus) return { ok: false, reason: "no_shadow_store" };
+    if (!userId) return { ok: false, reason: "no_user" };
+    if (!input.codebaseId || !input.path) return { ok: false, reason: "missing_args" };
+    if (db && !_ownsCodebase(db, userId, input.codebaseId)) {
+      return { ok: false, reason: "not_owner" };
+    }
+    const content = String(input.content ?? "");
+    const tags = Array.isArray(input.tags) ? input.tags.slice(0, 32) : [];
+    const contentHash = crypto.createHash("sha1").update(content).digest("hex").slice(0, 16);
+    const id = `shadow_dx_${input.codebaseId}_${crypto.createHash("sha1")
+      .update(input.path).digest("hex").slice(0, 12)}`;
+
+    const prior = state.shadowDtus.get(id);
+    if (prior && prior.meta?.contentHash === contentHash) {
+      return { ok: true, id, deduped: true };
+    }
+    const shadowDtu = {
+      id,
+      tier: "shadow",
+      kind: "code_shadow",
+      title: input.path,
+      summary: input.path,
+      tags,
+      content,
+      meta: {
+        codebase_id: input.codebaseId,
+        path: input.path,
+        contentHash,
+        userId,
+        upsertedAt: Math.floor(Date.now() / 1000),
+      },
+      created_at: Math.floor(Date.now() / 1000),
+    };
+    state.shadowDtus.set(id, shadowDtu);
+
+    // First time we see a shadow for this codebase, attach it as the
+    // codebase's primary shadow_dtu_id. Cheap UPDATE — no-op on retry.
+    if (db) {
+      try {
+        const cb = getCodebase(db, input.codebaseId);
+        if (cb && !cb.shadow_dtu_id) attachShadowDtu(db, input.codebaseId, id);
+      } catch { /* best-effort */ }
+    }
+
+    return { ok: true, id, deduped: false, contentHash };
+  }, { note: "idempotent shadow DTU upsert keyed by (codebase, path)" });
+
+  // Convenience read so the plugin can inspect what shadows it has
+  // written. Caller-scoped via codebase ownership.
+  register("dx", "list_shadows", async (ctx, input = {}) => {
+    const state = STATE || ctx?.state;
+    const db = ctx?.db;
+    const userId = ctx?.actor?.userId || ctx?.userId;
+    if (!state?.shadowDtus) return { ok: false, reason: "no_shadow_store" };
+    if (!userId) return { ok: false, reason: "no_user" };
+    if (!input.codebaseId) return { ok: false, reason: "missing_codebase_id" };
+    if (db && !_ownsCodebase(db, userId, input.codebaseId)) {
+      return { ok: false, reason: "not_owner" };
+    }
+    const out = [];
+    for (const dtu of state.shadowDtus.values()) {
+      if (dtu?.meta?.codebase_id === input.codebaseId && dtu?.kind === "code_shadow") {
+        out.push({
+          id: dtu.id,
+          path: dtu.meta.path,
+          contentHash: dtu.meta.contentHash,
+          upsertedAt: dtu.meta.upsertedAt,
+          contentLength: (dtu.content || "").length,
+        });
+      }
+    }
+    return { ok: true, shadows: out, count: out.length };
+  }, { note: "list shadow DTUs for a codebase" });
+
+  // Pure read for getWeight — useful for cheap UI peeks without a full
+  // weights-list call.
+  register("dx", "get_weight", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    const userId = ctx?.actor?.userId || ctx?.userId;
+    if (!db) return { ok: false, reason: "no_db" };
+    if (!userId) return { ok: false, reason: "no_user" };
+    if (!input.codebaseId || !input.detectorId || !input.ruleId) {
+      return { ok: false, reason: "missing_args" };
+    }
+    if (!_ownsCodebase(db, userId, input.codebaseId)) {
+      return { ok: false, reason: "not_owner" };
+    }
+    return { ok: true, weight: getWeight(db, input.codebaseId, input.detectorId, input.ruleId) };
+  }, { note: "single (codebase, detector, rule) weight lookup" });
+
+  // ── Audit-phase 7.5 onboarding macros ───────────────────────────────
+  // Powers the step-by-step onboarding view at /lenses/dx-platform.
+  // Anonymous browsers also resolve (returns zero progress) so the
+  // step cards render before sign-in.
+
   register("dx", "onboarding_progress", async (ctx) => {
-    const userId = ctx?.actor?.userId;
+    const userId = ctx?.actor?.userId || ctx?.userId;
     if (!userId) {
-      // Anonymous browser — return all zero so the steps render.
       return { ok: true, progress: { signedIn: false, firstDetector: false, firstDebit: false } };
     }
     const db = ctx?.db;
@@ -29,7 +242,7 @@ export default function registerDxMacros(register) {
     let signedIn = false;
     let firstDetector = false;
     let firstDebit = false;
-    let installed = { vscode: false, jetbrains: false };
+    const installed = { vscode: false, jetbrains: false };
 
     // (1) Signed in: any non-revoked api_keys row for this user.
     try {
@@ -37,9 +250,7 @@ export default function registerDxMacros(register) {
         `SELECT COUNT(*) AS c FROM api_keys WHERE user_id = ? AND status = 'active'`
       ).get(userId);
       signedIn = (row?.c ?? 0) > 0;
-    } catch {
-      // Table may not exist yet on a fresh DB; treat as not-signed-in.
-    }
+    } catch { /* table may not exist on a fresh DB */ }
 
     // (2) First detector: any api_usage_log row for this user.
     try {
@@ -49,17 +260,16 @@ export default function registerDxMacros(register) {
       firstDetector = (row?.c ?? 0) > 0;
     } catch { /* best-effort */ }
 
-    // (3) First debit: at least one DEBIT economy_ledger row tied to api_*.
+    // (3) First debit: any DEBIT economy_ledger row for this user.
     try {
       const row = db.prepare(`
         SELECT COUNT(*) AS c FROM economy_ledger
          WHERE user_id = ? AND type = 'debit' AND amount > 0
       `).get(userId);
       firstDebit = (row?.c ?? 0) > 0;
-    } catch { /* economy_ledger may use a different schema in some envs */ }
+    } catch { /* schema may differ across envs */ }
 
-    // (4) Installed-extension hint: look at the most recent api_usage_log
-    //     metadata_json for the client identifier embedded by the IDE.
+    // (4) Installed-extension hint: latest 25 usage rows' metadata.
     try {
       const recent = db.prepare(`
         SELECT metadata_json FROM api_usage_log
@@ -72,7 +282,7 @@ export default function registerDxMacros(register) {
           const meta = JSON.parse(r.metadata_json || "{}");
           if (meta.client === "vscode") installed.vscode = true;
           else if (meta.client === "jetbrains") installed.jetbrains = true;
-        } catch { /* skip rows with malformed metadata */ }
+        } catch { /* skip malformed metadata rows */ }
         if (installed.vscode && installed.jetbrains) break;
       }
     } catch { /* best-effort */ }
@@ -83,19 +293,15 @@ export default function registerDxMacros(register) {
     };
   });
 
-  // Sibling: dx.welcome — single-shot greeting the IDE plugin can hit
-  // immediately after sign-in to confirm the token works without
-  // committing to a full detector run. Returns user identity + free
-  // quota remaining for the current month.
   register("dx", "welcome", async (ctx) => {
-    const userId = ctx?.actor?.userId;
+    const userId = ctx?.actor?.userId || ctx?.userId;
     if (!userId) return { ok: false, error: "auth_required" };
     const db = ctx?.db;
-    if (!db) return { ok: true, userId, freeQuota: null };
+    if (!db) return { ok: true, userId, monthlyUsage: null };
 
     let monthly = null;
     try {
-      const yearMonth = new Date().toISOString().slice(0, 7); // "2026-05"
+      const yearMonth = new Date().toISOString().slice(0, 7);
       monthly = db.prepare(`
         SELECT * FROM api_monthly_usage
          WHERE user_id = ? AND month = ?

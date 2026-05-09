@@ -81,7 +81,6 @@ export function ensureRelationsTables(db) {
  * Get or create an opinion record between subject and target.
  */
 export function getOpinion(db, subjectId, subjectType, targetId, targetType = 'player') {
-  // TODO: project explicit columns (auto-fix suggestion)
   const row = db.prepare('SELECT * FROM npc_opinions WHERE subject_id = ? AND target_id = ?').get(subjectId, targetId);
   if (row) return row;
   // Default opinion — slightly positive for civilians, neutral for guards
@@ -358,7 +357,6 @@ export function recordNPCToNPCInteraction(db, subjectNpcId, targetNpcId, sentime
  */
 export function getNPCOpinionOfNPC(db, subjectNpcId, targetNpcId) {
   return db.prepare(
-    // TODO: project explicit columns (auto-fix suggestion)
     'SELECT * FROM npc_opinions WHERE subject_id = ? AND target_id = ? AND subject_type = ?'
   ).get(subjectNpcId, targetNpcId, 'npc') ?? null;
 }

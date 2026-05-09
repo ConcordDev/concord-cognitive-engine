@@ -21,7 +21,6 @@ export async function spawnWorldNativeEmergent(worldId, db, selectBrain) {
       callerId: "world:spawn-emergent",
     });
 
-    // TODO: project explicit columns (auto-fix suggestion)
 
     const world = db.prepare("SELECT * FROM worlds WHERE id = ?").get(worldId);
     const prompt = `Generate a world-native emergent entity for this world:

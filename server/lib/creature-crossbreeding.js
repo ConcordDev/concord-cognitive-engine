@@ -319,9 +319,7 @@ export function maybeCrossbreed(db, { a, b, environment, sameEnvironmentBonus = 
 export function getLineage(db, creatureId) {
   if (!db) return null;
   try {
-    // TODO: project explicit columns (auto-fix suggestion)
     const asChild  = db.prepare(`SELECT * FROM creature_lineage WHERE child_id = ?`).get(creatureId);
-    // TODO: project explicit columns (auto-fix suggestion)
     const asParent = db.prepare(`SELECT * FROM creature_lineage WHERE parent_a = ? OR parent_b = ? ORDER BY created_at DESC`).all(creatureId, creatureId);
     return { self: asChild ?? null, descendants: asParent };
   } catch { return null; }

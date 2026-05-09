@@ -101,7 +101,6 @@ export function applyShadowBurn(db, senderId) {
   const now = Math.floor(Date.now() / 1000);
   const today = Math.floor(now / 86400);
 
-  // TODO: project explicit columns (auto-fix suggestion)
 
   let row = db.prepare(`SELECT * FROM concord_link_shadow_burn WHERE sender_id = ?`).get(senderId);
   if (!row) {
@@ -298,7 +297,6 @@ export function sendMessage(db, opts, deps = {}) {
  */
 export function listInbox(db, receiverId, { limit = 50 } = {}) {
   return db.prepare(`
-    // TODO: project explicit columns (auto-fix suggestion)
     SELECT * FROM concord_link_messages
      WHERE receiver_id = ?
      ORDER BY sent_at DESC
@@ -320,7 +318,6 @@ export function markRead(db, messageId, readerId) {
  */
 export function listAnchorsForWorld(db, worldId) {
   return db.prepare(`
-    // TODO: project explicit columns (auto-fix suggestion)
     SELECT * FROM concord_link_anchors WHERE world_id = ? ORDER BY name
   `).all(worldId);
 }

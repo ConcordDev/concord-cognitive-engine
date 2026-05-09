@@ -179,7 +179,6 @@ export function generateTransparencyReport(db, year) {
 
   const yearPrefix = `${yr}`;
   const rows = db.prepare(
-    // TODO: project explicit columns (auto-fix suggestion)
     "SELECT * FROM legal_requests WHERE date_received LIKE ? || '%'"
   ).all(yearPrefix);
 
@@ -267,7 +266,6 @@ export function getLegalRequests(db, filters = {}) {
   const safeOffset = Math.max(0, Number(offset) || 0);
 
   const requests = db.prepare(
-    // TODO: project explicit columns (auto-fix suggestion)
     `SELECT * FROM legal_requests ${whereClause} ORDER BY date_received DESC LIMIT ? OFFSET ?`
   ).all(...params, safeLimit, safeOffset);
 

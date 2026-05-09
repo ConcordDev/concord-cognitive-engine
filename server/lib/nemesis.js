@@ -13,14 +13,11 @@ const NEMESIS_KILL_SPARKS = 50;
 const NPC_LEVEL_BOOST = 0.5; // added to nemesis NPC's combat skill levels
 
 export function getNemesisForPlayer(db, playerId) {
-  // TODO: project explicit columns (auto-fix suggestion)
   return db.prepare("SELECT * FROM nemesis_records WHERE player_id = ?").get(playerId) || null;
 }
 
 export async function onNPCKilledPlayer(db, npcId, playerId, worldId, selectBrain) {
-  // TODO: project explicit columns (auto-fix suggestion)
   const existing = db.prepare("SELECT * FROM nemesis_records WHERE player_id = ?").get(playerId);
-  // TODO: project explicit columns (auto-fix suggestion)
   const npc = db.prepare("SELECT * FROM world_npcs WHERE id = ?").get(npcId);
   if (!npc) return null;
 
@@ -56,7 +53,6 @@ export async function onNPCKilledPlayer(db, npcId, playerId, worldId, selectBrai
 }
 
 export async function onPlayerKilledNemesis(db, playerId, npcId, realtimeEmit) {
-  // TODO: project explicit columns (auto-fix suggestion)
   const nemesis = db.prepare("SELECT * FROM nemesis_records WHERE player_id = ? AND npc_id = ?").get(playerId, npcId);
   if (!nemesis) return false;
 

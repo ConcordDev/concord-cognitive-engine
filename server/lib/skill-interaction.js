@@ -170,7 +170,6 @@ Return JSON only:
     }
   } catch (_e) { /* non-fatal */ }
 
-  // TODO: project explicit columns (auto-fix suggestion)
 
   const hybrid = db.prepare("SELECT * FROM dtus WHERE id = ?").get(newId);
 

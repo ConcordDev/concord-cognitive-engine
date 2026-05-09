@@ -68,7 +68,6 @@ export function surfaceInterceptedMessage(db, messageId, { fenceNpcId = "broker_
     ) VALUES (?, ?, ?, ?, ?, ?, 'active', unixepoch(), unixepoch() + 86400 * 7)
   `).run(id, messageId, fenceNpcId, price, msg.encryption_level, preview);
 
-  // TODO: project explicit columns (auto-fix suggestion)
 
   const listing = db.prepare(`SELECT * FROM black_market_listings WHERE id = ?`).get(id);
   return { ok: true, surfaced: true, listing };
@@ -120,7 +119,6 @@ export function browseListings(db, { fenceNpcId = null, limit = 50 } = {}) {
 export function purchaseListing(db, { listingId, buyerId }) {
   if (!db || !listingId || !buyerId) return { ok: false, reason: "missing_inputs" };
 
-  // TODO: project explicit columns (auto-fix suggestion)
 
   const listing = db.prepare(`SELECT * FROM black_market_listings WHERE id = ?`).get(listingId);
   if (!listing)                            return { ok: false, reason: "listing_not_found" };
@@ -149,21 +147,18 @@ export function purchaseListing(db, { listingId, buyerId }) {
 
     bumpReputation(db, buyerId, listing.fence_npc_id, REP_DELTA_PURCHASE);
 
-    // TODO: project explicit columns (auto-fix suggestion)
 
     const msg = db.prepare(`SELECT * FROM concord_link_messages WHERE id = ?`).get(listing.message_id);
     if (msg) revealed = msg;
   });
   tx();
 
-  // TODO: project explicit columns (auto-fix suggestion)
 
   const repRow = db.prepare(`SELECT * FROM black_market_reputation WHERE user_id=? AND fence_npc_id=?`).get(buyerId, listing.fence_npc_id);
 
   return {
     ok: true,
     sparksSpent: price,
-    // TODO: project explicit columns (auto-fix suggestion)
     listing: db.prepare(`SELECT * FROM black_market_listings WHERE id=?`).get(listingId),
     message: revealed,
     buyerRep: repRow?.buyer_rep ?? 0,

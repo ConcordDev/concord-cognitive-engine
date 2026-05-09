@@ -145,9 +145,7 @@ export function createRightsManager(db, opts = {}) {
     if (!db) return null;
     try {
       _stmts = {
-        // TODO: project explicit columns (auto-fix suggestion)
         get: db.prepare("SELECT * FROM dtu_rights WHERE dtu_id = ?"),
-        // TODO: project explicit columns (auto-fix suggestion)
         getById: db.prepare("SELECT * FROM dtu_rights WHERE id = ?"),
         insert: db.prepare(`
           INSERT INTO dtu_rights
@@ -178,9 +176,7 @@ export function createRightsManager(db, opts = {}) {
           "UPDATE dtu_rights SET granted_users_json = ?, updated_at = ? WHERE dtu_id = ?"
         ),
         delete: db.prepare("DELETE FROM dtu_rights WHERE dtu_id = ?"),
-        // TODO: project explicit columns (auto-fix suggestion)
         byCreator: db.prepare("SELECT * FROM dtu_rights WHERE creator_id = ?"),
-        // TODO: project explicit columns (auto-fix suggestion)
         byOwner: db.prepare("SELECT * FROM dtu_rights WHERE owner_id = ?"),
         count: db.prepare("SELECT COUNT(*) as count FROM dtu_rights"),
       };

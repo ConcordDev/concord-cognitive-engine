@@ -28,7 +28,6 @@ const EVIDENCE_DECAY = {
  * @returns {{ allowed: boolean, reason?: string, requiresLockpick?: boolean, lockTier?: number }}
  */
 export function checkRoomAccess(db, roomId, entityId, entityType) {
-  // TODO: project explicit columns (auto-fix suggestion)
   const room = db.prepare('SELECT * FROM building_rooms WHERE id = ?').get(roomId);
   if (!room) return { allowed: false, reason: 'room_not_found' };
 
@@ -61,7 +60,6 @@ export function checkRoomAccess(db, roomId, entityId, entityType) {
  * @returns {{ success: boolean, crimeEventId?: string, partial?: boolean }}
  */
 export function attemptLockpick(db, roomId, entityId, entityType, lockpickSkill = 1) {
-  // TODO: project explicit columns (auto-fix suggestion)
   const room = db.prepare('SELECT * FROM building_rooms WHERE id = ?').get(roomId);
   if (!room) return { success: false };
 
@@ -111,7 +109,6 @@ export function attemptLockpick(db, roomId, entityId, entityType, lockpickSkill 
  * Force entry by destroying a door/lock (loud, obvious, high evidence).
  */
 export function forceEntry(db, roomId, entityId, entityType) {
-  // TODO: project explicit columns (auto-fix suggestion)
   const room = db.prepare('SELECT * FROM building_rooms WHERE id = ?').get(roomId);
   if (!room) return { ok: false };
 
@@ -149,7 +146,6 @@ export function forceEntry(db, roomId, entityId, entityType) {
  * Record a theft from a room (items taken from chests, shelves, etc.).
  */
 export function recordTheft(db, roomId, thievingEntityId, entityType, stolenItems = []) {
-  // TODO: project explicit columns (auto-fix suggestion)
   const room = db.prepare('SELECT * FROM building_rooms WHERE id = ?').get(roomId);
   if (!room) return null;
 
@@ -190,17 +186,14 @@ export function recordTheft(db, roomId, thievingEntityId, entityType, stolenItem
  * Returns the crime event id and list of items stolen from inventory/room.
  */
 export function npcBreakIn(db, npcId, targetBuildingId, worldId) {
-  // TODO: project explicit columns (auto-fix suggestion)
   const building = db.prepare('SELECT * FROM world_buildings WHERE id = ?').get(targetBuildingId);
   if (!building) return null;
 
-  // TODO: project explicit columns (auto-fix suggestion)
 
   const npc = db.prepare('SELECT * FROM world_npcs WHERE id = ?').get(npcId);
   if (!npc) return null;
 
   // Pick the weakest lock in the building
-  // TODO: project explicit columns (auto-fix suggestion)
   const rooms = db.prepare('SELECT * FROM building_rooms WHERE building_id = ? ORDER BY lock_tier ASC').all(targetBuildingId);
   const targetRoom = rooms.find(r => !r.is_public && r.lock_state === 'locked') || rooms.find(r => !r.is_public);
   if (!targetRoom) return null;
@@ -251,7 +244,6 @@ export function detectiveTick(db, npcId, worldId) {
 
   // Find open crimes this detective is assigned to OR unassigned crimes
   const crimes = db.prepare(`
-    // TODO: project explicit columns (auto-fix suggestion)
     SELECT * FROM crime_events
     WHERE world_id = ? AND status = 'open'
       AND (detective_id = ? OR detective_id IS NULL)
@@ -268,7 +260,6 @@ export function detectiveTick(db, npcId, worldId) {
 
     // Collect uncollected evidence
     const uncollected = db.prepare(`
-      // TODO: project explicit columns (auto-fix suggestion)
       SELECT * FROM evidence_items
       WHERE crime_event_id = ? AND collected_by IS NULL
         AND (decay_at IS NULL OR decay_at > ?)
@@ -289,7 +280,6 @@ export function detectiveTick(db, npcId, worldId) {
     const witnesses = JSON.parse(crime.witnesses || '[]');
     if (witnesses.length > 0 && !primarySuspect) {
       // Witnesses can identify the criminal if they saw them
-      // TODO: project explicit columns (auto-fix suggestion)
       const witness = db.prepare('SELECT * FROM world_npcs WHERE id = ?').get(witnesses[0]);
       if (witness) {
         // Ask witness: if criminal was seen, high confidence
@@ -361,7 +351,6 @@ export function guardTick(db, npcId, worldId, npcLocation) {
 
   // Check recent crimes in nearby buildings (within last hour)
   const recentCrimes = db.prepare(`
-    // TODO: project explicit columns (auto-fix suggestion)
     SELECT * FROM crime_events
     WHERE world_id = ? AND status = 'open' AND occurred_at > ?
     ORDER BY occurred_at DESC LIMIT 3
