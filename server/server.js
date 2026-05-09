@@ -6945,6 +6945,14 @@ async function tryInitWebSockets(server) {
       const apiKey = socket.handshake.auth?.apiKey
         || socket.handshake.headers?.["x-api-key"];
       if (apiKey) {
+        // CodeQL `js/insufficient-password-hash` false positive: API keys are
+        // 256-bit random tokens (`crypto.randomBytes(32)` in `generateApiKey`),
+        // not human-chosen passwords. SHA-256 is the correct hash for high-entropy
+        // tokens — slow KDFs (bcrypt/scrypt/argon2) only matter when the input is
+        // brute-forceable. This mirrors the existing HTTP middleware path at
+        // server.js#authMiddleware, which has used the same pattern since the
+        // API-key feature was added.
+        // codeql[js/insufficient-password-hash]
         for (const keyData of AuthDB.getAllApiKeys()) {
           if (keyData.keyHash && verifyApiKey(apiKey, keyData.keyHash)) {
             const u = AuthDB.getUser(keyData.userId);
