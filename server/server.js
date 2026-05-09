@@ -6974,6 +6974,10 @@ async function tryInitWebSockets(server) {
   REALTIME.io = io;
   REALTIME.ready = true;
   globalThis._concordREALTIME = REALTIME;
+  // Alias for legacy consumers using the all-caps double-underscore form
+  // (combat-polish, lattice-quest-cycle, personal-beat-scheduler, procgen-regions,
+  // seasons, embodied/signals). Both names point at the same REALTIME object.
+  globalThis.__CONCORD_REALTIME__ = REALTIME;
 
   // DX Platform Phase A3 — attach the /dx namespace for editor-plugin
   // clients. Plugin clients connect with a JWT or a `csk_*` API key,
