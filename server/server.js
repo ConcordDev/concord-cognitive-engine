@@ -660,6 +660,10 @@ import { generateEntityName, migrateEntityNames as runEntityNameMigration, isFun
 import { validateSafeFetchUrl as _ssrfValidate, isUrlSafeAsync as _ssrfIsSafeAsync, fetchWithPinnedIp as _ssrfFetchPinned } from "./lib/ssrf-guard.js";
 import { registerCitation as economyRegisterCitation } from "./economy/royalty-cascade.js";
 import { checkAccess as economyCheckAccess } from "./economy/rights-enforcement.js";
+// DX Platform Phase A1 — per-call billing + per-user quota for macros.
+// Wired into runMacro below (rate-limit check + macro:afterExecute hook).
+import { billMacroCall } from "./lib/macro-billing.js";
+import { checkUserQuota, incrementUserQuota } from "./lib/macro-quota.js";
 // World Lens / MMO presence system
 import * as cityPresence from "./lib/city-presence.js";
 import * as worldMechanics from "./lib/world-mechanics.js";
@@ -1210,6 +1214,14 @@ const EXPENSIVE_MACROS = new Map([
   ["discovery.search",   { maxPerMinute: 30, windowMs: 60000 }],
   ["discovery.facets",   { maxPerMinute: 30, windowMs: 60000 }],
   ["discovery.trending", { maxPerMinute: 30, windowMs: 60000 }],
+
+  // DX Platform Phase A1 — global RPS caps for billing read-surface.
+  // Per-user caps live in lib/macro-quota.js (MACRO_USER_LIMITS).
+  ["billing.usage",            { maxPerMinute: 60,  windowMs: 60000 }],
+  ["billing.balance",          { maxPerMinute: 120, windowMs: 60000 }],
+  ["billing.history",          { maxPerMinute: 60,  windowMs: 60000 }],
+  ["billing.getCurrentQuota",  { maxPerMinute: 240, windowMs: 60000 }],
+  ["billing.priceForMacro",    { maxPerMinute: 240, windowMs: 60000 }],
 ]);
 
 function checkMacroRateLimit(domain, name) {
@@ -9238,6 +9250,47 @@ async function runMacro(domain, name, input, ctx) {
     return { ok: false, error: "rate_limited", retryAfterMs: 60000 };
   }
 
+  // DX Platform Phase A1 — per-user quota check.
+  // Independent from the global EXPENSIVE_MACROS limit above. Plugin /
+  // SDK clients carry an api_key_id (set by the api-key auth middleware)
+  // and are subject to per-(user, macro, minute) caps. Free-tier
+  // cookie-auth users are not gated here.
+  // Tracking start time for the macro:afterExecute billing hook below.
+  const _macroStart = Date.now();
+  // API-key auth populates apiKeyId in reqMeta (see /api/v1/lens/:domain/:action
+  // route); cookie/JWT paths can also set it on actor or directly on ctx.
+  // Read from all three so paid traffic actually goes through quota + billing.
+  const _macroApiKeyId = ctx?.actor?.apiKeyId || ctx?.apiKeyId || ctx?.reqMeta?.apiKeyId || null;
+  // Client-supplied idempotency key (Idempotency-Key header threaded into
+  // reqMeta) used to deduplicate ledger writes on retries. Optional — when
+  // missing we mint a per-call UUID so each invocation still gets a unique
+  // refId, but a retrying client MUST pass the same Idempotency-Key for the
+  // ledger to deduplicate.
+  const _macroIdemKey = ctx?.reqMeta?.idempotencyKey || ctx?.idempotencyKey || null;
+  const _macroUserId = actor?.userId && actor.userId !== "system" ? actor.userId : null;
+  const _macroDb = ctx?.db || STATE?.db || null;
+  if (_macroApiKeyId && _macroUserId && _macroDb) {
+    try {
+      const q = checkUserQuota(_macroDb, _macroUserId, domain, name);
+      if (!q.ok) {
+        try {
+          billMacroCall(_macroDb, {
+            userId: _macroUserId,
+            apiKeyId: _macroApiKeyId,
+            domain,
+            name,
+            durationMs: 0,
+            status: "quota_exceeded",
+            refId: _macroIdemKey
+              ? `${_macroApiKeyId}:idem:${_macroIdemKey}:quota`
+              : `${_macroApiKeyId}:quota:${crypto.randomUUID()}`,
+          });
+        } catch (e) { observe(e, "macro_billing_log_quota_exceeded"); }
+        return { ok: false, error: "quota_exceeded", retryAfterMs: q.retryAfterMs ?? 60000, limit: q.limit };
+      }
+    } catch (e) { observe(e, "macro_user_quota_check"); /* fail-open */ }
+  }
+
   // Chicken2: reality guard (full blast) with founder recovery valve
   // NOTE: Read-only DTU hydration must never be blocked (frontend boot path).
   const _path = ctx?.reqMeta?.path || "";
@@ -9392,6 +9445,11 @@ async function runMacro(domain, name, input, ctx) {
       "tame", "mount", "dismount", "get_active_mount", "history",
       "validate_gear_recipe", "equip_gear", "unequip_gear", "compute_stats", "get_equipped_gear",
     ]),
+    // DX Platform Phase A1: billing — read-only macros for usage,
+    // balance, history, current quota, and per-macro pricing. Plugin
+    // API keys with the `billing.balance` scope hit these from the
+    // editor status bar and the dashboard lens.
+    billing: new Set(["usage", "balance", "history", "getCurrentQuota", "priceForMacro"]),
     // Governance: read-mostly + caller-driven write macros.
     governance: new Set([
       "open_proposal", "cast_vote", "tally", "resolve",
@@ -9613,6 +9671,36 @@ async function runMacro(domain, name, input, ctx) {
     };
   }
   try { fireHook(STATE, "macro:afterExecute", { domain, name, result }); } catch (e) { observe(e, "macro_hook_after_execute_main"); }
+
+  // DX Platform Phase A1 — per-call billing. Logs every call to
+  // macro_call_log; charges the user wallet via FEE ledger entry when
+  // the call carried an api_key_id. Best-effort — never throws.
+  if (_macroDb) {
+    try {
+      // Prefer client-supplied idempotency key so retries collapse to one
+      // FEE entry; fall back to a per-call UUID when the client didn't
+      // pass one. Avoid Date.now() + Math.random() — the prior shape
+      // looked random but two retries always hashed differently and
+      // double-charged.
+      const _refId = _macroApiKeyId
+        ? (_macroIdemKey
+            ? `${_macroApiKeyId}:idem:${_macroIdemKey}`
+            : `${_macroApiKeyId}:${crypto.randomUUID()}`)
+        : null;
+      billMacroCall(_macroDb, {
+        userId: _macroUserId,
+        apiKeyId: _macroApiKeyId,
+        domain,
+        name,
+        durationMs: Date.now() - _macroStart,
+        status: result?.ok === false ? "error" : "ok",
+        refId: _refId,
+      });
+      if (_macroUserId && _macroApiKeyId) {
+        incrementUserQuota(_macroDb, _macroUserId, domain, name);
+      }
+    } catch (e) { observe(e, "macro_billing_after_execute"); }
+  }
 
   // Institutional memory: record significant actions
   if (!_domainNameAllowed && _method !== "GET") {
@@ -22875,6 +22963,13 @@ registerDiscoveryMacros(register);
 // constants themselves remain code-level; this layer is the audit trail.
 import registerGovernanceMacros from "./domains/governance.js";
 registerGovernanceMacros(register);
+
+// DX Platform Phase A1 — per-call billing read surface. Plugin / SDK
+// users hit billing.{usage,balance,history,getCurrentQuota,priceForMacro}
+// to render the status bar + dashboard. See lib/macro-billing.js +
+// lib/macro-quota.js for the write side (called from runMacro hooks).
+import registerDxBillingMacros from "./domains/dx-billing.js";
+registerDxBillingMacros(register);
 
 // Phase 8 — Combat polish surface for the HUD.
 import registerCombatPolishMacros from "./domains/combat-polish.js";
@@ -40214,7 +40309,12 @@ app.post("/api/v1/lens/:domain/:action", requireApiKey(), async (req, res) => {
         role: req.apiKey.role || "member",
         scopes: Array.isArray(req.apiKey.scopes) ? req.apiKey.scopes : ["read", "write"],
       },
-      reqMeta: { path: req.path, method: req.method, apiKeyId: req.apiKey.id },
+      reqMeta: {
+        path: req.path,
+        method: req.method,
+        apiKeyId: req.apiKey.id,
+        idempotencyKey: req.get("idempotency-key") || req.get("x-idempotency-key") || null,
+      },
     };
     const result = await runMacro(domain, action, safeInput, apiCtx);
 

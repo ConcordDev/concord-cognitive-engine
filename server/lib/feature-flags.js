@@ -4,6 +4,7 @@
 // Returns 1/0 booleans (with a default fallback) so callers can write:
 //
 //   if (getFlag("FF_MOUNTS_RIDING", 1)) { ... }
+//   if (getFlag("FF_MACRO_BILLING", 1)) { ... }
 //
 // Convention:
 //   - FF_*       — Phase / feature kill-switches added by DX Platform
