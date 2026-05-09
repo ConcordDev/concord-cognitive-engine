@@ -33289,7 +33289,7 @@ register("marketplace", "purchaseWithRoyalties", async (ctx, input) => {
     // Server-side balance check — never trust client balance
     const buyerId = ctx?.actor?.userId || ctx?.actor?.id;
     if (!buyerId) return { ok: false, error: "authentication_required" };
-    try { ensureEconomicState(); } catch {}
+    try { ensureEconomicState(); } catch { /* idempotent — best-effort init */ }
     const buyerWallet = STATE.economic?.wallets?.get(buyerId);
     const buyerBalance = buyerWallet?.balance || 0;
     if (buyerBalance < price) {

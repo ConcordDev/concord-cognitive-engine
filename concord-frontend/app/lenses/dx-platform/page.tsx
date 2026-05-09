@@ -5,9 +5,11 @@
 "use client";
 
 import Link from "next/link";
+import { LensShell } from "@/components/lens/LensShell";
 
 export default function DxPlatformPage() {
   return (
+    <LensShell lensId="dx-platform" asMain={false}>
     <div className="p-8 max-w-4xl mx-auto space-y-8">
       <header>
         <h1 className="text-3xl font-semibold">Concord DX Platform</h1>
@@ -51,6 +53,7 @@ export default function DxPlatformPage() {
         </ol>
       </section>
     </div>
+    </LensShell>
   );
 }
 
