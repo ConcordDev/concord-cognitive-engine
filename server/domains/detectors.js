@@ -39,31 +39,76 @@ export default function registerDetectorMacros(register) {
 
   /**
    * detectors.run — run a single detector by id.
-   * input: { id, opts? }
+   * input: { id, opts?, codebaseId? }
+   *
+   * When codebaseId is set (plugin path), emits detector:run.started +
+   * run.complete + finding.added events on the /dx socket bus so the
+   * plugin renders findings as gutter diagnostics live.
    */
   register("detectors", "run", async (ctx, input = {}) => {
     if (!input?.id) return { ok: false, reason: "id_required" };
+    const codebaseId = input.codebaseId || null;
+    const runId = `dr_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    let dx;
+    if (codebaseId) {
+      try { dx = await import("../lib/dx/dx-socket-bus.js"); }
+      catch { dx = null; }
+      dx?.emitDetectorEvent(codebaseId, "run.started", { runId, detectorIds: [input.id] });
+    }
     const report = await runDetector(input.id, {
       db: ctx?.db,
       state: ctx?.state,
       opts: input.opts || {},
     });
-    return { ok: true, report };
-  }, { note: "run a single detector" });
+    if (codebaseId && dx && Array.isArray(report?.findings)) {
+      for (const finding of report.findings) {
+        dx.emitDetectorEvent(codebaseId, "finding.added", { runId, finding });
+      }
+      dx.emitDetectorEvent(codebaseId, "run.complete", {
+        runId,
+        durationMs: report?.durationMs,
+        summary: report?.summary,
+      });
+    }
+    return { ok: true, report, runId };
+  }, { note: "run a single detector (streams to /dx if codebaseId set)" });
 
   /**
    * detectors.runAll — run every detector. Optional `consumer` filter so
    * Repair Cortex / Concordia / HUD can subscribe to just their slice.
-   * input: { consumer?, minSeverity? }
+   * input: { consumer?, minSeverity?, codebaseId? }
    */
   register("detectors", "runAll", async (ctx, input = {}) => {
+    const codebaseId = input.codebaseId || null;
+    const runId = `da_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    let dx;
+    if (codebaseId) {
+      try { dx = await import("../lib/dx/dx-socket-bus.js"); }
+      catch { dx = null; }
+      dx?.emitDetectorEvent(codebaseId, "run.started", { runId, consumer: input.consumer || null });
+    }
     const report = await runAllDetectors({
       db: ctx?.db,
       state: ctx?.state,
       consumer: input.consumer,
     });
-    return { ok: true, report };
-  }, { note: "run the whole detector suite" });
+    if (codebaseId && dx && Array.isArray(report?.reports)) {
+      for (const sub of report.reports) {
+        if (!Array.isArray(sub?.findings)) continue;
+        for (const finding of sub.findings) {
+          dx.emitDetectorEvent(codebaseId, "finding.added", {
+            runId, finding, detectorId: sub.id,
+          });
+        }
+      }
+      dx.emitDetectorEvent(codebaseId, "run.complete", {
+        runId,
+        durationMs: report?.durationMs,
+        totals: report?.totals,
+      });
+    }
+    return { ok: true, report, runId };
+  }, { note: "run the whole detector suite (streams to /dx if codebaseId set)" });
 
   /**
    * detectors.findings — flatten + filter findings across detectors. Useful

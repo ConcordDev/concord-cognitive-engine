@@ -6922,6 +6922,64 @@ async function tryInitWebSockets(server) {
   REALTIME.ready = true;
   globalThis._concordREALTIME = REALTIME;
 
+  // DX Platform Phase A3 — attach the /dx namespace for editor-plugin
+  // clients. Plugin clients connect with a JWT or a `csk_*` API key,
+  // join `codebase:${id}` rooms, and receive detector/repair events
+  // streamed live (no polling). Per-user connection cap prevents
+  // accidental reconnect-storm loops in plugin development.
+  // FF_DX_SOCKET=0 disables the namespace (clients receive 503 on connect).
+  try {
+    const { attachDxStream } = await import("./lib/dx/dx-socket-bus.js");
+    // Custom socket.io namespaces do not share middleware with the root
+    // `/` namespace, so the root io.use() above does NOT authenticate
+    // /dx handshakes. Pass an explicit validator so the namespace
+    // verifies cookie / Bearer / API-key the same way the root middleware
+    // does — never trusting client-supplied auth.userId.
+    const dxValidateAuth = (socket) => {
+      const cookies = parseCookies(socket.handshake.headers?.cookie || "");
+      const cookieToken = cookies.concord_auth;
+      if (cookieToken) {
+        const decoded = verifyToken(cookieToken);
+        if (decoded?.userId) {
+          const u = AuthDB.getUser(decoded.userId);
+          if (u) return { userId: u.id, authMethod: "cookie" };
+        }
+      }
+      const bearer = socket.handshake.auth?.token
+        || socket.handshake.headers?.authorization?.replace("Bearer ", "");
+      if (bearer) {
+        const decoded = verifyToken(bearer);
+        if (decoded?.userId) {
+          const u = AuthDB.getUser(decoded.userId);
+          if (u) return { userId: u.id, authMethod: "bearer" };
+        }
+      }
+      const apiKey = socket.handshake.auth?.apiKey
+        || socket.handshake.headers?.["x-api-key"];
+      if (apiKey) {
+        // API keys are 256-bit random tokens (`crypto.randomBytes(32)` in
+        // `generateApiKey`), not human-chosen passwords. SHA-256 in
+        // `verifyApiKey` is correct for high-entropy tokens; slow KDFs only
+        // matter when the input is brute-forceable. CodeQL flags
+        // `js/insufficient-password-hash` on this dataflow — suppressed at
+        // the workflow level via `query-filters` in
+        // `.github/workflows/codeql.yml`.
+        for (const keyData of AuthDB.getAllApiKeys()) {
+          if (keyData.keyHash && verifyApiKey(apiKey, keyData.keyHash)) {
+            const u = AuthDB.getUser(keyData.userId);
+            if (u) return { userId: u.id, authMethod: "apiKey" };
+          }
+        }
+      }
+      return null;
+    };
+    const dxr = attachDxStream(io, { validateAuth: dxValidateAuth });
+    if (dxr?.ok) structuredLog("info", "dx_socket_attached", { ns: "/dx" });
+    else if (dxr?.reason) structuredLog("warn", "dx_socket_skipped", { reason: dxr.reason });
+  } catch (e) {
+    console.warn("[Concord] DX socket attach failed:", e.message);
+  }
+
   // Horizontal scaling: attach Redis pub/sub adapter when REDIS_URL is set
   if (process.env.REDIS_URL) {
     try {

@@ -3,6 +3,7 @@
 // Centralized read for `FF_*` and `CONCORD_*` env-var feature flags.
 // Returns 1/0 booleans (with a default fallback) so callers can write:
 //
+//   if (getFlag("FF_DX_SOCKET", 1)) { ... }
 //   if (getFlag("FF_MOUNTS_RIDING", 1)) { ... }
 //   if (getFlag("FF_MACRO_BILLING", 1)) { ... }
 //
