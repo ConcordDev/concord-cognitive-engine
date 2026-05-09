@@ -16,6 +16,7 @@ import {
   API_PRICING,
   API_KEY_SYSTEM,
 } from "../lib/api-billing-constants.js";
+import { getApiUsageCache } from "../lib/quota-cache.js";
 
 function uid(prefix = "apk") {
   return `${prefix}_` + randomUUID().replace(/-/g, "").slice(0, 16);
@@ -409,18 +410,21 @@ export function meterAPICall(db, { keyHash, userId, endpoint, method, metadata =
 
 /**
  * Record a usage entry in the usage log.
+ *
+ * Phase 7.3: routes through the in-memory quota cache (server/lib/quota-cache.js)
+ * which batches inserts on a 5s flush interval. At rest, the heavy-write hot
+ * path becomes ≤ 1 DB write per 5 seconds per process, regardless of macro
+ * call rate. Cache flushes on SIGTERM/SIGINT/beforeExit so an in-flight
+ * buffer never drops calls under graceful shutdown.
  */
 function recordUsage(db, { userId, keyHash, endpoint, method, category, cost, balanceAfter, metadata }) {
   const id = uid("usg");
   const now = nowISO();
 
-  db.prepare(`
-    INSERT INTO api_usage_log (id, user_id, api_key_hash, endpoint, method, category, cost, balance_after, metadata_json, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
+  getApiUsageCache().enqueue(db, [
     id, userId, keyHash, endpoint, method, category, cost,
     balanceAfter, JSON.stringify(metadata || {}), now,
-  );
+  ]);
 
   return id;
 }
