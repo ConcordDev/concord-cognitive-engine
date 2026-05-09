@@ -2078,9 +2078,354 @@ export const PRODUCTIZATION_PHASES: ProductionPhase[] = [
     status: 'in_progress',
   },
 
-  // ── PHASE 57: Game ──────────────────────────────────────────────
+  // ── PHASE 57: World ─────────────────────────────────────────────
   {
     order: 57,
+    lensId: 'world',
+    name: 'World (Concordia)',
+    rationale: 'Production-grade 3D civilization simulator. The world lens is the front-door to Concordia — terrain, avatars, NPCs, factions, quests, combat, weather, day/night, mounted travel. Rivals BotW + Skyrim + EVE Online + No Man\'s Sky.',
+    dependsOn: [],
+    incumbents: ['Skyrim', 'BotW', 'No Man\'s Sky', 'EVE Online'],
+    artifacts: [
+      { name: 'World',           persistsWithoutDTU: true, storageDomain: 'world', requiredFields: ['id', 'name', 'rule_modulators', 'climate'] },
+      { name: 'Avatar',          persistsWithoutDTU: true, storageDomain: 'world', requiredFields: ['id', 'userId', 'worldId', 'position', 'inventory'] },
+      { name: 'NPC',             persistsWithoutDTU: true, storageDomain: 'world', requiredFields: ['id', 'archetype', 'factionId', 'position', 'state'] },
+      { name: 'Faction',         persistsWithoutDTU: true, storageDomain: 'world', requiredFields: ['id', 'name', 'stance', 'momentum'] },
+      { name: 'Quest',           persistsWithoutDTU: true, storageDomain: 'world', requiredFields: ['id', 'title', 'objectives', 'reward', 'status'] },
+      { name: 'Mount',           persistsWithoutDTU: true, storageDomain: 'world', requiredFields: ['id', 'species', 'tame_state', 'gear'] },
+    ],
+    engines: [
+      { name: 'governor-tick',         description: 'Drives the 15s heartbeat (42 modules) for every emergent system', trigger: 'scheduled' },
+      { name: 'physics-world',         description: 'Rapier3D collision + character controller + height clamp', trigger: 'automatic' },
+      { name: 'narrative-bridge',      description: 'Enriches LLM prompts with authored NPC + faction + lore context', trigger: 'on_demand' },
+      { name: 'combat-resolver',       description: 'Server-validated combat with reach + damage caps + env amplification', trigger: 'on_demand' },
+      { name: 'embodied-substrate',    description: 'Layers 7-13: signals, pain, dreams, predictions, factions, dialogue', trigger: 'automatic' },
+    ],
+    pipelines: [
+      { name: 'enter-world-cycle',     steps: ['load-world', 'spawn-avatar', 'restore-inventory', 'apply-presence', 'render'], engines: ['physics-world'] },
+      { name: 'combat-attack',         steps: ['validate-reach', 'cap-damage', 'apply-env-boost', 'apply-feedback', 'check-stagger', 'apply-stress'], engines: ['combat-resolver', 'embodied-substrate'] },
+      { name: 'quest-cycle',           steps: ['propose', 'accept', 'breadcrumb', 'evaluate-objectives', 'realise-prediction', 'reward'], engines: ['narrative-bridge'] },
+      { name: 'tick-emergent',         steps: ['heartbeat', 'route-modules', 'try-each', 'log-skipped', 'emit-metrics'], engines: ['governor-tick', 'embodied-substrate'] },
+    ],
+    acceptanceCriteria: [
+      'Three.js render with terrain + avatars + IK',
+      '/api/worlds/:worldId/combat/attack with anti-cheat',
+      'NPC dialogue via narrative-bridge (no LLM secret leak)',
+      'Quest engine with breadcrumb protocol',
+      'Mount taming + riding + gear',
+      'World event auto-generation',
+      'Real-time presence + WebSocket fan-out',
+    ],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 58: Analytics ─────────────────────────────────────────
+  {
+    order: 58,
+    lensId: 'analytics',
+    name: 'Analytics',
+    rationale: 'Production-grade analytics workbench. Time-series, cohort, funnel, retention, segment, dashboard publish. Rivals Mixpanel + Amplitude + Looker.',
+    dependsOn: [],
+    incumbents: ['Mixpanel', 'Amplitude', 'Looker', 'Heap'],
+    artifacts: [
+      { name: 'Event',     persistsWithoutDTU: true, storageDomain: 'analytics', requiredFields: ['id', 'name', 'userId', 'props', 'timestamp'] },
+      { name: 'Cohort',    persistsWithoutDTU: true, storageDomain: 'analytics', requiredFields: ['id', 'definition', 'population'] },
+      { name: 'Funnel',    persistsWithoutDTU: true, storageDomain: 'analytics', requiredFields: ['id', 'steps', 'conversion'] },
+      { name: 'Dashboard', persistsWithoutDTU: true, storageDomain: 'analytics', requiredFields: ['id', 'panels', 'sharedWith'] },
+      { name: 'Segment',   persistsWithoutDTU: true, storageDomain: 'analytics', requiredFields: ['id', 'rule', 'lastEvaluated'] },
+    ],
+    engines: [
+      { name: 'time-series-aggregator', description: 'Buckets events by minute / hour / day / week / month', trigger: 'on_demand' },
+      { name: 'cohort-evaluator',       description: 'Computes retention curves for any cohort × event', trigger: 'on_demand' },
+      { name: 'funnel-engine',          description: 'Computes step-by-step conversion + drop-off', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'event-to-dashboard',  steps: ['ingest', 'enrich', 'aggregate', 'render-panel', 'publish-dashboard'], engines: ['time-series-aggregator'] },
+      { name: 'cohort-retention',    steps: ['define-cohort', 'compute-retention', 'render-curve', 'compare'], engines: ['cohort-evaluator'] },
+      { name: 'funnel-analyze',      steps: ['define-funnel', 'eval-each-step', 'compute-conversion', 'render'], engines: ['funnel-engine'] },
+    ],
+    acceptanceCriteria: ['Event ingestion', 'Time-series aggregation', 'Cohort retention', 'Funnel conversion', 'Dashboard publish'],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 59: Wallet ────────────────────────────────────────────
+  {
+    order: 59,
+    lensId: 'wallet',
+    name: 'Wallet',
+    rationale: 'Production-grade Concord Coin wallet. Balance, transaction history, royalty stream, withdrawal eligibility, tier badge. Rivals MetaMask + Phantom + Concord-native.',
+    dependsOn: [],
+    incumbents: ['MetaMask', 'Phantom', 'Trust Wallet', 'Stripe wallet'],
+    artifacts: [
+      { name: 'Balance',     persistsWithoutDTU: true, storageDomain: 'wallet', requiredFields: ['userId', 'balance', 'tier'] },
+      { name: 'Transaction', persistsWithoutDTU: true, storageDomain: 'wallet', requiredFields: ['id', 'kind', 'amount', 'refId', 'at'] },
+      { name: 'Token',       persistsWithoutDTU: true, storageDomain: 'wallet', requiredFields: ['id', 'symbol', 'amount', 'sourceTxId'] },
+      { name: 'Address',     persistsWithoutDTU: true, storageDomain: 'wallet', requiredFields: ['id', 'kind', 'value', 'addedAt'] },
+    ],
+    engines: [
+      { name: 'mint-coin',         description: 'Mints CC with idempotent refId (event_reward / royalty / purchase)', trigger: 'on_demand' },
+      { name: 'withdraw-gate',     description: 'Filters credits by 48h hold gate', trigger: 'on_demand' },
+      { name: 'royalty-stream',    description: 'Streams the per-tx royalty cascade for the wallet owner', trigger: 'automatic' },
+    ],
+    pipelines: [
+      { name: 'mint-on-event',     steps: ['observe-event', 'idempotent-mint', 'update-balance', 'emit-realtime'], engines: ['mint-coin'] },
+      { name: 'withdraw-cycle',    steps: ['load-credits', 'apply-48h-gate', 'aggregate-eligible', 'request', 'fulfil'], engines: ['withdraw-gate'] },
+      { name: 'royalty-receipts',  steps: ['observe-cascade', 'mint-share', 'attribute-to-ancestor', 'log'], engines: ['royalty-stream', 'mint-coin'] },
+    ],
+    acceptanceCriteria: ['Balance + tier', 'Transaction history', 'Royalty stream display', '48h hold visibility', 'Idempotent mint'],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 60: App Maker ─────────────────────────────────────────
+  {
+    order: 60,
+    lensId: 'app-maker',
+    name: 'App Maker',
+    rationale: 'Production-grade no-code app builder. Form, list, detail, action, deploy. Rivals Glide + Adalo + Bubble + Retool.',
+    dependsOn: [],
+    incumbents: ['Glide', 'Adalo', 'Bubble', 'Retool'],
+    artifacts: [
+      { name: 'App',        persistsWithoutDTU: true, storageDomain: 'app-maker', requiredFields: ['id', 'name', 'pages', 'datasource'] },
+      { name: 'Page',       persistsWithoutDTU: true, storageDomain: 'app-maker', requiredFields: ['id', 'appId', 'kind', 'components'] },
+      { name: 'Component',  persistsWithoutDTU: true, storageDomain: 'app-maker', requiredFields: ['id', 'pageId', 'kind', 'props'] },
+      { name: 'Datasource', persistsWithoutDTU: true, storageDomain: 'app-maker', requiredFields: ['id', 'kind', 'connection', 'schema'] },
+      { name: 'Deploy',     persistsWithoutDTU: true, storageDomain: 'app-maker', requiredFields: ['id', 'appId', 'environment', 'url', 'at'] },
+    ],
+    engines: [
+      { name: 'page-renderer',     description: 'Renders a page schema to runnable React tree', trigger: 'on_demand' },
+      { name: 'datasource-binder', description: 'Wires page components to live data via /api/lens/:domain', trigger: 'automatic' },
+      { name: 'deployer',          description: 'Packages app + serves at a unique subroute', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'design-publish',    steps: ['design-page', 'bind-data', 'preview', 'deploy'], engines: ['page-renderer', 'datasource-binder', 'deployer'] },
+      { name: 'iterate-cycle',     steps: ['load-version', 'edit', 'diff', 'redeploy'], engines: ['deployer'] },
+    ],
+    acceptanceCriteria: ['App + page CRUD', 'Datasource binding', 'Live preview', 'Deploy with unique URL', 'Version history'],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 61: Construction ──────────────────────────────────────
+  {
+    order: 61,
+    lensId: 'construction',
+    name: 'Construction',
+    rationale: 'Production-grade construction PM. Project, schedule, RFI, submittal, punch list. Rivals Procore + Autodesk Construction Cloud + PlanGrid.',
+    dependsOn: [],
+    incumbents: ['Procore', 'Autodesk Construction Cloud', 'PlanGrid', 'CoConstruct'],
+    artifacts: [
+      { name: 'Project',    persistsWithoutDTU: true, storageDomain: 'construction', requiredFields: ['id', 'name', 'budget', 'completion'] },
+      { name: 'Schedule',   persistsWithoutDTU: true, storageDomain: 'construction', requiredFields: ['id', 'projectId', 'tasks', 'dependencies'] },
+      { name: 'RFI',        persistsWithoutDTU: true, storageDomain: 'construction', requiredFields: ['id', 'projectId', 'subject', 'response'] },
+      { name: 'Submittal',  persistsWithoutDTU: true, storageDomain: 'construction', requiredFields: ['id', 'projectId', 'spec', 'status'] },
+      { name: 'PunchItem',  persistsWithoutDTU: true, storageDomain: 'construction', requiredFields: ['id', 'projectId', 'description', 'status'] },
+    ],
+    engines: [
+      { name: 'cpm-scheduler',  description: 'Critical-path schedule from task + dependency graph', trigger: 'on_demand' },
+      { name: 'rfi-router',     description: 'Routes RFI to responsible party + tracks SLA', trigger: 'automatic' },
+      { name: 'punch-list',     description: 'Tracks punch items + reopens on inspector return', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'project-cycle',     steps: ['plan', 'submit', 'execute', 'inspect', 'closeout'], engines: ['cpm-scheduler', 'rfi-router'] },
+      { name: 'rfi-cycle',         steps: ['raise', 'route', 'respond', 'verify', 'close'], engines: ['rfi-router'] },
+      { name: 'punch-list-cycle',  steps: ['walk', 'log-items', 'remediate', 'reinspect', 'close'], engines: ['punch-list'] },
+    ],
+    acceptanceCriteria: ['Project + schedule + RFI CRUD', 'CPM critical path', 'Submittal log', 'Punch list', 'Daily report export'],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 62: Engineering ───────────────────────────────────────
+  {
+    order: 62,
+    lensId: 'engineering',
+    name: 'Engineering',
+    rationale: 'Production-grade engineering CAD/PLM. Drawing, BOM, change order, version, tolerance stack. Rivals SolidWorks PDM + Onshape + Fusion 360 Manage.',
+    dependsOn: [],
+    incumbents: ['SolidWorks PDM', 'Onshape', 'Fusion 360 Manage', 'Aras'],
+    artifacts: [
+      { name: 'Drawing',     persistsWithoutDTU: true, storageDomain: 'engineering', requiredFields: ['id', 'partId', 'revision', 'sheets'] },
+      { name: 'BOM',         persistsWithoutDTU: true, storageDomain: 'engineering', requiredFields: ['id', 'partId', 'lines', 'version'] },
+      { name: 'ChangeOrder', persistsWithoutDTU: true, storageDomain: 'engineering', requiredFields: ['id', 'subject', 'reason', 'status'] },
+      { name: 'Tolerance',   persistsWithoutDTU: true, storageDomain: 'engineering', requiredFields: ['id', 'partId', 'feature', 'spec'] },
+    ],
+    engines: [
+      { name: 'cad-renderer',         description: 'Renders STEP / IGES drawings in-browser', trigger: 'on_demand' },
+      { name: 'change-router',        description: 'Routes ECO through review board with sign-off chain', trigger: 'automatic' },
+      { name: 'tolerance-stack',      description: 'Computes worst-case + RSS tolerance stack-up', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'design-release',     steps: ['draft', 'review', 'approve', 'release-revision', 'ECO-stamp'], engines: ['change-router'] },
+      { name: 'tolerance-analysis', steps: ['enumerate-features', 'apply-spec', 'stack', 'flag-violations'], engines: ['tolerance-stack'] },
+    ],
+    acceptanceCriteria: ['Drawing + BOM CRUD', 'Change order routing', 'Tolerance stack', 'Revision tracking', 'CAD render'],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 63: Geology ───────────────────────────────────────────
+  {
+    order: 63,
+    lensId: 'geology',
+    name: 'Geology',
+    rationale: 'Production-grade geological survey + interpretation. Borehole, formation, fault, sample, cross-section. Rivals Leapfrog + Petrel + GeoStudio.',
+    dependsOn: [],
+    incumbents: ['Leapfrog', 'Petrel', 'GeoStudio', 'RockWorks'],
+    artifacts: [
+      { name: 'Borehole',     persistsWithoutDTU: true, storageDomain: 'geology', requiredFields: ['id', 'location', 'depth', 'log'] },
+      { name: 'Formation',    persistsWithoutDTU: true, storageDomain: 'geology', requiredFields: ['id', 'name', 'age', 'lithology'] },
+      { name: 'Fault',        persistsWithoutDTU: true, storageDomain: 'geology', requiredFields: ['id', 'kind', 'orientation', 'displacement'] },
+      { name: 'CrossSection', persistsWithoutDTU: true, storageDomain: 'geology', requiredFields: ['id', 'azimuth', 'features'] },
+    ],
+    engines: [
+      { name: 'log-correlator',    description: 'Correlates borehole logs across a transect', trigger: 'on_demand' },
+      { name: 'volumetric-engine', description: 'Computes mineral / fluid volume estimates', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'survey-to-section',   steps: ['drill', 'log', 'correlate', 'render-section'], engines: ['log-correlator'] },
+      { name: 'volumetric-estimate', steps: ['define-prospect', 'load-grid', 'integrate', 'report'], engines: ['volumetric-engine'] },
+    ],
+    acceptanceCriteria: ['Borehole + formation CRUD', 'Cross-section render', 'Volumetric estimate', 'Fault catalog', 'Geo-export'],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 64: HR ────────────────────────────────────────────────
+  {
+    order: 64,
+    lensId: 'hr',
+    name: 'HR',
+    rationale: 'Production-grade HRIS. Roster, onboarding, time-off, performance, comp band, headcount plan. Rivals BambooHR + Gusto + Rippling.',
+    dependsOn: [],
+    incumbents: ['BambooHR', 'Gusto', 'Rippling', 'Workday'],
+    artifacts: [
+      { name: 'Employee',    persistsWithoutDTU: true, storageDomain: 'hr', requiredFields: ['id', 'name', 'role', 'department', 'startDate'] },
+      { name: 'Onboarding',  persistsWithoutDTU: true, storageDomain: 'hr', requiredFields: ['id', 'employeeId', 'tasks', 'progress'] },
+      { name: 'TimeOff',     persistsWithoutDTU: true, storageDomain: 'hr', requiredFields: ['id', 'employeeId', 'kind', 'start', 'end'] },
+      { name: 'Performance', persistsWithoutDTU: true, storageDomain: 'hr', requiredFields: ['id', 'employeeId', 'cycle', 'rating'] },
+      { name: 'CompBand',    persistsWithoutDTU: true, storageDomain: 'hr', requiredFields: ['id', 'role', 'level', 'min', 'max'] },
+    ],
+    engines: [
+      { name: 'onboarding-tracker',  description: 'Tracks per-task onboarding completion', trigger: 'automatic' },
+      { name: 'pto-accruer',         description: 'Accrues PTO per pay period + caps at policy', trigger: 'scheduled' },
+      { name: 'comp-recommender',    description: 'Recommends comp adjustment from band + tenure + perf', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'onboarding-cycle',  steps: ['offer-accept', 'i9-everify', 'equipment', 'training', 'first-1-on-1'], engines: ['onboarding-tracker'] },
+      { name: 'review-cycle',      steps: ['self-review', 'manager-review', 'calibration', 'comp-adjust', 'communicate'], engines: ['comp-recommender'] },
+    ],
+    acceptanceCriteria: ['Employee CRUD', 'Onboarding checklist', 'Time-off accrual', 'Performance cycle', 'Comp band'],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 65: Film Studios ──────────────────────────────────────
+  {
+    order: 65,
+    lensId: 'film-studios',
+    name: 'Film Studios',
+    rationale: 'Production-grade film production. Script breakdown, schedule, cast/crew, dailies, post pipeline. Rivals Studio Binder + Movie Magic + StudioSuite.',
+    dependsOn: [],
+    incumbents: ['Studio Binder', 'Movie Magic', 'StudioSuite', 'Yamdu'],
+    artifacts: [
+      { name: 'Script',     persistsWithoutDTU: true, storageDomain: 'film-studios', requiredFields: ['id', 'title', 'scenes', 'version'] },
+      { name: 'Breakdown',  persistsWithoutDTU: true, storageDomain: 'film-studios', requiredFields: ['id', 'scriptId', 'props', 'cast', 'fx'] },
+      { name: 'Schedule',   persistsWithoutDTU: true, storageDomain: 'film-studios', requiredFields: ['id', 'scriptId', 'days', 'callSheet'] },
+      { name: 'Daily',      persistsWithoutDTU: true, storageDomain: 'film-studios', requiredFields: ['id', 'date', 'shotsFilmed', 'notes'] },
+    ],
+    engines: [
+      { name: 'breakdown-engine',  description: 'Auto-extracts elements from screenplay text', trigger: 'on_demand' },
+      { name: 'stripboard',        description: 'Builds stripboard schedule from breakdown', trigger: 'on_demand' },
+      { name: 'callsheet-builder', description: 'Generates day-of call sheet for cast + crew', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'pre-to-post',     steps: ['breakdown', 'schedule', 'shoot', 'log-dailies', 'editorial', 'finish'], engines: ['breakdown-engine', 'stripboard', 'callsheet-builder'] },
+      { name: 'callsheet-cycle', steps: ['publish-day', 'distribute', 'collect-confirms', 'amend'], engines: ['callsheet-builder'] },
+    ],
+    acceptanceCriteria: ['Script breakdown', 'Stripboard schedule', 'Call sheet', 'Daily log', 'Post-pipeline'],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 66: Photography ───────────────────────────────────────
+  {
+    order: 66,
+    lensId: 'photography',
+    name: 'Photography',
+    rationale: 'Production-grade photography studio. Shoot, gallery, client proof, deliverable, watermark. Rivals ShootProof + Pixieset + Pic-Time.',
+    dependsOn: [],
+    incumbents: ['ShootProof', 'Pixieset', 'Pic-Time', 'SmugMug Pro'],
+    artifacts: [
+      { name: 'Shoot',      persistsWithoutDTU: true, storageDomain: 'photography', requiredFields: ['id', 'client', 'date', 'location'] },
+      { name: 'Gallery',    persistsWithoutDTU: true, storageDomain: 'photography', requiredFields: ['id', 'shootId', 'photos', 'visibility'] },
+      { name: 'Proof',      persistsWithoutDTU: true, storageDomain: 'photography', requiredFields: ['id', 'galleryId', 'selected', 'comments'] },
+      { name: 'Deliverable', persistsWithoutDTU: true, storageDomain: 'photography', requiredFields: ['id', 'galleryId', 'package', 'sentAt'] },
+    ],
+    engines: [
+      { name: 'gallery-publisher',   description: 'Publishes gallery with optional watermark + download gating', trigger: 'on_demand' },
+      { name: 'metadata-embedder',   description: 'Embeds IPTC + EXIF + copyright metadata into final deliverables', trigger: 'on_demand' },
+      { name: 'auto-organiser',      description: 'Auto-groups photos by date + location + face cluster', trigger: 'automatic' },
+    ],
+    pipelines: [
+      { name: 'shoot-to-deliver',  steps: ['shoot', 'cull', 'edit', 'gallery', 'proof', 'deliver'], engines: ['gallery-publisher', 'metadata-embedder'] },
+      { name: 'proof-cycle',       steps: ['publish-proofs', 'collect-selects', 'finalise', 'deliver'], engines: ['gallery-publisher'] },
+    ],
+    acceptanceCriteria: ['Shoot + gallery CRUD', 'Proof flow', 'Watermark + download gate', 'Metadata embed', 'Deliverable package'],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 67: Atlas ─────────────────────────────────────────────
+  {
+    order: 67,
+    lensId: 'atlas',
+    name: 'Atlas',
+    rationale: 'Production-grade map + GIS workbench. Layer, geocode, query, route, shape. Rivals ArcGIS Online + QGIS + Mapbox Studio.',
+    dependsOn: [],
+    incumbents: ['ArcGIS Online', 'QGIS', 'Mapbox Studio', 'Felt'],
+    artifacts: [
+      { name: 'Map',          persistsWithoutDTU: true, storageDomain: 'atlas', requiredFields: ['id', 'title', 'center', 'zoom', 'layers'] },
+      { name: 'Layer',        persistsWithoutDTU: true, storageDomain: 'atlas', requiredFields: ['id', 'mapId', 'kind', 'data', 'style'] },
+      { name: 'Feature',      persistsWithoutDTU: true, storageDomain: 'atlas', requiredFields: ['id', 'layerId', 'geometry', 'properties'] },
+      { name: 'Route',        persistsWithoutDTU: true, storageDomain: 'atlas', requiredFields: ['id', 'from', 'to', 'geometry'] },
+    ],
+    engines: [
+      { name: 'geocoder',       description: 'Resolves address text → coordinates', trigger: 'on_demand' },
+      { name: 'router',         description: 'Computes turn-by-turn route between two points', trigger: 'on_demand' },
+      { name: 'spatial-query',  description: 'Runs within / intersects / nearest queries against features', trigger: 'on_demand' },
+    ],
+    pipelines: [
+      { name: 'map-publish',     steps: ['create-map', 'add-layers', 'style', 'publish'], engines: [] },
+      { name: 'route-cycle',     steps: ['geocode-from', 'geocode-to', 'route', 'export-gpx'], engines: ['geocoder', 'router'] },
+      { name: 'spatial-cycle',   steps: ['select-layer', 'query', 'render-results', 'export-geojson'], engines: ['spatial-query'] },
+    ],
+    acceptanceCriteria: ['Map + layer CRUD', 'Geocoding', 'Routing', 'Spatial query', 'GeoJSON / KML / SVG export'],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 68: Space ─────────────────────────────────────────────
+  {
+    order: 68,
+    lensId: 'space',
+    name: 'Space',
+    rationale: 'Production-grade orbital + mission ops. Satellite, pass schedule, mission, telemetry. Rivals AGI STK + GMAT + Cosmos.',
+    dependsOn: [],
+    incumbents: ['AGI STK', 'GMAT', 'NASA Cosmos', 'Slingshot Aerospace'],
+    artifacts: [
+      { name: 'Satellite',  persistsWithoutDTU: true, storageDomain: 'space', requiredFields: ['id', 'name', 'tle', 'status'] },
+      { name: 'Pass',       persistsWithoutDTU: true, storageDomain: 'space', requiredFields: ['id', 'satId', 'station', 'startsAt', 'endsAt'] },
+      { name: 'Mission',    persistsWithoutDTU: true, storageDomain: 'space', requiredFields: ['id', 'name', 'objective', 'phase'] },
+      { name: 'Telemetry',  persistsWithoutDTU: true, storageDomain: 'space', requiredFields: ['id', 'satId', 'channel', 'value', 'at'] },
+    ],
+    engines: [
+      { name: 'orbit-propagator',  description: 'SGP4 propagates TLE to predicted position', trigger: 'on_demand' },
+      { name: 'pass-predictor',    description: 'Predicts ground-station passes for next 7 days', trigger: 'on_demand' },
+      { name: 'telemetry-decoder', description: 'Decodes raw telemetry per spacecraft schema', trigger: 'automatic' },
+    ],
+    pipelines: [
+      { name: 'pass-schedule',     steps: ['load-tle', 'propagate', 'predict-passes', 'publish-schedule'], engines: ['orbit-propagator', 'pass-predictor'] },
+      { name: 'telemetry-cycle',   steps: ['receive', 'decode', 'check-limits', 'alert'], engines: ['telemetry-decoder'] },
+    ],
+    acceptanceCriteria: ['Satellite + pass + telemetry CRUD', 'TLE → position', 'Pass prediction', 'Telemetry decode', 'Mission phase tracker'],
+    status: 'in_progress',
+  },
+
+  // ── PHASE 69: Game ──────────────────────────────────────────────
+  {
+    order: 69,
     lensId: 'game',
     name: 'Game',
     rationale: 'Gamification engine. Adds progression, achievements, and quests to all lenses.',
