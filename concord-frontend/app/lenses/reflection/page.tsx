@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery } from '@tanstack/react-query';
@@ -78,6 +79,31 @@ export default function ReflectionLensPage() {
   const reflections: Reflection[] = useMemo(() => recent?.reflections || [], [recent]);
   const model = selfModel?.selfModel || status?.selfModel || {};
   const stats = status?.stats || {};
+
+  // Quality-band filter for the recent reflections list — a 50-deep
+  // log is unreadable.  Letting the user narrow to the failing-quality
+  // band ('low': <0.4) makes the lens useful for diagnosing drift.
+  const [qualityBand, setQualityBand] = useState<'all' | 'low' | 'mid' | 'high'>('all');
+  const visibleReflections = useMemo(() => {
+    if (qualityBand === 'all') return reflections;
+    return reflections.filter((r) => {
+      if (qualityBand === 'low')  return r.quality < 0.4;
+      if (qualityBand === 'mid')  return r.quality >= 0.4 && r.quality < 0.7;
+      return r.quality >= 0.7;
+    });
+  }, [reflections, qualityBand]);
+
+  useLensCommand(
+    [
+      { id: 'refresh',     keys: 'r', description: 'Refresh',     category: 'actions',
+        action: () => { refetch(); refetch2(); refetch3(); } },
+      { id: 'band-all',    keys: '0', description: 'All quality', category: 'view', action: () => setQualityBand('all') },
+      { id: 'band-low',    keys: '1', description: 'Low (<40%)',  category: 'view', action: () => setQualityBand('low') },
+      { id: 'band-mid',    keys: '2', description: 'Mid (40-70%)',category: 'view', action: () => setQualityBand('mid') },
+      { id: 'band-high',   keys: '3', description: 'High (70%+)', category: 'view', action: () => setQualityBand('high') },
+    ],
+    { lensId: 'reflection' }
+  );
 
   // Bridge reflections into lens artifacts
   useEffect(() => {
@@ -267,11 +293,37 @@ export default function ReflectionLensPage() {
 
         {/* Recent Reflections */}
         <div className="panel p-4">
-          <h2 className="font-semibold mb-3 flex items-center gap-2">
-            <Mirror className="w-4 h-4 text-neon-green" /> Recent Reflections
-          </h2>
+          <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+            <h2 className="font-semibold flex items-center gap-2">
+              <Mirror className="w-4 h-4 text-neon-green" /> Recent Reflections
+              {qualityBand !== 'all' && (
+                <span className="text-xs text-gray-500 font-normal">
+                  ({visibleReflections.length} of {reflections.length})
+                </span>
+              )}
+            </h2>
+            <div className="flex items-center gap-1 text-[10px]">
+              {(['all', 'low', 'mid', 'high'] as const).map((b, i) => (
+                <button
+                  key={b}
+                  onClick={() => setQualityBand(b)}
+                  className={`px-2 py-0.5 rounded border transition-colors ${
+                    qualityBand === b
+                      ? b === 'low' ? 'border-red-400/40 bg-red-400/15 text-red-400'
+                      : b === 'mid' ? 'border-yellow-400/40 bg-yellow-400/15 text-yellow-400'
+                      : b === 'high' ? 'border-neon-green/40 bg-neon-green/15 text-neon-green'
+                      : 'border-neon-cyan/40 bg-neon-cyan/15 text-neon-cyan'
+                      : 'border-white/10 bg-white/5 text-gray-400 hover:bg-white/10'
+                  }`}
+                  title={b === 'low' ? 'Quality < 40%' : b === 'mid' ? '40-70%' : b === 'high' ? '> 70%' : 'All quality bands'}
+                >
+                  {b}<kbd className="text-[8px] opacity-60 ml-0.5">{i}</kbd>
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="space-y-2 max-h-96 overflow-y-auto">
-            {reflections.map((r, index) => (
+            {visibleReflections.map((r, index) => (
               <motion.div key={r.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }} className="lens-card">
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-gray-500">{new Date(r.timestamp).toLocaleString()}</span>
@@ -297,6 +349,11 @@ export default function ReflectionLensPage() {
             ))}
             {reflections.length === 0 && (
               <p className="text-center py-4 text-gray-500 text-sm">No reflections recorded yet</p>
+            )}
+            {reflections.length > 0 && visibleReflections.length === 0 && (
+              <p className="text-center py-4 text-gray-500 text-sm">
+                No reflections in the <span className={qualityBand === 'low' ? 'text-red-400' : qualityBand === 'mid' ? 'text-yellow-400' : 'text-neon-green'}>{qualityBand}</span> band.
+              </p>
             )}
           </div>
         </div>
