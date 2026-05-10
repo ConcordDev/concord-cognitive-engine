@@ -1,9 +1,10 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { api } from '@/lib/api/client';
 
 type Severity = 'critical' | 'high' | 'medium' | 'low' | 'info';
@@ -81,6 +82,8 @@ export default function CodeQualityLensPage() {
   const [minSeverity, setMinSeverity] = useState<Severity>('medium');
   const [activeDetector, setActiveDetector] = useState<string | null>(null);
   const [actionableOnly, setActionableOnly] = useState(false);
+  const [findingsSearch, setFindingsSearch] = useState('');
+  const findingsSearchRef = useRef<HTMLInputElement>(null);
 
   async function loadDetectors() {
     try {
@@ -119,12 +122,40 @@ export default function CodeQualityLensPage() {
     loadDetectors();
   }, []);
 
+  // Severity ordering — index 0 is highest priority.  A "min severity"
+  // of 'medium' means we keep critical / high / medium and drop low / info.
+  const severityRank = (s: Severity) => SEVERITIES.indexOf(s);
   const visible = useMemo(() => {
+    const minRank = severityRank(minSeverity);
+    const q = findingsSearch.trim().toLowerCase();
     return findings.filter((f) => {
       if (activeDetector && f.detector !== activeDetector) return false;
+      if (severityRank(f.severity) > minRank) return false;
+      if (actionableOnly && !f.fixHint) return false;
+      if (q) {
+        const hay = `${f.message} ${f.location || ''} ${f.kind || ''} ${f.detector}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
       return true;
     });
-  }, [findings, activeDetector]);
+  }, [findings, activeDetector, minSeverity, actionableOnly, findingsSearch]);
+
+  useLensCommand(
+    [
+      { id: 'run-sweep',    keys: 'mod+enter', description: 'Run sweep',   category: 'actions',
+        action: () => { if (!loading) runSweep(); }, global: true },
+      { id: 'focus-search', keys: '/',         description: 'Search findings', category: 'navigation',
+        action: () => findingsSearchRef.current?.focus() },
+      { id: 'sev-critical', keys: '1', description: 'Min: critical',   category: 'view', action: () => setMinSeverity('critical') },
+      { id: 'sev-high',     keys: '2', description: 'Min: high',       category: 'view', action: () => setMinSeverity('high') },
+      { id: 'sev-medium',   keys: '3', description: 'Min: medium',     category: 'view', action: () => setMinSeverity('medium') },
+      { id: 'sev-low',      keys: '4', description: 'Min: low',        category: 'view', action: () => setMinSeverity('low') },
+      { id: 'sev-info',     keys: '5', description: 'Min: info (all)', category: 'view', action: () => setMinSeverity('info') },
+      { id: 'toggle-act',   keys: 'a', description: 'Toggle actionable-only', category: 'view', action: () => setActionableOnly((v) => !v) },
+      { id: 'clear-detector', keys: 'esc', description: 'Clear detector filter', category: 'navigation', action: () => setActiveDetector(null) },
+    ],
+    { lensId: 'code-quality' }
+  );
 
   return (
     <LensShell lensId="code-quality" asMain={false}>
@@ -145,9 +176,19 @@ export default function CodeQualityLensPage() {
             onClick={runSweep}
             disabled={loading}
             className="px-4 py-2 rounded bg-neon-blue/20 border border-neon-blue/40 text-neon-blue hover:bg-neon-blue/30 transition disabled:opacity-50"
+            title="Run sweep (⌘⏎)"
           >
             {loading ? 'Running…' : 'Run sweep'}
           </button>
+          <input
+            ref={findingsSearchRef}
+            type="text"
+            value={findingsSearch}
+            onChange={(e) => setFindingsSearch(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Escape') { setFindingsSearch(''); findingsSearchRef.current?.blur(); } }}
+            placeholder="Search findings…  / focuses"
+            className="bg-black/40 border border-gray-700 rounded px-2 py-1 text-sm flex-1 min-w-[200px]"
+          />
           <label className="text-xs flex items-center gap-2">
             <span className="text-gray-400">Min severity</span>
             <select
@@ -155,9 +196,9 @@ export default function CodeQualityLensPage() {
               onChange={(e) => setMinSeverity(e.target.value as Severity)}
               className="bg-black/40 border border-gray-700 rounded px-2 py-1"
             >
-              {SEVERITIES.map((s) => (
+              {SEVERITIES.map((s, i) => (
                 <option key={s} value={s}>
-                  {s}
+                  {s} ({i + 1})
                 </option>
               ))}
             </select>
@@ -168,8 +209,13 @@ export default function CodeQualityLensPage() {
               checked={actionableOnly}
               onChange={(e) => setActionableOnly(e.target.checked)}
             />
-            <span className="text-gray-400">Actionable only (has fix hint)</span>
+            <span className="text-gray-400">Actionable only (a)</span>
           </label>
+          {findings.length > 0 && (
+            <span className="text-xs text-gray-500">
+              {visible.length} of {findings.length} finding{findings.length === 1 ? '' : 's'}
+            </span>
+          )}
           {error && <span className="text-sm text-red-400">{error}</span>}
         </section>
 
