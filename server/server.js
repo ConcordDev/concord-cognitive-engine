@@ -9525,7 +9525,7 @@ async function runMacro(domain, name, input, ctx) {
   const publicReadDomains = {
     emergent: new Set(["status", "get", "list", "schema", "patterns", "reputation", "scope.metrics", "bridge.heartbeatTick"]),
     dtu: new Set(["list", "get", "search", "recent", "stats", "count", "export", "paginated", "create", "update", "delete", "bulkCreate", "promote"]),
-    lens: new Set(["list", "get", "export", "run", "create", "update", "delete", "bulkCreate"]),
+    lens: new Set(["list", "get", "export", "run", "create", "update", "delete", "bulkCreate", "spatial_at"]),
     system: new Set(["status", "getStatus", "health", "analogize"]),
     settings: new Set(["get", "status"]),
     scope: new Set(["metrics", "status", "dtus", "promote", "checkCitations", "royaltyPreview", "overrides"]),
@@ -9608,7 +9608,7 @@ async function runMacro(domain, name, input, ctx) {
     creative: new Set(["list", "get", "exhibition", "metrics", "profile", "masterworks", "registry", "domains", "generate", "create", "run"]),
     culture: new Set(["status", "traditions", "values", "stories", "metrics", "identity"]),
     trust: new Set(["get", "network", "metrics"]),
-    federation: new Set(["status", "peers", "commune_list", "commune_status", "peer_list", "outbox"]),
+    federation: new Set(["status", "peers", "commune_list", "commune_status", "peer_list", "outbox", "actor"]),
     physics: new Set(["status", "constants", "models"]),
     reproduction: new Set(["compatible-pairs", "status"]),
     lineage: new Set(["tree", "get"]),
@@ -68448,6 +68448,179 @@ register("agent", "list_persistent", (ctx, _input = {}) => {
 
 structuredLog("info", "phase5_cognitive_surfaces_init", {
   detail: "Phase 5 macros registered: chat.{timeline,summary} reflex.{status,recent_proposals} semantic.search_thoughts agent.{persist,list_persistent}",
+});
+
+// ── Phase 6: Federation as place — communes + AP bridge + lens spatial ─────
+
+// Phase 6.1: Lens spatial-anchor lookup (ideas #9, #39).
+register("lens", "spatial_at", async (_ctx, input = {}) => {
+  const { worldId = "concordia-hub", x = 0, z = 0, radius = 25 } = input || {};
+  try {
+    const lm = await import("./lib/lens-manifest.js");
+    const all = lm.listManifests?.() || [];
+    const r2 = Number(radius) * Number(radius);
+    const matched = [];
+    for (const m of all) {
+      const sa = m.spatialAnchor;
+      if (!sa || sa.worldId !== worldId) continue;
+      const dx = Number(sa.x) - Number(x);
+      const dz = Number(sa.z) - Number(z);
+      const lensRadius = Number(sa.radius || 0);
+      const total = (Number(radius) + lensRadius);
+      if ((dx * dx + dz * dz) <= total * total) {
+        matched.push({
+          lensId: m.lensId,
+          domain: m.domain,
+          spatialAnchor: sa,
+          distance: Math.sqrt(dx * dx + dz * dz),
+        });
+      }
+    }
+    matched.sort((a, b) => a.distance - b.distance);
+    return { ok: true, worldId, x, z, radius, matched };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Lenses with spatial anchors near (x,z) — for lens-as-place 3D rendering." });
+
+register("lens", "set_spatial_anchor", async (ctx, input = {}) => {
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { lensId, worldId = "concordia-hub", x, y = 0, z, radius = 10, type = "landmark", label } = input || {};
+  if (!lensId || x === undefined || z === undefined) return { ok: false, reason: "missing_inputs" };
+  try {
+    const lm = await import("./lib/lens-manifest.js");
+    const existing = lm.getManifest?.(lensId);
+    if (!existing) return { ok: false, reason: "lens_not_found" };
+    return lm.registerManifest({
+      ...existing,
+      spatialAnchor: {
+        worldId, x: Number(x), y: Number(y), z: Number(z),
+        radius: Number(radius), type, label: label || existing.lensId,
+      },
+    });
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Set or update the spatial anchor of a lens." });
+
+// Phase 6.2: Communes (ideas #4, #38). A commune is a federated peer-set
+// + shared lens-anchor pool. Stored as rows in `communes` (lazy-create);
+// `commune_members` tracks who's joined.
+register("federation", "commune_create", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { name, description = "", visibility = "public" } = input || {};
+  if (!name) return { ok: false, reason: "missing_name" };
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS communes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        description TEXT,
+        visibility TEXT NOT NULL DEFAULT 'public',
+        created_by TEXT NOT NULL,
+        created_at INTEGER NOT NULL DEFAULT (unixepoch())
+      )
+    `);
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS commune_members (
+        commune_id INTEGER NOT NULL,
+        user_id TEXT NOT NULL,
+        role TEXT NOT NULL DEFAULT 'member',
+        joined_at INTEGER NOT NULL DEFAULT (unixepoch()),
+        PRIMARY KEY (commune_id, user_id)
+      )
+    `);
+    const r = db.prepare(`
+      INSERT INTO communes (name, description, visibility, created_by)
+      VALUES (?, ?, ?, ?)
+    `).run(name, description, visibility, userId);
+    const communeId = r.lastInsertRowid;
+    db.prepare(`
+      INSERT INTO commune_members (commune_id, user_id, role)
+      VALUES (?, ?, 'founder')
+    `).run(communeId, userId);
+    return { ok: true, communeId, name };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Create a new commune. Founder is the calling user." });
+
+register("federation", "commune_join", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { communeId } = input || {};
+  if (!communeId) return { ok: false, reason: "missing_commune" };
+  try {
+    db.prepare(`
+      INSERT OR IGNORE INTO commune_members (commune_id, user_id, role)
+      VALUES (?, ?, 'member')
+    `).run(communeId, userId);
+    return { ok: true, communeId, joined: true };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Join a commune as a member." });
+
+register("federation", "commune_list", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const limit = Math.min(100, Math.max(1, Number(input.limit) || 25));
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS communes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        description TEXT,
+        visibility TEXT NOT NULL DEFAULT 'public',
+        created_by TEXT NOT NULL,
+        created_at INTEGER NOT NULL DEFAULT (unixepoch())
+      )
+    `);
+    const rows = db.prepare(`
+      SELECT c.id, c.name, c.description, c.visibility, c.created_at,
+             (SELECT COUNT(*) FROM commune_members WHERE commune_id = c.id) AS member_count
+      FROM communes c
+      WHERE c.visibility = 'public'
+      ORDER BY c.created_at DESC LIMIT ?
+    `).all(limit);
+    return { ok: true, communes: rows };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "List publicly visible communes." });
+
+register("federation", "commune_status", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  const { communeId } = input || {};
+  if (!communeId) return { ok: false, reason: "missing_commune" };
+  try {
+    const commune = db.prepare(`SELECT * FROM communes WHERE id = ?`).get(communeId);
+    if (!commune) return { ok: false, reason: "not_found" };
+    const members = db.prepare(`
+      SELECT user_id, role, joined_at FROM commune_members
+      WHERE commune_id = ? ORDER BY joined_at ASC
+    `).all(communeId);
+    const isMember = userId ? members.some(m => m.user_id === userId) : false;
+    return { ok: true, commune, members, memberCount: members.length, isMember };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Get commune detail + member list + caller's membership flag." });
+
+// Phase 6.3: ActivityPub bridge (idea #21).
+register("federation", "outbox", async (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = input.userId || ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  try {
+    const ap = await import("./lib/activitypub-bridge.js");
+    return ap.readOutbox(db, userId, { limit: input.limit, before: input.before });
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Read a user's ActivityPub outbox (federated DTU announcements)." });
+
+register("federation", "actor", async (ctx, input = {}) => {
+  const userId = input.userId || ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  try {
+    const ap = await import("./lib/activitypub-bridge.js");
+    return { ok: true, actor: ap.buildActor(userId, input.profile || {}) };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "ActivityStreams Person actor descriptor for federation discovery." });
+
+structuredLog("info", "phase6_federation_init", {
+  detail: "Phase 6 macros registered: lens.{spatial_at,set_spatial_anchor}, federation.{commune_*,outbox,actor}",
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════

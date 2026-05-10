@@ -214,6 +214,16 @@ export function registerManifest(manifest) {
     category: manifest.category || "specialized",
     source: manifest.source || "builtin",
     registeredAt: manifest.registeredAt || new Date().toISOString(),
+    // Phase 6 (ideas #9, #39): optional spatial anchor mapping a lens to
+    // a 3D location in Concordia. When set, the lens "lives" in the world
+    // — crafting → forge, legal → courthouse, marketplace → bazaar.
+    // Walking through Concordia, the player encounters live ambient
+    // activity in the place that maps to a lens. Pre-existing lenses
+    // without spatialAnchor stay valid.
+    //
+    // Shape: { worldId, x, y, z, radius, type, label? }
+    //   type: 'building' | 'district' | 'landmark' | 'ambient'
+    spatialAnchor: manifest.spatialAnchor || null,
   };
 
   _manifests.set(entry.lensId, entry);
