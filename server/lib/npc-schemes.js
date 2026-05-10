@@ -206,8 +206,9 @@ function applyResolution(db, sch, opts = {}) {
           const dec = db.prepare(`SELECT id, name, faction, archetype FROM world_npcs WHERE id = ?`).get(sch.target_id);
           if (dec) {
             // Lazy import to avoid a circular load chain at module init.
-            // eslint-disable-next-line @typescript-eslint/no-floating-promises
-            import("./npc-legacy.js").then(({ onNpcDeath }) => {
+            // Fire-and-forget by design — the resolution path doesn't need
+            // to await the legacy cascade to consider the scheme complete.
+            void import("./npc-legacy.js").then(({ onNpcDeath }) => {
               try { onNpcDeath(db, dec, { cause: "assassinated", killerId: sch.plotter_id }); }
               catch { /* legacy chain optional */ }
             });
