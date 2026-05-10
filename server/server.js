@@ -9577,7 +9577,7 @@ async function runMacro(domain, name, input, ctx) {
       "upsert_shadow", "list_shadows", "get_weight",
     ]),
     messaging: new Set(["status", "bindings", "connect", "verify", "messages"]),
-    sandbox: new Set(["create", "status", "action", "list", "pause", "resume"]),
+    sandbox: new Set(["create", "status", "action", "list", "pause", "resume", "provision", "kill"]),
     collab: new Set(["comments", "revisions", "workspace", "edit-session", "create", "update", "delete", "join"]),
     social: new Set(["profile", "followers", "following", "discover", "cited-by", "post", "react", "share", "comment", "follow", "unfollow"]),
     economy: new Set(["status", "balance", "transactions", "withdrawals", "transfer", "tip"]),
@@ -9753,6 +9753,9 @@ async function runMacro(domain, name, input, ctx) {
     sponsorship: new Set(["list_for_user"]),
     staking: new Set(["list_for_user"]),
     insurance: new Set(["list_for_user"]),
+    // Phase 9.5 — code-loop + safety + B2B (read-only here; writes auth-gated)
+    bounty: new Set(["list_open"]),
+    psyops: new Set(["list_alerts"]),
   };
   const _domainSet = publicReadDomains[domain];
   const _domainNameAllowed = _domainSet ? _domainSet.has(name) : false;
@@ -69596,6 +69599,185 @@ register("insurance", "list_for_user", (ctx, _input = {}) => {
 
 structuredLog("info", "phase9_4_economy_primitives_init", {
   detail: "Phase 9.4 — sponsorship.* (CC), staking.* (CC), insurance.* (SPARKS)",
+});
+
+// ── Phase 9.5: Code-loop + safety + B2B ─────────────────────────────────────
+
+// #7 Federated bug bounty — currency: CC. Stake on competing
+// autofix patches; treasury pays winning stakers proportionally
+// after CI green + maintainer merge.
+register("bounty", "stake", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { autofixId, patchChoice, stakeCc } = input || {};
+  if (!autofixId || patchChoice === undefined || !stakeCc) return { ok: false, reason: "missing_inputs" };
+  try {
+    const r = db.prepare(`
+      INSERT INTO bounty_stakes (autofix_id, staker_user_id, patch_choice, stake_cc)
+      VALUES (?, ?, ?, ?)
+    `).run(autofixId, userId, Number(patchChoice), Math.max(1, Math.floor(Number(stakeCc))));
+    return { ok: true, stakeId: r.lastInsertRowid, currency: "CC" };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Stake CC on a patch choice for an autofix proposal." });
+
+register("bounty", "list_open", (_ctx, _input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  try {
+    const rows = db.prepare(`
+      SELECT a.id AS autofix_id, a.proposal_kind, a.created_at,
+             COUNT(s.id) AS stake_count, COALESCE(SUM(s.stake_cc), 0) AS total_pool_cc
+      FROM autofix_proposals a
+      LEFT JOIN bounty_stakes s ON s.autofix_id = a.id
+      WHERE a.status = 'pending_review'
+      GROUP BY a.id ORDER BY a.created_at DESC LIMIT 50
+    `).all();
+    return { ok: true, bounties: rows };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Open autofix bounties with current pool size." });
+
+register("bounty", "resolve", (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { autofixId, winningChoice, prUrl = null } = input || {};
+  if (!autofixId || winningChoice === undefined) return { ok: false, reason: "missing_inputs" };
+  try {
+    const stakes = db.prepare(`SELECT * FROM bounty_stakes WHERE autofix_id = ?`).all(autofixId);
+    const winners = stakes.filter(s => s.patch_choice === Number(winningChoice));
+    const losers  = stakes.filter(s => s.patch_choice !== Number(winningChoice));
+    const winnerPool = winners.reduce((sum, s) => sum + s.stake_cc, 0);
+    const loserPool  = losers.reduce((sum, s) => sum + s.stake_cc, 0);
+    const platformCut = Math.floor(loserPool * 0.05);
+    const distributable = loserPool - platformCut;
+    let totalPaid = 0;
+    if (winnerPool > 0) {
+      for (const w of winners) {
+        const share = w.stake_cc / winnerPool;
+        const winnings = Math.floor(distributable * share);
+        const totalReturn = w.stake_cc + winnings;
+        db.prepare(`UPDATE bounty_stakes SET payout_cc = ?, paid_at = unixepoch() WHERE id = ?`).run(totalReturn, w.id);
+        totalPaid += totalReturn;
+      }
+    }
+    db.prepare(`UPDATE autofix_proposals SET status = 'resolved', pr_url = ? WHERE id = ?`).run(prUrl, autofixId);
+    return { ok: true, autofixId, winningChoice, paid: totalPaid, winnerCount: winners.length, currency: "CC" };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Resolve a bounty after maintainer merge. Pays winners proportionally; 5% platform cut on losing pool." });
+
+// #22 NPC psyops detector — flag NPCs whose skill_revisions diverge
+// suspiciously fast from cohort baseline.
+register("psyops", "scan_skill_divergence", (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { sigmaThreshold = 2.5, windowHours = 168 } = input || {};
+  try {
+    // Get revision counts per NPC over the last N hours.
+    const cutoff = Math.floor(Date.now() / 1000) - (Number(windowHours) * 3600);
+    const rows = db.prepare(`
+      SELECT npc_id, COUNT(*) AS rev_count
+      FROM skill_revisions WHERE created_at >= ?
+      GROUP BY npc_id
+    `).all(cutoff).filter((r) => r.npc_id);
+    if (rows.length === 0) return { ok: true, scanned: 0, alerts: [] };
+    const counts = rows.map(r => r.rev_count);
+    const mean = counts.reduce((s, n) => s + n, 0) / counts.length;
+    const variance = counts.reduce((s, n) => s + (n - mean) ** 2, 0) / counts.length;
+    const stddev = Math.sqrt(variance) || 1;
+    const alerts = [];
+    for (const r of rows) {
+      const sigma = (r.rev_count - mean) / stddev;
+      if (sigma >= Number(sigmaThreshold)) {
+        // Find suspect mentor — the most-frequent author of recent revisions.
+        let mentor = null;
+        try {
+          const m = db.prepare(`
+            SELECT author_user_id, COUNT(*) AS n FROM skill_revisions
+            WHERE npc_id = ? AND created_at >= ?
+            GROUP BY author_user_id ORDER BY n DESC LIMIT 1
+          `).get(r.npc_id, cutoff);
+          mentor = m?.author_user_id || null;
+        } catch { /* skill_revisions schema may differ */ }
+        try {
+          db.prepare(`
+            INSERT INTO skill_divergence_alerts
+              (npc_id, suspect_mentor_id, revision_count_window, cohort_baseline, sigma_above)
+            VALUES (?, ?, ?, ?, ?)
+          `).run(r.npc_id, mentor, r.rev_count, mean, sigma);
+        } catch { /* table may need migration first */ }
+        alerts.push({ npc_id: r.npc_id, sigma_above: sigma, suspect_mentor: mentor });
+      }
+    }
+    return { ok: true, scanned: rows.length, mean, stddev, alerts };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Scan recent NPC skill_revisions for outliers. Files alerts on N-sigma divergence." });
+
+register("psyops", "list_alerts", (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { limit = 50, includeQuarantined = false } = input || {};
+  try {
+    const where = includeQuarantined ? "" : "WHERE quarantined = 0";
+    const rows = db.prepare(`
+      SELECT id, npc_id, suspect_mentor_id, revision_count_window, cohort_baseline,
+             sigma_above, detected_at, quarantined
+      FROM skill_divergence_alerts ${where}
+      ORDER BY detected_at DESC LIMIT ?
+    `).all(Number(limit));
+    return { ok: true, alerts: rows };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Recent skill-divergence alerts." });
+
+register("psyops", "quarantine", (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { alertId } = input || {};
+  if (!alertId) return { ok: false, reason: "missing_id" };
+  try {
+    db.prepare(`UPDATE skill_divergence_alerts SET quarantined = 1 WHERE id = ?`).run(alertId);
+    return { ok: true, quarantined: true };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Quarantine a flagged NPC's mentor — rate-limits future demos." });
+
+// #8 Agent rentals — currency: CC. B2B sandboxed Concord instance
+// for AI-safety testing. Provisions a federated peer with isolation
+// flags + escrowed CC payment.
+register("sandbox", "provision", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { tenantOrg, tenantContact, monthlyCc, durationMonths = 1, isolationLevel = "strict" } = input || {};
+  if (!tenantOrg || !monthlyCc) return { ok: false, reason: "missing_inputs" };
+  const escrow = Math.floor(Number(monthlyCc)) * Math.max(1, Number(durationMonths));
+  const expiresAt = Math.floor(Date.now() / 1000) + (Number(durationMonths) * 30 * 86400);
+  try {
+    const r = db.prepare(`
+      INSERT INTO sandbox_tenants
+        (tenant_org, tenant_contact, monthly_cc, isolation_level, expires_at, status, escrow_cc)
+      VALUES (?, ?, ?, ?, ?, 'provisioned', ?)
+    `).run(tenantOrg, tenantContact || null, Math.floor(Number(monthlyCc)), isolationLevel, expiresAt, escrow);
+    return { ok: true, tenantId: r.lastInsertRowid, escrowCc: escrow, expiresAt, currency: "CC" };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Provision a sandbox tenant. Escrow CC for the duration." });
+
+register("sandbox", "kill", (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { tenantId } = input || {};
+  if (!tenantId) return { ok: false, reason: "missing_id" };
+  try {
+    db.prepare(`UPDATE sandbox_tenants SET status = 'terminated' WHERE id = ?`).run(tenantId);
+    return { ok: true, terminated: true };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Kill switch — terminate a sandbox tenant. Releases escrow on settlement (separate flow)." });
+
+register("sandbox", "list", (_ctx, _input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  try {
+    const rows = db.prepare(`
+      SELECT id, tenant_org, monthly_cc, isolation_level, provisioned_at, expires_at, status, escrow_cc
+      FROM sandbox_tenants ORDER BY provisioned_at DESC LIMIT 50
+    `).all();
+    return { ok: true, tenants: rows };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "All sandbox tenants. Admin view." });
+
+structuredLog("info", "phase9_5_code_safety_b2b_init", {
+  detail: "Phase 9.5 — bounty.* (CC), psyops.*, sandbox.* (CC, B2B)",
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
