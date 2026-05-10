@@ -519,6 +519,90 @@ export default function WhiteboardLensPage() {
     link.click();
   };
 
+  // Vector export — produces an SVG of the current board.  Vector form
+  // scales without aliasing, opens in Figma / Illustrator / Inkscape, and
+  // is the gold-standard "I want my drawing again later" format that
+  // Miro / FigJam ship.  Rasters (PNG) lose information; SVG keeps the
+  // primitives addressable.  Renders rectangles, ellipses, lines,
+  // arrows, freehand strokes, text, and labelled cards/sections; image
+  // pins reference their source URL via `<image href>` so the SVG
+  // round-trips with images embedded by reference.
+  const exportSVG = useCallback(() => {
+    const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const w = dimensions.width;
+    const h = dimensions.height;
+    const parts: string[] = [];
+    parts.push(`<?xml version="1.0" encoding="UTF-8"?>`);
+    parts.push(`<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">`);
+    parts.push(`<rect width="${w}" height="${h}" fill="#0f0f1a"/>`);
+    // Arrowhead marker
+    parts.push(`<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>`);
+    for (const el of elements) {
+      const stroke = esc(el.stroke);
+      const fill = el.fill === 'transparent' ? 'none' : esc(el.fill);
+      const sw = el.strokeWidth;
+      const ex = el.x;
+      const ey = el.y;
+      if (el.type === 'rectangle') {
+        parts.push(`<rect x="${ex}" y="${ey}" width="${el.width || 0}" height="${el.height || 0}" stroke="${stroke}" fill="${fill}" stroke-width="${sw}"/>`);
+      } else if (el.type === 'ellipse') {
+        const rx = (el.width || 0) / 2; const ry = (el.height || 0) / 2;
+        parts.push(`<ellipse cx="${ex + rx}" cy="${ey + ry}" rx="${Math.abs(rx)}" ry="${Math.abs(ry)}" stroke="${stroke}" fill="${fill}" stroke-width="${sw}"/>`);
+      } else if (el.type === 'line' || el.type === 'arrow') {
+        const x2 = ex + (el.width || 0); const y2 = ey + (el.height || 0);
+        const arrowAttr = el.type === 'arrow' ? ` marker-end="url(#arrow)" color="${stroke}"` : '';
+        parts.push(`<line x1="${ex}" y1="${ey}" x2="${x2}" y2="${y2}" stroke="${stroke}" stroke-width="${sw}"${arrowAttr}/>`);
+      } else if (el.type === 'freehand' && el.points && el.points.length) {
+        const d = el.points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x} ${p.y}`).join(' ');
+        parts.push(`<path d="${d}" stroke="${stroke}" fill="none" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"/>`);
+      } else if (el.type === 'text') {
+        parts.push(`<text x="${ex}" y="${ey + 16}" fill="${stroke}" font-family="ui-sans-serif, system-ui" font-size="14">${esc(el.text || '')}</text>`);
+      } else if (el.type === 'image' && el.imageUrl) {
+        parts.push(`<image href="${esc(el.imageUrl)}" x="${ex}" y="${ey}" width="${el.width || 200}" height="${el.height || 150}"/>`);
+        if (el.imageLabel) parts.push(`<text x="${ex + 4}" y="${ey + (el.height || 150) + 14}" fill="#9ca3af" font-size="11">${esc(el.imageLabel)}</text>`);
+      } else if (el.type === 'notecard') {
+        const cw = el.width || 160; const ch = el.height || 100;
+        parts.push(`<rect x="${ex}" y="${ey}" width="${cw}" height="${ch}" rx="6" fill="${esc(el.cardColor || '#fbbf24')}" opacity="0.9"/>`);
+        if (el.text) parts.push(`<text x="${ex + 8}" y="${ey + 18}" fill="#1f2937" font-size="12">${esc(el.text)}</text>`);
+      } else if (el.type === 'section') {
+        const cw = el.width || 200; const ch = el.height || 60;
+        parts.push(`<rect x="${ex}" y="${ey}" width="${cw}" height="${ch}" rx="4" stroke="${stroke}" fill="${fill}" stroke-width="${sw}" opacity="0.7"/>`);
+        const label = `${el.text || ''}${el.bars ? ` (${el.bars} bars)` : ''}`;
+        if (label) parts.push(`<text x="${ex + 8}" y="${ey + 18}" fill="${stroke}" font-size="12" font-weight="bold">${esc(label)}</text>`);
+      } else if (el.type === 'dtu') {
+        const cw = el.width || 180; const ch = el.height || 80;
+        parts.push(`<rect x="${ex}" y="${ey}" width="${cw}" height="${ch}" rx="6" stroke="${stroke}" fill="#1a1a2e" stroke-width="${sw}"/>`);
+        if (el.dtuTitle) parts.push(`<text x="${ex + 8}" y="${ey + 18}" fill="#a855f7" font-size="11" font-weight="bold">${esc(el.dtuTitle.slice(0, 28))}</text>`);
+        if (el.dtuId) parts.push(`<text x="${ex + 8}" y="${ey + 36}" fill="#6b7280" font-size="9" font-family="monospace">${esc(el.dtuId.slice(0, 24))}</text>`);
+      } else if (el.type === 'audio') {
+        const cw = el.width || 140; const ch = el.height || 50;
+        parts.push(`<rect x="${ex}" y="${ey}" width="${cw}" height="${ch}" rx="6" stroke="${stroke}" fill="#0a1f2a" stroke-width="${sw}"/>`);
+        parts.push(`<text x="${ex + 8}" y="${ey + 20}" fill="${stroke}" font-size="11" font-weight="bold">♪ ${esc(el.clipName || 'audio')}</text>`);
+        if (el.duration !== undefined) parts.push(`<text x="${ex + 8}" y="${ey + 36}" fill="#6b7280" font-size="10">${fmtDur(el.duration)}</text>`);
+      }
+    }
+    parts.push(`</svg>`);
+    const svg = parts.join('\n');
+    const blob = new Blob([svg], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `whiteboard-${new Date().toISOString().slice(0, 10)}.svg`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [elements, dimensions]);
+
+  // Copy a JSON snapshot to clipboard — handy for sharing a board
+  // template with another user / paste-to-import.
+  const exportClipboardJSON = useCallback(async () => {
+    const snapshot = { elements, dimensions, exportedAt: new Date().toISOString() };
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(snapshot, null, 2));
+    } catch {
+      console.warn('[Whiteboard] clipboard write failed');
+    }
+  }, [elements, dimensions]);
+
   /* ---------- canvas render ---------- */
   useEffect(() => {
     if (boardMode !== 'canvas') return;
@@ -961,9 +1045,38 @@ export default function WhiteboardLensPage() {
                   className="px-4 py-2 bg-lattice-elevated rounded-lg hover:bg-lattice-bg flex items-center gap-2 text-sm">
                   <Save className="w-4 h-4" />{saveMutation.isPending ? 'Saving...' : 'Save'}
                 </button>
-                <button onClick={exportCanvas} className="px-4 py-2 bg-lattice-elevated rounded-lg hover:bg-lattice-bg flex items-center gap-2 text-sm">
-                  <Download className="w-4 h-4" />Export
-                </button>
+                <div className="relative group">
+                  <button className="px-4 py-2 bg-lattice-elevated rounded-lg hover:bg-lattice-bg flex items-center gap-2 text-sm">
+                    <Download className="w-4 h-4" />Export
+                  </button>
+                  <div className="absolute right-0 top-full mt-1 w-48 bg-lattice-surface border border-lattice-border rounded-lg shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity z-30 overflow-hidden">
+                    <button
+                      onClick={exportCanvas}
+                      className="w-full px-3 py-2 text-left text-xs text-gray-200 hover:bg-lattice-elevated flex items-center justify-between"
+                      title="Raster — best for sharing"
+                    >
+                      <span>PNG image</span>
+                      <code className="text-[9px] text-gray-500">.png</code>
+                    </button>
+                    <button
+                      onClick={exportSVG}
+                      disabled={elements.length === 0}
+                      className="w-full px-3 py-2 text-left text-xs text-gray-200 hover:bg-lattice-elevated flex items-center justify-between disabled:opacity-40"
+                      title="Vector — opens in Figma / Illustrator / Inkscape"
+                    >
+                      <span>SVG vector</span>
+                      <code className="text-[9px] text-gray-500">.svg</code>
+                    </button>
+                    <button
+                      onClick={exportClipboardJSON}
+                      disabled={elements.length === 0}
+                      className="w-full px-3 py-2 text-left text-xs text-gray-200 hover:bg-lattice-elevated border-t border-lattice-border disabled:opacity-40"
+                      title="Copy a JSON snapshot to clipboard"
+                    >
+                      Copy JSON to clipboard
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
 
