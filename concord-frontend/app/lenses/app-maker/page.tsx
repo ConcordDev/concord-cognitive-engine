@@ -38,6 +38,7 @@ export default function AppMakerLens() {
   useLensCommand(
     [
       { id: 'new-app',        keys: 'n', description: 'Focus new-app name input', category: 'actions',    action: () => newNameInputRef.current?.focus() },
+      { id: 'focus-search',   keys: '/', description: 'Search your apps',          category: 'navigation', action: () => appSearchInputRef.current?.focus() },
       { id: 'tpl-crm',        keys: '1', description: 'CRM template',              category: 'view',       action: () => setSelectedTemplate('crm') },
       { id: 'tpl-ecommerce',  keys: '2', description: 'E-commerce template',       category: 'view',       action: () => setSelectedTemplate('ecommerce') },
       { id: 'tpl-portfolio',  keys: '3', description: 'Portfolio template',        category: 'view',       action: () => setSelectedTemplate('portfolio') },
@@ -87,6 +88,9 @@ export default function AppMakerLens() {
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState('crm');
+  const [appSearch, setAppSearch] = useState('');
+  const [appStatusFilter, setAppStatusFilter] = useState<string>('all');
+  const appSearchInputRef = useRef<HTMLInputElement>(null);
   const [appBuildName, setAppBuildName] = useState('');
   const [deploying, setDeploying] = useState(false);
   const [deployStatus, setDeployStatus] = useState<'idle' | 'deploying' | 'deployed'>('idle');
@@ -364,14 +368,63 @@ export default function AppMakerLens() {
 
       {/* App List */}
       <div className="panel p-4">
-        <h3 className="text-sm font-semibold mb-3">Your Apps</h3>
+        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+          <h3 className="text-sm font-semibold">
+            Your Apps
+            {(appSearch || appStatusFilter !== 'all') && (
+              <span className="text-xs text-gray-500 font-normal ml-2">
+                ({apps.filter((a) => {
+                  const q = appSearch.trim().toLowerCase();
+                  if (q && !((a.name || '').toLowerCase().includes(q) || (a.id || '').toLowerCase().includes(q))) return false;
+                  if (appStatusFilter !== 'all' && a.status !== appStatusFilter) return false;
+                  return true;
+                }).length} of {apps.length})
+              </span>
+            )}
+          </h3>
+          {apps.length > 0 && (
+            <div className="flex items-center gap-2 text-xs">
+              <input
+                ref={appSearchInputRef}
+                type="text"
+                value={appSearch}
+                onChange={(e) => setAppSearch(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Escape') { setAppSearch(''); appSearchInputRef.current?.blur(); } }}
+                placeholder="Filter…  / focuses"
+                className="bg-lattice-deep border border-lattice-edge rounded px-2 py-1 w-44"
+              />
+              <select
+                value={appStatusFilter}
+                onChange={(e) => setAppStatusFilter(e.target.value)}
+                className="bg-lattice-deep border border-lattice-edge rounded px-2 py-1"
+              >
+                <option value="all">All statuses</option>
+                <option value="draft">Draft</option>
+                <option value="active">Active</option>
+                <option value="published">Published</option>
+                <option value="marketplace">Marketplace</option>
+                <option value="global">Global</option>
+              </select>
+            </div>
+          )}
+        </div>
         {loading ? (
           <p className="text-sm text-gray-500">Loading...</p>
         ) : apps.length === 0 ? (
           <p className="text-sm text-gray-500">No apps yet. Create your first one above.</p>
-        ) : (
+        ) : (() => {
+          const visible = apps.filter((a) => {
+            const q = appSearch.trim().toLowerCase();
+            if (q && !((a.name || '').toLowerCase().includes(q) || (a.id || '').toLowerCase().includes(q))) return false;
+            if (appStatusFilter !== 'all' && a.status !== appStatusFilter) return false;
+            return true;
+          });
+          if (visible.length === 0) {
+            return <p className="text-sm text-gray-500">No apps match the current filters.</p>;
+          }
+          return (
           <div className="space-y-3">
-            {apps.map((app, index) => (
+            {visible.map((app, index) => (
               <motion.div key={app.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }} className="bg-lattice-deep rounded p-3 flex items-center justify-between">
                 <div>
                   <div className="flex items-center gap-2">
@@ -402,7 +455,8 @@ export default function AppMakerLens() {
               </motion.div>
             ))}
           </div>
-        )}
+          );
+        })()}
       </div>
 
       {/* Invariant Reminder */}
