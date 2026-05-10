@@ -28,7 +28,7 @@
  *   npx tsx scripts/audit-lens-health.ts --json     # machine-readable
  */
 
-import { readFileSync, readdirSync, statSync } from "fs";
+import { readFileSync, readdirSync } from "fs";
 import { join, relative } from "path";
 
 const ROOT = join(__dirname, "..");
@@ -59,24 +59,20 @@ function lensIdFromPath(p: string): string {
 }
 
 function walk(dir: string, files: string[] = []): string[] {
-  // Single-syscall directory read — checking existsSync first then
-  // calling readdirSync is a TOCTOU race CodeQL flags as
-  // js/file-system-race. Just try the read and let the catch swallow
-  // the not-found error; the static-analysis script doesn't need the
-  // pre-check.
-  let entries: string[];
+  // Single-syscall directory read with file-type info attached. Using
+  // withFileTypes avoids the stat()→read() TOCTOU race CodeQL flags as
+  // js/file-system-race; the kind comes back attached to each Dirent.
+  let entries: Array<{ name: string; isDirectory(): boolean; isFile(): boolean }>;
   try {
-    entries = readdirSync(dir);
+    entries = readdirSync(dir, { withFileTypes: true });
   } catch {
     return files;
   }
   for (const entry of entries) {
-    if (entry.startsWith(".") || entry === "node_modules" || entry === "coverage") continue;
-    const full = join(dir, entry);
-    let st;
-    try { st = statSync(full); } catch { continue; }
-    if (st.isDirectory()) walk(full, files);
-    else if (/\.(tsx?|jsx?)$/.test(entry)) files.push(full);
+    if (entry.name.startsWith(".") || entry.name === "node_modules" || entry.name === "coverage") continue;
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) walk(full, files);
+    else if (entry.isFile() && /\.(tsx?|jsx?)$/.test(entry.name)) files.push(full);
   }
   return files;
 }
@@ -88,19 +84,18 @@ function listBackendRoutes(): Set<string> {
   const routes = new Set<string>();
   const re = /\b(?:app|router|app2)\.(?:get|post|put|delete|patch)\(\s*["'`]([^"'`]+)["'`]/g;
   function collect(dir: string) {
-    let entries: string[];
+    let entries: Array<{ name: string; isDirectory(): boolean; isFile(): boolean }>;
     try {
-      entries = readdirSync(dir);
+      entries = readdirSync(dir, { withFileTypes: true });
     } catch {
       return;
     }
     for (const entry of entries) {
-      if (entry.startsWith(".") || entry === "node_modules" || entry === "data") continue;
-      const full = join(dir, entry);
-      let st;
-      try { st = statSync(full); } catch { continue; }
-      if (st.isDirectory()) collect(full);
-      else if (/\.(jsx?|tsx?)$/.test(entry)) {
+      if (entry.name.startsWith(".") || entry.name === "node_modules" || entry.name === "data") continue;
+      const full = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        collect(full);
+      } else if (entry.isFile() && /\.(jsx?|tsx?)$/.test(entry.name)) {
         let src;
         try { src = readFileSync(full, "utf8"); } catch { continue; }
         let m;
