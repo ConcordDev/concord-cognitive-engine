@@ -1054,11 +1054,10 @@ describe("artifact-store", () => {
   // ── Invalid file types ───────────────────────────────────────────
 
   describe("invalid file types", () => {
-    it("rejects application/octet-stream", async () => {
-      await assert.rejects(
-        () => storeArtifact("dtu-inv1", Buffer.from("x"), "application/octet-stream", "f"),
-        /Unsupported artifact type/
-      );
+    it("accepts application/octet-stream as universal-DTU fallback", async () => {
+      const result = await storeArtifact("dtu-inv1", Buffer.from("x"), "application/octet-stream", "f");
+      assert.ok(result.hash.startsWith("sha256:"));
+      assert.equal(result.sizeBytes, 1);
     });
 
     it("rejects empty string as type", async () => {

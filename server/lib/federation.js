@@ -1554,7 +1554,35 @@ export async function remotePurchase(db, { peerId, dtuId, buyerId, priceCents })
   if (!peerUrl && /^https?:\/\//i.test(peerId)) peerUrl = peerId.replace(/\/+$/, "");
   if (!peerUrl) return { ok: false, reason: "peer_unreachable" };
 
-  const url = `${peerUrl}/api/marketplace/purchaseWithRoyalties`;
+  // Validate parsed URL: protocol must be http/https, host must not be a
+  // loopback / RFC1918 / link-local address (SSRF defence). The CRI registry
+  // is admin-controlled but we still gate at the fetch boundary so a
+  // malformed capabilities row can't pivot through this code path.
+  let parsed;
+  try {
+    parsed = new URL(peerUrl);
+  } catch {
+    return { ok: false, reason: "peer_url_invalid" };
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    return { ok: false, reason: "peer_url_protocol_disallowed" };
+  }
+  if (process.env.CONCORD_FEDERATION_ALLOW_LOOPBACK !== "true") {
+    const host = parsed.hostname.toLowerCase();
+    const isLoopback = host === "localhost" || host === "::1" || host.startsWith("127.");
+    const isPrivate =
+      host.startsWith("10.") ||
+      host.startsWith("192.168.") ||
+      /^172\.(1[6-9]|2\d|3[01])\./.test(host) ||
+      host.startsWith("169.254.") ||
+      host.startsWith("fc") || host.startsWith("fd") ||
+      host === "0.0.0.0";
+    if (isLoopback || isPrivate) {
+      return { ok: false, reason: "peer_url_private_host_disallowed" };
+    }
+  }
+
+  const url = `${parsed.origin}/api/marketplace/purchaseWithRoyalties`;
   let envelope = null;
   try {
     const resp = await fetch(url, {
