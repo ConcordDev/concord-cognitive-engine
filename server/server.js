@@ -9742,6 +9742,10 @@ async function runMacro(domain, name, input, ctx) {
     npc_autobiography: new Set(["list_for_npc"]),
     npc_persona: new Set(["list_for_user"]),
     compression_art: new Set(["shape_for", "list_for_user"]),
+    // Phase 9.2 — live spectator + emergent broadcast
+    spectator: new Set(["list_for_world"]),
+    goddess: new Set(["recent"]),
+    betting: new Set(["list_open"]),
   };
   const _domainSet = publicReadDomains[domain];
   const _domainNameAllowed = _domainSet ? _domainSet.has(name) : false;
@@ -69179,6 +69183,147 @@ register("compression_art", "list_for_user", async (ctx, _input = {}) => {
 
 structuredLog("info", "phase9_1_artifact_economy_init", {
   detail: "Phase 9.1 — dream.publish, npc_autobiography.*, npc_persona.*, inheritance.*, compression_art.*",
+});
+
+// ── Phase 9.2: Live spectator + emergent broadcast ──────────────────────────
+
+// #9 Live-streamable Concordia.
+register("spectator", "subscribe", async (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { worldId } = input || {};
+  if (!worldId) return { ok: false, reason: "missing_worldId" };
+  const userId = ctx?.actor?.userId || null;
+  try {
+    const lib = await import("./lib/spectator.js");
+    return lib.startSession(db, worldId, userId);
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Open a read-only spectator session on a world. Returns session token + WS hint." });
+
+register("spectator", "heartbeat", async (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { sessionToken } = input || {};
+  if (!sessionToken) return { ok: false, reason: "missing_token" };
+  try {
+    const lib = await import("./lib/spectator.js");
+    return lib.heartbeatSession(db, sessionToken);
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Refresh spectator session last-seen. Sessions drop after 10 min idle." });
+
+register("spectator", "list_for_world", async (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { worldId } = input || {};
+  if (!worldId) return { ok: false, reason: "missing_worldId" };
+  try {
+    const lib = await import("./lib/spectator.js");
+    return { ok: true, worldId, spectators: lib.activeSpectators(db, worldId) };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Active spectators on a world." });
+
+// #11 Goddess broadcast.
+register("goddess", "compose_now", async (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { worldId = "concordia-hub" } = input || {};
+  try {
+    const lib = await import("./lib/goddess-broadcaster.js");
+    return await lib.composeAndRecord(db, STATE, worldId);
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Compose + record a single goddess dispatch for a world." });
+
+register("goddess", "recent", async (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { worldId = "concordia-hub", limit = 25 } = input || {};
+  try {
+    const lib = await import("./lib/goddess-broadcaster.js");
+    return { ok: true, worldId, dispatches: lib.recentDispatches(db, worldId, Number(limit)) };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Recent goddess dispatches for a world." });
+
+// #14 Spectator betting markets (currency: SPARKS).
+register("betting", "open_market", async (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { worldId, question, resolutionKind, resolutionRef, closesAt } = input || {};
+  if (!question || !resolutionKind) return { ok: false, reason: "missing_inputs" };
+  try {
+    const lib = await import("./lib/betting-markets.js");
+    return lib.openMarket(db, { worldId, question, resolutionKind, resolutionRef, closesAt });
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Open a prediction market on an emergent outcome. Currency: SPARKS." });
+
+register("betting", "place_bet", async (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { marketId, side, stakeSparks } = input || {};
+  if (!marketId || !side || !stakeSparks) return { ok: false, reason: "missing_inputs" };
+  try {
+    const lib = await import("./lib/betting-markets.js");
+    return lib.placeBet(db, { marketId, userId, side, stakeSparks });
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Place a wager on an open market. Currency: SPARKS." });
+
+register("betting", "resolve_market", async (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { marketId, outcome } = input || {};
+  if (!marketId || !outcome) return { ok: false, reason: "missing_inputs" };
+  try {
+    const lib = await import("./lib/betting-markets.js");
+    return lib.resolveMarket(db, marketId, outcome);
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Resolve a market. Substrate-driven outcome attestation." });
+
+register("betting", "list_open", async (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { worldId = null, limit = 50 } = input || {};
+  try {
+    const lib = await import("./lib/betting-markets.js");
+    return { ok: true, markets: lib.listOpenMarkets(db, worldId, Number(limit)) };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "List open markets." });
+
+register("betting", "my_positions", async (ctx, _input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  try {
+    const lib = await import("./lib/betting-markets.js");
+    return { ok: true, positions: lib.userPositions(db, userId) };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Caller's open + resolved positions." });
+
+// #10 Player-as-scientist observer mode — composes empirical-report DTU
+// from substrate state. The 'observer' avatar role gates intervention
+// macros at a separate layer (avatar-role-check upstream).
+register("observer", "compose_report", async (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { worldId = "concordia-hub", focus = null } = input || {};
+  try {
+    // Reuse Phase 7 narrative.ripple_report for substrate state.
+    const ripple = await runMacro("narrative", "ripple_report", {
+      worldId,
+      sinceTs: Math.floor(Date.now() / 1000) - 3600,
+    }, ctx);
+    const summary = focus ? `Observation focus: ${focus}.` : "General observation.";
+    const dtuId = `empirical_report:${userId}:${Date.now().toString(36)}`;
+    const meta = {
+      skill_kind: "empirical_report",
+      world_id: worldId,
+      focus,
+      ripple,
+      summary,
+      observed_at: Date.now(),
+    };
+    db.prepare(`
+      INSERT INTO dtus (id, kind, title, creator_id, meta_json, skill_level, total_experience, created_at)
+      VALUES (?, 'empirical_report', ?, ?, ?, 1, 0, unixepoch())
+    `).run(dtuId, `Empirical Report — ${worldId}`, userId, JSON.stringify(meta));
+    return { ok: true, dtuId, ripple };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Observer composes empirical-report DTU from world ripple state. Cite-able, royalty-bearing." });
+
+structuredLog("info", "phase9_2_spectator_init", {
+  detail: "Phase 9.2 — spectator.*, goddess.*, betting.* (SPARKS), observer.compose_report",
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
