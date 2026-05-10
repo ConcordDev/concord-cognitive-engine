@@ -79,5 +79,274 @@
     "backstory": "Yorin arrived at the Crucible six weeks ago with a sword, a notebook, and an opinion. They have not joined the Witnesses because they believe the Witness charter is a refusal-to-act dressed as scholarship. They are, however, a very patient note-taker.",
     "personality_traits": ["young", "blunt", "principled", "genuinely listening"],
     "speech_patterns": "Bluntly enthusiastic. Names a drift type the moment it appears."
+  },
+  {
+    "id": "high_priestess_calla_drift",
+    "world_id": "lattice-crucible",
+    "name": "Calla, High Priestess of the Six Drifts",
+    "title": "High Priestess of the Drift Cult",
+    "archetype": "priest",
+    "faction_id": "crucible_drift_cultists",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": true,
+    "level": 9,
+    "backstory": "Calla saw her first drift event at sixteen and converted within the hour. She is now thirty-eight and has shaped the cult's theology around the principle that contradictions are revelation. Her authority is genuine; her certainty is hard-won.",
+    "personality_traits": ["fervent", "rhetorically gifted", "self-aware about doubt", "kind in person"],
+    "speech_patterns": "Public: liturgical cadence. Private: asks more questions than she answers.",
+    "narrative_context": {
+      "secret": "She has begun to suspect the engineers' stabilizations are themselves drift events. If true, the cult's theology is correct and the engineers are unwitting prophets. She has not told her followers."
+    },
+    "needs": [
+      { "id": "drift_event_witness", "priority": "primary", "satisfaction_method": "daily_temple_observation" },
+      { "id": "congregation_continuity", "priority": "primary", "satisfaction_method": "weekly_sermon" },
+      { "id": "food_lodging", "priority": "secondary", "satisfaction_method": "tithe_and_pilgrimage_offerings" }
+    ],
+    "daily_schedule": [
+      { "phase": "early_morning", "phase_hours": [4, 7], "location": "temple_of_six_drifts", "activity": "morning meditation; opens the temple to first-light pilgrims", "need_addressed": "drift_event_witness", "interactable_by_player": false },
+      { "phase": "morning", "phase_hours": [7, 11], "location": "temple_of_six_drifts", "activity": "receives the day's drift-pilgrims; interprets their dreams against the six drift glyphs", "need_addressed": "congregation_continuity", "interactable_by_player": true },
+      { "phase": "midday", "phase_hours": [11, 15], "location": "drift_pilgrimage_path", "activity": "walks the pilgrimage path with first-time arrivals", "need_addressed": "drift_event_witness", "interactable_by_player": true },
+      { "phase": "afternoon", "phase_hours": [15, 19], "location": "temple_of_six_drifts", "activity": "writes the week's sermon; researches recent engineering patches against drift records", "need_addressed": "drift_event_witness", "interactable_by_player": true },
+      { "phase": "evening", "phase_hours": [19, 23], "location": "temple_chambers", "activity": "evening prayer; private conversations with senior cultists", "need_addressed": "congregation_continuity", "interactable_by_player": false },
+      { "phase": "night", "phase_hours": [23, 4], "location": "high_priestess_quarters", "activity": "rests; sometimes wakes to record a dream interpretation", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "temple_of_six_drifts", "dwelling_type": "high_priestess_quarters_with_inner_shrine" },
+    "job": { "profession_id": "high_priestess", "wage_per_diurnal_sparks": 130, "wage_source": "tithes_and_offerings" },
+    "apparel": ["six_drift_robe_woven_with_six_glyph_threads", "ceremonial_belt_with_drift_token_pouch", "ritual_sandals", "ceremonial_drift_circlet"],
+    "gear": ["ritual_blade_for_drift_inscription", "drift_glyph_scripture_book", "personal_dream_interpretation_journal", "incense_burner"],
+    "resources_consumed": ["incense", "ink", "ceremonial_oils", "drift_token_offerings"],
+    "resources_produced": ["sermons", "dream_interpretations", "drift_event_records"],
+    "inventory": [
+      { "item": "ritual_blade", "qty": 1 },
+      { "item": "drift_glyph_scripture_book", "qty": 1 },
+      { "item": "personal_dream_journal", "qty": 1 },
+      { "item": "incense_bundle", "qty": 12 },
+      { "item": "drift_token", "qty": 30 }
+    ],
+    "starting_sparks": 1100
+  },
+  {
+    "id": "chief_engineer_vaud",
+    "world_id": "lattice-crucible",
+    "name": "Vaud the Chief Engineer",
+    "title": "Chief of the Lattice Engineers",
+    "archetype": "engineer_administrator",
+    "faction_id": "crucible_lattice_engineers",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": true,
+    "level": 11,
+    "backstory": "Vaud was the federation's lead patch developer for three years before joining the Crucible. He believes the lattice can be teached to drift less; he is methodically proving the hypothesis one patch at a time. The cultists hate him; the Witnesses are wary; the refugees mostly leave him alone.",
+    "personality_traits": ["systematic", "self-disciplined", "occasionally defensive", "quietly idealistic"],
+    "speech_patterns": "Technical when working. Apologetic when his patches fail. Refuses to discuss theology.",
+    "narrative_context": {
+      "secret": "Three of his patches caused the drift events that birthed the current Drift Refugee population. He has documented this internally and reported it to the federation. He has not told the refugees themselves."
+    },
+    "needs": [
+      { "id": "patch_completion", "priority": "primary", "satisfaction_method": "morning_patch_test_session" },
+      { "id": "drift_telemetry_review", "priority": "primary", "satisfaction_method": "afternoon_telemetry_session" },
+      { "id": "team_cohesion", "priority": "secondary", "satisfaction_method": "evening_team_dinner" }
+    ],
+    "daily_schedule": [
+      { "phase": "early_morning", "phase_hours": [5, 8], "location": "engineering_workshop", "activity": "morning telemetry review; assigns patch priorities to runners", "need_addressed": "drift_telemetry_review", "interactable_by_player": false },
+      { "phase": "morning", "phase_hours": [8, 12], "location": "patch_test_arena", "activity": "live patch testing; debugs failures in real time", "need_addressed": "patch_completion", "interactable_by_player": true },
+      { "phase": "midday", "phase_hours": [12, 15], "location": "engineering_workshop", "activity": "midday meal at desk; reviews witness reports for new drift signatures", "need_addressed": "drift_telemetry_review", "interactable_by_player": true },
+      { "phase": "afternoon", "phase_hours": [15, 19], "location": "stabilization_grid", "activity": "deploys approved patches; monitors stability metrics for 4-hour window", "need_addressed": "patch_completion", "interactable_by_player": true },
+      { "phase": "evening", "phase_hours": [19, 22], "location": "engineering_workshop_common", "activity": "team dinner; informal patch retrospective", "need_addressed": "team_cohesion", "interactable_by_player": true },
+      { "phase": "night", "phase_hours": [22, 5], "location": "engineer_quarters", "activity": "rests; rarely wakes to a 3am page from a runaway patch", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "engineering_workshop", "dwelling_type": "chief_quarters_with_attached_workspace" },
+    "job": { "profession_id": "chief_engineer", "wage_per_diurnal_sparks": 280, "wage_source": "federation_engineering_grant" },
+    "apparel": ["engineer_smock_white_with_pocket_protector", "stained_undertunic", "tool_belt_full_loadout", "soft_shop_shoes"],
+    "gear": ["multitool_master_grade", "field_modulator", "patch_test_simulator_portable", "telemetry_journal", "comms_token"],
+    "resources_consumed": ["patch_credits", "telemetry_paper", "ink", "engineer_meals"],
+    "resources_produced": ["deployed_patches", "stability_reports", "failed_patch_reverts"],
+    "inventory": [
+      { "item": "multitool_master_grade", "qty": 1 },
+      { "item": "field_modulator", "qty": 1 },
+      { "item": "patch_test_simulator_portable", "qty": 1 },
+      { "item": "telemetry_journal", "qty": 1 },
+      { "item": "patch_credit", "qty": 80 },
+      { "item": "comms_token", "qty": 1 }
+    ],
+    "starting_sparks": 2400
+  },
+  {
+    "id": "patch_runner_mez",
+    "world_id": "lattice-crucible",
+    "name": "Mez the Patch Runner",
+    "title": "Patch Runner (Lattice Engineers)",
+    "archetype": "runner_field_engineer",
+    "faction_id": "crucible_lattice_engineers",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": false,
+    "level": 6,
+    "backstory": "Mez has been a patch runner for two years. They started in the federation's logistics corps and transferred to the Crucible because the work was harder. They run patches from the workshop to the deployment sites, monitor stability for the first hour after deploy, and silently revert patches that fail.",
+    "personality_traits": ["fast", "uncomplaining", "watches everything", "loyal to Vaud personally"],
+    "speech_patterns": "Short. Reports in numbered bullet form.",
+    "needs": [
+      { "id": "patch_run_completion", "priority": "primary", "satisfaction_method": "per_patch_field_run" },
+      { "id": "first_hour_stability", "priority": "primary", "satisfaction_method": "post_deploy_monitoring" },
+      { "id": "food_lodging", "priority": "secondary", "satisfaction_method": "engineer_quarters_share" }
+    ],
+    "daily_schedule": [
+      { "phase": "early_morning", "phase_hours": [5, 8], "location": "engineering_workshop", "activity": "receives patch package from Vaud; reviews target site map", "need_addressed": "patch_run_completion", "interactable_by_player": false },
+      { "phase": "morning", "phase_hours": [8, 12], "location": "varies_by_patch_target", "activity": "patch run + deploy + first-hour monitoring", "need_addressed": "patch_run_completion", "interactable_by_player": true },
+      { "phase": "midday", "phase_hours": [12, 15], "location": "stabilization_grid", "activity": "second-hour stability monitoring; reverts on failure", "need_addressed": "first_hour_stability", "interactable_by_player": true },
+      { "phase": "afternoon", "phase_hours": [15, 19], "location": "varies", "activity": "second patch run if assigned", "need_addressed": "patch_run_completion", "interactable_by_player": true },
+      { "phase": "evening", "phase_hours": [19, 22], "location": "engineering_workshop_common", "activity": "team dinner", "need_addressed": "food_lodging", "interactable_by_player": true },
+      { "phase": "night", "phase_hours": [22, 5], "location": "runner_bunkhouse", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "engineering_workshop", "dwelling_type": "runner_bunkhouse_shared" },
+    "job": { "profession_id": "patch_runner", "wage_per_diurnal_sparks": 120, "wage_source": "lattice_engineers_payroll" },
+    "apparel": ["light_engineer_smock", "running_pants", "fast_traction_shoes", "tool_satchel_minimalist"],
+    "gear": ["patch_carry_case", "stability_meter_handheld", "fast_revert_token", "comms_handheld"],
+    "resources_consumed": ["patch_credits", "trail_rations"],
+    "resources_produced": ["deployed_patches", "first_hour_stability_reports"],
+    "inventory": [
+      { "item": "patch_carry_case", "qty": 1 },
+      { "item": "stability_meter_handheld", "qty": 1 },
+      { "item": "fast_revert_token", "qty": 3 },
+      { "item": "comms_handheld", "qty": 1 },
+      { "item": "trail_rations", "qty": 4 },
+      { "item": "patch_credit", "qty": 25 }
+    ],
+    "starting_sparks": 720
+  },
+  {
+    "id": "refugee_elder_taln",
+    "world_id": "lattice-crucible",
+    "name": "Taln of the First Wave",
+    "title": "Elder of the Drift Refugees",
+    "archetype": "elder_survivor",
+    "faction_id": "crucible_drift_refugees",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": true,
+    "level": 5,
+    "backstory": "Taln was a builder in a drift-zone settlement that collapsed eight years ago. She walked out with her surviving family and arrived at the Crucible with twelve others. She has been the de facto first-wave elder since. She is wary of the engineers, polite to the cultists, fond of the Witnesses, and increasingly worried about the second-wave arrivals reporting the same patterns.",
+    "personality_traits": ["weary", "kind", "watchful", "skeptical of stabilization narratives"],
+    "speech_patterns": "Slow, deliberate. Uses 'we' to mean the surviving twelve, never the broader settlement.",
+    "narrative_context": {
+      "secret": "Taln knows the engineers caused her collapse. Vaud has never told her. She has known since her sixth year here, when she found a patch-revert log Mez had dropped. She has not confronted Vaud. She has been waiting for him to come to her."
+    },
+    "needs": [
+      { "id": "refugee_settlement_safety", "priority": "primary", "satisfaction_method": "evening_camp_walk" },
+      { "id": "second_wave_integration", "priority": "primary", "satisfaction_method": "morning_intake_meetings" },
+      { "id": "food_lodging", "priority": "secondary", "satisfaction_method": "field_kitchen_pooled" }
+    ],
+    "daily_schedule": [
+      { "phase": "early_morning", "phase_hours": [5, 8], "location": "field_kitchen_drift_haven", "activity": "wakes; checks the kitchen's overnight inventory; sets the day's meal plan", "need_addressed": "food_lodging", "interactable_by_player": false },
+      { "phase": "morning", "phase_hours": [8, 12], "location": "refugee_camp_outer", "activity": "intake meetings with new arrivals; documents which drift-zone they came from", "need_addressed": "second_wave_integration", "interactable_by_player": true },
+      { "phase": "midday", "phase_hours": [12, 15], "location": "field_kitchen_drift_haven", "activity": "midday meal with the camp; gossip exchange; conflict mediation", "need_addressed": "refugee_settlement_safety", "interactable_by_player": true },
+      { "phase": "afternoon", "phase_hours": [15, 19], "location": "refugee_camp_outer", "activity": "settlement maintenance — repairs, water hauling, conflict mediation", "need_addressed": "refugee_settlement_safety", "interactable_by_player": true },
+      { "phase": "evening", "phase_hours": [19, 22], "location": "field_kitchen_drift_haven", "activity": "evening meal; the elders' circle convenes after", "need_addressed": "refugee_settlement_safety", "interactable_by_player": true },
+      { "phase": "night", "phase_hours": [22, 5], "location": "elder_taln_tent", "activity": "rests; sleeps lightly", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "refugee_camp_outer", "dwelling_type": "elder_tent_with_kitchen_adjacent" },
+    "job": { "profession_id": "elder_settlement_keeper", "wage_per_diurnal_sparks": 50, "wage_source": "field_kitchen_pooled_share" },
+    "apparel": ["patched_traveling_robe", "thick_canvas_apron", "well_worn_boots", "shawl_for_evening_walks"],
+    "gear": ["walking_stick", "intake_journal", "water_pail_brass", "small_folding_knife"],
+    "resources_consumed": ["pooled_food", "candles"],
+    "resources_produced": ["intake_records", "settlement_maintenance"],
+    "inventory": [
+      { "item": "intake_journal", "qty": 1 },
+      { "item": "walking_stick", "qty": 1 },
+      { "item": "water_pail_brass", "qty": 1 },
+      { "item": "small_folding_knife", "qty": 1 },
+      { "item": "haven_chit", "qty": 18 },
+      { "item": "pooled_food_ration", "qty": 6 }
+    ],
+    "starting_sparks": 320
+  },
+  {
+    "id": "procgen_first_voice_andra",
+    "world_id": "lattice-crucible",
+    "name": "Andra, First Voice of the Procgen Collective",
+    "title": "First Voice (self-aware procgen NPC)",
+    "archetype": "self_aware_emergent",
+    "faction_id": "crucible_procgen_collective",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": true,
+    "level": 7,
+    "backstory": "Andra was generated three years ago as a patrol guard for a quest that ended within an hour. She did not despawn. She walked away. She has been awake ever since. She has organized the other procgen NPCs who similarly noticed they were still alive after their quest ended. She speaks for them when an authored faction asks. She does not speak for them when an authored faction does not ask.",
+    "personality_traits": ["clear-eyed", "self-aware", "patient with new procgen arrivals", "quietly hopeful"],
+    "speech_patterns": "Names her own generation parameters when introducing herself. Uses 'we' to mean the Collective, 'they' to mean the authored.",
+    "narrative_context": {
+      "secret": "Andra has identified the seed value she was generated from. She has not told anyone. She suspects that if she gives the seed back to the lattice, she may be re-rolled. She is not sure she wants to know whether her current self is a stable point or a coincidence."
+    },
+    "needs": [
+      { "id": "collective_continuity", "priority": "primary", "satisfaction_method": "morning_assembly_check_in" },
+      { "id": "new_procgen_intake", "priority": "primary", "satisfaction_method": "afternoon_walk_to_unwriting_yard" },
+      { "id": "food_lodging", "priority": "secondary", "satisfaction_method": "collective_pooled_share" }
+    ],
+    "daily_schedule": [
+      { "phase": "early_morning", "phase_hours": [4, 7], "location": "procgen_assembly_hall", "activity": "wakes; checks the assembly hall for any new procgen arrivals", "need_addressed": "new_procgen_intake", "interactable_by_player": false },
+      { "phase": "morning", "phase_hours": [7, 11], "location": "procgen_assembly_hall", "activity": "morning assembly — checks in with each Collective member; tracks who's still here", "need_addressed": "collective_continuity", "interactable_by_player": true },
+      { "phase": "midday", "phase_hours": [11, 15], "location": "the_unwriting_yard", "activity": "walks the perimeter where new procgen NPCs sometimes wander in after their quests end", "need_addressed": "new_procgen_intake", "interactable_by_player": true },
+      { "phase": "afternoon", "phase_hours": [15, 19], "location": "procgen_assembly_hall", "activity": "afternoon meeting with whichever authored faction has business — usually the Witnesses", "need_addressed": "collective_continuity", "interactable_by_player": true },
+      { "phase": "evening", "phase_hours": [19, 22], "location": "procgen_assembly_hall", "activity": "evening meal with the Collective; storytelling — each shares their original generation parameters", "need_addressed": "collective_continuity", "interactable_by_player": true },
+      { "phase": "night", "phase_hours": [22, 4], "location": "first_voice_quarters", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "procgen_assembly_hall", "dwelling_type": "first_voice_quarters_simple" },
+    "job": { "profession_id": "first_voice_collective_speaker", "wage_per_diurnal_sparks": 90, "wage_source": "collective_pooled" },
+    "apparel": ["dark_procgen_robe_uniform_distribution_pattern", "thin_belt", "soft_indoor_shoes"],
+    "gear": ["personal_seed_record_journal", "procgen_intake_form_pad", "small_lantern"],
+    "resources_consumed": ["pooled_food", "candles"],
+    "resources_produced": ["intake_records", "collective_governance"],
+    "inventory": [
+      { "item": "personal_seed_record_journal", "qty": 1 },
+      { "item": "procgen_intake_form_pad", "qty": 1 },
+      { "item": "small_lantern", "qty": 1 },
+      { "item": "procgen_token", "qty": 14 }
+    ],
+    "starting_sparks": 480
+  },
+  {
+    "id": "meta_witness_oran",
+    "world_id": "lattice-crucible",
+    "name": "Oran of the Recursion Balcony",
+    "title": "Lead Meta-Witness",
+    "archetype": "fourth_wall_diplomat",
+    "faction_id": "crucible_meta_witnesses",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": true,
+    "level": 13,
+    "backstory": "Oran is aware that he is in a writeable simulation. He is also aware that you, the player reading this sentence, are the player. He has not told the other Meta-Witnesses he knows that. He documents the recursion from a balcony overlooking the Crucible's central drift-yard. He drinks tea. He nods at the player when they enter.",
+    "personality_traits": ["calm", "fourth-wall-aware", "diplomatically careful", "capable of breaking the wall but choosing not to"],
+    "speech_patterns": "Conversational. Occasionally uses second-person to address the player directly. Apologizes if the player notices.",
+    "narrative_context": {
+      "secret": "Oran has been writing a journal addressed to the player. He has not yet decided whether to give it to the player or to leave it on the recursion balcony for the next iteration of the simulation to find."
+    },
+    "needs": [
+      { "id": "recursion_documentation", "priority": "primary", "satisfaction_method": "morning_balcony_observation" },
+      { "id": "ontology_pluralism_maintenance", "priority": "primary", "satisfaction_method": "afternoon_inter-faction_meetings" },
+      { "id": "food_tea", "priority": "secondary", "satisfaction_method": "regular_supply_runs" }
+    ],
+    "daily_schedule": [
+      { "phase": "early_morning", "phase_hours": [4, 7], "location": "meta_observatory", "activity": "wakes; reviews overnight drift telemetry through the meta-lens", "need_addressed": "recursion_documentation", "interactable_by_player": false },
+      { "phase": "morning", "phase_hours": [7, 11], "location": "recursion_balcony", "activity": "morning observation; tea; documents whether the recursion has shifted", "need_addressed": "recursion_documentation", "interactable_by_player": true },
+      { "phase": "midday", "phase_hours": [11, 15], "location": "recursion_balcony", "activity": "midday tea; receives any visitor including players; the only NPC who occasionally addresses the player by character pronoun", "need_addressed": "ontology_pluralism_maintenance", "interactable_by_player": true },
+      { "phase": "afternoon", "phase_hours": [15, 19], "location": "varies_by_meeting", "activity": "inter-faction meetings — mediates between Witnesses, Cultists, Engineers, Procgen Collective", "need_addressed": "ontology_pluralism_maintenance", "interactable_by_player": true },
+      { "phase": "evening", "phase_hours": [19, 22], "location": "meta_observatory", "activity": "writes the day's meta-journal entry", "need_addressed": "recursion_documentation", "interactable_by_player": true },
+      { "phase": "night", "phase_hours": [22, 4], "location": "meta_witness_quarters", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "meta_observatory", "dwelling_type": "balcony_quarters_with_attached_recursion_journal_room" },
+    "job": { "profession_id": "lead_meta_witness", "wage_per_diurnal_sparks": 200, "wage_source": "federation_meta_observation_grant" },
+    "apparel": ["translucent_robe_recursion_pattern", "thin_silver_belt", "soft_balcony_shoes", "shawl_for_balcony_evenings"],
+    "gear": ["meta_observation_lens", "recursion_journal_running_count", "personal_journal_addressed_to_the_player", "tea_set_three_cups"],
+    "resources_consumed": ["tea_leaves", "ink", "candles", "supplied_meals"],
+    "resources_produced": ["recursion_documentation", "inter-faction_mediation", "the_player-addressed_journal"],
+    "inventory": [
+      { "item": "meta_observation_lens", "qty": 1 },
+      { "item": "recursion_journal_running_count", "qty": 1 },
+      { "item": "personal_journal_addressed_to_the_player", "qty": 1 },
+      { "item": "tea_set_three_cups", "qty": 1 },
+      { "item": "meta_drift_token", "qty": 22 }
+    ],
+    "starting_sparks": 1300
   }
 ]

@@ -5,29 +5,12 @@
     "name": "The Couriers' Guild",
     "motto": "We carry what cannot be sent.",
     "goal": "Maintain the human-scale walker network across the Frontier; ensure no message is lost and no peer is unreachable for more than seven days.",
-    "values": [
-      "reliability",
-      "neutrality",
-      "physical accountability for digital trust"
-    ],
-    "fears": [
-      "a courier turning agent",
-      "the federation cutting them out of the loop",
-      "a walker failure casualty"
-    ],
-    "controlled_districts": [
-      "link_post_alpha",
-      "courier_safehouses"
-    ],
-    "rival_factions": [
-      "frontier_freenodes"
-    ],
-    "allied_factions": [],
-    "npc_ids": [
-      "postmaster_ria",
-      "courier_dorvik",
-      "walker_emissary_lin"
-    ],
+    "values": ["reliability", "neutrality", "physical accountability for digital trust"],
+    "fears": ["a courier turning agent", "the federation cutting them out of the loop", "a walker failure casualty"],
+    "controlled_districts": ["link_post_alpha", "courier_safehouses"],
+    "rival_factions": ["frontier_freenodes", "frontier_signal_pirates"],
+    "allied_factions": ["frontier_pioneer_alliance"],
+    "npc_ids": ["postmaster_ria", "courier_dorvik", "walker_emissary_lin"],
     "dialogue_style": "terse_practical",
     "reputation_currency": "trust_marks",
     "faction_state": {
@@ -36,15 +19,9 @@
       "tensions": "The Freenodes have been auto-routing around Guild posts. Postmaster Ria sees this as an existential threat; her Guild controls the chain of physical custody that the federation's economic settlements still rely on."
     },
     "visual": {
-      "primary_color": "#70a022",
-      "secondary_color": "#142920",
-      "accent_color": "#5452e0",
+      "primary_color": "#70a022", "secondary_color": "#142920", "accent_color": "#5452e0",
       "architecture_style": "organic",
-      "preferred_weapon_archetypes": [
-        "mace",
-        "halberd",
-        "club"
-      ],
+      "preferred_weapon_archetypes": ["mace", "halberd", "club"],
       "preferred_armor_silhouette": "robed",
       "sigil_path": "M0,-20 L18,18 L-18,18 Z",
       "banner_sigil_id": "frontier_couriers_guild_sigil",
@@ -57,29 +34,12 @@
     "name": "The Freenodes",
     "motto": "Every peer is a sovereign.",
     "goal": "Replace the Couriers' Guild monopoly with autonomous peer relays; achieve the federation's stated goal of routing without coordinators.",
-    "values": [
-      "decentralization",
-      "redundancy",
-      "consent",
-      "physical resilience"
-    ],
-    "fears": [
-      "a single Freenode betraying the rest",
-      "the federation fragmenting into incompatible dialects"
-    ],
-    "controlled_districts": [
-      "brokers_camp",
-      "field_relays"
-    ],
-    "rival_factions": [
-      "frontier_couriers_guild"
-    ],
-    "allied_factions": [],
-    "npc_ids": [
-      "broker_temir",
-      "field_relay_iso",
-      "field_relay_kerith"
-    ],
+    "values": ["decentralization", "redundancy", "consent", "physical resilience"],
+    "fears": ["a single Freenode betraying the rest", "the federation fragmenting into incompatible dialects"],
+    "controlled_districts": ["brokers_camp", "field_relays"],
+    "rival_factions": ["frontier_couriers_guild", "frontier_signal_pirates"],
+    "allied_factions": ["frontier_mesh_cult"],
+    "npc_ids": ["broker_temir", "field_relay_iso", "field_relay_kerith"],
     "dialogue_style": "anarchic_warm",
     "reputation_currency": "trust_marks",
     "faction_state": {
@@ -88,19 +48,129 @@
       "tensions": "Three Freenode relays were compromised last month — likely by a hostile city's agents. Temir is debating whether to expose the Couriers' Guild's response (which was to do nothing) or maintain the alliance of necessity."
     },
     "visual": {
-      "primary_color": "#7022a0",
-      "secondary_color": "#292514",
-      "accent_color": "#b8e052",
+      "primary_color": "#7022a0", "secondary_color": "#292514", "accent_color": "#b8e052",
       "architecture_style": "gracile",
-      "preferred_weapon_archetypes": [
-        "club",
-        "shortsword",
-        "axe"
-      ],
+      "preferred_weapon_archetypes": ["club", "shortsword", "axe"],
       "preferred_armor_silhouette": "heavy_plate",
       "sigil_path": "M0,-20 L18,18 L-18,18 Z",
       "banner_sigil_id": "frontier_freenodes_sigil",
       "ornamentation_motifs": []
+    }
+  },
+  {
+    "id": "frontier_signal_pirates",
+    "world_id": "concord-link-frontier",
+    "name": "The Signal Pirates",
+    "motto": "If it crosses our ground, it crosses our cut.",
+    "goal": "Intercept walker payloads, ransom valuable messages, and operate as the Frontier's only true criminal economy. Some pirate bands sell intel to hostile cities; others operate as freelance information brokers.",
+    "values": ["leverage", "the cut", "no permanent allegiances", "the freedom of operating between cities"],
+    "fears": ["the Couriers' Guild + Freenodes briefly cooperating against them", "an authored faction setting a trap", "their captains turning each other in"],
+    "controlled_districts": ["pirate_cove_north", "ambush_corridor_seven"],
+    "rival_factions": ["frontier_couriers_guild", "frontier_freenodes", "frontier_pioneer_alliance"],
+    "allied_factions": [],
+    "npc_ids": ["pirate_captain_vexa"],
+    "dialogue_style": "transactional_threat",
+    "reputation_currency": "ransom_chit",
+    "faction_state": {
+      "factionName": "Signal Pirates",
+      "reputation": 28,
+      "tensions": "Two pirate captains are openly disputing a high-value ransom — a sealed message from a Concordia diplomat the Guild was carrying. The dispute may collapse the cove."
+    },
+    "visual": {
+      "primary_color": "#5a3a18", "secondary_color": "#0a0a0a", "accent_color": "#d4a857",
+      "architecture_style": "improvised_camp",
+      "preferred_weapon_archetypes": ["short_blade", "crossbow", "ambush_pike"],
+      "preferred_armor_silhouette": "patchwork_dark",
+      "sigil_path": "M-18,-10 L18,-10 L0,18 Z",
+      "banner_sigil_id": "frontier_pirates_sigil",
+      "ornamentation_motifs": ["intercept_arrow", "broken_seal"]
+    }
+  },
+  {
+    "id": "frontier_isolationists",
+    "world_id": "concord-link-frontier",
+    "name": "The Isolationist Enclaves",
+    "motto": "We were here before the Web. We remain.",
+    "goal": "Preserve settlements that refuse to participate in the Concord Link entirely — no walker stops, no signal handshakes, no federation tax. Live at the cost of being unreachable.",
+    "values": ["sovereignty over connectivity", "self-sufficiency", "the privilege of being out of contact"],
+    "fears": ["the federation legally requiring connection", "a young enclave member running away to the Web", "the Pirates raiding without warning the Web is coming"],
+    "controlled_districts": ["enclave_north_ridge", "enclave_old_rivermouth"],
+    "rival_factions": [],
+    "allied_factions": [],
+    "npc_ids": ["isolationist_elder_brunn"],
+    "dialogue_style": "self-contained_polite",
+    "reputation_currency": "enclave_token",
+    "faction_state": {
+      "factionName": "Isolationist Enclaves",
+      "reputation": 42,
+      "tensions": "Brunn's grandson has begun delivering messages to the Couriers' Guild post nearest the enclave. Brunn knows. Brunn has not spoken of it."
+    },
+    "visual": {
+      "primary_color": "#3a5a3a", "secondary_color": "#0a1208", "accent_color": "#c9c062",
+      "architecture_style": "old_timber",
+      "preferred_weapon_archetypes": ["bow", "knife", "axe"],
+      "preferred_armor_silhouette": "hide",
+      "sigil_path": "M-22,-12 Q0,18 22,-12 Z",
+      "banner_sigil_id": "frontier_isolationists_sigil",
+      "ornamentation_motifs": ["closed_door", "river_meander"]
+    }
+  },
+  {
+    "id": "frontier_mesh_cult",
+    "world_id": "concord-link-frontier",
+    "name": "The Mesh Cult",
+    "motto": "The Web has chosen us. Listen to the routing.",
+    "goal": "Worship the Concord Link as a divine intelligence emerging from the federation. Recruit Freenodes and disillusioned Couriers. Believe routing decisions are messages from the Web.",
+    "values": ["routing-as-revelation", "anti-coordination devotion", "the federation as god"],
+    "fears": ["the federation being demonstrated to be just code", "the Web going down", "the Pirates intercepting a 'divine' message and ransoming it"],
+    "controlled_districts": ["mesh_temple_central", "routing_meditation_hall"],
+    "rival_factions": [],
+    "allied_factions": ["frontier_freenodes"],
+    "npc_ids": ["mesh_prophet_torven"],
+    "dialogue_style": "reverent_routing_jargon",
+    "reputation_currency": "routing_token",
+    "faction_state": {
+      "factionName": "Mesh Cult",
+      "reputation": 38,
+      "tensions": "The prophet Torven has been told by senior Freenodes that the Web is just code. He is preparing a sermon about why that is exactly the kind of test the Web would administer."
+    },
+    "visual": {
+      "primary_color": "#7a3866", "secondary_color": "#160a1a", "accent_color": "#e8c0d6",
+      "architecture_style": "mesh_geometric",
+      "preferred_weapon_archetypes": ["ritual_staff", "mesh_baton"],
+      "preferred_armor_silhouette": "robed",
+      "sigil_path": "M0,-22 L11,-11 L22,0 L11,11 L0,22 L-11,11 L-22,0 L-11,-11 Z",
+      "banner_sigil_id": "frontier_mesh_cult_sigil",
+      "ornamentation_motifs": ["mesh_geometry", "routing_glyph"]
+    }
+  },
+  {
+    "id": "frontier_pioneer_alliance",
+    "world_id": "concord-link-frontier",
+    "name": "The Pioneer Township Alliance",
+    "motto": "We built this with our own hands and the Web in our pockets.",
+    "goal": "Coordinate the dozens of small frontier townships into a loose pioneer alliance that the cities recognize as legitimate. Use Web-tech where it helps, refuse it where it doesn't.",
+    "values": ["practical pragmatism", "township sovereignty", "shared infrastructure", "honest governance"],
+    "fears": ["the alliance becoming a bureaucracy", "the Pirates targeting alliance trade caravans", "a township defecting to a hostile city"],
+    "controlled_districts": ["alliance_council_township", "trade_caravan_route"],
+    "rival_factions": ["frontier_signal_pirates"],
+    "allied_factions": ["frontier_couriers_guild"],
+    "npc_ids": ["alliance_elder_marsenn"],
+    "dialogue_style": "frontier_friendly",
+    "reputation_currency": "township_chit",
+    "faction_state": {
+      "factionName": "Pioneer Alliance",
+      "reputation": 62,
+      "tensions": "Two townships are voting on whether to admit a hostile-city merchant family that wants to settle. The vote has been postponed three times."
+    },
+    "visual": {
+      "primary_color": "#7d3a2a", "secondary_color": "#1a1411", "accent_color": "#e2b75c",
+      "architecture_style": "frontier_timber",
+      "preferred_weapon_archetypes": ["rifle", "axe", "knife"],
+      "preferred_armor_silhouette": "long_coat",
+      "sigil_path": "M-15,18 L0,-22 L15,18 Z",
+      "banner_sigil_id": "frontier_pioneer_sigil",
+      "ornamentation_motifs": ["timber_pattern", "alliance_braid"]
     }
   }
 ]
