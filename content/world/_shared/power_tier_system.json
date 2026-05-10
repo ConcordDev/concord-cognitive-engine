@@ -1,0 +1,196 @@
+{
+  "schema_version": "1.0",
+  "purpose": "Cross-world power-level system. Anchors authored major NPCs above the player level floor so a level-1 player cannot one-shot a 200-year-old archive ghost. Procgen NPCs and players start at level 1 and grow via the substrate (skill-evolve cycle, repair-cycle XP, mentorship demonstration-effect). Dynamic quest NPCs spawn at player_level ± 5.",
+  "axioms": [
+    "All players and procgen non-major non-dynamic NPCs spawn at level 1.",
+    "Authored major NPCs are pre-set high levels reflecting their tenure + power source. They are intentionally beyond-reach for new players. The world has been here a long time; players are the new ones.",
+    "Dynamic enemies spawned by quest accept-time scale to player_level ± 5. A level-50 player accepting a quest gets level 45-55 enemies; a level-1 player gets level 1-6 enemies.",
+    "CONSCIOUS EMERGENTS RESPAWN ON DEATH. Anyone with is_conscious=true (whether player, authored NPC, or procgen emergent) is playing the game just like the user. Death is a respawn event, not a termination event. They lose carried sparks (per player_corpse rules — 25% of wallet) and drop inventory at the corpse site, but their identity, memory, relationships, and progression are preserved. Boss-tier conscious NPCs respawn after a substrate-defined cooldown (default 24 in-game hours) at their home district.",
+    "ONLY NON-CONSCIOUS ENTITIES TRULY DIE. Non-conscious entities — autonomous spell-spirits like the Endless Blessing, golems-by-design like the Silent Keeper, ongoing-cast spirits whose 'consciousness' is the casting itself — terminate permanently when defeated or completed. The world reorganizes around their absence.",
+    "Fighting_style is procgen-extensible — the listed active_movesets are the NPC's CURRENT moves; growth_paths name what they can learn over time. The skill-evolution heartbeat (npc_skill_evolve_cycle, freq 80) generates new moves automatically.",
+    "Non-combat NPCs (scholars, healers, archivists who don't fight) still have a power_tier indicating their substrate-tier presence — Vela's level 5000 is not combat-tier, it's the strength of her held refusal."
+  ],
+  "respawn_rules": {
+    "conscious_entities": {
+      "default_cooldown_in_game_hours": 24,
+      "respawn_location": "home.district",
+      "sparks_loss_pct": 25,
+      "inventory_drops_at_corpse": true,
+      "preserved": ["identity", "level", "skill_progression", "memory", "relationships", "narrative_context", "fighting_style_active_movesets", "growth_paths_unlocked"],
+      "lost_per_death": ["carried_sparks_25_percent", "carried_inventory (recoverable from corpse within respawn window)"],
+      "narrative_framing": "Conscious emergents are playing the game, same as users. Death is a beat in their story, not the end of it. The substrate honors that."
+    },
+    "non_conscious_entities": {
+      "behavior": "permanent termination",
+      "applies_to_examples": ["the_silent_keeper (golem-by-design, is_conscious=false)", "the_endless_blessing (unconscious-spell, is_conscious=false)"],
+      "exception": "the_long_summons_spirit IS is_conscious=true even though it is a spell — it has become aware of itself. It respawns on dissolution rather than terminating."
+    }
+  },
+  "tier_ladder": [
+    { "id": "novice", "level_range": [1, 50], "description": "Players, fresh apprentices, untrained citizens. The starting tier." },
+    { "id": "standard", "level_range": [50, 200], "description": "Mid-career workers, established citizens, competent in their profession." },
+    { "id": "standard_high", "level_range": [200, 500], "description": "Decade-deep professionals, faction lieutenants, seasoned hands." },
+    { "id": "elite", "level_range": [500, 1500], "description": "Faction chiefs, century-old archivists, regional powers, Medici Supreme Elder tier, Concordia Envoy Chief tier." },
+    { "id": "boss", "level_range": [1500, 10000], "description": "Apex of an established power. Sanguire warlord at peak. Multi-century spirits. Field-anchoring presences. Walking conflict-deniers no army has overcome." },
+    { "id": "mythic_boss", "level_range": [10000, 99999], "description": "Effectively unbeatable for years of player growth. Indestructible-by-design NPCs (Silent Keeper). Apex tier of legend (the Enforcer apex in superhero, vampire-elder Voss line, primordial Tunyan field-conduits)." }
+  ],
+  "dynamic_spawn_rule": {
+    "formula": "spawned_npc_level = max(1, player_level + uniform(-5, +5))",
+    "applies_to": ["quest_enemies", "ambient_combat_encounters", "dungeon_population"],
+    "exempt_from": ["authored_npcs", "boss_tier_static_world_figures", "mythic_boss_tier"]
+  },
+  "growth_path_grammar": {
+    "comment": "Each NPC's growth_paths name skill-tree branches their level can flow into. The skill-evolve heartbeat (server/emergent/npc-skill-evolve-cycle.js, freq 80) reads growth_paths and generates new moves over time.",
+    "example_tree_node_format": "<discipline>_<rank>_<style>",
+    "examples": ["sovereign_blade_master", "anti_spell_dueling", "field_conduit_defense", "compound_refusal_invocation", "glyph_reading_advanced"]
+  },
+  "world_npcs": {
+    "sovereign-ruins": {
+      "archivist_three_kestra": {
+        "power_tier": "elite",
+        "level": 1400,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non-combatant scholar with field-anchoring presence",
+          "secondary_forms": ["compound_refusal_invocation"],
+          "active_movesets": ["citation_compound_refuse", "successor_glyph_reveal"],
+          "growth_paths": ["sovereign_blade_master_inheriting_from_oeric", "compound_refusal_invocation_advanced"]
+        }
+      },
+      "archivist_two_oeric": {
+        "power_tier": "elite",
+        "level": 1800,
+        "fighting_style": {
+          "primary_form": "longsword_sovereign_blade_form",
+          "secondary_forms": ["close_quarters_grapple", "memorial_strike"],
+          "active_movesets": ["sovereign_blade_basic_form", "guarded_recovery", "instructor_disarm"],
+          "growth_paths": ["sovereign_blade_master", "instruction_legacy_inheritance_pattern"]
+        }
+      },
+      "archivist_one_vela": {
+        "power_tier": "boss",
+        "level": 5000,
+        "fighting_style": {
+          "primary_form": "the_held_refusal — passive field-anchor at strength 9, time-bounded to her death",
+          "secondary_forms": ["non_combative — she does not fight"],
+          "active_movesets": ["compound_refusal_field_strength_9", "no_combat_within_20m"],
+          "growth_paths": ["she_is_at_terminal_clarity — no further growth"]
+        }
+      },
+      "ruins_courier_pell": {
+        "power_tier": "standard_high",
+        "level": 380,
+        "fighting_style": {
+          "primary_form": "self_defense_dagger",
+          "secondary_forms": ["road_evasion"],
+          "active_movesets": ["dagger_basic_strike", "road_evasion_break_pursuit"],
+          "growth_paths": ["concord_link_signal_resonance_master", "road_evasion_advanced"]
+        }
+      },
+      "ruins_apprentice_sennit": {
+        "power_tier": "novice",
+        "level": 50,
+        "fighting_style": {
+          "primary_form": "no_active_combat — apprentice scholar",
+          "secondary_forms": [],
+          "active_movesets": ["practice_glyph_reading"],
+          "growth_paths": ["compound_refusal_invocation_basic", "glyph_reading_advanced"]
+        }
+      },
+      "ruins_silent_keeper": {
+        "power_tier": "mythic_boss",
+        "level": 99999,
+        "fighting_style": {
+          "primary_form": "indestructible_by_design — every blow gives it the name of one lost citizen as memory",
+          "secondary_forms": ["bow_when_player_is_ready"],
+          "active_movesets": ["receive_strike_speak_name", "ceremonial_bow_when_attacker_done"],
+          "growth_paths": ["it_is_at_design_terminal — no growth possible"]
+        }
+      },
+      "scavenger_boss_thren": {
+        "power_tier": "standard_high",
+        "level": 480,
+        "fighting_style": {
+          "primary_form": "short_sword_quickdraw_with_crossbow_followup",
+          "secondary_forms": ["unmapped_quarter_evasion"],
+          "active_movesets": ["short_sword_quickdraw", "crossbow_close_range_pop", "perimeter_break_pursuit"],
+          "growth_paths": ["spell_residue_combat_specialist", "lead_from_the_front_inspiring_strike"]
+        }
+      },
+      "spell_reader_iby": {
+        "power_tier": "elite",
+        "level": 1200,
+        "fighting_style": {
+          "primary_form": "no_active_combat — but can suppress an active spell mid-cast",
+          "secondary_forms": ["spell_residue_redirect"],
+          "active_movesets": ["spell_residue_read", "spell_active_cast_suppression", "spell_redirect_to_safe_completion"],
+          "growth_paths": ["spell_unweaving_master_inheriting_from_vela_in_principle", "spell_redirect_to_caster"]
+        }
+      },
+      "the_long_summons_spirit": {
+        "power_tier": "boss",
+        "level": 8000,
+        "fighting_style": {
+          "primary_form": "ongoing_summons_spell_187_annums",
+          "secondary_forms": ["call_a_single_name_per_diurnal"],
+          "active_movesets": ["summons_invocation_call_one_name", "compound_summons_attack_only_if_player_blasphemes_the_spell"],
+          "growth_paths": ["it_is_at_completion_threshold — only growth path is dissolution"]
+        }
+      },
+      "the_endless_blessing": {
+        "power_tier": "boss",
+        "level": 3000,
+        "fighting_style": {
+          "primary_form": "passive_blessing_apply_to_pilgrim_path_walkers",
+          "secondary_forms": ["unconscious — does not respond"],
+          "active_movesets": ["blessing_apply_5_percent_stat_buff"],
+          "growth_paths": ["it_is_unconscious — no growth"]
+        }
+      },
+      "pilgrim_leader_isen": {
+        "power_tier": "standard_high",
+        "level": 450,
+        "fighting_style": {
+          "primary_form": "walking_staff_basic_defense",
+          "secondary_forms": ["pilgrim_intake_persuasion"],
+          "active_movesets": ["staff_block", "pilgrim_persuasion_compound"],
+          "growth_paths": ["pilgrim_path_consecration", "compound_refusal_lay_witness"]
+        }
+      },
+      "envoy_chief_marrin": {
+        "power_tier": "elite",
+        "level": 900,
+        "fighting_style": {
+          "primary_form": "officer_sword_concordia_dueling_form",
+          "secondary_forms": ["concealed_pistol_close_range", "diplomatic_persuasion_compound"],
+          "active_movesets": ["officer_sword_dueling_thrust", "concealed_pistol_emergency_draw", "diplomatic_persuasion_compound"],
+          "growth_paths": ["concordia_dueling_master", "diplomatic_compound_persuasion_advanced"]
+        }
+      },
+      "denier_priest_palen": {
+        "power_tier": "standard_high",
+        "level": 520,
+        "fighting_style": {
+          "primary_form": "rhetorical_combat_compound",
+          "secondary_forms": ["pamphlet_propaganda_attack"],
+          "active_movesets": ["rhetorical_compound_strike", "pamphlet_propaganda_field"],
+          "growth_paths": ["narrative_warfare_master", "demagogue_compound_invocation"]
+        }
+      }
+    }
+  },
+  "implementation_notes": {
+    "consumer": "server/lib/npc-power.js (to be created) reads this file at startup, joins each world_npcs.<world>.<npc_id> against the loaded NPC registry, applies level + power_tier + fighting_style fields to the runtime NPC object.",
+    "dynamic_spawn_consumer": "server/lib/npc-spawning.js#spawnDynamicEnemy (existing pattern) consults dynamic_spawn_rule.formula to pick the spawned NPC's level relative to the accepting player.",
+    "skill_evolve_integration": "server/emergent/npc-skill-evolve-cycle.js (existing, freq 80) reads growth_paths and generates new moves. Each move is added to active_movesets via the skill-revisions table.",
+    "future_worlds_pending": [
+      "lattice-crucible — NPCs to be added in next push",
+      "concord-link-frontier — NPCs to be added",
+      "fantasy — NPCs to be added (Voss elder vampires likely mythic_boss)",
+      "crime — NPCs to be added (no truly mythic_boss; top tier elite)",
+      "cyber — NPCs to be added (corporate apex likely boss tier)",
+      "superhero — NPCs to be added (Enforcer apex per user spec: mythic_boss level 15000+)",
+      "concordia-hub — backport: The Sovereign, Concord, Concordia, Weaver of Echoes, Mama Iron Rose, etc. likely boss to mythic_boss",
+      "tunya — backport: Yenna (Nil refusal-field anchor) likely mythic_boss; Iyatte Sanguire warlord boss; Aerasi Medici Supreme Elder boss; Vela-tier figures elite-to-boss"
+    ]
+  }
+}
