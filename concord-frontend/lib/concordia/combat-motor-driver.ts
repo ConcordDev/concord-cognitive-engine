@@ -113,7 +113,11 @@ export function tickCombatExecution(
   }
 
   const { phase, t } = phaseAtElapsed(elapsed);
-  const stiffness = exec.style.stiffnessCurve[phase];
+  // `peak` is a sub-phase of impact (shared frame near max contact) — the
+  // style stiffnessCurve doesn't define it explicitly so we reuse impact's
+  // stiffness for that window. All other phase keys are present.
+  const curveKey = phase === 'peak' ? 'impact' : phase;
+  const stiffness = exec.style.stiffnessCurve[curveKey];
   motors.setMode(stiffness);
 
   // Ease the current phase toward its targets via the broker.

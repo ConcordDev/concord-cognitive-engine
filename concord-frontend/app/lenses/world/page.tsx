@@ -4323,7 +4323,7 @@ export default function WorldLensPage() {
               feeding AvatarSystem3D above includes them. */}
           <WalkerNpcInjector
             worldId={activeDistrict?.id || 'concordia-hub'}
-            onWalkers={setWalkerNpcs}
+            onWalkers={(npcs) => setWalkerNpcs(npcs)}
           />
 
           {/* Sprint B.5 — tombs overlay: surfaces npc_legacies for the
@@ -4342,7 +4342,7 @@ export default function WorldLensPage() {
               world:region-spawned events + 5-min poll. */}
           <ProcgenSettlementNpcs
             worldId={activeDistrict?.id || 'concordia-hub'}
-            onSettlementNpcs={setProcgenNpcs}
+            onSettlementNpcs={(npcs) => setProcgenNpcs(npcs)}
           />
 
           {/* Sprint D Wave 1 — visible-substrate overlays. SeasonalEffects

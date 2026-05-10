@@ -8,12 +8,18 @@
  * brush response when the player position is near. Density scales with
  * quality preset.
  *
- * Mounted by ConcordiaScene next to the terrain renderer.
+ * Self-contained: mounts a fixed-position canvas + its own renderer +
+ * camera + scene + animation loop. Does NOT require an R3F `<Canvas>`
+ * parent (ConcordiaScene uses imperative Three.js, not R3F). The
+ * canvas is positioned as a transparent overlay so it composes with
+ * ConcordiaScene's render output.
+ *
+ * For zero-cost when grass shouldn't render (no player position fed,
+ * SSR), the component bails before allocating GPU resources.
  */
 
-import * as THREE from 'three';
 import { useEffect, useMemo, useRef } from 'react';
-import { useFrame, useThree } from '@react-three/fiber';
+import * as THREE from 'three';
 
 interface Props {
   /** Grass density 0..1. Default 0.6. */
@@ -42,18 +48,13 @@ const VERT = /* glsl */`
   attribute float instanceScale;
   attribute float instancePhase;
 
-  varying vec3 vColor;
   varying float vTipMix;
 
   void main() {
-    // Place the blade in the world.
     vec3 pos = position * instanceScale;
-
-    // Scaled height of the vertex (0 at base, 1 at tip) for the sway curve.
     float heightFactor = max(0.0, position.y);
     vTipMix = heightFactor;
 
-    // Procedural wind: low-freq base + high-freq jitter, modulated by direction.
     float baseWind = sin(uTime * 1.4 + instancePhase + instancePos.x * 0.15 + instancePos.z * 0.10);
     float jitter   = sin(uTime * 5.0 + instancePhase * 3.0) * 0.20;
     float sway = (baseWind + jitter) * uWindStrength * heightFactor;
@@ -61,7 +62,6 @@ const VERT = /* glsl */`
     pos.x += uWindDir.x * sway;
     pos.z += uWindDir.y * sway;
 
-    // Brush response: bend away from the player when within 1.5m.
     vec2 toPlayer = uPlayer - instancePos.xz;
     float pdist = length(toPlayer);
     if (pdist < 1.5 && pdist > 0.0001) {
@@ -73,9 +73,6 @@ const VERT = /* glsl */`
 
     vec4 worldPos = vec4(pos + instancePos, 1.0);
     gl_Position = projectionMatrix * viewMatrix * worldPos;
-
-    // Pass tipMix to fragment for colour gradient.
-    vColor = vec3(0.0);
   }
 `;
 
@@ -98,24 +95,13 @@ export default function InstancedGrass({
   bottomColor = '#385828',
   tipColor = '#7a9a55',
 }: Props) {
-  const { gl } = useThree();
-  const meshRef = useRef<THREE.Mesh>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const rafRef = useRef<number | null>(null);
   const startTime = useRef(performance.now() / 1000);
+  const playerPosRef = useRef(playerPos);
+  playerPosRef.current = playerPos;
 
-  // Build a single tall thin blade geometry once. Three vertices stacked.
-  const geometry = useMemo(() => {
-    const g = new THREE.BufferGeometry();
-    const verts = new Float32Array([
-      -0.04, 0,    0,
-       0.04, 0,    0,
-       0,    0.55, 0,
-    ]);
-    g.setAttribute('position', new THREE.BufferAttribute(verts, 3));
-    g.setIndex([0, 1, 2]);
-    return g;
-  }, []);
-
-  // Build per-instance attributes (positions, scales, phases).
+  // Memoised instance data so re-renders don't reallocate.
   const blades = Math.max(100, Math.floor(bladesPerTile * density));
   const instanceData = useMemo(() => {
     const positions = new Float32Array(blades * 3);
@@ -133,9 +119,30 @@ export default function InstancedGrass({
     return { positions, scales, phases };
   }, [blades, tileHalf]);
 
-  // Material with custom shader.
-  const material = useMemo(() => {
-    const m = new THREE.ShaderMaterial({
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    // Renderer + scene + camera (orthographic for bird's-eye composing).
+    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false });
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 500);
+    camera.position.set(0, 6, 12);
+    camera.lookAt(0, 0, 0);
+
+    // Blade geometry.
+    const bladeGeom = new THREE.BufferGeometry();
+    bladeGeom.setAttribute('position', new THREE.BufferAttribute(new Float32Array([
+      -0.04, 0,    0,
+       0.04, 0,    0,
+       0,    0.55, 0,
+    ]), 3));
+    bladeGeom.setIndex([0, 1, 2]);
+
+    // Material.
+    const material = new THREE.ShaderMaterial({
       vertexShader: VERT,
       fragmentShader: FRAG,
       uniforms: {
@@ -148,48 +155,60 @@ export default function InstancedGrass({
       },
       side: THREE.DoubleSide,
     });
-    return m;
-  }, [bottomColor, tipColor, windDirection]);
 
-  // Build the InstancedBufferGeometry attaching instance attributes.
-  const instGeometry = useMemo(() => {
-    const g = new THREE.InstancedBufferGeometry();
-    g.setAttribute('position', geometry.getAttribute('position'));
-    g.setIndex(geometry.getIndex());
-    g.setAttribute('instancePos', new THREE.InstancedBufferAttribute(instanceData.positions, 3));
-    g.setAttribute('instanceScale', new THREE.InstancedBufferAttribute(instanceData.scales, 1));
-    g.setAttribute('instancePhase', new THREE.InstancedBufferAttribute(instanceData.phases, 1));
-    g.instanceCount = blades;
-    return g;
-  }, [geometry, instanceData, blades]);
+    // InstancedBufferGeometry composing the blade with per-blade attributes.
+    const instGeom = new THREE.InstancedBufferGeometry();
+    instGeom.setAttribute('position', bladeGeom.getAttribute('position'));
+    const idx = bladeGeom.getIndex();
+    if (idx) instGeom.setIndex(idx);
+    instGeom.setAttribute('instancePos', new THREE.InstancedBufferAttribute(instanceData.positions, 3));
+    instGeom.setAttribute('instanceScale', new THREE.InstancedBufferAttribute(instanceData.scales, 1));
+    instGeom.setAttribute('instancePhase', new THREE.InstancedBufferAttribute(instanceData.phases, 1));
+    instGeom.instanceCount = blades;
 
-  useEffect(() => {
-    return () => {
-      instGeometry.dispose();
-      material.dispose();
-      geometry.dispose();
+    const mesh = new THREE.Mesh(instGeom, material);
+    scene.add(mesh);
+
+    const onResize = () => {
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
     };
-  }, [instGeometry, material, geometry]);
+    window.addEventListener('resize', onResize);
 
-  useFrame(() => {
-    const now = performance.now() / 1000 - startTime.current;
-    material.uniforms.uTime.value = now;
-    material.uniforms.uPlayer.value.set(playerPos.x, playerPos.z);
-    // Recentre tile under camera.
-    if (meshRef.current) {
-      meshRef.current.position.set(
-        Math.round(playerPos.x / 5) * 5,
-        playerPos.y,
-        Math.round(playerPos.z / 5) * 5,
+    const tick = () => {
+      const now = performance.now() / 1000 - startTime.current;
+      material.uniforms.uTime.value = now;
+      const pp = playerPosRef.current;
+      material.uniforms.uPlayer.value.set(pp.x, pp.z);
+      mesh.position.set(
+        Math.round(pp.x / 5) * 5,
+        pp.y,
+        Math.round(pp.z / 5) * 5,
       );
-    }
-    void gl;
-  });
+      renderer.render(scene, camera);
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+
+    return () => {
+      window.removeEventListener('resize', onResize);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      instGeom.dispose();
+      bladeGeom.dispose();
+      material.dispose();
+      renderer.dispose();
+    };
+  }, [blades, instanceData, windDirection, bottomColor, tipColor]);
 
   return (
-    <mesh ref={meshRef} frustumCulled={false}>
-      <primitive object={instGeometry} attach="geometry" />
-      <primitive object={material} attach="material" />
-    </mesh>
+    <canvas
+      ref={canvasRef}
+      aria-hidden
+      style={{
+        position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 4,
+        mixBlendMode: 'multiply',
+      }}
+    />
   );
 }
