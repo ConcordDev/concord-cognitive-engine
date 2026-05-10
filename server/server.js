@@ -9643,7 +9643,7 @@ async function runMacro(domain, name, input, ctx) {
     visual: new Set(["moodboard", "sunburst", "timeline"]),
     distillation: new Set(["stats"]),
     efficiency: new Set(["dashboard", "history"]),
-    agent: new Set(["status", "create", "tick", "config"]),
+    agent: new Set(["status", "create", "tick", "config", "list_persistent"]),
     // Real-time data feeds + universal export
     realtime: new Set(["status", "feed"]),
     convert: new Set(["to-dtu", "from-dtu"]),
@@ -68278,6 +68278,176 @@ register("kingdom", "publish_decree_recipe", async (ctx, input = {}) => {
 
 structuredLog("info", "phase4_player_agency_init", {
   detail: "Phase 4 macros registered: walker.{trade_routes,arbitrage}, kingdom.publish_decree_recipe; glyph_spells.{cast,casts_in_region}",
+});
+
+// ── Phase 5: Cognitive surfaces — chat timeline, vision, reflex, semantic ───
+
+// Phase 5.1: Chat timeline (ideas #2, #22) — emit a per-message event
+// stream of brain activations so the cognitive-replay scrubber can render
+// what each turn did.
+register("chat", "timeline", (ctx, input = {}) => {
+  if (!STATE?.sessions) return { ok: false, reason: "no_state_sessions" };
+  const userId = input.userId || ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const sessionId = input.sessionId;
+  const limit = Math.min(500, Math.max(10, Number(input.limit) || 100));
+  const events = [];
+  if (sessionId) {
+    const sess = STATE.sessions.get?.(sessionId);
+    if (sess?.messages) {
+      for (const m of sess.messages.slice(-limit)) {
+        events.push({
+          ts: m.ts || m.timestamp || null,
+          role: m.role,
+          brainsUsed: m.meta?.brainsUsed || m.meta?.brains || [],
+          toolCalls: m.meta?.toolCalls || [],
+          dtusCited: m.meta?.dtusCited || [],
+          tokenCount: m.meta?.tokenCount || null,
+          contentPreview: typeof m.content === "string" ? m.content.slice(0, 240) : null,
+        });
+      }
+    }
+  } else {
+    // No session — sweep all sessions for this user, return latest 100 events.
+    for (const [sid, sess] of (STATE.sessions.entries?.() || [])) {
+      if (sess?.userId !== userId) continue;
+      for (const m of (sess.messages || []).slice(-20)) {
+        events.push({
+          sessionId: sid,
+          ts: m.ts || m.timestamp || null,
+          role: m.role,
+          brainsUsed: m.meta?.brainsUsed || [],
+          tokenCount: m.meta?.tokenCount || null,
+        });
+      }
+    }
+    events.sort((a, b) => (b.ts || 0) - (a.ts || 0));
+    events.length = Math.min(events.length, limit);
+  }
+  return { ok: true, userId, sessionId, events, count: events.length };
+}, { note: "Per-turn brain-activation timeline for the cognitive replay scrubber." });
+
+register("chat", "summary", (ctx, input = {}) => {
+  // Wraps the existing conversation-summarizer.getSummaryText path so the
+  // frontend can pull session summaries from the same macro surface as
+  // chat.timeline. Keeps both signals in one domain for the replay UI.
+  const sessionId = input.sessionId;
+  if (!sessionId) return { ok: false, reason: "missing_sessionId" };
+  try {
+    // Lazy import — the summarizer module isn't always required at boot.
+    const sum = STATE?.sessions?.get?.(sessionId)?.summary || null;
+    return { ok: true, sessionId, summary: sum };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Stored conversation summary for a session (computed by summarizer)." });
+
+// Phase 5.2: Reflex macros (idea #5).
+register("reflex", "status", async (_ctx, _input = {}) => {
+  try {
+    const rc = await import("./emergent/reflex-cortex.js");
+    return { ok: true, ...rc.reflexStatus() };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Aggregate status of the four reflex detectors." });
+
+register("reflex", "recent_proposals", (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const limit = Math.min(50, Math.max(1, Number(input.limit) || 20));
+  try {
+    // Reflex detectors post into governance_proposals when severity ≥ high.
+    const rows = db.prepare(`
+      SELECT id, kind, severity, summary, body, status, created_at
+      FROM governance_proposals
+      WHERE source = 'reflex_cortex'
+      ORDER BY created_at DESC LIMIT ?
+    `).all(limit);
+    return { ok: true, proposals: rows };
+  } catch (err) {
+    // Some envs may not have governance_proposals.source column — fall back
+    // to a tag scan in the body.
+    try {
+      const rows = db.prepare(`
+        SELECT id, kind, severity, summary, body, status, created_at
+        FROM governance_proposals
+        WHERE body LIKE '%reflex%' OR kind LIKE 'reflex_%'
+        ORDER BY created_at DESC LIMIT ?
+      `).all(limit);
+      return { ok: true, proposals: rows };
+    } catch (err2) { return { ok: false, error: String(err2?.message || err) }; }
+  }
+}, { note: "Recent governance proposals filed by reflex detectors." });
+
+// Phase 5.3: Semantic search on the user's own thoughts (idea #18).
+register("semantic", "search_thoughts", async (ctx, input = {}) => {
+  const userId = input.userId || ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const text = input.text || "";
+  if (!text || text.length < 2) return { ok: false, reason: "query_too_short" };
+  const topK = Math.min(50, Math.max(1, Number(input.topK) || 10));
+  try {
+    const emb = await import("./embeddings.js");
+    const queryVec = await emb.embed(text);
+    if (!queryVec || queryVec.length === 0) return { ok: false, reason: "embed_failed" };
+
+    // Build candidate pool from the user's own DTUs.
+    const userDtus = [];
+    if (STATE?.dtus) {
+      for (const dtu of STATE.dtus.values()) {
+        if (dtu.creator_id === userId || dtu.creatorId === userId) {
+          const vec = emb.getEmbedding(dtu.id);
+          if (vec) userDtus.push({ id: dtu.id, title: dtu.title, kind: dtu.kind, vec });
+        }
+      }
+    }
+    if (userDtus.length === 0) return { ok: true, results: [], note: "no_embeddings" };
+
+    const ranked = emb.findSimilar(queryVec, userDtus, topK);
+    return { ok: true, query: text, results: ranked };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Semantic search across the calling user's own DTU corpus." });
+
+// Phase 5.4: Long-running personal agent persistence (idea #19).
+register("agent", "persist", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { agentId, goal, context = null } = input || {};
+  if (!agentId || !goal) return { ok: false, reason: "missing_agent_or_goal" };
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS persistent_agents (
+        agent_id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        goal TEXT NOT NULL,
+        context_json TEXT,
+        status TEXT NOT NULL DEFAULT 'active',
+        created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+        last_advanced_at INTEGER NOT NULL DEFAULT (unixepoch()),
+        steps_completed INTEGER NOT NULL DEFAULT 0
+      )
+    `);
+    db.prepare(`
+      INSERT OR REPLACE INTO persistent_agents (agent_id, user_id, goal, context_json, status)
+      VALUES (?, ?, ?, ?, 'active')
+    `).run(agentId, userId, goal, context ? JSON.stringify(context) : null);
+    return { ok: true, agentId, persisted: true };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Persist a long-running agent so it survives across sessions." });
+
+register("agent", "list_persistent", (ctx, _input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  try {
+    const rows = db.prepare(`
+      SELECT agent_id, goal, status, created_at, last_advanced_at, steps_completed
+      FROM persistent_agents WHERE user_id = ?
+      ORDER BY last_advanced_at DESC
+    `).all(userId);
+    return { ok: true, agents: rows };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "List the calling user's persistent agents." });
+
+structuredLog("info", "phase5_cognitive_surfaces_init", {
+  detail: "Phase 5 macros registered: chat.{timeline,summary} reflex.{status,recent_proposals} semantic.search_thoughts agent.{persist,list_persistent}",
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
