@@ -1,8 +1,8 @@
 # Concord Cognitive Engine — Audit Inventory (verified by direct codebase inspection)
 
 Generated: 2026-05-10T02:30:00Z (refreshed after the Sprint D omni-animation + procedural asset builder merge — PR #325 c5e4cd27)
-Branch: claude/post-sprint-d-doc-refresh
-Head:   post-#325 (c5e4cd27)
+Re-verified: 2026-05-10 (post-PR #318 merge into main + post-PR #326 doc-refresh + post-`npm test` run on a clean checkout)
+Branch: claude/audit-codebase-docs-3gIE2 (verification branch); main HEAD `41794550`
 
 Every number below comes from a `grep` or `ls` against the working tree at the head above. Numbers in CLAUDE.md / audit/cartograph/* that disagree are stale — trust this file.
 
@@ -10,19 +10,22 @@ Every number below comes from a `grep` or `ls` against the working tree at the h
 
 | Surface | Count | How to reproduce |
 |---|---|---|
-| Lens directories (frontend) | 205 | `ls -d concord-frontend/app/lenses/*/ \| wc -l` |
+| Lens directories (frontend) | 206 | `ls -d concord-frontend/app/lenses/*/ \| wc -l` (PR #318 added `/lenses/understanding`; pre-PR #318 count was 205) |
 | Backend domain files | 210 | `ls server/domains/*.js \| wc -l` |
 | Migrations applied | 158 | `ls server/migrations/[0-9]*.js \| wc -l` (numbered only — `_drop-with-rescue.js` is a helper) |
 | Latest migration | 158_kingdoms.js | `ls server/migrations/ \| grep -E '^[0-9]{3}_' \| sort \| tail -1` |
 | Route files | 130 | `ls server/routes/*.js \| wc -l` |
 | Emergent modules | 166 | `ls server/emergent/*.js \| wc -l` |
 | Lib modules | 292 top-level / 485 recursive | `ls server/lib/*.js \| wc -l` and `find server/lib -name "*.js" -not -path "*/node_modules/*" \| wc -l` |
+| `server/server.js` line count | 67,784 | `wc -l server/server.js` |
 | HTTP routes in server.js | 1086 | `grep -hcE '^\s*app\.(get\|post\|put\|delete\|patch)\(' server/server.js` |
 | HTTP routes in routes/*.js | 1313 | `grep -hcE '^\s*router\.(get\|post\|put\|delete\|patch)\(' server/routes/*.js \| paste -sd+ - \| bc` |
+| HTTP routes (combined) | 2399 | sum of the two above |
 | Unique macro domains (server.js) | 129 | `grep -hE "^\s*register\(\s*['\"][a-z_]+" server/server.js` |
-| Unique (domain, macro) pairs (server.js) | 671 | grep+sed against `register('domain','name')` (Sprint D macros not yet in the count script — true post-Sprint-D pair count is ≥ 690) |
+| Unique (domain, macro) pairs (server.js) | 686 | re-grep with the wider sed pattern: `grep -hE "register\(\s*['\"][a-z_]+['\"],\s*['\"][a-zA-Z_0-9]+" server/server.js \| sed -E "s/.*register\(\s*['\"]([a-z_]+)['\"],\s*['\"]([a-zA-Z_0-9]+).*/\1.\2/" \| sort -u \| wc -l` (the previous 671 figure was an undercount caused by a too-narrow sed pattern; the wider pattern catches Sprint D and pre-Sprint-D macros uniformly) |
 | Distinct CREATE TABLE statements across migrations | 374 | grep CREATE TABLE in migrations/*.js + sort -u |
 | Unique heartbeats registered | 50 | grep registerHeartbeat across server.js + lib/ + emergent/ (excluding the noisy `"id"` literal from a struct definition; excluding the comment-line in `lib/detectors/heartbeat-monitor.js`) |
+| Server tests passing (`cd server && npm test`) | 12,244 | 10,940 main + 1304 behavior; 1 timeout flake on `tests/detectors-suite.test.js` (env-sensitive, not assertion); 4 main + 28 behavior tests skipped behind `CONCORD_BEHAVIOR_TEST_LLM=true` and similar env flags |
 
 ## Drift since the previous inventory (2026-05-09 post-merge-wave → 2026-05-10 post-Sprint-D)
 
@@ -34,11 +37,19 @@ Every number below comes from a `grep` or `ls` against the working tree at the h
 | Route files | 130 | 130 | 0 | Sprint D added zero new routes (everything went via the macro surface) |
 | Emergent modules | 162 | 166 | +4 | Sprint D #325: kingdom-decree-cycle, npc-scheme-cycle, plus 2 internal handlers |
 | Lib modules (top-level) | 281 | 292 | +11 | Sprint D #325: npc-stress, npc-opinions, secrets, npc-schemes, kingdoms, kingdom-decrees, kingdom-takeover, kingdom-rebellion, world-buildings-repair, embodied/oxygen, voice-synthesis |
-| (domain, macro) pairs | 671 | 671 | 0¹ | Sprint D added secrets/schemes/kingdoms/factions/voice-tts/oxygen/buildings macros but the count script sed-pattern doesn't catch them; needs script update before re-counting |
+| (domain, macro) pairs | 671 | 686 | +15 | Sprint D added secrets/schemes/kingdoms/factions/voice-tts/oxygen/buildings macros; the previous 671 figure was an undercount caused by a too-narrow sed pattern (the new pattern is in the top-level table) |
 | CREATE TABLE statements | 362 | 374 | +12 | Sprint D #325: npc_stress, character_opinions, secrets, secret_discoveries, npc_schemes, npc_scheme_accomplices, npc_scheme_evidence, player_oxygen, realms, realm_territories, realm_decrees, realm_citizens |
 | Heartbeats | 46 | 50 | +4 | Sprint D #325: npc-scheme-cycle@30, kingdom-decree-cycle@16; catch-up: npc-perception-snapshot (Sprint B Phase 9), procgen-settlement-cycle (Sprint B Phase 11.4) — both already in the codebase but missed by previous audit |
 
-¹ The `(domain, macro) pairs` count is artificially flat — the previous script sed-pattern misses Sprint D's macros. A future audit refresh should update the macro-count grep to include `register("[a-z_-]+",`.
+## Drift since the 2026-05-10 02:30Z refresh → 2026-05-10 verification pass
+
+| Surface | Was | Now | Δ | Cause |
+|---|---|---|---|---|
+| Lens directories | 205 | 206 | +1 | The 02:30Z refresh ran `ls`/`wc` 12 minutes after PR #318 was merged but missed `concord-frontend/app/lenses/understanding/` (added by PR #318 commit `3a0fa193`). Same file's "Lens directories — verified inventory" subhead also said "203 dirs" — a separate stale figure, both now reconciled to 206. |
+| (domain, macro) pairs | 671 (with caveat) | 686 | +15 | The previous count was footnoted as an undercount; the wider sed pattern in the top-level table now produces 686 deterministically. |
+| HTTP routes (combined) row | not present | 2399 | — | New row consolidating the two existing route counts. |
+| `server/server.js` line count row | not present | 67,784 | — | New row to give CLAUDE.md's stale `server.js:NNNN` references a single anchor for re-verification. |
+| Server tests passing row | not present | 12,244 | — | New row capturing the post-Sprint-D verified pass total (10,940 main + 1304 behavior); CLAUDE.md previously referenced 9508+1212=10,720 from before Sprint D. |
 
 **Migration collisions fixed during the merge wave:**
 - `120_drop_dead_mig006.js` → `141_drop_dead_mig006.js` (commit `5303bff4`, PR #305 — collided with `120_understandings.js`)
@@ -527,7 +538,7 @@ GET     /api/council/sessions
 | `routes/forge.js` | 8 |
 | `routes/consent.js` | 8 |
 
-## Lens directories — verified inventory (203 dirs)
+## Lens directories — verified inventory (206 dirs)
 
 Each row is a real directory under `concord-frontend/app/lenses/`. `page.tsx` column is true if the dir contains a `page.tsx` (a lens missing it can't be reached). The third column is the lens's primary backend domain when grep-detectable from `page.tsx`.
 
@@ -725,6 +736,7 @@ Each row is a real directory under `concord-frontend/app/lenses/`. `page.tsx` co
 | `trades` | yes | `—` |
 | `transfer` | yes | `—` |
 | `travel` | yes | `—` |
+| `understanding` | yes | `understanding.*` (PR #318 — wired all 16 previously-headless `understanding` macros) |
 | `urban-planning` | yes | `—` |
 | `ux-suite` | yes | `—` |
 | `veterinary` | yes | `—` |
@@ -865,7 +877,7 @@ All migration files in `server/migrations/`, in apply order. Each migration's `u
 
 ## Lib + emergent modules (verified file counts)
 
-**`server/lib/` — 252 modules.** Direct `ls server/lib/*.js`. Selected anchor modules:
+**`server/lib/` — 292 top-level modules** (485 recursive incl. subdirs). Direct `ls server/lib/*.js \| wc -l`. Selected anchor modules:
 
 | Module | LOC | Role |
 |---|---|---|
