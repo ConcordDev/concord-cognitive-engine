@@ -32,6 +32,20 @@ export function seedKingdomsFromFactions(db, factions = null) {
 
 function seedSync(db, factions) {
   let inserted = 0, skipped = 0;
+  // Hoist prepared statements out of the per-faction loop so we don't
+  // re-prepare on every iteration (perf-hotspot N+1 pattern).
+  const insertRealmStmt = db.prepare(`
+    INSERT INTO realms (id, name, world_id, faction_id, ruler_kind, ruler_id, legitimacy, treasury, tax_rate)
+    VALUES (?, ?, ?, ?, 'npc', ?, ?, ?, ?)
+    ON CONFLICT(id) DO NOTHING
+  `);
+  let selectRegionsStmt = null;
+  let insertTerritoryStmt = null;
+  try {
+    selectRegionsStmt = db.prepare(`SELECT id FROM procgen_regions WHERE faction_id = ? LIMIT 50`);
+    insertTerritoryStmt = db.prepare(`INSERT INTO realm_territories (kingdom_id, region_id) VALUES (?, ?) ON CONFLICT DO NOTHING`);
+  } catch { /* procgen_regions / realm_territories optional */ }
+
   for (const f of factions || []) {
     if (!f?.id) continue;
     const leaderId = f.leader_npc_id || f.leader || null;
@@ -39,21 +53,19 @@ function seedSync(db, factions) {
     const worldId = f.home_world || f.world_id || "concordia-hub";
     const id = `kd_${stableHash(f.id)}`;
     try {
-      const r = db.prepare(`
-        INSERT INTO realms (id, name, world_id, faction_id, ruler_kind, ruler_id, legitimacy, treasury, tax_rate)
-        VALUES (?, ?, ?, ?, 'npc', ?, ?, ?, ?)
-        ON CONFLICT(id) DO NOTHING
-      `).run(id, f.name || f.id, worldId, f.id, leaderId, DEFAULT_LEGITIMACY, DEFAULT_TREASURY, DEFAULT_TAX);
+      const r = insertRealmStmt.run(id, f.name || f.id, worldId, f.id, leaderId, DEFAULT_LEGITIMACY, DEFAULT_TREASURY, DEFAULT_TAX);
       if (r.changes > 0) inserted++; else skipped++;
 
       // Best-effort: assign existing procgen_regions with this faction_id
       // as kingdom territory.
-      try {
-        const regions = db.prepare(`SELECT id FROM procgen_regions WHERE faction_id = ? LIMIT 50`).all(f.id);
-        for (const reg of regions) {
-          db.prepare(`INSERT INTO realm_territories (kingdom_id, region_id) VALUES (?, ?) ON CONFLICT DO NOTHING`).run(id, reg.id);
-        }
-      } catch { /* procgen_regions optional */ }
+      if (selectRegionsStmt && insertTerritoryStmt) {
+        try {
+          const regions = selectRegionsStmt.all(f.id);
+          for (const reg of regions) {
+            insertTerritoryStmt.run(id, reg.id);
+          }
+        } catch { /* procgen_regions optional */ }
+      }
     } catch (err) {
       try { logger.debug?.("kingdom_seed_failed", { factionId: f.id, error: err?.message }); } catch { /* noop */ }
     }
