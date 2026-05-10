@@ -184,9 +184,34 @@ api.interceptors.response.use(
       if (status === 401 && typeof window !== 'undefined') {
         // Don't redirect on auth-check calls — let the component handle it
         const requestUrl = error.config?.url || '';
-        if (requestUrl.includes('/api/auth/me') || requestUrl.includes('/api/auth/csrf-token')) {
+        if (
+          requestUrl.includes('/api/auth/me') ||
+          requestUrl.includes('/api/auth/csrf-token') ||
+          requestUrl.includes('/api/auth/refresh')
+        ) {
           return Promise.reject(error);
         }
+
+        // ── Auto-refresh on access-token expiry ──────────────────────────
+        // The 7-day access cookie expires while the 30-day refresh cookie
+        // is still valid. Try a single refresh; on success, replay the
+        // original request once. The `_authRetried` guard prevents an
+        // infinite loop if the refresh itself returns 401.
+        const config = error.config as InternalAxiosRequestConfig & { _authRetried?: boolean };
+        if (config && !config._authRetried) {
+          config._authRetried = true;
+          try {
+            await api.post('/api/auth/refresh');
+            // New cookies are now set; replay the original request. The
+            // axios instance will pick up the refreshed CSRF + auth
+            // cookies automatically via withCredentials.
+            return api.request(config);
+          } catch (refreshErr) {
+            // Refresh failed — fall through to the redirect path.
+            console.warn('[API] auth refresh failed, redirecting to login', refreshErr);
+          }
+        }
+
         // Don't redirect on background GET fetches — a stale query or
         // transient 401 shouldn't force navigation away from the page.
         // Only redirect on user-initiated mutations or explicit nav.

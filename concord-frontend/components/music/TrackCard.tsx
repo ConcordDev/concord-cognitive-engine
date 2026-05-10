@@ -51,6 +51,32 @@ export function TrackCard({
   const [showTierMenu, setShowTierMenu] = useState(false);
   const [liked, setLiked] = useState(false);
 
+  // Default purchase handler — when the parent doesn't pass one, hit
+  // marketplace.purchaseWithRoyalties directly so the cascade still
+  // executes. Pre-fix the buy buttons rendered but did nothing unless
+  // the parent remembered to wire the handler.
+  const handlePurchase = async (t: MusicTrack, tier: ArtifactTier) => {
+    if (onPurchase) return onPurchase(t, tier);
+    if (typeof window === 'undefined') return;
+    const tierMeta = t.tiers?.find?.((tt) => tt.tier === tier);
+    const priceCents = Math.round((tierMeta?.price ?? 0) * 100);
+    if (priceCents === 0) return;
+    const ok = window.confirm(
+      `Purchase the ${tier} license for "${t.title}" at $${(priceCents / 100).toFixed(2)} CC? Royalty cascade pays every ancestor creator on the lineage chain.`
+    );
+    if (!ok) return;
+    try {
+      const { api } = await import('@/lib/api/client');
+      await api.post('/api/marketplace/purchaseWithRoyalties', {
+        dtuId: t.id,
+        tier,
+        priceCents,
+      });
+    } catch {
+      // network error surfacing handled by global axios toast interceptor
+    }
+  };
+
   const isCurrentTrack = nowPlaying.track?.id === track.id;
   const isPlaying = isCurrentTrack && nowPlaying.playbackState === 'playing';
 
@@ -178,7 +204,7 @@ export function TrackCard({
               {track.tiers.filter(t => t.enabled).map(tier => (
                 <button
                   key={tier.tier}
-                  onClick={() => onPurchase?.(track, tier.tier)}
+                  onClick={() => handlePurchase(track, tier.tier)}
                   className={cn(
                     'flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-medium border transition-colors hover:bg-white/5',
                     TIER_LABELS[tier.tier].color,
@@ -305,7 +331,7 @@ export function TrackCard({
                   {track.tiers.filter(t => t.enabled).map(tier => (
                     <button
                       key={tier.tier}
-                      onClick={() => { onPurchase?.(track, tier.tier); setShowTierMenu(false); }}
+                      onClick={() => { handlePurchase(track, tier.tier); setShowTierMenu(false); }}
                       className="w-full flex items-center justify-between px-2 py-1.5 rounded hover:bg-white/5 text-xs"
                     >
                       <span className={TIER_LABELS[tier.tier].color}>

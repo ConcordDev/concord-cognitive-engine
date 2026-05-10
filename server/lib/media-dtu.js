@@ -183,11 +183,15 @@ export function createMediaDTU(STATE, params) {
     transcodeStatus: mediaType === "image" || mediaType === "document" ? "ready" : "pending",
     transcodeVariants: [],
 
-    // Storage reference
+    // Storage reference. `artifactRef` is the content-addressed sha256
+    // pointer into artifact-store; populated by the route handler when a
+    // base64 body is supplied. Without it the entry is metadata-only and
+    // the streaming endpoints will return 404 for the bytes.
     storageRef: {
       tier: "hot",
       path: `media/${mediaType}/${mediaId}`,
       size: fileSize,
+      artifactRef: params.artifactRef || null,
     },
 
     // Engagement

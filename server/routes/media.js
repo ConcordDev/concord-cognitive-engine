@@ -43,6 +43,7 @@ import {
   QUALITY_PRESETS,
   MAX_FILE_SIZES,
 } from "../lib/media-dtu.js";
+import { storeArtifact, retrieveArtifact, isSupportedType } from "../lib/artifact-store.js";
 
 /**
  * Create the media routes router.
@@ -183,6 +184,33 @@ export default function createMediaRouter({ STATE }) {
       throw new ValidationError("mediaType or mimeType is required");
     }
 
+    // Persist the actual bytes via the content-addressed artifact-store
+    // when a base64 body is supplied. Pre-fix the route discarded `data`
+    // silently — frontend saw 201, but /stream returned 404 because no
+    // bytes ever landed on disk. The artifactRef hash is then attached
+    // to the media DTU so the stream + thumbnail endpoints can resolve.
+    let artifactRef = null;
+    if (data && typeof data === "string") {
+      try {
+        const buf = Buffer.from(data, "base64");
+        const safeMime = mimeType && isSupportedType(mimeType)
+          ? mimeType
+          : "application/octet-stream";
+        // storeArtifact returns the full artifactRef descriptor — diskPath,
+        // compressedPath, hash, sizeBytes, derivatives, etc. retrieveArtifact
+        // takes that same descriptor. We persist the whole thing on the
+        // media DTU so /stream + /thumbnail can hand it straight back.
+        artifactRef = await storeArtifact(
+          `media-${authorId}-${Date.now()}`,
+          buf,
+          safeMime,
+          originalFilename || "upload.bin",
+        );
+      } catch (err) {
+        throw new ValidationError(`Failed to store media bytes: ${err?.message || err}`);
+      }
+    }
+
     const result = createMediaDTU(STATE, {
       authorId,
       title,
@@ -198,6 +226,7 @@ export default function createMediaRouter({ STATE }) {
       tags,
       privacy,
       tier,
+      artifactRef,
     });
 
     if (!result.ok) {
@@ -350,18 +379,56 @@ export default function createMediaRouter({ STATE }) {
 
     const mediaDTU = gated.mediaDTU;
     const quality = req.query.quality || "original";
+    const artifactRef = mediaDTU.storageRef?.artifactRef;
 
-    // In production: serve actual file bytes with range support
-    // Here we return stream metadata
-    const fileSize = mediaDTU.fileSize || 1024 * 1024; // 1MB default
+    // Real bytes path: storageRef.artifactRef is the descriptor returned
+    // by storeArtifact (diskPath / compressedPath / hash / sizeBytes).
+    // retrieveArtifact decompresses and returns the raw Buffer.
+    if (artifactRef && artifactRef.diskPath) {
+      // retrieveArtifact returns null (not throws) when the file is missing,
+      // so the if (buffer) guard below handles every miss path. Wrapping in
+      // try/catch only masked debug signal; the fallback metadata path is
+      // already the right behaviour for a missing artifact.
+      const buffer = retrieveArtifact(mediaDTU.id, artifactRef);
+      if (buffer && Buffer.isBuffer(buffer)) {
+        const total = buffer.length;
+        const contentType = artifactRef.type || mediaDTU.mimeType || "application/octet-stream";
+        const range = req.headers.range;
+
+        if (range) {
+          const parts = range.replace(/bytes=/, "").split("-");
+          const start = parseInt(parts[0], 10) || 0;
+          const end = parts[1] ? parseInt(parts[1], 10) : total - 1;
+          const chunkSize = end - start + 1;
+          res.status(206);
+          res.set({
+            "Content-Range": `bytes ${start}-${end}/${total}`,
+            "Accept-Ranges": "bytes",
+            "Content-Length": String(chunkSize),
+            "Content-Type": contentType,
+          });
+          return res.end(buffer.subarray(start, end + 1));
+        }
+
+        res.set({
+          "Content-Type": contentType,
+          "Content-Length": String(total),
+          "Accept-Ranges": "bytes",
+          "Cache-Control": "public, max-age=86400",
+        });
+        return res.end(buffer);
+      }
+    }
+
+    // Metadata-only fallback for legacy / unsigned media DTUs that were
+    // created before artifact-store wiring.
+    const fileSize = mediaDTU.fileSize || 1024 * 1024;
     const range = req.headers.range;
-
     if (range) {
       const parts = range.replace(/bytes=/, "").split("-");
       const start = parseInt(parts[0], 10);
       const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
       const chunkSize = end - start + 1;
-
       res.status(206).json({
         ok: true,
         streaming: true,
@@ -370,7 +437,7 @@ export default function createMediaRouter({ STATE }) {
         range: { start, end, total: fileSize },
         chunkSize,
         contentType: mediaDTU.mimeType,
-        note: "In production, this returns actual binary data with Content-Range headers",
+        note: "Metadata-only — no artifactRef on this media DTU",
       });
     } else {
       res.json({
@@ -381,7 +448,7 @@ export default function createMediaRouter({ STATE }) {
         fileSize,
         contentType: mediaDTU.mimeType,
         duration: mediaDTU.duration,
-        note: "In production, this returns actual binary data",
+        note: "Metadata-only — no artifactRef on this media DTU",
       });
     }
   }));

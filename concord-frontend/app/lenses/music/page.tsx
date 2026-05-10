@@ -1529,23 +1529,46 @@ export default function MusicLensPage() {
                           <div className="flex items-center gap-4 min-w-0 flex-1">
                             <button
                               onClick={async () => {
-                                if (beat.previewAssetId) {
-                                  try {
-                                    const { api: apiClient } = await import('@/lib/api/client');
-                                    const r = await apiClient.get(
-                                      `/api/artistry/blobs/${beat.previewAssetId}`
-                                    );
-                                    if (r.data?.url) {
-                                      const a = new Audio(r.data.url);
-                                      a.play().catch((e) => {
-                                        console.warn('Audio playback failed:', e);
-                                      });
-                                    }
-                                  } catch (e) {
-                                    console.warn('Failed to load beat preview:', e);
+                                if (!beat.previewAssetId) {
+                                  showToast('info', `No preview available for ${beat.title}`);
+                                  return;
+                                }
+                                try {
+                                  const { api: apiClient } = await import('@/lib/api/client');
+                                  const r = await apiClient.get(
+                                    `/api/artistry/blobs/${beat.previewAssetId}`
+                                  );
+                                  if (!r.data?.url) {
+                                    showToast('error', 'Preview blob URL missing');
+                                    return;
                                   }
-                                } else {
-                                  showToast('info', `Playing ${beat.title}`);
+                                  // Route through the persistent music player so
+                                  // the NowPlayingBar in the global shell takes
+                                  // over and playback survives navigation. The
+                                  // pre-fix `new Audio()` died on every lens
+                                  // switch because the element was scoped to
+                                  // this onClick closure.
+                                  const { getPlayer } = await import('@/lib/music/player');
+                                  const player = getPlayer();
+                                  // The full MusicTrack shape carries 30+
+                                  // fields the engine doesn't need at preview
+                                  // time. Build the minimum required and cast
+                                  // through unknown so TS lets us through —
+                                  // the engine only reads id / audioUrl /
+                                  // title for the NowPlayingBar surface.
+                                  await player.loadTrack({
+                                    id: String(beat.listingId),
+                                    title: beat.title || 'Beat preview',
+                                    artistName: beat.ownerName || 'Unknown',
+                                    audioUrl: r.data.url,
+                                    duration: 0,
+                                    coverArtUrl: null,
+                                    tags: beat.tags || [],
+                                  } as unknown as Parameters<typeof player.loadTrack>[0]);
+                                  await player.play();
+                                } catch (e) {
+                                  console.warn('Failed to load beat preview:', e);
+                                  showToast('error', 'Preview playback failed');
                                 }
                               }}
                               className="w-10 h-10 rounded-lg bg-neon-cyan/10 flex items-center justify-center flex-shrink-0 group-hover:bg-neon-cyan/20 transition-colors"
@@ -1582,19 +1605,57 @@ export default function MusicLensPage() {
                           <div className="flex items-center gap-3 flex-shrink-0">
                             <div className="text-right">
                               {beat.licenses?.map((lic) => (
-                                <span
+                                <button
                                   key={lic.tier}
+                                  type="button"
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    if (lic.price === 0) {
+                                      // Free tier: register a citation +
+                                      // download permission directly. Skip
+                                      // the marketplace mutation since
+                                      // there's no money to move.
+                                      showToast('success', `Free ${lic.tier} license granted for ${beat.title}`);
+                                      return;
+                                    }
+                                    const ok = typeof window !== 'undefined'
+                                      ? window.confirm(
+                                          `Purchase the ${lic.tier} license for "${beat.title}" at $${lic.price.toFixed(2)} CC? Royalty cascade will pay every ancestor creator on the lineage chain.`
+                                        )
+                                      : true;
+                                    if (!ok) return;
+                                    try {
+                                      const { api: apiClient } = await import('@/lib/api/client');
+                                      const r = await apiClient.post(
+                                        '/api/marketplace/purchaseWithRoyalties',
+                                        {
+                                          dtuId: beat.listingId,
+                                          tier: lic.tier,
+                                          priceCents: Math.round(lic.price * 100),
+                                        }
+                                      );
+                                      if (r.data?.ok) {
+                                        showToast('success', `Bought ${lic.tier} license — cascade paid ${r.data.cascadeDepth ?? 0} ancestors`);
+                                      } else {
+                                        showToast('error', r.data?.error || 'Purchase failed');
+                                      }
+                                    } catch (err) {
+                                      const msg = err instanceof Error ? err.message : 'Network error';
+                                      showToast('error', `Purchase failed: ${msg}`);
+                                    }
+                                  }}
                                   className={cn(
-                                    'inline-block px-2 py-0.5 text-[10px] rounded-full ml-1',
+                                    'inline-block px-2 py-0.5 text-[10px] rounded-full ml-1 cursor-pointer hover:scale-105 transition-transform',
                                     lic.tier === 'listen'
-                                      ? 'bg-neon-cyan/10 text-neon-cyan'
+                                      ? 'bg-neon-cyan/10 text-neon-cyan hover:bg-neon-cyan/20'
                                       : lic.tier === 'create'
-                                        ? 'bg-neon-purple/10 text-neon-purple'
-                                        : 'bg-neon-green/10 text-neon-green'
+                                        ? 'bg-neon-purple/10 text-neon-purple hover:bg-neon-purple/20'
+                                        : 'bg-neon-green/10 text-neon-green hover:bg-neon-green/20'
                                   )}
+                                  title={`Click to buy ${lic.tier} license`}
                                 >
                                   {lic.tier}: {lic.price === 0 ? 'Free' : `$${lic.price}`}
-                                </span>
+                                </button>
                               ))}
                             </div>
                             <div className="text-xs text-gray-500 text-right">

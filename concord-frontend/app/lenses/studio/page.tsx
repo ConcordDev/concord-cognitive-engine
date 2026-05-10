@@ -863,7 +863,10 @@ export default function StudioLensPage() {
 
       if (response.data?.ok || response.status === 200 || response.status === 201) {
         setSaveStatus('success');
-        // Also create a lens item for the track list
+        const mediaDtuId = (response.data as { mediaDTU?: { id?: string } } | null)?.mediaDTU?.id || null;
+        // Also create a lens item for the track list. Cross-link the
+        // backing media DTU id so the music lens "My Tracks" tab can
+        // resolve back to /api/media/:id/stream and play the actual bytes.
         try {
           await createLensItem({
             title: `Recording - ${new Date().toLocaleTimeString()}`,
@@ -875,15 +878,37 @@ export default function StudioLensPage() {
               duration: recordingTimer,
               mimeType: recordedBlob.type || 'audio/webm',
               size: recordedBlob.size,
+              mediaDtuId,
+              streamUrl: mediaDtuId ? `/api/media/${mediaDtuId}/stream` : null,
               createdAt: new Date().toISOString(),
             },
             meta: { tags: ['studio', 'recording'], status: 'active' },
           });
+          // Mirror into the music lens too so "My Tracks" surfaces it.
+          try {
+            const { api: apiClient } = await import('@/lib/api/client');
+            await apiClient.post('/api/lens/music', {
+              type: 'track',
+              title: `${project.title} — Take @ ${new Date().toLocaleTimeString()}`,
+              data: {
+                projectId: project.id,
+                bpm: project.bpm,
+                key: project.key,
+                duration: recordingTimer,
+                mediaDtuId,
+                streamUrl: mediaDtuId ? `/api/media/${mediaDtuId}/stream` : null,
+              },
+              meta: { tags: ['studio', project.key, `${project.bpm}bpm`], status: 'active' },
+            });
+          } catch (mirrorErr) {
+            console.warn('[Studio] Mirror to music lens failed:', mirrorErr);
+          }
         } catch (e) {
           console.error('Studio lens item creation failed:', e);
         }
         // Invalidate queries so the track list updates without page refresh
         queryClient.invalidateQueries({ queryKey: ['lens', 'studio'] });
+        queryClient.invalidateQueries({ queryKey: ['lens', 'music'] });
         // Add an audio track to the project for the recording
         updateProject((p) => {
           const track = createDefaultTrack(
