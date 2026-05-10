@@ -5,7 +5,8 @@ import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensBridge } from '@/lib/hooks/use-lens-bridge';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -52,6 +53,8 @@ export default function GroundingLensPage() {
   const [readingUnit, setReadingUnit] = useState('');
   const [groundDtuId, setGroundDtuId] = useState('');
   const [showFeatures, setShowFeatures] = useState(true);
+  const sensorIdInputRef = useRef<HTMLSelectElement>(null);
+  const groundDtuInputRef = useRef<HTMLInputElement>(null);
 
   // --- Grounding action wiring ---
   const { items: groundingArtifacts } = useLensData('grounding', 'grounding-data', { seed: [] });
@@ -109,6 +112,20 @@ export default function GroundingLensPage() {
   const readingList = useMemo(() => readings?.readings || readings || [], [readings]);
   const statusInfo = status?.status || status || {};
   const contextInfo = context?.context || context || {};
+
+  useLensCommand(
+    [
+      { id: 'refresh',     keys: 'r', description: 'Refresh all', category: 'actions',
+        action: () => { refetch(); refetch2(); refetch3(); refetch4(); } },
+      { id: 'focus-reading', keys: 'n', description: 'New reading',  category: 'actions',
+        action: () => sensorIdInputRef.current?.focus() },
+      { id: 'focus-ground',  keys: 'g', description: 'Ground a DTU', category: 'actions',
+        action: () => groundDtuInputRef.current?.focus() },
+      { id: 'submit-reading', keys: 'mod+enter', description: 'Submit reading', category: 'actions',
+        action: () => { if (sensorId && readingValue && !addReading.isPending) addReading.mutate(); }, global: true },
+    ],
+    { lensId: 'grounding' }
+  );
 
   // Bridge grounding readings into lens artifacts
   useEffect(() => {
@@ -217,15 +234,26 @@ export default function GroundingLensPage() {
           <h2 className="font-semibold flex items-center gap-2">
             <Thermometer className="w-4 h-4 text-neon-purple" /> Add Sensor Reading
           </h2>
-          <select value={sensorId} onChange={(e) => setSensorId(e.target.value)} className="input-lattice w-full">
-            <option value="">Select sensor...</option>
+          <select
+            ref={sensorIdInputRef}
+            value={sensorId}
+            onChange={(e) => setSensorId(e.target.value)}
+            className="input-lattice w-full"
+          >
+            <option value="">Select sensor…  (n focuses)</option>
             {Array.isArray(sensorList) && sensorList.map((s: Record<string, unknown>) => (
               <option key={String(s.id || s)} value={String(s.id || s)}>{String(s.name || s.id || s)}</option>
             ))}
           </select>
           <div className="grid grid-cols-2 gap-2">
-            <input type="number" value={readingValue} onChange={(e) => setReadingValue(e.target.value)}
-              placeholder="Value" className="input-lattice" />
+            <input
+              type="number"
+              value={readingValue}
+              onChange={(e) => setReadingValue(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && sensorId && readingValue && !addReading.isPending) { e.preventDefault(); addReading.mutate(); } }}
+              placeholder="Value · ⌘⏎ submits"
+              className="input-lattice"
+            />
             <input type="text" value={readingUnit} onChange={(e) => setReadingUnit(e.target.value)}
               placeholder="Unit (e.g., °C)" className="input-lattice" />
           </div>
@@ -241,8 +269,15 @@ export default function GroundingLensPage() {
           <div className="border-t border-lattice-border pt-3 mt-3">
             <h3 className="text-sm font-medium mb-2">Ground a DTU</h3>
             <div className="flex gap-2">
-              <input type="text" value={groundDtuId} onChange={(e) => setGroundDtuId(e.target.value)}
-                placeholder="DTU ID..." className="input-lattice flex-1" />
+              <input
+                ref={groundDtuInputRef}
+                type="text"
+                value={groundDtuId}
+                onChange={(e) => setGroundDtuId(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && groundDtuId && !groundDtu.isPending) { e.preventDefault(); groundDtu.mutate(); } }}
+                placeholder="DTU ID…  g focuses"
+                className="input-lattice flex-1"
+              />
               <button
                 onClick={() => groundDtu.mutate()}
                 disabled={!groundDtuId || groundDtu.isPending}
