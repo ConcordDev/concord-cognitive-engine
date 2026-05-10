@@ -77,6 +77,11 @@ function literalEqualitiesFor(content, varName) {
   return literals;
 }
 
+// Heuristic: variables read this many times or more are assumed to be
+// consumed correctly via function calls / derived state, even if not all
+// literal-equality branches exist. Tunes the false-positive rate of rule 3.
+const HEAVY_USE_THRESHOLD = 10;
+
 // Setter call sites: `setX(` — count ignoring the destructure declaration.
 function setterCallCount(content, setter) {
   const re = new RegExp(`\\b${setter}\\s*\\(`, "g");
@@ -226,16 +231,15 @@ export async function runLensDecorativeStateDetector({ root, opts = {} } = {}) {
           continue; // don't double-flag with rule 3
         }
 
-        // Rule 3: literal-union view-mode pattern. Only fires when the
-        // variable looks like a view mode by name AND has at least one
-        // matched render branch but not all of them. This excludes:
-        //   - Filter / sort / search states (compared inside .filter()
-        //     callbacks against data fields, not branched in JSX)
-        //   - States with 0 matched literals (likely consumed by helper
-        //     functions like severityRank() rather than direct equality)
-        //   - States with all literals matched (real working view modes)
+        // Rule 3: literal-union view-mode pattern. Only fires when:
+        //   - The variable name semantically suggests view-mode
+        //   - It has at least 1 matched render branch (proves SOME
+        //     branching) but not all literals (proves the rest is missing)
+        //   - The variable's read count is bounded (lots of reads imply
+        //     consumption via function calls / derived state, e.g.
+        //     `currentType = getTypeForTab(activeMode)` patterns)
         const literals = resolveTypeLiterals(content, d.typeBlob);
-        if (literals && literals.size >= 2 && setCount >= 1 && isViewModeName(d.varName)) {
+        if (literals && literals.size >= 2 && setCount >= 1 && isViewModeName(d.varName) && readCount < HEAVY_USE_THRESHOLD) {
           const equalities = literalEqualitiesFor(content, d.varName);
           const matchedEqualities = new Set([...equalities].filter(l => literals.has(l)));
           if (matchedEqualities.size >= 1 && matchedEqualities.size < literals.size) {
@@ -258,35 +262,16 @@ export async function runLensDecorativeStateDetector({ root, opts = {} } = {}) {
         }
       }
 
-      // Pass 2 — useMemo dead-filter (rule 4).  matchAll again, fresh iter.
-      const stateVarNames = decls.map(d => d.varName).filter(Boolean);
-      for (const mm of content.matchAll(/useMemo\s*\(\s*\(\s*\)\s*=>\s*\{?([\s\S]*?)\}?\s*,\s*\[([^\]]*)\]\s*\)/g)) {
-        const body = mm[1] || "";
-        const deps = mm[2] || "";
-        if (!/\.\s*(filter|sort|slice)\s*\(/.test(body)) continue;
-        const memoLine = lineOf(content, mm.index ?? 0);
-        for (const v of stateVarNames) {
-          const inBody = new RegExp(`\\b${v}\\b`).test(body);
-          const inDeps = new RegExp(`\\b${v}\\b`).test(deps);
-          if (inBody && !inDeps) {
-            findings.push({
-              id: "lens_dead_filter",
-              severity: "high",
-              kind: "static",
-              message: `Lens ${lensName}: useMemo at line ${memoLine} reads state '${v}' but it's missing from deps — memo won't re-run when '${v}' changes`,
-              location: `${relPath(root, pagePath)}:${memoLine}`,
-              evidence: {
-                lens: lensName,
-                varName: v,
-                deps: snippet(deps.trim(), 120),
-              },
-              fixHint: `Add '${v}' to the useMemo dependency array, or move the filter outside the memo if intentional.`,
-            });
-          }
-        }
-      }
+      // Rule 4 (lens_dead_filter) is intentionally NOT implemented here:
+      // detecting "useMemo reads state X but X isn't in deps" requires AST
+      // awareness to distinguish state-variable reads from same-named
+      // property accesses (e.g. `fact.subject` shouldn't count as a read of
+      // a `subject` state variable).  Regex can't safely make that
+      // distinction, and eslint-plugin-react-hooks/exhaustive-deps already
+      // does the AST work correctly.  We rely on the lint pass for that
+      // check — adding it here would be lossy duplication.
 
-      // Pass 3 — empty event handlers (rule 5)
+      // Pass 2 — empty event handlers (rule 5)
       for (const mh of content.matchAll(/\bon(?:Click|Submit|Change|KeyDown|MouseDown|Press)\s*=\s*\{\s*\(\s*\)\s*=>\s*\{\s*\}\s*\}/g)) {
         const handlerLine = lineOf(content, mh.index ?? 0);
         const above = lines[handlerLine - 2] || "";
