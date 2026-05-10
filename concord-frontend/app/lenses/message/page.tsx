@@ -58,6 +58,12 @@ export default function MessageLensPage() {
   const [composeBody, setComposeBody] = useState('');
   const [sendError, setSendError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  // In-thread reply state — separate from the new-thread composer
+  // because Gmail / Slack users expect to reply inline without losing
+  // their place in the thread.
+  const [replyBody, setReplyBody] = useState('');
+  const [replying, setReplying] = useState(false);
+  const [replyError, setReplyError] = useState<string | null>(null);
 
   const sentLog = useArtifacts<{ to: string; at: string }>('message', { type: 'sent-message', limit: 5 });
   const recordSent = useCreateArtifact<{ to: string; at: string }>('message');
@@ -129,18 +135,62 @@ export default function MessageLensPage() {
     }
   }
 
+  // Send a reply to the active conversation — uses the same /api/social/dm
+  // endpoint as compose, but routes the toUserId from the current
+  // conversation's participants so the user doesn't have to retype it.
+  const sendReply = useCallback(async () => {
+    setReplyError(null);
+    const conv = conversations.find((c) => c.id === activeConversationId);
+    const to = conv?.otherUserId
+      ?? (conv?.participantIds || []).find((id) => id);
+    const body = replyBody.trim();
+    if (!to || !body) {
+      setReplyError(!to ? 'No recipient resolved for this thread.' : 'Body required.');
+      return;
+    }
+    setReplying(true);
+    try {
+      const r = await api.post('/api/social/dm', {
+        toUserId: to,
+        content: body,
+        conversationId: activeConversationId ?? undefined,
+      });
+      if (r.data?.ok === false) {
+        setReplyError(r.data?.error ?? 'send failed');
+      } else {
+        recordSent.mutate({
+          type: 'sent-message',
+          title: `to ${to}`,
+          data: { to, at: new Date().toISOString() },
+          meta: { tags: ['message', 'dm', 'reply'], status: 'completed', visibility: 'private' },
+        });
+        setReplyBody('');
+        if (activeConversationId) loadMessages(activeConversationId);
+        refreshConversations();
+      }
+    } catch (e: unknown) {
+      type AxiosLike = { response?: { data?: { error?: string } }; message?: string };
+      const ax = e as AxiosLike;
+      setReplyError(ax.response?.data?.error ?? ax.message ?? 'send failed');
+    } finally {
+      setReplying(false);
+    }
+  }, [activeConversationId, conversations, replyBody, recordSent, loadMessages, refreshConversations]);
+
   useLensCommand(
     [
       { id: 'goto-inbox',   keys: 'g i', description: 'Inbox',   category: 'navigation', action: () => setActiveLabelId('inbox') },
       { id: 'goto-starred', keys: 'g s', description: 'Starred', category: 'navigation', action: () => setActiveLabelId('starred') },
       { id: 'goto-sent',    keys: 'g t', description: 'Sent',    category: 'navigation', action: () => setActiveLabelId('sent') },
       { id: 'compose',      keys: 'c',   description: 'Compose', category: 'actions',    action: () => setComposing(true) },
+      { id: 'reply',        keys: 'r',   description: 'Reply to thread', category: 'actions',
+        action: () => { if (activeConversationId) requestAnimationFrame(() => (document.getElementById('msg-reply-textarea') as HTMLTextAreaElement | null)?.focus()); } },
     ],
     { lensId: 'message' }
   );
 
   // Map backend conversations into the InboxThread shape the silhouette expects.
-  const threads: InboxThread[] = useMemo(() => {
+  const allThreads: InboxThread[] = useMemo(() => {
     return conversations.map((c) => ({
       id: c.id,
       from: c.otherDisplayName ?? c.otherUserId ?? 'Unknown',
@@ -156,6 +206,17 @@ export default function MessageLensPage() {
       labels: ['inbox'],
     }));
   }, [conversations]);
+
+  // Apply the active label filter — `inbox` shows everything, `starred`
+  // narrows to threads the user starred, `sent` is empty for now (we'd
+  // need a separate "where I'm the sender" query) but the filter
+  // doesn't crash when selected.
+  const threads: InboxThread[] = useMemo(() => {
+    if (activeLabelId === 'starred') return allThreads.filter((t) => t.starred);
+    if (activeLabelId === 'sent')    return [];
+    if (activeLabelId === 'archive' || activeLabelId === 'trash') return [];
+    return allThreads;
+  }, [allThreads, activeLabelId]);
 
   const activeThread = threads.find((t) => t.id === activeConversationId);
 
@@ -244,6 +305,48 @@ export default function MessageLensPage() {
                   ))}
                 </div>
               )}
+
+              {/* Inline reply composer — Gmail / Slack idiom.  Doesn't
+                  block the thread view; the user can scroll back up to
+                  re-read while typing. */}
+              <div className="mt-4 not-prose border-t border-white/10 pt-4">
+                <div className="text-xs text-gray-500 mb-2 flex items-center justify-between">
+                  <span>
+                    Replying to <span className="text-gray-300 font-medium">{activeThread.from}</span>
+                  </span>
+                  <kbd className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-gray-400">⌘⏎ send</kbd>
+                </div>
+                <textarea
+                  id="msg-reply-textarea"
+                  value={replyBody}
+                  onChange={(e) => setReplyBody(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); sendReply(); } }}
+                  rows={3}
+                  placeholder="Write a reply…"
+                  disabled={replying}
+                  className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-sm focus:outline-none focus:border-violet-400/50"
+                />
+                {replyError && <p className="text-xs text-rose-300 mt-1">{replyError}</p>}
+                <div className="flex items-center gap-2 mt-2">
+                  <button
+                    onClick={sendReply}
+                    disabled={replying || !replyBody.trim()}
+                    className="px-3 py-1.5 text-xs bg-violet-600 hover:bg-violet-500 disabled:opacity-40 rounded text-white inline-flex items-center gap-1"
+                  >
+                    {replying ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+                    {replying ? 'Sending…' : 'Reply'}
+                  </button>
+                  {replyBody && (
+                    <button
+                      onClick={() => { setReplyBody(''); setReplyError(null); }}
+                      disabled={replying}
+                      className="px-3 py-1.5 text-xs text-gray-400 hover:text-white"
+                    >
+                      Discard
+                    </button>
+                  )}
+                </div>
+              </div>
             </article>
           ) : loadingConvos ? (
             <p className="text-sm text-gray-500 inline-flex items-center gap-2">
