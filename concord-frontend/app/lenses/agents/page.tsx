@@ -51,7 +51,6 @@ interface Agent {
   temperature?: number;
 }
 
-type ViewMode = 'dashboard' | 'detail' | 'builder' | 'logs' | 'workflows';
 type AgentFilter = 'all' | 'active' | 'dormant' | 'error';
 
 // --- Seed Data (persisted via backend on first use) ---
@@ -78,22 +77,29 @@ export default function AgentsLensPage() {
   useLensNav('agents');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('agents');
 
-  const [, setView] = useState<ViewMode>('dashboard');
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [filter, setFilter] = useState<AgentFilter>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [detailTab, setDetailTab] = useState<'overview' | 'logs' | 'memory' | 'config'>('overview');
 
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Lens-scoped keyboard commands. Linear/Raycast-style: jump to any
   // view with a single letter, focus search with /, new agent with N.
+  // d/b/l route to existing real handlers (dashboard / builder modal /
+  // selected-agent logs tab).  Pre-fix the d/b/l/w shortcuts called
+  // setView on a `[, setView]`-discarded state — silent no-ops.
   useLensCommand(
     [
-      { id: 'view-dashboard', keys: 'd', description: 'Dashboard', category: 'navigation', action: () => setView('dashboard') },
-      { id: 'view-builder', keys: 'b', description: 'Builder', category: 'navigation', action: () => setView('builder') },
-      { id: 'view-logs', keys: 'l', description: 'Logs', category: 'navigation', action: () => setView('logs') },
-      { id: 'view-workflows', keys: 'w', description: 'Workflows', category: 'navigation', action: () => setView('workflows') },
-      { id: 'new-agent', keys: 'n', description: 'New agent', category: 'actions', action: () => setShowCreate(true) },
-      { id: 'focus-search', keys: '/', description: 'Focus search', category: 'navigation', action: () => searchInputRef.current?.focus() },
+      { id: 'view-dashboard', keys: 'd', description: 'Back to dashboard', category: 'navigation',
+        action: () => setSelectedAgent(null) },
+      { id: 'view-builder',   keys: 'b', description: 'Open agent builder', category: 'actions',
+        action: () => setShowCreate(true) },
+      { id: 'view-logs',      keys: 'l', description: 'Logs tab (select agent first)', category: 'navigation',
+        action: () => { if (selectedAgent) setDetailTab('logs'); } },
+      { id: 'new-agent',      keys: 'n', description: 'New agent', category: 'actions', action: () => setShowCreate(true) },
+      { id: 'focus-search',   keys: '/', description: 'Focus search', category: 'navigation', action: () => searchInputRef.current?.focus() },
       { id: 'filter-all',     keys: '1', description: 'All agents',     category: 'view', action: () => setFilter('all') },
       { id: 'filter-active',  keys: '2', description: 'Active agents',  category: 'view', action: () => setFilter('active') },
       { id: 'filter-dormant', keys: '3', description: 'Dormant agents', category: 'view', action: () => setFilter('dormant') },
@@ -101,9 +107,6 @@ export default function AgentsLensPage() {
     ],
     { lensId: 'agents' }
   );
-  const [filter, setFilter] = useState<AgentFilter>('all');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [detailTab, setDetailTab] = useState<'overview' | 'logs' | 'memory' | 'config'>('overview');
 
   // Create form
   const [newName, setNewName] = useState('');
@@ -309,7 +312,7 @@ export default function AgentsLensPage() {
             <div className="flex items-center gap-2">
               {selectedAgent && (
                 <button
-                  onClick={() => { setSelectedAgent(null); setView('dashboard'); }}
+                  onClick={() => setSelectedAgent(null)}
                   className="text-sm text-gray-400 hover:text-white flex items-center gap-1 mr-2"
                 >
                   <ChevronRight className="w-4 h-4 rotate-180" /> Back
