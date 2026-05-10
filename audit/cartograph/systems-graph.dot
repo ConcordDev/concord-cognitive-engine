@@ -27,14 +27,17 @@ digraph Concord {
   lens_bio [label="lens/bio", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_black_market [label="lens/black-market", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_board [label="lens/board", color=green, style=filled, fillcolor="#e0ffe0"];
+  lens_bounties [label="lens/bounties", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_bridge [label="lens/bridge", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_calendar [label="lens/calendar", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_carpentry [label="lens/carpentry", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_chat [label="lens/chat", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_chem [label="lens/chem", color=green, style=filled, fillcolor="#e0ffe0"];
+  lens_classroom [label="lens/classroom", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_code [label="lens/code", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_code_quality [label="lens/code-quality", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_cognition [label="lens/cognition", color=green, style=filled, fillcolor="#e0ffe0"];
+  lens_cognitive_replay [label="lens/cognitive-replay", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_collab [label="lens/collab", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_command_center [label="lens/command-center", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_commonsense [label="lens/commonsense", color=green, style=filled, fillcolor="#e0ffe0"];
@@ -51,14 +54,11 @@ digraph Concord {
   lens_custom [label="lens/custom", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_daily [label="lens/daily", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_database [label="lens/database", color=green, style=filled, fillcolor="#e0ffe0"];
+  lens_death_insurance [label="lens/death-insurance", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_debate [label="lens/debate", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_debug [label="lens/debug", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_defense [label="lens/defense", color=green, style=filled, fillcolor="#e0ffe0"];
+  lens_deities [label="lens/deities", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_desert [label="lens/desert", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_disputes [label="lens/disputes", color=green, style=filled, fillcolor="#e0ffe0"];
-  lens_diy [label="lens/diy", color=green, style=filled, fillcolor="#e0ffe0"];
-  lens_docs [label="lens/docs", color=green, style=filled, fillcolor="#e0ffe0"];
-  lens_dtus [label="lens/dtus", color=green, style=filled, fillcolor="#e0ffe0"];
-  lens_dx_platform [label="lens/dx-platform", color=green, style=filled, fillcolor="#e0ffe0"];
-  lens_eco [label="lens/eco", color=green, style=filled, fillcolor="#e0ffe0"];
 }

@@ -1,6 +1,6 @@
 # Gaps & Wire Targets
 
-_Generated 2026-05-10T04:15:47.839Z. Each gap proposes a concrete wire action._
+_Generated 2026-05-10T19:07:06.467Z. Each gap proposes a concrete wire action._
 
 ## Dead tables (22)
 
@@ -37,9 +37,34 @@ _None._
 
 _None — every module either has a heartbeat or is invoked by a macro callsite._
 
-## Headless backend domains (0)
+## Headless backend domains (24)
 
-_None — every macro domain has a matching frontend lens dir._
+| Domain | Macro count | Suggested frontend lens dir |
+|---|---:|---|
+| `refusal` | 4 | `concord-frontend/app/lenses/refusal/page.tsx` |
+| `npc` | 3 | `concord-frontend/app/lenses/npc/page.tsx` |
+| `forward_sim` | 3 | `concord-frontend/app/lenses/forward-sim/page.tsx` |
+| `embodied` | 3 | `concord-frontend/app/lenses/embodied/page.tsx` |
+| `scars` | 2 | `concord-frontend/app/lenses/scars/page.tsx` |
+| `mount` | 2 | `concord-frontend/app/lenses/mount/page.tsx` |
+| `fidelity` | 2 | `concord-frontend/app/lenses/fidelity/page.tsx` |
+| `walker` | 4 | `concord-frontend/app/lenses/walker/page.tsx` |
+| `kingdom` | 1 | `concord-frontend/app/lenses/kingdom/page.tsx` |
+| `reflex` | 4 | `concord-frontend/app/lenses/reflex/page.tsx` |
+| `macro_dag` | 3 | `concord-frontend/app/lenses/macro-dag/page.tsx` |
+| `narrative` | 1 | `concord-frontend/app/lenses/narrative/page.tsx` |
+| `deity` | 5 | `concord-frontend/app/lenses/deity/page.tsx` |
+| `npc_autobiography` | 2 | `concord-frontend/app/lenses/npc-autobiography/page.tsx` |
+| `npc_persona` | 3 | `concord-frontend/app/lenses/npc-persona/page.tsx` |
+| `compression_art` | 2 | `concord-frontend/app/lenses/compression-art/page.tsx` |
+| `spectator` | 3 | `concord-frontend/app/lenses/spectator/page.tsx` |
+| `betting` | 5 | `concord-frontend/app/lenses/betting/page.tsx` |
+| `observer` | 1 | `concord-frontend/app/lenses/observer/page.tsx` |
+| `sonic_glyph` | 1 | `concord-frontend/app/lenses/sonic-glyph/page.tsx` |
+| `bounty` | 3 | `concord-frontend/app/lenses/bounty/page.tsx` |
+| `dtu_sync` | 3 | `concord-frontend/app/lenses/dtu-sync/page.tsx` |
+| `sub_world` | 2 | `concord-frontend/app/lenses/sub-world/page.tsx` |
+| `therapy` | 3 | `concord-frontend/app/lenses/therapy/page.tsx` |
 
 ## Orphan lenses (2)
 
