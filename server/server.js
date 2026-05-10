@@ -9735,7 +9735,7 @@ async function runMacro(domain, name, input, ctx) {
     chat: new Set(["timeline", "summary"]),
     semantic: new Set(["status", "similar", "embed", "compare", "search_thoughts"]),
     narrative: new Set(["ripple_report", "ripple_for_world"]),
-    deity: new Set(["list", "get", "tone_vector"]),
+    deity: new Set(["list", "get", "tone_vector", "pilgrim_log"]),
     macro_dag: new Set(["validate", "describe", "run"]),
     walker: new Set(["trade_routes", "arbitrage"]),
     // Phase 9.1 — tradeable artifact economy
@@ -9756,6 +9756,11 @@ async function runMacro(domain, name, input, ctx) {
     // Phase 9.5 — code-loop + safety + B2B (read-only here; writes auth-gated)
     bounty: new Set(["list_open"]),
     psyops: new Set(["list_alerts"]),
+    // Phase 9.6 — sync + classroom + sub-world + therapy + federated deities
+    dtu_sync: new Set(["list_devices"]),
+    classroom: new Set(["list_cohorts"]),
+    sub_world: new Set(["list"]),
+    therapy: new Set(["active_fields"]),
   };
   const _domainSet = publicReadDomains[domain];
   const _domainNameAllowed = _domainSet ? _domainSet.has(name) : false;
@@ -69778,6 +69783,276 @@ register("sandbox", "list", (_ctx, _input = {}) => {
 
 structuredLog("info", "phase9_5_code_safety_b2b_init", {
   detail: "Phase 9.5 — bounty.* (CC), psyops.*, sandbox.* (CC, B2B)",
+});
+
+// ── Phase 9.6: Identity sync + cross-instance + classroom + therapy ──────────
+
+// #19 iCloud-killer for thoughts — DTU sync devices.
+register("dtu_sync", "register_device", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { deviceLabel, autoSync = true } = input || {};
+  if (!deviceLabel) return { ok: false, reason: "missing_label" };
+  const token = `dev_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+  try {
+    db.prepare(`
+      INSERT INTO dtu_sync_devices (user_id, device_label, device_token, auto_sync)
+      VALUES (?, ?, ?, ?)
+    `).run(userId, deviceLabel, token, autoSync ? 1 : 0);
+    return { ok: true, deviceToken: token };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Register a device for DTU sync. Returns a device token used for sync requests." });
+
+register("dtu_sync", "list_devices", (ctx, _input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  try {
+    const rows = db.prepare(`
+      SELECT id, device_label, registered_at, last_synced_at, auto_sync
+      FROM dtu_sync_devices WHERE user_id = ?
+      ORDER BY registered_at DESC
+    `).all(userId);
+    return { ok: true, devices: rows };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "List the calling user's registered sync devices." });
+
+register("dtu_sync", "force_sync", async (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { deviceToken } = input || {};
+  if (!deviceToken) return { ok: false, reason: "missing_token" };
+  try {
+    // Verify the token belongs to this user.
+    const dev = db.prepare(`
+      SELECT id, user_id FROM dtu_sync_devices WHERE device_token = ?
+    `).get(deviceToken);
+    if (!dev || dev.user_id !== userId) return { ok: false, reason: "device_not_found" };
+    // Pack via existing portability lib.
+    const port = await import("./lib/dtu-portability.js");
+    const r = port.exportUserCorpus(db, userId, { includeAttachments: true, limit: 5000 });
+    db.prepare(`UPDATE dtu_sync_devices SET last_synced_at = unixepoch() WHERE id = ?`).run(dev.id);
+    return { ok: true, deviceId: dev.id, packCounts: r?.envelope?.counts };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Compose + return a portable pack for the device. Uses Phase 0 universal-format export." });
+
+// #20 Classroom — cohorts + homework + peer review.
+register("classroom", "create_cohort", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { name, rubricDtuId } = input || {};
+  if (!name) return { ok: false, reason: "missing_name" };
+  try {
+    const r = db.prepare(`
+      INSERT INTO classroom_cohorts (name, teacher_user_id, rubric_dtu_id)
+      VALUES (?, ?, ?)
+    `).run(name, userId, rubricDtuId || null);
+    return { ok: true, cohortId: r.lastInsertRowid };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Create a classroom cohort. Caller becomes the teacher." });
+
+register("classroom", "enrol", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { cohortId, studentUserId } = input || {};
+  if (!cohortId) return { ok: false, reason: "missing_cohort" };
+  const target = studentUserId || userId;
+  try {
+    db.prepare(`
+      INSERT OR IGNORE INTO classroom_enrolments (cohort_id, student_user_id) VALUES (?, ?)
+    `).run(cohortId, target);
+    return { ok: true, cohortId, studentUserId: target };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Enrol a student in a cohort. Self-enrolment if studentUserId omitted." });
+
+register("classroom", "submit_homework", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { cohortId, dtuId } = input || {};
+  if (!cohortId || !dtuId) return { ok: false, reason: "missing_inputs" };
+  try {
+    const enroled = db.prepare(`
+      SELECT 1 FROM classroom_enrolments WHERE cohort_id = ? AND student_user_id = ?
+    `).get(cohortId, userId);
+    if (!enroled) return { ok: false, reason: "not_enroled" };
+    const r = db.prepare(`
+      INSERT INTO homework_submissions (cohort_id, student_user_id, dtu_id)
+      VALUES (?, ?, ?)
+    `).run(cohortId, userId, dtuId);
+    return { ok: true, submissionId: r.lastInsertRowid };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Student submits a DTU as homework." });
+
+register("classroom", "peer_review", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { submissionId, score, comment = null } = input || {};
+  if (!submissionId || score === undefined) return { ok: false, reason: "missing_inputs" };
+  try {
+    db.prepare(`
+      INSERT OR REPLACE INTO peer_reviews (submission_id, reviewer_user_id, score, comment)
+      VALUES (?, ?, ?, ?)
+    `).run(submissionId, userId, Math.max(0, Math.min(100, Math.floor(Number(score)))), comment);
+    return { ok: true };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Peer review a submission. Reviewer score 0-100." });
+
+register("classroom", "list_cohorts", (ctx, _input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  try {
+    const teaching = db.prepare(`
+      SELECT id, name, rubric_dtu_id, created_at,
+             (SELECT COUNT(*) FROM classroom_enrolments WHERE cohort_id = classroom_cohorts.id) AS enrolled
+      FROM classroom_cohorts WHERE teacher_user_id = ? AND status = 'active'
+      ORDER BY created_at DESC
+    `).all(userId);
+    const studying = db.prepare(`
+      SELECT c.id, c.name, c.rubric_dtu_id, c.teacher_user_id, e.enroled_at
+      FROM classroom_enrolments e
+      JOIN classroom_cohorts c ON c.id = e.cohort_id
+      WHERE e.student_user_id = ? AND c.status = 'active'
+      ORDER BY e.enroled_at DESC
+    `).all(userId);
+    return { ok: true, teaching, studying };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Cohorts where the user teaches or studies." });
+
+// #21 Cross-world physics import — spawn a Forge app as a sub-world.
+register("sub_world", "spawn_from_forge", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { forgeAppDtuId, name, kind = "physics_simulator" } = input || {};
+  if (!forgeAppDtuId || !name) return { ok: false, reason: "missing_inputs" };
+  // Verify the DTU is a Forge app the user owns or has license to.
+  let dtu = null;
+  try {
+    dtu = db.prepare(`SELECT id, kind, creator_id FROM dtus WHERE id = ?`).get(forgeAppDtuId);
+  } catch { /* dtus table may differ */ }
+  if (!dtu) return { ok: false, reason: "forge_app_not_found" };
+  if (dtu.kind !== "forge_app") return { ok: false, reason: "not_forge_app" };
+  const worldId = `subw_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  try {
+    db.prepare(`
+      INSERT INTO sub_worlds (world_id, forge_app_dtu_id, name, kind, spawned_by_user_id)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(worldId, forgeAppDtuId, name, kind, userId);
+    return { ok: true, worldId, name, kind };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Spawn a Forge app as a sub-world reachable via existing world-travel." });
+
+register("sub_world", "list", (_ctx, _input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  try {
+    const rows = db.prepare(`
+      SELECT world_id, forge_app_dtu_id, name, kind, spawned_by_user_id, spawned_at, status
+      FROM sub_worlds WHERE status = 'active'
+      ORDER BY spawned_at DESC LIMIT 100
+    `).all();
+    return { ok: true, subWorlds: rows };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "All active sub-worlds." });
+
+// #23 Refusal Field as therapy substrate.
+register("therapy", "compose_field", async (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { targetUserId, fieldKind, durationSeconds = 3600 } = input || {};
+  if (!targetUserId || !fieldKind) return { ok: false, reason: "missing_inputs" };
+  // Allowed kinds: existing FIELD_KINDS plus therapy extensions.
+  const allowed = new Set([
+    "binary_thinking", "catastrophising", "self_judgment", "numbing", "compulsion",
+    "rumination", "perfectionism", "shame_spiral",
+  ]);
+  if (!allowed.has(fieldKind)) return { ok: false, reason: "unknown_kind" };
+  const expires = Math.floor(Date.now() / 1000) + Math.max(60, Math.floor(Number(durationSeconds)));
+  try {
+    const r = db.prepare(`
+      INSERT INTO therapy_fields
+        (author_user_id, target_user_id, field_kind, duration_seconds, expires_at)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(userId, targetUserId, fieldKind, Math.floor(Number(durationSeconds)), expires);
+    return { ok: true, fieldId: r.lastInsertRowid, expiresAt: expires };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Compose a therapy refusal-field for a user. Kinds beyond the in-game set." });
+
+register("therapy", "active_fields", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = input.userId || ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  try {
+    const now = Math.floor(Date.now() / 1000);
+    const rows = db.prepare(`
+      SELECT id, author_user_id, field_kind, duration_seconds, created_at, expires_at, status
+      FROM therapy_fields WHERE target_user_id = ? AND status = 'active' AND expires_at > ?
+      ORDER BY created_at DESC
+    `).all(userId, now);
+    return { ok: true, fields: rows };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Active therapy fields for the calling user." });
+
+register("therapy", "deactivate", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { fieldId } = input || {};
+  if (!fieldId) return { ok: false, reason: "missing_id" };
+  try {
+    // User can disable any field that targets them; therapist cannot
+    // override the user's own deactivation.
+    const r = db.prepare(`
+      UPDATE therapy_fields SET status = 'revoked', revoked_at = unixepoch()
+      WHERE id = ? AND target_user_id = ? AND status = 'active'
+    `).run(fieldId, userId);
+    return { ok: r.changes > 0, deactivated: r.changes > 0 };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "User-initiated deactivation. Therapist cannot block this." });
+
+// #25 Federation-of-deities — pilgrimage flow.
+register("deity", "pilgrimage", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { deityId, originPeer = null } = input || {};
+  if (!deityId) return { ok: false, reason: "missing_deityId" };
+  try {
+    // Must exist in player_deities.
+    const deity = db.prepare(`SELECT id, pilgrim_count FROM player_deities WHERE id = ?`).get(deityId);
+    if (!deity) return { ok: false, reason: "deity_not_found" };
+    db.prepare(`
+      INSERT INTO deity_pilgrimages (deity_id, pilgrim_user_id, origin_peer)
+      VALUES (?, ?, ?)
+    `).run(deityId, userId, originPeer);
+    db.prepare(`UPDATE player_deities SET pilgrim_count = pilgrim_count + 1 WHERE id = ?`).run(deityId);
+    return { ok: true, deityId, newPilgrimCount: deity.pilgrim_count + 1 };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Record a pilgrimage to a deity. Increments pilgrim_count." });
+
+register("deity", "pilgrim_log", (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { deityId, limit = 50 } = input || {};
+  if (!deityId) return { ok: false, reason: "missing_deityId" };
+  try {
+    const rows = db.prepare(`
+      SELECT id, pilgrim_user_id, origin_peer, arrived_at
+      FROM deity_pilgrimages WHERE deity_id = ?
+      ORDER BY arrived_at DESC LIMIT ?
+    `).all(deityId, Number(limit));
+    return { ok: true, pilgrims: rows };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Pilgrimage log for a deity." });
+
+structuredLog("info", "phase9_6_federation_init", {
+  detail: "Phase 9.6 — dtu_sync.*, classroom.*, sub_world.*, therapy.*, deity.{pilgrimage, pilgrim_log}",
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════

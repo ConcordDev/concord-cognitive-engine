@@ -136,6 +136,25 @@ export default function DeitiesPage() {
               <p className="mt-2 text-[10px] text-zinc-500">
                 born {new Date(d.created_at * 1000).toLocaleDateString()}
               </p>
+              {/* Phase 9.6 #25 — federated pilgrimage. Records a
+                  pilgrim_user_id row + bumps pilgrim_count. The
+                  origin_peer field is null for local pilgrimages;
+                  cross-instance pilgrims fill it via the peer's AP
+                  bridge. */}
+              <button
+                type="button"
+                onClick={async () => {
+                  await fetch('/api/lens/run', {
+                    method: 'POST', credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ domain: 'deity', name: 'pilgrimage', input: { deityId: d.id } }),
+                  });
+                  void refresh();
+                }}
+                className="mt-3 w-full bg-purple-700 hover:bg-purple-600 text-white text-xs py-1.5 rounded font-medium"
+              >
+                Pilgrimage
+              </button>
             </li>
           ))}
         </ul>
