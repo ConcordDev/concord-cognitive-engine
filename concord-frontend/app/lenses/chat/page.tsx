@@ -57,6 +57,7 @@ import {
   ChevronRight,
   PauseCircle,
   PlayCircle,
+  GitBranch,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { UniversalActions } from '@/components/lens/UniversalActions';
@@ -1344,6 +1345,127 @@ export default function ChatLensPage() {
     setShowMoreMenu(false);
   }, [messages]);
 
+  // Markdown export — chat-history-as-document, far more useful than JSON
+  // for sharing or pasting into a doc.  Mirrors the Claude.ai / ChatGPT
+  // behaviour where the export is a clean readable transcript.
+  const handleExportMarkdown = useCallback(() => {
+    const conv = conversations.find((c) => c.id === selectedConversation);
+    const title = conv?.title || 'Concord Chat';
+    const lines: string[] = [`# ${title}`, '', `_Exported ${new Date().toLocaleString()}_`, ''];
+    for (const m of messages) {
+      const who = m.role === 'user' ? '🧑 You' : m.role === 'assistant' ? '🤖 Concord' : '⚙️ System';
+      const ts = m.timestamp ? new Date(m.timestamp).toLocaleString() : '';
+      lines.push(`## ${who}${ts ? `  ·  ${ts}` : ''}`, '');
+      lines.push(m.content || '_(empty)_');
+      if (m.refs?.length) {
+        lines.push('', '**Citations:**');
+        m.refs.forEach((r) => lines.push(`- ${r.title}${r.lineageHash ? ` (\`${r.lineageHash.slice(0, 8)}\`)` : ''}`));
+      }
+      lines.push('');
+    }
+    const blob = new Blob([lines.join('\n')], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${title.replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').toLowerCase()}-${new Date().toISOString().slice(0, 10)}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setShowMoreMenu(false);
+  }, [messages, conversations, selectedConversation]);
+
+  // Copy a markdown transcript to the clipboard — instant share without
+  // a download step, handy for pasting into Slack / docs / a thread.
+  const handleCopyTranscript = useCallback(async () => {
+    const lines: string[] = [];
+    for (const m of messages) {
+      const who = m.role === 'user' ? 'You' : m.role === 'assistant' ? 'Concord' : 'System';
+      lines.push(`**${who}:** ${m.content || ''}`, '');
+    }
+    try {
+      await navigator.clipboard.writeText(lines.join('\n'));
+      setShowMoreMenu(false);
+    } catch {
+      console.warn('[Chat] clipboard write failed');
+    }
+  }, [messages]);
+
+  // Branch from a specific message — copy this conversation's history up
+  // to (and including) the chosen message into a new conversation, then
+  // continue from there.  Mirrors Claude.ai's edit-rewind / ChatGPT's
+  // "fork from here" behaviour, but as an explicit user action so the
+  // original thread is preserved.
+  const handleBranchFromMessage = useCallback((messageId: string) => {
+    const idx = messages.findIndex((m) => m.id === messageId);
+    if (idx === -1) return;
+    const slice = messages.slice(0, idx + 1).map((m) => ({ ...m, id: `${m.id}-b${Date.now().toString(36)}` }));
+    const newId = generateUUID();
+    const sourceTitle = conversations.find((c) => c.id === selectedConversation)?.title || 'Conversation';
+    const newConv: Conversation = {
+      id: newId,
+      title: `↳ ${sourceTitle}`,
+      lastMessage: slice[slice.length - 1]?.content?.slice(0, 100) || '',
+      updatedAt: new Date().toISOString(),
+      messageCount: slice.length,
+    };
+    setStoredConversations((prev) => {
+      const next = [newConv, ...prev];
+      saveConversations(next);
+      return next;
+    });
+    saveMessagesForSession(newId, slice);
+    setSelectedConversation(newId);
+    setLocalMessages(slice);
+    setShowMoreMenu(false);
+  }, [messages, conversations, selectedConversation]);
+
+  // Global message search — scans every conversation in localStorage,
+  // not just the current one.  Closes the gap with Claude.ai/ChatGPT
+  // which both index message bodies, not titles only.
+  const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
+  const [globalSearchQuery, setGlobalSearchQuery] = useState('');
+  const globalSearchInputRef = useRef<HTMLInputElement>(null);
+  const globalSearchResults = useMemo(() => {
+    const q = globalSearchQuery.trim().toLowerCase();
+    if (!q || q.length < 2) return [] as Array<{ convId: string; convTitle: string; message: Message; preview: string }>;
+    const out: Array<{ convId: string; convTitle: string; message: Message; preview: string }> = [];
+    for (const conv of conversations) {
+      let msgs: Message[];
+      if (conv.id === selectedConversation) {
+        msgs = messages;
+      } else {
+        try { msgs = loadMessagesForSession(conv.id); } catch { msgs = []; }
+      }
+      for (const m of msgs) {
+        const lc = (m.content || '').toLowerCase();
+        const pos = lc.indexOf(q);
+        if (pos === -1) continue;
+        const start = Math.max(0, pos - 40);
+        const end = Math.min((m.content || '').length, pos + q.length + 80);
+        const preview = (start > 0 ? '…' : '') + (m.content || '').slice(start, end) + (end < (m.content || '').length ? '…' : '');
+        out.push({ convId: conv.id, convTitle: conv.title, message: m, preview });
+        if (out.length >= 100) return out;
+      }
+    }
+    return out;
+  }, [globalSearchQuery, conversations, messages, selectedConversation]);
+
+  const openGlobalSearch = useCallback(() => {
+    setGlobalSearchOpen(true);
+    requestAnimationFrame(() => globalSearchInputRef.current?.focus());
+  }, []);
+
+  const jumpToSearchResult = useCallback((convId: string, messageId: string) => {
+    setSelectedConversation(convId);
+    setGlobalSearchOpen(false);
+    setGlobalSearchQuery('');
+    requestAnimationFrame(() => {
+      const el = document.getElementById(`msg-${messageId}`);
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el?.classList.add('ring-2', 'ring-neon-cyan');
+      setTimeout(() => el?.classList.remove('ring-2', 'ring-neon-cyan'), 1500);
+    });
+  }, []);
+
   const handleSend = useCallback(() => {
     if (!input.trim() || sendMutation.isPending) return;
 
@@ -1365,6 +1487,7 @@ export default function ChatLensPage() {
       { id: 'focus-input', keys: '/', description: 'Focus message input', category: 'navigation', action: () => inputRef.current?.focus() },
       { id: 'tool-palette', keys: 'mod+.', description: 'Open tool palette', category: 'actions', action: () => setToolPaletteOpen(true), global: true },
       { id: 'toggle-pause', keys: 'mod+shift+p', description: 'Pause / resume Concord initiatives', category: 'actions', action: toggleInitiativesPaused, global: true },
+      { id: 'global-search', keys: 'mod+shift+f', description: 'Search across all conversations', category: 'navigation', action: openGlobalSearch, global: true },
     ],
     { lensId: 'chat' }
   );
@@ -1685,11 +1808,12 @@ export default function ChatLensPage() {
 
       return (
         <motion.div
+          id={`msg-${message.id}`}
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.25, ease: 'easeOut' }}
           className={cn(
-            'flex gap-4 px-4 lg:px-6 py-3 group relative',
+            'flex gap-4 px-4 lg:px-6 py-3 group relative rounded transition-all',
             message.role === 'user' ? 'flex-row-reverse' : '',
             isPinned && 'bg-yellow-500/5 border-l-2 border-l-yellow-500/50'
           )}
@@ -2010,6 +2134,14 @@ export default function ChatLensPage() {
                   >
                     <RefreshCw className="w-3 h-3" />
                   </button>
+                  <button
+                    onClick={() => handleBranchFromMessage(message.id)}
+                    className="hover:text-neon-purple transition-colors"
+                    title="Branch a new conversation from this message"
+                    aria-label="Branch from here"
+                  >
+                    <GitBranch className="w-3 h-3" />
+                  </button>
                   <span>·</span>
                   <button
                     onClick={() => forgeMutation.mutate(message.content)}
@@ -2049,6 +2181,7 @@ export default function ChatLensPage() {
       saveEditMessage,
       cancelEditMessage,
       deleteMessage,
+      handleBranchFromMessage,
     ]
   );
 
@@ -2626,19 +2759,47 @@ export default function ChatLensPage() {
                     className="absolute top-full right-0 mt-2 w-48 bg-lattice-surface border border-lattice-border rounded-lg shadow-xl z-50 overflow-hidden"
                   >
                     <button
+                      onClick={() => {
+                        openGlobalSearch();
+                        setShowMoreMenu(false);
+                      }}
+                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-200 hover:bg-lattice-bg transition-colors"
+                      title="Search across every conversation"
+                    >
+                      <Search className="w-4 h-4" />
+                      Search all chats
+                      <kbd className="ml-auto text-[10px] text-gray-500">⌘⇧F</kbd>
+                    </button>
+                    <button
                       onClick={handleExportChat}
                       disabled={messages.length === 0}
                       className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-200 hover:bg-lattice-bg transition-colors disabled:opacity-50"
                     >
                       <Download className="w-4 h-4" />
-                      Export Chat
+                      Export JSON
+                    </button>
+                    <button
+                      onClick={handleExportMarkdown}
+                      disabled={messages.length === 0}
+                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-200 hover:bg-lattice-bg transition-colors disabled:opacity-50"
+                    >
+                      <FileText className="w-4 h-4" />
+                      Export Markdown
+                    </button>
+                    <button
+                      onClick={handleCopyTranscript}
+                      disabled={messages.length === 0}
+                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-200 hover:bg-lattice-bg transition-colors disabled:opacity-50"
+                    >
+                      <Copy className="w-4 h-4" />
+                      Copy transcript
                     </button>
                     <button
                       onClick={() => {
                         startNewChat();
                         setShowMoreMenu(false);
                       }}
-                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-200 hover:bg-lattice-bg transition-colors"
+                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-200 hover:bg-lattice-bg transition-colors border-t border-lattice-border"
                     >
                       <Plus className="w-4 h-4" />
                       New Conversation
@@ -3562,6 +3723,93 @@ export default function ChatLensPage() {
           ]);
         }}
       />
+
+      {/* ── Global message search (⌘⇧F) ───────────────────────── */}
+      <AnimatePresence>
+        {globalSearchOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-start justify-center pt-24 px-4 bg-black/60 backdrop-blur-sm"
+            onClick={() => setGlobalSearchOpen(false)}
+          >
+            <motion.div
+              initial={{ y: -16, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: -16, opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="w-full max-w-2xl bg-[#0d1117] rounded-xl border border-neon-cyan/30 shadow-2xl shadow-neon-cyan/10 overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-2 px-4 py-3 border-b border-lattice-border">
+                <Search className="w-4 h-4 text-neon-cyan" />
+                <input
+                  ref={globalSearchInputRef}
+                  type="text"
+                  value={globalSearchQuery}
+                  onChange={(e) => setGlobalSearchQuery(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Escape') setGlobalSearchOpen(false); }}
+                  placeholder="Search every message in every conversation…"
+                  className="flex-1 bg-transparent text-sm text-white placeholder-gray-500 focus:outline-none"
+                  autoFocus
+                />
+                <kbd className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-gray-400">esc</kbd>
+              </div>
+              <div className="max-h-96 overflow-y-auto">
+                {globalSearchQuery.trim().length < 2 && (
+                  <div className="px-4 py-8 text-center text-xs text-gray-500">
+                    Type at least 2 characters to search
+                  </div>
+                )}
+                {globalSearchQuery.trim().length >= 2 && globalSearchResults.length === 0 && (
+                  <div className="px-4 py-8 text-center text-xs text-gray-500">
+                    No matches across {conversations.length} conversation{conversations.length === 1 ? '' : 's'}
+                  </div>
+                )}
+                {globalSearchResults.map((r, i) => {
+                  const q = globalSearchQuery.trim();
+                  const idx = r.preview.toLowerCase().indexOf(q.toLowerCase());
+                  const before = idx >= 0 ? r.preview.slice(0, idx) : r.preview;
+                  const match = idx >= 0 ? r.preview.slice(idx, idx + q.length) : '';
+                  const after = idx >= 0 ? r.preview.slice(idx + q.length) : '';
+                  return (
+                    <button
+                      key={`${r.convId}-${r.message.id}-${i}`}
+                      onClick={() => jumpToSearchResult(r.convId, r.message.id)}
+                      className="w-full text-left px-4 py-3 border-b border-lattice-border hover:bg-lattice-elevated transition-colors group"
+                    >
+                      <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-gray-500 mb-1">
+                        <MessageSquare className="w-3 h-3" />
+                        <span className="text-neon-cyan/80">{r.convTitle}</span>
+                        <span>·</span>
+                        <span>{r.message.role}</span>
+                        {r.message.timestamp && (
+                          <>
+                            <span>·</span>
+                            <span>{new Date(r.message.timestamp).toLocaleDateString()}</span>
+                          </>
+                        )}
+                      </div>
+                      <div className="text-xs text-gray-300 leading-relaxed">
+                        {before}
+                        <mark className="bg-neon-cyan/30 text-white px-0.5 rounded">{match}</mark>
+                        {after}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+              {globalSearchResults.length > 0 && (
+                <div className="px-4 py-2 border-t border-lattice-border text-[10px] text-gray-500 flex justify-between">
+                  <span>{globalSearchResults.length} match{globalSearchResults.length === 1 ? '' : 'es'}</span>
+                  <span>scanning {conversations.length} conversation{conversations.length === 1 ? '' : 's'}</span>
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
     </LensShell>
   );
