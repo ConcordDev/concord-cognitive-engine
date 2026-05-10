@@ -185,8 +185,13 @@ export function useShortcut(
 export function useGlobalShortcuts(handlers: Record<string, () => void>) {
   const { setShowHelp } = useKeyboard();
 
-  // Help modal
+  // Help modal — both `?` (GitHub / Slack / Linear idiom, when not in a
+  // text input) and `mod+?` (universal escape hatch from inside an input).
   useHotkeys('mod+?', (e) => {
+    e.preventDefault();
+    setShowHelp(true);
+  });
+  useHotkeys('shift+/', (e) => {
     e.preventDefault();
     setShowHelp(true);
   });
