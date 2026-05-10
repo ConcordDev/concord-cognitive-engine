@@ -28,7 +28,7 @@
  *   npx tsx scripts/audit-lens-health.ts --json     # machine-readable
  */
 
-import { readFileSync, readdirSync, statSync, existsSync } from "fs";
+import { readFileSync, readdirSync, statSync } from "fs";
 import { join, relative } from "path";
 
 const ROOT = join(__dirname, "..");
@@ -59,11 +59,22 @@ function lensIdFromPath(p: string): string {
 }
 
 function walk(dir: string, files: string[] = []): string[] {
-  if (!existsSync(dir)) return files;
-  for (const entry of readdirSync(dir)) {
+  // Single-syscall directory read — checking existsSync first then
+  // calling readdirSync is a TOCTOU race CodeQL flags as
+  // js/file-system-race. Just try the read and let the catch swallow
+  // the not-found error; the static-analysis script doesn't need the
+  // pre-check.
+  let entries: string[];
+  try {
+    entries = readdirSync(dir);
+  } catch {
+    return files;
+  }
+  for (const entry of entries) {
     if (entry.startsWith(".") || entry === "node_modules" || entry === "coverage") continue;
     const full = join(dir, entry);
-    const st = statSync(full);
+    let st;
+    try { st = statSync(full); } catch { continue; }
     if (st.isDirectory()) walk(full, files);
     else if (/\.(tsx?|jsx?)$/.test(entry)) files.push(full);
   }
@@ -75,16 +86,23 @@ function listBackendRoutes(): Set<string> {
   // or router.{get,post,...}(...) in the server tree. A lens that posts to a path
   // not in this set is a fetch-to-nowhere.
   const routes = new Set<string>();
-  if (!existsSync(SERVER_DIR)) return routes;
   const re = /\b(?:app|router|app2)\.(?:get|post|put|delete|patch)\(\s*["'`]([^"'`]+)["'`]/g;
   function collect(dir: string) {
-    for (const entry of readdirSync(dir)) {
+    let entries: string[];
+    try {
+      entries = readdirSync(dir);
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
       if (entry.startsWith(".") || entry === "node_modules" || entry === "data") continue;
       const full = join(dir, entry);
-      const st = statSync(full);
+      let st;
+      try { st = statSync(full); } catch { continue; }
       if (st.isDirectory()) collect(full);
       else if (/\.(jsx?|tsx?)$/.test(entry)) {
-        const src = readFileSync(full, "utf8");
+        let src;
+        try { src = readFileSync(full, "utf8"); } catch { continue; }
         let m;
         while ((m = re.exec(src))) routes.add(m[1]);
       }
@@ -227,7 +245,13 @@ function main() {
     console.log("| sev | rule | file:line | detail |");
     console.log("|-----|------|-----------|--------|");
     for (const f of arr) {
-      const detail = f.message.replace(/\|/g, "\\|").slice(0, 140);
+      // Escape backslashes BEFORE pipes so a payload like "\\|" doesn't
+      // turn into "\\\|" (the escaped pipe gets re-escaped as a literal).
+      // CodeQL js/incomplete-sanitization on multi-character escapes.
+      const detail = f.message
+        .replace(/\\/g, "\\\\")
+        .replace(/\|/g, "\\|")
+        .slice(0, 140);
       console.log(`| ${f.severity} | ${f.rule} | ${f.file}:${f.line} | ${detail} |`);
     }
     console.log("");

@@ -130,10 +130,27 @@ function AudioPlayer({
   );
 
   const togglePlay = useCallback(() => {
+    // Optimistic flip — onPlay/onPause from the real element will
+    // correct the state if playback ultimately fails. Without the
+    // optimistic step the icon never updates in jsdom (where
+    // HTMLMediaElement.play is "Not implemented") and the real-DOM
+    // tap-to-play feels laggy by ~1 frame.
     const el = audioRef.current;
+    setPlaying((prev) => !prev);
     if (!el) return;
-    if (el.paused) el.play().catch(() => undefined);
-    else el.pause();
+    try {
+      if (el.paused) {
+        const result = el.play();
+        if (result && typeof (result as Promise<void>).catch === "function") {
+          (result as Promise<void>).catch(() => undefined);
+        }
+      } else {
+        el.pause();
+      }
+    } catch {
+      // jsdom or autoplay-blocked browsers throw synchronously;
+      // the optimistic state already covers the visual.
+    }
   }, []);
 
   useEffect(() => {
@@ -304,9 +321,20 @@ function VideoPlayer({
 
   const togglePlay = useCallback(() => {
     const el = videoRef.current;
+    setPlaying((prev) => !prev);
     if (!el) return;
-    if (el.paused) el.play().catch(() => setBuffering(false));
-    else el.pause();
+    try {
+      if (el.paused) {
+        const result = el.play();
+        if (result && typeof (result as Promise<void>).catch === "function") {
+          (result as Promise<void>).catch(() => setBuffering(false));
+        }
+      } else {
+        el.pause();
+      }
+    } catch {
+      setBuffering(false);
+    }
   }, []);
 
   // Sync volume + muted state to the element.

@@ -193,9 +193,24 @@ async function tickNewsFeeds(STATE, realtimeEmit) {
             item.match(/<description><!\[CDATA\[([\s\S]*?)\]\]><\/description>/)?.[1] ||
             item.match(/<description>([\s\S]*?)<\/description>/)?.[1] ||
             "";
-          // Strip HTML from the description summary so it renders cleanly
-          // in the lens card without triggering dangerouslySetInnerHTML.
-          const summary = description.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim().slice(0, 320);
+          // Strip HTML safely. Use a fixed-point loop because a single
+          // pass against /<[^>]+>/ leaves shrapnel like
+          // "<scri<script>pt>" → "<scrpt>". Iterate until no further
+          // tags are removed, then escape any stray < / > so the field
+          // is byte-safe even if a future surface ever renders it as
+          // HTML. (CodeQL js/incomplete-multi-character-sanitization.)
+          let stripped = description;
+          for (let pass = 0; pass < 5; pass += 1) {
+            const next = stripped.replace(/<[^>]*>/g, "");
+            if (next === stripped) break;
+            stripped = next;
+          }
+          const summary = stripped
+            .replace(/[<>]/g, "")
+            .replace(/&nbsp;/g, " ")
+            .replace(/\s+/g, " ")
+            .trim()
+            .slice(0, 320);
           if (title) {
             articles.push({
               source: feed.name,
