@@ -9736,7 +9736,7 @@ async function runMacro(domain, name, input, ctx) {
     semantic: new Set(["status", "similar", "embed", "compare", "search_thoughts"]),
     narrative: new Set(["ripple_report", "ripple_for_world"]),
     deity: new Set(["list", "get", "tone_vector"]),
-    macro_dag: new Set(["validate", "describe"]),
+    macro_dag: new Set(["validate", "describe", "run"]),
     walker: new Set(["trade_routes", "arbitrage"]),
   };
   const _domainSet = publicReadDomains[domain];
@@ -68621,6 +68621,189 @@ register("federation", "actor", async (ctx, input = {}) => {
 
 structuredLog("info", "phase6_federation_init", {
   detail: "Phase 6 macros registered: lens.{spatial_at,set_spatial_anchor}, federation.{commune_*,outbox,actor}",
+});
+
+// ── Phase 7: Self-improving loop + synthesis ────────────────────────────────
+
+// Phase 7.1: Macro DAG (idea #1).
+register("macro_dag", "validate", async (_ctx, input = {}) => {
+  try {
+    const md = await import("./lib/macro-dag.js");
+    return md.validateDag(input.plan || {});
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Validate a DAG plan before execution. Returns ok+order or errors." });
+
+register("macro_dag", "describe", async (_ctx, input = {}) => {
+  try {
+    const md = await import("./lib/macro-dag.js");
+    return md.describeDag(input.plan || {});
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Describe a plan (stepCount, order, edges, macros). Read-only." });
+
+register("macro_dag", "run", async (ctx, input = {}) => {
+  try {
+    const md = await import("./lib/macro-dag.js");
+    return await md.runDag(input.plan || {}, ctx, runMacro);
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Execute a DAG plan. Resolves ${steps.<id>.<path>} templates between steps." });
+
+// Phase 7.2: Pathologic-ripple report (idea #24). Aggregates downstream
+// effects of a single event — grudges seeded, faction stance flips,
+// procgen regions spawned, world drift level shifts. Reads existing
+// tables; no new substrate.
+register("narrative", "ripple_report", (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { eventId, sinceTs, worldId = "concordia-hub" } = input || {};
+  if (!eventId && !sinceTs) return { ok: false, reason: "missing_event_or_since" };
+  const since = sinceTs ? Number(sinceTs) : 0;
+  const out = {};
+  // Grudges seeded since `since` (or by event linkage where the
+  // grudges table records origin_event_id).
+  try {
+    out.grudges = db.prepare(`
+      SELECT npc_id, target_kind, target_id, severity, created_at
+      FROM npc_grudges WHERE created_at >= ? LIMIT 50
+    `).all(since);
+  } catch { out.grudges = []; }
+  // Faction strategy moves.
+  try {
+    out.factionMoves = db.prepare(`
+      SELECT faction_id, kind, payload_json, created_at
+      FROM faction_strategy_log WHERE created_at >= ? LIMIT 50
+    `).all(since);
+  } catch { out.factionMoves = []; }
+  // Procgen regions that spawned.
+  try {
+    out.regionsSpawned = db.prepare(`
+      SELECT id, world_id, kind, drift_alert_signature, x, z, created_at
+      FROM procgen_regions WHERE created_at >= ? AND world_id = ? LIMIT 50
+    `).all(since, worldId);
+  } catch { out.regionsSpawned = []; }
+  // Lattice-born quests.
+  try {
+    out.latticeQuests = db.prepare(`
+      SELECT id, drift_type, quest_id, composer, created_at
+      FROM lattice_born_quests WHERE created_at >= ? LIMIT 50
+    `).all(since);
+  } catch { out.latticeQuests = []; }
+  return { ok: true, eventId, sinceTs: since, worldId, ripples: out };
+}, { note: "Aggregate ripple effects of an event — grudges, faction moves, procgen regions, quests." });
+
+// Phase 7.3: Asylum-style lying NPCs (idea #27). Computes lie probability
+// from existing grudge / stress / opinion tables. Higher hostility +
+// fear + cunning trait → higher chance of lying. Returns probability and
+// recommended lie kind so the dialogue layer can route accordingly.
+register("npc", "lie_probability", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { npcId, topic = "unknown" } = input || {};
+  const userId = input.userId || ctx?.actor?.userId;
+  if (!npcId || !userId) return { ok: false, reason: "missing_inputs" };
+  let probability = 0;
+  let signals = {};
+  try {
+    const grudge = db.prepare(`
+      SELECT MAX(severity) as max_severity FROM npc_grudges
+      WHERE npc_id = ? AND target_kind = 'player' AND target_id = ?
+    `).get(npcId, userId);
+    signals.grudge = grudge?.max_severity || 0;
+    probability += Math.min(0.4, (signals.grudge || 0) / 25);
+  } catch { /* no grudges table */ }
+  try {
+    const stress = db.prepare(`SELECT level FROM npc_stress WHERE npc_id = ?`).get(npcId);
+    signals.stress = stress?.level || 0;
+    probability += Math.min(0.2, (signals.stress || 0) / 10);
+  } catch { /* no stress table */ }
+  try {
+    const npc = db.prepare(`SELECT narrative_context FROM world_npcs WHERE id = ?`).get(npcId);
+    if (npc?.narrative_context) {
+      let nc;
+      try { nc = JSON.parse(npc.narrative_context); } catch { nc = {}; }
+      const traits = Array.isArray(nc.traits) ? nc.traits : [];
+      if (traits.includes("cunning") || traits.includes("paranoid")) probability += 0.2;
+      if (traits.includes("honest") || traits.includes("guileless")) probability -= 0.2;
+      signals.traits = traits;
+    }
+  } catch { /* world_npcs.narrative_context optional */ }
+  probability = Math.max(0, Math.min(0.9, probability));
+  const lieKind = signals.grudge > 5 ? "misdirect"
+    : signals.stress > 5 ? "evasive"
+    : signals.traits?.includes("cunning") ? "embellish"
+    : "white";
+  return { ok: true, npcId, topic, probability, lieKind, signals };
+}, { note: "Probability NPC will lie to player about topic, derived from grudge+stress+traits." });
+
+// Phase 7.4: Deity composer (idea #40). Lets a player compose a custom
+// patron deity with a tone vector. Stored in a `player_deities` table
+// (lazy CREATE).
+register("deity", "compose", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { name, toneVector = {}, dialogueTemplates = [], alignmentThresholds = {} } = input || {};
+  if (!name) return { ok: false, reason: "missing_name" };
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS player_deities (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        author_user_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        tone_vector_json TEXT NOT NULL DEFAULT '{}',
+        dialogue_templates_json TEXT NOT NULL DEFAULT '[]',
+        alignment_thresholds_json TEXT NOT NULL DEFAULT '{}',
+        created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+        pilgrim_count INTEGER NOT NULL DEFAULT 0
+      )
+    `);
+    const r = db.prepare(`
+      INSERT INTO player_deities (author_user_id, name, tone_vector_json, dialogue_templates_json, alignment_thresholds_json)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(userId, name, JSON.stringify(toneVector), JSON.stringify(dialogueTemplates), JSON.stringify(alignmentThresholds));
+    return { ok: true, deityId: r.lastInsertRowid, name, authorUserId: userId };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Compose a custom patron deity from a tone vector + dialogue templates." });
+
+register("deity", "list", (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const limit = Math.min(50, Math.max(1, Number(input.limit) || 25));
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS player_deities (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        author_user_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        tone_vector_json TEXT NOT NULL DEFAULT '{}',
+        dialogue_templates_json TEXT NOT NULL DEFAULT '[]',
+        alignment_thresholds_json TEXT NOT NULL DEFAULT '{}',
+        created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+        pilgrim_count INTEGER NOT NULL DEFAULT 0
+      )
+    `);
+    const rows = db.prepare(`
+      SELECT id, author_user_id, name, created_at, pilgrim_count
+      FROM player_deities
+      ORDER BY pilgrim_count DESC, created_at DESC LIMIT ?
+    `).all(limit);
+    return { ok: true, deities: rows };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "List player-composed deities, sorted by pilgrim count." });
+
+register("deity", "tone_vector", (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { deityId } = input || {};
+  if (!deityId) return { ok: false, reason: "missing_deityId" };
+  try {
+    const row = db.prepare(`SELECT * FROM player_deities WHERE id = ?`).get(deityId);
+    if (!row) return { ok: false, reason: "not_found" };
+    let toneVector = {}, templates = [], thresholds = {};
+    try { toneVector = JSON.parse(row.tone_vector_json || "{}"); } catch { /* keep default */ }
+    try { templates = JSON.parse(row.dialogue_templates_json || "[]"); } catch { /* keep default */ }
+    try { thresholds = JSON.parse(row.alignment_thresholds_json || "{}"); } catch { /* keep default */ }
+    return { ok: true, deityId, name: row.name, toneVector, templates, thresholds, pilgrim_count: row.pilgrim_count };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Get a player-composed deity's full tone vector + dialogue templates." });
+
+structuredLog("info", "phase7_self_improving_init", {
+  detail: "Phase 7 macros registered: macro_dag.{validate,describe,run}, narrative.ripple_report, npc.lie_probability, deity.{compose,list,tone_vector}",
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════

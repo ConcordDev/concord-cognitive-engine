@@ -113,9 +113,19 @@ describe("artifact-store", () => {
     });
 
     it("returns false for unsupported types", () => {
-      assert.equal(isSupportedType("application/octet-stream"), false);
+      // Phase 0 universal-file-format adds application/octet-stream as a
+      // generic fallback so any binary can ride inside a .dtu — it's no
+      // longer 'unsupported'. Test against types that genuinely have no
+      // SUPPORTED_TYPES entry.
       assert.equal(isSupportedType("font/woff2"), false);
+      assert.equal(isSupportedType("video/x-matroska"), false);
       assert.equal(isSupportedType(""), false);
+    });
+
+    it("supports application/octet-stream as universal fallback", () => {
+      // Phase 0 invariant — keep this pinned so future refactors don't
+      // accidentally drop the universal-file-format escape hatch.
+      assert.equal(isSupportedType("application/octet-stream"), true);
     });
   });
 
