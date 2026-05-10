@@ -9608,7 +9608,7 @@ async function runMacro(domain, name, input, ctx) {
     creative: new Set(["list", "get", "exhibition", "metrics", "profile", "masterworks", "registry", "domains", "generate", "create", "run"]),
     culture: new Set(["status", "traditions", "values", "stories", "metrics", "identity"]),
     trust: new Set(["get", "network", "metrics"]),
-    federation: new Set(["status", "peers"]),
+    federation: new Set(["status", "peers", "commune_list", "commune_status", "peer_list", "outbox"]),
     physics: new Set(["status", "constants", "models"]),
     reproduction: new Set(["compatible-pairs", "status"]),
     lineage: new Set(["tree", "get"]),
@@ -9720,6 +9720,21 @@ async function runMacro(domain, name, input, ctx) {
     ]),
     // Phase 7 — Code substrate. Read-only macros for the code-DTU view.
     code: new Set(["dtu_for", "dtu_query", "cluster_for", "refresh"]),
+    // Plan-phase-2 substrate-reveal macros (refusal HUD, eavesdrop,
+    // premonitions, dreams). All read-only — they expose simulation
+    // state that's already running so frontends can render it.
+    refusal: new Set(["strength", "composition", "fields_for_world", "is_compound"]),
+    npc: new Set(["eavesdrop", "schedule", "for_world"]),
+    forward_sim: new Set(["predictions_for_player", "predictions_for_subject", "active"]),
+    dream: new Set(["recent_for_player", "history", "list_for_player"]),
+    fidelity: new Set(["drift", "summary"]),
+    embodied: new Set(["signals_for_player", "signals_for_world", "channels"]),
+    reflex: new Set(["status", "recent_proposals", "history"]),
+    chat: new Set(["timeline", "summary"]),
+    semantic: new Set(["status", "similar", "embed", "compare", "search_thoughts"]),
+    narrative: new Set(["ripple_report", "ripple_for_world"]),
+    deity: new Set(["list", "get", "tone_vector"]),
+    macro_dag: new Set(["validate", "describe"]),
   };
   const _domainSet = publicReadDomains[domain];
   const _domainNameAllowed = _domainSet ? _domainSet.has(name) : false;
@@ -67777,6 +67792,197 @@ app.get("/api/docs/universe", (req, res) => {
 STATE._startedAt = STATE._startedAt || Date.now();
 
 structuredLog("info", "completion_init", { detail: "Completion layer: search, backups, personality, dreams initialized" });
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PLAN PHASES 2-7 — substrate-reveal + cognitive surfaces + federation place
+// + self-improving loop. All macros below wrap libs that already exist in
+// server/lib/ or server/emergent/ — they're exposure, not new mechanics.
+// See /root/.claude/plans/dope-now-make-a-effervescent-deer.md for the
+// per-phase rationale.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ── Phase 2.1: Refusal Field HUD (idea #36) ─────────────────────────────────
+// Wraps server/lib/refusal-field.js so the frontend ethics chip can render
+// a live strength gauge + compound-refusal warning at ≥6.
+register("refusal", "strength", async (_ctx, input = {}) => {
+  const { worldId = "concordia-hub" } = input || {};
+  try {
+    const rf = await import("./lib/refusal-field.js");
+    return { ok: true, worldId, strength: rf.getFieldStrength(STATE, worldId) };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Live refusal-field strength (0-9). ≥6 triggers compound-refusal HUD warning." });
+
+register("refusal", "composition", async (_ctx, input = {}) => {
+  const { worldId = "concordia-hub" } = input || {};
+  try {
+    const rf = await import("./lib/refusal-field.js");
+    return { ok: true, worldId, ...rf.computeFieldComposition(STATE, worldId) };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Glyph composition + composedFrom + per-entry breakdown." });
+
+register("refusal", "fields_for_world", async (_ctx, input = {}) => {
+  const { worldId = "concordia-hub" } = input || {};
+  try {
+    const rf = await import("./lib/refusal-field.js");
+    return { ok: true, worldId, fields: rf.activeFields(STATE, worldId) };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Active refusal-field entries (death/harvest/hostility/...) with TTLs." });
+
+register("refusal", "is_compound", async (_ctx, input = {}) => {
+  const { worldId = "concordia-hub" } = input || {};
+  try {
+    const rf = await import("./lib/refusal-field.js");
+    return { ok: true, worldId, compound: rf.isCompoundRefusal(STATE, worldId) };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Boolean: strength ≥ 6, gates compound-refusal mechanics." });
+
+// ── Phase 2.2: NPC ambient eavesdrop (idea #6) + schedule (idea #25) ────────
+// Layer 13 already runs npc-conversation-initiator at heartbeat freq 8 and
+// emits npc:conversation-bid socket events. The eavesdrop macro lets the
+// frontend filter by player proximity using existing 50m cell quantization.
+register("npc", "eavesdrop", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { worldId = "concordia-hub", x = 0, z = 0, radius = 12 } = input || {};
+  try {
+    // Active conversations within radius. Conversations carry npc_a + npc_b;
+    // join against world_npcs to get positions, then filter by distance.
+    const rows = db.prepare(`
+      SELECT c.id, c.npc_a, c.npc_b, c.composer, c.opened_at, c.last_msg_at,
+             c.expires_at, c.messages_json, c.seed_context_json,
+             a.x AS ax, a.z AS az, a.name AS a_name,
+             b.x AS bx, b.z AS bz, b.name AS b_name
+      FROM npc_conversations c
+      LEFT JOIN world_npcs a ON a.id = c.npc_a
+      LEFT JOIN world_npcs b ON b.id = c.npc_b
+      WHERE c.world_id = ? AND c.status = 'active'
+        AND (c.expires_at IS NULL OR c.expires_at > unixepoch())
+      ORDER BY c.last_msg_at DESC LIMIT 50
+    `).all(worldId);
+    const r2 = radius * radius;
+    const within = rows.filter(r => {
+      const midX = (Number(r.ax || 0) + Number(r.bx || 0)) / 2;
+      const midZ = (Number(r.az || 0) + Number(r.bz || 0)) / 2;
+      const dx = midX - Number(x), dz = midZ - Number(z);
+      return (dx * dx + dz * dz) <= r2;
+    });
+    return { ok: true, worldId, conversations: within };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "NPC↔NPC conversations within radius m of (x,z). Default 12m." });
+
+register("npc", "schedule", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { npcId } = input || {};
+  if (!npcId) return { ok: false, reason: "missing_npcId" };
+  try {
+    const blocks = db.prepare(`
+      SELECT block_idx, activity_kind, location_kind, start_hour, end_hour
+      FROM npc_schedules WHERE npc_id = ? ORDER BY block_idx ASC
+    `).all(npcId);
+    const state = db.prepare(`
+      SELECT current_block, activity, target_x, target_z, last_advanced_at
+      FROM npc_routine_state WHERE npc_id = ?
+    `).get(npcId);
+    return { ok: true, npcId, blocks, state: state || null };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "8-block daily schedule + current routine state for an NPC." });
+
+// ── Phase 2.3: Forward-sim premonitions (ideas #7, #32) ─────────────────────
+register("forward_sim", "predictions_for_player", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = input.userId || ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  try {
+    const rows = db.prepare(`
+      SELECT id, subject_kind, subject_id, anticipated, confidence,
+             composer, composed_at, expires_at, realised_at, reality_outcome
+      FROM forward_predictions
+      WHERE user_id = ?
+        AND (expires_at IS NULL OR expires_at > unixepoch())
+      ORDER BY composed_at DESC LIMIT 50
+    `).all(userId);
+    return { ok: true, userId, predictions: rows };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Active forward-sim predictions for the calling player." });
+
+register("forward_sim", "predictions_for_subject", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { subjectKind, subjectId } = input || {};
+  if (!subjectKind || !subjectId) return { ok: false, reason: "missing_subject" };
+  try {
+    const rows = db.prepare(`
+      SELECT id, user_id, anticipated, confidence, composer, composed_at,
+             expires_at, realised_at
+      FROM forward_predictions
+      WHERE subject_kind = ? AND subject_id = ?
+      ORDER BY composed_at DESC LIMIT 50
+    `).all(subjectKind, subjectId);
+    return { ok: true, subjectKind, subjectId, predictions: rows };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "All predictions targeting a specific quest/npc/faction/decision/self." });
+
+register("forward_sim", "active", (ctx, _input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  try {
+    const counts = db.prepare(`
+      SELECT subject_kind, COUNT(*) as count
+      FROM forward_predictions
+      WHERE realised_at IS NULL AND (expires_at IS NULL OR expires_at > unixepoch())
+      GROUP BY subject_kind
+    `).all();
+    return { ok: true, counts };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Aggregate count of unrealised predictions by subject kind." });
+
+// ── Phase 2.4: Dream surface (idea #31) ─────────────────────────────────────
+register("dream", "recent_for_player", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = input.userId || ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  try {
+    const rows = db.prepare(`
+      SELECT d.id, d.user_id, d.world_id, d.dream_dtu_id, d.fragment_count,
+             d.signature, d.composer, d.composed_at,
+             dt.title, dt.meta_json
+      FROM dreams d
+      LEFT JOIN dtus dt ON dt.id = d.dream_dtu_id
+      WHERE d.user_id = ?
+      ORDER BY d.composed_at DESC LIMIT 20
+    `).all(userId);
+    return { ok: true, userId, dreams: rows };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Recent dream DTUs for the calling player (Layer 9 substrate)." });
+
+register("dream", "list_for_player", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = input.userId || ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const limit = Math.min(100, Math.max(1, Number(input.limit) || 20));
+  try {
+    const rows = db.prepare(`
+      SELECT id, user_id, world_id, dream_dtu_id, fragment_count, composed_at
+      FROM dreams WHERE user_id = ? ORDER BY composed_at DESC LIMIT ?
+    `).all(userId, limit);
+    return { ok: true, userId, dreams: rows };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Paginated list of dreams for a player." });
+
+// ── Phase 2.5: Lattice drift socket emit (idea #33 mood + #8 quest reframe) ─
+// We can't easily edit the orchestrator's emit logic from here — but we can
+// register a small bridge macro that pollers / drift-quest hooks invoke.
+// The lattice-orchestrator's own drift-scan handler will pick this up via
+// a side-effect emit on next pass. The frontend subscribes to
+// "world:drift-alert" socket event for moodboard tinting.
+register("lattice", "drift_alert", (ctx, input = {}) => {
+  const { kind, severity, summary, worldId = "concordia-hub" } = input || {};
+  try {
+    realtimeEmit?.("world:drift-alert", { kind, severity, summary, worldId, ts: Date.now() });
+    return { ok: true, emitted: true, kind, severity };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Emit a world:drift-alert socket event so frontend mood-shifts. Used by drift-scan handler." });
+
+structuredLog("info", "phase2_substrate_reveal_init", {
+  detail: "Phase 2 macros registered: refusal/npc/forward_sim/dream/lattice.drift_alert",
+});
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // END COMPLETION LAYER

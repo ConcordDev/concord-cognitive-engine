@@ -62,11 +62,33 @@ export async function runPeriodicDriftScan({ db: _db, state: _state, tickCount: 
   }
 
   // Bridge: route HIGH/CRITICAL findings to HLR for a resolution attempt.
+  // Also emits a `world:drift-alert` socket event so the frontend
+  // moodboard tints the world based on the drift level (Phase 2 idea
+  // #33 + idea #8 lattice-quest world-aware reframe). REALTIME exists
+  // when the realtime emitter has been bootstrapped — guarded with
+  // optional chaining so the orchestrator stays drop-in for tests.
   try {
     const alerts = typeof mod.getDriftAlerts === "function"
       ? mod.getDriftAlerts(_STATE_REF, { severity: "high" })
       : [];
     if (Array.isArray(alerts) && alerts.length > 0) {
+      // Emit moodboard-tinting alerts before HLR so the UI gets the
+      // signal even when HLR is degraded.
+      try {
+        const realtimeMod = await import("./realtime.js").catch(() => null);
+        const emit = realtimeMod?.realtimeEmit || globalThis.REALTIME?.io?.emit?.bind(globalThis.REALTIME.io);
+        for (const a of alerts.slice(0, 5)) {
+          try {
+            emit?.("world:drift-alert", {
+              kind: a.kind ?? a.type ?? "unknown",
+              severity: a.severity ?? "high",
+              summary: a.summary ?? a.message ?? "",
+              detectedAt: Date.now(),
+            });
+          } catch { /* per-alert emit best-effort */ }
+        }
+      } catch { /* realtime module optional */ }
+
       const hlr = await import("./hlr-engine.js").catch(() => null);
       if (hlr?.runHLR) {
         for (const a of alerts.slice(0, 3)) {
