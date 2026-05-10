@@ -12,15 +12,19 @@
   "temperature_reference_latitude": "equatorial belt — the Masond / Aekon / Bahiij band. Far-north lands (Dormas, Fluxom) run cooler by ~10-15°F; far-south lands run warmer by ~5-10°F. Highland districts (Sandrun's volcanic coast, Aekon's sky temple, Sahm's northern smiths above ~2500m elevation) can drop below freezing at night even in Halcyon. This is the only place 'frost biome' shows up on Tunya — there's no polar frost, only highland frost.",
   "biome_note": "earlier drafts of this bible listed 'frost' as a generic biome distributable across kingdoms. Canon corrects: frost on Tunya is elevation-driven only. The biome list in meta.json has been updated to highland_frost, which appears in mountainous districts of multiple kingdoms but not as a kingdom-wide climate.",
   "day_phases": [
-    { "id": "deep_pre_dawn", "start_hour": 0, "end_hour": 4, "label": "Deep Pre-Dawn" },
-    { "id": "first_light", "start_hour": 4, "end_hour": 7, "label": "First Light" },
-    { "id": "morning_labor", "start_hour": 7, "end_hour": 12, "label": "Morning Labor" },
-    { "id": "midday_high", "start_hour": 12, "end_hour": 16, "label": "Midday High" },
-    { "id": "afternoon_market", "start_hour": 16, "end_hour": 20, "label": "Afternoon Market" },
-    { "id": "long_dusk", "start_hour": 20, "end_hour": 24, "label": "Long Dusk" },
-    { "id": "evening_hearth", "start_hour": 24, "end_hour": 28, "label": "Evening Hearth" },
-    { "id": "night_watch", "start_hour": 28, "end_hour": 32, "label": "Night Watch" }
+    { "id": "dominus", "start_hour": 1, "end_hour": 4, "label": "Dominus", "kind": "first_sun_watch" },
+    { "id": "stratus", "start_hour": 5, "end_hour": 8, "label": "Stratus", "kind": "morning_sun_watch" },
+    { "id": "freeus", "start_hour": 9, "end_hour": 12, "label": "Freeus", "kind": "midday_sun_watch" },
+    { "id": "quartus", "start_hour": 13, "end_hour": 16, "label": "Quartus", "kind": "afternoon_sun_watch" },
+    { "id": "penanus", "start_hour": 17, "end_hour": 20, "label": "Penanus", "kind": "first_moon_watch" },
+    { "id": "easeus", "start_hour": 21, "end_hour": 24, "label": "Easeus", "kind": "evening_moon_watch" },
+    { "id": "tendus", "start_hour": 25, "end_hour": 28, "label": "Tendus", "kind": "deep_moon_watch" },
+    { "id": "toolus", "start_hour": 29, "end_hour": 32, "label": "Toolus", "kind": "pre_dawn_moon_watch" }
   ],
+  "diurnal_terminology": {
+    "diurnal": "the canonical name for one full 32-hour cycle — what other settings call a 'day'. The unit name 'diurnal' is locked across all Tunyan content.",
+    "watch": "a 4-hour subdivision of the diurnal. Eight named watches per diurnal: Dominus, Stratus, Freeus, Quartus, Penanus, Easeus, Tendus, Toolus."
+  },
   "seasons": [
     {
       "id": "resurrection",
@@ -230,9 +234,19 @@
     }
   ],
   "epoch": {
-    "label": "4G",
-    "description": "Year 4 of the fourth generation since first arrival. Approximately 96 Tunyan years since Africa landfall, 89 since Asbir/Cree disembarkation, 82 since Eurasia, 72 since Aekon's stranded arrival. Medici crash-landed approximately 100 Tunyan years ago — between the Asbir/Cree arrival (Year 7) and the Eurasia arrival (Year 14). The Medici crashed in Year 11.",
-    "year_zero_event": "africa_first_arrival"
+    "current_annum": 409,
+    "label": "Annum 409 — present (4G)",
+    "description": "Tunyan calendar reckoning. Pre-arrival annums were counted by Ancient Tunyan tradition; the count was preserved through arrival and intermixing. Annum 313 = Africa first landfall. Annum 320 = Asbir/Cree disembarkation. Annum 324 = Medici crash. Annum 327 = Eurasia. Annum 337 = Aekon stranded arrival. Annum 409 = present. The Bloc demanded more registrars in annum 409 — the political event is happening *this annum*.",
+    "year_zero_event": "ancient_tunyan_calendar_origin (specifics held by Nil; annum 0 is approximately 313 annums before first arrival)",
+    "key_anchors_by_annum": {
+      "0": "ancient_tunyan_calendar_origin (per Nil's reckoning)",
+      "313": "africa_first_arrival",
+      "320": "asbir_cree_disembarkation",
+      "324": "medici_crash",
+      "327": "eurasia_arrival",
+      "337": "aekon_stranded_arrival",
+      "409": "present_diurnal — bloc_registrar_demand"
+    }
   },
   "religious_overlays_per_kingdom": {
     "policy": "every kingdom observes the planet-wide calendar (sun, moon, temperature, and weather are environmental facts, not religious claims). Religious overlays are layered on top.",

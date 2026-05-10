@@ -1,0 +1,138 @@
+{
+  "world_id": "tunya",
+  "schema_version": "1.0",
+  "purpose": "Dye sources, supply chains, and the canonical dye-process. Connects to apparel.json (garments take dye), professions.json (fullers + cactem keepers + alchemists), bestiary.json (sealies + cephalopods + sea snails as material sources), and faction economics (Bahiij owns the Cactem Strip; Fluxom historically dominated mollusca trade).",
+  "process": {
+    "name": "tunyan_canonical_dye",
+    "steps": [
+      "soak materials in stale_urine + sea_salt + dye",
+      "rinse with cold_water",
+      "wash with cold_water + soap",
+      "sun_dry",
+      "spin_material_together",
+      "weave_on_loom",
+      "cut_into_smaller_pieces_for_sale"
+    ],
+    "fixative": "stale urine + sea salt — historically accurate medieval-equivalent process. Fullers handle the soak step and are exposed to the urine (per professions.json fuller hazard cap).",
+    "rainy_season_modifier": "weaving and dyeing peak in the rainy season because sun-drying can be done indoors via heat-of-living-spaces; outdoor sun-dry yards are unusable. Weavers and loomers are seasonal workers."
+  },
+  "dyes": [
+    {
+      "id": "red",
+      "color_hex": "#A8311B",
+      "source": "cactem",
+      "source_kind": "insect",
+      "source_lore": "An insect bred for dye. There is a strip of land — the Cactem Strip — designated for them; they feed on richly moist plants. Mix dye with salt.",
+      "source_location": "Cactem Strip (Bahiij — tropical sub-district)",
+      "supply_chain": [
+        "cactem_keepers tend the colony at the Cactem Strip",
+        "harvest involves killing the insects (mass-produced)",
+        "alchemists in Bahiij refine the raw cactem into salt-mixed dye-paste",
+        "exported through Bahiij merchants; Sandrun Sanguire and Akeia are the largest customers"
+      ],
+      "monopoly": "Bahiij effectively monopolizes red-dye production. Other kingdoms have tried importing cactem; the insects do not survive outside the Strip's specific moist-plant ecosystem.",
+      "uses": ["sanguire_warlord_banners", "akeia_consort_robes", "festival_silks_bahiij", "general_red_textiles"]
+    },
+    {
+      "id": "white",
+      "color_hex": "#F5F5F5",
+      "source": "mollusca",
+      "source_kind": "mollusk",
+      "source_lore": "The mollusca produce both white dye AND paper.",
+      "source_location": "coastal kingdoms — Fluxom historically dominated; now also Cree and Sahm",
+      "supply_chain": [
+        "harvested by fishermen + stevedores",
+        "shells separated for paper production",
+        "soft tissue rendered for white pigment",
+        "single creature feeds two industries — paper for Asbir's archive + dye for ceremonial whites"
+      ],
+      "monopoly": "Pre-Fluxom-collapse, Fluxom controlled mollusca trade. Now contested between Cree and Sahm. Asbir is the primary buyer of mollusca paper.",
+      "uses": ["medici_sacred_robes", "asbir_archive_paper", "ceremonial_whites_all_kingdoms"]
+    },
+    {
+      "id": "blue",
+      "color_hex": "#3B5D8C",
+      "source": "indigo_plant",
+      "source_kind": "plant",
+      "source_location": "temperate woodland regions — most kingdoms can grow it",
+      "supply_chain": [
+        "horticulturalists tend indigo fields",
+        "fermentation in vats by alchemists",
+        "dye-paste sold to fullers"
+      ],
+      "monopoly": "no kingdom monopolizes; widely distributed",
+      "uses": ["asbir_civic_uniform", "kree_state_regalia", "fluxom_harbor_dress"]
+    },
+    {
+      "id": "yellow",
+      "color_hex": "#E8C878",
+      "source": "mustard_seed",
+      "source_kind": "plant",
+      "source_location": "arid + temperate regions — Sahm dominates mustard cultivation",
+      "supply_chain": [
+        "horticulturalists tend mustard fields",
+        "seeds pressed and the residue dyed into a slurry",
+        "Sahm's specialty"
+      ],
+      "monopoly": "Sahm dominates but does not monopolize",
+      "uses": ["sahm_river_iron_token_coloring", "bahiij_festival_accents", "aekon_sky_temple_ornament"]
+    },
+    {
+      "id": "purple",
+      "color_hex": "#7A3866",
+      "source": "sea_snails + sealie_defensive_sac",
+      "source_kind": "sea_creature",
+      "source_lore": "Two-creature dye. Sea snails contribute the base; sealies' defensive sac contributes the deep tone. Sealie sac is harvested during sealie hunts.",
+      "source_location": "coastal + open sea — Fluxom + Akeia + Bahiij + Sahm",
+      "supply_chain": [
+        "sea snails harvested coastally",
+        "sealie defensive sac extracted post-kill (extremely rare and valuable)",
+        "alchemists combine the two with the canonical dye process",
+        "sealie-derived purple is the deepest tone; snail-only purple is a paler variant"
+      ],
+      "monopoly": "no kingdom monopolizes the sea snail. Sealie-purple is monopolized by Fluxom and select Sahm + Aekon vessels — only sealie hunters can produce the deep tone, and sealie hunting is ~1% of vessels.",
+      "uses": ["akeia_queen_mothers_robes", "dormas_high_quarter_livery", "medici_choir_master_accents"]
+    },
+    {
+      "id": "green",
+      "color_hex": "#5B8047",
+      "source": "ground_grass_paste + sea_salt_water",
+      "source_kind": "plant",
+      "source_lore": "Grass ground into paste, mixed with salt water; clothes dipped.",
+      "source_location": "every kingdom can produce — the most accessible dye on Tunya",
+      "supply_chain": ["horticulturalists or any household grass-cutter", "dye-paste prepared at the household level"],
+      "monopoly": "none. Green is the everyday color.",
+      "uses": ["nil_robes", "cree_longhouse_banners", "dinye_elder_paint", "general_use"]
+    },
+    {
+      "id": "orange",
+      "color_hex": "#D97A1F",
+      "source": "saffron_plant",
+      "source_kind": "plant",
+      "source_location": "tropical + subtropical regions — Bahiij + Aekon",
+      "supply_chain": [
+        "horticulturalists harvest saffron",
+        "stigmas dried and ground to dye",
+        "expensive — saffron is labor-intensive to harvest"
+      ],
+      "monopoly": "Bahiij + Aekon split production; both export to other kingdoms",
+      "uses": ["bahiij_festival_silks", "fluxom_merchant_marker", "aekon_harvest_feast"]
+    },
+    {
+      "id": "brown",
+      "color_hex": "#8B5A2B",
+      "source": "ground_nuts",
+      "source_kind": "plant",
+      "source_location": "every kingdom — temperate to tropical nut groves",
+      "supply_chain": ["nut-gatherers (often children or elderly)", "alchemists grind and prepare"],
+      "monopoly": "none",
+      "uses": ["masond_mason_quarter", "dinye_everyday_wear", "sahm_smiths_apron", "widow_mourning_sari_first_annum"]
+    }
+  ],
+  "color_economy_implications": {
+    "red_as_political_lever": "Bahiij controls red. If Bahiij withholds red dye, Sandrun Sanguire's banners cannot be produced and Akeia consort robes cannot be replaced. This is leverage Bahiij has never used overtly. The threat is the leverage.",
+    "purple_as_status_marker": "True deep purple requires a sealie kill. Wearing deep purple in court signals access to sealie-hunting vessels — itself a wealth signal. Akeia's queen mother and Dormas's high-quarter both wear it.",
+    "white_collapses_with_fluxom": "Fluxom's collapse disrupted the mollusca trade. Asbir's archive paper supply has been rationed since Fluxom's fall; the Lord Curator hoards old paper as a strategic reserve.",
+    "fuller_class": "Fullers handle the urine-soak. Their hazard cap is real. Some kingdoms (Dormas, Bahiij) have begun research into fixative alternatives — alchemy budgets are quietly increasing."
+  }
+}

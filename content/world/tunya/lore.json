@@ -133,7 +133,7 @@
       "factions_involved": ["fluxom"],
       "world_id": "tunya",
       "known_by": ["fluxom", "kree_nationalists", "sahm", "aekon"],
-      "hidden_truth": "The sea creatures came after a Fluxom ship dumped two hundred refugees overboard during a storm. The refugees were Fluxom's own — third-family aspirants who had refused ration discipline. The two ruling families call them traitors. The sea creatures, in some sense, agree."
+      "hidden_truth": "The sea creatures were sealies — the apex Tunyan-native sea predator. Bigger than a killer orca, razor teeth, dense narwhal-horn, supercavitating speed. After Fluxom's ship dumped two hundred refugees overboard during a storm, sealies came for the bodies. They stayed for the ships. The refugees were Fluxom's own — third-family aspirants who had refused ration discipline; the two ruling families call them traitors. The sealies, in some sense, agree. Whether sealies have intent toward the dump is open lore (see bestiary.json#sealies). Fluxom condemned the kingdoms publicly to deflect from the dump-as-cause; the kingdoms condemned Fluxom for what it does to its own people. Both condemnations are correct."
     },
     {
       "id": "lore_medici_crash_landing",
