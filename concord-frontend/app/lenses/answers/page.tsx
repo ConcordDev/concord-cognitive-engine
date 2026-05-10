@@ -17,7 +17,7 @@
  * any DTU that matches by id merges its `detail` onto the seed entry.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -446,6 +446,8 @@ export default function AnswersLensPage() {
   const [remoteAnswers, setRemoteAnswers] = useState<AnswerEntry[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [query, setQuery] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Section nav (1-8) — Wolfram / Quora idiom adapted for the answers grid.
   useLensCommand(
@@ -458,6 +460,7 @@ export default function AnswersLensPage() {
       { id: 'sec-systems',       keys: '6', description: 'Systems',       category: 'navigation', action: () => setActiveSection('systems') },
       { id: 'sec-consciousness', keys: '7', description: 'Consciousness', category: 'navigation', action: () => setActiveSection('consciousness') },
       { id: 'sec-meta',          keys: '8', description: 'Meta',          category: 'navigation', action: () => setActiveSection('meta') },
+      { id: 'focus-search', keys: '/', description: 'Search across all answers', category: 'navigation', action: () => searchInputRef.current?.focus() },
     ],
     { lensId: 'answers' }
   );
@@ -521,6 +524,17 @@ export default function AnswersLensPage() {
   const activeMeta = SECTIONS.find((s) => s.id === activeSection) ?? SECTIONS[0];
   const activeEntries = bySection.get(activeSection) ?? [];
 
+  // Cross-section search results — scans every loaded answer's title /
+  // problem / detail / modules for the query.
+  const trimmedQuery = query.trim().toLowerCase();
+  const searchHits = trimmedQuery.length >= 2
+    ? allAnswers.filter((a) => {
+        const hay = [a.title, a.problem, a.detail, a.equation, a.solution, ...(a.modules || [])]
+          .filter(Boolean).join(' ').toLowerCase();
+        return hay.includes(trimmedQuery);
+      })
+    : [];
+
   return (
     <LensShell lensId="answers" asMain={false}>
       <ManifestActionBar />
@@ -563,7 +577,63 @@ export default function AnswersLensPage() {
             Live answer DTUs unavailable ({loadError}); showing seed copy.
           </div>
         )}
+
+        {/* ── Cross-section search ─────────────────────────────── */}
+        <div className="relative">
+          <input
+            ref={searchInputRef}
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Escape') { setQuery(''); searchInputRef.current?.blur(); } }}
+            placeholder="Search every answer · / to focus · Esc to clear"
+            className="w-full pl-9 pr-9 py-2 bg-lattice-deep border border-lattice-border rounded text-sm text-white placeholder-gray-500 focus:outline-none focus:border-neon-cyan/50"
+          />
+          <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          {query && (
+            <button
+              onClick={() => setQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-gray-400 hover:text-white"
+            >
+              clear
+            </button>
+          )}
+        </div>
       </header>
+
+      {/* ── Search results panel (when query active) ─────────────── */}
+      {trimmedQuery.length >= 2 && (
+        <div className="rounded-lg border border-neon-cyan/20 bg-lattice-surface/40 overflow-hidden">
+          <div className="px-4 py-2 text-xs text-neon-cyan border-b border-lattice-border bg-lattice-deep flex items-center justify-between">
+            <span>Search results — {searchHits.length} of {allAnswers.length} answer{allAnswers.length === 1 ? '' : 's'}</span>
+            <span className="text-[10px] text-gray-500">across all 8 sections</span>
+          </div>
+          {searchHits.length === 0 ? (
+            <div className="p-6 text-center text-sm text-gray-500">No answers match &quot;{query}&quot;</div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 p-3">
+              {searchHits.map((entry) => {
+                const meta = SECTIONS.find((s) => s.id === entry.section) ?? SECTIONS[0];
+                const Icon = meta.icon;
+                return (
+                  <button
+                    key={entry.id}
+                    onClick={() => { setActiveSection(entry.section); setQuery(''); }}
+                    className="text-left rounded border border-lattice-border bg-lattice-deep hover:border-neon-cyan/40 transition-colors p-3"
+                  >
+                    <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-gray-500 mb-1">
+                      <Icon className={cn('w-3 h-3', `text-${meta.accent}`)} />
+                      <span className={`text-${meta.accent}`}>{meta.label}</span>
+                    </div>
+                    <div className="text-sm text-white font-medium">{entry.title}</div>
+                    <div className="text-xs text-gray-400 mt-1 line-clamp-2">{entry.problem}</div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Section tabs ───────────────────────────────────────────── */}
       <nav className="flex gap-2 flex-wrap">
