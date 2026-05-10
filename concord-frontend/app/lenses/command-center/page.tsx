@@ -7,7 +7,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers, api } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import { useState, useEffect, useCallback } from 'react';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
+import { useRunArtifact, useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useLensBridge } from '@/lib/hooks/use-lens-bridge';
 import { useRouter } from 'next/navigation';
 import {
@@ -1759,6 +1759,22 @@ export default function CommandCenterPage() {
   const router = useRouter();
   const [showFeatures, setShowFeatures] = useState(true);
   const [activeTab, setActiveTab] = useState<TabId>('vitals');
+
+  // Persist operator session opens as a 'session' lens artifact for the
+  // audit trail. One row per mount; tab navigations are not persisted
+  // (would be too noisy).
+  const recentSessions = useArtifacts<{ kind: string; at: string }>('command-center', { type: 'session', limit: 5 });
+  const recordSession = useCreateArtifact<{ kind: string; at: string }>('command-center');
+  void recentSessions;
+  useEffect(() => {
+    recordSession.mutate({
+      type: 'session',
+      title: `Command-center session ${new Date().toLocaleString()}`,
+      data: { kind: 'open', at: new Date().toISOString() },
+      meta: { tags: ['command-center'], status: 'completed', visibility: 'private' },
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
   useLensCommand(

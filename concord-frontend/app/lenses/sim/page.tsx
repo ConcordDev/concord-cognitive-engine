@@ -536,12 +536,15 @@ export default function SimLensPage() {
   // ── State ──────────────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState<SimTab>('scenarios');
 
-  // Lens-scoped keyboard commands (auto-wired by codemod).
+  // Lens-scoped keyboard commands. Lab-notebook idiom: r/e/s tabs,
+  // n new scenario, ⌘Enter run-current.
   useLensCommand(
     [
-      { id: 'tab-runs', keys: 'r', description: 'Runs', category: 'navigation', action: () => setActiveTab('runs') },
-      { id: 'tab-results', keys: 'e', description: 'Results', category: 'navigation', action: () => setActiveTab('results') },
+      { id: 'tab-runs',      keys: 'r', description: 'Runs',      category: 'navigation', action: () => setActiveTab('runs') },
+      { id: 'tab-results',   keys: 'e', description: 'Results',   category: 'navigation', action: () => setActiveTab('results') },
       { id: 'tab-scenarios', keys: 's', description: 'Scenarios', category: 'navigation', action: () => setActiveTab('scenarios') },
+      { id: 'new-scenario',  keys: 'n', description: 'New scenario',         category: 'actions',    action: () => { setEditingScenario(null); setShowScenarioBuilder(true); } },
+      { id: 'close-builder', keys: 'esc', description: 'Close scenario builder', category: 'navigation', action: () => setShowScenarioBuilder(false) },
     ],
     { lensId: 'sim' }
   );

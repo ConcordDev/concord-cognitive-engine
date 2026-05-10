@@ -23,9 +23,11 @@
  * roving tabindex). Dark-mode default.
  */
 
-import { useState, type ComponentType } from 'react';
+import { useState, useEffect, useRef, type ComponentType } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
+import { useLensCommand } from '@/hooks/useLensCommand';
+import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Settings as SettingsIcon, Sliders, Save, Volume2,
@@ -196,6 +198,42 @@ export default function UxSuiteLensPage() {
   const [activeId, setActiveId] = useState<string>(TABS[0].id);
   const activeTab = TABS.find(t => t.id === activeId)!;
   const PreBuilt = activeTab?.Component;
+
+  // ── Keyboard-first nav: g <letter> jumps between tab groups; n/p
+  // step through tabs sequentially.
+  useLensCommand(
+    [
+      { id: 'goto-settings', keys: 'g s', description: 'Settings group',  category: 'navigation', action: () => { const t = TABS.find((x) => x.group === 'settings'); if (t) setActiveId(t.id); } },
+      { id: 'goto-progress', keys: 'g p', description: 'Progress group',  category: 'navigation', action: () => { const t = TABS.find((x) => x.group === 'progress'); if (t) setActiveId(t.id); } },
+      { id: 'goto-world',    keys: 'g w', description: 'World group',     category: 'navigation', action: () => { const t = TABS.find((x) => x.group === 'world'); if (t) setActiveId(t.id); } },
+      { id: 'goto-ops',      keys: 'g o', description: 'Ops group',       category: 'navigation', action: () => { const t = TABS.find((x) => x.group === 'ops'); if (t) setActiveId(t.id); } },
+      { id: 'goto-shell',    keys: 'g h', description: 'Shell group',     category: 'navigation', action: () => { const t = TABS.find((x) => x.group === 'shell'); if (t) setActiveId(t.id); } },
+      { id: 'next-tab',      keys: 'n',   description: 'Next tab',        category: 'navigation',
+        action: () => { const i = TABS.findIndex((t) => t.id === activeId); setActiveId(TABS[(i + 1) % TABS.length].id); } },
+      { id: 'prev-tab',      keys: 'p',   description: 'Previous tab',    category: 'navigation',
+        action: () => { const i = TABS.findIndex((t) => t.id === activeId); setActiveId(TABS[(i - 1 + TABS.length) % TABS.length].id); } },
+    ],
+    { lensId: 'ux-suite' }
+  );
+
+  // Persist tab visits as a 'tab-visit' lens artifact so the suite has
+  // real backend evidence of usage. One row per session-mount per tab
+  // first-visit (StrictMode-tolerant via mountedTabsRef).
+  const recentVisits = useArtifacts<{ tab: string; at: string }>('ux-suite', { type: 'tab-visit', limit: 5 });
+  const recordVisit = useCreateArtifact<{ tab: string; at: string }>('ux-suite');
+  const mountedTabsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (mountedTabsRef.current.has(activeId)) return;
+    mountedTabsRef.current.add(activeId);
+    recordVisit.mutate({
+      type: 'tab-visit',
+      title: `tab → ${activeId}`,
+      data: { tab: activeId, at: new Date().toISOString() },
+      meta: { tags: ['ux-suite', 'tab'], status: 'completed', visibility: 'private' },
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeId]);
+  void recentVisits;
 
   return (
     <LensShell lensId="ux-suite" asMain={false}>

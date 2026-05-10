@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -249,6 +249,7 @@ export default function RetailLensPage() {
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
 
+  const searchInputRef = useRef<HTMLInputElement>(null);
   useLensCommand(
 
     [
@@ -259,7 +260,8 @@ export default function RetailLensPage() {
 
       { id: 'tab-customers', keys: 'c', description: 'Customers', category: 'navigation', action: () => setMode('Customers') },
 
-      { id: 'tab-support', keys: 's', description: 'Support', category: 'navigation', action: () => setMode('Support') },
+      { id: 'tab-support', keys: 's', description: 'Support', category: 'navigation', action: () => setMode('Support') },      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
+
 
     ],
 

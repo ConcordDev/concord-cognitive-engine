@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from "@/hooks/useLensCommand";
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -53,6 +54,16 @@ const THREAD_TYPES = [
 ];
 
 export default function AttentionLensPage() {
+  useLensCommand(
+    [
+      { id: "attention-all", keys: "a", description: "All threads", category: "view", action: () => setThreadFilter("all") },
+      { id: "attention-active", keys: "v", description: "Active threads", category: "view", action: () => setThreadFilter("active") },
+      { id: "attention-pending", keys: "p", description: "Pending threads", category: "view", action: () => setThreadFilter("pending") },
+      { id: "attention-completed", keys: "c", description: "Completed threads", category: "view", action: () => setThreadFilter("completed") },
+    ],
+    { lensId: "attention" }
+  );
+
   useLensNav('attention');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('attention');
 

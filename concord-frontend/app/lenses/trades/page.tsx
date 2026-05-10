@@ -2,8 +2,9 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { apiHelpers } from '@/lib/api/client';
@@ -244,6 +245,24 @@ export default function TradesLensPage() {
   const [showDashboard, setShowDashboard] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [showFeatures, setShowFeatures] = useState(true);
+
+  // ── Keyboard shortcuts (ServiceTitan / Buildertrend idiom) ────────
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  useLensCommand(
+    [
+      { id: 'tab-jobs',       keys: 'j', description: 'Jobs',       category: 'navigation', action: () => setActiveTab('jobs') },
+      { id: 'tab-estimates',  keys: 'e', description: 'Estimates',  category: 'navigation', action: () => setActiveTab('estimates') },
+      { id: 'tab-materials',  keys: 'm', description: 'Materials',  category: 'navigation', action: () => setActiveTab('materials') },
+      { id: 'tab-permits',    keys: 'p', description: 'Permits',    category: 'navigation', action: () => setActiveTab('permits') },
+      { id: 'tab-equipment',  keys: 'q', description: 'Equipment',  category: 'navigation', action: () => setActiveTab('equipment') },
+      { id: 'tab-clients',    keys: 'c', description: 'Clients',    category: 'navigation', action: () => setActiveTab('clients') },
+      { id: 'new-item',       keys: 'n', description: 'New item',   category: 'actions',    action: () => { setEditingItem(null); setEditorOpen(true); } },
+      { id: 'toggle-dashboard', keys: 'd', description: 'Toggle dashboard', category: 'view', action: () => setShowDashboard((v) => !v) },
+      { id: 'focus-search',   keys: '/', description: 'Focus search', category: 'navigation', action: () => searchInputRef.current?.focus() },
+      { id: 'close-editor',   keys: 'esc', description: 'Close editor', category: 'navigation', action: () => setEditorOpen(false) },
+    ],
+    { lensId: 'trades' }
+  );
 
   // ----- Editor form state -----
   const [formName, setFormName] = useState('');
@@ -1620,10 +1639,11 @@ export default function TradesLensPage() {
         <div className="relative flex-1 min-w-[220px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
+            ref={searchInputRef}
             type="text"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder={`Search ${activeTab}...`}
+            placeholder={`Search ${activeTab}…  /`}
             className={cn(ds.input, 'pl-10')}
           />
         </div>

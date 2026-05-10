@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { Clock, Target, TrendingUp, Calendar, Milestone, Rocket, Loader2, Layers, ChevronDown, Database, Server, HardDrive, Cloud, RefreshCw, Archive, GitMerge, Play } from 'lucide-react';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -24,15 +25,16 @@ interface MilestoneData {
   confidence: number;
 }
 
-const SEED_MILESTONES: { title: string; data: Record<string, unknown> }[] = [];
+const MILESTONES_FALLBACK: { title: string; data: Record<string, unknown> }[] = [];
 
 export default function LegacyLensPage() {
   useLensNav('legacy');
   const [showFeatures, setShowFeatures] = useState(true);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'completed' | 'current' | 'future'>('all');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('legacy');
 
   const { items: milestoneItems, isLoading, isError, error, refetch } = useLensData<MilestoneData>('legacy', 'milestone', {
-    seed: SEED_MILESTONES,
+    seed: MILESTONES_FALLBACK,
   });
 
   const milestones = milestoneItems.map((item) => ({
@@ -42,6 +44,22 @@ export default function LegacyLensPage() {
     status: item.data.status,
     confidence: item.data.confidence,
   })).sort((a, b) => a.year - b.year);
+
+  const visibleMilestones = useMemo(() =>
+    statusFilter === 'all' ? milestones : milestones.filter((m) => m.status === statusFilter),
+    [milestones, statusFilter]
+  );
+
+  useLensCommand(
+    [
+      { id: 'filter-all',       keys: '0', description: 'All',       category: 'view', action: () => setStatusFilter('all') },
+      { id: 'filter-completed', keys: '1', description: 'Completed', category: 'view', action: () => setStatusFilter('completed') },
+      { id: 'filter-current',   keys: '2', description: 'Current',   category: 'view', action: () => setStatusFilter('current') },
+      { id: 'filter-future',    keys: '3', description: 'Future',    category: 'view', action: () => setStatusFilter('future') },
+      { id: 'toggle-features',  keys: 'f', description: 'Toggle features panel', category: 'view', action: () => setShowFeatures((v) => !v) },
+    ],
+    { lensId: 'legacy' }
+  );
 
   const runAction = useRunArtifact('legacy');
   const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
@@ -157,14 +175,44 @@ export default function LegacyLensPage() {
 
       {/* Vision Timeline */}
       <div className="panel p-4">
-        <h2 className="font-semibold mb-4 flex items-center gap-2">
-          <Calendar className="w-4 h-4 text-neon-purple" />
-          400-Year Timeline
-        </h2>
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+          <h2 className="font-semibold flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-neon-purple" />
+            400-Year Timeline
+            {statusFilter !== 'all' && (
+              <span className="text-xs text-gray-500 font-normal">
+                ({visibleMilestones.length} of {milestones.length})
+              </span>
+            )}
+          </h2>
+          <div className="flex items-center gap-1 text-[10px]">
+            {(['all', 'completed', 'current', 'future'] as const).map((s, i) => (
+              <button
+                key={s}
+                onClick={() => setStatusFilter(s)}
+                className={`px-2 py-0.5 rounded border transition-colors ${
+                  statusFilter === s
+                    ? s === 'completed' ? 'border-neon-green/40 bg-neon-green/15 text-neon-green'
+                    : s === 'current'   ? 'border-neon-purple/40 bg-neon-purple/15 text-neon-purple'
+                    : s === 'future'    ? 'border-neon-cyan/40 bg-neon-cyan/15 text-neon-cyan'
+                    : 'border-white/20 bg-white/10 text-white'
+                    : 'border-white/10 bg-white/5 text-gray-400 hover:text-white'
+                }`}
+              >
+                {s}<kbd className="text-[8px] opacity-60 ml-0.5">{i}</kbd>
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="relative">
           <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-lattice-border" />
           <div className="space-y-6">
-            {milestones.map((milestone, index) => (
+            {visibleMilestones.length === 0 && milestones.length > 0 && (
+              <p className="text-sm text-gray-500 text-center py-4">
+                No <span className="text-neon-purple">{statusFilter}</span> milestones in this timeline.
+              </p>
+            )}
+            {visibleMilestones.map((milestone, index) => (
               <motion.div key={milestone.year} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }} className="relative flex gap-4 pl-10">
                 <div
                   className={`absolute left-2.5 w-3 h-3 rounded-full border-2 ${

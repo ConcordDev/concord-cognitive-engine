@@ -1,11 +1,12 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useLensData } from '@/lib/hooks/use-lens-data';
-import { useState } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { Scale, Gavel, FileText, CheckCircle, XCircle, AlertTriangle, Plus, Layers, ChevronDown, BookOpen, Shield, Users, Clock, Copy, Globe, Calendar, ChevronRight, Play, Loader2 } from 'lucide-react';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -57,10 +58,44 @@ export default function LawLensPage() {
   const [newCaseDeadline, setNewCaseDeadline] = useState('');
   const [expandedCase, setExpandedCase] = useState<string | null>(null);
   const [showFeatures, setShowFeatures] = useState(true);
+  const [caseSearch, setCaseSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<CaseStatus | 'all'>('all');
+  const [jurisdictionFilter, setJurisdictionFilter] = useState<Jurisdiction | 'all'>('all');
+  const caseSearchInputRef = useRef<HTMLInputElement>(null);
+  const newCaseInputRef = useRef<HTMLInputElement>(null);
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('law');
 
   // Lens artifact persistence layer
   const { isLoading, isError: isError, error: error, refetch: refetch, items: caseItems, create: createCase } = useLensData('law', 'case', { noSeed: true });
+
+  // Filtered cases — search by title, narrow by status + jurisdiction.
+  // The status row used to fire setExpandedCase(null) (a bug — it just
+  // collapsed expanded cases without filtering), so this also wires
+  // those chips to do what they look like they should.
+  const visibleCases = useMemo(() => {
+    const q = caseSearch.trim().toLowerCase();
+    return caseItems.filter((item) => {
+      const status = (item.meta?.status as CaseStatus) || 'open';
+      if (statusFilter !== 'all' && status !== statusFilter) return false;
+      const jurisdiction = (item.data as Record<string, unknown>)?.jurisdiction as Jurisdiction || 'US';
+      if (jurisdictionFilter !== 'all' && jurisdiction !== jurisdictionFilter) return false;
+      if (q && !(item.title || '').toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [caseItems, caseSearch, statusFilter, jurisdictionFilter]);
+
+  useLensCommand(
+    [
+      { id: 'focus-search', keys: '/', description: 'Search cases', category: 'navigation', action: () => caseSearchInputRef.current?.focus() },
+      { id: 'new-case',     keys: 'n', description: 'New case',      category: 'actions',    action: () => newCaseInputRef.current?.focus() },
+      { id: 'filter-all',   keys: '0', description: 'All statuses',  category: 'view',       action: () => setStatusFilter('all') },
+      { id: 'filter-open',  keys: '1', description: 'Open',          category: 'view',       action: () => setStatusFilter('open') },
+      { id: 'filter-review',keys: '2', description: 'In review',     category: 'view',       action: () => setStatusFilter('in-review') },
+      { id: 'filter-hearing',keys: '3', description: 'Hearing',      category: 'view',       action: () => setStatusFilter('hearing') },
+      { id: 'filter-closed',keys: '4', description: 'Closed',        category: 'view',       action: () => setStatusFilter('closed') },
+    ],
+    { lensId: 'law' }
+  );
 
   const legalFrameworks = [
     { id: 'gdpr', name: 'GDPR', status: 'compliant', description: 'EU data protection' },
@@ -231,20 +266,64 @@ export default function LawLensPage() {
           Case Files
         </h2>
 
-        {/* Status filter */}
-        <div className="flex items-center gap-2 mb-4">
-          {CASE_STATUSES.map(s => (
-            <button key={s} onClick={() => setExpandedCase(null)} className={`text-[10px] px-2 py-1 rounded border font-medium ${STATUS_COLORS[s] || 'bg-gray-500/15 border-gray-500/30 text-gray-400'}`}>{s}</button>
-          ))}
+        {/* Search + filters */}
+        <div className="space-y-2 mb-4">
+          <div className="flex items-center gap-2 flex-wrap">
+            <input
+              ref={caseSearchInputRef}
+              type="text"
+              value={caseSearch}
+              onChange={(e) => setCaseSearch(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Escape') { setCaseSearch(''); caseSearchInputRef.current?.blur(); } }}
+              placeholder="Search cases by title…  / focuses"
+              className="input-lattice flex-1 min-w-[200px] text-sm"
+            />
+            <select
+              value={jurisdictionFilter}
+              onChange={(e) => setJurisdictionFilter(e.target.value as Jurisdiction | 'all')}
+              className="input-lattice text-sm"
+              title="Filter by jurisdiction"
+            >
+              <option value="all">All jurisdictions</option>
+              {JURISDICTIONS.map(j => <option key={j} value={j}>{j}</option>)}
+            </select>
+            {(caseSearch || statusFilter !== 'all' || jurisdictionFilter !== 'all') && (
+              <span className="text-[10px] text-gray-500 whitespace-nowrap">
+                {visibleCases.length} of {caseItems.length}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-1 flex-wrap">
+            <button
+              onClick={() => setStatusFilter('all')}
+              className={`text-[10px] px-2 py-1 rounded border font-medium transition-colors ${
+                statusFilter === 'all' ? 'bg-neon-cyan/20 border-neon-cyan/40 text-neon-cyan' : 'bg-gray-500/10 border-gray-500/30 text-gray-400 hover:bg-white/5'
+              }`}
+            >
+              all <kbd className="text-[8px] opacity-60 ml-0.5">0</kbd>
+            </button>
+            {CASE_STATUSES.map((s, i) => (
+              <button
+                key={s}
+                onClick={() => setStatusFilter(s)}
+                className={`text-[10px] px-2 py-1 rounded border font-medium transition-colors ${
+                  statusFilter === s ? STATUS_COLORS[s] : 'bg-gray-500/10 border-gray-500/30 text-gray-400 hover:bg-white/5'
+                }`}
+              >
+                {s}<kbd className="text-[8px] opacity-60 ml-0.5">{i + 1}</kbd>
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* New case form */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-4">
           <input
+            ref={newCaseInputRef}
             type="text"
             value={newCaseTitle}
             onChange={(e) => setNewCaseTitle(e.target.value)}
-            placeholder="Case title..."
+            placeholder="Case title…  n focuses"
             className="input-lattice md:col-span-2"
           />
           <select
@@ -271,8 +350,12 @@ export default function LawLensPage() {
         <div className="space-y-2">
           {caseItems.length === 0 ? (
             <p className="text-center py-4 text-gray-500 text-sm">No case files yet</p>
+          ) : visibleCases.length === 0 ? (
+            <p className="text-center py-4 text-gray-500 text-sm">
+              No cases match the current filters.
+            </p>
           ) : (
-            caseItems.map((item) => {
+            visibleCases.map((item) => {
               const jurisdiction = (item.data as Record<string, unknown>)?.jurisdiction as Jurisdiction || 'US';
               const deadline = (item.data as Record<string, unknown>)?.deadline as string | null;
               const timeline = ((item.data as Record<string, unknown>)?.timeline as { label: string; date: string; done: boolean }[]) || [];

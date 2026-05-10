@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef} from 'react';
 import dynamic from 'next/dynamic';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -399,10 +399,12 @@ export default function RealEstateLensPage() {
   const [activeTab, setActiveTab] = useState<ModeTab>('Dashboard');
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
+  const searchInputRef = useRef<HTMLInputElement>(null);
   useLensCommand(
     [
       { id: 'tab-listings', keys: 'l', description: 'Listings', category: 'navigation', action: () => setActiveTab('Listings') },
-      { id: 'tab-transactions', keys: 't', description: 'Transactions', category: 'navigation', action: () => setActiveTab('Transactions') },
+      { id: 'tab-transactions', keys: 't', description: 'Transactions', category: 'navigation', action: () => setActiveTab('Transactions') },      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
+
     ],
     { lensId: 'realestate' }
   );
@@ -1542,7 +1544,8 @@ export default function RealEstateLensPage() {
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input
-                    type="text"
+                    ref={searchInputRef}
+              type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search listings, MLS#..."

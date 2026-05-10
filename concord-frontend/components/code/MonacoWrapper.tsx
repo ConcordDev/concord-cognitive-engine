@@ -77,6 +77,8 @@ interface MonacoWrapperProps {
   language?: string;
   readOnly?: boolean;
   className?: string;
+  onEditorReady?: (editor: editor.IStandaloneCodeEditor) => void;
+  onSelectionChange?: (selection: { text: string; startLine: number; endLine: number }) => void;
 }
 
 export default function MonacoWrapper({
@@ -85,6 +87,8 @@ export default function MonacoWrapper({
   language = 'javascript',
   readOnly = false,
   className,
+  onEditorReady,
+  onSelectionChange,
 }: MonacoWrapperProps) {
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
 
@@ -93,7 +97,17 @@ export default function MonacoWrapper({
     monaco.editor.defineTheme('concord-dark', CONCORD_DARK_THEME);
     monaco.editor.setTheme('concord-dark');
     editor.focus();
-  }, []);
+    onEditorReady?.(editor);
+    if (onSelectionChange) {
+      editor.onDidChangeCursorSelection(() => {
+        const sel = editor.getSelection();
+        const model = editor.getModel();
+        if (!sel || !model) return;
+        const text = model.getValueInRange(sel);
+        onSelectionChange({ text, startLine: sel.startLineNumber, endLine: sel.endLineNumber });
+      });
+    }
+  }, [onEditorReady, onSelectionChange]);
 
   const handleChange: OnChange = useCallback(
     (val) => {

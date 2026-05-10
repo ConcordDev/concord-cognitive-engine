@@ -458,11 +458,13 @@ export default function FeedLensPage() {
   const [activeTab, setActiveTab] = useState<FeedTab>('for-you');
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
+  const searchInputRef = useRef<HTMLInputElement>(null);
   useLensCommand(
     [
       { id: 'tab-for-you', keys: 'f', description: 'For You', category: 'navigation', action: () => setActiveTab('for-you') },
       { id: 'tab-trending', keys: 't', description: 'Trending', category: 'navigation', action: () => setActiveTab('trending') },
-      { id: 'tab-releases', keys: 'r', description: 'Releases', category: 'navigation', action: () => setActiveTab('releases') },
+      { id: 'tab-releases', keys: 'r', description: 'Releases', category: 'navigation', action: () => setActiveTab('releases') },      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
+
     ],
     { lensId: 'feed' }
   );
@@ -1720,7 +1722,8 @@ export default function FeedLensPage() {
         <div className="relative">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
           <input
-            type="text"
+            ref={searchInputRef}
+              type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search posts, topics, DTUs..."

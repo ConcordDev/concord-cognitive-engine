@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
+import { useLensCommand } from "@/hooks/useLensCommand";
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
@@ -103,6 +104,14 @@ const RARITY_TYPES = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary', 'Mythic
 const REWARD_TYPES = ['DTU Tokens', 'XP', 'Badge', 'Title', 'Skin', 'Power-up', 'Access', 'Custom'];
 
 export default function QuestmarketLensPage() {
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  useLensCommand(
+    [
+      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
+    ],
+    { lensId: "questmarket" }
+  );
+
   const [activeTab, setActiveTab] = useState<ModeTab>('quests');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');

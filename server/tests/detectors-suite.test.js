@@ -114,12 +114,13 @@ describe("each detector survives the no-input path", () => {
   }
 });
 
-describe("runAllDetectors", () => {
-  // The first detector pass walks the 1.3M-LOC tree and can take 60-90s
-  // on the CI runners. Bumping the per-test timeout from the default 30s
-  // keeps the suite green; the cache means subsequent tests reuse the
-  // first run and complete in milliseconds.
-  it("returns an envelope with reports + totals + durationMs", { timeout: 180000 }, async () => {
+// Cold runAllDetectors over the full repo takes ~30 s on a typical CI box.
+// Each `it` that calls getAllReport() must allow >= that, otherwise the
+// first cache miss times out under npm test's --test-timeout=30000.
+const DET_TIMEOUT = 180_000;
+
+describe("runAllDetectors", { timeout: 240_000 }, () => {
+  it("returns an envelope with reports + totals + durationMs", async () => {
     const report = await getAllReport();
     assert.ok(typeof report.generatedAt === "string");
     assert.ok(Array.isArray(report.reports));
@@ -129,7 +130,7 @@ describe("runAllDetectors", () => {
     }
     // Each individual report has the canonical shape
     for (const r of report.reports) assertReportShape(r);
-  });
+  }, { timeout: DET_TIMEOUT });
 
   it("filters by consumer", { timeout: 180000 }, async () => {
     const all = await getAllReport();
@@ -139,29 +140,29 @@ describe("runAllDetectors", () => {
       const spec = listDetectors().find(d => d.id === r.id);
       assert.ok(spec.consumers.includes("repair-cortex"), `${r.id} should declare repair-cortex`);
     }
-  }, { timeout: 90_000 });
+  }, { timeout: DET_TIMEOUT });
 });
 
-describe("filterFindings", () => {
+describe("filterFindings", { timeout: 120_000 }, () => {
   it("filters by minSeverity", async () => {
     const report = await getAllReport();
     const high = filterFindings(report, { minSeverity: "high" });
     for (const f of high) {
       assert.ok(["high", "critical"].includes(f.severity), `unexpected severity: ${f.severity}`);
     }
-  });
+  }, { timeout: DET_TIMEOUT });
 
   it("filters by kind", async () => {
     const report = await getAllReport();
     const onlySecret = filterFindings(report, { kinds: ["secret-leak"] });
     for (const f of onlySecret) assert.equal(f.kind, "secret-leak");
-  });
+  }, { timeout: DET_TIMEOUT });
 
   it("actionableOnly drops findings with no fixHint", async () => {
     const report = await getAllReport();
     const actionable = filterFindings(report, { actionableOnly: true });
     for (const f of actionable) assert.ok(typeof f.fixHint === "string" && f.fixHint.length > 0);
-  });
+  }, { timeout: DET_TIMEOUT });
 });
 
 describe("dtu-lineage gracefully handles missing db", () => {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -69,9 +69,9 @@ interface ImpactAssessment {
 
 // ── Seed Data ─────────────────────────────────────────────────────────────────
 
-const SEED_METRICS: { title: string; data: { id: string; value: number; unit: string; icon: string; color: string } }[] = [];
+const METRICS_FALLBACK: { title: string; data: { id: string; value: number; unit: string; icon: string; color: string } }[] = [];
 
-const SEED_ORGANISMS: { title: string; data: { type: string; count: number; growth: number } }[] = [];
+const ORGANISMS_FALLBACK: { title: string; data: { type: string; count: number; growth: number } }[] = [];
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   Sun,
@@ -135,6 +135,7 @@ export default function EcoLensPage() {
 
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useLensCommand(
 
@@ -148,7 +149,8 @@ export default function EcoLensPage() {
 
       { id: 'tab-biodiversity', keys: 'b', description: 'Biodiversity', category: 'navigation', action: () => setActiveTab('biodiversity') },
 
-      { id: 'tab-impact', keys: 'i', description: 'Impact', category: 'navigation', action: () => setActiveTab('impact') },
+      { id: 'tab-impact', keys: 'i', description: 'Impact', category: 'navigation', action: () => setActiveTab('impact') },      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
+
 
     ],
 
@@ -162,11 +164,11 @@ export default function EcoLensPage() {
   const [simulationSpeed, setSimulationSpeed] = useState<'slow' | 'normal' | 'fast'>('normal');
 
   const { items: metricItems, isLoading: metricsLoading, isError, error, refetch } = useLensData('eco', 'metric', {
-    seed: SEED_METRICS,
+    seed: METRICS_FALLBACK,
   });
 
   const { items: organismItems, isLoading: organismsLoading, isError: isError2, error: error2, refetch: refetch2 } = useLensData('eco', 'organism', {
-    seed: SEED_ORGANISMS,
+    seed: ORGANISMS_FALLBACK,
   });
 
   const { items: populationItems } = useLensData<PopulationEntry>('eco', 'population', { noSeed: true });
@@ -396,7 +398,8 @@ export default function EcoLensPage() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
           <input
-            type="text"
+            ref={searchInputRef}
+              type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search species, habitats..."

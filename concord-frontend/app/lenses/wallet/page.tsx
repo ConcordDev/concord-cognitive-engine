@@ -132,9 +132,39 @@ function WalletPageInner() {
   // State
   const [activeTab, setActiveTab] = useState<TabId>('all');
   const [showPurchase, setShowPurchase] = useState(false);
+  const [txQuery, setTxQuery] = useState('');
+  const [activeTx, setActiveTx] = useState<Transaction | null>(null);
+  const txSearchInputRef = useRef<HTMLInputElement>(null);
   const [showWithdraw, setShowWithdraw] = useState(false);
   const [showTransfer, setShowTransfer] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // ── Main wallet keyboard shortcuts (Coinbase / Phantom-style) ──────
+  // Single-letter actions for the three core flows + tab navigation.
+  // Note: a separate useLensCommand inside TransferFlow handles its
+  // own internal step navigation; that one is scoped to the modal.
+  useLensCommand(
+    [
+      { id: 'wallet-buy',      keys: 'b', description: 'Buy CC',      category: 'actions',    action: () => setShowPurchase(true), global: true },
+      { id: 'wallet-withdraw', keys: 'w', description: 'Withdraw',    category: 'actions',    action: () => setShowWithdraw(true), global: true },
+      { id: 'wallet-send',     keys: 's', description: 'Send',        category: 'actions',    action: () => setShowTransfer(true), global: true },
+      { id: 'wallet-tab-all',         keys: '1', description: 'All transactions',        category: 'navigation', action: () => setActiveTab('all') },
+      { id: 'wallet-tab-purchase',    keys: '2', description: 'Purchases',                category: 'navigation', action: () => setActiveTab('purchase') },
+      { id: 'wallet-tab-tip',         keys: '3', description: 'Tips',                     category: 'navigation', action: () => setActiveTab('tip') },
+      { id: 'wallet-tab-withdrawal',  keys: '4', description: 'Withdrawals',              category: 'navigation', action: () => setActiveTab('withdrawal') },
+      { id: 'wallet-tab-earning',     keys: '5', description: 'Earnings',                 category: 'navigation', action: () => setActiveTab('earning') },
+      { id: 'wallet-esc-modals', keys: 'esc', description: 'Close any open flow / tx detail', category: 'navigation',
+        action: () => {
+          if (showPurchase || showWithdraw || showTransfer) {
+            setShowPurchase(false); setShowWithdraw(false); setShowTransfer(false);
+          }
+          if (activeTx) setActiveTx(null);
+        } },
+      { id: 'wallet-search-tx', keys: '/', description: 'Search transactions', category: 'navigation',
+        action: () => txSearchInputRef.current?.focus() },
+    ],
+    { lensId: 'wallet' }
+  );
 
   const { items: walletItems } = useLensData<Record<string, unknown>>('wallet', 'account');
   const runWalletAction = useRunArtifact('wallet');
@@ -225,6 +255,39 @@ function WalletPageInner() {
       (page) => page.transactions || page.items || page.history || []
     );
   }, [txPages]);
+
+  // Search-filtered view of the loaded transactions.  Matches against
+  // type, description, counterparty (from/to), and amount text.
+  const visibleTransactions = useMemo(() => {
+    const q = txQuery.trim().toLowerCase();
+    if (!q) return transactions;
+    return transactions.filter((tx) => {
+      const haystack = [
+        tx.type, tx.description, tx.from, tx.to, tx.status,
+        tx.amount?.toString(), tx.fee?.toString(),
+      ].filter(Boolean).join(' ').toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [transactions, txQuery]);
+
+  const exportTransactionsAsCSV = useCallback(() => {
+    if (!visibleTransactions.length) return;
+    const headers = ['id', 'type', 'amount', 'fee', 'net', 'description', 'from', 'to', 'status', 'created_at'];
+    const escape = (v: unknown) => {
+      if (v === null || v === undefined) return '';
+      const s = String(v);
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const rows = visibleTransactions.map((tx) => headers.map((h) => escape((tx as unknown as Record<string, unknown>)[h])).join(','));
+    const csv = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `wallet-${activeTab}-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [visibleTransactions, activeTab]);
 
   // Withdrawals for status display
   const { data: withdrawalsData } = useQuery({
@@ -396,6 +459,7 @@ function WalletPageInner() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => setShowPurchase(true)}
+              title="Buy CC (B)"
               className={cn(
                 ds.btnBase,
                 'px-5 py-3 bg-gradient-to-r from-neon-blue to-neon-purple text-white hover:opacity-90 focus:ring-neon-blue shadow-neon-blue'
@@ -403,12 +467,14 @@ function WalletPageInner() {
             >
               <CreditCard className="w-5 h-5" />
               Buy CC
+              <kbd className="hidden sm:inline ml-1 text-[10px] bg-black/20 border border-white/20 rounded px-1 py-0.5 font-mono">B</kbd>
             </motion.button>
 
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => setShowWithdraw(true)}
+              title="Withdraw (W)"
               className={cn(
                 ds.btnBase,
                 'px-5 py-3 bg-neon-green/20 text-neon-green border border-neon-green/50 hover:bg-neon-green/30 focus:ring-neon-green'
@@ -416,12 +482,14 @@ function WalletPageInner() {
             >
               <ArrowDownToLine className="w-5 h-5" />
               Withdraw
+              <kbd className="hidden sm:inline ml-1 text-[10px] bg-black/30 border border-white/20 rounded px-1 py-0.5 font-mono">W</kbd>
             </motion.button>
 
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => setShowTransfer(true)}
+              title="Send (S)"
               className={cn(
                 ds.btnBase,
                 'px-5 py-3 bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/50 hover:bg-neon-cyan/30 focus:ring-neon-cyan'
@@ -429,6 +497,7 @@ function WalletPageInner() {
             >
               <Send className="w-5 h-5" />
               Transfer
+              <kbd className="hidden sm:inline ml-1 text-[10px] bg-black/30 border border-white/20 rounded px-1 py-0.5 font-mono">S</kbd>
             </motion.button>
           </div>
         </div>
@@ -658,6 +727,43 @@ function WalletPageInner() {
 
             {/* Transaction List */}
             <div className="p-4">
+              {/* Search + Export bar */}
+              <div className="flex items-center gap-2 mb-3">
+                <div className="relative flex-1">
+                  <input
+                    ref={txSearchInputRef}
+                    type="text"
+                    value={txQuery}
+                    onChange={(e) => setTxQuery(e.target.value)}
+                    placeholder="Search by type, description, address, amount…"
+                    className="w-full pl-8 pr-8 py-1.5 text-sm bg-lattice-deep border border-lattice-border rounded text-white placeholder-gray-500 focus:outline-none focus:border-neon-cyan/50"
+                  />
+                  <Sparkles className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
+                  {txQuery && (
+                    <button
+                      onClick={() => setTxQuery('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-lattice-elevated text-gray-500 hover:text-white"
+                      aria-label="Clear search"
+                    >
+                      <XIcon className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+                <button
+                  onClick={exportTransactionsAsCSV}
+                  disabled={visibleTransactions.length === 0}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded border border-lattice-border text-gray-300 hover:bg-lattice-elevated hover:text-white disabled:opacity-40"
+                  title="Download visible transactions as CSV"
+                >
+                  <ArrowDownToLine className="w-3.5 h-3.5" />
+                  CSV
+                </button>
+                {txQuery && (
+                  <span className="text-[10px] text-gray-500 whitespace-nowrap">
+                    {visibleTransactions.length} of {transactions.length}
+                  </span>
+                )}
+              </div>
               {txLoading ? (
                 <div className="space-y-3">
                   {Array.from({ length: 5 }).map((_, i) => (
@@ -677,14 +783,24 @@ function WalletPageInner() {
                       : 'Your transaction history will appear here'}
                   </p>
                 </div>
+              ) : visibleTransactions.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-400 text-sm">No transactions match &quot;{txQuery}&quot;</p>
+                </div>
               ) : (
                 <div className="space-y-1">
-                  {transactions.map((tx, i) => (
-                    <TransactionRow key={tx.id || i} tx={tx} />
+                  {visibleTransactions.map((tx, i) => (
+                    <button
+                      key={tx.id || i}
+                      onClick={() => setActiveTx(tx)}
+                      className="w-full text-left rounded-lg hover:bg-lattice-elevated/40 transition-colors"
+                    >
+                      <TransactionRow tx={tx} />
+                    </button>
                   ))}
 
                   {/* Infinite scroll sentinel */}
-                  {hasNextPage && (
+                  {hasNextPage && !txQuery && (
                     <div ref={loadMoreRef} className="py-4 text-center">
                       {isFetchingNextPage ? (
                         <Loader2 className="w-5 h-5 mx-auto text-neon-blue animate-spin" />
@@ -779,6 +895,130 @@ function WalletPageInner() {
               queryClient.invalidateQueries({ queryKey: ['economy-balance'] });
             }}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Transaction Detail Modal */}
+      <AnimatePresence>
+        {activeTx && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+            onClick={() => setActiveTx(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 12, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.95, y: 12, opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="w-full max-w-md bg-[#0d1117] rounded-xl border border-neon-cyan/30 shadow-2xl shadow-neon-cyan/10 overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-2 px-4 py-3 border-b border-lattice-border">
+                <div className={cn(
+                  'w-8 h-8 rounded-lg flex items-center justify-center',
+                  activeTx.amount >= 0 ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'
+                )}>
+                  {activeTx.amount >= 0 ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-semibold text-white truncate">
+                    {activeTx.description || activeTx.type.replace(/_/g, ' ')}
+                  </div>
+                  <div className="text-[10px] text-gray-500 uppercase tracking-wider font-mono">{activeTx.type}</div>
+                </div>
+                <button
+                  onClick={() => setActiveTx(null)}
+                  className="p-1 rounded hover:bg-lattice-elevated text-gray-400"
+                  aria-label="Close transaction details"
+                >
+                  <XIcon className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="p-4 space-y-3">
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Amount</div>
+                  <div className={cn(
+                    'text-3xl font-bold font-mono',
+                    activeTx.amount >= 0 ? 'text-green-400' : 'text-red-400'
+                  )}>
+                    {activeTx.amount >= 0 ? '+' : ''}{activeTx.amount.toLocaleString()} CC
+                  </div>
+                </div>
+                {(activeTx.fee !== undefined && activeTx.fee > 0) && (
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider text-gray-500">Fee</div>
+                      <div className="text-amber-400 font-mono">{activeTx.fee.toLocaleString()} CC</div>
+                    </div>
+                    {activeTx.net !== undefined && (
+                      <div>
+                        <div className="text-[10px] uppercase tracking-wider text-gray-500">Net</div>
+                        <div className="text-white font-mono">{activeTx.net.toLocaleString()} CC</div>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {(activeTx.from || activeTx.to) && (
+                  <div className="space-y-2 pt-2 border-t border-lattice-border">
+                    {activeTx.from && (
+                      <div>
+                        <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-0.5">From</div>
+                        <div className="text-xs font-mono text-gray-300 break-all">{activeTx.from}</div>
+                      </div>
+                    )}
+                    {activeTx.to && (
+                      <div>
+                        <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-0.5">To</div>
+                        <div className="text-xs font-mono text-gray-300 break-all">{activeTx.to}</div>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {activeTx.status && (
+                  <div className="pt-2 border-t border-lattice-border">
+                    <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Status</div>
+                    <span className={cn(
+                      'text-xs px-2 py-0.5 rounded',
+                      activeTx.status === 'completed' || activeTx.status === 'complete' ? 'bg-green-500/15 text-green-400' :
+                      activeTx.status === 'pending' ? 'bg-amber-500/15 text-amber-400' :
+                      'bg-gray-500/15 text-gray-400'
+                    )}>
+                      {activeTx.status}
+                    </span>
+                  </div>
+                )}
+                <div className="pt-2 border-t border-lattice-border space-y-2">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-wider text-gray-500">Timestamp</div>
+                    <div className="text-xs text-gray-300">
+                      {new Date(activeTx.created_at || activeTx.timestamp || '').toLocaleString()}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="text-[10px] uppercase tracking-wider text-gray-500">ID</div>
+                    <code className="text-xs font-mono text-gray-400 truncate flex-1">{activeTx.id}</code>
+                    <button
+                      onClick={() => navigator.clipboard?.writeText(activeTx.id)}
+                      className="text-[10px] px-1.5 py-0.5 rounded border border-lattice-border text-gray-400 hover:text-white hover:bg-lattice-elevated"
+                    >Copy</button>
+                  </div>
+                </div>
+                {activeTx.metadata && Object.keys(activeTx.metadata).length > 0 && (
+                  <details className="pt-2 border-t border-lattice-border">
+                    <summary className="text-[10px] uppercase tracking-wider text-gray-500 cursor-pointer hover:text-gray-300">
+                      Metadata ({Object.keys(activeTx.metadata).length})
+                    </summary>
+                    <pre className="mt-2 text-[10px] text-gray-400 font-mono whitespace-pre-wrap break-words bg-lattice-deep p-2 rounded max-h-40 overflow-auto">
+                      {JSON.stringify(activeTx.metadata, null, 2)}
+                    </pre>
+                  </details>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
 

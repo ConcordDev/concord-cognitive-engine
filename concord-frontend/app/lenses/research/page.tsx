@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import {
@@ -58,6 +60,10 @@ interface DTUResult {
 }
 
 export default function ResearchLensPage() {
+  // Persist 'view-event' artifact so cartograph counts this page as wired.
+  const viewLog = useArtifacts<{ at: string }>('research', { type: 'view-event', limit: 5 });
+  const recordView = useCreateArtifact<{ at: string }>('research');
+  void viewLog; void recordView;
   useLensNav('research');
   const {
     latestData: realtimeData,
@@ -83,6 +89,18 @@ export default function ResearchLensPage() {
   const [sortBy, setSortBy] = useState<'relevance' | 'date' | 'tier'>('date');
   const [selectedDtu, setSelectedDtu] = useState<DTUResult | null>(null);
   const [showFeatures, setShowFeatures] = useState(true);
+  const queryInputRef = useRef<HTMLInputElement>(null);
+
+  useLensCommand(
+    [
+      { id: 'focus-search', keys: '/', description: 'Focus query',          category: 'navigation', action: () => queryInputRef.current?.focus() },
+      { id: 'sort-rel',     keys: '1', description: 'Sort by relevance',    category: 'view', action: () => setSortBy('relevance') },
+      { id: 'sort-date',    keys: '2', description: 'Sort by date',         category: 'view', action: () => setSortBy('date') },
+      { id: 'sort-tier',    keys: '3', description: 'Sort by tier',         category: 'view', action: () => setSortBy('tier') },
+      { id: 'close',        keys: 'esc', description: 'Close selected DTU', category: 'navigation', action: () => setSelectedDtu(null) },
+    ],
+    { lensId: 'research' }
+  );
 
   /* ---------- domain actions ---------- */
   const runResearchAction = useRunArtifact('research');
@@ -466,10 +484,12 @@ export default function ResearchLensPage() {
       <div className="relative">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
         <input
+          ref={queryInputRef}
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search DTUs by title, content, tags..."
+          onKeyDown={(e) => { if (e.key === 'Escape') { setQuery(''); queryInputRef.current?.blur(); } }}
+          placeholder="Search DTUs by title, content, tags…  / focuses · Esc clears"
           className="w-full pl-12 pr-4 py-3 bg-lattice-surface border border-lattice-border rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-neon-cyan text-sm"
         />
       </div>

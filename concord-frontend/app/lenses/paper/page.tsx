@@ -7,7 +7,7 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { showToast } from '@/components/common/Toasts';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import {
   FileText, Plus, Search, Calendar, FlaskConical, CheckCircle, AlertTriangle,
   BookOpen, Lightbulb, Beaker, Brain, Library, ChevronDown, ChevronRight,
@@ -203,6 +203,29 @@ export default function PaperLensPage() {
     ],
     { lensId: 'paper' }
   );
+
+  // ── ⌘K command palette + ⌘N new + / focus search (Notion idiom) ───
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [paletteQuery, setPaletteQuery] = useState('');
+  const [paletteIdx, setPaletteIdx] = useState(0);
+  const paletteInputRef = useRef<HTMLInputElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useLensCommand(
+    [
+      { id: 'palette',     keys: 'mod+k',     description: 'Quick search (across all types)', category: 'navigation', action: () => setPaletteOpen(true), global: true },
+      { id: 'new-item',    keys: 'mod+n',     description: 'New item in current tab',         category: 'actions',    action: () => { resetCreateForm(); setCreateModalOpen(true); }, global: true },
+      { id: 'focus-search', keys: '/',         description: 'Focus search',                    category: 'navigation', action: () => searchInputRef.current?.focus() },
+    ],
+    { lensId: 'paper' }
+  );
+
+  useEffect(() => { setPaletteIdx(0); }, [paletteQuery, paletteOpen]);
+  useEffect(() => {
+    if (paletteOpen) {
+      requestAnimationFrame(() => paletteInputRef.current?.focus());
+    }
+  }, [paletteOpen]);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
@@ -600,12 +623,14 @@ export default function PaperLensPage() {
         <div className="flex-1 min-w-[220px] relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
           <input
+            ref={searchInputRef}
             type="text"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder={`Search ${activeTab}...`}
-            className={cn(ds.input, 'pl-10')}
+            placeholder={`Search ${activeTab}…  (⌘K = all types)`}
+            className={cn(ds.input, 'pl-10 pr-16')}
           />
+          <kbd className="hidden sm:inline-block absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-white/30 bg-white/5 border border-white/10 rounded px-1.5 py-0.5 font-mono pointer-events-none">/</kbd>
         </div>
         <select value={selectedTag || ''} onChange={e => setSelectedTag(e.target.value || null)} className={cn(ds.select, 'w-auto min-w-[140px]')}>
           <option value="">All Tags</option>
@@ -714,11 +739,13 @@ export default function PaperLensPage() {
                     </button>
                   ))}
                 </div>
-                <textarea
-                  value={editorContent}
-                  onChange={e => setEditorContent(e.target.value)}
-                  className={cn(ds.textarea, 'min-h-[400px] font-mono text-sm leading-relaxed')}
-                  placeholder="Begin writing your paper..."
+                <PaperComposer
+                  content={editorContent}
+                  onChange={setEditorContent}
+                  allPapers={allPapers}
+                  allHypotheses={allHypotheses}
+                  allEvidence={allEvidence}
+                  allExperiments={allExperiments}
                 />
                 <div className="flex items-center justify-between">
                   <button onClick={() => setEditorOpen(false)} className={cn(ds.btnGhost, ds.btnSmall)}>
@@ -968,6 +995,95 @@ export default function PaperLensPage() {
         )}
       </div>
     </div>
+
+    {/* ── ⌘K command palette — searches across all 6 artifact types ── */}
+    {paletteOpen && (() => {
+      // Build a unified, type-tagged list of every paper artifact.
+      const sources: { items: LensItem[]; tab: ModeTab; label: string; }[] = [
+        { items: allPapers,      tab: 'papers',       label: 'paper' },
+        { items: allHypotheses,  tab: 'hypotheses',   label: 'hypothesis' },
+        { items: allEvidence,    tab: 'evidence',     label: 'evidence' },
+        { items: allExperiments, tab: 'experiments',  label: 'experiment' },
+        { items: allCitations,   tab: 'bibliography', label: 'citation' },
+      ];
+      const q = paletteQuery.trim().toLowerCase();
+      const all = sources.flatMap((s) =>
+        s.items.map((it) => ({ id: `${s.tab}:${it.id}`, item: it, tab: s.tab, label: s.label }))
+      );
+      const filtered = q
+        ? all.filter((r) => r.item.title?.toLowerCase().includes(q))
+        : all.slice(0, 50);
+      const top = filtered.slice(0, 50);
+
+      const choose = (r: typeof top[number]) => {
+        setActiveTab(r.tab);
+        setSelectedItemId(r.item.id);
+        setDetailOpen(true);
+        setPaletteOpen(false);
+        setPaletteQuery('');
+      };
+
+      return (
+        <div
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-start justify-center z-[100] pt-[14vh]"
+          onClick={() => setPaletteOpen(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Quick search"
+        >
+          <div
+            className="bg-[#0d1117] border border-violet-500/40 rounded-xl w-full max-w-xl shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-white/10">
+              <Search className="w-4 h-4 text-violet-400" />
+              <input
+                ref={paletteInputRef}
+                value={paletteQuery}
+                onChange={(e) => setPaletteQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') { setPaletteOpen(false); return; }
+                  if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    setPaletteIdx((i) => Math.min(i + 1, top.length - 1));
+                  } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    setPaletteIdx((i) => Math.max(i - 1, 0));
+                  } else if (e.key === 'Enter' && top[paletteIdx]) {
+                    e.preventDefault();
+                    choose(top[paletteIdx]);
+                  }
+                }}
+                placeholder="Search papers, hypotheses, evidence, experiments, citations…"
+                className="flex-1 bg-transparent outline-none text-sm text-white placeholder:text-white/30"
+              />
+              <kbd className="text-[10px] text-white/40 bg-white/5 border border-white/10 rounded px-1.5 py-0.5 font-mono">esc</kbd>
+            </div>
+            <ul className="max-h-[50vh] overflow-y-auto py-1">
+              {top.length === 0 ? (
+                <li className="px-4 py-3 text-xs text-white/40 italic">No matches.</li>
+              ) : top.map((r, i) => (
+                <li
+                  key={r.id}
+                  onMouseEnter={() => setPaletteIdx(i)}
+                  onClick={() => choose(r)}
+                  className={`px-4 py-2 flex items-center justify-between gap-3 cursor-pointer transition-colors ${
+                    i === paletteIdx ? 'bg-violet-500/10 border-l-2 border-violet-400' : 'border-l-2 border-transparent hover:bg-white/5'
+                  }`}
+                >
+                  <span className="text-sm text-white truncate flex-1 min-w-0">{r.item.title || r.item.id.slice(0, 24)}</span>
+                  <span className="text-[10px] text-violet-300 shrink-0 font-mono uppercase tracking-wide">{r.label}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="px-4 py-2 border-t border-white/10 text-[10px] text-white/40 flex items-center justify-between">
+              <span>↑↓ navigate · ↵ open · ⌘N new</span>
+              <span>{top.length} {top.length === 1 ? 'result' : 'results'}</span>
+            </div>
+          </div>
+        </div>
+      );
+    })()}
     </LensShell>
   );
 }
@@ -975,6 +1091,262 @@ export default function PaperLensPage() {
 // ===========================================================================
 // Sub-components
 // ===========================================================================
+
+// ---- Paper Composer (Notion/Roam-flavoured editor) ----
+// Slash menu (`/` at line start) inserts markdown blocks; `[[` opens a
+// wikilink picker that completes from papers/hypotheses/evidence/experiments;
+// a togglable preview pane renders rendered markdown next to the source.
+type Suggestable = { id: string; title: string; kind: string };
+
+function PaperComposer({
+  content,
+  onChange,
+  allPapers,
+  allHypotheses,
+  allEvidence,
+  allExperiments,
+}: {
+  content: string;
+  onChange: (next: string) => void;
+  allPapers: LensItem[];
+  allHypotheses: LensItem[];
+  allEvidence: LensItem[];
+  allExperiments: LensItem[];
+}) {
+  const taRef = useRef<HTMLTextAreaElement>(null);
+  const [showPreview, setShowPreview] = useState(false);
+
+  // Composer popups (slash menu + wikilink picker) ------------------
+  const [popup, setPopup] = useState<null | { kind: 'slash' | 'wiki'; query: string; from: number; to: number; idx: number }>(null);
+
+  const SLASH: Array<{ id: string; label: string; hint: string; insert: string }> = useMemo(() => [
+    { id: 'h1',     label: 'Heading 1',      hint: '# ',                       insert: '# ' },
+    { id: 'h2',     label: 'Heading 2',      hint: '## ',                      insert: '## ' },
+    { id: 'h3',     label: 'Heading 3',      hint: '### ',                     insert: '### ' },
+    { id: 'quote',  label: 'Quote',          hint: '> ',                       insert: '> ' },
+    { id: 'code',   label: 'Code block',     hint: '```lang',                  insert: '```\n\n```\n' },
+    { id: 'list',   label: 'Bulleted list',  hint: '- ',                       insert: '- ' },
+    { id: 'ol',     label: 'Numbered list',  hint: '1. ',                      insert: '1. ' },
+    { id: 'todo',   label: 'Task',           hint: '- [ ]',                    insert: '- [ ] ' },
+    { id: 'cite',   label: 'Citation',       hint: '[@key]',                   insert: '[@cite-key]' },
+    { id: 'hr',     label: 'Divider',        hint: '---',                      insert: '\n---\n' },
+    { id: 'figure', label: 'Figure',         hint: '![caption](url)',          insert: '![caption](url)' },
+    { id: 'table',  label: 'Table',          hint: '| col | col |',            insert: '| Header | Header |\n| --- | --- |\n| cell | cell |\n' },
+    { id: 'wiki',   label: 'Wikilink',       hint: '[[title]]',                insert: '[[]]' },
+  ], []);
+
+  const corpus: Suggestable[] = useMemo(() => {
+    const tag = (kind: string) => (it: LensItem) => ({ id: it.id, title: it.title, kind });
+    return [
+      ...allPapers.map(tag('paper')),
+      ...allHypotheses.map(tag('hypothesis')),
+      ...allEvidence.map(tag('evidence')),
+      ...allExperiments.map(tag('experiment')),
+    ];
+  }, [allPapers, allHypotheses, allEvidence, allExperiments]);
+
+  const slashFiltered = useMemo(() => {
+    if (!popup || popup.kind !== 'slash') return [] as typeof SLASH;
+    const q = popup.query.toLowerCase();
+    return q ? SLASH.filter((s) => s.id.includes(q) || s.label.toLowerCase().includes(q)) : SLASH;
+  }, [popup, SLASH]);
+
+  const wikiFiltered = useMemo(() => {
+    if (!popup || popup.kind !== 'wiki') return [] as Suggestable[];
+    const q = popup.query.toLowerCase().trim();
+    const out = q
+      ? corpus.filter((c) => c.title.toLowerCase().includes(q))
+      : corpus;
+    return out.slice(0, 12);
+  }, [popup, corpus]);
+
+  // Detect composer triggers from the textarea's caret position --------
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const next = e.target.value;
+    onChange(next);
+    const pos = e.target.selectionStart ?? next.length;
+    // Wikilink trigger: scan back to nearest `[[` on the same line
+    const lineStart = next.lastIndexOf('\n', pos - 1) + 1;
+    const lineSoFar = next.slice(lineStart, pos);
+    const wikiOpen = lineSoFar.lastIndexOf('[[');
+    const wikiClose = lineSoFar.lastIndexOf(']]');
+    if (wikiOpen >= 0 && wikiOpen > wikiClose) {
+      const query = lineSoFar.slice(wikiOpen + 2);
+      setPopup({ kind: 'wiki', query, from: lineStart + wikiOpen, to: pos, idx: 0 });
+      return;
+    }
+    // Slash trigger: `/foo` at line start (or after whitespace)
+    const slashMatch = lineSoFar.match(/(^|\s)\/(\w*)$/);
+    if (slashMatch) {
+      const triggerStart = lineStart + (slashMatch.index || 0) + (slashMatch[1] ? slashMatch[1].length : 0);
+      setPopup({ kind: 'slash', query: slashMatch[2], from: triggerStart, to: pos, idx: 0 });
+      return;
+    }
+    setPopup(null);
+  }, [onChange]);
+
+  const applySuggestion = useCallback((sugg: { kind: 'slash' | 'wiki'; insertText: string }) => {
+    if (!popup || !taRef.current) return;
+    const ta = taRef.current;
+    const before = content.slice(0, popup.from);
+    const after = content.slice(popup.to);
+    let inserted = sugg.insertText;
+    let caretOffset = inserted.length;
+    if (sugg.kind === 'slash' && inserted.includes('```\n\n```')) {
+      caretOffset = inserted.indexOf('\n\n') + 1;
+    }
+    if (sugg.kind === 'wiki' && inserted.startsWith('[[') && inserted.endsWith(']]')) {
+      caretOffset = inserted.length;
+    }
+    const next = before + inserted + after;
+    onChange(next);
+    setPopup(null);
+    requestAnimationFrame(() => {
+      ta.focus();
+      const pos = before.length + caretOffset;
+      ta.setSelectionRange(pos, pos);
+    });
+  }, [content, popup, onChange]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (!popup) return;
+    const list = popup.kind === 'slash' ? slashFiltered : wikiFiltered;
+    if (!list.length) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); setPopup({ ...popup, idx: (popup.idx + 1) % list.length }); return; }
+    if (e.key === 'ArrowUp')   { e.preventDefault(); setPopup({ ...popup, idx: (popup.idx - 1 + list.length) % list.length }); return; }
+    if (e.key === 'Escape')    { e.preventDefault(); setPopup(null); return; }
+    if (e.key === 'Enter' || e.key === 'Tab') {
+      e.preventDefault();
+      if (popup.kind === 'slash') {
+        const cmd = slashFiltered[popup.idx];
+        if (cmd) applySuggestion({ kind: 'slash', insertText: cmd.insert });
+      } else {
+        const wl = wikiFiltered[popup.idx];
+        if (wl) applySuggestion({ kind: 'wiki', insertText: `[[${wl.title}]]` });
+      }
+    }
+  }, [popup, slashFiltered, wikiFiltered, applySuggestion]);
+
+  // Lightweight markdown render (just enough for a confidence-checking
+  // preview — keeps the lens self-contained without a markdown lib).
+  const renderedHtml = useMemo(() => {
+    const esc = (s: string) => s.replace(/[&<>]/g, (ch) => ch === '&' ? '&amp;' : ch === '<' ? '&lt;' : '&gt;');
+    let html = esc(content);
+    html = html.replace(/```([a-zA-Z]*)\n([\s\S]*?)```/g, (_m, _l, body) => `<pre class="bg-lattice-deep border border-lattice-border rounded p-3 overflow-x-auto"><code class="text-xs text-neon-cyan">${body}</code></pre>`);
+    html = html.replace(/\[\[([^\]]+)\]\]/g, (_m, t: string) => `<a class="text-neon-purple underline decoration-neon-purple/40 hover:decoration-neon-purple">${t}</a>`);
+    html = html.replace(/^###### (.+)$/gm, '<h6 class="text-xs font-semibold text-gray-400 mt-2">$1</h6>');
+    html = html.replace(/^##### (.+)$/gm, '<h5 class="text-xs font-semibold text-gray-300 mt-2">$1</h5>');
+    html = html.replace(/^#### (.+)$/gm, '<h4 class="text-sm font-semibold text-gray-200 mt-3">$1</h4>');
+    html = html.replace(/^### (.+)$/gm, '<h3 class="text-base font-bold text-neon-cyan mt-4">$1</h3>');
+    html = html.replace(/^## (.+)$/gm, '<h2 class="text-lg font-bold text-neon-purple mt-5">$1</h2>');
+    html = html.replace(/^# (.+)$/gm, '<h1 class="text-xl font-bold text-white mt-6">$1</h1>');
+    html = html.replace(/^&gt; (.+)$/gm, '<blockquote class="border-l-2 border-neon-cyan/50 pl-3 italic text-gray-400 my-2">$1</blockquote>');
+    html = html.replace(/^- \[ \] (.+)$/gm, '<div class="flex items-start gap-2 my-1"><input type="checkbox" disabled class="mt-1" />$1</div>');
+    html = html.replace(/^- \[x\] (.+)$/gim, '<div class="flex items-start gap-2 my-1 line-through text-gray-500"><input type="checkbox" disabled checked class="mt-1" />$1</div>');
+    html = html.replace(/^- (.+)$/gm, '<li class="ml-5 list-disc text-gray-200">$1</li>');
+    html = html.replace(/^\d+\. (.+)$/gm, '<li class="ml-5 list-decimal text-gray-200">$1</li>');
+    html = html.replace(/^---+$/gm, '<hr class="border-lattice-border my-4" />');
+    html = html.replace(/\*\*([^*]+)\*\*/g, '<strong class="text-white">$1</strong>');
+    html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+    html = html.replace(/`([^`]+)`/g, '<code class="px-1 rounded bg-lattice-deep text-xs text-neon-cyan">$1</code>');
+    html = html.replace(/\[@([\w-]+)\]/g, '<sup class="text-neon-yellow">[@$1]</sup>');
+    html = html.replace(/\n\n+/g, '</p><p class="my-2 text-gray-200 leading-relaxed">');
+    return `<p class="my-2 text-gray-200 leading-relaxed">${html}</p>`;
+  }, [content]);
+
+  // Caret coords for popup positioning -------------------------------
+  const [popupPos, setPopupPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+  useEffect(() => {
+    if (!popup || !taRef.current) return;
+    const ta = taRef.current;
+    const value = ta.value.slice(0, popup.to);
+    const lines = value.split('\n');
+    const lineHeight = 22;
+    const top = Math.min((lines.length) * lineHeight + 8, ta.clientHeight - 12);
+    const lastLine = lines[lines.length - 1];
+    const left = Math.min(lastLine.length * 7 + 12, ta.clientWidth - 240);
+    setPopupPos({ top, left });
+  }, [popup]);
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1 text-[10px] text-gray-500 font-mono">
+          <span>/&nbsp;commands</span>
+          <span>·</span>
+          <span>[[wikilink]]</span>
+          <span>·</span>
+          <span>**bold**</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setShowPreview((v) => !v)}
+            className={cn('text-xs px-2 py-1 rounded transition-colors flex items-center gap-1', showPreview ? 'bg-neon-purple/20 text-neon-purple' : 'text-gray-400 hover:text-white hover:bg-lattice-elevated')}
+            title="Toggle preview"
+          >
+            <BookOpen className="w-3 h-3" /> Preview
+          </button>
+        </div>
+      </div>
+      <div className={cn('grid gap-3 relative', showPreview ? 'grid-cols-2' : 'grid-cols-1')}>
+        <div className="relative">
+          <textarea
+            ref={taRef}
+            value={content}
+            onChange={handleChange}
+            onKeyDown={handleKeyDown}
+            onBlur={() => setTimeout(() => setPopup(null), 120)}
+            className={cn(ds.textarea, 'min-h-[400px] font-mono text-sm leading-relaxed')}
+            placeholder="Begin writing your paper… (try /h2 or [[ to link another paper)"
+          />
+          {popup && popup.kind === 'slash' && slashFiltered.length > 0 && (
+            <div className="absolute z-30 w-56 bg-[#0d1117] border border-neon-cyan/40 rounded-lg shadow-xl overflow-hidden" style={{ top: popupPos.top, left: popupPos.left }}>
+              <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-gray-500 border-b border-lattice-border bg-lattice-deep">block</div>
+              {slashFiltered.map((s, i) => (
+                <button
+                  key={s.id}
+                  onMouseDown={(e) => { e.preventDefault(); applySuggestion({ kind: 'slash', insertText: s.insert }); }}
+                  className={cn('w-full text-left px-3 py-1.5 text-xs flex items-center justify-between transition-colors', i === popup.idx ? 'bg-neon-cyan/15 text-white' : 'text-gray-300 hover:bg-lattice-elevated')}
+                >
+                  <span>{s.label}</span>
+                  <code className="text-[10px] text-gray-500 font-mono">{s.hint}</code>
+                </button>
+              ))}
+            </div>
+          )}
+          {popup && popup.kind === 'wiki' && (
+            <div className="absolute z-30 w-72 bg-[#0d1117] border border-neon-purple/40 rounded-lg shadow-xl overflow-hidden" style={{ top: popupPos.top, left: popupPos.left }}>
+              <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-gray-500 border-b border-lattice-border bg-lattice-deep flex justify-between">
+                <span>link to…</span>
+                <span>{wikiFiltered.length} match{wikiFiltered.length === 1 ? '' : 'es'}</span>
+              </div>
+              {wikiFiltered.length === 0 && (
+                <div className="px-3 py-3 text-xs text-gray-500">
+                  No match. Press <kbd className="text-[10px]">enter</kbd> to insert as a placeholder anyway.
+                </div>
+              )}
+              {wikiFiltered.map((w, i) => (
+                <button
+                  key={`${w.kind}:${w.id}`}
+                  onMouseDown={(e) => { e.preventDefault(); applySuggestion({ kind: 'wiki', insertText: `[[${w.title}]]` }); }}
+                  className={cn('w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 transition-colors', i === popup.idx ? 'bg-neon-purple/20 text-white' : 'text-gray-300 hover:bg-lattice-elevated')}
+                >
+                  <span className="text-[9px] uppercase tracking-wider text-gray-500 font-mono w-14 flex-shrink-0">{w.kind}</span>
+                  <span className="truncate">{w.title}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        {showPreview && (
+          <div className="bg-lattice-deep border border-lattice-border rounded p-4 overflow-y-auto min-h-[400px] max-h-[600px] prose prose-invert max-w-none">
+            <div dangerouslySetInnerHTML={{ __html: renderedHtml }} />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 // ---- Stat Card ----
 function StatCard({ icon: Icon, label, value, color }: { icon: LucideIcon; label: string; value: number; color: string }) {

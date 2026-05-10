@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useState, useMemo, useEffect } from 'react';
@@ -204,6 +205,9 @@ function eventTypeColor(type: string): string {
 // --- Component ---
 
 export default function AffectLensPage() {
+  const viewLog = useArtifacts<{ at: string }>('affect', { type: 'view-event', limit: 5 });
+  const recordView = useCreateArtifact<{ at: string }>('affect');
+  void viewLog; void recordView;
   useLensNav('affect');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('affect');
 

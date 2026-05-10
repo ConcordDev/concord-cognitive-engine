@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef} from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { motion } from 'framer-motion';
@@ -432,11 +432,13 @@ export default function EnvironmentLensPage() {
   const [view, setView] = useState<'library' | 'dashboard' | 'actions'>('library');
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
+  const searchInputRef = useRef<HTMLInputElement>(null);
   useLensCommand(
     [
       { id: 'tab-library', keys: 'l', description: 'Library', category: 'navigation', action: () => setView('library') },
       { id: 'tab-dashboard', keys: 'd', description: 'Dashboard', category: 'navigation', action: () => setView('dashboard') },
-      { id: 'tab-actions', keys: 'a', description: 'Actions', category: 'navigation', action: () => setView('actions') },
+      { id: 'tab-actions', keys: 'a', description: 'Actions', category: 'navigation', action: () => setView('actions') },      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
+
     ],
     { lensId: 'environment' }
   );

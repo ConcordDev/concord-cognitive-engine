@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState, useCallback, useRef, useMemo } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -106,6 +107,8 @@ export default function TimelineLensPage() {
   const [limit, setLimit] = useState(30);
   const [showPostModal, setShowPostModal] = useState(false);
   const [postContent, setPostContent] = useState('');
+  const [feedSearch, setFeedSearch] = useState('');
+  const feedSearchInputRef = useRef<HTMLInputElement>(null);
   // Privacy choice for new posts. Defaults to 'private' so posts only become
   // visible to NPCs (via the social-npc-bridge) when the user explicitly
   // opts in. The "NPCs are listening" indicator surfaces next to the toggle
@@ -162,6 +165,32 @@ export default function TimelineLensPage() {
         dtuId: dtu.id,
       })) || [],
     [postsData],
+  );
+
+  // Filtered feed for search.  Matches against author + content so a
+  // user looking for a half-remembered post by either dimension finds
+  // it.  No-op when query is empty so we don't pay the filter cost.
+  const visiblePosts = useMemo(() => {
+    const q = feedSearch.trim().toLowerCase();
+    if (!q) return posts;
+    return posts.filter((p: Post) =>
+      String(p.author?.name || '').toLowerCase().includes(q) ||
+      String(p.content || '').toLowerCase().includes(q)
+    );
+  }, [posts, feedSearch]);
+
+  // Twitter / Facebook idiom: 'n' new post, '/' focuses search, 'v'
+  // toggles view, 'g f' jumps to feed (timeline default).
+  useLensCommand(
+    [
+      { id: 'new-post',     keys: 'n',   description: 'New post',           category: 'actions',    action: () => setShowPostModal(true), global: true },
+      { id: 'focus-search', keys: '/',   description: 'Search feed',        category: 'navigation', action: () => feedSearchInputRef.current?.focus() },
+      { id: 'view-toggle',  keys: 'v',   description: 'Toggle timeline / feed', category: 'view', action: () => setViewMode((m) => (m === 'timeline' ? 'feed' : 'timeline')) },
+      { id: 'goto-feed',    keys: 'g f', description: 'Go to Feed',         category: 'navigation', action: () => setViewMode('feed') },
+      { id: 'goto-timeline',keys: 'g t', description: 'Go to Timeline',     category: 'navigation', action: () => setViewMode('timeline') },
+      { id: 'load-more',    keys: 'm',   description: 'Load 30 more posts', category: 'actions',    action: () => setLimit((n) => n + 30) },
+    ],
+    { lensId: 'timeline' }
   );
 
 
@@ -780,8 +809,21 @@ export default function TimelineLensPage() {
           {/* Posts Feed (shown only in feed mode) */}
           {viewMode === 'feed' && (
             <>
-              <div className="bg-[#242526] rounded-lg p-3 flex items-center justify-between text-xs text-gray-400">
-                <span>Showing {posts.length} of {postsData?.total || posts.length} timeline DTUs</span>
+              <div className="bg-[#242526] rounded-lg p-3 flex items-center gap-2 text-xs text-gray-400 flex-wrap">
+                <input
+                  ref={feedSearchInputRef}
+                  type="text"
+                  value={feedSearch}
+                  onChange={(e) => setFeedSearch(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Escape') { setFeedSearch(''); feedSearchInputRef.current?.blur(); } }}
+                  placeholder="Search feed by author or content…  / focuses"
+                  className="flex-1 min-w-[200px] bg-[#3a3b3c] rounded px-2 py-1.5 text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+                <span className="whitespace-nowrap">
+                  {feedSearch
+                    ? `${visiblePosts.length} of ${posts.length} match`
+                    : `${posts.length} of ${postsData?.total || posts.length} loaded`}
+                </span>
                 <button
                   className="px-3 py-1.5 rounded bg-[#3a3b3c] text-white disabled:opacity-50"
                   disabled={posts.length >= Number(postsData?.total || 0)}
@@ -790,7 +832,7 @@ export default function TimelineLensPage() {
                   Load more
                 </button>
               </div>
-            {posts?.map((post: Post) => (
+            {visiblePosts?.map((post: Post) => (
               <article key={post.id} className="bg-[#242526] rounded-lg">
                 {/* Post Header */}
                 <div className="p-4 pb-0">

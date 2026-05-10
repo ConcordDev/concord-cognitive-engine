@@ -1,11 +1,12 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useLensBridge } from '@/lib/hooks/use-lens-bridge';
 import { UniversalActions } from '@/components/lens/UniversalActions';
@@ -43,6 +44,11 @@ export default function MetalearningLensPage() {
   const [curriculumTopic, setCurriculumTopic] = useState('');
   const [results, setResults] = useState<unknown>(null);
   const [showFeatures, setShowFeatures] = useState(true);
+  const [strategySearch, setStrategySearch] = useState('');
+  const [strategyTypeFilter, setStrategyTypeFilter] = useState<string>('all');
+  const newNameInputRef = useRef<HTMLInputElement>(null);
+  const curriculumInputRef = useRef<HTMLInputElement>(null);
+  const strategySearchInputRef = useRef<HTMLInputElement>(null);
 
   // --- Lens Bridge ---
   const bridge = useLensBridge('metalearning', 'strategy');
@@ -99,6 +105,31 @@ export default function MetalearningLensPage() {
   const strategyList: Strategy[] = useMemo(() => strategies?.strategies || strategies || [], [strategies]);
   const statusInfo = status?.status || status || {};
   const bestStrategy = best?.strategy || best || null;
+
+  // Filtered strategies — search by name + type filter.
+  const visibleStrategies = useMemo(() => {
+    let arr = strategyList;
+    if (strategyTypeFilter !== 'all') arr = arr.filter((s) => s.type === strategyTypeFilter);
+    const q = strategySearch.trim().toLowerCase();
+    if (q) arr = arr.filter((s) => (s.name || '').toLowerCase().includes(q));
+    return arr;
+  }, [strategyList, strategySearch, strategyTypeFilter]);
+
+  const strategyTypes = useMemo(() => {
+    const set = new Set<string>();
+    strategyList.forEach((s) => set.add(s.type));
+    return Array.from(set);
+  }, [strategyList]);
+
+  useLensCommand(
+    [
+      { id: 'focus-search',     keys: '/',         description: 'Search strategies', category: 'navigation', action: () => strategySearchInputRef.current?.focus() },
+      { id: 'new-strategy',     keys: 'n',         description: 'New strategy',      category: 'actions',    action: () => newNameInputRef.current?.focus() },
+      { id: 'focus-curriculum', keys: 'c',         description: 'Curriculum topic',  category: 'actions',    action: () => curriculumInputRef.current?.focus() },
+      { id: 'create-strategy',  keys: 'mod+enter', description: 'Create strategy',   category: 'actions',    action: () => { if (newName.trim() && !createStrategy.isPending) createStrategy.mutate(); }, global: true },
+    ],
+    { lensId: 'metalearning' }
+  );
 
   // Bridge strategies into lens artifacts
   useEffect(() => {
@@ -210,8 +241,14 @@ export default function MetalearningLensPage() {
           <h2 className="font-semibold flex items-center gap-2">
             <Plus className="w-4 h-4 text-neon-purple" /> New Strategy
           </h2>
-          <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)}
-            placeholder="Strategy name..." className="input-lattice w-full" />
+          <input
+            ref={newNameInputRef}
+            type="text" value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && newName.trim() && !createStrategy.isPending) { e.preventDefault(); createStrategy.mutate(); } }}
+            placeholder="Strategy name…  ⌘⏎ creates"
+            className="input-lattice w-full"
+          />
           <select value={newType} onChange={(e) => setNewType(e.target.value)} className="input-lattice w-full">
             <option value="exploration">Exploration</option>
             <option value="exploitation">Exploitation</option>
@@ -230,8 +267,13 @@ export default function MetalearningLensPage() {
             <h3 className="text-sm font-medium mb-2 flex items-center gap-2">
               <Zap className="w-3 h-3 text-neon-cyan" /> Curriculum
             </h3>
-            <input type="text" value={curriculumTopic} onChange={(e) => setCurriculumTopic(e.target.value)}
-              placeholder="Topic to learn..." className="input-lattice w-full" />
+            <input
+              ref={curriculumInputRef}
+              type="text" value={curriculumTopic}
+              onChange={(e) => setCurriculumTopic(e.target.value)}
+              placeholder="Topic to learn…"
+              className="input-lattice w-full"
+            />
             <button
               onClick={() => runCurriculum.mutate()}
               disabled={!curriculumTopic || runCurriculum.isPending}
@@ -244,11 +286,56 @@ export default function MetalearningLensPage() {
 
         {/* Strategy List */}
         <div className="panel p-4">
-          <h2 className="font-semibold mb-3 flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-neon-blue" /> Strategies
-          </h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-semibold flex items-center gap-2">
+              <BarChart3 className="w-4 h-4 text-neon-blue" /> Strategies
+              {(strategySearch || strategyTypeFilter !== 'all') && (
+                <span className="text-xs text-gray-500 font-normal">
+                  ({visibleStrategies.length} of {strategyList.length})
+                </span>
+              )}
+            </h2>
+          </div>
+          <div className="space-y-2 mb-3">
+            <input
+              ref={strategySearchInputRef}
+              type="text"
+              value={strategySearch}
+              onChange={(e) => setStrategySearch(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Escape') { setStrategySearch(''); strategySearchInputRef.current?.blur(); } }}
+              placeholder="Filter by name…  / focuses"
+              className="input-lattice w-full text-sm"
+            />
+            {strategyTypes.length > 1 && (
+              <div className="flex gap-1 flex-wrap text-xs">
+                <button
+                  onClick={() => setStrategyTypeFilter('all')}
+                  className={`px-2 py-0.5 rounded transition-colors ${
+                    strategyTypeFilter === 'all'
+                      ? 'bg-neon-purple/20 text-neon-purple border border-neon-purple/40'
+                      : 'bg-white/5 text-gray-400 border border-white/10 hover:text-white'
+                  }`}
+                >
+                  all
+                </button>
+                {strategyTypes.map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setStrategyTypeFilter(t)}
+                    className={`px-2 py-0.5 rounded transition-colors ${
+                      strategyTypeFilter === t
+                        ? 'bg-neon-purple/20 text-neon-purple border border-neon-purple/40'
+                        : 'bg-white/5 text-gray-400 border border-white/10 hover:text-white'
+                    }`}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <div className="space-y-2 max-h-96 overflow-y-auto">
-            {strategyList.map((s, index) => (
+            {visibleStrategies.map((s, index) => (
               <motion.div key={s.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }} className="lens-card">
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-sm">{s.name}</span>
@@ -266,6 +353,9 @@ export default function MetalearningLensPage() {
             ))}
             {strategyList.length === 0 && (
               <p className="text-center py-4 text-gray-500 text-sm">No strategies yet</p>
+            )}
+            {strategyList.length > 0 && visibleStrategies.length === 0 && (
+              <p className="text-center py-4 text-gray-500 text-sm">No matches</p>
             )}
           </div>
         </div>

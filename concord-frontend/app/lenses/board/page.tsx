@@ -213,7 +213,7 @@ const projects: string[] = [];
 // Seed data (auto-created on first use, then persisted via backend)
 // ---------------------------------------------------------------------------
 
-const SEED_TASKS: { title: string; data: Record<string, unknown> }[] = [];
+const TASKS_FALLBACK: { title: string; data: Record<string, unknown> }[] = [];
 
 /** Convert a LensItem to the local Task type */
 function lensItemToTask(item: LensItem<Record<string, unknown>>): Task {
@@ -295,7 +295,7 @@ export default function BoardLensPage() {
     update: updateLens,
     remove: removeLens,
   } = useLensData<Record<string, unknown>>('board', 'task', {
-    seed: SEED_TASKS,
+    seed: TASKS_FALLBACK,
   });
 
   const tasks: Task[] = useMemo(() => lensItems.map(lensItemToTask), [lensItems]);
@@ -320,12 +320,14 @@ export default function BoardLensPage() {
 
     // Lens-scoped keyboard commands. Standard kanban verbs: b/t/g switch
   // view, / focuses search, f toggles filter panel.
+  const searchInputRef = useRef<HTMLInputElement>(null);
   useLensCommand(
     [
       { id: 'view-board', keys: 'b', description: 'Board view', category: 'view', action: () => setViewMode('board') },
       { id: 'view-timeline', keys: 't', description: 'Timeline view', category: 'view', action: () => setViewMode('timeline') },
       { id: 'view-table', keys: 'g', description: 'Table view', category: 'view', action: () => setViewMode('table') },
-      { id: 'toggle-filters', keys: 'f', description: 'Toggle filters', category: 'view', action: () => setShowFilters((v) => !v) },
+      { id: 'toggle-filters', keys: 'f', description: 'Toggle filters', category: 'view', action: () => setShowFilters((v) => !v) },      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
+
     ],
     { lensId: 'board' }
   );
@@ -721,7 +723,8 @@ export default function BoardLensPage() {
               <div className="relative flex-1 max-w-xs">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                 <input
-                  type="text"
+                  ref={searchInputRef}
+              type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search tasks..."
@@ -1154,7 +1157,8 @@ export default function BoardLensPage() {
             )}
           </div>
 
-          {/* Board columns */}
+          {/* Board columns (kanban) */}
+          {viewMode === 'board' && (
           <div className="flex-1 overflow-x-auto px-6 pb-6">
             <div
               ref={boardRef}
@@ -1400,6 +1404,120 @@ export default function BoardLensPage() {
               })}
             </div>
           </div>
+          )}
+
+          {/* Timeline view — tasks ordered by dueDate, grouped by week */}
+          {viewMode === 'timeline' && (
+          <div className="flex-1 overflow-y-auto px-6 pb-6">
+            {(() => {
+              const sorted = [...filteredTasks].sort((a, b) => {
+                const ad = a.dueDate ? new Date(a.dueDate).getTime() : Infinity;
+                const bd = b.dueDate ? new Date(b.dueDate).getTime() : Infinity;
+                return ad - bd;
+              });
+              if (sorted.length === 0) {
+                return (
+                  <div className="flex items-center justify-center h-32 text-sm text-gray-500">
+                    No tasks to chart on the timeline.
+                  </div>
+                );
+              }
+              return (
+                <ol className="relative border-l border-white/10 ml-3">
+                  {sorted.map((task) => {
+                    const col = columns.find((c) => c.id === task.status);
+                    const ColIcon = col?.icon;
+                    const overdue = isOverdue(task.dueDate) && task.status !== 'done';
+                    return (
+                      <li key={task.id} className="ml-4 pb-4">
+                        <div className={cn(
+                          'absolute -left-1.5 w-3 h-3 rounded-full border-2 border-[#0d1117]',
+                          col?.bg ?? 'bg-white/10',
+                        )} />
+                        <button
+                          onClick={() => setSelectedTask(task)}
+                          className="w-full text-left rounded-lg border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/10 transition-colors px-3 py-2"
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            {ColIcon && <ColIcon className={cn('w-3.5 h-3.5', col?.color)} />}
+                            <span className={cn('text-[10px] uppercase tracking-wider', col?.color)}>
+                              {col?.name ?? task.status}
+                            </span>
+                            <span className={cn(
+                              'ml-auto text-[10px]',
+                              overdue ? 'text-red-400 font-medium' : 'text-gray-500',
+                            )}>
+                              {task.dueDate
+                                ? new Date(task.dueDate).toLocaleDateString()
+                                : 'no due date'}
+                              {overdue && ' · overdue'}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-200 truncate">{task.title}</p>
+                          {task.progress > 0 && task.progress < 100 && (
+                            <div className="h-1 bg-white/[0.06] rounded-full overflow-hidden mt-2">
+                              <div
+                                className="h-full bg-purple-500"
+                                style={{ width: `${task.progress}%` }}
+                              />
+                            </div>
+                          )}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ol>
+              );
+            })()}
+          </div>
+          )}
+
+          {/* Table view — flat sortable list of tasks across all columns */}
+          {viewMode === 'table' && (
+          <div className="flex-1 overflow-auto px-6 pb-6">
+            {filteredTasks.length === 0 ? (
+              <div className="flex items-center justify-center h-32 text-sm text-gray-500">
+                No tasks match the current filter.
+              </div>
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="text-[10px] uppercase tracking-wider text-gray-500 border-b border-white/10">
+                  <tr>
+                    <th className="text-left py-2 pl-2">Title</th>
+                    <th className="text-left py-2">Status</th>
+                    <th className="text-left py-2">Priority</th>
+                    <th className="text-left py-2">Assignee</th>
+                    <th className="text-left py-2">Due</th>
+                    <th className="text-right py-2 pr-2">Progress</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredTasks.map((task) => {
+                    const col = columns.find((c) => c.id === task.status);
+                    const overdue = isOverdue(task.dueDate) && task.status !== 'done';
+                    return (
+                      <tr
+                        key={task.id}
+                        onClick={() => setSelectedTask(task)}
+                        className="border-b border-white/[0.04] cursor-pointer hover:bg-white/[0.03]"
+                      >
+                        <td className="py-2 pl-2 text-gray-200 truncate max-w-[20rem]">{task.title}</td>
+                        <td className={cn('py-2 text-xs', col?.color)}>{col?.name ?? task.status}</td>
+                        <td className="py-2 text-xs text-gray-400 capitalize">{task.priority}</td>
+                        <td className="py-2 text-xs text-gray-400">{task.assignee}</td>
+                        <td className={cn('py-2 text-xs', overdue ? 'text-red-400 font-medium' : 'text-gray-400')}>
+                          {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : '—'}
+                          {overdue && ' · overdue'}
+                        </td>
+                        <td className="py-2 pr-2 text-xs text-gray-400 text-right">{task.progress}%</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+          )}
         </div>
 
         {/* Task detail side panel */}

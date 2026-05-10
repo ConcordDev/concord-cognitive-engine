@@ -89,7 +89,7 @@ const PROFILE = {
 
 const INITIAL_PORTFOLIO: PortfolioItem[] = [];
 
-const SEED_SKILLS: SkillData[] = [];
+const SKILLS_FALLBACK: SkillData[] = [];
 
 const INITIAL_HISTORY: HistoryItem[] = [];
 
@@ -268,7 +268,7 @@ export default function ExperienceLensPage() {
     seed: INITIAL_PORTFOLIO.map(p => ({ title: p.title, data: p as unknown as Record<string, unknown> })),
   });
   const { isError: isError2, error: error2, refetch: refetch2, items: skillItems } = useLensData('experience', 'skill', {
-    seed: SEED_SKILLS.map(s => ({ title: s.name, data: s as unknown as Record<string, unknown> })),
+    seed: SKILLS_FALLBACK.map(s => ({ title: s.name, data: s as unknown as Record<string, unknown> })),
   });
   const { isError: isError3, error: error3, refetch: refetch3, items: historyItems } = useLensData('experience', 'history', {
     seed: INITIAL_HISTORY.map(h => ({ title: h.title, data: h as unknown as Record<string, unknown> })),

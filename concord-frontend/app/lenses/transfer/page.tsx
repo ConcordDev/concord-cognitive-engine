@@ -1,11 +1,12 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useLensBridge } from '@/lib/hooks/use-lens-bridge';
 import { UniversalActions } from '@/components/lens/UniversalActions';
@@ -31,6 +32,8 @@ export default function TransferLensPage() {
   const [classifyText, setClassifyText] = useState('');
   const [results, setResults] = useState<unknown>(null);
   const [showFeatures, setShowFeatures] = useState(true);
+  const sourceInputRef = useRef<HTMLTextAreaElement>(null);
+  const classifyInputRef = useRef<HTMLInputElement>(null);
 
   const { items: transferItems } = useLensData<Record<string, unknown>>('transfer', 'analogy');
   const runTransferAction = useRunArtifact('transfer');
@@ -70,6 +73,16 @@ export default function TransferLensPage() {
   });
 
   const transfers = useMemo(() => history?.transfers || history || [], [history]);
+
+  useLensCommand(
+    [
+      { id: 'focus-source',   keys: 'a', description: 'Focus analogy source', category: 'navigation', action: () => sourceInputRef.current?.focus() },
+      { id: 'focus-classify', keys: 'c', description: 'Focus classify field', category: 'navigation', action: () => classifyInputRef.current?.focus() },
+      { id: 'find-analogies', keys: 'mod+enter', description: 'Find analogies', category: 'actions',
+        action: () => { if (sourceText.trim() && !findAnalogies.isPending) findAnalogies.mutate(); }, global: true },
+    ],
+    { lensId: 'transfer' }
+  );
 
   // Bridge transfer history into lens artifacts
   useEffect(() => {
@@ -157,9 +170,11 @@ export default function TransferLensPage() {
               <Search className="w-4 h-4 text-neon-cyan" /> Find Analogies
             </h2>
             <textarea
+              ref={sourceInputRef}
               value={sourceText}
               onChange={(e) => setSourceText(e.target.value)}
-              placeholder="Source concept or knowledge..."
+              onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && sourceText.trim() && !findAnalogies.isPending) { e.preventDefault(); findAnalogies.mutate(); } }}
+              placeholder="Source concept or knowledge…  ⌘⏎ finds analogies"
               className="input-lattice w-full h-24 resize-none"
             />
             <input
@@ -184,10 +199,12 @@ export default function TransferLensPage() {
               <Layers className="w-4 h-4 text-neon-green" /> Classify Domain
             </h2>
             <input
+              ref={classifyInputRef}
               type="text"
               value={classifyText}
               onChange={(e) => setClassifyText(e.target.value)}
-              placeholder="Content to classify..."
+              onKeyDown={(e) => { if (e.key === 'Enter' && classifyText.trim() && !classifyDomain.isPending) { e.preventDefault(); classifyDomain.mutate(); } }}
+              placeholder="Content to classify…  ⏎ runs"
               className="input-lattice w-full"
             />
             <button

@@ -1,10 +1,11 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from "@/hooks/useLensCommand";
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { UniversalActions } from '@/components/lens/UniversalActions';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef} from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { MarketEmpireListing } from '@/components/market/MarketEmpireListing';
@@ -40,6 +41,14 @@ type SortField = 'newest' | 'price-asc' | 'price-desc' | 'popular';
 type ListingType = 'all' | 'template' | 'component' | 'dataset' | 'artwork';
 
 export default function MarketLensPage() {
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  useLensCommand(
+    [
+      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
+    ],
+    { lensId: "market" }
+  );
+
   useLensNav('market');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('market');
   const queryClient = useQueryClient();

@@ -169,10 +169,8 @@ describe('getLensesMissingMacro', () => {
   it('may return domains missing optional macros like create', () => {
     const missingCreate = getLensesMissingMacro('create');
     expect(Array.isArray(missingCreate)).toBe(true);
-    // resonance lens has no create macro
-    if (missingCreate.length > 0) {
-      expect(missingCreate).toContain('resonance');
-    }
+    // Resonance now declares the full macro set (production-grade pass);
+    // any remaining missing-create domains are still tracked here.
   });
 
   it('returns domains missing run macro', () => {

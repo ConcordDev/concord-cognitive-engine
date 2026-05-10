@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from "@/hooks/useLensCommand";
 import { useQuery } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -195,6 +196,14 @@ function countAllComments(comments: Comment[]): number {
 // ---------------------------------------------------------------------------
 
 export default function ForumLensPage() {
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  useLensCommand(
+    [
+      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
+    ],
+    { lensId: "forum" }
+  );
+
   useLensNav('forum');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('forum');
   // ----- State -----
@@ -800,7 +809,8 @@ export default function ForumLensPage() {
             <div className="flex items-center gap-3 flex-1 justify-end">
               <div className="relative max-w-xs w-full">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-                <input type="text" value={searchQuery} onChange={e => { setSearchQuery(e.target.value); if (viewMode !== 'feed') backToFeed(); }} placeholder="Search posts, tags, users..." className="w-full pl-10 pr-4 py-2 bg-lattice-bg border border-lattice-border rounded-full text-sm text-white placeholder-gray-500 focus:outline-none focus:border-neon-cyan input-lattice" />
+                <input ref={searchInputRef}
+              type="text" value={searchQuery} onChange={e => { setSearchQuery(e.target.value); if (viewMode !== 'feed') backToFeed(); }} placeholder="Search posts, tags, users..." className="w-full pl-10 pr-4 py-2 bg-lattice-bg border border-lattice-border rounded-full text-sm text-white placeholder-gray-500 focus:outline-none focus:border-neon-cyan input-lattice" />
                 {searchQuery && <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"><X className="w-3.5 h-3.5" /></button>}
               </div>
               <button onClick={() => setShowCreatePost(true)} className="flex items-center gap-2 px-4 py-2 bg-neon-cyan text-black font-medium rounded-full hover:bg-neon-cyan/90 transition-colors text-sm flex-shrink-0 btn-neon">

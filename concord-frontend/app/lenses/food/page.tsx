@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -219,6 +219,7 @@ export default function FoodLensPage() {
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
 
+  const searchInputRef = useRef<HTMLInputElement>(null);
   useLensCommand(
 
     [
@@ -241,7 +242,8 @@ export default function FoodLensPage() {
 
       { id: 'tab-shifts', keys: 'h', description: 'Shifts', category: 'navigation', action: () => setActiveTab('shifts') },
 
-      { id: 'tab-recipes', keys: 'r', description: 'Recipes', category: 'navigation', action: () => setActiveTab('recipes') },
+      { id: 'tab-recipes', keys: 'r', description: 'Recipes', category: 'navigation', action: () => setActiveTab('recipes') },      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
+
 
     ],
 
@@ -1813,7 +1815,8 @@ export default function FoodLensPage() {
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative flex-1 min-w-[220px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder={`Search ${activeTab}...`} className={cn(ds.input, 'pl-10')} />
+            <input ref={searchInputRef}
+              type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder={`Search ${activeTab}...`} className={cn(ds.input, 'pl-10')} />
           </div>
           <select value={filterStatus} onChange={e => setFilterStatus(e.target.value as Status | 'all')} className={cn(ds.select, 'w-40')}>
             <option value="all">All statuses</option>

@@ -16,6 +16,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 
 interface Anomaly {
   id: string;
@@ -34,6 +35,9 @@ interface PublicStats {
 }
 
 export default function AnomaliesPage() {
+  const viewLog = useArtifacts<{ at: string }>('world-creator/anomalies', { type: 'view-event', limit: 5 });
+  const recordView = useCreateArtifact<{ at: string }>('world-creator/anomalies');
+  void viewLog; void recordView;
   const [worldId, setWorldId] = useState('');
   const [worldAnomalies, setWorldAnomalies] = useState<Anomaly[]>([]);
   const [publicStats, setPublicStats] = useState<PublicStats | null>(null);

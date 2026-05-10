@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -147,6 +147,7 @@ export default function SpaceLensPage() {
 
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useLensCommand(
 
@@ -160,7 +161,8 @@ export default function SpaceLensPage() {
 
       { id: 'tab-missions', keys: 'm', description: 'Missions', category: 'navigation', action: () => setActiveMode('Missions') },
 
-      { id: 'tab-satellites', keys: 's', description: 'Satellites', category: 'navigation', action: () => setActiveMode('Satellites') },
+      { id: 'tab-satellites', keys: 's', description: 'Satellites', category: 'navigation', action: () => setActiveMode('Satellites') },      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
+
 
     ],
 
@@ -301,7 +303,8 @@ export default function SpaceLensPage() {
       <div className="flex items-center gap-2">
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-          <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+          <input ref={searchInputRef}
+              value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
             placeholder={`Search ${currentType.toLowerCase()}s...`}
             className="w-full pl-9 pr-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-sm text-white placeholder-gray-500" />
         </div>

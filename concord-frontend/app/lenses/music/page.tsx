@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -74,11 +74,11 @@ import { FeedBanner } from '@/components/lens/FeedBanner';
 // Seed Data — empty; all data comes from the backend API
 // ============================================================================
 
-const SEED_TRACKS: MusicTrack[] = [];
+const TRACKS_FALLBACK: MusicTrack[] = [];
 
-const SEED_ARTISTS: Artist[] = [];
+const ARTISTS_FALLBACK: Artist[] = [];
 
-const SEED_PLAYLISTS: Playlist[] = [];
+const PLAYLISTS_FALLBACK: Playlist[] = [];
 
 // ============================================================================
 // Music Lens Page
@@ -98,13 +98,13 @@ export default function MusicLensPage() {
     items: trackItems,
     create: createTrackItem,
   } = useLensData<Record<string, unknown>>('music', 'track', {
-    seed: SEED_TRACKS.map((t) => ({
+    seed: TRACKS_FALLBACK.map((t) => ({
       title: t.title,
       data: t as unknown as Record<string, unknown>,
     })),
   });
   const { items: artistItems } = useLensData<Record<string, unknown>>('music', 'artist', {
-    seed: SEED_ARTISTS.map((a) => ({
+    seed: ARTISTS_FALLBACK.map((a) => ({
       title: a.name,
       data: a as unknown as Record<string, unknown>,
     })),
@@ -113,7 +113,7 @@ export default function MusicLensPage() {
     'music',
     'playlist',
     {
-      seed: SEED_PLAYLISTS.map((p) => ({
+      seed: PLAYLISTS_FALLBACK.map((p) => ({
         title: p.name,
         data: p as unknown as Record<string, unknown>,
       })),
@@ -248,7 +248,11 @@ export default function MusicLensPage() {
   // ---- View State ----
   const [view, setView] = useState<MusicLensView>('home');
 
-  // Lens-scoped keyboard commands (auto-wired by codemod).
+  // Lens-scoped keyboard commands (tab navigation).  Playback transport
+  // shortcuts live in a second useLensCommand below — they need to close
+  // over `nowPlaying` and `toggleLike`, both of which are declared
+  // further down the function body.
+  const searchInputRef = useRef<HTMLInputElement>(null);
   useLensCommand(
     [
       { id: 'tab-artist', keys: 'a', description: 'Artist', category: 'navigation', action: () => setView('artist') },
@@ -258,6 +262,7 @@ export default function MusicLensPage() {
       { id: 'tab-upload', keys: 'u', description: 'Upload', category: 'navigation', action: () => setView('upload') },
       { id: 'tab-revenue', keys: 'r', description: 'Revenue', category: 'navigation', action: () => setView('revenue') },
       { id: 'tab-browse', keys: 'b', description: 'Browse', category: 'navigation', action: () => setView('browse') },
+      { id: 'focus-search', keys: '/', description: 'Focus search', category: 'navigation', action: () => searchInputRef.current?.focus() },
     ],
     { lensId: 'music' }
   );
@@ -373,6 +378,33 @@ export default function MusicLensPage() {
       return next;
     });
   }, []);
+
+  // ---- Spotify-style transport shortcuts ----
+  // Space / k → play-pause (Spotify + YouTube idiom).
+  // j / shift+j → seek -10s / +10s (YouTube idiom).
+  // shift+l → like the current track without leaving the keyboard.
+  const togglePlayPause = useCallback(() => {
+    const player = getPlayer();
+    if (!nowPlaying.track) return;
+    if (nowPlaying.playbackState === 'playing') player.pause();
+    else player.play().catch((e) => console.error('[Music] play failed:', e));
+  }, [nowPlaying]);
+  const seekRelative = useCallback((deltaSec: number) => {
+    const player = getPlayer();
+    if (!nowPlaying.track) return;
+    const next = Math.max(0, Math.min(nowPlaying.duration || 0, (nowPlaying.currentTime || 0) + deltaSec));
+    player.seek(next);
+  }, [nowPlaying]);
+  useLensCommand(
+    [
+      { id: 'play-pause-space', keys: 'space', description: 'Play / pause', category: 'actions', action: togglePlayPause, global: true },
+      { id: 'play-pause-k',     keys: 'k',     description: 'Play / pause (YouTube idiom)', category: 'actions', action: togglePlayPause, global: true },
+      { id: 'seek-back',        keys: 'j',     description: 'Seek -10s', category: 'actions', action: () => seekRelative(-10), global: true },
+      { id: 'seek-fwd',         keys: 'shift+j', description: 'Seek +10s', category: 'actions', action: () => seekRelative(10), global: true },
+      { id: 'like-current',     keys: 'shift+l', description: 'Like current track', category: 'actions', action: () => { if (nowPlaying.track) toggleLike(nowPlaying.track.id); }, global: true },
+    ],
+    { lensId: 'music' }
+  );
 
   // ---- Playlist creation ----
   const handleCreatePlaylist = useCallback(
@@ -1111,7 +1143,8 @@ export default function MusicLensPage() {
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
                   <input
-                    value={searchQuery}
+                    ref={searchInputRef}
+              value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-neon-cyan/50"
                     placeholder="Search tracks, artists, genres, tags..."

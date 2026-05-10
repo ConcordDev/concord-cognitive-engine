@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useState } from 'react';
@@ -120,6 +121,21 @@ export default function QuantumLensPage() {
 
   const recentSims = circuitItems.slice(0, 5);
 
+  // Lab / quantum-IDE shortcuts: ⌘⏎ runs the sim, +/- adjusts qubits
+  // (clamped 1-8), r resets the result.
+  useLensCommand(
+    [
+      { id: 'run', keys: 'mod+enter', description: 'Run simulation', category: 'actions',
+        action: () => { if (!runSimulation.isPending) runSimulation.mutate(); }, global: true },
+      { id: 'qubits-inc', keys: 'shift+=', description: 'Add a qubit (max 8)', category: 'actions',
+        action: () => setQubits((q) => Math.min(8, q + 1)) },
+      { id: 'qubits-dec', keys: '-',      description: 'Remove a qubit (min 1)', category: 'actions',
+        action: () => setQubits((q) => Math.max(1, q - 1)) },
+      { id: 'reset',      keys: 'r',      description: 'Reset result',          category: 'actions',
+        action: () => setResult(null) },
+    ],
+    { lensId: 'quantum' }
+  );
 
   if (circuitsLoading) {
     return (

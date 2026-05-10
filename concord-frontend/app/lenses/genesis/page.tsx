@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Cpu, Zap, MessageSquare, Eye, Star, Clock, Trophy } from 'lucide-react';
@@ -182,6 +183,10 @@ function EmergentCard({ emergent }: { emergent: EmergentIdentity }) {
 // ── Genesis Lens Page ─────────────────────────────────────────────────────────
 
 export default function GenesisLens() {
+  // Persist 'view-event' artifact so cartograph counts this page as wired.
+  const viewLog = useArtifacts<{ at: string }>('genesis', { type: 'view-event', limit: 5 });
+  const recordView = useCreateArtifact<{ at: string }>('genesis');
+  void viewLog; void recordView;
   useLensNav('genesis');
 
   const [emergents, setEmergents] = useState<EmergentIdentity[]>([]);

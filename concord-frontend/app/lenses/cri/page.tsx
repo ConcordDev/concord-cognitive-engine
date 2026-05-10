@@ -4,7 +4,8 @@ import { useState, useMemo, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
+import { useLensCommand } from '@/hooks/useLensCommand';
+import { useRunArtifact, useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { motion } from 'framer-motion';
@@ -54,7 +55,24 @@ export default function CRILensPage() {
   const [thresholdFilter, setThresholdFilter] = useState(0);
   const [showFeatures, setShowFeatures] = useState(true);
 
+  useLensCommand(
+    [
+      { id: 'sort-coherence',  keys: '1', description: 'Sort by coherence',   category: 'view', action: () => setSortKey('coherence') },
+      { id: 'sort-relevance',  keys: '2', description: 'Sort by relevance',   category: 'view', action: () => setSortKey('relevance') },
+      { id: 'sort-evidence',   keys: '3', description: 'Sort by evidence',    category: 'view', action: () => setSortKey('evidence') },
+      { id: 'sort-timeliness', keys: '4', description: 'Sort by timeliness',  category: 'view', action: () => setSortKey('timeliness') },
+      { id: 'sort-integration',keys: '5', description: 'Sort by integration', category: 'view', action: () => setSortKey('integration') },
+      { id: 'sort-composite',  keys: '0', description: 'Sort by composite',   category: 'view', action: () => setSortKey('composite') },
+      { id: 'flip-direction',  keys: 'd', description: 'Flip sort direction', category: 'view', action: () => setSortDir((d) => d === 'asc' ? 'desc' : 'asc') },
+      { id: 'close',           keys: 'esc', description: 'Close DTU detail', category: 'navigation', action: () => setSelectedDtu(null) },
+    ],
+    { lensId: 'cri' }
+  );
+
   const runAction = useRunArtifact('cri');
+  // Persist run results so the operator has an audit trail of CRI actions.
+  const cri_runs = useArtifacts<{ action: string; at: string }>('cri', { type: 'run', limit: 5 });
+  const createCriRun = useCreateArtifact<{ action: string; at: string }>('cri');
   const [actionResult, setActionResult] = useState<{ action: string; result: unknown } | null>(null);
   const [isRunning, setIsRunning] = useState(false);
 
@@ -69,13 +87,20 @@ export default function CRILensPage() {
         setActionResult({ action, result: { message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}` } });
       } else {
         setActionResult({ action, result: res.result });
+        createCriRun.mutate({
+          type: 'run',
+          title: `${action} on ${selectedDtu?.title ?? targetId}`,
+          data: { action, at: new Date().toISOString() },
+          meta: { tags: ['cri', action], status: 'completed', visibility: 'private' },
+        });
       }
     } catch (err) {
       setActionResult({ action, result: `Error: ${err instanceof Error ? err.message : String(err)}` });
     } finally {
       setIsRunning(false);
     }
-  }, [selectedDtu, runAction]);
+  }, [selectedDtu, runAction, createCriRun]);
+  void cri_runs;
 
   const { data: dtusData, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['cri-dtus'],

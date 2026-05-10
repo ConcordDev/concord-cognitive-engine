@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -918,6 +919,19 @@ export default function ResonanceBoundaryPage() {
   const [thresholds, setThresholds] = useState<ThresholdConfig>({ ...DEFAULT_THRESHOLDS });
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [showFeatures, setShowFeatures] = useState(true);
+
+  // PagerDuty / Splunk on-call idiom: l/p/h/y/g jump views, a toggles auto-scan.
+  useLensCommand(
+    [
+      { id: 'view-live',    keys: 'l', description: 'Live view',    category: 'view', action: () => setViewMode('live') },
+      { id: 'view-pairs',   keys: 'p', description: 'Pairs view',   category: 'view', action: () => setViewMode('pairs') },
+      { id: 'view-history', keys: 'h', description: 'History view', category: 'view', action: () => setViewMode('history') },
+      { id: 'view-health',  keys: 'y', description: 'Health view',  category: 'view', action: () => setViewMode('health') },
+      { id: 'view-growth',  keys: 'g', description: 'Growth view',  category: 'view', action: () => setViewMode('growth') },
+      { id: 'toggle-scan',  keys: 'a', description: 'Toggle auto-scan', category: 'actions', action: () => setAutoScan((v) => !v) },
+    ],
+    { lensId: 'resonance' }
+  );
 
   const { items: resonanceArtifacts } = useLensData('resonance', 'signal', { seed: [] });
   const runResonanceAction = useRunArtifact('resonance');

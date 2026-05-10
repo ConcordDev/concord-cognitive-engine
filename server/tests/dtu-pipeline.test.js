@@ -192,7 +192,9 @@ function createMockDb() {
           // batchLookup pattern (economy/_batch-lookup.js):
           //   SELECT <cols> FROM dtus WHERE id IN (?, ?, ...)
           // Production code's compressToDMega / compressToHyper hit this
-          // path. Mock returns the projected columns for each matched row.
+          // path. Mock returns the projected columns for each matched row;
+          // the regex tolerates either the specific projection from
+          // batchLookup or a generic `*` projection from other call sites.
           if (/SELECT .* FROM dtus WHERE id IN/.test(sql)) {
             const ids = new Set(params);
             return tables.dtus

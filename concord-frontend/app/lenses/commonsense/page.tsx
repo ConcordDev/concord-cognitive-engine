@@ -1,7 +1,9 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from "@/hooks/useLensCommand";
 import { LensShell } from '@/components/lens/LensShell';
+import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
@@ -47,6 +49,19 @@ const RELATION_COLORS: Record<string, string> = {
 };
 
 export default function CommonsenseLensPage() {
+  useLensCommand(
+    [
+      { id: "commonsense-list", keys: "v", description: "View list", category: "view", action: () => setViewMode("list") },
+      { id: "commonsense-grid", keys: "g", description: "View grid", category: "view", action: () => setViewMode("graph") },
+      { id: "commonsense-newest", keys: "n", description: "Sort newest", category: "view", action: () => setSortMode("newest") },
+      { id: "commonsense-oldest", keys: "o", description: "Sort alphabetical", category: "view", action: () => setSortMode("alphabetical") },
+    ],
+    { lensId: "commonsense" }
+  );
+
+  const viewLog = useArtifacts<{ at: string }>('commonsense', { type: 'view-event', limit: 5 });
+  const recordView = useCreateArtifact<{ at: string }>('commonsense');
+  void viewLog; void recordView;
   useLensNav('commonsense');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('commonsense');
 

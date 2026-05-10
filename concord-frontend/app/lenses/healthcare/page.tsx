@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
 import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -550,16 +550,18 @@ export default function HealthcareLensPage() {
   const [activeTab, setActiveTab] = useState<ModeTab>('Patients');
 
   // Lens-scoped keyboard commands. EHR idiom (Epic / Cerner): single
-  // letters jump between clinical tabs.
+  // letters jump between clinical tabs; / focuses the records search.
+  const searchInputRef = useRef<HTMLInputElement>(null);
   useLensCommand(
     [
-      { id: 'tab-patients', keys: 'p', description: 'Patients', category: 'navigation', action: () => setActiveTab('Patients') },
+      { id: 'tab-patients',   keys: 'p', description: 'Patients',   category: 'navigation', action: () => setActiveTab('Patients') },
       { id: 'tab-encounters', keys: 'e', description: 'Encounters', category: 'navigation', action: () => setActiveTab('Encounters') },
-      { id: 'tab-protocols', keys: 'r', description: 'Protocols', category: 'navigation', action: () => setActiveTab('Protocols') },
-      { id: 'tab-pharmacy', keys: 'm', description: 'Pharmacy', category: 'navigation', action: () => setActiveTab('Pharmacy') },
-      { id: 'tab-lab', keys: 'l', description: 'Lab', category: 'navigation', action: () => setActiveTab('Lab') },
-      { id: 'tab-therapy', keys: 't', description: 'Therapy', category: 'navigation', action: () => setActiveTab('Therapy') },
-      { id: 'tab-symptoms', keys: 's', description: 'Symptoms', category: 'navigation', action: () => setActiveTab('Symptoms') },
+      { id: 'tab-protocols',  keys: 'r', description: 'Protocols',  category: 'navigation', action: () => setActiveTab('Protocols') },
+      { id: 'tab-pharmacy',   keys: 'm', description: 'Pharmacy',   category: 'navigation', action: () => setActiveTab('Pharmacy') },
+      { id: 'tab-lab',        keys: 'l', description: 'Lab',        category: 'navigation', action: () => setActiveTab('Lab') },
+      { id: 'tab-therapy',    keys: 't', description: 'Therapy',    category: 'navigation', action: () => setActiveTab('Therapy') },
+      { id: 'tab-symptoms',   keys: 's', description: 'Symptoms',   category: 'navigation', action: () => setActiveTab('Symptoms') },
+      { id: 'focus-search',   keys: '/', description: 'Focus search', category: 'navigation', action: () => searchInputRef.current?.focus() },
     ],
     { lensId: 'healthcare' }
   );
@@ -1984,10 +1986,11 @@ export default function HealthcareLensPage() {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
+                  ref={searchInputRef}
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search records..."
+                  placeholder="Search records…  /"
                   className={cn(ds.input, 'pl-9 w-56')}
                 />
               </div>

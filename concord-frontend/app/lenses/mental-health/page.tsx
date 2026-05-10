@@ -6,7 +6,7 @@ import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { useState } from 'react';
+import { useState, useRef} from 'react';
 import { motion } from 'framer-motion';
 import { Brain, Heart, Shield, Activity, Smile, Frown, Meh, AlertTriangle, Plus, Trash2, Layers, ChevronDown, Calendar, Clock, Sparkles, Search, Loader2, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -53,12 +53,14 @@ export default function MentalHealthLensPage() {
 
   // Lens-scoped keyboard commands. Headspace / Calm idiom: gentle
   // single-letter section jumps.
+  const searchInputRef = useRef<HTMLInputElement>(null);
   useLensCommand(
     [
       { id: 'tab-mood', keys: 'm', description: 'Mood', category: 'navigation', action: () => setActiveTab('mood') },
       { id: 'tab-journal', keys: 'j', description: 'Journal', category: 'navigation', action: () => setActiveTab('journal') },
       { id: 'tab-coping', keys: 'c', description: 'Coping', category: 'navigation', action: () => setActiveTab('coping') },
-      { id: 'tab-resources', keys: 'r', description: 'Resources', category: 'navigation', action: () => setActiveTab('resources') },
+      { id: 'tab-resources', keys: 'r', description: 'Resources', category: 'navigation', action: () => setActiveTab('resources') },      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
+
     ],
     { lensId: 'mental-health' }
   );
@@ -182,7 +184,8 @@ export default function MentalHealthLensPage() {
       {/* Search */}
       <div className="relative">
         <input
-          value={searchQuery}
+          ref={searchInputRef}
+              value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
           placeholder="Search moods, journals, strategies..."
           className="w-full bg-black/30 border border-white/10 rounded-lg pl-3 pr-8 py-2 text-sm placeholder:text-gray-500 focus:outline-none focus:border-neon-purple/30"

@@ -22,6 +22,7 @@ import { cn } from '@/lib/utils';
 import {
   Search, X, ArrowRight, Sparkles, Grid3X3, LayoutGrid,
 } from 'lucide-react';
+import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 
 /** Display order for categories in the explorer */
 const CATEGORY_ORDER: LensCategory[] = [
@@ -44,6 +45,26 @@ const CATEGORY_DESCRIPTIONS: Partial<Record<LensCategory, string>> = {
 export default function LensHubPage() {
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'compact'>('grid');
+
+  // Persist favourite-lens picks as 'favourite' artifacts so the hub
+  // can surface a personalised top-strip across sessions.
+  const favourites = useArtifacts<{ lensId: string; at: string }>('hub', { type: 'favourite', limit: 10 });
+  const createFavourite = useCreateArtifact<{ lensId: string; at: string }>('hub');
+  const favouriteLensIds = useMemo(
+    () => new Set((favourites.data?.artifacts ?? []).map((a) => (a.data as { lensId?: string }).lensId).filter(Boolean) as string[]),
+    [favourites.data]
+  );
+  function toggleFavourite(lensId: string, ev: React.MouseEvent) {
+    ev.preventDefault();
+    if (favouriteLensIds.has(lensId)) return;
+    createFavourite.mutate({
+      type: 'favourite',
+      title: lensId,
+      data: { lensId, at: new Date().toISOString() },
+      meta: { tags: ['hub', 'favourite'], status: 'completed', visibility: 'private' },
+    });
+  }
+  void toggleFavourite;
 
   // All lenses (except hub/global which are meta)
   const allLenses = useMemo(() =>

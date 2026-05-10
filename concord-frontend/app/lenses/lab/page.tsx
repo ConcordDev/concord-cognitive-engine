@@ -1,13 +1,14 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useMutation } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import { useLensData, type LensItem } from '@/lib/hooks/use-lens-data';
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { FlaskConical, Play, Square, History, Zap, Search, Plus, Trash2, CheckCircle, AlertTriangle, Lightbulb, Layers, ChevronDown, Microscope, Activity, Loader2 } from 'lucide-react';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -25,6 +26,18 @@ export default function LabLensPage() {
 
   const [code, setCode] = useState('');
   const [selectedOrgan, setSelectedOrgan] = useState('abstraction_governor');
+  const codeAreaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Load a previously-run experiment back into the editor.  Letting
+  // experiments be dead-end log entries was a real switch-blocker —
+  // every notebook tool (Jupyter, Observable) lets you re-run prior
+  // cells.  Now we set the code AND the organ to recreate the prior
+  // state, then focus the editor so they can tweak and re-run.
+  const loadExperiment = useCallback((exp: Record<string, unknown>) => {
+    if (typeof exp.code === 'string') setCode(exp.code);
+    if (typeof exp.organ === 'string') setSelectedOrgan(exp.organ);
+    requestAnimationFrame(() => codeAreaRef.current?.focus());
+  }, []);
 
   const { items: organItems, isLoading, isError: isError, error: error, refetch: refetch } = useLensData<Record<string, unknown>>('lab', 'organ', { seed: [] });
   const organs = organItems.map(i => ({ id: i.id, ...(i.data || {}) })) as unknown as Record<string, unknown>[];
@@ -54,6 +67,21 @@ export default function LabLensPage() {
     },
     onError: (err) => console.error('runExperiment failed:', err instanceof Error ? err.message : err),
   });
+
+  // Jupyter / Observable idiom: ⌘⏎ runs the cell.  ⌘l focuses the
+  // code area, ⌘\ clears it.  Shortcuts are global so they fire even
+  // when the cursor is in the code textarea.
+  useLensCommand(
+    [
+      { id: 'run', keys: 'mod+enter', description: 'Run experiment', category: 'actions',
+        action: () => { if (code.trim() && !runExperiment.isPending) runExperiment.mutate({ code, organ: selectedOrgan }); }, global: true },
+      { id: 'focus-code', keys: 'mod+l', description: 'Focus code editor', category: 'navigation',
+        action: () => codeAreaRef.current?.focus(), global: true },
+      { id: 'clear-code', keys: 'mod+\\', description: 'Clear code', category: 'actions',
+        action: () => setCode(''), global: true },
+    ],
+    { lensId: 'lab' }
+  );
 
 
   if (isLoading) {
@@ -142,9 +170,10 @@ export default function LabLensPage() {
           </div>
 
           <textarea
+            ref={codeAreaRef}
             value={code}
             onChange={(e) => setCode(e.target.value)}
-            placeholder="// Write experiment code here..."
+            placeholder="// Write experiment code here…  ⌘⏎ to run · ⌘\ to clear"
             className="input-lattice font-mono text-sm h-64 resize-none"
           />
 
@@ -223,17 +252,32 @@ export default function LabLensPage() {
             </p>
           ) : (
             experiments?.map((exp: Record<string, unknown>, index: number) => (
-              <motion.div key={exp.id as string} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }} className="lens-card">
+              <motion.button
+                key={exp.id as string}
+                onClick={() => loadExperiment(exp)}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.05 }}
+                className="lens-card w-full text-left hover:border-neon-purple/50 transition-colors group"
+                title="Click to load this experiment back into the editor"
+              >
                 <div className="flex items-center justify-between">
                   <span className="font-mono text-sm">{String(exp.organ)}</span>
-                  <span className="text-xs text-gray-400">
-                    {new Date(exp.timestamp as string).toLocaleString()}
+                  <span className="text-xs text-gray-400 group-hover:text-neon-purple transition-colors">
+                    {new Date((exp.timestamp || exp.ranAt) as string).toLocaleString()} · click to load ↺
                   </span>
                 </div>
-                <pre className="text-xs text-gray-300 mt-2 overflow-auto max-h-24">
-                  {String(exp.result)}
-                </pre>
-              </motion.div>
+                {exp.code !== undefined && (
+                  <pre className="text-xs text-gray-500 mt-2 overflow-auto max-h-16 font-mono">
+                    {String(exp.code).slice(0, 200)}{String(exp.code).length > 200 ? '…' : ''}
+                  </pre>
+                )}
+                {exp.result !== undefined && (
+                  <pre className="text-xs text-gray-300 mt-2 overflow-auto max-h-24">
+                    {String(exp.result)}
+                  </pre>
+                )}
+              </motion.button>
             ))
           )}
         </div>

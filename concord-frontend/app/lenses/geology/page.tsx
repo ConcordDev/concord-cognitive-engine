@@ -6,7 +6,7 @@ import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef} from 'react';
 import { motion } from 'framer-motion';
 import {
   Mountain,
@@ -61,12 +61,14 @@ export default function GeologyLensPage() {
   );
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
+  const searchInputRef = useRef<HTMLInputElement>(null);
   useLensCommand(
     [
       { id: 'tab-samples', keys: 's', description: 'Samples', category: 'navigation', action: () => setActiveTab('samples') },
       { id: 'tab-sites', keys: 'i', description: 'Sites', category: 'navigation', action: () => setActiveTab('sites') },
       { id: 'tab-map', keys: 'm', description: 'Map', category: 'navigation', action: () => setActiveTab('map') },
-      { id: 'tab-stratigraphy', keys: 't', description: 'Stratigraphy', category: 'navigation', action: () => setActiveTab('stratigraphy') },
+      { id: 'tab-stratigraphy', keys: 't', description: 'Stratigraphy', category: 'navigation', action: () => setActiveTab('stratigraphy') },      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
+
     ],
     { lensId: 'geology' }
   );
@@ -301,6 +303,7 @@ export default function GeologyLensPage() {
           <div className="relative">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
+              ref={searchInputRef}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search samples..."

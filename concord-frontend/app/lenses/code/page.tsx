@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -532,6 +533,119 @@ export default function CodeLensPage() {
 
   const [savingOutputDTU, setSavingOutputDTU] = useState(false);
 
+  // ── Command palette (⌘P / ⌘Shift+P) ────────────────────────────
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [paletteQuery, setPaletteQuery] = useState('');
+  const [paletteIdx, setPaletteIdx] = useState(0);
+  const paletteInputRef = useRef<HTMLInputElement>(null);
+
+  // ── Find in files (⌘⇧F) ────────────────────────────────────────
+  // VSCode-shape grep across every open tab AND every saved script.
+  // Keeps a 60-line context window, highlights matches, click jumps
+  // to the matching tab and scrolls Monaco to the match line.
+  const [findOpen, setFindOpen] = useState(false);
+  const [findQuery, setFindQuery] = useState('');
+  const findInputRef = useRef<HTMLInputElement>(null);
+  const openFindInFiles = useCallback(() => {
+    setFindOpen(true);
+    requestAnimationFrame(() => findInputRef.current?.focus());
+  }, []);
+  type FindHit = { source: 'tab' | 'script'; sourceId: string; sourceName: string; line: number; preview: string; tabId?: string };
+  const findHits = useMemo<FindHit[]>(() => {
+    const q = findQuery.trim();
+    if (q.length < 2) return [];
+    const ql = q.toLowerCase();
+    const out: FindHit[] = [];
+    const scan = (text: string, source: FindHit['source'], sourceId: string, sourceName: string, tabId?: string) => {
+      const lines = text.split('\n');
+      lines.forEach((line, i) => {
+        if (line.toLowerCase().includes(ql) && out.length < 200) {
+          out.push({ source, sourceId, sourceName, tabId, line: i + 1, preview: line });
+        }
+      });
+    };
+    for (const t of tabs) scan(t.content, 'tab', t.id, t.name, t.id);
+    for (const s of savedScripts) {
+      const data = (s as { data?: { content?: string }; title?: string }).data;
+      if (data?.content && !tabs.some((t) => t.id === s.id)) {
+        scan(String(data.content), 'script', s.id, (s as { title?: string }).title || 'script', undefined);
+      }
+    }
+    return out;
+  }, [findQuery, tabs, savedScripts]);
+
+  const jumpToFindHit = useCallback((hit: FindHit) => {
+    if (hit.tabId) {
+      setActiveTabId(hit.tabId);
+      setFindOpen(false);
+      requestAnimationFrame(() => {
+        const ed = editorInstanceRef.current;
+        if (ed) {
+          ed.revealLineInCenter(hit.line);
+          ed.setPosition({ lineNumber: hit.line, column: 1 });
+          ed.focus();
+        }
+      });
+    } else {
+      // Open the saved script as a new tab
+      const script = savedScripts.find((s) => s.id === hit.sourceId);
+      if (!script) return;
+      const data = (script as { data?: { content?: string; language?: string; scriptType?: ScriptType }; title?: string }).data;
+      const newTab: Tab = {
+        id: script.id,
+        name: (script as { title?: string }).title || 'untitled',
+        language: data?.language || 'javascript',
+        content: String(data?.content || ''),
+        isDirty: false,
+        scriptType: (data?.scriptType as ScriptType) || 'snippet',
+      };
+      if (!tabs.some((t) => t.id === script.id)) setTabs((prev) => [...prev, newTab]);
+      setActiveTabId(script.id);
+      setFindOpen(false);
+    }
+  }, [tabs, savedScripts]);
+
+  // ── Inline AI edit (⌘K) ─────────────────────────────────────────
+  // Cursor-style: select text → ⌘K → write instruction → see diff inline
+  // → Apply replaces selection.  Whole-file edit when no selection.
+  const editorInstanceRef = useRef<import('monaco-editor').editor.IStandaloneCodeEditor | null>(null);
+  const [selection, setSelection] = useState<{ text: string; startLine: number; endLine: number } | null>(null);
+  const [aiEditOpen, setAiEditOpen] = useState(false);
+  const [aiEditPrompt, setAiEditPrompt] = useState('');
+  const [aiEditPending, setAiEditPending] = useState(false);
+  const [aiEditResult, setAiEditResult] = useState<{ before: string; after: string; range: { startLine: number; endLine: number } | null } | null>(null);
+  const [aiEditError, setAiEditError] = useState<string | null>(null);
+  const [aiEditElapsed, setAiEditElapsed] = useState(0);
+  const aiEditAbortRef = useRef<AbortController | null>(null);
+  const aiEditInputRef = useRef<HTMLInputElement>(null);
+
+  // ── AI chat side-panel (⌘L) ─────────────────────────────────────
+  type ChatMsg = { role: 'user' | 'assistant'; content: string; ts: number };
+  const [aiChatOpen, setAiChatOpen] = useState(false);
+  const [aiChatHistory, setAiChatHistory] = useState<ChatMsg[]>([]);
+  const [aiChatDraft, setAiChatDraft] = useState('');
+  const [aiChatPending, setAiChatPending] = useState(false);
+  const [aiChatElapsed, setAiChatElapsed] = useState(0);
+  const [aiChatIncludeFile, setAiChatIncludeFile] = useState(true);
+  const aiChatAbortRef = useRef<AbortController | null>(null);
+  const aiChatScrollRef = useRef<HTMLDivElement>(null);
+  const aiChatInputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Tick elapsed time during in-flight AI requests so the UI never feels
+  // frozen.  Both edit + chat share this side-effect.
+  useEffect(() => {
+    if (!aiEditPending) { setAiEditElapsed(0); return; }
+    const start = Date.now();
+    const t = setInterval(() => setAiEditElapsed(Math.round((Date.now() - start) / 100) / 10), 100);
+    return () => clearInterval(t);
+  }, [aiEditPending]);
+  useEffect(() => {
+    if (!aiChatPending) { setAiChatElapsed(0); return; }
+    const start = Date.now();
+    const t = setInterval(() => setAiChatElapsed(Math.round((Date.now() - start) / 100) / 10), 100);
+    return () => clearInterval(t);
+  }, [aiChatPending]);
+
   // Backend action wiring
   const runCodeAction = useRunArtifact('code');
   const [codeActionResult, setCodeActionResult] = useState<Record<string, unknown> | null>(null);
@@ -738,6 +852,229 @@ export default function CodeLensPage() {
       </div>
     );
   };
+
+  // ── Command palette commands (computed) ──────────────────────────
+  // Must be declared BEFORE early returns to keep hook order stable.
+  type PaletteCommand = { id: string; label: string; hint: string; action: () => void };
+  const flattenFiles = useCallback((nodes: FileNode[]): FileNode[] => {
+    const out: FileNode[] = [];
+    const walk = (n: FileNode) => {
+      if (n.type === 'file') out.push(n);
+      n.children?.forEach(walk);
+    };
+    nodes.forEach(walk);
+    return out;
+  }, []);
+
+  const paletteCommands: PaletteCommand[] = useMemo(() => {
+    const fileCmds: PaletteCommand[] = flattenFiles(files).map((f) => ({
+      id: `open:${f.id}`,
+      label: f.name,
+      hint: f.language || 'file',
+      action: () => { openFile(f); setPaletteOpen(false); },
+    }));
+    const tabCmds: PaletteCommand[] = tabs.map((t) => ({
+      id: `tab:${t.id}`,
+      label: `→ ${t.name}`,
+      hint: 'switch to open tab',
+      action: () => { setActiveTabId(t.id); setPaletteOpen(false); },
+    }));
+    const actionCmds: PaletteCommand[] = [
+      { id: 'run',         label: 'Run script',                  hint: '⌘ Enter',   action: () => { runScriptMutation.mutate(); setPaletteOpen(false); } },
+      { id: 'tree',        label: 'Toggle file tree',            hint: showFileTree ? 'on'  : 'off', action: () => { setShowFileTree(!showFileTree); setPaletteOpen(false); } },
+      { id: 'output',      label: 'Toggle output panel',         hint: showOutput   ? 'on'  : 'off', action: () => { setShowOutput(!showOutput); setPaletteOpen(false); } },
+      { id: 'apiref',      label: 'Toggle API reference',        hint: showApiRef   ? 'on'  : 'off', action: () => { setShowApiRef(!showApiRef); setPaletteOpen(false); } },
+      { id: 'fullscreen',  label: 'Toggle fullscreen',           hint: isFullscreen ? 'on'  : 'off', action: () => { setIsFullscreen(!isFullscreen); setPaletteOpen(false); } },
+      { id: 'forge',       label: 'Open Forge (AI scaffold)',    hint: '✨',        action: () => { setShowForge(true); setPaletteOpen(false); } },
+      { id: 'console',     label: 'Show console output',         hint: '',          action: () => { setOutputTab('console'); setPaletteOpen(false); } },
+      { id: 'output-tab',  label: 'Show script output',          hint: '',          action: () => { setOutputTab('output'); setPaletteOpen(false); } },
+    ];
+    return [...actionCmds, ...tabCmds, ...fileCmds];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [files, tabs, showFileTree, showOutput, showApiRef, isFullscreen]);
+
+  const filteredPalette = useMemo(() => {
+    const q = paletteQuery.trim().toLowerCase();
+    if (!q) return paletteCommands.slice(0, 50);
+    return paletteCommands.filter((c) =>
+      c.label.toLowerCase().includes(q) || c.hint.toLowerCase().includes(q)
+    ).slice(0, 50);
+  }, [paletteCommands, paletteQuery]);
+
+  useEffect(() => { setPaletteIdx(0); }, [paletteQuery, paletteOpen]);
+  useEffect(() => {
+    if (paletteOpen) {
+      requestAnimationFrame(() => paletteInputRef.current?.focus());
+    }
+  }, [paletteOpen]);
+
+  // ── AI edit + chat handlers ─────────────────────────────────────
+  const extractCodeFromLLM = useCallback((raw: string): string => {
+    if (!raw) return '';
+    // Prefer fenced block (```lang\n...\n```)
+    const fence = raw.match(/```[a-zA-Z]*\n([\s\S]*?)```/);
+    if (fence) return fence[1].trim();
+    return raw.trim();
+  }, []);
+
+  const openAiEdit = useCallback(() => {
+    // Snapshot selection from the editor at the moment the shortcut fires.
+    const ed = editorInstanceRef.current;
+    if (ed) {
+      const sel = ed.getSelection();
+      const model = ed.getModel();
+      if (sel && model) {
+        const text = model.getValueInRange(sel);
+        setSelection(text ? { text, startLine: sel.startLineNumber, endLine: sel.endLineNumber } : null);
+      }
+    }
+    setAiEditPrompt('');
+    setAiEditResult(null);
+    setAiEditError(null);
+    setAiEditOpen(true);
+    requestAnimationFrame(() => aiEditInputRef.current?.focus());
+  }, []);
+
+  const runAiEdit = useCallback(async () => {
+    const instruction = aiEditPrompt.trim();
+    if (!instruction || aiEditPending) return;
+    const fileContent = activeTab.content;
+    const lang = activeTab.language || 'javascript';
+    const before = selection?.text || fileContent;
+    const isFullFile = !selection?.text;
+    aiEditAbortRef.current?.abort();
+    const ac = new AbortController();
+    aiEditAbortRef.current = ac;
+    setAiEditPending(true);
+    setAiEditError(null);
+    setAiEditResult(null);
+    try {
+      const messages = [
+        { role: 'system', content: `You are a senior ${lang} engineer doing a focused inline edit. Output ONLY the rewritten code in a single \`\`\`${lang} fenced block. Preserve indentation. No prose, no explanations.` },
+        ...(isFullFile ? [] : [{ role: 'user', content: `For context, here is the entire file (\`${activeTab.name}\`):\n\n\`\`\`${lang}\n${fileContent}\n\`\`\`` }]),
+        { role: 'user', content: `${isFullFile ? 'Rewrite this whole file' : 'Rewrite ONLY the selection below'} so that: ${instruction}\n\n\`\`\`${lang}\n${before}\n\`\`\`` },
+      ];
+      const res = await api.post('/api/lens/run', { domain: 'llm', action: 'local', input: { messages, temperature: 0.2, max_tokens: 2048 } }, { signal: ac.signal });
+      const result = res.data?.result;
+      const raw = result?.content || result?.message?.content || result?.output || '';
+      const after = extractCodeFromLLM(String(raw));
+      if (!after) {
+        setAiEditError('AI returned no code. Try rephrasing.');
+        return;
+      }
+      setAiEditResult({
+        before,
+        after,
+        range: selection ? { startLine: selection.startLine, endLine: selection.endLine } : null,
+      });
+    } catch (e) {
+      if ((e as { name?: string })?.name === 'CanceledError' || (e as { code?: string })?.code === 'ERR_CANCELED' || ac.signal.aborted) {
+        setAiEditError('Cancelled');
+      } else {
+        setAiEditError(e instanceof Error ? e.message : 'AI edit failed');
+      }
+    } finally {
+      setAiEditPending(false);
+      aiEditAbortRef.current = null;
+    }
+  }, [aiEditPrompt, aiEditPending, activeTab, selection, extractCodeFromLLM]);
+
+  const cancelAiEdit = useCallback(() => {
+    aiEditAbortRef.current?.abort();
+  }, []);
+
+  const applyAiEdit = useCallback(() => {
+    if (!aiEditResult) return;
+    const ed = editorInstanceRef.current;
+    if (aiEditResult.range && ed) {
+      const monaco = (window as unknown as { monaco?: typeof import('monaco-editor') }).monaco;
+      const model = ed.getModel();
+      if (model && monaco) {
+        const startLine = aiEditResult.range.startLine;
+        const endLine = aiEditResult.range.endLine;
+        const range = new monaco.Range(startLine, 1, endLine, model.getLineMaxColumn(endLine));
+        ed.executeEdits('ai-edit', [{ range, text: aiEditResult.after, forceMoveMarkers: true }]);
+        setAiEditOpen(false);
+        setAiEditResult(null);
+        return;
+      }
+    }
+    // No range or no editor handle → whole-file replace via tab state.
+    updateTabContent(aiEditResult.after);
+    setAiEditOpen(false);
+    setAiEditResult(null);
+  }, [aiEditResult, updateTabContent]);
+
+  const sendAiChat = useCallback(async () => {
+    const text = aiChatDraft.trim();
+    if (!text || aiChatPending) return;
+    const userMsg: ChatMsg = { role: 'user', content: text, ts: Date.now() };
+    const next = [...aiChatHistory, userMsg];
+    setAiChatHistory(next);
+    setAiChatDraft('');
+    aiChatAbortRef.current?.abort();
+    const ac = new AbortController();
+    aiChatAbortRef.current = ac;
+    setAiChatPending(true);
+    try {
+      const lang = activeTab.language || 'javascript';
+      const sys = `You are a senior ${lang} engineer pair-programming with the user. When you propose code, wrap it in \`\`\`${lang} fences. Be concise and direct.`;
+      const fileCtx = aiChatIncludeFile
+        ? `Currently open file (\`${activeTab.name}\`):\n\n\`\`\`${lang}\n${activeTab.content.slice(0, 8000)}\n\`\`\`\n\n`
+        : '';
+      const messages = [
+        { role: 'system', content: sys },
+        ...(fileCtx ? [{ role: 'user', content: fileCtx + 'Acknowledge the file context briefly, then await my next message.' }] : []),
+        ...(fileCtx ? [{ role: 'assistant', content: 'Got it — file in context.' }] : []),
+        ...next.map((m) => ({ role: m.role, content: m.content })),
+      ];
+      const res = await api.post('/api/lens/run', { domain: 'llm', action: 'local', input: { messages, temperature: 0.4, max_tokens: 1024 } }, { signal: ac.signal });
+      const result = res.data?.result;
+      const raw = result?.content || result?.message?.content || result?.output || '';
+      const reply = String(raw).trim() || '(empty response)';
+      setAiChatHistory([...next, { role: 'assistant', content: reply, ts: Date.now() }]);
+    } catch (e) {
+      const wasAbort = (e as { name?: string })?.name === 'CanceledError' || (e as { code?: string })?.code === 'ERR_CANCELED' || ac.signal.aborted;
+      setAiChatHistory([...next, { role: 'assistant', content: wasAbort ? '_(cancelled)_' : `Error: ${e instanceof Error ? e.message : 'request failed'}`, ts: Date.now() }]);
+    } finally {
+      setAiChatPending(false);
+      aiChatAbortRef.current = null;
+      requestAnimationFrame(() => {
+        aiChatScrollRef.current?.scrollTo({ top: aiChatScrollRef.current.scrollHeight, behavior: 'smooth' });
+      });
+    }
+  }, [aiChatDraft, aiChatPending, aiChatHistory, activeTab, aiChatIncludeFile]);
+
+  const cancelAiChat = useCallback(() => {
+    aiChatAbortRef.current?.abort();
+  }, []);
+
+  const insertChatCodeIntoEditor = useCallback((codeBlock: string) => {
+    const ed = editorInstanceRef.current;
+    if (!ed) {
+      updateTabContent((activeTab.content || '') + '\n\n' + codeBlock);
+      return;
+    }
+    const sel = ed.getSelection();
+    const model = ed.getModel();
+    if (!sel || !model) return;
+    ed.executeEdits('ai-chat-insert', [{ range: sel, text: codeBlock, forceMoveMarkers: true }]);
+  }, [activeTab.content, updateTabContent]);
+
+  useLensCommand(
+    [
+      { id: 'palette',          keys: 'mod+p',       description: 'Command palette (Quick open)', category: 'navigation', action: () => setPaletteOpen(true), global: true },
+      { id: 'palette-shift',    keys: 'mod+shift+p', description: 'Command palette (commands)',   category: 'navigation', action: () => setPaletteOpen(true), global: true },
+      { id: 'run',              keys: 'mod+enter',   description: 'Run script',                    category: 'actions',    action: () => runScriptMutation.mutate(), global: true },
+      { id: 'toggle-tree',      keys: 'mod+b',       description: 'Toggle file tree',              category: 'navigation', action: () => setShowFileTree((v) => !v), global: true },
+      { id: 'toggle-output',    keys: 'mod+j',       description: 'Toggle output panel',           category: 'navigation', action: () => setShowOutput((v) => !v),   global: true },
+      { id: 'fullscreen',       keys: 'f11',         description: 'Toggle fullscreen',             category: 'actions',    action: () => setIsFullscreen((v) => !v), global: true },
+      { id: 'ai-edit',          keys: 'mod+k',       description: 'AI inline edit',                category: 'actions',    action: openAiEdit, global: true },
+      { id: 'ai-chat',          keys: 'mod+l',       description: 'AI chat side-panel',            category: 'actions',    action: () => setAiChatOpen((v) => !v), global: true },
+      { id: 'find-in-files',    keys: 'mod+shift+f', description: 'Find in files',                 category: 'navigation', action: openFindInFiles, global: true },
+    ],
+    { lensId: 'code' }
+  );
 
   if (isLoading) {
     return (
@@ -1240,7 +1577,14 @@ export default function CodeLensPage() {
                   value={activeTab.content}
                   onChange={(val) => updateTabContent(val)}
                   language={activeTab.language || 'javascript'}
+                  onEditorReady={(ed) => { editorInstanceRef.current = ed; }}
+                  onSelectionChange={(s) => setSelection(s.text ? s : null)}
                 />
+                {selection?.text && !aiEditOpen && (
+                  <div className="pointer-events-none absolute top-2 right-2 px-2 py-1 rounded bg-neon-cyan/20 border border-neon-cyan/40 text-[10px] text-neon-cyan font-mono">
+                    {selection.endLine - selection.startLine + 1} line{selection.endLine !== selection.startLine ? 's' : ''} selected · ⌘K to edit
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1450,6 +1794,374 @@ export default function CodeLensPage() {
       </div>
       </div>
     </div>
+
+    {/* ── Command palette modal (⌘P) ──────────────────────────── */}
+    {paletteOpen && (
+      <div
+        className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-start justify-center z-[100] pt-[14vh]"
+        onClick={() => setPaletteOpen(false)}
+      >
+        <div
+          className="bg-[#0d1117] border border-cyan-500/40 rounded-xl w-full max-w-xl shadow-2xl overflow-hidden"
+          onClick={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Command palette"
+        >
+          <div className="flex items-center gap-2 px-4 py-3 border-b border-white/10">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-cyan-400">
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.35-4.35" />
+            </svg>
+            <input
+              ref={paletteInputRef}
+              value={paletteQuery}
+              onChange={(e) => setPaletteQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') { setPaletteOpen(false); return; }
+                if (e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  setPaletteIdx((i) => Math.min(i + 1, filteredPalette.length - 1));
+                } else if (e.key === 'ArrowUp') {
+                  e.preventDefault();
+                  setPaletteIdx((i) => Math.max(i - 1, 0));
+                } else if (e.key === 'Enter') {
+                  e.preventDefault();
+                  filteredPalette[paletteIdx]?.action();
+                }
+              }}
+              placeholder="Type to search files, tabs, commands…"
+              className="flex-1 bg-transparent outline-none text-sm text-white placeholder:text-white/30"
+            />
+            <kbd className="text-[10px] text-white/40 bg-white/5 border border-white/10 rounded px-1.5 py-0.5 font-mono">esc</kbd>
+          </div>
+          <ul className="max-h-[50vh] overflow-y-auto py-1">
+            {filteredPalette.length === 0 ? (
+              <li className="px-4 py-3 text-xs text-white/40 italic">No matches.</li>
+            ) : filteredPalette.map((c, i) => (
+              <li
+                key={c.id}
+                onMouseEnter={() => setPaletteIdx(i)}
+                onClick={c.action}
+                className={`px-4 py-2 flex items-center justify-between gap-3 cursor-pointer transition-colors ${
+                  i === paletteIdx ? 'bg-cyan-500/10 border-l-2 border-cyan-400' : 'border-l-2 border-transparent hover:bg-white/5'
+                }`}
+              >
+                <span className="text-sm text-white truncate">{c.label}</span>
+                <span className="text-[10px] text-white/40 shrink-0 font-mono">{c.hint}</span>
+              </li>
+            ))}
+          </ul>
+          <div className="px-4 py-2 border-t border-white/10 text-[10px] text-white/40 flex items-center justify-between">
+            <span>↑↓ navigate · ↵ run</span>
+            <span>{filteredPalette.length} {filteredPalette.length === 1 ? 'result' : 'results'}</span>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* ── Find in Files modal (⌘⇧F) ───────────────────────────── */}
+    <AnimatePresence>
+      {findOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-start justify-center pt-24 px-4 bg-black/60 backdrop-blur-sm"
+          onClick={() => setFindOpen(false)}
+        >
+          <motion.div
+            initial={{ y: -16, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -16, opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="w-full max-w-2xl bg-[#0d1117] rounded-xl border border-neon-yellow/30 shadow-2xl shadow-neon-yellow/10 overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-lattice-border">
+              <FileCode className="w-4 h-4 text-neon-yellow" />
+              <input
+                ref={findInputRef}
+                type="text"
+                value={findQuery}
+                onChange={(e) => setFindQuery(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Escape') setFindOpen(false); }}
+                placeholder="Find in tabs and saved scripts…"
+                className="flex-1 bg-transparent text-sm text-white placeholder-gray-500 focus:outline-none font-mono"
+                autoFocus
+              />
+              <kbd className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-gray-400">esc</kbd>
+            </div>
+            <div className="max-h-96 overflow-y-auto">
+              {findQuery.trim().length < 2 && (
+                <div className="px-4 py-8 text-center text-xs text-gray-500">Type at least 2 characters</div>
+              )}
+              {findQuery.trim().length >= 2 && findHits.length === 0 && (
+                <div className="px-4 py-8 text-center text-xs text-gray-500">
+                  No matches in {tabs.length} tab{tabs.length === 1 ? '' : 's'} or {savedScripts.length} saved script{savedScripts.length === 1 ? '' : 's'}
+                </div>
+              )}
+              {findHits.map((hit, i) => {
+                const q = findQuery.trim();
+                const idx = hit.preview.toLowerCase().indexOf(q.toLowerCase());
+                const before = idx >= 0 ? hit.preview.slice(0, idx) : hit.preview;
+                const match = idx >= 0 ? hit.preview.slice(idx, idx + q.length) : '';
+                const after = idx >= 0 ? hit.preview.slice(idx + q.length) : '';
+                return (
+                  <button
+                    key={`${hit.sourceId}-${hit.line}-${i}`}
+                    onClick={() => jumpToFindHit(hit)}
+                    className="w-full text-left px-4 py-2 border-b border-lattice-border hover:bg-lattice-elevated transition-colors group"
+                  >
+                    <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-gray-500 mb-0.5">
+                      <span className={hit.source === 'tab' ? 'text-neon-cyan' : 'text-neon-purple'}>{hit.source}</span>
+                      <span>·</span>
+                      <span className="font-mono text-gray-400">{hit.sourceName}</span>
+                      <span>·</span>
+                      <span>line {hit.line}</span>
+                    </div>
+                    <div className="text-xs text-gray-300 font-mono whitespace-pre overflow-hidden text-ellipsis">
+                      {before.length > 80 ? '…' + before.slice(-80) : before}
+                      <mark className="bg-neon-yellow/30 text-white px-0.5 rounded">{match}</mark>
+                      {after.length > 80 ? after.slice(0, 80) + '…' : after}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            {findHits.length > 0 && (
+              <div className="px-4 py-2 border-t border-lattice-border text-[10px] text-gray-500 flex justify-between">
+                <span>{findHits.length} match{findHits.length === 1 ? '' : 'es'}{findHits.length === 200 ? ' (capped)' : ''}</span>
+                <span>{tabs.length} tab{tabs.length === 1 ? '' : 's'} · {savedScripts.length} saved</span>
+              </div>
+            )}
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+
+    {/* ── AI Inline Edit modal (⌘K) ────────────────────────────── */}
+    <AnimatePresence>
+      {aiEditOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-start justify-center pt-32 px-4 bg-black/60 backdrop-blur-sm"
+          onClick={() => { if (!aiEditPending) { setAiEditOpen(false); setAiEditResult(null); } }}
+        >
+          <motion.div
+            initial={{ y: -16, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -16, opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="w-full max-w-3xl bg-[#0d1117] rounded-xl border border-neon-cyan/40 shadow-2xl shadow-neon-cyan/10 overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-neon-cyan/20 bg-gradient-to-r from-neon-cyan/10 to-neon-purple/10">
+              <Sparkles className="w-4 h-4 text-neon-cyan" />
+              <span className="text-sm font-bold text-neon-cyan">AI Edit</span>
+              <span className="text-xs text-gray-400">
+                {selection?.text
+                  ? `lines ${selection.startLine}–${selection.endLine}`
+                  : `whole file (${activeTab.name})`}
+              </span>
+              <kbd className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-gray-400">esc</kbd>
+            </div>
+            <div className="p-4 space-y-3">
+              <input
+                ref={aiEditInputRef}
+                type="text"
+                value={aiEditPrompt}
+                onChange={(e) => setAiEditPrompt(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !aiEditPending) { e.preventDefault(); runAiEdit(); }
+                  if (e.key === 'Escape') { setAiEditOpen(false); setAiEditResult(null); }
+                }}
+                placeholder="Describe the change… e.g. add error handling, convert to async, extract to function"
+                className="w-full px-3 py-2.5 bg-lattice-deep border border-lattice-border rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-neon-cyan/60"
+                autoFocus
+              />
+              {aiEditError && (
+                <div className="px-3 py-2 rounded bg-red-500/10 border border-red-500/30 text-xs text-red-400">{aiEditError}</div>
+              )}
+              {aiEditResult && (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-2 max-h-72 overflow-auto rounded border border-lattice-border">
+                    <div className="bg-red-500/5 p-3 border-r border-lattice-border">
+                      <div className="text-[10px] uppercase tracking-wider text-red-400 mb-1">– before</div>
+                      <pre className="text-xs text-gray-300 font-mono whitespace-pre-wrap break-words">{aiEditResult.before}</pre>
+                    </div>
+                    <div className="bg-green-500/5 p-3">
+                      <div className="text-[10px] uppercase tracking-wider text-green-400 mb-1">+ after</div>
+                      <pre className="text-xs text-gray-300 font-mono whitespace-pre-wrap break-words">{aiEditResult.after}</pre>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div className="flex items-center justify-between gap-2 pt-1">
+                <div className="text-[11px] text-gray-500">
+                  {aiEditResult ? '⏎ apply · ⎋ cancel' : '⏎ generate · ⎋ cancel'}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => { setAiEditOpen(false); setAiEditResult(null); }}
+                    disabled={aiEditPending}
+                    className="px-3 py-1.5 text-xs rounded border border-lattice-border text-gray-400 hover:text-white hover:bg-lattice-elevated disabled:opacity-40"
+                  >Cancel</button>
+                  {aiEditResult ? (
+                    <>
+                      <button
+                        onClick={() => setAiEditResult(null)}
+                        className="px-3 py-1.5 text-xs rounded border border-lattice-border text-gray-300 hover:bg-lattice-elevated"
+                      >Try again</button>
+                      <button
+                        onClick={applyAiEdit}
+                        className="px-4 py-1.5 text-xs font-bold rounded bg-green-600 hover:bg-green-500 text-white"
+                      >Apply ⏎</button>
+                    </>
+                  ) : aiEditPending ? (
+                    <button
+                      onClick={cancelAiEdit}
+                      className="px-4 py-1.5 text-xs font-bold rounded bg-amber-600/80 hover:bg-amber-600 text-white flex items-center gap-2"
+                    >
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Cancel · {aiEditElapsed.toFixed(1)}s
+                    </button>
+                  ) : (
+                    <button
+                      onClick={runAiEdit}
+                      disabled={!aiEditPrompt.trim()}
+                      className="px-4 py-1.5 text-xs font-bold rounded bg-neon-cyan hover:bg-neon-cyan/90 text-black disabled:opacity-40 flex items-center gap-2"
+                    >
+                      Generate ⏎
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+
+    {/* ── AI Chat side-panel (⌘L) ──────────────────────────────── */}
+    <AnimatePresence>
+      {aiChatOpen && (
+        <motion.aside
+          initial={{ x: 480, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          exit={{ x: 480, opacity: 0 }}
+          transition={{ duration: 0.18, ease: 'easeOut' }}
+          className="fixed top-0 right-0 bottom-0 w-[420px] z-40 bg-[#0d1117] border-l border-neon-purple/30 shadow-2xl shadow-neon-purple/10 flex flex-col"
+        >
+          <header className="flex items-center gap-2 px-4 py-3 border-b border-neon-purple/20 bg-gradient-to-r from-neon-purple/10 to-neon-cyan/10">
+            <Sparkles className="w-4 h-4 text-neon-purple" />
+            <span className="text-sm font-bold text-neon-purple">AI Pair</span>
+            <label className="ml-auto flex items-center gap-1 text-[10px] text-gray-400 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={aiChatIncludeFile}
+                onChange={(e) => setAiChatIncludeFile(e.target.checked)}
+                className="accent-neon-purple"
+              />
+              include file
+            </label>
+            <button
+              onClick={() => setAiChatHistory([])}
+              className="text-[10px] px-2 py-0.5 rounded border border-white/10 text-gray-500 hover:text-white hover:border-white/30"
+              title="Clear thread"
+            >clear</button>
+            <button onClick={() => setAiChatOpen(false)} className="p-1 rounded hover:bg-lattice-elevated text-gray-400" title="Close (⌘L)">
+              <X className="w-4 h-4" />
+            </button>
+          </header>
+          <div ref={aiChatScrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+            {aiChatHistory.length === 0 && (
+              <div className="text-center py-8 text-xs text-gray-500 space-y-2">
+                <Sparkles className="w-6 h-6 text-neon-purple/40 mx-auto" />
+                <p>Ask anything about <span className="text-neon-cyan">{activeTab.name}</span>.</p>
+                <p className="text-[10px] text-gray-600">Try: &quot;explain this&quot; · &quot;refactor for readability&quot; · &quot;write a test for the main function&quot;</p>
+              </div>
+            )}
+            {aiChatHistory.map((m, i) => {
+              const isUser = m.role === 'user';
+              const codeBlocks = isUser ? [] : Array.from(m.content.matchAll(/```[a-zA-Z]*\n([\s\S]*?)```/g)).map((mm) => mm[1].trim());
+              return (
+                <div key={i} className={cn('flex flex-col gap-1', isUser ? 'items-end' : 'items-start')}>
+                  <div className="text-[9px] uppercase tracking-wider text-gray-600">{isUser ? 'you' : 'pair'}</div>
+                  <div className={cn(
+                    'max-w-[90%] px-3 py-2 rounded-lg text-xs whitespace-pre-wrap break-words',
+                    isUser ? 'bg-neon-cyan/10 border border-neon-cyan/30 text-gray-100' : 'bg-lattice-deep border border-lattice-border text-gray-200',
+                  )}>
+                    {m.content}
+                  </div>
+                  {!isUser && codeBlocks.map((cb, ci) => (
+                    <div key={ci} className="flex items-center gap-2 text-[10px]">
+                      <button
+                        onClick={() => insertChatCodeIntoEditor(cb)}
+                        className="px-2 py-0.5 rounded bg-green-600/20 border border-green-600/40 text-green-300 hover:bg-green-600/30"
+                        title="Insert at cursor / replace selection"
+                      >Insert ↵</button>
+                      <button
+                        onClick={() => navigator.clipboard?.writeText(cb)}
+                        className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-gray-400 hover:text-white"
+                      >Copy</button>
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
+            {aiChatPending && (
+              <div className="flex items-center gap-2 text-xs text-gray-500">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                <span>thinking… {aiChatElapsed.toFixed(1)}s</span>
+                <button
+                  onClick={cancelAiChat}
+                  className="ml-auto text-[10px] px-2 py-0.5 rounded border border-amber-500/40 text-amber-400 hover:bg-amber-500/10"
+                  title="Stop generation"
+                >
+                  Stop
+                </button>
+              </div>
+            )}
+          </div>
+          <footer className="border-t border-neon-purple/20 p-3 space-y-2">
+            <textarea
+              ref={aiChatInputRef}
+              value={aiChatDraft}
+              onChange={(e) => setAiChatDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); sendAiChat(); }
+                if (e.key === 'Enter' && !e.shiftKey && !e.metaKey && !e.ctrlKey) { e.preventDefault(); sendAiChat(); }
+              }}
+              rows={2}
+              placeholder="Message AI pair · ⏎ send · ⇧⏎ newline"
+              disabled={aiChatPending}
+              className="w-full px-3 py-2 bg-lattice-deep border border-lattice-border rounded text-xs text-white placeholder-gray-500 focus:outline-none focus:border-neon-purple/60 resize-none"
+            />
+            <div className="flex items-center justify-between text-[10px] text-gray-500">
+              <span>{aiChatHistory.length} message{aiChatHistory.length === 1 ? '' : 's'}</span>
+              {aiChatPending ? (
+                <button
+                  onClick={cancelAiChat}
+                  className="px-3 py-1 rounded bg-amber-600/80 hover:bg-amber-600 text-white text-[11px] font-bold flex items-center gap-1.5"
+                >
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  Stop · {aiChatElapsed.toFixed(1)}s
+                </button>
+              ) : (
+                <button
+                  onClick={sendAiChat}
+                  disabled={!aiChatDraft.trim()}
+                  className="px-3 py-1 rounded bg-neon-purple hover:bg-neon-purple/90 text-white text-[11px] font-bold disabled:opacity-40"
+                >Send ⏎</button>
+              )}
+            </div>
+          </footer>
+        </motion.aside>
+      )}
+    </AnimatePresence>
     </LensShell>
   );
 }

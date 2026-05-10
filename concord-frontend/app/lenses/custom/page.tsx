@@ -1,11 +1,12 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useMutation } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
-import { useState } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Wand2, Plus, Code, Eye, Trash2, Copy, Settings, Layers, ChevronDown, Palette, Sliders, Loader2, XCircle } from 'lucide-react';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -67,9 +68,28 @@ export default function CustomLensPage() {
   const [newLensName, setNewLensName] = useState('');
   const [newLensConfig, setNewLensConfig] = useState('{}');
   const [selectedLens, setSelectedLens] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const newNameInputRef = useRef<HTMLInputElement>(null);
 
   const { items: lensItems, isLoading, isError: isError, error: error, refetch: refetch, create: createLensItem, remove: removeLensItem, update: updateLensItem } = useLensData<Record<string, unknown>>('custom', 'lens-config', { seed: [] });
   const customLenses = lensItems.map(i => ({ id: i.id, name: i.title, config: i.data, ...(i.data || {}) })) as unknown as CustomLens[];
+
+  const visibleLenses = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return customLenses;
+    return customLenses.filter((l) => (l.name || '').toLowerCase().includes(q) || (l.description || '').toLowerCase().includes(q));
+  }, [customLenses, search]);
+
+  useLensCommand(
+    [
+      { id: 'focus-search', keys: '/', description: 'Search custom lenses', category: 'navigation', action: () => searchInputRef.current?.focus() },
+      { id: 'new-lens',     keys: 'n', description: 'New lens',             category: 'actions',
+        action: () => { setShowBuilder(true); requestAnimationFrame(() => newNameInputRef.current?.focus()); } },
+      { id: 'toggle-builder', keys: 'b', description: 'Toggle builder',     category: 'view', action: () => setShowBuilder((v) => !v) },
+    ],
+    { lensId: 'custom' }
+  );
 
   const { items: templateItems, isError: isError2, error: error2, refetch: refetch2 } = useLensData<Record<string, unknown>>('custom', 'lens-template', { seed: [] });
   const templates = templateItems.map(i => ({ id: i.id, name: i.title, ...(i.data || {}) })) as unknown as Record<string, unknown>[];
@@ -201,10 +221,11 @@ export default function CustomLensPage() {
             <div>
               <label className="text-sm text-gray-400 block mb-1">Lens Name</label>
               <input
+                ref={newNameInputRef}
                 type="text"
                 value={newLensName}
                 onChange={(e) => setNewLensName(e.target.value)}
-                placeholder="My Custom Lens"
+                placeholder="My Custom Lens  ·  n focuses"
                 className="input-lattice"
               />
             </div>
@@ -240,18 +261,40 @@ export default function CustomLensPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Custom Lenses List */}
         <div className="panel p-4 space-y-4">
-          <h3 className="font-semibold flex items-center gap-2">
-            <Settings className="w-4 h-4 text-neon-blue" />
-            Your Custom Lenses
-          </h3>
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <h3 className="font-semibold flex items-center gap-2">
+              <Settings className="w-4 h-4 text-neon-blue" />
+              Your Custom Lenses
+              {search && (
+                <span className="text-xs text-gray-500 font-normal">
+                  ({visibleLenses.length} of {customLenses?.length || 0})
+                </span>
+              )}
+            </h3>
+            {customLenses?.length > 0 && (
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Escape') { setSearch(''); searchInputRef.current?.blur(); } }}
+                placeholder="Filter…  / focuses"
+                className="bg-lattice-deep border border-lattice-edge rounded px-2 py-1 text-xs w-44"
+              />
+            )}
+          </div>
 
           <div className="space-y-2">
             {customLenses?.length === 0 ? (
               <p className="text-center py-8 text-gray-500">
                 No custom lenses yet. Create your first one!
               </p>
+            ) : visibleLenses.length === 0 ? (
+              <p className="text-center py-4 text-gray-500 text-sm">
+                No custom lenses match the search.
+              </p>
             ) : (
-              customLenses?.map((lens: CustomLens, i: number) => (
+              visibleLenses.map((lens: CustomLens, i: number) => (
                 <motion.button
                   key={lens.id}
                   initial={{ opacity: 0, y: 20 }}

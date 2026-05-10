@@ -162,8 +162,11 @@ describe('getPhaseByLens', () => {
     expect(getPhaseByLens('nonexistent')).toBeUndefined();
   });
 
-  it('returns undefined for chat (no phase)', () => {
-    expect(getPhaseByLens('chat')).toBeUndefined();
+  it('returns the chat phase (Phase 28)', () => {
+    const phase = getPhaseByLens('chat');
+    expect(phase).toBeDefined();
+    expect(phase!.lensId).toBe('chat');
+    expect(phase!.name).toBe('Chat');
   });
 });
 

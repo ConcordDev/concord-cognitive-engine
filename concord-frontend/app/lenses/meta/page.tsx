@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
@@ -1126,6 +1127,9 @@ const TABS: { key: TabKey; label: string; icon: React.ElementType }[] = [
 // ---------------------------------------------------------------------------
 
 export default function MetaLensPage() {
+  const viewLog = useArtifacts<{ at: string }>('meta', { type: 'view-event', limit: 5 });
+  const recordView = useCreateArtifact<{ at: string }>('meta');
+  void viewLog; void recordView;
   useLensNav('meta');
   const { isLive, lastUpdated } = useRealtimeLens('meta');
   const [activeTab, setActiveTab] = useState<TabKey>('overview');

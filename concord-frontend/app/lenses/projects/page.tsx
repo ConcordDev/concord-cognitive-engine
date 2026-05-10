@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from "@/hooks/useLensCommand";
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ds } from '@/lib/design-system';
@@ -63,6 +64,14 @@ const PRIORITY_CONFIG: Record<Priority, { label: string; color: string }> = {
 const METHODOLOGIES = ['Agile', 'Scrum', 'Kanban', 'Waterfall', 'Lean', 'Six Sigma', 'Prince2', 'Hybrid'];
 
 export default function ProjectsLensPage() {
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  useLensCommand(
+    [
+      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
+    ],
+    { lensId: "projects" }
+  );
+
   useLensNav('projects');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('projects');
 

@@ -1,12 +1,13 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useMutation } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useLensData } from '@/lib/hooks/use-lens-data';
-import { useState } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { FileCode, Plus, Check, X, Database, Code, FileJson, Tag, Zap } from 'lucide-react';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { motion } from 'framer-motion';
@@ -24,6 +25,9 @@ export default function SchemaLensPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [validateData, setValidateData] = useState({ schemaName: '', data: '' });
   const [validationResult, setValidationResult] = useState<{ valid: boolean; errors?: { field: string; error: string }[] } | null>(null);
+  const [search, setSearch] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const validateDataRef = useRef<HTMLTextAreaElement>(null);
 
   const { items: schemaItems, isLoading, isError: isError, error: error, refetch: refetch, create: createSchemaItem } = useLensData<Record<string, unknown>>('schema', 'definition', { seed: [] });
   const schemas = schemaItems.map(i => ({ id: i.id, name: i.title, ...(i.data || {}) })) as unknown as Record<string, unknown>[];
@@ -72,6 +76,27 @@ export default function SchemaLensPage() {
       setValidationResult({ valid: false, errors: [{ field: 'JSON', error: 'Invalid JSON' }] });
     }
   };
+
+  const visibleSchemas = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return schemas;
+    return schemas.filter((s) => {
+      const name = String(s.name || '').toLowerCase();
+      const desc = String((s as { description?: string }).description || '').toLowerCase();
+      return name.includes(q) || desc.includes(q);
+    });
+  }, [schemas, search]);
+
+  useLensCommand(
+    [
+      { id: 'focus-search', keys: '/', description: 'Search schemas',  category: 'navigation', action: () => searchInputRef.current?.focus() },
+      { id: 'new-schema',   keys: 'n', description: 'New schema',      category: 'actions',    action: () => setShowCreate(true) },
+      { id: 'focus-validate', keys: 'v', description: 'Focus validate', category: 'actions',   action: () => validateDataRef.current?.focus() },
+      { id: 'submit-validate', keys: 'mod+enter', description: 'Run validation', category: 'actions',
+        action: () => { if (validateData.schemaName && validateData.data && !validateMutation.isPending) handleValidate(); }, global: true },
+    ],
+    { lensId: 'schema' }
+  );
 
 
   if (isLoading) {
@@ -178,12 +203,32 @@ export default function SchemaLensPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Schema List */}
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold">Available Schemas ({schemas?.length || 0})</h2>
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <h2 className="text-lg font-semibold">
+              Available Schemas
+              {search ? (
+                <span className="text-sm text-gray-500 font-normal ml-2">({visibleSchemas.length} of {schemas?.length || 0})</span>
+              ) : (
+                <span className="text-sm text-gray-500 font-normal ml-2">({schemas?.length || 0})</span>
+              )}
+            </h2>
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Escape') { setSearch(''); searchInputRef.current?.blur(); } }}
+              placeholder="Filter…  / focuses"
+              className="px-2 py-1 text-sm bg-lattice-surface border border-lattice-border rounded w-44"
+            />
+          </div>
           {isLoading ? (
             <div className="text-gray-400">Loading...</div>
+          ) : visibleSchemas.length === 0 && schemas.length > 0 ? (
+            <div className="text-sm text-gray-500 text-center py-4">No schemas match the search.</div>
           ) : (
             <div className="space-y-3">
-              {schemas?.map((schema: Record<string, unknown>) => (
+              {visibleSchemas.map((schema: Record<string, unknown>) => (
                 <SchemaCard key={(schema.id || schema.name) as string} schema={schema} />
               ))}
             </div>
@@ -205,9 +250,11 @@ export default function SchemaLensPage() {
               ))}
             </select>
             <textarea
-              placeholder='{"field": "value"}'
+              ref={validateDataRef}
+              placeholder='{"field": "value"}  ⌘⏎ runs validation'
               value={validateData.data}
               onChange={(e) => setValidateData({ ...validateData, data: e.target.value })}
+              onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && validateData.schemaName && validateData.data && !validateMutation.isPending) { e.preventDefault(); handleValidate(); } }}
               className="w-full px-3 py-2 bg-lattice-surface border border-lattice-border rounded h-32 font-mono text-sm"
             />
             <button

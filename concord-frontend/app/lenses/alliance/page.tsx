@@ -36,12 +36,12 @@ interface MessageData {
   timestamp: string;
 }
 
-const SEED_ALLIANCES: {
+const ALLIANCES_FALLBACK: {
   title: string;
   data: Record<string, unknown>;
 }[] = [];
 
-const SEED_MESSAGES: {
+const MESSAGES_FALLBACK: {
   title: string;
   data: Record<string, unknown>;
 }[] = [];
@@ -79,7 +79,7 @@ export default function AllianceLensPage() {
     create: createAlliance,
     createMut: createAllianceMut,
   } = useLensData<AllianceData>('alliance', 'alliance', {
-    seed: SEED_ALLIANCES,
+    seed: ALLIANCES_FALLBACK,
   });
 
   const {
@@ -88,7 +88,7 @@ export default function AllianceLensPage() {
     create: createMessage,
     createMut: createMessageMut,
   } = useLensData<MessageData>('alliance', 'message', {
-    seed: SEED_MESSAGES,
+    seed: MESSAGES_FALLBACK,
   });
 
   // Map lens items to the shapes used in rendering

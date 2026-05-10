@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -225,6 +226,27 @@ export default function GraphLensPage() {
   const [showAddNode, setShowAddNode] = useState(false);
   const [showFeatures, setShowFeatures] = useState(true);
   const [addNodeType, setAddNodeType] = useState<NodeType>('track');
+
+  // ── Graph keyboard shortcuts (Obsidian / Roam graph-view idiom) ────
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  useLensCommand(
+    [
+      { id: 'graph-add',         keys: 'n',     description: 'Add node',                  category: 'actions',    action: () => setShowAddNode(true) },
+      { id: 'graph-connect',     keys: 'c',     description: 'Connect nodes',             category: 'actions',    action: () => setConnectMode((v) => !v) },
+      { id: 'graph-pathfinder',  keys: 'p',     description: 'Pathfinder',                category: 'actions',    action: () => setShowPathfinder((v) => !v) },
+      { id: 'graph-settings',    keys: 's',     description: 'Settings',                  category: 'view',       action: () => setShowSettings((v) => !v) },
+      { id: 'graph-legend',      keys: 'g',     description: 'Toggle legend',             category: 'view',       action: () => setShowLegend((v) => !v) },
+      { id: 'graph-labels',      keys: 't',     description: 'Toggle labels',             category: 'view',       action: () => setShowLabels((v) => !v) },
+      { id: 'graph-pause',       keys: 'space', description: 'Pause / resume simulation', category: 'view',       action: () => setIsSimulating((v) => !v) },
+      { id: 'graph-zoom-in',     keys: 'mod+=', description: 'Zoom in',                   category: 'view',       action: () => setZoom((z) => Math.min(z * 1.2, 4)), global: true },
+      { id: 'graph-zoom-out',    keys: 'mod+-', description: 'Zoom out',                  category: 'view',       action: () => setZoom((z) => Math.max(z / 1.2, 0.25)), global: true },
+      { id: 'graph-zoom-reset',  keys: 'mod+0', description: 'Reset zoom',                category: 'view',       action: () => { setZoom(1); setOffset({ x: 0, y: 0 }); }, global: true },
+      { id: 'graph-focus-search', keys: '/',     description: 'Focus search',             category: 'navigation', action: () => searchInputRef.current?.focus() },
+      { id: 'graph-clear',       keys: 'esc',   description: 'Clear selection',           category: 'navigation', action: () => { setSelectedNode(null); setConnectMode(false); setConnectSource(null); } },
+    ],
+    { lensId: 'graph' }
+  );
+
   // --- Graph action wiring ---
   const { items: graphArtifacts } = useLensData('graph', 'graph-data', { seed: [] });
   const runGraphAction = useRunArtifact('graph');
@@ -1260,8 +1282,8 @@ export default function GraphLensPage() {
         <div className="absolute top-4 left-4 space-y-3 max-w-xs">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-cyan-600" />
-            <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search nodes, tags, genre..."
+            <input ref={searchInputRef} type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search nodes, tags, genre…  /"
               className="pl-10 pr-4 py-2 bg-[#0d1117]/90 backdrop-blur-md border border-cyan-900/30 rounded-lg text-sm text-white placeholder-gray-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 w-72" />
           </div>
 

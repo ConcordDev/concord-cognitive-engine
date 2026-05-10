@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { UniversalActions } from '@/components/lens/UniversalActions';
@@ -211,6 +212,22 @@ export default function DailyLensPage() {
   const startTimer = useCallback(() => setTimerRunning(true), []);
   const stopTimer = useCallback(() => setTimerRunning(false), []);
   const resetTimer = useCallback(() => { setTimerRunning(false); setTimeLeft(timerDuration); }, [timerDuration]);
+
+  // Pomodoro idiom: space = play / pause toggle, r = reset.
+  // Skill carousel: [/]
+  useLensCommand(
+    [
+      { id: 'play-pause', keys: 'space', description: 'Start / pause timer', category: 'actions',
+        action: () => setTimerRunning((v) => (timeLeft === 0 ? false : !v)) },
+      { id: 'reset',      keys: 'r',     description: 'Reset timer',         category: 'actions',
+        action: resetTimer },
+      { id: 'next-skill', keys: ']',     description: 'Next skill',          category: 'view',
+        action: () => setSelectedSkill((s) => SKILLS[(SKILLS.indexOf(s) + 1) % SKILLS.length]) },
+      { id: 'prev-skill', keys: '[',     description: 'Previous skill',      category: 'view',
+        action: () => setSelectedSkill((s) => SKILLS[(SKILLS.indexOf(s) - 1 + SKILLS.length) % SKILLS.length]) },
+    ],
+    { lensId: 'daily' }
+  );
 
   const handleRunAction = useCallback(async (action: string) => {
     const targetId = entryItems[0]?.id ?? 'daily-default';

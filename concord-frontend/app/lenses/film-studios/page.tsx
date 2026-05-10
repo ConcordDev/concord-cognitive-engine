@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -55,6 +55,7 @@ export default function FilmStudiosPage() {
 
   // Lens-scoped keyboard commands. Letterboxd / Final Cut idiom:
   // single-letter section jumps; n new film.
+  const searchInputRef = useRef<HTMLInputElement>(null);
   useLensCommand(
     [
       { id: 'tab-discover', keys: 'd', description: 'Discover', category: 'navigation', action: () => setTab('discover') },
@@ -62,7 +63,8 @@ export default function FilmStudiosPage() {
       { id: 'tab-create', keys: 'c', description: 'Create', category: 'navigation', action: () => setTab('create') },
       { id: 'tab-analytics', keys: 'a', description: 'Analytics', category: 'navigation', action: () => setTab('analytics') },
       { id: 'tab-watch', keys: 'w', description: 'Watch parties', category: 'navigation', action: () => setTab('watch-parties') },
-      { id: 'new-film', keys: 'n', description: 'New film', category: 'actions', action: () => setShowCreateModal(true) },
+      { id: 'new-film', keys: 'n', description: 'New film', category: 'actions', action: () => setShowCreateModal(true) },      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
+
     ],
     { lensId: 'film-studios' }
   );
@@ -426,7 +428,8 @@ export default function FilmStudiosPage() {
           <div className="space-y-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-              <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search films, creators, genres..." className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none focus:border-neon-purple/50" />
+              <input ref={searchInputRef}
+              value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search films, creators, genres..." className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none focus:border-neon-purple/50" />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {(discoveredFilms as FilmProject[]).map((film: FilmProject, idx: number) => (

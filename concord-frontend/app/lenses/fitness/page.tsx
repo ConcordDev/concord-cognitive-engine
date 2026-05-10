@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -513,6 +513,7 @@ export default function FitnessLensPage() {
 
   // Lens-scoped keyboard commands. MyFitnessPal / Strava-coach idiom:
   // letters jump between coaching tabs.
+  const searchInputRef = useRef<HTMLInputElement>(null);
   useLensCommand(
     [
       { id: 'tab-clients', keys: 'c', description: 'Clients', category: 'navigation', action: () => setActiveTab('Clients') },
@@ -520,7 +521,8 @@ export default function FitnessLensPage() {
       { id: 'tab-workouts', keys: 'w', description: 'Workouts', category: 'navigation', action: () => setActiveTab('Workouts') },
       { id: 'tab-classes', keys: 'l', description: 'Classes', category: 'navigation', action: () => setActiveTab('Classes') },
       { id: 'tab-teams', keys: 't', description: 'Teams', category: 'navigation', action: () => setActiveTab('Teams') },
-      { id: 'tab-recruiting', keys: 'r', description: 'Recruiting', category: 'navigation', action: () => setActiveTab('Recruiting') },
+      { id: 'tab-recruiting', keys: 'r', description: 'Recruiting', category: 'navigation', action: () => setActiveTab('Recruiting') },      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
+
     ],
     { lensId: 'fitness' }
   );
@@ -1246,7 +1248,8 @@ export default function FitnessLensPage() {
           <div className="flex items-center gap-2">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search..." className={cn(ds.input, 'pl-9 w-56')} />
+              <input ref={searchInputRef}
+              type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search..." className={cn(ds.input, 'pl-9 w-56')} />
             </div>
             <select value={filterStatus} onChange={e => setFilterStatus(e.target.value as Status | 'all')} className={cn(ds.select, 'w-40')}>
               <option value="all">All statuses</option>

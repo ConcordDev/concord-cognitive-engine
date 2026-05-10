@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
@@ -230,6 +230,7 @@ export default function AgricultureLensPage() {
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
 
+  const searchInputRef = useRef<HTMLInputElement>(null);
   useLensCommand(
 
     [
@@ -248,7 +249,8 @@ export default function AgricultureLensPage() {
 
       { id: 'tab-certifications', keys: 'r', description: 'Certifications', category: 'navigation', action: () => setActiveTab('certifications') },
 
-      { id: 'tab-map', keys: 'm', description: 'Map', category: 'navigation', action: () => setActiveTab('map') },
+      { id: 'tab-map', keys: 'm', description: 'Map', category: 'navigation', action: () => setActiveTab('map') },      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
+
 
     ],
 
@@ -587,7 +589,8 @@ export default function AgricultureLensPage() {
         <div className="relative flex-1 min-w-[220px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
-            type="text"
+            ref={searchInputRef}
+              type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={`Search ${activeTab}...`}

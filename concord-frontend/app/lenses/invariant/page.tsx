@@ -1,9 +1,10 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -29,7 +30,7 @@ interface Invariant {
 }
 
 // Seed data — auto-created in backend on first load if empty
-const SEED_INVARIANTS: { title: string; data: Record<string, unknown> }[] = [];
+const INVARIANTS_FALLBACK: { title: string; data: Record<string, unknown> }[] = [];
 
 export default function InvariantLensPage() {
   useLensNav('invariant');
@@ -37,6 +38,10 @@ export default function InvariantLensPage() {
   const [testAction, setTestAction] = useState('');
   const [testResult, setTestResult] = useState<{ passed: boolean; message: string } | null>(null);
   const [showFeatures, setShowFeatures] = useState(true);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'enforced' | 'warning' | 'violated'>('all');
+  const [search, setSearch] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const testInputRef = useRef<HTMLInputElement>(null);
 
   const runAction = useRunArtifact('invariant');
   const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
@@ -83,7 +88,7 @@ export default function InvariantLensPage() {
 
   // Fetch invariants from backend via useLensData with auto-seeding
   const { items: invariantItems, isLoading, isError, error, refetch } = useLensData<Invariant>('invariant', 'invariant', {
-    seed: SEED_INVARIANTS,
+    seed: INVARIANTS_FALLBACK,
   });
 
   // Map fetched items to the Invariant display shape
@@ -151,6 +156,33 @@ export default function InvariantLensPage() {
 
   const enforcedCount = invariants.filter((i) => i.status === 'enforced').length;
   const isTesting = testMut.isPending;
+
+  // Apply search + status filter to the invariants list.  Composes with
+  // the per-category render below — categories that end up empty after
+  // filtering simply don't render their section.
+  const visibleInvariants = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return invariants.filter((inv) => {
+      if (statusFilter !== 'all' && inv.status !== statusFilter) return false;
+      if (q) {
+        const hay = `${inv.name} ${inv.description}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [invariants, search, statusFilter]);
+
+  useLensCommand(
+    [
+      { id: 'focus-search', keys: '/', description: 'Search invariants', category: 'navigation', action: () => searchInputRef.current?.focus() },
+      { id: 'focus-test',   keys: 't', description: 'Test an action',    category: 'actions',    action: () => testInputRef.current?.focus() },
+      { id: 'filter-all',     keys: '0', description: 'All statuses', category: 'view', action: () => setStatusFilter('all') },
+      { id: 'filter-enforced',keys: '1', description: 'Enforced',     category: 'view', action: () => setStatusFilter('enforced') },
+      { id: 'filter-warning', keys: '2', description: 'Warning',      category: 'view', action: () => setStatusFilter('warning') },
+      { id: 'filter-violated',keys: '3', description: 'Violated',     category: 'view', action: () => setStatusFilter('violated') },
+    ],
+    { lensId: 'invariant' }
+  );
 
   if (isLoading) {
     return (
@@ -245,11 +277,12 @@ export default function InvariantLensPage() {
         </h2>
         <div className="flex gap-2">
           <input
+            ref={testInputRef}
             type="text"
             value={testAction}
             onChange={(e) => setTestAction(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleTestAction()}
-            placeholder="e.g., 'track user behavior' or 'process locally'"
+            placeholder="e.g., 'track user behavior' or 'process locally'  ·  t to focus"
             className="input-lattice flex-1"
           />
           <button
@@ -278,18 +311,57 @@ export default function InvariantLensPage() {
         )}
       </div>
 
+      {/* Filter & search bar */}
+      <div className="panel p-3 flex items-center gap-2 flex-wrap">
+        <input
+          ref={searchInputRef}
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Escape') { setSearch(''); searchInputRef.current?.blur(); } }}
+          placeholder="Search invariants…  / focuses"
+          className="input-lattice flex-1 min-w-[200px] text-sm"
+        />
+        <div className="flex items-center gap-1 text-xs">
+          {(['all', 'enforced', 'warning', 'violated'] as const).map((s, i) => (
+            <button
+              key={s}
+              onClick={() => setStatusFilter(s)}
+              className={`px-2 py-1 rounded border transition-colors ${
+                statusFilter === s
+                  ? s === 'enforced' ? 'border-neon-green/40 bg-neon-green/15 text-neon-green'
+                  : s === 'warning'  ? 'border-yellow-500/40 bg-yellow-500/15 text-yellow-400'
+                  : s === 'violated' ? 'border-neon-pink/40 bg-neon-pink/15 text-neon-pink'
+                  : 'border-neon-blue/40 bg-neon-blue/15 text-neon-blue'
+                  : 'border-white/10 bg-white/5 text-gray-400 hover:text-white'
+              }`}
+            >
+              {s}<kbd className="text-[8px] opacity-60 ml-0.5">{i}</kbd>
+            </button>
+          ))}
+          {(search || statusFilter !== 'all') && (
+            <span className="text-[10px] text-gray-500 ml-2">
+              {visibleInvariants.length} of {invariants.length}
+            </span>
+          )}
+        </div>
+      </div>
+
       {/* Invariant Categories */}
-      {(['ethos', 'structural', 'capability'] as const).map((category) => (
+      {(['ethos', 'structural', 'capability'] as const).map((category) => {
+        const categoryInvariants = visibleInvariants.filter((inv) => inv.category === category);
+        if (categoryInvariants.length === 0 && (search || statusFilter !== 'all')) return null;
+        return (
         <div key={category} className="panel p-4">
           <h2 className="font-semibold mb-4 flex items-center gap-2 capitalize">
             {category === 'ethos' && <Shield className="w-4 h-4 text-neon-green" />}
             {category === 'structural' && <Lock className="w-4 h-4 text-neon-blue" />}
             {category === 'capability' && <Eye className="w-4 h-4 text-neon-purple" />}
             {category} Invariants
+            <span className="text-xs text-gray-500 font-normal">({categoryInvariants.length})</span>
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {invariants
-              .filter((inv) => inv.category === category)
+            {categoryInvariants
               .map((inv, index) => (
                 <motion.div
                   key={inv.id}
@@ -328,7 +400,14 @@ export default function InvariantLensPage() {
               ))}
           </div>
         </div>
-      ))}
+        );
+      })}
+
+      {invariants.length > 0 && visibleInvariants.length === 0 && (
+        <div className="panel p-6 text-center text-sm text-gray-500">
+          No invariants match the current filters.
+        </div>
+      )}
 
       {/* Frozen Notice */}
       <div className="panel p-4 border-l-4 border-sovereignty-locked">

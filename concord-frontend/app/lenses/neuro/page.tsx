@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from "@/hooks/useLensCommand";
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ds } from '@/lib/design-system';
@@ -58,6 +59,14 @@ const NEURON_TYPES = ['Input', 'Hidden', 'Output', 'Attention', 'Embedding', 'Co
 const FRAMEWORKS = ['PyTorch', 'TensorFlow', 'JAX', 'Keras', 'ONNX', 'Custom'];
 
 export default function NeuroLensPage() {
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  useLensCommand(
+    [
+      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
+    ],
+    { lensId: "neuro" }
+  );
+
   useLensNav('neuro');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('neuro');
 

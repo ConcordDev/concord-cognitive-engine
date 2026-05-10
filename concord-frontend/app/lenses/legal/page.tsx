@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
 import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -438,32 +438,21 @@ export default function LegalLensPage() {
   const [activeTab, setActiveTab] = useState<ModeTab>('Dashboard');
 
 
-  // Lens-scoped keyboard commands (auto-wired by codemod).
-
+  // Lens-scoped keyboard commands. Clio idiom: tab letters + / focus.
+  const searchInputRef = useRef<HTMLInputElement>(null);
   useLensCommand(
-
     [
-
-      { id: 'tab-dashboard', keys: 'd', description: 'Dashboard', category: 'navigation', action: () => setActiveTab('Dashboard') },
-
-      { id: 'tab-cases', keys: 'c', description: 'Cases', category: 'navigation', action: () => setActiveTab('Cases') },
-
-      { id: 'tab-documents', keys: 'o', description: 'Documents', category: 'navigation', action: () => setActiveTab('Documents') },
-
+      { id: 'tab-dashboard',   keys: 'd', description: 'Dashboard',   category: 'navigation', action: () => setActiveTab('Dashboard') },
+      { id: 'tab-cases',       keys: 'c', description: 'Cases',       category: 'navigation', action: () => setActiveTab('Cases') },
+      { id: 'tab-documents',   keys: 'o', description: 'Documents',   category: 'navigation', action: () => setActiveTab('Documents') },
       { id: 'tab-timebilling', keys: 't', description: 'TimeBilling', category: 'navigation', action: () => setActiveTab('TimeBilling') },
-
-      { id: 'tab-calendar', keys: 'a', description: 'Calendar', category: 'navigation', action: () => setActiveTab('Calendar') },
-
-      { id: 'tab-contacts', keys: 'n', description: 'Contacts', category: 'navigation', action: () => setActiveTab('Contacts') },
-
-      { id: 'tab-contracts', keys: 'r', description: 'Contracts', category: 'navigation', action: () => setActiveTab('Contracts') },
-
-      { id: 'tab-compliance', keys: 'm', description: 'Compliance', category: 'navigation', action: () => setActiveTab('Compliance') },
-
+      { id: 'tab-calendar',    keys: 'a', description: 'Calendar',    category: 'navigation', action: () => setActiveTab('Calendar') },
+      { id: 'tab-contacts',    keys: 'n', description: 'Contacts',    category: 'navigation', action: () => setActiveTab('Contacts') },
+      { id: 'tab-contracts',   keys: 'r', description: 'Contracts',   category: 'navigation', action: () => setActiveTab('Contracts') },
+      { id: 'tab-compliance',  keys: 'm', description: 'Compliance',  category: 'navigation', action: () => setActiveTab('Compliance') },
+      { id: 'focus-search',    keys: '/', description: 'Focus search', category: 'navigation', action: () => searchInputRef.current?.focus() },
     ],
-
     { lensId: 'legal' }
-
   );
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -2992,10 +2981,11 @@ export default function LegalLensPage() {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
+                ref={searchInputRef}
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search..."
+                placeholder="Search…  /"
                 className={cn(ds.input, 'pl-9 w-56')}
               />
             </div>
