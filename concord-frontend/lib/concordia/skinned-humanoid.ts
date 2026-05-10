@@ -136,25 +136,27 @@ export function createSkinnedHumanoid(appearance: SkinnedHumanoidAppearance): Sk
   bones.RightToeBase.position.set(0, -0.08, 0.12);
 
   // Build the body mesh as a single merged BufferGeometry.
-  const merged = mergeBodyGeometries(prop, bones);
+  const merged = mergeBodyGeometries(prop);
 
   // Skeleton.
   const orderedBones: THREE.Bone[] = CANONICAL_BONES.map(name => bones[name]);
   const skeleton = new THREE.Skeleton(orderedBones);
 
   // Material — outfit body, skin head, optional emissive for legend.
+  // NOTE: the `skinning` property was removed from MeshStandardMaterial
+  // in Three.js r150+; modern Three derives skinning from whether the
+  // wrapping mesh is a SkinnedMesh (it always is here, see new
+  // THREE.SkinnedMesh below). No explicit flag needed.
   const skinMat = new THREE.MeshStandardMaterial({
     color: skinHex,
     roughness: 0.65, metalness: 0.0,
     emissive: appearance.emissive ? skinHex : 0x000000,
     emissiveIntensity: appearance.emissive ? prop.emissiveBoost : 0,
-    skinning: true as never,
-  } as THREE.MeshStandardMaterialParameters);
+  });
   const outfitMat = new THREE.MeshStandardMaterial({
     color: outfitHex,
     roughness: 0.85, metalness: 0.0,
-    skinning: true as never,
-  } as THREE.MeshStandardMaterialParameters);
+  });
 
   // The merged geometry has groups (head+hands = skin, body+limbs = outfit).
   const mesh = new THREE.SkinnedMesh(merged, [outfitMat, skinMat]);
@@ -177,7 +179,7 @@ export function createSkinnedHumanoid(appearance: SkinnedHumanoidAppearance): Sk
  * Vertex weights assigned per-region. groups[0] = outfit (body+limbs);
  * groups[1] = skin (head+hands).
  */
-function mergeBodyGeometries(prop: typeof BODY_PROPORTIONS['average'], bones: Record<string, THREE.Bone>): THREE.BufferGeometry {
+function mergeBodyGeometries(prop: typeof BODY_PROPORTIONS['average']): THREE.BufferGeometry {
   const geos: { geom: THREE.BufferGeometry; matIndex: number; primaryBone: string }[] = [];
 
   // Torso (capsule-ish — cylinder + 2 hemispheres).

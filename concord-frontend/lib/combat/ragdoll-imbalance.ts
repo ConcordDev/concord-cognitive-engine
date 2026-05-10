@@ -70,7 +70,7 @@ export function activateRagdollFor(
  * frame to drive the standing-pose tween.
  */
 export function tickImbalanceRagdolls(now: number = performance.now()): void {
-  for (const [entityId, act] of active.entries()) {
+  for (const act of active.values()) {
     if (act.recovering) continue;
     const elapsed = now - act.startedAt;
     if (elapsed >= act.durationMs) {

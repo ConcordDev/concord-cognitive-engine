@@ -15,7 +15,7 @@
  * existing camera projection pattern shared by LandmarkSpires.)
  */
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 interface FactionVisual {
   primary_color: string;
@@ -58,6 +58,10 @@ export default function FactionBanners({ worldId, bannerAnchors = FALLBACK_BANNE
 
   // Load visuals for every needed faction (deduplicated via Set).
   const factionIds = useMemo(() => Array.from(new Set(bannerAnchors.map(b => b.faction_id))), [bannerAnchors]);
+  // Stable dep key — eslint flags `factionIds.join(...)` inside the dep
+  // array as a complex expression; extracting to a memoised string fixes
+  // both that warning and the missing-`factionIds` deps.
+  const factionIdsKey = useMemo(() => factionIds.join('|'), [factionIds]);
 
   useEffect(() => {
     if (factionIds.length === 0) return;
@@ -80,7 +84,7 @@ export default function FactionBanners({ worldId, bannerAnchors = FALLBACK_BANNE
       } catch { /* fine */ }
     })();
     return () => { cancelled = true; };
-  }, [factionIds.join('|'), worldId]);
+  }, [factionIdsKey, factionIds.length, worldId]);
 
   // Animation tick at 30Hz for sway.
   useEffect(() => {
@@ -159,7 +163,7 @@ function distance(x1: number, z1: number, x2: number, z2: number): number {
 function projectToScreen(wx: number, wy: number, wz: number, cam: CameraSnapshot): { x: number; y: number; visible: boolean } {
   const dx = wx - cam.x, dy = wy - cam.y, dz = wz - cam.z;
   const cy = Math.cos(-cam.yaw), sy = Math.sin(-cam.yaw);
-  let rx = dx * cy + dz * sy;
+  const rx = dx * cy + dz * sy;
   let rz = -dx * sy + dz * cy;
   const cp = Math.cos(-cam.pitch), sp = Math.sin(-cam.pitch);
   const ry = dy * cp - rz * sp;

@@ -27,7 +27,7 @@
  * Web Audio API for crossfade control. Each stem has its own GainNode.
  */
 
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 
 type Layer = 'rhythm' | 'harmony' | 'melody' | 'percussion' | 'tension';
 

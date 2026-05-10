@@ -16,7 +16,7 @@
  * the 60fps tick stays cheap on integrated GPUs).
  */
 
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 type Season =
   | 'deep_winter' | 'late_winter' | 'early_spring' | 'late_spring'

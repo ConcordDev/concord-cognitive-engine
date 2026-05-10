@@ -24,7 +24,7 @@
 
 import * as THREE from 'three';
 import type { PoseBroker, BodyPart } from './pose-broker';
-import type { JointMotorSystem, StiffnessMode } from './joint-motors';
+import type { JointMotorSystem } from './joint-motors';
 import type { FightingStyle } from './style-sets';
 
 export type CombatAction = 'attack-light' | 'attack-heavy' | 'kick' | 'grapple' | 'block' | 'parry' | 'dodge-back' | 'dodge-left' | 'dodge-right';

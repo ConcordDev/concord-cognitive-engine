@@ -158,7 +158,7 @@ export function generateRock(opts: RockGenOptions): RockMeshData {
   for (let i = 0; i < verts.length; i++) {
     const [x, y, z] = verts[i];
     const len = Math.sqrt(x * x + y * y + z * z) || 1;
-    let nx = x / len, ny = y / len, nz = z / len;
+    const nx = x / len, ny = y / len, nz = z / len;
     const n = noise(nx * 1.5, nz * 1.5) * 0.18 + noise(nx * 4 + 7, ny * 4) * 0.06;
     const r = (1 + n) * size * (0.85 + rng() * 0.3);
     verts[i] = [nx * r, ny * r, nz * r];
