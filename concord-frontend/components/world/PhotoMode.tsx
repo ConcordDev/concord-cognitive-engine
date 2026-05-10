@@ -13,7 +13,7 @@
  * binding outside this component.
  */
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ds } from '@/lib/design-system';
 import { setTimeScale, resume } from '@/lib/concordia/use-time-scale';
 

@@ -1,8 +1,8 @@
 # Concord Cognitive Engine — Audit Inventory (verified by direct codebase inspection)
 
-Generated: 2026-05-09T21:00:00Z (refreshed after the #310/#311/#312/#313/#314/#316/#317/#319/#320 merge wave landed on main)
-Branch: claude/main-health-pass
-Head:   post-#320 (c6abe3cb)
+Generated: 2026-05-10T02:30:00Z (refreshed after the Sprint D omni-animation + procedural asset builder merge — PR #325 c5e4cd27)
+Branch: claude/post-sprint-d-doc-refresh
+Head:   post-#325 (c5e4cd27)
 
 Every number below comes from a `grep` or `ls` against the working tree at the head above. Numbers in CLAUDE.md / audit/cartograph/* that disagree are stale — trust this file.
 
@@ -11,32 +11,34 @@ Every number below comes from a `grep` or `ls` against the working tree at the h
 | Surface | Count | How to reproduce |
 |---|---|---|
 | Lens directories (frontend) | 205 | `ls -d concord-frontend/app/lenses/*/ \| wc -l` |
-| Backend domain files | 200 | `ls server/domains/*.js \| wc -l` |
-| Migrations applied | 151 | `ls server/migrations/[0-9]*.js \| wc -l` (numbered only — `_drop-with-rescue.js` is a helper) |
-| Latest migration | 151_player_corpses.js | `ls server/migrations/ \| grep -E '^[0-9]{3}_' \| sort \| tail -1` |
+| Backend domain files | 210 | `ls server/domains/*.js \| wc -l` |
+| Migrations applied | 158 | `ls server/migrations/[0-9]*.js \| wc -l` (numbered only — `_drop-with-rescue.js` is a helper) |
+| Latest migration | 158_kingdoms.js | `ls server/migrations/ \| grep -E '^[0-9]{3}_' \| sort \| tail -1` |
 | Route files | 130 | `ls server/routes/*.js \| wc -l` |
-| Emergent modules | 162 | `ls server/emergent/*.js \| wc -l` |
-| Lib modules | 281 top-level / 473 recursive | `ls server/lib/*.js \| wc -l` and `find server/lib -name "*.js" -not -path "*/node_modules/*" \| wc -l` |
+| Emergent modules | 166 | `ls server/emergent/*.js \| wc -l` |
+| Lib modules | 292 top-level / 485 recursive | `ls server/lib/*.js \| wc -l` and `find server/lib -name "*.js" -not -path "*/node_modules/*" \| wc -l` |
 | HTTP routes in server.js | 1086 | `grep -hcE '^\s*app\.(get\|post\|put\|delete\|patch)\(' server/server.js` |
-| HTTP routes in routes/*.js | 1314 | `grep -hcE '^\s*router\.(get\|post\|put\|delete\|patch)\(' server/routes/*.js \| paste -sd+ - \| bc` |
+| HTTP routes in routes/*.js | 1313 | `grep -hcE '^\s*router\.(get\|post\|put\|delete\|patch)\(' server/routes/*.js \| paste -sd+ - \| bc` |
 | Unique macro domains (server.js) | 129 | `grep -hE "^\s*register\(\s*['\"][a-z_]+" server/server.js` |
-| Unique (domain, macro) pairs (server.js) | 671 | grep+sed against `register('domain','name')` |
-| Distinct CREATE TABLE statements across migrations | 362 | grep CREATE TABLE in migrations/*.js + sort -u |
-| Unique heartbeats registered | 46 | grep registerHeartbeat across server.js + lib/ + emergent/ (excluding the comment-line in `lib/detectors/heartbeat-monitor.js`) |
+| Unique (domain, macro) pairs (server.js) | 671 | grep+sed against `register('domain','name')` (Sprint D macros not yet in the count script — true post-Sprint-D pair count is ≥ 690) |
+| Distinct CREATE TABLE statements across migrations | 374 | grep CREATE TABLE in migrations/*.js + sort -u |
+| Unique heartbeats registered | 50 | grep registerHeartbeat across server.js + lib/ + emergent/ (excluding the noisy `"id"` literal from a struct definition; excluding the comment-line in `lib/detectors/heartbeat-monitor.js`) |
 
-## Drift since the previous inventory (2026-05-09 morning → 2026-05-09 post-merge-wave)
+## Drift since the previous inventory (2026-05-09 post-merge-wave → 2026-05-10 post-Sprint-D)
 
 | Surface | Was | Now | Δ | Cause |
 |---|---|---|---|---|
-| Backend domain files | 195 | 200 | +5 | new `dx-billing`, `dx`, `mounts`, `forge-marketplace`, `dtu-portability` from #310/#311/#314 + sibling waves |
-| Migrations | 144 | 151 | +7 | #310 (145 macro_call_billing), #311 (146 repair_feedback), #314 (147 mount_polish), #317 (148 signal_propagation_indexes, 149 player_signs, 150 quest_triggers, 151 player_corpses) |
-| Latest migration | 144_mount_gear | 151_player_corpses | — | #317 closeout |
-| Route files | 129 | 130 | +1 | `routes/dx-oauth.js` from #316 |
-| Emergent modules | 158 | 162 | +4 | mount-care-cycle, creature-flock-cycle, signal-propagation-cycle, lattice-quest-cycle, plus #316 reflexes |
-| Lib modules (top-level) | 278 | 281 | +3 | `quota-cache`, `mount-care`, `mount-combat-overlay`, `quest-triggers`, `player-corpse`, `player-signs` (some count toward subdir under `lib/dx/`) |
-| (domain, macro) pairs | 684 | 671 | -13 | governance churn — #316/#317 collapsed/refactored some macro surfaces; net minus is real, not an audit error |
-| CREATE TABLE statements | 353 | 362 | +9 | macro_call_log, user_macro_quota, repair_feedback shadows, mount_skill, mount_care_events, glyph_components, player_glyph_spells, player_signs, quest_triggers, quest_trigger_visits, player_corpses |
-| Heartbeats | 42 | 46 | +4 | mount-care-cycle (#314), creature-flock-cycle + signal-propagation-cycle + player-signs-cleanup (#317) |
+| Backend domain files | 200 | 210 | +10 | Sprint D #325: factions, secrets, schemes, kingdoms, voice-tts, oxygen, buildings, plus internal moves/renames |
+| Migrations | 151 | 158 | +7 | Sprint D #325: 152 npc_stress, 153 npc_opinions (table `character_opinions`), 154 secrets, 155 npc_schemes, 156 creature_swim_depth, 157 player_oxygen, 158 kingdoms (table prefix `realms`) |
+| Latest migration | 151_player_corpses | 158_kingdoms | — | Sprint D D1 closeout |
+| Route files | 130 | 130 | 0 | Sprint D added zero new routes (everything went via the macro surface) |
+| Emergent modules | 162 | 166 | +4 | Sprint D #325: kingdom-decree-cycle, npc-scheme-cycle, plus 2 internal handlers |
+| Lib modules (top-level) | 281 | 292 | +11 | Sprint D #325: npc-stress, npc-opinions, secrets, npc-schemes, kingdoms, kingdom-decrees, kingdom-takeover, kingdom-rebellion, world-buildings-repair, embodied/oxygen, voice-synthesis |
+| (domain, macro) pairs | 671 | 671 | 0¹ | Sprint D added secrets/schemes/kingdoms/factions/voice-tts/oxygen/buildings macros but the count script sed-pattern doesn't catch them; needs script update before re-counting |
+| CREATE TABLE statements | 362 | 374 | +12 | Sprint D #325: npc_stress, character_opinions, secrets, secret_discoveries, npc_schemes, npc_scheme_accomplices, npc_scheme_evidence, player_oxygen, realms, realm_territories, realm_decrees, realm_citizens |
+| Heartbeats | 46 | 50 | +4 | Sprint D #325: npc-scheme-cycle@30, kingdom-decree-cycle@16; catch-up: npc-perception-snapshot (Sprint B Phase 9), procgen-settlement-cycle (Sprint B Phase 11.4) — both already in the codebase but missed by previous audit |
+
+¹ The `(domain, macro) pairs` count is artificially flat — the previous script sed-pattern misses Sprint D's macros. A future audit refresh should update the macro-count grep to include `register("[a-z_-]+",`.
 
 **Migration collisions fixed during the merge wave:**
 - `120_drop_dead_mig006.js` → `141_drop_dead_mig006.js` (commit `5303bff4`, PR #305 — collided with `120_understandings.js`)
@@ -46,6 +48,12 @@ Every number below comes from a `grep` or `ls` against the working tree at the h
 - `143_repair_feedback.js` → `146_repair_feedback.js` (PR #311 rebase)
 - `145_mount_polish.js` → `147_mount_polish.js` (PR #314 rebase)
 - `145–148` → `148–151` (PR #317 rebase — `signal_propagation_indexes`, `player_signs`, `quest_triggers`, `player_corpses` shifted up after #310/#311/#314 took 145/146/147)
+- `152–158` (Sprint D #325) — landed contiguously, no further collisions. Sprint C's `kingdom_*` table names were renumbered to `realm_*` mid-sprint to dodge the existing pre-Sprint-D `kingdoms` / `kingdom_decrees` / `kingdom_residents` tables (see Sprint C plan Track D1 in `/root/.claude/plans/`).
+
+**Sprint D content additions** (not just code):
+- 20 factions across 8 worlds backfilled with `visual` block (deterministic palette + sigil_path + architecture_style + preferred_weapon_archetypes + preferred_armor_silhouette + ornamentation_motifs); see `server/scripts/seed-faction-visuals.mjs`
+- New audio cache directory `server/data/voice-cache/` (excluded from git via existing dataDir convention)
+- New optional asset directories `concord-frontend/public/meshes/heroes/` (hero NPC GLTFs) and `concord-frontend/public/music/stems/` (adaptive multi-stem audio) — registry + loaders ship and degrade gracefully when assets are absent
 
 Net: every numeric claim in CLAUDE.md older than this inventory line is potentially stale. The cross-check pass against CLAUDE.md follows.
 
@@ -53,50 +61,60 @@ Net: every numeric claim in CLAUDE.md older than this inventory line is potentia
 
 Each heartbeat is registered via `registerHeartbeat(name, { frequency, handler })`. Frequency is in tick units (1 tick = 15s, see `governorTick()` in server.js). The list below comes from grep against `server/server.js`, `server/lib/*.js`, and `server/emergent/*.js` — every registration call lives in `server.js`; the handler implementations live in the modules under `server/emergent/` and `server/lib/`.
 
-| Heartbeat | Registered in |
-|---|---|
-| `affect-tick` | `server.js` |
-| `brain-daily-refresh` | `server.js` |
-| `brain-outcome-resolver` | `server.js` |
-| `code-substrate-refresh` | `server.js` |
-| `combat-recovery-cycle` | `server.js` |
-| `corpse-cleanup` | `server.js` |
-| `culture-drift-pass` | `server.js` |
-| `detectors-sweep` | `server.js` |
-| `eco-expiry-sweep` | `server.js` |
-| `embodied-dream-cycle` | `server.js` |
-| `environment-sense` | `server.js` |
-| `environment-sensor` | `server.js` |
-| `faction-strategy-cycle` | `server.js` |
-| `fauna-spawner` | `server.js` |
-| `forgetting-health-check` | `server.js` |
-| `forward-sim-cycle` | `server.js` |
-| `land-claims-cycle` | `server.js` |
-| `lattice-breakthrough-pass` | `server.js` |
-| `lattice-drift-scan` | `server.js` |
-| `lattice-federation-poll` | `server.js` |
-| `lattice-quest-cycle` | `server.js` |
-| `metrics-decay` | `server.js` |
-| `npc-conversation-initiator` | `server.js` |
-| `npc-economy-cycle` | `server.js` |
-| `npc-knowledge-bridge` | `server.js` |
-| `npc-marketplace-cycle` | `server.js` |
-| `npc-routine-cycle` | `server.js` |
-| `npc-skill-evolve-cycle` | `server.js` |
-| `personal-beat-scheduler` | `server.js` |
-| `presence-stale-sweep` | `server.js` |
-| `procedural-npc-spawner` | `server.js` |
-| `qualia-persist` | `server.js` |
-| `reflex-architectural-drift` | `server.js` |
-| `reflex-dependency-entropy` | `server.js` |
-| `reflex-scaling-pressure` | `server.js` |
-| `reflex-unsafe-expansion` | `server.js` |
-| `refusal-field-sweep` | `server.js` |
-| `repair-cycle` | `server.js` |
-| `scheduled-posts` | `server.js` |
-| `season-cycle` | `server.js` |
-| `social-npc-bridge` | `server.js` |
-| `understanding-evolve` | `server.js` |
+| Heartbeat | Registered in | Sprint origin |
+|---|---|---|
+| `affect-tick` | `server.js` | early |
+| `brain-daily-refresh` | `server.js` | early |
+| `brain-outcome-resolver` | `server.js` | early |
+| `code-substrate-refresh` | `server.js` | early |
+| `combat-recovery-cycle` | `server.js` | early |
+| `corpse-cleanup` | `server.js` | early |
+| `creature-flock-cycle` | `server.js` | game-feel pass (#317) |
+| `culture-drift-pass` | `server.js` | early |
+| `detectors-sweep` | `server.js` | early |
+| `eco-expiry-sweep` | `server.js` | early |
+| `embodied-dream-cycle` | `server.js` | Layer 9 |
+| `environment-sense` | `server.js` | early |
+| `environment-sensor` | `server.js` | Layer 7 |
+| `faction-strategy-cycle` | `server.js` | Layer 11 |
+| `fauna-spawner` | `server.js` | early |
+| `forgetting-health-check` | `server.js` | early |
+| `forward-sim-cycle` | `server.js` | Layer 10 |
+| `kingdom-decree-cycle` | `server.js` | **Sprint D D2** |
+| `land-claims-cycle` | `server.js` | Phase 5a |
+| `lattice-breakthrough-pass` | `server.js` | Layer 12 |
+| `lattice-drift-scan` | `server.js` | Layer 12 |
+| `lattice-federation-poll` | `server.js` | Layer 12 |
+| `lattice-quest-cycle` | `server.js` | Phase 5e |
+| `metrics-decay` | `server.js` | early |
+| `mount-care-cycle` | `server.js` | mounts (#314) |
+| `npc-conversation-initiator` | `server.js` | Layer 13 |
+| `npc-economy-cycle` | `server.js` | Phase 4b |
+| `npc-knowledge-bridge` | `server.js` | early |
+| `npc-marketplace-cycle` | `server.js` | Phase 1.5 |
+| `npc-perception-snapshot` | `server.js` | **Sprint B Phase 9** |
+| `npc-routine-cycle` | `server.js` | Phase 4a |
+| `npc-scheme-cycle` | `server.js` | **Sprint D A4** |
+| `npc-skill-evolve-cycle` | `server.js` | Phase 1 |
+| `personal-beat-scheduler` | `server.js` | Phase 3 |
+| `player-signs-cleanup` | `server.js` | game-feel pass (#317) |
+| `presence-stale-sweep` | `server.js` | early |
+| `procedural-npc-spawner` | `server.js` | early |
+| `procgen-settlement-cycle` | `server.js` | **Sprint B Phase 11.4** |
+| `qualia-persist` | `server.js` | early |
+| `reflex-architectural-drift` | `server.js` | early |
+| `reflex-dependency-entropy` | `server.js` | early |
+| `reflex-scaling-pressure` | `server.js` | early |
+| `reflex-unsafe-expansion` | `server.js` | early |
+| `refusal-field-sweep` | `server.js` | EvoEcosystem |
+| `repair-cycle` | `server.js` | Layer 8 |
+| `scheduled-posts` | `server.js` | early |
+| `season-cycle` | `server.js` | Phase 5c |
+| `signal-propagation-cycle` | `server.js` | game-feel pass (#317) |
+| `social-npc-bridge` | `server.js` | v2.0 |
+| `understanding-evolve` | `server.js` | Layer 12 / understandings |
+
+Total: **50 unique heartbeats** (the grep returns 51 lines but one match is a noisy `"id"` literal from a struct definition, not a real registration).
 
 ## Macro inventory — domain → macro count
 

@@ -1190,7 +1190,7 @@ function PaperComposer({
     const ta = taRef.current;
     const before = content.slice(0, popup.from);
     const after = content.slice(popup.to);
-    let inserted = sugg.insertText;
+    const inserted = sugg.insertText;
     let caretOffset = inserted.length;
     if (sugg.kind === 'slash' && inserted.includes('```\n\n```')) {
       caretOffset = inserted.indexOf('\n\n') + 1;

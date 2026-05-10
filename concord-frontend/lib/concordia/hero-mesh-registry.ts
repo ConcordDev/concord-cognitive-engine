@@ -33,12 +33,13 @@ async function getLoader() {
   if (loaderPromise) return loaderPromise;
   loaderPromise = (async () => {
     // Dynamic import so SSR / tests don't pull GLTFLoader unless needed.
-    const mod = await import(
-      // @ts-expect-error — GLTFLoader is a runtime addon
-      'three/examples/jsm/loaders/GLTFLoader.js'
-    );
+    // Modern Three.js ships GLTFLoader types under three/examples/jsm,
+    // so no @ts-expect-error needed; if a future version drops them,
+    // the build will surface a clear error here.
+    const mod = await import('three/examples/jsm/loaders/GLTFLoader.js') as { GLTFLoader: new () => unknown };
+    type GLTFLoaderInstance = { load: (url: string, onLoad: (gltf: { scene: THREE.Group }) => void, onProgress?: undefined, onError?: (err: unknown) => void) => void };
     const Loader = mod.GLTFLoader;
-    const loader = new Loader();
+    const loader = new Loader() as GLTFLoaderInstance;
     return {
       load: (url: string) => new Promise<{ scene: THREE.Group }>((resolve, reject) => {
         loader.load(url, (gltf: { scene: THREE.Group }) => resolve(gltf), undefined, reject);

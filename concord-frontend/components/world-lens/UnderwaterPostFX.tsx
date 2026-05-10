@@ -17,7 +17,7 @@
  */
 
 import * as THREE from 'three';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createUnderwaterMaterial, BIOME_TINT } from '@/lib/world-lens/underwater-pass';
 
 interface SwimSnapshot {

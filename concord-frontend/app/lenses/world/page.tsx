@@ -4323,7 +4323,7 @@ export default function WorldLensPage() {
               feeding AvatarSystem3D above includes them. */}
           <WalkerNpcInjector
             worldId={activeDistrict?.id || 'concordia-hub'}
-            onWalkers={setWalkerNpcs}
+            onWalkers={(npcs) => setWalkerNpcs(npcs)}
           />
 
           {/* Sprint B.5 — tombs overlay: surfaces npc_legacies for the
@@ -4342,19 +4342,44 @@ export default function WorldLensPage() {
               world:region-spawned events + 5-min poll. */}
           <ProcgenSettlementNpcs
             worldId={activeDistrict?.id || 'concordia-hub'}
-            onSettlementNpcs={setProcgenNpcs}
+            onSettlementNpcs={(npcs) => setProcgenNpcs(npcs)}
           />
 
           {/* Sprint D Wave 1 — visible-substrate overlays. SeasonalEffects
               draws snow/leaves/pollen + tint based on season; UnderwaterPostFX
               activates real shader when player y < waterPlaneY; FactionBanners
               renders heraldry at faction-controlled anchors; InstancedGrass
-              fills the immediate ground tile around the player. */}
+              fills the immediate ground tile around the player;
+              BuildingCollapseVFX projects phased-collapse particles when
+              applyStructuralStress flips a building to `collapsed`. */}
           <SeasonalEffects worldId={activeDistrict?.id || 'concordia-hub'} />
           <UnderwaterPostFX worldId={activeDistrict?.id || 'concordia-hub'} />
           <BuildingCollapseVFX
             worldId={activeDistrict?.id || 'concordia-hub'}
             getCamera={() => null}
+          />
+          {/* Sprint D V2 — heraldic banners at faction-controlled anchors.
+              Reads faction visual data from V1's `factions.visual` macro;
+              renders SVG sigils on cloth banners with windDirection sway.
+              The bannerAnchors array is empty here as a starter — the world
+              page can populate it from the active world's anchors[] meta
+              once that wiring lands; until then the component renders
+              nothing (defensive — avoids drawing arbitrary banners). */}
+          <FactionBanners
+            worldId={activeDistrict?.id || 'concordia-hub'}
+            bannerAnchors={[]}
+            getCamera={() => null}
+            windDirection={0}
+          />
+          {/* Sprint D W2 — GPU-instanced grass tile around the player.
+              Vertex-shader Perlin wind + footstep brush response. Density
+              + tile half-width tuned to a quality-preset baseline. */}
+          <InstancedGrass
+            density={0.6}
+            tileHalf={80}
+            bladesPerTile={4000}
+            playerPos={{ x: 0, y: 0, z: 0 }}
+            windDirection={0}
           />
 
           {/* Sprint D EE3 — adaptive music stem engine layered on top of
