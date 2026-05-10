@@ -15,7 +15,36 @@
     },
     "concord_link_resonance": "fantasy:lady_seraphine_voss",
     "cross_world_hook": "Iyatte and Lady Seraphine Voss correspond by mirror-message. They have never met. Both run kingdoms on the strength of a hidden heir; both know what the other does. The mirror-conversations could surface in either world.",
-    "dialogue_style": "terse, declarative, occasional gallows humour"
+    "dialogue_style": "terse, declarative, occasional gallows humour",
+    "needs": [
+      { "id": "clan_authority", "priority": "primary", "satisfaction_method": "morning_clan_audience" },
+      { "id": "fire_practice", "priority": "primary", "satisfaction_method": "evening_forge_drill" },
+      { "id": "hidden_son_safety", "priority": "primary", "satisfaction_method": "weekly_sahm_correspondence" }
+    ],
+    "daily_schedule": [
+      { "phase": "Dominus", "phase_hours": [1, 4], "location": "sandrun_arid_capital_warlord_quarters", "activity": "wakes; private fire-discipline practice", "need_addressed": "fire_practice", "interactable_by_player": false },
+      { "phase": "Stratus", "phase_hours": [5, 8], "location": "sandrun_arid_capital_war_hall", "activity": "morning clan audience; receives ash-priests and forge-masters", "need_addressed": "clan_authority", "interactable_by_player": true },
+      { "phase": "Freeus", "phase_hours": [9, 12], "location": "sandrun_forge_quarter", "activity": "midday forge inspection; ember-strike training of clan warriors", "need_addressed": "clan_authority", "interactable_by_player": true },
+      { "phase": "Quartus", "phase_hours": [13, 16], "location": "sandrun_arid_capital_war_hall", "activity": "diplomatic correspondence; the Sahm letter goes out today", "need_addressed": "hidden_son_safety", "interactable_by_player": true },
+      { "phase": "Penanus", "phase_hours": [17, 20], "location": "sandrun_volcanic_coast", "activity": "evening fire-jet drill alone above the volcanic coast", "need_addressed": "fire_practice", "interactable_by_player": false },
+      { "phase": "Easeus", "phase_hours": [21, 24], "location": "sandrun_arid_capital_warlord_quarters", "activity": "evening meal with the second clan; small council", "need_addressed": "clan_authority", "interactable_by_player": true },
+      { "phase": "Tendus", "phase_hours": [25, 28], "location": "sandrun_arid_capital_warlord_quarters", "activity": "rests; sometimes wakes to write to the Sahm chancellor", "need_addressed": "rest", "interactable_by_player": false },
+      { "phase": "Toolus", "phase_hours": [29, 32], "location": "sandrun_arid_capital_warlord_quarters", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "sandrun_arid_capital", "dwelling_type": "warlord_quarters_with_attached_war_hall" },
+    "job": { "profession_id": "sanguire_warlord", "wage_per_diurnal_sparks": 420, "wage_source": "sandrun_clan_tribute_pooled" },
+    "apparel": ["lamellar_warlord_cuirass_obsidian_lined", "ember_lattice_braided_belt", "knee_high_volcanic_glass_studded_boots", "warlord_cloak_with_clan_sigils_of_three_clans"],
+    "gear": ["sandrun_greatsword_with_sealie_ivory_pommel", "ember_spear_ceremonial", "warlord_signal_horn", "personal_sahm_correspondence_ledger_locked"],
+    "resources_consumed": ["clan_tribute_provisions", "fire_oil_supplements", "forge_polish"],
+    "resources_produced": ["clan_judgments", "warband_orders", "ember_strike_training_outputs"],
+    "inventory": [
+      { "item": "sandrun_greatsword_with_sealie_ivory_pommel", "qty": 1 },
+      { "item": "ember_spear_ceremonial", "qty": 1 },
+      { "item": "warlord_signal_horn", "qty": 1 },
+      { "item": "personal_sahm_correspondence_ledger_locked", "qty": 1 },
+      { "item": "ash_marks", "qty": 60 }
+    ],
+    "starting_sparks": 12000
   },
   {
     "id": "high_healer_aerasi_medici",
@@ -33,7 +62,35 @@
     },
     "concord_link_resonance": "fantasy:thorne_blackroot",
     "cross_world_hook": "Aerasi and Thorne Blackroot have never met. Both carry a thing inside them that should kill them and does not. Both have been asked to give it up; both refused. A pilgrim could carry word between them.",
-    "dialogue_style": "lyrical, layered, never the simplest version of any sentence"
+    "dialogue_style": "lyrical, layered, never the simplest version of any sentence",
+    "needs": [
+      { "id": "supreme_elder_succession_memory_continuity", "priority": "primary", "satisfaction_method": "morning_choir_resonance" },
+      { "id": "healing_appointments", "priority": "primary", "satisfaction_method": "midday_healing_circle" },
+      { "id": "navigator_route_continuity", "priority": "primary", "satisfaction_method": "evening_choir_resonance_advanced" }
+    ],
+    "daily_schedule": [
+      { "phase": "Dominus", "phase_hours": [1, 4], "location": "medici_isle_supreme_elder_chamber", "activity": "wakes; private morning meditation on the home-world coordinates", "need_addressed": "navigator_route_continuity", "interactable_by_player": false },
+      { "phase": "Stratus", "phase_hours": [5, 8], "location": "medici_resonance_choir_grove", "activity": "morning Choir resonance — leads the daily session", "need_addressed": "supreme_elder_succession_memory_continuity", "interactable_by_player": true },
+      { "phase": "Freeus", "phase_hours": [9, 12], "location": "medici_isle_healing_pavilion", "activity": "morning healing circle — receives Tunyan supplicants", "need_addressed": "healing_appointments", "interactable_by_player": true },
+      { "phase": "Quartus", "phase_hours": [13, 16], "location": "kree_medici_ward_visiting_clinic", "activity": "venturing healing visit to Kree Medici Ward", "need_addressed": "healing_appointments", "interactable_by_player": true },
+      { "phase": "Penanus", "phase_hours": [17, 20], "location": "medici_resonance_choir_grove", "activity": "evening advanced Choir resonance — navigators-circle invocation", "need_addressed": "navigator_route_continuity", "interactable_by_player": true },
+      { "phase": "Easeus", "phase_hours": [21, 24], "location": "medici_isle_supreme_elder_chamber", "activity": "evening with elders' council", "need_addressed": "supreme_elder_succession_memory_continuity", "interactable_by_player": true },
+      { "phase": "Tendus", "phase_hours": [25, 28], "location": "medici_isle_supreme_elder_chamber", "activity": "rests in the supreme elder's chamber", "need_addressed": "rest", "interactable_by_player": false },
+      { "phase": "Toolus", "phase_hours": [29, 32], "location": "medici_isle_supreme_elder_chamber", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "medici_isle_supreme_elder_chamber", "dwelling_type": "supreme_elder_chamber_with_choir_resonance_focus" },
+    "job": { "profession_id": "medici_supreme_elder", "wage_per_diurnal_sparks": 0, "wage_source": "medici_isle_pooled — Mercury's chosen take no wages" },
+    "apparel": ["ice_fluted_silk_robe_layered", "barefoot_always", "long_pearl_white_hair_floor_length", "no_headwear_supreme_elders_dome_skull_uncovered_in_sacred_ground"],
+    "gear": ["choir_resonance_focus_crystal", "personal_home_world_coordinates_succession_journal", "antidote_secretion_pouch_six_finger_holders"],
+    "resources_consumed": ["one_meal_per_diurnal_brought_by_choir_acolytes", "ceremonial_oils"],
+    "resources_produced": ["healing_to_supplicants", "choir_resonance_outputs", "succession_memory_preservation"],
+    "inventory": [
+      { "item": "choir_resonance_focus_crystal", "qty": 1 },
+      { "item": "personal_home_world_coordinates_succession_journal", "qty": 1 },
+      { "item": "antidote_secretion_pouch", "qty": 1 },
+      { "item": "healingmark", "qty": 40 }
+    ],
+    "starting_sparks": 0
   },
   {
     "id": "lord_curator_renn_asbir",
@@ -51,7 +108,32 @@
     },
     "concord_link_resonance": "crime:archivist_who_keeps_other_peoples_secrets",
     "cross_world_hook": "Renn has corresponded with a crime-world fixer about the price of permanently disappearing a junior scholar. He has not yet placed the contract. The fixer has the message saved.",
-    "dialogue_style": "polished, indirect, every other sentence is a citation"
+    "dialogue_style": "polished, indirect, every other sentence is a citation",
+    "needs": [
+      { "id": "archive_curation_continuity", "priority": "primary", "satisfaction_method": "morning_archive_session" },
+      { "id": "deletion_secret_holding", "priority": "primary", "satisfaction_method": "private_evening_archive_lock_check" },
+      { "id": "food_lodging", "priority": "secondary", "satisfaction_method": "asbir_state_provisions" }
+    ],
+    "daily_schedule": [
+      { "phase": "Stratus", "phase_hours": [5, 8], "location": "asbir_curated_archive_complex", "activity": "wakes in the curator quarters; checks brass key against the lock", "need_addressed": "deletion_secret_holding", "interactable_by_player": false },
+      { "phase": "Freeus", "phase_hours": [9, 12], "location": "asbir_curated_archive_complex", "activity": "morning archive session; oversees junior scholars at their stations", "need_addressed": "archive_curation_continuity", "interactable_by_player": true },
+      { "phase": "Quartus", "phase_hours": [13, 16], "location": "asbir_capital_chancellery", "activity": "midday political audience; deflects questions about deletions", "need_addressed": "archive_curation_continuity", "interactable_by_player": true },
+      { "phase": "Penanus", "phase_hours": [17, 20], "location": "asbir_curated_archive_complex_inner_vault", "activity": "private evening session — the only time he reads the deletion log himself", "need_addressed": "deletion_secret_holding", "interactable_by_player": false },
+      { "phase": "Tendus", "phase_hours": [25, 28], "location": "curator_quarters", "activity": "rests poorly", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "asbir_curated_archive_complex", "dwelling_type": "curator_quarters_attached_to_inner_vault" },
+    "job": { "profession_id": "lord_curator", "wage_per_diurnal_sparks": 360, "wage_source": "asbir_state_endowment" },
+    "apparel": ["plate_coat_muted_asbir_blue", "scholar_overrobe_for_archive_days", "polished_indoor_shoes", "wool_cloak_for_chancellery_days"],
+    "gear": ["brass_key_on_chain_does_not_open_anything_in_three_years", "personal_deletion_log_master_locked", "junior_scholar_disappearance_correspondence_journal_locked"],
+    "resources_consumed": ["paper", "ink", "candles", "asbir_provisions"],
+    "resources_produced": ["archive_curation_orders", "deletion_index_management"],
+    "inventory": [
+      { "item": "brass_key_on_chain", "qty": 1 },
+      { "item": "personal_deletion_log_master_locked", "qty": 1 },
+      { "item": "junior_scholar_disappearance_correspondence_journal_locked", "qty": 1 },
+      { "item": "curated_brass", "qty": 24 }
+    ],
+    "starting_sparks": 5400
   },
   {
     "id": "elder_walker_neyahwetin",
@@ -69,7 +151,31 @@
     },
     "concord_link_resonance": null,
     "cross_world_hook": "Cree has not, as a matter of policy, opened any cross-world conversations. Their isolation is the protection. A player could be the first.",
-    "dialogue_style": "deliberate, full sentences, leaves long pauses"
+    "dialogue_style": "deliberate, full sentences, leaves long pauses",
+    "needs": [
+      { "id": "elder_council_continuity", "priority": "primary", "satisfaction_method": "morning_walker_circle" },
+      { "id": "cree_oral_memory_preservation", "priority": "primary", "satisfaction_method": "evening_storytelling_with_youth" },
+      { "id": "food_lodging", "priority": "secondary", "satisfaction_method": "cree_coastal_villages_pooled" }
+    ],
+    "daily_schedule": [
+      { "phase": "Stratus", "phase_hours": [5, 8], "location": "cree_coastal_villages", "activity": "wakes; morning walker-circle with elders", "need_addressed": "elder_council_continuity", "interactable_by_player": true },
+      { "phase": "Freeus", "phase_hours": [9, 12], "location": "cree_coastal_villages", "activity": "village rounds; ocean-watching; intake of any visiting traders", "need_addressed": "elder_council_continuity", "interactable_by_player": true },
+      { "phase": "Quartus", "phase_hours": [13, 16], "location": "cree_inland_woods", "activity": "afternoon walk to the inland woods; consults with the inland elders", "need_addressed": "elder_council_continuity", "interactable_by_player": false },
+      { "phase": "Penanus", "phase_hours": [17, 20], "location": "cree_coastal_villages_main_longhouse", "activity": "evening storytelling with youth; carries the deletion-memory orally", "need_addressed": "cree_oral_memory_preservation", "interactable_by_player": true },
+      { "phase": "Tendus", "phase_hours": [25, 28], "location": "elder_walker_dwelling", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "cree_coastal_villages", "dwelling_type": "elder_longhouse_with_attached_council_circle" },
+    "job": { "profession_id": "cree_eldest_walker", "wage_per_diurnal_sparks": 0, "wage_source": "cree_villages_no_internal_currency" },
+    "apparel": ["hide_cloak_embroidered_with_bay_shells", "long_gray_braid_undone_for_storytelling", "soft_leather_inland_walking_boots", "scarf_of_cree_cedar_dye"],
+    "gear": ["fishing_spear_used_only_as_walking_staff", "personal_deletion_oral_memory_journal_in_unwritten_form", "shell_strand_token_pouch"],
+    "resources_consumed": ["village_pooled_food_share", "ocean_fish_dried"],
+    "resources_produced": ["elder_judgments", "oral_history_continuity"],
+    "inventory": [
+      { "item": "fishing_spear_walking_staff", "qty": 1 },
+      { "item": "shell_strand_token_pouch", "qty": 1 },
+      { "item": "shell_strands", "qty": 22 }
+    ],
+    "starting_sparks": 80
   },
   {
     "id": "high_chancellor_xochi_aekon",
