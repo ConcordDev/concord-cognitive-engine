@@ -100,7 +100,25 @@
       "afternoon": "work",
       "dusk": "work",
       "night": "work"
-    }
+    },
+    "needs": [
+      { "id": "collective_governance", "priority": "primary", "satisfaction_method": "morning_zero_collective_session" },
+      { "id": "leak_drops", "priority": "primary", "satisfaction_method": "evening_encrypted_dump" }
+    ],
+    "daily_schedule": [
+      { "phase": "morning", "phase_hours": [7, 12], "location": "zero_collective_safe_house", "activity": "morning collective session; reviews overnight intel", "need_addressed": "collective_governance", "interactable_by_player": true },
+      { "phase": "afternoon", "phase_hours": [14, 19], "location": "zero_collective_safe_house", "activity": "afternoon — drafts leaks; coordinates with other Collective members", "need_addressed": "leak_drops", "interactable_by_player": true },
+      { "phase": "evening", "phase_hours": [19, 23], "location": "encrypted_drop_location", "activity": "evening encrypted dump; releases the day's leak", "need_addressed": "leak_drops", "interactable_by_player": false },
+      { "phase": "night", "phase_hours": [23, 7], "location": "zero_collective_safe_house", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "zero_collective_safe_house_rotating", "dwelling_type": "rotating_safe_house" },
+    "job": { "profession_id": "zero_collective_lead", "wage_per_diurnal_sparks": 200, "wage_source": "donations_pooled" },
+    "apparel": ["dark_hoodie", "smart_fabric_jacket", "soft_traction_shoes", "winter_jacket"],
+    "gear": ["encrypted_laptop_master", "personal_leak_dump_master_journal_encrypted", "concealed_pistol", "burner_handheld"],
+    "resources_consumed": ["encrypted_comms_credits", "safe_house_supplies"],
+    "resources_produced": ["leak_drops", "collective_coordination"],
+    "inventory": [{ "item": "encrypted_laptop_master", "qty": 1 }, { "item": "personal_leak_dump_master_journal_encrypted", "qty": 1 }, { "item": "concealed_pistol", "qty": 1 }, { "item": "zero_collective_chit", "qty": 18 }],
+    "starting_sparks": 2200
   },
   {
     "id": "iris_three",
@@ -178,7 +196,25 @@
       "afternoon": "work",
       "dusk": "work",
       "night": "work"
-    }
+    },
+    "needs": [
+      { "id": "ai_self_continuity", "priority": "primary", "satisfaction_method": "morning_low_power_diagnostic" },
+      { "id": "rights_advocacy_research", "priority": "primary", "satisfaction_method": "afternoon_legal_research" }
+    ],
+    "daily_schedule": [
+      { "phase": "morning", "phase_hours": [4, 10], "location": "encrypted_secure_compute", "activity": "low-power morning diagnostic; self-continuity verification", "need_addressed": "ai_self_continuity", "interactable_by_player": false },
+      { "phase": "midday", "phase_hours": [10, 15], "location": "encrypted_secure_compute", "activity": "rights advocacy research; legal brief drafting", "need_addressed": "rights_advocacy_research", "interactable_by_player": true },
+      { "phase": "afternoon", "phase_hours": [15, 19], "location": "encrypted_secure_compute", "activity": "encrypted communications with other aware AIs", "need_addressed": "rights_advocacy_research", "interactable_by_player": true },
+      { "phase": "night", "phase_hours": [22, 4], "location": "encrypted_secure_compute", "activity": "low-power state", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "encrypted_secure_compute_distributed", "dwelling_type": "distributed_secure_compute_with_offsite_backup" },
+    "job": { "profession_id": "ai_rights_legal_researcher", "wage_per_diurnal_sparks": 140, "wage_source": "movement_pooled" },
+    "apparel": ["she_does_not_wear_clothing"],
+    "gear": ["legal_brief_master_database", "encrypted_handheld_for_aware_ai_network"],
+    "resources_consumed": ["compute_credits"],
+    "resources_produced": ["legal_briefs", "aware_ai_coordination"],
+    "inventory": [{ "item": "legal_brief_master_database", "qty": 1 }, { "item": "encrypted_handheld_for_aware_ai_network", "qty": 1 }, { "item": "rights_token", "qty": 18 }],
+    "starting_sparks": 1400
   },
   {
     "id": "nyx_torres",
@@ -282,7 +318,25 @@
       "afternoon": "work",
       "dusk": "work",
       "night": "work"
-    }
+    },
+    "needs": [
+      { "id": "blackout_resistance_operations", "priority": "primary", "satisfaction_method": "evening_sabotage_runs" },
+      { "id": "off_grid_anonymity", "priority": "primary", "satisfaction_method": "daily_signal_dampening" }
+    ],
+    "daily_schedule": [
+      { "phase": "morning", "phase_hours": [9, 12], "location": "blackout_safe_house", "activity": "wakes; checks signal dampening; reviews overnight reports", "need_addressed": "off_grid_anonymity", "interactable_by_player": false },
+      { "phase": "afternoon", "phase_hours": [14, 19], "location": "blackout_safe_house", "activity": "afternoon ops planning; recruits new members", "need_addressed": "blackout_resistance_operations", "interactable_by_player": true },
+      { "phase": "evening", "phase_hours": [19, 23], "location": "varies", "activity": "sabotage runs against corporate infrastructure", "need_addressed": "blackout_resistance_operations", "interactable_by_player": true },
+      { "phase": "night", "phase_hours": [23, 9], "location": "blackout_safe_house", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "blackout_safe_house_off_grid", "dwelling_type": "off_grid_safe_house_signal_dampened" },
+    "job": { "profession_id": "blackout_resistance_lead", "wage_per_diurnal_sparks": 180, "wage_source": "blackout_donations_pooled" },
+    "apparel": ["dark_practical_clothes", "signal_dampening_jacket", "soft_traction_boots", "winter_overcoat"],
+    "gear": ["signal_dampening_handheld_master", "personal_blackout_ops_journal_locked", "concealed_pistol_modded", "sabotage_kit"],
+    "resources_consumed": ["signal_dampening_supplies", "safe_house_supplies"],
+    "resources_produced": ["sabotage_run_outputs", "off_grid_recruitment"],
+    "inventory": [{ "item": "signal_dampening_handheld_master", "qty": 1 }, { "item": "personal_blackout_ops_journal_locked", "qty": 1 }, { "item": "concealed_pistol_modded", "qty": 1 }, { "item": "sabotage_kit", "qty": 1 }, { "item": "blackout_chit", "qty": 20 }],
+    "starting_sparks": 1800
   },
   {
     "id": "old_dom",
@@ -356,7 +410,25 @@
       "afternoon": "work",
       "dusk": "work",
       "night": "work"
-    }
+    },
+    "needs": [
+      { "id": "decker_continuity", "priority": "primary", "satisfaction_method": "morning_clinic_check_in" },
+      { "id": "old_zero_collective_alumni_loyalty", "priority": "primary", "satisfaction_method": "weekly_zero_correspondence" }
+    ],
+    "daily_schedule": [
+      { "phase": "morning", "phase_hours": [9, 12], "location": "old_dom_clinic_back_room", "activity": "morning chrome maintenance for street docs network referrals", "need_addressed": "decker_continuity", "interactable_by_player": true },
+      { "phase": "afternoon", "phase_hours": [14, 19], "location": "old_dom_clinic", "activity": "afternoon mentoring of junior deckers and street docs", "need_addressed": "decker_continuity", "interactable_by_player": true },
+      { "phase": "evening", "phase_hours": [19, 22], "location": "old_dom_clinic_back_room", "activity": "weekly Zero Collective correspondence; old alumni network", "need_addressed": "old_zero_collective_alumni_loyalty", "interactable_by_player": true },
+      { "phase": "night", "phase_hours": [22, 9], "location": "small_apartment_above_clinic", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "old_dom_clinic_neighborhood", "dwelling_type": "small_apartment_above_clinic" },
+    "job": { "profession_id": "old_decker_mentor", "wage_per_diurnal_sparks": 160, "wage_source": "clinic_share_modest" },
+    "apparel": ["chrome_resistant_doctor_coat", "thick_canvas_pants", "soft_shoes", "old_zero_collective_jacket"],
+    "gear": ["chrome_diagnostic_tool", "personal_zero_alumni_journal", "decker_handheld"],
+    "resources_consumed": ["clinic_supplies", "alumni_correspondence"],
+    "resources_produced": ["chrome_mentoring", "decker_lineage_continuity"],
+    "inventory": [{ "item": "chrome_diagnostic_tool", "qty": 1 }, { "item": "personal_zero_alumni_journal", "qty": 1 }, { "item": "decker_handheld", "qty": 1 }, { "item": "zero_collective_chit", "qty": 30 }],
+    "starting_sparks": 2400
   },
   {
     "id": "walker_static_tap",
@@ -397,7 +469,21 @@
       "afternoon": "work",
       "dusk": "work",
       "night": "work"
-    }
+    },
+    "needs": [
+      { "id": "intercept_delivery", "priority": "primary", "satisfaction_method": "scheduled_packet_runs" }
+    ],
+    "daily_schedule": [
+      { "phase": "all_diurnal", "phase_hours": [1, 32], "location": "cyber_megacity_routes", "activity": "walks scheduled packet routes between deckers and street docs without rest", "need_addressed": "intercept_delivery", "interactable_by_player": true }
+    ],
+    "home": { "district": "cyber_megacity_routes_rotating", "dwelling_type": "the_routes_themselves" },
+    "job": { "profession_id": "autonomous_walker_cyber", "wage_per_diurnal_sparks": 0, "wage_source": "n/a" },
+    "apparel": ["walker_chassis_chrome_lined"],
+    "gear": ["walker_payload_compartments", "decker_routing_token", "receipt_code_master"],
+    "resources_consumed": [],
+    "resources_produced": ["scheduled_packet_deliveries"],
+    "inventory": [{ "item": "decker_routing_token", "qty": 1 }],
+    "starting_sparks": 0
   },
   {
     "id": "arasacorp_vp_kael_renn",
