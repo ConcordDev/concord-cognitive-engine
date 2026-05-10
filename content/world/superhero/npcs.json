@@ -107,7 +107,25 @@
       "afternoon": "socialize",
       "dusk": "rest",
       "night": "rest"
-    }
+    },
+    "needs": [
+      { "id": "enforcer_perimeter_ops", "priority": "primary", "satisfaction_method": "evening_perimeter_patrol" },
+      { "id": "bio_power_discipline", "priority": "primary", "satisfaction_method": "morning_focus_training" }
+    ],
+    "daily_schedule": [
+      { "phase": "morning", "phase_hours": [6, 11], "location": "enforcers_movement_training", "activity": "morning bio-power focus training", "need_addressed": "bio_power_discipline", "interactable_by_player": true },
+      { "phase": "afternoon", "phase_hours": [14, 19], "location": "varies", "activity": "field operations on assigned incidents", "need_addressed": "enforcer_perimeter_ops", "interactable_by_player": true },
+      { "phase": "evening", "phase_hours": [19, 23], "location": "elias_apartment", "activity": "evening perimeter patrol; comes home tired", "need_addressed": "enforcer_perimeter_ops", "interactable_by_player": true },
+      { "phase": "night", "phase_hours": [23, 6], "location": "elias_apartment", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "midtown_apartment_modest", "dwelling_type": "secure_apartment" },
+    "job": { "profession_id": "enforcer_operative", "wage_per_diurnal_sparks": 260, "wage_source": "enforcers_movement_pooled" },
+    "apparel": ["enforcer_combat_suit", "kinetic_dampening_boots", "tactical_belt", "movement_jacket_with_pin"],
+    "gear": ["bio_power_focus_amulet_enforcer_grade", "service_pistol", "movement_signal_token", "personal_assignment_journal"],
+    "resources_consumed": ["movement_provisions"],
+    "resources_produced": ["assigned_field_ops"],
+    "inventory": [{ "item": "bio_power_focus_amulet_enforcer_grade", "qty": 1 }, { "item": "service_pistol", "qty": 1 }, { "item": "movement_signal_token", "qty": 1 }, { "item": "movement_token", "qty": 24 }],
+    "starting_sparks": 3800
   },
   {
     "id": "bex_park",
@@ -187,7 +205,25 @@
       "afternoon": "socialize",
       "dusk": "rest",
       "night": "rest"
-    }
+    },
+    "needs": [
+      { "id": "movement_intelligence", "priority": "primary", "satisfaction_method": "morning_intel_review" },
+      { "id": "bio_power_discipline", "priority": "primary", "satisfaction_method": "evening_focus_training" }
+    ],
+    "daily_schedule": [
+      { "phase": "morning", "phase_hours": [6, 11], "location": "enforcers_movement_HQ_intel_floor", "activity": "morning intel review; routing threats to operatives", "need_addressed": "movement_intelligence", "interactable_by_player": true },
+      { "phase": "afternoon", "phase_hours": [14, 19], "location": "enforcers_movement_HQ", "activity": "afternoon intel coordination + briefings", "need_addressed": "movement_intelligence", "interactable_by_player": true },
+      { "phase": "evening", "phase_hours": [19, 22], "location": "enforcers_movement_training", "activity": "evening focus training; sometimes spars with Solomon Kade", "need_addressed": "bio_power_discipline", "interactable_by_player": true },
+      { "phase": "night", "phase_hours": [22, 6], "location": "bex_apartment", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "midtown_apartment_modest", "dwelling_type": "secure_apartment" },
+    "job": { "profession_id": "enforcer_intel_lead", "wage_per_diurnal_sparks": 320, "wage_source": "enforcers_movement_pooled" },
+    "apparel": ["enforcer_intel_uniform", "kinetic_dampening_undershirt", "soft_intel_office_shoes", "movement_jacket_with_intel_pin"],
+    "gear": ["bio_power_focus_amulet_intel_grade", "service_pistol", "intel_briefing_master_journal_locked", "encrypted_handheld"],
+    "resources_consumed": ["movement_provisions", "encrypted_comms_credits"],
+    "resources_produced": ["intel_briefings", "threat_routing"],
+    "inventory": [{ "item": "bio_power_focus_amulet_intel_grade", "qty": 1 }, { "item": "service_pistol", "qty": 1 }, { "item": "intel_briefing_master_journal_locked", "qty": 1 }, { "item": "movement_token", "qty": 36 }],
+    "starting_sparks": 5200
   },
   {
     "id": "luminary_vesper",
@@ -301,7 +337,26 @@
       "afternoon": "socialize",
       "dusk": "rest",
       "night": "rest"
-    }
+    },
+    "needs": [
+      { "id": "corporate_dominance", "priority": "primary", "satisfaction_method": "morning_executive_board" },
+      { "id": "political_leverage", "priority": "primary", "satisfaction_method": "weekly_vale_off_books_meeting" }
+    ],
+    "daily_schedule": [
+      { "phase": "morning", "phase_hours": [7, 12], "location": "luminary_industries_executive_floor", "activity": "morning executive board; reviews corporate strategy", "need_addressed": "corporate_dominance", "interactable_by_player": true },
+      { "phase": "midday", "phase_hours": [12, 14], "location": "luminary_industries_executive_dining", "activity": "lunch with senior board", "need_addressed": "corporate_dominance", "interactable_by_player": true },
+      { "phase": "afternoon", "phase_hours": [14, 18], "location": "luminary_industries", "activity": "afternoon strategic planning", "need_addressed": "corporate_dominance", "interactable_by_player": true },
+      { "phase": "evening", "phase_hours": [18, 22], "location": "luminary_industries_executive_dining", "activity": "weekly off-books meeting with Commander Vale", "need_addressed": "political_leverage", "interactable_by_player": true },
+      { "phase": "night", "phase_hours": [22, 7], "location": "vesper_penthouse", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "luminary_industries_penthouse", "dwelling_type": "corporate_penthouse_above_HQ" },
+    "job": { "profession_id": "luminary_ceo", "wage_per_diurnal_sparks": 4400, "wage_source": "luminary_industries_executive_total_comp" },
+    "apparel": ["tailored_executive_suit", "plasma_lined_dress_shoes", "wrist_chrono_executive", "winter_overcoat_with_luminary_pin"],
+    "gear": ["bio_power_focus_amulet_plasma_grade", "personal_vale_off_books_journal_locked", "executive_ID_master", "encrypted_handheld_executive"],
+    "resources_consumed": ["corporate_provisions"],
+    "resources_produced": ["luminary_strategic_decisions", "off_books_political_leverage"],
+    "inventory": [{ "item": "bio_power_focus_amulet_plasma_grade", "qty": 1 }, { "item": "personal_vale_off_books_journal_locked", "qty": 1 }, { "item": "executive_ID_master", "qty": 1 }, { "item": "encrypted_handheld_executive", "qty": 1 }, { "item": "luminary_credit", "qty": 200 }],
+    "starting_sparks": 320000
   },
   {
     "id": "marcus_holloway",
@@ -380,7 +435,25 @@
       "afternoon": "socialize",
       "dusk": "rest",
       "night": "rest"
-    }
+    },
+    "needs": [
+      { "id": "cartel_lieutenant_loyalty", "priority": "primary", "satisfaction_method": "morning_district_visit" },
+      { "id": "kade_negotiation_secret", "priority": "primary", "satisfaction_method": "evening_secret_meetings" }
+    ],
+    "daily_schedule": [
+      { "phase": "morning", "phase_hours": [8, 12], "location": "marcus_district_office", "activity": "morning lieutenant meetings; district operations", "need_addressed": "cartel_lieutenant_loyalty", "interactable_by_player": true },
+      { "phase": "afternoon", "phase_hours": [14, 19], "location": "varies", "activity": "afternoon — district visits, dispute mediation", "need_addressed": "cartel_lieutenant_loyalty", "interactable_by_player": true },
+      { "phase": "evening", "phase_hours": [19, 22], "location": "rotating_secret_meeting_with_kade", "activity": "secret negotiation with Solomon Kade", "need_addressed": "kade_negotiation_secret", "interactable_by_player": false },
+      { "phase": "night", "phase_hours": [22, 8], "location": "marcus_residence", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "crimson_spire_district", "dwelling_type": "high_security_penthouse" },
+    "job": { "profession_id": "criminal_super_lieutenant", "wage_per_diurnal_sparks": 1200, "wage_source": "cartel_district_share" },
+    "apparel": ["tailored_dark_business_suit", "shadow_lined_dress_shoes", "wide_belt_with_concealed_blade", "winter_overcoat_kinetic_lined"],
+    "gear": ["bio_power_focus_amulet_shadow_grade_subordinate", "concealed_smart_pistol", "personal_kade_negotiation_journal_subordinate_locked", "encrypted_handheld_for_cartel"],
+    "resources_consumed": ["cartel_provisioning"],
+    "resources_produced": ["district_operations", "kade_negotiation_progress"],
+    "inventory": [{ "item": "bio_power_focus_amulet_shadow_grade_subordinate", "qty": 1 }, { "item": "concealed_smart_pistol", "qty": 1 }, { "item": "personal_kade_negotiation_journal_subordinate_locked", "qty": 1 }, { "item": "spire_chit", "qty": 50 }],
+    "starting_sparks": 64000
   },
   {
     "id": "walker_bullet",
@@ -421,7 +494,21 @@
       "afternoon": "socialize",
       "dusk": "rest",
       "night": "rest"
-    }
+    },
+    "needs": [
+      { "id": "delivery_completion", "priority": "primary", "satisfaction_method": "scheduled_route_runs" }
+    ],
+    "daily_schedule": [
+      { "phase": "all_diurnal", "phase_hours": [1, 32], "location": "midtown_routes", "activity": "walks scheduled routes between Enforcer ops and the Movement HQ", "need_addressed": "delivery_completion", "interactable_by_player": true }
+    ],
+    "home": { "district": "midtown_routes_rotating", "dwelling_type": "the_routes_themselves" },
+    "job": { "profession_id": "autonomous_walker_superhero", "wage_per_diurnal_sparks": 0, "wage_source": "n/a" },
+    "apparel": ["walker_chassis_kinetic_lined"],
+    "gear": ["walker_payload_compartments", "movement_routing_token"],
+    "resources_consumed": [],
+    "resources_produced": ["scheduled_route_deliveries"],
+    "inventory": [{ "item": "movement_routing_token", "qty": 1 }],
+    "starting_sparks": 0
   },
   {
     "id": "enforcer_apex_solomon_kade",
