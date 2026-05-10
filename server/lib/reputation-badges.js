@@ -43,7 +43,36 @@ const TIER_TABLE = {
     { tier: "platinum", threshold: 100, label: "Studio" },
     { tier: "diamond",  threshold: 500, label: "Atelier" },
   ],
+  // Knowledge Entrepreneur — composite tier evaluated from a weighted
+  // combination of citations + downloads + listings + lineage. Distinct
+  // from the four single-axis ladders above so a creator who's strong
+  // across all axes earns a recognisable headline tier instead of a
+  // patchwork of single-axis badges.
+  //
+  // Score formula (computed inline below): `score = citationsReceived
+  // + downloads/10 + listings*5 + lineageDepth*20`. The weights mean a
+  // single citation is worth ten downloads, a single listing is worth
+  // five citations, and lineage depth is the strongest signal (a
+  // generational creator is rare).
+  knowledge_entrepreneur: [
+    { tier: "bronze",   threshold: 50,    label: "Knowledge Trader" },
+    { tier: "silver",   threshold: 250,   label: "Knowledge Operator" },
+    { tier: "gold",     threshold: 1000,  label: "Knowledge Entrepreneur" },
+    { tier: "platinum", threshold: 5000,  label: "Knowledge Magnate" },
+    { tier: "diamond",  threshold: 20000, label: "Knowledge Sovereign" },
+  ],
 };
+
+/**
+ * Composite knowledge-entrepreneur score. Weights chosen so the four
+ * underlying axes are commensurate at thresholds that feel earned:
+ * citations are the canonical signal (1× weight), downloads are noisier
+ * (1/10× weight), listings are work (5× weight), lineage depth is rare
+ * (20× weight).
+ */
+function computeKnowledgeEntrepreneurScore({ citationsReceived = 0, downloads = 0, listings = 0, lineageDepth = 0 }) {
+  return citationsReceived + (downloads / 10) + (listings * 5) + (lineageDepth * 20);
+}
 
 const _granted = new Map(); // userId -> Set<badgeKey>
 
@@ -62,11 +91,13 @@ export function evaluateBadges({ userId, citationsReceived = 0, downloads = 0, l
   const have = _granted.get(userId);
   const newly = [];
 
+  const keScore = computeKnowledgeEntrepreneurScore({ citationsReceived, downloads, listings, lineageDepth });
   const checks = [
-    ["citations_received", citationsReceived],
-    ["downloads",          downloads],
-    ["lineage_depth",      lineageDepth],
-    ["listings",           listings],
+    ["citations_received",     citationsReceived],
+    ["downloads",              downloads],
+    ["lineage_depth",          lineageDepth],
+    ["listings",               listings],
+    ["knowledge_entrepreneur", keScore],
   ];
   for (const [category, value] of checks) {
     for (const t of TIER_TABLE[category]) {

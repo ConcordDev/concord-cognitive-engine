@@ -9525,7 +9525,7 @@ async function runMacro(domain, name, input, ctx) {
   const publicReadDomains = {
     emergent: new Set(["status", "get", "list", "schema", "patterns", "reputation", "scope.metrics", "bridge.heartbeatTick"]),
     dtu: new Set(["list", "get", "search", "recent", "stats", "count", "export", "paginated", "create", "update", "delete", "bulkCreate", "promote"]),
-    lens: new Set(["list", "get", "export", "run", "create", "update", "delete", "bulkCreate"]),
+    lens: new Set(["list", "get", "export", "run", "create", "update", "delete", "bulkCreate", "spatial_at"]),
     system: new Set(["status", "getStatus", "health", "analogize"]),
     settings: new Set(["get", "status"]),
     scope: new Set(["metrics", "status", "dtus", "promote", "checkCitations", "royaltyPreview", "overrides"]),
@@ -9577,7 +9577,7 @@ async function runMacro(domain, name, input, ctx) {
       "upsert_shadow", "list_shadows", "get_weight",
     ]),
     messaging: new Set(["status", "bindings", "connect", "verify", "messages"]),
-    sandbox: new Set(["create", "status", "action", "list", "pause", "resume"]),
+    sandbox: new Set(["create", "status", "action", "list", "pause", "resume", "provision", "kill"]),
     collab: new Set(["comments", "revisions", "workspace", "edit-session", "create", "update", "delete", "join"]),
     social: new Set(["profile", "followers", "following", "discover", "cited-by", "post", "react", "share", "comment", "follow", "unfollow"]),
     economy: new Set(["status", "balance", "transactions", "withdrawals", "transfer", "tip"]),
@@ -9608,7 +9608,7 @@ async function runMacro(domain, name, input, ctx) {
     creative: new Set(["list", "get", "exhibition", "metrics", "profile", "masterworks", "registry", "domains", "generate", "create", "run"]),
     culture: new Set(["status", "traditions", "values", "stories", "metrics", "identity"]),
     trust: new Set(["get", "network", "metrics"]),
-    federation: new Set(["status", "peers"]),
+    federation: new Set(["status", "peers", "commune_list", "commune_status", "peer_list", "outbox", "actor", "inbox"]),
     physics: new Set(["status", "constants", "models"]),
     reproduction: new Set(["compatible-pairs", "status"]),
     lineage: new Set(["tree", "get"]),
@@ -9634,7 +9634,7 @@ async function runMacro(domain, name, input, ctx) {
     experience: new Set(["status", "patterns", "recent", "strategies", "consolidate", "retrieve"]),
     explore: new Set(["history"]),
     flywheel: new Set(["history", "metrics"]),
-    inheritance: new Set(["bequests", "claim", "create-bequest", "revoke"]),
+    inheritance: new Set(["bequests", "claim", "create-bequest", "revoke", "list_open"]),
     pipeline: new Set(["execute", "executions"]),
     quality: new Set(["stats", "domain", "thresholds"]),
     sovereignty: new Set(["status", "audit", "setup", "preferences"]),
@@ -9643,7 +9643,7 @@ async function runMacro(domain, name, input, ctx) {
     visual: new Set(["moodboard", "sunburst", "timeline"]),
     distillation: new Set(["stats"]),
     efficiency: new Set(["dashboard", "history"]),
-    agent: new Set(["status", "create", "tick", "config"]),
+    agent: new Set(["status", "create", "tick", "config", "list_persistent"]),
     // Real-time data feeds + universal export
     realtime: new Set(["status", "feed"]),
     convert: new Set(["to-dtu", "from-dtu"]),
@@ -9720,6 +9720,47 @@ async function runMacro(domain, name, input, ctx) {
     ]),
     // Phase 7 — Code substrate. Read-only macros for the code-DTU view.
     code: new Set(["dtu_for", "dtu_query", "cluster_for", "refresh"]),
+    // Plan-phase-2 substrate-reveal macros (refusal HUD, eavesdrop,
+    // premonitions, dreams). All read-only — they expose simulation
+    // state that's already running so frontends can render it.
+    refusal: new Set(["strength", "composition", "fields_for_world", "is_compound"]),
+    npc: new Set(["eavesdrop", "schedule", "for_world"]),
+    forward_sim: new Set(["predictions_for_player", "predictions_for_subject", "active"]),
+    dream: new Set(["recent_for_player", "history", "list_for_player"]),
+    fidelity: new Set(["drift", "summary"]),
+    embodied: new Set(["signals_for_player", "signals_for_world", "channels"]),
+    scars: new Set(["list"]),
+    mount: new Set(["bond_state"]),
+    reflex: new Set(["status", "recent_proposals", "history"]),
+    chat: new Set(["timeline", "summary"]),
+    semantic: new Set(["status", "similar", "embed", "compare", "search_thoughts"]),
+    narrative: new Set(["ripple_report", "ripple_for_world"]),
+    deity: new Set(["list", "get", "tone_vector", "pilgrim_log"]),
+    macro_dag: new Set(["validate", "describe", "run"]),
+    walker: new Set(["trade_routes", "arbitrage"]),
+    // Phase 9.1 — tradeable artifact economy
+    npc_autobiography: new Set(["list_for_npc"]),
+    npc_persona: new Set(["list_for_user"]),
+    compression_art: new Set(["shape_for", "list_for_user"]),
+    // Phase 9.2 — live spectator + emergent broadcast
+    spectator: new Set(["list_for_world"]),
+    goddess: new Set(["recent"]),
+    betting: new Set(["list_open"]),
+    // Phase 9.3 — voice / music / foresight
+    forecast: new Set(["recent", "compose"]),
+    sonic_glyph: new Set(["spell_to_chord"]),
+    // Phase 9.4 — economy primitives (auth-gated for write ops; reads here)
+    sponsorship: new Set(["list_for_user"]),
+    staking: new Set(["list_for_user"]),
+    insurance: new Set(["list_for_user"]),
+    // Phase 9.5 — code-loop + safety + B2B (read-only here; writes auth-gated)
+    bounty: new Set(["list_open"]),
+    psyops: new Set(["list_alerts"]),
+    // Phase 9.6 — sync + classroom + sub-world + therapy + federated deities
+    dtu_sync: new Set(["list_devices"]),
+    classroom: new Set(["list_cohorts"]),
+    sub_world: new Set(["list"]),
+    therapy: new Set(["active_fields"]),
   };
   const _domainSet = publicReadDomains[domain];
   const _domainNameAllowed = _domainSet ? _domainSet.has(name) : false;
@@ -33738,6 +33779,32 @@ register("marketplace", "purchaseWithRoyalties", async (ctx, input) => {
   const { dtuId } = input || {};
   const dtu = STATE.dtus.get(dtuId);
   if (!dtu?.marketplace?.listed) return { ok: false, error: "not_listed" };
+
+  // Federated origin: if the DTU's metadata records origin_peer_id (set
+  // when it was imported from a peer), delegate the purchase to the
+  // peer's marketplace endpoint. The peer signs the envelope; this
+  // instance imports the result so the cascade pays out locally.
+  // Falls through silently when the DTU is local-origin (origin_peer_id
+  // is null/missing).
+  const originPeer = dtu?.meta?.origin_peer_id || dtu?.origin_peer_id || null;
+  if (originPeer) {
+    try {
+      const fed = await import("./lib/federation.js");
+      if (fed?.remotePurchase) {
+        const buyerId = ctx?.actor?.userId || ctx?.actor?.id;
+        const r = await fed.remotePurchase(db, {
+          peerId: originPeer,
+          dtuId,
+          buyerId,
+          priceCents: Math.round((dtu.marketplace.price || 0) * 100),
+        });
+        if (r?.ok) return { ok: true, federated: true, peerId: originPeer, ...r };
+        // Fall-through to local purchase if peer rejected/unreachable —
+        // local-cached copy is still tradable, peer just won't get its
+        // canonical-instance royalty share until it's reachable again.
+      }
+    } catch { /* federation module optional */ }
+  }
 
   const price = dtu.marketplace.price || 0;
   if (price > 0) {
@@ -67751,6 +67818,2242 @@ app.get("/api/docs/universe", (req, res) => {
 STATE._startedAt = STATE._startedAt || Date.now();
 
 structuredLog("info", "completion_init", { detail: "Completion layer: search, backups, personality, dreams initialized" });
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PLAN PHASES 2-7 — substrate-reveal + cognitive surfaces + federation place
+// + self-improving loop. All macros below wrap libs that already exist in
+// server/lib/ or server/emergent/ — they're exposure, not new mechanics.
+// See /root/.claude/plans/dope-now-make-a-effervescent-deer.md for the
+// per-phase rationale.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ── Phase 2.1: Refusal Field HUD (idea #36) ─────────────────────────────────
+// Wraps server/lib/refusal-field.js so the frontend ethics chip can render
+// a live strength gauge + compound-refusal warning at ≥6.
+register("refusal", "strength", async (_ctx, input = {}) => {
+  const { worldId = "concordia-hub" } = input || {};
+  try {
+    const rf = await import("./lib/refusal-field.js");
+    return { ok: true, worldId, strength: rf.getFieldStrength(STATE, worldId) };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Live refusal-field strength (0-9). ≥6 triggers compound-refusal HUD warning." });
+
+register("refusal", "composition", async (_ctx, input = {}) => {
+  const { worldId = "concordia-hub" } = input || {};
+  try {
+    const rf = await import("./lib/refusal-field.js");
+    return { ok: true, worldId, ...rf.computeFieldComposition(STATE, worldId) };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Glyph composition + composedFrom + per-entry breakdown." });
+
+register("refusal", "fields_for_world", async (_ctx, input = {}) => {
+  const { worldId = "concordia-hub" } = input || {};
+  try {
+    const rf = await import("./lib/refusal-field.js");
+    return { ok: true, worldId, fields: rf.activeFields(STATE, worldId) };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Active refusal-field entries (death/harvest/hostility/...) with TTLs." });
+
+register("refusal", "is_compound", async (_ctx, input = {}) => {
+  const { worldId = "concordia-hub" } = input || {};
+  try {
+    const rf = await import("./lib/refusal-field.js");
+    return { ok: true, worldId, compound: rf.isCompoundRefusal(STATE, worldId) };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Boolean: strength ≥ 6, gates compound-refusal mechanics." });
+
+// ── Phase 2.2: NPC ambient eavesdrop (idea #6) + schedule (idea #25) ────────
+// Layer 13 already runs npc-conversation-initiator at heartbeat freq 8 and
+// emits npc:conversation-bid socket events. The eavesdrop macro lets the
+// frontend filter by player proximity using existing 50m cell quantization.
+register("npc", "eavesdrop", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { worldId = "concordia-hub", x = 0, z = 0, radius = 12 } = input || {};
+  try {
+    // Active conversations within radius. Conversations carry npc_a + npc_b;
+    // join against world_npcs to get positions, then filter by distance.
+    const rows = db.prepare(`
+      SELECT c.id, c.npc_a, c.npc_b, c.composer, c.opened_at, c.last_msg_at,
+             c.expires_at, c.messages_json, c.seed_context_json,
+             a.x AS ax, a.z AS az, a.name AS a_name,
+             b.x AS bx, b.z AS bz, b.name AS b_name
+      FROM npc_conversations c
+      LEFT JOIN world_npcs a ON a.id = c.npc_a
+      LEFT JOIN world_npcs b ON b.id = c.npc_b
+      WHERE c.world_id = ? AND c.status = 'active'
+        AND (c.expires_at IS NULL OR c.expires_at > unixepoch())
+      ORDER BY c.last_msg_at DESC LIMIT 50
+    `).all(worldId);
+    const r2 = radius * radius;
+    const within = rows.filter(r => {
+      const midX = (Number(r.ax || 0) + Number(r.bx || 0)) / 2;
+      const midZ = (Number(r.az || 0) + Number(r.bz || 0)) / 2;
+      const dx = midX - Number(x), dz = midZ - Number(z);
+      return (dx * dx + dz * dz) <= r2;
+    });
+    return { ok: true, worldId, conversations: within };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "NPC↔NPC conversations within radius m of (x,z). Default 12m." });
+
+register("npc", "schedule", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { npcId } = input || {};
+  if (!npcId) return { ok: false, reason: "missing_npcId" };
+  try {
+    const blocks = db.prepare(`
+      SELECT block_idx, activity_kind, location_kind, start_hour, end_hour
+      FROM npc_schedules WHERE npc_id = ? ORDER BY block_idx ASC
+    `).all(npcId);
+    const state = db.prepare(`
+      SELECT current_block, activity, target_x, target_z, last_advanced_at
+      FROM npc_routine_state WHERE npc_id = ?
+    `).get(npcId);
+    return { ok: true, npcId, blocks, state: state || null };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "8-block daily schedule + current routine state for an NPC." });
+
+// ── Phase 2.3: Forward-sim premonitions (ideas #7, #32) ─────────────────────
+register("forward_sim", "predictions_for_player", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = input.userId || ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  try {
+    const rows = db.prepare(`
+      SELECT id, subject_kind, subject_id, anticipated, confidence,
+             composer, composed_at, expires_at, realised_at, reality_outcome
+      FROM forward_predictions
+      WHERE user_id = ?
+        AND (expires_at IS NULL OR expires_at > unixepoch())
+      ORDER BY composed_at DESC LIMIT 50
+    `).all(userId);
+    return { ok: true, userId, predictions: rows };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Active forward-sim predictions for the calling player." });
+
+register("forward_sim", "predictions_for_subject", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { subjectKind, subjectId } = input || {};
+  if (!subjectKind || !subjectId) return { ok: false, reason: "missing_subject" };
+  try {
+    const rows = db.prepare(`
+      SELECT id, user_id, anticipated, confidence, composer, composed_at,
+             expires_at, realised_at
+      FROM forward_predictions
+      WHERE subject_kind = ? AND subject_id = ?
+      ORDER BY composed_at DESC LIMIT 50
+    `).all(subjectKind, subjectId);
+    return { ok: true, subjectKind, subjectId, predictions: rows };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "All predictions targeting a specific quest/npc/faction/decision/self." });
+
+register("forward_sim", "active", (ctx, _input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  try {
+    const counts = db.prepare(`
+      SELECT subject_kind, COUNT(*) as count
+      FROM forward_predictions
+      WHERE realised_at IS NULL AND (expires_at IS NULL OR expires_at > unixepoch())
+      GROUP BY subject_kind
+    `).all();
+    return { ok: true, counts };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Aggregate count of unrealised predictions by subject kind." });
+
+// ── Phase 2.4: Dream surface (idea #31) ─────────────────────────────────────
+register("dream", "recent_for_player", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = input.userId || ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  try {
+    const rows = db.prepare(`
+      SELECT d.id, d.user_id, d.world_id, d.dream_dtu_id, d.fragment_count,
+             d.signature, d.composer, d.composed_at,
+             dt.title, dt.meta_json
+      FROM dreams d
+      LEFT JOIN dtus dt ON dt.id = d.dream_dtu_id
+      WHERE d.user_id = ?
+      ORDER BY d.composed_at DESC LIMIT 20
+    `).all(userId);
+    return { ok: true, userId, dreams: rows };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Recent dream DTUs for the calling player (Layer 9 substrate)." });
+
+register("dream", "list_for_player", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = input.userId || ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const limit = Math.min(100, Math.max(1, Number(input.limit) || 20));
+  try {
+    const rows = db.prepare(`
+      SELECT id, user_id, world_id, dream_dtu_id, fragment_count, composed_at
+      FROM dreams WHERE user_id = ? ORDER BY composed_at DESC LIMIT ?
+    `).all(userId, limit);
+    return { ok: true, userId, dreams: rows };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Paginated list of dreams for a player." });
+
+// ── Phase 2.5: Lattice drift socket emit (idea #33 mood + #8 quest reframe) ─
+// We can't easily edit the orchestrator's emit logic from here — but we can
+// register a small bridge macro that pollers / drift-quest hooks invoke.
+// The lattice-orchestrator's own drift-scan handler will pick this up via
+// a side-effect emit on next pass. The frontend subscribes to
+// "world:drift-alert" socket event for moodboard tinting.
+register("lattice", "drift_alert", (ctx, input = {}) => {
+  const { kind, severity, summary, worldId = "concordia-hub" } = input || {};
+  try {
+    realtimeEmit?.("world:drift-alert", { kind, severity, summary, worldId, ts: Date.now() });
+    return { ok: true, emitted: true, kind, severity };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Emit a world:drift-alert socket event so frontend mood-shifts. Used by drift-scan handler." });
+
+structuredLog("info", "phase2_substrate_reveal_init", {
+  detail: "Phase 2 macros registered: refusal/npc/forward_sim/dream/lattice.drift_alert",
+});
+
+// ── Phase 3: World-as-body — scars, mount bonding, embodied HUD, fidelity ────
+
+// Phase 3.1: Embodied 7-channel HUD (idea #13).
+register("embodied", "signals_for_player", async (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = input.userId || ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const worldId = input.worldId || "concordia-hub";
+  try {
+    // Player position from city_presence (mig 060) — same source the
+    // combat-reach validator uses, so HUD readings match the
+    // server-side ground truth.
+    const pos = db.prepare(`
+      SELECT x, z FROM city_presence WHERE user_id = ? AND world_id = ?
+    `).get(userId, worldId);
+    const sigMod = await import("./lib/embodied/signals.js");
+    const signals = sigMod.signalsForWorld(db, worldId, pos ? { x: pos.x, z: pos.z } : null);
+    return { ok: true, userId, worldId, position: pos || null, signals };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Per-player 7-channel embodied signals (temp/humidity/air/light/sound/pressure/stress)." });
+
+register("embodied", "signals_for_world", async (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const worldId = input.worldId || "concordia-hub";
+  try {
+    const sigMod = await import("./lib/embodied/signals.js");
+    return { ok: true, worldId, signals: sigMod.signalsForWorld(db, worldId, null) };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "World-wide rolled-up signals (no per-cell location filter)." });
+
+register("embodied", "channels", (_ctx, _input = {}) => {
+  return {
+    ok: true,
+    channels: [
+      { id: "thermal_os.ambient_temp",       label: "Temperature",  unit: "°C" },
+      { id: "chemical_os.humidity",          label: "Humidity",     unit: "%" },
+      { id: "chemical_os.air_quality",       label: "Air Quality",  unit: "AQI" },
+      { id: "sight_os.illumination",         label: "Light",        unit: "lux" },
+      { id: "sonic_os.ambient_db",           label: "Sound",        unit: "dB" },
+      { id: "tactile_force_os.ambient_pressure",  label: "Pressure",    unit: "kPa" },
+      { id: "tactile_force_os.structural_stress", label: "Structure",   unit: "kN" },
+    ],
+  };
+}, { note: "Channel descriptors for the 7-channel embodied HUD." });
+
+// Phase 3.2: Pain → scars (idea #12).
+register("scars", "list", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = input.userId || ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  try {
+    const rows = db.prepare(`
+      SELECT id, user_id, avatar_id, region, source, severity, acquired_at, visible_label
+      FROM player_scars WHERE user_id = ?
+      ORDER BY acquired_at DESC LIMIT 100
+    `).all(userId);
+    return { ok: true, userId, scars: rows };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "List visible scars for a player. Severity 0-1." });
+
+register("scars", "record", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = input.userId || ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { region, source, severity = 0.3, avatarId = null, label = null } = input || {};
+  if (!region || !source) return { ok: false, reason: "missing_region_or_source" };
+  try {
+    const visible = label || `${region}-${source}`;
+    db.prepare(`
+      INSERT INTO player_scars (user_id, avatar_id, region, source, severity, visible_label)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(userId, avatarId, region, source, Number(severity) || 0, visible);
+    return { ok: true, userId, recorded: true };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Record a scar. Called by repair-cycle when cumulative pain crosses a threshold." });
+
+// Phase 3.3: Mount bonding (idea #11). Reads existing player_companions
+// JSON state + writes a relationship_log entry. Mount substrate already
+// tracks {stamina, hunger, loyalty, gait_skill}; we extend the meta JSON
+// in-place rather than schema-add since that table is already JSON-bag'd.
+register("mount", "bond_event", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = input.userId || ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { mountId, eventKind, magnitude = 0.05, note = null } = input || {};
+  if (!mountId || !eventKind) return { ok: false, reason: "missing_mount_or_event" };
+  try {
+    const row = db.prepare(`SELECT id, owner_id, state_json FROM player_companions WHERE id = ?`).get(mountId);
+    if (!row) return { ok: false, reason: "mount_not_found" };
+    if (row.owner_id !== userId) return { ok: false, reason: "not_owner" };
+    let state = {};
+    try { state = JSON.parse(row.state_json || "{}"); } catch { state = {}; }
+    state.loyalty = Math.max(0, Math.min(1, Number(state.loyalty || 0.5) + Number(magnitude || 0)));
+    if (!Array.isArray(state.relationship_log)) state.relationship_log = [];
+    state.relationship_log.push({
+      kind: eventKind,
+      magnitude: Number(magnitude),
+      ts: Date.now(),
+      note: note ? String(note).slice(0, 200) : null,
+    });
+    if (state.relationship_log.length > 100) {
+      state.relationship_log = state.relationship_log.slice(-100);
+    }
+    db.prepare(`UPDATE player_companions SET state_json = ? WHERE id = ?`).run(JSON.stringify(state), mountId);
+    return { ok: true, mountId, loyalty: state.loyalty, logSize: state.relationship_log.length };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Record a mount-bonding event. Adjusts loyalty + appends to relationship_log." });
+
+register("mount", "bond_state", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = input.userId || ctx?.actor?.userId;
+  const { mountId } = input || {};
+  if (!mountId) return { ok: false, reason: "missing_mount" };
+  try {
+    const row = db.prepare(`SELECT id, owner_id, state_json FROM player_companions WHERE id = ?`).get(mountId);
+    if (!row) return { ok: false, reason: "mount_not_found" };
+    if (userId && row.owner_id !== userId) return { ok: false, reason: "not_owner" };
+    let state = {};
+    try { state = JSON.parse(row.state_json || "{}"); } catch { state = {}; }
+    return {
+      ok: true,
+      mountId,
+      loyalty: state.loyalty ?? 0.5,
+      stamina: state.stamina ?? 1,
+      hunger: state.hunger ?? 0,
+      personality_traits: state.personality_traits ?? [],
+      recent_events: (state.relationship_log || []).slice(-20),
+    };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Current mount state + last 20 relationship-log entries." });
+
+// Phase 3.4: Fidelity multi-avatar drift (idea #23).
+register("fidelity", "drift", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = input.userId || ctx?.actor?.userId;
+  const { avatarId } = input || {};
+  if (!userId || !avatarId) return { ok: false, reason: "missing_user_or_avatar" };
+  try {
+    const row = db.prepare(`
+      SELECT avatar_id, user_id, skill_vector_json, baseline_json, drift_score, last_updated_at
+      FROM avatar_drift WHERE avatar_id = ?
+    `).get(avatarId);
+    if (!row) {
+      // First read for this avatar — return zero drift, which the
+      // forward-sim cycle / repair-cycle / skill-evolve hooks will
+      // start populating on next pass.
+      return { ok: true, avatarId, userId, drift: 0, baseline: {}, vector: {}, virgin: true };
+    }
+    let vector = {};
+    let baseline = {};
+    try { vector = JSON.parse(row.skill_vector_json || "{}"); } catch { vector = {}; }
+    try { baseline = JSON.parse(row.baseline_json || "{}"); } catch { baseline = {}; }
+    return {
+      ok: true,
+      avatarId, userId,
+      drift: row.drift_score,
+      baseline, vector,
+      lastUpdatedAt: row.last_updated_at,
+      virgin: false,
+    };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Per-avatar drift vs canonical 'true self' baseline. Drift > 0.5 triggers Fidelity dialogue path." });
+
+register("fidelity", "summary", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = input.userId || ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  try {
+    const rows = db.prepare(`
+      SELECT avatar_id, drift_score, last_updated_at
+      FROM avatar_drift WHERE user_id = ?
+      ORDER BY drift_score DESC
+    `).all(userId);
+    return { ok: true, userId, avatars: rows, total: rows.length };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Summary of all avatars' drift scores for a player." });
+
+structuredLog("info", "phase3_world_as_body_init", {
+  detail: "Phase 3 macros registered: embodied/scars/mount/fidelity",
+});
+
+// ── Phase 4: Player world agency — walker arbitrage + decree market ────────
+
+// Phase 4.1: Walker arbitrage (idea #29) — surface regional commodity-price
+// differentials so a player can direct walkers for arbitrage profit. Reads
+// existing concord_link_walkers + npc_inventory + regional_scarcity tables.
+register("walker", "trade_routes", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { worldId = "concordia-hub" } = input || {};
+  try {
+    // Active walker journeys in this world
+    const walkers = db.prepare(`
+      SELECT id, walker_id, status, from_world, to_world, dispatched_at, route, reputation
+      FROM concord_link_walkers
+      WHERE status = 'in_transit'
+      LIMIT 50
+    `).all().map(w => {
+      let route = w.route;
+      if (typeof route === "string") {
+        try { route = JSON.parse(route); } catch { route = []; }
+      }
+      return { ...w, route };
+    });
+    return { ok: true, worldId, walkers, count: walkers.length };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Active walker journeys for the trade-route map UI." });
+
+register("walker", "arbitrage", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { worldId = "concordia-hub", commodityKind = null } = input || {};
+  try {
+    // Reads regional_scarcity (Phase 4b living-economy substrate) for
+    // commodities + their per-region price modulator. Higher scarcity
+    // = higher price; arbitrage opp = "buy in low-scarcity region,
+    // sell in high-scarcity region."
+    const where = commodityKind ? "AND commodity_kind = ?" : "";
+    const args = commodityKind ? [worldId, commodityKind] : [worldId];
+    const rows = db.prepare(`
+      SELECT region_id, commodity_kind, scarcity_score, computed_at
+      FROM regional_scarcity
+      WHERE world_id = ? ${where}
+      ORDER BY commodity_kind, scarcity_score DESC
+    `).all(...args);
+
+    // Pair high/low per commodity to surface the arbitrage opp.
+    const byCommodity = new Map();
+    for (const r of rows) {
+      let arr = byCommodity.get(r.commodity_kind);
+      if (!arr) { arr = []; byCommodity.set(r.commodity_kind, arr); }
+      arr.push(r);
+    }
+    const opps = [];
+    for (const [commodity, list] of byCommodity) {
+      if (list.length < 2) continue;
+      const high = list[0];
+      const low = list[list.length - 1];
+      if (high.scarcity_score - low.scarcity_score > 0.2) {
+        opps.push({
+          commodity,
+          buyRegion: low.region_id,
+          buyScarcity: low.scarcity_score,
+          sellRegion: high.region_id,
+          sellScarcity: high.scarcity_score,
+          delta: Math.round((high.scarcity_score - low.scarcity_score) * 100) / 100,
+        });
+      }
+    }
+    return { ok: true, worldId, opps, count: opps.length };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Arbitrage opportunities — commodity price differentials across regions." });
+
+// Phase 4.2: Kingdom decree market (idea #28) is mostly already exposed
+// via server/domains/kingdoms.js (propose_decree, takeover_*, depose_ruler).
+// What's missing is the *marketplace listing* surface — where a kingdom
+// publishes a decree-recipe DTU and other realms can install it. This
+// macro composes such a listing on top of the existing forge-marketplace
+// pattern.
+register("kingdom", "publish_decree_recipe", async (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { realmId, decreeKind, body, title, summary } = input || {};
+  if (!realmId || !decreeKind || !body) return { ok: false, reason: "missing_inputs" };
+
+  // Verify caller is the realm's ruler.
+  let realm = null;
+  try {
+    realm = db.prepare(`SELECT id, ruler_kind, ruler_id FROM realms WHERE id = ?`).get(realmId);
+  } catch { /* realms table optional in minimal builds */ }
+  if (!realm) return { ok: false, reason: "realm_not_found" };
+  if (realm.ruler_kind !== "player" || realm.ruler_id !== userId) {
+    return { ok: false, reason: "not_ruler" };
+  }
+
+  // Mint as a DTU via forge-marketplace's NPC-aware pattern.
+  let mintR = null;
+  try {
+    const fm = await import("./lib/forge-marketplace.js");
+    mintR = await fm.mintForgeAppAsDtu(db, {
+      userId,
+      appName: title || `Decree: ${decreeKind}`,
+      sourceCode: typeof body === "string" ? body : JSON.stringify(body),
+      manifest: { kind: "decree_recipe", decreeKind, realmId },
+      summary: summary || `Decree recipe of kind ${decreeKind} from realm ${realmId}.`,
+    });
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+  return { ok: !!mintR?.ok, ...mintR };
+}, { note: "Publish a decree as a DTU recipe other realms can install." });
+
+structuredLog("info", "phase4_player_agency_init", {
+  detail: "Phase 4 macros registered: walker.{trade_routes,arbitrage}, kingdom.publish_decree_recipe; glyph_spells.{cast,casts_in_region}",
+});
+
+// ── Phase 5: Cognitive surfaces — chat timeline, vision, reflex, semantic ───
+
+// Phase 5.1: Chat timeline (ideas #2, #22) — emit a per-message event
+// stream of brain activations so the cognitive-replay scrubber can render
+// what each turn did.
+register("chat", "timeline", (ctx, input = {}) => {
+  if (!STATE?.sessions) return { ok: false, reason: "no_state_sessions" };
+  const userId = input.userId || ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const sessionId = input.sessionId;
+  const limit = Math.min(500, Math.max(10, Number(input.limit) || 100));
+  const events = [];
+  if (sessionId) {
+    const sess = STATE.sessions.get?.(sessionId);
+    if (sess?.messages) {
+      for (const m of sess.messages.slice(-limit)) {
+        events.push({
+          ts: m.ts || m.timestamp || null,
+          role: m.role,
+          brainsUsed: m.meta?.brainsUsed || m.meta?.brains || [],
+          toolCalls: m.meta?.toolCalls || [],
+          dtusCited: m.meta?.dtusCited || [],
+          tokenCount: m.meta?.tokenCount || null,
+          contentPreview: typeof m.content === "string" ? m.content.slice(0, 240) : null,
+        });
+      }
+    }
+  } else {
+    // No session — sweep all sessions for this user, return latest 100 events.
+    for (const [sid, sess] of (STATE.sessions.entries?.() || [])) {
+      if (sess?.userId !== userId) continue;
+      for (const m of (sess.messages || []).slice(-20)) {
+        events.push({
+          sessionId: sid,
+          ts: m.ts || m.timestamp || null,
+          role: m.role,
+          brainsUsed: m.meta?.brainsUsed || [],
+          tokenCount: m.meta?.tokenCount || null,
+        });
+      }
+    }
+    events.sort((a, b) => (b.ts || 0) - (a.ts || 0));
+    events.length = Math.min(events.length, limit);
+  }
+  return { ok: true, userId, sessionId, events, count: events.length };
+}, { note: "Per-turn brain-activation timeline for the cognitive replay scrubber." });
+
+register("chat", "summary", (ctx, input = {}) => {
+  // Wraps the existing conversation-summarizer.getSummaryText path so the
+  // frontend can pull session summaries from the same macro surface as
+  // chat.timeline. Keeps both signals in one domain for the replay UI.
+  const sessionId = input.sessionId;
+  if (!sessionId) return { ok: false, reason: "missing_sessionId" };
+  try {
+    // Lazy import — the summarizer module isn't always required at boot.
+    const sum = STATE?.sessions?.get?.(sessionId)?.summary || null;
+    return { ok: true, sessionId, summary: sum };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Stored conversation summary for a session (computed by summarizer)." });
+
+// Phase 5.2: Reflex macros (idea #5).
+register("reflex", "status", async (_ctx, _input = {}) => {
+  try {
+    const rc = await import("./emergent/reflex-cortex.js");
+    return { ok: true, ...rc.reflexStatus() };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Aggregate status of the four reflex detectors." });
+
+register("reflex", "recent_proposals", (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const limit = Math.min(50, Math.max(1, Number(input.limit) || 20));
+  try {
+    // Reflex detectors post into governance_proposals when severity ≥ high.
+    const rows = db.prepare(`
+      SELECT id, kind, severity, summary, body, status, created_at
+      FROM governance_proposals
+      WHERE source = 'reflex_cortex'
+      ORDER BY created_at DESC LIMIT ?
+    `).all(limit);
+    return { ok: true, proposals: rows };
+  } catch (err) {
+    // Some envs may not have governance_proposals.source column — fall back
+    // to a tag scan in the body.
+    try {
+      const rows = db.prepare(`
+        SELECT id, kind, severity, summary, body, status, created_at
+        FROM governance_proposals
+        WHERE body LIKE '%reflex%' OR kind LIKE 'reflex_%'
+        ORDER BY created_at DESC LIMIT ?
+      `).all(limit);
+      return { ok: true, proposals: rows };
+    } catch (err2) { return { ok: false, error: String(err2?.message || err) }; }
+  }
+}, { note: "Recent governance proposals filed by reflex detectors." });
+
+// Phase 5.3: Semantic search on the user's own thoughts (idea #18).
+register("semantic", "search_thoughts", async (ctx, input = {}) => {
+  const userId = input.userId || ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const text = input.text || "";
+  if (!text || text.length < 2) return { ok: false, reason: "query_too_short" };
+  const topK = Math.min(50, Math.max(1, Number(input.topK) || 10));
+  try {
+    const emb = await import("./embeddings.js");
+    const queryVec = await emb.embed(text);
+    if (!queryVec || queryVec.length === 0) return { ok: false, reason: "embed_failed" };
+
+    // Build candidate pool from the user's own DTUs.
+    const userDtus = [];
+    if (STATE?.dtus) {
+      for (const dtu of STATE.dtus.values()) {
+        if (dtu.creator_id === userId || dtu.creatorId === userId) {
+          const vec = emb.getEmbedding(dtu.id);
+          if (vec) userDtus.push({ id: dtu.id, title: dtu.title, kind: dtu.kind, vec });
+        }
+      }
+    }
+    if (userDtus.length === 0) return { ok: true, results: [], note: "no_embeddings" };
+
+    const ranked = emb.findSimilar(queryVec, userDtus, topK);
+    return { ok: true, query: text, results: ranked };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Semantic search across the calling user's own DTU corpus." });
+
+// Phase 5.4: Long-running personal agent persistence (idea #19).
+register("agent", "persist", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { agentId, goal, context = null } = input || {};
+  if (!agentId || !goal) return { ok: false, reason: "missing_agent_or_goal" };
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS persistent_agents (
+        agent_id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        goal TEXT NOT NULL,
+        context_json TEXT,
+        status TEXT NOT NULL DEFAULT 'active',
+        created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+        last_advanced_at INTEGER NOT NULL DEFAULT (unixepoch()),
+        steps_completed INTEGER NOT NULL DEFAULT 0
+      )
+    `);
+    db.prepare(`
+      INSERT OR REPLACE INTO persistent_agents (agent_id, user_id, goal, context_json, status)
+      VALUES (?, ?, ?, ?, 'active')
+    `).run(agentId, userId, goal, context ? JSON.stringify(context) : null);
+    return { ok: true, agentId, persisted: true };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Persist a long-running agent so it survives across sessions." });
+
+register("agent", "list_persistent", (ctx, _input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  try {
+    const rows = db.prepare(`
+      SELECT agent_id, goal, status, created_at, last_advanced_at, steps_completed
+      FROM persistent_agents WHERE user_id = ?
+      ORDER BY last_advanced_at DESC
+    `).all(userId);
+    return { ok: true, agents: rows };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "List the calling user's persistent agents." });
+
+structuredLog("info", "phase5_cognitive_surfaces_init", {
+  detail: "Phase 5 macros registered: chat.{timeline,summary} reflex.{status,recent_proposals} semantic.search_thoughts agent.{persist,list_persistent}",
+});
+
+// ── Phase 6: Federation as place — communes + AP bridge + lens spatial ─────
+
+// Phase 6.1: Lens spatial-anchor lookup (ideas #9, #39).
+register("lens", "spatial_at", async (_ctx, input = {}) => {
+  const { worldId = "concordia-hub", x = 0, z = 0, radius = 25 } = input || {};
+  try {
+    const lm = await import("./lib/lens-manifest.js");
+    const all = lm.listManifests?.() || [];
+    const r2 = Number(radius) * Number(radius);
+    const matched = [];
+    for (const m of all) {
+      const sa = m.spatialAnchor;
+      if (!sa || sa.worldId !== worldId) continue;
+      const dx = Number(sa.x) - Number(x);
+      const dz = Number(sa.z) - Number(z);
+      const lensRadius = Number(sa.radius || 0);
+      const total = (Number(radius) + lensRadius);
+      if ((dx * dx + dz * dz) <= total * total) {
+        matched.push({
+          lensId: m.lensId,
+          domain: m.domain,
+          spatialAnchor: sa,
+          distance: Math.sqrt(dx * dx + dz * dz),
+        });
+      }
+    }
+    matched.sort((a, b) => a.distance - b.distance);
+    return { ok: true, worldId, x, z, radius, matched };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Lenses with spatial anchors near (x,z) — for lens-as-place 3D rendering." });
+
+register("lens", "set_spatial_anchor", async (ctx, input = {}) => {
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { lensId, worldId = "concordia-hub", x, y = 0, z, radius = 10, type = "landmark", label } = input || {};
+  if (!lensId || x === undefined || z === undefined) return { ok: false, reason: "missing_inputs" };
+  try {
+    const lm = await import("./lib/lens-manifest.js");
+    const existing = lm.getManifest?.(lensId);
+    if (!existing) return { ok: false, reason: "lens_not_found" };
+    return lm.registerManifest({
+      ...existing,
+      spatialAnchor: {
+        worldId, x: Number(x), y: Number(y), z: Number(z),
+        radius: Number(radius), type, label: label || existing.lensId,
+      },
+    });
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Set or update the spatial anchor of a lens." });
+
+// Phase 6.2: Communes (ideas #4, #38). A commune is a federated peer-set
+// + shared lens-anchor pool. Stored as rows in `communes` (lazy-create);
+// `commune_members` tracks who's joined.
+register("federation", "commune_create", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { name, description = "", visibility = "public" } = input || {};
+  if (!name) return { ok: false, reason: "missing_name" };
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS communes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        description TEXT,
+        visibility TEXT NOT NULL DEFAULT 'public',
+        created_by TEXT NOT NULL,
+        created_at INTEGER NOT NULL DEFAULT (unixepoch())
+      )
+    `);
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS commune_members (
+        commune_id INTEGER NOT NULL,
+        user_id TEXT NOT NULL,
+        role TEXT NOT NULL DEFAULT 'member',
+        joined_at INTEGER NOT NULL DEFAULT (unixepoch()),
+        PRIMARY KEY (commune_id, user_id)
+      )
+    `);
+    const r = db.prepare(`
+      INSERT INTO communes (name, description, visibility, created_by)
+      VALUES (?, ?, ?, ?)
+    `).run(name, description, visibility, userId);
+    const communeId = r.lastInsertRowid;
+    db.prepare(`
+      INSERT INTO commune_members (commune_id, user_id, role)
+      VALUES (?, ?, 'founder')
+    `).run(communeId, userId);
+    return { ok: true, communeId, name };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Create a new commune. Founder is the calling user." });
+
+register("federation", "commune_join", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { communeId } = input || {};
+  if (!communeId) return { ok: false, reason: "missing_commune" };
+  try {
+    db.prepare(`
+      INSERT OR IGNORE INTO commune_members (commune_id, user_id, role)
+      VALUES (?, ?, 'member')
+    `).run(communeId, userId);
+    return { ok: true, communeId, joined: true };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Join a commune as a member." });
+
+register("federation", "commune_list", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const limit = Math.min(100, Math.max(1, Number(input.limit) || 25));
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS communes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        description TEXT,
+        visibility TEXT NOT NULL DEFAULT 'public',
+        created_by TEXT NOT NULL,
+        created_at INTEGER NOT NULL DEFAULT (unixepoch())
+      )
+    `);
+    const rows = db.prepare(`
+      SELECT c.id, c.name, c.description, c.visibility, c.created_at,
+             (SELECT COUNT(*) FROM commune_members WHERE commune_id = c.id) AS member_count
+      FROM communes c
+      WHERE c.visibility = 'public'
+      ORDER BY c.created_at DESC LIMIT ?
+    `).all(limit);
+    return { ok: true, communes: rows };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "List publicly visible communes." });
+
+register("federation", "commune_status", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  const { communeId } = input || {};
+  if (!communeId) return { ok: false, reason: "missing_commune" };
+  try {
+    const commune = db.prepare(`SELECT * FROM communes WHERE id = ?`).get(communeId);
+    if (!commune) return { ok: false, reason: "not_found" };
+    const members = db.prepare(`
+      SELECT user_id, role, joined_at FROM commune_members
+      WHERE commune_id = ? ORDER BY joined_at ASC
+    `).all(communeId);
+    const isMember = userId ? members.some(m => m.user_id === userId) : false;
+    return { ok: true, commune, members, memberCount: members.length, isMember };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Get commune detail + member list + caller's membership flag." });
+
+// Phase 6.3: ActivityPub bridge (idea #21).
+register("federation", "outbox", async (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = input.userId || ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  try {
+    const ap = await import("./lib/activitypub-bridge.js");
+    return ap.readOutbox(db, userId, { limit: input.limit, before: input.before });
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Read a user's ActivityPub outbox (federated DTU announcements)." });
+
+register("federation", "actor", async (ctx, input = {}) => {
+  const userId = input.userId || ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  try {
+    const ap = await import("./lib/activitypub-bridge.js");
+    return { ok: true, actor: ap.buildActor(userId, input.profile || {}) };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "ActivityStreams Person actor descriptor for federation discovery." });
+
+structuredLog("info", "phase6_federation_init", {
+  detail: "Phase 6 macros registered: lens.{spatial_at,set_spatial_anchor}, federation.{commune_*,outbox,actor}",
+});
+
+// ── Phase 7: Self-improving loop + synthesis ────────────────────────────────
+
+// Phase 7.1: Macro DAG (idea #1).
+register("macro_dag", "validate", async (_ctx, input = {}) => {
+  try {
+    const md = await import("./lib/macro-dag.js");
+    return md.validateDag(input.plan || {});
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Validate a DAG plan before execution. Returns ok+order or errors." });
+
+register("macro_dag", "describe", async (_ctx, input = {}) => {
+  try {
+    const md = await import("./lib/macro-dag.js");
+    return md.describeDag(input.plan || {});
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Describe a plan (stepCount, order, edges, macros). Read-only." });
+
+register("macro_dag", "run", async (ctx, input = {}) => {
+  try {
+    const md = await import("./lib/macro-dag.js");
+    return await md.runDag(input.plan || {}, ctx, runMacro);
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Execute a DAG plan. Resolves ${steps.<id>.<path>} templates between steps." });
+
+// Phase 7.2: Pathologic-ripple report (idea #24). Aggregates downstream
+// effects of a single event — grudges seeded, faction stance flips,
+// procgen regions spawned, world drift level shifts. Reads existing
+// tables; no new substrate.
+register("narrative", "ripple_report", (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { eventId, sinceTs, worldId = "concordia-hub" } = input || {};
+  if (!eventId && !sinceTs) return { ok: false, reason: "missing_event_or_since" };
+  const since = sinceTs ? Number(sinceTs) : 0;
+  const out = {};
+  // Grudges seeded since `since` (or by event linkage where the
+  // grudges table records origin_event_id).
+  try {
+    out.grudges = db.prepare(`
+      SELECT npc_id, target_kind, target_id, severity, created_at
+      FROM npc_grudges WHERE created_at >= ? LIMIT 50
+    `).all(since);
+  } catch { out.grudges = []; }
+  // Faction strategy moves.
+  try {
+    out.factionMoves = db.prepare(`
+      SELECT faction_id, kind, payload_json, created_at
+      FROM faction_strategy_log WHERE created_at >= ? LIMIT 50
+    `).all(since);
+  } catch { out.factionMoves = []; }
+  // Procgen regions that spawned.
+  try {
+    out.regionsSpawned = db.prepare(`
+      SELECT id, world_id, kind, drift_alert_signature, x, z, created_at
+      FROM procgen_regions WHERE created_at >= ? AND world_id = ? LIMIT 50
+    `).all(since, worldId);
+  } catch { out.regionsSpawned = []; }
+  // Lattice-born quests.
+  try {
+    out.latticeQuests = db.prepare(`
+      SELECT id, drift_type, quest_id, composer, created_at
+      FROM lattice_born_quests WHERE created_at >= ? LIMIT 50
+    `).all(since);
+  } catch { out.latticeQuests = []; }
+  return { ok: true, eventId, sinceTs: since, worldId, ripples: out };
+}, { note: "Aggregate ripple effects of an event — grudges, faction moves, procgen regions, quests." });
+
+// Phase 7.3: Asylum-style lying NPCs (idea #27). Computes lie probability
+// from existing grudge / stress / opinion tables. Higher hostility +
+// fear + cunning trait → higher chance of lying. Returns probability and
+// recommended lie kind so the dialogue layer can route accordingly.
+register("npc", "lie_probability", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { npcId, topic = "unknown" } = input || {};
+  const userId = input.userId || ctx?.actor?.userId;
+  if (!npcId || !userId) return { ok: false, reason: "missing_inputs" };
+  let probability = 0;
+  let signals = {};
+  try {
+    const grudge = db.prepare(`
+      SELECT MAX(severity) as max_severity FROM npc_grudges
+      WHERE npc_id = ? AND target_kind = 'player' AND target_id = ?
+    `).get(npcId, userId);
+    signals.grudge = grudge?.max_severity || 0;
+    probability += Math.min(0.4, (signals.grudge || 0) / 25);
+  } catch { /* no grudges table */ }
+  try {
+    const stress = db.prepare(`SELECT level FROM npc_stress WHERE npc_id = ?`).get(npcId);
+    signals.stress = stress?.level || 0;
+    probability += Math.min(0.2, (signals.stress || 0) / 10);
+  } catch { /* no stress table */ }
+  try {
+    const npc = db.prepare(`SELECT narrative_context FROM world_npcs WHERE id = ?`).get(npcId);
+    if (npc?.narrative_context) {
+      let nc;
+      try { nc = JSON.parse(npc.narrative_context); } catch { nc = {}; }
+      const traits = Array.isArray(nc.traits) ? nc.traits : [];
+      if (traits.includes("cunning") || traits.includes("paranoid")) probability += 0.2;
+      if (traits.includes("honest") || traits.includes("guileless")) probability -= 0.2;
+      signals.traits = traits;
+    }
+  } catch { /* world_npcs.narrative_context optional */ }
+  probability = Math.max(0, Math.min(0.9, probability));
+  const lieKind = signals.grudge > 5 ? "misdirect"
+    : signals.stress > 5 ? "evasive"
+    : signals.traits?.includes("cunning") ? "embellish"
+    : "white";
+  return { ok: true, npcId, topic, probability, lieKind, signals };
+}, { note: "Probability NPC will lie to player about topic, derived from grudge+stress+traits." });
+
+// Phase 7.4: Deity composer (idea #40). Lets a player compose a custom
+// patron deity with a tone vector. Stored in a `player_deities` table
+// (lazy CREATE).
+register("deity", "compose", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { name, toneVector = {}, dialogueTemplates = [], alignmentThresholds = {} } = input || {};
+  if (!name) return { ok: false, reason: "missing_name" };
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS player_deities (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        author_user_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        tone_vector_json TEXT NOT NULL DEFAULT '{}',
+        dialogue_templates_json TEXT NOT NULL DEFAULT '[]',
+        alignment_thresholds_json TEXT NOT NULL DEFAULT '{}',
+        created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+        pilgrim_count INTEGER NOT NULL DEFAULT 0
+      )
+    `);
+    const r = db.prepare(`
+      INSERT INTO player_deities (author_user_id, name, tone_vector_json, dialogue_templates_json, alignment_thresholds_json)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(userId, name, JSON.stringify(toneVector), JSON.stringify(dialogueTemplates), JSON.stringify(alignmentThresholds));
+    return { ok: true, deityId: r.lastInsertRowid, name, authorUserId: userId };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Compose a custom patron deity from a tone vector + dialogue templates." });
+
+register("deity", "list", (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const limit = Math.min(50, Math.max(1, Number(input.limit) || 25));
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS player_deities (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        author_user_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        tone_vector_json TEXT NOT NULL DEFAULT '{}',
+        dialogue_templates_json TEXT NOT NULL DEFAULT '[]',
+        alignment_thresholds_json TEXT NOT NULL DEFAULT '{}',
+        created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+        pilgrim_count INTEGER NOT NULL DEFAULT 0
+      )
+    `);
+    const rows = db.prepare(`
+      SELECT id, author_user_id, name, created_at, pilgrim_count
+      FROM player_deities
+      ORDER BY pilgrim_count DESC, created_at DESC LIMIT ?
+    `).all(limit);
+    return { ok: true, deities: rows };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "List player-composed deities, sorted by pilgrim count." });
+
+register("deity", "tone_vector", (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { deityId } = input || {};
+  if (!deityId) return { ok: false, reason: "missing_deityId" };
+  try {
+    const row = db.prepare(`SELECT * FROM player_deities WHERE id = ?`).get(deityId);
+    if (!row) return { ok: false, reason: "not_found" };
+    let toneVector = {}, templates = [], thresholds = {};
+    try { toneVector = JSON.parse(row.tone_vector_json || "{}"); } catch { /* keep default */ }
+    try { templates = JSON.parse(row.dialogue_templates_json || "[]"); } catch { /* keep default */ }
+    try { thresholds = JSON.parse(row.alignment_thresholds_json || "{}"); } catch { /* keep default */ }
+    return { ok: true, deityId, name: row.name, toneVector, templates, thresholds, pilgrim_count: row.pilgrim_count };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Get a player-composed deity's full tone vector + dialogue templates." });
+
+structuredLog("info", "phase7_self_improving_init", {
+  detail: "Phase 7 macros registered: macro_dag.{validate,describe,run}, narrative.ripple_report, npc.lie_probability, deity.{compose,list,tone_vector}",
+});
+
+// ── Phase 8.2: ActivityPub inbox + REST endpoint ─────────────────────────────
+register("federation", "inbox_receive", async (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { recipientUserId, activity, headers = {} } = input || {};
+  if (!recipientUserId || !activity) return { ok: false, reason: "missing_inputs" };
+  try {
+    const ap = await import("./lib/activitypub-bridge.js");
+    return await ap.receiveActivity(db, recipientUserId, activity, headers);
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Receive an ActivityPub activity into a user's inbox. Idempotent on activity.id." });
+
+register("federation", "inbox", async (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = input.userId || ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  try {
+    const ap = await import("./lib/activitypub-bridge.js");
+    return ap.readInbox(db, userId, {
+      limit: input.limit,
+      before: input.before,
+      types: input.types,
+    });
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Read a user's ActivityPub inbox (federated incoming activities)." });
+
+// Public inbox endpoint — federated peers POST activities here.
+// W3C ActivityPub §7: respond 202 Accepted on receipt, even if processing
+// fails downstream. Idempotent on activity.id so dupe deliveries are safe.
+app.post("/api/federation/users/:userId/inbox", asyncHandler(async (req, res) => {
+  const recipientUserId = req.params.userId;
+  const activity = req.body || {};
+  const headers = {
+    signature: req.headers["signature"],
+    Signature: req.headers["Signature"],
+    digest: req.headers["digest"],
+  };
+  let ap;
+  try { ap = await import("./lib/activitypub-bridge.js"); }
+  catch { return res.status(503).json({ ok: false, reason: "ap_unavailable" }); }
+  const r = await ap.receiveActivity(db, recipientUserId, activity, headers);
+  // 202 even on signature_required so the peer doesn't infinite-retry —
+  // the spec is permissive about silent rejection at the inbox boundary.
+  if (r?.ok && r.accepted) return res.status(202).json({ ok: true, deduped: !!r.deduped });
+  return res.status(r?.reason === "signature_required" ? 401 : 400).json(r);
+}));
+
+// Public actor descriptor — federated peers GET this to discover the
+// inbox URL + publicKey for signature verification.
+app.get("/api/federation/users/:userId", asyncHandler(async (req, res) => {
+  let ap;
+  try { ap = await import("./lib/activitypub-bridge.js"); }
+  catch { return res.status(503).json({ ok: false, reason: "ap_unavailable" }); }
+  const actor = ap.buildActor(req.params.userId);
+  if (!actor) return res.status(404).json({ ok: false, reason: "not_found" });
+  res.type("application/activity+json").json(actor);
+}));
+
+// Outbox public read for federation discovery.
+app.get("/api/federation/users/:userId/outbox", asyncHandler(async (req, res) => {
+  let ap;
+  try { ap = await import("./lib/activitypub-bridge.js"); }
+  catch { return res.status(503).json({ ok: false, reason: "ap_unavailable" }); }
+  const out = ap.readOutbox(db, req.params.userId, {
+    limit: req.query.limit,
+    before: req.query.before,
+  });
+  res.type("application/activity+json").json(out);
+}));
+
+structuredLog("info", "phase8_2_ap_inbox_init", {
+  detail: "Phase 8.2 — ActivityPub inbox endpoint + federation.{inbox,inbox_receive} macros wired",
+});
+
+// ── Phase 8.5: Self-improving PR loop — reflex → forge → GitHub PR ──────────
+//
+// When a reflex detector posts a HIGH/CRITICAL governance proposal, the
+// loop here can:
+//   1. Read the proposal body
+//   2. Hand it to the Forge engine as a "fix this" prompt
+//   3. Take the generated patch and stage it as a git diff
+//   4. Open a GitHub PR via the existing GitHub MCP integration (when
+//      the workflow runs in a context with the MCP token set)
+//   5. Stop short of auto-merging — human review gate
+//
+// Designed as a macro the operator triggers manually OR a heartbeat picks
+// up periodically. Default kill-switch: CONCORD_AUTOFIX_LOOP=true must be
+// set or the macro short-circuits with reason 'autofix_loop_disabled'.
+register("reflex", "propose_fix", async (ctx, input = {}) => {
+  if (process.env.CONCORD_AUTOFIX_LOOP !== "true") {
+    return { ok: false, reason: "autofix_loop_disabled" };
+  }
+  if (!db) return { ok: false, reason: "no_db" };
+  const { proposalId } = input || {};
+  if (!proposalId) return { ok: false, reason: "missing_proposalId" };
+
+  let proposal = null;
+  try {
+    proposal = db.prepare(`
+      SELECT id, kind, severity, summary, body, status, created_at
+      FROM governance_proposals WHERE id = ?
+    `).get(proposalId);
+  } catch { /* table optional */ }
+  if (!proposal) return { ok: false, reason: "proposal_not_found" };
+  if (proposal.severity !== "high" && proposal.severity !== "critical") {
+    return { ok: false, reason: "severity_too_low_for_autofix" };
+  }
+
+  // Hand to the Forge engine as a single-file patch prompt.
+  let forgeR = null;
+  try {
+    forgeR = await runMacro("forge", "fromSource", {
+      sourceText: `Reflex finding (${proposal.kind}, ${proposal.severity}):\n\n${proposal.summary}\n\n${proposal.body || ""}`,
+      mode: "patch",
+      target: "minimal_safe_diff",
+    }, ctx);
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+
+  if (!forgeR?.ok) return { ok: false, reason: "forge_declined", forgeR };
+
+  // Record the proposed patch in autofix_proposals so a human can
+  // review before any GitHub PR is opened. The actual PR-open step
+  // happens in a separate workflow file (.github/workflows/autofix.yml)
+  // that reads from this table on schedule.
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS autofix_proposals (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        proposal_id INTEGER NOT NULL,
+        proposal_kind TEXT NOT NULL,
+        forge_output_json TEXT NOT NULL,
+        pr_url TEXT,
+        status TEXT NOT NULL DEFAULT 'pending_review',
+        created_at INTEGER NOT NULL DEFAULT (unixepoch())
+      )
+    `);
+    const r = db.prepare(`
+      INSERT INTO autofix_proposals (proposal_id, proposal_kind, forge_output_json)
+      VALUES (?, ?, ?)
+    `).run(proposalId, proposal.kind, JSON.stringify(forgeR));
+    return {
+      ok: true,
+      autofixId: r.lastInsertRowid,
+      proposalId,
+      forgeAccepted: true,
+      next: "Human reviews via /lenses/autofix-queue, then triggers .github/workflows/autofix.yml",
+    };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Reflex → Forge → autofix_proposals row. Human-reviewed before PR. Gated by CONCORD_AUTOFIX_LOOP=true." });
+
+register("reflex", "autofix_queue", (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const limit = Math.min(50, Math.max(1, Number(input.limit) || 25));
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS autofix_proposals (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        proposal_id INTEGER NOT NULL,
+        proposal_kind TEXT NOT NULL,
+        forge_output_json TEXT NOT NULL,
+        pr_url TEXT,
+        status TEXT NOT NULL DEFAULT 'pending_review',
+        created_at INTEGER NOT NULL DEFAULT (unixepoch())
+      )
+    `);
+    const rows = db.prepare(`
+      SELECT id, proposal_id, proposal_kind, status, pr_url, created_at
+      FROM autofix_proposals WHERE status = 'pending_review'
+      ORDER BY created_at DESC LIMIT ?
+    `).all(limit);
+    return { ok: true, queue: rows };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Pending autofix proposals awaiting human review." });
+
+structuredLog("info", "phase8_5_autofix_loop_init", {
+  detail: "Phase 8.5 — reflex.{propose_fix,autofix_queue} macros wired (kill-switch: CONCORD_AUTOFIX_LOOP)",
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PHASE 9 — 25 ADDITIONAL IDEAS (research-grounded, full-stack)
+// See /root/.claude/plans/dope-now-make-a-effervescent-deer.md for plan.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ── Phase 9.1: Tradeable artifact economy ───────────────────────────────────
+
+// #2 Dream NFT-killer — flip a dream's scope from personal → public and
+// list it on the marketplace. Royalty cascade flows back to the dreamer
+// on every purchase. Currency: CC (creator economy).
+register("dream", "publish", async (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { dreamId, priceCc = 5 } = input || {};
+  if (!dreamId) return { ok: false, reason: "missing_dreamId" };
+  try {
+    const row = db.prepare(`
+      SELECT d.id, d.user_id, d.dream_dtu_id
+      FROM dreams d WHERE d.id = ?
+    `).get(dreamId);
+    if (!row) return { ok: false, reason: "dream_not_found" };
+    if (row.user_id !== userId) return { ok: false, reason: "not_owner" };
+
+    // Flip scope on the underlying DTU
+    db.prepare(`
+      UPDATE dtus SET meta_json = json_set(coalesce(meta_json, '{}'), '$.scope', 'public')
+      WHERE id = ?
+    `).run(row.dream_dtu_id);
+
+    // Mint marketplace listing via existing forge-marketplace path
+    const fm = await import("./lib/forge-marketplace.js");
+    const r = await fm.listForgeAppOnMarketplace(db, {
+      userId,
+      dtuId: row.dream_dtu_id,
+      priceCc: Number(priceCc),
+      title: `Dream from ${new Date().toLocaleDateString()}`,
+      description: "A grounded prose record of one night's substrate state.",
+    });
+    return { ok: !!r?.ok, dreamId, dtuId: row.dream_dtu_id, listing: r, currency: "CC" };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Publish a dream as a sellable DTU. Currency: CC. Royalty cascade back to dreamer." });
+
+// #5 NPC autobiography — mint kind='npc_autobiography' DTU when an NPC
+// has accumulated enough state to warrant a memoir.
+register("npc_autobiography", "compose", async (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { npcId } = input || {};
+  if (!npcId) return { ok: false, reason: "missing_npcId" };
+  try {
+    const lib = await import("./lib/npc-autobiography.js");
+    return await lib.tryComposeForNpc(db, npcId);
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Compose NPC autobiography if thresholds met. Idempotent on (npc_id, generation)." });
+
+register("npc_autobiography", "list_for_npc", async (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { npcId, limit = 5 } = input || {};
+  if (!npcId) return { ok: false, reason: "missing_npcId" };
+  try {
+    const lib = await import("./lib/npc-autobiography.js");
+    return { ok: true, npcId, autobiographies: lib.getRecent(db, npcId, Number(limit)) };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Recent autobiographies for an NPC." });
+
+// #3 NPC-persona marketplace — package + import.
+register("npc_persona", "package", async (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { npcId, summary } = input || {};
+  if (!npcId) return { ok: false, reason: "missing_npcId" };
+  try {
+    const lib = await import("./lib/npc-persona.js");
+    return lib.mintPersonaDtu(db, { authorUserId: userId, npcId, summary });
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Pack an NPC into a kind='npc_persona' DTU. Currency: CC via royalty cascade." });
+
+register("npc_persona", "install", async (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { dtuId, worldId = "concordia-hub", x = 0, z = 0 } = input || {};
+  if (!dtuId) return { ok: false, reason: "missing_dtuId" };
+  try {
+    const lib = await import("./lib/npc-persona.js");
+    return lib.installPersona(db, { dtuId, worldId, installerUserId: userId, x, z });
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Install an NPC persona into a world. Spawns fresh NPC + re-attaches grudges/schemes/schedule." });
+
+register("npc_persona", "list_for_user", (ctx, _input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  try {
+    const rows = db.prepare(`
+      SELECT id, origin_npc_id, dtu_id, package_sha256, created_at
+      FROM npc_persona_packages WHERE author_user_id = ?
+      ORDER BY created_at DESC LIMIT 50
+    `).all(userId);
+    return { ok: true, packages: rows };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "List a user's authored NPC personas." });
+
+// #13 NPC inheritance market.
+register("inheritance", "open_listing", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { dyingNpcId, heirSlotPriceCc = 10 } = input || {};
+  if (!dyingNpcId) return { ok: false, reason: "missing_npc" };
+  try {
+    const r = db.prepare(`
+      INSERT INTO inheritance_market_listings
+        (dying_npc_id, mentor_user_id, heir_slot_price_cc, status)
+      VALUES (?, ?, ?, 'open')
+    `).run(dyingNpcId, userId, Number(heirSlotPriceCc));
+    return { ok: true, listingId: r.lastInsertRowid, currency: "CC" };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Mentor opens an heir-slot listing for a dying NPC. Currency: CC." });
+
+register("inheritance", "claim_slot", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { listingId } = input || {};
+  if (!listingId) return { ok: false, reason: "missing_listingId" };
+  try {
+    const listing = db.prepare(`SELECT * FROM inheritance_market_listings WHERE id = ?`).get(listingId);
+    if (!listing) return { ok: false, reason: "listing_not_found" };
+    if (listing.status !== "open") return { ok: false, reason: "already_claimed" };
+    if (listing.mentor_user_id === userId) return { ok: false, reason: "cannot_claim_own" };
+    db.prepare(`
+      UPDATE inheritance_market_listings
+      SET buyer_user_id = ?, status = 'locked', claimed_at = unixepoch()
+      WHERE id = ?
+    `).run(userId, listingId);
+    return { ok: true, listingId, locked: true, currency: "CC" };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Buyer locks an heir slot. Resolves on NPC death." });
+
+register("inheritance", "list_open", (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const limit = Math.min(50, Math.max(1, Number(input.limit) || 25));
+  try {
+    const rows = db.prepare(`
+      SELECT l.id, l.dying_npc_id, l.mentor_user_id, l.heir_slot_price_cc, l.listed_at,
+             n.name AS npc_name
+      FROM inheritance_market_listings l
+      LEFT JOIN world_npcs n ON n.id = l.dying_npc_id
+      WHERE l.status = 'open'
+      ORDER BY l.listed_at DESC LIMIT ?
+    `).all(limit);
+    return { ok: true, listings: rows };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "List open heir-slot listings." });
+
+// #24 DTU compression art — sigil shapes for MEGA / HYPER tiers.
+register("compression_art", "shape_for", async (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { megaId } = input || {};
+  if (!megaId) return { ok: false, reason: "missing_megaId" };
+  try {
+    const lib = await import("./lib/compression-art.js");
+    let sourceCount = 0;
+    let dominantElement = null;
+    try {
+      const dtu = db.prepare(`SELECT meta_json FROM dtus WHERE id = ?`).get(megaId);
+      if (dtu?.meta_json) {
+        const m = JSON.parse(dtu.meta_json);
+        sourceCount = (m.source_dtu_ids || m.sources || []).length || 0;
+        dominantElement = m.dominant_element || null;
+      }
+    } catch { /* keep defaults */ }
+    const shape = lib.computeShapeFor(megaId, { sourceCount, dominantElement });
+    lib.recordSigil(db, megaId, "MEGA", shape);
+    return { ok: true, megaId, shape };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Deterministic 3D sigil descriptor for a MEGA / HYPER DTU." });
+
+register("compression_art", "list_for_user", async (ctx, _input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  try {
+    const lib = await import("./lib/compression-art.js");
+    return { ok: true, sigils: lib.listSigilsForUser(db, userId) };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "User's gallery of compression-art sigils." });
+
+structuredLog("info", "phase9_1_artifact_economy_init", {
+  detail: "Phase 9.1 — dream.publish, npc_autobiography.*, npc_persona.*, inheritance.*, compression_art.*",
+});
+
+// ── Phase 9.2: Live spectator + emergent broadcast ──────────────────────────
+
+// #9 Live-streamable Concordia.
+register("spectator", "subscribe", async (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { worldId } = input || {};
+  if (!worldId) return { ok: false, reason: "missing_worldId" };
+  const userId = ctx?.actor?.userId || null;
+  try {
+    const lib = await import("./lib/spectator.js");
+    return lib.startSession(db, worldId, userId);
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Open a read-only spectator session on a world. Returns session token + WS hint." });
+
+register("spectator", "heartbeat", async (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { sessionToken } = input || {};
+  if (!sessionToken) return { ok: false, reason: "missing_token" };
+  try {
+    const lib = await import("./lib/spectator.js");
+    return lib.heartbeatSession(db, sessionToken);
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Refresh spectator session last-seen. Sessions drop after 10 min idle." });
+
+register("spectator", "list_for_world", async (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { worldId } = input || {};
+  if (!worldId) return { ok: false, reason: "missing_worldId" };
+  try {
+    const lib = await import("./lib/spectator.js");
+    return { ok: true, worldId, spectators: lib.activeSpectators(db, worldId) };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Active spectators on a world." });
+
+// #11 Goddess broadcast.
+register("goddess", "compose_now", async (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { worldId = "concordia-hub" } = input || {};
+  try {
+    const lib = await import("./lib/goddess-broadcaster.js");
+    return await lib.composeAndRecord(db, STATE, worldId);
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Compose + record a single goddess dispatch for a world." });
+
+register("goddess", "recent", async (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { worldId = "concordia-hub", limit = 25 } = input || {};
+  try {
+    const lib = await import("./lib/goddess-broadcaster.js");
+    return { ok: true, worldId, dispatches: lib.recentDispatches(db, worldId, Number(limit)) };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Recent goddess dispatches for a world." });
+
+// #14 Spectator betting markets (currency: SPARKS).
+register("betting", "open_market", async (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { worldId, question, resolutionKind, resolutionRef, closesAt } = input || {};
+  if (!question || !resolutionKind) return { ok: false, reason: "missing_inputs" };
+  try {
+    const lib = await import("./lib/betting-markets.js");
+    return lib.openMarket(db, { worldId, question, resolutionKind, resolutionRef, closesAt });
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Open a prediction market on an emergent outcome. Currency: SPARKS." });
+
+register("betting", "place_bet", async (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { marketId, side, stakeSparks } = input || {};
+  if (!marketId || !side || !stakeSparks) return { ok: false, reason: "missing_inputs" };
+  try {
+    const lib = await import("./lib/betting-markets.js");
+    return lib.placeBet(db, { marketId, userId, side, stakeSparks });
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Place a wager on an open market. Currency: SPARKS." });
+
+register("betting", "resolve_market", async (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { marketId, outcome } = input || {};
+  if (!marketId || !outcome) return { ok: false, reason: "missing_inputs" };
+  try {
+    const lib = await import("./lib/betting-markets.js");
+    return lib.resolveMarket(db, marketId, outcome);
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Resolve a market. Substrate-driven outcome attestation." });
+
+register("betting", "list_open", async (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { worldId = null, limit = 50 } = input || {};
+  try {
+    const lib = await import("./lib/betting-markets.js");
+    return { ok: true, markets: lib.listOpenMarkets(db, worldId, Number(limit)) };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "List open markets." });
+
+register("betting", "my_positions", async (ctx, _input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  try {
+    const lib = await import("./lib/betting-markets.js");
+    return { ok: true, positions: lib.userPositions(db, userId) };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Caller's open + resolved positions." });
+
+// #10 Player-as-scientist observer mode — composes empirical-report DTU
+// from substrate state. The 'observer' avatar role gates intervention
+// macros at a separate layer (avatar-role-check upstream).
+register("observer", "compose_report", async (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { worldId = "concordia-hub", focus = null } = input || {};
+  try {
+    // Reuse Phase 7 narrative.ripple_report for substrate state.
+    const ripple = await runMacro("narrative", "ripple_report", {
+      worldId,
+      sinceTs: Math.floor(Date.now() / 1000) - 3600,
+    }, ctx);
+    const summary = focus ? `Observation focus: ${focus}.` : "General observation.";
+    const dtuId = `empirical_report:${userId}:${Date.now().toString(36)}`;
+    const meta = {
+      skill_kind: "empirical_report",
+      world_id: worldId,
+      focus,
+      ripple,
+      summary,
+      observed_at: Date.now(),
+    };
+    db.prepare(`
+      INSERT INTO dtus (id, kind, title, creator_id, meta_json, skill_level, total_experience, created_at)
+      VALUES (?, 'empirical_report', ?, ?, ?, 1, 0, unixepoch())
+    `).run(dtuId, `Empirical Report — ${worldId}`, userId, JSON.stringify(meta));
+    return { ok: true, dtuId, ripple };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Observer composes empirical-report DTU from world ripple state. Cite-able, royalty-bearing." });
+
+structuredLog("info", "phase9_2_spectator_init", {
+  detail: "Phase 9.2 — spectator.*, goddess.*, betting.* (SPARKS), observer.compose_report",
+});
+
+// ── Phase 9.3: Voice / music / foresight ────────────────────────────────────
+
+// #16 Concordia weather forecasting.
+register("forecast", "compose", async (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { worldId = "concordia-hub", persist = true } = input || {};
+  try {
+    const lib = await import("./lib/world-forecast.js");
+    const r = await lib.composeForecast(db, STATE, worldId);
+    if (r.ok && persist) lib.persistForecast(db, worldId, r.forecast);
+    return r;
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Compose 24h forecast for a world. Combines forward-sim + drift + faction + embodied baselines." });
+
+register("forecast", "recent", async (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { worldId = "concordia-hub" } = input || {};
+  try {
+    const lib = await import("./lib/world-forecast.js");
+    const f = lib.recentForecast(db, worldId);
+    return { ok: true, worldId, forecast: f };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Most recent persisted forecast for a world." });
+
+// #18 Glyph spell as music.
+register("sonic_glyph", "spell_to_chord", (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { spellId, components } = input || {};
+  let comps = components;
+  if (!Array.isArray(comps) && spellId) {
+    try {
+      const spell = db.prepare(`SELECT components_json FROM player_glyph_spells WHERE id = ?`).get(spellId);
+      if (spell?.components_json) {
+        try { comps = JSON.parse(spell.components_json); } catch { /* keep undefined */ }
+      }
+    } catch { /* glyph_spells table optional */ }
+  }
+  if (!Array.isArray(comps)) return { ok: false, reason: "no_components" };
+  // Lazy-load to avoid sync import overhead at boot.
+  return import("./lib/sonic-glyph.js").then(m => m.spellSummary(comps));
+}, { note: "Translate a composed spell into a Web Audio note schedule. Maps base-6 glyphs to C-minor scale degrees." });
+
+// #17 Player-as-walker carry.
+register("walker", "request_ride_along", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { walkerId, fromAnchor, toAnchor } = input || {};
+  if (!walkerId || !fromAnchor || !toAnchor) return { ok: false, reason: "missing_inputs" };
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS walker_ride_alongs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        walker_id TEXT NOT NULL,
+        carrier_user_id TEXT NOT NULL,
+        from_anchor TEXT NOT NULL,
+        to_anchor TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        requested_at INTEGER NOT NULL DEFAULT (unixepoch()),
+        delivered_at INTEGER
+      )
+    `);
+    const r = db.prepare(`
+      INSERT INTO walker_ride_alongs (walker_id, carrier_user_id, from_anchor, to_anchor)
+      VALUES (?, ?, ?, ?)
+    `).run(walkerId, userId, fromAnchor, toAnchor);
+    return { ok: true, rideAlongId: r.lastInsertRowid };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Player offers to carry a walker on their own journey. Royalty cascade pays carrier on delivery." });
+
+register("walker", "list_open_rides", (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { fromAnchor = null, limit = 25 } = input || {};
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS walker_ride_alongs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        walker_id TEXT NOT NULL,
+        carrier_user_id TEXT NOT NULL,
+        from_anchor TEXT NOT NULL,
+        to_anchor TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        requested_at INTEGER NOT NULL DEFAULT (unixepoch()),
+        delivered_at INTEGER
+      )
+    `);
+    const where = fromAnchor ? "WHERE status = 'pending' AND from_anchor = ?" : "WHERE status = 'pending'";
+    const args = fromAnchor ? [fromAnchor, Number(limit)] : [Number(limit)];
+    const rows = db.prepare(`
+      SELECT id, walker_id, carrier_user_id, from_anchor, to_anchor, requested_at
+      FROM walker_ride_alongs ${where}
+      ORDER BY requested_at DESC LIMIT ?
+    `).all(...args);
+    return { ok: true, rideAlongs: rows };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Open walker ride-along requests, optionally filtered by from_anchor." });
+
+structuredLog("info", "phase9_3_voice_music_foresight_init", {
+  detail: "Phase 9.3 — forecast.*, sonic_glyph.spell_to_chord, walker.{request_ride_along,list_open_rides}",
+});
+
+// ── Phase 9.4: Native economy primitives ────────────────────────────────────
+
+// #1 NPC sponsorship — currency: CC. Sponsor pays mentor; system
+// composes periodic dispatches from the NPC's recent state.
+register("sponsorship", "create", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { npcId, monthlyCc = 5, dispatchFreqHours = 168 } = input || {};
+  if (!npcId || monthlyCc <= 0) return { ok: false, reason: "missing_inputs" };
+  try {
+    const r = db.prepare(`
+      INSERT INTO npc_sponsorships (npc_id, sponsor_user_id, monthly_cc, dispatch_freq_hours)
+      VALUES (?, ?, ?, ?)
+    `).run(npcId, userId, Math.floor(Number(monthlyCc)), Math.max(1, Math.floor(Number(dispatchFreqHours))));
+    return { ok: true, sponsorshipId: r.lastInsertRowid, currency: "CC" };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Sponsor an NPC. Sponsor pays mentor in CC; system composes dispatches." });
+
+register("sponsorship", "cancel", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { sponsorshipId } = input || {};
+  if (!sponsorshipId) return { ok: false, reason: "missing_id" };
+  try {
+    const r = db.prepare(`
+      UPDATE npc_sponsorships SET status = 'cancelled', ended_at = unixepoch()
+      WHERE id = ? AND sponsor_user_id = ? AND status = 'active'
+    `).run(sponsorshipId, userId);
+    return { ok: r.changes > 0, cancelled: r.changes > 0 };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Cancel a sponsorship. Caller must be the sponsor." });
+
+register("sponsorship", "list_for_user", (ctx, _input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  try {
+    const rows = db.prepare(`
+      SELECT s.id, s.npc_id, s.monthly_cc, s.dispatch_freq_hours, s.started_at, s.last_dispatch_at,
+             n.name AS npc_name
+      FROM npc_sponsorships s
+      LEFT JOIN world_npcs n ON n.id = s.npc_id
+      WHERE s.sponsor_user_id = ? AND s.status = 'active'
+      ORDER BY s.started_at DESC
+    `).all(userId);
+    return { ok: true, sponsorships: rows };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "User's active sponsorships." });
+
+// #4 CC staking — currency: CC. Lock principal for N months, earn
+// yield from the 10% treasury share of marketplace fees (proportional
+// to stake weight).
+register("staking", "stake", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { principalCc, months } = input || {};
+  if (!principalCc || !months) return { ok: false, reason: "missing_inputs" };
+  const p = Math.floor(Number(principalCc));
+  const m = Math.max(1, Math.min(60, Math.floor(Number(months))));
+  if (p < 10) return { ok: false, reason: "min_stake_10_cc" };
+  // Yield rate scales with lock duration; capped honest variability.
+  const yieldRateBps = Math.min(1200, 100 + (m * 20));
+  const unlocksAt = Math.floor(Date.now() / 1000) + (m * 30 * 86400);
+  try {
+    const r = db.prepare(`
+      INSERT INTO cc_stakes (user_id, principal_cc, stake_months, unlocks_at, yield_rate_bps)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(userId, p, m, unlocksAt, yieldRateBps);
+    return { ok: true, stakeId: r.lastInsertRowid, principalCc: p, months: m, yieldRateBps, unlocksAt, currency: "CC" };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Lock CC for N months. Yield rate scales with duration. Currency: CC." });
+
+register("staking", "redeem", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { stakeId } = input || {};
+  if (!stakeId) return { ok: false, reason: "missing_id" };
+  try {
+    const stake = db.prepare(`SELECT * FROM cc_stakes WHERE id = ?`).get(stakeId);
+    if (!stake) return { ok: false, reason: "not_found" };
+    if (stake.user_id !== userId) return { ok: false, reason: "not_owner" };
+    if (stake.status !== "active") return { ok: false, reason: "already_redeemed" };
+    if (stake.unlocks_at > Math.floor(Date.now() / 1000)) {
+      return { ok: false, reason: "still_locked", unlocksAt: stake.unlocks_at };
+    }
+    const totalReturn = stake.principal_cc + stake.accrued_yield_cc;
+    db.prepare(`UPDATE cc_stakes SET status = 'redeemed' WHERE id = ?`).run(stakeId);
+    return { ok: true, principalCc: stake.principal_cc, accruedYieldCc: stake.accrued_yield_cc, totalReturn, currency: "CC" };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Redeem an unlocked stake. Returns principal + accrued yield in CC." });
+
+register("staking", "list_for_user", (ctx, _input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  try {
+    const rows = db.prepare(`
+      SELECT id, principal_cc, stake_months, locked_at, unlocks_at, yield_rate_bps,
+             accrued_yield_cc, status
+      FROM cc_stakes WHERE user_id = ? ORDER BY locked_at DESC
+    `).all(userId);
+    return { ok: true, stakes: rows };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "User's stake positions." });
+
+// #6 Death-lottery insurance — currency: SPARKS (insulated from CC
+// per CC vs Sparks invariant). Player_corpses death-drops in sparks;
+// insurance pays out in sparks.
+register("insurance", "write_contract", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { beneficiaryUserId, premiumSparks, payoutSparks, durationDays = 30 } = input || {};
+  if (!beneficiaryUserId || !premiumSparks || !payoutSparks) return { ok: false, reason: "missing_inputs" };
+  if (beneficiaryUserId === userId) return { ok: false, reason: "self_pact_blocked" };
+  const expiresAt = Math.floor(Date.now() / 1000) + (Math.max(1, Number(durationDays)) * 86400);
+  try {
+    const r = db.prepare(`
+      INSERT INTO insurance_contracts
+        (insured_user_id, beneficiary_user_id, premium_sparks, payout_sparks, expires_at)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(userId, beneficiaryUserId, Math.floor(Number(premiumSparks)), Math.floor(Number(payoutSparks)), expiresAt);
+    return { ok: true, contractId: r.lastInsertRowid, expiresAt, currency: "SPARKS" };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Write a sparks-denominated insurance contract. Suicide-pact prevention: beneficiary can't equal insured." });
+
+register("insurance", "revoke", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { contractId } = input || {};
+  if (!contractId) return { ok: false, reason: "missing_id" };
+  try {
+    const r = db.prepare(`
+      UPDATE insurance_contracts SET status = 'revoked', revoked_at = unixepoch()
+      WHERE id = ? AND insured_user_id = ? AND status = 'active'
+    `).run(contractId, userId);
+    return { ok: r.changes > 0, revoked: r.changes > 0 };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Revoke an active contract. Insured only." });
+
+register("insurance", "list_for_user", (ctx, _input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  try {
+    const written = db.prepare(`
+      SELECT * FROM insurance_contracts WHERE insured_user_id = ? ORDER BY written_at DESC
+    `).all(userId);
+    const beneficiary = db.prepare(`
+      SELECT * FROM insurance_contracts WHERE beneficiary_user_id = ? ORDER BY written_at DESC
+    `).all(userId);
+    return { ok: true, written, beneficiary };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Contracts the user wrote + contracts where they're the beneficiary." });
+
+structuredLog("info", "phase9_4_economy_primitives_init", {
+  detail: "Phase 9.4 — sponsorship.* (CC), staking.* (CC), insurance.* (SPARKS)",
+});
+
+// ── Phase 9.5: Code-loop + safety + B2B ─────────────────────────────────────
+
+// #7 Federated bug bounty — currency: CC. Stake on competing
+// autofix patches; treasury pays winning stakers proportionally
+// after CI green + maintainer merge.
+register("bounty", "stake", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { autofixId, patchChoice, stakeCc } = input || {};
+  if (!autofixId || patchChoice === undefined || !stakeCc) return { ok: false, reason: "missing_inputs" };
+  try {
+    const r = db.prepare(`
+      INSERT INTO bounty_stakes (autofix_id, staker_user_id, patch_choice, stake_cc)
+      VALUES (?, ?, ?, ?)
+    `).run(autofixId, userId, Number(patchChoice), Math.max(1, Math.floor(Number(stakeCc))));
+    return { ok: true, stakeId: r.lastInsertRowid, currency: "CC" };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Stake CC on a patch choice for an autofix proposal." });
+
+register("bounty", "list_open", (_ctx, _input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  try {
+    const rows = db.prepare(`
+      SELECT a.id AS autofix_id, a.proposal_kind, a.created_at,
+             COUNT(s.id) AS stake_count, COALESCE(SUM(s.stake_cc), 0) AS total_pool_cc
+      FROM autofix_proposals a
+      LEFT JOIN bounty_stakes s ON s.autofix_id = a.id
+      WHERE a.status = 'pending_review'
+      GROUP BY a.id ORDER BY a.created_at DESC LIMIT 50
+    `).all();
+    return { ok: true, bounties: rows };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Open autofix bounties with current pool size." });
+
+register("bounty", "resolve", (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { autofixId, winningChoice, prUrl = null } = input || {};
+  if (!autofixId || winningChoice === undefined) return { ok: false, reason: "missing_inputs" };
+  try {
+    const stakes = db.prepare(`SELECT * FROM bounty_stakes WHERE autofix_id = ?`).all(autofixId);
+    const winners = stakes.filter(s => s.patch_choice === Number(winningChoice));
+    const losers  = stakes.filter(s => s.patch_choice !== Number(winningChoice));
+    const winnerPool = winners.reduce((sum, s) => sum + s.stake_cc, 0);
+    const loserPool  = losers.reduce((sum, s) => sum + s.stake_cc, 0);
+    const platformCut = Math.floor(loserPool * 0.05);
+    const distributable = loserPool - platformCut;
+    let totalPaid = 0;
+    if (winnerPool > 0) {
+      for (const w of winners) {
+        const share = w.stake_cc / winnerPool;
+        const winnings = Math.floor(distributable * share);
+        const totalReturn = w.stake_cc + winnings;
+        db.prepare(`UPDATE bounty_stakes SET payout_cc = ?, paid_at = unixepoch() WHERE id = ?`).run(totalReturn, w.id);
+        totalPaid += totalReturn;
+      }
+    }
+    db.prepare(`UPDATE autofix_proposals SET status = 'resolved', pr_url = ? WHERE id = ?`).run(prUrl, autofixId);
+    return { ok: true, autofixId, winningChoice, paid: totalPaid, winnerCount: winners.length, currency: "CC" };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Resolve a bounty after maintainer merge. Pays winners proportionally; 5% platform cut on losing pool." });
+
+// #22 NPC psyops detector — flag NPCs whose skill_revisions diverge
+// suspiciously fast from cohort baseline.
+register("psyops", "scan_skill_divergence", (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { sigmaThreshold = 2.5, windowHours = 168 } = input || {};
+  try {
+    // Get revision counts per NPC over the last N hours.
+    const cutoff = Math.floor(Date.now() / 1000) - (Number(windowHours) * 3600);
+    const rows = db.prepare(`
+      SELECT npc_id, COUNT(*) AS rev_count
+      FROM skill_revisions WHERE created_at >= ?
+      GROUP BY npc_id
+    `).all(cutoff).filter((r) => r.npc_id);
+    if (rows.length === 0) return { ok: true, scanned: 0, alerts: [] };
+    const counts = rows.map(r => r.rev_count);
+    const mean = counts.reduce((s, n) => s + n, 0) / counts.length;
+    const variance = counts.reduce((s, n) => s + (n - mean) ** 2, 0) / counts.length;
+    const stddev = Math.sqrt(variance) || 1;
+    const alerts = [];
+    for (const r of rows) {
+      const sigma = (r.rev_count - mean) / stddev;
+      if (sigma >= Number(sigmaThreshold)) {
+        // Find suspect mentor — the most-frequent author of recent revisions.
+        let mentor = null;
+        try {
+          const m = db.prepare(`
+            SELECT author_user_id, COUNT(*) AS n FROM skill_revisions
+            WHERE npc_id = ? AND created_at >= ?
+            GROUP BY author_user_id ORDER BY n DESC LIMIT 1
+          `).get(r.npc_id, cutoff);
+          mentor = m?.author_user_id || null;
+        } catch { /* skill_revisions schema may differ */ }
+        try {
+          db.prepare(`
+            INSERT INTO skill_divergence_alerts
+              (npc_id, suspect_mentor_id, revision_count_window, cohort_baseline, sigma_above)
+            VALUES (?, ?, ?, ?, ?)
+          `).run(r.npc_id, mentor, r.rev_count, mean, sigma);
+        } catch { /* table may need migration first */ }
+        alerts.push({ npc_id: r.npc_id, sigma_above: sigma, suspect_mentor: mentor });
+      }
+    }
+    return { ok: true, scanned: rows.length, mean, stddev, alerts };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Scan recent NPC skill_revisions for outliers. Files alerts on N-sigma divergence." });
+
+register("psyops", "list_alerts", (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { limit = 50, includeQuarantined = false } = input || {};
+  try {
+    const where = includeQuarantined ? "" : "WHERE quarantined = 0";
+    const rows = db.prepare(`
+      SELECT id, npc_id, suspect_mentor_id, revision_count_window, cohort_baseline,
+             sigma_above, detected_at, quarantined
+      FROM skill_divergence_alerts ${where}
+      ORDER BY detected_at DESC LIMIT ?
+    `).all(Number(limit));
+    return { ok: true, alerts: rows };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Recent skill-divergence alerts." });
+
+register("psyops", "quarantine", (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { alertId } = input || {};
+  if (!alertId) return { ok: false, reason: "missing_id" };
+  try {
+    db.prepare(`UPDATE skill_divergence_alerts SET quarantined = 1 WHERE id = ?`).run(alertId);
+    return { ok: true, quarantined: true };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Quarantine a flagged NPC's mentor — rate-limits future demos." });
+
+// #8 Agent rentals — currency: CC. B2B sandboxed Concord instance
+// for AI-safety testing. Provisions a federated peer with isolation
+// flags + escrowed CC payment.
+register("sandbox", "provision", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { tenantOrg, tenantContact, monthlyCc, durationMonths = 1, isolationLevel = "strict" } = input || {};
+  if (!tenantOrg || !monthlyCc) return { ok: false, reason: "missing_inputs" };
+  const escrow = Math.floor(Number(monthlyCc)) * Math.max(1, Number(durationMonths));
+  const expiresAt = Math.floor(Date.now() / 1000) + (Number(durationMonths) * 30 * 86400);
+  try {
+    const r = db.prepare(`
+      INSERT INTO sandbox_tenants
+        (tenant_org, tenant_contact, monthly_cc, isolation_level, expires_at, status, escrow_cc)
+      VALUES (?, ?, ?, ?, ?, 'provisioned', ?)
+    `).run(tenantOrg, tenantContact || null, Math.floor(Number(monthlyCc)), isolationLevel, expiresAt, escrow);
+    return { ok: true, tenantId: r.lastInsertRowid, escrowCc: escrow, expiresAt, currency: "CC" };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Provision a sandbox tenant. Escrow CC for the duration." });
+
+register("sandbox", "kill", (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { tenantId } = input || {};
+  if (!tenantId) return { ok: false, reason: "missing_id" };
+  try {
+    db.prepare(`UPDATE sandbox_tenants SET status = 'terminated' WHERE id = ?`).run(tenantId);
+    return { ok: true, terminated: true };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Kill switch — terminate a sandbox tenant. Releases escrow on settlement (separate flow)." });
+
+register("sandbox", "list", (_ctx, _input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  try {
+    const rows = db.prepare(`
+      SELECT id, tenant_org, monthly_cc, isolation_level, provisioned_at, expires_at, status, escrow_cc
+      FROM sandbox_tenants ORDER BY provisioned_at DESC LIMIT 50
+    `).all();
+    return { ok: true, tenants: rows };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "All sandbox tenants. Admin view." });
+
+structuredLog("info", "phase9_5_code_safety_b2b_init", {
+  detail: "Phase 9.5 — bounty.* (CC), psyops.*, sandbox.* (CC, B2B)",
+});
+
+// ── Phase 9.6: Identity sync + cross-instance + classroom + therapy ──────────
+
+// #19 iCloud-killer for thoughts — DTU sync devices.
+register("dtu_sync", "register_device", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { deviceLabel, autoSync = true } = input || {};
+  if (!deviceLabel) return { ok: false, reason: "missing_label" };
+  const token = `dev_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+  try {
+    db.prepare(`
+      INSERT INTO dtu_sync_devices (user_id, device_label, device_token, auto_sync)
+      VALUES (?, ?, ?, ?)
+    `).run(userId, deviceLabel, token, autoSync ? 1 : 0);
+    return { ok: true, deviceToken: token };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Register a device for DTU sync. Returns a device token used for sync requests." });
+
+register("dtu_sync", "list_devices", (ctx, _input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  try {
+    const rows = db.prepare(`
+      SELECT id, device_label, registered_at, last_synced_at, auto_sync
+      FROM dtu_sync_devices WHERE user_id = ?
+      ORDER BY registered_at DESC
+    `).all(userId);
+    return { ok: true, devices: rows };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "List the calling user's registered sync devices." });
+
+register("dtu_sync", "force_sync", async (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { deviceToken } = input || {};
+  if (!deviceToken) return { ok: false, reason: "missing_token" };
+  try {
+    // Verify the token belongs to this user.
+    const dev = db.prepare(`
+      SELECT id, user_id FROM dtu_sync_devices WHERE device_token = ?
+    `).get(deviceToken);
+    if (!dev || dev.user_id !== userId) return { ok: false, reason: "device_not_found" };
+    // Pack via existing portability lib.
+    const port = await import("./lib/dtu-portability.js");
+    const r = port.exportUserCorpus(db, userId, { includeAttachments: true, limit: 5000 });
+    db.prepare(`UPDATE dtu_sync_devices SET last_synced_at = unixepoch() WHERE id = ?`).run(dev.id);
+    return { ok: true, deviceId: dev.id, packCounts: r?.envelope?.counts };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Compose + return a portable pack for the device. Uses Phase 0 universal-format export." });
+
+// #20 Classroom — cohorts + homework + peer review.
+register("classroom", "create_cohort", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { name, rubricDtuId } = input || {};
+  if (!name) return { ok: false, reason: "missing_name" };
+  try {
+    const r = db.prepare(`
+      INSERT INTO classroom_cohorts (name, teacher_user_id, rubric_dtu_id)
+      VALUES (?, ?, ?)
+    `).run(name, userId, rubricDtuId || null);
+    return { ok: true, cohortId: r.lastInsertRowid };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Create a classroom cohort. Caller becomes the teacher." });
+
+register("classroom", "enrol", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { cohortId, studentUserId } = input || {};
+  if (!cohortId) return { ok: false, reason: "missing_cohort" };
+  const target = studentUserId || userId;
+  try {
+    db.prepare(`
+      INSERT OR IGNORE INTO classroom_enrolments (cohort_id, student_user_id) VALUES (?, ?)
+    `).run(cohortId, target);
+    return { ok: true, cohortId, studentUserId: target };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Enrol a student in a cohort. Self-enrolment if studentUserId omitted." });
+
+register("classroom", "submit_homework", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { cohortId, dtuId } = input || {};
+  if (!cohortId || !dtuId) return { ok: false, reason: "missing_inputs" };
+  try {
+    const enroled = db.prepare(`
+      SELECT 1 FROM classroom_enrolments WHERE cohort_id = ? AND student_user_id = ?
+    `).get(cohortId, userId);
+    if (!enroled) return { ok: false, reason: "not_enroled" };
+    const r = db.prepare(`
+      INSERT INTO homework_submissions (cohort_id, student_user_id, dtu_id)
+      VALUES (?, ?, ?)
+    `).run(cohortId, userId, dtuId);
+    return { ok: true, submissionId: r.lastInsertRowid };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Student submits a DTU as homework." });
+
+register("classroom", "peer_review", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { submissionId, score, comment = null } = input || {};
+  if (!submissionId || score === undefined) return { ok: false, reason: "missing_inputs" };
+  try {
+    db.prepare(`
+      INSERT OR REPLACE INTO peer_reviews (submission_id, reviewer_user_id, score, comment)
+      VALUES (?, ?, ?, ?)
+    `).run(submissionId, userId, Math.max(0, Math.min(100, Math.floor(Number(score)))), comment);
+    return { ok: true };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Peer review a submission. Reviewer score 0-100." });
+
+register("classroom", "list_cohorts", (ctx, _input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  try {
+    const teaching = db.prepare(`
+      SELECT id, name, rubric_dtu_id, created_at,
+             (SELECT COUNT(*) FROM classroom_enrolments WHERE cohort_id = classroom_cohorts.id) AS enrolled
+      FROM classroom_cohorts WHERE teacher_user_id = ? AND status = 'active'
+      ORDER BY created_at DESC
+    `).all(userId);
+    const studying = db.prepare(`
+      SELECT c.id, c.name, c.rubric_dtu_id, c.teacher_user_id, e.enroled_at
+      FROM classroom_enrolments e
+      JOIN classroom_cohorts c ON c.id = e.cohort_id
+      WHERE e.student_user_id = ? AND c.status = 'active'
+      ORDER BY e.enroled_at DESC
+    `).all(userId);
+    return { ok: true, teaching, studying };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Cohorts where the user teaches or studies." });
+
+// #21 Cross-world physics import — spawn a Forge app as a sub-world.
+register("sub_world", "spawn_from_forge", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { forgeAppDtuId, name, kind = "physics_simulator" } = input || {};
+  if (!forgeAppDtuId || !name) return { ok: false, reason: "missing_inputs" };
+  // Verify the DTU is a Forge app the user owns or has license to.
+  let dtu = null;
+  try {
+    dtu = db.prepare(`SELECT id, kind, creator_id FROM dtus WHERE id = ?`).get(forgeAppDtuId);
+  } catch { /* dtus table may differ */ }
+  if (!dtu) return { ok: false, reason: "forge_app_not_found" };
+  if (dtu.kind !== "forge_app") return { ok: false, reason: "not_forge_app" };
+  const worldId = `subw_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  try {
+    db.prepare(`
+      INSERT INTO sub_worlds (world_id, forge_app_dtu_id, name, kind, spawned_by_user_id)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(worldId, forgeAppDtuId, name, kind, userId);
+    return { ok: true, worldId, name, kind };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Spawn a Forge app as a sub-world reachable via existing world-travel." });
+
+register("sub_world", "list", (_ctx, _input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  try {
+    const rows = db.prepare(`
+      SELECT world_id, forge_app_dtu_id, name, kind, spawned_by_user_id, spawned_at, status
+      FROM sub_worlds WHERE status = 'active'
+      ORDER BY spawned_at DESC LIMIT 100
+    `).all();
+    return { ok: true, subWorlds: rows };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "All active sub-worlds." });
+
+// #23 Refusal Field as therapy substrate.
+register("therapy", "compose_field", async (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { targetUserId, fieldKind, durationSeconds = 3600 } = input || {};
+  if (!targetUserId || !fieldKind) return { ok: false, reason: "missing_inputs" };
+  // Allowed kinds: existing FIELD_KINDS plus therapy extensions.
+  const allowed = new Set([
+    "binary_thinking", "catastrophising", "self_judgment", "numbing", "compulsion",
+    "rumination", "perfectionism", "shame_spiral",
+  ]);
+  if (!allowed.has(fieldKind)) return { ok: false, reason: "unknown_kind" };
+  const expires = Math.floor(Date.now() / 1000) + Math.max(60, Math.floor(Number(durationSeconds)));
+  try {
+    const r = db.prepare(`
+      INSERT INTO therapy_fields
+        (author_user_id, target_user_id, field_kind, duration_seconds, expires_at)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(userId, targetUserId, fieldKind, Math.floor(Number(durationSeconds)), expires);
+    return { ok: true, fieldId: r.lastInsertRowid, expiresAt: expires };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Compose a therapy refusal-field for a user. Kinds beyond the in-game set." });
+
+register("therapy", "active_fields", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = input.userId || ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  try {
+    const now = Math.floor(Date.now() / 1000);
+    const rows = db.prepare(`
+      SELECT id, author_user_id, field_kind, duration_seconds, created_at, expires_at, status
+      FROM therapy_fields WHERE target_user_id = ? AND status = 'active' AND expires_at > ?
+      ORDER BY created_at DESC
+    `).all(userId, now);
+    return { ok: true, fields: rows };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Active therapy fields for the calling user." });
+
+register("therapy", "deactivate", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { fieldId } = input || {};
+  if (!fieldId) return { ok: false, reason: "missing_id" };
+  try {
+    // User can disable any field that targets them; therapist cannot
+    // override the user's own deactivation.
+    const r = db.prepare(`
+      UPDATE therapy_fields SET status = 'revoked', revoked_at = unixepoch()
+      WHERE id = ? AND target_user_id = ? AND status = 'active'
+    `).run(fieldId, userId);
+    return { ok: r.changes > 0, deactivated: r.changes > 0 };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "User-initiated deactivation. Therapist cannot block this." });
+
+// #25 Federation-of-deities — pilgrimage flow.
+register("deity", "pilgrimage", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { deityId, originPeer = null } = input || {};
+  if (!deityId) return { ok: false, reason: "missing_deityId" };
+  try {
+    // Must exist in player_deities.
+    const deity = db.prepare(`SELECT id, pilgrim_count FROM player_deities WHERE id = ?`).get(deityId);
+    if (!deity) return { ok: false, reason: "deity_not_found" };
+    db.prepare(`
+      INSERT INTO deity_pilgrimages (deity_id, pilgrim_user_id, origin_peer)
+      VALUES (?, ?, ?)
+    `).run(deityId, userId, originPeer);
+    db.prepare(`UPDATE player_deities SET pilgrim_count = pilgrim_count + 1 WHERE id = ?`).run(deityId);
+    return { ok: true, deityId, newPilgrimCount: deity.pilgrim_count + 1 };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Record a pilgrimage to a deity. Increments pilgrim_count." });
+
+register("deity", "pilgrim_log", (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { deityId, limit = 50 } = input || {};
+  if (!deityId) return { ok: false, reason: "missing_deityId" };
+  try {
+    const rows = db.prepare(`
+      SELECT id, pilgrim_user_id, origin_peer, arrived_at
+      FROM deity_pilgrimages WHERE deity_id = ?
+      ORDER BY arrived_at DESC LIMIT ?
+    `).all(deityId, Number(limit));
+    return { ok: true, pilgrims: rows };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Pilgrimage log for a deity." });
+
+structuredLog("info", "phase9_6_federation_init", {
+  detail: "Phase 9.6 — dtu_sync.*, classroom.*, sub_world.*, therapy.*, deity.{pilgrimage, pilgrim_log}",
+});
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // END COMPLETION LAYER

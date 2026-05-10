@@ -16,9 +16,10 @@ export default function registerDtuPortabilityMacros(register) {
     if (!userId) return { ok: false, reason: "no_actor" };
     return exportUserCorpus(db, userId, {
       includeEconomy: input.includeEconomy !== false,
+      includeAttachments: input.includeAttachments === true,
       limit: input.limit,
     });
-  }, { note: "pack user's DTU corpus into a transportable envelope" });
+  }, { note: "pack user's DTU corpus into a transportable envelope (set includeAttachments:true to inline file bytes)" });
 
   register("dtu_portability", "validate", async (_ctx, input = {}) => {
     return validateEnvelope(input.envelope);
@@ -27,8 +28,9 @@ export default function registerDtuPortabilityMacros(register) {
   register("dtu_portability", "import", async (ctx, input = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
-    return importEnvelope(db, input.envelope, {
+    return await importEnvelope(db, input.envelope, {
       importCitations: input.importCitations !== false,
+      importAttachments: input.importAttachments !== false,
     });
-  }, { note: "import an envelope (idempotent on dtu.id)" });
+  }, { note: "import an envelope (idempotent on dtu.id, attachments restored to artifact-store)" });
 }

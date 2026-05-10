@@ -1,0 +1,139 @@
+'use client';
+
+/**
+ * /lenses/gallery — Compression-art sigil gallery.
+ *
+ * Phase 9.1 #24: DTU compression art. Each MEGA / HYPER tier DTU
+ * gets a deterministic 3D sigil shape descriptor. Renders inline
+ * via SVG (lightweight) — full Three.js renderer is a follow-up.
+ */
+
+import { useEffect, useState, useMemo } from 'react';
+
+interface Sigil {
+  id: number;
+  mega_dtu_id: string;
+  tier: string;
+  shape_seed: string;
+  dominant_element: string | null;
+  created_at: number;
+  title?: string;
+  meta_json?: string;
+}
+
+interface Shape {
+  vertex_count: number;
+  branch_factor: number;
+  twist_rate: number;
+  dominant_color: string;
+  radius: number;
+  layers: number;
+}
+
+async function macro(domain: string, name: string, input: Record<string, unknown> = {}) {
+  const r = await fetch('/api/lens/run', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ domain, name, input }),
+  }).catch(() => null);
+  return r ? r.json().catch(() => null) : null;
+}
+
+function deriveShape(seed: string): Shape {
+  // Mirror computeShapeFor on client for inline render. Shapes from
+  // the macro are authoritative; this is a fallback when only the seed
+  // is in hand.
+  const buf: number[] = [];
+  for (let i = 0; i < 8; i++) buf.push(parseInt(seed.slice(i * 2, i * 2 + 2), 16) || 0);
+  const palette = [
+    '#7c3aed', '#06b6d4', '#10b981', '#f59e0b', '#ef4444',
+    '#ec4899', '#8b5cf6', '#3b82f6', '#84cc16', '#a855f7',
+  ];
+  return {
+    vertex_count: 7 + (buf[0] % 17),
+    branch_factor: 3 + (buf[1] % 5),
+    twist_rate: ((buf[2] / 255) * 2 - 1),
+    dominant_color: palette[buf[3] % palette.length],
+    radius: 1 + (buf[4] / 255) * 1.5,
+    layers: 1 + Math.min(4, Math.floor(((buf[5] || 0)) / 64)),
+  };
+}
+
+function SigilSvg({ shape }: { shape: Shape }) {
+  const points = useMemo(() => {
+    const pts: { x: number; y: number }[] = [];
+    const c = 50;
+    const r = (shape.radius / 2.5) * 36;
+    for (let i = 0; i < shape.vertex_count; i++) {
+      const a = (i / shape.vertex_count) * Math.PI * 2 + shape.twist_rate;
+      const ringR = r * (i % shape.branch_factor === 0 ? 1 : 0.55);
+      pts.push({ x: c + Math.cos(a) * ringR, y: c + Math.sin(a) * ringR });
+    }
+    return pts;
+  }, [shape]);
+  const d = 'M ' + points.map(p => `${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' L ') + ' Z';
+  return (
+    <svg viewBox="0 0 100 100" className="w-full h-full">
+      <defs>
+        <radialGradient id={`g-${shape.dominant_color.slice(1)}`}>
+          <stop offset="0%" stopColor={shape.dominant_color} stopOpacity="0.4" />
+          <stop offset="100%" stopColor={shape.dominant_color} stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      <circle cx="50" cy="50" r="42" fill={`url(#g-${shape.dominant_color.slice(1)})`} />
+      <path d={d} fill="none" stroke={shape.dominant_color} strokeWidth="0.8" opacity="0.85" />
+      {points.map((p, i) => (
+        <circle key={i} cx={p.x} cy={p.y} r="1.2" fill={shape.dominant_color} />
+      ))}
+    </svg>
+  );
+}
+
+export default function GalleryPage() {
+  const [sigils, setSigils] = useState<Sigil[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const r = await macro('compression_art', 'list_for_user');
+      if (alive && r?.ok) setSigils(r.sigils || []);
+      if (alive) setLoading(false);
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  if (loading) return <div className="p-8 text-zinc-400">Loading your gallery…</div>;
+
+  return (
+    <div className="p-6 max-w-5xl mx-auto">
+      <header className="mb-6">
+        <h1 className="text-2xl font-bold text-zinc-100">Sigil Gallery</h1>
+        <p className="mt-1 text-sm text-zinc-400">
+          MEGA + HYPER tier DTUs render here as procedural sigils — each one a deterministic visualization of the compressed knowledge inside.
+        </p>
+      </header>
+      {sigils.length === 0 ? (
+        <div className="text-center text-zinc-500 italic py-12 border border-zinc-800 rounded-xl">
+          No sigils yet. They appear automatically as your DTUs consolidate into MEGA tiers.
+        </div>
+      ) : (
+        <ul className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+          {sigils.map(s => {
+            const shape = deriveShape(s.shape_seed);
+            return (
+              <li key={s.id} className="bg-zinc-900/80 border border-zinc-700/50 rounded-xl p-3 hover:border-purple-700/50 transition-colors">
+                <div className="aspect-square bg-zinc-950 rounded mb-2 flex items-center justify-center">
+                  <div className="w-full h-full p-2"><SigilSvg shape={shape} /></div>
+                </div>
+                <h3 className="text-xs font-medium text-zinc-100 truncate">{s.title || s.mega_dtu_id}</h3>
+                <p className="text-[10px] text-zinc-500 mt-0.5 font-mono">{s.tier} · {s.dominant_element || '—'}</p>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}

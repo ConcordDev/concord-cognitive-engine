@@ -138,27 +138,27 @@ describe("validateEnvelope", () => {
 });
 
 describe("importEnvelope", () => {
-  it("imports DTUs into target DB; idempotent on re-import", () => {
+  it("imports DTUs into target DB; idempotent on re-import", async () => {
     const sourceDb = makeFakeDb();
     seedDtu(sourceDb, "u1", "dtu:1");
     seedDtu(sourceDb, "u1", "dtu:2");
     const exp = exportUserCorpus(sourceDb, "u1");
 
     const targetDb = makeFakeDb();
-    const r1 = importEnvelope(targetDb, exp.envelope);
+    const r1 = await importEnvelope(targetDb, exp.envelope);
     assert.equal(r1.ok, true);
     assert.equal(r1.imported.dtus, 2);
 
     // Second import: idempotent (skipped via dtu.id existence check).
-    const r2 = importEnvelope(targetDb, exp.envelope);
+    const r2 = await importEnvelope(targetDb, exp.envelope);
     assert.equal(r2.ok, true);
     assert.equal(r2.imported.dtus, 0);
     assert.equal(r2.imported.skipped, 2);
   });
 
-  it("rejects bad envelope", () => {
+  it("rejects bad envelope", async () => {
     const targetDb = makeFakeDb();
-    const r = importEnvelope(targetDb, { spec: "wrong" });
+    const r = await importEnvelope(targetDb, { spec: "wrong" });
     assert.equal(r.ok, false);
   });
 });

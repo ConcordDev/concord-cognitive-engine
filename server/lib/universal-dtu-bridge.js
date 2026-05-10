@@ -4,6 +4,7 @@
 
 import { encodeDTU, decodeDTU, verifyDTU } from "../economy/dtu-format.js";
 import { DTU_FORMAT_CONSTANTS } from "./dtu-format-constants.js";
+import { storeArtifact, isSupportedType } from "./artifact-store.js";
 
 const { PRIMARY_TYPES } = DTU_FORMAT_CONSTANTS;
 
@@ -289,3 +290,108 @@ export function inspectDTU(buffer) {
 }
 
 export { DOMAIN_TYPE_MAP };
+
+/**
+ * Wrap ANY file (binary or text) inside a DTU envelope. The bytes are
+ * persisted to the content-addressed artifact-store; the DTU buffer carries
+ * a reference so the round-trip is fully reproducible.
+ *
+ * This is the user-facing "universal file format" surface: hand it a
+ * Buffer/Uint8Array and a mime type, get back a `.dtu` buffer that holds
+ * the DTU metadata + the original file bytes + structured envelope.
+ *
+ * @param {Buffer|Uint8Array} fileBuffer - The file contents
+ * @param {object} options
+ * @param {string} options.mime - MIME type (e.g. "image/png", "audio/mpeg",
+ *                                "application/pdf"). Unknown types fall
+ *                                back to "application/octet-stream".
+ * @param {string} [options.filename] - Original filename for display
+ * @param {string} [options.dtuId] - Pre-computed DTU id (else uses sha256 prefix)
+ * @param {string} [options.title]
+ * @param {string} [options.domain="import"]
+ * @param {string} [options.author="user"]
+ * @param {string[]} [options.tags]
+ * @param {string} [options.description]
+ * @returns {Promise<{ buffer: Buffer, metadata: object, attachment: object }>}
+ */
+export async function wrapAnyFileAsDTU(fileBuffer, options = {}) {
+  const buf = Buffer.isBuffer(fileBuffer) ? fileBuffer : Buffer.from(fileBuffer);
+  const mime = options.mime && isSupportedType(options.mime)
+    ? options.mime
+    : "application/octet-stream";
+  const filename = options.filename || `file-${Date.now()}`;
+  const domain = options.domain || "import";
+  const tags = options.tags || [domain, "universal-file", mime];
+  const title = options.title || filename;
+
+  // Persist bytes via the existing content-addressed artifact-store.
+  // dtuId is required by storeArtifact for legacy directory layout — if the
+  // caller didn't supply one, derive a stable id from the buffer hash so
+  // re-wrapping the same bytes is deterministic.
+  const dtuId = options.dtuId
+    || `dtu_file_${(await import("node:crypto")).createHash("sha256").update(buf).digest("hex").slice(0, 16)}`;
+  const stored = await storeArtifact(dtuId, buf, mime, filename);
+
+  // Compose the DTU envelope. The artifact ref + sha256 ride in attachments[];
+  // the human-readable summary records what kind of file this is.
+  const dtuPayload = {
+    primaryType: getDomainPrimaryType(domain),
+    title,
+    tags,
+    human: {
+      summary: options.description || `Universal file: ${filename} (${mime}, ${buf.length} bytes)`,
+      bullets: [
+        `File: ${filename}`,
+        `MIME: ${mime}`,
+        `Size: ${buf.length} bytes`,
+        `Hash: ${stored.hash}`,
+      ],
+    },
+    core: {
+      definitions: [],
+      invariants: [`content-hash:${stored.hash}`],
+      claims: [],
+      examples: [],
+      nextActions: [],
+    },
+    machine: {
+      kind: "universal_file",
+      domain,
+      format: mime,
+      filename,
+      exportedAt: new Date().toISOString(),
+      sourceVersion: "1.0",
+    },
+    // attachments rides alongside content so consumers that don't need bytes
+    // can skip them; the artifact-store holds the canonical copy.
+    attachments: [{
+      name: filename,
+      mime,
+      size: buf.length,
+      sha256: stored.hash,
+      artifactRef: stored.diskPath,
+      description: options.description,
+      attachedAt: stored.createdAt,
+    }],
+    artifact: { ref: stored.diskPath, hash: stored.hash, mime, size: buf.length },
+    author: options.author || "user",
+    createdAt: new Date().toISOString(),
+  };
+
+  const buffer = encodeDTU(dtuPayload, { artifactData: buf, artifactMimeType: mime });
+  return {
+    buffer,
+    metadata: {
+      primaryType: dtuPayload.primaryType,
+      title,
+      domain,
+      filename,
+      mime,
+      size: buffer.length,
+      artifactSize: buf.length,
+      hash: stored.hash,
+      createdAt: dtuPayload.createdAt,
+    },
+    attachment: dtuPayload.attachments[0],
+  };
+}

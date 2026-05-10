@@ -1513,3 +1513,118 @@ export function getLeaderboard(db, { scope, scopeId, category, season = null, li
     })),
   };
 }
+
+/**
+ * Cross-instance DTU purchase scaffold.
+ *
+ * Phase 1 of the federation marketplace: when a buyer purchases a DTU
+ * whose origin is a remote peer, this routes the request through the
+ * peer's marketplace.purchaseWithRoyalties endpoint, then mirrors the
+ * purchased envelope locally so the buyer's wallet+royalty cascade pays
+ * out the right way on this instance.
+ *
+ * Two halves of the flow live in different modules:
+ *   - This function: discovers the peer, posts the purchase request,
+ *     receives the signed DTU envelope back. Stops there.
+ *   - Caller (server.js marketplace.purchaseWithRoyalties branch on
+ *     dtu.origin_peer_id): on success, runs importEnvelope() so the DTU
+ *     + attachments + citations land locally; the cascade then works
+ *     against local creator records.
+ *
+ * Designed so a federation peer that doesn't speak this protocol just
+ * returns 404 and the call falls through to local-only error handling.
+ */
+export async function remotePurchase(db, { peerId, dtuId, buyerId, priceCents }) {
+  if (!db) return { ok: false, reason: "no_db" };
+  if (!peerId || !dtuId || !buyerId) return { ok: false, reason: "missing_inputs" };
+
+  // Discover peer's base URL via the registered CRI instances + its
+  // declared peer endpoint. We accept either a regional CRI id or a
+  // direct hostname for symmetry with self-hosted single-instance peers.
+  let peerUrl = null;
+  try {
+    const cri = db.prepare(`SELECT capabilities FROM cri_instances WHERE id = ?`).get(peerId);
+    if (cri?.capabilities) {
+      try {
+        const caps = JSON.parse(cri.capabilities);
+        peerUrl = caps.marketplaceEndpoint || caps.baseUrl || null;
+      } catch { /* malformed capabilities row — fall through */ }
+    }
+  } catch { /* cri_instances table optional in minimal builds */ }
+  if (!peerUrl && /^https?:\/\//i.test(peerId)) peerUrl = peerId.replace(/\/+$/, "");
+  if (!peerUrl) return { ok: false, reason: "peer_unreachable" };
+
+  // Validate parsed URL: protocol must be http/https, host must not be a
+  // loopback / RFC1918 / link-local address (SSRF defence). The CRI registry
+  // is admin-controlled but we still gate at the fetch boundary so a
+  // malformed capabilities row can't pivot through this code path.
+  let parsed;
+  try {
+    parsed = new URL(peerUrl);
+  } catch {
+    return { ok: false, reason: "peer_url_invalid" };
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    return { ok: false, reason: "peer_url_protocol_disallowed" };
+  }
+  if (process.env.CONCORD_FEDERATION_ALLOW_LOOPBACK !== "true") {
+    const host = parsed.hostname.toLowerCase();
+    const isLoopback = host === "localhost" || host === "::1" || host.startsWith("127.");
+    const isPrivate =
+      host.startsWith("10.") ||
+      host.startsWith("192.168.") ||
+      /^172\.(1[6-9]|2\d|3[01])\./.test(host) ||
+      host.startsWith("169.254.") ||
+      host.startsWith("fc") || host.startsWith("fd") ||
+      host === "0.0.0.0";
+    if (isLoopback || isPrivate) {
+      return { ok: false, reason: "peer_url_private_host_disallowed" };
+    }
+  }
+
+  const url = `${parsed.origin}/api/marketplace/purchaseWithRoyalties`;
+  let envelope = null;
+  try {
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(process.env.CONCORD_FEDERATION_TOKEN
+          ? { Authorization: `Bearer ${process.env.CONCORD_FEDERATION_TOKEN}` }
+          : {}),
+      },
+      body: JSON.stringify({ dtuId, buyerId, priceCents, federation: true, includeAttachments: true }),
+    });
+    if (!resp.ok) {
+      return { ok: false, reason: "peer_rejected", status: resp.status };
+    }
+    envelope = await resp.json();
+  } catch (err) {
+    return { ok: false, reason: "peer_network_error", error: String(err?.message || err) };
+  }
+
+  if (!envelope || !envelope.dtus || !Array.isArray(envelope.dtus)) {
+    return { ok: false, reason: "peer_returned_invalid_envelope" };
+  }
+
+  // Mirror locally via the existing portability path so attachments are
+  // restored to artifact-store and citations land in dtu_citations.
+  let imported = null;
+  try {
+    const port = await import("./dtu-portability.js");
+    imported = await port.importEnvelope(db, envelope, {
+      importCitations: true,
+      importAttachments: true,
+    });
+  } catch (err) {
+    return { ok: false, reason: "local_import_failed", error: String(err?.message || err) };
+  }
+
+  return {
+    ok: imported?.ok === true,
+    dtuId,
+    peerId,
+    imported,
+    signature: envelope.instance_signature || null,
+  };
+}

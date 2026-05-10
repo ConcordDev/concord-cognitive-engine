@@ -341,6 +341,34 @@ export const FORGE_TEMPLATES = Object.freeze({
     sections: ["dependencies", "config", "database", "auth", "api", "frontend", "websocket", "threads", "testing", "deployment", "repair"],
     prefilledDomainTables: ["channels", "messages", "presence", "rooms"],
   },
+  // Phase 8.4 — Concord-runs-Concord. Generates a sub-Concord substrate
+  // as a Forge app: a single-file server with macro registry, DTU
+  // envelope, royalty cascade stub, and a 3-gate permission system.
+  // The user can author their own substrate inside Concord, host it
+  // somewhere, and federate it back via the existing AP bridge or
+  // dtu_portability.import flow. Recursive by design — your substrate
+  // can host substrates.
+  concord_substrate: {
+    id: "concord_substrate",
+    label: "Concord Substrate (mini)",
+    description: "A single-file Concord-shaped substrate: macro registry, DTU envelope, royalty cascade stub, 3-gate auth. Federate back via AP or dtu_portability.import.",
+    price: 50,
+    sections: ["dependencies", "config", "database", "auth", "api", "frontend", "websocket", "jobs", "testing", "deployment", "repair"],
+    prefilledDomainTables: [
+      "dtus", "dtu_citations", "macro_registry",
+      "publicReadDomains", "actor_sessions", "economy_ledger",
+    ],
+    // Mini-template flags read by the generator when building each
+    // section so the output reflects Concord's substrate shape.
+    concordSubstrate: {
+      includesMacroRegistry: true,
+      includesDtuEnvelope: true,
+      includesRoyaltyCascade: true,
+      includesThreeGateAuth: true,
+      includesUniversalFileFormat: true,
+      federationCapable: true,
+    },
+  },
 });
 
 // ═══════════════════════════════════════════════════════════════════════════

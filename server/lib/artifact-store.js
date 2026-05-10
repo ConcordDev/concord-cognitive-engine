@@ -72,6 +72,9 @@ const SUPPORTED_TYPES = Object.freeze({
   "application/json": { ext: "json", compressible: true, previewable: true },
   "application/zip": { ext: "zip", compressible: false, previewable: false },
   "model/gltf+json": { ext: "gltf", compressible: true, previewable: false },
+  // Generic fallback for the universal-DTU file format. Any mime not in
+  // the known list above lands here so any binary can ride inside a .dtu.
+  "application/octet-stream": { ext: "bin", compressible: false, previewable: false },
 });
 
 export function isSupportedType(mimeType) {

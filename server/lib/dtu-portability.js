@@ -23,8 +23,15 @@
 // import can verify integrity end-to-end.
 
 import crypto from "node:crypto";
+import fs from "node:fs";
 
 const SPEC = "concord-dtu-pack/v1";
+
+// When the caller passes `includeAttachments: true`, attachment bytes are
+// inlined as base64 alongside the DTU. The 25 MB ceiling caps a single
+// envelope at sane sizes — federations + the universe-export tooling can
+// chunk larger corpuses across multiple packs.
+const MAX_INLINE_ATTACHMENT_BYTES = 25 * 1024 * 1024;
 
 // ── Canonical stringify (deterministic key order) ───────────────────────────
 
@@ -86,8 +93,41 @@ export function exportUserCorpus(db, userId, opts = {}) {
     } catch { /* economy_ledger optional */ }
   }
 
+  // Optional: inline attachment bytes for full file-format portability.
+  // When `includeAttachments: true`, every DTU whose meta_json declares
+  // attachments[] gets each artifactRef resolved off disk and embedded
+  // as base64. The receiving instance can write them straight back into
+  // its own artifact-store via importEnvelope's mirror path.
+  const attachments = [];
+  if (opts.includeAttachments) {
+    for (const dtu of dtus) {
+      let meta = {};
+      try { meta = typeof dtu.meta_json === "string" ? JSON.parse(dtu.meta_json) : (dtu.meta_json || {}); } catch { /* keep meta = {} */ }
+      const dtuAttachments = Array.isArray(meta.attachments) ? meta.attachments : [];
+      for (const att of dtuAttachments) {
+        if (!att || !att.artifactRef || typeof att.size !== "number") continue;
+        if (att.size > MAX_INLINE_ATTACHMENT_BYTES) {
+          attachments.push({ dtuId: dtu.id, ...att, skipped: "exceeds_inline_limit" });
+          continue;
+        }
+        try {
+          const bytes = fs.readFileSync(att.artifactRef);
+          attachments.push({
+            dtuId: dtu.id,
+            name: att.name,
+            mime: att.mime,
+            size: att.size,
+            sha256: att.sha256,
+            base64: bytes.toString("base64"),
+          });
+        } catch { attachments.push({ dtuId: dtu.id, ...att, skipped: "read_error" }); }
+      }
+    }
+  }
+
   const dtus_sha256 = sha256(canonicalStringify(dtus));
   const citations_sha256 = sha256(canonicalStringify(citations));
+  const attachments_sha256 = attachments.length ? sha256(canonicalStringify(attachments)) : null;
 
   const instance_signature = computeInstanceSignature();
 
@@ -99,8 +139,18 @@ export function exportUserCorpus(db, userId, opts = {}) {
     dtus,
     citations,
     economy_ledger: ledger,
-    hashes: { dtus_sha256, citations_sha256 },
-    counts: { dtus: dtus.length, citations: citations.length, economy: ledger.length },
+    attachments,
+    hashes: {
+      dtus_sha256,
+      citations_sha256,
+      ...(attachments_sha256 ? { attachments_sha256 } : {}),
+    },
+    counts: {
+      dtus: dtus.length,
+      citations: citations.length,
+      economy: ledger.length,
+      attachments: attachments.length,
+    },
   };
 
   return { ok: true, envelope, hashes: envelope.hashes };
@@ -134,11 +184,19 @@ export function validateEnvelope(envelope) {
     const recomputed = sha256(canonicalStringify(envelope.citations || []));
     if (recomputed !== expectedCiteHash) return { ok: false, reason: "citation_hash_mismatch" };
   }
+  // Universal-file-format: verify attachment integrity if the envelope
+  // declared one. Pre-1.x packs without attachments stay valid.
+  const expectedAttachHash = envelope.hashes?.attachments_sha256;
+  if (expectedAttachHash) {
+    const recomputed = sha256(canonicalStringify(envelope.attachments || []));
+    if (recomputed !== expectedAttachHash) return { ok: false, reason: "attachment_hash_mismatch" };
+  }
   return {
     ok: true,
     dtuCount: envelope.dtus.length,
     citationCount: (envelope.citations || []).length,
     economyCount: (envelope.economy_ledger || []).length,
+    attachmentCount: (envelope.attachments || []).length,
   };
 }
 
@@ -146,9 +204,15 @@ export function validateEnvelope(envelope) {
  * Import an envelope into the local DB. Idempotent on dtu.id (skips if
  * a DTU with that id already exists). Citation rows similarly unique.
  *
- * Returns { ok, imported: { dtus, citations, economy }, skipped }.
+ * Universal-file-format: when the envelope carries inline attachment bytes
+ * AND opts.importAttachments !== false, the bytes are mirrored into the
+ * local artifact-store so DTUs round-trip with their files intact. Async
+ * because storeArtifact is async (it does fs writes + fires background
+ * transcoding).
+ *
+ * Returns { ok, imported: { dtus, citations, economy, attachments }, skipped }.
  */
-export function importEnvelope(db, envelope, opts = {}) {
+export async function importEnvelope(db, envelope, opts = {}) {
   if (!db) return { ok: false, reason: "no_db" };
   const validation = validateEnvelope(envelope);
   if (!validation.ok) return validation;
@@ -185,6 +249,26 @@ export function importEnvelope(db, envelope, opts = {}) {
           .run(...cols.map(k => c[k]));
         stats.citations++;
       } catch { stats.skipped++; }
+    }
+  }
+
+  // Universal-file-format: write inlined attachment bytes to the local
+  // artifact-store so the imported DTUs round-trip with their files intact.
+  // Idempotent — content-addressed by sha256 means re-import is a no-op.
+  stats.attachments = 0;
+  if (opts.importAttachments !== false && Array.isArray(envelope.attachments)) {
+    let storeArtifact = null;
+    try { ({ storeArtifact } = await import("./artifact-store.js")); }
+    catch { storeArtifact = null; }
+    if (storeArtifact) {
+      for (const att of envelope.attachments) {
+        if (!att || !att.base64 || !att.dtuId) { stats.skipped++; continue; }
+        try {
+          const buf = Buffer.from(att.base64, "base64");
+          await storeArtifact(att.dtuId, buf, att.mime || "application/octet-stream", att.name || "attachment");
+          stats.attachments++;
+        } catch { stats.skipped++; }
+      }
     }
   }
 

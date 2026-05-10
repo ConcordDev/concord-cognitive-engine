@@ -95,6 +95,17 @@ const PersonalBeatWidget = dynamic(
     })),
   { ssr: false }
 );
+// Phase 8.1 — substrate-reveal HUDs. All client-only, all wrap macros that
+// were registered in Phases 2-7. Each is small, self-contained, and silent
+// when there's nothing to show.
+const RefusalFieldHUD = dynamic(() => import('@/components/world/RefusalFieldHUD'), { ssr: false });
+const PremonitionOverlay = dynamic(() => import('@/components/world/PremonitionOverlay'), { ssr: false });
+const DriftMoodboard = dynamic(() => import('@/components/world/DriftMoodboard'), { ssr: false });
+const EmbodiedHUD = dynamic(() => import('@/components/world/EmbodiedHUD'), { ssr: false });
+const EavesdropBubble = dynamic(() => import('@/components/world/EavesdropBubble'), { ssr: false });
+const WalkerArbitrageMap = dynamic(() => import('@/components/world/WalkerArbitrageMap'), { ssr: false });
+const GlyphCastHUD = dynamic(() => import('@/components/world/GlyphCastHUD'), { ssr: false });
+const EnterVRButton = dynamic(() => import('@/components/world/EnterVRButton'), { ssr: false });
 const CombatPolishHUD = dynamic(
   () =>
     import('@/components/world/CombatPolishHUD').then((m) => ({
@@ -4295,6 +4306,18 @@ export default function WorldLensPage() {
               fields, weather rolls, agent insights, etc.) */}
           <EmergentEventFeed />
           <PersonalBeatWidget />
+
+          {/* Phase 8.1 — substrate-reveal HUDs. Each is a thin client of a
+              macro registered in Phases 2-7. Silent when there's nothing
+              to surface; cheap to mount. */}
+          <RefusalFieldHUD worldId={activeDistrict?.id || 'concordia-hub'} />
+          <PremonitionOverlay />
+          <DriftMoodboard />
+          <EmbodiedHUD />
+          <EavesdropBubble worldId={activeDistrict?.id || 'concordia-hub'} playerPos={playerAvatar?.position ? { x: playerAvatar.position.x, z: playerAvatar.position.z } : undefined} />
+          <WalkerArbitrageMap worldId={activeDistrict?.id || 'concordia-hub'} />
+          <GlyphCastHUD worldId={activeDistrict?.id || 'concordia-hub'} playerPos={playerAvatar?.position ? { x: playerAvatar.position.x, z: playerAvatar.position.z } : undefined} />
+          <EnterVRButton />
 
           {/* Phase 8 — combat polish HUD + animation/audio/camera/VFX bridges */}
           <CombatPolishHUD userId={playerAvatar?.id || null} />

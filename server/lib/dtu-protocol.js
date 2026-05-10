@@ -97,6 +97,11 @@ class DTUProtocol {
       },
       content,
       citations: [],
+      // Universal file format: any binary attached to this DTU rides here as
+      // a content-addressed artifact-store reference. Each entry is
+      // { name, mime, size, sha256, artifactRef, description? }.
+      // Empty array on creation; populated by attachFile() as needed.
+      attachments: [],
       metadata: {
         contentHash,
         version: "1.0.0",
@@ -106,6 +111,43 @@ class DTUProtocol {
         tags: [],
       },
     };
+  }
+
+  /**
+   * Append an attachment descriptor to a DTU. The bytes themselves live in
+   * the content-addressed artifact-store; this records the reference.
+   *
+   * Pass an artifact-store result object (from storeArtifact) OR pre-computed
+   * `{ name, mime, size, sha256, artifactRef, description? }`.
+   *
+   * The DTU's content hash is NOT mutated by attachments — content is the
+   * semantic payload, attachments are bytes that ride alongside it. This
+   * keeps deduplication/citation behaviour unchanged when the same DTU
+   * gains/loses attachments.
+   *
+   * @param {object} dtu
+   * @param {object} attachment - { name, mime, size, sha256, artifactRef, description? }
+   * @returns {object} updated DTU
+   */
+  attachFile(dtu, attachment) {
+    if (!dtu || typeof dtu !== "object") throw new Error("dtu must be an object");
+    if (!attachment || typeof attachment !== "object") throw new Error("attachment must be an object");
+    const { name, mime, size, sha256, artifactRef, description } = attachment;
+    if (!name || !mime || typeof size !== "number" || !sha256 || !artifactRef) {
+      throw new Error("attachment requires {name, mime, size, sha256, artifactRef}");
+    }
+    if (!Array.isArray(dtu.attachments)) dtu.attachments = [];
+    dtu.attachments.push({
+      name,
+      mime,
+      size,
+      sha256,
+      artifactRef,
+      ...(description ? { description } : {}),
+      attachedAt: nowISO(),
+    });
+    if (dtu.metadata) dtu.metadata.updatedAt = nowISO();
+    return dtu;
   }
 
   /**
@@ -315,6 +357,28 @@ class DTUProtocol {
     // Check citations is an array
     if (dtu.citations !== undefined && !Array.isArray(dtu.citations)) {
       errors.push("Citations must be an array");
+    }
+
+    // Universal-file-format: validate attachments[] entries if present.
+    // Optional field — pre-1.1 DTUs without attachments stay valid.
+    if (dtu.attachments !== undefined) {
+      if (!Array.isArray(dtu.attachments)) {
+        errors.push("Attachments must be an array");
+      } else {
+        for (let i = 0; i < dtu.attachments.length; i++) {
+          const att = dtu.attachments[i];
+          if (!att || typeof att !== "object") {
+            errors.push(`Attachment[${i}] must be an object`);
+            continue;
+          }
+          for (const f of ["name", "mime", "size", "sha256", "artifactRef"]) {
+            if (!(f in att)) errors.push(`Attachment[${i}] missing field '${f}'`);
+          }
+          if ("size" in att && typeof att.size !== "number") {
+            errors.push(`Attachment[${i}].size must be a number`);
+          }
+        }
+      }
     }
 
     // Check metadata structure
