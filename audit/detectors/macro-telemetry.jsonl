@@ -1383,3 +1383,9 @@
 {"generatedAt":"2026-05-10T03:29:29.769Z","key":"wrapper.run","total":1,"lastFiredAt":1778383761822,"sources":{"http":0,"heartbeat":0,"internal":1,"system":0}}
 {"generatedAt":"2026-05-10T03:29:29.769Z","key":"[object Object].dtu","total":2,"lastFiredAt":1778383767671,"sources":{"http":0,"heartbeat":0,"internal":0,"system":2}}
 {"generatedAt":"2026-05-10T03:29:29.769Z","key":"council.reviewGlobal","total":1,"lastFiredAt":1778383764034,"sources":{"http":0,"heartbeat":0,"internal":1,"system":0}}
+{"generatedAt":"2026-05-10T06:35:37.485Z","key":"emergent.list","total":1,"lastFiredAt":1778394638434,"sources":{"http":0,"heartbeat":0,"internal":0,"system":1}}
+{"generatedAt":"2026-05-10T06:35:37.485Z","key":"emergent.register","total":6,"lastFiredAt":1778394638435,"sources":{"http":0,"heartbeat":0,"internal":0,"system":6}}
+{"generatedAt":"2026-05-10T06:35:37.485Z","key":"emergent.get","total":1,"lastFiredAt":1778394638435,"sources":{"http":0,"heartbeat":0,"internal":0,"system":1}}
+{"generatedAt":"2026-05-10T06:35:37.485Z","key":"ingest.processQueueOnce","total":16,"lastFiredAt":1778394931582,"sources":{"http":0,"heartbeat":0,"internal":16,"system":0}}
+{"generatedAt":"2026-05-10T06:35:37.485Z","key":"dtu.create","total":8,"lastFiredAt":1778394931980,"sources":{"http":0,"heartbeat":0,"internal":8,"system":0}}
+{"generatedAt":"2026-05-10T06:35:37.485Z","key":"emergent.bridge.heartbeatTick","total":1,"lastFiredAt":1778394781399,"sources":{"http":0,"heartbeat":0,"internal":1,"system":0}}

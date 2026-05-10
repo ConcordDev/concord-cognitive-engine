@@ -59,6 +59,6 @@ digraph Concord {
   lens_diy [label="lens/diy", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_docs [label="lens/docs", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_dtus [label="lens/dtus", color=green, style=filled, fillcolor="#e0ffe0"];
+  lens_dx_platform [label="lens/dx-platform", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_eco [label="lens/eco", color=green, style=filled, fillcolor="#e0ffe0"];
-  lens_education [label="lens/education", color=green, style=filled, fillcolor="#e0ffe0"];
 }
