@@ -28,6 +28,7 @@ import crypto from "node:crypto";
 import path from "node:path";
 import { readFile } from "node:fs/promises";
 import logger from "../logger.js";
+import { bumpStress as _bumpStress } from "./npc-stress.js";
 
 const REPO_ROOT = path.resolve(import.meta.dirname || ".", "..", "..");
 
@@ -290,6 +291,11 @@ export function recordPlayerImpactEvent(db, npcId, userId, eventKind, magnitudeO
     narrative: `${eventKind.replace(/_/g, " ")} — the memory burns.`,
     severity: Math.min(10, severity),
   });
+  // Sprint C / Track A1 — severity ≥ 6 grudges feed into npc_stress.
+  // Migration 152 created the table; older builds skip silently.
+  if (severity >= 6) {
+    try { _bumpStress(db, npcId, "grudge_severe"); } catch { /* table absent on minimal builds */ }
+  }
   return { ok: true, action: "added", id, severity };
 }
 
@@ -381,10 +387,25 @@ export function composeAsymmetryContext(db, npcId, userId, playerMetrics) {
     } catch { /* ignore */ }
   }
 
+  // Sprint C / Track A2 — current opinion shifts how the NPC reads the
+  // player. Compose returns it so the dialogue prompt knows e.g. "this NPC
+  // respects you despite an old grudge".
+  let currentOpinion = null;
+  if (userId) {
+    try {
+      const r = db.prepare(`
+        SELECT score, kind FROM character_opinions
+        WHERE npc_id = ? AND target_kind = 'player' AND target_id = ?
+      `).get(npcId, userId);
+      if (r) currentOpinion = `${r.kind} (${r.score >= 0 ? '+' : ''}${r.score})`;
+    } catch { /* character_opinions may be absent */ }
+  }
+
   return {
     persistent_grudge: grudge ? grudge.narrative : null,
     current_preoccupation: preocc ? preocc.narrative : null,
     desire_for_this_player: desire ? desire.narrative : null,
+    current_opinion: currentOpinion,
   };
 }
 

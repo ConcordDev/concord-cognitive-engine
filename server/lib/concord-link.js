@@ -253,6 +253,31 @@ export function sendMessage(db, opts, deps = {}) {
           dispatchedWalker = hire.walker;
           // Override status: the message is in_transit, not delivered.
           db.prepare(`UPDATE concord_link_messages SET status='sent', delivered_at=NULL WHERE id=?`).run(messageId);
+          // Sprint B Phase 11.3 — broadcast walker:dispatched to both
+          // source and destination world rooms so frontend
+          // WalkerOnHorizon listeners can render the walker on the
+          // horizon. Best-effort; emit failures must not block dispatch.
+          if (typeof deps.emitToWorld === "function") {
+            try {
+              const route = (() => {
+                try { return JSON.parse(hire.walker?.route_anchors || "[]"); }
+                catch { return []; }
+              })();
+              const payload = {
+                walkerId: hire.walker?.id,
+                fromWorld: sourceWorld,
+                toWorld: destWorld,
+                messageId,
+                contractId: hire.contract?.id || null,
+                route,
+                dispatchedAt: now,
+              };
+              deps.emitToWorld(sourceWorld, "walker:dispatched", payload);
+              if (destWorld !== sourceWorld) {
+                deps.emitToWorld(destWorld, "walker:dispatched", payload);
+              }
+            } catch { /* realtime best-effort */ }
+          }
         }
       }
     } catch { /* dispatch best-effort; message row already exists */ }

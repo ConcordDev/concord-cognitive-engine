@@ -53,7 +53,7 @@ export interface AppearanceConfig {
   skinColor: string; // hex color
   hairColor: string;
   hairStyle: 'short' | 'medium' | 'long' | 'bald' | 'ponytail' | 'bun';
-  bodyType: 'slim' | 'average' | 'stocky' | 'tall';
+  bodyType: 'slim' | 'average' | 'stocky' | 'tall' | 'legend';
   clothing: {
     top: { color: string; type: 'shirt' | 'vest' | 'coat' | 'robe' | 'apron' };
     bottom: { color: string; type: 'pants' | 'skirt' | 'shorts' | 'robe' };
@@ -236,6 +236,23 @@ const BODY_DIMENSIONS: Record<
     armLength: 0.7,
     totalHeight: 1.9,
   },
+  // Sprint B.6 — `legend` body type for the immortal NPCs
+  // (concordia_first_breath, sovereign_first_refusal, concord_first_thought,
+  // weaver_of_echoes). 1.5× scale of `tall`. Paired with emissive
+  // material in createAvatarMesh below so legends visibly stand out
+  // without breaking the polished-Skyrim art direction. Authored
+  // NPCs with archetype === 'legend' are mapped to this body type
+  // via _mapNPCToAvatarData in app/lenses/world/page.tsx.
+  legend: {
+    torsoWidth: 0.6,    // 1.5× of tall
+    torsoHeight: 0.9,   // 1.5×
+    torsoDepth: 0.375,  // 1.5×
+    limbRadius: 0.105,  // 1.5×
+    headRadius: 0.225,  // 1.5×
+    legLength: 1.35,    // 1.5×
+    armLength: 1.05,    // 1.5×
+    totalHeight: 2.85,  // 1.5×
+  },
 };
 
 // ── Suppress unused constant warnings ────────────────────────────
@@ -407,9 +424,32 @@ export default function AvatarSystem3D({
       const skeleton = new THREE.Skeleton(bones);
 
       // ── Body parts (simple geometry) ─────────────────────────
-      const skinMat = new THREE.MeshStandardMaterial({ color: skinColor, roughness: 0.8 });
-      const clothTopMat = new THREE.MeshStandardMaterial({ color: topColor, roughness: 0.7 });
-      const clothBottomMat = new THREE.MeshStandardMaterial({ color: bottomColor, roughness: 0.7 });
+      // Sprint B.6 — `legend` body type gets emissive material so
+      // immortal NPCs (the goddess Concordia, the Sovereign, the
+      // first Concord, the Weaver of Echoes) read as numinous at a
+      // glance. The base color is unchanged (skin/cloth still come
+      // from the AppearanceConfig); we add an emissive component +
+      // halve roughness so they catch reflection. Keeps the unified
+      // mesh pipeline — no special legend-only renderer.
+      const isLegend = appearance.bodyType === 'legend';
+      const skinMat = new THREE.MeshStandardMaterial({
+        color: skinColor,
+        roughness: isLegend ? 0.4 : 0.8,
+        emissive: isLegend ? new THREE.Color(skinColor) : new THREE.Color(0x000000),
+        emissiveIntensity: isLegend ? 0.25 : 0,
+      });
+      const clothTopMat = new THREE.MeshStandardMaterial({
+        color: topColor,
+        roughness: isLegend ? 0.35 : 0.7,
+        emissive: isLegend ? new THREE.Color(topColor) : new THREE.Color(0x000000),
+        emissiveIntensity: isLegend ? 0.35 : 0,
+      });
+      const clothBottomMat = new THREE.MeshStandardMaterial({
+        color: bottomColor,
+        roughness: isLegend ? 0.35 : 0.7,
+        emissive: isLegend ? new THREE.Color(bottomColor) : new THREE.Color(0x000000),
+        emissiveIntensity: isLegend ? 0.35 : 0,
+      });
 
       // Head
       const headGeom = new THREE.SphereGeometry(dims.headRadius, 16, 12);

@@ -102,7 +102,7 @@ export const EVENT_SHAPES = Object.freeze({
   "marketplace:purchase": { required: ["buyerId", "sellerId", "contentId", "amount"], optional: ["currency", "txId"] },
 
   // ── Walker journeys ───────────────────────────────────────────────
-  "walker:dispatched":    { required: ["walkerId"], optional: ["fromWorld", "toWorld", "messageId"] },
+  "walker:dispatched":    { required: ["walkerId"], optional: ["fromWorld", "toWorld", "messageId", "contractId", "route", "dispatchedAt"] },
 
   // ── GameJuice fanfare ─────────────────────────────────────────────
   "gameJuice:fanfare":    { required: ["userId", "kind"], optional: ["magnitude", "tone", "label"] },
@@ -176,6 +176,51 @@ export const EVENT_SHAPES = Object.freeze({
   "world:invariant-warning": {
     required: ["id", "message", "severity"],
     optional: ["location", "generatedAt"],
+  },
+
+  // ── Sprint B Phase 8 — combat juice events promoted from lenient ──
+  // Both events were emitted by the substrate but never had registered
+  // shapes; the audit pass exposed them via cartograph drift, and the
+  // combat-juice bridge subscribes to them now.
+
+  // DBZ-style stagger when a high-magnitude (≥30) hit projects through
+  // a building. Fires from routes/worlds.js#/combat/attack right after
+  // the env-multiplier step, post-cap. The frontend
+  // CombatStaggerCameraBridge consumes this for the camera punch-in.
+  // Required fields match the actual emit at routes/worlds.js:2127;
+  // attackerId is attached so the client can scope camera punches to
+  // events the local player is involved in.
+  "combat:stagger": {
+    required: ["worldId", "targetId", "durationMs"],
+    optional: ["attackerId", "targetType", "buildingId", "structuralStress", "elementContrib"],
+  },
+
+  // Geo-Mod-light building state transitions. Fires from
+  // routes/worlds.js when applyStructuralStress reports a state change.
+  // The BuildingCollapseBridge listens for the 'collapsed' transition
+  // specifically; the 'damaged' transition gets a smaller VFX cue.
+  // attackerId + position are attached so the client can dial full-
+  // screen feedback to collapses near the local player.
+  "world:building-state": {
+    required: ["worldId", "buildingId", "state"],
+    optional: ["healthPct", "position", "structuralStress", "attackerId"],
+  },
+
+  // Sprint B Phase 9 — NPC visible sentience snapshot. Emitted by the
+  // npc-perception-snapshot heartbeat (frequency 8). Drives frontend
+  // head-turns, posture mirroring, and mood bias. The renderer
+  // applies the update only when the local player matches
+  // shouldLookAtPlayer (otherwise the perception is for someone else).
+  "npc:perception-update": {
+    required: ["npcId", "worldId", "moodBias"],
+    optional: [
+      "shouldLookAtPlayer",
+      "activeGrudgeSeverity",
+      "shouldMirrorPosture",
+      "shouldAvoidEyeContact",
+      "preoccupationKind",
+      "factionPhase",
+    ],
   },
 });
 

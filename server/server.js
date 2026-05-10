@@ -443,6 +443,48 @@ registerHeartbeat("npc-routine-cycle", {
   handler: runNpcRoutineCycle,
 });
 
+// Sprint C / Track A4 — npc schemes / plots. Every 30 ticks (~7.5min)
+// advances scheme phases AND proposes new schemes for high-stress NPCs.
+// Kill-switch: CONCORD_NPC_SCHEMES=0.
+import { runNpcSchemeCycle } from "./emergent/npc-scheme-cycle.js";
+registerHeartbeat("npc-scheme-cycle", {
+  frequency: 30,
+  handler: runNpcSchemeCycle,
+});
+
+// Sprint C / Tracks D2+D4 — kingdom decrees + rebellion. Every 16 ticks
+// (~4min) sweeps expired decrees, recomputes citizen loyalty, advances
+// NPC-ruler decree picker, and evaluates rebellion risk per kingdom.
+// Kill-switch: CONCORD_KINGDOMS=0.
+import { runKingdomDecreeCycle } from "./emergent/kingdom-decree-cycle.js";
+registerHeartbeat("kingdom-decree-cycle", {
+  frequency: 16,
+  handler: runKingdomDecreeCycle,
+});
+
+// Sprint B Phase 9 — NPC visible sentience. Every 8 ticks (~2 minutes)
+// snapshots per-NPC perception (active grudge severity / faction-strategy
+// allied posture / mood bias) and emits npc:perception-update so the
+// frontend can drive head-turns, gait posture, and facial blends from
+// existing substrate fields. No new data; just rendering existing fields.
+// Kill-switch: CONCORD_NPC_PERCEPTION=0 (handled inside the module).
+import { runNpcPerceptionSnapshot } from "./emergent/npc-perception-snapshot.js";
+registerHeartbeat("npc-perception-snapshot", {
+  frequency: 8,
+  handler: runNpcPerceptionSnapshot,
+});
+
+// Sprint B Phase 11.4 — procgen settlement cycle. Every 240 ticks
+// (~60min) ensures every active procgen region has a populated 3-5
+// NPC settlement, and cascades decay when a region's drift alert
+// resolves. Pairs with lib/procgen-settlements.js + the existing
+// procgen-regions.js (Phase 5e).
+import { runProcgenSettlementCycle } from "./emergent/procgen-settlement-cycle.js";
+registerHeartbeat("procgen-settlement-cycle", {
+  frequency: 240,
+  handler: runProcgenSettlementCycle,
+});
+
 // Phase 4b: NPC living economy. Every 8 ticks (~2min, staggered behind
 // the routine cycle so most NPCs have arrived) NPCs at their workplaces
 // gather / craft / trade / consume. Every action writes to economy_flows;
@@ -6863,6 +6905,28 @@ function emitToUser(userId, event, payload) {
   }
 }
 
+/**
+ * Sprint B Phase 11.3 helper — broadcast to every client subscribed to
+ * a world room. Used by walker:dispatched (cross-world journeys) and by
+ * future per-world events that don't fit through realtimeEmit's global
+ * fanout. Same enrichment pattern (ts/_seq/_evt) as emitToUser.
+ */
+function emitToWorld(worldId, event, payload) {
+  if (!worldId || !REALTIME?.io) return { ok: false, reason: "no_target_or_realtime" };
+  try {
+    const enriched = {
+      ...payload,
+      ts: nowISO(),
+      _seq: ++_eventSeqCounter,
+      _evt: event,
+    };
+    REALTIME.io.to(`world:${worldId}`).emit(event, enriched);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, reason: String(e?.message || e) };
+  }
+}
+
 function realtimeEmit(event, payload, { sessionId = "", orgId = "", requestId = "" } = {}) {
   // ---- Event Ordering & Correlation (Category 2+5: Concurrency + Observability) ----
   const enrichedPayload = {
@@ -9485,6 +9549,21 @@ async function runMacro(domain, name, input, ctx) {
     reflection: new Set(["status", "list"]),
     temporal: new Set(["status", "get"]),
     inference: new Set(["status", "traces", "spans", "threads", "checkpoints", "sandboxes", "costs", "query"]),
+    // (The dx domain is registered later in this file with the
+    //  full DX-Platform macro set; the onboarding macros
+    //  `onboarding_progress` and `welcome` are appended to that
+    //  Set to avoid a duplicate-key lint error.)
+    // npc_legacy (Sprint B Phase 11.1) — read-only tomb / last-words /
+    // inheritance surface for the frontend TombMarker + InheritanceLog UI.
+    npc_legacy: new Set(["tombs_for_world", "get", "inheritance_for_heir"]),
+    // faction_strategy (Sprint B Phase 10) — Crucible HUD reads
+    // recent_moves + get_relation; witness_next_move is the cross-
+    // world signature quest's objective-completion macro.
+    faction_strategy: new Set(["recent_moves", "get_relation", "witness_next_move"]),
+    // procgen (Sprint B Phase 11.4) — settlement NPC reads for the
+    // world page. The substrate populates via heartbeat; this is
+    // the read surface.
+    procgen: new Set(["npcs_for_world", "npcs_in_region"]),
     // dx — DX Platform: onboarding lens (`onboarding_progress`, `welcome`),
     // codebase registry + repair-feedback evo (Phase A2), shadow DTU helpers.
     // Plugin clients call these via API key; cookie-auth web users see the
@@ -9624,11 +9703,10 @@ async function runMacro(domain, name, input, ctx) {
     // API keys with the `billing.balance` scope hit these from the
     // editor status bar and the dashboard lens.
     billing: new Set(["usage", "balance", "history", "getCurrentQuota", "priceForMacro"]),
-    // DX Platform Phase A2 macros are merged into the `dx:` entry above
-    // (around line 9490) — JS object literals coalesce duplicate keys
-    // and the latter wins, which silently dropped onboarding_progress
-    // + welcome from the publicReadDomains gate. The merged Set lives
-    // at line ~9490.
+    // DX Platform Phase A2 macros are merged into the `dx:` entry above —
+    // JS object literals coalesce duplicate keys and the latter wins,
+    // which silently dropped onboarding_progress + welcome from the
+    // publicReadDomains gate. The merged Set lives in the earlier dx entry.
     // Governance: read-mostly + caller-driven write macros.
     governance: new Set([
       "open_proposal", "cast_vote", "tally", "resolve",
@@ -23111,6 +23189,20 @@ registerKnowledgeTradeMacros(register);
 // inserts beats; these macros let the player surface and resolve them.
 import registerBeatsMacros from "./domains/beats.js";
 registerBeatsMacros(register);
+import registerSecretsMacros from "./domains/secrets.js";
+registerSecretsMacros(register);
+import registerSchemesMacros from "./domains/schemes.js";
+registerSchemesMacros(register);
+import registerKingdomsMacros from "./domains/kingdoms.js";
+registerKingdomsMacros(register);
+import registerBuildingsMacros from "./domains/buildings.js";
+registerBuildingsMacros(register);
+import registerOxygenMacros from "./domains/oxygen.js";
+registerOxygenMacros(register);
+import registerFactionsMacros from "./domains/factions.js";
+registerFactionsMacros(register);
+import registerVoiceTTSMacros from "./domains/voice-tts.js";
+registerVoiceTTSMacros(register);
 
 // Phase 5a — Land claims. claim / invite / topup / claim_at / can_act_in /
 // list_for_user macros for the world lens to interrogate the substrate.
@@ -23185,6 +23277,25 @@ registerCombatPolishMacros(register);
 
 // (Audit-phase 7.5 onboarding macros (dx.onboarding_progress / dx.welcome)
 //  are merged into the dx domain registered above at server.js:23084.)
+
+// Sprint B Phase 11.1 — NPC legacy / tomb / inheritance surface for the
+// frontend. The substrate (Phase 5b: lib/npc-legacy.js + migration 133)
+// shipped the data; this domain is the read-only lookup surface so
+// players can see tombs, last words, and inheritance lineage.
+import registerNpcLegacyMacros from "./domains/npc-legacy.js";
+registerNpcLegacyMacros(register);
+
+// Sprint B Phase 10 — faction-strategy surface for the cross-world
+// signature quest's witness_next_move objective + the Crucible HUD's
+// recent_moves / get_relation reads.
+import registerFactionStrategyMacros from "./domains/faction-strategy.js";
+registerFactionStrategyMacros(register);
+
+// Sprint B Phase 11.4 — procgen settlement NPC reads for the world
+// page. The substrate fills these via the procgen-settlement-cycle
+// heartbeat above; this domain is the player-facing read surface.
+import registerProcgenSettlementMacros from "./domains/procgen-settlements.js";
+registerProcgenSettlementMacros(register);
 
 // Concordia Procedural Mount System Phase B1 — read-only macros for
 // mount species lookup + eligible-companion + nearby-creature browsing.
@@ -26886,6 +26997,20 @@ registerSystemRoutes(app, {
 // ---- Audit Log Endpoints (extracted to routes/audit.js) ----
 app.use("/api/audit", createAuditRouter({ requireRole, db }));
 
+// Sprint D / CC1 — serve cached voice synthesis files. Path: /voice-cache/*.mp3
+import * as __voice_cache_express from "express";
+import * as __voice_cache_path from "node:path";
+import { fileURLToPath as __voice_cache_fileURLToPath } from "node:url";
+const __VOICE_CACHE_DIR = __voice_cache_path.resolve(
+  __voice_cache_path.dirname(__voice_cache_fileURLToPath(import.meta.url)),
+  "data/voice-cache",
+);
+try {
+  app.use("/voice-cache", __voice_cache_express.default.static(__VOICE_CACHE_DIR, {
+    fallthrough: false, maxAge: "30d", immutable: true,
+  }));
+} catch { /* cache dir may not exist on first boot — created lazily by voice-synthesis.js */ }
+
 // ---- Auth Endpoints (extracted to routes/auth.js) ----
 app.use("/api/auth", createAuthRouter({
   AuthDB,
@@ -28776,7 +28901,7 @@ if (db) {
     } catch (e) { console.warn("[quest-engine]", e.message); }
     // Seed authored world content (factions, NPCs, lore, quest chains) into
     // in-memory systems. Must run after world seed so history engine is ready.
-    try { seedContent({ db }); } catch (e) { console.warn("[content-seeder]", e.message); }
+    try { await seedContent({ db }); } catch (e) { console.warn("[content-seeder]", e.message); }
     // Starter content — recipes + hostile spawns. Idempotent; safe on every boot.
     try {
       const starter = await import("./lib/starter-content.js");
@@ -29009,7 +29134,7 @@ app.use("/api/anomalies", createAnomaliesRouter({ requireAuth, db }));
 
 // The Concord Link — cross-world communication substrate.
 import createConcordLinkRouter from "./routes/concord-link.js";
-app.use("/api/concord-link", createConcordLinkRouter({ requireAuth, db, emitToUser }));
+app.use("/api/concord-link", createConcordLinkRouter({ requireAuth, db, emitToUser, emitToWorld }));
 
 // Link Walker bazaar + journey tracking. Mounted as a sub-path under
 // concord-link so the panel UI can stay co-located.

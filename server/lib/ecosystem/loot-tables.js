@@ -97,7 +97,16 @@ const BIOME_SPECIES = Object.freeze({
     forest:    [{ id: "deer",   target: 6, lifestyle: "herbivore" }, { id: "boar",   target: 4, lifestyle: "omnivore"  }, { id: "wolf", target: 2, lifestyle: "carnivore" }],
     highland:  [{ id: "goat",   target: 5, lifestyle: "herbivore" }, { id: "hawk",   target: 3, lifestyle: "carnivore" }],
     mountain:  [{ id: "bear",   target: 1, lifestyle: "carnivore" }, { id: "goat",   target: 3, lifestyle: "herbivore" }],
-    water:     [{ id: "fish",   target: 12, lifestyle: "herbivore" }, { id: "crab",  target: 6, lifestyle: "omnivore"  }],
+    // Sprint C / Track C1 — aquatic biome gets procedural marine creatures.
+    // topology drives the aquatic-mesh-builder (eel/cephalopod/shark).
+    // swim_depth_min/max gate which depths spawn each species.
+    water:     [
+      { id: "fish",        target: 12, lifestyle: "herbivore", topology: "fish",        swim_depth_min: 0,  swim_depth_max: 8  },
+      { id: "crab",        target: 6,  lifestyle: "omnivore",  topology: "fish",        swim_depth_min: 0,  swim_depth_max: 2  },
+      { id: "reef_eel",    target: 4,  lifestyle: "carnivore", topology: "eel",         swim_depth_min: 2,  swim_depth_max: 12 },
+      { id: "deep_octopus",target: 2,  lifestyle: "carnivore", topology: "cephalopod",  swim_depth_min: 5,  swim_depth_max: 30 },
+      { id: "reef_shark",  target: 1,  lifestyle: "carnivore", topology: "shark",       swim_depth_min: 3,  swim_depth_max: 25 },
+    ],
   },
   fantasy: {
     forest:    [{ id: "moonbloom_sprite", target: 3, lifestyle: "herbivore" }, { id: "star_seed_kin", target: 2, lifestyle: "herbivore" }],

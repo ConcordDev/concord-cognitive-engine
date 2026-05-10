@@ -122,9 +122,27 @@ export function pickMove(state, peers = []) {
   const stance = state.stance ?? "consolidate";
   const momentum = Number(state.momentum ?? 0);
 
+  // Sprint C / Track A1 — leader coping trait biases probabilities.
+  // bias is a float in [-1, +1] that nudges the rng() comparison; positive
+  // makes the move more likely.
+  const coping = state.coping_trait ?? null;
+  const biasFor = (move) => {
+    switch (coping) {
+      case "paranoid": if (move === "RAID") return 0.25; if (move === "DECLARE_WAR") return 0.20; if (move === "SEEK_TRUCE") return -0.20; break;
+      case "reckless": if (move === "PROCLAIM_EXPANSION") return 0.30; if (move === "RAID") return 0.15; if (move === "FORTIFY") return -0.15; break;
+      case "cruel":    if (move === "RAID") return 0.20; if (move === "DECLARE_WAR") return 0.15; break;
+      case "withdraw": if (move === "WITHDRAW") return 0.40; if (move === "FORTIFY") return 0.20; if (move === "PROCLAIM_EXPANSION") return -0.20; break;
+      case "drink":    if (move === "FORTIFY") return 0.10; if (move === "PROCLAIM_EXPANSION") return -0.10; break;
+    }
+    return 0;
+  };
+
   // 1) War-state machine — momentum-driven exits.
   if (stance === "war") {
-    if (momentum <= -0.6) {
+    // A1 bias: paranoid leader resists truce even when worn (-0.20 makes
+    // the threshold harder to hit); reckless leader same.
+    const truceThreshold = -0.6 + (biasFor("SEEK_TRUCE") * -1);
+    if (momentum <= truceThreshold) {
       const tgt = state.target_id ?? peers[0]?.faction_id ?? null;
       return {
         move: "SEEK_TRUCE",
@@ -192,7 +210,7 @@ export function pickMove(state, peers = []) {
     const rival = peers
       .filter(p => p.stance === "expand" || p.stance === "war")
       .find(p => getRelationScore(state.faction_id, p.faction_id) >= -0.3);
-    if (rival && rng() < 0.4) {
+    if (rival && rng() < (0.4 + biasFor("DECLARE_WAR"))) {
       return {
         move: "DECLARE_WAR",
         target: rival.faction_id,
@@ -202,7 +220,7 @@ export function pickMove(state, peers = []) {
         newKind: "war", newScore: -1,
       };
     }
-    if (rng() < 0.3) {
+    if (rng() < (0.3 + biasFor("FORTIFY"))) {
       return {
         move: "FORTIFY",
         summary: `${state.faction_id} pauses to fortify gains.`,
@@ -229,7 +247,7 @@ export function pickMove(state, peers = []) {
       newKind: "alliance", newScore: 0.7,
     };
   }
-  if (rng() < 0.35) {
+  if (rng() < (0.35 + biasFor("PROCLAIM_EXPANSION"))) {
     return {
       move: "PROCLAIM_EXPANSION",
       summary: `${state.faction_id} announces a season of expansion.`,
@@ -237,7 +255,7 @@ export function pickMove(state, peers = []) {
       newStance: "expand",
     };
   }
-  if (rng() < 0.05) {
+  if (rng() < (0.05 + biasFor("WITHDRAW"))) {
     return {
       move: "WITHDRAW",
       summary: `${state.faction_id} withdraws from the surrounding politics.`,

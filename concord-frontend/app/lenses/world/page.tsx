@@ -109,6 +109,58 @@ const CombatPolishLayer = dynamic(
     })),
   { ssr: false }
 );
+
+// Sprint B.5 — perception + walker injection + tomb overlay.
+// NpcPerceptionBridge: dispatches concordia:npc-look-at + npc-mood
+// CustomEvents the existing AvatarSystem3D / gait / facial handlers
+// already consume. Walker injection synthesizes NPCData entries from
+// walker:dispatched events so walkers render through the existing
+// procedural-creature mesh pipeline (bodyType-driven, NOT stick figures).
+const NpcPerceptionBridge = dynamic(
+  () => import('@/components/world/NpcPerceptionBridge'),
+  { ssr: false }
+);
+const WalkerNpcInjector = dynamic(
+  () => import('@/components/world/WalkerNpcInjector'),
+  { ssr: false }
+);
+const TombsOverlay = dynamic(
+  () => import('@/components/world/TombsOverlay'),
+  { ssr: false }
+);
+const ProcgenSettlementNpcs = dynamic(
+  () => import('@/components/world/ProcgenSettlementNpcs'),
+  { ssr: false }
+);
+// Sprint D Wave 1 — visible-substrate overlays + audio.
+const SeasonalEffects = dynamic(
+  () => import('@/components/world-lens/SeasonalEffects'),
+  { ssr: false }
+);
+const UnderwaterPostFX = dynamic(
+  () => import('@/components/world-lens/UnderwaterPostFX'),
+  { ssr: false }
+);
+const FactionBanners = dynamic(
+  () => import('@/components/world/FactionBanners'),
+  { ssr: false }
+);
+const InstancedGrass = dynamic(
+  () => import('@/components/world/InstancedGrass'),
+  { ssr: false }
+);
+const AdaptiveMusicEngine = dynamic(
+  () => import('@/components/world-lens/AdaptiveMusicEngine'),
+  { ssr: false }
+);
+const PhotoMode = dynamic(
+  () => import('@/components/world/PhotoMode'),
+  { ssr: false }
+);
+const BuildingCollapseVFX = dynamic(
+  () => import('@/components/world/BuildingCollapseVFX'),
+  { ssr: false }
+);
 const LockOnController = dynamic(
   () =>
     import('@/components/world-lens/LockOnController').then((m) => ({
@@ -1768,6 +1820,22 @@ export default function WorldLensPage() {
 
   // Live NPC state — populated from API, refreshed every 10s
   const [worldNPCs, setWorldNPCs] = useState<
+    import('@/components/world-lens/AvatarSystem3D').NPCData[]
+  >([]);
+
+  // Sprint B.5 — walker journeys synthesized as NPCData entries by
+  // WalkerNpcInjector. Merged into the world's npcs prop below so the
+  // procedural-creature mesh pipeline renders walkers with proper body
+  // types instead of placeholder geometry.
+  const [walkerNpcs, setWalkerNpcs] = useState<
+    import('@/components/world-lens/AvatarSystem3D').NPCData[]
+  >([]);
+
+  // Sprint B.5 — procgen settlement NPCs (Phase 11.4 substrate).
+  // ProcgenSettlementNpcs queries `procgen.npcs_for_world` and yields
+  // NPCData entries; merged below alongside walkers so authored,
+  // walker, and procgen NPCs all flow through the same mesh pipeline.
+  const [procgenNpcs, setProcgenNpcs] = useState<
     import('@/components/world-lens/AvatarSystem3D').NPCData[]
   >([]);
 
@@ -3851,7 +3919,7 @@ export default function WorldLensPage() {
             <AvatarSystem3D
               playerAvatar={playerAvatar}
               otherPlayers={otherPlayers}
-              npcs={worldNPCs}
+              npcs={[...worldNPCs, ...walkerNpcs, ...procgenNpcs]}
               weatherModifiers={weatherModifiers ?? undefined}
               quality="medium"
               cameraMode={cameraMode}
@@ -4236,6 +4304,67 @@ export default function WorldLensPage() {
               fires immediately before applyAttack resolves) so the player
               can read attacker intent during the anticipation window. */}
           <BodyLanguageOverlay />
+
+          {/* Sprint B.5 — NPC perception bridge: subscribes to
+              npc:perception-update (server's npc-perception-snapshot
+              heartbeat at frequency 8) and dispatches the existing
+              concordia:npc-look-at + concordia:npc-mood CustomEvents
+              that AvatarSystem3D's per-NPC handlers consume. Local
+              relevance gated by userId — only this player's grudge
+              targets see the corresponding NPCs turn toward them. */}
+          <NpcPerceptionBridge userId={playerAvatar?.id || null} />
+
+          {/* Sprint B.5 — walker NPC injector: subscribes to
+              walker:dispatched events and synthesizes NPCData entries
+              from the authored walker NPC pool (walker_tully_vex /
+              walker_sona_karth in npcs.json) so cross-world journeys
+              render through the existing procedural-creature mesh
+              pipeline with proper body types. The merged npcs prop
+              feeding AvatarSystem3D above includes them. */}
+          <WalkerNpcInjector
+            worldId={activeDistrict?.id || 'concordia-hub'}
+            onWalkers={setWalkerNpcs}
+          />
+
+          {/* Sprint B.5 — tombs overlay: surfaces npc_legacies for the
+              active world as a DOM-overlay HUD panel + tomb markers
+              projected over scene positions. Full 3D obelisk meshes
+              land when the imperative ConcordiaScene gets a tomb
+              scene-add API; this is the substrate-bridge surface so
+              players see their world's death log. */}
+          <TombsOverlay worldId={activeDistrict?.id || 'concordia-hub'} />
+
+          {/* Sprint B.5 — procgen settlement NPCs (Phase 11.4 substrate).
+              Pulls procgen_settlement_npcs rows for this world via the
+              procgen.npcs_for_world macro and synthesizes NPCData
+              entries so the existing procedural-creature mesh pipeline
+              renders them with proper body types. Refreshes on
+              world:region-spawned events + 5-min poll. */}
+          <ProcgenSettlementNpcs
+            worldId={activeDistrict?.id || 'concordia-hub'}
+            onSettlementNpcs={setProcgenNpcs}
+          />
+
+          {/* Sprint D Wave 1 — visible-substrate overlays. SeasonalEffects
+              draws snow/leaves/pollen + tint based on season; UnderwaterPostFX
+              activates real shader when player y < waterPlaneY; FactionBanners
+              renders heraldry at faction-controlled anchors; InstancedGrass
+              fills the immediate ground tile around the player. */}
+          <SeasonalEffects worldId={activeDistrict?.id || 'concordia-hub'} />
+          <UnderwaterPostFX worldId={activeDistrict?.id || 'concordia-hub'} />
+          <BuildingCollapseVFX
+            worldId={activeDistrict?.id || 'concordia-hub'}
+            getCamera={() => null}
+          />
+
+          {/* Sprint D EE3 — adaptive music stem engine layered on top of
+              SoundscapeEngine. Loads /music/stems/<track>/{layer}.ogg if
+              available, falls back gracefully when stems are missing. */}
+          <AdaptiveMusicEngine worldId={activeDistrict?.id || 'concordia-hub'} />
+
+          {/* Sprint D Z3 — photo mode toggle. Triggered by P key (handled by
+              gamepad/keymap layer in a follow-up). */}
+          <PhotoMode open={false} onClose={() => undefined} />
 
           {/* Companion roster — pet HUD (Phase A). Mounted bottom-right;
               opens on click. Lists owned creatures, deploy/dismiss/rename. */}
@@ -5482,6 +5611,14 @@ function _mapNPCToAvatarData(npc: {
   bodyType?: string;
   faction?: string;
   isConscious?: boolean;
+  // Sprint B.6 — immortal flag from authored npcs.json (e.g.
+  // concordia_first_breath has `is_immortal: true`). Promotes the
+  // NPC to the legend body type even if archetype isn't 'legend'.
+  // The worlds API returns this as camelCase `isImmortal`
+  // (server/routes/worlds.js:716); we accept both shapes for
+  // robustness against API drift.
+  isImmortal?: boolean;
+  is_immortal?: boolean;
   // Behavioral state fields from updated worlds.js API
   griefLevel?: number;
   criminalRep?: number;
@@ -5516,7 +5653,7 @@ function _mapNPCToAvatarData(npc: {
     medic: 'read',
     journalist: 'read',
   };
-  const bodyTypeMap: Record<string, 'slim' | 'average' | 'stocky' | 'tall'> = {
+  const bodyTypeMap: Record<string, 'slim' | 'average' | 'stocky' | 'tall' | 'legend'> = {
     large: 'stocky',
     small: 'slim',
     giant: 'stocky',
@@ -5526,8 +5663,22 @@ function _mapNPCToAvatarData(npc: {
     cyborg: 'average',
     demon: 'stocky',
     dragon: 'stocky',
+    // Sprint B.6 — `legend` is the immortal-NPC body type. 1.5× scale +
+    // emissive material in createAvatarMesh. Used for archetypes
+    // explicitly marked legendary in npcs.json (concordia_first_breath,
+    // sovereign_first_refusal, concord_first_thought, weaver_of_echoes).
+    legend: 'legend',
   };
   const occ = npc.occupation ?? npc.archetype ?? npc.jobType ?? 'guard';
+
+  // Sprint B.6 — archetype-based legend override. Authored NPCs with
+  // archetype === 'legend' OR is_immortal === true become the legend
+  // body type regardless of any other bodyType field. Keeps the
+  // numinous-NPC presentation consistent across data shapes.
+  const isLegendNpc =
+    npc.archetype === 'legend' ||
+    npc.isImmortal === true ||
+    npc.is_immortal === true;
 
   // Hair color reflects behavioral state
   let hairColor = '#333333';
@@ -5553,7 +5704,7 @@ function _mapNPCToAvatarData(npc: {
       skinColor,
       hairColor,
       hairStyle: npc.isConscious ? 'long' : 'short',
-      bodyType: bodyTypeMap[npc.bodyType ?? ''] ?? 'average',
+      bodyType: isLegendNpc ? 'legend' : (bodyTypeMap[npc.bodyType ?? ''] ?? 'average'),
       clothing: {
         top: { color: skinColor, type: clothingTop },
         bottom: { color: '#374151', type: 'pants' },
