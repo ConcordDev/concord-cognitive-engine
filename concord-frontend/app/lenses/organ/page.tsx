@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from "@/hooks/useLensCommand";
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -37,6 +38,14 @@ type ViewMode = 'grid' | 'timeline';
 type SortMode = 'name' | 'health' | 'maturity' | 'wear';
 
 export default function OrganLensPage() {
+  useLensCommand(
+    [
+      { id: "organ-grid", keys: "v", description: "Grid view", category: "view", action: () => setViewMode("grid") },
+      { id: "organ-timeline", keys: "g", description: "Timeline view", category: "view", action: () => setViewMode("timeline") },
+    ],
+    { lensId: "organ" }
+  );
+
   useLensNav('organ');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('organ');
   const queryClient = useQueryClient();

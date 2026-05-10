@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { SubLensQuickNav } from '@/components/lens/SubLensQuickNav';
@@ -288,6 +289,20 @@ export default function PhysicsLensPage() {
   const [showSettings, setShowSettings] = useState(false);
   const [showPresets, setShowPresets] = useState(false);
   const [showFeatures, setShowFeatures] = useState(true);
+
+  // Physics-tool shortcuts (Algodoo / Box2D Phaser idiom).
+  useLensCommand(
+    [
+      { id: 'tool-select',    keys: 'v', description: 'Select',    category: 'view', action: () => setTool('select') },
+      { id: 'tool-circle',    keys: 'c', description: 'Circle',    category: 'view', action: () => setTool('circle') },
+      { id: 'tool-rectangle', keys: 'r', description: 'Rectangle', category: 'view', action: () => setTool('rectangle') },
+      { id: 'tool-polygon',   keys: 'p', description: 'Polygon',   category: 'view', action: () => setTool('polygon') },
+      { id: 'tool-spring',    keys: 's', description: 'Spring',    category: 'view', action: () => setTool('spring') },
+      { id: 'tool-force',     keys: 'f', description: 'Force',     category: 'view', action: () => setTool('force') },
+      { id: 'tool-delete',    keys: 'd', description: 'Delete',    category: 'view', action: () => setTool('delete') },
+    ],
+    { lensId: 'physics' }
+  );
   const [dragStart, setDragStart] = useState<Vector2D | null>(null);
   const [draggingBody, setDraggingBody] = useState<string | null>(null);
   const [constraintStart, setConstraintStart] = useState<string | null>(null);

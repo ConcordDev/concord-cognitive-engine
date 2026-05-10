@@ -4,6 +4,7 @@ import { LensFeedPanel } from '@/components/feeds/LensFeedPanel';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from "@/hooks/useLensCommand";
 import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
@@ -72,6 +73,15 @@ const IMPORTANCE_COLORS: Record<string, string> = {
 };
 
 export default function NewsLensPage() {
+  useLensCommand(
+    [
+      { id: "news-all", keys: "a", description: "All categories", category: "view", action: () => setSelectedCategory("all") },
+      { id: "news-newest", keys: "n", description: "Sort newest", category: "view", action: () => setSortMode("newest") },
+      { id: "news-trending", keys: "t", description: "Sort trending", category: "view", action: () => setSortMode("trending") },
+    ],
+    { lensId: "news" }
+  );
+
   useLensNav('news');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('news');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
