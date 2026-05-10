@@ -9746,6 +9746,9 @@ async function runMacro(domain, name, input, ctx) {
     spectator: new Set(["list_for_world"]),
     goddess: new Set(["recent"]),
     betting: new Set(["list_open"]),
+    // Phase 9.3 — voice / music / foresight
+    forecast: new Set(["recent", "compose"]),
+    sonic_glyph: new Set(["spell_to_chord"]),
   };
   const _domainSet = publicReadDomains[domain];
   const _domainNameAllowed = _domainSet ? _domainSet.has(name) : false;
@@ -69324,6 +69327,107 @@ register("observer", "compose_report", async (ctx, input = {}) => {
 
 structuredLog("info", "phase9_2_spectator_init", {
   detail: "Phase 9.2 — spectator.*, goddess.*, betting.* (SPARKS), observer.compose_report",
+});
+
+// ── Phase 9.3: Voice / music / foresight ────────────────────────────────────
+
+// #16 Concordia weather forecasting.
+register("forecast", "compose", async (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { worldId = "concordia-hub", persist = true } = input || {};
+  try {
+    const lib = await import("./lib/world-forecast.js");
+    const r = await lib.composeForecast(db, STATE, worldId);
+    if (r.ok && persist) lib.persistForecast(db, worldId, r.forecast);
+    return r;
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Compose 24h forecast for a world. Combines forward-sim + drift + faction + embodied baselines." });
+
+register("forecast", "recent", async (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { worldId = "concordia-hub" } = input || {};
+  try {
+    const lib = await import("./lib/world-forecast.js");
+    const f = lib.recentForecast(db, worldId);
+    return { ok: true, worldId, forecast: f };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Most recent persisted forecast for a world." });
+
+// #18 Glyph spell as music.
+register("sonic_glyph", "spell_to_chord", (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { spellId, components } = input || {};
+  let comps = components;
+  if (!Array.isArray(comps) && spellId) {
+    try {
+      const spell = db.prepare(`SELECT components_json FROM player_glyph_spells WHERE id = ?`).get(spellId);
+      if (spell?.components_json) {
+        try { comps = JSON.parse(spell.components_json); } catch { /* keep undefined */ }
+      }
+    } catch { /* glyph_spells table optional */ }
+  }
+  if (!Array.isArray(comps)) return { ok: false, reason: "no_components" };
+  // Lazy-load to avoid sync import overhead at boot.
+  return import("./lib/sonic-glyph.js").then(m => m.spellSummary(comps));
+}, { note: "Translate a composed spell into a Web Audio note schedule. Maps base-6 glyphs to C-minor scale degrees." });
+
+// #17 Player-as-walker carry.
+register("walker", "request_ride_along", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { walkerId, fromAnchor, toAnchor } = input || {};
+  if (!walkerId || !fromAnchor || !toAnchor) return { ok: false, reason: "missing_inputs" };
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS walker_ride_alongs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        walker_id TEXT NOT NULL,
+        carrier_user_id TEXT NOT NULL,
+        from_anchor TEXT NOT NULL,
+        to_anchor TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        requested_at INTEGER NOT NULL DEFAULT (unixepoch()),
+        delivered_at INTEGER
+      )
+    `);
+    const r = db.prepare(`
+      INSERT INTO walker_ride_alongs (walker_id, carrier_user_id, from_anchor, to_anchor)
+      VALUES (?, ?, ?, ?)
+    `).run(walkerId, userId, fromAnchor, toAnchor);
+    return { ok: true, rideAlongId: r.lastInsertRowid };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Player offers to carry a walker on their own journey. Royalty cascade pays carrier on delivery." });
+
+register("walker", "list_open_rides", (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { fromAnchor = null, limit = 25 } = input || {};
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS walker_ride_alongs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        walker_id TEXT NOT NULL,
+        carrier_user_id TEXT NOT NULL,
+        from_anchor TEXT NOT NULL,
+        to_anchor TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        requested_at INTEGER NOT NULL DEFAULT (unixepoch()),
+        delivered_at INTEGER
+      )
+    `);
+    const where = fromAnchor ? "WHERE status = 'pending' AND from_anchor = ?" : "WHERE status = 'pending'";
+    const args = fromAnchor ? [fromAnchor, Number(limit)] : [Number(limit)];
+    const rows = db.prepare(`
+      SELECT id, walker_id, carrier_user_id, from_anchor, to_anchor, requested_at
+      FROM walker_ride_alongs ${where}
+      ORDER BY requested_at DESC LIMIT ?
+    `).all(...args);
+    return { ok: true, rideAlongs: rows };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Open walker ride-along requests, optionally filtered by from_anchor." });
+
+structuredLog("info", "phase9_3_voice_music_foresight_init", {
+  detail: "Phase 9.3 — forecast.*, sonic_glyph.spell_to_chord, walker.{request_ride_along,list_open_rides}",
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════

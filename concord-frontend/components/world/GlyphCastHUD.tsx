@@ -58,6 +58,59 @@ export default function GlyphCastHUD({ worldId = 'concordia-hub', playerPos }: {
     return [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || 'physical';
   };
 
+  // Phase 9.3 #18 — play the spell as a chord via Web Audio API.
+  // Wraps the sonic_glyph.spell_to_chord macro; renders the
+  // returned note schedule into stacked OscillatorNodes.
+  const playChord = async (spellId: number) => {
+    setCastStatus('Composing chord…');
+    const r = await fetch('/api/lens/run', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ domain: 'sonic_glyph', name: 'spell_to_chord', input: { spellId } }),
+    }).catch(() => null);
+    const data = r ? await r.json().catch(() => null) : null;
+    if (!data?.ok || !data?.chord?.notes?.length) {
+      setCastStatus(`Sonic failed: ${data?.error || data?.reason || 'unknown'}`);
+      window.setTimeout(() => setCastStatus(null), 3000);
+      return;
+    }
+    try {
+      const win = window as Window & { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext };
+      const Ctx = win.AudioContext || win.webkitAudioContext;
+      if (!Ctx) {
+        setCastStatus('Web Audio unavailable in this browser');
+        window.setTimeout(() => setCastStatus(null), 3000);
+        return;
+      }
+      const ctx = new Ctx();
+      const now = ctx.currentTime;
+      for (const note of data.chord.notes) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = data.chord.waveform || 'sine';
+        osc.frequency.value = note.freq;
+        const env = data.chord.envelope || { attack_ms: 50, decay_ms: 200, sustain: 0.4, release_ms: 400 };
+        const offset = (note.offset_ms || 0) / 1000;
+        const dur = (note.duration_ms || 600) / 1000;
+        const peak = (note.velocity || 0.5) * 0.6;
+        gain.gain.setValueAtTime(0, now + offset);
+        gain.gain.linearRampToValueAtTime(peak, now + offset + env.attack_ms / 1000);
+        gain.gain.linearRampToValueAtTime(peak * (env.sustain || 0.4), now + offset + (env.attack_ms + env.decay_ms) / 1000);
+        gain.gain.linearRampToValueAtTime(0, now + offset + dur + env.release_ms / 1000);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + offset);
+        osc.stop(now + offset + dur + env.release_ms / 1000 + 0.05);
+      }
+      setCastStatus(`Played ${data.chord.notes.length}-note chord (${data.duration_ms}ms)`);
+      window.setTimeout(() => setCastStatus(null), 3000);
+    } catch (err) {
+      const e = err as Error;
+      setCastStatus(`Audio error: ${e.message}`);
+      window.setTimeout(() => setCastStatus(null), 3000);
+    }
+  };
+
   const cast = async (spellId: number) => {
     if (!playerPos) { setCastStatus('No world position'); return; }
     setCastStatus('Casting…');
@@ -100,16 +153,24 @@ export default function GlyphCastHUD({ worldId = 'concordia-hub', playerPos }: {
         {spells.slice(0, 12).map(s => {
           const el = dominantElement(s);
           return (
-            <li key={s.id}>
+            <li key={s.id} className="flex gap-1">
               <button
                 type="button"
                 onClick={() => cast(s.id)}
                 disabled={!playerPos}
-                className="w-full flex items-center gap-2 text-[11px] bg-zinc-900/60 border border-zinc-800 hover:border-purple-700 rounded px-2 py-1.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="flex-1 flex items-center gap-2 text-[11px] bg-zinc-900/60 border border-zinc-800 hover:border-purple-700 rounded px-2 py-1.5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 <span>{ELEMENT_GLYPH[el] || '◆'}</span>
                 <span className="flex-1 text-left text-zinc-100 truncate">{s.name || `Spell ${s.id}`}</span>
                 <span className="text-purple-400 text-[10px] font-mono">cast</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => playChord(s.id)}
+                title="Play spell as chord"
+                className="px-2 text-[11px] bg-zinc-900/60 border border-zinc-800 hover:border-cyan-700 rounded transition-colors"
+              >
+                <span className="text-cyan-400">♪</span>
               </button>
             </li>
           );
