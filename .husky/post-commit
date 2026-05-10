@@ -1,0 +1,27 @@
+#!/bin/sh
+# Post-commit detector telemetry — appends a history row tagged with the
+# just-committed SHA so trend analysis (bugs-per-commit, bugs-per-sprint,
+# bugs-per-LOC-delta) is possible without re-running the detectors.
+#
+# Runs in the background so it doesn't slow down the user's commit feel.
+# A missed history row is fine; the next commit will catch up.
+#
+# To skip: set CONCORD_NO_HISTORY=1 in the environment.
+
+if [ -n "$CONCORD_NO_HISTORY" ]; then
+  exit 0
+fi
+
+if [ ! -f server/scripts/run-detectors.js ]; then
+  exit 0
+fi
+
+# Run in the background.  History append is idempotent within a single
+# generatedAt timestamp; even if the user commits twice quickly, both rows
+# get distinct timestamps and SHAs.
+(
+  cd "$(git rev-parse --show-toplevel)" 2>/dev/null || exit 0
+  node server/scripts/run-detectors.js --append-history > /dev/null 2>&1 || true
+) &
+
+exit 0

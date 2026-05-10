@@ -1,1 +1,2 @@
 {"generatedAt":"2026-05-08T21:00:51.878Z","totals":{"critical":0,"high":24,"medium":562,"low":248,"info":459,"total":1293},"detectorCount":8,"durationMs":27235,"gitSha":null,"deltaVsBaseline":{"added":0,"removed":0}}
+{"generatedAt":"2026-05-10T02:45:22.333Z","totals":{"critical":0,"high":5,"medium":852,"low":1075,"info":350,"total":2282},"detectorCount":18,"durationMs":35367,"gitSha":"d85e4847820b6e5bc91109dbff452461b3da7518","deltaVsBaseline":{"added":1859,"removed":876}}

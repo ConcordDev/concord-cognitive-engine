@@ -184,8 +184,16 @@ async function main() {
   if (flags.appendHistory) {
     const baseline = await loadBaseline(REPO_ROOT);
     const delta = baseline.fingerprints ? diffAgainstBaseline(report, baseline) : null;
-    const r = await appendHistory(REPO_ROOT, report, { delta });
-    console.log(`Appended history row → ${r.path}`);
+    // Capture the just-committed SHA so the history row ties to a
+    // specific commit. The post-commit hook reads HEAD; ad-hoc invocations
+    // also work (HEAD is whatever's checked out).
+    let gitSha = null;
+    try {
+      const { execSync } = await import("node:child_process");
+      gitSha = execSync("git rev-parse HEAD", { encoding: "utf-8" }).trim();
+    } catch { /* tolerate non-git environments */ }
+    const r = await appendHistory(REPO_ROOT, report, { delta, gitSha });
+    console.log(`Appended history row → ${r.path}${gitSha ? ` (sha ${gitSha.slice(0, 8)})` : ""}`);
     return;
   }
 
