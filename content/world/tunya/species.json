@@ -1,0 +1,254 @@
+{
+  "world_id": "tunya",
+  "schema_version": "1.0",
+  "purpose": "Sapient species + Earth humans on Tunya. Each species defines (a) physical morphology for the procgen character generator, (b) cultural / religious / governance distinctions, (c) reproductive compatibility with other species, (d) procgen visual cues that mark power level on the body.",
+  "taxonomy": {
+    "sapient_species": [
+      "ancient_tunyan",
+      "medici",
+      "sanguire"
+    ],
+    "naturalized_population": "earth_human (seven ark cohorts; 4 generations of intermixing have made most of them >50% Tunyan-blooded by Year 4G)"
+  },
+  "species": {
+    "ancient_tunyan": {
+      "id": "ancient_tunyan",
+      "common_name": "Tunyan",
+      "status_on_planet": "indigenous",
+      "estimated_population": "small. Pure-blood Tunyans rare. Mixed-blood Tunyans common across Masond and the kingdoms generally.",
+      "lifespan": {
+        "pure": "200-300 Tunyan years",
+        "mixed_50_50": "120-160",
+        "mixed_25_or_less": "Earth-human normal (~70-85)"
+      },
+      "morphology": {
+        "average_height_meters": { "pure_male": 1.95, "pure_female": 1.85, "mixed_average": 1.78 },
+        "build": "tall, large-boned, calloused hands characteristic of stoneworkers even in non-stoneworking lineages",
+        "skull": "broad and high",
+        "fingers": 5,
+        "skin_color_origin": "warm earth-tones in the original pure population (ochres, deep browns, slate-grays). Mixing with arrivals produces the full Tunyan spectrum (see colors.json).",
+        "hair": "thick, dark, long-lived (slow to gray)",
+        "eyes": "dark, often yellow-flecked iris in pure-blood individuals",
+        "distinctive_marker": "pure Tunyans have a faint subdermal marbling pattern only visible in direct sunlight. Mixed-bloods retain it in fragments. The marbling shifts with the planetary refusal-field's local density."
+      },
+      "biology": {
+        "power": "no bloodline power. Conduit-status for the planetary refusal-field — see powers.json#tunyan_conduit.",
+        "reproductive_compatibility": {
+          "with_earth_human": "fully compatible; common and largely successful — most kingdoms outside Nil are 30-70% Tunyan-blooded by 4G",
+          "with_sanguire": "compatible. Rare in practice (Sanguire culture isolates). Hybrids are recognizable by faint marbling under fur.",
+          "with_medici": "no documented case. Mating customs of both species discourage. Theoretically biologically possible. Open lore."
+        }
+      },
+      "culture": {
+        "governance": "Nil — Grove-mother lineage; mostly leaderless/oral elsewhere",
+        "religion": "the Field. Pure Tunyans do not personify it. Mixed-bloods sometimes do.",
+        "naming": "see naming_conventions.json#nil"
+      }
+    },
+    "medici": {
+      "id": "medici",
+      "common_name": "Medici",
+      "status_on_planet": "stranded — crashed ~100 Tunyan years ago; ship unrepairable",
+      "estimated_population": "small (low thousands). Confined to Medici Isle off Kree's coast and small wards in Kree-allied kingdoms.",
+      "lifespan": {
+        "pure": "150-200 Tunyan years; Supreme Elder typically the longest-lived",
+        "mate_absorption_extends": "absorbing a deceased mate's healing capacity adds 10-25 years to the survivor's life"
+      },
+      "morphology": {
+        "male": {
+          "average_height_meters": 1.65,
+          "build": "slender",
+          "skull": "elongated cone, GROWS WITH HEALING SKILL — the cone's height is a visible power-level marker. A junior healer's skull is barely peaked; the Supreme Elder's is dramatically elongated.",
+          "fingers": 5,
+          "finger_anatomy": "all five fingers the same length",
+          "eyes": "large, often pale gold or silver",
+          "nose": "wide",
+          "tongue": "carries glands on the upper surface that taste the air (chemoreception) — used for diagnosis and for environmental reading",
+          "teeth": "flat",
+          "ears": "elf-like (pointed)",
+          "chin": "pointed",
+          "skin_hair": "hairless throughout",
+          "phallus": "knotting (mates lock during the act — biological correlate of mate-for-life pairing)",
+          "headwear_taboo": "must cover head in public except at home or during holiday communions. Skull elongation is intimate biological information."
+        },
+        "female": {
+          "average_height_meters": 1.52,
+          "build": "very curvy",
+          "skull": "dome-shaped (not elongated)",
+          "fingers": 6,
+          "finger_anatomy": "all six fingers the same length",
+          "eyes": "large",
+          "nose": "wide",
+          "tongue": "secretes either poison OR antidotes voluntarily — the discrimination between the two is a learned skill of the species. Used in healing (antidote) and rare combat (poison).",
+          "teeth": "flat",
+          "ears": "round-tipped",
+          "chin": "curved",
+          "skin_hair": "hairless on body; hair on head GROWS WITH POWER LEVEL — a junior healer's hair is short; an elder's hair is to the floor. Cutting Medici female hair is taboo and physically painful.",
+          "headwear_taboo": "no taboo for females; long hair displayed freely is the cultural signature"
+        },
+        "skin_color_palette": "Medici skin tone is a soft pearlescent gray-white in the pure species. Cross-species skin-color genetics (see colors.json) produce a distinctive 'pearl-blended' shade in any mixed-Medici offspring — pearl + the partner's color, blended."
+      },
+      "biology": {
+        "power": "healing only. See powers.json#healing_bloodline. The Resonance Choir is a healing focus practice, not a combat ability. Earlier drafts of this bible incorrectly attributed ice powers; canon corrects.",
+        "mate_for_life": "Medici pair-bond once per lifetime. Bond formation is irreversible and biologically attested by the male knotting and the female's chemical signature shift.",
+        "mate_death_absorption": "When a bonded Medici dies, the survivor absorbs the dead mate's healing capacity, becoming a tier-jump elder. This is the canonical path to elder-tier power. Premature partner-death (assassination, sabotage) to gain power is the deepest taboo in Medici culture.",
+        "supreme_elder_succession": "When the Supreme Elder dies, all remaining elders gather around the body. Mercury's chosen-soul transfers to the next leader. The new Supreme Elder gains full healing potency, the home-world memory chain, and the species' ceremonial knowledge.",
+        "reproductive_compatibility": {
+          "with_other_medici": "fully compatible. Mate-for-life norm.",
+          "with_sanguire": "asymmetrically lethal — see powers.json#sanguire_medici_hybrid. Medici-female + Sanguire-male = lethal pregnancy. Medici-male + Sanguire-female = viable but rare and culturally taboo (preserves the Medici male breeding pool).",
+          "with_earth_human": "viable in theory; documented cases exist. Children carry attenuated healing (1/2 to 1/4 of pure expression). The Medici discourage but do not forbid.",
+          "with_ancient_tunyan": "no documented case. Theoretically possible. Open lore."
+        }
+      },
+      "culture": {
+        "governance": "Supreme Elder, chosen by Mercury at the previous Elder's death. Elders' council under the Supreme Elder. Egalitarian below the elder tier.",
+        "religion": "Mercury (see deities.json). Do not believe in Tunyan gods.",
+        "external_role": "The Supreme Elder represents the Medici when other lands of TunYah convene.",
+        "venturing_practice": "Medici venture off Medici Isle to heal the sick and trade healing services for food. They do not stay long in foreign kingdoms; the isle is the only true home.",
+        "naming": "see naming_conventions.json#medici"
+      },
+      "homeworld_lore": {
+        "name": "open lore — held in Supreme Elder succession memory",
+        "distance": "open lore",
+        "what_destroyed_their_ship": "open lore",
+        "have_they_tried_to_signal_home": "open lore — no answer received in 100 Tunyan years"
+      }
+    },
+    "sanguire": {
+      "id": "sanguire",
+      "common_name": "Sanguire",
+      "status_on_planet": "Kree-arrived. The Kree state arrived on Tunya before the Earth arks. Sanguire is one of the species making up the Kree polity. Their homeland within Kree is Sandrun.",
+      "estimated_population": "moderate. Concentrated in Sandrun. Sanguire-descended populations in Kree's other regions (mixed with other Kree species, with Earth-arrival populations, with Ancient Tunyan).",
+      "lifespan": {
+        "pure": "100-130 Tunyan years",
+        "mixed_50_50": "85-110"
+      },
+      "morphology": {
+        "male": {
+          "average_height_meters": 1.96,
+          "build": "wide shoulders and wide hips, heavily muscled",
+          "fingers": 6,
+          "fur_coverage": {
+            "torso_legs": "thick, dense fur layer (procgen shader: high density, long pile)",
+            "arms_face_feet": "thinner fur (procgen shader: low density, short pile)",
+            "color_correlation": "fur color is the male's underlying skin color saturated and slightly darker. Visible at a glance for genealogy reading."
+          },
+          "phallus_anatomy_lore_only": "double phallus per source. Held in lore-only material; not surfaced in mainline content unless you flip a flag.",
+          "fire_expression_visible": "when invoking fire bloodline, hands and breath visibly heat-shimmer. At full potency, palms glow ember-orange."
+        },
+        "female": {
+          "average_height_meters": "TBD — source document did not include Sanguire female description. Flagged for follow-up.",
+          "build": "TBD",
+          "fingers": "TBD (likely 6 by analogy to males, but unconfirmed)",
+          "fur_coverage": "TBD",
+          "fire_expression_visible": "TBD",
+          "OPEN_LORE": "Sanguire female morphology is awaiting the next batch of source material from the user."
+        },
+        "skin_color_palette": "Sanguire skin tone in the pure species spans warm reds, ambers, and ochres. Cross-species offspring follow Tunyan blending genetics (see colors.json)."
+      },
+      "biology": {
+        "power": "fire bloodline. See powers.json#fire_bloodline. Visible heat-shimmer when invoked; full potency: ember-orange glow on palms and ash-flecked breath.",
+        "reproductive_compatibility": {
+          "with_other_sanguire": "fully compatible. Sanguire culture organizes around clan-internal mating with displays of strength as courtship.",
+          "with_medici": "asymmetrically lethal — see species.medici.biology.reproductive_compatibility.with_sanguire above and powers.json#sanguire_medici_hybrid",
+          "with_earth_human": "viable. Hybrids carry attenuated fire and slightly increased lifespan. Common among Kree-state populations of mixed Sanguire-arrival heritage.",
+          "with_ancient_tunyan": "viable. Hybrids carry attenuated fire AND partial conduit-status. The two interfere — fire output drops in proximity to other Tunyan-blooded individuals."
+        }
+      },
+      "culture": {
+        "governance": "Warlord-led clan structure. Three primary clans in Sandrun. Warlord chosen by ritual duel during Cull (winter month).",
+        "religion": "Pre-Tunyan deity-set carried over from Kree origin. Names not commonly shared with outsiders.",
+        "external_role": "The warlord of Sandrun represents the Sanguire to other Tunyan kingdoms. The Kree state separately represents the broader polity.",
+        "naming": "see naming_conventions.json#sandrun_sanguire"
+      }
+    },
+    "earth_human": {
+      "id": "earth_human",
+      "common_name": "the Arrivals (collectively); per-kingdom names by lineage",
+      "status_on_planet": "naturalized via four generations of intermixing with Ancient Tunyans and (less commonly) Sanguire and Medici",
+      "estimated_population": "majority of the planet's settled population by Year 4G",
+      "lifespan": {
+        "pure_ark_descended": "70-85 (Earth normal)",
+        "mixed_with_tunyan_50_50": "120-160",
+        "mixed_with_medici_25": "85-110"
+      },
+      "morphology": {
+        "average_height_meters": 1.72,
+        "build": "Earth-human normal range, with strong regional variation matching the original ark cohort (Sahm-descended typically tall and broad-shouldered; Bahiij-descended typically lithe; Aekon-descended muscular; etc.)",
+        "fingers": 5,
+        "skin_color_palette": "now spans the full Tunyan spectrum due to four generations of intermixing. Pure-Earth-human skin tones (the original ark cohorts' palette) are increasingly rare. See colors.json."
+      },
+      "biology": {
+        "power": "no native bloodline power. Trace fire or healing potency present in some lineages via Sanguire or Medici ancestry.",
+        "reproductive_compatibility": {
+          "with_ancient_tunyan": "fully compatible — the dominant cross-species pairing on Tunya by population",
+          "with_sanguire": "viable — children carry attenuated fire",
+          "with_medici": "viable — children carry attenuated healing"
+        }
+      },
+      "culture": {
+        "governance": "by kingdom of settlement. See factions.json.",
+        "religion": "by kingdom — typically a mix of carried Earth traditions + emergent Tunyan practices.",
+        "naming": "by kingdom — see naming_conventions.json"
+      }
+    }
+  },
+  "deities": {
+    "mercury": {
+      "id": "mercury",
+      "worshipped_by": ["medici"],
+      "type": "real_metaphysical_entity",
+      "manifestation": "active. Manifests primarily through Supreme Elder succession — Mercury's chosen-soul transfer at the previous Elder's death is the only confirmed manifestation.",
+      "iconography": {
+        "primary_color": "#c4dcec",
+        "secondary_color": "#b8a8c8",
+        "sigil_motif": "an eight-faceted teardrop (the Supreme Elder's tear at succession)",
+        "temples": "one true temple on Medici Isle. Smaller shrines in the Medici wards of Kree-allied kingdoms.",
+        "festivals": ["holiday_communion (the only event where Medici males uncover their heads in public; once per Tunyan year, on Cares-day-1)"]
+      },
+      "doctrine": [
+        "Mercury chose the Medici. The Medici chose to remain Mercury's people after the crash.",
+        "Healing is the duty Mercury imposed in exchange for the species' survival.",
+        "Mate-for-life is Mercury's gift; mate-death absorption is Mercury's mercy.",
+        "The Supreme Elder is Mercury's voice. Mercury speaks through the Elder; the Elder does not speak for Mercury."
+      ],
+      "open_lore": [
+        "Whether Mercury is the Medici home world's deity or a different entity that found them post-crash is open lore.",
+        "Whether Mercury can manifest beyond Supreme Elder succession is open lore — pilgrims report vivid dreams in the temple, but no confirmed event."
+      ]
+    },
+    "tunyan_field": {
+      "id": "tunyan_field",
+      "worshipped_by": ["nil", "masond_partial"],
+      "type": "planetary_phenomenon (not personified by pure Tunyans)",
+      "manifestation": "always-present passive force. Conducted by pure Tunyans. Refuses sustained electrical current. Dampens hostile intent.",
+      "iconography": "no fixed iconography in the pure Tunyan tradition — the Field is felt, not depicted. Mixed-blood traditions occasionally personify it as a feminine figure called 'the Watcher Beneath.'",
+      "open_lore": "Whether the Field has anything resembling intent is the deepest open question in Tunyan philosophy."
+    }
+  },
+  "procgen_character_generator_hooks": {
+    "skeleton_variants": [
+      "ancient_tunyan_pure",
+      "ancient_tunyan_mixed",
+      "medici_male_elongated_skull_3_lod_levels",
+      "medici_female_dome_skull",
+      "sanguire_male_broad_furred",
+      "sanguire_female_TBD",
+      "earth_human_standard"
+    ],
+    "morph_targets_per_skeleton": [
+      "medici_male: cone_height_0_to_3 (drives skull elongation as healing skill grows)",
+      "medici_female: hair_length_0_to_floor (drives hair length as power grows)",
+      "sanguire_male: muscle_volume_0_to_3, fur_density_torso_0_to_3, fur_density_face_0_to_2",
+      "ancient_tunyan: subdermal_marbling_visibility_0_to_3"
+    ],
+    "shader_passes": [
+      "sanguire_fur_shader (high-density torso/legs, low-density arms/face/feet, color = saturated/darker version of skin)",
+      "medici_pearlescent_skin (subtle iridescence, no specular hotspot)",
+      "tunyan_marbling_shader (subdermal pattern, only visible in direct sunlight; intensity scales with refusal-field local density)",
+      "fire_bloodline_invoke (palm + breath heat-shimmer; ember-glow at full potency)",
+      "healing_bloodline_invoke (cool air shimmer around hands; faint white halo at full potency)"
+    ],
+    "skin_color_inheritance_engine": "see colors.json for the paint-mixing genetics + sex-linked override probability + the per-kingdom palette priors that bias procgen NPCs toward a kingdom-recognizable look while still spanning the full Tunyan spectrum."
+  }
+}

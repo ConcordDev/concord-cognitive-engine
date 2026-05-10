@@ -1,14 +1,14 @@
 {
   "world_id": "tunya",
   "world_name": "Tunya",
-  "world_description": "A planet on the far side of a wormhole. Reached by seven arks launched from Earth. Time dilation in transit scattered the arrivals across generations: Africa first, then North America, then Eurasia, then the wreck-late South Americans. Native Americans walked off the North American ark and kept walking. The story opens four generations after first arrival, with the arks now silent ruins whose archives can still be woken with enough sunlight on cracked panels. The Sangree of Sandrun command fire by bloodline. The Medici, who are not from Earth and not from Tunya, command ice. The Ancient Tunyans were already here.",
+  "world_description": "A planet on the far side of a wormhole. Reached by seven arks launched from Earth. Time dilation in transit scattered the arrivals across generations: Africa first, then North America, then Eurasia, then the wreck-late South Americans. Native Americans walked off the North American ark and kept walking. The story opens four generations after first arrival, with the arks now silent ruins whose archives can still be woken with enough sunlight on cracked panels. The Sanguire (a Kree-arrived species) command fire by bloodline. The Medici (an extra-planetary species who crash-landed in Year 11) command healing and worship Mercury. The Ancient Tunyans were already here.",
   "history": [
     {
       "id": "lore_pre_arrival_tunyan",
       "title": "Before the Arrivals",
       "type": "founding",
       "era": "Pre-Year 0",
-      "description": "Ancient Tunyans had lived on Tunya for an unknown length of time before the arks came. They did not have writing in the form the arrivals brought. They had stone, brick, the song of trees, and the refusal-field. The Medici were already here too — but the Medici and the Ancient Tunyans do not call themselves the same.",
+      "description": "Ancient Tunyans had lived on Tunya for an unknown length of time before the arks came. They did not have writing in the form the arrivals brought. They had stone, brick, the song of trees, and the refusal-field. (The Medici did not arrive until Year 11 — see lore_medici_crash_landing — and so were not present at this time.)",
       "significance": "major",
       "factions_involved": ["nil", "masond", "medici"],
       "world_id": "tunya",
@@ -20,9 +20,9 @@
       "title": "Kree Was Already On The Way",
       "type": "founding",
       "era": "Pre-Year 0",
-      "description": "The Kree are not from Earth and are not Ancient Tunyan. They arrived on Tunya before the Earth arks but well after the Ancient Tunyans. Their origin is not shared, even with their own younger generations. The Sangree are one of the Kree peoples; their homeland is Sandrun. The Medici live among Kree because Kree is the only people on Tunya who would not ask why.",
+      "description": "The Kree are not from Earth and are not Ancient Tunyan. They arrived on Tunya before the Earth arks but well after the Ancient Tunyans. Their origin is not shared, even with their own younger generations. The Sanguire are one of the Kree peoples — and the Sanguire is also a distinct sapient species; their homeland within Kree is Sandrun. (Per species.json: Sanguire is a Kree-arrived species, not an Earth-descended population.) The Medici, who would later crash-land in Year 11, are not a Kree people and are not on Tunya yet at this time.",
       "significance": "major",
-      "factions_involved": ["kree_nationalists", "sandrun_sangree", "medici"],
+      "factions_involved": ["kree_nationalists", "sandrun_sanguire", "medici"],
       "world_id": "tunya",
       "known_by": ["kree_nationalists"],
       "hidden_truth": "The Kree state is the constant; the peoples drift. This is by design. The Kree elders deliberately scattered their constituent peoples across Tunya so that no single uprising could end them."
@@ -104,9 +104,9 @@
       "title": "The Sahm Founding",
       "type": "founding",
       "era": "Year 8 (Tunya local)",
-      "description": "A cohort that disembarked with the African ark — descended from the African American diaspora — chose not to settle into the Masond merger. They walked to the river country and founded Sahm as a self-determining kingdom. They were not absorbed into Sandrun by the Sangree, who arrived later from the Kree state and never tried to claim them.",
+      "description": "A cohort that disembarked with the African ark — descended from the African American diaspora — chose not to settle into the Masond merger. They walked to the river country and founded Sahm as a self-determining kingdom. They were not absorbed into Sandrun by the Sanguire, who arrived later from the Kree state and never tried to claim them.",
       "significance": "major",
-      "factions_involved": ["sahm", "masond", "sandrun_sangree"],
+      "factions_involved": ["sahm", "masond", "sandrun_sanguire"],
       "world_id": "tunya",
       "known_by": ["sahm", "masond"],
       "hidden_truth": null
@@ -136,16 +136,16 @@
       "hidden_truth": "The sea creatures came after a Fluxom ship dumped two hundred refugees overboard during a storm. The refugees were Fluxom's own — third-family aspirants who had refused ration discipline. The two ruling families call them traitors. The sea creatures, in some sense, agree."
     },
     {
-      "id": "lore_kree_medici_arrival_window",
-      "title": "When the Medici Came",
-      "type": "founding",
-      "era": "Year -120 to Pre-Year 0 (estimated)",
-      "description": "The Medici arrived on Tunya at least four generations before the first Earth ark. They came in small numbers, by means they will not describe. Kree took them in. The arrangement has held for four-plus generations.",
+      "id": "lore_medici_crash_landing",
+      "title": "The Medici Crash",
+      "type": "catastrophe",
+      "era": "Year 11 (Tunya local) — approximately 100 Tunyan years ago, in the gap between the Asbir/Cree arrival (Year 7) and the Eurasia arrival (Year 14)",
+      "description": "The Medici came to Tunya in their own vessel, not on an Earth ark. They crashed. The ship was beyond Tunya's pre-industrial repair capacity then; it remains beyond it now. They settled on a small island off Kree's coast — Medici Isle. They venture from the isle to heal the sick and trade healing services for food. They do not believe in Tunyan gods. Their goddess is Mercury.",
       "significance": "major",
       "factions_involved": ["medici", "kree_nationalists"],
       "world_id": "tunya",
-      "known_by": ["medici", "kree_nationalists", "nil"],
-      "hidden_truth": "The Medici came from a star whose route the Medici Ice Choir maintains in shared memory. Their navigators died two generations ago. Aerasi — who was the navigator — believes the route may open again. She is wrong about the timeline; the route opens in Year 5G, not Year 6G as she has assumed. This is when the Medici will have to choose."
+      "known_by": ["medici", "kree_nationalists", "nil", "masond"],
+      "hidden_truth": "The Medici came from a star whose route the Supreme Elder carries in succession-memory — Mercury's chosen-soul transfer at each Elder's death includes the home-world coordinates. The home world has not been revisited; no signal has been received in 100 years. Whether the Medici's ship can be repaired with help from the kingdoms is open lore — Aekon's engineering tradition (carrying South-American-ark technical memory) is the only Tunyan civilization with the theoretical capacity. The Medici have not asked. The Aekon have not offered."
     },
     {
       "id": "lore_no_electricity",
@@ -160,23 +160,23 @@
       "hidden_truth": "Tunya's planetary refusal-field — which the pure Tunyans of Nil are conduits for — extends to certain electromagnetic phenomena. It refuses sustained current. Powers replace what electricity would have done because the planet permits powers and refuses electricity. This is also why the arks' archives only wake on direct solar — they bypass the active circuit problem by running on stored photonic state."
     },
     {
-      "id": "lore_sangree_medici_first_hybrid",
-      "title": "The First Recorded Sangree-Medici Hybrid",
+      "id": "lore_sanguire_medici_first_hybrid",
+      "title": "The First Recorded Sanguire-Medici Hybrid",
       "type": "revelation",
       "era": "Year 4G — Cull, last cycle",
-      "description": "A child was born to a Sangree clan-warrior and a Medici healer. The mother fled within hours of the birth. The Medici took the child. The Sangree know. Both peoples have agreed by silence to pretend it did not happen.",
+      "description": "A child was born to a Sanguire clan-warrior and a Medici healer. The mother fled within hours of the birth. The Medici took the child. The Sanguire know. Both peoples have agreed by silence to pretend it did not happen.",
       "significance": "major",
-      "factions_involved": ["sandrun_sangree", "medici"],
+      "factions_involved": ["sandrun_sanguire", "medici"],
       "world_id": "tunya",
-      "known_by": ["sandrun_sangree", "medici", "kree_nationalists"],
-      "hidden_truth": "The child commands neither fire nor ice in a useful sense. The child commands the temperature of the ambient air in a four-meter radius. The child can will the air to thirty above or thirty below in seconds. The child is two years old. The Medici are afraid of the child. So is the Sangree warlord, who knows the child exists and does not yet know it is hers."
+      "known_by": ["sandrun_sanguire", "medici", "kree_nationalists"],
+      "hidden_truth": "Per the corrected species canon (Medici = healing only, no ice — see species.json + powers.json), the viable hybrid pairing is Medici-male x Sanguire-female. The Medici-female x Sanguire-male pairing is asymmetrically lethal to the mother and produces no child. The recorded hybrid is therefore a child of a Medici male and a Sanguire female — fathered by a Medici man, born to a Sanguire mother. The Medici know whose child it is. The Sanguire warlord does not. The child carries attenuated healing without a Choir voice, plus residual fire potency at ~10-15% of pure Sanguire — likely to pass as a weak-Sanguire child living unnoticed among Sanguire-descended populations."
     },
     {
       "id": "lore_concord_link_first_resonance",
       "title": "The First Cross-World Resonance",
       "type": "revelation",
       "era": "Year 4G — present",
-      "description": "Pilgrims to the arks discovered, separately and over years, that ark-archive terminals woke under solar charge will sometimes carry voices that did not come from Tunya. Yenna of Nil's grove has resonated with a fantasy-world oak. Aerasi of the Medici has heard a voice in the ice that uses Earth-language she has never encountered. The kingdoms have not yet agreed on a public framing for these resonances. They are happening anyway.",
+      "description": "Pilgrims to the arks discovered, separately and over years, that ark-archive terminals woke under solar charge will sometimes carry voices that did not come from Tunya. Yenna of Nil's grove has resonated with a fantasy-world oak. Aerasi of the Medici has heard a voice in the resonance-cold air that uses Earth-language she has never encountered. The kingdoms have not yet agreed on a public framing for these resonances. They are happening anyway.",
       "significance": "major",
       "factions_involved": ["nil", "medici", "asbir", "masond"],
       "world_id": "tunya",
@@ -212,7 +212,7 @@
     {
       "from": "tunya:kree_medici_ward",
       "to": "fantasy:voss_estate_mirror",
-      "mechanism": "the Medici Ice Choir resonates with shaped silver. Lady Seraphine's mirror is one such surface.",
+      "mechanism": "the Medici Resonance Choir resonates with shaped silver. Lady Seraphine's mirror is one such surface.",
       "controlled_by": ["medici", "house_voss"],
       "stability": 0.55,
       "narrative": "Aerasi and Lady Voss have not yet spoken. The substrate is open. Either could initiate."

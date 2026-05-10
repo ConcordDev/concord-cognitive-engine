@@ -1,7 +1,16 @@
 {
   "world_id": "tunya",
+  "schema_version": "2.0",
   "hours_per_day": 32,
   "minutes_per_hour": 60,
+  "days_per_month": 24,
+  "months_per_year": 18,
+  "days_per_year": 432,
+  "moons": 1,
+  "moon_lore": "Tunya has a single visible moon. Moon hours per month always sum with sun hours to exactly 32. The split swings symmetrically around Vernal (16:16 equinox) and Pisces (14:18 lesser-balance) — the two equinox-analogues of the Tunyan year. Mercury-worshipping Medici tie major Choir resonances to these two balance points.",
+  "temperature_units": "fahrenheit",
+  "temperature_reference_latitude": "equatorial belt — the Masond / Aekon / Bahiij band. Far-north lands (Dormas, Fluxom) run cooler by ~10-15°F; far-south lands run warmer by ~5-10°F. Highland districts (Sandrun's volcanic coast, Aekon's sky temple, Sahm's northern smiths above ~2500m elevation) can drop below freezing at night even in Halcyon. This is the only place 'frost biome' shows up on Tunya — there's no polar frost, only highland frost.",
+  "biome_note": "earlier drafts of this bible listed 'frost' as a generic biome distributable across kingdoms. Canon corrects: frost on Tunya is elevation-driven only. The biome list in meta.json has been updated to highland_frost, which appears in mountainous districts of multiple kingdoms but not as a kingdom-wide climate.",
   "day_phases": [
     { "id": "deep_pre_dawn", "start_hour": 0, "end_hour": 4, "label": "Deep Pre-Dawn" },
     { "id": "first_light", "start_hour": 4, "end_hour": 7, "label": "First Light" },
@@ -12,200 +21,245 @@
     { "id": "evening_hearth", "start_hour": 24, "end_hour": 28, "label": "Evening Hearth" },
     { "id": "night_watch", "start_hour": 28, "end_hour": 32, "label": "Night Watch" }
   ],
-  "days_per_month": 24,
-  "months_per_year": 18,
-  "days_per_year": 432,
+  "seasons": [
+    {
+      "id": "resurrection",
+      "label": "Resurrection",
+      "months": ["T'Annum", "Prail", "Amity", "Anew", "Vernal"],
+      "narrative": "The world wakes. Planting through sprouting through first-rain easing into mild weather. Years begin in Resurrection."
+    },
+    {
+      "id": "drought",
+      "label": "Drought",
+      "months": ["Ameliorate", "Halcyon", "Arbor", "Wound"],
+      "narrative": "The unnamed-in-source mid-year season. Canon-locked here as Drought because Wound's 95-110°F dry heat anchors it. Festivals turn elemental — Halcyon (calm), Arbor (trees), Wound (wind). Dry roads favor land trade; sea trade slows in the heat. Cultural strain peaks in Wound — the Sanguire say people do dumb things in Wound, and they have records to prove it."
+    },
+    {
+      "id": "harvest",
+      "label": "Harvest",
+      "months": ["Batten", "Summery", "Preserve", "Harvest", "Fallow"],
+      "narrative": "Fattening through preservation through the actual harvest, then deep-sea fishing as the rains return. Most economic activity happens in Harvest."
+    },
+    {
+      "id": "fallow",
+      "label": "Fallow",
+      "months": ["Pisces", "Brine", "Cull", "Cares"],
+      "narrative": "Salting, gleaning, slaughter, rest. The hibernation. Year closes with Cares — Love-the-Land celebration — observed by every kingdom on the same day."
+    }
+  ],
   "months": [
     {
-      "ordinal": 1,
-      "name": "T'annum",
-      "season": "early_spring",
-      "label": "The Quickening",
-      "agricultural": ["soil_warming", "first_sowing"],
-      "festivals": ["seed-blessing"],
-      "political_gates": [],
-      "tunyan_lore": "Ancient Tunyan word for 'the place under the snow that thaws first.' Adopted across kingdoms."
+      "ordinal": 1, "name": "T'Annum", "season": "resurrection",
+      "sun_hours": 12, "moon_hours": 20,
+      "temp_low_f": 50, "temp_high_f": 70,
+      "weather": "no_humidity",
+      "cultural_notes": "New annum celebrations. The year begins. Planet-wide.",
+      "agricultural": ["soil_warming"],
+      "festivals": ["new_annum"],
+      "political_gates": ["spring_council_convenes"]
     },
     {
-      "ordinal": 2,
-      "name": "Prail",
-      "season": "spring",
-      "label": "The Reaching",
-      "agricultural": ["second_sowing", "shoots_appear"],
+      "ordinal": 2, "name": "Prail", "season": "resurrection",
+      "sun_hours": 13, "moon_hours": 19,
+      "temp_low_f": 51, "temp_high_f": 71,
+      "weather": "no_humidity",
+      "cultural_notes": "Planting begins.",
+      "agricultural": ["first_sowing"],
       "festivals": [],
-      "political_gates": ["spring_council_convenes"],
-      "tunyan_lore": null
+      "political_gates": []
     },
     {
-      "ordinal": 3,
-      "name": "Amity",
-      "season": "spring",
-      "label": "The Treaty Month",
+      "ordinal": 3, "name": "Amity", "season": "resurrection",
+      "sun_hours": 14, "moon_hours": 18,
+      "temp_low_f": 60, "temp_high_f": 75,
+      "weather": "very_humid_rainy_season_begins",
+      "cultural_notes": "Friendship. Bonds, oaths, treaties. Akeia hosts its courtship ball this month — the diplomatic high-festival of the year.",
       "agricultural": ["transplanting"],
-      "festivals": ["amity_courtship_ball_akeia"],
-      "political_gates": ["treaty_renewals_due", "marriage_contracts_signed"],
-      "tunyan_lore": "Akeia treats Amity as the diplomatic high-festival of the year."
+      "festivals": ["amity_courtship_ball_akeia", "friendship_oaths"],
+      "political_gates": ["treaty_renewals_due", "marriage_contracts_signed"]
     },
     {
-      "ordinal": 4,
-      "name": "Anew",
-      "season": "late_spring",
-      "label": "The Renewing",
+      "ordinal": 4, "name": "Anew", "season": "resurrection",
+      "sun_hours": 15, "moon_hours": 17,
+      "temp_low_f": 65, "temp_high_f": 79,
+      "weather": "very_humid_rainy_season",
+      "cultural_notes": "First sprouts. Agricultural milestone — the year's commitment becomes visible.",
       "agricultural": ["weeding", "tending"],
-      "festivals": ["anew_dawn_run_sahm"],
-      "political_gates": [],
-      "tunyan_lore": null
+      "festivals": ["first_sprout_blessing"],
+      "political_gates": []
     },
     {
-      "ordinal": 5,
-      "name": "Vernal",
-      "season": "late_spring",
-      "label": "The Greening",
+      "ordinal": 5, "name": "Vernal", "season": "resurrection",
+      "sun_hours": 16, "moon_hours": 16,
+      "temp_low_f": 75, "temp_high_f": 84,
+      "weather": "humid_rainy_season_ends",
+      "cultural_notes": "Mild weather. The first equinox-analogue (16:16 sun:moon split). Medici Choir holds a major resonance.",
       "agricultural": ["full_growth_phase", "first_orchard_blossom"],
-      "festivals": ["vernal_root_dance_dinye", "elephant-procession_bahiij"],
-      "political_gates": [],
-      "tunyan_lore": null
+      "festivals": ["vernal_balance_resonance_medici"],
+      "political_gates": []
     },
     {
-      "ordinal": 6,
-      "name": "Ameliorate",
-      "season": "early_summer",
-      "label": "The Bettering",
+      "ordinal": 6, "name": "Ameliorate", "season": "drought",
+      "sun_hours": 17, "moon_hours": 15,
+      "temp_low_f": 80, "temp_high_f": 90,
+      "weather": "little_humidity",
+      "cultural_notes": "The Bettering. Weeding work, pest management, tariff reviews.",
       "agricultural": ["thinning", "pest_management"],
       "festivals": [],
-      "political_gates": ["mid-spring_tariff_review_fluxom"],
-      "tunyan_lore": null
+      "political_gates": ["mid-spring_tariff_review_fluxom"]
     },
     {
-      "ordinal": 7,
-      "name": "Halcyon",
-      "season": "high_summer",
-      "label": "The Still Days",
+      "ordinal": 7, "name": "Halcyon", "season": "drought",
+      "sun_hours": 18, "moon_hours": 14,
+      "temp_low_f": 85, "temp_high_f": 95,
+      "weather": "no_humidity",
+      "cultural_notes": "Month of calm. Collective rest. Dormas hosts its high textile auction.",
       "agricultural": ["fruit_set", "first_harvest_garden_crops"],
-      "festivals": ["halcyon_high_court_dormas"],
-      "political_gates": ["dormas_textile_auction"],
-      "tunyan_lore": null
+      "festivals": ["halcyon_calm", "dormas_high_court"],
+      "political_gates": ["dormas_textile_auction"]
     },
     {
-      "ordinal": 8,
-      "name": "Arbor",
-      "season": "high_summer",
-      "label": "The Tree Month",
+      "ordinal": 8, "name": "Arbor", "season": "drought",
+      "sun_hours": 19, "moon_hours": 13,
+      "temp_low_f": 90, "temp_high_f": 100,
+      "weather": "dry",
+      "cultural_notes": "Celebration of trees. Nil opens its outer-grove silent walk for one day.",
       "agricultural": ["orchard_tending"],
-      "festivals": ["arbor_silent_walk_nil"],
-      "political_gates": [],
-      "tunyan_lore": "Nil's only public festival of the year. The walk is silent. Outsiders are not forbidden, but none have ever joined."
+      "festivals": ["arbor_tree_celebration", "arbor_silent_walk_nil"],
+      "political_gates": []
     },
     {
-      "ordinal": 9,
-      "name": "Wound",
-      "season": "high_summer",
-      "label": "The Aching Month",
+      "ordinal": 9, "name": "Wound", "season": "drought",
+      "sun_hours": 20, "moon_hours": 12,
+      "temp_low_f": 95, "temp_high_f": 110,
+      "weather": "very_dry",
+      "cultural_notes": "Celebration of wind. Peak heat, peak strain. Sanguire clan duels traditionally held — heat sharpens the fights. Medici dispense water-bearing antidote pouches as a kindness; the practice is two generations old.",
       "agricultural": ["heat_stress_management"],
-      "festivals": ["medici_healing_choir_kree"],
-      "political_gates": ["sangree_clan_duels_traditionally_held"],
-      "tunyan_lore": "Named for the season's bodily cost. The Medici healing choir traditionally performs in Wound."
+      "festivals": ["wound_wind_celebration", "medici_healing_choir_kree"],
+      "political_gates": ["sanguire_clan_duels_traditionally_held"]
     },
     {
-      "ordinal": 10,
-      "name": "Batten",
-      "season": "late_summer",
-      "label": "The Securing",
-      "agricultural": ["second_orchard_harvest", "stockpiling"],
+      "ordinal": 10, "name": "Batten", "season": "harvest",
+      "sun_hours": 19, "moon_hours": 13,
+      "temp_low_f": 90, "temp_high_f": 100,
+      "weather": "dry",
+      "cultural_notes": "Fattening. Only chicken, duck, fish, and chamois are butchered this month — larger livestock are fattened for Cull. Aekon audits its twelve districts.",
+      "agricultural": ["second_orchard_harvest", "stockpiling", "small_animal_butchery_only"],
       "festivals": [],
-      "political_gates": ["aekon_twelve_districts_audit"],
-      "tunyan_lore": null
+      "political_gates": ["aekon_twelve_districts_audit"]
     },
     {
-      "ordinal": 11,
-      "name": "Summery",
-      "season": "late_summer",
-      "label": "The Last Warm",
+      "ordinal": 11, "name": "Summery", "season": "harvest",
+      "sun_hours": 18, "moon_hours": 14,
+      "temp_low_f": 85, "temp_high_f": 95,
+      "weather": "no_humidity",
+      "cultural_notes": "Celebration of sun. Bahiij hosts its summery lantern-night.",
       "agricultural": ["grain_ripening"],
-      "festivals": ["summery_lantern_night_bahiij"],
-      "political_gates": [],
-      "tunyan_lore": null
+      "festivals": ["summery_sun_celebration", "summery_lantern_night_bahiij"],
+      "political_gates": []
     },
     {
-      "ordinal": 12,
-      "name": "Preserve",
-      "season": "early_autumn",
-      "label": "The Storing",
+      "ordinal": 12, "name": "Preserve", "season": "harvest",
+      "sun_hours": 17, "moon_hours": 15,
+      "temp_low_f": 80, "temp_high_f": 90,
+      "weather": "little_humidity",
+      "cultural_notes": "Preservation of food stuff. Sahm holds its smoke-fast — one day of fasting while the smokehouses run.",
       "agricultural": ["mass_preservation", "salting", "smoking"],
-      "festivals": ["preserve_smoke-fast_sahm"],
-      "political_gates": [],
-      "tunyan_lore": null
+      "festivals": ["preserve_smoke_fast_sahm"],
+      "political_gates": []
     },
     {
-      "ordinal": 13,
-      "name": "Harvest",
-      "season": "autumn",
-      "label": "The Reaping",
+      "ordinal": 13, "name": "Harvest", "season": "harvest",
+      "sun_hours": 16, "moon_hours": 16,
+      "temp_low_f": 75, "temp_high_f": 84,
+      "weather": "humid_thunderstorms_begin",
+      "cultural_notes": "Harvest celebration. Aekon hosts its high feast — twelve districts, twelve dishes, the twelfth still secret. Cree hosts its Harvest market.",
       "agricultural": ["main_grain_harvest", "root_harvest"],
       "festivals": ["harvest_high_feast_aekon", "harvest_market_cree"],
-      "political_gates": ["tax_assessment_all_kingdoms"],
-      "tunyan_lore": null
+      "political_gates": ["tax_assessment_all_kingdoms"]
     },
     {
-      "ordinal": 14,
-      "name": "Fallow",
-      "season": "late_autumn",
-      "label": "The Resting",
-      "agricultural": ["field_clearing", "rotation_planning"],
+      "ordinal": 14, "name": "Fallow", "season": "harvest",
+      "sun_hours": 15, "moon_hours": 17,
+      "temp_low_f": 65, "temp_high_f": 79,
+      "weather": "rainy_season_begins",
+      "cultural_notes": "Season of deep-sea fishing. Fluxom historically peaks here — the sea creatures are quiet through Brine. The two families hold their fallow hearings to settle disputes.",
+      "agricultural": ["field_clearing", "rotation_planning", "deep_sea_fishing_peak"],
       "festivals": [],
-      "political_gates": ["tax_collection_all_kingdoms", "fallow_hearings_fluxom"],
-      "tunyan_lore": "Fluxom's two families historically settle their internal disputes in Fallow."
+      "political_gates": ["tax_collection_all_kingdoms", "fallow_hearings_fluxom"]
     },
     {
-      "ordinal": 15,
-      "name": "Pisces",
-      "season": "early_winter",
-      "label": "The Sea Month",
-      "agricultural": ["coastal_fishing_intensifies", "land_dormant"],
-      "festivals": ["pisces_seacount_fluxom"],
-      "political_gates": ["sea_trade_renewal_attempts"],
-      "tunyan_lore": "Pisces is when the sea creatures are quietest. Fluxom uses the lull to attempt sea-trade reopens."
+      "ordinal": 15, "name": "Pisces", "season": "fallow",
+      "sun_hours": 14, "moon_hours": 18,
+      "temp_low_f": 60, "temp_high_f": 75,
+      "weather": "rainy_season",
+      "cultural_notes": "Salting of fish for preserve. The lesser-balance moon point (14:18 sun:moon split). Fluxom attempts sea-trade reopens during the lull in sea-creature activity.",
+      "agricultural": ["coastal_fishing_intensifies", "salting_fish"],
+      "festivals": ["pisces_lesser_balance_resonance_medici"],
+      "political_gates": ["sea_trade_renewal_attempts"]
     },
     {
-      "ordinal": 16,
-      "name": "Brine",
-      "season": "winter",
-      "label": "The Salt Month",
-      "agricultural": ["salt_harvest", "stored_food_drawn"],
+      "ordinal": 16, "name": "Brine", "season": "fallow",
+      "sun_hours": 13, "moon_hours": 19,
+      "temp_low_f": 51, "temp_high_f": 73,
+      "weather": "rainy_season_ends",
+      "cultural_notes": "Glean all fields and leave fallow. Nil holds its brine silent supper — outsiders welcome but cannot speak.",
+      "agricultural": ["gleaning", "field_left_fallow"],
       "festivals": ["brine_silent_supper_nil"],
-      "political_gates": [],
-      "tunyan_lore": null
+      "political_gates": []
     },
     {
-      "ordinal": 17,
-      "name": "Cull",
-      "season": "winter",
-      "label": "The Choosing",
+      "ordinal": 17, "name": "Cull", "season": "fallow",
+      "sun_hours": 12, "moon_hours": 20,
+      "temp_low_f": 50, "temp_high_f": 71,
+      "weather": "little_humidity",
+      "cultural_notes": "Slaughter of animals. The most politically dangerous month. Sanguire warlord challenges are formally permitted. Succession crises tend to crack here.",
       "agricultural": ["livestock_slaughter", "stored_food_rationed"],
-      "festivals": [],
-      "political_gates": ["succession_disputes_traditionally_held", "sangree_warlord_challenges_permitted"],
-      "tunyan_lore": "The most politically dangerous month. Succession crises tend to crack here. Sangree warlord challenges are formally permitted."
+      "festivals": ["cull_slaughter_observance"],
+      "political_gates": ["succession_disputes_traditionally_held", "sanguire_warlord_challenges_permitted"]
     },
     {
-      "ordinal": 18,
-      "name": "Cares",
-      "season": "late_winter",
-      "label": "The Tending",
-      "agricultural": ["minimal", "preparing_for_T'annum"],
-      "festivals": ["cares_quiet_day_universal"],
-      "political_gates": ["year_end_audits"],
-      "tunyan_lore": "The only festival every kingdom observes by the same name on the same day. It is a day of silence."
+      "ordinal": 18, "name": "Cares", "season": "fallow",
+      "sun_hours": 11, "moon_hours": 21,
+      "temp_low_f": 50, "temp_high_f": 70,
+      "weather": "no_humidity",
+      "cultural_notes": "Love the land celebration. Year closes. The only festival every kingdom observes by the same name on the same day. Medici males uncover their heads in public ONLY on Cares-day-1 — the holiday communion of Mercury. Year-end audits, forgiveness rituals.",
+      "agricultural": ["minimal", "preparing_for_T'Annum"],
+      "festivals": ["cares_love_the_land", "medici_holiday_communion"],
+      "political_gates": ["year_end_audits"]
     }
   ],
   "epoch": {
     "label": "4G",
-    "description": "Year 4 of the fourth generation since first arrival. Approximately 96 Tunyan years since Africa landfall, 89 since Asbir/Cree disembarkation, 82 since Eurasia, 72 since Aekon's stranded arrival.",
+    "description": "Year 4 of the fourth generation since first arrival. Approximately 96 Tunyan years since Africa landfall, 89 since Asbir/Cree disembarkation, 82 since Eurasia, 72 since Aekon's stranded arrival. Medici crash-landed approximately 100 Tunyan years ago — between the Asbir/Cree arrival (Year 7) and the Eurasia arrival (Year 14). The Medici crashed in Year 11.",
     "year_zero_event": "africa_first_arrival"
+  },
+  "religious_overlays_per_kingdom": {
+    "policy": "every kingdom observes the planet-wide calendar (sun, moon, temperature, and weather are environmental facts, not religious claims). Religious overlays are layered on top.",
+    "examples": {
+      "medici": "tie Vernal (16:16 balance) and Pisces (14:18 lesser balance) to major Choir resonances; Cares-day-1 is the holiday communion of Mercury.",
+      "nil": "Arbor silent walk and Brine silent supper are the only public observances.",
+      "sanguire": "Cull is when warlord challenges are formally permitted; Wound's wind-celebration carries pre-Tunyan Kree-origin invocations.",
+      "aekon": "Harvest high feast is the year's centerpiece. The twelfth district's dish is the twelfth-secret.",
+      "bahiij": "Lantern-night in Summery; elephant-procession in Vernal.",
+      "asbir": "follows the planet-wide calendar; the curated archive includes Earth liturgical references but no kingdom observes them publicly.",
+      "sahm": "Preserve smoke-fast is the kingdom's signature observance.",
+      "dinye": "every Cares is a full year-end accounting between the elder council and the seven villages."
+    }
   },
   "festival_lore_hooks": {
     "amity_courtship_ball_akeia": "Akeia's most consequential diplomatic event. Treaties drafted, marriages arranged, alliances tested. Foreign delegations attend at risk.",
     "arbor_silent_walk_nil": "Once a year Nil opens a single path through the outer grove. Walkers may walk it. None have ever asked to enter the inner grove. None have ever been refused, either, because none have asked.",
-    "harvest_high_feast_aekon": "Aekon's twelve districts each contribute one dish. The twelfth district's dish has been the same recipe for four generations. No one outside the district will say what it is.",
-    "cull_sangree_challenges": "Sangree clan warriors may formally challenge the warlord during Cull. Iyatte has accepted three challenges in her tenure. She has won three. The fourth Cull is approaching."
+    "harvest_high_feast_aekon": "Twelve districts, twelve dishes. The twelfth district's dish has been the same recipe for four generations. No one outside the district will say what it is.",
+    "cull_sanguire_challenges": "Sanguire clan warriors may formally challenge the warlord during Cull. Iyatte has accepted three challenges in her tenure. She has won three.",
+    "cares_medici_holiday_communion": "The only day of the year Medici males uncover their heads in public. The Supreme Elder's cone is fully visible — a procession. Foreign witnesses may attend on the temple plaza but may not record."
+  },
+  "open_lore_resolved_by_this_lock": {
+    "days_per_month": "24 (locked here, was previously implied)",
+    "mid_year_unnamed_season": "Drought (locked here, was 'unnamed' in source)",
+    "frost_biome_origin": "elevation-driven only — highland_frost. No polar frost on Tunya.",
+    "temperature_reference": "equatorial belt; +/- 10-15°F for far-north / far-south kingdoms",
+    "moon_count": "1 (single moon)",
+    "religious_calendar_uniformity": "the planet-wide calendar is uniform; religious overlays per kingdom layer on top"
   }
 }

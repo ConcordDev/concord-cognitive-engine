@@ -10,34 +10,34 @@
   },
   "edges": [
     {
-      "from": "sandrun_sangree", "to": "kree_nationalists",
+      "from": "sandrun_sanguire", "to": "kree_nationalists",
       "trade": 0.65, "hostility": 0.10, "secrets_shared": 0.85, "mobility": 0.70, "cultural_exchange": 0.55,
-      "narrative": "Sangree are a Kree people. The state and the clans share more than they admit publicly."
+      "narrative": "Sanguire are a Kree people. The state and the clans share more than they admit publicly."
     },
     {
-      "from": "sandrun_sangree", "to": "medici",
+      "from": "sandrun_sanguire", "to": "medici",
       "trade": 0.30, "hostility": 0.40, "secrets_shared": 0.55, "mobility": 0.20, "cultural_exchange": 0.25,
       "narrative": "Wary co-tenancy. The hybrid child neither side will name strains the equilibrium."
     },
     {
-      "from": "sandrun_sangree", "to": "cree",
+      "from": "sandrun_sanguire", "to": "cree",
       "trade": 0.40, "hostility": 0.05, "secrets_shared": 0.20, "mobility": 0.45, "cultural_exchange": 0.30,
-      "narrative": "Sangree never tried to claim Cree. Cree noticed. The two have a quiet mutual respect."
+      "narrative": "Sanguire never tried to claim Cree. Cree noticed. The two have a quiet mutual respect."
     },
     {
-      "from": "sandrun_sangree", "to": "sahm",
+      "from": "sandrun_sanguire", "to": "sahm",
       "trade": 0.55, "hostility": 0.20, "secrets_shared": 0.15, "mobility": 0.40, "cultural_exchange": 0.30,
-      "narrative": "Sahm's iron rivals Sangree's. Both pretend it doesn't. The smiths know each other by name."
+      "narrative": "Sahm's iron rivals Sanguire's. Both pretend it doesn't. The smiths know each other by name."
     },
     {
-      "from": "sandrun_sangree", "to": "fluxom",
+      "from": "sandrun_sanguire", "to": "fluxom",
       "trade": 0.20, "hostility": 0.55, "secrets_shared": 0.10, "mobility": 0.15, "cultural_exchange": 0.05,
-      "narrative": "Fluxom needs Sangree iron. Sangree refuses Fluxom's terms. Cold trade, hot disdain."
+      "narrative": "Fluxom needs Sanguire iron. Sanguire refuses Fluxom's terms. Cold trade, hot disdain."
     },
     {
-      "from": "sandrun_sangree", "to": "nil",
+      "from": "sandrun_sanguire", "to": "nil",
       "trade": 0.05, "hostility": 0.15, "secrets_shared": 0.10, "mobility": 0.05, "cultural_exchange": 0.05,
-      "narrative": "Sangree do not march on Nil. Sangree do not visit Nil. The mutual silence is the relationship."
+      "narrative": "Sanguire do not march on Nil. Sanguire do not visit Nil. The mutual silence is the relationship."
     },
 
     {
@@ -48,7 +48,7 @@
     {
       "from": "kree_nationalists", "to": "cree",
       "trade": 0.45, "hostility": 0.35, "secrets_shared": 0.20, "mobility": 0.30, "cultural_exchange": 0.20,
-      "narrative": "Kree has eyed Cree's coast for fifty years. Cree's quiet alliance with Sangree is what stays Kree's hand."
+      "narrative": "Kree has eyed Cree's coast for fifty years. Cree's quiet alliance with Sanguire is what stays Kree's hand."
     },
     {
       "from": "kree_nationalists", "to": "fluxom",
@@ -74,7 +74,7 @@
     {
       "from": "medici", "to": "bahiij",
       "trade": 0.45, "hostility": 0.10, "secrets_shared": 0.15, "mobility": 0.40, "cultural_exchange": 0.50,
-      "narrative": "Bahiij imports Medici frostmark services. The healing exchange is genuine. The festival master who does not smile occasionally writes Aerasi by dream-message."
+      "narrative": "Bahiij imports Medici Resonance Choir services. The healing exchange is genuine. The festival master who does not smile occasionally writes Aerasi by dream-message."
     },
 
     {
@@ -205,7 +205,7 @@
       "members": ["medici", "nil", "cree"],
       "binding_logic": "Three peoples who do not talk to the world about themselves. They talk to each other when they must.",
       "stability": 0.70,
-      "weakening_conditions": ["a public Sangree-Medici incident forcing the Medici to choose sides", "Nil opening to outsiders", "Cree being asked publicly about the deletion"]
+      "weakening_conditions": ["a public Sanguire-Medici incident forcing the Medici to choose sides", "Nil opening to outsiders", "Cree being asked publicly about the deletion"]
     },
     {
       "id": "festival_axis",
@@ -217,9 +217,9 @@
   ],
   "tensions_to_watch": [
     {
-      "id": "sangree_medici_hybrid_disclosure",
+      "id": "sanguire_medici_hybrid_disclosure",
       "severity": 0.85,
-      "description": "If the warlord's child is identified and either Sangree or Medici acts publicly, the equilibrium between fire and ice politics breaks. Kree the state will try to broker. Kree the state may not succeed."
+      "description": "If the warlord's child is identified and either Sanguire or Medici acts publicly, the equilibrium between fire and ice politics breaks. Kree the state will try to broker. Kree the state may not succeed."
     },
     {
       "id": "asbir_archive_unsealing",

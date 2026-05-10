@@ -1,17 +1,17 @@
 [
   {
-    "id": "warlord_iyatte_sangree",
+    "id": "warlord_iyatte_sanguire",
     "name": "Iyatte of Sandrun",
     "title": "Warlord of the Burning Coast",
-    "faction_id": "sandrun_sangree",
+    "faction_id": "sandrun_sanguire",
     "world_id": "tunya",
     "archetype": "warlord",
     "personality": "Iyatte does not raise her voice because the room raises itself when she enters. She measures people by what they would burn for, not what they would die for. She has buried two husbands and one rival, in that order.",
-    "appearance": "Tall, muscled, hair shaved at the temples and braided down the back. Fire scars along the inside of both forearms — the Sangree call them honor-marks; she calls them a record. Carries a Sandrun greatsword that hums when she's angry.",
+    "appearance": "Tall, muscled, hair shaved at the temples and braided down the back. Fire scars along the inside of both forearms — the Sanguire call them honor-marks; she calls them a record. Carries a Sandrun greatsword that hums when she's angry.",
     "background": "Born to the third clan, married into the first, became warlord through a duel that lasted four hours and changed the bloodline politics of Sandrun for a generation.",
     "narrative_context": {
       "secret": "Her youngest son was born without flame. She has hidden him in a Sahm boarding-house under a Sahm name. She trusts the Sahm chancellor — a scholarly correspondence of fifteen years — more than she trusts her own clan elders. Sahm does not yet know what they are protecting.",
-      "weaponise_at": "If Sangree-Medici tensions break into open conflict, Iyatte's ability to lead is contingent on her son's secret holding. Both Medici and Fluxom have hunted clues. The Lord Curator of Asbir saw a record once and chose not to share it."
+      "weaponise_at": "If Sanguire-Medici tensions break into open conflict, Iyatte's ability to lead is contingent on her son's secret holding. Both Medici and Fluxom have hunted clues. The Lord Curator of Asbir saw a record once and chose not to share it."
     },
     "concord_link_resonance": "fantasy:lady_seraphine_voss",
     "cross_world_hook": "Iyatte and Lady Seraphine Voss correspond by mirror-message. They have never met. Both run kingdoms on the strength of a hidden heir; both know what the other does. The mirror-conversations could surface in either world.",
@@ -24,7 +24,7 @@
     "faction_id": "medici",
     "world_id": "tunya",
     "archetype": "healer-elder",
-    "personality": "Speaks in a register most Tunyans hear as song. Will not confirm she is the eldest, will not deny it, will not say how old she is. Has healed Sangree wounded who came to her camp at night and never returned to clan service the same person.",
+    "personality": "Speaks in a register most Tunyans hear as song. Will not confirm she is the eldest, will not deny it, will not say how old she is. Has healed Sanguire wounded who came to her camp at night and never returned to clan service the same person.",
     "appearance": "Slender, pale, eyes that catch and hold cold blue light. Robes of layered ice-fluted silk that crackle when she moves. Walks barefoot in winter and summer; her feet leave no footprints in fresh snow.",
     "background": "Aerasi was already an adult when the first arrivals reached Tunya four generations ago. She does not advertise this.",
     "narrative_context": {

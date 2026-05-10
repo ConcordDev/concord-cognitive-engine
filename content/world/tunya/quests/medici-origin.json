@@ -1,8 +1,8 @@
 [
   {
-    "id": "tunya_medici_origin_1_ice_choir",
-    "title": "Medici Origin — The Ice Choir Resonance",
-    "description": "Aerasi of the Choir has agreed to demonstrate the Medici Ice Choir's resonance to a non-Medici. The demonstration is unprecedented. Whatever you witness, the Medici will know you witnessed.",
+    "id": "tunya_medici_origin_1_resonance_choir",
+    "title": "Medici Origin — The Resonance Choir",
+    "description": "Aerasi of the Choir has agreed to demonstrate the Medici Resonance Choir's resonance to a non-Medici. The demonstration is unprecedented. Whatever you witness, the Medici will know you witnessed.",
     "giver_npc_id": "high_healer_aerasi_medici",
     "difficulty": "moderate",
     "domain": "metaphysical",
@@ -10,7 +10,7 @@
     "world_id": "tunya",
     "objectives": [
       { "id": "obj_mo_1_1", "type": "reach_location", "target": "kree_medici_ward", "required_count": 1, "description": "Travel to the Medici Ward in Kree" },
-      { "id": "obj_mo_1_2", "type": "attend_event", "target": "medici_ice_choir_resonance", "required_count": 1, "description": "Attend the Choir's resonance demonstration" },
+      { "id": "obj_mo_1_2", "type": "attend_event", "target": "medici_resonance_choir_resonance", "required_count": 1, "description": "Attend the Choir's resonance demonstration" },
       { "id": "obj_mo_1_3", "type": "perceive_clue", "target": "medici_origin_star_chart", "required_count": 1, "description": "Notice the star-chart embedded in the resonance pattern" }
     ],
     "rewards": [
@@ -28,7 +28,7 @@
     "domain": "metaphysical",
     "estimated_time": "25m",
     "world_id": "tunya",
-    "prerequisite_quests": ["tunya_medici_origin_1_ice_choir", "tunya_arks_of_memory_2_curated_vault"],
+    "prerequisite_quests": ["tunya_medici_origin_1_resonance_choir", "tunya_arks_of_memory_2_curated_vault"],
     "objectives": [
       { "id": "obj_mo_2_1", "type": "wait_for_event", "target": "tunyan_clear_night_star_visible", "required_count": 1, "description": "Wait for a clear-sky night with the right atmospheric layer" },
       { "id": "obj_mo_2_2", "type": "use_skill", "target": "celestial_navigation", "required_count": 1, "description": "Plot the star against both the Asbir deletion index and the Choir resonance pattern" },

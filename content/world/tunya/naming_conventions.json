@@ -3,7 +3,7 @@
   "schema_version": "1.0",
   "purpose": "Per-culture phoneme + morphology rules consumable by the procgen NPC + place-name builder. Each culture defines (a) given-name patterns, (b) surname/clan patterns, (c) place-name patterns, (d) divine/honorific patterns.",
   "cultures": {
-    "sandrun_sangree": {
+    "sandrun_sanguire": {
       "phoneme_set": {
         "consonants": ["k", "t", "r", "v", "y", "z", "th", "sh", "ng"],
         "vowels": ["a", "e", "i"],

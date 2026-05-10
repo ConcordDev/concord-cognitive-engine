@@ -5,7 +5,7 @@
   "tech_level": "pre-industrial",
   "magic_level": "rare-bloodline",
   "is_hub": false,
-  "description": "A planet reached through a wormhole by seven arks launched from Earth. Time dilation in transit scattered the arrivals across generations. Africa came first; Eurasia fourth; South America stranded mid-transit and limped in last. Native Americans walked off the North American ark and settled separately. Pre-industrial — wood, stone, brick, iron, animal-drawn transport. No electricity has ever been made to work on Tunya. Powers replace some of what electricity would do: fire-bloodlines warm and forge, ice-bloodlines preserve and heal. The Sangree of Sandrun are revered for fire; the Medici (an alien-origin people living among Kree) wield ice and healing. The story opens four generations after the first arrival, when the arks themselves have been ruins for decades but their archives can still be accessed with enough solar charge — making them objects of pilgrimage, sabotage, and obsession.",
+  "description": "A planet reached through a wormhole by seven arks launched from Earth. Time dilation in transit scattered the arrivals across generations. Africa came first; Eurasia fourth; South America stranded mid-transit and limped in last. Native Americans walked off the North American ark and settled separately. Pre-industrial — wood, stone, brick, iron, animal-drawn transport. No electricity has ever been made to work on Tunya. Powers replace some of what electricity would do: fire-bloodlines warm and forge, ice-bloodlines preserve and heal. The Sanguire of Sandrun are revered for fire; the Medici (an alien-origin people living among Kree) wield ice and healing. The story opens four generations after the first arrival, when the arks themselves have been ruins for decades but their archives can still be accessed with enough solar charge — making them objects of pilgrimage, sabotage, and obsession.",
   "skill_affinity": {
     "default": 0.7,
     "swordsmanship": 1.0,
@@ -77,7 +77,7 @@
       },
       {
         "id": "anchor_tunya_medici_resonance",
-        "name": "The Medici Ice Choir",
+        "name": "The Medici Resonance Choir",
         "access_method": "medici_ice_resonance",
         "description": "Twelve Medici healers in concert can shape ice into a standing wave that broadcasts to other shaped ice. The technique is not Tunyan in origin. They will not say where it came from.",
         "location": "kree_medici_ward",
@@ -88,14 +88,24 @@
   },
   "biomes": {
     "policy": "every kingdom contains multiple biomes; no landmass owns one biome",
-    "kinds": ["tropical", "arid", "frost", "swamp", "temperate_woodland", "highland", "coastal_marsh"]
+    "kinds": ["tropical", "arid", "highland_frost", "swamp", "temperate_woodland", "highland", "coastal_marsh"]
   },
   "open_lore": {
     "what_is_in_the_curated_archive": "Recoverable from Asbir ark with effort.",
-    "what_are_the_medici": "Not Tunyan, not Earth. Origin recoverable through the Medici Ice Choir.",
-    "why_no_electricity": "Ambient mystery. Tied to whatever protects Nil.",
-    "what_lives_in_the_sea": "Recoverable through Fluxom's old sea-trade logs.",
-    "the_blocs_binding": "Recoverable through Aekon's stranded-arrival grief.",
-    "sangree_medici_hybrids": "Rare, real. Where they are is open lore."
+    "what_are_the_medici": "Crash-landed in Year 11 from a star carried in Supreme Elder succession-memory. Their goddess Mercury chose them. Origin recoverable through the Medici Resonance Choir + the Asbir deletion index.",
+    "why_no_electricity": "The planetary refusal-field. Conducted by pure Tunyans. See powers.json#tunyan_conduit.",
+    "what_lives_in_the_sea": "Recoverable through Fluxom's old sea-trade logs. Fluxom's refugee-dump in the storm is the originating event.",
+    "the_blocs_binding": "Aekon's stranded-arrival twelfth district. Dinye + Asbir know.",
+    "sanguire_medici_hybrids": "Rare, real, and only via Medici-male x Sanguire-female (the reverse is lethal). See powers.json + species.json."
+  },
+  "v2_changelog": {
+    "spelling": "Sangree → Sanguire (locked).",
+    "powers": "Medici corrected to healing-only; ice-as-Medici-power removed (was author invention).",
+    "timeline": "Medici crash-landing locked at Year 11 (between Asbir/Cree at Year 7 and Eurasia at Year 14). Approximately 100 Tunyan years before the Year 4G present.",
+    "species_taxonomy": "3 sapient species + Earth humans. See species.json.",
+    "calendar": "Full mechanical calendar with sun/moon hours + temperatures + weather + 4 seasons (Resurrection / Drought / Harvest / Fallow) locked. See calendar.json.",
+    "colors": "Skin-color genetics (paint-mixing inheritance + sex-linked throwback) + color symbolism + per-kingdom palette priors locked. See colors.json.",
+    "deities": "Mercury added as a real metaphysical entity worshipped by Medici. See species.json#deities.mercury.",
+    "biomes": "frost biome → highland_frost (elevation-driven only). Calendar tem range supports no polar frost on Tunya."
   }
 }
