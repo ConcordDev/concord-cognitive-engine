@@ -304,7 +304,7 @@ function seedQuestFile(quests) {
  *
  * @returns {{ ok: boolean, counts?: object, error?: string }}
  */
-export function seedContent({ db = null } = {}) {
+export async function seedContent({ db = null } = {}) {
   if (_seeded) {
     return { ok: true, counts: null, cached: true };
   }
@@ -421,6 +421,30 @@ export function seedContent({ db = null } = {}) {
     }
   }
 
+  // Sprint C / Track A3 — secrets seeding (idempotent).
+  if (db) {
+    try {
+      const { seedFromAuthored: seedSecrets } = await import("./secrets.js");
+      const r = await seedSecrets(db);
+      if (r?.ok) results.secrets = r.inserted || 0;
+    } catch (err) {
+      logger.warn({ err: err.message }, "content_seeder_secrets_failed");
+    }
+  }
+
+  // Sprint C / Track D1 — kingdoms seeding (idempotent). Reads
+  // factions + their territory and creates a kingdom row per leader.
+  if (db) {
+    try {
+      const { seedKingdomsFromFactions } = await import("./kingdoms.js");
+      const factions = Array.from(_authoredFactions.values());
+      const r = seedKingdomsFromFactions(db, factions);
+      if (r?.ok) results.kingdoms = r.inserted || 0;
+    } catch (err) {
+      logger.warn({ err: err.message }, "content_seeder_kingdoms_failed");
+    }
+  }
+
   _seeded = true;
 
   logger.info(
@@ -512,4 +536,14 @@ export function getNPCsForFaction(factionId) {
     if (npc.faction_id === factionId) result.push(npc);
   }
   return result;
+}
+
+/** Sprint C / A3 — return every authored NPC. Used by the secrets seeder. */
+export function getAllAuthoredNPCs() {
+  return Array.from(_authoredNPCs.values());
+}
+
+/** Sprint C / D1 — return every authored faction. */
+export function getAllAuthoredFactions() {
+  return Array.from(_authoredFactions.values());
 }

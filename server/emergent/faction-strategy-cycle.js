@@ -17,6 +17,26 @@
 
 import logger from "../logger.js";
 import { pickMove, applyMove } from "../lib/embodied/faction-strategy.js";
+import { getAuthoredFaction } from "../lib/content-seeder.js";
+
+/**
+ * Sprint C / Track A1 — resolve a faction's current leader coping trait
+ * (if any). Returns null on any miss; pickMove treats null as no bias.
+ */
+function resolveLeaderCopingTrait(db, factionId) {
+  try {
+    const f = getAuthoredFaction(factionId);
+    const leaderId = f?.leader_npc_id || f?.leader || null;
+    if (!leaderId) return null;
+    const row = db.prepare(`
+      SELECT coping_trait, coping_until FROM npc_stress WHERE npc_id = ?
+    `).get(leaderId);
+    if (!row?.coping_trait) return null;
+    const now = Math.floor(Date.now() / 1000);
+    if (row.coping_until && row.coping_until < now) return null;
+    return row.coping_trait;
+  } catch { return null; }
+}
 
 export async function runFactionStrategyCycle({ db, state: _state, tickCount: _tickCount } = {}) {
   if (!db) return { ok: false, reason: "no_db" };
@@ -45,7 +65,10 @@ export async function runFactionStrategyCycle({ db, state: _state, tickCount: _t
   for (const f of pending) {
     try {
       const peers = allStates.filter(s => s.faction_id !== f.faction_id);
-      const picked = pickMove(f, peers);
+      // Sprint C / A1 — leader coping trait biases the roll. Trait stays
+      // separate from persisted state so it doesn't leak into the move log.
+      const stateWithBias = { ...f, coping_trait: resolveLeaderCopingTrait(db, f.faction_id) };
+      const picked = pickMove(stateWithBias, peers);
       const applied = applyMove(db, f.faction_id, picked, allStates);
       if (applied) {
         advanced++;

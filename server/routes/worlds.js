@@ -1983,6 +1983,18 @@ export default function createWorldsRouter({ requireAuth, db }) {
             }
           }
         } catch { /* asymmetry tables may be missing */ }
+
+        // Sprint C / Track A2 — opinion cascade. Direct kin -40, faction
+        // siblings ripple via cascadeFamilyAndAlly.
+        try {
+          const op = await import("../lib/npc-opinions.js");
+          op.cascadeFamilyAndAlly(
+            db, npcId,
+            "player", userId,
+            -40,
+            `slain ${npcId}`,
+          );
+        } catch { /* npc_opinions absent on minimal builds */ }
       }
 
       // Phase 1 + 1.5: emit skill:tier-witnessed when an evolved skill

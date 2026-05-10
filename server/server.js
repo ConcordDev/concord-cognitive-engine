@@ -443,6 +443,25 @@ registerHeartbeat("npc-routine-cycle", {
   handler: runNpcRoutineCycle,
 });
 
+// Sprint C / Track A4 — npc schemes / plots. Every 30 ticks (~7.5min)
+// advances scheme phases AND proposes new schemes for high-stress NPCs.
+// Kill-switch: CONCORD_NPC_SCHEMES=0.
+import { runNpcSchemeCycle } from "./emergent/npc-scheme-cycle.js";
+registerHeartbeat("npc-scheme-cycle", {
+  frequency: 30,
+  handler: runNpcSchemeCycle,
+});
+
+// Sprint C / Tracks D2+D4 — kingdom decrees + rebellion. Every 16 ticks
+// (~4min) sweeps expired decrees, recomputes citizen loyalty, advances
+// NPC-ruler decree picker, and evaluates rebellion risk per kingdom.
+// Kill-switch: CONCORD_KINGDOMS=0.
+import { runKingdomDecreeCycle } from "./emergent/kingdom-decree-cycle.js";
+registerHeartbeat("kingdom-decree-cycle", {
+  frequency: 16,
+  handler: runKingdomDecreeCycle,
+});
+
 // Sprint B Phase 9 — NPC visible sentience. Every 8 ticks (~2 minutes)
 // snapshots per-NPC perception (active grudge severity / faction-strategy
 // allied posture / mood bias) and emits npc:perception-update so the
@@ -23165,6 +23184,16 @@ registerKnowledgeTradeMacros(register);
 // inserts beats; these macros let the player surface and resolve them.
 import registerBeatsMacros from "./domains/beats.js";
 registerBeatsMacros(register);
+import registerSecretsMacros from "./domains/secrets.js";
+registerSecretsMacros(register);
+import registerSchemesMacros from "./domains/schemes.js";
+registerSchemesMacros(register);
+import registerKingdomsMacros from "./domains/kingdoms.js";
+registerKingdomsMacros(register);
+import registerBuildingsMacros from "./domains/buildings.js";
+registerBuildingsMacros(register);
+import registerOxygenMacros from "./domains/oxygen.js";
+registerOxygenMacros(register);
 
 // Phase 5a — Land claims. claim / invite / topup / claim_at / can_act_in /
 // list_for_user macros for the world lens to interrogate the substrate.
@@ -28849,7 +28878,7 @@ if (db) {
     } catch (e) { console.warn("[quest-engine]", e.message); }
     // Seed authored world content (factions, NPCs, lore, quest chains) into
     // in-memory systems. Must run after world seed so history engine is ready.
-    try { seedContent({ db }); } catch (e) { console.warn("[content-seeder]", e.message); }
+    try { await seedContent({ db }); } catch (e) { console.warn("[content-seeder]", e.message); }
     // Starter content — recipes + hostile spawns. Idempotent; safe on every boot.
     try {
       const starter = await import("./lib/starter-content.js");
