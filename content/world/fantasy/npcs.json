@@ -95,7 +95,26 @@
       "afternoon": "socialize",
       "dusk": "rest",
       "night": "rest"
-    }
+    },
+    "needs": [
+      { "id": "curse_containment", "priority": "primary", "satisfaction_method": "morning_grove_meditation" },
+      { "id": "apprentice_search", "priority": "primary", "satisfaction_method": "evening_root_listening" }
+    ],
+    "daily_schedule": [
+      { "phase": "dawn", "phase_hours": [5, 8], "location": "thornwood_glade_inner", "activity": "wakes; the green tattoos pulse; meditates against the curse", "need_addressed": "curse_containment", "interactable_by_player": false },
+      { "phase": "morning", "phase_hours": [8, 12], "location": "thornwood_glade", "activity": "tends the corrupted edge of the elder grove; thornlashes anything that crosses the line", "need_addressed": "curse_containment", "interactable_by_player": true },
+      { "phase": "afternoon", "phase_hours": [14, 19], "location": "elder_grove", "activity": "communes with Velora when she'll see him; otherwise alone", "need_addressed": "curse_containment", "interactable_by_player": true },
+      { "phase": "evening", "phase_hours": [19, 23], "location": "bone_orchard", "activity": "listens through the root network for the apprentice's signature", "need_addressed": "apprentice_search", "interactable_by_player": false },
+      { "phase": "night", "phase_hours": [23, 5], "location": "thornwood_glade_inner", "activity": "rests against a living tree; the curse darkens his right eye while he sleeps", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "thornwood_glade_inner", "dwelling_type": "living_grove_chamber" },
+    "job": { "profession_id": "corrupted_forest_guardian", "wage_per_diurnal_sparks": 0, "wage_source": "n/a — the forest provides" },
+    "apparel": ["robes_of_living_moss_bark_and_shadow_silk", "no_shoes", "vine_and_bone_bead_braids", "ceremonial_thorn_circlet"],
+    "gear": ["staff_of_thornlash", "personal_apprentice_search_journal_in_root_ink"],
+    "resources_consumed": ["the_forest_provides_food", "moss_and_bark_for_garments"],
+    "resources_produced": ["thornwood_perimeter_defense", "occasional_healing_when_a_pilgrim_truly_asks"],
+    "inventory": [{ "item": "staff_of_thornlash", "qty": 1 }, { "item": "personal_apprentice_search_journal", "qty": 1 }, { "item": "forest_marks", "qty": 18 }],
+    "starting_sparks": 0
   },
   {
     "id": "velora_mossheart",
@@ -185,7 +204,26 @@
       "afternoon": "socialize",
       "dusk": "rest",
       "night": "rest"
-    }
+    },
+    "needs": [
+      { "id": "grove_stewardship", "priority": "primary", "satisfaction_method": "daily_elder_grove_communion" },
+      { "id": "thorne_oversight", "priority": "primary", "satisfaction_method": "afternoon_visit_to_thornwood" }
+    ],
+    "daily_schedule": [
+      { "phase": "dawn", "phase_hours": [5, 8], "location": "elder_grove_inner", "activity": "morning Circle meditation; storm-portent reading", "need_addressed": "grove_stewardship", "interactable_by_player": false },
+      { "phase": "morning", "phase_hours": [8, 12], "location": "elder_grove", "activity": "tends the elder grove; receives Circle apprentices", "need_addressed": "grove_stewardship", "interactable_by_player": true },
+      { "phase": "afternoon", "phase_hours": [14, 18], "location": "thornwood_glade", "activity": "visits Thorne; checks the curse line", "need_addressed": "thorne_oversight", "interactable_by_player": true },
+      { "phase": "evening", "phase_hours": [19, 22], "location": "elder_grove_inner", "activity": "evening Circle council", "need_addressed": "grove_stewardship", "interactable_by_player": true },
+      { "phase": "night", "phase_hours": [22, 5], "location": "elder_grove_inner", "activity": "rests in the inner grove", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "elder_grove_inner", "dwelling_type": "elder_grove_warden_chamber" },
+    "job": { "profession_id": "wildwood_elder_warden", "wage_per_diurnal_sparks": 80, "wage_source": "circle_pooled_donations" },
+    "apparel": ["green_warden_robe", "leather_belt_with_herb_pouches", "soft_grove_shoes", "moss_lined_cloak"],
+    "gear": ["staff_of_stormcall", "personal_apprentice_records_journal", "elder_grove_communion_focus"],
+    "resources_consumed": ["herbs", "ink", "circle_provisions"],
+    "resources_produced": ["grove_stewardship", "circle_apprentice_training"],
+    "inventory": [{ "item": "staff_of_stormcall", "qty": 1 }, { "item": "personal_apprentice_records_journal", "qty": 1 }, { "item": "forest_marks", "qty": 24 }],
+    "starting_sparks": 980
   },
   {
     "id": "seraphine_voss",
@@ -300,7 +338,25 @@
       "afternoon": "socialize",
       "dusk": "rest",
       "night": "rest"
-    }
+    },
+    "needs": [
+      { "id": "feeding", "priority": "primary", "satisfaction_method": "masquerade_ball_disappearance" },
+      { "id": "political_leverage", "priority": "primary", "satisfaction_method": "evening_secret_brokering" }
+    ],
+    "daily_schedule": [
+      { "phase": "dusk", "phase_hours": [19, 22], "location": "voss_estate", "activity": "rises; private council with Caelan; reviews the week's leverage portfolio", "need_addressed": "political_leverage", "interactable_by_player": false },
+      { "phase": "night", "phase_hours": [22, 28], "location": "masquerade_district", "activity": "salon politics; courtship; occasional feeding from a marked guest", "need_addressed": "feeding", "interactable_by_player": true },
+      { "phase": "deep_night", "phase_hours": [28, 32], "location": "crimson_quarter", "activity": "private brokering meetings with other noble houses' compromised members", "need_addressed": "political_leverage", "interactable_by_player": true },
+      { "phase": "dawn_through_dusk", "phase_hours": [1, 19], "location": "voss_estate_inner_sanctum", "activity": "rests below ground; no sunlight tolerance", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "voss_estate", "dwelling_type": "duchess_inner_sanctum_below_ground" },
+    "job": { "profession_id": "vampire_duchess", "wage_per_diurnal_sparks": 1400, "wage_source": "voss_estate_hereditary_treasury" },
+    "apparel": ["aristocratic_couture_evening_gowns", "blood_red_silk_choker", "polished_evening_shoes", "ceremonial_voss_crest_brooch"],
+    "gear": ["personal_leverage_portfolio_master_journal_locked", "voss_estate_mirror_concord_link_anchor_key", "ceremonial_dagger_silver_lined", "blood_pact_seal_master"],
+    "resources_consumed": ["fed_guests_quietly", "evening_salon_provisions"],
+    "resources_produced": ["leverage_arrangements", "political_consolidation"],
+    "inventory": [{ "item": "personal_leverage_portfolio_master_journal_locked", "qty": 1 }, { "item": "voss_estate_mirror_anchor_key", "qty": 1 }, { "item": "blood_pact_seal_master", "qty": 1 }, { "item": "blood_pacts", "qty": 90 }],
+    "starting_sparks": 280000
   },
   {
     "id": "caelan_voss",
@@ -380,7 +436,25 @@
       "afternoon": "socialize",
       "dusk": "rest",
       "night": "rest"
-    }
+    },
+    "needs": [
+      { "id": "court_protocol", "priority": "primary", "satisfaction_method": "evening_court_attendance" },
+      { "id": "succession_preparation", "priority": "primary", "satisfaction_method": "weekly_inheritance_review" }
+    ],
+    "daily_schedule": [
+      { "phase": "dusk", "phase_hours": [19, 22], "location": "voss_estate", "activity": "rises; council with Seraphine; protocol briefing for the evening's salon", "need_addressed": "court_protocol", "interactable_by_player": false },
+      { "phase": "night", "phase_hours": [22, 28], "location": "masquerade_district", "activity": "salon attendance as Seraphine's chosen heir; learns court politics", "need_addressed": "court_protocol", "interactable_by_player": true },
+      { "phase": "deep_night", "phase_hours": [28, 32], "location": "voss_estate_inner_library", "activity": "succession studies — reads three centuries of Voss family lore", "need_addressed": "succession_preparation", "interactable_by_player": true },
+      { "phase": "dawn_through_dusk", "phase_hours": [1, 19], "location": "voss_estate_caelan_chamber", "activity": "rests below ground", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "voss_estate", "dwelling_type": "heir_chamber_below_ground" },
+    "job": { "profession_id": "vampire_heir", "wage_per_diurnal_sparks": 420, "wage_source": "voss_hereditary_stipend" },
+    "apparel": ["aristocratic_evening_suits", "blood_red_silk_cravat", "polished_evening_shoes", "ceremonial_voss_heir_crest"],
+    "gear": ["personal_succession_studies_journal", "ceremonial_silver_lined_dagger", "voss_archive_master_key"],
+    "resources_consumed": ["fed_quietly", "salon_provisions"],
+    "resources_produced": ["court_attendance", "succession_progress"],
+    "inventory": [{ "item": "personal_succession_studies_journal", "qty": 1 }, { "item": "ceremonial_silver_lined_dagger", "qty": 1 }, { "item": "voss_archive_master_key", "qty": 1 }, { "item": "blood_pacts", "qty": 24 }],
+    "starting_sparks": 38000
   },
   {
     "id": "walker_branna_mossroad",
@@ -420,7 +494,25 @@
       "afternoon": "socialize",
       "dusk": "rest",
       "night": "rest"
-    }
+    },
+    "needs": [
+      { "id": "route_completion", "priority": "primary", "satisfaction_method": "monthly_long_walk" },
+      { "id": "rest", "priority": "secondary", "satisfaction_method": "post_arrival_rest" }
+    ],
+    "daily_schedule": [
+      { "phase": "morning", "phase_hours": [6, 11], "location": "varies_by_route_segment", "activity": "outbound walking — carries the Circle's messages between groves", "need_addressed": "route_completion", "interactable_by_player": false },
+      { "phase": "midday", "phase_hours": [11, 14], "location": "anchor_clearing", "activity": "rest stop; reads any pilgrim messages found at the clearing", "need_addressed": "route_completion", "interactable_by_player": true },
+      { "phase": "afternoon", "phase_hours": [14, 19], "location": "varies", "activity": "continues the walk", "need_addressed": "route_completion", "interactable_by_player": false },
+      { "phase": "night", "phase_hours": [22, 6], "location": "moss_road_rest_spot", "activity": "rests on the road", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "thornwood_glade_walker_lodge", "dwelling_type": "walker_lodge_bunk" },
+    "job": { "profession_id": "link_walker", "wage_per_diurnal_sparks": 60, "wage_source": "circle_pooled_per_delivery" },
+    "apparel": ["moss_lined_traveling_cloak", "circle_walker_tunic", "knee_high_road_boots", "weathered_hat"],
+    "gear": ["walking_staff_circle_anchor", "mail_satchel", "moss_signal_token", "small_dagger"],
+    "resources_consumed": ["trail_food", "circle_provisions"],
+    "resources_produced": ["delivered_messages"],
+    "inventory": [{ "item": "walking_staff_circle_anchor", "qty": 1 }, { "item": "mail_satchel", "qty": 1 }, { "item": "small_dagger", "qty": 1 }, { "item": "trail_rations", "qty": 6 }, { "item": "forest_marks", "qty": 14 }],
+    "starting_sparks": 380
   },
   {
     "id": "queen_morwen_obsidian",
