@@ -20,6 +20,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
@@ -130,6 +131,16 @@ function CombatSandboxInner() {
   const removeDummy = () => {
     setDummies((prev) => (prev.length <= 1 ? prev : prev.slice(0, -1)));
   };
+
+  // Combat-feel iteration shortcuts: r reset HP, +/- dummy count.
+  useLensCommand(
+    [
+      { id: 'reset',     keys: 'r',       description: 'Reset dummy HP', category: 'actions', action: resetDummies },
+      { id: 'add',       keys: 'shift+=', description: 'Add a dummy',    category: 'actions', action: addDummy },
+      { id: 'remove',    keys: '-',       description: 'Remove a dummy', category: 'actions', action: removeDummy },
+    ],
+    { lensId: 'sandbox' }
+  );
 
   const totalHp = useMemo(() => dummies.reduce((s, d) => s + d.hp, 0), [dummies]);
   const totalMax = useMemo(() => dummies.reduce((s, d) => s + d.maxHp, 0), [dummies]);

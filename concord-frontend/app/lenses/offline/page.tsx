@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useState, useCallback } from 'react';
@@ -153,6 +154,18 @@ export default function OfflineLensPage() {
   const handleClearCache = useCallback(() => {
     clearCacheMut.mutate();
   }, [clearCacheMut]);
+
+  useLensCommand(
+    [
+      { id: 'sync-all',     keys: 'mod+enter', description: 'Sync all pending items', category: 'actions',
+        action: () => { if (isOnline && !syncAllMut.isPending) syncAllMut.mutate(); }, global: true },
+      { id: 'toggle-online', keys: 'o',        description: 'Toggle online state',    category: 'view',
+        action: () => setIsOnline((v) => !v) },
+      { id: 'refresh',       keys: 'r',        description: 'Refresh cache stats',    category: 'actions',
+        action: () => refetch2() },
+    ],
+    { lensId: 'offline' }
+  );
 
   const handleSyncSingle = useCallback(
     (itemId: string) => {
