@@ -177,8 +177,20 @@ describe("tickFlock — boid steering", () => {
     `).run("user_alice", "concordia-hub", 5, 0, 0);
 
     const before = readCreature(db, "cr_target");
-    tickFlock(db, state, "concordia-hub");
-    const after = readCreature(db, "cr_target");
+    // tickFlock has a STILL_PROB=0.25 idle branch (rests one in four
+    // passes so cluster centre has an anchor). To keep this test
+    // deterministic without mocking Math.random globally, run up to
+    // 8 passes — P(8 consecutive idles) = 0.25^8 ≈ 1.5e-5, comfortably
+    // below CI flake budget. Each idle pass leaves position untouched,
+    // so distAfter only changes once a non-idle pass happens.
+    let after = before;
+    let stored = null;
+    for (let attempt = 0; attempt < 8; attempt++) {
+      tickFlock(db, state, "concordia-hub");
+      after = readCreature(db, "cr_target");
+      stored = state.creatureMotion?.["concordia-hub"]?.["cr_target"];
+      if (after.x !== before.x || after.z !== before.z) break;
+    }
 
     // Distance to player should grow (creature ran away)
     const distBefore = Math.hypot(before.x - 5, before.z - 0);
@@ -190,7 +202,6 @@ describe("tickFlock — boid steering", () => {
 
     // Velocity stored in motion state should point away from player (+X)
     // → vx negative (creature moving in −X direction).
-    const stored = state.creatureMotion["concordia-hub"]?.["cr_target"];
     assert.ok(stored, "motion state should be populated");
     assert.ok(stored.vx < 0, `flee velocity should point −X but vx=${stored.vx}`);
   });
