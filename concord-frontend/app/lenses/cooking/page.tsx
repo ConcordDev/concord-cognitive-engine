@@ -5,6 +5,7 @@ import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { UniversalActions } from '@/components/lens/UniversalActions';
@@ -216,6 +217,22 @@ export default function CookingLensPage() {
   const [showFeatures, setShowFeatures] = useState(true);
   const [showTimer, setShowTimer] = useState(false);
   const [expandedRecipe, setExpandedRecipe] = useState<string | null>(null);
+  const [difficultyFilter, setDifficultyFilter] = useState<'all' | 'easy' | 'medium' | 'hard'>('all');
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useLensCommand(
+    [
+      { id: 'focus-search', keys: '/', description: 'Search recipes', category: 'navigation', action: () => searchInputRef.current?.focus() },
+      { id: 'new-recipe',   keys: 'n', description: 'New recipe',     category: 'actions',    action: () => setShowCreate(true) },
+      { id: 'toggle-timer', keys: 't', description: 'Toggle kitchen timer', category: 'view',  action: () => setShowTimer((v) => !v) },
+      { id: 'diff-all',    keys: '0', description: 'All difficulties', category: 'view', action: () => setDifficultyFilter('all') },
+      { id: 'diff-easy',   keys: '1', description: 'Easy',             category: 'view', action: () => setDifficultyFilter('easy') },
+      { id: 'diff-medium', keys: '2', description: 'Medium',           category: 'view', action: () => setDifficultyFilter('medium') },
+      { id: 'diff-hard',   keys: '3', description: 'Hard',             category: 'view', action: () => setDifficultyFilter('hard') },
+      { id: 'collapse',    keys: 'esc', description: 'Collapse expanded recipe', category: 'navigation', action: () => setExpandedRecipe(null) },
+    ],
+    { lensId: 'cooking' }
+  );
   const [servingMultipliers, setServingMultipliers] = useState<Record<string, number>>({});
   const [newRecipe, setNewRecipe] = useState({ name: '', cuisine: '', difficulty: 'easy' as 'easy' | 'medium' | 'hard', prepTime: 0, cookTime: 0, servings: 4 });
 
@@ -249,8 +266,12 @@ export default function CookingLensPage() {
 
   const recipes = useMemo(() =>
     items.map(item => ({ id: item.id, ...item.data, name: item.title || item.data?.name || 'Untitled Recipe' }))
-      .filter(r => !search || r.name?.toLowerCase().includes(search.toLowerCase()) || r.cuisine?.toLowerCase().includes(search.toLowerCase())),
-    [items, search]
+      .filter(r => {
+        if (search && !(r.name?.toLowerCase().includes(search.toLowerCase()) || r.cuisine?.toLowerCase().includes(search.toLowerCase()))) return false;
+        if (difficultyFilter !== 'all' && r.difficulty !== difficultyFilter) return false;
+        return true;
+      }),
+    [items, search, difficultyFilter]
   );
 
   const stats = useMemo(() => ({
@@ -503,9 +524,39 @@ export default function CookingLensPage() {
         <div className="lens-card"><Star className="w-5 h-5 text-neon-green mb-2" /><p className="text-2xl font-bold">{stats.topRated}</p><p className="text-sm text-gray-400">Top Rated</p></div>
       </div>
 
-      <div className="relative">
-        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search recipes..." className="w-full bg-lattice-void border border-lattice-border rounded-lg pl-9 pr-3 py-2 text-sm" />
+      <div className="space-y-2">
+        <div className="relative">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+          <input
+            ref={searchInputRef}
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Escape') { setSearch(''); searchInputRef.current?.blur(); } }}
+            placeholder="Search recipes…  / focuses · Esc clears"
+            className="w-full bg-lattice-void border border-lattice-border rounded-lg pl-9 pr-3 py-2 text-sm"
+          />
+        </div>
+        <div className="flex items-center gap-1 flex-wrap text-xs">
+          {(['all', 'easy', 'medium', 'hard'] as const).map((d, i) => (
+            <button
+              key={d}
+              onClick={() => setDifficultyFilter(d)}
+              className={`px-2 py-0.5 rounded border transition-colors ${
+                difficultyFilter === d
+                  ? d === 'easy' ? 'border-neon-green/40 bg-neon-green/15 text-neon-green'
+                  : d === 'medium' ? 'border-yellow-400/40 bg-yellow-400/15 text-yellow-400'
+                  : d === 'hard' ? 'border-red-400/40 bg-red-400/15 text-red-400'
+                  : 'border-orange-400/40 bg-orange-400/15 text-orange-400'
+                  : 'border-white/10 bg-white/5 text-gray-400 hover:text-white'
+              }`}
+            >
+              {d}<kbd className="text-[8px] opacity-60 ml-0.5">{i}</kbd>
+            </button>
+          ))}
+          {(search || difficultyFilter !== 'all') && (
+            <span className="text-[10px] text-gray-500 ml-2">{recipes.length} match</span>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
