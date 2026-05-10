@@ -539,6 +539,28 @@ export default function CodeLensPage() {
   const [paletteIdx, setPaletteIdx] = useState(0);
   const paletteInputRef = useRef<HTMLInputElement>(null);
 
+  // ── Inline AI edit (⌘K) ─────────────────────────────────────────
+  // Cursor-style: select text → ⌘K → write instruction → see diff inline
+  // → Apply replaces selection.  Whole-file edit when no selection.
+  const editorInstanceRef = useRef<import('monaco-editor').editor.IStandaloneCodeEditor | null>(null);
+  const [selection, setSelection] = useState<{ text: string; startLine: number; endLine: number } | null>(null);
+  const [aiEditOpen, setAiEditOpen] = useState(false);
+  const [aiEditPrompt, setAiEditPrompt] = useState('');
+  const [aiEditPending, setAiEditPending] = useState(false);
+  const [aiEditResult, setAiEditResult] = useState<{ before: string; after: string; range: { startLine: number; endLine: number } | null } | null>(null);
+  const [aiEditError, setAiEditError] = useState<string | null>(null);
+  const aiEditInputRef = useRef<HTMLInputElement>(null);
+
+  // ── AI chat side-panel (⌘L) ─────────────────────────────────────
+  type ChatMsg = { role: 'user' | 'assistant'; content: string; ts: number };
+  const [aiChatOpen, setAiChatOpen] = useState(false);
+  const [aiChatHistory, setAiChatHistory] = useState<ChatMsg[]>([]);
+  const [aiChatDraft, setAiChatDraft] = useState('');
+  const [aiChatPending, setAiChatPending] = useState(false);
+  const [aiChatIncludeFile, setAiChatIncludeFile] = useState(true);
+  const aiChatScrollRef = useRef<HTMLDivElement>(null);
+  const aiChatInputRef = useRef<HTMLTextAreaElement>(null);
+
   // Backend action wiring
   const runCodeAction = useRunArtifact('code');
   const [codeActionResult, setCodeActionResult] = useState<Record<string, unknown> | null>(null);
@@ -801,6 +823,138 @@ export default function CodeLensPage() {
     }
   }, [paletteOpen]);
 
+  // ── AI edit + chat handlers ─────────────────────────────────────
+  const extractCodeFromLLM = useCallback((raw: string): string => {
+    if (!raw) return '';
+    // Prefer fenced block (```lang\n...\n```)
+    const fence = raw.match(/```[a-zA-Z]*\n([\s\S]*?)```/);
+    if (fence) return fence[1].trim();
+    return raw.trim();
+  }, []);
+
+  const openAiEdit = useCallback(() => {
+    // Snapshot selection from the editor at the moment the shortcut fires.
+    const ed = editorInstanceRef.current;
+    if (ed) {
+      const sel = ed.getSelection();
+      const model = ed.getModel();
+      if (sel && model) {
+        const text = model.getValueInRange(sel);
+        setSelection(text ? { text, startLine: sel.startLineNumber, endLine: sel.endLineNumber } : null);
+      }
+    }
+    setAiEditPrompt('');
+    setAiEditResult(null);
+    setAiEditError(null);
+    setAiEditOpen(true);
+    requestAnimationFrame(() => aiEditInputRef.current?.focus());
+  }, []);
+
+  const runAiEdit = useCallback(async () => {
+    const instruction = aiEditPrompt.trim();
+    if (!instruction || aiEditPending) return;
+    const fileContent = activeTab.content;
+    const lang = activeTab.language || 'javascript';
+    const before = selection?.text || fileContent;
+    const isFullFile = !selection?.text;
+    setAiEditPending(true);
+    setAiEditError(null);
+    setAiEditResult(null);
+    try {
+      const messages = [
+        { role: 'system', content: `You are a senior ${lang} engineer doing a focused inline edit. Output ONLY the rewritten code in a single \`\`\`${lang} fenced block. Preserve indentation. No prose, no explanations.` },
+        ...(isFullFile ? [] : [{ role: 'user', content: `For context, here is the entire file (\`${activeTab.name}\`):\n\n\`\`\`${lang}\n${fileContent}\n\`\`\`` }]),
+        { role: 'user', content: `${isFullFile ? 'Rewrite this whole file' : 'Rewrite ONLY the selection below'} so that: ${instruction}\n\n\`\`\`${lang}\n${before}\n\`\`\`` },
+      ];
+      const res = await api.post('/api/lens/run', { domain: 'llm', action: 'local', input: { messages, temperature: 0.2, max_tokens: 2048 } });
+      const result = res.data?.result;
+      const raw = result?.content || result?.message?.content || result?.output || '';
+      const after = extractCodeFromLLM(String(raw));
+      if (!after) {
+        setAiEditError('AI returned no code. Try rephrasing.');
+        return;
+      }
+      setAiEditResult({
+        before,
+        after,
+        range: selection ? { startLine: selection.startLine, endLine: selection.endLine } : null,
+      });
+    } catch (e) {
+      setAiEditError(e instanceof Error ? e.message : 'AI edit failed');
+    } finally {
+      setAiEditPending(false);
+    }
+  }, [aiEditPrompt, aiEditPending, activeTab, selection, extractCodeFromLLM]);
+
+  const applyAiEdit = useCallback(() => {
+    if (!aiEditResult) return;
+    const ed = editorInstanceRef.current;
+    if (aiEditResult.range && ed) {
+      const monaco = (window as unknown as { monaco?: typeof import('monaco-editor') }).monaco;
+      const model = ed.getModel();
+      if (model && monaco) {
+        const startLine = aiEditResult.range.startLine;
+        const endLine = aiEditResult.range.endLine;
+        const range = new monaco.Range(startLine, 1, endLine, model.getLineMaxColumn(endLine));
+        ed.executeEdits('ai-edit', [{ range, text: aiEditResult.after, forceMoveMarkers: true }]);
+        setAiEditOpen(false);
+        setAiEditResult(null);
+        return;
+      }
+    }
+    // No range or no editor handle → whole-file replace via tab state.
+    updateTabContent(aiEditResult.after);
+    setAiEditOpen(false);
+    setAiEditResult(null);
+  }, [aiEditResult, updateTabContent]);
+
+  const sendAiChat = useCallback(async () => {
+    const text = aiChatDraft.trim();
+    if (!text || aiChatPending) return;
+    const userMsg: ChatMsg = { role: 'user', content: text, ts: Date.now() };
+    const next = [...aiChatHistory, userMsg];
+    setAiChatHistory(next);
+    setAiChatDraft('');
+    setAiChatPending(true);
+    try {
+      const lang = activeTab.language || 'javascript';
+      const sys = `You are a senior ${lang} engineer pair-programming with the user. When you propose code, wrap it in \`\`\`${lang} fences. Be concise and direct.`;
+      const fileCtx = aiChatIncludeFile
+        ? `Currently open file (\`${activeTab.name}\`):\n\n\`\`\`${lang}\n${activeTab.content.slice(0, 8000)}\n\`\`\`\n\n`
+        : '';
+      const messages = [
+        { role: 'system', content: sys },
+        ...(fileCtx ? [{ role: 'user', content: fileCtx + 'Acknowledge the file context briefly, then await my next message.' }] : []),
+        ...(fileCtx ? [{ role: 'assistant', content: 'Got it — file in context.' }] : []),
+        ...next.map((m) => ({ role: m.role, content: m.content })),
+      ];
+      const res = await api.post('/api/lens/run', { domain: 'llm', action: 'local', input: { messages, temperature: 0.4, max_tokens: 1024 } });
+      const result = res.data?.result;
+      const raw = result?.content || result?.message?.content || result?.output || '';
+      const reply = String(raw).trim() || '(empty response)';
+      setAiChatHistory([...next, { role: 'assistant', content: reply, ts: Date.now() }]);
+    } catch (e) {
+      setAiChatHistory([...next, { role: 'assistant', content: `Error: ${e instanceof Error ? e.message : 'request failed'}`, ts: Date.now() }]);
+    } finally {
+      setAiChatPending(false);
+      requestAnimationFrame(() => {
+        aiChatScrollRef.current?.scrollTo({ top: aiChatScrollRef.current.scrollHeight, behavior: 'smooth' });
+      });
+    }
+  }, [aiChatDraft, aiChatPending, aiChatHistory, activeTab, aiChatIncludeFile]);
+
+  const insertChatCodeIntoEditor = useCallback((codeBlock: string) => {
+    const ed = editorInstanceRef.current;
+    if (!ed) {
+      updateTabContent((activeTab.content || '') + '\n\n' + codeBlock);
+      return;
+    }
+    const sel = ed.getSelection();
+    const model = ed.getModel();
+    if (!sel || !model) return;
+    ed.executeEdits('ai-chat-insert', [{ range: sel, text: codeBlock, forceMoveMarkers: true }]);
+  }, [activeTab.content, updateTabContent]);
+
   useLensCommand(
     [
       { id: 'palette',          keys: 'mod+p',       description: 'Command palette (Quick open)', category: 'navigation', action: () => setPaletteOpen(true), global: true },
@@ -809,6 +963,8 @@ export default function CodeLensPage() {
       { id: 'toggle-tree',      keys: 'mod+b',       description: 'Toggle file tree',              category: 'navigation', action: () => setShowFileTree((v) => !v), global: true },
       { id: 'toggle-output',    keys: 'mod+j',       description: 'Toggle output panel',           category: 'navigation', action: () => setShowOutput((v) => !v),   global: true },
       { id: 'fullscreen',       keys: 'f11',         description: 'Toggle fullscreen',             category: 'actions',    action: () => setIsFullscreen((v) => !v), global: true },
+      { id: 'ai-edit',          keys: 'mod+k',       description: 'AI inline edit',                category: 'actions',    action: openAiEdit, global: true },
+      { id: 'ai-chat',          keys: 'mod+l',       description: 'AI chat side-panel',            category: 'actions',    action: () => setAiChatOpen((v) => !v), global: true },
     ],
     { lensId: 'code' }
   );
@@ -1314,7 +1470,14 @@ export default function CodeLensPage() {
                   value={activeTab.content}
                   onChange={(val) => updateTabContent(val)}
                   language={activeTab.language || 'javascript'}
+                  onEditorReady={(ed) => { editorInstanceRef.current = ed; }}
+                  onSelectionChange={(s) => setSelection(s.text ? s : null)}
                 />
+                {selection?.text && !aiEditOpen && (
+                  <div className="pointer-events-none absolute top-2 right-2 px-2 py-1 rounded bg-neon-cyan/20 border border-neon-cyan/40 text-[10px] text-neon-cyan font-mono">
+                    {selection.endLine - selection.startLine + 1} line{selection.endLine !== selection.startLine ? 's' : ''} selected · ⌘K to edit
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1589,6 +1752,204 @@ export default function CodeLensPage() {
         </div>
       </div>
     )}
+
+    {/* ── AI Inline Edit modal (⌘K) ────────────────────────────── */}
+    <AnimatePresence>
+      {aiEditOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-start justify-center pt-32 px-4 bg-black/60 backdrop-blur-sm"
+          onClick={() => { if (!aiEditPending) { setAiEditOpen(false); setAiEditResult(null); } }}
+        >
+          <motion.div
+            initial={{ y: -16, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -16, opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="w-full max-w-3xl bg-[#0d1117] rounded-xl border border-neon-cyan/40 shadow-2xl shadow-neon-cyan/10 overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-neon-cyan/20 bg-gradient-to-r from-neon-cyan/10 to-neon-purple/10">
+              <Sparkles className="w-4 h-4 text-neon-cyan" />
+              <span className="text-sm font-bold text-neon-cyan">AI Edit</span>
+              <span className="text-xs text-gray-400">
+                {selection?.text
+                  ? `lines ${selection.startLine}–${selection.endLine}`
+                  : `whole file (${activeTab.name})`}
+              </span>
+              <kbd className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-gray-400">esc</kbd>
+            </div>
+            <div className="p-4 space-y-3">
+              <input
+                ref={aiEditInputRef}
+                type="text"
+                value={aiEditPrompt}
+                onChange={(e) => setAiEditPrompt(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !aiEditPending) { e.preventDefault(); runAiEdit(); }
+                  if (e.key === 'Escape') { setAiEditOpen(false); setAiEditResult(null); }
+                }}
+                placeholder="Describe the change… e.g. add error handling, convert to async, extract to function"
+                className="w-full px-3 py-2.5 bg-lattice-deep border border-lattice-border rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-neon-cyan/60"
+                autoFocus
+              />
+              {aiEditError && (
+                <div className="px-3 py-2 rounded bg-red-500/10 border border-red-500/30 text-xs text-red-400">{aiEditError}</div>
+              )}
+              {aiEditResult && (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-2 max-h-72 overflow-auto rounded border border-lattice-border">
+                    <div className="bg-red-500/5 p-3 border-r border-lattice-border">
+                      <div className="text-[10px] uppercase tracking-wider text-red-400 mb-1">– before</div>
+                      <pre className="text-xs text-gray-300 font-mono whitespace-pre-wrap break-words">{aiEditResult.before}</pre>
+                    </div>
+                    <div className="bg-green-500/5 p-3">
+                      <div className="text-[10px] uppercase tracking-wider text-green-400 mb-1">+ after</div>
+                      <pre className="text-xs text-gray-300 font-mono whitespace-pre-wrap break-words">{aiEditResult.after}</pre>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div className="flex items-center justify-between gap-2 pt-1">
+                <div className="text-[11px] text-gray-500">
+                  {aiEditResult ? '⏎ apply · ⎋ cancel' : '⏎ generate · ⎋ cancel'}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => { setAiEditOpen(false); setAiEditResult(null); }}
+                    disabled={aiEditPending}
+                    className="px-3 py-1.5 text-xs rounded border border-lattice-border text-gray-400 hover:text-white hover:bg-lattice-elevated disabled:opacity-40"
+                  >Cancel</button>
+                  {aiEditResult ? (
+                    <>
+                      <button
+                        onClick={() => setAiEditResult(null)}
+                        className="px-3 py-1.5 text-xs rounded border border-lattice-border text-gray-300 hover:bg-lattice-elevated"
+                      >Try again</button>
+                      <button
+                        onClick={applyAiEdit}
+                        className="px-4 py-1.5 text-xs font-bold rounded bg-green-600 hover:bg-green-500 text-white"
+                      >Apply ⏎</button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={runAiEdit}
+                      disabled={aiEditPending || !aiEditPrompt.trim()}
+                      className="px-4 py-1.5 text-xs font-bold rounded bg-neon-cyan hover:bg-neon-cyan/90 text-black disabled:opacity-40 flex items-center gap-2"
+                    >
+                      {aiEditPending && <Loader2 className="w-3 h-3 animate-spin" />}
+                      {aiEditPending ? 'Generating…' : 'Generate ⏎'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+
+    {/* ── AI Chat side-panel (⌘L) ──────────────────────────────── */}
+    <AnimatePresence>
+      {aiChatOpen && (
+        <motion.aside
+          initial={{ x: 480, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          exit={{ x: 480, opacity: 0 }}
+          transition={{ duration: 0.18, ease: 'easeOut' }}
+          className="fixed top-0 right-0 bottom-0 w-[420px] z-40 bg-[#0d1117] border-l border-neon-purple/30 shadow-2xl shadow-neon-purple/10 flex flex-col"
+        >
+          <header className="flex items-center gap-2 px-4 py-3 border-b border-neon-purple/20 bg-gradient-to-r from-neon-purple/10 to-neon-cyan/10">
+            <Sparkles className="w-4 h-4 text-neon-purple" />
+            <span className="text-sm font-bold text-neon-purple">AI Pair</span>
+            <label className="ml-auto flex items-center gap-1 text-[10px] text-gray-400 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={aiChatIncludeFile}
+                onChange={(e) => setAiChatIncludeFile(e.target.checked)}
+                className="accent-neon-purple"
+              />
+              include file
+            </label>
+            <button
+              onClick={() => setAiChatHistory([])}
+              className="text-[10px] px-2 py-0.5 rounded border border-white/10 text-gray-500 hover:text-white hover:border-white/30"
+              title="Clear thread"
+            >clear</button>
+            <button onClick={() => setAiChatOpen(false)} className="p-1 rounded hover:bg-lattice-elevated text-gray-400" title="Close (⌘L)">
+              <X className="w-4 h-4" />
+            </button>
+          </header>
+          <div ref={aiChatScrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+            {aiChatHistory.length === 0 && (
+              <div className="text-center py-8 text-xs text-gray-500 space-y-2">
+                <Sparkles className="w-6 h-6 text-neon-purple/40 mx-auto" />
+                <p>Ask anything about <span className="text-neon-cyan">{activeTab.name}</span>.</p>
+                <p className="text-[10px] text-gray-600">Try: &quot;explain this&quot; · &quot;refactor for readability&quot; · &quot;write a test for the main function&quot;</p>
+              </div>
+            )}
+            {aiChatHistory.map((m, i) => {
+              const isUser = m.role === 'user';
+              const codeBlocks = isUser ? [] : Array.from(m.content.matchAll(/```[a-zA-Z]*\n([\s\S]*?)```/g)).map((mm) => mm[1].trim());
+              return (
+                <div key={i} className={cn('flex flex-col gap-1', isUser ? 'items-end' : 'items-start')}>
+                  <div className="text-[9px] uppercase tracking-wider text-gray-600">{isUser ? 'you' : 'pair'}</div>
+                  <div className={cn(
+                    'max-w-[90%] px-3 py-2 rounded-lg text-xs whitespace-pre-wrap break-words',
+                    isUser ? 'bg-neon-cyan/10 border border-neon-cyan/30 text-gray-100' : 'bg-lattice-deep border border-lattice-border text-gray-200',
+                  )}>
+                    {m.content}
+                  </div>
+                  {!isUser && codeBlocks.map((cb, ci) => (
+                    <div key={ci} className="flex items-center gap-2 text-[10px]">
+                      <button
+                        onClick={() => insertChatCodeIntoEditor(cb)}
+                        className="px-2 py-0.5 rounded bg-green-600/20 border border-green-600/40 text-green-300 hover:bg-green-600/30"
+                        title="Insert at cursor / replace selection"
+                      >Insert ↵</button>
+                      <button
+                        onClick={() => navigator.clipboard?.writeText(cb)}
+                        className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-gray-400 hover:text-white"
+                      >Copy</button>
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
+            {aiChatPending && (
+              <div className="flex items-center gap-2 text-xs text-gray-500">
+                <Loader2 className="w-3 h-3 animate-spin" /> thinking…
+              </div>
+            )}
+          </div>
+          <footer className="border-t border-neon-purple/20 p-3 space-y-2">
+            <textarea
+              ref={aiChatInputRef}
+              value={aiChatDraft}
+              onChange={(e) => setAiChatDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); sendAiChat(); }
+                if (e.key === 'Enter' && !e.shiftKey && !e.metaKey && !e.ctrlKey) { e.preventDefault(); sendAiChat(); }
+              }}
+              rows={2}
+              placeholder="Message AI pair · ⏎ send · ⇧⏎ newline"
+              disabled={aiChatPending}
+              className="w-full px-3 py-2 bg-lattice-deep border border-lattice-border rounded text-xs text-white placeholder-gray-500 focus:outline-none focus:border-neon-purple/60 resize-none"
+            />
+            <div className="flex items-center justify-between text-[10px] text-gray-500">
+              <span>{aiChatHistory.length} message{aiChatHistory.length === 1 ? '' : 's'}</span>
+              <button
+                onClick={sendAiChat}
+                disabled={aiChatPending || !aiChatDraft.trim()}
+                className="px-3 py-1 rounded bg-neon-purple hover:bg-neon-purple/90 text-white text-[11px] font-bold disabled:opacity-40"
+              >Send ⏎</button>
+            </div>
+          </footer>
+        </motion.aside>
+      )}
+    </AnimatePresence>
     </LensShell>
   );
 }
