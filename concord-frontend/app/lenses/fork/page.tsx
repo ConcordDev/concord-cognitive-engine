@@ -4,7 +4,7 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { GitFork, GitBranch, GitMerge, Layers, Loader2, ChevronDown, ArrowLeftRight, Eye, GitPullRequest, Network, Scale, Diff, RefreshCw, X, Zap, Activity } from 'lucide-react';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
@@ -42,6 +42,9 @@ export default function ForkLensPage() {
   const [selectedFork, setSelectedFork] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'tree' | 'list'>('tree');
   const [showFeatures, setShowFeatures] = useState(true);
+  const [forkSearch, setForkSearch] = useState('');
+  const [forkStatusFilter, setForkStatusFilter] = useState<'all' | 'active' | 'merged' | 'abandoned'>('all');
+  const forkSearchInputRef = useRef<HTMLInputElement>(null);
 
   // Git-style: t tree, l list, esc clear selection.
   useLensCommand(
@@ -49,6 +52,11 @@ export default function ForkLensPage() {
       { id: 'fork-tree',    keys: 't', description: 'Tree view', category: 'view', action: () => setViewMode('tree') },
       { id: 'fork-list',    keys: 'l', description: 'List view', category: 'view', action: () => setViewMode('list') },
       { id: 'fork-clear',   keys: 'esc', description: 'Clear selection', category: 'navigation', action: () => setSelectedFork(null) },
+      { id: 'focus-search', keys: '/', description: 'Search forks', category: 'navigation', action: () => forkSearchInputRef.current?.focus() },
+      { id: 'filter-all',     keys: '0', description: 'All statuses', category: 'view', action: () => setForkStatusFilter('all') },
+      { id: 'filter-active',  keys: '1', description: 'Active',       category: 'view', action: () => setForkStatusFilter('active') },
+      { id: 'filter-merged',  keys: '2', description: 'Merged',       category: 'view', action: () => setForkStatusFilter('merged') },
+      { id: 'filter-abandoned', keys: '3', description: 'Abandoned',  category: 'view', action: () => setForkStatusFilter('abandoned') },
     ],
     { lensId: 'fork' }
   );
@@ -120,7 +128,9 @@ export default function ForkLensPage() {
   }, [selectedFork, forks, create]);
 
   const renderTreeNode = (fork: typeof forks[0], level: number = 0) => {
-    const children = forks.filter((f) => f.parentId === fork.id);
+    const children = forks.filter((f) =>
+      f.parentId === fork.id && (!visibleForkIds || visibleForkIds.has(f.id))
+    );
     const isSelected = selectedFork === fork.id;
 
     return (
@@ -151,7 +161,38 @@ export default function ForkLensPage() {
     );
   };
 
-  const rootForks = forks.filter((f) => f.parentId === null);
+  // Filter forks by search + status.  In tree view we keep ancestors of
+  // any matched fork visible so the tree structure stays coherent —
+  // otherwise filtering can hide a parent and orphan its children
+  // visually.  In list view we just show the matched leaves.
+  const visibleForkIds = useMemo(() => {
+    const q = forkSearch.trim().toLowerCase();
+    if (!q && forkStatusFilter === 'all') return null; // no filter
+    const direct = new Set<string>();
+    for (const f of forks) {
+      const matchSearch = !q || (f.workspace || '').toLowerCase().includes(q) || (f.entityName || '').toLowerCase().includes(q);
+      const matchStatus = forkStatusFilter === 'all' || f.status === forkStatusFilter;
+      if (matchSearch && matchStatus) direct.add(f.id);
+    }
+    if (viewMode === 'list') return direct;
+    // For tree, expand to include ancestors so the tree renders coherently.
+    const out = new Set(direct);
+    const byId = new Map(forks.map((f) => [f.id, f]));
+    for (const id of direct) {
+      let cur = byId.get(id);
+      while (cur?.parentId) {
+        out.add(cur.parentId);
+        cur = byId.get(cur.parentId) ?? undefined;
+        if (!cur) break;
+      }
+    }
+    return out;
+  }, [forks, forkSearch, forkStatusFilter, viewMode]);
+
+  const rootForks = forks.filter((f) =>
+    f.parentId === null && (!visibleForkIds || visibleForkIds.has(f.id))
+  );
+  const visibleListForks = visibleForkIds ? forks.filter((f) => visibleForkIds.has(f.id)) : forks;
   const selectedForkData = forks.find((f) => f.id === selectedFork);
 
   if (isLoading) {
@@ -196,7 +237,26 @@ export default function ForkLensPage() {
         )}
       </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <input
+            ref={forkSearchInputRef}
+            type="text"
+            value={forkSearch}
+            onChange={(e) => setForkSearch(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Escape') { setForkSearch(''); forkSearchInputRef.current?.blur(); } }}
+            placeholder="Search forks…  / focuses"
+            className="bg-lattice-deep border border-lattice-edge rounded px-2 py-1 text-sm w-44"
+          />
+          <select
+            value={forkStatusFilter}
+            onChange={(e) => setForkStatusFilter(e.target.value as typeof forkStatusFilter)}
+            className="bg-lattice-deep border border-lattice-edge rounded px-2 py-1 text-sm"
+          >
+            <option value="all">All</option>
+            <option value="active">Active</option>
+            <option value="merged">Merged</option>
+            <option value="abandoned">Abandoned</option>
+          </select>
           <button
             onClick={() => setViewMode('tree')}
             className={`px-3 py-1 rounded ${viewMode === 'tree' ? 'bg-neon-purple/20 text-neon-purple' : 'bg-lattice-surface text-gray-400'}`}
@@ -416,15 +476,59 @@ export default function ForkLensPage() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Fork Tree */}
+        {/* Fork Tree / List */}
         <div className="lg:col-span-2 panel p-4">
           <h2 className="font-semibold mb-4 flex items-center gap-2">
             <GitFork className="w-4 h-4 text-neon-purple" />
-            Fork Tree
+            Fork {viewMode === 'tree' ? 'Tree' : 'List'}
+            {(forkSearch || forkStatusFilter !== 'all') && (
+              <span className="text-xs text-gray-500 font-normal ml-2">
+                ({visibleListForks.length} of {forks.length})
+              </span>
+            )}
           </h2>
-          <div className="space-y-1">
-            {rootForks.map((fork) => renderTreeNode(fork))}
-          </div>
+          {forks.length === 0 ? (
+            <p className="text-sm text-gray-500 py-4 text-center">No forks yet.</p>
+          ) : viewMode === 'tree' ? (
+            rootForks.length === 0 ? (
+              <p className="text-sm text-gray-500 py-4 text-center">No forks match the current filters.</p>
+            ) : (
+              <div className="space-y-1">
+                {rootForks.map((fork) => renderTreeNode(fork))}
+              </div>
+            )
+          ) : visibleListForks.length === 0 ? (
+            <p className="text-sm text-gray-500 py-4 text-center">No forks match the current filters.</p>
+          ) : (
+            <div className="space-y-1">
+              {visibleListForks.map((fork) => {
+                const isSelected = selectedFork === fork.id;
+                return (
+                  <button
+                    key={fork.id}
+                    onClick={() => setSelectedFork(isSelected ? null : fork.id)}
+                    className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors ${
+                      isSelected
+                        ? 'bg-neon-cyan/20 border border-neon-cyan'
+                        : 'bg-lattice-deep hover:bg-lattice-surface'
+                    }`}
+                  >
+                    <GitBranch className={`w-4 h-4 ${fork.parentId ? 'text-gray-500' : 'text-neon-purple'}`} />
+                    <div className="flex-1 text-left">
+                      <p className="font-medium">{fork.workspace}</p>
+                      <p className="text-xs text-gray-400">{fork.entityName}{fork.depth > 0 ? ` · depth ${fork.depth}` : ''}</p>
+                    </div>
+                    <span className={`text-xs px-2 py-0.5 rounded ${statusColors[fork.status]}`}>
+                      {fork.status}
+                    </span>
+                    {fork.children > 0 && (
+                      <span className="text-xs text-gray-500">+{fork.children}</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Fork Details */}
