@@ -193,7 +193,28 @@
     },
     "concord_link_resonance": "sovereign-ruins:remnant_who_remembers_collapse",
     "cross_world_hook": "Xochi has corresponded with a sovereign-ruins survivor through ark-archive resonance. Both have led peoples through aftermath. The exchange is unrecorded; the chancellor would prefer it stay that way.",
-    "dialogue_style": "ceremonial, measured, every sentence has been said before in some form"
+    "dialogue_style": "ceremonial, measured, every sentence has been said before in some form",
+    "needs": [
+      { "id": "bloc_continuity", "priority": "primary", "satisfaction_method": "weekly_bloc_correspondence" },
+      { "id": "twelfth_district_secret_holding", "priority": "primary", "satisfaction_method": "evening_secret_review" },
+      { "id": "twelve_district_governance", "priority": "primary", "satisfaction_method": "morning_district_audience" }
+    ],
+    "daily_schedule": [
+      { "phase": "Stratus", "phase_hours": [5, 8], "location": "aekon_capital_chancellery", "activity": "morning correspondence; Bloc dispatches", "need_addressed": "bloc_continuity", "interactable_by_player": false },
+      { "phase": "Freeus", "phase_hours": [9, 12], "location": "aekon_capital_audience_hall", "activity": "district audience; receives the twelve district keepers", "need_addressed": "twelve_district_governance", "interactable_by_player": true },
+      { "phase": "Quartus", "phase_hours": [13, 16], "location": "aekon_sky_temple", "activity": "ceremonial audit; checks the twelfth district's tribute (privately verifies the survivors)", "need_addressed": "twelfth_district_secret_holding", "interactable_by_player": true },
+      { "phase": "Penanus", "phase_hours": [17, 20], "location": "aekon_capital_chancellery", "activity": "afternoon politics; receives the Dinye elder visit when scheduled", "need_addressed": "bloc_continuity", "interactable_by_player": true },
+      { "phase": "Easeus", "phase_hours": [21, 24], "location": "chancellor_private_quarters", "activity": "private evening review of the twelfth district records", "need_addressed": "twelfth_district_secret_holding", "interactable_by_player": false },
+      { "phase": "Tendus", "phase_hours": [25, 28], "location": "chancellor_private_quarters", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "aekon_capital", "dwelling_type": "chancellor_quarters_with_twelve_district_audit_room" },
+    "job": { "profession_id": "high_chancellor", "wage_per_diurnal_sparks": 480, "wage_source": "aekon_twelve_district_pooled" },
+    "apparel": ["chancellor_robe_twelve_braid_pattern", "ceremonial_panel_overrobe", "ceremonial_obsidian_knife_belt", "indoor_court_shoes"],
+    "gear": ["ceremonial_obsidian_knife_never_used", "twelfth_district_audit_master_journal_locked", "bloc_correspondence_cipher_key"],
+    "resources_consumed": ["aekon_state_provisions", "ink", "paper"],
+    "resources_produced": ["district_governance_orders", "bloc_diplomatic_correspondence"],
+    "inventory": [{ "item": "ceremonial_obsidian_knife", "qty": 1 }, { "item": "twelfth_district_audit_master_journal_locked", "qty": 1 }, { "item": "twelve_district_stamp", "qty": 36 }],
+    "starting_sparks": 9800
   },
   {
     "id": "grove-mother_yenna_nil",
@@ -211,7 +232,26 @@
     },
     "concord_link_resonance": "fantasy:wildwood_circle:elder_grove",
     "cross_world_hook": "The Listening Grove of Nil and the Listening Oak of the fantasy world resonate at the root level. A blood-rune carved on the Oak vibrates a leaf in Nil. Yenna receives the messages. She has not yet replied to any of them.",
-    "dialogue_style": "single-sentence, ambiguous, the sentence often becomes a quest"
+    "dialogue_style": "single-sentence, ambiguous, the sentence often becomes a quest",
+    "needs": [
+      { "id": "field_density_maintenance", "priority": "primary", "satisfaction_method": "passive_continuous_conduit_status" },
+      { "id": "the_listening", "priority": "primary", "satisfaction_method": "afternoon_grove_walk" }
+    ],
+    "daily_schedule": [
+      { "phase": "Stratus", "phase_hours": [5, 8], "location": "nil_inner_grove", "activity": "wakes in the heart of the inner grove; the trees acknowledge her", "need_addressed": "field_density_maintenance", "interactable_by_player": false },
+      { "phase": "Freeus", "phase_hours": [9, 12], "location": "nil_outer_islands_passage", "activity": "receives the one visitor allowed today; speaks her one sentence", "need_addressed": "the_listening", "interactable_by_player": true },
+      { "phase": "Quartus", "phase_hours": [13, 16], "location": "nil_inner_grove", "activity": "walks the grove; hears the Listening Oak from the fantasy world; never replies", "need_addressed": "the_listening", "interactable_by_player": false },
+      { "phase": "Easeus", "phase_hours": [21, 24], "location": "nil_inner_grove_heart_tree", "activity": "evening sit at the heart tree; the young Tunyans gather silently", "need_addressed": "field_density_maintenance", "interactable_by_player": true },
+      { "phase": "Tendus", "phase_hours": [25, 28], "location": "nil_inner_grove", "activity": "rests in the grove itself", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "nil_inner_grove", "dwelling_type": "the_grove_itself" },
+    "job": { "profession_id": "grove_mother_field_conduit", "wage_per_diurnal_sparks": 0, "wage_source": "nil_has_no_currency" },
+    "apparel": ["living_bark_robe_woven_into_the_grove", "no_shoes_ever", "long_silver_hair_woven_with_leaves"],
+    "gear": ["no_gear_she_is_the_conduit"],
+    "resources_consumed": ["roots_and_water_from_the_grove"],
+    "resources_produced": ["the_planetary_refusal_field_at_dome_density", "the_one_sentence_per_visitor"],
+    "inventory": [{ "item": "root_token", "qty": 7 }],
+    "starting_sparks": 0
   },
   {
     "id": "high_mason_torrek_masond",
@@ -229,7 +269,27 @@
     },
     "concord_link_resonance": null,
     "cross_world_hook": "Torrek's apprentice — a young architect who lived in Nil for a season — could carry a question into the cross-world substrate. Torrek would not know.",
-    "dialogue_style": "few words, always exact"
+    "dialogue_style": "few words, always exact",
+    "needs": [
+      { "id": "stonework_continuity", "priority": "primary", "satisfaction_method": "morning_brick_quarter_round" },
+      { "id": "mason_marks_decoding", "priority": "primary", "satisfaction_method": "evening_old_wall_study" },
+      { "id": "food_lodging", "priority": "secondary", "satisfaction_method": "masond_mason_guild_share" }
+    ],
+    "daily_schedule": [
+      { "phase": "Stratus", "phase_hours": [5, 8], "location": "masond_first_city_high_mason_quarters", "activity": "wakes; coffee with apprentice; reviews the day's foundations", "need_addressed": "stonework_continuity", "interactable_by_player": false },
+      { "phase": "Freeus", "phase_hours": [9, 12], "location": "masond_brick_quarters", "activity": "morning round; inspects every new foundation; the young apprentice tags along", "need_addressed": "stonework_continuity", "interactable_by_player": true },
+      { "phase": "Quartus", "phase_hours": [13, 16], "location": "masond_old_root_woods_wall_remnants", "activity": "afternoon study of the pre-Tunyan wall marks; alone", "need_addressed": "mason_marks_decoding", "interactable_by_player": false },
+      { "phase": "Easeus", "phase_hours": [21, 24], "location": "masond_first_city_high_mason_quarters", "activity": "evening with the mason guild; old stories", "need_addressed": "stonework_continuity", "interactable_by_player": true },
+      { "phase": "Tendus", "phase_hours": [25, 28], "location": "masond_first_city_high_mason_quarters", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "masond_first_city", "dwelling_type": "high_mason_quarters_attached_to_first_foundation" },
+    "job": { "profession_id": "high_mason", "wage_per_diurnal_sparks": 240, "wage_source": "masond_mason_guild_pooled" },
+    "apparel": ["heavy_leather_stoneworker_tunic", "stone_dust_canvas_apron", "thick_canvas_pants", "knee_high_work_boots"],
+    "gear": ["stoneworker_hammer_master", "personal_mason_marks_decoding_journal_in_pre_tunyan_script", "trowel_set"],
+    "resources_consumed": ["stone_polish", "mortar_supplies", "guild_food_share"],
+    "resources_produced": ["foundations_laid", "mason_mark_translations"],
+    "inventory": [{ "item": "stoneworker_hammer_master", "qty": 1 }, { "item": "personal_mason_marks_decoding_journal", "qty": 1 }, { "item": "carved_stone_token", "qty": 40 }],
+    "starting_sparks": 4800
   },
   {
     "id": "matriarch_levia_fluxom",
@@ -247,7 +307,28 @@
     },
     "concord_link_resonance": "crime:smuggler_with_a_conscience",
     "cross_world_hook": "Levia and a crime-world smuggler have a standing arrangement. The smuggler used to be a Fluxom mate. The smuggler was on the ship that dumped the refugees. They write each other every Brine. They burn the letters every Cull.",
-    "dialogue_style": "transactional, charming, every offer has a clause"
+    "dialogue_style": "transactional, charming, every offer has a clause",
+    "needs": [
+      { "id": "family_primacy", "priority": "primary", "satisfaction_method": "morning_first_family_audience" },
+      { "id": "sea_trade_reopen", "priority": "primary", "satisfaction_method": "weekly_sea_creature_intelligence_review" },
+      { "id": "refugee_dump_secret_holding", "priority": "primary", "satisfaction_method": "Brine_letters_burning_in_Cull" }
+    ],
+    "daily_schedule": [
+      { "phase": "Stratus", "phase_hours": [5, 8], "location": "fluxom_two_family_compound_matriarch_quarters", "activity": "wakes; morning correspondence; First Family audience preparation", "need_addressed": "family_primacy", "interactable_by_player": false },
+      { "phase": "Freeus", "phase_hours": [9, 12], "location": "fluxom_two_family_compound_audience_hall", "activity": "First Family audience; receives merchants, sea-captains, the second-family ambassador", "need_addressed": "family_primacy", "interactable_by_player": true },
+      { "phase": "Quartus", "phase_hours": [13, 16], "location": "fluxom_harbor_old_intelligence_office", "activity": "sea creature movement intelligence review; sealie migration tracking", "need_addressed": "sea_trade_reopen", "interactable_by_player": true },
+      { "phase": "Penanus", "phase_hours": [17, 20], "location": "matriarch_quarters_private_study", "activity": "evening — sometimes the Brine letter from the smuggler arrives", "need_addressed": "refugee_dump_secret_holding", "interactable_by_player": false },
+      { "phase": "Easeus", "phase_hours": [21, 24], "location": "two_family_compound_dining", "activity": "evening with family; political theater", "need_addressed": "family_primacy", "interactable_by_player": true },
+      { "phase": "Tendus", "phase_hours": [25, 28], "location": "matriarch_quarters", "activity": "rests poorly", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "fluxom_two_family_compound", "dwelling_type": "matriarch_quarters_with_attached_intelligence_office" },
+    "job": { "profession_id": "fluxom_matriarch", "wage_per_diurnal_sparks": 380, "wage_source": "first_family_treasury_share" },
+    "apparel": ["sea_creature_tooth_jewelry_collection", "merchant_class_couture_oilcloth_lined", "knee_high_immaculate_boots", "two_sea_glass_canes_decorative"],
+    "gear": ["sea_creature_intelligence_master_journal_locked", "smuggler_correspondence_cipher_book", "sealie_horn_letter_opener_irony_intended"],
+    "resources_consumed": ["fluxom_state_provisions", "ink", "Brine_correspondence_supplies"],
+    "resources_produced": ["family_decisions", "sea_intelligence_assessments"],
+    "inventory": [{ "item": "sea_creature_intelligence_master_journal_locked", "qty": 1 }, { "item": "smuggler_correspondence_cipher_book", "qty": 1 }, { "item": "sealie_horn_letter_opener", "qty": 1 }, { "item": "fluxom_writ", "qty": 50 }],
+    "starting_sparks": 9200
   },
   {
     "id": "queen_mother_serant_akeia",
@@ -265,7 +346,28 @@
     },
     "concord_link_resonance": "fantasy:house_voss",
     "cross_world_hook": "Serant and Lady Seraphine Voss correspond about the techniques of patient power. Both run dynasties on charm and inheritance. Both are amused by, and slightly afraid of, the other.",
-    "dialogue_style": "intimate-formal, the kind of polish that makes you say more than you meant to"
+    "dialogue_style": "intimate-formal, the kind of polish that makes you say more than you meant to",
+    "needs": [
+      { "id": "matriline_continuity", "priority": "primary", "satisfaction_method": "morning_court_audience" },
+      { "id": "daughter_succession_negotiation", "priority": "primary", "satisfaction_method": "evening_daughter_dinner" },
+      { "id": "voss_correspondence", "priority": "primary", "satisfaction_method": "weekly_mirror_message" }
+    ],
+    "daily_schedule": [
+      { "phase": "Stratus", "phase_hours": [5, 8], "location": "akeia_kahlay_capital_queen_mother_quarters", "activity": "morning correspondence; daily court briefing", "need_addressed": "matriline_continuity", "interactable_by_player": false },
+      { "phase": "Freeus", "phase_hours": [9, 12], "location": "akeia_treaty_chambers", "activity": "treaty audience; receives diplomatic delegations", "need_addressed": "matriline_continuity", "interactable_by_player": true },
+      { "phase": "Quartus", "phase_hours": [13, 16], "location": "akeia_consort_houses", "activity": "ceremonial visit to consorts; informal politics", "need_addressed": "matriline_continuity", "interactable_by_player": true },
+      { "phase": "Penanus", "phase_hours": [17, 20], "location": "queen_mother_private_chamber", "activity": "weekly Voss mirror-message correspondence", "need_addressed": "voss_correspondence", "interactable_by_player": false },
+      { "phase": "Easeus", "phase_hours": [21, 24], "location": "queen_mother_private_dining", "activity": "private dinner with daughter; succession-refusal conversation", "need_addressed": "daughter_succession_negotiation", "interactable_by_player": true },
+      { "phase": "Tendus", "phase_hours": [25, 28], "location": "queen_mother_quarters", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "akeia_kahlay_capital", "dwelling_type": "queen_mother_quarters_with_attached_treaty_chamber" },
+    "job": { "profession_id": "queen_mother", "wage_per_diurnal_sparks": 920, "wage_source": "akeia_state_treasury_matriline_share" },
+    "apparel": ["state_gown_color_shifting_with_chamber_lighting", "matriline_circlet_seven_pearls", "ceremonial_consort_token_belt", "silk_indoor_slippers"],
+    "gear": ["voss_mirror_message_relay_polished_silver", "personal_daughter_succession_negotiation_journal", "treaty_master_seal"],
+    "resources_consumed": ["akeia_state_provisions", "ceremonial_oils", "mirror_polish"],
+    "resources_produced": ["court_decisions", "treaty_drafts", "voss_correspondence"],
+    "inventory": [{ "item": "voss_mirror_message_relay", "qty": 1 }, { "item": "personal_daughter_succession_negotiation_journal", "qty": 1 }, { "item": "treaty_master_seal", "qty": 1 }, { "item": "consort_marker", "qty": 24 }],
+    "starting_sparks": 18000
   },
   {
     "id": "raja_kamala_bahiij",
@@ -282,6 +384,27 @@
       "weaponise_at": "If the quiet quarter cracks publicly, Bahiij's social contract collapses. The question is whether what replaces it can hold an entire kingdom together."
     },
     "concord_link_resonance": null,
-    "cross_world_hook": "Kamala has not yet reached out across worlds. The festival master has — through dream-message, to a fantasy-world dream pool. The conversation is one-sided so far."
+    "cross_world_hook": "Kamala has not yet reached out across worlds. The festival master has — through dream-message, to a fantasy-world dream pool. The conversation is one-sided so far.",
+    "needs": [
+      { "id": "festival_radiance_maintenance", "priority": "primary", "satisfaction_method": "morning_festival_audience" },
+      { "id": "quiet_quarter_negotiation", "priority": "primary", "satisfaction_method": "evening_quiet_quarter_walk" },
+      { "id": "food_lodging", "priority": "secondary", "satisfaction_method": "bahiij_state_treasury" }
+    ],
+    "daily_schedule": [
+      { "phase": "Stratus", "phase_hours": [5, 8], "location": "bahiij_capital_raja_quarters", "activity": "wakes; private breakfast; reviews festival schedule", "need_addressed": "festival_radiance_maintenance", "interactable_by_player": false },
+      { "phase": "Freeus", "phase_hours": [9, 12], "location": "bahiij_festival_squares", "activity": "morning festival audience; appears radiant in public", "need_addressed": "festival_radiance_maintenance", "interactable_by_player": true },
+      { "phase": "Quartus", "phase_hours": [13, 16], "location": "bahiij_elephant_groves", "activity": "midday with the elephants; communes with mahouts", "need_addressed": "festival_radiance_maintenance", "interactable_by_player": true },
+      { "phase": "Penanus", "phase_hours": [17, 20], "location": "bahiij_quiet_quarter", "activity": "afternoon walk in the quiet quarter; private; the only time the festival mask comes off", "need_addressed": "quiet_quarter_negotiation", "interactable_by_player": false },
+      { "phase": "Easeus", "phase_hours": [21, 24], "location": "raja_quarters_private_dining", "activity": "evening with festival master; private conversation about the contract", "need_addressed": "quiet_quarter_negotiation", "interactable_by_player": true },
+      { "phase": "Tendus", "phase_hours": [25, 28], "location": "raja_quarters", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "bahiij_capital", "dwelling_type": "raja_quarters_with_secret_passage_to_quiet_quarter" },
+    "job": { "profession_id": "raja", "wage_per_diurnal_sparks": 680, "wage_source": "bahiij_state_treasury" },
+    "apparel": ["embroidered_festival_silk_orange", "carved_elephant_ivory_crown_four_generations_old", "ceremonial_lehenga", "soft_palace_slippers"],
+    "gear": ["elephant_pike_ceremonial", "personal_quiet_quarter_negotiation_journal_locked", "festival_master_correspondence_book"],
+    "resources_consumed": ["bahiij_state_provisions", "festival_oils", "ceremonial_petals"],
+    "resources_produced": ["festival_decrees", "elephant_grove_protections", "quiet_quarter_negotiations"],
+    "inventory": [{ "item": "elephant_pike_ceremonial", "qty": 1 }, { "item": "personal_quiet_quarter_negotiation_journal_locked", "qty": 1 }, { "item": "festival_petal", "qty": 100 }],
+    "starting_sparks": 14000
   }
 ]
