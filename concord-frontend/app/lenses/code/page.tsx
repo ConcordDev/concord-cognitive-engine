@@ -549,6 +549,8 @@ export default function CodeLensPage() {
   const [aiEditPending, setAiEditPending] = useState(false);
   const [aiEditResult, setAiEditResult] = useState<{ before: string; after: string; range: { startLine: number; endLine: number } | null } | null>(null);
   const [aiEditError, setAiEditError] = useState<string | null>(null);
+  const [aiEditElapsed, setAiEditElapsed] = useState(0);
+  const aiEditAbortRef = useRef<AbortController | null>(null);
   const aiEditInputRef = useRef<HTMLInputElement>(null);
 
   // ── AI chat side-panel (⌘L) ─────────────────────────────────────
@@ -557,9 +559,26 @@ export default function CodeLensPage() {
   const [aiChatHistory, setAiChatHistory] = useState<ChatMsg[]>([]);
   const [aiChatDraft, setAiChatDraft] = useState('');
   const [aiChatPending, setAiChatPending] = useState(false);
+  const [aiChatElapsed, setAiChatElapsed] = useState(0);
   const [aiChatIncludeFile, setAiChatIncludeFile] = useState(true);
+  const aiChatAbortRef = useRef<AbortController | null>(null);
   const aiChatScrollRef = useRef<HTMLDivElement>(null);
   const aiChatInputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Tick elapsed time during in-flight AI requests so the UI never feels
+  // frozen.  Both edit + chat share this side-effect.
+  useEffect(() => {
+    if (!aiEditPending) { setAiEditElapsed(0); return; }
+    const start = Date.now();
+    const t = setInterval(() => setAiEditElapsed(Math.round((Date.now() - start) / 100) / 10), 100);
+    return () => clearInterval(t);
+  }, [aiEditPending]);
+  useEffect(() => {
+    if (!aiChatPending) { setAiChatElapsed(0); return; }
+    const start = Date.now();
+    const t = setInterval(() => setAiChatElapsed(Math.round((Date.now() - start) / 100) / 10), 100);
+    return () => clearInterval(t);
+  }, [aiChatPending]);
 
   // Backend action wiring
   const runCodeAction = useRunArtifact('code');
@@ -857,6 +876,9 @@ export default function CodeLensPage() {
     const lang = activeTab.language || 'javascript';
     const before = selection?.text || fileContent;
     const isFullFile = !selection?.text;
+    aiEditAbortRef.current?.abort();
+    const ac = new AbortController();
+    aiEditAbortRef.current = ac;
     setAiEditPending(true);
     setAiEditError(null);
     setAiEditResult(null);
@@ -866,7 +888,7 @@ export default function CodeLensPage() {
         ...(isFullFile ? [] : [{ role: 'user', content: `For context, here is the entire file (\`${activeTab.name}\`):\n\n\`\`\`${lang}\n${fileContent}\n\`\`\`` }]),
         { role: 'user', content: `${isFullFile ? 'Rewrite this whole file' : 'Rewrite ONLY the selection below'} so that: ${instruction}\n\n\`\`\`${lang}\n${before}\n\`\`\`` },
       ];
-      const res = await api.post('/api/lens/run', { domain: 'llm', action: 'local', input: { messages, temperature: 0.2, max_tokens: 2048 } });
+      const res = await api.post('/api/lens/run', { domain: 'llm', action: 'local', input: { messages, temperature: 0.2, max_tokens: 2048 } }, { signal: ac.signal });
       const result = res.data?.result;
       const raw = result?.content || result?.message?.content || result?.output || '';
       const after = extractCodeFromLLM(String(raw));
@@ -880,11 +902,20 @@ export default function CodeLensPage() {
         range: selection ? { startLine: selection.startLine, endLine: selection.endLine } : null,
       });
     } catch (e) {
-      setAiEditError(e instanceof Error ? e.message : 'AI edit failed');
+      if ((e as { name?: string })?.name === 'CanceledError' || (e as { code?: string })?.code === 'ERR_CANCELED' || ac.signal.aborted) {
+        setAiEditError('Cancelled');
+      } else {
+        setAiEditError(e instanceof Error ? e.message : 'AI edit failed');
+      }
     } finally {
       setAiEditPending(false);
+      aiEditAbortRef.current = null;
     }
   }, [aiEditPrompt, aiEditPending, activeTab, selection, extractCodeFromLLM]);
+
+  const cancelAiEdit = useCallback(() => {
+    aiEditAbortRef.current?.abort();
+  }, []);
 
   const applyAiEdit = useCallback(() => {
     if (!aiEditResult) return;
@@ -915,6 +946,9 @@ export default function CodeLensPage() {
     const next = [...aiChatHistory, userMsg];
     setAiChatHistory(next);
     setAiChatDraft('');
+    aiChatAbortRef.current?.abort();
+    const ac = new AbortController();
+    aiChatAbortRef.current = ac;
     setAiChatPending(true);
     try {
       const lang = activeTab.language || 'javascript';
@@ -928,20 +962,26 @@ export default function CodeLensPage() {
         ...(fileCtx ? [{ role: 'assistant', content: 'Got it — file in context.' }] : []),
         ...next.map((m) => ({ role: m.role, content: m.content })),
       ];
-      const res = await api.post('/api/lens/run', { domain: 'llm', action: 'local', input: { messages, temperature: 0.4, max_tokens: 1024 } });
+      const res = await api.post('/api/lens/run', { domain: 'llm', action: 'local', input: { messages, temperature: 0.4, max_tokens: 1024 } }, { signal: ac.signal });
       const result = res.data?.result;
       const raw = result?.content || result?.message?.content || result?.output || '';
       const reply = String(raw).trim() || '(empty response)';
       setAiChatHistory([...next, { role: 'assistant', content: reply, ts: Date.now() }]);
     } catch (e) {
-      setAiChatHistory([...next, { role: 'assistant', content: `Error: ${e instanceof Error ? e.message : 'request failed'}`, ts: Date.now() }]);
+      const wasAbort = (e as { name?: string })?.name === 'CanceledError' || (e as { code?: string })?.code === 'ERR_CANCELED' || ac.signal.aborted;
+      setAiChatHistory([...next, { role: 'assistant', content: wasAbort ? '_(cancelled)_' : `Error: ${e instanceof Error ? e.message : 'request failed'}`, ts: Date.now() }]);
     } finally {
       setAiChatPending(false);
+      aiChatAbortRef.current = null;
       requestAnimationFrame(() => {
         aiChatScrollRef.current?.scrollTo({ top: aiChatScrollRef.current.scrollHeight, behavior: 'smooth' });
       });
     }
   }, [aiChatDraft, aiChatPending, aiChatHistory, activeTab, aiChatIncludeFile]);
+
+  const cancelAiChat = useCallback(() => {
+    aiChatAbortRef.current?.abort();
+  }, []);
 
   const insertChatCodeIntoEditor = useCallback((codeBlock: string) => {
     const ed = editorInstanceRef.current;
@@ -1833,14 +1873,21 @@ export default function CodeLensPage() {
                         className="px-4 py-1.5 text-xs font-bold rounded bg-green-600 hover:bg-green-500 text-white"
                       >Apply ⏎</button>
                     </>
+                  ) : aiEditPending ? (
+                    <button
+                      onClick={cancelAiEdit}
+                      className="px-4 py-1.5 text-xs font-bold rounded bg-amber-600/80 hover:bg-amber-600 text-white flex items-center gap-2"
+                    >
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Cancel · {aiEditElapsed.toFixed(1)}s
+                    </button>
                   ) : (
                     <button
                       onClick={runAiEdit}
-                      disabled={aiEditPending || !aiEditPrompt.trim()}
+                      disabled={!aiEditPrompt.trim()}
                       className="px-4 py-1.5 text-xs font-bold rounded bg-neon-cyan hover:bg-neon-cyan/90 text-black disabled:opacity-40 flex items-center gap-2"
                     >
-                      {aiEditPending && <Loader2 className="w-3 h-3 animate-spin" />}
-                      {aiEditPending ? 'Generating…' : 'Generate ⏎'}
+                      Generate ⏎
                     </button>
                   )}
                 </div>
@@ -1920,7 +1967,15 @@ export default function CodeLensPage() {
             })}
             {aiChatPending && (
               <div className="flex items-center gap-2 text-xs text-gray-500">
-                <Loader2 className="w-3 h-3 animate-spin" /> thinking…
+                <Loader2 className="w-3 h-3 animate-spin" />
+                <span>thinking… {aiChatElapsed.toFixed(1)}s</span>
+                <button
+                  onClick={cancelAiChat}
+                  className="ml-auto text-[10px] px-2 py-0.5 rounded border border-amber-500/40 text-amber-400 hover:bg-amber-500/10"
+                  title="Stop generation"
+                >
+                  Stop
+                </button>
               </div>
             )}
           </div>
@@ -1940,11 +1995,21 @@ export default function CodeLensPage() {
             />
             <div className="flex items-center justify-between text-[10px] text-gray-500">
               <span>{aiChatHistory.length} message{aiChatHistory.length === 1 ? '' : 's'}</span>
-              <button
-                onClick={sendAiChat}
-                disabled={aiChatPending || !aiChatDraft.trim()}
-                className="px-3 py-1 rounded bg-neon-purple hover:bg-neon-purple/90 text-white text-[11px] font-bold disabled:opacity-40"
-              >Send ⏎</button>
+              {aiChatPending ? (
+                <button
+                  onClick={cancelAiChat}
+                  className="px-3 py-1 rounded bg-amber-600/80 hover:bg-amber-600 text-white text-[11px] font-bold flex items-center gap-1.5"
+                >
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  Stop · {aiChatElapsed.toFixed(1)}s
+                </button>
+              ) : (
+                <button
+                  onClick={sendAiChat}
+                  disabled={!aiChatDraft.trim()}
+                  className="px-3 py-1 rounded bg-neon-purple hover:bg-neon-purple/90 text-white text-[11px] font-bold disabled:opacity-40"
+                >Send ⏎</button>
+              )}
             </div>
           </footer>
         </motion.aside>
