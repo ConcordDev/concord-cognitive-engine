@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery } from '@tanstack/react-query';
@@ -41,6 +42,16 @@ export default function ExportLensPage() {
   const [exporting, setExporting] = useState(false);
   const [exportingDtuId, setExportingDtuId] = useState<string | null>(null);
   const [singleExportFormat, setSingleExportFormat] = useState<ExportFormat>('json');
+
+  // Format pickers via single-letter shortcut.
+  useLensCommand(
+    [
+      { id: 'fmt-json', keys: 'j', description: 'JSON format', category: 'view', action: () => setSelectedFormat('json' as ExportFormat) },
+      { id: 'fmt-csv',  keys: 'c', description: 'CSV format',  category: 'view', action: () => setSelectedFormat('csv'  as ExportFormat) },
+      { id: 'fmt-pdf',  keys: 'p', description: 'PDF format',  category: 'view', action: () => setSelectedFormat('pdf'  as ExportFormat) },
+    ],
+    { lensId: 'export' }
+  );
 
   // Backend action wiring
   const runAction = useRunArtifact('export');

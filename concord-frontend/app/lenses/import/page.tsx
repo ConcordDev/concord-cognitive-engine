@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { Upload, FileJson, Database, Check, AlertTriangle, Loader2, FileText, Archive, RefreshCw, Layers, ChevronDown, Clock, CheckCircle2, Download, BarChart3, Map, Search, GitMerge } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -134,6 +135,16 @@ export default function ImportLens() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [importMode, setImportMode] = useState<'merge' | 'replace' | 'skip_existing'>('merge');
   const [validating, setValidating] = useState(false);
+
+  // Airbyte / Stitch idiom: m/r/s pick mode.
+  useLensCommand(
+    [
+      { id: 'mode-merge',   keys: 'm', description: 'Merge mode',         category: 'view',   action: () => setImportMode('merge') },
+      { id: 'mode-replace', keys: 'r', description: 'Replace mode',       category: 'view',   action: () => setImportMode('replace') },
+      { id: 'mode-skip',    keys: 's', description: 'Skip-existing mode', category: 'view',   action: () => setImportMode('skip_existing') },
+    ],
+    { lensId: 'import' }
+  );
   const [importing, setImporting] = useState(false);
 
   const validateFile = useCallback(async (file: File) => {
