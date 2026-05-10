@@ -1,18 +1,14 @@
 'use client';
 
 /**
- * SchemeBoard — Sprint C / Track A4
+ * SchemeBoard — Sprint C/A4 + Sprint D/AA1 (design-system migration)
  *
- * Two-column board:
- *   Left: schemes you've launched (kind, target, phase, success%, discovery%)
- *   Right: schemes against you that you've gathered evidence on (with
- *          "discover more" CTA)
- *
- * Backend: domain="schemes" name="list_for_user" / "list_against_user" /
- * "discover_evidence".
+ * Two-column board: schemes you've launched + schemes against you.
+ * Backend: domain="schemes".
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
+import { ds } from '@/lib/design-system';
 
 interface Scheme {
   id: string;
@@ -76,57 +72,52 @@ export default function SchemeBoard({ open, onClose }: Props) {
   if (!open) return null;
 
   return (
-    <div
-      style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-      onClick={onClose}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          width: 'min(820px, 94vw)', maxHeight: '80vh', overflowY: 'auto',
-          background: '#0c0c0c', color: '#ddd',
-          border: '1px solid #2a2a2a', borderRadius: 6,
-          padding: '1.25rem 1.5rem', font: '13px/1.5 -apple-system, system-ui, sans-serif',
-        }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-          <h2 style={{ margin: 0, fontSize: '1.05rem', letterSpacing: '0.04em' }}>SCHEME BOARD</h2>
-          <button onClick={onClose} style={{ background: 'transparent', color: '#888', border: '1px solid #333', padding: '4px 10px', borderRadius: 4, cursor: 'pointer' }}>Close</button>
-        </div>
-
-        {loading && <p>Loading…</p>}
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
-          <div>
-            <h3 style={{ fontSize: '0.85rem', color: '#bbb', marginBottom: '0.5rem' }}>Your schemes</h3>
-            {mine.length === 0 && <p style={{ color: '#666', fontStyle: 'italic' }}>No active schemes.</p>}
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-              {mine.map((s) => (
-                <li key={s.id} style={{ padding: '0.5rem 0', borderBottom: '1px solid #1f1f1f' }}>
-                  <div style={{ color: '#bbf' }}>{KIND_GLYPH[s.kind] || '?'} {s.kind} → {s.target_id}</div>
-                  <div style={{ color: '#888', fontSize: 11 }}>{s.phase} · success {s.success_pct}% · disc {s.discovery_pct}%</div>
-                </li>
-              ))}
-            </ul>
+    <div className={ds.modalBackdrop} onClick={onClose}>
+      <div className={ds.modalContainer}>
+        <div onClick={(e) => e.stopPropagation()} className={`${ds.modalPanel} max-w-3xl p-6 max-h-[80vh] overflow-y-auto`}>
+          <div className="flex justify-between items-center mb-3 pb-2 border-b border-lattice-border">
+            <h2 className={`${ds.heading2} tracking-wider uppercase`}>Scheme Board</h2>
+            <button onClick={onClose} className={ds.btnGhost}>Close</button>
           </div>
 
-          <div>
-            <h3 style={{ fontSize: '0.85rem', color: '#bbb', marginBottom: '0.5rem' }}>Against you</h3>
-            {against.length === 0 && <p style={{ color: '#666', fontStyle: 'italic' }}>None known. (You may simply not have evidence yet.)</p>}
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-              {against.map((s) => (
-                <li key={s.id} style={{ padding: '0.5rem 0', borderBottom: '1px solid #1f1f1f' }}>
-                  <div style={{ color: '#fbb' }}>{KIND_GLYPH[s.kind] || '?'} {s.kind} from {s.plotter_id}</div>
-                  <div style={{ color: '#888', fontSize: 11 }}>{s.phase} · disc {s.discovery_pct}%</div>
-                  <button
-                    onClick={() => discoverMore(s.id)}
-                    style={{ marginTop: 4, background: '#1f3a1f', color: '#c0e0c0', border: '1px solid #305030', padding: '3px 10px', borderRadius: 4, fontSize: 11, cursor: 'pointer' }}
-                  >
-                    Investigate further
-                  </button>
-                </li>
-              ))}
-            </ul>
+          {loading && <p className={ds.textMuted}>Loading…</p>}
+
+          <div className={ds.grid2}>
+            <div>
+              <h3 className={`${ds.heading3} text-sm mb-2`}>Your schemes</h3>
+              {mine.length === 0 && <p className={`${ds.textMuted} italic`}>No active schemes.</p>}
+              <ul className="divide-y divide-lattice-border">
+                {mine.map((s) => (
+                  <li key={s.id} className="py-2">
+                    <div className="text-blue-300">{KIND_GLYPH[s.kind] || '?'} {s.kind} → {s.target_id}</div>
+                    <div className={`${ds.textMuted}`} style={{ fontSize: '11px' }}>
+                      {s.phase} · success {s.success_pct}% · disc {s.discovery_pct}%
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div>
+              <h3 className={`${ds.heading3} text-sm mb-2`}>Against you</h3>
+              {against.length === 0 && <p className={`${ds.textMuted} italic`}>None known.</p>}
+              <ul className="divide-y divide-lattice-border">
+                {against.map((s) => (
+                  <li key={s.id} className="py-2">
+                    <div className="text-red-300">{KIND_GLYPH[s.kind] || '?'} {s.kind} from {s.plotter_id}</div>
+                    <div className={`${ds.textMuted}`} style={{ fontSize: '11px' }}>
+                      {s.phase} · disc {s.discovery_pct}%
+                    </div>
+                    <button
+                      onClick={() => discoverMore(s.id)}
+                      className={`${ds.btnSmall} mt-1 bg-emerald-900/30 text-emerald-200 border border-emerald-700/50 hover:bg-emerald-900/50`}
+                    >
+                      Investigate further
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         </div>
       </div>

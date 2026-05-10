@@ -53,11 +53,47 @@ function hashSeed(s: string): number {
   return h >>> 0;
 }
 
-export interface BuildingOptions {
-  archetype: BuildingArchetype;
-  seed:      string;     // stable string id (e.g., building.id)
-  scale?:    number;     // 1.0 = default ~10m tall
+/**
+ * Sprint D / V1+V3+V4 — faction styling override.
+ *
+ * When provided, primary/secondary/accent override archetype palette
+ * walls/roof/trim. architecture_style biases silhouette params (wall
+ * height multiplier, roof pitch, window size, parapet/columns chance).
+ */
+export type ArchitectureStyle = "fortified" | "gracile" | "crystalline" | "organic" | "industrial";
+
+export interface FactionVisualOverride {
+  primary_color?:        string;
+  secondary_color?:      string;
+  accent_color?:         string;
+  architecture_style?:   ArchitectureStyle;
 }
+
+export interface BuildingOptions {
+  archetype:     BuildingArchetype;
+  seed:          string;     // stable string id (e.g., building.id)
+  scale?:        number;     // 1.0 = default ~10m tall
+  factionStyle?: FactionVisualOverride;
+}
+
+/**
+ * Sprint D / V4 — silhouette bias by architecture style. Returned values
+ * are multipliers / chances applied during building construction.
+ */
+export const SILHOUETTE_BIAS: Record<ArchitectureStyle, {
+  wallHeightMult:   number;
+  roofPitchMult:    number;
+  windowSizeMult:   number;
+  parapetChance:    number;
+  columnChance:     number;
+  ornamentDensity:  number;
+}> = {
+  fortified:   { wallHeightMult: 1.20, roofPitchMult: 1.15, windowSizeMult: 0.55, parapetChance: 0.85, columnChance: 0.20, ornamentDensity: 0.6 },
+  gracile:     { wallHeightMult: 1.05, roofPitchMult: 0.85, windowSizeMult: 1.30, parapetChance: 0.10, columnChance: 0.65, ornamentDensity: 0.4 },
+  crystalline: { wallHeightMult: 1.30, roofPitchMult: 0.65, windowSizeMult: 1.45, parapetChance: 0.20, columnChance: 0.05, ornamentDensity: 0.3 },
+  organic:     { wallHeightMult: 0.90, roofPitchMult: 0.95, windowSizeMult: 1.10, parapetChance: 0.05, columnChance: 0.10, ornamentDensity: 0.7 },
+  industrial:  { wallHeightMult: 1.10, roofPitchMult: 0.40, windowSizeMult: 0.80, parapetChance: 0.40, columnChance: 0.05, ornamentDensity: 0.2 },
+};
 
 const materialCache = new Map<string, THREE_NS.MeshStandardMaterial>();
 
@@ -83,9 +119,26 @@ function getMaterial(THREE: typeof THREE_NS, key: string, color: string, opts?: 
  */
 export function createBuilding(THREE: typeof THREE_NS, opts: BuildingOptions): THREE_NS.Group {
   const group = new THREE.Group();
-  const palette = PALETTES[opts.archetype];
+  const archetypePalette = PALETTES[opts.archetype];
+
+  // Sprint D / V3 — faction palette override: faction primary→wall,
+  // secondary→roof, accent→trim, while window emissive stays per-archetype.
+  const palette: ArchetypePalette = {
+    wall:              opts.factionStyle?.primary_color   ?? archetypePalette.wall,
+    roof:              opts.factionStyle?.secondary_color ?? archetypePalette.roof,
+    trim:              opts.factionStyle?.accent_color    ?? archetypePalette.trim,
+    window:            archetypePalette.window,
+    emissive:          archetypePalette.emissive,
+    emissiveIntensity: archetypePalette.emissiveIntensity,
+  };
+
   const rng = mulberry32(hashSeed(`${opts.archetype}:${opts.seed}`));
-  const scale = opts.scale ?? 1.0;
+  const baseScale = opts.scale ?? 1.0;
+  // Sprint D / V4 — silhouette bias from architecture style.
+  const bias = opts.factionStyle?.architecture_style
+    ? SILHOUETTE_BIAS[opts.factionStyle.architecture_style]
+    : null;
+  const scale = baseScale * (bias?.wallHeightMult ?? 1.0);
 
   const wallMat   = getMaterial(THREE, "wall",   palette.wall);
   const roofMat   = getMaterial(THREE, "roof",   palette.roof);
@@ -96,21 +149,55 @@ export function createBuilding(THREE: typeof THREE_NS, opts: BuildingOptions): T
     roughness: 0.4,
   });
 
+  const bundle = { wallMat, roofMat, trimMat, windowMat };
   switch (opts.archetype) {
-    case "tavern":  buildTavern(THREE, group, rng, scale, { wallMat, roofMat, trimMat, windowMat }); break;
-    case "archive": buildArchive(THREE, group, rng, scale, { wallMat, roofMat, trimMat, windowMat }); break;
-    case "forge":   buildForge(THREE, group, rng, scale, { wallMat, roofMat, trimMat, windowMat }); break;
-    case "market":  buildMarket(THREE, group, rng, scale, { wallMat, roofMat, trimMat, windowMat }); break;
-    case "tower":   buildTower(THREE, group, rng, scale, { wallMat, roofMat, trimMat, windowMat }); break;
+    case "tavern":  buildTavern(THREE, group, rng, scale, bundle); break;
+    case "archive": buildArchive(THREE, group, rng, scale, bundle); break;
+    case "forge":   buildForge(THREE, group, rng, scale, bundle); break;
+    case "market":  buildMarket(THREE, group, rng, scale, bundle); break;
+    case "tower":   buildTower(THREE, group, rng, scale, bundle); break;
+  }
+
+  // V4 — parapet on fortified, columns on gracile. Cheap silhouette adds
+  // applied as a post-pass on top of the base archetype.
+  if (bias) {
+    if (rng() < bias.parapetChance) addParapet(THREE, group, scale, trimMat);
+    if (rng() < bias.columnChance) addColumns(THREE, group, scale, trimMat);
   }
 
   group.userData = {
-    isBuilding: true,
-    archetype:  opts.archetype,
-    seed:       opts.seed,
+    isBuilding:   true,
+    archetype:    opts.archetype,
+    seed:         opts.seed,
+    factionStyle: opts.factionStyle ?? null,
   };
 
   return group;
+}
+
+/**
+ * V4 silhouette adds — applied to any building when its faction style biases
+ * toward parapets / columns.
+ */
+function addParapet(THREE: typeof THREE_NS, g: THREE_NS.Group, scale: number, trimMat: THREE_NS.MeshStandardMaterial) {
+  const w = 8 * scale, d = 10 * scale, h = 0.6 * scale;
+  // Five crenellation blocks along front edge.
+  for (let i = 0; i < 5; i++) {
+    const block = new THREE.Mesh(new THREE.BoxGeometry(w * 0.18, h, 0.4 * scale), trimMat);
+    block.position.set((i / 4 - 0.5) * w * 0.85, 5 * scale + h / 2, d / 2 + 0.2);
+    block.castShadow = true;
+    g.add(block);
+  }
+}
+
+function addColumns(THREE: typeof THREE_NS, g: THREE_NS.Group, scale: number, trimMat: THREE_NS.MeshStandardMaterial) {
+  const colHeight = 4.5 * scale;
+  for (const xSign of [-1, 1]) {
+    const col = new THREE.Mesh(new THREE.CylinderGeometry(0.25 * scale, 0.30 * scale, colHeight, 12), trimMat);
+    col.position.set(xSign * 4 * scale, colHeight / 2, 5.2 * scale);
+    col.castShadow = true; col.receiveShadow = true;
+    g.add(col);
+  }
 }
 
 interface MaterialBundle {

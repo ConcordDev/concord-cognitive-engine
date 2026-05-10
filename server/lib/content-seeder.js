@@ -85,6 +85,16 @@ export function validateFaction(obj) {
   if (!obj || typeof obj !== "object" || Array.isArray(obj)) return { ok: false, reason: "not_object" };
   if (typeof obj.id !== "string" || !obj.id) return { ok: false, reason: "missing_id" };
   if (typeof obj.name !== "string" || !obj.name) return { ok: false, reason: "missing_name" };
+  // Sprint D / V1 — visual is optional but if present must include hex colours.
+  if (obj.visual !== undefined) {
+    const v = obj.visual;
+    if (typeof v !== "object" || Array.isArray(v)) return { ok: false, reason: "invalid_visual_shape" };
+    for (const k of ["primary_color", "secondary_color", "accent_color"]) {
+      if (typeof v[k] !== "string" || !/^#[0-9a-fA-F]{6}$/.test(v[k])) {
+        return { ok: false, reason: `invalid_visual_${k}` };
+      }
+    }
+  }
   return { ok: true };
 }
 

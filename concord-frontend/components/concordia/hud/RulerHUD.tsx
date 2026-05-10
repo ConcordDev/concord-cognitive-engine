@@ -1,20 +1,24 @@
 'use client';
 
 /**
- * RulerHUD — Sprint C / Track D3
+ * RulerHUD — Sprint C/D3 + Sprint D/AA1 (design-system migration)
  *
  * Player-ruler dashboard. Shows legitimacy, treasury, recent decrees,
- * citizen loyalty distribution, and active rebellion alerts.
+ * citizen loyalty distribution, and active rebellion alerts. Themed
+ * to the realm's faction via useFactionTheme (Sprint D V1).
  *
  * Backend: domain="kingdoms" name="kingdom_status".
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
-import DecreeComposer from '../../../components/concordia/hud/DecreeComposer';
+import { ds } from '@/lib/design-system';
+import { useFactionTheme } from '@/hooks/useFactionTheme';
+import DecreeComposer from './DecreeComposer';
 
 interface Kingdom {
   id: string;
   name: string;
+  faction_id?: string;
   ruler_kind: 'npc' | 'player' | 'interregnum';
   ruler_id: string | null;
   legitimacy: number;
@@ -47,6 +51,7 @@ export default function RulerHUD({ kingdomId, open, onClose }: Props) {
   const [rebellions, setRebellions] = useState<Rebellion[]>([]);
   const [loading, setLoading] = useState(false);
   const [composerOpen, setComposerOpen] = useState(false);
+  const theme = useFactionTheme(status?.kingdom?.faction_id);
 
   const refresh = useCallback(async () => {
     if (!kingdomId) return;
@@ -75,8 +80,12 @@ export default function RulerHUD({ kingdomId, open, onClose }: Props) {
 
   if (!open) return null;
   if (loading || !status) return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
-      <div style={{ color: '#aaa' }}>Loading kingdom…</div>
+    <div className={ds.modalBackdrop} onClick={onClose}>
+      <div className={ds.modalContainer}>
+        <div className={`${ds.modalPanel} max-w-md p-6`}>
+          <p className={ds.textMuted}>Loading kingdom…</p>
+        </div>
+      </div>
     </div>
   );
 
@@ -86,93 +95,73 @@ export default function RulerHUD({ kingdomId, open, onClose }: Props) {
 
   return (
     <>
-      <div
-        style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        onClick={onClose}
-      >
-        <div
-          onClick={(e) => e.stopPropagation()}
-          style={{
-            width: 'min(720px, 92vw)', maxHeight: '82vh', overflowY: 'auto',
-            background: '#0c0c0c', color: '#ddd',
-            border: '1px solid #2a2a2a', borderRadius: 6,
-            padding: '1.25rem 1.5rem', font: '13px/1.5 -apple-system, system-ui, sans-serif',
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-            <h2 style={{ margin: 0, fontSize: '1.1rem', letterSpacing: '0.04em' }}>{kingdom.name.toUpperCase()}</h2>
-            <button onClick={onClose} style={{ background: 'transparent', color: '#888', border: '1px solid #333', padding: '4px 10px', borderRadius: 4, cursor: 'pointer' }}>Close</button>
-          </div>
+      <div className={ds.modalBackdrop} onClick={onClose}>
+        <div className={ds.modalContainer}>
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className={`${ds.modalPanel} max-w-2xl p-6 max-h-[82vh] overflow-y-auto`}
+            style={theme.cssVars}
+          >
+            <div className="flex justify-between items-center mb-4 pb-3 border-b border-lattice-border">
+              <h2 className={`${ds.heading2} tracking-wider uppercase`} style={theme.accentText}>
+                {kingdom.name}
+              </h2>
+              <button onClick={onClose} className={ds.btnGhost}>Close</button>
+            </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem', marginBottom: '1rem' }}>
-            <div style={statCard()}>
-              <div style={statLabel()}>Legitimacy</div>
-              <div style={statValue(legitimacyColor(kingdom.legitimacy))}>{kingdom.legitimacy}</div>
+            <div className={`${ds.grid4} mb-4`}>
+              <StatCard label="Legitimacy" value={kingdom.legitimacy.toString()} valueClass={legitimacyClass(kingdom.legitimacy)} />
+              <StatCard label="Treasury" value={kingdom.treasury.toLocaleString()} valueClass="text-cyan-400" />
+              <StatCard label="Tax" value={`${(kingdom.tax_rate * 100).toFixed(1)}%`} valueClass="text-amber-400" />
+              <StatCard label="Citizens" value={loyalty.count.toString()} valueClass="text-gray-200" />
             </div>
-            <div style={statCard()}>
-              <div style={statLabel()}>Treasury</div>
-              <div style={statValue('#dcd')}>{kingdom.treasury}</div>
-            </div>
-            <div style={statCard()}>
-              <div style={statLabel()}>Tax</div>
-              <div style={statValue('#cdd')}>{(kingdom.tax_rate * 100).toFixed(1)}%</div>
-            </div>
-            <div style={statCard()}>
-              <div style={statLabel()}>Citizens</div>
-              <div style={statValue('#dde')}>{loyalty.count}</div>
-            </div>
-          </div>
 
-          <div style={{ marginBottom: '0.75rem' }}>
-            <div style={statLabel()}>Loyalty</div>
-            <div style={{ height: 14, background: '#1a1a1a', borderRadius: 3, overflow: 'hidden', position: 'relative', border: '1px solid #2a2a2a' }}>
-              <div style={{
-                position: 'absolute', left: 0, top: 0, bottom: 0, width: `${loyalty.avg}%`,
-                background: loyaltyColor(loyalty.avg),
-              }} />
-              <div style={{
-                position: 'absolute', left: 0, right: 0, top: 0, bottom: 0,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 11, color: '#fff', textShadow: '0 0 2px #000',
-              }}>{loyalty.avg} / 100</div>
-            </div>
-            <div style={{ fontSize: 11, color: '#666', marginTop: 3 }}>low {loyalty.low} · high {loyalty.high}</div>
-          </div>
-
-          {isHigh && (
-            <div style={{ background: '#3a1a1a', border: '1px solid #6a2a2a', padding: '0.6rem 0.8rem', borderRadius: 4, marginBottom: '0.75rem' }}>
-              <div style={{ color: '#f88', fontWeight: 600, fontSize: 12, letterSpacing: '0.04em' }}>
-                ⚠ REBELLION BREWING (risk {rebellionRisk.score} / {rebellionRisk.threshold})
+            <div className="mb-4">
+              <div className={ds.label}>Loyalty</div>
+              <div className="h-3.5 bg-lattice-elevated rounded border border-lattice-border overflow-hidden relative">
+                <div
+                  className={`absolute left-0 top-0 bottom-0 ${loyaltyBg(loyalty.avg)}`}
+                  style={{ width: `${loyalty.avg}%` }}
+                />
+                <div className="absolute inset-0 flex items-center justify-center text-xs font-medium text-white" style={{ textShadow: '0 0 2px black' }}>
+                  {loyalty.avg} / 100
+                </div>
               </div>
-              {rebellions.length > 0 && (
-                <ul style={{ margin: '0.4rem 0 0 0', padding: 0, listStyle: 'none' }}>
-                  {rebellions.slice(0, 3).map((r) => (
-                    <li key={r.id} style={{ fontSize: 11, color: '#fbb' }}>
-                      ← {r.plotter_id} · {r.kind} · {r.phase} (disc {r.discovery_pct}%)
-                    </li>
-                  ))}
-                </ul>
-              )}
+              <div className={`${ds.textMuted} mt-1`} style={{ fontSize: '11px' }}>
+                low {loyalty.low} · high {loyalty.high}
+              </div>
             </div>
-          )}
 
-          {isPlayerRuler && (
-            <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem' }}>
-              <button
-                onClick={() => setComposerOpen(true)}
-                style={{ background: '#2d3a4d', color: '#bcd', border: '1px solid #3d4a5d', padding: '6px 14px', borderRadius: 4, cursor: 'pointer', fontSize: 12 }}
-              >
-                Issue decree
-              </button>
-            </div>
-          )}
+            {isHigh && (
+              <div className="bg-red-500/15 border border-red-500/40 rounded-lg p-3 mb-4">
+                <div className="text-red-400 font-semibold text-xs tracking-wider">
+                  ⚠ REBELLION BREWING (risk {rebellionRisk.score} / {rebellionRisk.threshold})
+                </div>
+                {rebellions.length > 0 && (
+                  <ul className="mt-2 space-y-0.5">
+                    {rebellions.slice(0, 3).map((r) => (
+                      <li key={r.id} className="text-red-300 text-xs">
+                        ← {r.plotter_id} · {r.kind} · {r.phase} (disc {r.discovery_pct}%)
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
 
-          {!isPlayerRuler && (
-            <div style={{ color: '#888', fontStyle: 'italic', fontSize: 11, marginTop: '1rem' }}>
-              Ruled by {kingdom.ruler_kind === 'interregnum' ? 'no one (interregnum)' : kingdom.ruler_id}.
-              You are not the ruler.
-            </div>
-          )}
+            {isPlayerRuler ? (
+              <div className="flex gap-2 mt-4">
+                <button onClick={() => setComposerOpen(true)} className={ds.btnPrimary}>
+                  Issue decree
+                </button>
+              </div>
+            ) : (
+              <div className={`${ds.textMuted} italic mt-4`} style={{ fontSize: '11px' }}>
+                Ruled by {kingdom.ruler_kind === 'interregnum' ? 'no one (interregnum)' : kingdom.ruler_id}.
+                You are not the ruler.
+              </div>
+            )}
+          </div>
         </div>
       </div>
       {composerOpen && (
@@ -186,22 +175,23 @@ export default function RulerHUD({ kingdomId, open, onClose }: Props) {
   );
 }
 
-function statCard(): React.CSSProperties {
-  return { background: '#141414', border: '1px solid #2a2a2a', padding: '0.5rem 0.75rem', borderRadius: 4 };
+function StatCard({ label, value, valueClass }: { label: string; value: string; valueClass: string }) {
+  return (
+    <div className="bg-lattice-elevated border border-lattice-border rounded-lg px-3 py-2">
+      <div className="text-[10px] uppercase tracking-wider text-gray-500">{label}</div>
+      <div className={`text-lg font-semibold ${valueClass} mt-0.5`}>{value}</div>
+    </div>
+  );
 }
-function statLabel(): React.CSSProperties {
-  return { fontSize: 10, color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em' };
+
+function legitimacyClass(v: number): string {
+  if (v >= 70) return 'text-green-400';
+  if (v >= 40) return 'text-amber-400';
+  return 'text-red-400';
 }
-function statValue(color: string): React.CSSProperties {
-  return { fontSize: 18, fontWeight: 600, color, marginTop: 4 };
-}
-function legitimacyColor(v: number): string {
-  if (v >= 70) return '#9d9';
-  if (v >= 40) return '#dd9';
-  return '#d99';
-}
-function loyaltyColor(v: number): string {
-  if (v >= 60) return '#3a6a3a';
-  if (v >= 40) return '#6a6a3a';
-  return '#6a3a3a';
+
+function loyaltyBg(v: number): string {
+  if (v >= 60) return 'bg-green-700';
+  if (v >= 40) return 'bg-amber-700';
+  return 'bg-red-700';
 }

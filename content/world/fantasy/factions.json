@@ -4,12 +4,30 @@
     "name": "The Wildwood Circle",
     "motto": "The forest remembers what the cities forget.",
     "goal": "Protect the great forests from corruption, both magical and political — and contain Thorne Blackroot before his curse becomes the realm's funeral.",
-    "values": ["balance", "stewardship", "ancient memory", "patience"],
-    "fears": ["the curse spreading from Thorne to the elder groves", "kings burning the forests for farmland", "their own grief turning them into him"],
-    "controlled_districts": ["thornwood_glade", "elder_grove", "bone_orchard"],
-    "rival_factions": ["house_voss"],
+    "values": [
+      "balance",
+      "stewardship",
+      "ancient memory",
+      "patience"
+    ],
+    "fears": [
+      "the curse spreading from Thorne to the elder groves",
+      "kings burning the forests for farmland",
+      "their own grief turning them into him"
+    ],
+    "controlled_districts": [
+      "thornwood_glade",
+      "elder_grove",
+      "bone_orchard"
+    ],
+    "rival_factions": [
+      "house_voss"
+    ],
     "allied_factions": [],
-    "npc_ids": ["thorne_blackroot", "velora_mossheart"],
+    "npc_ids": [
+      "thorne_blackroot",
+      "velora_mossheart"
+    ],
     "dialogue_style": "verbose",
     "reputation_currency": "forest_marks",
     "world_id": "fantasy",
@@ -17,6 +35,21 @@
       "factionName": "Wildwood Circle",
       "reputation": 64,
       "tensions": "Half the Circle wants to bring Thorne home. The other half wants to put him in the ground. Both halves know the curse came from inside their own ranks."
+    },
+    "visual": {
+      "primary_color": "#a06b22",
+      "secondary_color": "#291424",
+      "accent_color": "#528fe0",
+      "architecture_style": "crystalline",
+      "preferred_weapon_archetypes": [
+        "scimitar",
+        "dagger",
+        "axe"
+      ],
+      "preferred_armor_silhouette": "leather",
+      "sigil_path": "M0,-20 L20,0 L0,20 L-20,0 Z",
+      "banner_sigil_id": "wildwood_circle_sigil",
+      "ornamentation_motifs": []
     }
   },
   {
@@ -24,12 +57,30 @@
     "name": "House Voss",
     "motto": "Blood is the only currency that does not depreciate.",
     "goal": "Consolidate political power across the noble houses by being the indispensable broker of secrets. Long-term: rule the realm without ever wearing a crown.",
-    "values": ["elegance", "patience", "leverage", "loyalty repaid in kind"],
-    "fears": ["the bloodline ending with Seraphine", "a peasant uprising she cannot manipulate", "being known for what she actually is"],
-    "controlled_districts": ["crimson_quarter", "voss_estate", "masquerade_district"],
-    "rival_factions": ["wildwood_circle"],
+    "values": [
+      "elegance",
+      "patience",
+      "leverage",
+      "loyalty repaid in kind"
+    ],
+    "fears": [
+      "the bloodline ending with Seraphine",
+      "a peasant uprising she cannot manipulate",
+      "being known for what she actually is"
+    ],
+    "controlled_districts": [
+      "crimson_quarter",
+      "voss_estate",
+      "masquerade_district"
+    ],
+    "rival_factions": [
+      "wildwood_circle"
+    ],
     "allied_factions": [],
-    "npc_ids": ["seraphine_voss", "caelan_voss"],
+    "npc_ids": [
+      "seraphine_voss",
+      "caelan_voss"
+    ],
     "dialogue_style": "aristocratic",
     "reputation_currency": "blood_pacts",
     "world_id": "fantasy",
@@ -37,6 +88,21 @@
       "factionName": "House Voss",
       "reputation": 88,
       "tensions": "Public face of charm and culture. Private face of sustenance. The masquerade balls she hosts are the most prestigious events in the realm — and the disappearances afterward are always blamed on bandits or other vampires, never on her."
+    },
+    "visual": {
+      "primary_color": "#2252a0",
+      "secondary_color": "#142920",
+      "accent_color": "#525be0",
+      "architecture_style": "industrial",
+      "preferred_weapon_archetypes": [
+        "shortsword",
+        "halberd",
+        "axe"
+      ],
+      "preferred_armor_silhouette": "leather",
+      "sigil_path": "M-15,15 L0,-20 L15,15 L0,5 Z",
+      "banner_sigil_id": "house_voss_sigil",
+      "ornamentation_motifs": []
     }
   }
 ]

@@ -23194,6 +23194,8 @@ import registerBuildingsMacros from "./domains/buildings.js";
 registerBuildingsMacros(register);
 import registerOxygenMacros from "./domains/oxygen.js";
 registerOxygenMacros(register);
+import registerFactionsMacros from "./domains/factions.js";
+registerFactionsMacros(register);
 
 // Phase 5a — Land claims. claim / invite / topup / claim_at / can_act_in /
 // list_for_user macros for the world lens to interrogate the substrate.
