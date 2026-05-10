@@ -646,13 +646,25 @@ jobs:
 
       - name: Wait for server
         run: |
+          # Bumped from 30s → 60s + 2s spacing because the 30s window was
+          # not enough for cold-start with Sentry init + 158 migrations
+          # against a fresh /tmp/concord-test-data DB. The job was
+          # exit 1'ing here without surfacing any diagnostic, then
+          # everything downstream (E2E, results upload, cleanup) ran in
+          # an "expected ready" state but the server never came up — so
+          # E2E "failed" by trying to navigate to a URL that 503'd, and
+          # the failures were nondescript page.goto rejects.
           for i in {1..30}; do
             if curl -sf http://localhost:5050/health > /dev/null 2>&1; then
-              echo "Server ready"
+              echo "Server ready after ${i} probes"
               exit 0
             fi
-            sleep 1
+            sleep 2
           done
+          echo "::error::Server did not respond on /health after 60s. Tail of server.log:"
+          tail -n 200 server/server.log 2>/dev/null || echo "(no server.log)"
+          echo "::error::Process listing on the runner:"
+          ps -ef | grep -E "node|server" | grep -v grep || true
           exit 1
 
       - name: Run E2E tests
@@ -672,13 +684,27 @@ jobs:
         run: npx playwright test --project=chromium --reporter=list,html
 
       - name: Surface failing E2E specs on failure
-        if: failure() && steps.e2e_run.outcome == 'failure'
+        # Fire on any job-level failure, not only when e2e_run itself
+        # failed. If the failure is upstream (Wait for server, Ollama
+        # pull, etc.) then e2e_run is `skipped`, but we still want to
+        # dump whatever partial state exists — server log, any specs
+        # that did get a chance to run, and the npm/playwright trace.
+        # Using just `if: failure()` catches every fail-mode the job
+        # has.
+        if: failure()
         working-directory: ./concord-frontend
         run: |
-          echo "::group::Failing specs (per-test summary)"
+          echo "::group::Step outcomes"
+          echo "e2e_run: ${{ steps.e2e_run.outcome }}"
+          echo "::endgroup::"
+          echo "::group::Failing specs (per-test summary, all failures)"
           if [ -d playwright-report ]; then
             # results.json is emitted alongside the html report when
             # reporter=html runs. Parse it for failed-spec titles.
+            # Walk every nested suite so we report ALL failures, not
+            # just the first one — a job that bails after one error
+            # hides the picture and forces N more iterations to find
+            # all the breakage.
             if [ -f playwright-report/results.json ]; then
               node -e "
                 const r = require('./playwright-report/results.json');
@@ -693,22 +719,30 @@ jobs:
                   }
                 };
                 walk(r);
-                console.log(JSON.stringify(fails, null, 2));
+                if (fails.length === 0) console.log('(0 failed specs in results.json — failure was upstream of E2E run)');
+                else { console.log('Total failed specs:', fails.length); console.log(JSON.stringify(fails, null, 2)); }
               " || true
             else
-              echo "(no results.json — html reporter may not have written it)"
+              echo "(no results.json — html reporter may not have written it; check Wait-for-server / Ollama-pull outputs above)"
             fi
           else
-            echo "(no playwright-report directory)"
+            echo "(no playwright-report directory — failure was upstream of Run E2E tests)"
           fi
           echo "::endgroup::"
-          echo "::group::Server log tail (last 80 lines)"
-          tail -n 80 ../server/server.log 2>/dev/null || echo "(no server.log)"
+          echo "::group::Server log tail (last 200 lines)"
+          tail -n 200 ../server/server.log 2>/dev/null || echo "(no server.log)"
           echo "::endgroup::"
 
       - name: Upload test results
         uses: actions/upload-artifact@v6
-        if: failure()
+        # Upload on every run, not only failure. The diagnostic step
+        # above only catches failures inside `Run E2E tests`; if the
+        # job dies upstream (Wait for server timeout, Ollama pull
+        # crash, etc.) the failure() condition skips the upload and
+        # we lose the partial report. always() preserves whatever
+        # got written so the next debugger has data even when the
+        # failure is in setup.
+        if: always()
         with:
           name: playwright-report
           path: concord-frontend/playwright-report/
