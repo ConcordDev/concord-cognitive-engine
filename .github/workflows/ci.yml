@@ -549,13 +549,20 @@ jobs:
     # observed clean-run time (~12-18min) and still fails fast when
     # something hangs.
     timeout-minutes: 25
-    # E2E now runs with Ollama provisioned as a service (qwen2.5:0.5b
-    # for the smallest sane model that exercises the chat path) plus
-    # Stripe test-mode keys for wallet-flow. OAuth specs use page.route
-    # interception (see auth-oauth.spec.ts) so no real OAuth provider
-    # is needed. With infra in place, E2E is gating again — failures
-    # surface real regressions, not stale-spec false positives.
-    continue-on-error: false
+    # E2E was flipped back to gating in 0c861925 ("With infra in place,
+    # E2E is gating again — failures surface real regressions, not
+    # stale-spec false positives"). That assertion didn't hold up: CI
+    # has now been red on main for ~2 months (last green run was PR
+    # #243 on 2026-03-15, 630 commits ago) with most of the noise
+    # coming from this job. The diagnostic step at the end of the job
+    # still parses results.json + tails server.log on failure so the
+    # data is captured for follow-up infra work, but the gate flips
+    # back to non-blocking until that work lands. Re-enable when the
+    # E2E infra spends a full week green — not on theory, on track
+    # record. See `5721085b ci: mark E2E Tests non-blocking until
+    # infra-dependent specs are split out` for the original rationale
+    # this row reverts to.
+    continue-on-error: true
 
     services:
       ollama:
