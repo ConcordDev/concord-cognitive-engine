@@ -9749,6 +9749,10 @@ async function runMacro(domain, name, input, ctx) {
     // Phase 9.3 — voice / music / foresight
     forecast: new Set(["recent", "compose"]),
     sonic_glyph: new Set(["spell_to_chord"]),
+    // Phase 9.4 — economy primitives (auth-gated for write ops; reads here)
+    sponsorship: new Set(["list_for_user"]),
+    staking: new Set(["list_for_user"]),
+    insurance: new Set(["list_for_user"]),
   };
   const _domainSet = publicReadDomains[domain];
   const _domainNameAllowed = _domainSet ? _domainSet.has(name) : false;
@@ -69428,6 +69432,170 @@ register("walker", "list_open_rides", (_ctx, input = {}) => {
 
 structuredLog("info", "phase9_3_voice_music_foresight_init", {
   detail: "Phase 9.3 — forecast.*, sonic_glyph.spell_to_chord, walker.{request_ride_along,list_open_rides}",
+});
+
+// ── Phase 9.4: Native economy primitives ────────────────────────────────────
+
+// #1 NPC sponsorship — currency: CC. Sponsor pays mentor; system
+// composes periodic dispatches from the NPC's recent state.
+register("sponsorship", "create", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { npcId, monthlyCc = 5, dispatchFreqHours = 168 } = input || {};
+  if (!npcId || monthlyCc <= 0) return { ok: false, reason: "missing_inputs" };
+  try {
+    const r = db.prepare(`
+      INSERT INTO npc_sponsorships (npc_id, sponsor_user_id, monthly_cc, dispatch_freq_hours)
+      VALUES (?, ?, ?, ?)
+    `).run(npcId, userId, Math.floor(Number(monthlyCc)), Math.max(1, Math.floor(Number(dispatchFreqHours))));
+    return { ok: true, sponsorshipId: r.lastInsertRowid, currency: "CC" };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Sponsor an NPC. Sponsor pays mentor in CC; system composes dispatches." });
+
+register("sponsorship", "cancel", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { sponsorshipId } = input || {};
+  if (!sponsorshipId) return { ok: false, reason: "missing_id" };
+  try {
+    const r = db.prepare(`
+      UPDATE npc_sponsorships SET status = 'cancelled', ended_at = unixepoch()
+      WHERE id = ? AND sponsor_user_id = ? AND status = 'active'
+    `).run(sponsorshipId, userId);
+    return { ok: r.changes > 0, cancelled: r.changes > 0 };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Cancel a sponsorship. Caller must be the sponsor." });
+
+register("sponsorship", "list_for_user", (ctx, _input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  try {
+    const rows = db.prepare(`
+      SELECT s.id, s.npc_id, s.monthly_cc, s.dispatch_freq_hours, s.started_at, s.last_dispatch_at,
+             n.name AS npc_name
+      FROM npc_sponsorships s
+      LEFT JOIN world_npcs n ON n.id = s.npc_id
+      WHERE s.sponsor_user_id = ? AND s.status = 'active'
+      ORDER BY s.started_at DESC
+    `).all(userId);
+    return { ok: true, sponsorships: rows };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "User's active sponsorships." });
+
+// #4 CC staking — currency: CC. Lock principal for N months, earn
+// yield from the 10% treasury share of marketplace fees (proportional
+// to stake weight).
+register("staking", "stake", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { principalCc, months } = input || {};
+  if (!principalCc || !months) return { ok: false, reason: "missing_inputs" };
+  const p = Math.floor(Number(principalCc));
+  const m = Math.max(1, Math.min(60, Math.floor(Number(months))));
+  if (p < 10) return { ok: false, reason: "min_stake_10_cc" };
+  // Yield rate scales with lock duration; capped honest variability.
+  const yieldRateBps = Math.min(1200, 100 + (m * 20));
+  const unlocksAt = Math.floor(Date.now() / 1000) + (m * 30 * 86400);
+  try {
+    const r = db.prepare(`
+      INSERT INTO cc_stakes (user_id, principal_cc, stake_months, unlocks_at, yield_rate_bps)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(userId, p, m, unlocksAt, yieldRateBps);
+    return { ok: true, stakeId: r.lastInsertRowid, principalCc: p, months: m, yieldRateBps, unlocksAt, currency: "CC" };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Lock CC for N months. Yield rate scales with duration. Currency: CC." });
+
+register("staking", "redeem", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { stakeId } = input || {};
+  if (!stakeId) return { ok: false, reason: "missing_id" };
+  try {
+    const stake = db.prepare(`SELECT * FROM cc_stakes WHERE id = ?`).get(stakeId);
+    if (!stake) return { ok: false, reason: "not_found" };
+    if (stake.user_id !== userId) return { ok: false, reason: "not_owner" };
+    if (stake.status !== "active") return { ok: false, reason: "already_redeemed" };
+    if (stake.unlocks_at > Math.floor(Date.now() / 1000)) {
+      return { ok: false, reason: "still_locked", unlocksAt: stake.unlocks_at };
+    }
+    const totalReturn = stake.principal_cc + stake.accrued_yield_cc;
+    db.prepare(`UPDATE cc_stakes SET status = 'redeemed' WHERE id = ?`).run(stakeId);
+    return { ok: true, principalCc: stake.principal_cc, accruedYieldCc: stake.accrued_yield_cc, totalReturn, currency: "CC" };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Redeem an unlocked stake. Returns principal + accrued yield in CC." });
+
+register("staking", "list_for_user", (ctx, _input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  try {
+    const rows = db.prepare(`
+      SELECT id, principal_cc, stake_months, locked_at, unlocks_at, yield_rate_bps,
+             accrued_yield_cc, status
+      FROM cc_stakes WHERE user_id = ? ORDER BY locked_at DESC
+    `).all(userId);
+    return { ok: true, stakes: rows };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "User's stake positions." });
+
+// #6 Death-lottery insurance — currency: SPARKS (insulated from CC
+// per CC vs Sparks invariant). Player_corpses death-drops in sparks;
+// insurance pays out in sparks.
+register("insurance", "write_contract", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { beneficiaryUserId, premiumSparks, payoutSparks, durationDays = 30 } = input || {};
+  if (!beneficiaryUserId || !premiumSparks || !payoutSparks) return { ok: false, reason: "missing_inputs" };
+  if (beneficiaryUserId === userId) return { ok: false, reason: "self_pact_blocked" };
+  const expiresAt = Math.floor(Date.now() / 1000) + (Math.max(1, Number(durationDays)) * 86400);
+  try {
+    const r = db.prepare(`
+      INSERT INTO insurance_contracts
+        (insured_user_id, beneficiary_user_id, premium_sparks, payout_sparks, expires_at)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(userId, beneficiaryUserId, Math.floor(Number(premiumSparks)), Math.floor(Number(payoutSparks)), expiresAt);
+    return { ok: true, contractId: r.lastInsertRowid, expiresAt, currency: "SPARKS" };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Write a sparks-denominated insurance contract. Suicide-pact prevention: beneficiary can't equal insured." });
+
+register("insurance", "revoke", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { contractId } = input || {};
+  if (!contractId) return { ok: false, reason: "missing_id" };
+  try {
+    const r = db.prepare(`
+      UPDATE insurance_contracts SET status = 'revoked', revoked_at = unixepoch()
+      WHERE id = ? AND insured_user_id = ? AND status = 'active'
+    `).run(contractId, userId);
+    return { ok: r.changes > 0, revoked: r.changes > 0 };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Revoke an active contract. Insured only." });
+
+register("insurance", "list_for_user", (ctx, _input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  try {
+    const written = db.prepare(`
+      SELECT * FROM insurance_contracts WHERE insured_user_id = ? ORDER BY written_at DESC
+    `).all(userId);
+    const beneficiary = db.prepare(`
+      SELECT * FROM insurance_contracts WHERE beneficiary_user_id = ? ORDER BY written_at DESC
+    `).all(userId);
+    return { ok: true, written, beneficiary };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Contracts the user wrote + contracts where they're the beneficiary." });
+
+structuredLog("info", "phase9_4_economy_primitives_init", {
+  detail: "Phase 9.4 — sponsorship.* (CC), staking.* (CC), insurance.* (SPARKS)",
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
