@@ -539,6 +539,72 @@ export default function CodeLensPage() {
   const [paletteIdx, setPaletteIdx] = useState(0);
   const paletteInputRef = useRef<HTMLInputElement>(null);
 
+  // ── Find in files (⌘⇧F) ────────────────────────────────────────
+  // VSCode-shape grep across every open tab AND every saved script.
+  // Keeps a 60-line context window, highlights matches, click jumps
+  // to the matching tab and scrolls Monaco to the match line.
+  const [findOpen, setFindOpen] = useState(false);
+  const [findQuery, setFindQuery] = useState('');
+  const findInputRef = useRef<HTMLInputElement>(null);
+  const openFindInFiles = useCallback(() => {
+    setFindOpen(true);
+    requestAnimationFrame(() => findInputRef.current?.focus());
+  }, []);
+  type FindHit = { source: 'tab' | 'script'; sourceId: string; sourceName: string; line: number; preview: string; tabId?: string };
+  const findHits = useMemo<FindHit[]>(() => {
+    const q = findQuery.trim();
+    if (q.length < 2) return [];
+    const ql = q.toLowerCase();
+    const out: FindHit[] = [];
+    const scan = (text: string, source: FindHit['source'], sourceId: string, sourceName: string, tabId?: string) => {
+      const lines = text.split('\n');
+      lines.forEach((line, i) => {
+        if (line.toLowerCase().includes(ql) && out.length < 200) {
+          out.push({ source, sourceId, sourceName, tabId, line: i + 1, preview: line });
+        }
+      });
+    };
+    for (const t of tabs) scan(t.content, 'tab', t.id, t.name, t.id);
+    for (const s of savedScripts) {
+      const data = (s as { data?: { content?: string }; title?: string }).data;
+      if (data?.content && !tabs.some((t) => t.id === s.id)) {
+        scan(String(data.content), 'script', s.id, (s as { title?: string }).title || 'script', undefined);
+      }
+    }
+    return out;
+  }, [findQuery, tabs, savedScripts]);
+
+  const jumpToFindHit = useCallback((hit: FindHit) => {
+    if (hit.tabId) {
+      setActiveTabId(hit.tabId);
+      setFindOpen(false);
+      requestAnimationFrame(() => {
+        const ed = editorInstanceRef.current;
+        if (ed) {
+          ed.revealLineInCenter(hit.line);
+          ed.setPosition({ lineNumber: hit.line, column: 1 });
+          ed.focus();
+        }
+      });
+    } else {
+      // Open the saved script as a new tab
+      const script = savedScripts.find((s) => s.id === hit.sourceId);
+      if (!script) return;
+      const data = (script as { data?: { content?: string; language?: string; scriptType?: ScriptType }; title?: string }).data;
+      const newTab: Tab = {
+        id: script.id,
+        name: (script as { title?: string }).title || 'untitled',
+        language: data?.language || 'javascript',
+        content: String(data?.content || ''),
+        isDirty: false,
+        scriptType: (data?.scriptType as ScriptType) || 'snippet',
+      };
+      if (!tabs.some((t) => t.id === script.id)) setTabs((prev) => [...prev, newTab]);
+      setActiveTabId(script.id);
+      setFindOpen(false);
+    }
+  }, [tabs, savedScripts]);
+
   // ── Inline AI edit (⌘K) ─────────────────────────────────────────
   // Cursor-style: select text → ⌘K → write instruction → see diff inline
   // → Apply replaces selection.  Whole-file edit when no selection.
@@ -1005,6 +1071,7 @@ export default function CodeLensPage() {
       { id: 'fullscreen',       keys: 'f11',         description: 'Toggle fullscreen',             category: 'actions',    action: () => setIsFullscreen((v) => !v), global: true },
       { id: 'ai-edit',          keys: 'mod+k',       description: 'AI inline edit',                category: 'actions',    action: openAiEdit, global: true },
       { id: 'ai-chat',          keys: 'mod+l',       description: 'AI chat side-panel',            category: 'actions',    action: () => setAiChatOpen((v) => !v), global: true },
+      { id: 'find-in-files',    keys: 'mod+shift+f', description: 'Find in files',                 category: 'navigation', action: openFindInFiles, global: true },
     ],
     { lensId: 'code' }
   );
@@ -1792,6 +1859,86 @@ export default function CodeLensPage() {
         </div>
       </div>
     )}
+
+    {/* ── Find in Files modal (⌘⇧F) ───────────────────────────── */}
+    <AnimatePresence>
+      {findOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-start justify-center pt-24 px-4 bg-black/60 backdrop-blur-sm"
+          onClick={() => setFindOpen(false)}
+        >
+          <motion.div
+            initial={{ y: -16, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -16, opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="w-full max-w-2xl bg-[#0d1117] rounded-xl border border-neon-yellow/30 shadow-2xl shadow-neon-yellow/10 overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-lattice-border">
+              <FileCode className="w-4 h-4 text-neon-yellow" />
+              <input
+                ref={findInputRef}
+                type="text"
+                value={findQuery}
+                onChange={(e) => setFindQuery(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Escape') setFindOpen(false); }}
+                placeholder="Find in tabs and saved scripts…"
+                className="flex-1 bg-transparent text-sm text-white placeholder-gray-500 focus:outline-none font-mono"
+                autoFocus
+              />
+              <kbd className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-gray-400">esc</kbd>
+            </div>
+            <div className="max-h-96 overflow-y-auto">
+              {findQuery.trim().length < 2 && (
+                <div className="px-4 py-8 text-center text-xs text-gray-500">Type at least 2 characters</div>
+              )}
+              {findQuery.trim().length >= 2 && findHits.length === 0 && (
+                <div className="px-4 py-8 text-center text-xs text-gray-500">
+                  No matches in {tabs.length} tab{tabs.length === 1 ? '' : 's'} or {savedScripts.length} saved script{savedScripts.length === 1 ? '' : 's'}
+                </div>
+              )}
+              {findHits.map((hit, i) => {
+                const q = findQuery.trim();
+                const idx = hit.preview.toLowerCase().indexOf(q.toLowerCase());
+                const before = idx >= 0 ? hit.preview.slice(0, idx) : hit.preview;
+                const match = idx >= 0 ? hit.preview.slice(idx, idx + q.length) : '';
+                const after = idx >= 0 ? hit.preview.slice(idx + q.length) : '';
+                return (
+                  <button
+                    key={`${hit.sourceId}-${hit.line}-${i}`}
+                    onClick={() => jumpToFindHit(hit)}
+                    className="w-full text-left px-4 py-2 border-b border-lattice-border hover:bg-lattice-elevated transition-colors group"
+                  >
+                    <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-gray-500 mb-0.5">
+                      <span className={hit.source === 'tab' ? 'text-neon-cyan' : 'text-neon-purple'}>{hit.source}</span>
+                      <span>·</span>
+                      <span className="font-mono text-gray-400">{hit.sourceName}</span>
+                      <span>·</span>
+                      <span>line {hit.line}</span>
+                    </div>
+                    <div className="text-xs text-gray-300 font-mono whitespace-pre overflow-hidden text-ellipsis">
+                      {before.length > 80 ? '…' + before.slice(-80) : before}
+                      <mark className="bg-neon-yellow/30 text-white px-0.5 rounded">{match}</mark>
+                      {after.length > 80 ? after.slice(0, 80) + '…' : after}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            {findHits.length > 0 && (
+              <div className="px-4 py-2 border-t border-lattice-border text-[10px] text-gray-500 flex justify-between">
+                <span>{findHits.length} match{findHits.length === 1 ? '' : 'es'}{findHits.length === 200 ? ' (capped)' : ''}</span>
+                <span>{tabs.length} tab{tabs.length === 1 ? '' : 's'} · {savedScripts.length} saved</span>
+              </div>
+            )}
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
 
     {/* ── AI Inline Edit modal (⌘K) ────────────────────────────── */}
     <AnimatePresence>
