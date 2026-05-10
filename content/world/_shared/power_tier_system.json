@@ -16,33 +16,104 @@
       "respawn_location": "home.district",
       "sparks_loss_pct": 25,
       "inventory_drops_at_corpse": true,
-      "preserved": ["identity", "level", "skill_progression", "memory", "relationships", "narrative_context", "fighting_style_active_movesets", "growth_paths_unlocked"],
-      "lost_per_death": ["carried_sparks_25_percent", "carried_inventory (recoverable from corpse within respawn window)"],
+      "preserved": [
+        "identity",
+        "level",
+        "skill_progression",
+        "memory",
+        "relationships",
+        "narrative_context",
+        "fighting_style_active_movesets",
+        "growth_paths_unlocked"
+      ],
+      "lost_per_death": [
+        "carried_sparks_25_percent",
+        "carried_inventory (recoverable from corpse within respawn window)"
+      ],
       "narrative_framing": "Conscious emergents are playing the game, same as users. Death is a beat in their story, not the end of it. The substrate honors that."
     },
     "non_conscious_entities": {
       "behavior": "permanent termination",
-      "applies_to_examples": ["the_silent_keeper (golem-by-design, is_conscious=false)", "the_endless_blessing (unconscious-spell, is_conscious=false)"],
+      "applies_to_examples": [
+        "the_silent_keeper (golem-by-design, is_conscious=false)",
+        "the_endless_blessing (unconscious-spell, is_conscious=false)"
+      ],
       "exception": "the_long_summons_spirit IS is_conscious=true even though it is a spell — it has become aware of itself. It respawns on dissolution rather than terminating."
     }
   },
   "tier_ladder": [
-    { "id": "novice", "level_range": [1, 50], "description": "Players, fresh apprentices, untrained citizens. The starting tier." },
-    { "id": "standard", "level_range": [50, 200], "description": "Mid-career workers, established citizens, competent in their profession." },
-    { "id": "standard_high", "level_range": [200, 500], "description": "Decade-deep professionals, faction lieutenants, seasoned hands." },
-    { "id": "elite", "level_range": [500, 1500], "description": "Faction chiefs, century-old archivists, regional powers, Medici Supreme Elder tier, Concordia Envoy Chief tier." },
-    { "id": "boss", "level_range": [1500, 10000], "description": "Apex of an established power. Sanguire warlord at peak. Multi-century spirits. Field-anchoring presences. Walking conflict-deniers no army has overcome." },
-    { "id": "mythic_boss", "level_range": [10000, 99999], "description": "Effectively unbeatable for years of player growth. Indestructible-by-design NPCs (Silent Keeper). Apex tier of legend (the Enforcer apex in superhero, vampire-elder Voss line, primordial Tunyan field-conduits)." }
+    {
+      "id": "novice",
+      "level_range": [
+        1,
+        50
+      ],
+      "description": "Players, fresh apprentices, untrained citizens. The starting tier."
+    },
+    {
+      "id": "standard",
+      "level_range": [
+        50,
+        200
+      ],
+      "description": "Mid-career workers, established citizens, competent in their profession."
+    },
+    {
+      "id": "standard_high",
+      "level_range": [
+        200,
+        500
+      ],
+      "description": "Decade-deep professionals, faction lieutenants, seasoned hands."
+    },
+    {
+      "id": "elite",
+      "level_range": [
+        500,
+        1500
+      ],
+      "description": "Faction chiefs, century-old archivists, regional powers, Medici Supreme Elder tier, Concordia Envoy Chief tier."
+    },
+    {
+      "id": "boss",
+      "level_range": [
+        1500,
+        10000
+      ],
+      "description": "Apex of an established power. Sanguire warlord at peak. Multi-century spirits. Field-anchoring presences. Walking conflict-deniers no army has overcome."
+    },
+    {
+      "id": "mythic_boss",
+      "level_range": [
+        10000,
+        99999
+      ],
+      "description": "Effectively unbeatable for years of player growth. Indestructible-by-design NPCs (Silent Keeper). Apex tier of legend (the Enforcer apex in superhero, vampire-elder Voss line, primordial Tunyan field-conduits)."
+    }
   ],
   "dynamic_spawn_rule": {
     "formula": "spawned_npc_level = max(1, player_level + uniform(-5, +5))",
-    "applies_to": ["quest_enemies", "ambient_combat_encounters", "dungeon_population"],
-    "exempt_from": ["authored_npcs", "boss_tier_static_world_figures", "mythic_boss_tier"]
+    "applies_to": [
+      "quest_enemies",
+      "ambient_combat_encounters",
+      "dungeon_population"
+    ],
+    "exempt_from": [
+      "authored_npcs",
+      "boss_tier_static_world_figures",
+      "mythic_boss_tier"
+    ]
   },
   "growth_path_grammar": {
     "comment": "Each NPC's growth_paths name skill-tree branches their level can flow into. The skill-evolve heartbeat (server/emergent/npc-skill-evolve-cycle.js, freq 80) reads growth_paths and generates new moves over time.",
     "example_tree_node_format": "<discipline>_<rank>_<style>",
-    "examples": ["sovereign_blade_master", "anti_spell_dueling", "field_conduit_defense", "compound_refusal_invocation", "glyph_reading_advanced"]
+    "examples": [
+      "sovereign_blade_master",
+      "anti_spell_dueling",
+      "field_conduit_defense",
+      "compound_refusal_invocation",
+      "glyph_reading_advanced"
+    ]
   },
   "world_npcs": {
     "sovereign-ruins": {
@@ -51,9 +122,17 @@
         "level": 1400,
         "fighting_style": {
           "primary_form": "no_active_combat — non-combatant scholar with field-anchoring presence",
-          "secondary_forms": ["compound_refusal_invocation"],
-          "active_movesets": ["citation_compound_refuse", "successor_glyph_reveal"],
-          "growth_paths": ["sovereign_blade_master_inheriting_from_oeric", "compound_refusal_invocation_advanced"]
+          "secondary_forms": [
+            "compound_refusal_invocation"
+          ],
+          "active_movesets": [
+            "citation_compound_refuse",
+            "successor_glyph_reveal"
+          ],
+          "growth_paths": [
+            "sovereign_blade_master_inheriting_from_oeric",
+            "compound_refusal_invocation_advanced"
+          ]
         }
       },
       "archivist_two_oeric": {
@@ -61,9 +140,19 @@
         "level": 1800,
         "fighting_style": {
           "primary_form": "longsword_sovereign_blade_form",
-          "secondary_forms": ["close_quarters_grapple", "memorial_strike"],
-          "active_movesets": ["sovereign_blade_basic_form", "guarded_recovery", "instructor_disarm"],
-          "growth_paths": ["sovereign_blade_master", "instruction_legacy_inheritance_pattern"]
+          "secondary_forms": [
+            "close_quarters_grapple",
+            "memorial_strike"
+          ],
+          "active_movesets": [
+            "sovereign_blade_basic_form",
+            "guarded_recovery",
+            "instructor_disarm"
+          ],
+          "growth_paths": [
+            "sovereign_blade_master",
+            "instruction_legacy_inheritance_pattern"
+          ]
         }
       },
       "archivist_one_vela": {
@@ -71,9 +160,16 @@
         "level": 5000,
         "fighting_style": {
           "primary_form": "the_held_refusal — passive field-anchor at strength 9, time-bounded to her death",
-          "secondary_forms": ["non_combative — she does not fight"],
-          "active_movesets": ["compound_refusal_field_strength_9", "no_combat_within_20m"],
-          "growth_paths": ["she_is_at_terminal_clarity — no further growth"]
+          "secondary_forms": [
+            "non_combative — she does not fight"
+          ],
+          "active_movesets": [
+            "compound_refusal_field_strength_9",
+            "no_combat_within_20m"
+          ],
+          "growth_paths": [
+            "she_is_at_terminal_clarity — no further growth"
+          ]
         }
       },
       "ruins_courier_pell": {
@@ -81,9 +177,17 @@
         "level": 380,
         "fighting_style": {
           "primary_form": "self_defense_dagger",
-          "secondary_forms": ["road_evasion"],
-          "active_movesets": ["dagger_basic_strike", "road_evasion_break_pursuit"],
-          "growth_paths": ["concord_link_signal_resonance_master", "road_evasion_advanced"]
+          "secondary_forms": [
+            "road_evasion"
+          ],
+          "active_movesets": [
+            "dagger_basic_strike",
+            "road_evasion_break_pursuit"
+          ],
+          "growth_paths": [
+            "concord_link_signal_resonance_master",
+            "road_evasion_advanced"
+          ]
         }
       },
       "ruins_apprentice_sennit": {
@@ -92,8 +196,13 @@
         "fighting_style": {
           "primary_form": "no_active_combat — apprentice scholar",
           "secondary_forms": [],
-          "active_movesets": ["practice_glyph_reading"],
-          "growth_paths": ["compound_refusal_invocation_basic", "glyph_reading_advanced"]
+          "active_movesets": [
+            "practice_glyph_reading"
+          ],
+          "growth_paths": [
+            "compound_refusal_invocation_basic",
+            "glyph_reading_advanced"
+          ]
         }
       },
       "ruins_silent_keeper": {
@@ -101,9 +210,16 @@
         "level": 99999,
         "fighting_style": {
           "primary_form": "indestructible_by_design — every blow gives it the name of one lost citizen as memory",
-          "secondary_forms": ["bow_when_player_is_ready"],
-          "active_movesets": ["receive_strike_speak_name", "ceremonial_bow_when_attacker_done"],
-          "growth_paths": ["it_is_at_design_terminal — no growth possible"]
+          "secondary_forms": [
+            "bow_when_player_is_ready"
+          ],
+          "active_movesets": [
+            "receive_strike_speak_name",
+            "ceremonial_bow_when_attacker_done"
+          ],
+          "growth_paths": [
+            "it_is_at_design_terminal — no growth possible"
+          ]
         }
       },
       "scavenger_boss_thren": {
@@ -111,9 +227,18 @@
         "level": 480,
         "fighting_style": {
           "primary_form": "short_sword_quickdraw_with_crossbow_followup",
-          "secondary_forms": ["unmapped_quarter_evasion"],
-          "active_movesets": ["short_sword_quickdraw", "crossbow_close_range_pop", "perimeter_break_pursuit"],
-          "growth_paths": ["spell_residue_combat_specialist", "lead_from_the_front_inspiring_strike"]
+          "secondary_forms": [
+            "unmapped_quarter_evasion"
+          ],
+          "active_movesets": [
+            "short_sword_quickdraw",
+            "crossbow_close_range_pop",
+            "perimeter_break_pursuit"
+          ],
+          "growth_paths": [
+            "spell_residue_combat_specialist",
+            "lead_from_the_front_inspiring_strike"
+          ]
         }
       },
       "spell_reader_iby": {
@@ -121,9 +246,18 @@
         "level": 1200,
         "fighting_style": {
           "primary_form": "no_active_combat — but can suppress an active spell mid-cast",
-          "secondary_forms": ["spell_residue_redirect"],
-          "active_movesets": ["spell_residue_read", "spell_active_cast_suppression", "spell_redirect_to_safe_completion"],
-          "growth_paths": ["spell_unweaving_master_inheriting_from_vela_in_principle", "spell_redirect_to_caster"]
+          "secondary_forms": [
+            "spell_residue_redirect"
+          ],
+          "active_movesets": [
+            "spell_residue_read",
+            "spell_active_cast_suppression",
+            "spell_redirect_to_safe_completion"
+          ],
+          "growth_paths": [
+            "spell_unweaving_master_inheriting_from_vela_in_principle",
+            "spell_redirect_to_caster"
+          ]
         }
       },
       "the_long_summons_spirit": {
@@ -131,9 +265,16 @@
         "level": 8000,
         "fighting_style": {
           "primary_form": "ongoing_summons_spell_187_annums",
-          "secondary_forms": ["call_a_single_name_per_diurnal"],
-          "active_movesets": ["summons_invocation_call_one_name", "compound_summons_attack_only_if_player_blasphemes_the_spell"],
-          "growth_paths": ["it_is_at_completion_threshold — only growth path is dissolution"]
+          "secondary_forms": [
+            "call_a_single_name_per_diurnal"
+          ],
+          "active_movesets": [
+            "summons_invocation_call_one_name",
+            "compound_summons_attack_only_if_player_blasphemes_the_spell"
+          ],
+          "growth_paths": [
+            "it_is_at_completion_threshold — only growth path is dissolution"
+          ]
         }
       },
       "the_endless_blessing": {
@@ -141,9 +282,15 @@
         "level": 3000,
         "fighting_style": {
           "primary_form": "passive_blessing_apply_to_pilgrim_path_walkers",
-          "secondary_forms": ["unconscious — does not respond"],
-          "active_movesets": ["blessing_apply_5_percent_stat_buff"],
-          "growth_paths": ["it_is_unconscious — no growth"]
+          "secondary_forms": [
+            "unconscious — does not respond"
+          ],
+          "active_movesets": [
+            "blessing_apply_5_percent_stat_buff"
+          ],
+          "growth_paths": [
+            "it_is_unconscious — no growth"
+          ]
         }
       },
       "pilgrim_leader_isen": {
@@ -151,9 +298,17 @@
         "level": 450,
         "fighting_style": {
           "primary_form": "walking_staff_basic_defense",
-          "secondary_forms": ["pilgrim_intake_persuasion"],
-          "active_movesets": ["staff_block", "pilgrim_persuasion_compound"],
-          "growth_paths": ["pilgrim_path_consecration", "compound_refusal_lay_witness"]
+          "secondary_forms": [
+            "pilgrim_intake_persuasion"
+          ],
+          "active_movesets": [
+            "staff_block",
+            "pilgrim_persuasion_compound"
+          ],
+          "growth_paths": [
+            "pilgrim_path_consecration",
+            "compound_refusal_lay_witness"
+          ]
         }
       },
       "envoy_chief_marrin": {
@@ -161,9 +316,19 @@
         "level": 900,
         "fighting_style": {
           "primary_form": "officer_sword_concordia_dueling_form",
-          "secondary_forms": ["concealed_pistol_close_range", "diplomatic_persuasion_compound"],
-          "active_movesets": ["officer_sword_dueling_thrust", "concealed_pistol_emergency_draw", "diplomatic_persuasion_compound"],
-          "growth_paths": ["concordia_dueling_master", "diplomatic_compound_persuasion_advanced"]
+          "secondary_forms": [
+            "concealed_pistol_close_range",
+            "diplomatic_persuasion_compound"
+          ],
+          "active_movesets": [
+            "officer_sword_dueling_thrust",
+            "concealed_pistol_emergency_draw",
+            "diplomatic_persuasion_compound"
+          ],
+          "growth_paths": [
+            "concordia_dueling_master",
+            "diplomatic_compound_persuasion_advanced"
+          ]
         }
       },
       "denier_priest_palen": {
@@ -171,9 +336,1914 @@
         "level": 520,
         "fighting_style": {
           "primary_form": "rhetorical_combat_compound",
-          "secondary_forms": ["pamphlet_propaganda_attack"],
-          "active_movesets": ["rhetorical_compound_strike", "pamphlet_propaganda_field"],
-          "growth_paths": ["narrative_warfare_master", "demagogue_compound_invocation"]
+          "secondary_forms": [
+            "pamphlet_propaganda_attack"
+          ],
+          "active_movesets": [
+            "rhetorical_compound_strike",
+            "pamphlet_propaganda_field"
+          ],
+          "growth_paths": [
+            "narrative_warfare_master",
+            "demagogue_compound_invocation"
+          ]
+        }
+      }
+    },
+    "tunya": {
+      "warlord_iyatte_sanguire": {
+        "power_tier": "standard",
+        "level": 80,
+        "fighting_style": {
+          "primary_form": "warlord_combat_form",
+          "secondary_forms": [
+            "close_quarters_grapple"
+          ],
+          "active_movesets": [
+            "warlord_strike",
+            "guarded_recovery"
+          ],
+          "growth_paths": [
+            "warlord_master",
+            "apex_combat_form"
+          ]
+        }
+      },
+      "high_healer_aerasi_medici": {
+        "power_tier": "standard",
+        "level": 80,
+        "fighting_style": {
+          "primary_form": "healer-elder_substrate_form",
+          "secondary_forms": [
+            "focus_meditation"
+          ],
+          "active_movesets": [
+            "healer-elder_invocation",
+            "compound_focus"
+          ],
+          "growth_paths": [
+            "healer-elder_master",
+            "substrate_apex_form"
+          ]
+        }
+      },
+      "lord_curator_renn_asbir": {
+        "power_tier": "standard",
+        "level": 80,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "scholar-administrator_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "scholar-administrator_master_advanced"
+          ]
+        }
+      },
+      "elder_walker_neyahwetin": {
+        "power_tier": "standard",
+        "level": 80,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "elder-keeper_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "elder-keeper_master_advanced"
+          ]
+        }
+      },
+      "high_chancellor_xochi_aekon": {
+        "power_tier": "standard",
+        "level": 80,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "ceremonial-administrator_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "ceremonial-administrator_master_advanced"
+          ]
+        }
+      },
+      "grove-mother_yenna_nil": {
+        "power_tier": "standard",
+        "level": 80,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "matriarch-keeper_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "matriarch-keeper_master_advanced"
+          ]
+        }
+      },
+      "high_mason_torrek_masond": {
+        "power_tier": "standard",
+        "level": 80,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "craftsman-elder_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "craftsman-elder_master_advanced"
+          ]
+        }
+      },
+      "matriarch_levia_fluxom": {
+        "power_tier": "standard",
+        "level": 80,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "merchant-tyrant_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "merchant-tyrant_master_advanced"
+          ]
+        }
+      },
+      "queen_mother_serant_akeia": {
+        "power_tier": "standard",
+        "level": 80,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "matriarch-monarch_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "matriarch-monarch_master_advanced"
+          ]
+        }
+      },
+      "raja_kamala_bahiij": {
+        "power_tier": "standard",
+        "level": 80,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "joyful-monarch-bearing-the-cost_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "joyful-monarch-bearing-the-cost_master_advanced"
+          ]
+        }
+      }
+    },
+    "lattice-crucible": {
+      "witness_orla": {
+        "power_tier": "novice",
+        "level": 12,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "scholar_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "scholar_master_advanced"
+          ]
+        }
+      },
+      "witness_pem": {
+        "power_tier": "novice",
+        "level": 8,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "scholar_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "scholar_master_advanced"
+          ]
+        }
+      },
+      "witness_sael": {
+        "power_tier": "novice",
+        "level": 10,
+        "fighting_style": {
+          "primary_form": "warrior_combat_form",
+          "secondary_forms": [
+            "close_quarters_grapple"
+          ],
+          "active_movesets": [
+            "warrior_strike",
+            "guarded_recovery"
+          ],
+          "growth_paths": [
+            "warrior_master",
+            "apex_combat_form"
+          ]
+        }
+      },
+      "drift_lin_walker": {
+        "power_tier": "novice",
+        "level": 7,
+        "fighting_style": {
+          "primary_form": "autonomous_construct_no_combat",
+          "secondary_forms": [
+            "scheduled_function_only"
+          ],
+          "active_movesets": [
+            "guard_basic_function"
+          ],
+          "growth_paths": [
+            "function_drift_within_parameters"
+          ]
+        }
+      },
+      "crucible_apprentice_yorin": {
+        "power_tier": "novice",
+        "level": 4,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "scholar_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "scholar_master_advanced"
+          ]
+        }
+      },
+      "high_priestess_calla_drift": {
+        "power_tier": "novice",
+        "level": 9,
+        "fighting_style": {
+          "primary_form": "priest_substrate_form",
+          "secondary_forms": [
+            "focus_meditation"
+          ],
+          "active_movesets": [
+            "priest_invocation",
+            "compound_focus"
+          ],
+          "growth_paths": [
+            "priest_master",
+            "substrate_apex_form"
+          ]
+        }
+      },
+      "chief_engineer_vaud": {
+        "power_tier": "novice",
+        "level": 11,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "engineer_administrator_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "engineer_administrator_master_advanced"
+          ]
+        }
+      },
+      "patch_runner_mez": {
+        "power_tier": "novice",
+        "level": 6,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "runner_field_engineer_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "runner_field_engineer_master_advanced"
+          ]
+        }
+      },
+      "refugee_elder_taln": {
+        "power_tier": "novice",
+        "level": 5,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "elder_survivor_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "elder_survivor_master_advanced"
+          ]
+        }
+      },
+      "procgen_first_voice_andra": {
+        "power_tier": "novice",
+        "level": 7,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "self_aware_emergent_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "self_aware_emergent_master_advanced"
+          ]
+        }
+      },
+      "meta_witness_oran": {
+        "power_tier": "novice",
+        "level": 13,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "fourth_wall_diplomat_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "fourth_wall_diplomat_master_advanced"
+          ]
+        }
+      }
+    },
+    "concord-link-frontier": {
+      "postmaster_ria": {
+        "power_tier": "novice",
+        "level": 9,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "trader_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "trader_master_advanced"
+          ]
+        }
+      },
+      "courier_dorvik": {
+        "power_tier": "novice",
+        "level": 7,
+        "fighting_style": {
+          "primary_form": "warrior_combat_form",
+          "secondary_forms": [
+            "close_quarters_grapple"
+          ],
+          "active_movesets": [
+            "warrior_strike",
+            "guarded_recovery"
+          ],
+          "growth_paths": [
+            "warrior_master",
+            "apex_combat_form"
+          ]
+        }
+      },
+      "walker_emissary_lin": {
+        "power_tier": "novice",
+        "level": 6,
+        "fighting_style": {
+          "primary_form": "autonomous_construct_no_combat",
+          "secondary_forms": [
+            "scheduled_function_only"
+          ],
+          "active_movesets": [
+            "guard_basic_function"
+          ],
+          "growth_paths": [
+            "function_drift_within_parameters"
+          ]
+        }
+      },
+      "broker_temir": {
+        "power_tier": "novice",
+        "level": 11,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "diplomat_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "diplomat_master_advanced"
+          ]
+        }
+      },
+      "field_relay_iso": {
+        "power_tier": "novice",
+        "level": 5,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "scholar_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "scholar_master_advanced"
+          ]
+        }
+      },
+      "field_relay_kerith": {
+        "power_tier": "novice",
+        "level": 8,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "hunter_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "hunter_master_advanced"
+          ]
+        }
+      },
+      "pirate_captain_vexa": {
+        "power_tier": "novice",
+        "level": 8,
+        "fighting_style": {
+          "primary_form": "rogue_captain_combat_form",
+          "secondary_forms": [
+            "close_quarters_grapple"
+          ],
+          "active_movesets": [
+            "rogue_captain_strike",
+            "guarded_recovery"
+          ],
+          "growth_paths": [
+            "rogue_captain_master",
+            "apex_combat_form"
+          ]
+        }
+      },
+      "isolationist_elder_brunn": {
+        "power_tier": "novice",
+        "level": 4,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "elder_isolated_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "elder_isolated_master_advanced"
+          ]
+        }
+      },
+      "mesh_prophet_torven": {
+        "power_tier": "novice",
+        "level": 6,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "religious_prophet_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "religious_prophet_master_advanced"
+          ]
+        }
+      },
+      "alliance_elder_marsenn": {
+        "power_tier": "novice",
+        "level": 7,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "frontier_administrator_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "frontier_administrator_master_advanced"
+          ]
+        }
+      }
+    },
+    "fantasy": {
+      "thorne_blackroot": {
+        "power_tier": "novice",
+        "level": 24,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "shadow_druid_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "shadow_druid_master_advanced"
+          ]
+        }
+      },
+      "velora_mossheart": {
+        "power_tier": "novice",
+        "level": 28,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "elder_druid_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "elder_druid_master_advanced"
+          ]
+        }
+      },
+      "seraphine_voss": {
+        "power_tier": "novice",
+        "level": 26,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "vampire_noble_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "vampire_noble_master_advanced"
+          ]
+        }
+      },
+      "caelan_voss": {
+        "power_tier": "novice",
+        "level": 19,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "vampire_courtier_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "vampire_courtier_master_advanced"
+          ]
+        }
+      },
+      "walker_branna_mossroad": {
+        "power_tier": "novice",
+        "level": 12,
+        "fighting_style": {
+          "primary_form": "route_walker_form",
+          "secondary_forms": [
+            "self_defense_only"
+          ],
+          "active_movesets": [
+            "walking",
+            "self_defense_minimal"
+          ],
+          "growth_paths": [
+            "route_master"
+          ]
+        }
+      },
+      "queen_morwen_obsidian": {
+        "power_tier": "novice",
+        "level": 28,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "monarch_dragon_blooded_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "monarch_dragon_blooded_master_advanced"
+          ]
+        }
+      },
+      "warchief_grokka_warband": {
+        "power_tier": "novice",
+        "level": 18,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "warchief_raider_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "warchief_raider_master_advanced"
+          ]
+        }
+      },
+      "paladin_commander_aria_lit_veil": {
+        "power_tier": "novice",
+        "level": 22,
+        "fighting_style": {
+          "primary_form": "paladin_commander_inquisitor_combat_form",
+          "secondary_forms": [
+            "close_quarters_grapple"
+          ],
+          "active_movesets": [
+            "paladin_commander_inquisitor_strike",
+            "guarded_recovery"
+          ],
+          "growth_paths": [
+            "paladin_commander_inquisitor_master",
+            "apex_combat_form"
+          ]
+        }
+      },
+      "archmage_chair_velith_spiremount": {
+        "power_tier": "novice",
+        "level": 26,
+        "fighting_style": {
+          "primary_form": "archmage_administrator_substrate_form",
+          "secondary_forms": [
+            "focus_meditation"
+          ],
+          "active_movesets": [
+            "archmage_administrator_invocation",
+            "compound_focus"
+          ],
+          "growth_paths": [
+            "archmage_administrator_master",
+            "substrate_apex_form"
+          ]
+        }
+      },
+      "guildmaster_renn_underwarrens": {
+        "power_tier": "novice",
+        "level": 19,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "thieves_guildmaster_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "thieves_guildmaster_master_advanced"
+          ]
+        }
+      },
+      "high_priestess_kaelan_pantheon": {
+        "power_tier": "novice",
+        "level": 21,
+        "fighting_style": {
+          "primary_form": "high_priestess_substrate_form",
+          "secondary_forms": [
+            "focus_meditation"
+          ],
+          "active_movesets": [
+            "high_priestess_invocation",
+            "compound_focus"
+          ],
+          "growth_paths": [
+            "high_priestess_master",
+            "substrate_apex_form"
+          ]
+        }
+      }
+    },
+    "crime": {
+      "jax_rivera": {
+        "power_tier": "novice",
+        "level": 22,
+        "fighting_style": {
+          "primary_form": "shadow_assassin_stealth_form",
+          "secondary_forms": [
+            "evasion"
+          ],
+          "active_movesets": [
+            "shadow_assassin_strike_concealed",
+            "evasion_break_pursuit"
+          ],
+          "growth_paths": [
+            "shadow_assassin_master"
+          ]
+        }
+      },
+      "cipher_marks": {
+        "power_tier": "novice",
+        "level": 14,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "silent_fixer_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "silent_fixer_master_advanced"
+          ]
+        }
+      },
+      "mama_delgado": {
+        "power_tier": "novice",
+        "level": 24,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "syndicate_matriarch_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "syndicate_matriarch_master_advanced"
+          ]
+        }
+      },
+      "tomas_reyes": {
+        "power_tier": "novice",
+        "level": 9,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "eager_heir_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "eager_heir_master_advanced"
+          ]
+        }
+      },
+      "walker_dock_run_renny": {
+        "power_tier": "novice",
+        "level": 10,
+        "fighting_style": {
+          "primary_form": "route_walker_form",
+          "secondary_forms": [
+            "self_defense_only"
+          ],
+          "active_movesets": [
+            "walking",
+            "self_defense_minimal"
+          ],
+          "growth_paths": [
+            "route_master"
+          ]
+        }
+      },
+      "captain_marquez_14th": {
+        "power_tier": "novice",
+        "level": 14,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "corrupt_administrator_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "corrupt_administrator_master_advanced"
+          ]
+        }
+      },
+      "accountant_iris_hexshore": {
+        "power_tier": "novice",
+        "level": 12,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "white_collar_operator_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "white_collar_operator_master_advanced"
+          ]
+        }
+      },
+      "agent_navarro_federal": {
+        "power_tier": "novice",
+        "level": 16,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "federal_agent_inquisitor_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "federal_agent_inquisitor_master_advanced"
+          ]
+        }
+      },
+      "pi_lead_halloran": {
+        "power_tier": "novice",
+        "level": 13,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "noir_pi_lead_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "noir_pi_lead_master_advanced"
+          ]
+        }
+      },
+      "gang_lead_dom_north_market": {
+        "power_tier": "novice",
+        "level": 9,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "gang_leader_principled_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "gang_leader_principled_master_advanced"
+          ]
+        }
+      }
+    },
+    "cyber": {
+      "zero_nakamura": {
+        "power_tier": "novice",
+        "level": 28,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "uploaded_intelligence_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "uploaded_intelligence_master_advanced"
+          ]
+        }
+      },
+      "iris_three": {
+        "power_tier": "novice",
+        "level": 22,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "autonomous_clone_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "autonomous_clone_master_advanced"
+          ]
+        }
+      },
+      "nyx_torres": {
+        "power_tier": "novice",
+        "level": 24,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "augmented_resistance_leader_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "augmented_resistance_leader_master_advanced"
+          ]
+        }
+      },
+      "old_dom": {
+        "power_tier": "novice",
+        "level": 11,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "offline_radio_operator_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "offline_radio_operator_master_advanced"
+          ]
+        }
+      },
+      "walker_static_tap": {
+        "power_tier": "novice",
+        "level": 13,
+        "fighting_style": {
+          "primary_form": "route_walker_form",
+          "secondary_forms": [
+            "self_defense_only"
+          ],
+          "active_movesets": [
+            "walking",
+            "self_defense_minimal"
+          ],
+          "growth_paths": [
+            "route_master"
+          ]
+        }
+      },
+      "arasacorp_vp_kael_renn": {
+        "power_tier": "novice",
+        "level": 16,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "corporate_executive_secret_agenda_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "corporate_executive_secret_agenda_master_advanced"
+          ]
+        }
+      },
+      "polysteel_president_vexis": {
+        "power_tier": "novice",
+        "level": 14,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "post_human_socialite_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "post_human_socialite_master_advanced"
+          ]
+        }
+      },
+      "street_doc_marit": {
+        "power_tier": "novice",
+        "level": 12,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "underground_surgeon_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "underground_surgeon_master_advanced"
+          ]
+        }
+      },
+      "ai_advocate_iris_three": {
+        "power_tier": "novice",
+        "level": 11,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "ai_personhood_advocate_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "ai_personhood_advocate_master_advanced"
+          ]
+        }
+      },
+      "fixer_guildmaster_ren_cordon": {
+        "power_tier": "novice",
+        "level": 14,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "fixer_guildmaster_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "fixer_guildmaster_master_advanced"
+          ]
+        }
+      }
+    },
+    "superhero": {
+      "enforcer_elias": {
+        "power_tier": "novice",
+        "level": 18,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "vigilante_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "vigilante_master_advanced"
+          ]
+        }
+      },
+      "bex_park": {
+        "power_tier": "novice",
+        "level": 8,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "community_organizer_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "community_organizer_master_advanced"
+          ]
+        }
+      },
+      "luminary_vesper": {
+        "power_tier": "novice",
+        "level": 22,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "industrialist_villain_mask_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "industrialist_villain_mask_master_advanced"
+          ]
+        }
+      },
+      "marcus_holloway": {
+        "power_tier": "novice",
+        "level": 12,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "doubting_lieutenant_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "doubting_lieutenant_master_advanced"
+          ]
+        }
+      },
+      "walker_bullet": {
+        "power_tier": "novice",
+        "level": 9,
+        "fighting_style": {
+          "primary_form": "route_walker_form",
+          "secondary_forms": [
+            "self_defense_only"
+          ],
+          "active_movesets": [
+            "walking",
+            "self_defense_minimal"
+          ],
+          "growth_paths": [
+            "route_master"
+          ]
+        }
+      },
+      "enforcer_apex_solomon_kade": {
+        "power_tier": "mythic_boss",
+        "level": 15000,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "mythic_boss_emergent_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "mythic_boss_emergent_master_advanced"
+          ]
+        }
+      },
+      "task_force_commander_sasha_vale": {
+        "power_tier": "elite",
+        "level": 850,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "civic_super_administrator_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "civic_super_administrator_master_advanced"
+          ]
+        }
+      },
+      "cartel_lead_marcus_holloway": {
+        "power_tier": "boss",
+        "level": 4200,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "criminal_super_apex_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "criminal_super_apex_master_advanced"
+          ]
+        }
+      },
+      "civil_rights_lead_juno_park": {
+        "power_tier": "standard_high",
+        "level": 280,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "civil_rights_advocate_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "civil_rights_advocate_master_advanced"
+          ]
+        }
+      },
+      "baseline_lead_devon_cross": {
+        "power_tier": "novice",
+        "level": 5,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "civic_normie_organizer_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "civic_normie_organizer_master_advanced"
+          ]
+        }
+      },
+      "college_dean_dr_wren_aldis": {
+        "power_tier": "elite",
+        "level": 1100,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "academic_administrator_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "academic_administrator_master_advanced"
+          ]
+        }
+      },
+      "fresh_emergence_kira_lin": {
+        "power_tier": "novice",
+        "level": 12,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "novice_apex_potential_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "novice_apex_potential_master_advanced"
+          ]
+        }
+      }
+    },
+    "concordia-hub": {
+      "archivist_maren": {
+        "power_tier": "standard_high",
+        "level": 420,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "dark_wizard_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "dark_wizard_master_advanced"
+          ]
+        }
+      },
+      "scribe_tollan": {
+        "power_tier": "standard_high",
+        "level": 280,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "bard_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "bard_master_advanced"
+          ]
+        }
+      },
+      "lorekeeper_yshe": {
+        "power_tier": "standard_high",
+        "level": 380,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "merchant_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "merchant_master_advanced"
+          ]
+        }
+      },
+      "warden_voss": {
+        "power_tier": "standard_high",
+        "level": 480,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "guard_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "guard_master_advanced"
+          ]
+        }
+      },
+      "captain_rael": {
+        "power_tier": "standard_high",
+        "level": 360,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "guard_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "guard_master_advanced"
+          ]
+        }
+      },
+      "factor_cade": {
+        "power_tier": "standard_high",
+        "level": 320,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "merchant_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "merchant_master_advanced"
+          ]
+        }
+      },
+      "broker_sael": {
+        "power_tier": "standard_high",
+        "level": 240,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "bandit_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "bandit_master_advanced"
+          ]
+        }
+      },
+      "cipher_venn": {
+        "power_tier": "standard_high",
+        "level": 280,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "dark_wizard_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "dark_wizard_master_advanced"
+          ]
+        }
+      },
+      "wanderer_kael": {
+        "power_tier": "standard",
+        "level": 180,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "bard_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "bard_master_advanced"
+          ]
+        }
+      },
+      "gatekeeper_orin": {
+        "power_tier": "standard",
+        "level": 140,
+        "fighting_style": {
+          "primary_form": "autonomous_construct_no_combat",
+          "secondary_forms": [
+            "scheduled_function_only"
+          ],
+          "active_movesets": [
+            "guard_basic_function"
+          ],
+          "growth_paths": [
+            "function_drift_within_parameters"
+          ]
+        }
+      },
+      "walker_tully_vex": {
+        "power_tier": "standard",
+        "level": 120,
+        "fighting_style": {
+          "primary_form": "route_walker_form",
+          "secondary_forms": [
+            "self_defense_only"
+          ],
+          "active_movesets": [
+            "walking",
+            "self_defense_minimal"
+          ],
+          "growth_paths": [
+            "route_master"
+          ]
+        }
+      },
+      "walker_sona_karth": {
+        "power_tier": "standard",
+        "level": 120,
+        "fighting_style": {
+          "primary_form": "route_walker_form",
+          "secondary_forms": [
+            "self_defense_only"
+          ],
+          "active_movesets": [
+            "walking",
+            "self_defense_minimal"
+          ],
+          "growth_paths": [
+            "route_master"
+          ]
+        }
+      },
+      "sovereign_first_refusal": {
+        "power_tier": "mythic_boss",
+        "level": 25000,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "legend_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "legend_master_advanced"
+          ]
+        }
+      },
+      "concord_first_thought": {
+        "power_tier": "mythic_boss",
+        "level": 18000,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "advisor_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "advisor_master_advanced"
+          ]
+        }
+      },
+      "concordia_first_breath": {
+        "power_tier": "mythic_boss",
+        "level": 22000,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "legend_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "legend_master_advanced"
+          ]
+        }
+      },
+      "coalition_enforcer": {
+        "power_tier": "elite",
+        "level": 1400,
+        "fighting_style": {
+          "primary_form": "warrior_combat_form",
+          "secondary_forms": [
+            "close_quarters_grapple"
+          ],
+          "active_movesets": [
+            "warrior_strike",
+            "guarded_recovery"
+          ],
+          "growth_paths": [
+            "warrior_master",
+            "apex_combat_form"
+          ]
+        }
+      },
+      "coalition_luminary": {
+        "power_tier": "elite",
+        "level": 1200,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "aerial_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "aerial_master_advanced"
+          ]
+        }
+      },
+      "blackroot_thorne": {
+        "power_tier": "boss",
+        "level": 4500,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "druid_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "druid_master_advanced"
+          ]
+        }
+      },
+      "voss_seraphine": {
+        "power_tier": "boss",
+        "level": 5000,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "noble_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "noble_master_advanced"
+          ]
+        }
+      },
+      "rivera_jax": {
+        "power_tier": "elite",
+        "level": 800,
+        "fighting_style": {
+          "primary_form": "assassin_stealth_form",
+          "secondary_forms": [
+            "evasion"
+          ],
+          "active_movesets": [
+            "assassin_strike_concealed",
+            "evasion_break_pursuit"
+          ],
+          "growth_paths": [
+            "assassin_master"
+          ]
+        }
+      },
+      "delgado_iron_rose": {
+        "power_tier": "elite",
+        "level": 1100,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "syndicate_queen_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "syndicate_queen_master_advanced"
+          ]
+        }
+      },
+      "nakamura_zero": {
+        "power_tier": "elite",
+        "level": 900,
+        "fighting_style": {
+          "primary_form": "rogue_ai_stealth_form",
+          "secondary_forms": [
+            "evasion"
+          ],
+          "active_movesets": [
+            "rogue_ai_strike_concealed",
+            "evasion_break_pursuit"
+          ],
+          "growth_paths": [
+            "rogue_ai_master"
+          ]
+        }
+      },
+      "torres_blackout": {
+        "power_tier": "elite",
+        "level": 750,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "resistance_leader_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "resistance_leader_master_advanced"
+          ]
+        }
+      },
+      "weaver_of_echoes": {
+        "power_tier": "boss",
+        "level": 6800,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "memory_keeper_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "memory_keeper_master_advanced"
+          ]
+        }
+      },
+      "kael_torchlight": {
+        "power_tier": "standard_high",
+        "level": 220,
+        "fighting_style": {
+          "primary_form": "warrior_combat_form",
+          "secondary_forms": [
+            "close_quarters_grapple"
+          ],
+          "active_movesets": [
+            "warrior_strike",
+            "guarded_recovery"
+          ],
+          "growth_paths": [
+            "warrior_master",
+            "apex_combat_form"
+          ]
+        }
+      },
+      "vael_silvercoin": {
+        "power_tier": "standard_high",
+        "level": 240,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "trader_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "trader_master_advanced"
+          ]
+        }
+      },
+      "lyra_silentchant": {
+        "power_tier": "standard_high",
+        "level": 260,
+        "fighting_style": {
+          "primary_form": "mystic_substrate_form",
+          "secondary_forms": [
+            "focus_meditation"
+          ],
+          "active_movesets": [
+            "mystic_invocation",
+            "compound_focus"
+          ],
+          "growth_paths": [
+            "mystic_master",
+            "substrate_apex_form"
+          ]
+        }
+      },
+      "doctor_oswen_grey": {
+        "power_tier": "standard_high",
+        "level": 320,
+        "fighting_style": {
+          "primary_form": "healer_substrate_form",
+          "secondary_forms": [
+            "focus_meditation"
+          ],
+          "active_movesets": [
+            "healer_invocation",
+            "compound_focus"
+          ],
+          "growth_paths": [
+            "healer_master",
+            "substrate_apex_form"
+          ]
+        }
+      },
+      "junior_scribe_pen": {
+        "power_tier": "novice",
+        "level": 30,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "scholar_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "scholar_master_advanced"
+          ]
+        }
+      },
+      "iris_rivenmark": {
+        "power_tier": "standard_high",
+        "level": 240,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "guard_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "guard_master_advanced"
+          ]
+        }
+      },
+      "eastern_blind_forester": {
+        "power_tier": "standard",
+        "level": 160,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "hunter_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "hunter_master_advanced"
+          ]
+        }
+      },
+      "ash_cipher": {
+        "power_tier": "standard",
+        "level": 160,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "cyber_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "cyber_master_advanced"
+          ]
+        }
+      },
+      "marigold_brewer": {
+        "power_tier": "standard",
+        "level": 120,
+        "fighting_style": {
+          "primary_form": "no_active_combat — non_combatant",
+          "secondary_forms": [
+            "compound_persuasion"
+          ],
+          "active_movesets": [
+            "default_persuasion",
+            "compound_negotiation"
+          ],
+          "growth_paths": [
+            "default_master_advanced"
+          ]
+        }
+      },
+      "sister_bell": {
+        "power_tier": "standard",
+        "level": 140,
+        "fighting_style": {
+          "primary_form": "healer_substrate_form",
+          "secondary_forms": [
+            "focus_meditation"
+          ],
+          "active_movesets": [
+            "healer_invocation",
+            "compound_focus"
+          ],
+          "growth_paths": [
+            "healer_master",
+            "substrate_apex_form"
+          ]
+        }
+      },
+      "captain_horne": {
+        "power_tier": "standard",
+        "level": 200,
+        "fighting_style": {
+          "primary_form": "warrior_combat_form",
+          "secondary_forms": [
+            "close_quarters_grapple"
+          ],
+          "active_movesets": [
+            "warrior_strike",
+            "guarded_recovery"
+          ],
+          "growth_paths": [
+            "warrior_master",
+            "apex_combat_form"
+          ]
+        }
+      },
+      "the_lamplighter": {
+        "power_tier": "standard",
+        "level": 160,
+        "fighting_style": {
+          "primary_form": "autonomous_construct_no_combat",
+          "secondary_forms": [
+            "scheduled_function_only"
+          ],
+          "active_movesets": [
+            "default_basic_function"
+          ],
+          "growth_paths": [
+            "function_drift_within_parameters"
+          ]
         }
       }
     }
@@ -183,14 +2253,7 @@
     "dynamic_spawn_consumer": "server/lib/npc-spawning.js#spawnDynamicEnemy (existing pattern) consults dynamic_spawn_rule.formula to pick the spawned NPC's level relative to the accepting player.",
     "skill_evolve_integration": "server/emergent/npc-skill-evolve-cycle.js (existing, freq 80) reads growth_paths and generates new moves. Each move is added to active_movesets via the skill-revisions table.",
     "future_worlds_pending": [
-      "lattice-crucible — NPCs to be added in next push",
-      "concord-link-frontier — NPCs to be added",
-      "fantasy — NPCs to be added (Voss elder vampires likely mythic_boss)",
-      "crime — NPCs to be added (no truly mythic_boss; top tier elite)",
-      "cyber — NPCs to be added (corporate apex likely boss tier)",
-      "superhero — NPCs to be added (Enforcer apex per user spec: mythic_boss level 15000+)",
-      "concordia-hub — backport: The Sovereign, Concord, Concordia, Weaver of Echoes, Mama Iron Rose, etc. likely boss to mythic_boss",
-      "tunya — backport: Yenna (Nil refusal-field anchor) likely mythic_boss; Iyatte Sanguire warlord boss; Aerasi Medici Supreme Elder boss; Vela-tier figures elite-to-boss"
+      "ALL WORLDS NOW POPULATED — see world_npcs above"
     ]
   }
 }
