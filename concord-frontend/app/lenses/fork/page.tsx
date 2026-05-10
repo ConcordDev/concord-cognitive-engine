@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useState, useCallback } from 'react';
@@ -41,6 +42,16 @@ export default function ForkLensPage() {
   const [selectedFork, setSelectedFork] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'tree' | 'list'>('tree');
   const [showFeatures, setShowFeatures] = useState(true);
+
+  // Git-style: t tree, l list, esc clear selection.
+  useLensCommand(
+    [
+      { id: 'fork-tree',    keys: 't', description: 'Tree view', category: 'view', action: () => setViewMode('tree') },
+      { id: 'fork-list',    keys: 'l', description: 'List view', category: 'view', action: () => setViewMode('list') },
+      { id: 'fork-clear',   keys: 'esc', description: 'Clear selection', category: 'navigation', action: () => setSelectedFork(null) },
+    ],
+    { lensId: 'fork' }
+  );
 
   const { items: forkItems, isLoading, isError: isError, error: error, refetch: refetch, create, update } = useLensData<ForkData>('fork', 'fork', {
     seed: FORKS_FALLBACK,

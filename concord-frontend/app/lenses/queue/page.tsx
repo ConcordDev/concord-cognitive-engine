@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -34,6 +35,16 @@ export default function QueueLensPage() {
   const queryClient = useQueryClient();
   const [selectedQueue, setSelectedQueue] = useState<'ingest' | 'autocrawl' | 'terminal'>('ingest');
   const [showFeatures, setShowFeatures] = useState(true);
+
+  // Sidekiq / Bull / Celery idiom: i/a/t jumps between queues.
+  useLensCommand(
+    [
+      { id: 'queue-ingest',    keys: 'i', description: 'Ingest queue',    category: 'navigation', action: () => setSelectedQueue('ingest') },
+      { id: 'queue-autocrawl', keys: 'a', description: 'Autocrawl queue', category: 'navigation', action: () => setSelectedQueue('autocrawl') },
+      { id: 'queue-terminal',  keys: 't', description: 'Terminal queue',  category: 'navigation', action: () => setSelectedQueue('terminal') },
+    ],
+    { lensId: 'queue' }
+  );
 
   const { items: queueArtifacts } = useLensData('queue', 'queue', { seed: [] });
   const runAction = useRunArtifact('queue');

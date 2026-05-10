@@ -1,9 +1,10 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Boxes, Plus, CheckCircle, ArrowUp, Layers, ChevronDown, Rocket, Layout, ShoppingCart, Briefcase, UserCircle, Star, TrendingUp, Loader2, XCircle, Zap, BarChart3, Code, Ruler, ClipboardCheck, AlertTriangle } from 'lucide-react';
 import { apiHelpers } from '@/lib/api/client';
@@ -31,6 +32,20 @@ export default function AppMakerLens() {
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('app-maker');
 
   const [showFeatures, setShowFeatures] = useState(true);
+  const newNameInputRef = useRef<HTMLInputElement>(null);
+
+  // ── Keyboard shortcuts (Bubble / Glide / Retool idiom) ──────────
+  useLensCommand(
+    [
+      { id: 'new-app',        keys: 'n', description: 'Focus new-app name input', category: 'actions',    action: () => newNameInputRef.current?.focus() },
+      { id: 'tpl-crm',        keys: '1', description: 'CRM template',              category: 'view',       action: () => setSelectedTemplate('crm') },
+      { id: 'tpl-ecommerce',  keys: '2', description: 'E-commerce template',       category: 'view',       action: () => setSelectedTemplate('ecommerce') },
+      { id: 'tpl-portfolio',  keys: '3', description: 'Portfolio template',        category: 'view',       action: () => setSelectedTemplate('portfolio') },
+      { id: 'tpl-dashboard',  keys: '4', description: 'Dashboard template',        category: 'view',       action: () => setSelectedTemplate('dashboard') },
+      { id: 'toggle-features', keys: 'f', description: 'Toggle features panel',     category: 'view',       action: () => setShowFeatures((v) => !v) },
+    ],
+    { lensId: 'app-maker' }
+  );
 
   // Backend action wiring
   const runAction = useRunArtifact('appmaker');
@@ -329,10 +344,11 @@ export default function AppMakerLens() {
       {/* Create App */}
       <div className="panel p-4 flex items-center gap-3">
         <input
+          ref={newNameInputRef}
           type="text"
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
-          placeholder="New app name..."
+          placeholder="New app name…  (press N to focus)"
           className="flex-1 bg-lattice-deep border border-lattice-edge rounded px-3 py-2 text-sm"
           onKeyDown={(e) => e.key === 'Enter' && createApp()}
         />
