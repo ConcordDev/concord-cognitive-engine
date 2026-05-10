@@ -164,10 +164,18 @@ jobs:
           BRAIN_SUBCONSCIOUS_URL: http://127.0.0.1:11434
           BRAIN_UTILITY_URL: http://127.0.0.1:11434
           BRAIN_REPAIR_URL: http://127.0.0.1:11434
-          # c8 instrumentation across the full server.js (62k LOC) +
-          # all lib/ + emergent/ + economy/ pushes heap into territory
-          # the default 3.8GB can't hold. Match the build step's heap.
-          NODE_OPTIONS: --max-old-space-size=6144
+          # c8 instrumentation across the full server.js (now 67k LOC,
+          # was 62k when this comment was written) + all lib/ +
+          # emergent/ + economy/ pushes heap well past the default
+          # 3.8GB. Bumped from 6144 → 12288 because 6GB was hitting
+          # OOM on CI: the job ran ~20min, exited 1 with no failing
+          # tests in the diagnostic dump, no coverage line, no ERROR
+          # marker — the textbook signature of the test process being
+          # killed before it could write its summary. GitHub Actions
+          # Linux runners have 16GB RAM (was 7GB when the previous cap
+          # was set), so 12GB heap leaves the OS + npm wrapper +
+          # everything else 4GB to breathe.
+          NODE_OPTIONS: --max-old-space-size=12288
         # Coverage thresholds anchored at "no regression below current" —
         # current baseline is ~46% statements, ~80% branches, ~34%
         # functions, ~46% lines across the unit-test scope (which excludes
