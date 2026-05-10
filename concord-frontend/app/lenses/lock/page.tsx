@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { use70Lock } from '@/hooks/use70Lock';
@@ -90,6 +91,15 @@ export default function LockLensPage() {
   const runAction = useRunArtifact('lock');
   const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
   const [isRunning, setIsRunning] = useState<string | null>(null);
+
+  useLensCommand(
+    [
+      { id: 'open-setup',     keys: 's', description: 'Open sovereignty setup', category: 'actions', action: () => setShowSovereigntySetup(true) },
+      { id: 'close-setup',    keys: 'esc', description: 'Close sovereignty setup', category: 'navigation', action: () => setShowSovereigntySetup(false) },
+      { id: 'toggle-features', keys: 'f', description: 'Toggle features panel', category: 'view', action: () => setShowFeatures((v) => !v) },
+    ],
+    { lensId: 'lock' }
+  );
   const handleAction = async (action: string) => {
     const targetId = historyItems[0]?.id;
     if (!targetId) {

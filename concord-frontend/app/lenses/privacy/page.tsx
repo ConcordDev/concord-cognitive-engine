@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useState, useCallback, useEffect } from 'react';
@@ -443,6 +444,7 @@ export default function PrivacySharingPage() {
   }, [consentData]);
 
   // ── Save mutation ───────────────────────────────────────────────────────
+  // (declaration moved up before useLensCommand could reference it)
   const saveMutation = useMutation({
     mutationFn: async (state: ConsentState) => {
       const { data } = await api.post('/api/consent/update', {
@@ -506,6 +508,21 @@ export default function PrivacySharingPage() {
 
   // ── Stats ───────────────────────────────────────────────────────────────
   const stats = consentData?.stats ?? {};
+
+  // GitHub-settings idiom: ⌘S saves consent changes, R refreshes from
+  // backend, X opens revoke-all confirm.  All scoped to non-input
+  // contexts so a user typing in a future field doesn't fire X.
+  useLensCommand(
+    [
+      { id: 'save',       keys: 'mod+s', description: 'Save consent changes',
+        action: () => { if (dirty && !saveMutation.isPending) saveMutation.mutate(localConsent); }, global: true, category: 'actions' },
+      { id: 'refresh',    keys: 'r', description: 'Refresh consent state',
+        action: () => queryClient.invalidateQueries({ queryKey: ['consent'] }), category: 'actions' },
+      { id: 'revoke-all', keys: 'shift+r', description: 'Open revoke-all confirm',
+        action: () => setConfirmModal({ key: 'globalDTUCreation' as ConsentKey, value: false }), category: 'actions' },
+    ],
+    { lensId: 'privacy' }
+  );
 
   // ── Render ──────────────────────────────────────────────────────────────
 

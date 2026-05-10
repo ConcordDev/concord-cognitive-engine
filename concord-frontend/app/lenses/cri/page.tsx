@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useRunArtifact, useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
@@ -53,6 +54,20 @@ export default function CRILensPage() {
   const [selectedDtu, setSelectedDtu] = useState<DTUWithCRETI | null>(null);
   const [thresholdFilter, setThresholdFilter] = useState(0);
   const [showFeatures, setShowFeatures] = useState(true);
+
+  useLensCommand(
+    [
+      { id: 'sort-coherence',  keys: '1', description: 'Sort by coherence',   category: 'view', action: () => setSortKey('coherence') },
+      { id: 'sort-relevance',  keys: '2', description: 'Sort by relevance',   category: 'view', action: () => setSortKey('relevance') },
+      { id: 'sort-evidence',   keys: '3', description: 'Sort by evidence',    category: 'view', action: () => setSortKey('evidence') },
+      { id: 'sort-timeliness', keys: '4', description: 'Sort by timeliness',  category: 'view', action: () => setSortKey('timeliness') },
+      { id: 'sort-integration',keys: '5', description: 'Sort by integration', category: 'view', action: () => setSortKey('integration') },
+      { id: 'sort-composite',  keys: '0', description: 'Sort by composite',   category: 'view', action: () => setSortKey('composite') },
+      { id: 'flip-direction',  keys: 'd', description: 'Flip sort direction', category: 'view', action: () => setSortDir((d) => d === 'asc' ? 'desc' : 'asc') },
+      { id: 'close',           keys: 'esc', description: 'Close DTU detail', category: 'navigation', action: () => setSelectedDtu(null) },
+    ],
+    { lensId: 'cri' }
+  );
 
   const runAction = useRunArtifact('cri');
   // Persist run results so the operator has an audit trail of CRI actions.

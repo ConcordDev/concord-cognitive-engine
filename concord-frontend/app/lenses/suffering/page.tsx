@@ -5,6 +5,7 @@ import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -70,6 +71,14 @@ export default function SufferingLensPage() {
   };
 
   const healthScore = (metrics.homeostasis - metrics.suffering) * 100;
+
+  useLensCommand(
+    [
+      { id: 'refresh',     keys: 'r', description: 'Refresh status', category: 'actions', action: () => refetch() },
+      { id: 'new-metric',  keys: 'n', description: 'Add wellbeing metric', category: 'actions', action: () => handleCreate() },
+    ],
+    { lensId: 'suffering' }
+  );
 
 
   if (isLoading) {
