@@ -31,7 +31,21 @@ try {
   }
   process.exit(0);
 } catch (e) {
-  console.warn("[Prophet] Check failed (non-blocking):", e.message);
-  // Prophet failure should not block builds — exit clean
+  // Prophet failure should not block builds — exit clean. But it must
+  // not be silent: a Prophet bug that consistently throws would mask
+  // real build blockers from the operator.
+  console.error("\n[Prophet] ⚠ PROPHET-CHECK-ERROR — pre-flight skipped");
+  console.error(`[Prophet] reason: ${e?.message || e}`);
+  if (e?.stack) console.error(`[Prophet] stack:\n${e.stack}`);
+
+  // Persist the trace so CI can grep for it without scraping logs.
+  try {
+    const fs = await import("node:fs");
+    const path = "/tmp/prophet-check-error.log";
+    const stamp = new Date().toISOString();
+    fs.appendFileSync(path, `${stamp}\n${e?.stack || e?.message || String(e)}\n---\n`);
+    console.error(`[Prophet] trace appended to ${path}`);
+  } catch { /* trace write is best-effort */ }
+
   process.exit(0);
 }

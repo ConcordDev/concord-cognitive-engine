@@ -57,7 +57,6 @@ export function issueDirective(db, issuerId, issuerType, worldId, directive, opt
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `).run(id, worldId, issuerId, issuerType, directive, directive_type, faction, expiresAt);
 
-  // TODO: project explicit columns (auto-fix suggestion)
 
   return db.prepare('SELECT * FROM world_directives WHERE id = ?').get(id);
 }
@@ -102,7 +101,6 @@ export function voteOnDirective(db, directiveId, voterId, voterType, vote, reaso
   }
 
   // Re-read updated directive to check rejection threshold
-  // TODO: project explicit columns (auto-fix suggestion)
   const dir = db.prepare('SELECT * FROM world_directives WHERE id = ?').get(directiveId);
   if (!dir || dir.status !== 'active') {
     return { voted, directiveStatus: dir?.status ?? 'resolved' };

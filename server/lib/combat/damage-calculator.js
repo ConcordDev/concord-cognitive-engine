@@ -230,7 +230,6 @@ export function getOrInitPlayerBars(db, userId, worldId) {
          bio_power, max_bio_power, perception, max_perception)
       VALUES (?,?,?, 100,100, 100,100, 100,100, 100,100, 100,100)
     `).run(id, userId, worldId);
-    // TODO: project explicit columns (auto-fix suggestion)
     bars = db.prepare('SELECT * FROM player_resource_bars WHERE id = ?').get(id);
   }
 

@@ -19,11 +19,9 @@ export function getActiveQuests(db, userId, worldId) {
   return rows.map(q => ({
     ...q,
     objectives: db.prepare(
-      // TODO: project explicit columns (auto-fix suggestion)
       'SELECT * FROM quest_objectives WHERE quest_id = ? ORDER BY order_index'
     ).all(q.id),
     rewards: db.prepare(
-      // TODO: project explicit columns (auto-fix suggestion)
       'SELECT * FROM quest_rewards WHERE quest_id = ?'
     ).all(q.id),
   }));
@@ -150,7 +148,6 @@ export function claimQuestRewards(db, userId, worldId, questId) {
   if (pq.rewarded_at) return { ok: false, error: 'Rewards already claimed' };
 
   const rewards = db.prepare(
-    // TODO: project explicit columns (auto-fix suggestion)
     'SELECT * FROM quest_rewards WHERE quest_id = ?'
   ).all(questId);
 

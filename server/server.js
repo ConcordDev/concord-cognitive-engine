@@ -91,6 +91,37 @@ registerHeartbeat("fauna-spawner", {
   handler: runFaunaSpawner,
 });
 
+// Theme 2 (game-feel pass): boid steering for spawned fauna so creatures
+// flock/herd/scatter rather than sitting where the spawner placed them.
+// Frequency 4 (~60s) = visibly responsive without churning the DB.
+import { runCreatureFlockCycle } from "./emergent/creature-flock-cycle.js";
+registerHeartbeat("creature-flock-cycle", {
+  frequency: 4,
+  handler: runCreatureFlockCycle,
+});
+
+// Theme 3 (game-feel pass): chemistry-cascade. Turns embodied_signal_log
+// from a write-only ledger into a real substrate — fire spreads to dry
+// adjacent cells, rain damps it, hot+humid produces steam (cleansing
+// poison), very-hot drops air quality, etc. Frequency 3 (~45s); spatial
+// pre-filter keeps cost bounded regardless of log size.
+import { runSignalPropagationCycle } from "./emergent/signal-propagation-cycle.js";
+registerHeartbeat("signal-propagation-cycle", {
+  frequency: 3,
+  handler: runSignalPropagationCycle,
+});
+
+// Concordia Mount System Phase B4: care heartbeat. Backstop pass
+// applies decay to mount loyalty / hunger for offline mounts. Most
+// decay flows through the lazy-read path on `mounts.care_state`, so
+// this cycle is the safety net for mounts the player hasn't visited.
+// FF_MOUNT_CARE=0 turns the cycle into a no-op.
+import { runMountCareCycle } from "./emergent/mount-care-cycle.js";
+registerHeartbeat("mount-care-cycle", {
+  frequency: 60,
+  handler: runMountCareCycle,
+});
+
 // EvoEcosystem W3: spoiled inventory + expired buff sweep every 5 ticks.
 import { runEcoExpirySweep, applyConsumable, cookRecipe, getActiveEffects } from "./lib/ecosystem/cook-engine.js";
 registerHeartbeat("eco-expiry-sweep", {
@@ -412,6 +443,48 @@ registerHeartbeat("npc-routine-cycle", {
   handler: runNpcRoutineCycle,
 });
 
+// Sprint C / Track A4 — npc schemes / plots. Every 30 ticks (~7.5min)
+// advances scheme phases AND proposes new schemes for high-stress NPCs.
+// Kill-switch: CONCORD_NPC_SCHEMES=0.
+import { runNpcSchemeCycle } from "./emergent/npc-scheme-cycle.js";
+registerHeartbeat("npc-scheme-cycle", {
+  frequency: 30,
+  handler: runNpcSchemeCycle,
+});
+
+// Sprint C / Tracks D2+D4 — kingdom decrees + rebellion. Every 16 ticks
+// (~4min) sweeps expired decrees, recomputes citizen loyalty, advances
+// NPC-ruler decree picker, and evaluates rebellion risk per kingdom.
+// Kill-switch: CONCORD_KINGDOMS=0.
+import { runKingdomDecreeCycle } from "./emergent/kingdom-decree-cycle.js";
+registerHeartbeat("kingdom-decree-cycle", {
+  frequency: 16,
+  handler: runKingdomDecreeCycle,
+});
+
+// Sprint B Phase 9 — NPC visible sentience. Every 8 ticks (~2 minutes)
+// snapshots per-NPC perception (active grudge severity / faction-strategy
+// allied posture / mood bias) and emits npc:perception-update so the
+// frontend can drive head-turns, gait posture, and facial blends from
+// existing substrate fields. No new data; just rendering existing fields.
+// Kill-switch: CONCORD_NPC_PERCEPTION=0 (handled inside the module).
+import { runNpcPerceptionSnapshot } from "./emergent/npc-perception-snapshot.js";
+registerHeartbeat("npc-perception-snapshot", {
+  frequency: 8,
+  handler: runNpcPerceptionSnapshot,
+});
+
+// Sprint B Phase 11.4 — procgen settlement cycle. Every 240 ticks
+// (~60min) ensures every active procgen region has a populated 3-5
+// NPC settlement, and cascades decay when a region's drift alert
+// resolves. Pairs with lib/procgen-settlements.js + the existing
+// procgen-regions.js (Phase 5e).
+import { runProcgenSettlementCycle } from "./emergent/procgen-settlement-cycle.js";
+registerHeartbeat("procgen-settlement-cycle", {
+  frequency: 240,
+  handler: runProcgenSettlementCycle,
+});
+
 // Phase 4b: NPC living economy. Every 8 ticks (~2min, staggered behind
 // the routine cycle so most NPCs have arrived) NPCs at their workplaces
 // gather / craft / trade / consume. Every action writes to economy_flows;
@@ -628,6 +701,7 @@ registerHeartbeat("environment-sense", {
 });
 import { ConcordError } from "./lib/errors.js";
 import { asyncHandler } from "./lib/async-handler.js";
+import { serverError, configureHttpErrorLogger } from "./lib/http-errors.js";
 import { init as initGRC, formatAndValidate as grcFormatAndValidate, getGRCSystemPrompt } from "./grc/index.js";
 import configureMiddleware from "./middleware/index.js";
 import { createLLMQueue, PRIORITY } from "./lib/llm-queue.js";
@@ -660,6 +734,10 @@ import { generateEntityName, migrateEntityNames as runEntityNameMigration, isFun
 import { validateSafeFetchUrl as _ssrfValidate, isUrlSafeAsync as _ssrfIsSafeAsync, fetchWithPinnedIp as _ssrfFetchPinned } from "./lib/ssrf-guard.js";
 import { registerCitation as economyRegisterCitation } from "./economy/royalty-cascade.js";
 import { checkAccess as economyCheckAccess } from "./economy/rights-enforcement.js";
+// DX Platform Phase A1 — per-call billing + per-user quota for macros.
+// Wired into runMacro below (rate-limit check + macro:afterExecute hook).
+import { billMacroCall } from "./lib/macro-billing.js";
+import { checkUserQuota, incrementUserQuota } from "./lib/macro-quota.js";
 // World Lens / MMO presence system
 import * as cityPresence from "./lib/city-presence.js";
 import * as worldMechanics from "./lib/world-mechanics.js";
@@ -704,6 +782,7 @@ import createSovereignEmergentRouter from "./routes/sovereign-emergent.js";
 import { createUserDispatchRouter } from "./routes/user-dispatch.js";
 import createFederationRouter from "./routes/federation.js";
 import registerOAuthRoutes from "./routes/oauth.js";
+import { mountDxOAuth } from "./routes/dx-oauth.js";
 import createAuditRouter from "./routes/audit.js";
 import createMCPRouter from "./routes/mcp.js";
 import { QualiaEngine, hooks as qualiaHooks } from "./existential/index.js";
@@ -1210,6 +1289,14 @@ const EXPENSIVE_MACROS = new Map([
   ["discovery.search",   { maxPerMinute: 30, windowMs: 60000 }],
   ["discovery.facets",   { maxPerMinute: 30, windowMs: 60000 }],
   ["discovery.trending", { maxPerMinute: 30, windowMs: 60000 }],
+
+  // DX Platform Phase A1 — global RPS caps for billing read-surface.
+  // Per-user caps live in lib/macro-quota.js (MACRO_USER_LIMITS).
+  ["billing.usage",            { maxPerMinute: 60,  windowMs: 60000 }],
+  ["billing.balance",          { maxPerMinute: 120, windowMs: 60000 }],
+  ["billing.history",          { maxPerMinute: 60,  windowMs: 60000 }],
+  ["billing.getCurrentQuota",  { maxPerMinute: 240, windowMs: 60000 }],
+  ["billing.priceForMacro",    { maxPerMinute: 240, windowMs: 60000 }],
 ]);
 
 function checkMacroRateLimit(domain, name) {
@@ -1820,6 +1907,11 @@ function structuredLog(level, event, data = {}) {
 
   return entry;
 }
+
+// Inject structuredLog into the http-errors helper so 5xx leak responses
+// log through the same pipeline as the rest of the server. Until this
+// runs, the helper falls back to console.error — safe but louder.
+configureHttpErrorLogger(structuredLog);
 
 // HTTP request logging middleware
 function requestLoggerMiddleware(req, res, next) {
@@ -6194,6 +6286,21 @@ async function initMetrics() {
       registers: [METRICS.registry]
     });
 
+    // Per-block heartbeat timing. Every call through runHeartbeatModule
+    // observes its duration here so a Grafana panel + alert can name the
+    // exact block that is starving the next tick. Buckets are tuned for
+    // the 15s tick interval — anything past 5s is already concerning.
+    // Alert rule lives in monitoring/prometheus/alerts.yml
+    // (ConcordHeartbeatBlockSlow): histogram_quantile(0.99,
+    //   rate(concord_heartbeat_block_ms_bucket[5m])) > 10000.
+    METRICS.histograms.heartbeatBlockMs = new prom.Histogram({
+      name: "concord_heartbeat_block_ms",
+      help: "Wall-clock duration of an individual heartbeat tick block (ms), labeled by module",
+      labelNames: ["module"],
+      buckets: [10, 50, 100, 250, 500, 1000, 2500, 5000, 10000, 30000],
+      registers: [METRICS.registry]
+    });
+
     structuredLog("info", "metrics_initialized", { provider: "prometheus" });
   } catch (e) {
     structuredLog("error", "metrics_init_failed", { error: e.message });
@@ -6798,6 +6905,28 @@ function emitToUser(userId, event, payload) {
   }
 }
 
+/**
+ * Sprint B Phase 11.3 helper — broadcast to every client subscribed to
+ * a world room. Used by walker:dispatched (cross-world journeys) and by
+ * future per-world events that don't fit through realtimeEmit's global
+ * fanout. Same enrichment pattern (ts/_seq/_evt) as emitToUser.
+ */
+function emitToWorld(worldId, event, payload) {
+  if (!worldId || !REALTIME?.io) return { ok: false, reason: "no_target_or_realtime" };
+  try {
+    const enriched = {
+      ...payload,
+      ts: nowISO(),
+      _seq: ++_eventSeqCounter,
+      _evt: event,
+    };
+    REALTIME.io.to(`world:${worldId}`).emit(event, enriched);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, reason: String(e?.message || e) };
+  }
+}
+
 function realtimeEmit(event, payload, { sessionId = "", orgId = "", requestId = "" } = {}) {
   // ---- Event Ordering & Correlation (Category 2+5: Concurrency + Observability) ----
   const enrichedPayload = {
@@ -6909,6 +7038,68 @@ async function tryInitWebSockets(server) {
   REALTIME.io = io;
   REALTIME.ready = true;
   globalThis._concordREALTIME = REALTIME;
+  // Alias for legacy consumers using the all-caps double-underscore form
+  // (combat-polish, lattice-quest-cycle, personal-beat-scheduler, procgen-regions,
+  // seasons, embodied/signals). Both names point at the same REALTIME object.
+  globalThis.__CONCORD_REALTIME__ = REALTIME;
+
+  // DX Platform Phase A3 — attach the /dx namespace for editor-plugin
+  // clients. Plugin clients connect with a JWT or a `csk_*` API key,
+  // join `codebase:${id}` rooms, and receive detector/repair events
+  // streamed live (no polling). Per-user connection cap prevents
+  // accidental reconnect-storm loops in plugin development.
+  // FF_DX_SOCKET=0 disables the namespace (clients receive 503 on connect).
+  try {
+    const { attachDxStream } = await import("./lib/dx/dx-socket-bus.js");
+    // Custom socket.io namespaces do not share middleware with the root
+    // `/` namespace, so the root io.use() above does NOT authenticate
+    // /dx handshakes. Pass an explicit validator so the namespace
+    // verifies cookie / Bearer / API-key the same way the root middleware
+    // does — never trusting client-supplied auth.userId.
+    const dxValidateAuth = (socket) => {
+      const cookies = parseCookies(socket.handshake.headers?.cookie || "");
+      const cookieToken = cookies.concord_auth;
+      if (cookieToken) {
+        const decoded = verifyToken(cookieToken);
+        if (decoded?.userId) {
+          const u = AuthDB.getUser(decoded.userId);
+          if (u) return { userId: u.id, authMethod: "cookie" };
+        }
+      }
+      const bearer = socket.handshake.auth?.token
+        || socket.handshake.headers?.authorization?.replace("Bearer ", "");
+      if (bearer) {
+        const decoded = verifyToken(bearer);
+        if (decoded?.userId) {
+          const u = AuthDB.getUser(decoded.userId);
+          if (u) return { userId: u.id, authMethod: "bearer" };
+        }
+      }
+      const apiKey = socket.handshake.auth?.apiKey
+        || socket.handshake.headers?.["x-api-key"];
+      if (apiKey) {
+        // API keys are 256-bit random tokens (`crypto.randomBytes(32)` in
+        // `generateApiKey`), not human-chosen passwords. SHA-256 in
+        // `verifyApiKey` is correct for high-entropy tokens; slow KDFs only
+        // matter when the input is brute-forceable. CodeQL flags
+        // `js/insufficient-password-hash` on this dataflow — suppressed at
+        // the workflow level via `query-filters` in
+        // `.github/workflows/codeql.yml`.
+        for (const keyData of AuthDB.getAllApiKeys()) {
+          if (keyData.keyHash && verifyApiKey(apiKey, keyData.keyHash)) {
+            const u = AuthDB.getUser(keyData.userId);
+            if (u) return { userId: u.id, authMethod: "apiKey" };
+          }
+        }
+      }
+      return null;
+    };
+    const dxr = attachDxStream(io, { validateAuth: dxValidateAuth });
+    if (dxr?.ok) structuredLog("info", "dx_socket_attached", { ns: "/dx" });
+    else if (dxr?.reason) structuredLog("warn", "dx_socket_skipped", { reason: dxr.reason });
+  } catch (e) {
+    console.warn("[Concord] DX socket attach failed:", e.message);
+  }
 
   // Horizontal scaling: attach Redis pub/sub adapter when REDIS_URL is set
   if (process.env.REDIS_URL) {
@@ -7413,6 +7604,18 @@ async function tryInitWebSockets(server) {
 
         // Broadcast the hit event so everyone in the attacker's
         // chunk sees it — damage numbers, blood, etc.
+        // Theme 5 (game-feel pass): include target + attacker positions
+        // so the client damage-billboard layer can world-anchor the
+        // damage number and the kinematic knockback can derive its
+        // direction without a second lookup. Best-effort — both fields
+        // are listed as optional in event-shapes.js.
+        let _hitTargetPos = null, _hitAttackerPos = null;
+        try {
+          _hitTargetPos = cityPresence.getPositionFor?.(data.targetId)
+            || cityPresence.getUserPosition?.(data.targetId)
+            || null;
+          _hitAttackerPos = cityPresence.getUserPosition?.(userId) || null;
+        } catch { /* position lookup best-effort */ }
         realtimeEmit("combat:hit", {
           attackerId: userId,
           targetId: data.targetId,
@@ -7421,6 +7624,8 @@ async function tryInitWebSockets(server) {
           targetHealth: result.targetHealth,
           targetMaxHealth: result.targetMaxHealth,
           targetKilled: result.targetKilled,
+          targetPosition: _hitTargetPos,
+          attackerPosition: _hitAttackerPos,
         });
 
         // Companion assist XP: deployed companions of the attacker get
@@ -7442,6 +7647,36 @@ async function tryInitWebSockets(server) {
             attackerId: userId,
             targetId: data.targetId,
           });
+
+          // Theme deferred (game-feel pass): drop a shadow corpse for
+          // PLAYER deaths only. NPCs leave loot via a different path.
+          // Look up target as user — if found, drop a corpse at the
+          // last known position. Skipped inside training matches
+          // (handled below) where loot stakes are explicitly off.
+          try {
+            const isPlayer = !!db.prepare(`SELECT 1 FROM users WHERE id = ?`).get(data.targetId);
+            const inTraining = !!db.prepare(`
+              SELECT 1 FROM training_matches
+              WHERE status IN ('active', 'reset')
+                AND ((initiator_id = ? AND opponent_id = ?) OR (initiator_id = ? AND opponent_id = ?))
+              LIMIT 1
+            `).get(userId, data.targetId, data.targetId, userId);
+            if (isPlayer && !inTraining) {
+              const tp = (typeof cityPresence?.getUserPosition === "function")
+                ? cityPresence.getUserPosition(data.targetId)
+                : null;
+              if (tp && Number.isFinite(tp.x) && Number.isFinite(tp.z)) {
+                import("./lib/player-corpse.js").then(({ dropCorpseOnDeath }) => {
+                  dropCorpseOnDeath(db, {
+                    userId: data.targetId,
+                    worldId: tp.cityId || data.worldId || "concordia-hub",
+                    position: { x: tp.x, y: tp.y, z: tp.z },
+                    cause: "combat",
+                  });
+                }).catch(() => { /* corpse drop best-effort */ });
+              }
+            }
+          } catch { /* corpse drop best-effort */ }
 
           // PvP training match round end. If attacker + target are both in
           // an active training match together, record the round and let the
@@ -9238,6 +9473,47 @@ async function runMacro(domain, name, input, ctx) {
     return { ok: false, error: "rate_limited", retryAfterMs: 60000 };
   }
 
+  // DX Platform Phase A1 — per-user quota check.
+  // Independent from the global EXPENSIVE_MACROS limit above. Plugin /
+  // SDK clients carry an api_key_id (set by the api-key auth middleware)
+  // and are subject to per-(user, macro, minute) caps. Free-tier
+  // cookie-auth users are not gated here.
+  // Tracking start time for the macro:afterExecute billing hook below.
+  const _macroStart = Date.now();
+  // API-key auth populates apiKeyId in reqMeta (see /api/v1/lens/:domain/:action
+  // route); cookie/JWT paths can also set it on actor or directly on ctx.
+  // Read from all three so paid traffic actually goes through quota + billing.
+  const _macroApiKeyId = ctx?.actor?.apiKeyId || ctx?.apiKeyId || ctx?.reqMeta?.apiKeyId || null;
+  // Client-supplied idempotency key (Idempotency-Key header threaded into
+  // reqMeta) used to deduplicate ledger writes on retries. Optional — when
+  // missing we mint a per-call UUID so each invocation still gets a unique
+  // refId, but a retrying client MUST pass the same Idempotency-Key for the
+  // ledger to deduplicate.
+  const _macroIdemKey = ctx?.reqMeta?.idempotencyKey || ctx?.idempotencyKey || null;
+  const _macroUserId = actor?.userId && actor.userId !== "system" ? actor.userId : null;
+  const _macroDb = ctx?.db || STATE?.db || null;
+  if (_macroApiKeyId && _macroUserId && _macroDb) {
+    try {
+      const q = checkUserQuota(_macroDb, _macroUserId, domain, name);
+      if (!q.ok) {
+        try {
+          billMacroCall(_macroDb, {
+            userId: _macroUserId,
+            apiKeyId: _macroApiKeyId,
+            domain,
+            name,
+            durationMs: 0,
+            status: "quota_exceeded",
+            refId: _macroIdemKey
+              ? `${_macroApiKeyId}:idem:${_macroIdemKey}:quota`
+              : `${_macroApiKeyId}:quota:${crypto.randomUUID()}`,
+          });
+        } catch (e) { observe(e, "macro_billing_log_quota_exceeded"); }
+        return { ok: false, error: "quota_exceeded", retryAfterMs: q.retryAfterMs ?? 60000, limit: q.limit };
+      }
+    } catch (e) { observe(e, "macro_user_quota_check"); /* fail-open */ }
+  }
+
   // Chicken2: reality guard (full blast) with founder recovery valve
   // NOTE: Read-only DTU hydration must never be blocked (frontend boot path).
   const _path = ctx?.reqMeta?.path || "";
@@ -9273,6 +9549,33 @@ async function runMacro(domain, name, input, ctx) {
     reflection: new Set(["status", "list"]),
     temporal: new Set(["status", "get"]),
     inference: new Set(["status", "traces", "spans", "threads", "checkpoints", "sandboxes", "costs", "query"]),
+    // (The dx domain is registered later in this file with the
+    //  full DX-Platform macro set; the onboarding macros
+    //  `onboarding_progress` and `welcome` are appended to that
+    //  Set to avoid a duplicate-key lint error.)
+    // npc_legacy (Sprint B Phase 11.1) — read-only tomb / last-words /
+    // inheritance surface for the frontend TombMarker + InheritanceLog UI.
+    npc_legacy: new Set(["tombs_for_world", "get", "inheritance_for_heir"]),
+    // faction_strategy (Sprint B Phase 10) — Crucible HUD reads
+    // recent_moves + get_relation; witness_next_move is the cross-
+    // world signature quest's objective-completion macro.
+    faction_strategy: new Set(["recent_moves", "get_relation", "witness_next_move"]),
+    // procgen (Sprint B Phase 11.4) — settlement NPC reads for the
+    // world page. The substrate populates via heartbeat; this is
+    // the read surface.
+    procgen: new Set(["npcs_for_world", "npcs_in_region"]),
+    // dx — DX Platform: onboarding lens (`onboarding_progress`, `welcome`),
+    // codebase registry + repair-feedback evo (Phase A2), shadow DTU helpers.
+    // Plugin clients call these via API key; cookie-auth web users see the
+    // same surface for the onboarding lens + dashboard. Mutating macros
+    // (record_*, upsert_*) are caller-scoped via codebase ownership in
+    // the handler.
+    dx: new Set([
+      "onboarding_progress", "welcome",
+      "register_codebase", "touch_codebase", "list_codebases",
+      "record_fix_decision", "list_weights", "weighted_findings",
+      "upsert_shadow", "list_shadows", "get_weight",
+    ]),
     messaging: new Set(["status", "bindings", "connect", "verify", "messages"]),
     sandbox: new Set(["create", "status", "action", "list", "pause", "resume"]),
     collab: new Set(["comments", "revisions", "workspace", "edit-session", "create", "update", "delete", "join"]),
@@ -9384,14 +9687,26 @@ async function runMacro(domain, name, input, ctx) {
     dtu_portability: new Set(["export", "validate", "import"]),
     // Phase 6c: discovery — read-only.
     discovery: new Set(["search", "facets", "trending"]),
-    // Concordia Mount System Phase B1+B2+B3 — species lookup + proximity
-    // browse + riding state machine + gear authoring + stat folding.
-    // Mutating macros are caller-scoped via ownership checks in the handler.
+    // Concordia Mount System Phase B1+B2+B3+B4 — species + riding +
+    // gear + care + evolution + mounted-combat overlay. All mutating
+    // macros caller-scoped via ownership checks in the handler.
     mounts: new Set([
       "list_species", "get_species", "get_gait", "list_mountable", "list_eligible_nearby",
       "tame", "mount", "dismount", "get_active_mount", "history",
       "validate_gear_recipe", "equip_gear", "unequip_gear", "compute_stats", "get_equipped_gear",
+      "feed", "groom", "rest", "care_state",
+      "evolution_state", "gain_xp",
+      "combat_overlay", "applied_profile",
     ]),
+    // DX Platform Phase A1: billing — read-only macros for usage,
+    // balance, history, current quota, and per-macro pricing. Plugin
+    // API keys with the `billing.balance` scope hit these from the
+    // editor status bar and the dashboard lens.
+    billing: new Set(["usage", "balance", "history", "getCurrentQuota", "priceForMacro"]),
+    // DX Platform Phase A2 macros are merged into the `dx:` entry above —
+    // JS object literals coalesce duplicate keys and the latter wins,
+    // which silently dropped onboarding_progress + welcome from the
+    // publicReadDomains gate. The merged Set lives in the earlier dx entry.
     // Governance: read-mostly + caller-driven write macros.
     governance: new Set([
       "open_proposal", "cast_vote", "tally", "resolve",
@@ -9506,7 +9821,7 @@ async function runMacro(domain, name, input, ctx) {
 
   // ── NUCLEAR FIX: Authenticated users bypass c2 guard entirely ──────────
   // The c2 guard exists to prevent autonomous/system operations from creating
-  // garbage, NOT to prevent humans from using the product. 175 lenses × N
+  // garbage, NOT to prevent humans from using the product. 205 lenses × N
   // operations = too many combinations to allowlist. If a user is logged in
   // and clicking buttons, let them through. Period.
   const _isAuthenticatedUser =
@@ -9613,6 +9928,36 @@ async function runMacro(domain, name, input, ctx) {
     };
   }
   try { fireHook(STATE, "macro:afterExecute", { domain, name, result }); } catch (e) { observe(e, "macro_hook_after_execute_main"); }
+
+  // DX Platform Phase A1 — per-call billing. Logs every call to
+  // macro_call_log; charges the user wallet via FEE ledger entry when
+  // the call carried an api_key_id. Best-effort — never throws.
+  if (_macroDb) {
+    try {
+      // Prefer client-supplied idempotency key so retries collapse to one
+      // FEE entry; fall back to a per-call UUID when the client didn't
+      // pass one. Avoid Date.now() + Math.random() — the prior shape
+      // looked random but two retries always hashed differently and
+      // double-charged.
+      const _refId = _macroApiKeyId
+        ? (_macroIdemKey
+            ? `${_macroApiKeyId}:idem:${_macroIdemKey}`
+            : `${_macroApiKeyId}:${crypto.randomUUID()}`)
+        : null;
+      billMacroCall(_macroDb, {
+        userId: _macroUserId,
+        apiKeyId: _macroApiKeyId,
+        domain,
+        name,
+        durationMs: Date.now() - _macroStart,
+        status: result?.ok === false ? "error" : "ok",
+        refId: _refId,
+      });
+      if (_macroUserId && _macroApiKeyId) {
+        incrementUserQuota(_macroDb, _macroUserId, domain, name);
+      }
+    } catch (e) { observe(e, "macro_billing_after_execute"); }
+  }
 
   // Institutional memory: record significant actions
   if (!_domainNameAllowed && _method !== "GET") {
@@ -22844,6 +23189,20 @@ registerKnowledgeTradeMacros(register);
 // inserts beats; these macros let the player surface and resolve them.
 import registerBeatsMacros from "./domains/beats.js";
 registerBeatsMacros(register);
+import registerSecretsMacros from "./domains/secrets.js";
+registerSecretsMacros(register);
+import registerSchemesMacros from "./domains/schemes.js";
+registerSchemesMacros(register);
+import registerKingdomsMacros from "./domains/kingdoms.js";
+registerKingdomsMacros(register);
+import registerBuildingsMacros from "./domains/buildings.js";
+registerBuildingsMacros(register);
+import registerOxygenMacros from "./domains/oxygen.js";
+registerOxygenMacros(register);
+import registerFactionsMacros from "./domains/factions.js";
+registerFactionsMacros(register);
+import registerVoiceTTSMacros from "./domains/voice-tts.js";
+registerVoiceTTSMacros(register);
 
 // Phase 5a — Land claims. claim / invite / topup / claim_at / can_act_in /
 // list_for_user macros for the world lens to interrogate the substrate.
@@ -22871,14 +23230,72 @@ registerDtuPortabilityMacros(register);
 import registerDiscoveryMacros from "./domains/discovery.js";
 registerDiscoveryMacros(register);
 
+// Theme deferred (game-feel pass): async-cooperation player signs.
+// Register the macro domain + the cleanup heartbeat.
+import registerPlayerSignsMacros from "./domains/player-signs.js";
+registerPlayerSignsMacros(register);
+import { runPlayerSignsCleanup } from "./emergent/player-signs-cleanup.js";
+registerHeartbeat("player-signs-cleanup", {
+  frequency: 240,
+  handler: runPlayerSignsCleanup,
+});
+
+// Theme deferred (game-feel pass): hidden quest triggers — substrate
+// for unmarked, environment-gated quest activation. Pure runMacro
+// surface; no heartbeat (callers evaluate inline as players move /
+// talk / hand items).
+import registerHiddenQuestsMacros from "./domains/hidden-quests.js";
+registerHiddenQuestsMacros(register);
+
+// Theme deferred (game-feel pass): shadow-corpse substrate (Dark Souls
+// loss/recovery on player death). Three macros: drop / active / recover.
+import registerPlayerCorpseMacros from "./domains/player-corpse.js";
+registerPlayerCorpseMacros(register);
+
 // Governance — proposals + votes on constitutional constants. The
 // constants themselves remain code-level; this layer is the audit trail.
 import registerGovernanceMacros from "./domains/governance.js";
 registerGovernanceMacros(register);
 
+// DX Platform Phase A1 — per-call billing read surface. Plugin / SDK
+// users hit billing.{usage,balance,history,getCurrentQuota,priceForMacro}
+// to render the status bar + dashboard. See lib/macro-billing.js +
+// lib/macro-quota.js for the write side (called from runMacro hooks).
+import registerDxBillingMacros from "./domains/dx-billing.js";
+registerDxBillingMacros(register);
+
+// DX Platform Phase A2 — codebase registry + repair-feedback evo +
+// shadow DTU upsert. Plugin sidebar accept/reject signal feeds severity
+// weights so noisy rules quietly demote per codebase. See
+// lib/dx/codebase-registry.js + lib/dx/severity-evo.js.
+import registerDxMacros from "./domains/dx.js";
+registerDxMacros(register, STATE);
+
 // Phase 8 — Combat polish surface for the HUD.
 import registerCombatPolishMacros from "./domains/combat-polish.js";
 registerCombatPolishMacros(register);
+
+// (Audit-phase 7.5 onboarding macros (dx.onboarding_progress / dx.welcome)
+//  are merged into the dx domain registered above at server.js:23084.)
+
+// Sprint B Phase 11.1 — NPC legacy / tomb / inheritance surface for the
+// frontend. The substrate (Phase 5b: lib/npc-legacy.js + migration 133)
+// shipped the data; this domain is the read-only lookup surface so
+// players can see tombs, last words, and inheritance lineage.
+import registerNpcLegacyMacros from "./domains/npc-legacy.js";
+registerNpcLegacyMacros(register);
+
+// Sprint B Phase 10 — faction-strategy surface for the cross-world
+// signature quest's witness_next_move objective + the Crucible HUD's
+// recent_moves / get_relation reads.
+import registerFactionStrategyMacros from "./domains/faction-strategy.js";
+registerFactionStrategyMacros(register);
+
+// Sprint B Phase 11.4 — procgen settlement NPC reads for the world
+// page. The substrate fills these via the procgen-settlement-cycle
+// heartbeat above; this domain is the player-facing read surface.
+import registerProcgenSettlementMacros from "./domains/procgen-settlements.js";
+registerProcgenSettlementMacros(register);
 
 // Concordia Procedural Mount System Phase B1 — read-only macros for
 // mount species lookup + eligible-companion + nearby-creature browsing.
@@ -26580,6 +26997,20 @@ registerSystemRoutes(app, {
 // ---- Audit Log Endpoints (extracted to routes/audit.js) ----
 app.use("/api/audit", createAuditRouter({ requireRole, db }));
 
+// Sprint D / CC1 — serve cached voice synthesis files. Path: /voice-cache/*.mp3
+import * as __voice_cache_express from "express";
+import * as __voice_cache_path from "node:path";
+import { fileURLToPath as __voice_cache_fileURLToPath } from "node:url";
+const __VOICE_CACHE_DIR = __voice_cache_path.resolve(
+  __voice_cache_path.dirname(__voice_cache_fileURLToPath(import.meta.url)),
+  "data/voice-cache",
+);
+try {
+  app.use("/voice-cache", __voice_cache_express.default.static(__VOICE_CACHE_DIR, {
+    fallthrough: false, maxAge: "30d", immutable: true,
+  }));
+} catch { /* cache dir may not exist on first boot — created lazily by voice-synthesis.js */ }
+
 // ---- Auth Endpoints (extracted to routes/auth.js) ----
 app.use("/api/auth", createAuthRouter({
   AuthDB,
@@ -26637,6 +27068,17 @@ registerOAuthRoutes(app, {
   structuredLog,
   jwt,
   _REFRESH_FAMILIES,
+});
+
+// ---- DX Platform OAuth (IDE plugin sign-in via loopback redirect) ----
+// AUTH: gated below — the consent endpoint renders a sign-in prompt
+// when req.user is missing; /oauth/dx/grant is requireAuth-protected.
+mountDxOAuth(app, {
+  requireAuth,
+  getUserById: (uid) => {
+    try { return AuthDB.getUserById ? AuthDB.getUserById(uid) : null; }
+    catch { return null; }
+  },
 });
 
 // Backup endpoints extracted to routes/system.js
@@ -28459,7 +28901,7 @@ if (db) {
     } catch (e) { console.warn("[quest-engine]", e.message); }
     // Seed authored world content (factions, NPCs, lore, quest chains) into
     // in-memory systems. Must run after world seed so history engine is ready.
-    try { seedContent({ db }); } catch (e) { console.warn("[content-seeder]", e.message); }
+    try { await seedContent({ db }); } catch (e) { console.warn("[content-seeder]", e.message); }
     // Starter content — recipes + hostile spawns. Idempotent; safe on every boot.
     try {
       const starter = await import("./lib/starter-content.js");
@@ -28692,7 +29134,7 @@ app.use("/api/anomalies", createAnomaliesRouter({ requireAuth, db }));
 
 // The Concord Link — cross-world communication substrate.
 import createConcordLinkRouter from "./routes/concord-link.js";
-app.use("/api/concord-link", createConcordLinkRouter({ requireAuth, db, emitToUser }));
+app.use("/api/concord-link", createConcordLinkRouter({ requireAuth, db, emitToUser, emitToWorld }));
 
 // Link Walker bazaar + journey tracking. Mounted as a sub-path under
 // concord-link so the panel UI can stay co-located.
@@ -30340,6 +30782,7 @@ const _tickHistory = [];
  * Return value is the function's resolved value or undefined on error.
  */
 async function runHeartbeatModule(name, fn) {
+  const __start = Date.now();
   try {
     return await fn();
   } catch (err) {
@@ -30348,6 +30791,12 @@ async function runHeartbeatModule(name, fn) {
       METRICS?.counters?.heartbeatModuleErrors?.inc({ module: name });
     } catch { /* metrics best-effort */ }
     return undefined;
+  } finally {
+    const __ms = Date.now() - __start;
+    try { METRICS?.histograms?.heartbeatBlockMs?.observe({ module: name }, __ms); } catch { /* metrics best-effort */ }
+    if (__ms > 5000) {
+      try { structuredLog("warn", "heartbeat_block_slow", { module: name, ms: __ms }); } catch { /* logging best-effort */ }
+    }
   }
 }
 
@@ -30633,13 +31082,15 @@ async function governorTick(reason="heartbeat") {
 
       // 2.4 — Forgetting Engine: prevent unbounded DTU growth
       if (_tick % TICK_FREQUENCIES.FORGETTING === 0) {
-        const forgetMod = await import("./emergent/forgetting-engine.js").catch(() => null);
-        if (forgetMod?.runForgettingCycle) {
-          try { await forgetMod.runForgettingCycle(false, {
-            maxForget: FORGETTING.MAX_FORGET_PER_CYCLE,
-            threshold: computeAdaptiveThreshold()
-          }); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
-        }
+        await runHeartbeatModule("forgetting", async () => {
+          const forgetMod = await import("./emergent/forgetting-engine.js").catch(() => null);
+          if (forgetMod?.runForgettingCycle) {
+            await forgetMod.runForgettingCycle(false, {
+              maxForget: FORGETTING.MAX_FORGET_PER_CYCLE,
+              threshold: computeAdaptiveThreshold()
+            });
+          }
+        });
       }
 
       // 2.5 — Entity Teaching: knowledge transfer between entities
@@ -30722,25 +31173,26 @@ async function governorTick(reason="heartbeat") {
 
       // Breakthrough Clusters — every 100th tick
       if (_tick % TICK_FREQUENCIES.BREAKTHROUGH_CLUSTERS === 0) {
-        const breakthroughMod = await import("./emergent/breakthrough-clusters.js").catch(() => null);
-        if (breakthroughMod?.listClusters) {
-          try {
-            const clusters = breakthroughMod.listClusters();
-            for (const c of clusters) {
-              if (c.status === "active") {
-                try { breakthroughMod.triggerClusterResearch(c.id); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
-              }
+        await runHeartbeatModule("breakthrough_clusters", async () => {
+          const breakthroughMod = await import("./emergent/breakthrough-clusters.js").catch(() => null);
+          if (!breakthroughMod?.listClusters) return;
+          const clusters = breakthroughMod.listClusters();
+          for (const c of clusters) {
+            if (c.status === "active") {
+              try { breakthroughMod.triggerClusterResearch(c.id); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
             }
-          } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
-        }
+          }
+        });
       }
 
       // Meta-Derivation — every 200th tick
       if (_tick % TICK_FREQUENCIES.META_DERIVATION === 0) {
-        const metaMod = await import("./emergent/meta-derivation.js").catch(() => null);
-        if (metaMod?.triggerMetaDerivationCycle) {
-          try { metaMod.triggerMetaDerivationCycle(STATE); } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
-        }
+        await runHeartbeatModule("meta_derivation", async () => {
+          const metaMod = await import("./emergent/meta-derivation.js").catch(() => null);
+          if (metaMod?.triggerMetaDerivationCycle) {
+            metaMod.triggerMetaDerivationCycle(STATE);
+          }
+        });
       }
 
       // Feedback Engine — process user feedback queue every FEEDBACK.PROCESS_INTERVAL ticks
@@ -30832,8 +31284,11 @@ async function governorTick(reason="heartbeat") {
       // ── Consolidation Pipeline (derived from hardware math) ──
       // Runs every CONSOLIDATION.TICK_INTERVAL ticks (~7.5 minutes)
       // This is the primary memory management system — consolidation is the lungs.
+      // Wrapped via runHeartbeatModule so timing lands in
+      // concord_heartbeat_block_ms{module="consolidation"} — this block
+      // is the most likely heartbeat-overrun culprit at scale.
       if (_tick % TICK_FREQUENCIES.CONSOLIDATION === 0 && _tick > 0) {
-        try {
+        await runHeartbeatModule("consolidation", async () => {
           const ctx = _governorCtx();
           // Phase 1: Cluster detection for MEGA formation
           try {
@@ -30936,7 +31391,7 @@ async function governorTick(reason="heartbeat") {
               }
             } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
           }
-        } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+        });
       }
 
       // Heap pressure check
@@ -30956,16 +31411,16 @@ async function governorTick(reason="heartbeat") {
         const activeSessions = Array.from(STATE.sessions?.values() || [])
           .filter(s => s.messages?.length && (Date.now() - new Date(s.messages[s.messages.length-1]?.ts || 0).getTime()) < 300000);
         if (activeSessions.length === 0) {
-          try {
+          await runHeartbeatModule("dream_review", async () => {
             const { runDreamReview } = await import("./selfHealing.js");
             await runDreamReview({ dtusMap: STATE.dtus });
-          } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+          });
         }
       }
 
       // Embeddings health check — every 100th tick
       if (_tick % TICK_FREQUENCIES.EMBEDDINGS_CHECK === 0) {
-        try {
+        await runHeartbeatModule("embeddings_check", async () => {
           const embStatus = getEmbeddingStatus(STATE.dtus?.size || 0);
           if (!embStatus?.available) {
             structuredLog("warn", "embeddings_degraded", {
@@ -30974,7 +31429,7 @@ async function governorTick(reason="heartbeat") {
               impact: "semantic_search_disabled"
             });
           }
-        } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+        });
       }
 
       // ══════════════════════════════════════════════════════════════════════
@@ -40214,7 +40669,12 @@ app.post("/api/v1/lens/:domain/:action", requireApiKey(), async (req, res) => {
         role: req.apiKey.role || "member",
         scopes: Array.isArray(req.apiKey.scopes) ? req.apiKey.scopes : ["read", "write"],
       },
-      reqMeta: { path: req.path, method: req.method, apiKeyId: req.apiKey.id },
+      reqMeta: {
+        path: req.path,
+        method: req.method,
+        apiKeyId: req.apiKey.id,
+        idempotencyKey: req.get("idempotency-key") || req.get("x-idempotency-key") || null,
+      },
     };
     const result = await runMacro(domain, action, safeInput, apiCtx);
 
@@ -63095,7 +63555,7 @@ app.post('/api/economic/tokens/purchase', async (req, res) => {
     res.json({ sessionId: session.id, url: session.url });
   } catch (e) {
     console.error('[Economic] Token purchase error:', e);
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -63146,7 +63606,7 @@ app.post('/api/economic/subscribe', asyncHandler(async (req, res) => {
     res.json({ sessionId: session.id, url: session.url });
   } catch (e) {
     console.error('[Economic] Subscribe error:', e);
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 }));
 
@@ -63239,7 +63699,7 @@ app.post('/api/economic/webhook', async (req, res) => {
     res.json({ received: true });
   } catch (e) {
     console.error('[Economic] Webhook processing error:', e);
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -63314,7 +63774,7 @@ app.post('/api/economic/marketplace/list', (req, res) => {
       message: `${MARKETPLACE_ASSET_TYPES[assetType].name} listed successfully`,
     });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -63346,7 +63806,7 @@ app.patch('/api/economic/marketplace/listing/:listingId', (req, res) => {
 
     res.json({ listing, message: 'Listing updated' });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -63512,7 +63972,7 @@ app.post('/api/economic/marketplace/buy', (req, res) => {
       breakdown: { creatorAmount, royaltyAmount, treasuryAmount, marketplaceFee },
     });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -63632,7 +64092,7 @@ app.post('/api/economic/marketplace/review', (req, res) => {
 
     res.json({ message: 'Review added', rating: listing.rating, reviewCount: listing.reviews.length });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -63926,7 +64386,7 @@ app.post('/api/realm/publish-to-global', (req, res) => {
       publishRequest: { id: publishRequest.id, dtuId, status: 'pending' },
     });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -64007,7 +64467,7 @@ app.post('/api/realm/vote-publish', requireAuth(), (req, res) => {
       message: `Need ${Math.ceil(request.threshold * 100)}% approval with at least 3 votes`,
     });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -64073,7 +64533,7 @@ app.post('/api/realm/sync', (req, res) => {
       dtu: localCopy,
     });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -64145,7 +64605,7 @@ app.post('/api/realm/sync-all', (req, res) => {
       message: `Synced ${synced} global DTUs to local (${skipped} already existed)`,
     });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -64442,7 +64902,7 @@ app.post('/api/artistry/assets', (req, res) => {
     const asset = createAsset(req.body);
     res.json({ ok: true, asset });
   } catch (e) {
-    res.status(400).json({ error: e.message });
+    serverError(res, e, 400);
   }
 });
 
@@ -64499,7 +64959,7 @@ app.post('/api/artistry/blobs', (req, res) => {
     const blobId = storeBlob(data, mimeType || 'application/octet-stream', filename || 'upload');
     res.json({ ok: true, blobId });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -64602,7 +65062,7 @@ app.post('/api/artistry/studio/projects', (req, res) => {
     art.stats.totalProjects++;
     res.json({ ok: true, project });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 

@@ -146,6 +146,15 @@ interface EnvironmentalStorytellingProps {
   roads?: RoadWear[];
   districtAge?: DistrictAge;
   selectedBuildingId?: string | null;
+  /**
+   * Identifiers for the active district / world. Currently informational
+   * — the data path is still the explicit `buildings` / `lots` / `roads`
+   * props — but call sites at `app/lenses/world/page.tsx` already pass
+   * these for the future self-fetching code path. Accepted optionally so
+   * the build stays green while that rewiring lands.
+   */
+  districtId?: string;
+  worldId?: string;
 }
 
 export default function EnvironmentalStorytelling({
@@ -154,6 +163,8 @@ export default function EnvironmentalStorytelling({
   roads = [],
   districtAge,
   selectedBuildingId,
+  districtId: _districtId,
+  worldId: _worldId,
 }: EnvironmentalStorytellingProps) {
   const getWeathering = useCallback(
     (buildingAge: number, climate: string): { stage: WeatheringStage; opacity: number; description: string } => {

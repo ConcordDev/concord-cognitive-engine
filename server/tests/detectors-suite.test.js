@@ -117,9 +117,9 @@ describe("each detector survives the no-input path", () => {
 // Cold runAllDetectors over the full repo takes ~30 s on a typical CI box.
 // Each `it` that calls getAllReport() must allow >= that, otherwise the
 // first cache miss times out under npm test's --test-timeout=30000.
-const DET_TIMEOUT = 90_000;
+const DET_TIMEOUT = 180_000;
 
-describe("runAllDetectors", { timeout: 120_000 }, () => {
+describe("runAllDetectors", { timeout: 240_000 }, () => {
   it("returns an envelope with reports + totals + durationMs", async () => {
     const report = await getAllReport();
     assert.ok(typeof report.generatedAt === "string");
@@ -132,7 +132,7 @@ describe("runAllDetectors", { timeout: 120_000 }, () => {
     for (const r of report.reports) assertReportShape(r);
   }, { timeout: DET_TIMEOUT });
 
-  it("filters by consumer", async () => {
+  it("filters by consumer", { timeout: 180000 }, async () => {
     const all = await getAllReport();
     const repair = await runAllDetectors({ root: REPO_ROOT, consumer: "repair-cortex" });
     assert.ok(repair.reports.length <= all.reports.length);

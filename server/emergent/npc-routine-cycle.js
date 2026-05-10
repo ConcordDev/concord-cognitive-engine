@@ -20,6 +20,8 @@ import {
   persistScheduleForNpc,
   currentDaySeed,
 } from "../lib/npc-routines.js";
+import { decayStress } from "../lib/npc-stress.js";
+import { decayOpinions } from "../lib/npc-opinions.js";
 
 const MAX_NPCS_PER_PASS = 200;
 
@@ -106,6 +108,13 @@ export async function runNpcRoutineCycle({ db, state: _state, tickCount: _t } = 
       }
     }
   }
+
+  // Sprint C / Track A1 — daily stress decay sweep. Cheap batch UPDATE,
+  // safe to call every routine pass (the WHERE clause filters on
+  // last_decay_at < now-24h so most calls are no-ops).
+  try { decayStress(db); } catch { /* table absent on minimal builds */ }
+  // Sprint C / Track A2 — same pattern for opinions.
+  try { decayOpinions(db); } catch { /* table absent on minimal builds */ }
 
   return stats;
 }

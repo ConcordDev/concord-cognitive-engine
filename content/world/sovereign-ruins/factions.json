@@ -1,0 +1,54 @@
+[
+  {
+    "id": "ruins_archivists",
+    "world_id": "sovereign-ruins",
+    "name": "The Three Archivists",
+    "motto": "We did not refuse in time. We will refuse now.",
+    "goal": "Catalog every Refusal that has ever been written into the Sovereign Archive — and recover the Cascade-Era refusals that were lost when the city emptied.",
+    "values": [
+      "completeness",
+      "memory",
+      "refusal-as-craft",
+      "patient correction"
+    ],
+    "fears": [
+      "the Archive forgetting them",
+      "a player erasing a glyph by accident",
+      "becoming an idle subroutine themselves"
+    ],
+    "controlled_districts": [
+      "sovereign_archive",
+      "silent_library",
+      "collapse_memorial"
+    ],
+    "rival_factions": [],
+    "allied_factions": [],
+    "npc_ids": [
+      "archivist_three_kestra",
+      "archivist_two_oeric",
+      "archivist_one_vela"
+    ],
+    "dialogue_style": "halting_precise",
+    "reputation_currency": "memory_shards",
+    "faction_state": {
+      "factionName": "The Three Archivists",
+      "reputation": 50,
+      "tensions": "They argue about whether their continued operation honors the dead or insults them. Vela believes silence would be the right answer; Oeric refuses to choose; Kestra is quietly building a successor."
+    },
+    "visual": {
+      "primary_color": "#a05022",
+      "secondary_color": "#142529",
+      "accent_color": "#e08152",
+      "architecture_style": "organic",
+      "preferred_weapon_archetypes": [
+        "greatsword",
+        "longsword",
+        "spear"
+      ],
+      "preferred_armor_silhouette": "heavy_plate",
+      "sigil_path": "M0,-20 L18,18 L-18,18 Z",
+      "banner_sigil_id": "ruins_archivists_sigil",
+      "ornamentation_motifs": []
+    }
+  }
+]

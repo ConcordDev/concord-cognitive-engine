@@ -1,0 +1,117 @@
+{
+  "name": "concord-dx",
+  "displayName": "Concord DX",
+  "description": "Per-codebase severity, repair-cortex previews, and pay-per-call billing for the Concord Cognitive Engine. Bring concord-os.org's detector intelligence into VS Code.",
+  "version": "0.1.0",
+  "publisher": "concord-os",
+  "engines": { "vscode": "^1.85.0" },
+  "license": "SEE LICENSE IN LICENSE.txt",
+  "categories": ["Linters", "Programming Languages", "AI"],
+  "keywords": [
+    "concord",
+    "lsp",
+    "linter",
+    "code-review",
+    "ai-assistant",
+    "billing",
+    "cognitive-engine"
+  ],
+  "icon": "icons/concord-dx.png",
+  "galleryBanner": {
+    "color": "#0c0c0c",
+    "theme": "dark"
+  },
+  "homepage": "https://concord-os.org",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ryttps94jq-gif/concord-cognitive-engine",
+    "directory": "concord-vscode"
+  },
+  "bugs": {
+    "url": "https://github.com/ryttps94jq-gif/concord-cognitive-engine/issues"
+  },
+  "main": "./out/extension.js",
+  "activationEvents": ["onStartupFinished"],
+  "contributes": {
+    "configuration": {
+      "title": "Concord DX",
+      "properties": {
+        "concord.serverUrl": {
+          "type": "string",
+          "default": "http://localhost:5050",
+          "description": "Concord server origin (HTTP + Socket.IO). Override for production: https://concord-os.org"
+        },
+        "concord.streamPath": {
+          "type": "string",
+          "default": "/dx",
+          "description": "Socket.IO namespace for the DX stream."
+        },
+        "concord.runOnSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "Run detectors automatically on file save (debounced 500ms)."
+        },
+        "concord.severityWeights": {
+          "type": "object",
+          "description": "Per-rule severity overrides. Keys are detector rule IDs; values are 'error' / 'warning' / 'info' / 'hint' / 'off'.",
+          "default": {}
+        },
+        "concord.lspServerCommand": {
+          "type": "array",
+          "description": "Override the LSP server binary. Defaults to the bundled concord-lsp.",
+          "default": []
+        },
+        "concord.billing.confirmThresholdCC": {
+          "type": "number",
+          "default": 0.10,
+          "description": "Prompt before any single operation that would cost more than this amount of Concord Coin."
+        }
+      }
+    },
+    "commands": [
+      { "command": "concord.signIn",         "title": "Concord: Sign in with Concord (OAuth)" },
+      { "command": "concord.login",          "title": "Concord: Sign In (paste API key — legacy)" },
+      { "command": "concord.signOut",        "title": "Concord: Sign Out" },
+      { "command": "concord.syncCodebase",   "title": "Concord: Register Codebase" },
+      { "command": "concord.runDetectors",   "title": "Concord: Run Detectors on Workspace" },
+      { "command": "concord.openSidebar",    "title": "Concord: Show Findings Sidebar" },
+      { "command": "concord.openWallet",     "title": "Concord: Open Wallet (browser)" },
+      { "command": "concord.repairPreview",  "title": "Concord: Preview Suggested Repair" }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "concordDx",
+          "title": "Concord",
+          "icon": "icons/concord-dx-activitybar.svg"
+        }
+      ]
+    },
+    "views": {
+      "concordDx": [
+        { "id": "concord.findings", "name": "Findings" },
+        { "id": "concord.billing",  "name": "Wallet" }
+      ],
+      "explorer": [
+        { "id": "concord.findings.explorer", "name": "Concord Findings" }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package --no-yarn",
+    "publish": "vsce publish --no-yarn"
+  },
+  "dependencies": {
+    "socket.io-client": "^4.7.0",
+    "vscode-languageclient": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^2.24.0",
+    "typescript": "^5.4.0"
+  }
+}

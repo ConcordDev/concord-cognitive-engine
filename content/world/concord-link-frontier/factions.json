@@ -1,0 +1,106 @@
+[
+  {
+    "id": "frontier_couriers_guild",
+    "world_id": "concord-link-frontier",
+    "name": "The Couriers' Guild",
+    "motto": "We carry what cannot be sent.",
+    "goal": "Maintain the human-scale walker network across the Frontier; ensure no message is lost and no peer is unreachable for more than seven days.",
+    "values": [
+      "reliability",
+      "neutrality",
+      "physical accountability for digital trust"
+    ],
+    "fears": [
+      "a courier turning agent",
+      "the federation cutting them out of the loop",
+      "a walker failure casualty"
+    ],
+    "controlled_districts": [
+      "link_post_alpha",
+      "courier_safehouses"
+    ],
+    "rival_factions": [
+      "frontier_freenodes"
+    ],
+    "allied_factions": [],
+    "npc_ids": [
+      "postmaster_ria",
+      "courier_dorvik",
+      "walker_emissary_lin"
+    ],
+    "dialogue_style": "terse_practical",
+    "reputation_currency": "trust_marks",
+    "faction_state": {
+      "factionName": "The Couriers' Guild",
+      "reputation": 70,
+      "tensions": "The Freenodes have been auto-routing around Guild posts. Postmaster Ria sees this as an existential threat; her Guild controls the chain of physical custody that the federation's economic settlements still rely on."
+    },
+    "visual": {
+      "primary_color": "#70a022",
+      "secondary_color": "#142920",
+      "accent_color": "#5452e0",
+      "architecture_style": "organic",
+      "preferred_weapon_archetypes": [
+        "mace",
+        "halberd",
+        "club"
+      ],
+      "preferred_armor_silhouette": "robed",
+      "sigil_path": "M0,-20 L18,18 L-18,18 Z",
+      "banner_sigil_id": "frontier_couriers_guild_sigil",
+      "ornamentation_motifs": []
+    }
+  },
+  {
+    "id": "frontier_freenodes",
+    "world_id": "concord-link-frontier",
+    "name": "The Freenodes",
+    "motto": "Every peer is a sovereign.",
+    "goal": "Replace the Couriers' Guild monopoly with autonomous peer relays; achieve the federation's stated goal of routing without coordinators.",
+    "values": [
+      "decentralization",
+      "redundancy",
+      "consent",
+      "physical resilience"
+    ],
+    "fears": [
+      "a single Freenode betraying the rest",
+      "the federation fragmenting into incompatible dialects"
+    ],
+    "controlled_districts": [
+      "brokers_camp",
+      "field_relays"
+    ],
+    "rival_factions": [
+      "frontier_couriers_guild"
+    ],
+    "allied_factions": [],
+    "npc_ids": [
+      "broker_temir",
+      "field_relay_iso",
+      "field_relay_kerith"
+    ],
+    "dialogue_style": "anarchic_warm",
+    "reputation_currency": "trust_marks",
+    "faction_state": {
+      "factionName": "The Freenodes",
+      "reputation": 55,
+      "tensions": "Three Freenode relays were compromised last month — likely by a hostile city's agents. Temir is debating whether to expose the Couriers' Guild's response (which was to do nothing) or maintain the alliance of necessity."
+    },
+    "visual": {
+      "primary_color": "#7022a0",
+      "secondary_color": "#292514",
+      "accent_color": "#b8e052",
+      "architecture_style": "gracile",
+      "preferred_weapon_archetypes": [
+        "club",
+        "shortsword",
+        "axe"
+      ],
+      "preferred_armor_silhouette": "heavy_plate",
+      "sigil_path": "M0,-20 L18,18 L-18,18 Z",
+      "banner_sigil_id": "frontier_freenodes_sigil",
+      "ornamentation_motifs": []
+    }
+  }
+]

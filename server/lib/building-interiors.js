@@ -131,7 +131,6 @@ export function seedRoomsForBuilding(db, buildingId, worldId, buildingType) {
  */
 export function getRoomsForBuilding(db, buildingId) {
   const rows = db.prepare(
-    // TODO: project explicit columns (auto-fix suggestion)
     'SELECT * FROM building_rooms WHERE building_id = ? ORDER BY floor ASC, x_offset ASC'
   ).all(buildingId);
 
@@ -185,7 +184,6 @@ export function addRoom(db, buildingId, worldId, roomSpec) {
     JSON.stringify(template.typical_furniture),
   );
 
-  // TODO: project explicit columns (auto-fix suggestion)
 
   const row = db.prepare('SELECT * FROM building_rooms WHERE id = ?').get(id);
   return { ...row, furniture: _tryParseJSON(row.furniture, []) };

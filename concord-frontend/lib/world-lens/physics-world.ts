@@ -43,6 +43,44 @@ export interface RagdollHandle {
   spawnedAt: number;
 }
 
+// Theme 5/6 (game-feel pass): per-controller kinematic state. Lives outside
+// the Rapier capsule so we can integrate manual velocities (knockback,
+// jump, glide) into moveCharacter without migrating the player to a
+// dynamic body. Kinematic bodies don't accept applyImpulse / setLinvel
+// — those are silent no-ops on this controller type.
+interface KinematicState {
+  /** Active knockback velocity in world space (m/s). Decays linearly to 0
+   *  by expiresAt; capped per-axis so total displacement ≤ MAX_KB_M. */
+  kbVx: number;
+  kbVz: number;
+  kbStartedAt: number;
+  kbExpiresAt: number;
+  /** Total displacement so far from the current knockback impulse. */
+  kbTravelled: number;
+  // Theme 6 (game-feel pass): vertical kinematics for jump / glide / swim.
+  /** Vertical velocity in m/s; positive is up. */
+  verticalVel: number;
+  /** True while NOT in steady contact with terrain (during a jump/fall). */
+  isAirborne: boolean;
+  /** Wall-clock ms until snap-to-ground re-enables. Suppresses the
+   *  built-in 0.5m snap during jumps so we actually leave the ground. */
+  snapDisabledUntil: number;
+  /** Glide active (held Space mid-air). Clamps descent + adds horizontal
+   *  forward bias to feel like a slow-fall sail rather than a parachute. */
+  gliding: boolean;
+  /** Swim active (capsule below water-line for current world). */
+  swimming: boolean;
+}
+
+const MAX_KB_M = 1.5;       // total knockback displacement cap (metres)
+const KB_DEFAULT_MS = 220;  // default knockback duration
+const JUMP_DEFAULT_VY = 7.5; // m/s — clears ~2.8m peak (with 9.81 g)
+const GRAVITY = 9.81;
+const GLIDE_DESCENT_CAP = -1.5;  // m/s; can't fall faster than this while gliding
+const GLIDE_HORIZ_BOOST = 0.08;  // +8% horizontal during glide
+const SWIM_BUOYANCY = 4.5;       // m/s upward force gradient toward surface
+const SWIM_GRAVITY  = 1.2;       // reduced gravity while submerged
+
 class PhysicsWorld {
   private RAPIER: RapierType | null         = null;
   private THREE:  ThreeType | null          = null;
@@ -50,6 +88,7 @@ class PhysicsWorld {
   private controllers: Map<string, CharCtrl>  = new Map();
   private bodies:      Map<string, RigidBody>  = new Map();
   private colliders:   Map<string, Collider>   = new Map();
+  private kinematic:   Map<string, KinematicState> = new Map();
 
   /** Load Rapier WASM and create the physics world. Call once at scene startup. */
   async init(): Promise<void> {
@@ -393,7 +432,87 @@ class PhysicsWorld {
       if (c.parent()?.handle === body.handle) charCollider = c;
     });
 
-    ctrl.computeColliderMovement(charCollider, desiredTranslation, undefined, undefined);
+    const ks = this._ensureKinematic(id);
+    const now = performance.now();
+
+    // Theme 5 (game-feel pass): kinematic knockback. Add the active
+    // knockback velocity (×dt) to the desired translation. Linearly
+    // decay during its lifetime so the impulse "lands" rather than
+    // teleports. Cap total displacement at MAX_KB_M.
+    let kbDx = 0;
+    let kbDz = 0;
+    if (ks.kbExpiresAt > 0) {
+      if (now < ks.kbExpiresAt) {
+        const remainingMs = ks.kbExpiresAt - now;
+        const totalMs     = ks.kbExpiresAt - ks.kbStartedAt;
+        // Linear ramp: 1.0 at start → 0.0 at end.
+        const frac = totalMs > 0 ? Math.max(0, Math.min(1, remainingMs / totalMs)) : 0;
+        kbDx = ks.kbVx * frac * dt;
+        kbDz = ks.kbVz * frac * dt;
+        // Enforce displacement cap.
+        const stepMag = Math.hypot(kbDx, kbDz);
+        const remaining = MAX_KB_M - ks.kbTravelled;
+        if (stepMag > remaining) {
+          const k = remaining / stepMag;
+          kbDx *= k;
+          kbDz *= k;
+          ks.kbExpiresAt = 0; // no more travel from this impulse
+        }
+        ks.kbTravelled += Math.hypot(kbDx, kbDz);
+      } else {
+        ks.kbExpiresAt = 0;
+        ks.kbTravelled = 0;
+      }
+    }
+
+    // Theme 6 (game-feel pass): vertical velocity integration. The
+    // kinematicPositionBased capsule won't accept applyImpulse /
+    // setLinvel — instead we maintain verticalVel ourselves and fold it
+    // into desiredTranslation each frame. Snap-to-ground is suppressed
+    // during the airborne window so jumps actually leave the ground.
+    let verticalDelta = 0;
+    if (ks.swimming) {
+      // Underwater: dampen vertical velocity, light buoyancy lift, low gravity.
+      // Result: capsule slowly rises if swimmer doesn't push down.
+      ks.verticalVel = ks.verticalVel * 0.85
+        + (SWIM_BUOYANCY * 0.6) * dt
+        - SWIM_GRAVITY * dt;
+      ks.verticalVel = Math.max(-3.0, Math.min(3.5, ks.verticalVel));
+      verticalDelta = ks.verticalVel * dt;
+      ks.isAirborne = false;
+    } else if (ks.isAirborne || ks.verticalVel !== 0) {
+      ks.verticalVel -= GRAVITY * dt;
+      if (ks.gliding && ks.verticalVel < GLIDE_DESCENT_CAP) {
+        ks.verticalVel = GLIDE_DESCENT_CAP;
+      }
+      verticalDelta = ks.verticalVel * dt;
+    }
+
+    // Glide horizontal boost — small forward push so the silhouette has
+    // forward motion even when the player isn't holding W.
+    let glideBoostX = 0;
+    let glideBoostZ = 0;
+    if (ks.gliding) {
+      glideBoostX = desiredTranslation.x * GLIDE_HORIZ_BOOST;
+      glideBoostZ = desiredTranslation.z * GLIDE_HORIZ_BOOST;
+    }
+
+    const finalDesired = {
+      x: desiredTranslation.x + kbDx + glideBoostX,
+      y: desiredTranslation.y + verticalDelta,
+      z: desiredTranslation.z + kbDz + glideBoostZ,
+    };
+
+    // Snap-to-ground policy: re-enable after the suppress window expires
+    // and the verticalVel has gone non-positive (started falling). This
+    // is what lets short hops leave the ground without immediately being
+    // sucked back down.
+    if (ks.snapDisabledUntil > 0 && now > ks.snapDisabledUntil) {
+      try { ctrl.enableSnapToGround(0.5); } catch { /* RAPIER may have no method */ }
+      ks.snapDisabledUntil = 0;
+    }
+
+    ctrl.computeColliderMovement(charCollider, finalDesired, undefined, undefined);
     const corrected = ctrl.computedMovement();
 
     // Apply to kinematic body
@@ -404,7 +523,180 @@ class PhysicsWorld {
       z: pos.z + corrected.z,
     });
 
+    // Update grounded state from Rapier's computedGrounded() (true when
+    // the controller resolved a downward contact). Reset verticalVel to
+    // 0 on ground contact so we don't accumulate downward force.
+    let grounded = false;
+    try { grounded = (ctrl as { computedGrounded?: () => boolean }).computedGrounded?.() ?? false; }
+    catch { grounded = false; }
+    if (grounded && !ks.swimming) {
+      // Only re-zero if we're moving down or already at rest. A jump
+      // frame still has positive verticalVel; don't clobber it.
+      if (ks.verticalVel <= 0) {
+        ks.verticalVel = 0;
+        ks.isAirborne = false;
+      }
+    } else if (!ks.swimming && Math.abs(verticalDelta) > 0.01) {
+      ks.isAirborne = true;
+    }
+
     return { x: corrected.x / dt, y: corrected.y / dt, z: corrected.z / dt };
+  }
+
+  /** Get-or-create the kinematic state for an entity. */
+  private _ensureKinematic(id: string): KinematicState {
+    let ks = this.kinematic.get(id);
+    if (!ks) {
+      ks = {
+        kbVx: 0, kbVz: 0,
+        kbStartedAt: 0, kbExpiresAt: 0, kbTravelled: 0,
+        verticalVel: 0,
+        isAirborne: false,
+        snapDisabledUntil: 0,
+        gliding: false,
+        swimming: false,
+      };
+      this.kinematic.set(id, ks);
+    }
+    return ks;
+  }
+
+  /**
+   * Theme 5 (game-feel pass): apply a kinematic knockback impulse to a
+   * character controller. moveCharacter folds the velocity into desired
+   * translation per frame for `durationMs`; total displacement capped at
+   * MAX_KB_M (1.5 m). No-op for non-existent controllers.
+   *
+   * Use case: combat-hit-heavy → knock the target back from the impact
+   * direction. Player capsule is kinematicPositionBased so applyImpulse
+   * is silently ignored — this is the right path.
+   *
+   * @param id           controller id (player / NPC)
+   * @param direction    {x, z} unit vector pointing AWAY from impactor
+   * @param magnitude    target initial speed in m/s (clamped to a sane range)
+   * @param durationMs   total time for the impulse (default 220ms)
+   */
+  knockbackKinematic(
+    id: string,
+    direction: { x: number; z: number },
+    magnitude: number,
+    durationMs: number = KB_DEFAULT_MS,
+  ): boolean {
+    if (!this.controllers.has(id)) return false;
+    const m = Math.max(0, Math.min(8, Number(magnitude)));
+    if (m === 0) return false;
+    const dx = Number(direction?.x) || 0;
+    const dz = Number(direction?.z) || 0;
+    const mag = Math.hypot(dx, dz);
+    if (mag === 0) return false;
+    const ux = dx / mag;
+    const uz = dz / mag;
+    const dur = Math.max(50, Math.min(800, Number(durationMs)));
+    const now = performance.now();
+    const ks = this._ensureKinematic(id);
+    ks.kbVx = ux * m;
+    ks.kbVz = uz * m;
+    ks.kbStartedAt = now;
+    ks.kbExpiresAt = now + dur;
+    ks.kbTravelled = 0;
+    return true;
+  }
+
+  /** Returns true when `id` has an active knockback impulse. Useful for
+   *  the avatar update loop to suspend other steering forces during
+   *  knockback so the impulse reads as a clean recoil. */
+  isKnockedBack(id: string): boolean {
+    const ks = this.kinematic.get(id);
+    if (!ks) return false;
+    return ks.kbExpiresAt > performance.now();
+  }
+
+  // ── Theme 6 (game-feel pass): jump / glide / swim API ──────────────────────
+
+  /**
+   * Request a jump for `id`. Sets verticalVel to jumpVy, marks the
+   * controller airborne, and disables snap-to-ground for ~250ms so the
+   * capsule actually leaves the ground. No-op if not grounded
+   * (prevents double-jump cheese).
+   */
+  requestJump(id: string, jumpVy: number = JUMP_DEFAULT_VY): boolean {
+    if (!this.controllers.has(id)) return false;
+    const ks = this._ensureKinematic(id);
+    if (ks.isAirborne || ks.swimming) return false;
+    if (ks.kbExpiresAt > performance.now()) return false; // can't jump while knocked back
+    ks.verticalVel = Math.max(0.5, Math.min(15, Number(jumpVy)));
+    ks.isAirborne = true;
+    ks.snapDisabledUntil = performance.now() + 250;
+    const ctrl = this.controllers.get(id);
+    try { (ctrl as { disableSnapToGround?: () => void }).disableSnapToGround?.(); } catch { /* ok */ }
+    return true;
+  }
+
+  /** Returns true when the controller is currently airborne (jumping or falling). */
+  isAirborne(id: string): boolean {
+    return !!this.kinematic.get(id)?.isAirborne;
+  }
+
+  /** Returns true when the controller's last frame resolved a grounded
+   *  contact AND we're not in a jump frame. */
+  isGrounded(id: string): boolean {
+    const ks = this.kinematic.get(id);
+    if (!ks) return true;
+    return !ks.isAirborne && !ks.swimming;
+  }
+
+  /**
+   * Toggle glide for `id`. Activating glide while airborne clamps
+   * descent at GLIDE_DESCENT_CAP and adds GLIDE_HORIZ_BOOST forward
+   * momentum. Activating while grounded is a no-op so accidental
+   * Space-press while running doesn't trigger glide. */
+  setGlide(id: string, on: boolean): boolean {
+    const ks = this._ensureKinematic(id);
+    if (on && !ks.isAirborne) return false;
+    ks.gliding = !!on;
+    return true;
+  }
+
+  /** Returns true when glide is active for `id`. */
+  isGliding(id: string): boolean {
+    return !!this.kinematic.get(id)?.gliding;
+  }
+
+  /**
+   * Toggle swim for `id`. Activating swim disables glide and reduces
+   * gravity; deactivating restores normal kinematics. Caller is
+   * responsible for figuring out when the capsule entered/left water
+   * (compares Y vs world water-level — no water collider in the
+   * registered world yet). */
+  setSwim(id: string, on: boolean): boolean {
+    const ks = this._ensureKinematic(id);
+    ks.swimming = !!on;
+    if (on) ks.gliding = false;
+    return true;
+  }
+
+  /** Returns true when swim is active for `id`. */
+  isSwimming(id: string): boolean {
+    return !!this.kinematic.get(id)?.swimming;
+  }
+
+  // ── Theme 6 (game-feel pass): water plane registry ────────────────────────
+  //
+  // No actual water-collider primitive exists yet (terrain is sine-wave
+  // heightfield, no water mesh). Until one ships we expose a single
+  // per-world Y-level constant so AvatarSystem3D can detect "below water"
+  // and toggle swim mode. registerWaterPlane is the caller-friendly
+  // setter; getWaterLevelFor reads it back; null = no water for that
+  // world (don't ever flip swim mode).
+  private waterLevels: Map<string, number> = new Map();
+  registerWaterPlane(worldId: string, yLevel: number): void {
+    if (!worldId || !Number.isFinite(yLevel)) return;
+    this.waterLevels.set(worldId, yLevel);
+  }
+  getWaterLevelFor(worldId: string): number | null {
+    if (!worldId) return null;
+    const v = this.waterLevels.get(worldId);
+    return Number.isFinite(v) ? (v as number) : null;
   }
 
   /** Remove a character controller and its body. */
@@ -416,6 +708,7 @@ class PhysicsWorld {
     const ctrl = this.controllers.get(id);
     if (ctrl) this.world.removeCharacterController(ctrl);
     this.controllers.delete(id);
+    this.kinematic.delete(id);
   }
 
   // ── Projectiles ────────────────────────────────────────────────────────────

@@ -4,12 +4,30 @@
     "name": "The Enforcers' Movement",
     "motto": "Your data trains AI that is yours.",
     "goal": "Ensure power — economic, cognitive, narrative — stays with the people who generate it.",
-    "values": ["sovereignty", "lived experience", "transparency", "loyalty to the bottom"],
-    "fears": ["a single private actor consolidating the cognitive layer", "the people forgetting they own their own data", "vigilante power becoming the next aristocracy"],
-    "controlled_districts": ["bronx_arterials", "outer_boroughs", "low_rent_grid"],
-    "rival_factions": ["luminary_empire"],
+    "values": [
+      "sovereignty",
+      "lived experience",
+      "transparency",
+      "loyalty to the bottom"
+    ],
+    "fears": [
+      "a single private actor consolidating the cognitive layer",
+      "the people forgetting they own their own data",
+      "vigilante power becoming the next aristocracy"
+    ],
+    "controlled_districts": [
+      "bronx_arterials",
+      "outer_boroughs",
+      "low_rent_grid"
+    ],
+    "rival_factions": [
+      "luminary_empire"
+    ],
     "allied_factions": [],
-    "npc_ids": ["enforcer_elias", "bex_park"],
+    "npc_ids": [
+      "enforcer_elias",
+      "bex_park"
+    ],
     "dialogue_style": "blunt",
     "reputation_currency": "respect_marks",
     "world_id": "superhero",
@@ -17,6 +35,21 @@
       "factionName": "Enforcers' Movement",
       "reputation": 58,
       "tensions": "Low public profile. Operates through neighborhood mutual-aid networks and direct intervention. Iron rule: no one in the movement profits from another member's data, ever. Tension with even sympathetic city officials who want to formalize the movement into something controllable."
+    },
+    "visual": {
+      "primary_color": "#6322a0",
+      "secondary_color": "#292014",
+      "accent_color": "#e09252",
+      "architecture_style": "gracile",
+      "preferred_weapon_archetypes": [
+        "axe",
+        "shortsword",
+        "halberd"
+      ],
+      "preferred_armor_silhouette": "heavy_plate",
+      "sigil_path": "M0,-18 L4,-6 L18,-6 L8,3 L12,18 L0,9 L-12,18 L-8,3 L-18,-6 L-4,-6 Z",
+      "banner_sigil_id": "enforcers_movement_sigil",
+      "ornamentation_motifs": []
     }
   },
   {
@@ -24,12 +57,31 @@
     "name": "Luminary Industries",
     "motto": "Order. Progress. Light.",
     "goal": "Centralize economic, cognitive, and security infrastructure under a single benevolent stewardship — Vesper Kane's.",
-    "values": ["efficiency", "scale", "polished image", "private order"],
-    "fears": ["public exposure of internal practices", "regulatory capture by a rival", "any individual whose growth Vesper can't predict or control"],
-    "controlled_districts": ["upper_manhattan_grid", "financial_arc", "kane_tower_complex", "private_orbital_facility"],
-    "rival_factions": ["enforcers_movement"],
+    "values": [
+      "efficiency",
+      "scale",
+      "polished image",
+      "private order"
+    ],
+    "fears": [
+      "public exposure of internal practices",
+      "regulatory capture by a rival",
+      "any individual whose growth Vesper can't predict or control"
+    ],
+    "controlled_districts": [
+      "upper_manhattan_grid",
+      "financial_arc",
+      "kane_tower_complex",
+      "private_orbital_facility"
+    ],
+    "rival_factions": [
+      "enforcers_movement"
+    ],
     "allied_factions": [],
-    "npc_ids": ["luminary_vesper", "marcus_holloway"],
+    "npc_ids": [
+      "luminary_vesper",
+      "marcus_holloway"
+    ],
     "dialogue_style": "polished",
     "reputation_currency": "luminary_credits",
     "world_id": "superhero",
@@ -37,6 +89,21 @@
       "factionName": "Luminary Industries",
       "reputation": 91,
       "tensions": "Public reputation is enormous — orphanage funding, infrastructure builds, headline-grabbing rescues. Private practices include destabilization operations against any neighborhood that resists Luminary integration. Internal pressure from Vesper's lieutenants who suspect the public face is a mask but would lose everything if they spoke up."
+    },
+    "visual": {
+      "primary_color": "#22a091",
+      "secondary_color": "#141f29",
+      "accent_color": "#5271e0",
+      "architecture_style": "gracile",
+      "preferred_weapon_archetypes": [
+        "mace",
+        "scimitar",
+        "spear"
+      ],
+      "preferred_armor_silhouette": "robed",
+      "sigil_path": "M-15,-15 L15,-15 L15,15 L-15,15 Z",
+      "banner_sigil_id": "luminary_empire_sigil",
+      "ornamentation_motifs": []
     }
   }
 ]

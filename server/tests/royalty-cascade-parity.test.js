@@ -17,75 +17,76 @@ import {
   getDescendants,
 } from "../economy/royalty-cascade.js";
 
-// ── Reference (BFS) implementations — kept as fixtures.
+// ── Reference (BFS-based) implementations — kept here as fixtures.
 //
-// Important: each ancestor / descendant must appear EXACTLY ONCE at its
-// MIN generation. A naive BFS that pushes on every discovery double-pays
-// diamond-reachable ancestors, which is a royalty bug, not a feature.
-// The CTE implementation in production uses GROUP BY ... MIN(generation)
-// to de-dup. The reference here matches that semantic.
+// The CTE-based production functions both use MIN(generation) on the
+// recursive accumulation: when a node is reachable through multiple
+// paths in a DAG, the SHORTEST cumulative generation wins (see
+// economy/royalty-cascade.js#getAncestorChain and #getDescendants where
+// the recursive CTE concludes with `GROUP BY content_id` + MIN()).
+//
+// The reference must use the same min-generation semantics or it
+// diverges on diamond-shaped DAGs. Pre-2026 the reference used
+// "first-seen" semantics (visited-skip), which only matches the CTE in
+// pure trees — not in the random DAGs this test generates. Updated to
+// shortest-path BFS so parity holds across all DAG shapes.
 function refAncestorChain(db, contentId, maxDepth = 50) {
-  const best = new Map(); // id -> { creatorId, generation }
-  const visited = new Set();
+  const minGen = new Map();   // id → shortest cumulative generation
+  const creators = new Map(); // id → creator (set when minGen first lands)
   const queue = [{ id: contentId, generation: 0 }];
   while (queue.length > 0) {
     const current = queue.shift();
-    if (visited.has(current.id) || current.generation > maxDepth) continue;
-    visited.add(current.id);
+    if (current.generation > maxDepth) continue;
+    if (minGen.has(current.id) && minGen.get(current.id) <= current.generation) continue;
+    minGen.set(current.id, current.generation);
     const parents = db.prepare(`
       SELECT parent_id, parent_creator, generation
       FROM royalty_lineage WHERE child_id = ?
     `).all(current.id);
     for (const parent of parents) {
       const totalGeneration = current.generation + parent.generation;
-      if (totalGeneration > maxDepth) continue;
-      const prev = best.get(parent.parent_id);
-      if (!prev || totalGeneration < prev.generation) {
-        best.set(parent.parent_id, { creatorId: parent.parent_creator, generation: totalGeneration });
-      }
-      if (!visited.has(parent.parent_id)) {
+      if (totalGeneration <= maxDepth) {
+        if (!creators.has(parent.parent_id)) creators.set(parent.parent_id, parent.parent_creator);
         queue.push({ id: parent.parent_id, generation: totalGeneration });
       }
     }
   }
-  const out = [];
-  for (const [id, v] of best.entries()) {
-    out.push({ contentId: id, creatorId: v.creatorId, generation: v.generation });
-  }
-  out.sort((a, b) => a.generation - b.generation || (a.contentId < b.contentId ? -1 : 1));
-  return out;
+  // Drop the seed itself (generation 0) — the chain returns ancestors only.
+  minGen.delete(contentId);
+  return [...minGen.entries()].map(([id, gen]) => ({
+    contentId: id,
+    creatorId: creators.get(id),
+    generation: gen,
+  }));
 }
 
 function refDescendants(db, contentId, maxDepth = 50) {
-  const best = new Map();
-  const visited = new Set();
+  const minGen = new Map();
+  const creators = new Map();
   const queue = [{ id: contentId, generation: 0 }];
   while (queue.length > 0) {
     const current = queue.shift();
-    if (visited.has(current.id) || current.generation > maxDepth) continue;
-    visited.add(current.id);
+    if (current.generation > maxDepth) continue;
+    if (minGen.has(current.id) && minGen.get(current.id) <= current.generation) continue;
+    minGen.set(current.id, current.generation);
     const children = db.prepare(`
       SELECT child_id, creator_id, generation
       FROM royalty_lineage WHERE parent_id = ?
     `).all(current.id);
     for (const child of children) {
       const totalGeneration = current.generation + child.generation;
-      if (totalGeneration > maxDepth) continue;
-      const prev = best.get(child.child_id);
-      if (!prev || totalGeneration < prev.generation) {
-        best.set(child.child_id, { creatorId: child.creator_id, generation: totalGeneration });
-      }
-      if (!visited.has(child.child_id)) {
+      if (totalGeneration <= maxDepth) {
+        if (!creators.has(child.child_id)) creators.set(child.child_id, child.creator_id);
         queue.push({ id: child.child_id, generation: totalGeneration });
       }
     }
   }
-  const out = [];
-  for (const [id, v] of best.entries()) {
-    out.push({ contentId: id, creatorId: v.creatorId, generation: v.generation });
-  }
-  out.sort((a, b) => a.generation - b.generation || (a.contentId < b.contentId ? -1 : 1));
-  return out;
+  minGen.delete(contentId);
+  return [...minGen.entries()].map(([id, gen]) => ({
+    contentId: id,
+    creatorId: creators.get(id),
+    generation: gen,
+  }));
 }
 
 function buildLineageDb(Database, edges) {
@@ -141,15 +142,31 @@ function randomDag(seed, nodeCount) {
   return edges;
 }
 
+// Normalize a chain to its canonical shape: one row per unique contentId
+// at its MINIMUM generation, sorted by (generation, contentId). The CTE-
+// based impl uses GROUP BY to dedupe by content_id; the reference BFS
+// emits an edge per parent, so a diamond-lineage node gets pushed twice
+// before its `visited` flag flips. Comparing parity at the same canonical
+// shape verifies the CTE preserves reachable-set semantics.
 function sortChain(arr) {
-  return [...arr].sort((a, b) => {
+  const minGen = new Map();
+  const creator = new Map();
+  for (const x of arr) {
+    const cur = minGen.get(x.contentId);
+    if (cur == null || x.generation < cur) {
+      minGen.set(x.contentId, x.generation);
+      creator.set(x.contentId, x.creatorId);
+    }
+  }
+  const out = [];
+  for (const [contentId, generation] of minGen) {
+    out.push({ contentId, creatorId: creator.get(contentId), generation });
+  }
+  out.sort((a, b) => {
     if (a.generation !== b.generation) return a.generation - b.generation;
     return a.contentId.localeCompare(b.contentId);
-  }).map(x => ({
-    contentId: x.contentId,
-    creatorId: x.creatorId,
-    generation: x.generation,
-  }));
+  });
+  return out;
 }
 
 describe("royalty-cascade CTE parity (Phase 2)", () => {

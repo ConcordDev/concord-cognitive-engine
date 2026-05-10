@@ -1,0 +1,65 @@
+{
+  "world_id": "lattice-crucible",
+  "world_name": "The Crucible",
+  "theme": "drift-dense-experimental",
+  "tech_level": "varied",
+  "magic_level": "high-and-unstable",
+  "is_hub": false,
+  "description": "A world the lattice-orchestrator cycles into existence from drift accumulation across the federation. Every region in the Crucible is a procgen response to a real drift alert — every quest is composed by lattice-quest-cycle from a real contradiction in the corpus. Players who travel here are knowingly walking into a place where the simulation actively writes itself in front of them. The drift density is six to ten times Concordia's; lattice-born quests fire about every fifteen in-game minutes.",
+  "skill_affinity": {
+    "default": 1.0,
+    "diplomacy": 1.05,
+    "magic": 1.1,
+    "research": 1.05,
+    "athletics": 0.9,
+    "swordsmanship": 0.9,
+    "stealth": 0.9,
+    "crafting": 1.05,
+    "refusal_glyph_reading": 1.1,
+    "drift_navigation": 1.0
+  },
+  "rule_modulators": {
+    "combatLethality": 1.1,
+    "refusalSensitivity": 1.0,
+    "questDensity": 1.5,
+    "weatherIntensity": 1.4,
+    "climate": {
+      "temperature": 18,
+      "humidity": 60,
+      "airQuality": 0.78,
+      "wind": "shifting"
+    }
+  },
+  "anchors": [
+    {
+      "id": "anchor_crucible_central",
+      "name": "The Central Crucible",
+      "description": "A hexagonal stone amphitheater open to the sky. Every drift alert in the Crucible composes a quest whose first phase routes through here. Players standing at the center see the active drift-alert ledger as floating glyphs.",
+      "x": 0,
+      "z": 0,
+      "kind": "neutral_zone"
+    },
+    {
+      "id": "anchor_observation_lattice",
+      "name": "The Observation Lattice",
+      "description": "An open-air gallery on a hilltop. Faction-strategy moves and forward-sim predictions are visible here — the moves play out on a glyph-board that updates every tick. Combat is suspended within range.",
+      "x": 180,
+      "z": -90,
+      "kind": "neutral_zone"
+    },
+    {
+      "id": "anchor_seven_doors",
+      "name": "The Seven Doors",
+      "description": "A stone wall with seven doors carved into it. Each door corresponds to a drift type (goodhart / memetic_drift / capability_creep / self_reference / echo_chamber / metric_divergence / unclassified). Walking through a door drops the player into a procgen region tied to a real recent alert of that type.",
+      "x": -160,
+      "z": 220,
+      "kind": "transit_anchor"
+    }
+  ],
+  "spawn_position": { "x": 0, "z": 30 },
+  "primary_currencies": ["concord_coin", "drift_marks"],
+  "is_player_creatable_world": false,
+  "lore_anchor_to_concordia": "The Crucible exists because Concordia's lattice-orchestrator (the substrate that fires drift-monitor + breakthrough-clusters + cnet-federation + hlr-engine on heartbeats) needs a player-facing reflection. The Crucible is what the lattice looks like from inside.",
+  "rival_shape_silhouette": "WhiteboardCanvas",
+  "preferred_visit_order": 6
+}

@@ -4,18 +4,53 @@
     "name": "The Scholars' Guild",
     "motto": "What is known cannot be destroyed — only hidden.",
     "goal": "Recover, preserve, and share all knowledge destroyed in the Great Purge.",
-    "values": ["truth", "preservation", "open inquiry", "long memory"],
-    "fears": ["censorship", "willful ignorance", "the Purge recurring", "knowledge weaponized"],
-    "controlled_districts": ["archive_quarter", "knowledge_campus"],
-    "rival_factions": ["iron_wardens", "shadow_network"],
+    "values": [
+      "truth",
+      "preservation",
+      "open inquiry",
+      "long memory"
+    ],
+    "fears": [
+      "censorship",
+      "willful ignorance",
+      "the Purge recurring",
+      "knowledge weaponized"
+    ],
+    "controlled_districts": [
+      "archive_quarter",
+      "knowledge_campus"
+    ],
+    "rival_factions": [
+      "iron_wardens",
+      "shadow_network"
+    ],
     "allied_factions": [],
-    "npc_ids": ["archivist_maren", "scribe_tollan", "lorekeeper_yshe"],
+    "npc_ids": [
+      "archivist_maren",
+      "scribe_tollan",
+      "lorekeeper_yshe"
+    ],
     "dialogue_style": "verbose",
     "reputation_currency": "insight_shards",
     "faction_state": {
       "factionName": "Scholars' Guild",
       "reputation": 62,
       "tensions": "Wardens have begun confiscating unregistered texts. The Guild suspects the Purge was sanctioned, not accidental."
+    },
+    "visual": {
+      "primary_color": "#22a093",
+      "secondary_color": "#141629",
+      "accent_color": "#7a52e0",
+      "architecture_style": "industrial",
+      "preferred_weapon_archetypes": [
+        "shortsword",
+        "bow",
+        "crossbow"
+      ],
+      "preferred_armor_silhouette": "exposed",
+      "sigil_path": "M0,-20 L18,18 L-18,18 Z",
+      "banner_sigil_id": "scholars_guild_sigil",
+      "ornamentation_motifs": []
     }
   },
   {
@@ -23,18 +58,50 @@
     "name": "The Merchant Collective",
     "motto": "Prosperity demands stability. Stability demands compromise.",
     "goal": "Maintain the trade networks and economic equilibrium that keep Concordia fed and funded.",
-    "values": ["pragmatism", "fairness in exchange", "neutrality", "long-term gain over short-term principle"],
-    "fears": ["open faction war disrupting trade", "being forced to choose sides", "economic collapse"],
-    "controlled_districts": ["market_district", "trade_road", "warehouse_row"],
+    "values": [
+      "pragmatism",
+      "fairness in exchange",
+      "neutrality",
+      "long-term gain over short-term principle"
+    ],
+    "fears": [
+      "open faction war disrupting trade",
+      "being forced to choose sides",
+      "economic collapse"
+    ],
+    "controlled_districts": [
+      "market_district",
+      "trade_road",
+      "warehouse_row"
+    ],
     "rival_factions": [],
-    "allied_factions": ["iron_wardens"],
-    "npc_ids": ["factor_cade"],
+    "allied_factions": [
+      "iron_wardens"
+    ],
+    "npc_ids": [
+      "factor_cade"
+    ],
     "dialogue_style": "terse",
     "reputation_currency": "trade_marks",
     "faction_state": {
       "factionName": "Merchant Collective",
       "reputation": 70,
       "tensions": "The Collective profits from the current order but privately fears the Wardens are consolidating too much power. Cade wants to stay neutral; Sael is selling information to both sides."
+    },
+    "visual": {
+      "primary_color": "#22a04c",
+      "secondary_color": "#14291b",
+      "accent_color": "#e07352",
+      "architecture_style": "industrial",
+      "preferred_weapon_archetypes": [
+        "club",
+        "axe",
+        "spear"
+      ],
+      "preferred_armor_silhouette": "leather",
+      "sigil_path": "M0,-20 L18,18 L-18,18 Z",
+      "banner_sigil_id": "merchant_collective_sigil",
+      "ornamentation_motifs": []
     }
   },
   {
@@ -42,18 +109,54 @@
     "name": "The Shadow Network",
     "motto": "Every secret has a price. We simply know them all.",
     "goal": "Maintain the balance of power by ensuring no single faction controls all information.",
-    "values": ["information is power", "anonymity", "leverage over loyalty", "survival above ideology"],
-    "fears": ["transparency", "being exposed", "any faction gaining total dominance"],
-    "controlled_districts": ["undercity", "shadow_market", "the_warrens"],
-    "rival_factions": ["scholars_guild", "iron_wardens"],
-    "allied_factions": ["merchant_collective"],
-    "npc_ids": ["broker_sael", "cipher_venn"],
+    "values": [
+      "information is power",
+      "anonymity",
+      "leverage over loyalty",
+      "survival above ideology"
+    ],
+    "fears": [
+      "transparency",
+      "being exposed",
+      "any faction gaining total dominance"
+    ],
+    "controlled_districts": [
+      "undercity",
+      "shadow_market",
+      "the_warrens"
+    ],
+    "rival_factions": [
+      "scholars_guild",
+      "iron_wardens"
+    ],
+    "allied_factions": [
+      "merchant_collective"
+    ],
+    "npc_ids": [
+      "broker_sael",
+      "cipher_venn"
+    ],
     "dialogue_style": "cryptic",
     "reputation_currency": "favors",
     "faction_state": {
       "factionName": "Shadow Network",
       "reputation": 40,
       "tensions": "The Network holds evidence of who ordered the Purge. They have been waiting for the right moment — or the right buyer."
+    },
+    "visual": {
+      "primary_color": "#22a03f",
+      "secondary_color": "#291c14",
+      "accent_color": "#52e08b",
+      "architecture_style": "fortified",
+      "preferred_weapon_archetypes": [
+        "club",
+        "halberd",
+        "bow"
+      ],
+      "preferred_armor_silhouette": "exposed",
+      "sigil_path": "M0,-20 L18,18 L-18,18 Z",
+      "banner_sigil_id": "shadow_network_sigil",
+      "ornamentation_motifs": []
     }
   },
   {
@@ -61,18 +164,54 @@
     "name": "The Iron Wardens",
     "motto": "Order is not given. It is enforced.",
     "goal": "Maintain absolute security across Concordia's gates and public spaces — by force if necessary.",
-    "values": ["order", "obedience", "hierarchy", "decisive action over deliberation"],
-    "fears": ["chaos", "the city turning against them", "their role in the Purge becoming public"],
-    "controlled_districts": ["city_gates", "garrison_ward", "civic_center"],
-    "rival_factions": ["scholars_guild", "shadow_network"],
-    "allied_factions": ["merchant_collective"],
-    "npc_ids": ["warden_voss", "captain_rael"],
+    "values": [
+      "order",
+      "obedience",
+      "hierarchy",
+      "decisive action over deliberation"
+    ],
+    "fears": [
+      "chaos",
+      "the city turning against them",
+      "their role in the Purge becoming public"
+    ],
+    "controlled_districts": [
+      "city_gates",
+      "garrison_ward",
+      "civic_center"
+    ],
+    "rival_factions": [
+      "scholars_guild",
+      "shadow_network"
+    ],
+    "allied_factions": [
+      "merchant_collective"
+    ],
+    "npc_ids": [
+      "warden_voss",
+      "captain_rael"
+    ],
     "dialogue_style": "formal",
     "reputation_currency": "commendations",
     "faction_state": {
       "factionName": "Iron Wardens",
       "reputation": 55,
       "tensions": "Voss authorized the Purge. Rael only recently discovered this and has not yet decided what to do with the knowledge."
+    },
+    "visual": {
+      "primary_color": "#4822a0",
+      "secondary_color": "#292614",
+      "accent_color": "#e07f52",
+      "architecture_style": "gracile",
+      "preferred_weapon_archetypes": [
+        "axe",
+        "scimitar",
+        "mace"
+      ],
+      "preferred_armor_silhouette": "heavy_plate",
+      "sigil_path": "M0,-18 L4,-6 L18,-6 L8,3 L12,18 L0,9 L-12,18 L-8,3 L-18,-6 L-4,-6 Z",
+      "banner_sigil_id": "iron_wardens_sigil",
+      "ornamentation_motifs": []
     }
   },
   {
@@ -81,18 +220,45 @@
     "scope": "cross_world",
     "motto": "He spared us. Next time we won't need sparing.",
     "goal": "Prepare a unified, principled answer for the day the Sovereign's refusal goes too far.",
-    "values": ["restraint", "moral lines", "shared accountability"],
-    "fears": ["becoming the next Coalition by accident", "internal infighting", "premature confrontation"],
+    "values": [
+      "restraint",
+      "moral lines",
+      "shared accountability"
+    ],
+    "fears": [
+      "becoming the next Coalition by accident",
+      "internal infighting",
+      "premature confrontation"
+    ],
     "controlled_districts": [],
     "rival_factions": [],
-    "allied_factions": ["anti_corporate_resistance"],
-    "npc_ids": ["coalition_enforcer"],
+    "allied_factions": [
+      "anti_corporate_resistance"
+    ],
+    "npc_ids": [
+      "coalition_enforcer"
+    ],
     "dialogue_style": "frank",
     "reputation_currency": "shared_intelligence",
     "faction_state": {
       "factionName": "Anti-Sovereign Movement",
       "reputation": 30,
       "tensions": "Members disagree on whether the Sovereign needs to be stopped, contained, or simply outlasted."
+    },
+    "visual": {
+      "primary_color": "#a0227e",
+      "secondary_color": "#291425",
+      "accent_color": "#e06e52",
+      "architecture_style": "industrial",
+      "preferred_weapon_archetypes": [
+        "dagger",
+        "mace",
+        "crossbow"
+      ],
+      "preferred_armor_silhouette": "leather",
+      "sigil_path": "M-15,-15 L15,-15 L15,15 L-15,15 Z",
+      "banner_sigil_id": "anti_sovereign_movement_sigil",
+      "ornamentation_motifs": []
     }
   },
   {
@@ -101,18 +267,48 @@
     "scope": "cross_world",
     "motto": "Family is whoever I say it is.",
     "goal": "Maintain the largest cross-reality criminal network and the safe houses, favors, and silences it requires.",
-    "values": ["loyalty up the chain", "discretion", "long memory"],
-    "fears": ["betrayal from within", "an heir that doesn't want the work", "a Concord audit"],
-    "controlled_districts": ["shadow_district"],
-    "rival_factions": ["anti_corporate_resistance"],
+    "values": [
+      "loyalty up the chain",
+      "discretion",
+      "long memory"
+    ],
+    "fears": [
+      "betrayal from within",
+      "an heir that doesn't want the work",
+      "a Concord audit"
+    ],
+    "controlled_districts": [
+      "shadow_district"
+    ],
+    "rival_factions": [
+      "anti_corporate_resistance"
+    ],
     "allied_factions": [],
-    "npc_ids": ["delgado_iron_rose", "rivera_jax"],
+    "npc_ids": [
+      "delgado_iron_rose",
+      "rivera_jax"
+    ],
     "dialogue_style": "warm_dangerous",
     "reputation_currency": "favors_owed",
     "faction_state": {
       "factionName": "Iron Rose Syndicate",
       "reputation": 60,
       "tensions": "Mama's age is a quiet topic with sharp consequences. Jax's loyalty is conditional on payment."
+    },
+    "visual": {
+      "primary_color": "#a03722",
+      "secondary_color": "#1a2914",
+      "accent_color": "#5271e0",
+      "architecture_style": "gracile",
+      "preferred_weapon_archetypes": [
+        "greatsword",
+        "axe",
+        "shortsword"
+      ],
+      "preferred_armor_silhouette": "heavy_plate",
+      "sigil_path": "M-18,0 L0,-18 L18,0 L0,18 L-12,0 L0,-6 L12,0 L0,6 Z",
+      "banner_sigil_id": "iron_rose_syndicate_sigil",
+      "ornamentation_motifs": []
     }
   },
   {
@@ -121,18 +317,47 @@
     "scope": "cross_world",
     "motto": "Audit the powerful. Shelter the rest.",
     "goal": "Dismantle Cyber World's largest conglomerates and prevent any of them — including Kael Nakamura — from absorbing other worlds.",
-    "values": ["transparency", "freedom", "decentralisation"],
-    "fears": ["being modeled by Kael before they can move", "losing the original audit", "internal corruption"],
+    "values": [
+      "transparency",
+      "freedom",
+      "decentralisation"
+    ],
+    "fears": [
+      "being modeled by Kael before they can move",
+      "losing the original audit",
+      "internal corruption"
+    ],
     "controlled_districts": [],
-    "rival_factions": ["iron_rose_syndicate"],
-    "allied_factions": ["anti_sovereign_movement"],
-    "npc_ids": ["torres_blackout"],
+    "rival_factions": [
+      "iron_rose_syndicate"
+    ],
+    "allied_factions": [
+      "anti_sovereign_movement"
+    ],
+    "npc_ids": [
+      "torres_blackout"
+    ],
     "dialogue_style": "urgent",
     "reputation_currency": "audit_credits",
     "faction_state": {
       "factionName": "Anti-Corporate Resistance",
       "reputation": 40,
       "tensions": "The resistance is forced to use criminal infrastructure (Iron Rose) for some operations — Nyx hates this."
+    },
+    "visual": {
+      "primary_color": "#a0229a",
+      "secondary_color": "#202914",
+      "accent_color": "#52bde0",
+      "architecture_style": "industrial",
+      "preferred_weapon_archetypes": [
+        "crossbow",
+        "scimitar",
+        "halberd"
+      ],
+      "preferred_armor_silhouette": "leather",
+      "sigil_path": "M0,-20 L18,18 L-18,18 Z",
+      "banner_sigil_id": "anti_corporate_resistance_sigil",
+      "ornamentation_motifs": []
     }
   },
   {
@@ -140,18 +365,54 @@
     "name": "The Verdant Veil",
     "motto": "What grows quietest grows longest.",
     "goal": "Tend the goddess Concordia's grove and codify the Eight Refusals across generations.",
-    "values": ["patience", "silence", "long memory", "the eight refusals"],
-    "fears": ["the upper grove going silent", "a ninth refusal they cannot teach", "the goddess answering wrong", "the third keeper's path being walked again"],
-    "controlled_districts": ["upper_grove", "temple_of_the_second_hour", "eastern_lantern_path"],
+    "values": [
+      "patience",
+      "silence",
+      "long memory",
+      "the eight refusals"
+    ],
+    "fears": [
+      "the upper grove going silent",
+      "a ninth refusal they cannot teach",
+      "the goddess answering wrong",
+      "the third keeper's path being walked again"
+    ],
+    "controlled_districts": [
+      "upper_grove",
+      "temple_of_the_second_hour",
+      "eastern_lantern_path"
+    ],
     "rival_factions": [],
-    "allied_factions": ["scholars_guild"],
-    "npc_ids": ["lyra_silentchant", "sister_bell", "blackroot_thorne", "concordia_first_breath"],
+    "allied_factions": [
+      "scholars_guild"
+    ],
+    "npc_ids": [
+      "lyra_silentchant",
+      "sister_bell",
+      "blackroot_thorne",
+      "concordia_first_breath"
+    ],
     "dialogue_style": "spare",
     "reputation_currency": "kept_silences",
     "faction_state": {
       "factionName": "Verdant Veil",
       "reputation": 55,
       "tensions": "The third keeper walked into the goddess seven years ago and Sister Bell still keeps a fourth bed made up. The grove has not yet decided what that means."
+    },
+    "visual": {
+      "primary_color": "#2259a0",
+      "secondary_color": "#1d1429",
+      "accent_color": "#a552e0",
+      "architecture_style": "organic",
+      "preferred_weapon_archetypes": [
+        "bow",
+        "axe",
+        "crossbow"
+      ],
+      "preferred_armor_silhouette": "exposed",
+      "sigil_path": "M-15,-15 L15,-15 L15,15 L-15,15 Z",
+      "banner_sigil_id": "verdant_veil_remnant_sigil",
+      "ornamentation_motifs": []
     }
   }
 ]

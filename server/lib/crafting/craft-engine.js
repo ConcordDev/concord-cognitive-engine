@@ -28,7 +28,6 @@ import { validateDesign, estimateStats } from './recipe-validator.js';
  */
 export function executeCraft(db, userId, worldId, recipeId, opts = {}) {
   // 1. Load recipe DTU
-  // TODO: project explicit columns (auto-fix suggestion)
   const recipeDtu = db.prepare("SELECT * FROM dtus WHERE id = ? AND type = 'recipe'").get(recipeId);
   if (!recipeDtu) {
     return { ok: false, error: 'Recipe not found or is not a recipe DTU' };
@@ -41,7 +40,6 @@ export function executeCraft(db, userId, worldId, recipeId, opts = {}) {
   }
 
   // 3. Load world rule_modulators
-  // TODO: project explicit columns (auto-fix suggestion)
   const world = db.prepare("SELECT * FROM worlds WHERE id = ?").get(worldId);
   if (!world) {
     return { ok: false, error: 'World not found' };

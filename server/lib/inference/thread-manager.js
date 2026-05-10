@@ -34,7 +34,6 @@ export function createThread(db, { userId, agentId, sandboxId, brainRole = "cons
  */
 export function getThread(db, threadId, userId) {
   try {
-    // TODO: project explicit columns (auto-fix suggestion)
     const row = db.prepare(`SELECT * FROM agent_threads WHERE id = ?`).get(threadId);
     if (!row) return null;
     if (userId && row.user_id !== userId) return null;

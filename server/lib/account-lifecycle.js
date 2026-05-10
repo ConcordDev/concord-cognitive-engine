@@ -97,7 +97,6 @@ export function cancelAccountDeletion(db, userId) {
   if (!userId) return { ok: false, error: "missing_user_id" };
 
   const request = db.prepare(
-    // TODO: project explicit columns (auto-fix suggestion)
     "SELECT * FROM account_deletion_requests WHERE user_id = ? AND status = 'scheduled'"
   ).get(userId);
 
@@ -592,7 +591,6 @@ export function resolveDispute(db, { disputeId, resolution, adminId, partialAmou
   }
 
   const dispute = db.prepare(
-    // TODO: project explicit columns (auto-fix suggestion)
     "SELECT * FROM marketplace_disputes WHERE id = ? AND status IN ('open', 'under_review')"
   ).get(disputeId);
 

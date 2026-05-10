@@ -168,24 +168,44 @@ function createMockDb() {
                 fork_creti: 30,
               }));
           }
+          // batchLookup pattern: SELECT <cols> FROM dtus WHERE id IN (?, ?, ...)
+          // (introduced when compressToDMega/compressToHyper switched to a
+          // single batched lookup instead of N round-trips). The mock now
+          // returns the projected row for each matching id.
+          if (sql.includes("FROM dtus WHERE id IN (")) {
+            const ids = new Set(params);
+            return tables.dtus
+              .filter(d => ids.has(d.id))
+              .map(d => ({
+                id: d.id,
+                title: d.title,
+                content_type: d.content_type,
+                creti_score: d.creti_score,
+                tier: d.tier,
+              }));
+          }
           if (sql.includes("FROM dtus WHERE status")) {
             return tables.dtus.filter(d => d.status === "published").map(d => ({
               ...d, tags_json: d.tags_json || "[]",
             }));
           }
-          // Phase 2 perf fix: batchLookup uses
-          //   SELECT <cols> FROM dtus WHERE id IN (?, ?, ?, ...)
-          // Match the IN-list shape and return matching rows.
-          if (sql.includes("SELECT id, title, content_type, creti_score, tier FROM dtus WHERE id IN")) {
+          // batchLookup pattern (economy/_batch-lookup.js):
+          //   SELECT <cols> FROM dtus WHERE id IN (?, ?, ...)
+          // Production code's compressToDMega / compressToHyper hit this
+          // path. Mock returns the projected columns for each matched row;
+          // the regex tolerates either the specific projection from
+          // batchLookup or a generic `*` projection from other call sites.
+          if (/SELECT .* FROM dtus WHERE id IN/.test(sql)) {
+            const ids = new Set(params);
             return tables.dtus
-              .filter(d => params.includes(d.id))
+              .filter(d => ids.has(d.id))
               .map(d => ({
-                id: d.id, title: d.title, content_type: d.content_type,
-                creti_score: d.creti_score, tier: d.tier,
+                id: d.id,
+                title: d.title,
+                content_type: d.content_type,
+                creti_score: d.creti_score,
+                tier: d.tier,
               }));
-          }
-          if (sql.includes("FROM dtus WHERE id IN")) {
-            return tables.dtus.filter(d => params.includes(d.id)).map(d => ({ ...d }));
           }
           return [];
         },

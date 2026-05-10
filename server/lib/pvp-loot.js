@@ -81,7 +81,6 @@ export function handlePlayerDeath(db, { killedId, killerId, gameMode, worldId, x
  * Killer has first claim for KILLER_PRIORITY_MS, then it's open.
  */
 export function claimLootBag(db, { bagId, claimerId }) {
-  // TODO: project explicit columns (auto-fix suggestion)
   const bag = db.prepare(`SELECT * FROM death_loot_bags WHERE id = ?`).get(bagId);
   if (!bag) return { ok: false, error: "bag_not_found" };
   if (bag.claimed_by) return { ok: false, error: "already_claimed" };

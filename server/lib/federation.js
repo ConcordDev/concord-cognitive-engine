@@ -65,7 +65,6 @@ export function createNational(db, { name, countryCode, compliance = {}, steward
  * List all nationals.
  */
 export function listNationals(db) {
-  // TODO: project explicit columns (auto-fix suggestion)
   const rows = db.prepare("SELECT * FROM nationals ORDER BY name").all();
   return {
     ok: true,
@@ -84,7 +83,6 @@ export function listNationals(db) {
  * Get a single national by id.
  */
 export function getNational(db, id) {
-  // TODO: project explicit columns (auto-fix suggestion)
   const r = db.prepare("SELECT * FROM nationals WHERE id = ?").get(id);
   if (!r) return { ok: false, error: "not_found" };
   return {
@@ -128,7 +126,6 @@ export function createRegion(db, { name, nationalId, timezone = null }) {
  * List regions, optionally filtered by national.
  */
 export function listRegions(db, { nationalId = null } = {}) {
-  // TODO: project explicit columns (auto-fix suggestion)
   let sql = "SELECT * FROM regions";
   const params = [];
   if (nationalId) {
@@ -156,7 +153,6 @@ export function listRegions(db, { nationalId = null } = {}) {
  * Get a single region by id.
  */
 export function getRegion(db, id) {
-  // TODO: project explicit columns (auto-fix suggestion)
   const r = db.prepare("SELECT * FROM regions WHERE id = ?").get(id);
   if (!r) return { ok: false, error: "not_found" };
   return {
@@ -235,7 +231,6 @@ export function markStaleCRIs(db) {
  * List CRI instances, optionally filtered.
  */
 export function listCRIInstances(db, { regionalId = null, nationalId = null, status = null } = {}) {
-  // TODO: project explicit columns (auto-fix suggestion)
   let sql = "SELECT * FROM cri_instances WHERE 1=1";
   const params = [];
   if (regionalId) { sql += " AND regional_id = ?"; params.push(regionalId); }
@@ -336,7 +331,6 @@ export function setEntityHomeBase(db, { entityId, criId }) {
   const now = nowISO();
 
   // Check for existing home base (for transfer tracking)
-  // TODO: project explicit columns (auto-fix suggestion)
   const existing = db.prepare("SELECT * FROM entity_home_base WHERE entity_id = ?").get(entityId);
 
   if (existing) {
@@ -376,7 +370,6 @@ export function setEntityHomeBase(db, { entityId, criId }) {
  * Get an entity's home base.
  */
 export function getEntityHomeBase(db, entityId) {
-  // TODO: project explicit columns (auto-fix suggestion)
   const row = db.prepare("SELECT * FROM entity_home_base WHERE entity_id = ?").get(entityId);
   if (!row) return { ok: false, error: "no_home_base" };
   return {
@@ -591,7 +584,6 @@ export function findListingsForEntity(db, { entityId, query = {}, isEmergent = f
  */
 function _findListingsStrictLocalFirst(db, entityId, query) {
   // Get entity home base
-  // TODO: project explicit columns (auto-fix suggestion)
   const homeBase = db.prepare("SELECT * FROM entity_home_base WHERE entity_id = ?").get(entityId);
   if (!homeBase) return { ok: false, error: "entity_has_no_home_base" };
 
@@ -630,7 +622,6 @@ function _findListingsRecommendedLocalFirst(db, query) {
  * Internal: search marketplace listings with optional location filters.
  */
 function _searchListingsWithLocation(db, filters) {
-  // TODO: project explicit columns (auto-fix suggestion)
   let sql = "SELECT * FROM marketplace_economy_listings WHERE 1=1";
   const params = [];
 
@@ -780,7 +771,6 @@ export function createPeer(db, { peerType, fromId, toId, sharingPolicy = "pull_o
  * List federation peers for a given entity.
  */
 export function listPeers(db, { entityId = null, peerType = null } = {}) {
-  // TODO: project explicit columns (auto-fix suggestion)
   let sql = "SELECT * FROM federation_peers WHERE 1=1";
   const params = [];
   if (entityId) {
@@ -1042,7 +1032,6 @@ export function recordTierContent(db, { contentId, federationTier, promotedFromT
  */
 export function getContentTiers(db, contentId) {
   const rows = db.prepare(
-    // TODO: project explicit columns (auto-fix suggestion)
     "SELECT * FROM tier_content WHERE original_content_id = ? ORDER BY promoted_at"
   ).all(contentId);
   return {
@@ -1070,7 +1059,6 @@ export function getContentTiers(db, contentId) {
  */
 export function getMultiTierRoyalties(db, { creatorId, contentId }) {
   const tiers = db.prepare(
-    // TODO: project explicit columns (auto-fix suggestion)
     "SELECT * FROM tier_content WHERE original_content_id = ?"
   ).all(contentId);
 
@@ -1191,7 +1179,6 @@ export function getUserXP(db, { userId, federationTier, regional = null, nationa
  * Get completed quests for a user at a tier.
  */
 export function getUserQuestCompletions(db, { userId, federationTier = null }) {
-  // TODO: project explicit columns (auto-fix suggestion)
   let sql = "SELECT * FROM quest_completions WHERE user_id = ?";
   const params = [userId];
   if (federationTier) { sql += " AND federation_tier = ?"; params.push(federationTier); }
@@ -1248,7 +1235,6 @@ export function createRaceSeason(db, { name, startDate, endDate }) {
  * Get the currently active race season.
  */
 export function getActiveSeason(db) {
-  // TODO: project explicit columns (auto-fix suggestion)
   const row = db.prepare("SELECT * FROM race_seasons WHERE status = 'active' LIMIT 1").get();
   if (!row) return { ok: true, season: null };
   return {
@@ -1340,7 +1326,6 @@ export function processDedupDecision(db, { reviewId, decision, reviewerId }) {
   const validDecisions = ["approve", "reject_duplicate", "merge_with_existing"];
   if (!validDecisions.includes(decision)) return { ok: false, error: "invalid_decision" };
 
-  // TODO: project explicit columns (auto-fix suggestion)
 
   const review = db.prepare("SELECT * FROM dedup_reviews WHERE id = ?").get(reviewId);
   if (!review) return { ok: false, error: "review_not_found" };
@@ -1372,7 +1357,6 @@ export function processDedupDecision(db, { reviewId, decision, reviewerId }) {
  * Get pending dedup reviews for a tier.
  */
 export function getPendingDedupReviews(db, { targetTier = null, limit = 50 } = {}) {
-  // TODO: project explicit columns (auto-fix suggestion)
   let sql = "SELECT * FROM dedup_reviews WHERE status = 'pending'";
   const params = [];
   if (targetTier) { sql += " AND target_tier = ?"; params.push(targetTier); }

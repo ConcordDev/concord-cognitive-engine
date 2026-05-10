@@ -25,6 +25,7 @@ import { recentFacts as _recentWorldFacts } from "./world-facts.js";
 // is a pure read against the npc_grudges/preoccupations/desires tables;
 // it tolerates missing tables and returns nulls.
 import { composeAsymmetryContext as _composeAsymmetryContext } from "./npc-asymmetry.js";
+import { copingTraitLine as _copingTraitLine } from "./npc-stress.js";
 
 const DIALOGUE_TTL_MS   = 5 * 60 * 1000;   // 5 minutes
 const QUEST_TTL_MS      = 10 * 60 * 1000;  // 10 minutes
@@ -176,6 +177,10 @@ export function buildNPCTraits(npcId, db = null, opts = {}) {
     persistent_grudge:        null,
     current_preoccupation:    null,
     desire_for_this_player:   null,
+    // Sprint C / A1 — coping trait line when the NPC is mid-mental-break.
+    coping_state:             null,
+    // Sprint C / A2 — current opinion of this player (kind + score).
+    current_opinion:          null,
     // Deliberately exclude secrets from LLM context — those are for human authors only
   };
 
@@ -187,8 +192,23 @@ export function buildNPCTraits(npcId, db = null, opts = {}) {
         if (ctx.persistent_grudge)        traits.persistent_grudge = ctx.persistent_grudge;
         if (ctx.current_preoccupation)    traits.current_preoccupation = ctx.current_preoccupation;
         if (ctx.desire_for_this_player)   traits.desire_for_this_player = ctx.desire_for_this_player;
+        if (ctx.current_opinion)          traits.current_opinion = ctx.current_opinion;
       }
     } catch { /* asymmetry tables may not exist on minimal builds */ }
+
+    // Sprint C / Track A1 — coping line. Read npc_stress + emit a short
+    // trait line when the NPC is currently inside its coping window. The
+    // line is appended to personality but stays separate so prompt
+    // inspection tools can distinguish "trait" vs "transient state".
+    try {
+      const stressRow = db.prepare(`
+        SELECT stress, coping_trait, coping_until FROM npc_stress WHERE npc_id = ?
+      `).get(npcId);
+      if (stressRow) {
+        const line = _copingTraitLine(stressRow);
+        if (line) traits.coping_state = line;
+      }
+    } catch { /* stress table absent on minimal builds */ }
   }
 
   // Defense-in-depth: scan the materialized traits for the secret canary.

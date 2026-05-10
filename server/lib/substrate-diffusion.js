@@ -21,7 +21,6 @@ const DAILY_MS = 24 * 60 * 60 * 1000;
 export function recordDiffusionEvent(hybridId, event, db) {
   if (!VALID_EVENTS.includes(event.type)) return;
 
-  // TODO: project explicit columns (auto-fix suggestion)
 
   const existing = db.prepare("SELECT * FROM skill_diffusion WHERE skill_id = ?").get(hybridId);
 

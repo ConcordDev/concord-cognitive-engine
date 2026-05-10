@@ -23,20 +23,38 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Diff package.json against base
+      - name: Diff package.json dependencies against base
         run: |
           set -e
-          DIFF_OUT=$(git diff origin/${{ github.base_ref }} -- server/package.json concord-frontend/package.json || true)
-          NEW_DEPS=$(echo "$DIFF_OUT" | grep -E '^\+ +"[^"]+":' | sed -E 's/.*"([^"]+)".*/\1/' | sort -u || true)
-          if [ -z "$NEW_DEPS" ]; then
-            echo "No new dependencies detected."
+          # Extract the *dependency* and *devDependency* sets from the base and
+          # head copies of each package.json. Comparing scripts/peerDependencies
+          # would produce false positives — adding a new npm script (e.g. a
+          # build helper) is not a runtime dependency change. We use jq so the
+          # diff is structural rather than line-based.
+          BASE_REF="origin/${{ github.base_ref }}"
+          MISSING_ADR=""
+          NEW_DEPS_TOTAL=""
+          for pkg in server/package.json concord-frontend/package.json; do
+            if ! git ls-tree -r --name-only HEAD | grep -qx "$pkg"; then continue; fi
+            BASE_KEYS=$(git show "${BASE_REF}:${pkg}" 2>/dev/null \
+              | jq -r '(.dependencies // {}) + (.devDependencies // {}) | keys[]' \
+              | sort -u || true)
+            HEAD_KEYS=$(jq -r '(.dependencies // {}) + (.devDependencies // {}) | keys[]' "$pkg" \
+              | sort -u || true)
+            ADDED=$(comm -13 <(echo "$BASE_KEYS") <(echo "$HEAD_KEYS"))
+            if [ -n "$ADDED" ]; then
+              echo "New deps in $pkg:"
+              echo "$ADDED"
+              NEW_DEPS_TOTAL="$NEW_DEPS_TOTAL $ADDED"
+            fi
+          done
+
+          if [ -z "$NEW_DEPS_TOTAL" ]; then
+            echo "No new runtime/dev dependencies detected."
             exit 0
           fi
 
-          echo "New dependencies detected:"
-          echo "$NEW_DEPS"
-          MISSING_ADR=""
-          for dep in $NEW_DEPS; do
+          for dep in $NEW_DEPS_TOTAL; do
             slug=$(echo "$dep" | tr -d '@/' | tr A-Z a-z)
             if ! ls docs/adr/ 2>/dev/null | tr A-Z a-z | grep -q "$slug"; then
               MISSING_ADR="$MISSING_ADR $dep"

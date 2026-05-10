@@ -125,6 +125,29 @@ export default function registerSystemRoutes(app, {
     checks.postgres = { connected: !!dbStatus.pgPool, status: dbStatus.pgPool ? 'connected' : 'in-memory-fallback' };
     checks.redis = { connected: !!dbStatus.redisClient, status: dbStatus.redisClient ? 'connected' : 'in-memory-fallback' };
     checks.saveFailures = STATE._saveFailures || 0;
+
+    // Per-brain LLM availability — surfaces Ollama reachability so an
+    // operator hitting /health sees at a glance which models are online
+    // without a separate /api/brain/health round-trip. The `enabled`
+    // flag is maintained by initFiveBrains() probe + /api/brain/health
+    // recovery loop. We do NOT mark `healthy=false` if a brain is down;
+    // brains have deterministic fallbacks and a missing brain shouldn't
+    // page the on-call. Synthetic monitoring should alert on the brain-
+    // specific endpoint instead.
+    const BRAIN = globalThis._concordBRAIN;
+    if (BRAIN && typeof BRAIN === 'object') {
+      const brains = {};
+      for (const [name, brain] of Object.entries(BRAIN)) {
+        if (!brain || typeof brain !== 'object') continue;
+        brains[name] = {
+          enabled: !!brain.enabled,
+          model: brain.model || null,
+          url: brain.url || null,
+        };
+      }
+      checks.brains = brains;
+    }
+
     res.status(healthy ? 200 : 503).json({
       status: healthy ? "healthy" : "degraded",
       version: VERSION,

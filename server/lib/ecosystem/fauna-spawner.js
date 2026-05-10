@@ -83,6 +83,45 @@ function randomPos(bounds) {
 }
 
 /**
+ * Theme 2 (game-feel pass): deterministic cluster center per
+ * (world, biome, species). Birds of a feather start together, so the
+ * boid cycle has something to flock toward instead of trying to fold a
+ * uniformly-scattered point cloud into groups every tick.
+ *
+ * Seeded by sha1 so the same world+biome+species always anchors at the
+ * same coords across server restarts. Two species in the same biome
+ * pick distinct centers; the same species in two biomes picks two
+ * centers (one per biome). Day-seed shift is *not* included — the
+ * cluster center is a long-lived anchor for the species' niche, not a
+ * daily migration.
+ */
+export function clusterCenterFor(worldId, biome, speciesId, bounds = null) {
+  const b = bounds ?? biomeBoundsForWorld(worldId);
+  const key = `${worldId}::${biome}::${speciesId}`;
+  const h = crypto.createHash("sha1").update(key).digest();
+  // Two 32-bit slices → x and z. Map to bounds.
+  const ux = h.readUInt32BE(0) / 0xffffffff;
+  const uz = h.readUInt32BE(4) / 0xffffffff;
+  return {
+    x: b.x0 + ux * (b.x1 - b.x0),
+    z: b.z0 + uz * (b.z1 - b.z0),
+  };
+}
+
+/** Random offset within ±radius of (cx, cz). Bounded to world bounds. */
+function clusterOffsetPos(cx, cz, radius, bounds) {
+  const a  = Math.random() * Math.PI * 2;
+  const r  = Math.sqrt(Math.random()) * radius; // sqrt → uniform area distribution
+  let x = cx + Math.cos(a) * r;
+  let z = cz + Math.sin(a) * r;
+  if (x < bounds.x0) x = bounds.x0;
+  if (x > bounds.x1) x = bounds.x1;
+  if (z < bounds.z0) z = bounds.z0;
+  if (z > bounds.z1) z = bounds.z1;
+  return { x, z };
+}
+
+/**
  * One spawner pass. Reads existing populations + targets per
  * (world_id, biome, species) and tops up missing creatures into world_npcs.
  *
@@ -91,6 +130,17 @@ function randomPos(bounds) {
 export function runFaunaSpawner({ state, db }) {
   if (!db) return { ok: false, reason: "no_db" };
   if (!state) return { ok: false, reason: "no_state" };
+
+  // Prepared INSERT — re-used across every spawn in the pass. The 8 args
+  // align with the world_npcs columns this spawner cares about (id,
+  // world_id, archetype, species_id, x, y, z, is_dead). Older builds
+  // with a stricter schema throw on the .run; the catch in the loop
+  // skips gracefully (spawner is best-effort, never fatal).
+  const insert = db.prepare(`
+    INSERT INTO world_npcs
+      (id, world_id, archetype, species_id, x, y, z, is_dead)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `);
 
   // Discover active worlds. We piggyback on world_npcs (any world with
   // an NPC presence is "alive") rather than introducing a new active-
@@ -166,13 +216,17 @@ export function runFaunaSpawner({ state, db }) {
         }
 
         const bounds = biomeBoundsForWorld(worldId);
-        const insert = db.prepare(`
-          INSERT INTO world_npcs
-            (id, world_id, archetype, name, x, y, z, level, is_dead, is_conscious, is_immortal)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0)
-        `);
+        // Theme 2 (game-feel pass): cluster around a deterministic center
+        // per (world, biome, species) instead of uniform-random point cloud.
+        // Cluster radius scales modestly with target_count so high-density
+        // species occupy a plausibly larger range. randomPos remains as the
+        // fallback for unbounded universes.
+        const center = clusterCenterFor(worldId, biome, sp.id, bounds);
+        const clusterRadius = Math.max(40, Math.min(180, 18 + (target * 1.5)));
         for (let i = 0; i < Math.min(need, BATCH_LIMIT - spawned); i++) {
-          const pos = randomPos(bounds);
+          const pos = clusterOffsetPos(center.x, center.z, clusterRadius, bounds);
+          // Suppress the unused-but-kept-for-fallback complaint.
+          void randomPos;
           const id = `cr_${crypto.randomUUID()}`;
           try {
             insert.run(

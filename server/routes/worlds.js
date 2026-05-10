@@ -23,6 +23,7 @@ import {
   checkQuestCompletion,
 } from "../lib/quests/quest-engine.js";
 import * as cityPresence from "../lib/city-presence.js";
+import { serverError } from "../lib/http-errors.js";
 
 // Combat anti-cheat constants. Server-side validation prevents a modified
 // client from claiming impossible reach or damage. The values are tuned
@@ -91,7 +92,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       // Keep backward-compat `worlds` key alongside new `data` key
       res.json({ worlds: data, data, pagination: { page, limit, total, hasMore: offset + limit < total } });
     } catch (e) {
-      res.status(500).json({ error: e.message });
+      serverError(res, e);
     }
   });
 
@@ -102,7 +103,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       const world   = loadWorld(db, worldId);
       res.json({ worldId, world });
     } catch (e) {
-      res.status(500).json({ error: e.message });
+      serverError(res, e);
     }
   });
 
@@ -113,7 +114,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       if (!world) return res.status(404).json({ error: "World not found" });
       res.json({ world });
     } catch (e) {
-      res.status(500).json({ error: e.message });
+      serverError(res, e);
     }
   });
 
@@ -141,7 +142,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
         skillDtusCreated,
       });
     } catch (e) {
-      res.status(500).json({ error: e.message });
+      serverError(res, e);
     }
   });
 
@@ -171,7 +172,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       );
       res.status(201).json({ world });
     } catch (e) {
-      res.status(500).json({ error: e.message });
+      serverError(res, e);
     }
   });
 
@@ -185,7 +186,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       db.prepare(`UPDATE worlds SET ${field} = ? WHERE id = ?`).run(value, req.params.id);
       res.json({ ok: true, field, value });
     } catch (e) {
-      res.status(500).json({ error: e.message });
+      serverError(res, e);
     }
   });
 
@@ -248,7 +249,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       // Progress update is handled by quest-emergence.js; acknowledge receipt here
       res.json({ ok: true, questId: req.params.questId, event: req.body });
     } catch (e) {
-      res.status(500).json({ error: e.message });
+      serverError(res, e);
     }
   });
 
@@ -336,7 +337,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       const { evaluateSkillInWorld } = await import("../lib/skill-effectiveness.js");
       res.json({ skillId: req.params.dtuId, worldId, ...evaluateSkillInWorld(skill, world) });
     } catch (e) {
-      res.status(500).json({ error: e.message });
+      serverError(res, e);
     }
   });
 
@@ -353,7 +354,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       }, db);
       res.json(result);
     } catch (e) {
-      res.status(500).json({ error: e.message });
+      serverError(res, e);
     }
   });
 
@@ -412,7 +413,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       }));
       res.json({ skills: shaped, worldId });
     } catch (e) {
-      res.status(500).json({ error: e.message });
+      serverError(res, e);
     }
   });
 
@@ -429,7 +430,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       `).all(req.params.worldId);
       res.json({ leaderboard: rows });
     } catch (e) {
-      res.status(500).json({ error: e.message });
+      serverError(res, e);
     }
   });
 
@@ -443,7 +444,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
         ORDER BY d.skill_level DESC LIMIT 20
       `).all();
       res.json({ legends: rows });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { serverError(res, e); }
   });
 
   // GET /api/worlds/crises — active civilization crises
@@ -451,7 +452,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
     try {
       const { getActiveCrises } = await import("../lib/world-crisis.js");
       res.json({ crises: getActiveCrises(db) });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { serverError(res, e); }
   });
 
   // POST /api/worlds/crises/:id/respond — player contributes to crisis resolution
@@ -464,7 +465,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
         outcome: req.body.outcome || "Resolved by player intervention.",
       }, () => {});
       res.json(result);
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { serverError(res, e); }
   });
 
   // POST /api/worlds/loot/:nodeId — claim a loot node
@@ -486,7 +487,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
 
       const contents = JSON.parse(node.contents || "[]");
       res.json({ ok: true, contents });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { serverError(res, e); }
   });
 
   // GET /api/worlds/:worldId/nemesis — get the caller's nemesis in a world
@@ -494,7 +495,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
     try {
       const record = db.prepare("SELECT * FROM nemesis_records WHERE player_id = ?").get(req.user.id);
       res.json({ nemesis: record || null });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { serverError(res, e); }
   });
 
   // GET /api/worlds/:worldId/difficulty — player's effective resistance curve
@@ -520,7 +521,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
 
       const scalingFactor = Math.min(2.0, avgLevel / Math.max(1, populationAvg));
       res.json({ worldId: req.params.worldId, playerAvgLevel: avgLevel, populationAvg, scalingFactor });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { serverError(res, e); }
   });
 
   // POST /api/worlds/:worldId/prestige — reset skills for prestige badge
@@ -557,7 +558,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       } catch { /* lore append best-effort */ }
 
       res.json({ ok: true, prestigedSkills: playerSkills.length, fromAvgLevel: avgLevel.toFixed(1) });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { serverError(res, e); }
   });
 
   // GET /api/substrate/patterns — substrate pattern feed
@@ -577,7 +578,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       ).all(req.user.id).map(r => r.world_id);
       res.json({ visited });
     } catch (e) {
-      res.status(500).json({ error: e.message });
+      serverError(res, e);
     }
   });
 
@@ -590,7 +591,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       ).run(req.user.id, Date.now());
       res.json({ achievement: 'world_walker', awarded: true });
     } catch (e) {
-      res.status(500).json({ error: e.message });
+      serverError(res, e);
     }
   });
 
@@ -610,7 +611,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       const state = npc ? _tryParseJSON(npc.state_json, {}) : {};
       res.json({ location: state.zone ?? null, npcId: record.npc_id, title: record.npc_title });
     } catch (e) {
-      res.status(500).json({ error: e.message });
+      serverError(res, e);
     }
   });
 
@@ -625,7 +626,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       }));
       res.json({ patterns });
     } catch (e) {
-      res.status(500).json({ error: e.message });
+      serverError(res, e);
     }
   });
 
@@ -636,7 +637,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       const emergents = await getWorldEmergents(req.params.worldId, db);
       res.json({ ok: true, emergents });
     } catch (e) {
-      res.status(500).json({ error: e.message });
+      serverError(res, e);
     }
   });
 
@@ -645,7 +646,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       const emergents = await getCrossWorldEmergents(db);
       res.json({ ok: true, emergents });
     } catch (e) {
-      res.status(500).json({ error: e.message });
+      serverError(res, e);
     }
   });
 
@@ -655,7 +656,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       await growAffinity(req.params.emergentId, req.params.worldId, delta, db);
       res.json({ ok: true });
     } catch (e) {
-      res.status(500).json({ error: e.message });
+      serverError(res, e);
     }
   });
 
@@ -665,20 +666,45 @@ export default function createWorldsRouter({ requireAuth, db }) {
   router.get("/:worldId/npcs", requireAuth, (req, res) => {
     try {
       const { worldId } = req.params;
-      const rows = db.prepare(`
-        SELECT id, npc_type, archetype, body_type, faction, is_conscious, is_immortal,
-               quest_giver, level, current_location, state, universe_type,
-               grief_level, criminal_rep, is_wanted, schedule_phase, job_type,
-               current_hp, max_hp, bounty, status_effects
-        FROM world_npcs
-        WHERE world_id = ? AND is_dead = 0
-        ORDER BY created_at ASC
-        LIMIT 200
-      `).all(worldId);
+      // Theme 4 (game-feel pass): LEFT JOIN npc_routine_state so the
+      // routine-cycle's authoritative activity_kind surfaces to the
+      // client. Falls back to the older state.currentActivity JSON
+      // field if no routine row exists. Both paths populated by
+      // npc-routine-cycle / npc-simulator respectively.
+      let rows;
+      try {
+        rows = db.prepare(`
+          SELECT n.id, n.npc_type, n.archetype, n.body_type, n.faction, n.is_conscious, n.is_immortal,
+                 n.quest_giver, n.level, n.current_location, n.state, n.universe_type,
+                 n.grief_level, n.criminal_rep, n.is_wanted, n.schedule_phase, n.job_type,
+                 n.current_hp, n.max_hp, n.bounty, n.status_effects,
+                 r.activity_kind AS routine_activity_kind,
+                 r.location_kind AS routine_location_kind
+          FROM world_npcs n
+          LEFT JOIN npc_routine_state r ON r.npc_id = n.id
+          WHERE n.world_id = ? AND n.is_dead = 0
+          ORDER BY n.created_at ASC
+          LIMIT 200
+        `).all(worldId);
+      } catch {
+        // npc_routine_state missing on minimal/legacy deployments — fall back.
+        rows = db.prepare(`
+          SELECT id, npc_type, archetype, body_type, faction, is_conscious, is_immortal,
+                 quest_giver, level, current_location, state, universe_type,
+                 grief_level, criminal_rep, is_wanted, schedule_phase, job_type,
+                 current_hp, max_hp, bounty, status_effects
+          FROM world_npcs
+          WHERE world_id = ? AND is_dead = 0
+          ORDER BY created_at ASC
+          LIMIT 200
+        `).all(worldId);
+      }
 
       const npcs = rows.map(r => {
         const state    = _tryParseJSON(r.state, {});
         const location = _tryParseJSON(r.current_location, { x: 0, y: 0, z: 0 });
+        // Routine-cycle activity wins; fall back to JSON state for legacy NPCs.
+        const currentActivity = r.routine_activity_kind || state.currentActivity || null;
         return {
           id:           r.id,
           name:         state.name || r.archetype || `${r.npc_type}-${r.id.slice(0, 4)}`,
@@ -693,7 +719,8 @@ export default function createWorldsRouter({ requireAuth, db }) {
           position:     location,
           rotation:     state.rotation || 0,
           occupation:   state.occupation || r.archetype,
-          currentActivity: state.currentActivity || null,
+          currentActivity,
+          locationKind: r.routine_location_kind || null,
           factionTactic:   state.factionTactic || null,
           // Behavioural state fields
           griefLevel:    r.grief_level   ?? 0,
@@ -1956,6 +1983,18 @@ export default function createWorldsRouter({ requireAuth, db }) {
             }
           }
         } catch { /* asymmetry tables may be missing */ }
+
+        // Sprint C / Track A2 — opinion cascade. Direct kin -40, faction
+        // siblings ripple via cascadeFamilyAndAlly.
+        try {
+          const op = await import("../lib/npc-opinions.js");
+          op.cascadeFamilyAndAlly(
+            db, npcId,
+            "player", userId,
+            -40,
+            `slain ${npcId}`,
+          );
+        } catch { /* npc_opinions absent on minimal builds */ }
       }
 
       // Phase 1 + 1.5: emit skill:tier-witnessed when an evolved skill
@@ -2045,6 +2084,36 @@ export default function createWorldsRouter({ requireAuth, db }) {
               ttlSeconds: d.ttlSeconds,
             });
           }
+
+          // Theme 3 (game-feel pass): lightning chain. If the element is
+          // lightning AND the source cell is wet, propagate a fraction of
+          // the hit to nearby entities. Inline (not the heartbeat) so the
+          // chain feels immediate. Best-effort — never block the attack.
+          if ((skillData.element || 'none') === 'lightning') {
+            try {
+              const { propagateLightningChain } = await import('../lib/embodied/signal-propagation.js');
+              const chainRes = propagateLightningChain(
+                db, worldId,
+                { x: targetPos.x, z: targetPos.z },
+                damageResult.finalDamage,
+                npcId,
+              );
+              if (chainRes?.ok && chainRes.targets.length > 0) {
+                const io = req.app.locals.io;
+                for (const t of chainRes.targets) {
+                  io?.to(`world:${worldId}`).emit('combat:chain', {
+                    worldId,
+                    sourceTargetId: npcId,
+                    chainTargetId: t.id,
+                    chainTargetKind: t.kind,
+                    distance: Math.round(t.distance * 10) / 10,
+                    damage: chainRes.chainDamage,
+                    element: 'lightning',
+                  });
+                }
+              }
+            } catch { /* chain best-effort */ }
+          }
         }
 
         const stagger = shouldStaggerOnTerrain({
@@ -2067,16 +2136,32 @@ export default function createWorldsRouter({ requireAuth, db }) {
           }
           try {
             const io = req.app.locals.io;
+            // Sprint B Phase 8 (post-codex review): include attackerId so
+            // the client-side CombatStaggerCameraBridge can apply local-
+            // relevance gating and skip camera-punching unrelated players.
             io?.to(`world:${worldId}`).emit('combat:stagger', {
-              worldId, targetId: npcId, targetType: 'npc',
+              worldId,
+              attackerId: req.user?.id ?? null,
+              targetId: npcId,
+              targetType: 'npc',
               buildingId: stagger.buildingId,
               durationMs: stagger.durationMs,
               structuralStress: stagger.structuralStress,
             });
             if (stress?.transitioned) {
+              // Include the building's position (when available) so the
+              // BuildingCollapseBridge can scope full-screen feedback to
+              // collapses near the local player.
+              const bldgPos = (typeof targetPos === 'object' && targetPos)
+                ? { x: targetPos.x, z: targetPos.z }
+                : null;
               io?.to(`world:${worldId}`).emit('world:building-state', {
-                worldId, buildingId: stagger.buildingId,
-                state: stress.state, healthPct: stress.healthPct,
+                worldId,
+                buildingId: stagger.buildingId,
+                state: stress.state,
+                healthPct: stress.healthPct,
+                position: bldgPos,
+                attackerId: req.user?.id ?? null,
               });
             }
           } catch { /* realtime best-effort */ }

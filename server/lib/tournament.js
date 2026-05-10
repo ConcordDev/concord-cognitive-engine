@@ -143,7 +143,6 @@ export function createTournament(db, {
  */
 export function registerEntrant(db, tournamentId, userId) {
   if (!db || !tournamentId || !userId) return { ok: false, error: "missing_args" };
-  // TODO: project explicit columns (auto-fix suggestion)
   const t = db.prepare(`SELECT * FROM tournaments WHERE id = ?`).get(tournamentId);
   if (!t) return { ok: false, error: "tournament_not_found" };
   if (t.status !== "open") return { ok: false, error: "registration_closed" };
@@ -186,7 +185,6 @@ export function registerEntrant(db, tournamentId, userId) {
  * (which becomes seed). Odd entrant gets a bye in round 1.
  */
 export function startTournament(db, tournamentId, userId) {
-  // TODO: project explicit columns (auto-fix suggestion)
   const t = db.prepare(`SELECT * FROM tournaments WHERE id = ?`).get(tournamentId);
   if (!t) return { ok: false, error: "tournament_not_found" };
   if (t.organizer_id !== userId) return { ok: false, error: "not_organizer" };
@@ -251,7 +249,6 @@ export function startTournament(db, tournamentId, userId) {
  * is set.
  */
 export function completeBracket(db, bracketId, winnerId, chronicleDtuId = null) {
-  // TODO: project explicit columns (auto-fix suggestion)
   const br = db.prepare(`SELECT * FROM tournament_brackets WHERE id = ?`).get(bracketId);
   if (!br) return { ok: false, error: "bracket_not_found" };
   if (br.status === "complete") return { ok: true, alreadyComplete: true };
@@ -311,7 +308,6 @@ export function completeBracket(db, bracketId, winnerId, chronicleDtuId = null) 
  * tournament chronicle DTU citing all per-bout chronicles for lineage.
  */
 export function completeTournament(db, tournamentId, championId, chronicleDtuId = null) {
-  // TODO: project explicit columns (auto-fix suggestion)
   const t = db.prepare(`SELECT * FROM tournaments WHERE id = ?`).get(tournamentId);
   if (!t) return { ok: false, error: "tournament_not_found" };
   if (t.status === "completed") return { ok: true, alreadyComplete: true };
@@ -358,7 +354,6 @@ export function completeTournament(db, tournamentId, championId, chronicleDtuId 
  * training-match is being created with `tournament_bracket_id`.
  */
 export function validateBoutRules(db, bracketId, fighterAId, fighterBId, declaredScheme) {
-  // TODO: project explicit columns (auto-fix suggestion)
   const br = db.prepare(`SELECT * FROM tournament_brackets WHERE id = ?`).get(bracketId);
   if (!br) return { ok: false, error: "bracket_not_found" };
   const t = db.prepare(`SELECT rules_json FROM tournaments WHERE id = ?`).get(br.tournament_id);

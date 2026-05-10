@@ -1,0 +1,65 @@
+{
+  "world_id": "sovereign-ruins",
+  "world_name": "The Sovereign Ruins",
+  "theme": "post-collapse-archive",
+  "tech_level": "ruined-classical",
+  "magic_level": "fading",
+  "is_hub": false,
+  "description": "Concordia's sister-city before the Refusal Cascade — the place that tried to remember everything and could not refuse. After the Cascade, the city collapsed not in flame but in quiet: archives kept writing, spells kept casting, but no one remained to read them. Players arriving here find a still-functional library that still serves anyone who asks, three half-conscious archivists who are unsure if they are alive, and the Sovereign Refusal Archive itself — a monument to the moment refusal became possible. The Refusal Field is dense here; many actions are gated by glyph-strength.",
+  "skill_affinity": {
+    "default": 0.7,
+    "research": 1.0,
+    "diplomacy": 0.95,
+    "magic": 0.85,
+    "memory_archival": 1.0,
+    "refusal_glyph_reading": 1.0,
+    "stealth": 0.85,
+    "swordsmanship": 0.5,
+    "combat": 0.5,
+    "destruction": 0.3
+  },
+  "rule_modulators": {
+    "combatLethality": 0.6,
+    "refusalSensitivity": 1.5,
+    "questDensity": 0.8,
+    "weatherIntensity": 0.7,
+    "climate": {
+      "temperature": 12,
+      "humidity": 35,
+      "airQuality": 0.85,
+      "wind": "still"
+    }
+  },
+  "anchors": [
+    {
+      "id": "anchor_sovereign_archive",
+      "name": "The Sovereign Refusal Archive",
+      "description": "A circular vault open to the sky; every wall is glyphs. Players arriving here can read the inscriptions of every refusal recorded since the Cascade. Combat is suspended within the anchor.",
+      "x": 0,
+      "z": 0,
+      "kind": "neutral_zone"
+    },
+    {
+      "id": "anchor_silent_library",
+      "name": "The Silent Library",
+      "description": "Two stories of intact shelves. Books still open themselves on a schedule even though no one reads them. NPCs who enter here lose 20% combat readiness and gain 30% research yield.",
+      "x": 50,
+      "z": -120,
+      "kind": "buff_zone"
+    },
+    {
+      "id": "anchor_collapse_memorial",
+      "name": "The Collapse Memorial",
+      "description": "A half-buried obelisk listing the names of every NPC who chose to stop in the Cascade rather than refuse. The list grows by one name on each anniversary of a player's first arrival.",
+      "x": -180,
+      "z": 60,
+      "kind": "lore_anchor"
+    }
+  ],
+  "spawn_position": { "x": 0, "z": 30 },
+  "primary_currencies": ["concord_coin", "memory_shards"],
+  "is_player_creatable_world": false,
+  "lore_anchor_to_concordia": "The Sovereign Refusal Archive surfaced first here, before any other world. The Compact between Concordia's founding factions explicitly cites the Cascade as their reason for adopting refusal-as-right.",
+  "rival_shape_silhouette": "GraphView",
+  "preferred_visit_order": 4
+}

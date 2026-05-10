@@ -1,0 +1,55 @@
+{
+  "world_id": "sovereign-ruins",
+  "world_name": "The Sovereign Ruins",
+  "world_description": "Concordia's sister-city before the Refusal Cascade. The first place where refusal became possible at city scale, and the first place where that capacity exhausted itself.",
+  "history": [
+    {
+      "id": "ruins_lore_pre_cascade",
+      "title": "Before the Cascade",
+      "type": "founding",
+      "era": "Year -200 to Year 0",
+      "description": "Sovereign was the older twin of Concordia by two centuries. It was governed by a Council of Twelve Archives — every guild and craft maintained an Archive, and every Archive had a vote. The principle was that no decision could be made until the relevant Archive had recorded its history. It worked. For a time.",
+      "significance": "founding"
+    },
+    {
+      "id": "ruins_lore_glyph_discovery",
+      "title": "The Discovery of the Refusal Glyph",
+      "type": "discovery",
+      "era": "Year 0",
+      "description": "An apprentice glyph-reader named Vela noticed that the Council's voting record contained a recurring pattern in dissent — a six-fold algebra that, when traced, marked a class of decisions the Council had refused to make. She called the pattern Refusal. The Council formalized it within a year and began recording every Refusal as a glyph composition.",
+      "significance": "major",
+      "factions_involved": ["ruins_archivists"],
+      "known_by": ["ruins_archivists"]
+    },
+    {
+      "id": "ruins_lore_the_cascade",
+      "title": "The Refusal Cascade",
+      "type": "catastrophe",
+      "era": "Year 1",
+      "description": "Within a month of the formalization, every Archive's voting record began producing valid Refusal glyphs without prompting. The Council attempted to refuse the cascade — recording 'we refuse the refusal of refusal' — and the cascade swallowed that one too. Within a year, every operation in Sovereign except recording, refusing, and refusing-to-refuse had become impossible. The city did not collapse violently. It simply stopped doing things.",
+      "significance": "major",
+      "factions_involved": ["ruins_archivists"],
+      "known_by": ["ruins_archivists", "scholars_guild"],
+      "hidden_truth": "The Cascade was caused by Vela. She formalized the algebra knowing that the Council would refuse to bound it. She believed this would force them to learn restraint. It did not."
+    },
+    {
+      "id": "ruins_lore_evacuation",
+      "title": "The Quiet Evacuation",
+      "type": "event",
+      "era": "Year 2 to Year 5",
+      "description": "Most residents walked out of Sovereign over three years. There was no fight to leave; the city did not refuse departure. The few who stayed — including the founding Archivists who later became Vela, Oeric, and Kestra — agreed to maintain the Archive's recording function so that future cities would have a record of what unbounded refusal looked like.",
+      "significance": "major",
+      "factions_involved": ["ruins_archivists"]
+    },
+    {
+      "id": "ruins_lore_concordia_compact",
+      "title": "Concordia's Founding Compact References the Cascade",
+      "type": "founding",
+      "era": "Year 60",
+      "description": "The Compact that founded Concordia explicitly cites the Cascade as its reason for adopting refusal-as-right and bounded-glyph-strength. Every Concordian Refusal is by definition strength-capped at 9, and every entry expires unless a quorum re-records it within seven days. The Cascade taught them what unbounded refusal looks like.",
+      "significance": "major",
+      "factions_involved": ["scholars_guild", "ruins_archivists"],
+      "known_by": ["scholars_guild"]
+    }
+  ]
+}

@@ -57,7 +57,6 @@ function listShadows(userId, sessionKey, db) {
   if (!userId || !sessionKey || !db) return [];
   try {
     const rows = db.prepare(
-      // TODO: project explicit columns (auto-fix suggestion)
       "SELECT * FROM personal_dtus WHERE user_id = ? AND content_type = 'shadow' ORDER BY created_at DESC LIMIT 200"
     ).all(userId);
 

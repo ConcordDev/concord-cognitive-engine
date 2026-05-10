@@ -78,6 +78,19 @@ export const WORLD_MODIFIERS = Object.freeze({
   },
 });
 
+// Sprint C / Track C2 — aquatic ability flavors. Layered onto WORLD_MODIFIERS
+// per-creature when topology is one of AQUATIC_TOPOLOGIES. The
+// procedural-creature pipeline picks one ability flavor per creature; aquatic
+// topologies pick from this set instead of (or in addition to) the world's
+// default flavors.
+export const AQUATIC_ABILITY_FLAVORS = Object.freeze([
+  "bioluminescence",  // emissive material 1-4 spots; 25% in dark water
+  "electric",         // lightning element on contact (eels especially)
+  "pressure",         // reduces nearby player oxygen 2× rate (deep zones)
+  "ink",              // deploys cloud particle on threat (cephalopods)
+  "echolocation",     // NPC perception bonus / sonar pulses
+]);
+
 // ── Baseline creature loader ──────────────────────────────────────────────
 
 const __dir = dirname(fileURLToPath(import.meta.url));
@@ -122,10 +135,18 @@ export const TOPOLOGIES = Object.freeze([
   "quadruped",       // 4 legs, 1 head, optional tail
   "winged_quadruped",// 4 legs + 2 wings, 1 head, optional tail   (dragons, gryphons)
   "winged_biped",    // 2 legs + 2 wings (raptors, harpies)
-  "serpentine",      // long body, no/small limbs (snakes, eels)
+  "serpentine",      // long body, no/small limbs (snakes, eels) — terrestrial
   "polyped",         // 6+ legs (insects, crustaceans)
   "amorphous",       // no fixed limbs (slimes, oozes)
+  // Sprint C / Track C2 — aquatic topologies for marine biomes.
+  "fish",            // generic streamlined fish (caudal fin sweep)
+  "eel",             // serpentine ribbon body, sinusoidal undulation
+  "cephalopod",      // soft body + 6-8 procedural tentacles, jet propulsion
+  "shark",           // torpedo body + caudal fin, predatory pursuit
 ]);
+
+/** Topologies that live entirely in water (used by spawner depth gates). */
+export const AQUATIC_TOPOLOGIES = Object.freeze(["fish", "eel", "cephalopod", "shark"]);
 
 /**
  * @typedef {Object} CreatureSeed

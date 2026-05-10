@@ -133,6 +133,76 @@ describe("shouldValidateEventShapes — env gating", () => {
   });
 });
 
+describe("Phase 2.1 — the 7 events promoted from cartograph drift", () => {
+  // Each event was previously emitted by a heartbeat/route without an
+  // EVENT_SHAPES entry. validateEvent returned `unregistered: true` so
+  // dev-mode warnings never fired for them. Locking these shapes in
+  // means a payload-field rename anywhere in the emitter chain trips
+  // a structured warn during dev/test.
+
+  it("quest:lattice-born — minimal", () => {
+    assert.equal(validateEvent("quest:lattice-born", {
+      questId: "q1", hostNpcId: "npc1", title: "The drift in the meadow",
+    }).ok, true);
+  });
+
+  it("quest:lattice-born — with optional drift fields", () => {
+    assert.equal(validateEvent("quest:lattice-born", {
+      questId: "q1", hostNpcId: "npc1", title: "The drift in the meadow",
+      driftType: "memetic_drift", driftSeverity: "high",
+    }).ok, true);
+  });
+
+  it("beat:offered — minimal", () => {
+    assert.equal(validateEvent("beat:offered", {
+      id: "b1", userId: "u1", predictionId: "p1", prose: "Sovereign approaches the archive.",
+    }).ok, true);
+  });
+
+  it("combat:polish — detail is free-form object", () => {
+    assert.equal(validateEvent("combat:polish", {
+      id: "ev1", worldId: "concordia-hub", actorKind: "user", actorId: "u1",
+      eventKind: "stagger", detail: { magnitude: 0.7, structuralStress: 12 },
+    }).ok, true);
+  });
+
+  it("world:region-spawned — anchor is required", () => {
+    assert.equal(validateEvent("world:region-spawned", {
+      regionId: "r1", worldId: "concordia-hub", regionKind: "haunted_glade",
+      anchor: { x: 12, z: -5 }, radius: 1000, narrative: "A glade where memory fails.",
+    }).ok, true);
+  });
+
+  it("world:season-transition — year + season fields", () => {
+    assert.equal(validateEvent("world:season-transition", {
+      worldId: "concordia-hub", seasonIdx: 2, seasonName: "verdant_high", year: 1,
+      narrative: "The high green begins.",
+    }).ok, true);
+  });
+
+  it("skill:tier-witnessed — fires from combat path", () => {
+    assert.equal(validateEvent("skill:tier-witnessed", {
+      userId: "u1", npcId: "npc1", worldId: "concordia-hub",
+      skillId: "skill_dtu_42", skillName: "Frostpierce v2", revisionNum: 2,
+      element: "ice", damage: 35, position: { x: 1, z: 2 },
+    }).ok, true);
+  });
+
+  it("world:invariant-warning — surfaces detector findings", () => {
+    assert.equal(validateEvent("world:invariant-warning", {
+      id: "f1", message: "Royalty cap breached", severity: "critical",
+      location: "server/economy/royalty-cascade.js:180",
+      generatedAt: "2026-05-09T12:00:00Z",
+    }).ok, true);
+  });
+
+  it("world:invariant-warning — location and generatedAt are optional", () => {
+    assert.equal(validateEvent("world:invariant-warning", {
+      id: "f1", message: "Royalty cap breached", severity: "critical",
+    }).ok, true);
+  });
+});
+
 describe("Round-trip: every registered event accepts a minimal valid payload", () => {
   // For each registered event, build a payload with only the required
   // fields populated as `"x"` strings or `1` numbers. The validator must

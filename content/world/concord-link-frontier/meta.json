@@ -1,0 +1,65 @@
+{
+  "world_id": "concord-link-frontier",
+  "world_name": "The Frontier",
+  "theme": "peer-mesh-frontier",
+  "tech_level": "scattered-modern",
+  "magic_level": "low",
+  "is_hub": false,
+  "description": "Beyond the walled cities, where the Concordant Web actually does its work — peer-to-peer mesh routing, walker journeys, federation handshakes. Settlements are small, sparse, and connected by a network of human-scale anchors. The Frontier is a player's first contact with the cnet-federation substrate; quests here require you to deliver something across a mesh you cannot see, only trust.",
+  "skill_affinity": {
+    "default": 0.85,
+    "diplomacy": 1.0,
+    "trading": 1.0,
+    "tracking": 1.0,
+    "navigation": 1.0,
+    "hacking": 0.4,
+    "swordsmanship": 0.85,
+    "stealth": 0.95,
+    "magic": 0.55,
+    "concord_link_routing": 1.0
+  },
+  "rule_modulators": {
+    "combatLethality": 1.0,
+    "refusalSensitivity": 0.8,
+    "questDensity": 1.1,
+    "weatherIntensity": 1.2,
+    "climate": {
+      "temperature": 17,
+      "humidity": 55,
+      "airQuality": 0.92,
+      "wind": "variable"
+    }
+  },
+  "anchors": [
+    {
+      "id": "anchor_link_post_alpha",
+      "name": "Link Post Alpha",
+      "description": "The first authorized peer in the Frontier. Two human couriers + one walker NPC. The mesh starts here.",
+      "x": 0,
+      "z": 0,
+      "kind": "neutral_zone"
+    },
+    {
+      "id": "anchor_brokers_camp",
+      "name": "The Brokers' Camp",
+      "description": "An itinerant settlement that drifts every season. Hosts travelling Federation envoys.",
+      "x": 220,
+      "z": 80,
+      "kind": "trade_zone"
+    },
+    {
+      "id": "anchor_mesh_gate",
+      "name": "The Mesh Gate",
+      "description": "A monument shaped from the stripped antennas of the first federation handshake. Players who arrive here for the first time get a +0.05 ecosystem_score boost (one-time).",
+      "x": -300,
+      "z": 200,
+      "kind": "lore_anchor"
+    }
+  ],
+  "spawn_position": { "x": 0, "z": 20 },
+  "primary_currencies": ["concord_coin", "trust_marks"],
+  "is_player_creatable_world": false,
+  "lore_anchor_to_concordia": "The Frontier is the only place where Concord-Link walker journeys can be physically witnessed. Every walker that connects two cities passes through here.",
+  "rival_shape_silhouette": "WalletShell",
+  "preferred_visit_order": 5
+}
