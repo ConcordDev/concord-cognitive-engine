@@ -23,6 +23,14 @@ vi.mock('@/hooks/useLensNav', () => ({
   useLensNav: vi.fn(),
 }));
 
+// Mock useLensCommand — the real hook calls useKeyboard() which requires
+// a KeyboardProvider parent. The page mounts that provider in production
+// via the lens shell, but isolated component tests don't, so stub the
+// keyboard binding to a no-op.
+vi.mock('@/hooks/useLensCommand', () => ({
+  useLensCommand: vi.fn(),
+}));
+
 // Mock next/navigation
 const mockSearchParams = new URLSearchParams();
 vi.mock('next/navigation', () => ({
@@ -163,8 +171,10 @@ describe('WalletPage', () => {
     render(React.createElement(WalletPage), { wrapper: createWrapper() });
 
     await waitFor(() => {
-      // "Withdraw" button in the action bar
-      const withdrawBtn = screen.getByRole('button', { name: /^withdraw$/i });
+      // "Withdraw" button in the action bar. Accessible name now includes
+      // the trailing keyboard hint ("Withdraw W") since the lens-ux pass
+      // added <kbd>W</kbd> after the label.
+      const withdrawBtn = screen.getByRole('button', { name: /^withdraw\b/i });
       expect(withdrawBtn).toBeDefined();
     });
   });

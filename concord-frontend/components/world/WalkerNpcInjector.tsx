@@ -22,28 +22,54 @@
 
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { subscribe } from '@/lib/realtime/socket';
+import type {
+  AppearanceConfig,
+  NPCData,
+} from '@/components/world-lens/AvatarSystem3D';
 
-// Match the existing AvatarSystem3D NPCData shape so the parent can
-// pass injected walkers straight through.
-interface AppearanceConfig {
-  bodyType: 'slim' | 'average' | 'stocky' | 'tall' | 'legend';
+// Palettes used to materialize the deterministic numeric variants
+// produced from a walker_id hash into the structured AvatarSystem3D
+// AppearanceConfig (string colors + structured clothing).
+const SKIN_COLORS = ['#f5d0b0', '#e6b894', '#d49a7a', '#b87a55', '#8c5a3a', '#5e3a23'];
+const HAIR_COLORS = ['#1a1a1a', '#2a2018', '#5a3a1a', '#8b5a2b', '#c19a6b', '#d4af37', '#e8d5a8', '#a05a2d', '#888888', '#f5e6c8'];
+const HAIR_STYLES: AppearanceConfig['hairStyle'][] = [
+  'short', 'medium', 'long', 'bald', 'ponytail', 'bun',
+];
+const OUTFITS: AppearanceConfig['clothing'][] = [
+  { top: { color: '#5b6b8c', type: 'shirt' }, bottom: { color: '#3d3d3d', type: 'pants' } },
+  { top: { color: '#7d4a2d', type: 'vest' }, bottom: { color: '#2a2a2a', type: 'pants' } },
+  { top: { color: '#3a3a4a', type: 'coat' }, bottom: { color: '#1a1a1a', type: 'pants' } },
+  { top: { color: '#8b6a3a', type: 'apron' }, bottom: { color: '#5a4a2a', type: 'pants' } },
+  { top: { color: '#4a5a3a', type: 'shirt' }, bottom: { color: '#2a3a2a', type: 'shorts' } },
+  { top: { color: '#6b4a8c', type: 'robe' }, bottom: { color: '#3a2a4a', type: 'robe' } },
+  { top: { color: '#2a4a6a', type: 'coat' }, bottom: { color: '#1a2a3a', type: 'pants' } },
+  { top: { color: '#8c4a4a', type: 'shirt' }, bottom: { color: '#5a2a2a', type: 'pants' } },
+  { top: { color: '#3a6a4a', type: 'vest' }, bottom: { color: '#2a4a3a', type: 'pants' } },
+  { top: { color: '#a08a5a', type: 'shirt' }, bottom: { color: '#6a5a3a', type: 'skirt' } },
+  { top: { color: '#5a4a3a', type: 'coat' }, bottom: { color: '#3a2a1a', type: 'pants' } },
+  { top: { color: '#7a8c5a', type: 'apron' }, bottom: { color: '#5a6a3a', type: 'pants' } },
+  { top: { color: '#4a3a5a', type: 'robe' }, bottom: { color: '#2a1a3a', type: 'robe' } },
+  { top: { color: '#8c8c4a', type: 'shirt' }, bottom: { color: '#5a5a2a', type: 'pants' } },
+  { top: { color: '#3a4a5a', type: 'vest' }, bottom: { color: '#2a3a4a', type: 'shorts' } },
+  { top: { color: '#6a3a4a', type: 'coat' }, bottom: { color: '#4a2a3a', type: 'pants' } },
+];
+
+interface NumericVariants {
+  bodyType: AppearanceConfig['bodyType'];
   skinTone: number;
   hairStyle: number;
   hairColor: number;
   outfit: number;
-  faceShape: number;
 }
 
-interface NPCData {
-  id: string;
-  name: string;
-  appearance: AppearanceConfig;
-  position: { x: number; y: number; z: number };
-  rotation: number;
-  occupation: string;
-  occupationAnimation: string; // matches NPCOccupationAnimation union
-  patrolPath?: { x: number; y: number; z: number }[];
-  timestamp: number;
+function variantsToAppearance(v: NumericVariants): AppearanceConfig {
+  return {
+    skinColor: SKIN_COLORS[v.skinTone % SKIN_COLORS.length],
+    hairColor: HAIR_COLORS[v.hairColor % HAIR_COLORS.length],
+    hairStyle: HAIR_STYLES[v.hairStyle % HAIR_STYLES.length],
+    bodyType: v.bodyType,
+    clothing: OUTFITS[v.outfit % OUTFITS.length],
+  };
 }
 
 interface WalkerJourney {
@@ -77,15 +103,15 @@ const MS_PER_HOP = 30_000;
 const AUTHORED_WALKERS: Record<string, { name: string; appearance: AppearanceConfig }> = {
   walker_tully_vex: {
     name: 'Tully Vex',
-    appearance: {
-      bodyType: 'tall', skinTone: 2, hairStyle: 1, hairColor: 5, outfit: 8, faceShape: 3,
-    },
+    appearance: variantsToAppearance({
+      bodyType: 'tall', skinTone: 2, hairStyle: 1, hairColor: 5, outfit: 8,
+    }),
   },
   walker_sona_karth: {
     name: 'Sona Karth',
-    appearance: {
-      bodyType: 'slim', skinTone: 4, hairStyle: 6, hairColor: 8, outfit: 11, faceShape: 2,
-    },
+    appearance: variantsToAppearance({
+      bodyType: 'slim', skinTone: 4, hairStyle: 6, hairColor: 8, outfit: 11,
+    }),
   },
 };
 
@@ -100,14 +126,13 @@ function fallbackAppearance(walkerId: string): { name: string; appearance: Appea
   const bodies: AppearanceConfig['bodyType'][] = ['slim', 'average', 'stocky', 'tall'];
   return {
     name: `Walker ${walkerId.slice(-4).toUpperCase()}`,
-    appearance: {
+    appearance: variantsToAppearance({
       bodyType: bodies[abs % bodies.length],
       skinTone: abs % 6,
       hairStyle: (abs >> 3) % 12,
       hairColor: (abs >> 5) % 10,
       outfit: (abs >> 7) % 16,
-      faceShape: (abs >> 9) % 8,
-    },
+    }),
   };
 }
 
@@ -153,7 +178,7 @@ export default function WalkerNpcInjector({ worldId, anchorPositions, onWalkers 
         position: { x, y, z },
         rotation,
         occupation: 'walker',
-        occupationAnimation: 'walking',
+        occupationAnimation: 'patrol',
         timestamp: now,
       });
     }
