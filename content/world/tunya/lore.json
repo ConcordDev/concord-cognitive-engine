@@ -1,0 +1,229 @@
+{
+  "world_id": "tunya",
+  "world_name": "Tunya",
+  "world_description": "A planet on the far side of a wormhole. Reached by seven arks launched from Earth. Time dilation in transit scattered the arrivals across generations: Africa first, then North America, then Eurasia, then the wreck-late South Americans. Native Americans walked off the North American ark and kept walking. The story opens four generations after first arrival, with the arks now silent ruins whose archives can still be woken with enough sunlight on cracked panels. The Sangree of Sandrun command fire by bloodline. The Medici, who are not from Earth and not from Tunya, command ice. The Ancient Tunyans were already here.",
+  "history": [
+    {
+      "id": "lore_pre_arrival_tunyan",
+      "title": "Before the Arrivals",
+      "type": "founding",
+      "era": "Pre-Year 0",
+      "description": "Ancient Tunyans had lived on Tunya for an unknown length of time before the arks came. They did not have writing in the form the arrivals brought. They had stone, brick, the song of trees, and the refusal-field. The Medici were already here too — but the Medici and the Ancient Tunyans do not call themselves the same.",
+      "significance": "major",
+      "factions_involved": ["nil", "masond", "medici"],
+      "world_id": "tunya",
+      "known_by": ["nil", "masond", "medici"],
+      "hidden_truth": "Tunya was not empty when the Tunyans arrived either. The mason marks Torrek of Masond can read describe a people who were here before either group. None of them survive — but their walls do."
+    },
+    {
+      "id": "lore_kree_arrival",
+      "title": "Kree Was Already On The Way",
+      "type": "founding",
+      "era": "Pre-Year 0",
+      "description": "The Kree are not from Earth and are not Ancient Tunyan. They arrived on Tunya before the Earth arks but well after the Ancient Tunyans. Their origin is not shared, even with their own younger generations. The Sangree are one of the Kree peoples; their homeland is Sandrun. The Medici live among Kree because Kree is the only people on Tunya who would not ask why.",
+      "significance": "major",
+      "factions_involved": ["kree_nationalists", "sandrun_sangree", "medici"],
+      "world_id": "tunya",
+      "known_by": ["kree_nationalists"],
+      "hidden_truth": "The Kree state is the constant; the peoples drift. This is by design. The Kree elders deliberately scattered their constituent peoples across Tunya so that no single uprising could end them."
+    },
+    {
+      "id": "lore_seven_arks_launched",
+      "title": "The Seven Arks",
+      "type": "founding",
+      "era": "Year 0 — Earth Departure",
+      "description": "Seven continents, seven arks. Antarctica gave its ark to Africa pre-launch — too few people to justify an independent vessel. The arks launched on staggered schedules toward the same coordinates: a wormhole survey-ship had charted a viable transit from Earth to a habitable system on the far side. The arks were not warned that time dilation in the wormhole was non-deterministic.",
+      "significance": "major",
+      "factions_involved": [],
+      "world_id": "tunya",
+      "known_by": ["aekon", "asbir", "sahm", "bahiij", "dinye", "cree"],
+      "hidden_truth": "The transit's non-determinism was known to the survey ship's crew. They did not include it in the briefing. The reason is in the deleted Asbir archive."
+    },
+    {
+      "id": "lore_africa_arrival",
+      "title": "First Arrival — Africa",
+      "type": "founding",
+      "era": "Year 1 (Tunya local)",
+      "description": "Africa's ark hit the wormhole's gravity well at the right angle and emerged in transit-time of weeks. The other arks followed along last-known coordinates. Africa arrived first by a wide margin, made first contact with Ancient Tunyans, and built the first arrival-city on the cliffs above what would become Masond's first quarter. Four generations later, the African arrivals and Ancient Tunyans of Masond have intermarried so thoroughly that the kingdom is rooted, not arrived.",
+      "significance": "major",
+      "factions_involved": ["masond"],
+      "world_id": "tunya",
+      "known_by": ["masond", "nil", "kree_nationalists", "sahm", "asbir"],
+      "hidden_truth": null
+    },
+    {
+      "id": "lore_north_arrival_walk_off",
+      "title": "Second Arrival — North American Ark and the Walk-Off",
+      "type": "founding",
+      "era": "Year 7 (Tunya local)",
+      "description": "The North American ark arrived six years after Africa. On disembarkation, the Native American passengers — who had not been consulted on the curators' decisions about the archive — walked off as a body. They settled on the coast east of Kree and named themselves Cree. The remaining North Americans founded what became Asbir, in the southern dunes near the ark's resting place.",
+      "significance": "major",
+      "factions_involved": ["asbir", "cree"],
+      "world_id": "tunya",
+      "known_by": ["asbir", "cree", "kree_nationalists", "masond"],
+      "hidden_truth": "Cree's elders walked because they knew what was deleted before launch. Asbir's curators did not realize Cree knew until two generations later, by which point asking would have made the deletion canonical."
+    },
+    {
+      "id": "lore_curated_archive",
+      "title": "The Curation",
+      "type": "catastrophe",
+      "era": "Year 0 — pre-departure (North American ark)",
+      "description": "The North American ark's archive was curated before launch. Entire bodies of knowledge were deliberately excluded. The deletion log was itself deleted. What was scrubbed is recoverable from the ark itself with enough solar charge — but only the Lord Curator of Asbir has accessed the ark archive in the last thirty years.",
+      "significance": "major",
+      "factions_involved": ["asbir", "cree"],
+      "world_id": "tunya",
+      "known_by": ["asbir"],
+      "hidden_truth": "The deletions include: pre-Columbian indigenous histories, civil-rights-movement records, certain religious doctrines, and — most consequentially — star-charts pointing to the system the Medici came from. Whoever curated the archive knew about the Medici before launch and did not want the arrivals to make the connection."
+    },
+    {
+      "id": "lore_eurasia_arrival",
+      "title": "Third Arrival — Eurasia",
+      "type": "founding",
+      "era": "Year 14 (Tunya local)",
+      "description": "Eurasia's ark arrived fourteen years after Africa. Multiple cultural cohorts disembarked: the Indian-cultural cohort founded what became Bahiij; other cohorts dispersed and intermarried into Dormas and Fluxom. The Australian cohort that had departed with Eurasia's ark walked into the interior and became Dinye.",
+      "significance": "major",
+      "factions_involved": ["bahiij", "dinye", "dormas", "fluxom"],
+      "world_id": "tunya",
+      "known_by": ["bahiij", "dinye", "dormas", "fluxom"],
+      "hidden_truth": null
+    },
+    {
+      "id": "lore_south_arrival_stranded",
+      "title": "Fourth Arrival — South America Stranded",
+      "type": "catastrophe",
+      "era": "Year 22 (Tunya local) — wormhole exit; Year 24 — Tunya landfall",
+      "description": "South America's ark stranded mid-transit. The wormhole's non-deterministic dilation caught it in a fold for what felt to its passengers like decades. They emerged with food rationed past the last meal, with infrastructure broken, with five thousand minds lost to the pressure of the fold. Survivors limped to Tunya and founded Aekon.",
+      "significance": "major",
+      "factions_involved": ["aekon", "dinye", "asbir"],
+      "world_id": "tunya",
+      "known_by": ["aekon", "dinye", "asbir"],
+      "hidden_truth": "The five thousand were not lost — they were broken. They survived the transit and founded Aekon's twelfth district, which has been closed to outsiders since the kingdom's first year. Their descendants live there still. The Bloc holds because Dinye and Asbir know about the twelfth district. The cost of keeping that secret is the alliance."
+    },
+    {
+      "id": "lore_african_american_diaspora",
+      "title": "The Sahm Founding",
+      "type": "founding",
+      "era": "Year 8 (Tunya local)",
+      "description": "A cohort that disembarked with the African ark — descended from the African American diaspora — chose not to settle into the Masond merger. They walked to the river country and founded Sahm as a self-determining kingdom. They were not absorbed into Sandrun by the Sangree, who arrived later from the Kree state and never tried to claim them.",
+      "significance": "major",
+      "factions_involved": ["sahm", "masond", "sandrun_sangree"],
+      "world_id": "tunya",
+      "known_by": ["sahm", "masond"],
+      "hidden_truth": null
+    },
+    {
+      "id": "lore_dormas_founding",
+      "title": "Dormas — A Kingdom of Imports",
+      "type": "founding",
+      "era": "Year 15-30 (gradual)",
+      "description": "Dormas was not founded by an ark cohort. It accreted from the wealthiest of every arrival, drawn to a temperate-woodland coastal region that became a textile-trading hub. By the second generation, Dormas's economy ran on imported labor. By the third, the imports were imported nobility — the second sons and unmarried daughters of every other kingdom's nobility, working as servants because Dormas's currency made the bargain attractive.",
+      "significance": "major",
+      "factions_involved": ["dormas"],
+      "world_id": "tunya",
+      "known_by": ["dormas", "bahiij", "sahm"],
+      "hidden_truth": "Dormas's actual upper class is not from any of the ark populations. Lady Oriane's bloodline came down from Kree two generations ago — they are Kree exiles whose presence is the price the Kree chancellor paid for an entirely different concession the records do not name."
+    },
+    {
+      "id": "lore_fluxom_founding",
+      "title": "Fluxom — From Trade to Tyranny",
+      "type": "founding",
+      "era": "Year 18-50 (gradual)",
+      "description": "Fluxom was founded as a merchant-class refuge by a coalition of merchants from every arrival who could not find a place in their own founding kingdom. By the third generation it had consolidated under two families. By the fourth, ration discipline had become the moral framework; sanitation had collapsed; the duopoly was eating its own subjects. Trade with the Bloc collapsed first; trade with everyone else collapsed when the sea creatures came.",
+      "significance": "major",
+      "factions_involved": ["fluxom"],
+      "world_id": "tunya",
+      "known_by": ["fluxom", "kree_nationalists", "sahm", "aekon"],
+      "hidden_truth": "The sea creatures came after a Fluxom ship dumped two hundred refugees overboard during a storm. The refugees were Fluxom's own — third-family aspirants who had refused ration discipline. The two ruling families call them traitors. The sea creatures, in some sense, agree."
+    },
+    {
+      "id": "lore_kree_medici_arrival_window",
+      "title": "When the Medici Came",
+      "type": "founding",
+      "era": "Year -120 to Pre-Year 0 (estimated)",
+      "description": "The Medici arrived on Tunya at least four generations before the first Earth ark. They came in small numbers, by means they will not describe. Kree took them in. The arrangement has held for four-plus generations.",
+      "significance": "major",
+      "factions_involved": ["medici", "kree_nationalists"],
+      "world_id": "tunya",
+      "known_by": ["medici", "kree_nationalists", "nil"],
+      "hidden_truth": "The Medici came from a star whose route the Medici Ice Choir maintains in shared memory. Their navigators died two generations ago. Aerasi — who was the navigator — believes the route may open again. She is wrong about the timeline; the route opens in Year 5G, not Year 6G as she has assumed. This is when the Medici will have to choose."
+    },
+    {
+      "id": "lore_no_electricity",
+      "title": "Why No Spark Has Ever Held",
+      "type": "metaphysical",
+      "era": "Year 1 — present",
+      "description": "Every arrival kingdom has tried to make electricity work on Tunya. None has succeeded for more than seconds. Wires conduct, batteries charge, generators turn — but the moment a circuit completes, the current refuses. The phenomenon has been documented exhaustively. No one has explained it.",
+      "significance": "major",
+      "factions_involved": [],
+      "world_id": "tunya",
+      "known_by": ["sahm", "asbir", "dormas", "fluxom"],
+      "hidden_truth": "Tunya's planetary refusal-field — which the pure Tunyans of Nil are conduits for — extends to certain electromagnetic phenomena. It refuses sustained current. Powers replace what electricity would have done because the planet permits powers and refuses electricity. This is also why the arks' archives only wake on direct solar — they bypass the active circuit problem by running on stored photonic state."
+    },
+    {
+      "id": "lore_sangree_medici_first_hybrid",
+      "title": "The First Recorded Sangree-Medici Hybrid",
+      "type": "revelation",
+      "era": "Year 4G — Cull, last cycle",
+      "description": "A child was born to a Sangree clan-warrior and a Medici healer. The mother fled within hours of the birth. The Medici took the child. The Sangree know. Both peoples have agreed by silence to pretend it did not happen.",
+      "significance": "major",
+      "factions_involved": ["sandrun_sangree", "medici"],
+      "world_id": "tunya",
+      "known_by": ["sandrun_sangree", "medici", "kree_nationalists"],
+      "hidden_truth": "The child commands neither fire nor ice in a useful sense. The child commands the temperature of the ambient air in a four-meter radius. The child can will the air to thirty above or thirty below in seconds. The child is two years old. The Medici are afraid of the child. So is the Sangree warlord, who knows the child exists and does not yet know it is hers."
+    },
+    {
+      "id": "lore_concord_link_first_resonance",
+      "title": "The First Cross-World Resonance",
+      "type": "revelation",
+      "era": "Year 4G — present",
+      "description": "Pilgrims to the arks discovered, separately and over years, that ark-archive terminals woke under solar charge will sometimes carry voices that did not come from Tunya. Yenna of Nil's grove has resonated with a fantasy-world oak. Aerasi of the Medici has heard a voice in the ice that uses Earth-language she has never encountered. The kingdoms have not yet agreed on a public framing for these resonances. They are happening anyway.",
+      "significance": "major",
+      "factions_involved": ["nil", "medici", "asbir", "masond"],
+      "world_id": "tunya",
+      "known_by": ["nil", "medici"],
+      "hidden_truth": "The Concord Link is the substrate by which Tunya's anchors connect to other authored worlds (Concordia hub, fantasy, sovereign-ruins, crime, cyber, etc.). The arks were never meant to be cross-world transceivers — but the metaphysical substrate Tunya is part of routes through them. The Medici recognize the substrate; they are the only ones who can name it. They have not."
+    }
+  ],
+  "cross_world_hooks": [
+    {
+      "from": "tunya:nil_inner_grove",
+      "to": "fantasy:elder_grove",
+      "mechanism": "blood_runes carved on the Listening Oak (fantasy) vibrate the inner-grove leaves of Nil; Yenna receives.",
+      "controlled_by": ["nil", "wildwood_circle"],
+      "stability": 0.95,
+      "narrative": "A pilgrimage from one to the other can carry messages — but never a body. The substrate is not a portal."
+    },
+    {
+      "from": "tunya:masond_first_city",
+      "to": "concordia-hub:any_substrate_archive",
+      "mechanism": "ark-archive terminals woke under solar charge can write into the Concordia DTU substrate. A player who restores the Hold of First Arrival becomes a cross-world author.",
+      "controlled_by": ["masond"],
+      "stability": 0.85,
+      "narrative": "Africa's ark holds four generations of recorded testimony. Once written into the Concordia substrate, those DTUs cite back to Tunya forever."
+    },
+    {
+      "from": "tunya:asbir_southern_dunes",
+      "to": "crime:archive_black_market",
+      "mechanism": "the Curated Vault's deletion log is a recoverable artifact. The crime-world black market wants to broker its sale.",
+      "controlled_by": ["asbir", "crime_fixers"],
+      "stability": 0.6,
+      "narrative": "Renn the Curator and a crime-world fixer have been corresponding. Players can intercept, complete, or sabotage the deal."
+    },
+    {
+      "from": "tunya:kree_medici_ward",
+      "to": "fantasy:voss_estate_mirror",
+      "mechanism": "the Medici Ice Choir resonates with shaped silver. Lady Seraphine's mirror is one such surface.",
+      "controlled_by": ["medici", "house_voss"],
+      "stability": 0.55,
+      "narrative": "Aerasi and Lady Voss have not yet spoken. The substrate is open. Either could initiate."
+    },
+    {
+      "from": "tunya:fluxom_harbor_old",
+      "to": "sovereign-ruins:displaced_survivor_camps",
+      "mechanism": "Fluxom's collapsing sea-trade has begun shipping refugees to anywhere that will take them. The sovereign-ruins survivors are taking some.",
+      "controlled_by": ["fluxom"],
+      "stability": 0.45,
+      "narrative": "Cross-world refugee flow. Players who track the ships can surface the original refugee-dump truth in either direction."
+    }
+  ]
+}

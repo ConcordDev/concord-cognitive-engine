@@ -1,0 +1,166 @@
+{
+  "world_id": "tunya",
+  "system": "bloodline_powers",
+  "schema_version": "1.0",
+  "axioms": [
+    "Powers are bloodline-inherited, not learned. A person without the bloodline cannot acquire it; a person with it cannot suppress it permanently.",
+    "Powers express on a continuum from full (pure bloodline, both parents) to trace (one ancestor four generations back). Trace expression is so weak it often goes undiagnosed for life.",
+    "Two bloodline systems are documented on Tunya: fire (Sangree of the Kree state) and ice/healing (Medici, alien-origin). The two have never combined cleanly except in two recorded hybrids.",
+    "Tunyan blood has no recorded bloodline power but does carry conduit-status for the planetary refusal-field. This is biologically distinct from the Sangree/Medici pattern."
+  ],
+  "fire_bloodline": {
+    "id": "fire_sangree",
+    "origin_faction": "sandrun_sangree",
+    "founding_population": "kree_sangree_settlers",
+    "expression_dimensions": [
+      { "id": "potency", "scale_0_to_1": "fraction of pure bloodline expression" },
+      { "id": "control_radius_meters", "default_max": 8 },
+      { "id": "ignition_speed_seconds", "default_min": 0.8 },
+      { "id": "thermal_throttle_ceiling_celsius", "default_max": 1200 }
+    ],
+    "dilution_curve": {
+      "formula": "potency_at_generation_n = base_potency * (1/2)^n_dilution_steps_from_pure",
+      "explanation": "A 'dilution step' is one parent without the bloodline. A child of one Sangree parent + one non-Sangree parent inherits half. Their child by another non-Sangree partner inherits quarter. Four generations of dilution at 50% each step → 6.25% expression — barely a warm hand.",
+      "floor": 0.005,
+      "floor_effect": "Below the floor the expression is gone. Cannot reignite by any known means."
+    },
+    "training_modifiers": {
+      "ash_priest_initiation": { "potency_bonus": 0.05, "duration": "lifetime", "cost": "must serve Sandrun for 10 years" },
+      "forge_apprenticeship": { "control_radius_bonus_meters": 2, "duration": "lifetime", "cost": "5 years smithing" },
+      "warlord_oath": { "ignition_speed_bonus_seconds": -0.2, "duration": "lifetime", "cost": "blood-oath to current Sangree warlord" }
+    },
+    "abilities_by_potency": {
+      "trace_under_0.1": ["warm_hands", "match-light_breath"],
+      "weak_0.1_to_0.3": ["torch_ignition", "ember_throw_short"],
+      "moderate_0.3_to_0.6": ["forge_heat", "ranged_torch", "hot_palm_strike"],
+      "strong_0.6_to_0.85": ["sustained_flame_jet", "ember_storm_radius_4m", "weapon_imbue_short"],
+      "pure_0.85_to_1.0": ["sustained_inferno_radius_8m", "ash_storm", "molten_weapon_imbue_long", "thermal_throttle_to_1200c"]
+    },
+    "contraindications": [
+      "wet conditions reduce potency by 20-40% sustained",
+      "high-altitude thin air reduces sustainable output",
+      "the planetary refusal-field at full expression (within Nil's inner grove) reduces potency to 0"
+    ]
+  },
+  "ice_bloodline": {
+    "id": "ice_medici",
+    "origin_faction": "medici",
+    "founding_population": "medici_alien_origin",
+    "expression_dimensions": [
+      { "id": "potency", "scale_0_to_1": "fraction of pure bloodline expression" },
+      { "id": "control_radius_meters", "default_max": 6 },
+      { "id": "freezing_speed_seconds", "default_min": 1.5 },
+      { "id": "thermal_floor_celsius", "default_min": -180 }
+    ],
+    "dilution_curve": {
+      "formula": "potency_at_generation_n = base_potency * (1/2)^n_dilution_steps_from_pure",
+      "explanation": "Same dilution math as Sangree, but Medici intermarriage outside the Medici is rare. The Medici discourage it; the rest of the world is wary. Most Medici remain at pure or near-pure expression.",
+      "floor": 0.005,
+      "floor_effect": "Below the floor the expression is gone."
+    },
+    "training_modifiers": {
+      "choir_initiation": { "potency_bonus": 0.10, "duration": "lifetime", "cost": "must learn the Choir's resonance language; takes ~7 years" },
+      "healer_apprenticeship": { "healing_modifier_bonus": 0.15, "duration": "lifetime", "cost": "5 years tending the dying without payment" },
+      "navigator_oath": { "resonance_radius_bonus_meters": 4, "duration": "lifetime", "cost": "memorize the route to the Medici home star" }
+    },
+    "abilities_by_potency": {
+      "trace_under_0.1": ["cool_palm", "preserve-touch_for_one_hour"],
+      "weak_0.1_to_0.3": ["frost_window_pane", "minor_cooling_radius_1m"],
+      "moderate_0.3_to_0.6": ["healing_touch_minor_wounds", "ice_blade_ephemeral", "preserve_one_corpse_one_day"],
+      "strong_0.6_to_0.85": ["healing_touch_major_wounds", "freeze_radius_4m", "ice_construct_temporary"],
+      "pure_0.85_to_1.0": ["resurrection_within_seconds_of_death", "freeze_radius_6m", "ice_choir_resonance", "preserve_indefinitely", "navigation_memory_to_medici_origin_star"]
+    },
+    "contraindications": [
+      "extreme heat reduces potency by 30-50%",
+      "the planetary refusal-field at full expression reduces potency by ~20% (less than fire — ice is closer to the field's preferred resonance)",
+      "the Medici's loss of their navigator generation has reduced collective resonance reach"
+    ]
+  },
+  "tunyan_conduit": {
+    "id": "tunyan_refusal_field_conduit",
+    "origin_faction": "nil",
+    "founding_population": "pure_ancient_tunyan",
+    "axioms": [
+      "Not a bloodline power. A biological compatibility with Tunya's planetary refusal-field.",
+      "Pure-blood Tunyans express conduit-status. Mixed-blood Tunyans (e.g. Masond population) express partial. Non-Tunyans express none.",
+      "The conduit-effect is passive. It is not consciously controlled. It cannot be 'cast.' It exists wherever pure Tunyans are."
+    ],
+    "effects": {
+      "passive_radius_meters_per_pure_tunyan": 3,
+      "stacking_rule": "additive up to 30m radius; beyond that, diminishing returns at 0.5x per 30m increment",
+      "what_it_does": [
+        "dampens hostile intent within radius (NPCs feel reluctance to attack; players experience reduced incoming hostility but not reduced outgoing)",
+        "suppresses sustained electrical current (no electricity in pure Tunyan zones; arks' batteries discharge in proximity)",
+        "amplifies plant communication (trees genuinely respond — see Listening Grove)",
+        "weakens fire bloodline by 30-100% depending on density of pure Tunyans"
+      ]
+    },
+    "implication": "Nil is the only place on Tunya where the field is dense enough to bring fire bloodline expression to zero. This is what protects Nil from Sangree military force. Sangree know. Sangree do not march on Nil."
+  },
+  "hybrid_mechanics": {
+    "sangree_medici_hybrid": {
+      "id": "sangree_medici_hybrid",
+      "rarity": "two_recorded_in_four_generations",
+      "expression_pattern": "thermal control across both ranges (heating AND cooling) but neither at the potency of pure parent. Effective range: -60c to +400c.",
+      "ability_set": [
+        "ambient_thermal_control_radius_4m",
+        "selective_freeze_or_thaw_targeted",
+        "neither_pure_fire_nor_pure_ice"
+      ],
+      "social_status": "feared by both peoples. Hidden by both. The first recorded hybrid (Year 1G) was given to the Medici and never seen again. The second (Year 4G — last Cull) is the warlord Iyatte's child, currently aged two and held by the Medici.",
+      "lore_hook": "If a player liberates or empowers a hybrid, neither Sangree nor Medici politics survive intact. The kingdom of Kree might emerge as the tertiary winner — or not."
+    },
+    "tunyan_sangree": {
+      "id": "tunyan_sangree_mixed",
+      "rarity": "more_common_via_intermarriage_with_masond_arrivals",
+      "expression_pattern": "fire bloodline at expected dilution; conduit-status at expected partial expression. The two interfere — fire output drops by an additional ~30% in proximity to other Tunyan-blooded individuals.",
+      "ability_set": ["weak_to_moderate_fire", "personal_passive_refusal_field_radius_1m"],
+      "social_status": "common in Masond. Rarely identified. Often diagnosed as 'weak Sangree.'"
+    },
+    "tunyan_medici": {
+      "id": "tunyan_medici_mixed",
+      "rarity": "vanishingly_rare",
+      "expression_pattern": "ice bloodline at expected dilution; conduit-status at expected partial expression. Unlike fire, ice does NOT interfere with the field — it amplifies. Output increases by ~15% in proximity to Tunyan-blooded individuals.",
+      "ability_set": ["moderate_ice", "personal_passive_refusal_field_radius_1m", "amplified_resonance"],
+      "social_status": "Medici-Tunyan unions are extremely rare. Nil and Medici are quiet allies. Whether anyone has crossed the line is open lore."
+    }
+  },
+  "macro_hooks": {
+    "use_power_macro": {
+      "name": "powers.use",
+      "input_schema": {
+        "userId": "string",
+        "powerId": "fire_sangree | ice_medici | tunyan_conduit",
+        "targetEntityId": "string",
+        "intensity": "0_to_1",
+        "world_id": "tunya"
+      },
+      "output_schema": {
+        "ok": "bool",
+        "actualPotency": "0_to_1",
+        "effectAppliedRadius": "meters",
+        "modifiers": "object (training, contraindications)",
+        "refusal_field_modifier": "0_to_1 (multiplied into potency)"
+      },
+      "implementation_notes": "powers.use is a macro that reads the calling user's bloodline_inheritance from a new player_bloodlines table, applies the dilution curve, then routes through the existing combat or healing handler with the modified potency. The refusal-field modifier is computed from nearby pure-Tunyan presence via the existing embodied/signals.js radius logic."
+    },
+    "diagnose_bloodline_macro": {
+      "name": "powers.diagnose",
+      "input_schema": { "userId": "string" },
+      "output_schema": {
+        "fire_potency": "0_to_1",
+        "ice_potency": "0_to_1",
+        "tunyan_conduit_strength": "0_to_1",
+        "hybrid_kind": "none | sangree_medici | tunyan_sangree | tunyan_medici",
+        "ancestry_visible_to_player": "bool"
+      },
+      "implementation_notes": "Diagnostic check at character creation or via in-game ritual. The Medici Choir can perform the diagnosis with high precision. Sangree clan elders perform it with lower precision but more publicly."
+    }
+  },
+  "narrative_implications": {
+    "if_electricity_returns": "If a player ever makes electricity work on Tunya outside Nil's grove, that means the planetary refusal-field has weakened or been neutralized. This would be a tier-1 world-changing event with cascading consequences across every kingdom.",
+    "if_a_hybrid_acts": "The two recorded hybrids, if they choose to act publicly, force Sangree-Medici politics into the open. Kree the state may try to broker; Kree may also try to crush.",
+    "if_pure_tunyans_leave_nil": "If pure Tunyans leave Nil's borders en masse, the refusal-field's density elsewhere increases. Kingdoms with previously-functional fire bloodlines may find them weakening. Kingdoms with previously-impossible electricity may find it newly impossible.",
+    "if_medici_navigator_returns": "If the Medici route opens — Aerasi's wrong-by-one-year prediction comes true — Tunya gets visitors. The visitors are not from Earth and are not the Medici. Open lore."
+  }
+}

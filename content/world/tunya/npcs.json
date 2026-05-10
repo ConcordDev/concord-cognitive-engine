@@ -1,0 +1,181 @@
+[
+  {
+    "id": "warlord_iyatte_sangree",
+    "name": "Iyatte of Sandrun",
+    "title": "Warlord of the Burning Coast",
+    "faction_id": "sandrun_sangree",
+    "world_id": "tunya",
+    "archetype": "warlord",
+    "personality": "Iyatte does not raise her voice because the room raises itself when she enters. She measures people by what they would burn for, not what they would die for. She has buried two husbands and one rival, in that order.",
+    "appearance": "Tall, muscled, hair shaved at the temples and braided down the back. Fire scars along the inside of both forearms — the Sangree call them honor-marks; she calls them a record. Carries a Sandrun greatsword that hums when she's angry.",
+    "background": "Born to the third clan, married into the first, became warlord through a duel that lasted four hours and changed the bloodline politics of Sandrun for a generation.",
+    "narrative_context": {
+      "secret": "Her youngest son was born without flame. She has hidden him in a Sahm boarding-house under a Sahm name. She trusts the Sahm chancellor — a scholarly correspondence of fifteen years — more than she trusts her own clan elders. Sahm does not yet know what they are protecting.",
+      "weaponise_at": "If Sangree-Medici tensions break into open conflict, Iyatte's ability to lead is contingent on her son's secret holding. Both Medici and Fluxom have hunted clues. The Lord Curator of Asbir saw a record once and chose not to share it."
+    },
+    "concord_link_resonance": "fantasy:lady_seraphine_voss",
+    "cross_world_hook": "Iyatte and Lady Seraphine Voss correspond by mirror-message. They have never met. Both run kingdoms on the strength of a hidden heir; both know what the other does. The mirror-conversations could surface in either world.",
+    "dialogue_style": "terse, declarative, occasional gallows humour"
+  },
+  {
+    "id": "high_healer_aerasi_medici",
+    "name": "Aerasi of the Choir",
+    "title": "High Healer of the Medici",
+    "faction_id": "medici",
+    "world_id": "tunya",
+    "archetype": "healer-elder",
+    "personality": "Speaks in a register most Tunyans hear as song. Will not confirm she is the eldest, will not deny it, will not say how old she is. Has healed Sangree wounded who came to her camp at night and never returned to clan service the same person.",
+    "appearance": "Slender, pale, eyes that catch and hold cold blue light. Robes of layered ice-fluted silk that crackle when she moves. Walks barefoot in winter and summer; her feet leave no footprints in fresh snow.",
+    "background": "Aerasi was already an adult when the first arrivals reached Tunya four generations ago. She does not advertise this.",
+    "narrative_context": {
+      "secret": "The Medici came to Tunya from a star the arrivals' ancestors used to be able to see. The last of their navigators died two generations ago. Aerasi was the navigator. The Choir is how she keeps the route alive in shared memory in case the path opens again.",
+      "weaponise_at": "If the Asbir archive is fully unsealed, the deleted material includes star-charts that match the Medici's. Aerasi's people would either be vindicated or hunted. She has not decided which would be worse."
+    },
+    "concord_link_resonance": "fantasy:thorne_blackroot",
+    "cross_world_hook": "Aerasi and Thorne Blackroot have never met. Both carry a thing inside them that should kill them and does not. Both have been asked to give it up; both refused. A pilgrim could carry word between them.",
+    "dialogue_style": "lyrical, layered, never the simplest version of any sentence"
+  },
+  {
+    "id": "lord_curator_renn_asbir",
+    "name": "Renn the Curator",
+    "title": "Lord Curator of the Asbir Archive",
+    "faction_id": "asbir",
+    "world_id": "tunya",
+    "archetype": "scholar-administrator",
+    "personality": "Patrician. Polite to the point of velvet over a knife. Believes the deletion was correct; will explain why at length to anyone who can stand the explanation. Has not slept full nights in a decade.",
+    "appearance": "Slim, gray-haired, plate-coat in muted Asbir blue. Carries a brass key on a chain that has not opened anything in three years.",
+    "background": "Inherited the curator role from his father. Inherited the deletion log from his grandmother. Inherited the knowledge that the deletion is recoverable from his own quiet research.",
+    "narrative_context": {
+      "secret": "Renn knows what was deleted. He has known for nine years. He is the only living person who has read it. He does not believe Asbir would survive the knowledge spreading. He may be right.",
+      "weaponise_at": "If the junior scholar publishes the deletion index, Renn's choices collapse to two: confirm or deny. Both end his career. Confirming might end Asbir."
+    },
+    "concord_link_resonance": "crime:archivist_who_keeps_other_peoples_secrets",
+    "cross_world_hook": "Renn has corresponded with a crime-world fixer about the price of permanently disappearing a junior scholar. He has not yet placed the contract. The fixer has the message saved.",
+    "dialogue_style": "polished, indirect, every other sentence is a citation"
+  },
+  {
+    "id": "elder_walker_neyahwetin",
+    "name": "Neyahwetin",
+    "title": "Eldest Walker of Cree",
+    "faction_id": "cree",
+    "world_id": "tunya",
+    "archetype": "elder-keeper",
+    "personality": "Quiet, deliberate, listens longer than any visitor expects to wait. Has refused the title 'chief' her whole adult life and the council has stopped trying.",
+    "appearance": "Long gray braid, weather-cured face, hide cloak embroidered with shells from the bay. Walks with a fishing-spear she has never used as a weapon and always uses as a walking-staff.",
+    "background": "Walked off the North American ark with her grandmother as a child. Was the last person to see the ark functional. Has not entered it since.",
+    "narrative_context": {
+      "secret": "Her grandmother told her, on her deathbed, what was deleted before launch. Neyahwetin has never repeated the words to anyone. She has been waiting for the right ear, and four generations later she has not heard one.",
+      "weaponise_at": "When Renn's deletion index goes public, Neyahwetin will be asked. If she speaks, the deleted record's contents shift from rumor to confirmed by survivor — a different evidentiary class. If she remains silent, the truth dies with her, possibly within this season."
+    },
+    "concord_link_resonance": null,
+    "cross_world_hook": "Cree has not, as a matter of policy, opened any cross-world conversations. Their isolation is the protection. A player could be the first.",
+    "dialogue_style": "deliberate, full sentences, leaves long pauses"
+  },
+  {
+    "id": "high_chancellor_xochi_aekon",
+    "name": "Xochi of Aekon",
+    "title": "High Chancellor of the Twelve Districts",
+    "faction_id": "aekon",
+    "world_id": "tunya",
+    "archetype": "ceremonial-administrator",
+    "personality": "Public face of Aekon. Ceremonial discipline that hides exhaustion. Believes the Bloc must hold; believes the cost is hers to carry; believes one day someone in Aekon will thank her, knowing she will be dead by then.",
+    "appearance": "Mid-forties, hair in twelve braids signifying the districts. Robes layered in twelve panels. Carries a ceremonial obsidian knife that has never been used.",
+    "background": "Born in the twelfth district, the closed one. Grew up in its silence. Climbed the chancellor ladder by being the only person willing to talk about what the twelfth district was for.",
+    "narrative_context": {
+      "secret": "Aekon's stranded transit cost five thousand minds. The twelfth district is where the survivors who never recovered live, were hidden, and bred a generation that never knew the wormhole. The Bloc holds because Dinye and Asbir know — Aekon let them in on it the first year.",
+      "weaponise_at": "If the Bloc's binding logic surfaces (e.g. through a Dinye elder breaking silence), the question becomes whether Aekon's stranded-transit cost can be acknowledged publicly without breaking the kingdom's self-image."
+    },
+    "concord_link_resonance": "sovereign-ruins:remnant_who_remembers_collapse",
+    "cross_world_hook": "Xochi has corresponded with a sovereign-ruins survivor through ark-archive resonance. Both have led peoples through aftermath. The exchange is unrecorded; the chancellor would prefer it stay that way.",
+    "dialogue_style": "ceremonial, measured, every sentence has been said before in some form"
+  },
+  {
+    "id": "grove-mother_yenna_nil",
+    "name": "Yenna of Nil",
+    "title": "Grove-mother of Nil",
+    "faction_id": "nil",
+    "world_id": "tunya",
+    "archetype": "matriarch-keeper",
+    "personality": "Says one sentence per visitor. Sometimes the sentence is yes. Sometimes it is no. Sometimes it is a question that the visitor takes home and dies thinking about.",
+    "appearance": "Tall, wrapped in living bark, eyes the color of a frozen pond. Older than she looks. Looks two hundred.",
+    "background": "Born in the inner grove. Has not left Nil. Has not needed to.",
+    "narrative_context": {
+      "secret": "The pure Tunyan refusal-field is not a Tunyan power. It is the planet's. Pure-blood Tunyans are conduits for it. The arrivals are not. This is why electricity has never worked: the planet refuses certain currents, and the Tunyans are the antennae.",
+      "weaponise_at": "If a player learns this and proves it (e.g. by getting electricity to work in Nil's exact grove), the entire premise of why Nil matters shifts from 'mysterious enclave' to 'most important strategic location on the planet.' Every kingdom would want it."
+    },
+    "concord_link_resonance": "fantasy:wildwood_circle:elder_grove",
+    "cross_world_hook": "The Listening Grove of Nil and the Listening Oak of the fantasy world resonate at the root level. A blood-rune carved on the Oak vibrates a leaf in Nil. Yenna receives the messages. She has not yet replied to any of them.",
+    "dialogue_style": "single-sentence, ambiguous, the sentence often becomes a quest"
+  },
+  {
+    "id": "high_mason_torrek_masond",
+    "name": "Torrek of Masond",
+    "title": "High Mason of the First City",
+    "faction_id": "masond",
+    "world_id": "tunya",
+    "archetype": "craftsman-elder",
+    "personality": "Builds before he speaks. When he speaks, the foundation has already been laid. Does not interrupt. Does not finish another's sentence. Does, occasionally, finish another's wall.",
+    "appearance": "Sixty, stone-dust on him at all hours, calluses on every visible surface. Carries a stoneworker's hammer that has never been a weapon and always could be.",
+    "background": "Apprenticed under a Tunyan grandmother who carried Ancient memory. He has half. He waits for the rest.",
+    "narrative_context": {
+      "secret": "Torrek can read mason marks the arrivals don't recognize as a script. The marks tell him which walls in Masond are older than the arrivals know. Some walls are older than Tunyan settlement. Tunya was not empty when the Tunyans arrived either.",
+      "weaponise_at": "If a player decodes the mason marks, the question 'who was on Tunya before the Tunyans' becomes a real question. Open lore. Big lore."
+    },
+    "concord_link_resonance": null,
+    "cross_world_hook": "Torrek's apprentice — a young architect who lived in Nil for a season — could carry a question into the cross-world substrate. Torrek would not know.",
+    "dialogue_style": "few words, always exact"
+  },
+  {
+    "id": "matriarch_levia_fluxom",
+    "name": "Levia of Fluxom",
+    "title": "Matriarch of the First Family",
+    "faction_id": "fluxom",
+    "world_id": "tunya",
+    "archetype": "merchant-tyrant",
+    "personality": "Charm at the top of every sentence, tax at the bottom. Ration discipline as moral framework. Treats her own kingdom's poor with the indifference of a contract she did not sign.",
+    "appearance": "Forties, immaculate, jewelry made from the teeth of sea-creatures her ships have killed. Walks with two sea-glass canes she does not need.",
+    "background": "Inherited the first family at twenty-two when her mother fell sick (or was poisoned; the records are sealed). Has held the family's primacy for eighteen years.",
+    "narrative_context": {
+      "secret": "The sea-creature attacks that closed the trade routes started after a Fluxom ship dumped two hundred refugees overboard during a storm. The creatures came for the bodies. The creatures stayed for the ships.",
+      "weaponise_at": "If the refugee dump becomes public — through a survivor, through a rival family, through the sea creatures' own communicative capacity if that ever surfaces — Fluxom collapses. Levia knows. She is preparing."
+    },
+    "concord_link_resonance": "crime:smuggler_with_a_conscience",
+    "cross_world_hook": "Levia and a crime-world smuggler have a standing arrangement. The smuggler used to be a Fluxom mate. The smuggler was on the ship that dumped the refugees. They write each other every Brine. They burn the letters every Cull.",
+    "dialogue_style": "transactional, charming, every offer has a clause"
+  },
+  {
+    "id": "queen_mother_serant_akeia",
+    "name": "Serant of Akeia",
+    "title": "Queen Mother of the Kahlay Court",
+    "faction_id": "akeia_of_kahlay",
+    "world_id": "tunya",
+    "archetype": "matriarch-monarch",
+    "personality": "Treats every visitor as a potential treaty. Treats every treaty as a potential lover. Has never confused the two. Has never let anyone else confuse them either.",
+    "appearance": "Late forties, severe beauty, robes that change color with the chamber's lighting. Carries no weapon. Has never needed to.",
+    "background": "Daughter of a queen mother. Daughter of a daughter of a queen mother. Five generations of unbroken matriline.",
+    "narrative_context": {
+      "secret": "Her own daughter has refused the throne and refused to leave. Serant has not yet decided whether her daughter is a problem to solve or a successor learning a thing the throne has forgotten.",
+      "weaponise_at": "If the daughter is publicly named heir while still refusing, Akeia's diplomatic primacy of the bedchamber becomes contested — what does treaty-by-marriage mean if the matriline goes celibate?"
+    },
+    "concord_link_resonance": "fantasy:house_voss",
+    "cross_world_hook": "Serant and Lady Seraphine Voss correspond about the techniques of patient power. Both run dynasties on charm and inheritance. Both are amused by, and slightly afraid of, the other.",
+    "dialogue_style": "intimate-formal, the kind of polish that makes you say more than you meant to"
+  },
+  {
+    "id": "raja_kamala_bahiij",
+    "name": "Kamala of Bahiij",
+    "title": "Raja of the Radiant City",
+    "faction_id": "bahiij",
+    "world_id": "tunya",
+    "archetype": "joyful-monarch-bearing-the-cost",
+    "personality": "Public radiance is her job. Private exhaustion is her own. Has stopped pretending the two are the same when she is alone in the quiet quarter — and she is increasingly alone in the quiet quarter.",
+    "appearance": "Mid-thirties, embroidered silks of festival orange, a crown of carved elephant-ivory passed down four generations. Eyes that are softer than they look in audience.",
+    "background": "Raja by lineage and by ratification. The ratification was performed by the festival master who does not smile.",
+    "narrative_context": {
+      "secret": "Kamala is from the quiet quarter. She knows what the contract costs. She is trying to negotiate Bahiij a way out of the contract without the kingdom collapsing under the recognition. She has years, not decades.",
+      "weaponise_at": "If the quiet quarter cracks publicly, Bahiij's social contract collapses. The question is whether what replaces it can hold an entire kingdom together."
+    },
+    "concord_link_resonance": null,
+    "cross_world_hook": "Kamala has not yet reached out across worlds. The festival master has — through dream-message, to a fantasy-world dream pool. The conversation is one-sided so far."
+  }
+]

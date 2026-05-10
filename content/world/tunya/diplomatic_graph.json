@@ -1,0 +1,245 @@
+{
+  "world_id": "tunya",
+  "schema_version": "1.0",
+  "edge_dimensions": {
+    "trade": "0_to_1 — open commerce, tariffs, formal trade pacts",
+    "hostility": "0_to_1 — military tension, border raids, refusal to recognize",
+    "secrets_shared": "0_to_1 — what they know about each other that is not public",
+    "mobility": "0_to_1 — ease of citizens crossing borders or marrying across",
+    "cultural_exchange": "0_to_1 — non-trade flow of ideas, art, religious practice"
+  },
+  "edges": [
+    {
+      "from": "sandrun_sangree", "to": "kree_nationalists",
+      "trade": 0.65, "hostility": 0.10, "secrets_shared": 0.85, "mobility": 0.70, "cultural_exchange": 0.55,
+      "narrative": "Sangree are a Kree people. The state and the clans share more than they admit publicly."
+    },
+    {
+      "from": "sandrun_sangree", "to": "medici",
+      "trade": 0.30, "hostility": 0.40, "secrets_shared": 0.55, "mobility": 0.20, "cultural_exchange": 0.25,
+      "narrative": "Wary co-tenancy. The hybrid child neither side will name strains the equilibrium."
+    },
+    {
+      "from": "sandrun_sangree", "to": "cree",
+      "trade": 0.40, "hostility": 0.05, "secrets_shared": 0.20, "mobility": 0.45, "cultural_exchange": 0.30,
+      "narrative": "Sangree never tried to claim Cree. Cree noticed. The two have a quiet mutual respect."
+    },
+    {
+      "from": "sandrun_sangree", "to": "sahm",
+      "trade": 0.55, "hostility": 0.20, "secrets_shared": 0.15, "mobility": 0.40, "cultural_exchange": 0.30,
+      "narrative": "Sahm's iron rivals Sangree's. Both pretend it doesn't. The smiths know each other by name."
+    },
+    {
+      "from": "sandrun_sangree", "to": "fluxom",
+      "trade": 0.20, "hostility": 0.55, "secrets_shared": 0.10, "mobility": 0.15, "cultural_exchange": 0.05,
+      "narrative": "Fluxom needs Sangree iron. Sangree refuses Fluxom's terms. Cold trade, hot disdain."
+    },
+    {
+      "from": "sandrun_sangree", "to": "nil",
+      "trade": 0.05, "hostility": 0.15, "secrets_shared": 0.10, "mobility": 0.05, "cultural_exchange": 0.05,
+      "narrative": "Sangree do not march on Nil. Sangree do not visit Nil. The mutual silence is the relationship."
+    },
+
+    {
+      "from": "kree_nationalists", "to": "medici",
+      "trade": 0.50, "hostility": 0.20, "secrets_shared": 0.60, "mobility": 0.65, "cultural_exchange": 0.50,
+      "narrative": "Kree shelters the Medici. The arrangement has held four generations. The chancellor lied last winter when asked if Medici could leave."
+    },
+    {
+      "from": "kree_nationalists", "to": "cree",
+      "trade": 0.45, "hostility": 0.35, "secrets_shared": 0.20, "mobility": 0.30, "cultural_exchange": 0.20,
+      "narrative": "Kree has eyed Cree's coast for fifty years. Cree's quiet alliance with Sangree is what stays Kree's hand."
+    },
+    {
+      "from": "kree_nationalists", "to": "fluxom",
+      "trade": 0.25, "hostility": 0.50, "secrets_shared": 0.10, "mobility": 0.20, "cultural_exchange": 0.05,
+      "narrative": "Kree refused to back Fluxom's sea-trade reopen. Fluxom remembers. Kree does not care."
+    },
+    {
+      "from": "kree_nationalists", "to": "nil",
+      "trade": 0.10, "hostility": 0.45, "secrets_shared": 0.30, "mobility": 0.10, "cultural_exchange": 0.05,
+      "narrative": "Kree resents Nil's untouchability. Kree the state would absorb Nil if it could. Kree cannot. The chancellor has stopped pretending otherwise in private."
+    },
+
+    {
+      "from": "medici", "to": "nil",
+      "trade": 0.20, "hostility": 0.05, "secrets_shared": 0.55, "mobility": 0.15, "cultural_exchange": 0.40,
+      "narrative": "The two oldest non-arrival peoples on Tunya. They speak rarely but precisely. They share more than the kingdoms know."
+    },
+    {
+      "from": "medici", "to": "masond",
+      "trade": 0.30, "hostility": 0.05, "secrets_shared": 0.25, "mobility": 0.30, "cultural_exchange": 0.30,
+      "narrative": "Medici healers occasionally treat Masond stoneworkers. Both know what the other is. Neither asks the other to confirm."
+    },
+    {
+      "from": "medici", "to": "bahiij",
+      "trade": 0.45, "hostility": 0.10, "secrets_shared": 0.15, "mobility": 0.40, "cultural_exchange": 0.50,
+      "narrative": "Bahiij imports Medici frostmark services. The healing exchange is genuine. The festival master who does not smile occasionally writes Aerasi by dream-message."
+    },
+
+    {
+      "from": "aekon", "to": "asbir",
+      "trade": 0.55, "hostility": 0.10, "secrets_shared": 0.85, "mobility": 0.60, "cultural_exchange": 0.45,
+      "narrative": "Bloc partners. Asbir knows what's in Aekon's twelfth district. Aekon knows what's missing from Asbir's archive. Mutual complicity."
+    },
+    {
+      "from": "aekon", "to": "dinye",
+      "trade": 0.60, "hostility": 0.05, "secrets_shared": 0.85, "mobility": 0.65, "cultural_exchange": 0.55,
+      "narrative": "Bloc partners. Dinye's elders listened to Aekon's land in the kingdom's first year. They have not stopped listening."
+    },
+    {
+      "from": "asbir", "to": "dinye",
+      "trade": 0.50, "hostility": 0.10, "secrets_shared": 0.70, "mobility": 0.55, "cultural_exchange": 0.40,
+      "narrative": "Bloc partners. Dinye's silence is the price Asbir pays for the Bloc holding."
+    },
+
+    {
+      "from": "aekon", "to": "fluxom",
+      "trade": 0.10, "hostility": 0.70, "secrets_shared": 0.05, "mobility": 0.10, "cultural_exchange": 0.05,
+      "narrative": "Aekon condemned Fluxom's internal practices. Trade collapsed. The condemnation has not been retracted."
+    },
+    {
+      "from": "aekon", "to": "kree_nationalists",
+      "trade": 0.30, "hostility": 0.30, "secrets_shared": 0.10, "mobility": 0.25, "cultural_exchange": 0.20,
+      "narrative": "Polite distance. Aekon does not want Kree probing. Kree does not push."
+    },
+    {
+      "from": "aekon", "to": "akeia_of_kahlay",
+      "trade": 0.40, "hostility": 0.15, "secrets_shared": 0.15, "mobility": 0.45, "cultural_exchange": 0.55,
+      "narrative": "Akeia courts Aekon every Amity. Aekon enjoys the courtship. Neither has signed."
+    },
+
+    {
+      "from": "asbir", "to": "cree",
+      "trade": 0.20, "hostility": 0.55, "secrets_shared": 0.45, "mobility": 0.30, "cultural_exchange": 0.10,
+      "narrative": "The deletion sits between them. Cree knows. Asbir knows Cree knows. Neither has spoken first."
+    },
+    {
+      "from": "asbir", "to": "sahm",
+      "trade": 0.35, "hostility": 0.45, "secrets_shared": 0.15, "mobility": 0.30, "cultural_exchange": 0.20,
+      "narrative": "Sahm's scholars have published challenges to Asbir's curated tradition. Asbir's responses have been increasingly sharp."
+    },
+
+    {
+      "from": "sahm", "to": "bahiij",
+      "trade": 0.65, "hostility": 0.05, "secrets_shared": 0.30, "mobility": 0.55, "cultural_exchange": 0.65,
+      "narrative": "Allied via festival exchange and shared resistance to Dormas's pull on their nobility. Genuine warmth."
+    },
+    {
+      "from": "sahm", "to": "dormas",
+      "trade": 0.30, "hostility": 0.50, "secrets_shared": 0.10, "mobility": 0.40, "cultural_exchange": 0.20,
+      "narrative": "Sahm scholars refuse Dormas chairs. Dormas keeps offering. The chair offer is the polite version of a contract that cannot be refused."
+    },
+    {
+      "from": "sahm", "to": "fluxom",
+      "trade": 0.15, "hostility": 0.65, "secrets_shared": 0.05, "mobility": 0.10, "cultural_exchange": 0.05,
+      "narrative": "Sahm's iron underbids Fluxom's. Fluxom's smear campaigns target Sahm's chancellor by name."
+    },
+
+    {
+      "from": "dinye", "to": "fluxom",
+      "trade": 0.10, "hostility": 0.65, "secrets_shared": 0.05, "mobility": 0.05, "cultural_exchange": 0.05,
+      "narrative": "Dinye condemned Fluxom's sea actions. The elders rarely condemn anything. The condemnation stands."
+    },
+    {
+      "from": "dinye", "to": "masond",
+      "trade": 0.40, "hostility": 0.05, "secrets_shared": 0.25, "mobility": 0.45, "cultural_exchange": 0.55,
+      "narrative": "Masond's stoneworkers and Dinye's land-readers respect each other. Anti-urbanism vs civic-craftsmanship — they have decided to disagree gracefully."
+    },
+
+    {
+      "from": "bahiij", "to": "dormas",
+      "trade": 0.70, "hostility": 0.10, "secrets_shared": 0.30, "mobility": 0.60, "cultural_exchange": 0.65,
+      "narrative": "Bahiij silk trade with Dormas runs the textile economy. Lady Oriane and the raja have a working friendship that survives because neither asks the difficult questions."
+    },
+    {
+      "from": "bahiij", "to": "akeia_of_kahlay",
+      "trade": 0.55, "hostility": 0.05, "secrets_shared": 0.30, "mobility": 0.65, "cultural_exchange": 0.70,
+      "narrative": "Festival cultures align. Akeia courts Bahiij heirs every Halcyon. The matches have produced two of Bahiij's most popular consorts."
+    },
+
+    {
+      "from": "masond", "to": "nil",
+      "trade": 0.15, "hostility": 0.05, "secrets_shared": 0.55, "mobility": 0.25, "cultural_exchange": 0.45,
+      "narrative": "Masond knows half. Nil knows the rest. Both are content to wait."
+    },
+    {
+      "from": "masond", "to": "asbir",
+      "trade": 0.45, "hostility": 0.20, "secrets_shared": 0.20, "mobility": 0.40, "cultural_exchange": 0.30,
+      "narrative": "Asbir buys Masond brick. Masond suspects Asbir's curators of selective archaeology. The relationship is functional but never warm."
+    },
+
+    {
+      "from": "dormas", "to": "fluxom",
+      "trade": 0.25, "hostility": 0.55, "secrets_shared": 0.05, "mobility": 0.20, "cultural_exchange": 0.05,
+      "narrative": "Dormas considers Fluxom uncouth. Fluxom considers Dormas decadent. Both are correct."
+    },
+    {
+      "from": "dormas", "to": "kree_nationalists",
+      "trade": 0.40, "hostility": 0.30, "secrets_shared": 0.65, "mobility": 0.35, "cultural_exchange": 0.30,
+      "narrative": "Dormas's actual upper class came down from Kree. The Kree chancellor and Lady Oriane communicate via channels the records do not name."
+    },
+
+    {
+      "from": "akeia_of_kahlay", "to": "kree_nationalists",
+      "trade": 0.35, "hostility": 0.20, "secrets_shared": 0.20, "mobility": 0.40, "cultural_exchange": 0.40,
+      "narrative": "Akeia tried to court a Kree alliance. The chancellor declined politely. The queen mother understood; she would have done the same."
+    },
+
+    {
+      "from": "fluxom", "to": "all_others",
+      "trade": 0.15, "hostility": 0.55, "secrets_shared": 0.05, "mobility": 0.10, "cultural_exchange": 0.05,
+      "narrative": "Fluxom is condemned by most. Trade limps. Reputation has been below 50 for two generations."
+    }
+  ],
+  "blocs_and_alliances": [
+    {
+      "id": "the_bloc",
+      "members": ["aekon", "asbir", "dinye"],
+      "binding_logic": "Mutual knowledge of Aekon's twelfth district. The price of the secret is the alliance.",
+      "stability": 0.80,
+      "weakening_conditions": ["a Dinye elder breaking silence", "an Asbir scholar publishing the deletion index", "the twelfth district being seen by an outsider"]
+    },
+    {
+      "id": "the_quiet_pact",
+      "members": ["medici", "nil", "cree"],
+      "binding_logic": "Three peoples who do not talk to the world about themselves. They talk to each other when they must.",
+      "stability": 0.70,
+      "weakening_conditions": ["a public Sangree-Medici incident forcing the Medici to choose sides", "Nil opening to outsiders", "Cree being asked publicly about the deletion"]
+    },
+    {
+      "id": "festival_axis",
+      "members": ["sahm", "bahiij", "dormas", "akeia_of_kahlay"],
+      "binding_logic": "Cultural exchange and trade networks. Not a formal alliance — more a pattern.",
+      "stability": 0.55,
+      "weakening_conditions": ["Sahm scholar accepting a Dormas chair", "the festival master of Bahiij speaking publicly", "the queen mother's daughter formally refusing the throne"]
+    }
+  ],
+  "tensions_to_watch": [
+    {
+      "id": "sangree_medici_hybrid_disclosure",
+      "severity": 0.85,
+      "description": "If the warlord's child is identified and either Sangree or Medici acts publicly, the equilibrium between fire and ice politics breaks. Kree the state will try to broker. Kree the state may not succeed."
+    },
+    {
+      "id": "asbir_archive_unsealing",
+      "severity": 0.80,
+      "description": "If the deletion index is published, Asbir's curated tradition collapses. Cree's elders may speak. The Medici's origin star may be vindicated. The Kree chancellor's lie about Medici departure becomes a different kind of lie."
+    },
+    {
+      "id": "fluxom_refugee_dump_revelation",
+      "severity": 0.70,
+      "description": "If the original refugee-dump becomes public via a survivor or a sea-creature communicative event, Fluxom collapses. The two families have begun arguing over who runs first."
+    },
+    {
+      "id": "twelfth_district_breach",
+      "severity": 0.85,
+      "description": "If an outsider sees Aekon's twelfth district, the Bloc's binding logic surfaces. Aekon must either acknowledge the stranded-transit cost publicly or rewrite its own history aggressively."
+    },
+    {
+      "id": "nil_opening",
+      "severity": 0.95,
+      "description": "If a player or NPC enters the inner grove of Nil with permission, the planetary refusal-field's nature can be probed. Whoever proves the field's mechanism becomes the most strategically important figure on Tunya."
+    }
+  ]
+}

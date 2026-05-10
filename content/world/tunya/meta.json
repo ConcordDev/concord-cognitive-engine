@@ -1,0 +1,101 @@
+{
+  "world_id": "tunya",
+  "world_name": "Tunya",
+  "theme": "post-arrival pre-industrial",
+  "tech_level": "pre-industrial",
+  "magic_level": "rare-bloodline",
+  "is_hub": false,
+  "description": "A planet reached through a wormhole by seven arks launched from Earth. Time dilation in transit scattered the arrivals across generations. Africa came first; Eurasia fourth; South America stranded mid-transit and limped in last. Native Americans walked off the North American ark and settled separately. Pre-industrial — wood, stone, brick, iron, animal-drawn transport. No electricity has ever been made to work on Tunya. Powers replace some of what electricity would do: fire-bloodlines warm and forge, ice-bloodlines preserve and heal. The Sangree of Sandrun are revered for fire; the Medici (an alien-origin people living among Kree) wield ice and healing. The story opens four generations after the first arrival, when the arks themselves have been ruins for decades but their archives can still be accessed with enough solar charge — making them objects of pilgrimage, sabotage, and obsession.",
+  "skill_affinity": {
+    "default": 0.7,
+    "swordsmanship": 1.0,
+    "archery": 1.0,
+    "athletics": 1.0,
+    "stealth": 0.95,
+    "diplomacy": 1.0,
+    "deception": 0.95,
+    "leadership": 1.0,
+    "crafting": 1.0,
+    "smithing": 1.0,
+    "bricklaying": 1.0,
+    "weaving": 1.0,
+    "alchemy": 0.85,
+    "magic": 0.0,
+    "fire_bloodline": 0.95,
+    "ice_bloodline": 0.95,
+    "engineering": 0.45,
+    "tech": 0.0,
+    "hacking": 0.0,
+    "gun": 0.0,
+    "weapons_modern": 0.0,
+    "driving": 0.05,
+    "piloting": 0.05,
+    "ark_archaeology": 1.0,
+    "celestial_navigation": 0.9,
+    "sea_navigation": 0.9
+  },
+  "calendar": {
+    "hours_per_day": 32,
+    "months": [
+      "T'annum", "Prail", "Amity", "Anew", "Vernal", "Ameliorate",
+      "Halcyon", "Arbor", "Wound", "Batten", "Summery", "Preserve",
+      "Harvest", "Fallow", "Pisces", "Brine", "Cull", "Cares"
+    ],
+    "current_era": "Year 4G — Fourth generation since first arrival"
+  },
+  "concord_link": {
+    "primary_access": "ark_archive_terminals",
+    "secondary_access": ["pilgrimage_dreams", "medici_ice_resonance", "tunyan_root_whispers"],
+    "veil_stability": 0.6,
+    "anchors": [
+      {
+        "id": "anchor_tunya_africa_ark_core",
+        "name": "Hold of First Arrival",
+        "access_method": "ark_archive_terminals",
+        "description": "The dead heart of the Africa ark, fused into the cliffs above Masond's first city. With enough sunlight on the cracked panels, a single terminal still wakes. It speaks in the voice of a woman dead four generations.",
+        "location": "masond_first_city",
+        "controlled_by_faction": "masond",
+        "stability": 0.85
+      },
+      {
+        "id": "anchor_tunya_north_ark_scrubbed",
+        "name": "The Curated Vault",
+        "access_method": "ark_archive_terminals",
+        "description": "The Asbir ark sits half-buried in the southern dunes. Its archive boots clean. What's missing is precisely what was deleted before launch — and the deletion log is missing too.",
+        "location": "asbir_southern_dunes",
+        "controlled_by_faction": "asbir",
+        "stability": 0.7
+      },
+      {
+        "id": "anchor_tunya_nil_root_grove",
+        "name": "The Listening Grove of Nil",
+        "access_method": "tunyan_root_whispers",
+        "description": "Closed to outsiders. The pure Tunyans speak through their oldest trees. Whoever pierces the grove's refusal-field hears every conversation Nil has ever had since the arrivals came.",
+        "location": "nil_inner_grove",
+        "controlled_by_faction": "nil",
+        "stability": 0.95
+      },
+      {
+        "id": "anchor_tunya_medici_resonance",
+        "name": "The Medici Ice Choir",
+        "access_method": "medici_ice_resonance",
+        "description": "Twelve Medici healers in concert can shape ice into a standing wave that broadcasts to other shaped ice. The technique is not Tunyan in origin. They will not say where it came from.",
+        "location": "kree_medici_ward",
+        "controlled_by_faction": "medici",
+        "stability": 0.55
+      }
+    ]
+  },
+  "biomes": {
+    "policy": "every kingdom contains multiple biomes; no landmass owns one biome",
+    "kinds": ["tropical", "arid", "frost", "swamp", "temperate_woodland", "highland", "coastal_marsh"]
+  },
+  "open_lore": {
+    "what_is_in_the_curated_archive": "Recoverable from Asbir ark with effort.",
+    "what_are_the_medici": "Not Tunyan, not Earth. Origin recoverable through the Medici Ice Choir.",
+    "why_no_electricity": "Ambient mystery. Tied to whatever protects Nil.",
+    "what_lives_in_the_sea": "Recoverable through Fluxom's old sea-trade logs.",
+    "the_blocs_binding": "Recoverable through Aekon's stranded-arrival grief.",
+    "sangree_medici_hybrids": "Rare, real. Where they are is open lore."
+  }
+}

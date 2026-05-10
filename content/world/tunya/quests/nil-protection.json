@@ -1,0 +1,56 @@
+[
+  {
+    "id": "tunya_nil_protection_1_silent_walk",
+    "title": "Nil — The Silent Walk",
+    "description": "Once a year, in Arbor, Nil opens a single path through the outer grove for one day. The Walk is silent. Outsiders are not forbidden. None have ever joined. You could be the first.",
+    "giver_npc_id": "young_tunyan_who_left_once",
+    "difficulty": "easy",
+    "domain": "metaphysical",
+    "estimated_time": "10m",
+    "world_id": "tunya",
+    "calendar_gate": { "month": "Arbor", "festival": "arbor_silent_walk_nil" },
+    "objectives": [
+      { "id": "obj_np_1_1", "type": "wait_for_event", "target": "arbor_silent_walk_begins", "required_count": 1, "description": "Wait for Arbor and the Walk to begin" },
+      { "id": "obj_np_1_2", "type": "reach_location", "target": "nil_outer_grove_path", "required_count": 1, "description": "Walk the outer grove path in silence" },
+      { "id": "obj_np_1_3", "type": "perceive_clue", "target": "refusal_field_density_signal", "required_count": 1, "description": "Feel the refusal-field's density change as you walk" }
+    ],
+    "rewards": [
+      { "kind": "skill_xp", "skill": "celestial_navigation", "amount": 100 },
+      { "kind": "reputation", "faction_id": "nil", "amount": 5 },
+      { "kind": "concord_alignment", "amount": 0.05 }
+    ],
+    "unlocks_quests": ["tunya_nil_protection_2_inner_grove"]
+  },
+  {
+    "id": "tunya_nil_protection_2_inner_grove",
+    "title": "Nil — The Inner Grove",
+    "description": "Yenna of Nil has agreed to receive you in the inner grove. No outsider has been received in the inner grove. The reasons she chose you are her own. The visit will not be repeated.",
+    "difficulty": "very_hard",
+    "domain": "metaphysical",
+    "estimated_time": "40m",
+    "world_id": "tunya",
+    "prerequisite_quests": ["tunya_nil_protection_1_silent_walk"],
+    "prerequisite_reputation": [{ "faction_id": "nil", "min": 30 }],
+    "objectives": [
+      { "id": "obj_np_2_1", "type": "reach_location", "target": "nil_inner_grove", "required_count": 1, "description": "Enter the inner grove" },
+      { "id": "obj_np_2_2", "type": "dialogue", "target": "grove-mother_yenna_nil", "required_count": 1, "description": "Receive Yenna's one sentence" },
+      { "id": "obj_np_2_3", "type": "branch_decision", "target": "refusal_field_disposition", "required_count": 1, "description": "Decide: prove the field's mechanism (run an electricity test), keep Yenna's revelation private, broker an alliance with another power, or leave changed and silent" }
+    ],
+    "rewards": [
+      { "kind": "skill_xp", "skill": "celestial_navigation", "amount": 1000 },
+      { "kind": "concord_alignment", "amount": 0.25 },
+      { "kind": "dtu", "kind_tag": "yennas_one_sentence", "amount": 1 },
+      { "kind": "ability_unlock", "ability_id": "tunyan_conduit_partial", "description": "If you have any Tunyan ancestry, your conduit-status increases by one tier." }
+    ],
+    "branch_consequences": {
+      "prove_field_mechanism": "You run a controlled electricity test in the inner grove. It works. It does not work outside. You publish. Tunya's understanding of itself shifts. Every kingdom wants you. Concord_alignment +0.30. Nil reputation -50.",
+      "keep_private": "You leave with Yenna's sentence and tell no one. Nil+30. The world continues unchanged. Concord_alignment +0.10.",
+      "broker_alliance": "You introduce Yenna's sentence to a power of your choosing (Medici, Masond, Aekon, Akeia, etc.). Cross-faction substrate hooks open. Effects depend on the chosen ally.",
+      "leave_silent": "You leave changed and say nothing. Nil+50. Yenna marks you in the grove's living memory. You are now welcome in Nil for the rest of your life. Concord_alignment +0.20."
+    },
+    "cross_world_unlocks": [
+      { "world_id": "fantasy", "effect": "the Listening Oak's blood-rune messages, previously one-directional, become two-way. Yenna can reply." },
+      { "world_id": "concordia-hub", "effect": "Tunya's refusal-field becomes a concept Concordia's lattice orchestrator can read; new drift-detection patterns emerge across worlds." }
+    ]
+  }
+]

@@ -1,0 +1,316 @@
+{
+  "world_id": "tunya",
+  "schema_version": "1.0",
+  "purpose": "Per-culture phoneme + morphology rules consumable by the procgen NPC + place-name builder. Each culture defines (a) given-name patterns, (b) surname/clan patterns, (c) place-name patterns, (d) divine/honorific patterns.",
+  "cultures": {
+    "sandrun_sangree": {
+      "phoneme_set": {
+        "consonants": ["k", "t", "r", "v", "y", "z", "th", "sh", "ng"],
+        "vowels": ["a", "e", "i"],
+        "consonant_clusters_preferred": ["kr", "ty", "vr", "shn", "ng"]
+      },
+      "given_names": {
+        "syllable_count": [2, 3],
+        "examples": ["Iyatte", "Oren", "Uvel", "Korrek", "Tashe", "Vrenya", "Aksal"],
+        "gender_marking": "soft suffix -e or -a feminine; consonant-final masculine"
+      },
+      "clan_names": {
+        "pattern": "[fire/forge/ash][-of-][place]",
+        "examples": ["Sang of Sandrun", "Ember of Akkari", "Ash-of-Vren"]
+      },
+      "place_names": {
+        "syllable_count": [2, 3],
+        "examples": ["Sandrun", "Akkari", "Vren", "Yashan", "Korrek-Vell"],
+        "common_suffixes": ["-run", "-ari", "-ell", "-an"]
+      },
+      "honorifics": ["Warlord", "Forgemother", "Ash-priest", "Ember-bearer"]
+    },
+    "kree_nationalists": {
+      "phoneme_set": {
+        "consonants": ["k", "r", "n", "v", "l", "br", "fr", "sh"],
+        "vowels": ["a", "e", "i", "o"],
+        "consonant_clusters_preferred": ["kr", "br", "fr", "shn"]
+      },
+      "given_names": {
+        "syllable_count": [2, 3],
+        "examples": ["Brand", "Lia", "Orik", "Vellan", "Iyera", "Konvar"],
+        "gender_marking": "vowel-final feminine, consonant-final masculine, neutral on long-vowel-final"
+      },
+      "clan_names": {
+        "pattern": "[abstract noun]-[house word]",
+        "examples": ["House Vellanis", "House Brandar", "Kree-Iyeran"]
+      },
+      "place_names": {
+        "syllable_count": [2, 3],
+        "examples": ["Kree", "Vellan", "Brandar", "Iyeran"],
+        "common_suffixes": ["-ar", "-an", "-vell"]
+      },
+      "honorifics": ["Chancellor", "Ambassador", "Minister", "Protector"]
+    },
+    "medici": {
+      "phoneme_set": {
+        "consonants": ["s", "l", "r", "th", "v", "n", "m"],
+        "vowels": ["a", "e", "i", "ae", "ei"],
+        "consonant_clusters_preferred": ["sl", "vr", "thr"],
+        "preferred_pattern": "long vowels, soft consonants, no harsh stops"
+      },
+      "given_names": {
+        "syllable_count": [3, 4],
+        "examples": ["Aerasi", "Vellanae", "Selithra", "Orienthei", "Iyallae"],
+        "gender_marking": "rare in Medici names; same pool serves all"
+      },
+      "clan_names": {
+        "pattern": "[ancestor's-name]-[choir position]",
+        "examples": ["Aerasi-of-the-Choir", "Iyallae-Resonant", "Vellanae-Navigator"]
+      },
+      "place_names": {
+        "syllable_count": [2, 3],
+        "examples": ["Medici Ward", "Selith", "Aelaen"],
+        "common_suffixes": ["-aen", "-ith", "-ae"]
+      },
+      "honorifics": ["High Healer", "Choir Master", "Navigator", "Quiet One"]
+    },
+    "cree": {
+      "phoneme_set": {
+        "consonants": ["k", "n", "w", "y", "p", "t", "h", "m"],
+        "vowels": ["a", "e", "i", "o"],
+        "consonant_clusters_preferred": ["kw", "nw", "ny"]
+      },
+      "given_names": {
+        "syllable_count": [3, 4],
+        "examples": ["Neyahwetin", "Okimaw", "Wiyowak", "Naheyak"],
+        "gender_marking": "context-dependent; same pool serves all"
+      },
+      "clan_names": {
+        "pattern": "[walker/keeper/singer]-[lineage word]",
+        "examples": ["Walker-of-Stones", "Singer-of-Shore", "Keeper-of-the-Ark"]
+      },
+      "place_names": {
+        "syllable_count": [2, 3, 4],
+        "examples": ["Cree", "Wiyowak Bay", "Naheya Plain"],
+        "common_suffixes": ["-yak", "-ya", "-mak"]
+      },
+      "honorifics": ["Eldest Walker", "Singer", "Keeper", "Listener"]
+    },
+    "aekon": {
+      "phoneme_set": {
+        "consonants": ["x", "ch", "tl", "tz", "k", "p", "n", "m"],
+        "vowels": ["a", "e", "i", "o"],
+        "consonant_clusters_preferred": ["tl", "tz", "ch", "xch"]
+      },
+      "given_names": {
+        "syllable_count": [2, 3],
+        "examples": ["Xochi", "Yari", "Tlatani", "Itzal", "Cuauhe"],
+        "gender_marking": "vowel-final feminine, glottal-stop-final masculine"
+      },
+      "clan_names": {
+        "pattern": "[district-number]-[role-word]",
+        "examples": ["Twelfth-Keeper", "Third-Engineer", "Sky-of-Aekon"]
+      },
+      "place_names": {
+        "syllable_count": [2, 3],
+        "examples": ["Aekon", "Tlanith", "Xochil-Teotl", "Cuauhpan"],
+        "common_suffixes": ["-tl", "-pan", "-nith"]
+      },
+      "honorifics": ["High Chancellor", "District Keeper", "Sky-priest", "Engineer-of-the-Twelve"]
+    },
+    "asbir": {
+      "phoneme_set": {
+        "consonants": ["b", "r", "n", "p", "l", "s", "k", "v"],
+        "vowels": ["a", "e", "i", "o"],
+        "consonant_clusters_preferred": ["br", "kl", "pr", "vr"]
+      },
+      "given_names": {
+        "syllable_count": [1, 2],
+        "examples": ["Renn", "Pal", "Brent", "Vela", "Kor"],
+        "gender_marking": "vowel-final feminine, consonant-final masculine"
+      },
+      "clan_names": {
+        "pattern": "[rank][-][house]",
+        "examples": ["Lord Curator", "Warden Brennan", "Marshal Pal-Vossen"]
+      },
+      "place_names": {
+        "syllable_count": [2, 3],
+        "examples": ["Asbir", "Brennan", "Vosshold", "Pal-Marsh"],
+        "common_suffixes": ["-bir", "-hold", "-march"]
+      },
+      "honorifics": ["Lord Curator", "Archive Warden", "Marshal", "Scholar"]
+    },
+    "sahm": {
+      "phoneme_set": {
+        "consonants": ["m", "k", "d", "s", "n", "f", "j", "b"],
+        "vowels": ["a", "e", "i", "o", "u"],
+        "consonant_clusters_preferred": ["mb", "nd", "kw", "ny"]
+      },
+      "given_names": {
+        "syllable_count": [2, 3],
+        "examples": ["Idris", "Kemi", "Ayodele", "Ndidi", "Femi", "Tunde"],
+        "gender_marking": "soft, often by community recognition rather than morphology"
+      },
+      "clan_names": {
+        "pattern": "[-of-][river/forge/scholarship]",
+        "examples": ["Of-the-River", "Idris-Smith", "Kemi-Scholar"]
+      },
+      "place_names": {
+        "syllable_count": [1, 2, 3],
+        "examples": ["Sahm", "Ndembe", "Adyo", "Kuburi"],
+        "common_suffixes": ["-be", "-yo", "-ri"]
+      },
+      "honorifics": ["Chancellor", "Smith-master", "Professor", "River-keeper"]
+    },
+    "dinye": {
+      "phoneme_set": {
+        "consonants": ["j", "r", "n", "k", "m", "y", "w", "ng"],
+        "vowels": ["a", "e", "i", "u"],
+        "consonant_clusters_preferred": ["ng", "rr", "nj"]
+      },
+      "given_names": {
+        "syllable_count": [2, 3],
+        "examples": ["Jirra", "Arrente", "Wirri", "Ngoorri", "Mara"],
+        "gender_marking": "context-dependent"
+      },
+      "clan_names": {
+        "pattern": "[walker/singer/listener]-[country word]",
+        "examples": ["Stone-singer", "Red-walker", "Ancestor-keeper"]
+      },
+      "place_names": {
+        "syllable_count": [2, 3],
+        "examples": ["Dinye", "Jirra Country", "Wirri Plain"],
+        "common_suffixes": ["-ye", "-rra", "-rri"]
+      },
+      "honorifics": ["Eldest Walker", "Stone-singer", "Listener", "Ancestor-keeper"]
+    },
+    "bahiij": {
+      "phoneme_set": {
+        "consonants": ["k", "m", "l", "r", "n", "j", "d", "h", "v"],
+        "vowels": ["a", "e", "i", "o", "u"],
+        "consonant_clusters_preferred": ["dr", "kr", "vr", "jh"]
+      },
+      "given_names": {
+        "syllable_count": [2, 3],
+        "examples": ["Kamala", "Indu", "Devraj", "Anaya", "Vikram"],
+        "gender_marking": "vowel-final feminine, consonant-final masculine, with cultural exceptions"
+      },
+      "clan_names": {
+        "pattern": "House [name] of [district]",
+        "examples": ["House Anaya of the Radiant Square", "House Vikram of Quiet Quarter"]
+      },
+      "place_names": {
+        "syllable_count": [2, 3],
+        "examples": ["Bahiij", "Radiant Square", "Quiet Quarter", "Anaya Grove"],
+        "common_suffixes": ["-iij", "-aya"]
+      },
+      "honorifics": ["Raja", "Elephant-mother", "Festival Master", "Quiet One"]
+    },
+    "masond": {
+      "phoneme_set": {
+        "consonants": ["t", "r", "k", "m", "s", "th", "v", "n"],
+        "vowels": ["a", "e", "i", "o"],
+        "consonant_clusters_preferred": ["tr", "kr", "thr", "rv"]
+      },
+      "given_names": {
+        "syllable_count": [2, 3],
+        "examples": ["Torrek", "Eyala", "Veska", "Mathran", "Iyora"],
+        "gender_marking": "soft -a feminine, consonant-final masculine"
+      },
+      "clan_names": {
+        "pattern": "[mason/keeper]-[stone-mark]",
+        "examples": ["High Mason", "Root-keeper", "Foundation-of-Masond"]
+      },
+      "place_names": {
+        "syllable_count": [2, 3],
+        "examples": ["Masond", "Torrek-Vell", "Iyora-Hold"],
+        "common_suffixes": ["-ond", "-vell", "-hold"]
+      },
+      "honorifics": ["High Mason", "Root-keeper", "Foundation-keeper", "Old Builder"]
+    },
+    "dormas": {
+      "phoneme_set": {
+        "consonants": ["d", "r", "v", "s", "l", "n", "m", "f"],
+        "vowels": ["a", "e", "i", "o", "ai", "ei"],
+        "consonant_clusters_preferred": ["dr", "fr", "sl", "vr"]
+      },
+      "given_names": {
+        "syllable_count": [2, 3],
+        "examples": ["Oriane", "Velis", "Frances", "Drevan", "Soliel"],
+        "gender_marking": "vowel-final or -ais feminine; consonant-final masculine"
+      },
+      "clan_names": {
+        "pattern": "Lady/Lord [first] [house-name]",
+        "examples": ["Lady Oriane Dormas", "Lord Drevan Velise"]
+      },
+      "place_names": {
+        "syllable_count": [2, 3],
+        "examples": ["Dormas", "Silken Reach", "Velise-on-the-Marsh"],
+        "common_suffixes": ["-mas", "-reach", "-velise"]
+      },
+      "honorifics": ["Lady", "Lord", "House Mistress", "Silk Master"]
+    },
+    "fluxom": {
+      "phoneme_set": {
+        "consonants": ["f", "l", "x", "h", "v", "r", "m", "z"],
+        "vowels": ["a", "e", "i", "o", "u"],
+        "consonant_clusters_preferred": ["fl", "fr", "lx", "vr"]
+      },
+      "given_names": {
+        "syllable_count": [2, 3],
+        "examples": ["Levia", "Horst", "Vrastin", "Zelma", "Marvik"],
+        "gender_marking": "soft -a feminine; harsh-consonant masculine"
+      },
+      "clan_names": {
+        "pattern": "Family-[name]",
+        "examples": ["Family Levia", "Family Horst", "First Family", "Second Family"]
+      },
+      "place_names": {
+        "syllable_count": [2, 3],
+        "examples": ["Fluxom", "Harbor Old", "Salt-Pits"],
+        "common_suffixes": ["-xom", "-pit", "-marsh"]
+      },
+      "honorifics": ["Matriarch", "Patriarch", "Ration Clerk", "First-of-the-First"]
+    },
+    "nil": {
+      "phoneme_set": {
+        "consonants": ["y", "n", "l", "r", "m", "v", "th", "s"],
+        "vowels": ["e", "i", "a", "u"],
+        "consonant_clusters_preferred": ["soft, no harsh stops"]
+      },
+      "given_names": {
+        "syllable_count": [2, 3],
+        "examples": ["Yenna", "Mira", "Velath", "Suri", "Ynara"],
+        "gender_marking": "rare; same pool serves all"
+      },
+      "clan_names": {
+        "pattern": "[role]-of-Nil",
+        "examples": ["Grove-mother", "Eldest-who-Watches", "Listener-of-Roots"]
+      },
+      "place_names": {
+        "syllable_count": [1, 2],
+        "examples": ["Nil", "Inner Grove", "Outer Islands"],
+        "common_suffixes": ["-il", "-ara"]
+      },
+      "honorifics": ["Grove-mother", "Eldest", "Listener"]
+    },
+    "akeia_of_kahlay": {
+      "phoneme_set": {
+        "consonants": ["s", "r", "n", "l", "k", "v", "t", "y"],
+        "vowels": ["a", "e", "i", "o"],
+        "consonant_clusters_preferred": ["sl", "tr", "vy", "ny"]
+      },
+      "given_names": {
+        "syllable_count": [2, 3],
+        "examples": ["Serant", "Inara", "Kael", "Vellis", "Tarissa"],
+        "gender_marking": "soft -a or -i feminine; consonant-final masculine"
+      },
+      "clan_names": {
+        "pattern": "[matrilineage]-of-Akeia",
+        "examples": ["Serant of Akeia", "House Tarissa", "House Vellis"]
+      },
+      "place_names": {
+        "syllable_count": [2, 3],
+        "examples": ["Kahlay", "Tarissa Court", "Vellis Orchard"],
+        "common_suffixes": ["-lay", "-issa"]
+      },
+      "honorifics": ["Queen Mother", "First Consort", "Treaty Chamberlain", "House Daughter"]
+    }
+  }
+}

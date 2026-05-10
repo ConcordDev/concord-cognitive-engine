@@ -1,0 +1,56 @@
+[
+  {
+    "id": "tunya_arks_of_memory_1_first_pilgrimage",
+    "title": "Arks of Memory — Hold of First Arrival",
+    "description": "Whispers reach you from Masond: an old terminal in the Hold of First Arrival woke last week, just for a moment. The voice it played belonged to a woman who has been dead four generations. The High Mason wants the terminal mapped before it forgets again.",
+    "giver_npc_id": "high_mason_torrek_masond",
+    "difficulty": "moderate",
+    "domain": "ark_archaeology",
+    "estimated_time": "20m",
+    "world_id": "tunya",
+    "objectives": [
+      { "id": "obj_aok_1_1", "type": "reach_location", "target": "masond_first_city", "required_count": 1, "description": "Travel to Masond's first city above the cliffs" },
+      { "id": "obj_aok_1_2", "type": "gather", "target": "solar_charge_panel", "required_count": 3, "description": "Recover three intact solar panels from the ark's exterior" },
+      { "id": "obj_aok_1_3", "type": "interact", "target": "anchor_tunya_africa_ark_core", "required_count": 1, "description": "Wake the terminal at the Hold of First Arrival" },
+      { "id": "obj_aok_1_4", "type": "create_dtu", "target": "ark_first_arrival_recording", "required_count": 1, "description": "Mint the recovered recording as a Web-DTU" }
+    ],
+    "rewards": [
+      { "kind": "concord_alignment", "amount": 0.05 },
+      { "kind": "skill_xp", "skill": "ark_archaeology", "amount": 250 },
+      { "kind": "dtu", "kind_tag": "ark_first_arrival_recording", "amount": 1 },
+      { "kind": "reputation", "faction_id": "masond", "amount": 10 }
+    ],
+    "unlocks_quests": ["tunya_arks_of_memory_2_curated_vault"],
+    "cross_world_unlocks": [
+      { "world_id": "concordia-hub", "effect": "the recovered DTU joins the Concordia substrate; cites back to Tunya:masond_first_city forever" }
+    ]
+  },
+  {
+    "id": "tunya_arks_of_memory_2_curated_vault",
+    "title": "Arks of Memory — The Curated Vault",
+    "description": "The Asbir ark sits half-buried in the southern dunes. Its archive boots clean. What's missing is precisely what was deleted before launch — and the deletion log is missing too. A junior scholar in Asbir found the index of deletions. He hasn't decided who to tell. You could decide for him.",
+    "giver_npc_id": "scholar_who_doubts",
+    "difficulty": "hard",
+    "domain": "ark_archaeology",
+    "estimated_time": "35m",
+    "world_id": "tunya",
+    "prerequisite_quests": ["tunya_arks_of_memory_1_first_pilgrimage"],
+    "objectives": [
+      { "id": "obj_aok_2_1", "type": "reach_location", "target": "asbir_southern_dunes", "required_count": 1, "description": "Reach the Asbir ark in the southern dunes" },
+      { "id": "obj_aok_2_2", "type": "infiltrate_or_persuade", "target": "scholar_who_doubts", "required_count": 1, "description": "Convince the scholar to share the index of deletions" },
+      { "id": "obj_aok_2_3", "type": "branch_decision", "target": "deletion_index_disposition", "required_count": 1, "description": "Decide what to do with the deletion index: publish, sell, give to Cree, give to Renn, destroy", "branches": ["publish", "sell_crime_world", "give_to_cree", "give_to_renn", "destroy"] }
+    ],
+    "rewards": [
+      { "kind": "skill_xp", "skill": "ark_archaeology", "amount": 500 },
+      { "kind": "concord_alignment", "amount": 0.10 },
+      { "kind": "dtu", "kind_tag": "asbir_deletion_index", "amount": 1 }
+    ],
+    "branch_consequences": {
+      "publish": "Asbir's curated tradition collapses publicly. Reputation +20 with Sahm, Cree. Reputation -30 with Asbir. Possible Bloc weakening.",
+      "sell_crime_world": "Earn substantial CC. Reputation -10 across most kingdoms when traced. Crime-world fixer becomes a future contact.",
+      "give_to_cree": "Cree elders thank you in the only way they thank — silence and a token. Quiet pact strengthens. Cree+30 reputation.",
+      "give_to_renn": "Renn the Curator processes the index. He may bury it; he may publish; the choice becomes his. Asbir+15.",
+      "destroy": "The truth dies with you. Concord_alignment -0.05. Curated tradition holds another generation."
+    }
+  }
+]
