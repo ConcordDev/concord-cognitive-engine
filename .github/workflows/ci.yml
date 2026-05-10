@@ -206,10 +206,29 @@ jobs:
             echo "::group::Last 200 lines of tee'd log"
             tail -n 200 /tmp/server-coverage.log || true
             echo "::endgroup::"
+            echo "::group::Coverage / threshold hits (any match for 'Coverage', 'threshold', 'ERROR', 'Killed', 'heap', 'FATAL')"
+            grep -iE "coverage|threshold|^error|killed|heap|fatal|aborted|exit code [0-9]" /tmp/server-coverage.log | tail -n 50 || echo "(no matches)"
+            echo "::endgroup::"
           else
             echo "(no /tmp/server-coverage.log — c8 likely failed before tests ran)"
           fi
           echo "::endgroup::"
+
+      # Upload the full tee'd test log as a downloadable artifact so it
+      # can be grep'd offline. The 80k-line in-browser log view is a
+      # nightmare to scroll, and the diagnostic step above only surfaces
+      # known-pattern failures — anything new (OOM, native crash, c8
+      # internal error, novel test failure shape) falls through. Save
+      # the whole file so the next debugger has the raw bytes to work
+      # with regardless of pattern.
+      - name: Upload server-coverage log artifact
+        if: failure() && steps.server_coverage.outcome == 'failure'
+        uses: actions/upload-artifact@v6
+        with:
+          name: server-coverage-log
+          path: /tmp/server-coverage.log
+          retention-days: 7
+          if-no-files-found: warn
 
       # Diagnostic — runs on failure only, dumps which step failed plus
       # available context. Will help identify the failing step from
