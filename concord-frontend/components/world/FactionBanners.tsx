@@ -159,7 +159,7 @@ function distance(x1: number, z1: number, x2: number, z2: number): number {
 function projectToScreen(wx: number, wy: number, wz: number, cam: CameraSnapshot): { x: number; y: number; visible: boolean } {
   const dx = wx - cam.x, dy = wy - cam.y, dz = wz - cam.z;
   const cy = Math.cos(-cam.yaw), sy = Math.sin(-cam.yaw);
-  let rx = dx * cy + dz * sy;
+  const rx = dx * cy + dz * sy;
   let rz = -dx * sy + dz * cy;
   const cp = Math.cos(-cam.pitch), sp = Math.sin(-cam.pitch);
   const ry = dy * cp - rz * sp;

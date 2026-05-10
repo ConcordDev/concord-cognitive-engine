@@ -22,29 +22,7 @@
 
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { subscribe } from '@/lib/realtime/socket';
-
-// Match the existing AvatarSystem3D NPCData shape so the parent can
-// pass injected walkers straight through.
-interface AppearanceConfig {
-  bodyType: 'slim' | 'average' | 'stocky' | 'tall' | 'legend';
-  skinTone: number;
-  hairStyle: number;
-  hairColor: number;
-  outfit: number;
-  faceShape: number;
-}
-
-interface NPCData {
-  id: string;
-  name: string;
-  appearance: AppearanceConfig;
-  position: { x: number; y: number; z: number };
-  rotation: number;
-  occupation: string;
-  occupationAnimation: string; // matches NPCOccupationAnimation union
-  patrolPath?: { x: number; y: number; z: number }[];
-  timestamp: number;
-}
+import type { AppearanceConfig, NPCData } from '@/components/world-lens/AvatarSystem3D';
 
 interface WalkerJourney {
   walkerId: string;
@@ -78,16 +56,39 @@ const AUTHORED_WALKERS: Record<string, { name: string; appearance: AppearanceCon
   walker_tully_vex: {
     name: 'Tully Vex',
     appearance: {
-      bodyType: 'tall', skinTone: 2, hairStyle: 1, hairColor: 5, outfit: 8, faceShape: 3,
+      bodyType: 'tall',
+      skinColor: '#b07f5f',
+      hairColor: '#3b2415',
+      hairStyle: 'short',
+      clothing: {
+        top: { color: '#3e2a4f', type: 'coat' },
+        bottom: { color: '#2e2820', type: 'pants' },
+      },
     },
   },
   walker_sona_karth: {
     name: 'Sona Karth',
     appearance: {
-      bodyType: 'slim', skinTone: 4, hairStyle: 6, hairColor: 8, outfit: 11, faceShape: 2,
+      bodyType: 'slim',
+      skinColor: '#8a5a3e',
+      hairColor: '#a35a2d',
+      hairStyle: 'ponytail',
+      clothing: {
+        top: { color: '#1a4a4a', type: 'vest' },
+        bottom: { color: '#3a3128', type: 'pants' },
+      },
     },
   },
 };
+
+const SKIN_HEX = ['#f1c4a0', '#d9a17e', '#b07f5f', '#8a5a3e', '#5e3826', '#3a2014'];
+const HAIR_HEX = ['#1a1410', '#3b2415', '#6e3a1d', '#a35a2d', '#c08850', '#d8b078', '#e8d2a6', '#f0e2c8', '#7a7a7a', '#cccccc'];
+const HAIR_STYLE: AppearanceConfig['hairStyle'][] = ['short', 'medium', 'long', 'bald', 'ponytail', 'bun'];
+const TOP_HEX = ['#2b3a5a', '#4f6b3e', '#7a3a2e', '#3e2a4f', '#5a4a2e', '#1a4a4a', '#6a4a3e', '#3e5a3e'];
+const BOTTOM_HEX = ['#2a2018', '#3e2e22', '#4a3a2c', '#1c1a18', '#3a3128', '#2e2820'];
+const TOP_TYPE: AppearanceConfig['clothing']['top']['type'][] = ['shirt', 'vest', 'coat', 'robe', 'apron'];
+const BOTTOM_TYPE: AppearanceConfig['clothing']['bottom']['type'][] = ['pants', 'skirt', 'shorts', 'robe'];
+const BODIES: AppearanceConfig['bodyType'][] = ['slim', 'average', 'stocky', 'tall'];
 
 /** Fallback appearance for walker IDs we don't have authored details for —
  *  derived from a sha-like hash of the walkerId so the same id is stable. */
@@ -95,18 +96,24 @@ function fallbackAppearance(walkerId: string): { name: string; appearance: Appea
   let h = 0;
   for (let i = 0; i < walkerId.length; i++) h = ((h << 5) - h + walkerId.charCodeAt(i)) | 0;
   const abs = Math.abs(h);
-  // Walkers are mortals — legend reserved for the immortal NPC class
-  // (concordia_first_breath, sovereign_first_refusal, etc).
-  const bodies: AppearanceConfig['bodyType'][] = ['slim', 'average', 'stocky', 'tall'];
+  // Walkers are mortals — legend reserved for the immortal NPC class.
   return {
     name: `Walker ${walkerId.slice(-4).toUpperCase()}`,
     appearance: {
-      bodyType: bodies[abs % bodies.length],
-      skinTone: abs % 6,
-      hairStyle: (abs >> 3) % 12,
-      hairColor: (abs >> 5) % 10,
-      outfit: (abs >> 7) % 16,
-      faceShape: (abs >> 9) % 8,
+      bodyType: BODIES[abs % BODIES.length],
+      skinColor: SKIN_HEX[abs % SKIN_HEX.length],
+      hairColor: HAIR_HEX[(abs >> 5) % HAIR_HEX.length],
+      hairStyle: HAIR_STYLE[(abs >> 3) % HAIR_STYLE.length],
+      clothing: {
+        top: {
+          color: TOP_HEX[(abs >> 7) % TOP_HEX.length],
+          type: TOP_TYPE[(abs >> 9) % TOP_TYPE.length],
+        },
+        bottom: {
+          color: BOTTOM_HEX[(abs >> 11) % BOTTOM_HEX.length],
+          type: BOTTOM_TYPE[(abs >> 13) % BOTTOM_TYPE.length],
+        },
+      },
     },
   };
 }
@@ -153,7 +160,7 @@ export default function WalkerNpcInjector({ worldId, anchorPositions, onWalkers 
         position: { x, y, z },
         rotation,
         occupation: 'walker',
-        occupationAnimation: 'walking',
+        occupationAnimation: 'patrol',
         timestamp: now,
       });
     }

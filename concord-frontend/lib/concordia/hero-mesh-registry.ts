@@ -33,10 +33,7 @@ async function getLoader() {
   if (loaderPromise) return loaderPromise;
   loaderPromise = (async () => {
     // Dynamic import so SSR / tests don't pull GLTFLoader unless needed.
-    const mod = await import(
-      // @ts-expect-error — GLTFLoader is a runtime addon
-      'three/examples/jsm/loaders/GLTFLoader.js'
-    );
+    const mod = await import('three/examples/jsm/loaders/GLTFLoader.js');
     const Loader = mod.GLTFLoader;
     const loader = new Loader();
     return {

@@ -475,6 +475,7 @@ function WalletPageInner() {
               whileTap={{ scale: 0.98 }}
               onClick={() => setShowWithdraw(true)}
               title="Withdraw (W)"
+              aria-label="Withdraw"
               className={cn(
                 ds.btnBase,
                 'px-5 py-3 bg-neon-green/20 text-neon-green border border-neon-green/50 hover:bg-neon-green/30 focus:ring-neon-green'
@@ -482,7 +483,7 @@ function WalletPageInner() {
             >
               <ArrowDownToLine className="w-5 h-5" />
               Withdraw
-              <kbd className="hidden sm:inline ml-1 text-[10px] bg-black/30 border border-white/20 rounded px-1 py-0.5 font-mono">W</kbd>
+              <kbd className="hidden sm:inline ml-1 text-[10px] bg-black/30 border border-white/20 rounded px-1 py-0.5 font-mono" aria-hidden="true">W</kbd>
             </motion.button>
 
             <motion.button

@@ -35,6 +35,7 @@ export interface FightingStyle {
     anticipation:   StiffnessMode;
     drive:          StiffnessMode;
     impact:         StiffnessMode;
+    peak:           StiffnessMode;
     follow_through: StiffnessMode;
     settle:         StiffnessMode;
   };
@@ -57,6 +58,7 @@ export const STYLES: Record<FightingStyleId, FightingStyle> = {
       anticipation:   'focused',
       drive:          'explosive',
       impact:         'explosive',
+      peak:           'explosive',
       follow_through: 'focused',
       settle:         'focused',
     },
@@ -78,6 +80,7 @@ export const STYLES: Record<FightingStyleId, FightingStyle> = {
       anticipation:   'focused',
       drive:          'explosive',
       impact:         'explosive',
+      peak:           'explosive',
       follow_through: 'focused',
       settle:         'focused',
     },
@@ -100,6 +103,7 @@ export const STYLES: Record<FightingStyleId, FightingStyle> = {
       anticipation:   'focused',
       drive:          'focused',
       impact:         'focused',
+      peak:           'focused',
       follow_through: 'focused',
       settle:         'focused',
     },
@@ -121,6 +125,7 @@ export const STYLES: Record<FightingStyleId, FightingStyle> = {
       anticipation:   'focused',
       drive:          'explosive',
       impact:         'explosive',
+      peak:           'explosive',
       follow_through: 'relaxed',     // signature flow-through
       settle:         'relaxed',
     },
@@ -142,6 +147,7 @@ export const STYLES: Record<FightingStyleId, FightingStyle> = {
       anticipation:   'focused',
       drive:          'explosive',
       impact:         'explosive',
+      peak:           'explosive',
       follow_through: 'focused',
       settle:         'focused',
     },

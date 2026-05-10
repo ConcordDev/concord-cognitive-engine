@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { KeyboardProvider } from '@/lib/keyboard';
 
 // Mock the api client
 vi.mock('@/lib/api/client', () => ({
@@ -82,7 +83,11 @@ function createWrapper() {
     return React.createElement(
       QueryClientProvider,
       { client: queryClient },
-      React.createElement(React.Suspense, { fallback: 'Loading...' }, children)
+      React.createElement(
+        KeyboardProvider,
+        null,
+        React.createElement(React.Suspense, { fallback: 'Loading...' }, children)
+      )
     );
   };
 }

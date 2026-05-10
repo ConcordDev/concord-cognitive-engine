@@ -141,7 +141,7 @@ function projectToScreen(
   const dx = wx - cam.x, dy = wy - cam.y, dz = wz - cam.z;
   // Rotate by yaw (around y), then pitch (around x).
   const cy = Math.cos(-cam.yaw), sy = Math.sin(-cam.yaw);
-  let rx = dx * cy + dz * sy;
+  const rx = dx * cy + dz * sy;
   let rz = -dx * sy + dz * cy;
   const cp = Math.cos(-cam.pitch), sp = Math.sin(-cam.pitch);
   const ry = dy * cp - rz * sp;
