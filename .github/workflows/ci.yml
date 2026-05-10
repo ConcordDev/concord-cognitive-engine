@@ -649,6 +649,7 @@ jobs:
           exit 1
 
       - name: Run E2E tests
+        id: e2e_run
         working-directory: ./concord-frontend
         env:
           BASE_URL: http://localhost:3000
@@ -657,7 +658,46 @@ jobs:
         # globalTimeout in playwright.config caps the entire suite at
         # 20min so we bail before the job's 25min hard timeout — that
         # leaves time for the artifact upload + cleanup steps.
-        run: npx playwright test --project=chromium
+        # Reporters: `list` streams pass/fail per-test to stdout for the
+        # GitHub log + `html` keeps the artifact intact for download.
+        # `--output` keeps trace/screenshot files alongside the html
+        # report so they upload as part of the same artifact.
+        run: npx playwright test --project=chromium --reporter=list,html
+
+      - name: Surface failing E2E specs on failure
+        if: failure() && steps.e2e_run.outcome == 'failure'
+        working-directory: ./concord-frontend
+        run: |
+          echo "::group::Failing specs (per-test summary)"
+          if [ -d playwright-report ]; then
+            # results.json is emitted alongside the html report when
+            # reporter=html runs. Parse it for failed-spec titles.
+            if [ -f playwright-report/results.json ]; then
+              node -e "
+                const r = require('./playwright-report/results.json');
+                const fails = [];
+                const walk = (s) => {
+                  for (const x of (s.suites || [])) walk(x);
+                  for (const t of (s.specs || [])) {
+                    if (!t.ok) {
+                      const errors = (t.tests || []).flatMap(tt => (tt.results || []).flatMap(r => r.errors || []));
+                      fails.push({ title: t.title, file: t.file, line: t.line, errors });
+                    }
+                  }
+                };
+                walk(r);
+                console.log(JSON.stringify(fails, null, 2));
+              " || true
+            else
+              echo "(no results.json — html reporter may not have written it)"
+            fi
+          else
+            echo "(no playwright-report directory)"
+          fi
+          echo "::endgroup::"
+          echo "::group::Server log tail (last 80 lines)"
+          tail -n 80 ../server/server.log 2>/dev/null || echo "(no server.log)"
+          echo "::endgroup::"
 
       - name: Upload test results
         uses: actions/upload-artifact@v6
