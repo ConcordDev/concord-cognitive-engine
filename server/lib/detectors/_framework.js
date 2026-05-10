@@ -195,3 +195,19 @@ export function syncFsExempt(filePath, content) {
 export function sqlLoopExempt(_filePath, content) {
   return SQL_LOOP_OK_MARK.test(content);
 }
+
+// ── Decorative-state annotation ────────────────────────────────────────────
+// `@decorative-ok: <reason>` placed on the line directly above a useState
+// declaration suppresses lens-decorative-state-detector findings for that
+// state. Used for state that is intentionally write-only — usually held for
+// a not-yet-built sub-feature that's about to land.
+const DECORATIVE_OK_MARK = /@decorative-ok\b/;
+
+/**
+ * Operator opt-out for the lens-decorative-state detector. Pass the line
+ * directly above a flagged useState declaration; returns true if the
+ * `@decorative-ok` annotation is present.
+ */
+export function decorativeOkExempt(lineAbove) {
+  return DECORATIVE_OK_MARK.test(lineAbove || "");
+}
