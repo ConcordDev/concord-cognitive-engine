@@ -485,6 +485,33 @@ function ListingsTab({
 }: { listings: MyListing[]; onChanged: () => void }) {
   const [sort, setSort] = useState<'newest' | 'price-desc' | 'downloads' | 'earnings'>('newest');
   const [filter, setFilter] = useState<'all' | 'active' | 'withdrawn'>('all');
+  const [search, setSearch] = useState('');
+
+  // CSV export of every listing — creators need this for tax / accounting
+  // workflows.  Same shape as the wallet CSV: receipt-friendly headers
+  // and properly-escaped fields so titles with commas don't break it.
+  const exportListingsCSV = useCallback(() => {
+    const headers = ['id', 'title', 'status', 'price', 'downloads', 'totalEarnings', 'listedAt'];
+    const escape = (v: unknown) => {
+      if (v === null || v === undefined) return '';
+      const s = String(v);
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const rows = listings.map((l) => [
+      l.id, l.title || '', l.status, l.price,
+      l.downloads ?? 0,
+      l.totalEarnings ?? (l.downloads * l.price),
+      l.listedAt,
+    ].map(escape).join(','));
+    const csv = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `creator-listings-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [listings]);
 
   const updateListing = useCallback(async (id: string, patch: Partial<MyListing>) => {
     await fetch(`/api/marketplace/listings/${encodeURIComponent(id)}`, {
@@ -513,12 +540,14 @@ function ListingsTab({
   const visible = useMemo(() => {
     let arr = listings.slice();
     if (filter !== 'all') arr = arr.filter((l) => l.status === filter);
+    const q = search.trim().toLowerCase();
+    if (q) arr = arr.filter((l) => (l.title || '').toLowerCase().includes(q) || l.id.toLowerCase().includes(q));
     if (sort === 'price-desc') arr.sort((a, b) => b.price - a.price);
     if (sort === 'downloads')  arr.sort((a, b) => (b.downloads ?? 0) - (a.downloads ?? 0));
     if (sort === 'earnings')   arr.sort((a, b) => (b.totalEarnings ?? b.downloads * b.price) - (a.totalEarnings ?? a.downloads * a.price));
     if (sort === 'newest')     arr.sort((a, b) => new Date(b.listedAt).getTime() - new Date(a.listedAt).getTime());
     return arr;
-  }, [listings, sort, filter]);
+  }, [listings, sort, filter, search]);
 
   // Top-3 earners summary strip.
   const topEarners = useMemo(() => {
@@ -533,8 +562,20 @@ function ListingsTab({
       <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
         <h2 className="text-amber-200 font-semibold inline-flex items-center gap-1.5">
           <ListChecks className="w-4 h-4" /> Your listings
+          {search && (
+            <span className="text-xs text-gray-500 font-normal ml-1">
+              ({visible.length} of {listings.length})
+            </span>
+          )}
         </h2>
-        <div className="flex items-center gap-2 text-xs">
+        <div className="flex items-center gap-2 text-xs flex-wrap">
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Filter by title or id…"
+            className="bg-black/60 border border-white/10 rounded px-2 py-1 text-gray-200 w-44 focus:outline-none focus:border-amber-400/40"
+          />
           <select
             value={filter}
             onChange={(e) => setFilter(e.target.value as typeof filter)}
@@ -554,6 +595,14 @@ function ListingsTab({
             <option value="downloads">Downloads ↓</option>
             <option value="earnings">Earnings ↓</option>
           </select>
+          <button
+            onClick={exportListingsCSV}
+            disabled={listings.length === 0}
+            className="bg-black/60 border border-white/10 rounded px-2 py-1 text-gray-200 hover:bg-white/5 hover:border-white/20 disabled:opacity-40"
+            title="Export every listing to CSV (for tax / accounting)"
+          >
+            CSV ↓
+          </button>
         </div>
       </div>
 
