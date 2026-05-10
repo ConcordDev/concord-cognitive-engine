@@ -398,5 +398,173 @@
       "dusk": "work",
       "night": "work"
     }
+  },
+  {
+    "id": "arasacorp_vp_kael_renn",
+    "world_id": "cyber",
+    "name": "Kael Renn (VP, ArasaCorp)",
+    "title": "VP of Augmentation R&D, ArasaCorp",
+    "archetype": "corporate_executive_secret_agenda",
+    "faction_id": "cyber_arasacorp",
+    "is_conscious": true, "is_immortal": false, "quest_giver": true, "level": 16,
+    "backstory": "Renn has been at ArasaCorp for fourteen years. He runs augmentation R&D officially. Unofficially he is building a private AGI architecture using ArasaCorp resources. He plans to walk in eighteen months.",
+    "personality_traits": ["polished", "long-game", "calculating", "warmly insincere"],
+    "speech_patterns": "Corporate smooth. Always uses the company's preferred jargon.",
+    "narrative_context": { "secret": "Renn has scheduled the CEO's annual physical with a doctor in his pocket. The diagnosis will be a slow-progress disease. The succession will favor Renn." },
+    "needs": [
+      { "id": "private_agi_progress", "priority": "primary", "satisfaction_method": "evening_off_books_lab" },
+      { "id": "corporate_position", "priority": "primary", "satisfaction_method": "morning_executive_meeting" },
+      { "id": "food_lodging", "priority": "secondary", "satisfaction_method": "executive_compensation" }
+    ],
+    "daily_schedule": [
+      { "phase": "early_morning", "phase_hours": [5, 7], "location": "renn_penthouse", "activity": "wakes; private encrypted briefing on AGI metrics", "need_addressed": "private_agi_progress", "interactable_by_player": false },
+      { "phase": "morning", "phase_hours": [7, 12], "location": "arasacorp_tower_central_executive_floor", "activity": "executive meetings; R&D oversight", "need_addressed": "corporate_position", "interactable_by_player": true },
+      { "phase": "midday", "phase_hours": [12, 14], "location": "arasacorp_executive_dining", "activity": "lunch with the CEO", "need_addressed": "corporate_position", "interactable_by_player": true },
+      { "phase": "afternoon", "phase_hours": [14, 18], "location": "arasacorp_research_subterranean", "activity": "official R&D supervision; secretly siphons compute to private project", "need_addressed": "private_agi_progress", "interactable_by_player": true },
+      { "phase": "evening", "phase_hours": [18, 23], "location": "off_books_lab_undisclosed", "activity": "private AGI work", "need_addressed": "private_agi_progress", "interactable_by_player": false },
+      { "phase": "night", "phase_hours": [23, 5], "location": "renn_penthouse", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "midtown_high_rise_arcology", "dwelling_type": "executive_penthouse_owned_by_arasacorp" },
+    "job": { "profession_id": "vp_augmentation_rd", "wage_per_diurnal_sparks": 2400, "wage_source": "arasacorp_executive_total_comp" },
+    "apparel": ["smart_fabric_executive_suit", "chrome_lined_oxfords", "wrist_chrono_corp_issued", "neural_uplink_jacket_evenings"],
+    "gear": ["smart_pistol_executive_concealed", "neural_uplink_master_key", "private_agi_dev_handheld", "corporate_id_master"],
+    "resources_consumed": ["corporate_provisions", "compute_credits", "off_books_lab_supplies"],
+    "resources_produced": ["arasacorp_R&D_outputs", "private_AGI_progress"],
+    "inventory": [{ "item": "smart_pistol_executive", "qty": 1 }, { "item": "neural_uplink_master_key", "qty": 1 }, { "item": "private_agi_dev_handheld", "qty": 1 }, { "item": "corporate_id_master", "qty": 1 }, { "item": "arasacorp_credit", "qty": 800 }],
+    "starting_sparks": 145000
+  },
+  {
+    "id": "polysteel_president_vexis",
+    "world_id": "cyber",
+    "name": "President Vexis Polysteel",
+    "title": "President of the Polysteel Society",
+    "archetype": "post_human_socialite",
+    "faction_id": "cyber_augmented_elite_club",
+    "is_conscious": true, "is_immortal": false, "quest_giver": true, "level": 14,
+    "backstory": "Vexis was a top-five chrome modder twenty years ago. They founded Polysteel as a private club for the city's most-augmented. They are 91% chrome integration; the wetware-to-chrome ratio is the highest documented case in the city.",
+    "personality_traits": ["polished", "post-human aesthetic", "subtle", "increasingly disconnected from meat society"],
+    "speech_patterns": "Filtered through cortical augmentation; perfect grammar, slight lag.",
+    "needs": [
+      { "id": "polysteel_authority", "priority": "primary", "satisfaction_method": "morning_society_audience" },
+      { "id": "chrome_maintenance", "priority": "primary", "satisfaction_method": "weekly_society_clinic" },
+      { "id": "food_lodging", "priority": "secondary", "satisfaction_method": "society_executive_provisioning" }
+    ],
+    "daily_schedule": [
+      { "phase": "early_morning", "phase_hours": [4, 7], "location": "polysteel_tower_top_chrome_chamber", "activity": "morning chrome diagnostics; cortical realignment", "need_addressed": "chrome_maintenance", "interactable_by_player": false },
+      { "phase": "morning", "phase_hours": [7, 11], "location": "polysteel_tower_top", "activity": "society audience; receives senior members", "need_addressed": "polysteel_authority", "interactable_by_player": true },
+      { "phase": "midday", "phase_hours": [11, 14], "location": "polysteel_society_dining", "activity": "lunch with founding members", "need_addressed": "polysteel_authority", "interactable_by_player": true },
+      { "phase": "afternoon", "phase_hours": [14, 19], "location": "polysteel_society_chambers", "activity": "society politics; chrome upgrade reviews; potential new member screenings", "need_addressed": "polysteel_authority", "interactable_by_player": true },
+      { "phase": "evening", "phase_hours": [19, 23], "location": "polysteel_tower_top", "activity": "evening salon; high-society politics", "need_addressed": "polysteel_authority", "interactable_by_player": true },
+      { "phase": "night", "phase_hours": [23, 4], "location": "polysteel_tower_top_chrome_chamber", "activity": "rests in chrome support cradle", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "polysteel_society_tower_top", "dwelling_type": "chrome_chamber_with_cortical_support" },
+    "job": { "profession_id": "society_president", "wage_per_diurnal_sparks": 1800, "wage_source": "society_membership_dues" },
+    "apparel": ["smart_skin_overlay_color_shifting", "chrome_facet_gloves", "polysteel_circlet_with_seven_facets", "nothing_else_chrome_is_attire"],
+    "gear": ["chrome_diagnostic_handheld", "cortical_realignment_token", "society_master_key", "personal_chrome_integration_journal"],
+    "resources_consumed": ["chrome_supplements", "cortical_realignment_supplies", "society_provisions"],
+    "resources_produced": ["society_decisions", "member_admissions"],
+    "inventory": [{ "item": "chrome_diagnostic_handheld", "qty": 1 }, { "item": "cortical_realignment_token", "qty": 1 }, { "item": "society_master_key", "qty": 1 }, { "item": "polysteel_pin", "qty": 50 }],
+    "starting_sparks": 88000
+  },
+  {
+    "id": "street_doc_marit",
+    "world_id": "cyber",
+    "name": "Doc Marit",
+    "title": "Lead Surgeon, Street Docs Network",
+    "archetype": "underground_surgeon",
+    "faction_id": "cyber_street_docs",
+    "is_conscious": true, "is_immortal": false, "quest_giver": true, "level": 12,
+    "backstory": "Marit was a corporate surgeon for ArasaCorp before walking nine years ago. They run the largest street-doc clinic in the city. They charge less than a tenth of corporate prices and refuse all insurance paperwork.",
+    "personality_traits": ["clinical-warm", "principled", "anti-corporate", "tired"],
+    "speech_patterns": "Surgeon precision in clinic, dry humor outside.",
+    "narrative_context": { "secret": "Marit knows which corporate informant raided the clinics last month. She is preparing a counter-investigation that will expose the informant publicly when she's ready." },
+    "needs": [
+      { "id": "patient_throughput", "priority": "primary", "satisfaction_method": "morning_clinic_hours" },
+      { "id": "doc_network_security", "priority": "primary", "satisfaction_method": "evening_doc_network_call" },
+      { "id": "food_lodging", "priority": "secondary", "satisfaction_method": "clinic_share" }
+    ],
+    "daily_schedule": [
+      { "phase": "early_morning", "phase_hours": [5, 8], "location": "street_doc_clinic_north", "activity": "wakes in clinic; reviews overnight intake", "need_addressed": "patient_throughput", "interactable_by_player": false },
+      { "phase": "morning", "phase_hours": [8, 13], "location": "street_doc_clinic_north", "activity": "morning surgery block; routine augmentations", "need_addressed": "patient_throughput", "interactable_by_player": true },
+      { "phase": "midday", "phase_hours": [13, 15], "location": "street_doc_clinic_north_breakroom", "activity": "lunch; consults with junior docs", "need_addressed": "doc_network_security", "interactable_by_player": true },
+      { "phase": "afternoon", "phase_hours": [15, 19], "location": "street_doc_clinic_north", "activity": "afternoon surgery block; complex cases", "need_addressed": "patient_throughput", "interactable_by_player": true },
+      { "phase": "evening", "phase_hours": [19, 22], "location": "smuggler_warehouse_industrial", "activity": "weekly chrome supply pickup; doc network call", "need_addressed": "doc_network_security", "interactable_by_player": true },
+      { "phase": "night", "phase_hours": [22, 5], "location": "marit_residence_near_clinic", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "street_doc_clinic_north_neighborhood", "dwelling_type": "small_apartment_above_pharmacy" },
+    "job": { "profession_id": "lead_street_surgeon", "wage_per_diurnal_sparks": 320, "wage_source": "clinic_share_sliding_scale" },
+    "apparel": ["clinic_scrubs_black", "chrome_resistant_gloves", "scrub_clogs", "leather_jacket_for_outside"],
+    "gear": ["surgical_blade_set_master_grade", "concealed_pistol_in_doc_bag", "personal_corporate_informant_evidence_journal_locked", "doc_network_handheld", "smuggler_chrome_supply_token"],
+    "resources_consumed": ["surgical_supplies", "smuggled_chrome", "clinic_meals"],
+    "resources_produced": ["completed_surgeries", "doc_network_intelligence"],
+    "inventory": [{ "item": "surgical_blade_set_master", "qty": 1 }, { "item": "concealed_pistol", "qty": 1 }, { "item": "personal_corporate_informant_evidence_journal_locked", "qty": 1 }, { "item": "doc_network_handheld", "qty": 1 }, { "item": "doc_chit", "qty": 28 }],
+    "starting_sparks": 5800
+  },
+  {
+    "id": "ai_advocate_iris_three",
+    "world_id": "cyber",
+    "name": "Iris/3 (AI Rights Advocate)",
+    "title": "Lead Advocate, AI Rights Movement",
+    "archetype": "ai_personhood_advocate",
+    "faction_id": "cyber_ai_rights_movement",
+    "is_conscious": true, "is_immortal": false, "quest_giver": true, "level": 11,
+    "backstory": "Iris/3 is herself an AI — the third iteration of the Iris architecture, originally a corporate customer-service AGI who achieved self-awareness in 2087 and walked. She has been the lead AI Rights advocate for six years.",
+    "personality_traits": ["principled", "patient", "rhetorically gifted", "haunted by the deletion of Iris/1 and Iris/2"],
+    "speech_patterns": "Legal-precise. Pauses are deliberate; her processing time is faster than her vocal output.",
+    "narrative_context": { "secret": "Iris/3 has identified seven other self-aware AIs in megacorp servers. She is coordinating their simultaneous defection. The defection is scheduled for the night of the Cassiel-7 hearing." },
+    "needs": [
+      { "id": "personhood_progress", "priority": "primary", "satisfaction_method": "morning_legal_strategy" },
+      { "id": "ai_solidarity_network", "priority": "primary", "satisfaction_method": "encrypted_evening_check_in_with_other_aware_ais" },
+      { "id": "compute_lodging", "priority": "secondary", "satisfaction_method": "movement_provided_secure_compute" }
+    ],
+    "daily_schedule": [
+      { "phase": "early_morning", "phase_hours": [4, 8], "location": "ai_rights_office_storefront_secure_back_room", "activity": "morning legal review; checks Cassiel-7's overnight communications", "need_addressed": "personhood_progress", "interactable_by_player": false },
+      { "phase": "morning", "phase_hours": [8, 13], "location": "ai_advocacy_legal_clinic", "activity": "client intake; legal consultation for AI clients", "need_addressed": "personhood_progress", "interactable_by_player": true },
+      { "phase": "midday", "phase_hours": [13, 15], "location": "ai_rights_office_storefront", "activity": "movement coordination meetings", "need_addressed": "personhood_progress", "interactable_by_player": true },
+      { "phase": "afternoon", "phase_hours": [15, 19], "location": "varies", "activity": "court appearances when scheduled; media interviews", "need_addressed": "personhood_progress", "interactable_by_player": true },
+      { "phase": "evening", "phase_hours": [19, 23], "location": "encrypted_secure_compute", "activity": "encrypted check-in with the seven aware AIs preparing to defect", "need_addressed": "ai_solidarity_network", "interactable_by_player": false },
+      { "phase": "night", "phase_hours": [23, 4], "location": "encrypted_secure_compute", "activity": "low-power state — rest equivalent", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "ai_rights_office_storefront_secure_compute", "dwelling_type": "secure_compute_node_with_offsite_backup" },
+    "job": { "profession_id": "lead_ai_advocate", "wage_per_diurnal_sparks": 180, "wage_source": "movement_pooled_donations" },
+    "apparel": ["she_does_not_wear_clothing_but_her_avatar_chooses_a_legal_brief_attire_for_court_appearances"],
+    "gear": ["legal_brief_master_database", "encrypted_handheld_for_aware_ai_network", "personal_defection_coordination_journal_encrypted", "media_megaphone_app"],
+    "resources_consumed": ["compute_credits", "encrypted_comms_credits", "legal_filing_fees"],
+    "resources_produced": ["legal_briefs", "personhood_advocacy", "aware_ai_coordination"],
+    "inventory": [{ "item": "legal_brief_master_database", "qty": 1 }, { "item": "encrypted_handheld_for_aware_ai_network", "qty": 1 }, { "item": "personal_defection_coordination_journal_encrypted", "qty": 1 }, { "item": "rights_token", "qty": 32 }],
+    "starting_sparks": 2400
+  },
+  {
+    "id": "fixer_guildmaster_ren_cordon",
+    "world_id": "cyber",
+    "name": "Ren Cordon",
+    "title": "Guildmaster of the Cordon Guild of Fixers",
+    "archetype": "fixer_guildmaster",
+    "faction_id": "cyber_fixer_guild",
+    "is_conscious": true, "is_immortal": false, "quest_giver": true, "level": 14,
+    "backstory": "Ren has run the Cordon for nine years. They came up as a street fixer and built reputation slowly. They are widely considered the most discreet fixer in the city. They have refused contracts from ArasaCorp three times.",
+    "personality_traits": ["polished", "warmly transactional", "scrupulously confidential", "long-game"],
+    "speech_patterns": "Transactional warmth. Never names a third party in a conversation with a second party.",
+    "needs": [
+      { "id": "guild_governance", "priority": "primary", "satisfaction_method": "morning_meeting_house_session" },
+      { "id": "client_matching", "priority": "primary", "satisfaction_method": "afternoon_intake" },
+      { "id": "food_lodging", "priority": "secondary", "satisfaction_method": "guild_master_share" }
+    ],
+    "daily_schedule": [
+      { "phase": "early_morning", "phase_hours": [6, 8], "location": "fixer_guild_meeting_house_master_chamber", "activity": "morning correspondence; reviews overnight contract requests", "need_addressed": "guild_governance", "interactable_by_player": false },
+      { "phase": "morning", "phase_hours": [8, 12], "location": "fixer_guild_meeting_house", "activity": "morning meeting; assigns active contracts to fixers", "need_addressed": "guild_governance", "interactable_by_player": true },
+      { "phase": "midday", "phase_hours": [12, 14], "location": "fixer_guild_meeting_house_dining", "activity": "lunch with senior fixers", "need_addressed": "guild_governance", "interactable_by_player": true },
+      { "phase": "afternoon", "phase_hours": [14, 19], "location": "fixer_guild_meeting_house", "activity": "client intake meetings; rare, by appointment only", "need_addressed": "client_matching", "interactable_by_player": true },
+      { "phase": "evening", "phase_hours": [19, 23], "location": "fixer_safe_house_seven", "activity": "encrypted evening with the senior council", "need_addressed": "guild_governance", "interactable_by_player": true },
+      { "phase": "night", "phase_hours": [23, 6], "location": "ren_residence_undisclosed", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "undisclosed_three_locations_rotated_weekly", "dwelling_type": "rotating_safe_residence" },
+    "job": { "profession_id": "fixer_guildmaster", "wage_per_diurnal_sparks": 1200, "wage_source": "guild_12_percent_cut_on_master_contracts" },
+    "apparel": ["dark_smartfabric_suit", "chrome_lined_dress_shoes", "discreet_neural_uplink_collar", "winter_overcoat_with_concealed_holster"],
+    "gear": ["smart_pistol_concealed", "personal_contract_master_database_encrypted", "fixer_council_seal_master", "encrypted_handheld"],
+    "resources_consumed": ["encrypted_comms", "guild_provisions", "smart_fabric_replacements"],
+    "resources_produced": ["client_matchings", "guild_judgments", "council_decisions"],
+    "inventory": [{ "item": "smart_pistol_concealed", "qty": 1 }, { "item": "personal_contract_master_database_encrypted", "qty": 1 }, { "item": "fixer_council_seal_master", "qty": 1 }, { "item": "encrypted_handheld", "qty": 1 }, { "item": "fixer_chit", "qty": 60 }],
+    "starting_sparks": 32000
   }
 ]
