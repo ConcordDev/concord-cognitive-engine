@@ -11,9 +11,10 @@
  * Currency is sparks only. There is no real-money codepath.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 
 import { LensShell } from '@/components/lens/LensShell';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 interface Listing {
@@ -64,6 +65,10 @@ export default function BlackMarketPage() {
   const [purchasing, setPurchasing] = useState<string | null>(null);
   const [revealed, setRevealed] = useState<RevealedMessage | null>(null);
   const [error, setError] = useState<string | null>(null);
+  type EncFilter = 'all' | Listing['encryption_level'];
+  type SortMode = 'newest' | 'price-asc' | 'price-desc' | 'expiring';
+  const [encFilter, setEncFilter] = useState<EncFilter>('all');
+  const [sortMode, setSortMode] = useState<SortMode>('newest');
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -85,6 +90,35 @@ export default function BlackMarketPage() {
   }, []);
 
   useEffect(() => { reload(); }, [reload]);
+
+  // Encryption-tier filter + sort.  A market with 30+ listings benefits
+  // from sorting by price (cheapest deal first) or expiring (don't miss
+  // a shadow-tier listing that's about to roll over).
+  const visibleListings = useMemo(() => {
+    let arr = listings.slice();
+    if (encFilter !== 'all') arr = arr.filter((l) => l.encryption_level === encFilter);
+    if (sortMode === 'price-asc')  arr.sort((a, b) => a.price_sparks - b.price_sparks);
+    if (sortMode === 'price-desc') arr.sort((a, b) => b.price_sparks - a.price_sparks);
+    if (sortMode === 'expiring')   arr.sort((a, b) => a.expires_at - b.expires_at);
+    if (sortMode === 'newest')     arr.sort((a, b) => b.created_at - a.created_at);
+    return arr;
+  }, [listings, encFilter, sortMode]);
+
+  useLensCommand(
+    [
+      { id: 'refresh',     keys: 'r', description: 'Refresh listings', category: 'actions',    action: () => reload() },
+      { id: 'filter-all',  keys: '0', description: 'All tiers',        category: 'view',       action: () => setEncFilter('all') },
+      { id: 'filter-none', keys: '1', description: 'None tier',        category: 'view',       action: () => setEncFilter('none') },
+      { id: 'filter-basic',keys: '2', description: 'Basic tier',       category: 'view',       action: () => setEncFilter('basic') },
+      { id: 'filter-high', keys: '3', description: 'High tier',        category: 'view',       action: () => setEncFilter('high') },
+      { id: 'filter-shadow',keys:'4', description: 'Shadow tier',      category: 'view',       action: () => setEncFilter('shadow') },
+      { id: 'sort-cycle',  keys: 's', description: 'Cycle sort mode',  category: 'view',       action: () => setSortMode((m) => {
+        const order: SortMode[] = ['newest', 'price-asc', 'price-desc', 'expiring'];
+        return order[(order.indexOf(m) + 1) % order.length];
+      }) },
+    ],
+    { lensId: 'black-market' }
+  );
 
   const buy = useCallback(async (listing: Listing) => {
     setPurchasing(listing.id);
@@ -169,16 +203,58 @@ export default function BlackMarketPage() {
         )}
 
         <section>
-          <p className="mb-2 text-[10px] uppercase tracking-wider text-slate-500">
-            {loading ? 'Loading…' : `${listings.length} active listing${listings.length === 1 ? '' : 's'}`}
-          </p>
+          <div className="mb-3 flex items-center justify-between gap-2 flex-wrap">
+            <p className="text-[10px] uppercase tracking-wider text-slate-500">
+              {loading ? 'Loading…' : encFilter === 'all'
+                ? `${visibleListings.length} active listing${visibleListings.length === 1 ? '' : 's'}`
+                : `${visibleListings.length} of ${listings.length} · ${encFilter}`}
+            </p>
+            <div className="flex items-center gap-1 text-[10px]">
+              {(['all', 'none', 'basic', 'high', 'shadow'] as const).map((t, i) => (
+                <button
+                  key={t}
+                  onClick={() => setEncFilter(t)}
+                  className={`px-2 py-0.5 rounded border transition-colors ${
+                    encFilter === t
+                      ? 'border-rose-500/60 bg-rose-950/50 text-rose-200'
+                      : 'border-slate-700 bg-slate-900/40 text-slate-400 hover:bg-slate-800/60'
+                  }`}
+                >
+                  {t}<kbd className="text-[8px] opacity-60 ml-0.5">{i}</kbd>
+                </button>
+              ))}
+              <select
+                value={sortMode}
+                onChange={(e) => setSortMode(e.target.value as SortMode)}
+                className="ml-1 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-slate-300"
+                title="Sort listings"
+              >
+                <option value="newest">newest</option>
+                <option value="price-asc">price ↑</option>
+                <option value="price-desc">price ↓</option>
+                <option value="expiring">expiring</option>
+              </select>
+              <button
+                onClick={reload}
+                className="px-2 py-0.5 rounded border border-slate-700 bg-slate-900/40 text-slate-400 hover:bg-slate-800/60"
+                title="Refresh (r)"
+              >
+                ↻
+              </button>
+            </div>
+          </div>
           {!loading && listings.length === 0 && (
             <p className="rounded border border-slate-800 bg-slate-900/40 p-4 text-center text-sm text-slate-500">
               No intercepted messages on the market right now. Check back after a Walker journey gets interrupted.
             </p>
           )}
+          {!loading && listings.length > 0 && visibleListings.length === 0 && (
+            <p className="rounded border border-slate-800 bg-slate-900/40 p-4 text-center text-sm text-slate-500">
+              No <span className="text-rose-300">{encFilter}</span>-tier listings right now. Try a wider filter.
+            </p>
+          )}
           <div className="space-y-2">
-            {listings.map((l) => (
+            {visibleListings.map((l) => (
               <div key={l.id} className={`rounded border p-3 ${tierColor(l.encryption_level)}`}>
                 <div className="mb-1 flex items-baseline justify-between gap-2">
                   <span className="text-[10px] uppercase tracking-wider opacity-70">
