@@ -35,6 +35,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { api } from '@/lib/api/client';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
@@ -445,6 +446,21 @@ export default function AnswersLensPage() {
   const [remoteAnswers, setRemoteAnswers] = useState<AnswerEntry[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Section nav (1-8) — Wolfram / Quora idiom adapted for the answers grid.
+  useLensCommand(
+    [
+      { id: 'sec-physics',       keys: '1', description: 'Physics',       category: 'navigation', action: () => setActiveSection('physics') },
+      { id: 'sec-math',          keys: '2', description: 'Mathematics',   category: 'navigation', action: () => setActiveSection('mathematics') },
+      { id: 'sec-computation',   keys: '3', description: 'Computation',   category: 'navigation', action: () => setActiveSection('computation') },
+      { id: 'sec-knowledge',     keys: '4', description: 'Knowledge',     category: 'navigation', action: () => setActiveSection('knowledge') },
+      { id: 'sec-trust',         keys: '5', description: 'Trust',         category: 'navigation', action: () => setActiveSection('trust') },
+      { id: 'sec-systems',       keys: '6', description: 'Systems',       category: 'navigation', action: () => setActiveSection('systems') },
+      { id: 'sec-consciousness', keys: '7', description: 'Consciousness', category: 'navigation', action: () => setActiveSection('consciousness') },
+      { id: 'sec-meta',          keys: '8', description: 'Meta',          category: 'navigation', action: () => setActiveSection('meta') },
+    ],
+    { lensId: 'answers' }
+  );
 
   // Best-effort fetch — the lens still works with the static seed if the
   // endpoint is unavailable.
