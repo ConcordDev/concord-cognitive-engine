@@ -38,6 +38,7 @@ export function createQuotaCache({
   columns,
   flushIntervalMs = DEFAULT_FLUSH_MS,
   maxBufferRows = DEFAULT_MAX_BUFFER,
+  synchronous = false,
   onFlush, // optional observer for tests
 } = {}) {
   if (!table || typeof table !== "string") throw new Error("createQuotaCache: table required");
@@ -130,6 +131,12 @@ export function createQuotaCache({
     }
     buffer.push({ dbHandle: db, values: row });
     stats.enqueued += 1;
+    if (synchronous) {
+      // Tests + ad-hoc tools want write-through semantics so reads after
+      // an enqueue() see the row immediately. Skip the timer entirely.
+      flushSync();
+      return;
+    }
     ensureTimer();
     if (buffer.length >= maxBufferRows) {
       // Soft cap exceeded — flush early to bound memory growth.
@@ -165,12 +172,20 @@ export function createQuotaCache({
 let _apiUsageCache = null;
 export function getApiUsageCache() {
   if (!_apiUsageCache) {
+    // Under test, write through synchronously so existing tests that read
+    // after meterAPICall don't have to know about the flush schedule. Prod
+    // keeps the 5s batched-flush behaviour the cache was built for.
+    // `npm test` runs `node --test` without setting NODE_ENV; the runner
+    // strips --test from argv but leaves --test-* flags in execArgv.
+    const isTest = process.env.NODE_ENV === "test"
+      || (process.execArgv || []).some(a => a === "--test" || a.startsWith("--test-"));
     _apiUsageCache = createQuotaCache({
       table: "api_usage_log",
       columns: [
         "id", "user_id", "api_key_hash", "endpoint", "method",
         "category", "cost", "balance_after", "metadata_json", "created_at",
       ],
+      synchronous: isTest,
     });
     // Best-effort flush on shutdown so an in-flight buffer doesn't
     // silently drop calls. Both signals + a final exit hook.

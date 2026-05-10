@@ -1,8 +1,8 @@
 # Concord Cognitive Engine — Audit Inventory (verified by direct codebase inspection)
 
-Generated: 2026-05-09T16:00:00Z (refreshed during major audit phase 3.1)
-Branch: claude/codebase-audit-blockers-WEY8p
-Head:   post-#316 (audit phases 1.2 + 2.1–2.4 + 3.1 + 4.1–4.3 + 5.2 + 5.4 landed)
+Generated: 2026-05-09T21:00:00Z (refreshed after the #310/#311/#312/#313/#314/#316/#317/#319/#320 merge wave landed on main)
+Branch: claude/main-health-pass
+Head:   post-#320 (c6abe3cb)
 
 Every number below comes from a `grep` or `ls` against the working tree at the head above. Numbers in CLAUDE.md / audit/cartograph/* that disagree are stale — trust this file.
 
@@ -11,39 +11,41 @@ Every number below comes from a `grep` or `ls` against the working tree at the h
 | Surface | Count | How to reproduce |
 |---|---|---|
 | Lens directories (frontend) | 205 | `ls -d concord-frontend/app/lenses/*/ \| wc -l` |
-| Backend domain files | 195 | `ls server/domains/*.js \| wc -l` |
-| Migrations applied | 144 | `ls server/migrations/[0-9]*.js \| wc -l` (numbered only — `_drop-with-rescue.js` is a helper) |
-| Latest migration | 144_mount_gear.js | `ls server/migrations/ \| grep -E '^[0-9]{3}_' \| sort \| tail -1` |
-| Route files | 129 | `ls server/routes/*.js \| wc -l` |
-| Emergent modules | 158 | `ls server/emergent/*.js \| wc -l` |
-| Lib modules | 272 | `ls server/lib/*.js \| wc -l` (added `http-errors.js` in audit phase 4.1; archived 11 orphans to `_archived/` in phase 3.2) |
-| Test files | 353 | `find server/tests -name "*.test.js" -o -name "*-tests.js" \| wc -l` |
-| Test cases (it/test() blocks) | 11125 | `grep -rE "^\s*(it\|test)\(" server/tests --include="*.js" \| wc -l` |
+| Backend domain files | 200 | `ls server/domains/*.js \| wc -l` |
+| Migrations applied | 151 | `ls server/migrations/[0-9]*.js \| wc -l` (numbered only — `_drop-with-rescue.js` is a helper) |
+| Latest migration | 151_player_corpses.js | `ls server/migrations/ \| grep -E '^[0-9]{3}_' \| sort \| tail -1` |
+| Route files | 130 | `ls server/routes/*.js \| wc -l` |
+| Emergent modules | 162 | `ls server/emergent/*.js \| wc -l` |
+| Lib modules | 281 top-level / 473 recursive | `ls server/lib/*.js \| wc -l` and `find server/lib -name "*.js" -not -path "*/node_modules/*" \| wc -l` |
 | HTTP routes in server.js | 1086 | `grep -hcE '^\s*app\.(get\|post\|put\|delete\|patch)\(' server/server.js` |
-| HTTP routes in routes/*.js | 1313 | `grep -hcE '^\s*router\.(get\|post\|put\|delete\|patch)\(' server/routes/*.js \| paste -sd+ - \| bc` |
+| HTTP routes in routes/*.js | 1314 | `grep -hcE '^\s*router\.(get\|post\|put\|delete\|patch)\(' server/routes/*.js \| paste -sd+ - \| bc` |
 | Unique macro domains (server.js) | 129 | `grep -hE "^\s*register\(\s*['\"][a-z_]+" server/server.js` |
-| Unique (domain, macro) pairs (server.js) | 684 | grep+sed against `register('domain','name')` |
-| Distinct CREATE TABLE statements across migrations | 353 | grep CREATE TABLE in migrations/*.js + sort -u |
-| Unique heartbeats registered | 42 | grep registerHeartbeat across server.js + lib/ + emergent/ |
+| Unique (domain, macro) pairs (server.js) | 671 | grep+sed against `register('domain','name')` |
+| Distinct CREATE TABLE statements across migrations | 362 | grep CREATE TABLE in migrations/*.js + sort -u |
+| Unique heartbeats registered | 46 | grep registerHeartbeat across server.js + lib/ + emergent/ (excluding the comment-line in `lib/detectors/heartbeat-monitor.js`) |
 
-## Drift since 2026-05-08 (delta against the previous inventory)
+## Drift since the previous inventory (2026-05-09 morning → 2026-05-09 post-merge-wave)
 
 | Surface | Was | Now | Δ | Cause |
 |---|---|---|---|---|
-| Lens directories | 203 | 205 | +2 | dx-platform sub-routes (`billing`, `web-editor`) added in #307 |
-| Backend domain files | 182 | 195 | +13 | A1-A5 + B1-B3 wave landed new domains |
-| Migrations | 121 | 145 | +24 | A1-A5 + B1-B3 + Phase 7-8 + procgen NPCs + governance + combat polish |
-| Latest migration | 121_understanding_evolution | 144_mount_gear | — | B3 capstone |
-| Emergent modules | 146 | 158 | +12 | new heartbeats below |
-| Lib modules | 255 | 278 | +23 | concord-lsp, mounts, NPC routines, etc. |
-| (domain, macro) pairs | 682 | 684 | +2 | minor surface growth |
-| CREATE TABLE statements | 318 | 353 | +35 | new substrate + procgen tables |
-| Heartbeats | 26 | 42 | +16 | new heartbeats below |
+| Backend domain files | 195 | 200 | +5 | new `dx-billing`, `dx`, `mounts`, `forge-marketplace`, `dtu-portability` from #310/#311/#314 + sibling waves |
+| Migrations | 144 | 151 | +7 | #310 (145 macro_call_billing), #311 (146 repair_feedback), #314 (147 mount_polish), #317 (148 signal_propagation_indexes, 149 player_signs, 150 quest_triggers, 151 player_corpses) |
+| Latest migration | 144_mount_gear | 151_player_corpses | — | #317 closeout |
+| Route files | 129 | 130 | +1 | `routes/dx-oauth.js` from #316 |
+| Emergent modules | 158 | 162 | +4 | mount-care-cycle, creature-flock-cycle, signal-propagation-cycle, lattice-quest-cycle, plus #316 reflexes |
+| Lib modules (top-level) | 278 | 281 | +3 | `quota-cache`, `mount-care`, `mount-combat-overlay`, `quest-triggers`, `player-corpse`, `player-signs` (some count toward subdir under `lib/dx/`) |
+| (domain, macro) pairs | 684 | 671 | -13 | governance churn — #316/#317 collapsed/refactored some macro surfaces; net minus is real, not an audit error |
+| CREATE TABLE statements | 353 | 362 | +9 | macro_call_log, user_macro_quota, repair_feedback shadows, mount_skill, mount_care_events, glyph_components, player_glyph_spells, player_signs, quest_triggers, quest_trigger_visits, player_corpses |
+| Heartbeats | 42 | 46 | +4 | mount-care-cycle (#314), creature-flock-cycle + signal-propagation-cycle + player-signs-cleanup (#317) |
 
-**Migration collisions fixed since the previous inventory:**
-- `120_drop_dead_mig006.js` → `141_drop_dead_mig006.js` (collided with `120_understandings.js`; commit `5303bff4`, PR #305)
-- `121_drop_dead_mig009.js` → `142_drop_dead_mig009.js` (collided with `121_understanding_evolution.js`; same commit/PR)
-- `142_drop_dead_mig009.js` → `143_drop_dead_mig009.js` (collided with `142_mount_substrate.js` from B1; this branch — caught by the fresh-DB boot rerun while updating this inventory)
+**Migration collisions fixed during the merge wave:**
+- `120_drop_dead_mig006.js` → `141_drop_dead_mig006.js` (commit `5303bff4`, PR #305 — collided with `120_understandings.js`)
+- `121_drop_dead_mig009.js` → `142_drop_dead_mig009.js` (same commit/PR — collided with `121_understanding_evolution.js`)
+- `142_drop_dead_mig009.js` → `143_drop_dead_mig009.js` (PR #316 / #319 — collided with `142_mount_substrate.js` from B1)
+- `141_macro_call_billing.js` → `145_macro_call_billing.js` (PR #310 rebase)
+- `143_repair_feedback.js` → `146_repair_feedback.js` (PR #311 rebase)
+- `145_mount_polish.js` → `147_mount_polish.js` (PR #314 rebase)
+- `145–148` → `148–151` (PR #317 rebase — `signal_propagation_indexes`, `player_signs`, `quest_triggers`, `player_corpses` shifted up after #310/#311/#314 took 145/146/147)
 
 Net: every numeric claim in CLAUDE.md older than this inventory line is potentially stale. The cross-check pass against CLAUDE.md follows.
 
