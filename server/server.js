@@ -9634,7 +9634,7 @@ async function runMacro(domain, name, input, ctx) {
     experience: new Set(["status", "patterns", "recent", "strategies", "consolidate", "retrieve"]),
     explore: new Set(["history"]),
     flywheel: new Set(["history", "metrics"]),
-    inheritance: new Set(["bequests", "claim", "create-bequest", "revoke"]),
+    inheritance: new Set(["bequests", "claim", "create-bequest", "revoke", "list_open"]),
     pipeline: new Set(["execute", "executions"]),
     quality: new Set(["stats", "domain", "thresholds"]),
     sovereignty: new Set(["status", "audit", "setup", "preferences"]),
@@ -9738,6 +9738,10 @@ async function runMacro(domain, name, input, ctx) {
     deity: new Set(["list", "get", "tone_vector"]),
     macro_dag: new Set(["validate", "describe", "run"]),
     walker: new Set(["trade_routes", "arbitrage"]),
+    // Phase 9.1 — tradeable artifact economy
+    npc_autobiography: new Set(["list_for_npc"]),
+    npc_persona: new Set(["list_for_user"]),
+    compression_art: new Set(["shape_for", "list_for_user"]),
   };
   const _domainSet = publicReadDomains[domain];
   const _domainNameAllowed = _domainSet ? _domainSet.has(name) : false;
@@ -68981,6 +68985,200 @@ register("reflex", "autofix_queue", (_ctx, input = {}) => {
 
 structuredLog("info", "phase8_5_autofix_loop_init", {
   detail: "Phase 8.5 — reflex.{propose_fix,autofix_queue} macros wired (kill-switch: CONCORD_AUTOFIX_LOOP)",
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PHASE 9 — 25 ADDITIONAL IDEAS (research-grounded, full-stack)
+// See /root/.claude/plans/dope-now-make-a-effervescent-deer.md for plan.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ── Phase 9.1: Tradeable artifact economy ───────────────────────────────────
+
+// #2 Dream NFT-killer — flip a dream's scope from personal → public and
+// list it on the marketplace. Royalty cascade flows back to the dreamer
+// on every purchase. Currency: CC (creator economy).
+register("dream", "publish", async (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { dreamId, priceCc = 5 } = input || {};
+  if (!dreamId) return { ok: false, reason: "missing_dreamId" };
+  try {
+    const row = db.prepare(`
+      SELECT d.id, d.user_id, d.dream_dtu_id
+      FROM dreams d WHERE d.id = ?
+    `).get(dreamId);
+    if (!row) return { ok: false, reason: "dream_not_found" };
+    if (row.user_id !== userId) return { ok: false, reason: "not_owner" };
+
+    // Flip scope on the underlying DTU
+    db.prepare(`
+      UPDATE dtus SET meta_json = json_set(coalesce(meta_json, '{}'), '$.scope', 'public')
+      WHERE id = ?
+    `).run(row.dream_dtu_id);
+
+    // Mint marketplace listing via existing forge-marketplace path
+    const fm = await import("./lib/forge-marketplace.js");
+    const r = await fm.listForgeAppOnMarketplace(db, {
+      userId,
+      dtuId: row.dream_dtu_id,
+      priceCc: Number(priceCc),
+      title: `Dream from ${new Date().toLocaleDateString()}`,
+      description: "A grounded prose record of one night's substrate state.",
+    });
+    return { ok: !!r?.ok, dreamId, dtuId: row.dream_dtu_id, listing: r, currency: "CC" };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Publish a dream as a sellable DTU. Currency: CC. Royalty cascade back to dreamer." });
+
+// #5 NPC autobiography — mint kind='npc_autobiography' DTU when an NPC
+// has accumulated enough state to warrant a memoir.
+register("npc_autobiography", "compose", async (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { npcId } = input || {};
+  if (!npcId) return { ok: false, reason: "missing_npcId" };
+  try {
+    const lib = await import("./lib/npc-autobiography.js");
+    return await lib.tryComposeForNpc(db, npcId);
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Compose NPC autobiography if thresholds met. Idempotent on (npc_id, generation)." });
+
+register("npc_autobiography", "list_for_npc", async (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { npcId, limit = 5 } = input || {};
+  if (!npcId) return { ok: false, reason: "missing_npcId" };
+  try {
+    const lib = await import("./lib/npc-autobiography.js");
+    return { ok: true, npcId, autobiographies: lib.getRecent(db, npcId, Number(limit)) };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Recent autobiographies for an NPC." });
+
+// #3 NPC-persona marketplace — package + import.
+register("npc_persona", "package", async (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { npcId, summary } = input || {};
+  if (!npcId) return { ok: false, reason: "missing_npcId" };
+  try {
+    const lib = await import("./lib/npc-persona.js");
+    return lib.mintPersonaDtu(db, { authorUserId: userId, npcId, summary });
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Pack an NPC into a kind='npc_persona' DTU. Currency: CC via royalty cascade." });
+
+register("npc_persona", "install", async (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { dtuId, worldId = "concordia-hub", x = 0, z = 0 } = input || {};
+  if (!dtuId) return { ok: false, reason: "missing_dtuId" };
+  try {
+    const lib = await import("./lib/npc-persona.js");
+    return lib.installPersona(db, { dtuId, worldId, installerUserId: userId, x, z });
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Install an NPC persona into a world. Spawns fresh NPC + re-attaches grudges/schemes/schedule." });
+
+register("npc_persona", "list_for_user", (ctx, _input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  try {
+    const rows = db.prepare(`
+      SELECT id, origin_npc_id, dtu_id, package_sha256, created_at
+      FROM npc_persona_packages WHERE author_user_id = ?
+      ORDER BY created_at DESC LIMIT 50
+    `).all(userId);
+    return { ok: true, packages: rows };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "List a user's authored NPC personas." });
+
+// #13 NPC inheritance market.
+register("inheritance", "open_listing", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { dyingNpcId, heirSlotPriceCc = 10 } = input || {};
+  if (!dyingNpcId) return { ok: false, reason: "missing_npc" };
+  try {
+    const r = db.prepare(`
+      INSERT INTO inheritance_market_listings
+        (dying_npc_id, mentor_user_id, heir_slot_price_cc, status)
+      VALUES (?, ?, ?, 'open')
+    `).run(dyingNpcId, userId, Number(heirSlotPriceCc));
+    return { ok: true, listingId: r.lastInsertRowid, currency: "CC" };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Mentor opens an heir-slot listing for a dying NPC. Currency: CC." });
+
+register("inheritance", "claim_slot", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { listingId } = input || {};
+  if (!listingId) return { ok: false, reason: "missing_listingId" };
+  try {
+    const listing = db.prepare(`SELECT * FROM inheritance_market_listings WHERE id = ?`).get(listingId);
+    if (!listing) return { ok: false, reason: "listing_not_found" };
+    if (listing.status !== "open") return { ok: false, reason: "already_claimed" };
+    if (listing.mentor_user_id === userId) return { ok: false, reason: "cannot_claim_own" };
+    db.prepare(`
+      UPDATE inheritance_market_listings
+      SET buyer_user_id = ?, status = 'locked', claimed_at = unixepoch()
+      WHERE id = ?
+    `).run(userId, listingId);
+    return { ok: true, listingId, locked: true, currency: "CC" };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Buyer locks an heir slot. Resolves on NPC death." });
+
+register("inheritance", "list_open", (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const limit = Math.min(50, Math.max(1, Number(input.limit) || 25));
+  try {
+    const rows = db.prepare(`
+      SELECT l.id, l.dying_npc_id, l.mentor_user_id, l.heir_slot_price_cc, l.listed_at,
+             n.name AS npc_name
+      FROM inheritance_market_listings l
+      LEFT JOIN world_npcs n ON n.id = l.dying_npc_id
+      WHERE l.status = 'open'
+      ORDER BY l.listed_at DESC LIMIT ?
+    `).all(limit);
+    return { ok: true, listings: rows };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "List open heir-slot listings." });
+
+// #24 DTU compression art — sigil shapes for MEGA / HYPER tiers.
+register("compression_art", "shape_for", async (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { megaId } = input || {};
+  if (!megaId) return { ok: false, reason: "missing_megaId" };
+  try {
+    const lib = await import("./lib/compression-art.js");
+    let sourceCount = 0;
+    let dominantElement = null;
+    try {
+      const dtu = db.prepare(`SELECT meta_json FROM dtus WHERE id = ?`).get(megaId);
+      if (dtu?.meta_json) {
+        const m = JSON.parse(dtu.meta_json);
+        sourceCount = (m.source_dtu_ids || m.sources || []).length || 0;
+        dominantElement = m.dominant_element || null;
+      }
+    } catch { /* keep defaults */ }
+    const shape = lib.computeShapeFor(megaId, { sourceCount, dominantElement });
+    lib.recordSigil(db, megaId, "MEGA", shape);
+    return { ok: true, megaId, shape };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Deterministic 3D sigil descriptor for a MEGA / HYPER DTU." });
+
+register("compression_art", "list_for_user", async (ctx, _input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  try {
+    const lib = await import("./lib/compression-art.js");
+    return { ok: true, sigils: lib.listSigilsForUser(db, userId) };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "User's gallery of compression-art sigils." });
+
+structuredLog("info", "phase9_1_artifact_economy_init", {
+  detail: "Phase 9.1 — dream.publish, npc_autobiography.*, npc_persona.*, inheritance.*, compression_art.*",
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════

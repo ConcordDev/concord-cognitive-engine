@@ -17,25 +17,13 @@
 
 import { useEffect, useState } from 'react';
 
-interface NavigatorWithXR extends Navigator {
-  xr?: {
-    isSessionSupported: (mode: string) => Promise<boolean>;
-    requestSession: (mode: string, init?: XRSessionInit) => Promise<XRSession>;
-  };
-}
-
-interface XRSession {
-  end: () => Promise<void>;
-  addEventListener: (event: string, cb: () => void) => void;
-}
-
-interface XRSessionInit {
-  optionalFeatures?: string[];
-  requiredFeatures?: string[];
-}
-
+// Use the runtime navigator.xr — it's typed in the lib.dom.d.ts as
+// XRSystem when WebXR is supported. We avoid re-declaring its full
+// shape (interface conflict) and just access via `(navigator as any).xr`
+// at the use site. Renderer is a Three.js WebGLRenderer; we narrow to
+// what we actually call.
 interface RendererWithXR {
-  xr: { setSession: (s: XRSession | null) => Promise<void> };
+  xr: { setSession: (s: unknown | null) => Promise<void> };
 }
 
 declare global {
@@ -51,9 +39,9 @@ export default function EnterVRButton() {
 
   useEffect(() => {
     let alive = true;
-    const nav = navigator as NavigatorWithXR;
+    const nav = navigator as Navigator & { xr?: { isSessionSupported: (m: string) => Promise<boolean>; requestSession: (m: string, init?: { optionalFeatures?: string[]; requiredFeatures?: string[] }) => Promise<unknown> } };
     if (!nav.xr) { setSupported(false); return; }
-    nav.xr.isSessionSupported('immersive-vr').then(s => {
+    nav.xr.isSessionSupported('immersive-vr').then((s: boolean) => {
       if (alive) setSupported(s);
     }).catch(() => { if (alive) setSupported(false); });
     return () => { alive = false; };
@@ -63,10 +51,10 @@ export default function EnterVRButton() {
     setError(null);
     const renderer = window.__concordiaRenderer;
     if (!renderer) { setError('Scene not ready'); return; }
-    const nav = navigator as NavigatorWithXR;
-    if (!nav.xr) { setError('WebXR unavailable'); return; }
+    const nav2 = navigator as Navigator & { xr?: { requestSession: (m: string, init?: { optionalFeatures?: string[]; requiredFeatures?: string[] }) => Promise<{ end: () => Promise<void>; addEventListener: (e: string, cb: () => void) => void }> } };
+    if (!nav2.xr) { setError('WebXR unavailable'); return; }
     try {
-      const session = await nav.xr.requestSession('immersive-vr', {
+      const session = await nav2.xr.requestSession('immersive-vr', {
         optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking', 'layers'],
       });
       await renderer.xr.setSession(session);
