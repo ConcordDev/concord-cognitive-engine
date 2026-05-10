@@ -382,6 +382,19 @@ export default function ConcordiaScene({
       renderer.shadowMap.enabled = true;
       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      // Phase 8.3 — WebXR for Vision Pro + Quest 4. Enable the XR layer
+      // upfront so an "Enter VR" button (mounted separately) can hand
+      // the renderer's session reference straight to navigator.xr.
+      // visionOS Safari supports immersive-vr by default since v2;
+      // Quest 4 the same. AR module (immersive-ar) not yet on visionOS
+      // so we stay vr-only for now.
+      renderer.xr.enabled = true;
+      renderer.xr.setReferenceSpaceType('local-floor');
+      // Expose to window so the EnterVRButton component (mounted in
+      // app/lenses/world/page.tsx) can hand the active session to
+      // renderer.xr.setSession() without needing prop-drilling
+      // through the entire scene tree.
+      (window as unknown as { __concordiaRenderer?: unknown }).__concordiaRenderer = renderer;
       renderer.toneMappingExposure = 1.0;
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       rendererRef.current = renderer;

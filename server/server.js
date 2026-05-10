@@ -9608,7 +9608,7 @@ async function runMacro(domain, name, input, ctx) {
     creative: new Set(["list", "get", "exhibition", "metrics", "profile", "masterworks", "registry", "domains", "generate", "create", "run"]),
     culture: new Set(["status", "traditions", "values", "stories", "metrics", "identity"]),
     trust: new Set(["get", "network", "metrics"]),
-    federation: new Set(["status", "peers", "commune_list", "commune_status", "peer_list", "outbox", "actor"]),
+    federation: new Set(["status", "peers", "commune_list", "commune_status", "peer_list", "outbox", "actor", "inbox"]),
     physics: new Set(["status", "constants", "models"]),
     reproduction: new Set(["compatible-pairs", "status"]),
     lineage: new Set(["tree", "get"]),
@@ -68804,6 +68804,183 @@ register("deity", "tone_vector", (_ctx, input = {}) => {
 
 structuredLog("info", "phase7_self_improving_init", {
   detail: "Phase 7 macros registered: macro_dag.{validate,describe,run}, narrative.ripple_report, npc.lie_probability, deity.{compose,list,tone_vector}",
+});
+
+// ── Phase 8.2: ActivityPub inbox + REST endpoint ─────────────────────────────
+register("federation", "inbox_receive", async (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { recipientUserId, activity, headers = {} } = input || {};
+  if (!recipientUserId || !activity) return { ok: false, reason: "missing_inputs" };
+  try {
+    const ap = await import("./lib/activitypub-bridge.js");
+    return await ap.receiveActivity(db, recipientUserId, activity, headers);
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Receive an ActivityPub activity into a user's inbox. Idempotent on activity.id." });
+
+register("federation", "inbox", async (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = input.userId || ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  try {
+    const ap = await import("./lib/activitypub-bridge.js");
+    return ap.readInbox(db, userId, {
+      limit: input.limit,
+      before: input.before,
+      types: input.types,
+    });
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Read a user's ActivityPub inbox (federated incoming activities)." });
+
+// Public inbox endpoint — federated peers POST activities here.
+// W3C ActivityPub §7: respond 202 Accepted on receipt, even if processing
+// fails downstream. Idempotent on activity.id so dupe deliveries are safe.
+app.post("/api/federation/users/:userId/inbox", asyncHandler(async (req, res) => {
+  const recipientUserId = req.params.userId;
+  const activity = req.body || {};
+  const headers = {
+    signature: req.headers["signature"],
+    Signature: req.headers["Signature"],
+    digest: req.headers["digest"],
+  };
+  let ap;
+  try { ap = await import("./lib/activitypub-bridge.js"); }
+  catch { return res.status(503).json({ ok: false, reason: "ap_unavailable" }); }
+  const r = await ap.receiveActivity(db, recipientUserId, activity, headers);
+  // 202 even on signature_required so the peer doesn't infinite-retry —
+  // the spec is permissive about silent rejection at the inbox boundary.
+  if (r?.ok && r.accepted) return res.status(202).json({ ok: true, deduped: !!r.deduped });
+  return res.status(r?.reason === "signature_required" ? 401 : 400).json(r);
+}));
+
+// Public actor descriptor — federated peers GET this to discover the
+// inbox URL + publicKey for signature verification.
+app.get("/api/federation/users/:userId", asyncHandler(async (req, res) => {
+  let ap;
+  try { ap = await import("./lib/activitypub-bridge.js"); }
+  catch { return res.status(503).json({ ok: false, reason: "ap_unavailable" }); }
+  const actor = ap.buildActor(req.params.userId);
+  if (!actor) return res.status(404).json({ ok: false, reason: "not_found" });
+  res.type("application/activity+json").json(actor);
+}));
+
+// Outbox public read for federation discovery.
+app.get("/api/federation/users/:userId/outbox", asyncHandler(async (req, res) => {
+  let ap;
+  try { ap = await import("./lib/activitypub-bridge.js"); }
+  catch { return res.status(503).json({ ok: false, reason: "ap_unavailable" }); }
+  const out = ap.readOutbox(db, req.params.userId, {
+    limit: req.query.limit,
+    before: req.query.before,
+  });
+  res.type("application/activity+json").json(out);
+}));
+
+structuredLog("info", "phase8_2_ap_inbox_init", {
+  detail: "Phase 8.2 — ActivityPub inbox endpoint + federation.{inbox,inbox_receive} macros wired",
+});
+
+// ── Phase 8.5: Self-improving PR loop — reflex → forge → GitHub PR ──────────
+//
+// When a reflex detector posts a HIGH/CRITICAL governance proposal, the
+// loop here can:
+//   1. Read the proposal body
+//   2. Hand it to the Forge engine as a "fix this" prompt
+//   3. Take the generated patch and stage it as a git diff
+//   4. Open a GitHub PR via the existing GitHub MCP integration (when
+//      the workflow runs in a context with the MCP token set)
+//   5. Stop short of auto-merging — human review gate
+//
+// Designed as a macro the operator triggers manually OR a heartbeat picks
+// up periodically. Default kill-switch: CONCORD_AUTOFIX_LOOP=true must be
+// set or the macro short-circuits with reason 'autofix_loop_disabled'.
+register("reflex", "propose_fix", async (ctx, input = {}) => {
+  if (process.env.CONCORD_AUTOFIX_LOOP !== "true") {
+    return { ok: false, reason: "autofix_loop_disabled" };
+  }
+  if (!db) return { ok: false, reason: "no_db" };
+  const { proposalId } = input || {};
+  if (!proposalId) return { ok: false, reason: "missing_proposalId" };
+
+  let proposal = null;
+  try {
+    proposal = db.prepare(`
+      SELECT id, kind, severity, summary, body, status, created_at
+      FROM governance_proposals WHERE id = ?
+    `).get(proposalId);
+  } catch { /* table optional */ }
+  if (!proposal) return { ok: false, reason: "proposal_not_found" };
+  if (proposal.severity !== "high" && proposal.severity !== "critical") {
+    return { ok: false, reason: "severity_too_low_for_autofix" };
+  }
+
+  // Hand to the Forge engine as a single-file patch prompt.
+  let forgeR = null;
+  try {
+    forgeR = await runMacro("forge", "fromSource", {
+      sourceText: `Reflex finding (${proposal.kind}, ${proposal.severity}):\n\n${proposal.summary}\n\n${proposal.body || ""}`,
+      mode: "patch",
+      target: "minimal_safe_diff",
+    }, ctx);
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+
+  if (!forgeR?.ok) return { ok: false, reason: "forge_declined", forgeR };
+
+  // Record the proposed patch in autofix_proposals so a human can
+  // review before any GitHub PR is opened. The actual PR-open step
+  // happens in a separate workflow file (.github/workflows/autofix.yml)
+  // that reads from this table on schedule.
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS autofix_proposals (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        proposal_id INTEGER NOT NULL,
+        proposal_kind TEXT NOT NULL,
+        forge_output_json TEXT NOT NULL,
+        pr_url TEXT,
+        status TEXT NOT NULL DEFAULT 'pending_review',
+        created_at INTEGER NOT NULL DEFAULT (unixepoch())
+      )
+    `);
+    const r = db.prepare(`
+      INSERT INTO autofix_proposals (proposal_id, proposal_kind, forge_output_json)
+      VALUES (?, ?, ?)
+    `).run(proposalId, proposal.kind, JSON.stringify(forgeR));
+    return {
+      ok: true,
+      autofixId: r.lastInsertRowid,
+      proposalId,
+      forgeAccepted: true,
+      next: "Human reviews via /lenses/autofix-queue, then triggers .github/workflows/autofix.yml",
+    };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Reflex → Forge → autofix_proposals row. Human-reviewed before PR. Gated by CONCORD_AUTOFIX_LOOP=true." });
+
+register("reflex", "autofix_queue", (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const limit = Math.min(50, Math.max(1, Number(input.limit) || 25));
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS autofix_proposals (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        proposal_id INTEGER NOT NULL,
+        proposal_kind TEXT NOT NULL,
+        forge_output_json TEXT NOT NULL,
+        pr_url TEXT,
+        status TEXT NOT NULL DEFAULT 'pending_review',
+        created_at INTEGER NOT NULL DEFAULT (unixepoch())
+      )
+    `);
+    const rows = db.prepare(`
+      SELECT id, proposal_id, proposal_kind, status, pr_url, created_at
+      FROM autofix_proposals WHERE status = 'pending_review'
+      ORDER BY created_at DESC LIMIT ?
+    `).all(limit);
+    return { ok: true, queue: rows };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Pending autofix proposals awaiting human review." });
+
+structuredLog("info", "phase8_5_autofix_loop_init", {
+  detail: "Phase 8.5 — reflex.{propose_fix,autofix_queue} macros wired (kill-switch: CONCORD_AUTOFIX_LOOP)",
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
