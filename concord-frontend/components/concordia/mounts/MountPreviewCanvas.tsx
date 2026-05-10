@@ -10,10 +10,9 @@
  * all three without input.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { useFrame } from '@react-three/fiber';
-import * as THREE from 'three';
 
 import MountAvatar3D from './MountAvatar3D';
 import type {
