@@ -1,11 +1,12 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useLensBridge } from '@/lib/hooks/use-lens-bridge';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -86,6 +87,10 @@ export default function HypothesisLensPage() {
   const [newEvidence, setNewEvidence] = useState('');
   const [evidenceSupports, setEvidenceSupports] = useState(true);
   const [showFeatures, setShowFeatures] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'testing' | 'confirmed' | 'refuted'>('all');
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const statementInputRef = useRef<HTMLInputElement>(null);
 
   // --- Lens Bridge ---
   const bridge = useLensBridge('hypothesis', 'hypothesis');
@@ -163,6 +168,33 @@ export default function HypothesisLensPage() {
 
   const hypotheses: Hypothesis[] = useMemo(() => hypothesesData?.hypotheses || hypothesesData || [], [hypothesesData]);
   const status = statusData?.status || statusData || {};
+
+  // Filtered + searchable list — 200 hypotheses without filters is a
+  // wall.  Search hits statement + domain; status filter narrows by
+  // workflow state.
+  const visibleHypotheses = useMemo(() => {
+    let arr = hypotheses;
+    if (statusFilter !== 'all') arr = arr.filter((h) => h.status === statusFilter);
+    const q = searchQuery.trim().toLowerCase();
+    if (q) arr = arr.filter((h) =>
+      (h.statement || '').toLowerCase().includes(q) ||
+      (h.domain || '').toLowerCase().includes(q)
+    );
+    return arr;
+  }, [hypotheses, statusFilter, searchQuery]);
+
+  useLensCommand(
+    [
+      { id: 'focus-search',    keys: '/',      description: 'Search hypotheses', category: 'navigation', action: () => searchInputRef.current?.focus() },
+      { id: 'focus-new',       keys: 'n',      description: 'New hypothesis',    category: 'actions',    action: () => statementInputRef.current?.focus() },
+      { id: 'filter-all',      keys: '1',      description: 'All',               category: 'view',       action: () => setStatusFilter('all') },
+      { id: 'filter-pending',  keys: '2',      description: 'Pending',           category: 'view',       action: () => setStatusFilter('pending') },
+      { id: 'filter-testing',  keys: '3',      description: 'Testing',           category: 'view',       action: () => setStatusFilter('testing') },
+      { id: 'filter-confirmed',keys: '4',      description: 'Confirmed',         category: 'view',       action: () => setStatusFilter('confirmed') },
+      { id: 'filter-refuted',  keys: '5',      description: 'Refuted',           category: 'view',       action: () => setStatusFilter('refuted') },
+    ],
+    { lensId: 'hypothesis' }
+  );
 
   // Bridge hypotheses into lens artifacts
   useEffect(() => {
@@ -248,10 +280,12 @@ export default function HypothesisLensPage() {
               <Plus className="w-4 h-4 text-neon-purple" /> New Hypothesis
             </h2>
             <input
+              ref={statementInputRef}
               type="text"
               value={newStatement}
               onChange={(e) => setNewStatement(e.target.value)}
-              placeholder="Hypothesis statement..."
+              onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && newStatement.trim() && !createHypothesis.isPending) { e.preventDefault(); createHypothesis.mutate(); } }}
+              placeholder="Hypothesis statement…  ⌘⏎ creates"
               className="input-lattice w-full"
             />
             <input
@@ -271,12 +305,53 @@ export default function HypothesisLensPage() {
           </div>
 
           <div className="panel p-4">
-            <h2 className="font-semibold mb-3">Hypotheses</h2>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-semibold">
+                Hypotheses
+                {(searchQuery || statusFilter !== 'all') && (
+                  <span className="text-xs text-gray-500 font-normal ml-2">
+                    {visibleHypotheses.length} of {hypotheses.length}
+                  </span>
+                )}
+              </h2>
+            </div>
+            <div className="space-y-2 mb-3">
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Escape') { setSearchQuery(''); searchInputRef.current?.blur(); } }}
+                placeholder="Filter by statement or domain…  / focuses"
+                className="input-lattice w-full text-sm"
+              />
+              <div className="flex gap-1 flex-wrap text-xs">
+                {(['all', 'pending', 'testing', 'confirmed', 'refuted'] as const).map((s, i) => (
+                  <button
+                    key={s}
+                    onClick={() => setStatusFilter(s)}
+                    className={`px-2 py-1 rounded transition-colors ${
+                      statusFilter === s
+                        ? 'bg-neon-purple/20 text-neon-purple border border-neon-purple/40'
+                        : 'bg-white/5 text-gray-400 border border-white/10 hover:text-white'
+                    }`}
+                  >
+                    {s === 'all' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}
+                    <kbd className="ml-1 text-[9px] opacity-60">{i + 1}</kbd>
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="space-y-2 max-h-96 overflow-y-auto">
               {hypotheses.length === 0 && (
                 <p className="text-sm text-gray-500 text-center py-4">No hypotheses yet. Create one above to get started.</p>
               )}
-              {hypotheses.map((h, index) => (
+              {hypotheses.length > 0 && visibleHypotheses.length === 0 && (
+                <p className="text-sm text-gray-500 text-center py-4">
+                  No matches{searchQuery && ` for "${searchQuery}"`}{statusFilter !== 'all' && ` in ${statusFilter}`}.
+                </p>
+              )}
+              {visibleHypotheses.map((h, index) => (
                 <motion.button
                   key={h.id}
                   initial={{ opacity: 0, y: 20 }}
