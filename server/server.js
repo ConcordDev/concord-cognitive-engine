@@ -9737,6 +9737,7 @@ async function runMacro(domain, name, input, ctx) {
     narrative: new Set(["ripple_report", "ripple_for_world"]),
     deity: new Set(["list", "get", "tone_vector"]),
     macro_dag: new Set(["validate", "describe"]),
+    walker: new Set(["trade_routes", "arbitrage"]),
   };
   const _domainSet = publicReadDomains[domain];
   const _domainNameAllowed = _domainSet ? _domainSet.has(name) : false;
@@ -68165,6 +68166,118 @@ register("fidelity", "summary", (ctx, input = {}) => {
 
 structuredLog("info", "phase3_world_as_body_init", {
   detail: "Phase 3 macros registered: embodied/scars/mount/fidelity",
+});
+
+// ── Phase 4: Player world agency — walker arbitrage + decree market ────────
+
+// Phase 4.1: Walker arbitrage (idea #29) — surface regional commodity-price
+// differentials so a player can direct walkers for arbitrage profit. Reads
+// existing concord_link_walkers + npc_inventory + regional_scarcity tables.
+register("walker", "trade_routes", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { worldId = "concordia-hub" } = input || {};
+  try {
+    // Active walker journeys in this world
+    const walkers = db.prepare(`
+      SELECT id, walker_id, status, from_world, to_world, dispatched_at, route, reputation
+      FROM concord_link_walkers
+      WHERE status = 'in_transit'
+      LIMIT 50
+    `).all().map(w => {
+      let route = w.route;
+      if (typeof route === "string") {
+        try { route = JSON.parse(route); } catch { route = []; }
+      }
+      return { ...w, route };
+    });
+    return { ok: true, worldId, walkers, count: walkers.length };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Active walker journeys for the trade-route map UI." });
+
+register("walker", "arbitrage", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const { worldId = "concordia-hub", commodityKind = null } = input || {};
+  try {
+    // Reads regional_scarcity (Phase 4b living-economy substrate) for
+    // commodities + their per-region price modulator. Higher scarcity
+    // = higher price; arbitrage opp = "buy in low-scarcity region,
+    // sell in high-scarcity region."
+    const where = commodityKind ? "AND commodity_kind = ?" : "";
+    const args = commodityKind ? [worldId, commodityKind] : [worldId];
+    const rows = db.prepare(`
+      SELECT region_id, commodity_kind, scarcity_score, computed_at
+      FROM regional_scarcity
+      WHERE world_id = ? ${where}
+      ORDER BY commodity_kind, scarcity_score DESC
+    `).all(...args);
+
+    // Pair high/low per commodity to surface the arbitrage opp.
+    const byCommodity = new Map();
+    for (const r of rows) {
+      let arr = byCommodity.get(r.commodity_kind);
+      if (!arr) { arr = []; byCommodity.set(r.commodity_kind, arr); }
+      arr.push(r);
+    }
+    const opps = [];
+    for (const [commodity, list] of byCommodity) {
+      if (list.length < 2) continue;
+      const high = list[0];
+      const low = list[list.length - 1];
+      if (high.scarcity_score - low.scarcity_score > 0.2) {
+        opps.push({
+          commodity,
+          buyRegion: low.region_id,
+          buyScarcity: low.scarcity_score,
+          sellRegion: high.region_id,
+          sellScarcity: high.scarcity_score,
+          delta: Math.round((high.scarcity_score - low.scarcity_score) * 100) / 100,
+        });
+      }
+    }
+    return { ok: true, worldId, opps, count: opps.length };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Arbitrage opportunities — commodity price differentials across regions." });
+
+// Phase 4.2: Kingdom decree market (idea #28) is mostly already exposed
+// via server/domains/kingdoms.js (propose_decree, takeover_*, depose_ruler).
+// What's missing is the *marketplace listing* surface — where a kingdom
+// publishes a decree-recipe DTU and other realms can install it. This
+// macro composes such a listing on top of the existing forge-marketplace
+// pattern.
+register("kingdom", "publish_decree_recipe", async (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { realmId, decreeKind, body, title, summary } = input || {};
+  if (!realmId || !decreeKind || !body) return { ok: false, reason: "missing_inputs" };
+
+  // Verify caller is the realm's ruler.
+  let realm = null;
+  try {
+    realm = db.prepare(`SELECT id, ruler_kind, ruler_id FROM realms WHERE id = ?`).get(realmId);
+  } catch { /* realms table optional in minimal builds */ }
+  if (!realm) return { ok: false, reason: "realm_not_found" };
+  if (realm.ruler_kind !== "player" || realm.ruler_id !== userId) {
+    return { ok: false, reason: "not_ruler" };
+  }
+
+  // Mint as a DTU via forge-marketplace's NPC-aware pattern.
+  let mintR = null;
+  try {
+    const fm = await import("./lib/forge-marketplace.js");
+    mintR = await fm.mintForgeAppAsDtu(db, {
+      userId,
+      appName: title || `Decree: ${decreeKind}`,
+      sourceCode: typeof body === "string" ? body : JSON.stringify(body),
+      manifest: { kind: "decree_recipe", decreeKind, realmId },
+      summary: summary || `Decree recipe of kind ${decreeKind} from realm ${realmId}.`,
+    });
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+  return { ok: !!mintR?.ok, ...mintR };
+}, { note: "Publish a decree as a DTU recipe other realms can install." });
+
+structuredLog("info", "phase4_player_agency_init", {
+  detail: "Phase 4 macros registered: walker.{trade_routes,arbitrage}, kingdom.publish_decree_recipe; glyph_spells.{cast,casts_in_region}",
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
