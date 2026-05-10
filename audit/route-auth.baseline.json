@@ -1183,43 +1183,43 @@
   },
   {
     "file": "server/routes/media.js",
-    "line": 151,
+    "line": 152,
     "method": "POST",
     "signature": "router.post(\"/upload\", asyncHandler(async (req, res) => { const authorId = req.user?.id; if (!authorId) return r"
   },
   {
     "file": "server/routes/media.js",
-    "line": 240,
+    "line": 269,
     "method": "POST",
     "signature": "router.post(\"/upload/url\", asyncHandler(async (req, res) => { // SECURITY: authorId comes ONLY from the authenticate"
   },
   {
     "file": "server/routes/media.js",
-    "line": 447,
+    "line": 514,
     "method": "POST",
     "signature": "router.post(\"/:id/transcode\", asyncHandler(async (req, res) => { const { quality } = req.body; if (!quality) thr"
   },
   {
     "file": "server/routes/media.js",
-    "line": 495,
+    "line": 562,
     "method": "POST",
     "signature": "router.post(\"/:id/view\", asyncHandler(async (req, res) => { // SECURITY: identity from authenticated session only. A"
   },
   {
     "file": "server/routes/media.js",
-    "line": 515,
+    "line": 582,
     "method": "POST",
     "signature": "router.post(\"/:id/like\", asyncHandler(async (req, res) => { // SECURITY: userId always comes from the authenticated "
   },
   {
     "file": "server/routes/media.js",
-    "line": 537,
+    "line": 604,
     "method": "POST",
     "signature": "router.post(\"/:id/comment\", asyncHandler(async (req, res) => { // SECURITY: userId always comes from the authenticat"
   },
   {
     "file": "server/routes/media.js",
-    "line": 582,
+    "line": 649,
     "method": "DELETE",
     "signature": "router.delete(\"/:id\", asyncHandler(async (req, res) => { // SECURITY: authorId from authenticated session — never fr"
   },
