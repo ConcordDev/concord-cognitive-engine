@@ -23196,6 +23196,8 @@ import registerOxygenMacros from "./domains/oxygen.js";
 registerOxygenMacros(register);
 import registerFactionsMacros from "./domains/factions.js";
 registerFactionsMacros(register);
+import registerVoiceTTSMacros from "./domains/voice-tts.js";
+registerVoiceTTSMacros(register);
 
 // Phase 5a — Land claims. claim / invite / topup / claim_at / can_act_in /
 // list_for_user macros for the world lens to interrogate the substrate.
@@ -26989,6 +26991,20 @@ registerSystemRoutes(app, {
 
 // ---- Audit Log Endpoints (extracted to routes/audit.js) ----
 app.use("/api/audit", createAuditRouter({ requireRole, db }));
+
+// Sprint D / CC1 — serve cached voice synthesis files. Path: /voice-cache/*.mp3
+import * as __voice_cache_express from "express";
+import * as __voice_cache_path from "node:path";
+import { fileURLToPath as __voice_cache_fileURLToPath } from "node:url";
+const __VOICE_CACHE_DIR = __voice_cache_path.resolve(
+  __voice_cache_path.dirname(__voice_cache_fileURLToPath(import.meta.url)),
+  "data/voice-cache",
+);
+try {
+  app.use("/voice-cache", __voice_cache_express.default.static(__VOICE_CACHE_DIR, {
+    fallthrough: false, maxAge: "30d", immutable: true,
+  }));
+} catch { /* cache dir may not exist on first boot — created lazily by voice-synthesis.js */ }
 
 // ---- Auth Endpoints (extracted to routes/auth.js) ----
 app.use("/api/auth", createAuthRouter({

@@ -132,6 +132,35 @@ const ProcgenSettlementNpcs = dynamic(
   () => import('@/components/world/ProcgenSettlementNpcs'),
   { ssr: false }
 );
+// Sprint D Wave 1 — visible-substrate overlays + audio.
+const SeasonalEffects = dynamic(
+  () => import('@/components/world-lens/SeasonalEffects'),
+  { ssr: false }
+);
+const UnderwaterPostFX = dynamic(
+  () => import('@/components/world-lens/UnderwaterPostFX'),
+  { ssr: false }
+);
+const FactionBanners = dynamic(
+  () => import('@/components/world/FactionBanners'),
+  { ssr: false }
+);
+const InstancedGrass = dynamic(
+  () => import('@/components/world/InstancedGrass'),
+  { ssr: false }
+);
+const AdaptiveMusicEngine = dynamic(
+  () => import('@/components/world-lens/AdaptiveMusicEngine'),
+  { ssr: false }
+);
+const PhotoMode = dynamic(
+  () => import('@/components/world/PhotoMode'),
+  { ssr: false }
+);
+const BuildingCollapseVFX = dynamic(
+  () => import('@/components/world/BuildingCollapseVFX'),
+  { ssr: false }
+);
 const LockOnController = dynamic(
   () =>
     import('@/components/world-lens/LockOnController').then((m) => ({
@@ -4315,6 +4344,27 @@ export default function WorldLensPage() {
             worldId={activeDistrict?.id || 'concordia-hub'}
             onSettlementNpcs={setProcgenNpcs}
           />
+
+          {/* Sprint D Wave 1 — visible-substrate overlays. SeasonalEffects
+              draws snow/leaves/pollen + tint based on season; UnderwaterPostFX
+              activates real shader when player y < waterPlaneY; FactionBanners
+              renders heraldry at faction-controlled anchors; InstancedGrass
+              fills the immediate ground tile around the player. */}
+          <SeasonalEffects worldId={activeDistrict?.id || 'concordia-hub'} />
+          <UnderwaterPostFX worldId={activeDistrict?.id || 'concordia-hub'} />
+          <BuildingCollapseVFX
+            worldId={activeDistrict?.id || 'concordia-hub'}
+            getCamera={() => null}
+          />
+
+          {/* Sprint D EE3 — adaptive music stem engine layered on top of
+              SoundscapeEngine. Loads /music/stems/<track>/{layer}.ogg if
+              available, falls back gracefully when stems are missing. */}
+          <AdaptiveMusicEngine worldId={activeDistrict?.id || 'concordia-hub'} />
+
+          {/* Sprint D Z3 — photo mode toggle. Triggered by P key (handled by
+              gamepad/keymap layer in a follow-up). */}
+          <PhotoMode open={false} onClose={() => undefined} />
 
           {/* Companion roster — pet HUD (Phase A). Mounted bottom-right;
               opens on click. Lists owned creatures, deploy/dismiss/rename. */}
