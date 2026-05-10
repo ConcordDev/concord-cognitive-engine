@@ -100,7 +100,25 @@
       "afternoon": "travel",
       "dusk": "work",
       "night": "work"
-    }
+    },
+    "needs": [
+      { "id": "job_completion", "priority": "primary", "satisfaction_method": "weekly_run" },
+      { "id": "anonymity", "priority": "primary", "satisfaction_method": "evening_safe_house_rotation" }
+    ],
+    "daily_schedule": [
+      { "phase": "morning", "phase_hours": [9, 12], "location": "safe_house_rotating", "activity": "wakes; reviews the week's contract", "need_addressed": "anonymity", "interactable_by_player": false },
+      { "phase": "afternoon", "phase_hours": [14, 19], "location": "varies_by_job", "activity": "field run; recon or strike", "need_addressed": "job_completion", "interactable_by_player": true },
+      { "phase": "evening", "phase_hours": [19, 23], "location": "safe_house_rotating", "activity": "evening rotation; debrief with cipher_marks", "need_addressed": "anonymity", "interactable_by_player": true },
+      { "phase": "night", "phase_hours": [23, 9], "location": "safe_house_rotating", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "rotating_three_safe_houses", "dwelling_type": "rotating_safe_house" },
+    "job": { "profession_id": "ghost_network_operative", "wage_per_diurnal_sparks": 220, "wage_source": "ghost_network_per_contract_share" },
+    "apparel": ["dark_civilian_clothes", "concealed_carry_belt", "soft_traction_boots", "winter_overcoat_with_concealed_pockets"],
+    "gear": ["concealed_pistol_glock_19", "personal_contract_journal_encrypted", "encrypted_burner_handheld", "lockpick_set"],
+    "resources_consumed": ["safe_house_rotation_supplies"],
+    "resources_produced": ["completed_contracts"],
+    "inventory": [{ "item": "concealed_pistol_glock_19", "qty": 1 }, { "item": "encrypted_burner_handheld", "qty": 1 }, { "item": "lockpick_set", "qty": 1 }, { "item": "ghost_network_chit", "qty": 14 }],
+    "starting_sparks": 2400
   },
   {
     "id": "cipher_marks",
@@ -173,7 +191,25 @@
       "afternoon": "travel",
       "dusk": "work",
       "night": "work"
-    }
+    },
+    "needs": [
+      { "id": "ghost_network_continuity", "priority": "primary", "satisfaction_method": "morning_contract_intake" },
+      { "id": "operative_safety", "priority": "primary", "satisfaction_method": "weekly_safe_house_audit" }
+    ],
+    "daily_schedule": [
+      { "phase": "morning", "phase_hours": [8, 12], "location": "ghost_network_dead_drop", "activity": "morning contract intake; processes encrypted requests", "need_addressed": "ghost_network_continuity", "interactable_by_player": false },
+      { "phase": "afternoon", "phase_hours": [14, 19], "location": "varies_by_handoff", "activity": "operative briefings; encrypted handoffs", "need_addressed": "ghost_network_continuity", "interactable_by_player": true },
+      { "phase": "evening", "phase_hours": [19, 23], "location": "cipher_safe_house", "activity": "evening — audits safe house rotations; reviews operative status", "need_addressed": "operative_safety", "interactable_by_player": true },
+      { "phase": "night", "phase_hours": [23, 8], "location": "cipher_safe_house", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "ghost_network_safe_house_one", "dwelling_type": "encrypted_safe_house" },
+    "job": { "profession_id": "ghost_network_lead", "wage_per_diurnal_sparks": 380, "wage_source": "ghost_network_lead_share" },
+    "apparel": ["dark_practical_clothes", "concealed_carry_under_jacket", "soft_shoes", "winter_overcoat"],
+    "gear": ["encrypted_handheld_master", "personal_contract_master_ledger_locked", "concealed_pistol_master_grade"],
+    "resources_consumed": ["safe_house_supplies", "encrypted_comms_credits"],
+    "resources_produced": ["contract_routing", "operative_safety_audits"],
+    "inventory": [{ "item": "encrypted_handheld_master", "qty": 1 }, { "item": "personal_contract_master_ledger_locked", "qty": 1 }, { "item": "concealed_pistol_master_grade", "qty": 1 }, { "item": "ghost_network_chit", "qty": 32 }],
+    "starting_sparks": 6400
   },
   {
     "id": "mama_delgado",
@@ -277,7 +313,27 @@
       "afternoon": "travel",
       "dusk": "work",
       "night": "work"
-    }
+    },
+    "needs": [
+      { "id": "iron_rose_continuity", "priority": "primary", "satisfaction_method": "morning_audience_with_lieutenants" },
+      { "id": "north_market_expansion", "priority": "primary", "satisfaction_method": "weekly_dom_pressure_review" },
+      { "id": "family_legacy", "priority": "primary", "satisfaction_method": "evening_family_dinner" }
+    ],
+    "daily_schedule": [
+      { "phase": "morning", "phase_hours": [8, 12], "location": "iron_rose_estate", "activity": "morning audience with lieutenants; reviews territory and contracts", "need_addressed": "iron_rose_continuity", "interactable_by_player": true },
+      { "phase": "midday", "phase_hours": [12, 15], "location": "iron_rose_estate_dining", "activity": "lunch with senior captains", "need_addressed": "iron_rose_continuity", "interactable_by_player": true },
+      { "phase": "afternoon", "phase_hours": [15, 19], "location": "varies", "activity": "neighborhood visits; Dom Reyes recruitment pressure; precinct meetings", "need_addressed": "north_market_expansion", "interactable_by_player": true },
+      { "phase": "evening", "phase_hours": [19, 22], "location": "iron_rose_estate", "activity": "family dinner; political theater", "need_addressed": "family_legacy", "interactable_by_player": true },
+      { "phase": "night", "phase_hours": [22, 8], "location": "iron_rose_estate_matriarch_quarters", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "iron_rose_estate", "dwelling_type": "matriarch_quarters_with_secure_council_chamber" },
+    "job": { "profession_id": "iron_rose_matriarch", "wage_per_diurnal_sparks": 2200, "wage_source": "syndicate_lead_share" },
+    "apparel": ["formal_dark_business_attire", "iron_rose_brooch_inherited", "polished_evening_shoes", "winter_fur_coat"],
+    "gear": ["personal_syndicate_master_ledger_locked", "concealed_pistol", "iron_rose_seal_master", "encrypted_handheld"],
+    "resources_consumed": ["syndicate_provisions", "ink"],
+    "resources_produced": ["syndicate_orders", "territory_expansion"],
+    "inventory": [{ "item": "personal_syndicate_master_ledger_locked", "qty": 1 }, { "item": "concealed_pistol", "qty": 1 }, { "item": "iron_rose_seal_master", "qty": 1 }, { "item": "iron_rose_token", "qty": 80 }],
+    "starting_sparks": 124000
   },
   {
     "id": "tomas_reyes",
@@ -356,7 +412,25 @@
       "afternoon": "travel",
       "dusk": "work",
       "night": "work"
-    }
+    },
+    "needs": [
+      { "id": "succession_readiness", "priority": "primary", "satisfaction_method": "weekly_mama_training" },
+      { "id": "operational_independence", "priority": "primary", "satisfaction_method": "monthly_solo_contract" }
+    ],
+    "daily_schedule": [
+      { "phase": "morning", "phase_hours": [9, 12], "location": "iron_rose_estate_heir_quarters", "activity": "morning training with Mama; protocol and politics", "need_addressed": "succession_readiness", "interactable_by_player": true },
+      { "phase": "afternoon", "phase_hours": [14, 19], "location": "varies", "activity": "field assignments; sometimes solo, sometimes shadowing a lieutenant", "need_addressed": "operational_independence", "interactable_by_player": true },
+      { "phase": "evening", "phase_hours": [19, 22], "location": "iron_rose_estate_dining", "activity": "family dinner; sometimes debriefs the day's work", "need_addressed": "succession_readiness", "interactable_by_player": true },
+      { "phase": "night", "phase_hours": [22, 9], "location": "iron_rose_estate_heir_quarters", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "iron_rose_estate", "dwelling_type": "heir_quarters_attached_to_matriarch_chamber" },
+    "job": { "profession_id": "iron_rose_heir", "wage_per_diurnal_sparks": 380, "wage_source": "syndicate_heir_stipend" },
+    "apparel": ["dark_business_attire", "iron_rose_heir_pin", "polished_dress_shoes", "winter_overcoat"],
+    "gear": ["concealed_pistol", "personal_succession_studies_journal", "iron_rose_heir_seal"],
+    "resources_consumed": ["syndicate_provisions"],
+    "resources_produced": ["assigned_field_work", "succession_progress"],
+    "inventory": [{ "item": "concealed_pistol", "qty": 1 }, { "item": "personal_succession_studies_journal", "qty": 1 }, { "item": "iron_rose_heir_seal", "qty": 1 }, { "item": "iron_rose_token", "qty": 28 }],
+    "starting_sparks": 18000
   },
   {
     "id": "walker_dock_run_renny",
@@ -396,7 +470,25 @@
       "afternoon": "travel",
       "dusk": "work",
       "night": "work"
-    }
+    },
+    "needs": [
+      { "id": "delivery_completion", "priority": "primary", "satisfaction_method": "dock_run_per_shift" },
+      { "id": "iron_rose_handler_relationship", "priority": "primary", "satisfaction_method": "evening_handler_check_in" }
+    ],
+    "daily_schedule": [
+      { "phase": "morning", "phase_hours": [7, 12], "location": "docks_loading_area", "activity": "morning dock run; carries packages between ships and the syndicate's warehouses", "need_addressed": "delivery_completion", "interactable_by_player": true },
+      { "phase": "afternoon", "phase_hours": [13, 19], "location": "varies", "activity": "afternoon runs; sometimes inter-borough deliveries", "need_addressed": "delivery_completion", "interactable_by_player": true },
+      { "phase": "evening", "phase_hours": [19, 22], "location": "iron_rose_dispatch_office", "activity": "evening check-in with handler; reports the day", "need_addressed": "iron_rose_handler_relationship", "interactable_by_player": true },
+      { "phase": "night", "phase_hours": [22, 7], "location": "rented_room_dockside", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "dockside_walkup", "dwelling_type": "rented_room_above_bar" },
+    "job": { "profession_id": "iron_rose_walker", "wage_per_diurnal_sparks": 120, "wage_source": "iron_rose_per_run_share" },
+    "apparel": ["dockworker_jacket", "thick_canvas_pants", "knee_high_dock_boots", "wool_cap"],
+    "gear": ["walking_staff_concealed_blade", "iron_rose_routing_token", "concealed_knife"],
+    "resources_consumed": ["dockside_food", "rented_room_rent"],
+    "resources_produced": ["delivered_dock_runs"],
+    "inventory": [{ "item": "walking_staff_concealed_blade", "qty": 1 }, { "item": "iron_rose_routing_token", "qty": 1 }, { "item": "concealed_knife", "qty": 1 }, { "item": "iron_rose_token", "qty": 8 }],
+    "starting_sparks": 640
   },
   {
     "id": "captain_marquez_14th",
