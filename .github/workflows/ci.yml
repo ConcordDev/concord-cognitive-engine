@@ -180,7 +180,36 @@ jobs:
         # 33.13% (slightly different from local's 34.54% — tests that
         # depend on optional infra get skipped in CI). Anchored at
         # current CI baseline, raise as test coverage grows.
-        run: npx c8 --check-coverage --statements 45 --branches 45 --functions 33 --lines 45 node --test --test-force-exit $(ls tests/*.test.js | grep -v -E 'auth-security|storage-parity')
+        #
+        # Wraps c8 + node --test in `tee` so the output lands on disk
+        # AND in the live log. On failure the next step grep's the file
+        # for `not ok` / failureType / error: lines so the GitHub
+        # annotation surfaces the actual failing test even when the
+        # rendered log is hard to scrape.
+        run: |
+          set -o pipefail
+          npx c8 --check-coverage --statements 45 --branches 45 --functions 33 --lines 45 \
+            node --test --test-force-exit \
+            $(ls tests/*.test.js | grep -v -E 'auth-security|storage-parity') \
+            2>&1 | tee /tmp/server-coverage.log
+
+      - name: Surface failing tests on coverage step failure
+        if: failure() && steps.server_coverage.outcome == 'failure'
+        working-directory: ./server
+        run: |
+          echo "::group::Failing tests (top 50 lines of context per failure)"
+          if [ -f /tmp/server-coverage.log ]; then
+            grep -E "^not ok |failureType:|error: '" /tmp/server-coverage.log \
+              | grep -v "subtests failed\|cancelledByParent\|cancelled by parent" \
+              | head -50 || true
+            echo "---"
+            echo "::group::Last 200 lines of tee'd log"
+            tail -n 200 /tmp/server-coverage.log || true
+            echo "::endgroup::"
+          else
+            echo "(no /tmp/server-coverage.log — c8 likely failed before tests ran)"
+          fi
+          echo "::endgroup::"
 
       # Diagnostic — runs on failure only, dumps which step failed plus
       # available context. Will help identify the failing step from
