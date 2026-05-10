@@ -2,12 +2,14 @@
 
 _Source for the `Current Wiring Status` section in CLAUDE.md. Human merges; cartographer never auto-rewrites CLAUDE.md._
 
-Generated 2026-05-09T10:22:19.727Z.
+Generated 2026-05-10T04:15:47.839Z.
 
 ## Heartbeat-registered modules
 
 - `refusal-field-sweep` (frequency 1)
 - `combat-recovery-cycle` (frequency 2)
+- `signal-propagation-cycle` (frequency 3)
+- `creature-flock-cycle` (frequency 4)
 - `scheduled-posts` (frequency 4)
 - `affect-tick` (frequency 4)
 - `social-npc-bridge` (frequency 5)
@@ -15,16 +17,20 @@ Generated 2026-05-09T10:22:19.727Z.
 - `npc-routine-cycle` (frequency 5)
 - `environment-sensor` (frequency 5)
 - `environment-sense` (frequency 5)
+- `npc-perception-snapshot` (frequency 8)
 - `npc-economy-cycle` (frequency 8)
 - `npc-conversation-initiator` (frequency 8)
 - `npc-knowledge-bridge` (frequency 10)
 - `corpse-cleanup` (frequency 10)
+- `kingdom-decree-cycle` (frequency 16)
 - `metrics-decay` (frequency 20)
 - `presence-stale-sweep` (frequency 20)
 - `repair-cycle` (frequency 20)
 - `brain-outcome-resolver` (frequency 20)
 - `fauna-spawner` (frequency 30)
+- `npc-scheme-cycle` (frequency 30)
 - `understanding-evolve` (frequency 40)
+- `mount-care-cycle` (frequency 60)
 - `lattice-drift-scan` (frequency 60)
 - `personal-beat-scheduler` (frequency 60)
 - `brain-daily-refresh` (frequency 60)
@@ -38,7 +44,9 @@ Generated 2026-05-09T10:22:19.727Z.
 - `faction-strategy-cycle` (frequency 200)
 - `lattice-breakthrough-pass` (frequency 240)
 - `npc-marketplace-cycle` (frequency 240)
+- `procgen-settlement-cycle` (frequency 240)
 - `land-claims-cycle` (frequency 240)
+- `player-signs-cleanup` (frequency 240)
 - `reflex-architectural-drift` (frequency 360)
 - `procedural-npc-spawner` (frequency 360)
 - `forgetting-health-check` (frequency 480)
@@ -182,12 +190,12 @@ Generated 2026-05-09T10:22:19.727Z.
 
 ## Frontend lens count
 
-- 204 directories under `concord-frontend/app/lenses/`
+- 206 directories under `concord-frontend/app/lenses/`
 
 ## Orphan / Dormant inventory
 
 - Orphan modules: 0
 - Dormant modules: 0
 - Dead tables: 22
-- Headless backends: 1
-- Orphan lenses: 4
+- Headless backends: 0
+- Orphan lenses: 2

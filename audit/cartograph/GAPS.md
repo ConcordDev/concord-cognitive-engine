@@ -1,6 +1,6 @@
 # Gaps & Wire Targets
 
-_Generated 2026-05-09T10:22:19.727Z. Each gap proposes a concrete wire action._
+_Generated 2026-05-10T04:15:47.839Z. Each gap proposes a concrete wire action._
 
 ## Dead tables (22)
 
@@ -37,20 +37,16 @@ _None._
 
 _None — every module either has a heartbeat or is invoked by a macro callsite._
 
-## Headless backend domains (1)
+## Headless backend domains (0)
 
-| Domain | Macro count | Suggested frontend lens dir |
-|---|---:|---|
-| `understanding` | 16 | `concord-frontend/app/lenses/understanding/page.tsx` |
+_None — every macro domain has a matching frontend lens dir._
 
-## Orphan lenses (4)
+## Orphan lenses (2)
 
 | Lens dir | Reason | Action |
 |---|---|---|
-| `message` | no_backend_evidence_in_page_tsx | wire backend OR remove |
 | `root` | no_backend_evidence_in_page_tsx | wire backend OR remove |
 | `ux-suite` | no_backend_evidence_in_page_tsx | wire backend OR remove |
-| `world-creator` | page_tsx_empty_or_missing | wire backend OR remove |
 
 ## Unused macros (0)
 
@@ -58,17 +54,15 @@ _None — every module either has a heartbeat or is invoked by a macro callsite.
 
 _None._
 
-## Unshaped socket events (7)
+## Unshaped socket events (5)
 
 | Event | First emitter | Action |
 |---|---|---|
-| `quest:lattice-born` | server/emergent/lattice-quest-cycle.js:85 | add to event-shapes.js |
-| `beat:offered` | server/emergent/personal-beat-scheduler.js:115 | add to event-shapes.js |
-| `combat:polish` | server/lib/combat-polish.js:489 | add to event-shapes.js |
-| `world:region-spawned` | server/lib/procgen-regions.js:99 | add to event-shapes.js |
-| `world:season-transition` | server/lib/seasons.js:109 | add to event-shapes.js |
-| `skill:tier-witnessed` | server/routes/worlds.js:1970 | add to event-shapes.js |
-| `world:invariant-warning` | server/server.js:308 | add to event-shapes.js |
+| `mount:hungry` | server/emergent/mount-care-cycle.js:77 | add to event-shapes.js |
+| `mount:loyalty-low` | server/emergent/mount-care-cycle.js:80 | add to event-shapes.js |
+| `subscribe.error` | server/lib/dx/dx-socket-bus.js:141 | add to event-shapes.js |
+| `subscribe.ok` | server/lib/dx/dx-socket-bus.js:148 | add to event-shapes.js |
+| `world:sonic-pulse` | server/lib/embodied/signals.js:105 | add to event-shapes.js |
 
 ## Universe-coverage gaps (in-scope categories)
 
