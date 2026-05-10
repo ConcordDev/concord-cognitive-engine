@@ -33739,6 +33739,32 @@ register("marketplace", "purchaseWithRoyalties", async (ctx, input) => {
   const dtu = STATE.dtus.get(dtuId);
   if (!dtu?.marketplace?.listed) return { ok: false, error: "not_listed" };
 
+  // Federated origin: if the DTU's metadata records origin_peer_id (set
+  // when it was imported from a peer), delegate the purchase to the
+  // peer's marketplace endpoint. The peer signs the envelope; this
+  // instance imports the result so the cascade pays out locally.
+  // Falls through silently when the DTU is local-origin (origin_peer_id
+  // is null/missing).
+  const originPeer = dtu?.meta?.origin_peer_id || dtu?.origin_peer_id || null;
+  if (originPeer) {
+    try {
+      const fed = await import("./lib/federation.js");
+      if (fed?.remotePurchase) {
+        const buyerId = ctx?.actor?.userId || ctx?.actor?.id;
+        const r = await fed.remotePurchase(db, {
+          peerId: originPeer,
+          dtuId,
+          buyerId,
+          priceCents: Math.round((dtu.marketplace.price || 0) * 100),
+        });
+        if (r?.ok) return { ok: true, federated: true, peerId: originPeer, ...r };
+        // Fall-through to local purchase if peer rejected/unreachable —
+        // local-cached copy is still tradable, peer just won't get its
+        // canonical-instance royalty share until it's reachable again.
+      }
+    } catch { /* federation module optional */ }
+  }
+
   const price = dtu.marketplace.price || 0;
   if (price > 0) {
     // Server-side balance check — never trust client balance

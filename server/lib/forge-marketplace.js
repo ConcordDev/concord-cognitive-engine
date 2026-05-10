@@ -20,7 +20,19 @@ import logger from "../logger.js";
  * Mint a Forge-generated app as a DTU.
  *
  * Inputs:
- *   userId        — creator
+ *   userId        — creator (the wallet/owner that earns royalties).
+ *                   For NPC-authored content, set userId to the mentor
+ *                   player's id and pass actorKind: 'npc' + npcId so the
+ *                   royalty trail attributes to the human who taught the
+ *                   NPC, while the DTU still records its NPC origin.
+ *   actorKind     — 'player' (default) or 'npc'. NPCs author DTUs through
+ *                   the same path — the only difference is the
+ *                   meta.author_kind tag and the optional npcId / mentorId
+ *                   pair used for downstream attribution.
+ *   npcId         — when actorKind='npc', the originating NPC's id.
+ *   mentorId      — when actorKind='npc', the player who taught the NPC.
+ *                   Defaults to userId since NPCs route their royalties
+ *                   through their mentor by convention.
  *   templateId    — Forge template the app was generated from (parent
  *                   for royalty cascade citation)
  *   appName       — human title
@@ -32,18 +44,30 @@ import logger from "../logger.js";
  */
 export async function mintForgeAppAsDtu(db, opts) {
   if (!db) return { ok: false, reason: "no_db" };
-  const { userId, templateId, appName, sourceCode, manifest, summary } = opts || {};
+  const {
+    userId, templateId, appName, sourceCode, manifest, summary,
+    actorKind, npcId, mentorId,
+  } = opts || {};
   if (!userId || !appName || !sourceCode) return { ok: false, reason: "missing_inputs" };
 
+  const author_kind = actorKind === "npc" ? "npc" : "player";
   const dtuId = `forge:${userId}:${crypto.randomUUID().slice(0, 8)}`;
   const meta = {
-    author_kind: "player",
+    author_kind,
     skill_kind: "forge_app",
     forge_template_id: templateId || null,
     forge_manifest: manifest || null,
     summary: summary || null,
     source_size: sourceCode.length,
     source_sha1: crypto.createHash("sha1").update(String(sourceCode)).digest("hex").slice(0, 16),
+    // NPC-authored attribution. The NPC id is the in-world actor; the
+    // mentor id (defaulted to the wallet owner when omitted) is the
+    // player whose teaching produced the NPC's skill, and who therefore
+    // earns royalty cascade payouts through this DTU's lineage.
+    ...(author_kind === "npc" ? {
+      npc_id: npcId || null,
+      mentor_id: mentorId || userId,
+    } : {}),
   };
 
   let inserted = false;
