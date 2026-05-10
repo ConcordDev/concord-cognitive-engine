@@ -16,7 +16,25 @@
     "quest_hooks": ["the_drift_the_lattice_won_t_resolve", "witness_charter_question", "documentation_run"],
     "narrative_context": {
       "secret": "Orla has identified a class of drift alerts that the lattice produces only when a player is standing in the Crucible. She has not told the other Witnesses because she does not know whether to call this evidence of intent."
-    }
+    },
+    "needs": [
+      { "id": "drift_documentation", "priority": "primary", "satisfaction_method": "morning_observation_lattice_session" },
+      { "id": "witness_charter_continuity", "priority": "primary", "satisfaction_method": "weekly_council_with_pem_sael" }
+    ],
+    "daily_schedule": [
+      { "phase": "morning", "phase_hours": [6, 11], "location": "observation_lattice", "activity": "morning observation session; logs overnight drift alerts", "need_addressed": "drift_documentation", "interactable_by_player": true },
+      { "phase": "midday", "phase_hours": [11, 15], "location": "central_crucible", "activity": "midday council with Pem and Sael", "need_addressed": "witness_charter_continuity", "interactable_by_player": true },
+      { "phase": "afternoon", "phase_hours": [15, 19], "location": "observation_lattice", "activity": "afternoon documentation; never anthropomorphizes the lattice in her notes", "need_addressed": "drift_documentation", "interactable_by_player": true },
+      { "phase": "night", "phase_hours": [22, 6], "location": "witness_quarters", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "central_crucible", "dwelling_type": "senior_witness_quarters" },
+    "job": { "profession_id": "senior_witness", "wage_per_diurnal_sparks": 140, "wage_source": "federation_witness_charter_stipend" },
+    "apparel": ["dark_witness_robe", "observation_belt_with_glass_pouch", "soft_indoor_shoes"],
+    "gear": ["observation_glass_master_grade", "personal_drift_alert_journal_unanthropomorphized", "lattice_documentation_quill_set"],
+    "resources_consumed": ["paper", "ink", "stipend_provisions"],
+    "resources_produced": ["drift_documentation_records"],
+    "inventory": [{ "item": "observation_glass_master_grade", "qty": 1 }, { "item": "personal_drift_alert_journal", "qty": 1 }, { "item": "drift_marks", "qty": 30 }],
+    "starting_sparks": 1800
   },
   {
     "id": "witness_pem",
@@ -32,7 +50,25 @@
     "backstory": "Pem was a graduate apprentice at the Scholars' Guild who left after the Compact-refresh ratification because he believed Concordia had become too risk-averse. He has been a Witness for four years.",
     "personality_traits": ["earnest", "wavering", "kind", "actively curious"],
     "speech_patterns": "Asks 'what would you do?' more often than is professional. Apologizes for it, then asks again.",
-    "quest_hooks": ["pems_intervention_question", "the_witness_who_acted"]
+    "quest_hooks": ["pems_intervention_question", "the_witness_who_acted"],
+    "needs": [
+      { "id": "witness_apprenticeship", "priority": "primary", "satisfaction_method": "morning_observation_with_orla" },
+      { "id": "the_intervention_question", "priority": "primary", "satisfaction_method": "private_evening_reflection" }
+    ],
+    "daily_schedule": [
+      { "phase": "morning", "phase_hours": [7, 11], "location": "observation_lattice", "activity": "morning observation under Orla's mentorship", "need_addressed": "witness_apprenticeship", "interactable_by_player": true },
+      { "phase": "midday", "phase_hours": [11, 15], "location": "central_crucible", "activity": "council with Witnesses; usually doesn't take a position", "need_addressed": "witness_apprenticeship", "interactable_by_player": true },
+      { "phase": "afternoon", "phase_hours": [15, 19], "location": "observation_lattice", "activity": "afternoon notes; asks Sael difficult questions", "need_addressed": "the_intervention_question", "interactable_by_player": true },
+      { "phase": "night", "phase_hours": [22, 7], "location": "witness_quarters", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "central_crucible", "dwelling_type": "junior_witness_quarters" },
+    "job": { "profession_id": "witness", "wage_per_diurnal_sparks": 90, "wage_source": "federation_witness_stipend" },
+    "apparel": ["dark_witness_robe_simpler_cut", "observation_belt", "soft_indoor_shoes"],
+    "gear": ["observation_glass_apprentice_grade", "personal_intervention_question_journal", "quill_set"],
+    "resources_consumed": ["paper", "ink", "witness_provisions"],
+    "resources_produced": ["drift_documentation_assist"],
+    "inventory": [{ "item": "observation_glass_apprentice_grade", "qty": 1 }, { "item": "personal_intervention_question_journal", "qty": 1 }, { "item": "drift_marks", "qty": 14 }],
+    "starting_sparks": 620
   },
   {
     "id": "witness_sael",
@@ -48,7 +84,25 @@
     "backstory": "Sael was a Frontier courier who survived an ambush by a hostile city's agents. She arrived at the Crucible to recover and stayed. She has come to believe the Witness charter — pure observation — is morally untenable when the lattice produces drift events that endanger players.",
     "personality_traits": ["principled", "increasingly impatient", "loyal to her colleagues despite disagreement", "decisive"],
     "speech_patterns": "Speaks in indicative, never conditional. Uses 'we should' rather than 'we could'.",
-    "quest_hooks": ["saels_first_intervention", "the_charter_amendment"]
+    "quest_hooks": ["saels_first_intervention", "the_charter_amendment"],
+    "needs": [
+      { "id": "intervention_readiness", "priority": "primary", "satisfaction_method": "morning_combat_drill" },
+      { "id": "charter_amendment_progress", "priority": "primary", "satisfaction_method": "weekly_council_advocacy" }
+    ],
+    "daily_schedule": [
+      { "phase": "morning", "phase_hours": [5, 10], "location": "observation_lattice_practice_yard", "activity": "morning combat drill; sharpens her readiness to intervene the moment she's allowed", "need_addressed": "intervention_readiness", "interactable_by_player": true },
+      { "phase": "midday", "phase_hours": [10, 15], "location": "central_crucible", "activity": "council advocacy; pushes the charter amendment", "need_addressed": "charter_amendment_progress", "interactable_by_player": true },
+      { "phase": "afternoon", "phase_hours": [15, 19], "location": "observation_lattice", "activity": "patrols the perimeter; ready to act if a drift event endangers a player", "need_addressed": "intervention_readiness", "interactable_by_player": true },
+      { "phase": "night", "phase_hours": [22, 5], "location": "witness_quarters", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "central_crucible", "dwelling_type": "warrior_witness_quarters" },
+    "job": { "profession_id": "warrior_witness", "wage_per_diurnal_sparks": 110, "wage_source": "federation_witness_stipend" },
+    "apparel": ["combat_witness_robe_reinforced", "tactical_belt_with_blade_loop", "knee_high_combat_boots"],
+    "gear": ["shortsword_courier_grade", "personal_charter_amendment_draft_journal", "tactical_observation_glass"],
+    "resources_consumed": ["paper", "ink", "weapon_oil", "witness_provisions"],
+    "resources_produced": ["intervention_readiness", "charter_amendment_advocacy"],
+    "inventory": [{ "item": "shortsword_courier_grade", "qty": 1 }, { "item": "personal_charter_amendment_draft_journal", "qty": 1 }, { "item": "drift_marks", "qty": 20 }],
+    "starting_sparks": 980
   },
   {
     "id": "drift_lin_walker",
@@ -63,7 +117,21 @@
     "level": 7,
     "backstory": "An autonomous walker, unaffiliated with the Couriers' Guild or Freenodes, that arrived at the Crucible four years ago and has been walking the perimeter ever since. Sael believes it is delivering something. Orla believes it is malfunctioning. Pem refuses to take a position.",
     "personality_traits": ["reticent", "patient", "unaccountable"],
-    "speech_patterns": "Does not greet. Replies to direct questions with the most recent drift alert it witnessed."
+    "speech_patterns": "Does not greet. Replies to direct questions with the most recent drift alert it witnessed.",
+    "needs": [
+      { "id": "perimeter_walk_completion", "priority": "primary", "satisfaction_method": "continuous_perimeter_patrol" }
+    ],
+    "daily_schedule": [
+      { "phase": "all_diurnal", "phase_hours": [1, 32], "location": "crucible_perimeter", "activity": "walks the perimeter without rest; replies to direct questions with the most recent drift alert", "need_addressed": "perimeter_walk_completion", "interactable_by_player": true }
+    ],
+    "home": { "district": "crucible_perimeter", "dwelling_type": "the_perimeter_itself_walker_does_not_sleep" },
+    "job": { "profession_id": "autonomous_walker", "wage_per_diurnal_sparks": 0, "wage_source": "n/a" },
+    "apparel": ["weathered_walker_cloak", "scarred_traveling_boots"],
+    "gear": ["walker_charm_anchor", "the_most_recent_drift_alert_in_memory"],
+    "resources_consumed": [],
+    "resources_produced": ["perimeter_patrol_coverage", "drift_alert_relay"],
+    "inventory": [],
+    "starting_sparks": 0
   },
   {
     "id": "crucible_apprentice_yorin",
@@ -78,7 +146,26 @@
     "level": 4,
     "backstory": "Yorin arrived at the Crucible six weeks ago with a sword, a notebook, and an opinion. They have not joined the Witnesses because they believe the Witness charter is a refusal-to-act dressed as scholarship. They are, however, a very patient note-taker.",
     "personality_traits": ["young", "blunt", "principled", "genuinely listening"],
-    "speech_patterns": "Bluntly enthusiastic. Names a drift type the moment it appears."
+    "speech_patterns": "Bluntly enthusiastic. Names a drift type the moment it appears.",
+    "needs": [
+      { "id": "self_directed_study", "priority": "primary", "satisfaction_method": "daily_independent_observation" },
+      { "id": "the_charter_question", "priority": "primary", "satisfaction_method": "evening_debate_with_sael" },
+      { "id": "food_lodging", "priority": "secondary", "satisfaction_method": "guest_quarters_pooled" }
+    ],
+    "daily_schedule": [
+      { "phase": "morning", "phase_hours": [7, 12], "location": "observation_lattice", "activity": "independent observation; notes drift patterns the Witnesses haven't yet documented", "need_addressed": "self_directed_study", "interactable_by_player": true },
+      { "phase": "afternoon", "phase_hours": [14, 19], "location": "varies", "activity": "field walking; gets into drift events the Witnesses won't approach", "need_addressed": "self_directed_study", "interactable_by_player": true },
+      { "phase": "evening", "phase_hours": [19, 22], "location": "central_crucible_dining", "activity": "evening debate with Sael; sometimes Pem", "need_addressed": "the_charter_question", "interactable_by_player": true },
+      { "phase": "night", "phase_hours": [22, 7], "location": "guest_quarters", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "central_crucible_guest_quarters", "dwelling_type": "single_guest_room" },
+    "job": { "profession_id": "free_apprentice", "wage_per_diurnal_sparks": 30, "wage_source": "guest_stipend_modest" },
+    "apparel": ["traveler_tunic", "leather_belt_with_notebook_pouch", "sturdy_road_boots", "young_apprentice_overrobe_only_when_meeting_orla"],
+    "gear": ["shortsword_apprentice_grade", "blank_notebook", "drift_observation_quill_set"],
+    "resources_consumed": ["paper", "ink", "guest_quarters_meals"],
+    "resources_produced": ["independent_drift_observations"],
+    "inventory": [{ "item": "shortsword_apprentice_grade", "qty": 1 }, { "item": "blank_notebook", "qty": 1 }, { "item": "drift_marks", "qty": 5 }],
+    "starting_sparks": 240
   },
   {
     "id": "high_priestess_calla_drift",
