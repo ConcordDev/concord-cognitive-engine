@@ -129,7 +129,7 @@ interface Purchase {
 // Constants
 // ---------------------------------------------------------------------------
 
-type Tab = 'browse' | 'myshop' | 'cart' | 'purchases' | 'analytics';
+type Tab = 'browse' | 'myshop' | 'cart' | 'purchases' | 'analytics' | 'watchlist';
 type ViewMode = 'grid' | 'list';
 type SortOption = 'popular' | 'price-asc' | 'price-desc' | 'newest' | 'rating';
 type CategoryFilter =
@@ -381,6 +381,8 @@ function ItemCard({
   viewMode,
   onSelect,
   onRoyaltyClick,
+  isStarred,
+  onToggleStar,
 }: {
   item: MarketplaceItem;
   onPlay: (item: MarketplaceItem) => void;
@@ -389,6 +391,8 @@ function ItemCard({
   viewMode: ViewMode;
   onSelect?: (item: MarketplaceItem) => void;
   onRoyaltyClick?: (itemId: string) => void;
+  isStarred?: boolean;
+  onToggleStar?: (id: string) => void;
 }) {
   const Icon = typeIcon(item.type);
   const audio = hasPreview(item.type);
@@ -458,6 +462,19 @@ function ItemCard({
           <span className="text-xs text-gray-500 ml-1">{item.rating}</span>
         </div>
         <span className="text-neon-green font-bold">{formatPrice(item.prices.basic)}</span>
+        {onToggleStar && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onToggleStar(item.id); }}
+            aria-label={isStarred ? 'Remove from watchlist' : 'Add to watchlist'}
+            title={isStarred ? 'In watchlist' : 'Save to watchlist'}
+            className={cn(
+              'p-1.5 rounded transition-colors',
+              isStarred ? 'text-neon-yellow' : 'text-gray-500 hover:text-neon-yellow'
+            )}
+          >
+            <Star className={cn('w-3.5 h-3.5', isStarred && 'fill-current')} />
+          </button>
+        )}
         <PullToSubstrate domain="marketplace" artifactId={item.id} compact />
         <button
           onClick={(e) => {
@@ -514,6 +531,19 @@ function ItemCard({
           <span className="absolute top-2 left-2 text-[10px] px-2 py-0.5 rounded-full bg-neon-green/20 text-neon-green font-medium">
             Featured
           </span>
+        )}
+        {onToggleStar && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onToggleStar(item.id); }}
+            aria-label={isStarred ? 'Remove from watchlist' : 'Add to watchlist'}
+            title={isStarred ? 'In watchlist' : 'Save to watchlist'}
+            className={cn(
+              'absolute bottom-2 right-2 p-1.5 rounded-full backdrop-blur-sm transition-colors',
+              isStarred ? 'bg-neon-yellow/30 text-neon-yellow' : 'bg-black/40 text-gray-400 hover:text-neon-yellow hover:bg-neon-yellow/15'
+            )}
+          >
+            <Star className={cn('w-3.5 h-3.5', isStarred && 'fill-current')} />
+          </button>
         )}
       </div>
       {/* Body */}
@@ -651,6 +681,29 @@ export default function MarketplaceLensPage() {
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [showFeatures, setShowFeatures] = useState(true);
 
+  // Watchlist — listings the user starred for later.  Persisted in
+  // localStorage keyed by dtuId so it survives reloads without a
+  // backend round-trip.  Bandcamp / OpenSea / Etsy all expect this.
+  const WATCHLIST_KEY = 'concord_marketplace_watchlist';
+  const [watchlist, setWatchlist] = useState<Set<string>>(() => {
+    if (typeof window === 'undefined') return new Set();
+    try {
+      const raw = window.localStorage.getItem(WATCHLIST_KEY);
+      return new Set<string>(raw ? JSON.parse(raw) : []);
+    } catch { return new Set(); }
+  });
+  const persistWatchlist = useCallback((next: Set<string>) => {
+    try { window.localStorage.setItem(WATCHLIST_KEY, JSON.stringify([...next])); } catch { /* ignore quota / private mode */ }
+  }, []);
+  const toggleWatchlist = useCallback((id: string) => {
+    setWatchlist((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      persistWatchlist(next);
+      return next;
+    });
+  }, [persistWatchlist]);
+
   // Lens-scoped keyboard commands. Etsy / Bandcamp idiom: single-letter
   // tab jumps; v swaps grid/list; n opens the new-listing composer.
   useLensCommand(
@@ -659,6 +712,7 @@ export default function MarketplaceLensPage() {
       { id: 'goto-myshop', keys: 'm', description: 'My shop', category: 'navigation', action: () => setTab('myshop') },
       { id: 'goto-cart', keys: 'c', description: 'Cart', category: 'navigation', action: () => setTab('cart') },
       { id: 'goto-purchases', keys: 'p', description: 'Purchases', category: 'navigation', action: () => setTab('purchases') },
+      { id: 'goto-watchlist', keys: 'w', description: 'Watchlist', category: 'navigation', action: () => setTab('watchlist') },
       { id: 'view-toggle', keys: 'v', description: 'Toggle grid / list', category: 'view', action: () => setViewMode((v) => (v === 'grid' ? 'list' : 'grid')) },
       { id: 'new-listing', keys: 'n', description: 'New listing', category: 'actions', action: () => setShowNewListing(true) },
       { id: 'palette',     keys: 'mod+k', description: 'Quick search across all listings', category: 'navigation', action: () => setPaletteOpen(true), global: true },
@@ -1177,6 +1231,7 @@ export default function MarketplaceLensPage() {
 
   const TABS: { id: Tab; label: string; icon: typeof Store }[] = [
     { id: 'browse', label: 'Browse', icon: Store },
+    { id: 'watchlist', label: 'Watchlist', icon: Star },
     { id: 'myshop', label: 'My Shop', icon: LayoutDashboard },
     { id: 'cart', label: 'Cart', icon: ShoppingCart },
     { id: 'purchases', label: 'Purchases', icon: Download },
@@ -1288,6 +1343,11 @@ export default function MarketplaceLensPage() {
             {t.id === 'cart' && cart.length > 0 && (
               <span className="ml-1 px-1.5 py-0.5 rounded-full bg-neon-pink/20 text-neon-pink text-[10px] font-bold">
                 {cart.length}
+              </span>
+            )}
+            {t.id === 'watchlist' && watchlist.size > 0 && (
+              <span className="ml-1 px-1.5 py-0.5 rounded-full bg-neon-yellow/20 text-neon-yellow text-[10px] font-bold">
+                {watchlist.size}
               </span>
             )}
           </button>
@@ -1520,6 +1580,8 @@ export default function MarketplaceLensPage() {
                     onAddToCart={addToCart}
                     onSelect={(i) => setSelectedArtifactId(i.id)}
                     onRoyaltyClick={(id) => setRoyaltyVizDtuId(id)}
+                    isStarred={watchlist.has(item.id)}
+                    onToggleStar={toggleWatchlist}
                   />
                 ))}
               </AnimatePresence>
@@ -2151,6 +2213,91 @@ export default function MarketplaceLensPage() {
                   )}
                 </AnimatePresence>
               </div>
+            </>
+          )}
+        </motion.div>
+      )}
+
+      {/* ================================================================== */}
+      {/* WATCHLIST TAB                                                      */}
+      {/* ================================================================== */}
+      {tab === 'watchlist' && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+          {watchlist.size === 0 ? (
+            <div className="text-center py-16 text-gray-500">
+              <Star className="w-10 h-10 mx-auto mb-3 opacity-40" />
+              <p className="font-medium text-gray-400 mb-1">Watchlist empty</p>
+              <p className="text-sm text-gray-600 mb-5">
+                Star any listing in Browse to save it here.  Watchlist persists locally on this device.
+              </p>
+              <button onClick={() => setTab('browse')} className="btn-neon purple text-sm">
+                <Store className="w-4 h-4" /> Browse listings
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-white">
+                  Your watchlist <span className="text-gray-500 text-sm font-normal">({watchlist.size})</span>
+                </h3>
+                <button
+                  onClick={() => {
+                    setWatchlist(new Set());
+                    persistWatchlist(new Set());
+                  }}
+                  className="text-xs text-gray-400 hover:text-red-400 px-2 py-1 rounded border border-lattice-border hover:border-red-500/30"
+                >
+                  Clear all
+                </button>
+              </div>
+              <div
+                className={cn(
+                  viewMode === 'grid'
+                    ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4'
+                    : 'space-y-2'
+                )}
+              >
+                <AnimatePresence>
+                  {filteredItems
+                    .filter((item) => watchlist.has(item.id))
+                    .map((item) => (
+                      <ItemCard
+                        key={item.id}
+                        item={item}
+                        viewMode={viewMode}
+                        isPlaying={previewItem?.id === item.id && isPlaying}
+                        onPlay={handlePlay}
+                        onAddToCart={addToCart}
+                        onSelect={(i) => setSelectedArtifactId(i.id)}
+                        onRoyaltyClick={(id) => setRoyaltyVizDtuId(id)}
+                        isStarred
+                        onToggleStar={toggleWatchlist}
+                      />
+                    ))}
+                </AnimatePresence>
+              </div>
+              {/* Listings the user starred but that fell out of the
+                  current filter set — show their IDs so they can find them
+                  with a clearer query. */}
+              {(() => {
+                const visibleIds = new Set(filteredItems.filter((i) => watchlist.has(i.id)).map((i) => i.id));
+                const orphans = [...watchlist].filter((id) => !visibleIds.has(id));
+                if (orphans.length === 0) return null;
+                return (
+                  <div className="mt-6 p-4 rounded-lg border border-lattice-border bg-lattice-deep/30 text-xs text-gray-500">
+                    <div className="text-gray-400 mb-2 font-medium">
+                      {orphans.length} starred item{orphans.length === 1 ? '' : 's'} not loaded in current view
+                    </div>
+                    <div className="font-mono text-[10px] text-gray-600 break-all">{orphans.join(', ')}</div>
+                    <button
+                      onClick={() => setTab('browse')}
+                      className="mt-2 text-[11px] text-neon-purple hover:underline"
+                    >
+                      Reset filters in Browse →
+                    </button>
+                  </div>
+                );
+              })()}
             </>
           )}
         </motion.div>
