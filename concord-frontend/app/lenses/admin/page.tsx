@@ -1,6 +1,7 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { useQuery } from '@tanstack/react-query';
 import { api, apiHelpers } from '@/lib/api/client';
@@ -269,6 +270,27 @@ export default function AdminDashboardPage() {
   const [showBackupHealth, setShowBackupHealth] = useState(false);
   const [showCDNStatus, setShowCDNStatus] = useState(false);
   const [showCodeEngine, setShowCodeEngine] = useState(false);
+
+  // Admin shortcuts: a/p/m/k/o/q/l toggle the inspect panels (matches
+  // the order they appear in the sidebar), space toggles auto-refresh.
+  // Esc closes everything (panic-close).
+  useLensCommand(
+    [
+      { id: 'auto-refresh', keys: 'space', description: 'Toggle auto-refresh', category: 'view',
+        action: () => setAutoRefresh((v) => !v) },
+      { id: 'treasury',     keys: 't', description: 'Treasury panel',     category: 'view', action: () => setShowTreasury((v) => !v) },
+      { id: 'audit-log',    keys: 'l', description: 'Audit log',          category: 'view', action: () => setShowAuditLog((v) => !v) },
+      { id: 'plugins',      keys: 'p', description: 'Plugins',            category: 'view', action: () => setShowPlugins((v) => !v) },
+      { id: 'macros',       keys: 'm', description: 'Macros',             category: 'view', action: () => setShowMacros((v) => !v) },
+      { id: 'api-keys',     keys: 'k', description: 'API keys',           category: 'view', action: () => setShowApiKeys((v) => !v) },
+      { id: 'orgs',         keys: 'o', description: 'Organizations',      category: 'view', action: () => setShowOrgs((v) => !v) },
+      { id: 'quality',      keys: 'q', description: 'Quality',            category: 'view', action: () => setShowQuality((v) => !v) },
+      { id: 'sys-health',   keys: 'h', description: 'System health',      category: 'view', action: () => setShowSysHealth((v) => !v) },
+      { id: 'panic-close',  keys: 'esc', description: 'Close all panels', category: 'navigation',
+        action: () => { setShowTreasury(false); setShowPlugins(false); setShowMacros(false); setShowApiKeys(false); setShowOrgs(false); setShowQuality(false); setShowAuditLog(false); setShowPermMatrix(false); setShowSysHealth(false); setShowBackupHealth(false); setShowCDNStatus(false); setShowCodeEngine(false); } },
+    ],
+    { lensId: 'admin' }
+  );
   const [showRepairDashboard, setShowRepairDashboard] = useState(false);
 
   // Backend action hooks

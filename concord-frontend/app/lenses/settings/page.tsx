@@ -5,6 +5,7 @@ import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { MouseSensitivitySlider } from '@/components/settings/MouseSensitivitySlider';
 import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useCallback, useState } from 'react';
 import { Save, Loader2 } from 'lucide-react';
 
@@ -44,6 +45,15 @@ export default function SettingsPage() {
       setSaving(false);
     }
   }, [createSnapshot]);
+
+  // ⌘S captures a snapshot — matches the GitHub-settings idiom.
+  useLensCommand(
+    [
+      { id: 'snapshot', keys: 'mod+s', description: 'Capture preset snapshot', category: 'actions',
+        action: () => { if (!saving) captureSnapshot(); }, global: true },
+    ],
+    { lensId: 'settings' }
+  );
 
   return (
     <LensShell lensId="settings" asMain={false}>

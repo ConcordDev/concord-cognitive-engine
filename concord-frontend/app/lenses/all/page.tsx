@@ -4,9 +4,10 @@ import Link from 'next/link';
 import { LensShell } from '@/components/lens/LensShell';
 import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Search } from 'lucide-react';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LENS_CATEGORIES, getLensesByCategory } from '@/lib/lens-registry';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -19,6 +20,14 @@ export default function AllLensesPage() {
   useLensNav('all');
   const { isLive, lastUpdated } = useRealtimeLens('all');
   const [q, setQ] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useLensCommand(
+    [
+      { id: 'focus-search', keys: '/', description: 'Search lenses', category: 'navigation', action: () => searchInputRef.current?.focus() },
+    ],
+    { lensId: 'all' }
+  );
 
   const grouped = useMemo(() => {
     const query = q.trim().toLowerCase();
@@ -57,9 +66,11 @@ export default function AllLensesPage() {
         <label className="relative block">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
           <input
+            ref={searchInputRef}
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search by lens name, description, or keyword"
+            onKeyDown={(e) => { if (e.key === 'Escape') { setQ(''); searchInputRef.current?.blur(); } }}
+            placeholder="Search by lens name, description, or keyword  ·  / focuses"
             className="w-full bg-lattice-void border border-lattice-border rounded-lg pl-9 pr-3 py-2 text-sm"
           />
         </label>
