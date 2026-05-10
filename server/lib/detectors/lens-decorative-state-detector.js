@@ -77,10 +77,33 @@ function literalEqualitiesFor(content, varName) {
   return literals;
 }
 
-// Heuristic: variables read this many times or more are assumed to be
-// consumed correctly via function calls / derived state, even if not all
-// literal-equality branches exist. Tunes the false-positive rate of rule 3.
-const HEAVY_USE_THRESHOLD = 10;
+// "Consumed indirectly" — the variable shows up in patterns that indicate
+// derived-data consumption rather than direct JSX equality branching:
+//
+//   - Function-call argument:  `getTypeForTab(activeMode)`
+//   - Object index lookup:     `LABELS[viewMode]`
+//   - Property-equality lookup: `t.id === activeTab`  (array.find/filter style)
+//   - Object-spread / template-literal interpolation: `${varName}` style
+//
+// All these mean the lens IS reactive to the mode change even without
+// per-literal JSX render branches.  Skips rule 3 for these to avoid false
+// positives on data-driven mode patterns.
+function consumedIndirectly(content, varName, setter) {
+  if (!varName) return false;
+  // Mask setter call sites so a `setX(x + 1)` recursive write doesn't count.
+  const masked = content.replace(new RegExp(`\\b${setter}\\s*\\([^)]*\\)`, "g"), "/*SETTER*/");
+  // Function-call argument: `(varName,` or `(varName)` or `, varName,` or `, varName)`.
+  if (new RegExp(`[,\\(]\\s*${varName}\\s*[,\\)]`).test(masked)) return true;
+  // Object-index lookup: `[varName]`.
+  if (new RegExp(`\\[\\s*${varName}\\s*\\]`).test(masked)) return true;
+  // Property-equality lookup: `\\.something\\s*===\\s*varName` or
+  // `varName\\s*===\\s*\\.something` — array-find / filter pattern.
+  if (new RegExp(`\\.\\w+\\s*===\\s*${varName}\\b`).test(masked)) return true;
+  if (new RegExp(`\\b${varName}\\s*===\\s*\\w+\\.\\w+`).test(masked)) return true;
+  // Template-literal interpolation: `\${varName}`.
+  if (new RegExp(`\\$\\{\\s*${varName}\\s*[}|]`).test(masked)) return true;
+  return false;
+}
 
 // Setter call sites: `setX(` — count ignoring the destructure declaration.
 function setterCallCount(content, setter) {
@@ -234,15 +257,20 @@ export async function runLensDecorativeStateDetector({ root, opts = {} } = {}) {
         // Rule 3: literal-union view-mode pattern. Only fires when:
         //   - The variable name semantically suggests view-mode
         //   - It has at least 1 matched render branch (proves SOME
-        //     branching) but not all literals (proves the rest is missing)
-        //   - The variable's read count is bounded (lots of reads imply
-        //     consumption via function calls / derived state, e.g.
-        //     `currentType = getTypeForTab(activeMode)` patterns)
+        //     branching) but >= 2 literals are missing (binary toggles
+        //     with else-fallback are valid; real bugs always miss
+        //     multiple modes)
+        //   - The variable is NOT consumed via function-call argument
+        //     or object-index position (those patterns mean the mode
+        //     drives data fetch / derived state, e.g.
+        //     `currentType = getTypeForTab(activeMode)` — consumed
+        //     correctly even without per-mode JSX branches)
         const literals = resolveTypeLiterals(content, d.typeBlob);
-        if (literals && literals.size >= 2 && setCount >= 1 && isViewModeName(d.varName) && readCount < HEAVY_USE_THRESHOLD) {
+        if (literals && literals.size >= 2 && setCount >= 1 && isViewModeName(d.varName) && !consumedIndirectly(content, d.varName, d.setter)) {
           const equalities = literalEqualitiesFor(content, d.varName);
           const matchedEqualities = new Set([...equalities].filter(l => literals.has(l)));
-          if (matchedEqualities.size >= 1 && matchedEqualities.size < literals.size) {
+          const missingCount = literals.size - matchedEqualities.size;
+          if (matchedEqualities.size >= 1 && missingCount >= 2) {
             findings.push({
               id: "lens_view_mode_unbranched",
               severity: "high",

@@ -118,7 +118,7 @@ interface NewsItem {
 }
 
 type TimeRange = '1H' | '24H' | '7D' | '30D' | '90D' | '1Y' | 'ALL';
-type ViewMode = 'overview' | 'portfolio' | 'trade' | 'orders' | 'alerts' | 'news';
+type ViewMode = 'overview' | 'trade' | 'orders' | 'alerts' | 'news';
 type ChartType = 'line' | 'candle' | 'area';
 
 /** Hook: animates a number from 0 to `target` over `duration` ms on mount / when target changes. */
@@ -1098,7 +1098,7 @@ export default function FinanceLensPage() {
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold">Recent Transactions</h3>
             <button
-              onClick={() => setViewMode('portfolio')}
+              onClick={() => setViewMode('orders')}
               className="text-sm text-neon-cyan hover:underline"
             >
               View all
