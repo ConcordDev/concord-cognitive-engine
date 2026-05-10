@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from "@/hooks/useLensCommand";
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useUIStore } from '@/store/ui';
@@ -163,6 +164,14 @@ const INITIAL_ALERTS: PriceAlert[] = [];
 const INITIAL_NEWS: NewsItem[] = [];
 
 export default function FinanceLensPage() {
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  useLensCommand(
+    [
+      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
+    ],
+    { lensId: "finance" }
+  );
+
   useLensNav('finance');
   const {
     isError: isError,
@@ -415,7 +424,7 @@ export default function FinanceLensPage() {
       ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
       ctx.font = '10px monospace';
       ctx.textAlign = 'right';
-      ctx.fillText(`$${(val / 1000).toFixed(1)}k`, padding - 5, y + 4);
+      ctx.fillText(`${(val / 1000).toFixed(1)}k`, padding - 5, y + 4);
     }
 
     if (chartType === 'line' || chartType === 'area') {
@@ -614,9 +623,9 @@ export default function FinanceLensPage() {
 
   const formatCurrency = (value: number, compact = false) => {
     if (compact) {
-      if (value >= 1e9) return `$${(value / 1e9).toFixed(2)}B`;
-      if (value >= 1e6) return `$${(value / 1e6).toFixed(2)}M`;
-      if (value >= 1e3) return `$${(value / 1e3).toFixed(2)}K`;
+      if (value >= 1e9) return `${(value / 1e9).toFixed(2)}B`;
+      if (value >= 1e6) return `${(value / 1e6).toFixed(2)}M`;
+      if (value >= 1e3) return `${(value / 1e3).toFixed(2)}K`;
     }
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -896,7 +905,8 @@ export default function FinanceLensPage() {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
-                  type="text"
+                  ref={searchInputRef}
+              type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search assets..."

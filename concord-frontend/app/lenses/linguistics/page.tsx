@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from "@/hooks/useLensCommand";
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { api } from '@/lib/api/client';
@@ -77,6 +78,14 @@ const SUBFIELD_COLORS: Record<LingSubfield, string> = {
 /* ------------------------------------------------------------------ */
 
 export default function LinguisticsLensPage() {
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  useLensCommand(
+    [
+      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
+    ],
+    { lensId: "linguistics" }
+  );
+
   useLensNav('linguistics');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('linguistics');
 
@@ -391,7 +400,8 @@ export default function LinguisticsLensPage() {
             <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
               <input
-                value={searchQuery}
+                ref={searchInputRef}
+              value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 placeholder="Search..."
                 className="w-full pl-10 pr-4 py-2 bg-lattice-surface border border-lattice-border rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-pink-400"

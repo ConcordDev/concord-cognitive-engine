@@ -1,11 +1,12 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from "@/hooks/useLensCommand";
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
-import { useState } from 'react';
+import { useState, useRef} from 'react';
 import { motion } from 'framer-motion';
 import { FileSearch, AlertTriangle, Check, X, Eye, Layers, ChevronDown, Link2, ShieldCheck, ClipboardList, ArrowRight, Hash, Loader2, XCircle, Zap, BarChart3 } from 'lucide-react';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -36,6 +37,14 @@ interface AuditEntry {
 }
 
 export default function AuditLensPage() {
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  useLensCommand(
+    [
+      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
+    ],
+    { lensId: "audit" }
+  );
+
   useLensNav('audit');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('audit');
   const [filter, setFilter] = useState<string>('all');
@@ -207,6 +216,7 @@ export default function AuditLensPage() {
         <div className="flex flex-wrap gap-4">
           <div className="flex-1 min-w-[200px]">
             <input
+              ref={searchInputRef}
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}

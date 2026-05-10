@@ -5,6 +5,7 @@ import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from "@/hooks/useLensCommand";
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ds } from '@/lib/design-system';
@@ -58,6 +59,14 @@ const ANCHOR_TYPES = ['Plane', 'Point', 'Image', 'Face', 'Object', 'Geo'];
 const MODEL_FORMATS = ['GLTF', 'GLB', 'USDZ', 'OBJ', 'FBX', 'STL'];
 
 export default function ARLensPage() {
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  useLensCommand(
+    [
+      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
+    ],
+    { lensId: "ar" }
+  );
+
   useLensNav('ar');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('ar');
 

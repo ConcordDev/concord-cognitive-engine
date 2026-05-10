@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from "@/hooks/useLensCommand";
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ds } from '@/lib/design-system';
@@ -61,6 +62,14 @@ const EXPENSE_CATEGORIES = ['Food', 'Vet', 'Medication', 'Grooming', 'Accessorie
 const VACCINE_TYPES = ['Rabies', 'DHPP', 'Bordetella', 'Leptospirosis', 'Lyme', 'FVRCP', 'FeLV', 'Canine Influenza', 'Other'];
 
 export default function PetsLensPage() {
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  useLensCommand(
+    [
+      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
+    ],
+    { lensId: "pets" }
+  );
+
   useLensNav('pets');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('pets');
 

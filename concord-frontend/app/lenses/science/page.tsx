@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from "@/hooks/useLensCommand";
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ds } from '@/lib/design-system';
@@ -339,6 +340,14 @@ function getStatusesForTab(tab: ModeTab): string[] {
 /* ------------------------------------------------------------------ */
 
 export default function ScienceLensPage() {
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  useLensCommand(
+    [
+      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
+    ],
+    { lensId: "science" }
+  );
+
   useLensNav('science');
   const {
     latestData: realtimeData,
