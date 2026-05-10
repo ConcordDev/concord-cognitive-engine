@@ -294,6 +294,24 @@ export default function SRSLensPage() {
     setCurrentIndex(prev => prev + 1);
   }, [current, reviewItem]);
 
+  // Anki-style review keyboard shortcuts.  Only active in the study
+  // view because pressing 1-4 elsewhere would clash with section nav.
+  useLensCommand(
+    [
+      { id: 'srs-flip', keys: 'space', description: 'Flip card / show answer', category: 'actions',
+        action: () => { if (view === 'study' && current && !showAnswer) setShowAnswer(true); }, global: true },
+      { id: 'srs-again', keys: '1', description: 'Again (review again soon)', category: 'actions',
+        action: () => { if (view === 'study' && showAnswer && current) handleReview(0); }, global: true },
+      { id: 'srs-hard', keys: '2', description: 'Hard', category: 'actions',
+        action: () => { if (view === 'study' && showAnswer && current) handleReview(2); }, global: true },
+      { id: 'srs-good', keys: '3', description: 'Good', category: 'actions',
+        action: () => { if (view === 'study' && showAnswer && current) handleReview(4); }, global: true },
+      { id: 'srs-easy', keys: '4', description: 'Easy', category: 'actions',
+        action: () => { if (view === 'study' && showAnswer && current) handleReview(5); }, global: true },
+    ],
+    { lensId: 'srs' }
+  );
+
   const handleCreateCard = useCallback(() => {
     if (!newFront.trim() || !newBack.trim()) return;
     const tags = newTags.split(',').map(t => t.trim()).filter(Boolean);
