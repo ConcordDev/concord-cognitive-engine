@@ -9729,6 +9729,8 @@ async function runMacro(domain, name, input, ctx) {
     dream: new Set(["recent_for_player", "history", "list_for_player"]),
     fidelity: new Set(["drift", "summary"]),
     embodied: new Set(["signals_for_player", "signals_for_world", "channels"]),
+    scars: new Set(["list"]),
+    mount: new Set(["bond_state"]),
     reflex: new Set(["status", "recent_proposals", "history"]),
     chat: new Set(["timeline", "summary"]),
     semantic: new Set(["status", "similar", "embed", "compare", "search_thoughts"]),
@@ -67982,6 +67984,187 @@ register("lattice", "drift_alert", (ctx, input = {}) => {
 
 structuredLog("info", "phase2_substrate_reveal_init", {
   detail: "Phase 2 macros registered: refusal/npc/forward_sim/dream/lattice.drift_alert",
+});
+
+// ── Phase 3: World-as-body — scars, mount bonding, embodied HUD, fidelity ────
+
+// Phase 3.1: Embodied 7-channel HUD (idea #13).
+register("embodied", "signals_for_player", async (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = input.userId || ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const worldId = input.worldId || "concordia-hub";
+  try {
+    // Player position from city_presence (mig 060) — same source the
+    // combat-reach validator uses, so HUD readings match the
+    // server-side ground truth.
+    const pos = db.prepare(`
+      SELECT x, z FROM city_presence WHERE user_id = ? AND world_id = ?
+    `).get(userId, worldId);
+    const sigMod = await import("./lib/embodied/signals.js");
+    const signals = sigMod.signalsForWorld(db, worldId, pos ? { x: pos.x, z: pos.z } : null);
+    return { ok: true, userId, worldId, position: pos || null, signals };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Per-player 7-channel embodied signals (temp/humidity/air/light/sound/pressure/stress)." });
+
+register("embodied", "signals_for_world", async (_ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const worldId = input.worldId || "concordia-hub";
+  try {
+    const sigMod = await import("./lib/embodied/signals.js");
+    return { ok: true, worldId, signals: sigMod.signalsForWorld(db, worldId, null) };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "World-wide rolled-up signals (no per-cell location filter)." });
+
+register("embodied", "channels", (_ctx, _input = {}) => {
+  return {
+    ok: true,
+    channels: [
+      { id: "thermal_os.ambient_temp",       label: "Temperature",  unit: "°C" },
+      { id: "chemical_os.humidity",          label: "Humidity",     unit: "%" },
+      { id: "chemical_os.air_quality",       label: "Air Quality",  unit: "AQI" },
+      { id: "sight_os.illumination",         label: "Light",        unit: "lux" },
+      { id: "sonic_os.ambient_db",           label: "Sound",        unit: "dB" },
+      { id: "tactile_force_os.ambient_pressure",  label: "Pressure",    unit: "kPa" },
+      { id: "tactile_force_os.structural_stress", label: "Structure",   unit: "kN" },
+    ],
+  };
+}, { note: "Channel descriptors for the 7-channel embodied HUD." });
+
+// Phase 3.2: Pain → scars (idea #12).
+register("scars", "list", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = input.userId || ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  try {
+    const rows = db.prepare(`
+      SELECT id, user_id, avatar_id, region, source, severity, acquired_at, visible_label
+      FROM player_scars WHERE user_id = ?
+      ORDER BY acquired_at DESC LIMIT 100
+    `).all(userId);
+    return { ok: true, userId, scars: rows };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "List visible scars for a player. Severity 0-1." });
+
+register("scars", "record", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = input.userId || ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { region, source, severity = 0.3, avatarId = null, label = null } = input || {};
+  if (!region || !source) return { ok: false, reason: "missing_region_or_source" };
+  try {
+    const visible = label || `${region}-${source}`;
+    db.prepare(`
+      INSERT INTO player_scars (user_id, avatar_id, region, source, severity, visible_label)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(userId, avatarId, region, source, Number(severity) || 0, visible);
+    return { ok: true, userId, recorded: true };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Record a scar. Called by repair-cycle when cumulative pain crosses a threshold." });
+
+// Phase 3.3: Mount bonding (idea #11). Reads existing player_companions
+// JSON state + writes a relationship_log entry. Mount substrate already
+// tracks {stamina, hunger, loyalty, gait_skill}; we extend the meta JSON
+// in-place rather than schema-add since that table is already JSON-bag'd.
+register("mount", "bond_event", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = input.userId || ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  const { mountId, eventKind, magnitude = 0.05, note = null } = input || {};
+  if (!mountId || !eventKind) return { ok: false, reason: "missing_mount_or_event" };
+  try {
+    const row = db.prepare(`SELECT id, owner_id, state_json FROM player_companions WHERE id = ?`).get(mountId);
+    if (!row) return { ok: false, reason: "mount_not_found" };
+    if (row.owner_id !== userId) return { ok: false, reason: "not_owner" };
+    let state = {};
+    try { state = JSON.parse(row.state_json || "{}"); } catch { state = {}; }
+    state.loyalty = Math.max(0, Math.min(1, Number(state.loyalty || 0.5) + Number(magnitude || 0)));
+    if (!Array.isArray(state.relationship_log)) state.relationship_log = [];
+    state.relationship_log.push({
+      kind: eventKind,
+      magnitude: Number(magnitude),
+      ts: Date.now(),
+      note: note ? String(note).slice(0, 200) : null,
+    });
+    if (state.relationship_log.length > 100) {
+      state.relationship_log = state.relationship_log.slice(-100);
+    }
+    db.prepare(`UPDATE player_companions SET state_json = ? WHERE id = ?`).run(JSON.stringify(state), mountId);
+    return { ok: true, mountId, loyalty: state.loyalty, logSize: state.relationship_log.length };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Record a mount-bonding event. Adjusts loyalty + appends to relationship_log." });
+
+register("mount", "bond_state", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = input.userId || ctx?.actor?.userId;
+  const { mountId } = input || {};
+  if (!mountId) return { ok: false, reason: "missing_mount" };
+  try {
+    const row = db.prepare(`SELECT id, owner_id, state_json FROM player_companions WHERE id = ?`).get(mountId);
+    if (!row) return { ok: false, reason: "mount_not_found" };
+    if (userId && row.owner_id !== userId) return { ok: false, reason: "not_owner" };
+    let state = {};
+    try { state = JSON.parse(row.state_json || "{}"); } catch { state = {}; }
+    return {
+      ok: true,
+      mountId,
+      loyalty: state.loyalty ?? 0.5,
+      stamina: state.stamina ?? 1,
+      hunger: state.hunger ?? 0,
+      personality_traits: state.personality_traits ?? [],
+      recent_events: (state.relationship_log || []).slice(-20),
+    };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Current mount state + last 20 relationship-log entries." });
+
+// Phase 3.4: Fidelity multi-avatar drift (idea #23).
+register("fidelity", "drift", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = input.userId || ctx?.actor?.userId;
+  const { avatarId } = input || {};
+  if (!userId || !avatarId) return { ok: false, reason: "missing_user_or_avatar" };
+  try {
+    const row = db.prepare(`
+      SELECT avatar_id, user_id, skill_vector_json, baseline_json, drift_score, last_updated_at
+      FROM avatar_drift WHERE avatar_id = ?
+    `).get(avatarId);
+    if (!row) {
+      // First read for this avatar — return zero drift, which the
+      // forward-sim cycle / repair-cycle / skill-evolve hooks will
+      // start populating on next pass.
+      return { ok: true, avatarId, userId, drift: 0, baseline: {}, vector: {}, virgin: true };
+    }
+    let vector = {};
+    let baseline = {};
+    try { vector = JSON.parse(row.skill_vector_json || "{}"); } catch { vector = {}; }
+    try { baseline = JSON.parse(row.baseline_json || "{}"); } catch { baseline = {}; }
+    return {
+      ok: true,
+      avatarId, userId,
+      drift: row.drift_score,
+      baseline, vector,
+      lastUpdatedAt: row.last_updated_at,
+      virgin: false,
+    };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Per-avatar drift vs canonical 'true self' baseline. Drift > 0.5 triggers Fidelity dialogue path." });
+
+register("fidelity", "summary", (ctx, input = {}) => {
+  if (!db) return { ok: false, reason: "no_db" };
+  const userId = input.userId || ctx?.actor?.userId;
+  if (!userId) return { ok: false, reason: "no_actor" };
+  try {
+    const rows = db.prepare(`
+      SELECT avatar_id, drift_score, last_updated_at
+      FROM avatar_drift WHERE user_id = ?
+      ORDER BY drift_score DESC
+    `).all(userId);
+    return { ok: true, userId, avatars: rows, total: rows.length };
+  } catch (err) { return { ok: false, error: String(err?.message || err) }; }
+}, { note: "Summary of all avatars' drift scores for a player." });
+
+structuredLog("info", "phase3_world_as_body_init", {
+  detail: "Phase 3 macros registered: embodied/scars/mount/fidelity",
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
