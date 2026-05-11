@@ -211,22 +211,21 @@ jobs:
         # rendered log is hard to scrape.
         run: |
           set -o pipefail
-          # Excluded from the c8 run because their internal timeouts (30s)
-          # consistently hit under c8 instrumentation overhead, causing
-          # `cancelledByParent` subtests that propagate as exit 1 even
-          # when the test would otherwise pass uninstrumented:
-          #   - auth-security: long auth flow with 30s timeout
-          #   - storage-parity: heavy DB round-trip
-          #   - adversarial-critical-endpoints: 30s timeout, exercises 100+ routes
-          #   - edge-cases-critical-paths: 30s timeout on async chain
-          #   - error-paths: 30s timeout on error-handler matrix
-          # These files still run in the standard `npm test` suite without
-          # c8 instrumentation (see test:behavior). They contribute to
-          # coverage measurement only when they don't time out, which
-          # under c8 they consistently do.
+          # Excluded from the c8 run because they spawn child processes
+          # or perform heavy DB round-trips that conflict with c8's
+          # parent-process instrumentation. Their assertions still run
+          # in npm test (without c8) via the standard suite.
+          #
+          # Sprint 33 re-audit (post PR #330): adversarial-critical-
+          # endpoints, edge-cases-critical-paths, error-paths were
+          # ADDED to the exclusion list in commit 85f18033 based on a
+          # local repro that passed --test-timeout=30000 (which forces
+          # cancellations). CI doesn't pass that flag — without it,
+          # those 3 files complete cleanly under c8 and contribute
+          # ~4.6pp of additional statement coverage. Re-included.
           npx c8 --check-coverage --statements 45 --branches 45 --functions 33 --lines 45 \
             node --test --test-force-exit \
-            $(ls tests/*.test.js | grep -v -E 'auth-security|storage-parity|adversarial-critical-endpoints|edge-cases-critical-paths|error-paths') \
+            $(ls tests/*.test.js | grep -v -E 'auth-security|storage-parity') \
             2>&1 | tee /tmp/server-coverage.log
 
       - name: Surface failing tests on coverage step failure
