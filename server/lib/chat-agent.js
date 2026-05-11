@@ -1,0 +1,299 @@
+// server/lib/chat-agent.js
+//
+// Sprint 11 — Agent Mode chat orchestrator.
+//
+// Runs an agentic tool-use loop where the brain can call into:
+//   - web_search       (any current information)
+//   - run_compute      (chemistry/physics/math/quantum/engineering/stats)
+//   - browse_url       (read any web page)
+//   - run_lens_action  (invoke ANY of Concord's 200+ lens domain actions)
+//   - create_dtu       (mint a DTU from the conversation)
+//   - expert_mode      (Perplexity-style cited answer with revolving-door corpus)
+//
+// Critical wire-ups vs the old chat.respond path:
+//   • Brain calls go through Sprint 10's brainChat() router so the
+//     user's BYO API key kicks in if set. Free Ollama is the fallback.
+//   • Tool calls + artifacts are streamed back to the caller as a
+//     structured array so the UI can render them inline as they happen.
+//   • Provenance metadata (which provider/model produced each turn)
+//     is returned alongside the answer so the citation chips work.
+//   • DTUs created during the conversation are stamped with
+//     minted_by_provider + minted_by_model (Sprint 10 substrate).
+//
+// Loop bound: at most AGENT_MAX_TURNS interleaved (brain reply →
+// tool exec → brain reply). Caps at 5 by default to match the
+// existing chat.respond contract.
+
+import { brainChat, provenanceFrom } from "./byo-router.js";
+
+const AGENT_MAX_TURNS = 5;
+const MAX_TOOL_RESULT_LEN = 12_000;
+
+const TOOL_SCHEMA_BLOCK = `You have access to the following tools. To use one, include a marker in your response EXACTLY like this (one per line, multiple allowed):
+[TOOL_CALL: {"tool": "tool_name", "params": {...}}]
+
+Available tools:
+- web_search: Search the web for current information. Params: {"query": "search terms"}
+- run_compute: Run a math/physics/chemistry/quantum/engineering calculation. Params: {"key": "module.function", "input": {...}}
+- browse_url: Fetch and read a web page. Params: {"url": "https://...", "selector": "optional css selector"}
+- run_lens_action: Invoke ANY of Concord's 200+ lens domain actions. Params: {"domain": "domain_name", "action": "action_name", "params": {...}}
+- create_dtu: Mint a new DTU from the conversation. Params: {"title": "DTU title", "summary": "brief", "tags": ["tag1"]}
+- expert_mode: Run a Perplexity-style cited answer over the global corpus. Params: {"query": "your question"}
+
+Rules:
+- Use a tool when the task genuinely requires it. Don't fabricate results.
+- After the tool call marker(s), STOP and wait for results. Do not continue the response in the same turn.
+- For any math/calculation use run_compute. Never guess at numbers.
+- For current events / facts you don't know, use web_search.
+- For specialized expertise (legal, finance, music, code, design, atlas, etc.) use run_lens_action.
+- For deep cited research over Concord's substrate, use expert_mode.`;
+
+/**
+ * Parse [TOOL_CALL: {...}] markers out of a brain response.
+ */
+export function parseToolCalls(text) {
+  const calls = [];
+  const re = /\[TOOL_CALL:\s*(\{[\s\S]*?\})\s*\]/g;
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    try {
+      const parsed = JSON.parse(m[1]);
+      if (parsed?.tool) {
+        calls.push({ tool: String(parsed.tool), params: parsed.params || {}, raw: m[0] });
+      }
+    } catch { /* skip malformed */ }
+  }
+  return calls;
+}
+
+/** Strip tool-call markers from the visible answer body. */
+export function stripToolCalls(text) {
+  return text
+    .replace(/\[TOOL_CALL:\s*\{[\s\S]*?\}\s*\]/g, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+/**
+ * Execute a single tool call against the runMacro/LENS_ACTIONS surface.
+ *
+ * @param {object} ctx                runMacro ctx with { db, actor }
+ * @param {Function} runMacro        injected from server.js
+ * @param {Map} lensActions          injected LENS_ACTIONS map (domain.action → handler)
+ * @param {object} call              { tool, params }
+ * @returns {Promise<{tool, ok, result?, error?, artifact?}>}
+ */
+export async function executeToolCall(ctx, runMacro, lensActions, call) {
+  try {
+    switch (call.tool) {
+      case "web_search": {
+        const r = await runMacro("tools", "web_search", {
+          query: String(call.params.query || ""),
+        }, ctx);
+        if (!r?.ok) return { tool: call.tool, ok: false, error: r?.error || "web_search failed" };
+        return {
+          tool: call.tool, ok: true,
+          query: call.params.query,
+          result: (r.summary || r.text || "").slice(0, MAX_TOOL_RESULT_LEN),
+        };
+      }
+      case "run_compute": {
+        const { key = "", input = {} } = call.params || {};
+        if (!key.includes(".")) {
+          return { tool: call.tool, ok: false, error: 'run_compute requires "module.function" key' };
+        }
+        const [modName, fnName] = key.split(".");
+        try {
+          const { loadComputeModule } = await import("./compute/index.js");
+          const mod = await loadComputeModule(modName);
+          if (!mod || typeof mod[fnName] !== "function") {
+            return { tool: call.tool, ok: false, error: `unknown compute function ${key}` };
+          }
+          const result = mod[fnName](input);
+          return { tool: call.tool, ok: true, key, result };
+        } catch (err) {
+          return { tool: call.tool, ok: false, error: `compute error: ${err?.message || err}` };
+        }
+      }
+      case "browse_url": {
+        const { url = "", selector } = call.params || {};
+        if (!String(url).startsWith("http")) {
+          return { tool: call.tool, ok: false, error: "browse_url requires a valid http(s) URL" };
+        }
+        try {
+          const { getBrowserEngine } = await import("./browser-engine.js");
+          const eng = getBrowserEngine();
+          const page = await Promise.race([
+            eng.fetchRenderedPage(url, { selector }),
+            new Promise((_, rej) => {
+              setTimeout(() => rej(new Error("timeout")), 15_000);
+            }),
+          ]);
+          return {
+            tool: call.tool, ok: true, url,
+            title: page?.title || "",
+            text: (page?.text || page?.content || "").slice(0, 4000),
+          };
+        } catch (err) {
+          return { tool: call.tool, ok: false, error: `browse_url failed: ${err?.message}` };
+        }
+      }
+      case "run_lens_action": {
+        const domain = String(call.params.domain || "");
+        const action = String(call.params.action || "");
+        const key = `${domain}.${action}`;
+        if (!lensActions || !lensActions.get) {
+          // Map not injected; surface a hint rather than throw.
+          return { tool: call.tool, ok: false, error: "lens_actions_unavailable" };
+        }
+        const handler = lensActions.get(key);
+        if (!handler) {
+          return { tool: call.tool, ok: false, error: `unknown lens action: ${key}` };
+        }
+        try {
+          const result = await handler(ctx, null, call.params.params || {});
+          return { tool: call.tool, ok: true, key, result };
+        } catch (err) {
+          return { tool: call.tool, ok: false, error: `lens action error: ${err?.message}` };
+        }
+      }
+      case "create_dtu": {
+        const r = await runMacro("dtu", "create", {
+          title: String(call.params.title || "Untitled"),
+          human: { summary: String(call.params.summary || ""), bullets: [] },
+          tags: Array.isArray(call.params.tags) ? call.params.tags : [],
+          tier: "regular",
+          source: "agent_tool",
+        }, ctx);
+        if (!r?.ok) return { tool: call.tool, ok: false, error: r?.error || "create_dtu failed" };
+        return {
+          tool: call.tool, ok: true,
+          dtuId: r.id || r.dtu?.id,
+          title: call.params.title,
+          artifact: { kind: "dtu", id: r.id || r.dtu?.id, title: call.params.title },
+        };
+      }
+      case "expert_mode": {
+        const r = await runMacro("expert_mode", "answer", {
+          query: String(call.params.query || ""),
+        }, ctx);
+        if (!r?.ok) return { tool: call.tool, ok: false, error: r?.error || "expert_mode failed" };
+        return {
+          tool: call.tool, ok: true,
+          query: call.params.query,
+          answer: r.answer,
+          sources: r.sources,
+          citationsRecorded: r.citationsRecorded,
+        };
+      }
+      default:
+        return { tool: call.tool, ok: false, error: `unknown tool: ${call.tool}` };
+    }
+  } catch (err) {
+    return { tool: call.tool, ok: false, error: String(err?.message || err) };
+  }
+}
+
+/** Format tool results into a system-style follow-up message for the next turn. */
+export function formatToolResults(results) {
+  return results.map(r => {
+    if (!r.ok) return `[TOOL_RESULT: ${r.tool}] Error: ${r.error}`;
+    if (r.tool === "web_search") return `[TOOL_RESULT: web_search] ${r.result}`;
+    if (r.tool === "run_compute")  return `[TOOL_RESULT: run_compute key=${r.key}] ${JSON.stringify(r.result).slice(0, 4000)}`;
+    if (r.tool === "browse_url")   return `[TOOL_RESULT: browse_url ${r.url}] title="${r.title}"\n${r.text}`;
+    if (r.tool === "run_lens_action") return `[TOOL_RESULT: ${r.key}] ${JSON.stringify(r.result).slice(0, 4000)}`;
+    if (r.tool === "create_dtu")   return `[TOOL_RESULT: create_dtu] Minted DTU "${r.title}" (id: ${r.dtuId})`;
+    if (r.tool === "expert_mode")  return `[TOOL_RESULT: expert_mode] ${(r.answer || "").slice(0, 4000)}`;
+    return `[TOOL_RESULT: ${r.tool}] ${JSON.stringify(r).slice(0, 2000)}`;
+  }).join("\n\n");
+}
+
+/**
+ * The agent loop. Runs up to maxTurns of (brain reply → tool exec → brain reply).
+ *
+ * @param {object} args
+ * @param {object} args.db
+ * @param {string} args.userId
+ * @param {string} args.message              the user's prompt
+ * @param {Function} args.runMacro           injected
+ * @param {Map} args.lensActions             injected LENS_ACTIONS
+ * @param {Array<{role,content}>} [args.history]
+ * @param {object} [args.opts]
+ * @returns {Promise<{ok, answer, toolCalls, artifacts, turns, provider, model, error?}>}
+ */
+export async function runAgentLoop({ db, userId, message, runMacro, lensActions, history = [], opts = {} }) {
+  if (!message) return { ok: false, error: "missing_message" };
+  const maxTurns = opts.maxTurns || AGENT_MAX_TURNS;
+
+  const messages = [
+    { role: "system", content: `You are Concord's Agent Mode — a tool-using assistant operating inside a 200+ lens cognitive OS. Be concise. Use tools when the task genuinely requires them.\n\n${TOOL_SCHEMA_BLOCK}` },
+    ...history,
+    { role: "user", content: message },
+  ];
+
+  const allToolCalls = [];
+  const allArtifacts = [];
+  let lastProvider = "concord_default";
+  let lastModel = "ollama";
+  let finalAnswer = "";
+  let turnsTaken = 0;
+
+  for (let turn = 0; turn < maxTurns; turn++) {
+    turnsTaken++;
+    const r = await brainChat({
+      db, userId,
+      slot: opts.slot || "conscious",
+      messages,
+      opts: { temperature: 0.4, maxTokens: opts.maxTokens || 2048 },
+    });
+    if (!r.ok) {
+      return {
+        ok: false, error: r.error || "brain_failed",
+        toolCalls: allToolCalls, artifacts: allArtifacts, turns: turnsTaken,
+        provider: r.provider, model: r.model,
+      };
+    }
+    lastProvider = r.provider;
+    lastModel = r.model;
+
+    const calls = parseToolCalls(r.text);
+    const visibleAnswer = stripToolCalls(r.text);
+
+    if (calls.length === 0) {
+      // No more tool calls — this is the final answer.
+      finalAnswer = visibleAnswer;
+      break;
+    }
+
+    // Execute calls and feed results back as the next turn's user msg.
+    const ctx = { db, actor: { userId } };
+    const results = [];
+    for (const call of calls.slice(0, 5)) {
+      const result = await executeToolCall(ctx, runMacro, lensActions, call);
+      results.push(result);
+      allToolCalls.push(result);
+      if (result.artifact) allArtifacts.push(result.artifact);
+    }
+
+    // Append the brain's intermediate text + tool results to the message
+    // history so the next turn sees both.
+    messages.push({ role: "assistant", content: r.text });
+    messages.push({ role: "user", content: formatToolResults(results) });
+    finalAnswer = visibleAnswer; // last visible body, in case we exit on max turns
+  }
+
+  return {
+    ok: true,
+    answer: finalAnswer,
+    toolCalls: allToolCalls,
+    artifacts: allArtifacts,
+    turns: turnsTaken,
+    provider: lastProvider,
+    model: lastModel,
+    ...provenanceFrom({ provider: lastProvider, model: lastModel }),
+  };
+}
+
+export const CHAT_AGENT_CONSTANTS = Object.freeze({
+  AGENT_MAX_TURNS, MAX_TOOL_RESULT_LEN,
+});

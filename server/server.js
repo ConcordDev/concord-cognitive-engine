@@ -9594,6 +9594,11 @@ async function runMacro(domain, name, input, ctx) {
     // be cited before committing the brain call. extract_citations
     // is a stateless utility for the chip renderer.
     expert_mode: new Set(["answer", "sources_preview", "extract_citations"]),
+    // chat_agent (Sprint 11) — the Agent Mode orchestrator. Authenticated
+    // path is appropriate (it spends compute + can call any tool); but
+    // the macro-level publicReadDomains entry covers the "do" macro for
+    // the standard chat-lens callers.
+    chat_agent: new Set(["do"]),
     // faction_strategy (Sprint B Phase 10) — Crucible HUD reads
     // recent_moves + get_relation; witness_next_move is the cross-
     // world signature quest's objective-completion macro.
@@ -23330,6 +23335,19 @@ registerByoKeysMacros(register);
 // cascade when their DTU is cited.
 import registerExpertModeMacros from "./domains/expert-mode.js";
 registerExpertModeMacros(register);
+
+// Sprint 11 — Agent Mode chat orchestrator. Runs the agentic tool-use
+// loop where the brain calls into web_search / run_compute / browse_url
+// / run_lens_action (any of 200+ lens domain actions) / create_dtu /
+// expert_mode. Routes through the Sprint 10 BYO router so the user's
+// API key kicks in if set. Returns toolCalls + artifacts inline so the
+// UI can render them as they happen.
+import registerChatAgentMacros from "./domains/chat-agent.js";
+registerChatAgentMacros(register);
+// Expose runMacro + LENS_ACTIONS globally so chat_agent.do can wire
+// the inner tool execution without circular imports.
+globalThis.__concordRunMacro = runMacro;
+globalThis.__concordLensActions = LENS_ACTIONS;
 
 // Phase 6a — Forge → Marketplace. Mint Forge-generated apps as DTUs +
 // list on marketplace. Plugs into royalty cascade for citation chains.
