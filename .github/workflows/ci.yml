@@ -458,6 +458,11 @@ jobs:
         env:
           NODE_ENV: ci
           PORT: 5050
+          # Skip 5-brain Ollama init in CI (no Ollama service running).
+          # Without this, server.js#initFiveBrains() runs 5 sequential
+          # probes with 15s AbortSignal.timeout each = ~75s of cold
+          # probe time. Already supported flag at server.js:14873.
+          CONCORD_DISABLE_BRAINS: 'true'
           DATA_DIR: /tmp/concord-test-data
           JWT_SECRET: test-secret-for-ci-only-do-not-use-in-production
           ADMIN_PASSWORD: testpassword123
@@ -533,6 +538,11 @@ jobs:
         env:
           NODE_ENV: ci
           PORT: 5050
+          # Skip 5-brain Ollama init in CI (no Ollama service running).
+          # Without this, server.js#initFiveBrains() runs 5 sequential
+          # probes with 15s AbortSignal.timeout each = ~75s of cold
+          # probe time. Already supported flag at server.js:14873.
+          CONCORD_DISABLE_BRAINS: 'true'
           JWT_SECRET: test-secret-for-ci-only-do-not-use-in-production
           ADMIN_PASSWORD: testpassword123
           REDIS_URL: redis://localhost:6379
@@ -660,6 +670,11 @@ jobs:
         env:
           NODE_ENV: ci
           PORT: 5050
+          # Skip 5-brain Ollama init in CI (no Ollama service running).
+          # Without this, server.js#initFiveBrains() runs 5 sequential
+          # probes with 15s AbortSignal.timeout each = ~75s of cold
+          # probe time. Already supported flag at server.js:14873.
+          CONCORD_DISABLE_BRAINS: 'true'
           JWT_SECRET: test-secret-for-ci-only-do-not-use-in-production
           ADMIN_PASSWORD: testpassword123
           CONCORD_RATE_LIMIT_BYPASS: '1'
@@ -817,6 +832,11 @@ jobs:
         env:
           NODE_ENV: ci
           PORT: 5050
+          # Skip 5-brain Ollama init in CI (no Ollama service running).
+          # Without this, server.js#initFiveBrains() runs 5 sequential
+          # probes with 15s AbortSignal.timeout each = ~75s of cold
+          # probe time. Already supported flag at server.js:14873.
+          CONCORD_DISABLE_BRAINS: 'true'
           JWT_SECRET: test-secret-for-ci-only-do-not-use-in-production
           ADMIN_PASSWORD: testpassword123
           CONCORD_RATE_LIMIT_BYPASS: '1'
