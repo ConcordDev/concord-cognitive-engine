@@ -40,6 +40,12 @@ jobs:
     name: Detector suite
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # continue-on-error until the detector budget baseline is seeded.
+    # First-run output appends to audit/detectors/history.jsonl; the
+    # gate compares deltas against the prior tail entry, which won't
+    # exist on the first run. Once the tail is committed (in a
+    # follow-on commit), flip to blocking.
+    continue-on-error: true
 
     env:
       NODE_OPTIONS: --max-old-space-size=4096
@@ -94,6 +100,11 @@ jobs:
     name: Cartograph (route ↔ macro ↔ domain ↔ table graph)
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # continue-on-error until the SYSTEMS.json baseline is committed.
+    # First-run output is the baseline itself; subsequent runs diff
+    # against the prior tree-snapshot. Until a baseline exists,
+    # missing-snapshot is informative noise, not a real regression.
+    continue-on-error: true
 
     env:
       NODE_OPTIONS: --max-old-space-size=4096
