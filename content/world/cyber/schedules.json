@@ -1,0 +1,17 @@
+{
+  "world_id": "cyber",
+  "schema_version": "1.0",
+  "purpose": "Archetype-routine templates for cyber. The npc-routines lib composes per-NPC schedules deterministically from these blocks + the NPC's preoccupations.",
+  "genre": "cyber",
+  "archetypes": {
+    "[AUTHOR archetype]": {
+      "blocks": [
+        {
+          "phase": "[AUTHOR day_phase id from calendar]",
+          "activity": "[AUTHOR]",
+          "location_tag": "[AUTHOR]"
+        }
+      ]
+    }
+  }
+}

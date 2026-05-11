@@ -1,0 +1,14 @@
+{
+  "world_id": "cyber",
+  "schema_version": "1.0",
+  "purpose": "Per-faction-pair relationship lattice for cyber. Drives Layer 11 faction-strategy + cross-world relationship seeding.",
+  "edges": [
+    {
+      "from": "[AUTHOR faction id]",
+      "to": "[AUTHOR faction id]",
+      "relationship": "[AUTHOR: ally|trade_pact|truce|tension|rival|war|blood_feud]",
+      "history": "[AUTHOR]",
+      "cross_world_resonance": "[AUTHOR — does this rivalry mirror one in another world?]"
+    }
+  ]
+}

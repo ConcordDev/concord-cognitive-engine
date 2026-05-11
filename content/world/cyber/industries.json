@@ -1,0 +1,97 @@
+{
+  "world_id": "cyber",
+  "schema_version": "1.0",
+  "purpose": "Industry rollups for cyber. Each industry names jobs, raw inputs, processed outputs, and seasonal cadence. Used by the world-economy heartbeat to model price + scarcity + production cycles. The dominant economic substrate is information itself — every other industry is downstream of who owns which data.",
+  "dominant_industry": "data_brokerage",
+  "skill_domain_alignment": "hacking",
+  "industries": [
+    {
+      "id": "data_brokerage",
+      "category": "primary",
+      "jobs_referenced": ["broker", "data_diver", "appraiser", "fence_runner"],
+      "inputs": ["raw_data_dumps", "corp_leaks", "behavioral_profiles", "biometric_records"],
+      "outputs": ["targeted_dossiers", "blackmail_packets", "marketing_feeds", "identity_kits"],
+      "seasonal_peak": "Frostgrid (audit season — corps buy clean dossiers on each other)",
+      "key_kingdoms": ["corp_tier", "gray_market_districts"],
+      "cross_world_exports_to": ["crime (laundering data through shell front-businesses)", "concord-link-frontier (identity-laundering)"],
+      "notes": "Top-3% of brokers earn more in a month than a fantasy world's entire annual royal treasury. The trade has no physical product, no inventory, no tax footprint the corps can pin down."
+    },
+    {
+      "id": "chrome_shop",
+      "category": "primary",
+      "jobs_referenced": ["chromer", "wetwork_surgeon", "calibrator", "anaesthesia_tech"],
+      "inputs": ["raw_chrome", "neural_interfaces", "synthetic_muscle", "anti-rejection_compounds"],
+      "outputs": ["augmented_limbs", "sensory_overlays", "combat_chrome", "cosmetic_aug"],
+      "seasonal_peak": "Chrome Hours (every day at 19:00-23:00)",
+      "key_kingdoms": ["surface_slum (cheap-fast)", "corp_tier (licensed)", "deep_tunnels (illegal-bleeding-edge)"],
+      "cross_world_exports_to": ["superhero (the bio_powers + chrome stack is the most lucrative cross-world arbitrage)", "crime (street-augs)"],
+      "notes": "Three quality tiers: corp_certified (insurance covers, 1-year warranty), gray_market (no warranty, 6-month MTBF), back-alley (no anaesthesia, 50% survival rate). All three are legal — Grid Authority taxes per-procedure regardless of quality."
+    },
+    {
+      "id": "corp_security",
+      "category": "primary",
+      "jobs_referenced": ["sec_drone_operator", "ice_engineer", "corp_enforcer", "biometric_analyst"],
+      "inputs": ["sec_contracts", "biometric_feeds", "drone_fleets", "ice_packages"],
+      "outputs": ["perimeter_enforcement", "intrusion_response", "asset_recovery", "executive_protection"],
+      "seasonal_peak": "Dark Hours (24:00-28:00 daily)",
+      "key_kingdoms": ["corp_tier", "maglev_corridor"],
+      "cross_world_exports_to": ["concord-link-frontier (escorting corp assets across worlds)"],
+      "notes": "The largest single industry by headcount. Every corp employs 1 sec personnel per 8 office workers. Pay is mid-tier but benefits include corp citizenship and aug-credit."
+    },
+    {
+      "id": "gig_economy",
+      "category": "secondary",
+      "jobs_referenced": ["courier", "drone_pilot", "translator", "calibration_apprentice", "smokeshell_runner"],
+      "inputs": ["surface_slum_labor", "personal_aug", "transit_passes"],
+      "outputs": ["last-mile_delivery", "translation_services", "small-job_filling"],
+      "seasonal_peak": "Corp Hours + Gray Market (06:00-18:00)",
+      "key_kingdoms": ["surface_slum"],
+      "cross_world_exports_to": [],
+      "notes": "70% of surface_slum employment. No benefits, no citizenship, paid per task. Drones are slowly displacing the human end of this market. Gig union (the Static Collective) is a major political force."
+    },
+    {
+      "id": "gray_market",
+      "category": "secondary",
+      "jobs_referenced": ["fence", "deal_runner", "appraiser", "muscle"],
+      "inputs": ["stolen_chrome", "leaked_data", "unauthorized_software", "off-the-books_pharmaceuticals"],
+      "outputs": ["under-market_chrome", "bootleg_software", "anti-corp_pharma"],
+      "seasonal_peak": "Gray Market (14:00-18:00 daily, by design)",
+      "key_kingdoms": ["gray_market_districts (between surface_slum and corp_tier)"],
+      "cross_world_exports_to": ["crime (the cross-world fence network)", "tunya (back-alley channel for tunyan dyes laundered through cyber)"],
+      "notes": "Operates in tacitly-tolerated zones. Corp Grid Authority taxes 12% of gross — even gray markets pay tax."
+    },
+    {
+      "id": "ice_engineering",
+      "category": "primary",
+      "jobs_referenced": ["ice_architect", "kill_switch_designer", "pen_tester", "incident_responder"],
+      "inputs": ["security_contracts", "attack_pattern_libraries", "neural_interface_specs"],
+      "outputs": ["defensive_ice", "offensive_ice", "kill_constructs", "tracking_payloads"],
+      "seasonal_peak": "Blackice (month 03) — annual ICE product launches",
+      "key_kingdoms": ["corp_tier"],
+      "cross_world_exports_to": [],
+      "notes": "ICE designers are paid in the top 1% citywide. Kill-construct work is technically extralegal but every major corp runs at least one. Crossing an ice_architect's product is the fastest way to wake up in a body-bag."
+    },
+    {
+      "id": "aug_clinic",
+      "category": "secondary",
+      "jobs_referenced": ["aug_surgeon", "neural_calibrator", "post-op_nurse", "memory_re-encoder"],
+      "inputs": ["chrome_inventory", "anaesthetics", "patient_volume"],
+      "outputs": ["installed_augmentations", "calibration_services", "memory_repair"],
+      "seasonal_peak": "Smog (07) — month-long aug-clinic peak as respiratory implants spike",
+      "key_kingdoms": ["surface_slum", "corp_tier"],
+      "cross_world_exports_to": ["superhero (cyber aug-installation is the gold standard)"],
+      "notes": "Three tiers: corp-clinic (sterile, expensive, slow), street-clinic (cheap, fast, ~85% success), gray-clinic (back-alley, illegal procedures only, no records)."
+    },
+    {
+      "id": "decking",
+      "category": "exotic",
+      "jobs_referenced": ["decker", "intrusion_specialist", "data_diver", "ghost_runner"],
+      "inputs": ["neural_interface", "deck_rigs", "ice_breaker_software", "target_intelligence"],
+      "outputs": ["stolen_data", "system_backdoors", "deleted_records", "transferred_credits"],
+      "seasonal_peak": "Dark Hours (24:00-28:00 daily — when corp sysadmins are off-shift)",
+      "key_kingdoms": ["deep_tunnels", "gray_market_districts"],
+      "cross_world_exports_to": [],
+      "notes": "Cyber's signature exotic profession. ~3% of deckers retire wealthy; ~40% die in the chair before age 35 from neural backlash, kill-construct strikes, or corp wetwork. The trade has the highest pay-per-hour and the highest mortality-per-hour of any profession in any of the 9 worlds."
+    }
+  ]
+}
