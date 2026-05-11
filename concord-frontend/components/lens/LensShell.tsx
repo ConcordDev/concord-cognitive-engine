@@ -46,6 +46,12 @@ import type { EffectiveAccessibility } from '@/hooks/useAccessibilitySettings';
 // Dynamic-loaded so it never bloats the lens main bundle.
 const LensAgentFab = dynamic(() => import('./LensAgentFab'), { ssr: false });
 
+// Sprint 17 — production-grade-per-lens invariant. Every LensShell
+// wraps children in an error boundary so a render bug in any lens
+// degrades gracefully (recoverable fallback) instead of white-screening
+// the whole app. Per ISO/IEC 25010 reliability.
+import LensErrorBoundary from './LensErrorBoundary';
+
 export interface LensShellContextValue {
   lensId: string;
   accessibility: EffectiveAccessibility;
@@ -112,13 +118,17 @@ export function LensShell({
   };
 
   const Wrapper = as as React.ElementType;
+  // Sprint 17 — error-boundary wrap (production-grade reliability gate).
+  const wrappedChildren = (
+    <LensErrorBoundary lensId={lensId}>{children}</LensErrorBoundary>
+  );
   const inner = asMain ? (
     <main id={targetId} role="main" className="contents">
-      {children}
+      {wrappedChildren}
     </main>
   ) : (
     <div id={targetId} className="contents">
-      {children}
+      {wrappedChildren}
     </div>
   );
 

@@ -116,6 +116,16 @@ jobs:
         working-directory: ./concord-frontend
         run: npm run validate-lens-quality
 
+      - name: Validate production-grade-per-lens gate (Sprint 17)
+        id: validate_production_grade
+        working-directory: ./concord-frontend
+        # Soft-fail by default — surfaces a per-lens scorecard
+        # (PRODUCTION-GRADE / SHIPPABLE / STUB) with missing-check
+        # diagnostics for the worst 10 offenders. Promote to strict
+        # mode (`validate-production-grade:strict`) once the STUB
+        # count is zero, then this gate becomes hard-blocking.
+        run: npm run validate-production-grade
+
       - name: Build frontend
         id: build_frontend
         working-directory: ./concord-frontend

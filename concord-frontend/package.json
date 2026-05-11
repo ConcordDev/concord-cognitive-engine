@@ -20,6 +20,8 @@
     "validate-routes": "npx tsx scripts/validate-routes.ts",
     "score-lenses": "npx tsx scripts/score-lenses.ts",
     "validate-lens-quality": "npx tsx scripts/validate-lens-quality.ts",
+    "validate-production-grade": "npx tsx scripts/validate-production-grade-lens.ts",
+    "validate-production-grade:strict": "npx tsx scripts/validate-production-grade-lens.ts --strict",
     "validate-lens-quality:strict": "npx tsx scripts/validate-lens-quality.ts --strict",
     "prepare": "husky"
   },
