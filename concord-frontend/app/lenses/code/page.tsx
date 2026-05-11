@@ -1097,7 +1097,7 @@ export default function CodeLensPage() {
   }
 
   return (
-    <LensShell lensId="code" asMain={false}>
+    <LensShell lensId="code" asMain={false} disableAgentFab={true}>
       <ManifestActionBar />
       <RivalShapePreview lensId="code" />
     <div data-lens-theme="code" className={`flex flex-col font-mono ${isFullscreen ? 'fixed inset-0 z-50 bg-[#0d1117]' : 'h-full bg-[#0d1117]'}`}>

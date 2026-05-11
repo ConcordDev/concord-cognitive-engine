@@ -615,7 +615,7 @@ export default function MusicLensPage() {
 
   // ---- Render ----
   return (
-    <LensShell lensId="music" asMain={false}>
+    <LensShell lensId="music" asMain={false} disableAgentFab={true}>
     <div className="lens-music flex flex-col h-full overflow-hidden" data-lens-theme="music">
       {/* Top Navigation */}
       <header className="flex items-center justify-between px-6 py-3 border-b border-purple-500/10 bg-gradient-to-r from-purple-950/20 via-transparent to-indigo-950/20 flex-shrink-0">

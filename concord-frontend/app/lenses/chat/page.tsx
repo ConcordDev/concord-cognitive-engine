@@ -2274,7 +2274,7 @@ export default function ChatLensPage() {
   // ──────────────────────────────────────────────
 
   return (
-    <LensShell lensId="chat" asMain={false}>
+    <LensShell lensId="chat" asMain={false} disableAgentFab={true}>
     <div data-lens-theme="chat" className="h-full flex flex-col bg-lattice-bg">
       {/* Real-time Enhancement Toolbar */}
       <div className="flex items-center gap-2 px-4 py-1 border-b border-lattice-border/30 flex-wrap">

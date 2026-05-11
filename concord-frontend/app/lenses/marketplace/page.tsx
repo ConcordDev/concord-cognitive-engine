@@ -1281,7 +1281,7 @@ export default function MarketplaceLensPage() {
     );
   }
   return (
-    <LensShell lensId="marketplace" asMain={false}>
+    <LensShell lensId="marketplace" asMain={false} disableAgentFab={true}>
     <div className="lens-marketplace space-y-6 pb-24" data-lens-theme="marketplace">
       {/* ---- Header ---- */}
       <div className="flex items-center justify-between">

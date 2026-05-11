@@ -1562,7 +1562,7 @@ export default function StudioLensPage() {
 
   // ---- Render: Active project ----
   return (
-    <LensShell lensId="studio" asMain={false}>
+    <LensShell lensId="studio" asMain={false} disableAgentFab={true}>
     <div
       className="lens-studio h-full flex flex-col bg-gradient-to-b from-violet-950/20 via-black to-black"
       data-lens-theme="studio"

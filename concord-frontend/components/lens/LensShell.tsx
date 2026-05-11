@@ -31,11 +31,20 @@
  */
 
 import React, { createContext, useContext, useEffect, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/ui';
 import { useAccessibilitySettings } from '@/hooks/useAccessibilitySettings';
 import type { EffectiveAccessibility } from '@/hooks/useAccessibilitySettings';
+
+// Sprint 16 — every lens that wraps in LensShell automatically gets the
+// Agent Mode FAB so it reaches the new baseline depth (chat-lens parity:
+// 200+ tools, web, compute, voice, BYO model picker, marathon, file
+// uploads, streaming). Opt out via `disableAgentFab` prop on a per-lens
+// basis (the chat lens does this — it has its own richer surface).
+// Dynamic-loaded so it never bloats the lens main bundle.
+const LensAgentFab = dynamic(() => import('./LensAgentFab'), { ssr: false });
 
 export interface LensShellContextValue {
   lensId: string;
@@ -55,6 +64,15 @@ export interface LensShellProps {
   asMain?: boolean;
   /** Skip-link target id, default `${lensId}-content`. */
   contentId?: string;
+  /** Opt out of the auto-mounted Agent Mode FAB (Sprint 16). Defaults
+   *  to false — every lens gets the FAB. Set true for lenses with
+   *  their own richer agent surface (chat lens) or where the FAB
+   *  would conflict visually. */
+  disableAgentFab?: boolean;
+  /** Override the lens-aware prompt the auto-FAB injects into the
+   *  agent's system context. Defaults to a generic
+   *  "you're inside the <lensId> lens" preamble. */
+  agentFabPrompt?: string;
 }
 
 export function LensShell({
@@ -64,6 +82,8 @@ export function LensShell({
   className,
   asMain = true,
   contentId,
+  disableAgentFab = false,
+  agentFabPrompt,
 }: LensShellProps) {
   const accessibility = useAccessibilitySettings();
   const setActiveLens = useUIStore((s) => s.setActiveLens);
@@ -106,6 +126,9 @@ export function LensShell({
     <LensShellContext.Provider value={ctx}>
       <Wrapper className={cn('contents', className)} {...dataAttrs}>
         {inner}
+        {!disableAgentFab && (
+          <LensAgentFab lensId={lensId} lensPrompt={agentFabPrompt} />
+        )}
       </Wrapper>
     </LensShellContext.Provider>
   );

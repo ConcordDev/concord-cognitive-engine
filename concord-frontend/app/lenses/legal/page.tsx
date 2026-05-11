@@ -3033,7 +3033,7 @@ export default function LegalLensPage() {
   /* ---------- main render ---------- */
 
   return (
-    <LensShell lensId="legal" asMain={false}>
+    <LensShell lensId="legal" asMain={false} disableAgentFab={true}>
       <RivalShapePreview lensId="legal" />
     <div data-lens-theme="legal" className={ds.pageContainer}>
       {/* Legal Disclaimer */}

@@ -197,7 +197,7 @@ export default function CreatorDashboardPage() {
   }, [refreshDashboard, refreshListings, refreshWithdrawal]);
 
   return (
-    <LensShell lensId="creator" asMain={false}>
+    <LensShell lensId="creator" asMain={false} disableAgentFab={true}>
       <ManifestActionBar />
       <div className="min-h-screen bg-[#0b0f17] text-gray-100 p-6">
         <header className="mb-5 flex items-start justify-between gap-3 flex-wrap">

@@ -37,11 +37,20 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
+import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import {
   Bot, Send, X, Loader2, ExternalLink, Mic, MicOff, Cpu,
   Search, Calculator, Globe, Layers, FileText, Sparkles,
-  CheckCircle2, XCircle,
+  CheckCircle2, XCircle, Hammer, MessageSquare, Paperclip,
 } from 'lucide-react';
+
+// Sprint 16 — the missing 30% to reach true chat-lens parity:
+//   - Marathon tab (hours-long sessions)
+//   - File uploads (drag-drop, attach to agent message)
+//   - Streaming (token + tool-call cards appear progressively)
+// All three lazy-loaded.
+const MarathonPanel = dynamic(() => import('../chat/MarathonPanel'), { ssr: false });
 
 type SpeechRecognitionType = {
   continuous: boolean;
@@ -165,6 +174,41 @@ export default function LensAgentPanel({ lensId, lensPrompt, open, onClose, posi
   const [slot, setSlot] = useState('conscious');
   const [listening, setListening] = useState(false);
   const recogRef = useRef<SpeechRecognitionType | null>(null);
+  // Sprint 16 — tab between Quick (single-question agent) and Marathon
+  // (persistent hours-long session).
+  const [tab, setTab] = useState<'quick' | 'marathon'>('quick');
+  // Sprint 16 — file uploads attached to the next message. Each file is
+  // uploaded via /api/artifact/upload immediately on selection so the
+  // agent receives a stable URL to read.
+  const [attachments, setAttachments] = useState<Array<{ name: string; url: string }>>([]);
+  // Sprint 16 — streaming via /api/chat-agent/stream. Off by default to
+  // preserve the existing blocking behavior for compatibility; opt-in
+  // toggle in the footer.
+  const [streaming, setStreaming] = useState(true);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const onPickFile = useCallback(async (file: File) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('lens', lensId);
+    try {
+      const r = await fetch('/api/artifact/upload', {
+        method: 'POST', credentials: 'include', body: fd,
+      });
+      if (r.ok) {
+        const j = await r.json();
+        const url = j?.url || j?.path || j?.artifact?.url || '';
+        if (url) {
+          setAttachments(a => [...a, { name: file.name, url }]);
+        }
+      }
+    } catch { /* upload failed silently */ }
+  }, [lensId]);
+
+  const onDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    for (const f of Array.from(e.dataTransfer.files || [])) onPickFile(f);
+  }, [onPickFile]);
 
   const startListening = useCallback(() => {
     const W = window as unknown as { SpeechRecognition?: new () => SpeechRecognitionType; webkitSpeechRecognition?: new () => SpeechRecognitionType };
@@ -195,35 +239,92 @@ export default function LensAgentPanel({ lensId, lensPrompt, open, onClose, posi
   const submit = useCallback(async () => {
     if (!prompt.trim() || busy) return;
     const userMsg = prompt.trim();
+    const attachedNote = attachments.length > 0
+      ? `\n\nAttached files (use browse_url or vision tools to read):\n${attachments.map(a => `- ${a.name}: ${a.url}`).join('\n')}`
+      : '';
     setPrompt('');
+    setAttachments([]);
     setBusy(true);
-    setConversation(c => [...c, { user: userMsg, agent: { ok: false } }]);
+    setConversation(c => [...c, { user: userMsg + (attachedNote ? ` (+${attachments.length} files)` : ''), agent: { ok: false } }]);
     try {
       const history = conversation.flatMap(t => [
         { role: 'user', content: t.user },
         ...(t.agent.answer ? [{ role: 'assistant', content: t.agent.answer }] : []),
       ]);
-      // Lens-aware preamble injected via the message so the agent
-      // knows which surface it's operating in and which lens-specific
-      // tools / DTU corpus to favor.
       const preamble = lensPrompt
         ? `(You are operating inside Concord's ${lensId} lens. ${lensPrompt})\n\n`
         : `(You are operating inside Concord's ${lensId} lens.)\n\n`;
-      const r = await fetch('/api/lens/run', {
-        method: 'POST', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          domain: 'chat_agent', name: 'do',
-          input: { message: preamble + userMsg, history, slot },
-        }),
-      });
-      const j = await r.json();
-      const payload = (j.result || j) as AgentResponse;
-      setConversation(c => {
-        const next = c.slice();
-        next[next.length - 1] = { user: userMsg, agent: payload };
-        return next;
-      });
+      const fullMessage = preamble + userMsg + attachedNote;
+
+      if (streaming) {
+        // Sprint 16 — stream from /api/chat-agent/stream and render
+        // tokens + tool-call cards + artifacts progressively.
+        const res = await fetch('/api/chat-agent/stream', {
+          method: 'POST', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: fullMessage, history, slot }),
+        });
+        const reader = res.body?.getReader();
+        if (reader) {
+          const decoder = new TextDecoder();
+          let buf = '';
+          const liveAnswer: { text: string; toolCalls: ToolCall[]; artifacts: Artifact[]; provider?: string; model?: string } = {
+            text: '', toolCalls: [], artifacts: [],
+          };
+          // eslint-disable-next-line no-constant-condition
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            buf += decoder.decode(value, { stream: true });
+            const lines = buf.split('\n');
+            buf = lines.pop() || '';
+            let event = '';
+            for (const line of lines) {
+              if (line.startsWith('event: ')) event = line.slice(7).trim();
+              else if (line.startsWith('data: ')) {
+                try {
+                  const data = JSON.parse(line.slice(6));
+                  if (event === 'token') liveAnswer.text += data.chunk || '';
+                  else if (event === 'tool_call') liveAnswer.toolCalls.push(data);
+                  else if (event === 'artifact') liveAnswer.artifacts.push(data);
+                  else if (event === 'done') {
+                    liveAnswer.provider = data.provider;
+                    liveAnswer.model = data.model;
+                  }
+                } catch { /* malformed SSE chunk */ }
+                setConversation(c => {
+                  const next = c.slice();
+                  next[next.length - 1] = {
+                    user: userMsg, agent: {
+                      ok: true, answer: liveAnswer.text,
+                      toolCalls: liveAnswer.toolCalls.slice(),
+                      artifacts: liveAnswer.artifacts.slice(),
+                      provider: liveAnswer.provider, model: liveAnswer.model,
+                    },
+                  };
+                  return next;
+                });
+              }
+            }
+          }
+        }
+      } else {
+        const r = await fetch('/api/lens/run', {
+          method: 'POST', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            domain: 'chat_agent', name: 'do',
+            input: { message: fullMessage, history, slot },
+          }),
+        });
+        const j = await r.json();
+        const payload = (j.result || j) as AgentResponse;
+        setConversation(c => {
+          const next = c.slice();
+          next[next.length - 1] = { user: userMsg, agent: payload };
+          return next;
+        });
+      }
     } catch (err) {
       setConversation(c => {
         const next = c.slice();
@@ -233,7 +334,7 @@ export default function LensAgentPanel({ lensId, lensPrompt, open, onClose, posi
     } finally {
       setBusy(false);
     }
-  }, [prompt, busy, conversation, slot, lensId, lensPrompt]);
+  }, [prompt, busy, conversation, slot, lensId, lensPrompt, attachments, streaming]);
 
   if (!open) return null;
 
@@ -256,7 +357,32 @@ export default function LensAgentPanel({ lensId, lensPrompt, open, onClose, posi
         </button>
       </header>
 
-      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-6">
+      <div className="flex border-b border-zinc-800 bg-zinc-900/40">
+        <button
+          onClick={() => setTab('quick')}
+          className={`flex items-center gap-1.5 px-4 py-2 text-xs font-medium border-b-2 ${
+            tab === 'quick' ? 'border-amber-500 text-amber-300' : 'border-transparent text-zinc-500 hover:text-zinc-300'
+          }`}
+        >
+          <MessageSquare className="w-3.5 h-3.5" /> Quick
+        </button>
+        <button
+          onClick={() => setTab('marathon')}
+          className={`flex items-center gap-1.5 px-4 py-2 text-xs font-medium border-b-2 ${
+            tab === 'marathon' ? 'border-amber-500 text-amber-300' : 'border-transparent text-zinc-500 hover:text-zinc-300'
+          }`}
+        >
+          <Hammer className="w-3.5 h-3.5" /> Marathon
+        </button>
+      </div>
+
+      {tab === 'marathon' ? <MarathonPanel /> : (
+      <>
+      <div
+        className="flex-1 overflow-y-auto px-5 py-4 space-y-6"
+        onDrop={onDrop}
+        onDragOver={(e) => e.preventDefault()}
+      >
         {conversation.length === 0 && (
           <div className="text-center text-sm text-zinc-500 mt-12 px-4">
             <p>
@@ -342,16 +468,55 @@ export default function LensAgentPanel({ lensId, lensPrompt, open, onClose, posi
             <option value="repair">repair</option>
             <option value="vision">vision</option>
           </select>
-          <a href="/lenses/byo-keys" className="ml-auto text-amber-400 hover:text-amber-300">configure</a>
+          <label className="flex items-center gap-1 cursor-pointer" title="Stream tool calls + tokens progressively via SSE">
+            <input
+              type="checkbox"
+              checked={streaming}
+              onChange={(e) => setStreaming(e.target.checked)}
+              className="w-3 h-3"
+            />
+            <span>stream</span>
+          </label>
+          <Link href="/lenses/byo-keys" className="ml-auto text-amber-400 hover:text-amber-300">configure</Link>
         </div>
+        {attachments.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {attachments.map((a, i) => (
+              <span key={i} className="flex items-center gap-1 px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 text-[10px]">
+                <Paperclip className="w-3 h-3" /> {a.name}
+                <button
+                  onClick={() => setAttachments(prev => prev.filter((_, idx) => idx !== i))}
+                  className="text-zinc-500 hover:text-zinc-100 ml-1"
+                ><X className="w-3 h-3" /></button>
+              </span>
+            ))}
+          </div>
+        )}
         <div className="flex items-end gap-2">
           <textarea
             value={prompt}
             onChange={e => setPrompt(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submit(); }}
-            placeholder={`Tell the ${lensId} agent to do something… (⌘↵)`}
+            placeholder={`Tell the ${lensId} agent to do something… (⌘↵ or drag a file)`}
             rows={2}
             className="flex-1 px-3 py-2 rounded-lg bg-zinc-900 text-zinc-100 text-sm ring-1 ring-zinc-800 focus:ring-amber-500 focus:outline-none resize-none"
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="p-2 rounded-lg shrink-0 bg-zinc-800 hover:bg-zinc-700 text-zinc-300"
+            title="Attach file"
+          >
+            <Paperclip className="w-4 h-4" />
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            onChange={(e) => {
+              for (const f of Array.from(e.target.files || [])) onPickFile(f);
+              if (e.target) e.target.value = '';
+            }}
+            className="hidden"
           />
           <button
             onClick={listening ? stopListening : startListening}
@@ -369,6 +534,8 @@ export default function LensAgentPanel({ lensId, lensPrompt, open, onClose, posi
           </button>
         </div>
       </footer>
+      </>
+      )}
     </div>
   );
 }

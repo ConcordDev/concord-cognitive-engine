@@ -21,6 +21,7 @@
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import {
   Bot, Send, X, Sparkles, ExternalLink, Loader2,
   Search, Calculator, Globe, Layers, FileText,
@@ -405,7 +406,7 @@ export default function AgentModePanel({ open, onClose }: AgentModePanelProps) {
             <option value="repair">repair</option>
             <option value="vision">vision (image input)</option>
           </select>
-          <a href="/lenses/byo-keys" className="ml-auto text-amber-400 hover:text-amber-300">configure keys</a>
+          <Link href="/lenses/byo-keys" className="ml-auto text-amber-400 hover:text-amber-300">configure keys</Link>
         </div>
         <div className="flex items-end gap-2">
           <textarea
