@@ -38,7 +38,7 @@ test.describe('Admin Dashboard', () => {
 
   test('admin page renders content', async ({ page }) => {
     const response = await page.goto('/lenses/admin');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     expect(response?.status()).toBeLessThan(500);
 
@@ -79,7 +79,7 @@ test.describe('Backup Health Widget', () => {
     );
 
     const response = await page.goto('/lenses/admin');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     expect(response?.status()).toBeLessThan(500);
 
@@ -109,7 +109,7 @@ test.describe('Backup Health Widget', () => {
     );
 
     const response = await page.goto('/lenses/admin');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     expect(response?.status()).toBeLessThan(500);
 
@@ -153,7 +153,7 @@ test.describe('Backup Health Widget', () => {
     });
 
     const response = await page.goto('/lenses/admin');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     expect(response?.status()).toBeLessThan(500);
 
@@ -200,7 +200,7 @@ test.describe('CDN Status Widget', () => {
     );
 
     const response = await page.goto('/lenses/admin');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     expect(response?.status()).toBeLessThan(500);
 
@@ -227,7 +227,7 @@ test.describe('CDN Status Widget', () => {
     );
 
     const response = await page.goto('/lenses/admin');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     expect(response?.status()).toBeLessThan(500);
 
@@ -266,7 +266,7 @@ test.describe('CDN Status Widget', () => {
     });
 
     const response = await page.goto('/lenses/admin');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     expect(response?.status()).toBeLessThan(500);
 
@@ -294,7 +294,7 @@ test.describe('Admin Page Responsiveness', () => {
   test('admin page renders correctly on desktop', async ({ page }) => {
     await page.setViewportSize({ width: 1920, height: 1080 });
     const response = await page.goto('/lenses/admin');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     expect(response?.status()).toBeLessThan(500);
 
@@ -307,7 +307,7 @@ test.describe('Admin Page Responsiveness', () => {
   test('admin page renders without overflow on tablet', async ({ page }) => {
     await page.setViewportSize({ width: 768, height: 1024 });
     const response = await page.goto('/lenses/admin');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     expect(response?.status()).toBeLessThan(500);
 

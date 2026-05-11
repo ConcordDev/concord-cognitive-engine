@@ -24,7 +24,7 @@ test.describe('Accessibility (axe-core)', () => {
       test.setTimeout(60000);
       const response = await page.goto('/');
       expect(response?.status()).toBeLessThan(500);
-      await page.waitForLoadState('networkidle').catch(() => {});
+      await page.waitForLoadState('domcontentloaded').catch(() => {});
       try {
         const results = await new AxeBuilder({ page })
           .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
@@ -49,7 +49,7 @@ test.describe('Accessibility (axe-core)', () => {
       test.setTimeout(60_000); // axe-core scans are CPU-heavy in CI
       const response = await page.goto('/login');
       expect(response?.status()).toBeLessThan(500);
-      await page.waitForLoadState('networkidle').catch(() => {});
+      await page.waitForLoadState('domcontentloaded').catch(() => {});
       try {
         const results = await new AxeBuilder({ page })
           .withTags(['wcag2a', 'wcag2aa'])
@@ -73,7 +73,7 @@ test.describe('Accessibility (axe-core)', () => {
     test('Register page should have no critical accessibility violations', async ({ page }) => {
       const response = await page.goto('/register');
       expect(response?.status()).toBeLessThan(500);
-      await page.waitForLoadState('networkidle').catch(() => {});
+      await page.waitForLoadState('domcontentloaded').catch(() => {});
       try {
         const results = await new AxeBuilder({ page })
           .withTags(['wcag2a', 'wcag2aa'])
@@ -121,7 +121,7 @@ test.describe('Accessibility (axe-core)', () => {
 
         const response = await page.goto(lens.path);
         expect(response?.status()).toBeLessThan(500);
-        await page.waitForLoadState('networkidle').catch(() => {});
+        await page.waitForLoadState('domcontentloaded').catch(() => {});
 
         try {
           const results = await new AxeBuilder({ page })
@@ -250,7 +250,7 @@ test.describe('Accessibility (axe-core)', () => {
 
       const response = await page.goto('/lenses/chat');
       expect(response?.status()).toBeLessThan(500);
-      await page.waitForLoadState('networkidle').catch(() => {});
+      await page.waitForLoadState('domcontentloaded').catch(() => {});
 
       // Wait for AppShell to fully mount (sidebar only renders after mounted=true)
       await page.waitForSelector('aside[role="navigation"], nav[aria-label]', { timeout: 10000 }).catch(() => {});

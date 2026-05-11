@@ -10,7 +10,7 @@ test.describe('Auth Page OAuth Buttons', () => {
   test('login page renders OAuth sign-in buttons', async ({ page }) => {
     const response = await page.goto('/login');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Look for Google and Apple OAuth buttons
     const googleButton = page.locator(
@@ -44,7 +44,7 @@ test.describe('Auth Page OAuth Buttons', () => {
 
     const response = await page.goto('/login');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const googleButton = page.locator(
       'button:has-text("Google"), a:has-text("Google"), a[href*="google"], button[aria-label*="Google" i]'
@@ -80,7 +80,7 @@ test.describe('Auth Page OAuth Buttons', () => {
 
     const response = await page.goto('/login');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const appleButton = page.locator(
       'button:has-text("Apple"), a:has-text("Apple"), a[href*="apple"], button[aria-label*="Apple" i]'

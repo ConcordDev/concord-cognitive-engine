@@ -25,7 +25,7 @@ test.describe('DTU Integrity Badge', () => {
 
   test('DTU cards render on graph lens page', async ({ page }) => {
     const response = await page.goto('/lenses/graph');
-    await page.waitForLoadState('networkidle').catch(() => {});
+    await page.waitForLoadState('domcontentloaded').catch(() => {});
 
     // Page should not return a server error
     if (response) {
@@ -45,7 +45,7 @@ test.describe('DTU Integrity Badge', () => {
 
   test('DTU cards render on board lens page', async ({ page }) => {
     const response = await page.goto('/lenses/board');
-    await page.waitForLoadState('networkidle').catch(() => {});
+    await page.waitForLoadState('domcontentloaded').catch(() => {});
 
     if (response) {
       expect(response.status()).toBeLessThan(500);
@@ -91,7 +91,7 @@ test.describe('DTU Integrity Badge', () => {
     );
 
     const response = await page.goto('/lenses/graph');
-    await page.waitForLoadState('networkidle').catch(() => {});
+    await page.waitForLoadState('domcontentloaded').catch(() => {});
 
     expect(response?.status()).toBeLessThan(500);
 
@@ -146,7 +146,7 @@ test.describe('DTU Integrity Badge', () => {
     );
 
     const response = await page.goto('/lenses/graph');
-    await page.waitForLoadState('networkidle').catch(() => {});
+    await page.waitForLoadState('domcontentloaded').catch(() => {});
 
     expect(response?.status()).toBeLessThan(500);
 
@@ -198,7 +198,7 @@ test.describe('DTU Verified State', () => {
     );
 
     const response = await page.goto('/lenses/graph');
-    await page.waitForLoadState('networkidle').catch(() => {});
+    await page.waitForLoadState('domcontentloaded').catch(() => {});
 
     expect(response?.status()).toBeLessThan(500);
 
@@ -234,7 +234,7 @@ test.describe('DTU Verified State', () => {
     );
 
     const response = await page.goto('/lenses/graph');
-    await page.waitForLoadState('networkidle').catch(() => {});
+    await page.waitForLoadState('domcontentloaded').catch(() => {});
 
     expect(response?.status()).toBeLessThan(500);
 
@@ -283,7 +283,7 @@ test.describe('Compression Ratio Display', () => {
     );
 
     const response = await page.goto('/lenses/graph');
-    await page.waitForLoadState('networkidle').catch(() => {});
+    await page.waitForLoadState('domcontentloaded').catch(() => {});
 
     expect(response?.status()).toBeLessThan(500);
 
@@ -315,7 +315,7 @@ test.describe('DTU Integrity Performance', () => {
     });
 
     const response = await page.goto('/lenses/graph');
-    await page.waitForLoadState('networkidle').catch(() => {});
+    await page.waitForLoadState('domcontentloaded').catch(() => {});
     await page.waitForTimeout(1000);
 
     // Page should not return a server error

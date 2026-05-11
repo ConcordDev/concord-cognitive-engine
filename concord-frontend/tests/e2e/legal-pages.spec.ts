@@ -12,7 +12,7 @@ test.describe('Terms of Service Page', () => {
   test('terms page displays page title', async ({ page }) => {
     const response = await page.goto('/legal/terms');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Skip title check if redirected away from the legal page
     if (!/\/legal\/terms/.test(page.url())) return;
@@ -30,7 +30,7 @@ test.describe('Terms of Service Page', () => {
   test('terms page shows effective date', async ({ page }) => {
     const response = await page.goto('/legal/terms');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const effectiveDate = page.locator('text=/Effective Date/i');
     const visible = await effectiveDate.first().isVisible().catch(() => false);
@@ -42,7 +42,7 @@ test.describe('Terms of Service Page', () => {
   test('terms page has table of contents', async ({ page }) => {
     const response = await page.goto('/legal/terms');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // TOC contains section links
     const tocNav = page.locator('nav');
@@ -55,7 +55,7 @@ test.describe('Terms of Service Page', () => {
   test('terms page has section anchors', async ({ page }) => {
     const response = await page.goto('/legal/terms');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Check key section IDs exist
     const sectionIds = [
@@ -79,7 +79,7 @@ test.describe('Terms of Service Page', () => {
   test('terms page section links navigate to correct anchors', async ({ page }) => {
     const response = await page.goto('/legal/terms');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Click a TOC link and verify URL hash changes
     const tocLink = page.locator('a[href="#acceptance"]');
@@ -102,7 +102,7 @@ test.describe('Privacy Policy Page', () => {
   test('privacy page displays page title', async ({ page }) => {
     const response = await page.goto('/legal/privacy');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Skip title check if redirected away from the legal page
     if (!/\/legal\/privacy/.test(page.url())) return;
@@ -120,7 +120,7 @@ test.describe('Privacy Policy Page', () => {
   test('privacy page shows effective date', async ({ page }) => {
     const response = await page.goto('/legal/privacy');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const effectiveDate = page.locator('text=/Effective Date/i');
     const visible = await effectiveDate.first().isVisible().catch(() => false);
@@ -132,7 +132,7 @@ test.describe('Privacy Policy Page', () => {
   test('privacy page has section anchors', async ({ page }) => {
     const response = await page.goto('/legal/privacy');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Check key section IDs exist
     const sectionIds = [
@@ -156,7 +156,7 @@ test.describe('Privacy Policy Page', () => {
   test('privacy page mentions data sovereignty', async ({ page }) => {
     const response = await page.goto('/legal/privacy');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const dataSovereignty = page.locator('text=/data sovereignty|your data belongs to you/i');
     const visible = await dataSovereignty.first().isVisible().catch(() => false);
@@ -178,7 +178,7 @@ test.describe('DMCA Policy Page', () => {
   test('dmca page displays page title', async ({ page }) => {
     const response = await page.goto('/legal/dmca');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Skip title check if redirected away from the legal page
     if (!/\/legal\/dmca/.test(page.url())) return;
@@ -194,7 +194,7 @@ test.describe('DMCA Policy Page', () => {
   test('dmca page shows submission form', async ({ page }) => {
     const response = await page.goto('/legal/dmca');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // The DMCA form should have key fields
     const formFields = [
@@ -215,7 +215,7 @@ test.describe('DMCA Policy Page', () => {
   test('dmca page has good faith and accuracy checkboxes', async ({ page }) => {
     const response = await page.goto('/legal/dmca');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Look for checkbox inputs for statements
     const checkboxes = page.locator('input[type="checkbox"]');
@@ -231,7 +231,7 @@ test.describe('DMCA Policy Page', () => {
   test('dmca form validation prevents empty submission', async ({ page }) => {
     const response = await page.goto('/legal/dmca');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Find and click the submit button without filling form
     const submitButton = page.locator(
@@ -248,7 +248,7 @@ test.describe('DMCA Policy Page', () => {
   test('dmca form accepts input in fields', async ({ page }) => {
     const response = await page.goto('/legal/dmca');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Fill in claimant name if visible
     const nameInput = page.locator(
@@ -274,7 +274,7 @@ test.describe('DMCA Policy Page', () => {
   test('dmca page has counter-notification section', async ({ page }) => {
     const response = await page.goto('/legal/dmca');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // The DMCA page should mention counter-notification process
     const counterNotification = page.locator('text=/counter.*notification/i');
@@ -291,7 +291,7 @@ test.describe('Legal Footer Links', () => {
   test('landing page has link to terms of service', async ({ page }) => {
     const response = await page.goto('/');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const termsLink = page.locator('a[href="/legal/terms"]');
     if (await termsLink.first().isVisible().catch(() => false)) {
@@ -302,7 +302,7 @@ test.describe('Legal Footer Links', () => {
   test('landing page has link to privacy policy', async ({ page }) => {
     const response = await page.goto('/');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const privacyLink = page.locator('a[href="/legal/privacy"]');
     if (await privacyLink.first().isVisible().catch(() => false)) {
@@ -313,7 +313,7 @@ test.describe('Legal Footer Links', () => {
   test('legal pages cross-link each other', async ({ page }) => {
     const response = await page.goto('/legal/terms');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Terms page should link to privacy policy
     const privacyLink = page.locator('a[href="/legal/privacy"]');
@@ -327,7 +327,7 @@ test.describe('Legal Footer Links', () => {
   test('footer links navigate correctly to legal pages', async ({ page }) => {
     const response = await page.goto('/');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const termsLink = page.locator('a[href="/legal/terms"]');
     if (await termsLink.first().isVisible().catch(() => false)) {
@@ -353,7 +353,7 @@ test.describe('Legal Page Layout', () => {
   test('legal layout wraps all legal pages', async ({ page }) => {
     const response = await page.goto('/legal/terms');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Legal pages should share a common layout
     const article = page.locator('article');
@@ -367,7 +367,7 @@ test.describe('Legal Page Layout', () => {
     await page.setViewportSize({ width: 375, height: 667 });
     const response = await page.goto('/legal/terms');
     expect(response?.status()).toBeLessThan(500);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const bodyVisible = await page.locator('body').isVisible().catch(() => false);
     if (bodyVisible) {
