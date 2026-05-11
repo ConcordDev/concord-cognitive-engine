@@ -1,3 +1,7 @@
+// @sql-loop-ok: the SQL "loops" in flushPending iterate over distinct DB
+// handles (one per backend), each receiving a single batched multi-row
+// INSERT — that's the optimization, not an N+1.  The per-row fallback
+// inside the catch ALREADY hoists its prepare out of the inner loop.
 /**
  * Quota / usage in-memory write-through cache.
  *
