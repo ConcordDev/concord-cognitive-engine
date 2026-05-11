@@ -1503,13 +1503,11 @@ export default function WorldLensPage() {
     | 'modes'
     | 'guild'
     | 'season'
-    | 'npcshop'
     | 'leaderboard'
     | 'worldevents'
     | 'arena'
     | 'jobs'
     | 'lore'
-    | 'character'
     | 'timeline'
   >('none');
   // Local player avatar — mutable so moves update it in place. On
@@ -3916,7 +3914,7 @@ export default function WorldLensPage() {
           <DiegeticSurfaces
             playerPosition={playerAvatar.position}
             onOpenMap={() => setShowPanel('map')}
-            onOpenSheet={() => setShowPanel('character')}
+            onOpenSheet={() => setShowPanel('inventory')}
             onOpenInventory={() => setShowPanel('inventory')}
           />
           <SocialOverlay

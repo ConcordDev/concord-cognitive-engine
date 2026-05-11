@@ -37,7 +37,7 @@ type TransactionStatus = 'pending' | 'cleared' | 'reconciled';
 type AccountCategory = 'Asset' | 'Liability' | 'Equity' | 'Revenue' | 'Expense';
 type LedgerView = 'accounts' | 'journal' | 'trial-balance' | 'pnl' | 'balance-sheet' | 'cash-flow' | 'reconciliation';
 type InvoicingView = 'list' | 'builder' | 'aging';
-type PayrollView = 'list' | 'calculator' | 'summary';
+type PayrollView = 'list' | 'calculator';
 type BudgetView = 'list' | 'variance';
 type PeriodType = 'monthly' | 'quarterly' | 'annual';
 

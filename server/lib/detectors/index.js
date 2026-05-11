@@ -38,6 +38,7 @@ import { runResourceLeakDetector } from "./resource-leak-detector.js";
 import { runEnvConfigDriftDetector } from "./env-config-drift-detector.js";
 import { runObservabilityGapDetector } from "./observability-gap-detector.js";
 import { runAgentBudgetDetector } from "./agent-budget-detector.js";
+import { runLensDecorativeStateDetector } from "./lens-decorative-state-detector.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -199,6 +200,14 @@ registerDetector({
   dataNeeds: ["fs"],
   description: "Checks every lens for broken mounts, missing shells, dead endpoints.",
   run: runLensHealthDetector,
+});
+registerDetector({
+  id: "lens-decorative-state",
+  label: "LensDecorativeStateDetector",
+  consumers: ["code-quality", "repair-cortex"],
+  dataNeeds: ["fs"],
+  description: "Flags lens-page UI controls whose state is never read (decorative non-functional UI). Catches discarded-value useState, set-but-never-read state, view-mode toggles with no render branch, useMemo filters with missing deps, and empty event handlers.",
+  run: runLensDecorativeStateDetector,
 });
 registerDetector({
   id: "dtu-lineage",
