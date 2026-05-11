@@ -696,7 +696,7 @@ export default function CryptoLensPage() {
                       <button
                         onClick={handleEarn}
                         disabled={transacting || !selectedChainData}
-                        className="btn-neon green flex items-center gap-2 disabled:opacity-50"
+                        className="btn-neon green flex items-center gap-2 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-amber-500"
                       >
                         {transacting ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowDownLeft className="w-4 h-4" />}
                         Earn 10 {selectedChainData?.symbol || 'CC'}

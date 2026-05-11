@@ -563,7 +563,7 @@ function WebhookIngestInfo() {
         </code>
         <button
           onClick={handleCopy}
-          className="px-3 py-1 text-xs rounded bg-neon-green/20 text-neon-green border border-neon-green/30 hover:bg-neon-green/30 transition-colors whitespace-nowrap"
+          className="px-3 py-1 text-xs rounded bg-neon-green/20 text-neon-green border border-neon-green/30 hover:bg-neon-green/30 transition-colors whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-amber-500"
         >
           {copied ? 'Copied!' : 'Copy URL'}
         </button>

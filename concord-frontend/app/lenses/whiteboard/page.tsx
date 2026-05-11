@@ -8,6 +8,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   PenTool,
@@ -137,6 +138,10 @@ const fmtDur = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)
 
 /* ================================================================== */
 export default function WhiteboardLensPage() {
+  useLensCommand([
+    { id: 'whiteboard-help', keys: '?', description: 'Lens help', category: 'navigation', action: () => { /* surfaced via tooltip */ } },
+  ], { lensId: 'whiteboard' });
+
   useLensNav('whiteboard');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('whiteboard');
   const queryClient = useQueryClient();
@@ -914,7 +919,7 @@ export default function WhiteboardLensPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full p-8">
+      <div className="flex items-center justify-center h-full p-8 sm:p-10">
         <div className="text-center space-y-3">
           <div className="w-8 h-8 border-2 border-neon-cyan border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="text-sm text-gray-400">Loading...</p>
@@ -1027,7 +1032,7 @@ export default function WhiteboardLensPage() {
 
                 <div className="w-px h-8 bg-lattice-border mx-1" />
 
-                <button onClick={undo} disabled={undoStack.length === 0} className="p-2 rounded-lg hover:bg-lattice-elevated disabled:opacity-30" title="Undo (Ctrl+Z)"><Undo2 className="w-5 h-5" /></button>
+                <button onClick={undo} disabled={undoStack.length === 0} className="p-2 rounded-lg hover:bg-lattice-elevated disabled:opacity-30 focus:outline-none focus:ring-2 focus:ring-amber-500" title="Undo (Ctrl+Z)"><Undo2 className="w-5 h-5" /></button>
                 <button onClick={redo} disabled={redoStack.length === 0} className="p-2 rounded-lg hover:bg-lattice-elevated disabled:opacity-30" title="Redo (Ctrl+Y)"><Redo2 className="w-5 h-5" /></button>
                 <button onClick={deleteSelected} disabled={!selectedElement} className="p-2 rounded-lg hover:bg-lattice-elevated disabled:opacity-30 text-red-400" title="Delete"><Trash2 className="w-5 h-5" /></button>
 

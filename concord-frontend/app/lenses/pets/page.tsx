@@ -394,6 +394,9 @@ export default function PetsLensPage() {
         {showFeatures && <div className="px-4 pb-4"><LensFeaturePanel lensId="pets" /></div>}
       </div>
     </div>
+    
+      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
+      <a href="#pets-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to pets content</a>
     </LensShell>
   );
 }

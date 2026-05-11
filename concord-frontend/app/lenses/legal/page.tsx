@@ -3336,6 +3336,9 @@ export default function LegalLensPage() {
       lensId="legal"
       lensPrompt="You're inside Concord's Legal lens — cases, documents, contracts, compliance. Prefer expert_mode for cited legal research, run_lens_action for legal.* actions, create_dtu to save analysis."
     />
+    
+      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
+      <a href="#legal-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to legal content</a>
     </LensShell>
   );
 }

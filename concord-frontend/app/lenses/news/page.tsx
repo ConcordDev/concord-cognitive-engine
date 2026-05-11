@@ -298,7 +298,7 @@ export default function NewsLensPage() {
           <DTUExportButton domain="news" data={{}} compact />
           <button
             onClick={handleRefresh}
-            className="p-2 rounded-lg text-gray-400 hover:text-neon-blue hover:bg-lattice-elevated transition-colors"
+            className="p-2 rounded-lg text-gray-400 hover:text-neon-blue hover:bg-lattice-elevated transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500"
             title="Refresh news"
           >
             <RefreshCw className="w-4 h-4" />

@@ -366,7 +366,7 @@ function RealityExplorerSection({ handleAction, isRunning, experimentItems, acti
             )}
           </div>
         ))}
-        <button onClick={addConstraint} className="text-xs text-neon-cyan flex items-center gap-1 hover:underline">
+        <button onClick={addConstraint} className="text-xs text-neon-cyan flex items-center gap-1 hover:underline focus:outline-none focus:ring-2 focus:ring-amber-500">
           <Plus className="w-3 h-3" /> Add constraint
         </button>
       </div>

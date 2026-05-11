@@ -1356,7 +1356,7 @@ export default function FoodLensPage() {
                             <span className="truncate flex-1">{m.title}</span>
                             {md.calories ? <span className="text-gray-500">{md.calories}cal</span> : null}
                             <button
-                              className="opacity-0 group-hover/meal:opacity-100 text-red-400 hover:text-red-300 transition-opacity flex-shrink-0"
+                              className="opacity-0 group-hover/meal:opacity-100 text-red-400 hover:text-red-300 transition-opacity flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-amber-500"
                               onClick={e => { e.stopPropagation(); removeMealPlan(m.id); }}
                               title="Remove meal"
                             >

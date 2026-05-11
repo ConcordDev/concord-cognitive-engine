@@ -229,7 +229,7 @@ export default function MentorshipLensPage() {
               <input value={newMentorship.mentorName} onChange={e => setNewMentorship(p => ({ ...p, mentorName: e.target.value }))} placeholder="Mentor name (optional)..." className="input-lattice" />
               <input value={newMentorship.menteeName} onChange={e => setNewMentorship(p => ({ ...p, menteeName: e.target.value }))} placeholder="Mentee name (optional)..." className="input-lattice" />
             </div>
-            <button onClick={handleCreate} disabled={createMut.isPending || !newMentorship.topic.trim()} className="btn-neon green w-full">
+            <button onClick={handleCreate} disabled={createMut.isPending || !newMentorship.topic.trim()} className="btn-neon green w-full focus:outline-none focus:ring-2 focus:ring-amber-500">
               {createMut.isPending ? 'Creating...' : 'Create Mentorship'}
             </button>
           </motion.div>

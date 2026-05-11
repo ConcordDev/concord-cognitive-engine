@@ -637,7 +637,7 @@ export default function CalendarLensPage() {
           {weekDates.map((date, i) => {
             const allDayEvents = getEventsForDay(date).filter((e) => e.allDay);
             return (
-              <div key={i} className="flex-1 border-l border-lattice-border p-1 space-y-1">
+              <div key={i} className="flex-1 border-l border-lattice-border p-1 sm:p-3 space-y-1">
                 {allDayEvents.map((event) => (
                   <button
                     key={event.id}

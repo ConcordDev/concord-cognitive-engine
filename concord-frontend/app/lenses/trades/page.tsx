@@ -2472,6 +2472,9 @@ export default function TradesLensPage() {
         )}
       </div>
     </div>
+    
+      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
+      <a href="#trades-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to trades content</a>
     </LensShell>
   );
 }

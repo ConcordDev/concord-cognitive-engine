@@ -506,7 +506,7 @@ export default function PharmacyLensPage() {
                 <option value="weekly">Weekly</option>
                 <option value="as-needed">As Needed</option>
               </select>
-              <button onClick={addMedication} className="px-4 py-2 bg-neon-green/20 text-neon-green rounded-lg text-sm hover:bg-neon-green/30">Add</button>
+              <button onClick={addMedication} className="px-4 py-2 bg-neon-green/20 text-neon-green rounded-lg text-sm hover:bg-neon-green/30 focus:outline-none focus:ring-2 focus:ring-amber-500">Add</button>
             </div>
           </div>
 

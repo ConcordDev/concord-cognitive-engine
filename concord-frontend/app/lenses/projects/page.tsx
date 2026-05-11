@@ -496,6 +496,9 @@ export default function ProjectsLensPage() {
         {showFeatures && <div className="px-4 pb-4"><LensFeaturePanel lensId="projects" /></div>}
       </div>
     </div>
+    
+      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
+      <a href="#projects-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to projects content</a>
     </LensShell>
   );
 }

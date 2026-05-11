@@ -511,7 +511,7 @@ export default function AccountingLensPage() {
         return (
           <div key={cat} className={ds.panel}>
             <button
-              className="w-full flex items-center justify-between"
+              className="w-full flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-amber-500"
               onClick={() => toggleCategory(cat)}
             >
               <div className="flex items-center gap-3">

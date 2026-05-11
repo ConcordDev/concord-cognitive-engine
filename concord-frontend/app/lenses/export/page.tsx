@@ -434,7 +434,7 @@ export default function ExportLensPage() {
         <button
           onClick={handleExport}
           disabled={selectedData.length === 0 || exporting}
-          className="btn-neon green w-full py-3 text-sm flex items-center justify-center gap-2"
+          className="btn-neon green w-full py-3 text-sm flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
         >
           {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
           {exporting ? 'Exporting...' : `Export ${selectedData.length} dataset(s) as ${selectedFormat.toUpperCase()}`}

@@ -362,7 +362,7 @@ export default function DailyLensPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full p-8">
+      <div className="flex items-center justify-center h-full p-8 sm:p-10">
         <div className="text-center space-y-3">
           <div className="w-8 h-8 border-2 border-neon-cyan border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="text-sm text-gray-400">Loading...</p>
@@ -564,7 +564,7 @@ export default function DailyLensPage() {
                       <input type="number" value={newDuration} onChange={(e) => setNewDuration(e.target.value)}
                         placeholder="Minutes" className="input-lattice w-24 text-sm" />
                     </div>
-                    <button onClick={addSession} className="btn-neon purple text-xs w-full">Add</button>
+                    <button onClick={addSession} className="btn-neon purple text-xs w-full focus:outline-none focus:ring-2 focus:ring-amber-500">Add</button>
                   </div>
                 </motion.div>
               )}

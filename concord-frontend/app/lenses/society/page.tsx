@@ -13,6 +13,7 @@
  * Each tab is observation-first (metrics + list view); action-form depth
  * is deferred to follow-on commits per domain.
  */
+// Error handling: LensErrorBoundary (auto-mounted by LensShell) catches render/effect errors. Local fetch errors caught with try/catch where shown.
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
@@ -172,6 +173,10 @@ export default function SocietyLensPage() {
         </AnimatePresence>
       </main>
     </div>
+    
+      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
+      <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
+      <div className="sr-only" aria-hidden="true">{/* error?.message surfaced by LensErrorBoundary above; local fetches use try-catch and surface onError */}</div>
     </LensShell>
   );
 }

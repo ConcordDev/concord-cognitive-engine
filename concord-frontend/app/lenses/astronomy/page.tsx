@@ -101,7 +101,7 @@ function CelestialCard({
         </div>
       </div>
       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-2">
-        <button onClick={onRemove} className="text-gray-600 hover:text-red-400">
+        <button onClick={onRemove} className="text-gray-600 hover:text-red-400 focus:outline-none focus:ring-2 focus:ring-amber-500">
           <Trash2 className="w-4 h-4" />
         </button>
       </div>

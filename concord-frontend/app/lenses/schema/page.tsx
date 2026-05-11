@@ -260,7 +260,7 @@ export default function SchemaLensPage() {
             <button
               onClick={handleValidate}
               disabled={!validateData.schemaName || !validateData.data || validateMutation.isPending}
-              className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-amber-500"
             >
               {validateMutation.isPending ? 'Validating...' : 'Validate'}
             </button>

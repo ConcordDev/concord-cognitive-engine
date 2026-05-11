@@ -178,7 +178,7 @@ export default function GlobalLensPage() {
           <p className="text-neon-cyan mt-1 text-sm">{total.toLocaleString()} DTUs</p>
         </div>
         <button
-          className="btn-ghost text-sm"
+          className="btn-ghost text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
           onClick={() => queryClient.invalidateQueries({ queryKey: ['global-dtus-browser'] })}
         >
           <RefreshCw className={`w-4 h-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />

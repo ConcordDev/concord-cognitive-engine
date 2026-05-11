@@ -478,7 +478,7 @@ export default function BillingPage() {
               <button
                 onClick={handleExportCSV}
                 disabled={transactions.length === 0}
-                className="btn-neon flex items-center gap-2 text-sm disabled:opacity-50"
+                className="btn-neon flex items-center gap-2 text-sm disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-amber-500"
               >
                 <Download className="w-4 h-4" />
                 Export CSV

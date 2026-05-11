@@ -590,7 +590,7 @@ export default function GoalsLensPage() {
                   <Zap className="w-4 h-4 text-yellow-400 flex-shrink-0" />
                   <input type="number" value={newXp} onChange={(e) => setNewXp(Number(e.target.value))} min={50} max={2000} step={50} className="input-lattice w-full" placeholder="XP" />
                 </div>
-                <button onClick={handleCreateGoal} disabled={!newTitle || createGoalMutation.isPending} className="btn-neon purple disabled:opacity-50 disabled:cursor-not-allowed">{createGoalMutation.isPending ? 'Creating...' : 'Create Goal'}</button>
+                <button onClick={handleCreateGoal} disabled={!newTitle || createGoalMutation.isPending} className="btn-neon purple disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-amber-500">{createGoalMutation.isPending ? 'Creating...' : 'Create Goal'}</button>
               </div>
               <textarea value={newSubtasks} onChange={(e) => setNewSubtasks(e.target.value)} placeholder="Subtasks (one per line)..." className="input-lattice w-full h-16 resize-none text-sm" />
             </div>

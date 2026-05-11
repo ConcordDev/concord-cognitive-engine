@@ -3998,7 +3998,7 @@ function TutorPanel() {
         <button
           type="submit"
           disabled={!query || ask.isPending}
-          className="flex items-center gap-2 px-4 py-2 bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/30 rounded-lg text-sm disabled:opacity-50"
+          className="flex items-center gap-2 px-4 py-2 bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/30 rounded-lg text-sm disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-amber-500"
         >
           <Send className="w-4 h-4" />
           Ask

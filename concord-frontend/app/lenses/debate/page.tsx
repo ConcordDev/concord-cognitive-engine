@@ -181,7 +181,7 @@ function CurrentSpeakerBanner({ phase, currentTurn, onSkipTurn }: { phase: Debat
         </div>
       </div>
       <button onClick={onSkipTurn}
-        className="px-3 py-1 rounded text-xs bg-white/5 border border-white/10 hover:bg-white/10 text-gray-300">
+        className="px-3 py-1 rounded text-xs bg-white/5 border border-white/10 hover:bg-white/10 text-gray-300 focus:outline-none focus:ring-2 focus:ring-amber-500">
         Skip Turn
       </button>
     </div>

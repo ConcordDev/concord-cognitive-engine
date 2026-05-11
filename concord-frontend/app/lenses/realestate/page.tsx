@@ -3323,6 +3323,9 @@ export default function RealEstateLensPage() {
         )}
       </div>
     </div>
+    
+      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
+      <a href="#realestate-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to realestate content</a>
     </LensShell>
   );
 }

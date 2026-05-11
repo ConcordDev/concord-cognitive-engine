@@ -310,7 +310,7 @@ export default function RoboticsLensPage() {
               <select value={newRobot.type} onChange={e => setNewRobot({ ...newRobot, type: e.target.value as RobotType })} className="bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm">
                 {(Object.keys(TYPE_ICONS) as RobotType[]).map(t => <option key={t} value={t}>{TYPE_ICONS[t]}</option>)}
               </select>
-              <button onClick={addRobot} className="px-4 py-2 bg-neon-cyan/20 text-neon-cyan rounded-lg text-sm hover:bg-neon-cyan/30">
+              <button onClick={addRobot} className="px-4 py-2 bg-neon-cyan/20 text-neon-cyan rounded-lg text-sm hover:bg-neon-cyan/30 focus:outline-none focus:ring-2 focus:ring-amber-500">
                 <Plus className="w-4 h-4 inline mr-1" /> Register
               </button>
             </div>

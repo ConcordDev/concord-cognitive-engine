@@ -589,7 +589,7 @@ export default function ImportLens() {
                 <button
                   onClick={startImport}
                   disabled={!validationResult.valid || importing}
-                  className="btn-primary w-full flex items-center justify-center gap-1 text-xs py-1.5"
+                  className="btn-primary w-full flex items-center justify-center gap-1 text-xs py-1.5 focus:outline-none focus:ring-2 focus:ring-amber-500"
                 >
                   {importing && <Loader2 className="w-3 h-3 animate-spin" />}
                   {importing ? 'Importing...' : 'Import'}

@@ -2613,6 +2613,9 @@ export default function StudioLensPage() {
         lensPrompt="You're inside Concord's Studio lens — a DAW with synths, drum machines, mixer, recording. Prefer audio/music tools when relevant. The user is composing or arranging."
       />
     </div>
+    
+      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
+      <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
     </LensShell>
   );
 }

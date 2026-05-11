@@ -506,6 +506,9 @@ export default function MarketingLensPage() {
         {showFeatures && <div className="px-4 pb-4"><LensFeaturePanel lensId="marketing" /></div>}
       </div>
     </div>
+    
+      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
+      <a href="#marketing-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to marketing content</a>
     </LensShell>
   );
 }

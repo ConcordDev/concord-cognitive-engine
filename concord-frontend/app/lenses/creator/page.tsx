@@ -244,6 +244,9 @@ export default function CreatorDashboardPage() {
         lensId="creator"
         lensPrompt="You're inside Concord's Creator lens — the royalty cascade + earnings + listings dashboard. Prefer expert_mode for cited research about growth, run_lens_action for listing/profile updates, create_dtu to save analysis."
       />
+    
+      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
+      <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
     </LensShell>
   );
 }

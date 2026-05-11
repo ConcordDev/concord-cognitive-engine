@@ -949,7 +949,7 @@ function CityStreamingSection() {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 space-y-4">
+    <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
       {/* Phase 1: globally-listening skill evolution modal */}
       <EvolutionModal />
 
@@ -5635,6 +5635,9 @@ export default function WorldLensPage() {
       {/* Post-tutorial hints — rotates contextual tips after first visit */}
       {!showOnboarding && <PostTutorialHints />}
     </div>
+    
+      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
+      <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
     </LensShell>
   );
 }

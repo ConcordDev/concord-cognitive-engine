@@ -448,7 +448,7 @@ export default function DatabaseLensPage() {
         )}
       </div>
         </div>
-        <button onClick={refreshAll} className="btn-neon flex items-center gap-2 text-sm">
+        <button onClick={refreshAll} className="btn-neon flex items-center gap-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
           <RefreshCw className="w-4 h-4" />
           Refresh All
         </button>

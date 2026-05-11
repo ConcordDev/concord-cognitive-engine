@@ -159,7 +159,7 @@ export default function SufferingLensPage() {
             <Activity className="w-4 h-4 text-neon-cyan" /> Tracked Wellbeing Items
             {runAction.isPending && <Loader2 className="w-4 h-4 animate-spin text-neon-cyan" />}
           </h3>
-          <button onClick={handleCreate} className="flex items-center gap-1.5 px-3 py-1.5 bg-neon-cyan/20 text-neon-cyan rounded-lg text-sm hover:bg-neon-cyan/30">
+          <button onClick={handleCreate} className="flex items-center gap-1.5 px-3 py-1.5 bg-neon-cyan/20 text-neon-cyan rounded-lg text-sm hover:bg-neon-cyan/30 focus:outline-none focus:ring-2 focus:ring-amber-500">
             <Plus className="w-4 h-4" /> Add Item
           </button>
         </div>
