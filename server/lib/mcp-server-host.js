@@ -17,6 +17,7 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { randomBytes } from "node:crypto";
 import { z } from "zod";
 
 // Allowlist of Concord macros to expose as MCP tools. Each entry
@@ -120,7 +121,10 @@ export function mountMcpServer({ app, runMacro, ctxFor, authMW }) {
 
   const handler = async (req, res) => {
     try {
-      const sessionId = req.headers["mcp-session-id"] || `s_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+      // Session IDs must be unguessable: a leaked or guessed id would
+      // let an unauthorized client hijack another user's MCP transport.
+      // Use cryptographic randomness instead of Math.random (CodeQL gate).
+      const sessionId = req.headers["mcp-session-id"] || `s_${Date.now()}_${randomBytes(12).toString("hex")}`;
       let transport = _activeTransports.get(sessionId);
       if (!transport) {
         transport = new StreamableHTTPServerTransport({
