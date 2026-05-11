@@ -24,8 +24,9 @@ import { useState, useCallback } from 'react';
 import {
   Bot, Send, X, Sparkles, ExternalLink, Loader2,
   Search, Calculator, Globe, Layers, FileText,
-  CheckCircle2, XCircle,
+  CheckCircle2, XCircle, Hammer, MessageSquare,
 } from 'lucide-react';
+import MarathonPanel from './MarathonPanel';
 
 interface ToolCall {
   tool: string;
@@ -140,6 +141,7 @@ export default function AgentModePanel({ open, onClose }: AgentModePanelProps) {
   const [prompt, setPrompt] = useState('');
   const [busy, setBusy] = useState(false);
   const [conversation, setConversation] = useState<ConversationTurn[]>([]);
+  const [tab, setTab] = useState<'quick' | 'marathon'>('quick');
 
   const submit = useCallback(async () => {
     if (!prompt.trim() || busy) return;
@@ -196,6 +198,27 @@ export default function AgentModePanel({ open, onClose }: AgentModePanelProps) {
         </button>
       </header>
 
+      <div className="flex border-b border-zinc-800 bg-zinc-900/40">
+        <button
+          onClick={() => setTab('quick')}
+          className={`flex items-center gap-1.5 px-4 py-2 text-xs font-medium border-b-2 ${
+            tab === 'quick' ? 'border-amber-500 text-amber-300' : 'border-transparent text-zinc-500 hover:text-zinc-300'
+          }`}
+        >
+          <MessageSquare className="w-3.5 h-3.5" /> Quick
+        </button>
+        <button
+          onClick={() => setTab('marathon')}
+          className={`flex items-center gap-1.5 px-4 py-2 text-xs font-medium border-b-2 ${
+            tab === 'marathon' ? 'border-amber-500 text-amber-300' : 'border-transparent text-zinc-500 hover:text-zinc-300'
+          }`}
+        >
+          <Hammer className="w-3.5 h-3.5" /> Marathon
+        </button>
+      </div>
+
+      {tab === 'marathon' ? <MarathonPanel /> : (
+      <>
       <div className="flex-1 overflow-y-auto px-5 py-4 space-y-6">
         {conversation.length === 0 && (
           <div className="text-center text-sm text-zinc-500 mt-12 px-4">
@@ -315,6 +338,8 @@ export default function AgentModePanel({ open, onClose }: AgentModePanelProps) {
           </button>
         </div>
       </footer>
+      </>
+      )}
     </div>
   );
 }

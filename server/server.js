@@ -10676,8 +10676,26 @@ register("multimodal","image_generate", (ctx, input={}) => {
     }
   }
 
-  // Cloud fallback: OpenAI DALL-E
-  const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
+  // Cloud fallback: OpenAI DALL-E. Sprint 10 BYO — check the user's
+  // own OpenAI key first (user_brain_overrides), then env. Per-user
+  // overrides let paying users route DALL-E through their own quota.
+  let OPENAI_API_KEY = "";
+  try {
+    const userId = ctx?.actor?.userId;
+    if (userId && ctx?.db) {
+      const row = ctx.db.prepare(`
+        SELECT encrypted_key FROM user_brain_overrides
+        WHERE user_id = ? AND provider = 'openai' AND active = 1
+        LIMIT 1
+      `).get(userId);
+      if (row?.encrypted_key) {
+        const { decryptKey } = await import("./lib/byo-crypto.js");
+        const k = await decryptKey(userId, row.encrypted_key);
+        if (k) OPENAI_API_KEY = k;
+      }
+    }
+  } catch { /* fall through to env */ }
+  if (!OPENAI_API_KEY) OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
   if (OPENAI_API_KEY) {
     const size = String(input.size || "1024x1024"); // 1024x1024, 1792x1024, 1024x1792
     const quality = String(input.quality || "standard"); // standard, hd

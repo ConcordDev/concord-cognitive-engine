@@ -42,6 +42,7 @@ Available tools:
 - generate_image: Generate an image. Params: {"prompt": "describe the image", "size": "1024x1024", "quality": "standard"}
 - mcp_call: Invoke a tool on a connected external MCP server (filesystem, GitHub, Slack, etc.). Params: {"serverId": "filesystem", "toolName": "read_file", "args": {...}}
 - mcp_list: List all tools available across connected external MCP servers. Params: {}
+- browser_act: Take actions on a web page — click, fill forms, select dropdowns, screenshot. Use when read-only browse_url isn't enough (need to log in, submit forms, navigate UI). Params: {"url": "https://...", "actions": [{"kind": "fill", "selector": "input[name='q']", "value": "..."}, {"kind": "click", "selector": "button[type='submit']"}, {"kind": "screenshot"}]}
 
 Rules:
 - Use a tool when the task genuinely requires it. Don't fabricate results.
@@ -224,6 +225,50 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
           result: r.text || r.content,
         };
       }
+      case "browser_act": {
+        const { url = "", actions = [] } = call.params || {};
+        if (!String(url).startsWith("http")) {
+          return { tool: call.tool, ok: false, error: "browser_act requires a valid http(s) URL" };
+        }
+        if (!Array.isArray(actions) || actions.length === 0) {
+          return { tool: call.tool, ok: false, error: "browser_act requires at least one action" };
+        }
+        try {
+          const { browserEngine } = await import("./browser-engine.js");
+          // Map our action shape into fillForm/screenshot calls. The
+          // engine's fillForm is the closest existing primitive — it
+          // supports fill/select/checkbox/file natively, and we click
+          // explicit selectors as a final submit step.
+          const fillFields = actions.filter(a => ["fill", "select", "checkbox", "file"].includes(a.kind))
+            .map(a => ({ selector: a.selector, value: a.value, type: a.kind === "fill" ? undefined : a.kind }));
+          const clickAfter = actions.find(a => a.kind === "click");
+          const wantsScreenshot = actions.some(a => a.kind === "screenshot");
+
+          const result = { tool: call.tool, ok: true, url, actionsExecuted: actions.length };
+          if (fillFields.length > 0 || clickAfter) {
+            const r = await Promise.race([
+              browserEngine.fillForm(url, fillFields, {
+                submitSelector: clickAfter?.selector,
+              }),
+              new Promise((_, rej) => {
+                setTimeout(() => rej(new Error("browser_act timeout")), 25_000);
+              }),
+            ]);
+            result.text = (r?.html || r?.text || "").slice(0, 4000);
+            result.finalUrl = r?.url;
+          }
+          if (wantsScreenshot) {
+            const shotUrl = result.finalUrl || url;
+            const shot = await browserEngine.screenshot(shotUrl, { fullPage: false }).catch(() => null);
+            if (shot?.base64) {
+              result.artifact = { kind: "image", source: "browser_act", prompt: `Screenshot of ${shotUrl}`, image_b64: shot.base64 };
+            }
+          }
+          return result;
+        } catch (err) {
+          return { tool: call.tool, ok: false, error: `browser_act failed: ${err?.message || err}` };
+        }
+      }
       default:
         return { tool: call.tool, ok: false, error: `unknown tool: ${call.tool}` };
     }
@@ -245,6 +290,7 @@ export function formatToolResults(results) {
     if (r.tool === "generate_image") return `[TOOL_RESULT: generate_image source=${r.source}] Image generated for prompt "${r.prompt}". Artifact attached.`;
     if (r.tool === "mcp_list")     return `[TOOL_RESULT: mcp_list] ${JSON.stringify((r.tools || []).slice(0, 50)).slice(0, 4000)}`;
     if (r.tool === "mcp_call")     return `[TOOL_RESULT: mcp_call ${r.serverId}/${r.toolName}] ${(typeof r.result === "string" ? r.result : JSON.stringify(r.result)).slice(0, 4000)}`;
+    if (r.tool === "browser_act")  return `[TOOL_RESULT: browser_act ${r.url}] ${r.actionsExecuted} actions executed. finalUrl=${r.finalUrl || r.url}\n${(r.text || "").slice(0, 4000)}`;
     return `[TOOL_RESULT: ${r.tool}] ${JSON.stringify(r).slice(0, 2000)}`;
   }).join("\n\n");
 }
@@ -266,8 +312,31 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
   if (!message) return { ok: false, error: "missing_message" };
   const maxTurns = opts.maxTurns || AGENT_MAX_TURNS;
 
+  // Shadow context prefetch — pull the user's active substrate (shadow
+  // DTUs from chat.harvest) and inject as a system-context block before
+  // the brain sees the message. This is how the subconscious brain's
+  // ongoing thoughts + ingested feed-manager DTUs + lattice insights
+  // surface as automatic context without the brain having to ask for
+  // them via run_lens_action. Best-effort — never blocks.
+  let shadowContextBlock = "";
+  if (opts.shadowContext !== false && runMacro) {
+    try {
+      const harvest = await runMacro("chat", "harvest", {
+        sessionId: opts.sessionId || `agent:${userId}`,
+        prompt: message,
+        lens: "chat",
+      }, { db, actor: { userId } });
+      const dtus = Array.isArray(harvest?.dtus) ? harvest.dtus.slice(0, 8) : [];
+      if (dtus.length > 0) {
+        shadowContextBlock = `\n\n--- Active substrate context (auto-pulled) ---\n${
+          dtus.map((d, i) => `[${i + 1}] ${d.title || d.id} (tier: ${d.tier || "regular"})`).join("\n")
+        }\n--- end context ---`;
+      }
+    } catch { /* harvest optional */ }
+  }
+
   const messages = [
-    { role: "system", content: `You are Concord's Agent Mode — a tool-using assistant operating inside a 200+ lens cognitive OS. Be concise. Use tools when the task genuinely requires them.\n\n${TOOL_SCHEMA_BLOCK}` },
+    { role: "system", content: `You are Concord's Agent Mode — a tool-using assistant operating inside a 200+ lens cognitive OS. Be concise. Use tools when the task genuinely requires them.\n\n${TOOL_SCHEMA_BLOCK}${shadowContextBlock}` },
     ...history,
     { role: "user", content: message },
   ];

@@ -178,6 +178,41 @@ export async function tickMarathon({ db, sessionId, runMacro, lensActions, opts 
     WHERE id = ?
   `).run(totalTurns, nextStatus, nextStatus, nextTickAt, sessionId);
 
+  // Sprint 13 — terminal-status hooks. When a marathon completes or
+  // gets blocked, fire an initiative engine event so the user's bell
+  // lights up ("your marathon refactor is done" / "I'm blocked on X").
+  // Best-effort; the marathon itself succeeds whether or not the
+  // initiative engine is wired.
+  if (nextStatus === "completed" || nextStatus === "paused") {
+    try {
+      const re = globalThis._concordRealtimeEmit;
+      if (typeof re === "function") {
+        re("marathon:status", {
+          actor_kind: "marathon",
+          actor_id: sessionId,
+          session_id: sessionId,
+          user_id: session.user_id,
+          status: nextStatus,
+          total_turns: totalTurns,
+          title: session.title,
+        });
+      }
+      // Direct insert into initiative engine table if present — the
+      // bell polls /api/initiative/pending which reads from there.
+      const trigger = nextStatus === "completed" ? "pending_work" : "reflective_followup";
+      const msg = nextStatus === "completed"
+        ? `Marathon complete: "${session.title}" finished after ${totalTurns} turns.`
+        : `Marathon paused: "${session.title}" hit a block at turn ${totalTurns}. Reason in the answer body.`;
+      try {
+        const initId = `init_mar_${sessionId.slice(4, 16)}_${Date.now().toString(36)}`;
+        db.prepare(`
+          INSERT INTO initiatives (id, user_id, trigger, priority, message, status, created_at)
+          VALUES (?, ?, ?, 'normal', ?, 'pending', unixepoch())
+        `).run(initId, session.user_id, trigger, msg);
+      } catch { /* initiatives table optional in test setups */ }
+    } catch { /* never block on telemetry */ }
+  }
+
   return {
     ok: true,
     sessionId,
