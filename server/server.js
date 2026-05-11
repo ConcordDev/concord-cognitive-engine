@@ -46475,7 +46475,18 @@ app.post("/api/capture/email", (req, res) => {
 });
 
 app.post("/api/feeds", asyncHandler(async (req, res) => {
-  const result = await addRSSFeed(req.body.url, req.body.name);
+  // SSRF gate: an attacker-supplied URL would otherwise let the server
+  // fetch internal-network targets (169.254.169.254 metadata, localhost
+  // admin panels, fd00:: IPv6 IMDS, etc). _ssrfValidate is the canonical
+  // validator: scheme allowlist + private-IP block + DNS rebinding check.
+  const url = String(req.body?.url || "");
+  if (!url) return res.status(400).json({ ok: false, error: "url_required" });
+  if (url.length > 2048) return res.status(400).json({ ok: false, error: "url_too_long" });
+  const safety = await _ssrfValidate(url);
+  if (!safety.ok) {
+    return res.status(400).json({ ok: false, error: `unsafe_url:${safety.error}` });
+  }
+  const result = await addRSSFeed(safety.url, req.body.name);
   res.json(result);
 }));
 

@@ -2,6 +2,73 @@
 // Domain actions for system invariants: invariant checking, consistency
 // proofs via Merkle hashes, and constraint satisfaction (AC-3).
 
+import * as acorn from "acorn";
+
+// Hard cap on expression length before any parsing — defangs ReDoS-shaped
+// inputs to the field-replacement regex below.
+const MAX_EXPR_LEN = 1000;
+
+// Sprint 18.3: AST-based validation for the invariant expression evaluator.
+// Replaces the previous regex-only field-replacement defence which CodeQL
+// flagged as `js/code-injection` against `new Function(...)`.
+//
+// Strategy: parse the expression with acorn, walk the AST, REJECT any node
+// type outside the safe-arithmetic-and-comparison whitelist. Only after the
+// AST is structurally proven safe do we let the original field-replacement
+// + Function constructor path run. CallExpression, NewExpression, MemberCall,
+// ArrowFunction, TaggedTemplate, etc. are all rejected.
+const SAFE_NODE_TYPES = new Set([
+  "Program", "ExpressionStatement",
+  "BinaryExpression", "LogicalExpression", "UnaryExpression", "ConditionalExpression",
+  "MemberExpression",            // foo.bar (computed=false only — see check below)
+  "Identifier", "Literal", "TemplateLiteral", "TemplateElement",
+  "ArrayExpression",             // [1, 2, 3] is fine
+  "ObjectExpression", "Property",
+  "SequenceExpression",          // a, b, c — comma operator
+  "ParenthesizedExpression",
+]);
+const FORBIDDEN_IDENTIFIERS = new Set([
+  "Function", "eval", "constructor", "__proto__", "prototype",
+  "globalThis", "global", "process", "require", "module", "exports",
+  "setTimeout", "setInterval", "setImmediate", "fetch", "import",
+  "WebAssembly", "Reflect", "Proxy",
+]);
+
+function validateExpressionAST(expr) {
+  let ast;
+  try {
+    ast = acorn.parseExpressionAt(expr, 0, { ecmaVersion: 2020 });
+  } catch (e) {
+    return { ok: false, reason: `parse_error:${e.message}` };
+  }
+
+  let firstViolation = null;
+  function walk(node) {
+    if (firstViolation) return;
+    if (!node || typeof node !== "object") return;
+    if (Array.isArray(node)) { for (const n of node) walk(n); return; }
+    if (node.type && !SAFE_NODE_TYPES.has(node.type)) {
+      firstViolation = `disallowed_node:${node.type}`;
+      return;
+    }
+    if (node.type === "MemberExpression" && node.computed) {
+      // foo[expr] could be foo["constructor"] — disallow computed access.
+      firstViolation = "disallowed_computed_member";
+      return;
+    }
+    if (node.type === "Identifier" && FORBIDDEN_IDENTIFIERS.has(node.name)) {
+      firstViolation = `forbidden_identifier:${node.name}`;
+      return;
+    }
+    for (const key of Object.keys(node)) {
+      if (key === "loc" || key === "range" || key === "start" || key === "end") continue;
+      walk(node[key]);
+    }
+  }
+  walk(ast);
+  return firstViolation ? { ok: false, reason: firstViolation } : { ok: true };
+}
+
 export default function registerInvariantActions(registerLensAction) {
   /**
    * invariantCheck
@@ -16,8 +83,16 @@ export default function registerInvariantActions(registerLensAction) {
 
     if (invariants.length === 0) return { ok: true, result: { message: "No invariants defined." } };
 
-    // Safe expression evaluator: supports field access, comparisons, logical ops
+    // Safe expression evaluator: supports field access, comparisons, logical ops.
+    // Two-layer defence: (1) AST whitelist via acorn rejects CallExpression /
+    // NewExpression / arrow funcs / computed member access / forbidden globals
+    // before any string substitution runs; (2) the existing identifier-resolve
+    // pass converts whitelisted identifiers to literal values.
     function evaluateExpression(expr, context) {
+      if (typeof expr !== "string" || !expr) return { value: null, error: "empty_expression" };
+      if (expr.length > MAX_EXPR_LEN) return { value: null, error: "expression_too_long" };
+      const astCheck = validateExpressionAST(expr);
+      if (!astCheck.ok) return { value: null, error: `unsafe_expression:${astCheck.reason}` };
       // Tokenize and parse a safe subset of expressions
       // Support: field.path, numbers, strings, &&, ||, !, ==, !=, <, >, <=, >=, +, -, *, /
       function resolve(path, obj) {
