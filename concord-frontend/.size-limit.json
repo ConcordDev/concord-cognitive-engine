@@ -1,6 +1,5 @@
 [
   {
-    "$comment": "Sprint 18 — bundle size budgets per critical-path lens. Each entry caps the gzipped JS shipped for a route. CI fails if any entry grows beyond the limit. Updates require a budget bump (intentional). Numbers are starting points — tighten over time.",
     "name": "homepage",
     "path": ".next/static/chunks/pages/_app-*.js",
     "limit": "350 KB",

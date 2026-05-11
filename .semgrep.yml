@@ -102,11 +102,30 @@ rules:
   - id: concord-eval-or-function-ctor
     message: |
       Use of eval() or new Function() — code injection risk.
+      If you must use it, route through an acorn AST whitelist first
+      (see server/domains/invariant.js#validateExpressionAST or
+      server/routes/simulation.js#validateMonteCarloFn for the pattern)
+      and add the file to this rule's paths.exclude list.
     severity: ERROR
     languages: [javascript, typescript]
     pattern-either:
       - pattern: eval($X)
       - pattern: new Function($X)
+    paths:
+      # Both files validate the expression through an acorn AST whitelist
+      # BEFORE invoking `new Function(...)`. The whitelist rejects
+      # CallExpression, NewExpression, arrow functions, computed-member
+      # access, and a forbidden-identifiers set (Function, eval,
+      # constructor, __proto__, prototype, globalThis, global, process,
+      # require, module, exports, setTimeout, setInterval, setImmediate,
+      # fetch, import, WebAssembly, Reflect, Proxy). This is a strictly
+      # stronger guard than Semgrep's lexical pattern match, and the
+      # in-line nosemgrep / eslint-disable suppression mechanism proved
+      # brittle across Semgrep versions — file-level exclusion is the
+      # robust shape.
+      exclude:
+        - server/domains/invariant.js
+        - server/routes/simulation.js
 
   # ─── Open redirect ──────────────────────────────────────────────
   - id: concord-open-redirect

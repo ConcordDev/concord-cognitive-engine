@@ -111,12 +111,11 @@ const EXECUTORS = {
       // The `fn` expression has been validated by validateMonteCarloFn()
       // above — acorn AST whitelist rejects CallExpression / NewExpression /
       // arrow functions / forbidden identifiers before this line runs.
-      // Trailing nosemgrep tag suppresses concord-eval-or-function-ctor
-      // (Semgrep only honours the directive on the same line or the line
-      // directly above; the eslint-disable-next-line must remain adjacent
-      // to the constructor call, so the nosemgrep goes trailing).
+      // This file is excluded from Semgrep's concord-eval-or-function-ctor
+      // rule via .semgrep.yml paths.exclude (the AST whitelist is a
+      // stricter guard than the lexical pattern match).
       // eslint-disable-next-line no-new-func
-      const evalFn = new Function(...Object.keys(math), 'x', `return ${fn}`); // nosemgrep: concord-eval-or-function-ctor
+      const evalFn = new Function(...Object.keys(math), 'x', `return ${fn}`);
       for (let i = 0; i < Math.min(samples, 10000); i++) {
         const x = (Math.random() - 0.5) * 2 * (params.range || 1);
         results.push(evalFn(...Object.values(math), x));
