@@ -1,0 +1,86 @@
+name: Platinum Performance (Lighthouse + bundle size + load)
+
+# Sprint 18 — runs on every PR + nightly on main.
+# Lighthouse asserts Core Web Vitals; size-limit enforces bundle
+# budgets; k6 runs a smoke load test against critical endpoints.
+
+on:
+  pull_request:
+    paths:
+      - 'concord-frontend/**'
+      - 'server/**'
+      - '.github/workflows/platinum-performance.yml'
+  schedule:
+    - cron: '0 6 * * *'  # nightly 06:00 UTC
+
+jobs:
+  lighthouse:
+    name: Lighthouse CI — Core Web Vitals
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with: { node-version: '22' }
+      - name: Install
+        working-directory: ./concord-frontend
+        run: npm ci
+      - name: Build
+        working-directory: ./concord-frontend
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
+        run: npm run build:ci
+      - name: Run Lighthouse CI
+        working-directory: ./concord-frontend
+        run: npx @lhci/cli@latest autorun --config=lighthouserc.json
+      - name: Upload Lighthouse reports
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: lighthouse-reports
+          path: concord-frontend/lighthouse-reports/
+          retention-days: 14
+
+  bundle-size:
+    name: Bundle size — size-limit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with: { node-version: '22' }
+      - working-directory: ./concord-frontend
+        run: |
+          npm ci
+          NODE_OPTIONS=--max-old-space-size=6144 npm run build:ci
+          npx size-limit
+
+  k6-smoke:
+    name: Load — k6 smoke
+    runs-on: ubuntu-latest
+    if: hashFiles('tests/k6/smoke.js') != ''
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with: { node-version: '22' }
+      - name: Start server
+        working-directory: ./server
+        env:
+          NODE_ENV: ci
+          JWT_SECRET: test-secret-for-ci-only-do-not-use-in-production
+          PORT: 5050
+        run: |
+          npm ci
+          node server.js > server.log 2>&1 &
+          sleep 5
+          for i in {1..20}; do
+            curl -sf http://localhost:5050/health && break
+            sleep 2
+          done
+      - name: Install k6
+        run: |
+          curl -L https://github.com/grafana/k6/releases/download/v0.50.0/k6-v0.50.0-linux-amd64.tar.gz | tar xz
+          sudo mv k6-v0.50.0-linux-amd64/k6 /usr/local/bin/
+      - name: Run k6 smoke
+        run: k6 run tests/k6/smoke.js

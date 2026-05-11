@@ -1,0 +1,45 @@
+[
+  {
+    "$comment": "Sprint 18 — bundle size budgets per critical-path lens. Each entry caps the gzipped JS shipped for a route. CI fails if any entry grows beyond the limit. Updates require a budget bump (intentional). Numbers are starting points — tighten over time.",
+    "name": "homepage",
+    "path": ".next/static/chunks/pages/_app-*.js",
+    "limit": "350 KB",
+    "gzip": true
+  },
+  {
+    "name": "chat lens",
+    "path": ".next/static/chunks/app/lenses/chat/page-*.js",
+    "limit": "450 KB",
+    "gzip": true
+  },
+  {
+    "name": "world lens (3D scene)",
+    "path": ".next/static/chunks/app/lenses/world/page-*.js",
+    "limit": "800 KB",
+    "gzip": true
+  },
+  {
+    "name": "studio lens (DAW)",
+    "path": ".next/static/chunks/app/lenses/studio/page-*.js",
+    "limit": "500 KB",
+    "gzip": true
+  },
+  {
+    "name": "code lens",
+    "path": ".next/static/chunks/app/lenses/code/page-*.js",
+    "limit": "400 KB",
+    "gzip": true
+  },
+  {
+    "name": "expert-mode lens",
+    "path": ".next/static/chunks/app/lenses/expert-mode/page-*.js",
+    "limit": "150 KB",
+    "gzip": true
+  },
+  {
+    "name": "byo-keys lens",
+    "path": ".next/static/chunks/app/lenses/byo-keys/page-*.js",
+    "limit": "100 KB",
+    "gzip": true
+  }
+]

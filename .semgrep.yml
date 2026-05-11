@@ -1,0 +1,148 @@
+# Sprint 18 — Semgrep SAST configuration (platinum tier).
+#
+# Semgrep is the SAST tool of choice for fast, low-noise security
+# analysis at the source-code level. Complements CodeQL (which already
+# runs in CI) by adding custom Concord-specific rules + the standard
+# OWASP rule packs.
+#
+# Run: npx semgrep --config=.semgrep.yml .
+# CI:  configured via .github/workflows/security.yml
+
+# Standard OWASP Top 10 + secrets + insecure-defaults rule packs.
+rules:
+  # ─── Auth bypass (CONCORD invariant — already grep-gated in CI) ──
+  - id: concord-auth-bypass-client-userid
+    message: |
+      Found pattern where client-supplied req.body.userId / user_id / buyer_id
+      is fall-through-resolved against req.user. This is the classic auth-
+      bypass shape: an attacker controls userId via request body, server
+      uses it as actor identity. Sentence req.user as the single source
+      of truth.
+    severity: ERROR
+    languages: [javascript, typescript]
+    patterns:
+      - pattern-either:
+          - pattern: req.body?.userId || req.user
+          - pattern: req.body.userId || req.user
+          - pattern: req.body?.user_id || req.user
+          - pattern: req.body.user_id || req.user
+          - pattern: req.body?.buyer_id || req.user
+          - pattern: req.body.buyer_id || req.user
+
+  # ─── SSRF (Server-Side Request Forgery) — Concord has _ssrfValidate ──
+  - id: concord-fetch-without-ssrf-guard
+    message: |
+      External fetch() to a user-controlled URL without _ssrfValidate.
+      Concord has a hardened SSRF allowlist — use it. Pattern:
+        const r = await _ssrfValidate(url);
+        if (!r.ok) return { ok: false, error: r.error };
+        const res = await fetch(url, ...);
+    severity: WARNING
+    languages: [javascript, typescript]
+    patterns:
+      - pattern: fetch($URL)
+      - pattern-not-inside: |
+          ...
+          _ssrfValidate(...)
+          ...
+          fetch(...)
+    paths:
+      include: ['server/**']
+
+  # ─── Insecure randomness in security context ────────────────────
+  - id: concord-math-random-in-security-context
+    message: |
+      Math.random() used in a security context. Use crypto.randomBytes()
+      or crypto.randomUUID() for IDs, tokens, session ids, salts, etc.
+    severity: WARNING
+    languages: [javascript, typescript]
+    patterns:
+      - pattern-either:
+          - pattern: Math.random()
+      - metavariable-pattern:
+          metavariable: $CONTEXT
+          patterns:
+            - pattern-regex: '(token|session|id|salt|nonce|secret|key)'
+
+  # ─── Hardcoded credentials ──────────────────────────────────────
+  - id: concord-hardcoded-jwt-secret
+    message: |
+      Hardcoded JWT_SECRET. JWT_SECRET MUST come from env var in production.
+    severity: ERROR
+    languages: [javascript, typescript]
+    pattern-either:
+      - pattern: const JWT_SECRET = "$X"
+      - pattern: jwt.sign($A, "$LITERAL", ...)
+
+  # ─── Unsafe innerHTML / dangerouslySetInnerHTML ─────────────────
+  - id: concord-dangerous-innerhtml
+    message: |
+      dangerouslySetInnerHTML with user-controlled input. XSS risk.
+      Use DOMPurify or a safer rendering path.
+    severity: ERROR
+    languages: [javascript, typescript]
+    patterns:
+      - pattern: dangerouslySetInnerHTML={{ __html: $X }}
+    paths:
+      include: ['concord-frontend/**']
+
+  # ─── SQL injection (raw query interpolation) ────────────────────
+  - id: concord-sql-injection-raw-template
+    message: |
+      Raw template literal in db.prepare() — likely SQL injection. Use
+      parameterized queries: db.prepare('SELECT ... WHERE x = ?').get(value)
+    severity: ERROR
+    languages: [javascript, typescript]
+    patterns:
+      - pattern: db.prepare(`$X`).$METHOD($Y)
+    paths:
+      include: ['server/**']
+
+  # ─── Eval / Function constructor (code injection) ───────────────
+  - id: concord-eval-or-function-ctor
+    message: |
+      Use of eval() or new Function() — code injection risk.
+    severity: ERROR
+    languages: [javascript, typescript]
+    pattern-either:
+      - pattern: eval($X)
+      - pattern: new Function($X)
+
+  # ─── Open redirect ──────────────────────────────────────────────
+  - id: concord-open-redirect
+    message: |
+      res.redirect() with user-controlled URL — open redirect risk. Validate
+      against an allowlist of trusted domains.
+    severity: WARNING
+    languages: [javascript, typescript]
+    patterns:
+      - pattern: res.redirect($URL)
+      - metavariable-pattern:
+          metavariable: $URL
+          patterns:
+            - pattern-either:
+                - pattern: req.body.$Y
+                - pattern: req.query.$Y
+                - pattern: req.params.$Y
+
+  # ─── Unsafe deserialization ─────────────────────────────────────
+  - id: concord-unsafe-json-parse-user-input
+    message: |
+      JSON.parse() on user-controlled data without try/catch — DoS risk
+      via malformed JSON. Wrap in try/catch and return 400 on parse error.
+    severity: INFO
+    languages: [javascript, typescript]
+    patterns:
+      - pattern: JSON.parse($X)
+      - metavariable-pattern:
+          metavariable: $X
+          patterns:
+            - pattern-either:
+                - pattern: req.body
+                - pattern: req.query.$Y
+      - pattern-not-inside: |
+          try {
+            ...
+          } catch ($E) {
+            ...
+          }
