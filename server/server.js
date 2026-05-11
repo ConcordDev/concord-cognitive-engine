@@ -6937,6 +6937,27 @@ function realtimeEmit(event, payload, { sessionId = "", orgId = "", requestId = 
     _evt: event,                         // Event name for client-side reordering
   };
 
+  // Sprint 8 — expose realtimeEmit globally so emergent modules can
+  // route activity broadcasts without a circular import. Cheap stash.
+  globalThis._concordRealtimeEmit = realtimeEmit;
+
+  // Sprint 8 — unified timeline persistence. Every emit also lands in
+  // event_timeline_log so the /lenses/timeline lens has a queryable
+  // history. Best-effort; failures silently swallow so emit path stays
+  // open. Skipped for tick-fast meta-events (heartbeat ack, etc.).
+  try {
+    if (_timelineRecordFn && !event.startsWith("_") && event !== "ping" && event !== "pong") {
+      const tdb = STATE?.db || globalThis._concordDB;
+      if (tdb) {
+        _timelineRecordFn(tdb, event, payload || {}, {
+          worldId: payload?.world_id || payload?.worldId || null,
+          actorKind: payload?.actor_kind || payload?.actorKind || null,
+          actorId:   payload?.actor_id   || payload?.actorId   || null,
+        });
+      }
+    }
+  } catch { /* never block an emit on telemetry */ }
+
   // Dev/test-mode shape validation against the EVENT_SHAPES registry
   // (lib/event-shapes.js). Production skips this for zero runtime cost.
   // The registry only covers the top-20 highest-traffic events; unknown
@@ -9561,6 +9582,9 @@ async function runMacro(domain, name, input, ctx) {
     // level) triple, dump every domain for the current player, list
     // canonical domain registry.
     cross_world_effectiveness: new Set(["explain", "for_player", "list_domains"]),
+    // event_timeline (Sprint 8) — unified firehose of socket events
+    // persisted to event_timeline_log. Powers /lenses/timeline.
+    event_timeline: new Set(["recent", "stats"]),
     // faction_strategy (Sprint B Phase 10) — Crucible HUD reads
     // recent_moves + get_relation; witness_next_move is the cross-
     // world signature quest's objective-completion macro.
@@ -23266,6 +23290,15 @@ registerGlyphSpellMacros(register);
 // ("Your magic is dampened here (15%)") and per-domain potency snapshot.
 import registerCrossWorldEffectivenessMacros from "./domains/cross-world-effectiveness.js";
 registerCrossWorldEffectivenessMacros(register);
+
+// Sprint 8 — Unified event timeline. Persists every realtime emit to
+// event_timeline_log so the /lenses/timeline lens has a full firehose
+// queryable by channel/world/time-range. `realtimeEmit` references
+// `_timelineRecordFn` (declared at startup); we bind it here.
+import { recordEvent as _timelineRecordFn, listRecent as _timelineList, stats as _timelineStats, pruneOld as _timelinePrune } from "./lib/event-timeline.js";
+import registerEventTimelineMacros from "./domains/event-timeline.js";
+registerEventTimelineMacros(register, { listRecent: _timelineList, stats: _timelineStats });
+void _timelinePrune; // exposed for future heartbeat-driven TTL sweep
 
 // Phase 6a — Forge → Marketplace. Mint Forge-generated apps as DTUs +
 // list on marketplace. Plugs into royalty cascade for citation chains.

@@ -101,6 +101,23 @@ export async function runNpcRoutineCycle({ db, state: _state, tickCount: _t } = 
           if (r.transitioned) stats.transitioned++;
           if (r.arrived) stats.arrived++;
           stats.signalsWritten += r.signalsWritten || 0;
+          // Sprint 8 — broadcast routine-block transitions so the timeline
+          // lens + DistrictActivityFeed surfaces NPC activity in real time.
+          // Skipped for routine pass-throughs (only fired on transitions).
+          if (r.transitioned) {
+            try {
+              const re = globalThis._concordRealtimeEmit;
+              if (typeof re === "function") {
+                re("npc:activity", {
+                  world_id: world,
+                  actor_kind: "npc",
+                  actor_id: npc.id,
+                  activity: r.currentActivity || r.activity || null,
+                  faction: npc.faction || null,
+                });
+              }
+            } catch { /* never block tick */ }
+          }
         }
       } catch (err) {
         try { logger.debug?.("npc-routine-cycle", "advance_failed", { npcId: npc.id, error: err?.message }); }

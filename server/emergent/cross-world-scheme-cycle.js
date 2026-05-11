@@ -33,7 +33,28 @@ export async function runCrossWorldSchemeCycle({ db }) {
     for (const sch of due) {
       try {
         const r = advanceCrossWorldScheme(db, sch.id);
-        if (r.ok && r.transitioned) advanced++;
+        if (r.ok && r.transitioned) {
+          advanced++;
+          // Sprint 8 — broadcast cross-world scheme phase transitions
+          // to both worlds' timeline feeds so players see the plot move.
+          try {
+            const re = globalThis._concordRealtimeEmit;
+            if (typeof re === "function") {
+              re("scheme:cross_world", {
+                world_id: sch.plotter_world_id,
+                actor_kind: sch.plotter_kind,
+                actor_id: sch.plotter_id,
+                scheme_id: sch.id,
+                kind: sch.kind,
+                from_phase: r.fromPhase,
+                to_phase: r.toPhase,
+                target_world: sch.target_world_id,
+                target_kind: sch.target_kind,
+                target_id: sch.target_id,
+              });
+            }
+          } catch { /* never block tick */ }
+        }
       } catch {
         errors++;
       }
