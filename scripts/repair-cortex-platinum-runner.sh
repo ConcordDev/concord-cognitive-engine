@@ -63,8 +63,14 @@ add_gate  typecheck-server          "cd server && npm run typecheck"
 add_gate  typecheck-frontend        "cd concord-frontend && npm run type-check"
 add_gate  route-auth                "cd server && npm run check-route-auth"
 add_gate  deps-graph                "cd server && npm run check-deps"
-add_gate  migration-up-down         "cd server && node --test --test-force-exit --test-timeout=120000 tests/platinum-migration-up-down.test.js 2>/dev/null || true"
-add_gate  security-headers          "cd server && node --test --test-force-exit --test-timeout=30000 tests/platinum-security-headers.test.js 2>/dev/null || true"
+# For tests that may not exist on every branch yet (cross-branch staging),
+# the gate command checks for the test file first. If absent, it emits the
+# `skip` sentinel and run_gate returns 2 (skipped). If the file exists, the
+# test runs normally and a real failure correctly fails the gate.
+# Previously these used `|| true` which silently passed even on test failure —
+# fixed per code-review feedback on PR #332.
+add_gate  migration-up-down         "cd server && { [ -f tests/platinum-migration-up-down.test.js ] || { echo 'skip: test file missing on this branch' >&2; exit 2; }; node --test --test-force-exit --test-timeout=120000 tests/platinum-migration-up-down.test.js; }"
+add_gate  security-headers          "cd server && { [ -f tests/platinum-security-headers.test.js ] || { echo 'skip: test file missing on this branch' >&2; exit 2; }; node --test --test-force-exit --test-timeout=30000 tests/platinum-security-headers.test.js; }"
 add_gate  chaos-heartbeat           "cd server && node --test --test-force-exit --test-timeout=60000 tests/platinum-chaos-heartbeat.test.js"
 add_gate  gdpr                      "cd server && node --test --test-force-exit --test-timeout=60000 tests/platinum-gdpr.test.js"
 add_gate  observability             "cd server && node --test --test-force-exit --test-timeout=30000 tests/platinum-observability.test.js"
@@ -98,18 +104,29 @@ run_gate() {
   start_ms=$(date +%s%3N 2>/dev/null || python3 -c 'import time;print(int(time.time()*1000))')
   local tmp
   tmp=$(mktemp)
-  if bash -c "$cmd" > "$tmp" 2>&1; then
-    local end_ms
-    end_ms=$(date +%s%3N 2>/dev/null || python3 -c 'import time;print(int(time.time()*1000))')
-    local elapsed=$((end_ms - start_ms))
+  bash -c "$cmd" > "$tmp" 2>&1
+  local rc=$?
+  local end_ms
+  end_ms=$(date +%s%3N 2>/dev/null || python3 -c 'import time;print(int(time.time()*1000))')
+  local elapsed=$((end_ms - start_ms))
+
+  if [ "$rc" = "0" ]; then
     echo "gate=$name status=pass elapsed_ms=$elapsed details=ok"
     rm -f "$tmp"
     return 0
   fi
+  # exit 2 from a gate command = intentional skip (e.g. test file missing
+  # on this branch). Per code-review feedback on PR #332 — gates can no
+  # longer be silently bypassed with `|| true`; they must explicitly skip
+  # or fail.
+  if [ "$rc" = "2" ]; then
+    local short
+    short=$(tail -n 1 "$tmp" | tr '\n' ' ' | head -c 200)
+    echo "gate=$name status=skip elapsed_ms=$elapsed details='$short'"
+    rm -f "$tmp"
+    return 2
+  fi
 
-  local end_ms
-  end_ms=$(date +%s%3N 2>/dev/null || python3 -c 'import time;print(int(time.time()*1000))')
-  local elapsed=$((end_ms - start_ms))
   local short
   short=$(tail -n 5 "$tmp" | tr '\n' ' ' | head -c 200)
   echo "gate=$name status=fail elapsed_ms=$elapsed details='$short'" >&2

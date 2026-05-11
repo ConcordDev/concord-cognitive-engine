@@ -79,13 +79,29 @@ jobs:
           ./scripts/repair-cortex-platinum-runner.sh | tee /tmp/repair-cortex.log
 
       - name: Run platinum gate suite (auto-fix mode)
-        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        # Auto-fix runs on:
+        #   - push events to main/develop/claude/* branches
+        #   - manual workflow_dispatch with auto_fix=true (default)
+        # Manual workflow_dispatch with auto_fix=false routes to the
+        # audit-only step below so the operator's choice is honored.
+        # Per code-review feedback on PR #332.
+        if: |
+          github.event_name == 'push' ||
+          (github.event_name == 'workflow_dispatch' && github.event.inputs.auto_fix != 'false')
         run: |
           # Push to main / develop / claude/* branches: Repair Cortex
           # may auto-fix lint + format + baseline drift inline. If a
           # fix lands, a follow-up commit is opened as PR with the
           # fix annotated.
           ./scripts/repair-cortex-platinum-runner.sh --fix | tee /tmp/repair-cortex.log
+
+      - name: Run platinum gate suite (manual audit-only mode)
+        # Manual workflow_dispatch with auto_fix=false: audit-only,
+        # mirrors the PR audit step. Honors the operator's choice.
+        if: |
+          github.event_name == 'workflow_dispatch' && github.event.inputs.auto_fix == 'false'
+        run: |
+          ./scripts/repair-cortex-platinum-runner.sh | tee /tmp/repair-cortex.log
 
       - name: Run platinum gate suite (full audit, no-fail for nightly)
         if: github.event_name == 'schedule'
