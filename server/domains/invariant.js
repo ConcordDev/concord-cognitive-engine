@@ -130,7 +130,11 @@ export default function registerInvariantActions(registerLensAction) {
           return String(val);
         });
 
-        // Evaluate using Function constructor with no global access
+        // Evaluate using Function constructor with no global access.
+        // The expression has been AST-validated above by acorn — every
+        // call/identifier/member-access has been whitelisted before this
+        // line. See validateExpressionAST() at the top of this file.
+        // nosemgrep: concord-eval-or-function-ctor
         // eslint-disable-next-line no-new-func
         const fn = new Function(`"use strict"; return (${processed});`);
         return { value: fn(), error: null };
