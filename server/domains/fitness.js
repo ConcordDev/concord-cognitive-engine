@@ -61,7 +61,7 @@ export default function registerFitnessActions(registerLensAction) {
     const heightM = heightCm / 100;
     const bmi = heightM > 0 ? Math.round((weightKg / (heightM * heightM)) * 10) / 10 : 0;
 
-    let bmiCategory = "unknown";
+    let bmiCategory;
     if (bmi < 18.5) bmiCategory = "underweight";
     else if (bmi < 25) bmiCategory = "normal";
     else if (bmi < 30) bmiCategory = "overweight";

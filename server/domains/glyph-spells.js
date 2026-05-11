@@ -77,7 +77,7 @@ export default function registerGlyphSpellMacros(register) {
       if (!license) return { ok: false, reason: "not_owner_or_licensed" };
     }
 
-    let components = [];
+    let components;
     try { components = JSON.parse(spell.components_json || "[]"); } catch { components = []; }
     let element = "physical";
     if (Array.isArray(components) && components.length) {

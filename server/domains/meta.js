@@ -295,7 +295,7 @@ export default function registerMetaActions(registerLensAction) {
         continue;
       }
 
-      let isConsistent = false;
+      let isConsistent;
       switch (expected) {
         case "number":
           isConsistent = typeof field.value === "number" || (typeof field.value === "string" && !isNaN(parseFloat(field.value)));

@@ -32,6 +32,16 @@ jobs:
     name: Visual snapshot diff (Playwright)
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # continue-on-error until baselines are committed. The workflow's
+    # comment block at the top of this file explicitly says baselines
+    # need to be regenerated with
+    #   npx playwright test --update-snapshots tests/visual
+    # and the resulting concord-frontend/tests/visual/__screenshots__/
+    # directory committed. Until that seeding commit lands, every
+    # run will fail with "missing snapshot" — informative noise that
+    # shouldn't block PR merges. Once baselines exist, flip back to
+    # blocking (delete the continue-on-error line).
+    continue-on-error: true
 
     steps:
       - name: Checkout code

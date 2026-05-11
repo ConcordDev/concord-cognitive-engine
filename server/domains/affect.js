@@ -275,7 +275,7 @@ export default function registerAffectActions(registerLensAction) {
     const endSlice = smoothed.slice(thirds * 2);
     const endAvg = endSlice.length > 0 ? endSlice.reduce((s, v) => s + v, 0) / endSlice.length : 0;
 
-    let arcType = "flat";
+    let arcType;
     const threshold = 0.15;
 
     if (beginAvg < -threshold && midAvg > threshold && endAvg > threshold) {
