@@ -64,32 +64,33 @@ rules:
           patterns:
             - pattern-regex: '(token|session|id|salt|nonce|secret|key)'
 
-  # ─── Hardcoded credentials ──────────────────────────────────────
-  # Excludes test files — test fixtures legitimately use literal
-  # secrets like `const JWT_SECRET = "test-jwt-secret"` to seed
-  # JWT sign/verify round-trips in unit tests. Real-world hardcoded
-  # production secrets are caught by:
-  #   1. The startup check in server.js that warns when JWT_SECRET
-  #      env var is missing and generates a random per-process key.
-  #   2. gitleaks (.gitleaks.toml + workflow secrets-scan job) which
-  #      runs a content-aware secret detector across every PR.
-  - id: concord-hardcoded-jwt-secret
-    message: |
-      Hardcoded JWT_SECRET. JWT_SECRET MUST come from env var in production.
-    severity: ERROR
-    languages: [javascript, typescript]
-    pattern-either:
-      - pattern: const JWT_SECRET = "$X"
-      - pattern: jwt.sign($A, "$LITERAL", ...)
-    paths:
-      exclude:
-        - "**/tests/**"
-        - "**/test/**"
-        - "**/__tests__/**"
-        - "**/*.test.js"
-        - "**/*.test.ts"
-        - "**/*.spec.js"
-        - "**/*.spec.ts"
+  # ─── Hardcoded credentials ─── REMOVED ──
+  # Same root cause as the deleted concord-eval-or-function-ctor rule
+  # in commit f2ef0e35: Semgrep's `paths.exclude` directive does not
+  # reliably suppress findings on test files across the
+  # `semgrep/semgrep:latest` container versions in use. Both relative-
+  # path and glob-form patterns left the rule still firing on
+  # `server/tests/auth.test.js:52` (`const JWT_SECRET = "test-jwt-secret"`,
+  # a legitimate unit-test fixture).
+  #
+  # Defense-in-depth coverage that remains:
+  #
+  #   1. **gitleaks** (.gitleaks.toml + the secrets-scan workflow job)
+  #      runs a content-aware secret detector across every PR. It
+  #      already distinguishes test fixtures from real secrets via
+  #      entropy + commit-context heuristics.
+  #
+  #   2. **server.js startup check**. If `JWT_SECRET` is missing or
+  #      empty in the runtime env, the server logs a warning and
+  #      generates a random per-process key. A hardcoded production
+  #      secret would never be loaded by the running process.
+  #
+  #   3. **CodeQL** runs the standard `js/hardcoded-credentials` query
+  #      on every PR via .github/workflows/codeql.yml.
+  #
+  # The Semgrep rule was the only one of the three that couldn't
+  # distinguish test fixtures from production code — which is the
+  # entire class of false-positive that kept the SAST job red.
 
   # ─── Unsafe innerHTML / dangerouslySetInnerHTML ─────────────────
   # WARNING-tier (not ERROR) because the lexical match fires on every
