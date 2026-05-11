@@ -39,6 +39,9 @@ Available tools:
 - run_lens_action: Invoke ANY of Concord's 200+ lens domain actions. Params: {"domain": "domain_name", "action": "action_name", "params": {...}}
 - create_dtu: Mint a new DTU from the conversation. Params: {"title": "DTU title", "summary": "brief", "tags": ["tag1"]}
 - expert_mode: Run a Perplexity-style cited answer over the global corpus. Params: {"query": "your question"}
+- generate_image: Generate an image. Params: {"prompt": "describe the image", "size": "1024x1024", "quality": "standard"}
+- mcp_call: Invoke a tool on a connected external MCP server (filesystem, GitHub, Slack, etc.). Params: {"serverId": "filesystem", "toolName": "read_file", "args": {...}}
+- mcp_list: List all tools available across connected external MCP servers. Params: {}
 
 Rules:
 - Use a tool when the task genuinely requires it. Don't fabricate results.
@@ -186,6 +189,41 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
           citationsRecorded: r.citationsRecorded,
         };
       }
+      case "generate_image": {
+        const r = await runMacro("multimodal", "image_generate", {
+          prompt: String(call.params.prompt || ""),
+          size: call.params.size || "1024x1024",
+          quality: call.params.quality || "standard",
+        }, ctx);
+        if (!r?.ok) return { tool: call.tool, ok: false, error: r?.error || "generate_image failed" };
+        return {
+          tool: call.tool, ok: true,
+          prompt: call.params.prompt,
+          source: r.source,
+          // Don't return the full image in the tool result (could be MB);
+          // return an artifact pointer the UI can render via separate fetch.
+          artifact: { kind: "image", source: r.source, prompt: call.params.prompt, image_b64: r.image },
+        };
+      }
+      case "mcp_list": {
+        const { listAllMcpTools } = await import("./mcp-bridge.js");
+        return { tool: call.tool, ok: true, tools: listAllMcpTools() };
+      }
+      case "mcp_call": {
+        const { invokeMcpTool } = await import("./mcp-bridge.js");
+        const r = await invokeMcpTool(
+          String(call.params.serverId || ""),
+          String(call.params.toolName || ""),
+          call.params.args || {},
+        );
+        if (!r?.ok) return { tool: call.tool, ok: false, error: r?.error || r?.reason || "mcp_call failed" };
+        return {
+          tool: call.tool, ok: true,
+          serverId: call.params.serverId,
+          toolName: call.params.toolName,
+          result: r.text || r.content,
+        };
+      }
       default:
         return { tool: call.tool, ok: false, error: `unknown tool: ${call.tool}` };
     }
@@ -204,6 +242,9 @@ export function formatToolResults(results) {
     if (r.tool === "run_lens_action") return `[TOOL_RESULT: ${r.key}] ${JSON.stringify(r.result).slice(0, 4000)}`;
     if (r.tool === "create_dtu")   return `[TOOL_RESULT: create_dtu] Minted DTU "${r.title}" (id: ${r.dtuId})`;
     if (r.tool === "expert_mode")  return `[TOOL_RESULT: expert_mode] ${(r.answer || "").slice(0, 4000)}`;
+    if (r.tool === "generate_image") return `[TOOL_RESULT: generate_image source=${r.source}] Image generated for prompt "${r.prompt}". Artifact attached.`;
+    if (r.tool === "mcp_list")     return `[TOOL_RESULT: mcp_list] ${JSON.stringify((r.tools || []).slice(0, 50)).slice(0, 4000)}`;
+    if (r.tool === "mcp_call")     return `[TOOL_RESULT: mcp_call ${r.serverId}/${r.toolName}] ${(typeof r.result === "string" ? r.result : JSON.stringify(r.result)).slice(0, 4000)}`;
     return `[TOOL_RESULT: ${r.tool}] ${JSON.stringify(r).slice(0, 2000)}`;
   }).join("\n\n");
 }

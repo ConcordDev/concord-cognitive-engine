@@ -9599,6 +9599,12 @@ async function runMacro(domain, name, input, ctx) {
     // the macro-level publicReadDomains entry covers the "do" macro for
     // the standard chat-lens callers.
     chat_agent: new Set(["do"]),
+    // mcp (Sprint 12A) — MCP server management. Authenticated path
+    // appropriate for connect/invoke (subprocess control); read-only
+    // list operations exposed for the settings UI.
+    mcp: new Set(["list_servers", "list_tools", "exposed_tools"]),
+    // agent_marathon (Sprint 12) — long-running agent sessions.
+    agent_marathon: new Set(["start", "list", "get", "tick", "pause", "abandon"]),
     // faction_strategy (Sprint B Phase 10) — Crucible HUD reads
     // recent_moves + get_relation; witness_next_move is the cross-
     // world signature quest's objective-completion macro.
@@ -23348,6 +23354,41 @@ registerChatAgentMacros(register);
 // the inner tool execution without circular imports.
 globalThis.__concordRunMacro = runMacro;
 globalThis.__concordLensActions = LENS_ACTIONS;
+
+// Sprint 12A — MCP (Model Context Protocol) bridge. Concord can now
+// connect to external MCP servers (filesystem, GitHub, Slack, Postgres,
+// 10,000+ public servers as of early 2026) AND expose its own macros
+// as MCP tools at /mcp so any MCP client (Claude Desktop, Cursor, OpenAI
+// Apps) can drive Concord remotely.
+import registerMcpMacros from "./domains/mcp.js";
+registerMcpMacros(register);
+// Sprint 12 — long-running marathon agent sessions. Persistent task
+// the agent works on across many turns over hours/days, with a
+// heartbeat that auto-advances running sessions even when the tab
+// is closed. Same tool surface as chat_agent.do.
+import registerAgentMarathonMacros from "./domains/agent-marathon.js";
+registerAgentMarathonMacros(register);
+import { runAgentMarathonCycle } from "./emergent/agent-marathon-cycle.js";
+registerHeartbeat("agent-marathon-cycle", {
+  frequency: 12,
+  handler: () => runAgentMarathonCycle({ db: STATE?.db || globalThis._concordDB }),
+});
+
+import { mountMcpServer } from "./lib/mcp-server-host.js";
+try {
+  mountMcpServer({
+    app,
+    runMacro,
+    ctxFor: (extra) => ({
+      db: STATE?.db || globalThis._concordDB,
+      actor: extra?.authInfo?.actor || null,
+      state: STATE,
+    }),
+  });
+  structuredLog("info", "mcp_server_mounted", { endpoint: "/mcp", message: "Concord exposed as MCP server. Connect via any MCP client (Claude Desktop, Cursor, etc.)." });
+} catch (mcpErr) {
+  structuredLog("warn", "mcp_server_mount_failed", { error: String(mcpErr?.message || mcpErr) });
+}
 
 // Phase 6a — Forge → Marketplace. Mint Forge-generated apps as DTUs +
 // list on marketplace. Plugs into royalty cascade for citation chains.

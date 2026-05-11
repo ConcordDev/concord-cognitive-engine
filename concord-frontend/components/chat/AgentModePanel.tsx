@@ -44,8 +44,11 @@ interface ToolCall {
 
 interface Artifact {
   kind: string;
-  id: string;
+  id?: string;
   title?: string;
+  source?: string;
+  prompt?: string;
+  image_b64?: string;
 }
 
 interface AgentResponse {
@@ -232,18 +235,41 @@ export default function AgentModePanel({ open, onClose }: AgentModePanelProps) {
                 </div>
               )}
               {(turn.agent.artifacts || []).length > 0 && (
-                <div className="text-xs text-zinc-400 px-1">
-                  <span className="text-zinc-500 mr-2">artifacts:</span>
-                  {turn.agent.artifacts!.map((a, ai) => (
-                    <a
-                      key={ai}
-                      href={`/lenses/${a.kind === 'dtu' ? 'dtu' : 'world'}?id=${encodeURIComponent(a.id)}`}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 mr-1 rounded bg-zinc-800 hover:bg-zinc-700 text-amber-400"
-                    >
-                      <FileText className="w-3 h-3" />
-                      {a.title || a.id}
-                    </a>
-                  ))}
+                <div className="space-y-2 px-1">
+                  <span className="text-[10px] uppercase tracking-wide text-zinc-500">Artifacts</span>
+                  {turn.agent.artifacts!.map((a, ai) => {
+                    if (a.kind === 'image' && a.image_b64) {
+                      return (
+                        <div key={ai} className="rounded-lg overflow-hidden ring-1 ring-zinc-800">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={`data:image/png;base64,${a.image_b64}`}
+                            alt={a.prompt || 'Generated image'}
+                            className="w-full h-auto"
+                          />
+                          {a.prompt && (
+                            <div className="px-3 py-1.5 text-[11px] text-zinc-400 bg-zinc-900">
+                              {a.prompt}
+                              {a.source && <span className="ml-2 text-zinc-600">via {a.source}</span>}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
+                    if (a.id) {
+                      return (
+                        <a
+                          key={ai}
+                          href={`/lenses/${a.kind === 'dtu' ? 'dtu' : 'world'}?id=${encodeURIComponent(a.id)}`}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 mr-1 rounded bg-zinc-800 hover:bg-zinc-700 text-amber-400 text-xs"
+                        >
+                          <FileText className="w-3 h-3" />
+                          {a.title || a.id}
+                        </a>
+                      );
+                    }
+                    return null;
+                  })}
                 </div>
               )}
               {(badge || turn.agent.turns) && turn.agent.ok && (
