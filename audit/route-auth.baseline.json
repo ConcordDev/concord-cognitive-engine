@@ -1417,7 +1417,7 @@
   },
   {
     "file": "server/routes/sovereign.js",
-    "line": 774,
+    "line": 788,
     "method": "POST",
     "signature": "router.post(\"/eval\", (req, res) => { const S = STATE || getSTATE(); const code = String(req.body?.code || \"\").tr"
   },
