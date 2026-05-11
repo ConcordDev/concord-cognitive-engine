@@ -82,15 +82,31 @@ jobs:
         env:
           NODE_ENV: ci
           JWT_SECRET: test-secret-for-ci-only-do-not-use-in-production
+          ADMIN_PASSWORD: testpassword123
           PORT: 5050
+          # Skip 5-brain Ollama init in CI (no Ollama service running).
+          # Without this, server.js#initFiveBrains() runs 5 sequential
+          # probes with 15s AbortSignal.timeout each = ~75s of cold
+          # probe time, blowing past the 45s wait loop below.
+          CONCORD_DISABLE_BRAINS: 'true'
         run: |
           npm ci
           node server.js > server.log 2>&1 &
-          sleep 5
-          for i in {1..20}; do
-            curl -sf http://localhost:5050/health && break
-            sleep 2
+          # Bumped from 5+20*2=45s to 180s to match ci.yml's smoke +
+          # integration wait — TDZ fix + brain-disable get server up
+          # in <10s typically.
+          for i in {1..180}; do
+            if curl -sf http://localhost:5050/health > /dev/null 2>&1; then
+              echo "Server ready after ${i}s"
+              break
+            fi
+            sleep 1
           done
+          curl -sf http://localhost:5050/health > /dev/null 2>&1 || {
+            echo "::error::server did not become ready within 180s"
+            cat server.log | tail -50
+            exit 1
+          }
       - name: Install k6
         if: steps.k6_check.outputs.present == 'true'
         run: |

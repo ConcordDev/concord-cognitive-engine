@@ -74,6 +74,12 @@ jobs:
           #   - GHSA-r5fr-rjxr-66jc: lodash _.template code injection.
           #     Codebase audit confirms _.template is never invoked
           #     (grep -rE "lodash.*template\|_.template\(" → 0 hits).
+          #     Transitive via @excalidraw → mermaid → chevrotain parser
+          #     which doesn't use _.template.
+          #   - GHSA-xxjr-mmjv-4gpg: lodash prototype pollution via
+          #     _.unset/_.omit array paths. Same transitive source
+          #     (chevrotain parser). chevrotain uses lodash for basic
+          #     iteration helpers, not user-supplied array path operations.
           # Run audit, then post-process JSON to drop allowlisted advisories
           # before deciding pass/fail.
           set +e
@@ -82,7 +88,7 @@ jobs:
           HIGH_OR_CRIT_REAL=$(python3 -c "
           import json
           d = json.load(open('audit.json'))
-          ALLOWLIST_ADVISORIES = {'GHSA-r5fr-rjxr-66jc'}
+          ALLOWLIST_ADVISORIES = {'GHSA-r5fr-rjxr-66jc', 'GHSA-xxjr-mmjv-4gpg'}
           flagged = 0
           for name, v in d.get('vulnerabilities', {}).items():
               if v.get('severity') not in ('high', 'critical'):
