@@ -12,6 +12,10 @@ on:
       - '.github/workflows/platinum-performance.yml'
   schedule:
     - cron: '0 6 * * *'  # nightly 06:00 UTC
+  # Manual trigger so the k6 smoke can still be invoked from the
+  # Actions UI on demand. The lighthouse + bundle-size jobs run on
+  # every PR; only k6 has the schedule-only `if:` guard.
+  workflow_dispatch:
 
 jobs:
   lighthouse:
@@ -62,18 +66,26 @@ jobs:
     # the runtime check below skips silently when the k6 script is absent.
     # Sprint 34 fix — same shape as the platinum-security.yml fix.
     timeout-minutes: 10
-    # Round-9: continue-on-error informs but does not block merges.
-    # Rationale: same shape as the Lighthouse CI demotion in 602e6407.
-    # Running a 30s k6 against a freshly-booted server on a shared
-    # ubuntu-latest VM (with both server and k6 co-located, no Ollama)
-    # produces enough p(95) variance from GC pauses, heartbeat ticks,
-    # and CPU-noisy-neighbour effects that even very wide smoke
-    # thresholds (p(95)<3000ms / checks>0.90 / 5 VUs after a 10s
-    # warm-up) flake about 1-in-3 runs. The job still runs on every
-    # PR and surfaces the smoke output in the run log; it just
-    # doesn't merge-gate on a brittle signal. For real load-testing
-    # (perf-budget gate enforcement) run on a dedicated perf box
-    # with K6_PROFILE=standard or =heavy.
+    # Round-10: schedule-only. The PR-gate has the entire suite of
+    # blocking checks (CodeQL, Semgrep, Trivy, gitleaks, license,
+    # SBOM, npm audit, retire.js, Bundle size, Lighthouse CI,
+    # Mobile perf, etc.) running on every PR; k6 smoke adds little
+    # signal value on top of those — it's chasing the same
+    # "server doesn't crash" outcome that every other job already
+    # confirms (Smoke Test (Everything Real), Integration Test, the
+    # E2E run, etc.). On a shared ubuntu-latest VM with both server
+    # and k6 co-located, no Ollama, even very wide smoke thresholds
+    # (p(95)<3000ms / checks>0.90 / 5 VUs after a 10s warm-up)
+    # flake about 1-in-3 runs from GC pauses + heartbeat ticks +
+    # noisy-neighbour CPU. Combined with continue-on-error, the
+    # PR-gate value was already nil; the webhook noise was the
+    # only effect.
+    #
+    # The cron schedule below still runs k6 nightly so any genuine
+    # perf-budget regression gets caught within 24h. For real
+    # load-testing (perf-budget gate enforcement) run on a dedicated
+    # perf box with K6_PROFILE=standard or =heavy.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     continue-on-error: true
     steps:
       - uses: actions/checkout@v6
