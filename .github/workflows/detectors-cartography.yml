@@ -22,9 +22,12 @@ name: Detectors + Cartography — Perception Layer
 # refresh + open issues for any new findings).
 
 on:
+  # Until the SYSTEMS.json + history.jsonl baselines are seeded,
+  # run only on main pushes + the nightly cron + manual dispatches.
+  # PR runs would always fail with missing-baseline; continue-on-error
+  # on the job suppresses workflow-level failure but the per-job
+  # webhook still fires conclusion=failure on every PR.
   push:
-    branches: [main, develop, 'claude/*']
-  pull_request:
     branches: [main]
   schedule:
     - cron: '0 6 * * *'  # 06:00 UTC — runs after repair-cortex (05:00)

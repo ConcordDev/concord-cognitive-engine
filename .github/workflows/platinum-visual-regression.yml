@@ -17,9 +17,12 @@ name: Platinum Visual Regression
 # in production after a CSS refactor.
 
 on:
+  # Until baselines are seeded, run only on main pushes + manual
+  # dispatches. Removing the `pull_request` trigger stops the
+  # missing-baseline failure webhook from firing on every PR run
+  # (continue-on-error on the job suppresses workflow-level failure
+  # but the per-job webhook still fires with conclusion=failure).
   push:
-    branches: [main]
-  pull_request:
     branches: [main]
   workflow_dispatch:
 
