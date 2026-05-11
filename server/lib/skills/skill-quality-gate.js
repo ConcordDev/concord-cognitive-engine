@@ -2,6 +2,16 @@
 // Validates that skill/spell descriptions are mechanically specific before allowing creation.
 // Heuristic-based — no LLM dependency for the gate itself.
 
+// Length cap on user-supplied descriptions / properties before any regex touches them.
+// Skill descriptions are author-facing prose, never legitimately >2KB. The cap defangs
+// polynomial-time ReDoS against adversarial input — every regex below runs in O(n) on
+// strings ≤ MAX_DESC_LEN.
+const MAX_DESC_LEN = 2000;
+function clip(str) {
+  if (typeof str !== "string") return "";
+  return str.length > MAX_DESC_LEN ? str.slice(0, MAX_DESC_LEN) : str;
+}
+
 // ── Quality criteria ──────────────────────────────────────────────────────────
 
 // Minimum mechanical terms that must appear based on skill category
@@ -111,7 +121,7 @@ export function validateSkillQuality(description, skillType, opts = {}) {
     return { pass: false, score: 0, errors: ['No description provided'], suggestions: ['Describe your skill in detail'] };
   }
 
-  const desc = description.trim();
+  const desc = clip(description).trim();
 
   // ── Vague phrase check ────────────────────────────────────────────────────
   for (const pat of VAGUE_PHRASES) {
@@ -185,11 +195,12 @@ export function extractBarCost(description, skillType, properties = {}) {
   let cost = properties.bar_cost;
 
   if (!cost) {
-    // Try to parse cost from description
-    const manaMatch = description.match(/(\d+)\s*mana/i);
-    const staminaMatch = description.match(/(\d+)\s*stamina/i);
-    const bioMatch = description.match(/(\d+)\s*(bio.?power|energy)/i);
-    const percMatch = description.match(/(\d+)\s*perception/i);
+    // Try to parse cost from description (clip first — see MAX_DESC_LEN note above)
+    const clipped = clip(description);
+    const manaMatch = clipped.match(/(\d+)\s*mana/i);
+    const staminaMatch = clipped.match(/(\d+)\s*stamina/i);
+    const bioMatch = clipped.match(/(\d+)\s*(bio.?power|energy)/i);
+    const percMatch = clipped.match(/(\d+)\s*perception/i);
 
     if (manaMatch) { bar = 'mana'; cost = parseFloat(manaMatch[1]); }
     else if (staminaMatch) { bar = 'stamina'; cost = parseFloat(staminaMatch[1]); }
@@ -218,7 +229,7 @@ export function extractBarCost(description, skillType, properties = {}) {
 
 // ── getSkillElementFromDescription ───────────────────────────────────────────
 export function getSkillElement(description, skillType) {
-  const d = description.toLowerCase();
+  const d = clip(description).toLowerCase();
   if (/\bfire\b|flame|burn|heat/i.test(d)) return 'fire';
   if (/\bice\b|frost|freeze|cold/i.test(d)) return 'ice';
   if (/lightning|thunder|electric|shock/i.test(d)) return 'lightning';

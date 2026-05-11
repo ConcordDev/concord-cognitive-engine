@@ -156,10 +156,32 @@ export function importAnthropicSkillTree(rootDir) {
  * @returns {string} path to written EMERGENT.md
  */
 export function writeSkillToRegistry(skill, targetDir) {
-  const safeName = skill.name.replace(/[^a-z0-9-_]/gi, "-").toLowerCase();
-  const skillDir = path.join(targetDir, safeName);
-  fs.mkdirSync(skillDir, { recursive: true });
-  const outPath = path.join(skillDir, "EMERGENT.md");
-  fs.writeFileSync(outPath, skill.emergentMd, "utf-8");
-  return outPath;
+  if (typeof targetDir !== "string" || !targetDir) {
+    throw new Error("writeSkillToRegistry: targetDir is required");
+  }
+  // Tighten safeName: strip path separators, then collapse anything not in
+  // [a-z0-9_-] to a single dash. Reject empty / dot-only names outright.
+  const rawName = String(skill?.name || "").replace(/[\\/]/g, "");
+  const safeName = rawName.replace(/[^a-z0-9-_]/gi, "-").toLowerCase();
+  if (!safeName || /^[.-]+$/.test(safeName)) {
+    throw new Error("writeSkillToRegistry: skill.name resolves to an unsafe filename");
+  }
+
+  // Resolve to absolute paths and assert the output stays under targetDir.
+  // path.join with attacker-controlled segments cannot prevent traversal on
+  // its own; this containment check is what makes the operation CodeQL-clean
+  // and actually safe.
+  const rootAbs = path.resolve(targetDir);
+  const skillDirAbs = path.resolve(rootAbs, safeName);
+  if (!skillDirAbs.startsWith(rootAbs + path.sep) && skillDirAbs !== rootAbs) {
+    throw new Error("writeSkillToRegistry: resolved skill dir escaped target root");
+  }
+  const outPathAbs = path.resolve(skillDirAbs, "EMERGENT.md");
+  if (!outPathAbs.startsWith(skillDirAbs + path.sep)) {
+    throw new Error("writeSkillToRegistry: resolved file escaped skill dir");
+  }
+
+  fs.mkdirSync(skillDirAbs, { recursive: true });
+  fs.writeFileSync(outPathAbs, skill.emergentMd, "utf-8");
+  return outPathAbs;
 }

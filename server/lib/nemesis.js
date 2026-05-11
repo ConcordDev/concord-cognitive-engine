@@ -114,10 +114,23 @@ export function recordCombatMemory(db, npcId, playerId, combatLog) {
   if (!rec) return;
 
   const memory = _parseJSON(rec.combat_memory, { playerTactics: {}, roundsTotal: 0 });
-  const tactics = memory.playerTactics || {};
+  // Move existing tactics into a null-prototype map. attack.type is
+  // user-supplied (deserialised from combat-log JSON), so writing it as
+  // an object key on a plain `{}` would expose prototype-pollution to
+  // a crafted log payload (key="__proto__" etc).
+  const tactics = Object.create(null);
+  const prior = memory.playerTactics && typeof memory.playerTactics === "object" ? memory.playerTactics : {};
+  for (const k of Object.keys(prior)) {
+    if (k !== "__proto__" && k !== "constructor" && k !== "prototype") {
+      tactics[k] = prior[k];
+    }
+  }
 
   for (const attack of (combatLog.playerAttacks || [])) {
-    const key = attack.type || 'unknown';
+    let key = attack.type || 'unknown';
+    if (typeof key !== "string" || key === "__proto__" || key === "constructor" || key === "prototype") {
+      key = "unknown";
+    }
     if (!tactics[key]) tactics[key] = { attempts: 0, hits: 0 };
     tactics[key].attempts++;
     if (attack.hit) tactics[key].hits++;
