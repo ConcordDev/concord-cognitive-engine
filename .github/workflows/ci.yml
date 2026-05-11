@@ -177,15 +177,20 @@ jobs:
           # c8 instrumentation across the full server.js (now 67k LOC,
           # was 62k when this comment was written) + all lib/ +
           # emergent/ + economy/ pushes heap well past the default
-          # 3.8GB. Bumped from 6144 → 12288 because 6GB was hitting
-          # OOM on CI: the job ran ~20min, exited 1 with no failing
-          # tests in the diagnostic dump, no coverage line, no ERROR
-          # marker — the textbook signature of the test process being
-          # killed before it could write its summary. GitHub Actions
-          # Linux runners have 16GB RAM (was 7GB when the previous cap
-          # was set), so 12GB heap leaves the OS + npm wrapper +
-          # everything else 4GB to breathe.
-          NODE_OPTIONS: --max-old-space-size=12288
+          # 3.8GB. Bumped from 6144 → 12288 → 14336 over time as the
+          # codebase grew. Symptom of being too low: job exits 1
+          # mid-run with no failing tests in the diagnostic dump, no
+          # coverage summary line, no ERROR marker — the textbook
+          # signature of the test process being killed before it
+          # could write summary. The Sprint 18.4 platinum additions
+          # (acorn AST validators, logger redaction, drift scanner
+          # walking 1,184 source files, +5 new platinum test files)
+          # pushed past the 12GB cap; bumped to 14GB to absorb.
+          # GitHub Actions Linux runners have 16GB RAM, so 14GB leaves
+          # OS + npm wrapper ~2GB. If this OOMs again, lower the
+          # coverage threshold rather than bump further — we're at
+          # the runner's ceiling.
+          NODE_OPTIONS: --max-old-space-size=14336
         # Coverage thresholds anchored at "no regression below current" —
         # current baseline is ~46% statements, ~80% branches, ~34%
         # functions, ~46% lines across the unit-test scope (which excludes
