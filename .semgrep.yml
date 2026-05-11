@@ -65,6 +65,14 @@ rules:
             - pattern-regex: '(token|session|id|salt|nonce|secret|key)'
 
   # ─── Hardcoded credentials ──────────────────────────────────────
+  # Excludes test files — test fixtures legitimately use literal
+  # secrets like `const JWT_SECRET = "test-jwt-secret"` to seed
+  # JWT sign/verify round-trips in unit tests. Real-world hardcoded
+  # production secrets are caught by:
+  #   1. The startup check in server.js that warns when JWT_SECRET
+  #      env var is missing and generates a random per-process key.
+  #   2. gitleaks (.gitleaks.toml + workflow secrets-scan job) which
+  #      runs a content-aware secret detector across every PR.
   - id: concord-hardcoded-jwt-secret
     message: |
       Hardcoded JWT_SECRET. JWT_SECRET MUST come from env var in production.
@@ -73,6 +81,15 @@ rules:
     pattern-either:
       - pattern: const JWT_SECRET = "$X"
       - pattern: jwt.sign($A, "$LITERAL", ...)
+    paths:
+      exclude:
+        - "**/tests/**"
+        - "**/test/**"
+        - "**/__tests__/**"
+        - "**/*.test.js"
+        - "**/*.test.ts"
+        - "**/*.spec.js"
+        - "**/*.spec.ts"
 
   # ─── Unsafe innerHTML / dangerouslySetInnerHTML ─────────────────
   # WARNING-tier (not ERROR) because the lexical match fires on every
