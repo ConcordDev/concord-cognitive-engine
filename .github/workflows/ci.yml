@@ -472,13 +472,20 @@ jobs:
 
       - name: Wait for server
         run: |
-          for i in {1..30}; do
+          # Bumped from 30 → 90 attempts. Concord's startup probes each
+          # of the 5 Ollama brains (conscious / subconscious / utility /
+          # repair / vision); without Ollama running, each probe runs to
+          # its retry timeout (~5-8s each), easily consuming 30s+. The
+          # /ready endpoint resolves once core startup completes; the
+          # brain probes happen async in the background.
+          for i in {1..90}; do
             if curl -sf http://localhost:5050/ready > /dev/null 2>&1; then
-              echo "Server ready"
+              echo "Server ready after ${i}s"
               exit 0
             fi
             sleep 1
           done
+          echo "Server did not become ready within 90s"
           cat server/server.log
           exit 1
 
@@ -549,15 +556,17 @@ jobs:
       - name: Wait for server
         working-directory: ./server
         run: |
-          for i in {1..30}; do
+          # Bumped 30 → 90 to match the smoke-test fix — Concord's startup
+          # probes 5 Ollama brains; without Ollama running in CI, each
+          # probe times out on the ~5-8s default, easily eating 30s.
+          for i in {1..90}; do
             if curl -sf http://localhost:5050/health > /dev/null 2>&1; then
               echo "Server is ready after $i seconds"
               exit 0
             fi
-            echo "Waiting for server... ($i/30)"
             sleep 1
           done
-          echo "Server failed to start. Logs:"
+          echo "Server failed to start within 90s. Logs:"
           cat server.log
           exit 1
 
