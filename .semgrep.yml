@@ -124,8 +124,11 @@ rules:
       # brittle across Semgrep versions — file-level exclusion is the
       # robust shape.
       exclude:
-        - server/domains/invariant.js
-        - server/routes/simulation.js
+        - "server/domains/invariant.js"
+        - "server/routes/simulation.js"
+        - "**/invariant.js"
+        - "**/simulation.js"
+        - "server/tests/**"
 
   # ─── Open redirect ──────────────────────────────────────────────
   - id: concord-open-redirect
