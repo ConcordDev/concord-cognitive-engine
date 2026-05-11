@@ -123,11 +123,11 @@ export function LensShell({
     <LensErrorBoundary lensId={lensId}>{children}</LensErrorBoundary>
   );
   const inner = asMain ? (
-    <main id={targetId} role="main" className="contents">
+    <main id={targetId} role="main" className="contents" data-testid={`lens-shell-${lensId}`}>
       {wrappedChildren}
     </main>
   ) : (
-    <div id={targetId} className="contents">
+    <div id={targetId} className="contents" data-testid={`lens-shell-${lensId}`}>
       {wrappedChildren}
     </div>
   );

@@ -211,21 +211,18 @@ jobs:
         # rendered log is hard to scrape.
         run: |
           set -o pipefail
-          # Excluded from the c8 run because they spawn child processes
-          # or perform heavy DB round-trips that conflict with c8's
-          # parent-process instrumentation. Their assertions still run
-          # in npm test (without c8) via the standard suite.
-          #
-          # Sprint 33 re-audit (post PR #330): adversarial-critical-
-          # endpoints, edge-cases-critical-paths, error-paths were
-          # ADDED to the exclusion list in commit 85f18033 based on a
-          # local repro that passed --test-timeout=30000 (which forces
-          # cancellations). CI doesn't pass that flag — without it,
-          # those 3 files complete cleanly under c8 and contribute
-          # ~4.6pp of additional statement coverage. Re-included.
+          # Sprint 33 re-audit found that the prior c8 exclusion list
+          # was overly defensive — every previously-excluded file
+          # actually runs cleanly under c8 instrumentation. The cost:
+          # spawned child server processes aren't instrumented by c8
+          # (it tracks parent-process only), so server.js code paths
+          # exercised only by integration spawns don't roll up — but
+          # the test assertions still run + still pass. Coverage gets
+          # measured separately on parent-process code paths anyway.
+          # No exclusions remain in the c8 run.
           npx c8 --check-coverage --statements 45 --branches 45 --functions 33 --lines 45 \
             node --test --test-force-exit \
-            $(ls tests/*.test.js | grep -v -E 'auth-security|storage-parity') \
+            tests/*.test.js \
             2>&1 | tee /tmp/server-coverage.log
 
       - name: Surface failing tests on coverage step failure
