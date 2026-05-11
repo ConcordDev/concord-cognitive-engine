@@ -91,7 +91,7 @@ async function probeModule(path) {
       // If it's a class (function with prototype), try new-ing it too.
       // c8 counts the constructor body as covered.
       if (v.prototype && Object.keys(v.prototype).length > 0) {
-        try { /* eslint-disable-next-line new-cap */ new v(); } catch { /* expected */ }
+        try { new v(); } catch { /* expected */ }
       }
     }
   }

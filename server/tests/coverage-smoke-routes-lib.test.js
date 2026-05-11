@@ -71,7 +71,7 @@ async function probeFunction(fn) {
   try { await Promise.resolve(fn(MOCK_CTX)); } catch { /* expected */ }
   // Class constructors
   if (fn.prototype && Object.keys(fn.prototype).length > 0) {
-    try { /* eslint-disable-next-line new-cap */ new fn(); } catch { /* expected */ }
+    try { new fn(); } catch { /* expected */ }
   }
 }
 

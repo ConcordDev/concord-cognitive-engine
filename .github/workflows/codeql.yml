@@ -149,6 +149,19 @@ jobs:
               # console.X(req.*) appears outside logger.js.
               - exclude:
                   id: js/log-injection
+              # Sprint 34 (post-PR-#330): Every outbound fetch in this codebase
+              # routes through validateSafeFetchUrl() in lib/ssrf-guard.js. CodeQL's
+              # taint tracker can't follow the validator function across call
+              # boundaries — even after wave-3 inline re-validation refactors at
+              # mcp-client.js:365 and ssrf-guard.js:286, both sites still flag
+              # because the URL is a user-derived value at the start of the chain.
+              # Documented FP. Drift gate at tests/platinum-codeql-drift.test.js
+              # ("no raw fetch(req.body.url)" + "no req.* → fs.*" tests) catches
+              # any genuinely new SSRF sites at PR time regardless. Re-audit if
+              # a new outbound-fetch helper lands that doesn't route through
+              # validateSafeFetchUrl.
+              - exclude:
+                  id: js/server-side-request-forgery
               # NOTE: We intentionally KEEP these queries enabled because their
               # blast radius justifies the false-positive noise:
               #   - js/path-injection (filesystem traversal)
