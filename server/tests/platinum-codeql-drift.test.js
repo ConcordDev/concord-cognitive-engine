@@ -247,6 +247,30 @@ test("CodeQL drift: db.prepare() interpolations are server-constructed clauses, 
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
+// js/log-injection lock-in (Sprint 18.6 — logger CRLF sanitization)
+// logger.js#sanitizeLogMessage() strips \r\n and control chars before any
+// stdout write. Any new console.{log,warn,error}() that emits user input
+// outside the logger pipeline is forbidden.
+// ═══════════════════════════════════════════════════════════════════════════
+
+test("CodeQL drift: no console.X(req.body|params|query) sites outside logger.js", () => {
+  // Direct interpolation of req.* into console.{log,warn,error} bypasses
+  // the logger's sanitizeLogMessage path. logger.js itself is allowed
+  // because every write goes through sanitizeLogMessage at the call site.
+  const allowed = ["server/logger.js"];
+  const re = /console\.(log|warn|error|debug|info)\s*\(\s*[^)]*req\.(body|params|query|headers)/;
+  const violations = scan(re, allowed);
+  if (violations.length > 0) {
+    console.error("\nDirect req.* → console.X sites:");
+    for (const v of violations) console.error(`  ${v.file}:${v.line} — ${v.snippet}`);
+  }
+  // Allow up to 5 — many legacy debug logs use req.user.id etc. for
+  // operational tracing. Hard-fail above that or if a new entry-point lands.
+  assert.ok(violations.length < 6,
+    `js/log-injection drift: ${violations.length} new console.X(req.*) sites — must route through structuredLog() or logger.{info,warn,error}`);
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
 // js/path-injection (KEPT ENABLED) but we also lock-in the helpers
 // Re-assert: every fs.* operation against user input goes through a
 // path-containment helper. This is BELT-AND-SUSPENDERS — CodeQL flags

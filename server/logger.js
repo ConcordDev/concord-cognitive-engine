@@ -47,13 +47,35 @@ function scrub(value, depth = 0) {
  * @param {string} message
  * @param {object} [meta={}]
  */
+// Sprint 18.6 — log-injection defense (CodeQL js/log-injection).
+// User-controlled `message` flows to stdout via console.{log,warn,error}.
+// A crafted message containing CRLF can inject fake log entries that
+// downstream parsers (Datadog, Honeycomb, the Concord log viewer) treat
+// as legitimate. Sanitize before write: escape \r and \n, replace other
+// ASCII control chars with ?, cap length at 4KB.
+const LOG_MESSAGE_MAX_LEN = 4096;
+function sanitizeLogMessage(input) {
+  if (input == null) return "";
+  let s = typeof input === "string" ? input : String(input);
+  if (s.length > LOG_MESSAGE_MAX_LEN) s = s.slice(0, LOG_MESSAGE_MAX_LEN) + "…";
+  // Replace ASCII control chars (except tab) with literal escape sequences
+  // so a downstream log parser sees a single line, not 5 fake entries.
+  return s
+    .replace(/\r/g, "\\r")
+    .replace(/\n/g, "\\n")
+    .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, "?"); // eslint-disable-line no-control-regex
+}
+
 function log(level, source, message, meta = {}) {
   const safeMeta = scrub(meta);
+  const safeMessage = sanitizeLogMessage(message);
+  const safeSource = sanitizeLogMessage(source);
+  const safeLevel = sanitizeLogMessage(level);
   const entry = {
     timestamp: new Date().toISOString(),
-    level,
-    source,
-    message,
+    level: safeLevel,
+    source: safeSource,
+    message: safeMessage,
     meta: safeMeta,
     lens: safeMeta?.lens || null,
   };
@@ -61,11 +83,12 @@ function log(level, source, message, meta = {}) {
   logBuffer.push(entry);
   if (logBuffer.length > LOG_BUFFER_MAX) logBuffer.shift();
 
-  // Also write to stdout for Docker logs
-  const prefix = `[${entry.source}] [${level.toUpperCase()}]`;
-  if (level === 'error') console.error(`${prefix} ${message}`);
-  else if (level === 'warn') console.warn(`${prefix} ${message}`);
-  else console.log(`${prefix} ${message}`);
+  // Sanitized message reaches stdout / docker / log shipper — no CRLF
+  // injection vector regardless of caller hygiene.
+  const prefix = `[${safeSource}] [${safeLevel.toUpperCase()}]`;
+  if (safeLevel === 'error') console.error(`${prefix} ${safeMessage}`);
+  else if (safeLevel === 'warn') console.warn(`${prefix} ${safeMessage}`);
+  else console.log(`${prefix} ${safeMessage}`);
 }
 
 /**

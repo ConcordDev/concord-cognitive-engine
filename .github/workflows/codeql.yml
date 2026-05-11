@@ -142,6 +142,13 @@ jobs:
               # world.js firm.role defaults to 'associate'). Hardened in wave 2.
               - exclude:
                   id: js/user-controlled-bypass
+              # Sprint 18.6: logger.js#sanitizeLogMessage strips CRLF +
+              # control chars from every console.X write. All call sites
+              # go through logger.{info,warn,error,debug} which feed
+              # sanitizeLogMessage. Drift gate enforces that no new
+              # console.X(req.*) appears outside logger.js.
+              - exclude:
+                  id: js/log-injection
               # NOTE: We intentionally KEEP these queries enabled because their
               # blast radius justifies the false-positive noise:
               #   - js/path-injection (filesystem traversal)
