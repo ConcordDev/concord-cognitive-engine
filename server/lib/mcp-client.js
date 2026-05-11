@@ -338,6 +338,16 @@ export class MCPClient {
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
 
     try {
+      // Re-validate the URL inline immediately before fetch — makes the
+      // SSRF sanitizer dataflow visible to CodeQL's taint tracker, which
+      // doesn't follow validateSafeFetchUrl() across function boundaries.
+      // The connect() handshake already validated via validateSafeFetchUrl
+      // and stashed _urlSafety; this is a defense-in-depth re-check that
+      // ALSO satisfies CodeQL js/server-side-request-forgery.
+      const reChecked = await validateSafeFetchUrl(this._url);
+      if (!reChecked.ok) {
+        throw new Error(`SSRF re-validation failed: ${reChecked.error}`);
+      }
       // Pinned-IP fetch: connect to the IP we validated at connect() time,
       // eliminating DNS-rebinding between validation and request.
       const init = {
@@ -352,7 +362,7 @@ export class MCPClient {
       };
       const response = this._urlSafety
         ? await fetchWithPinnedIp(this._urlSafety, init)
-        : await fetch(this._url, init);
+        : await fetch(reChecked.url, init);
 
       if (!response.ok) {
         const text = await response.text().catch(() => "");
