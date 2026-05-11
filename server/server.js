@@ -23309,6 +23309,14 @@ void _timelinePrune; // exposed for future heartbeat-driven TTL sweep
 import registerGuidanceWaypointMacros from "./domains/guidance-waypoint.js";
 registerGuidanceWaypointMacros(register);
 
+// Sprint 10 — BYO API key substrate. Lets users plug their own
+// frontier-model API keys (OpenAI / Anthropic / xAI / Google) into
+// per-brain slots and route inference there instead of the default
+// Ollama. Keys encrypted AES-GCM with a per-user wrapping key derived
+// from JWT_SECRET. Never returned to the frontend after save.
+import registerByoKeysMacros from "./domains/byo-keys.js";
+registerByoKeysMacros(register);
+
 // Phase 6a — Forge → Marketplace. Mint Forge-generated apps as DTUs +
 // list on marketplace. Plugs into royalty cascade for citation chains.
 import registerForgeMarketplaceMacros from "./domains/forge-marketplace.js";
