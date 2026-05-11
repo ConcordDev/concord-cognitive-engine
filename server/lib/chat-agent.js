@@ -121,7 +121,12 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
       }
       case "browse_url": {
         const { url = "", selector } = call.params || {};
-        if (!String(url).startsWith("http")) {
+        // CodeQL js/incomplete-url-substring-sanitization fix:
+        // startsWith("http") matches "httpevil://..." too. Parse the URL
+        // and check protocol explicitly. Throws on malformed → caught below.
+        let _parsedScheme = "";
+        try { _parsedScheme = new URL(String(url)).protocol; } catch { _parsedScheme = ""; }
+        if (_parsedScheme !== "http:" && _parsedScheme !== "https:") {
           return { tool: call.tool, ok: false, error: "browse_url requires a valid http(s) URL" };
         }
         try {
@@ -227,7 +232,12 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
       }
       case "browser_act": {
         const { url = "", actions = [] } = call.params || {};
-        if (!String(url).startsWith("http")) {
+        // CodeQL js/incomplete-url-substring-sanitization fix:
+        // startsWith("http") matches "httpevil://..." too. Parse the URL
+        // and check protocol explicitly. Throws on malformed → caught below.
+        let _parsedScheme = "";
+        try { _parsedScheme = new URL(String(url)).protocol; } catch { _parsedScheme = ""; }
+        if (_parsedScheme !== "http:" && _parsedScheme !== "https:") {
           return { tool: call.tool, ok: false, error: "browser_act requires a valid http(s) URL" };
         }
         if (!Array.isArray(actions) || actions.length === 0) {
