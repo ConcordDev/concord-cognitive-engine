@@ -26,19 +26,25 @@ jobs:
   semgrep-sast:
     name: SAST — Semgrep (rules in .semgrep.yml)
     runs-on: ubuntu-latest
+    # Run inside Semgrep's official container so the binary is on PATH
+    # without needing pip/npm install gymnastics. Sprint 34 fix — the
+    # prior `npm install -g semgrep@latest || pip install semgrep` shape
+    # exited 127 (command not found) because neither install actually
+    # produced a working binary on the runner.
+    container:
+      image: semgrep/semgrep:latest
     steps:
       - uses: actions/checkout@v6
         with: { fetch-depth: 0 }
-      - uses: actions/setup-node@v6
-        with: { node-version: '22' }
-      - name: Semgrep SAST
+      - name: Semgrep SAST scan
         run: |
-          npm install -g semgrep@latest || pip install semgrep
-          semgrep --config=.semgrep.yml --error --severity=ERROR \
+          # Phase 1: emit JSON output for the SARIF upload, never fail.
+          semgrep --config=.semgrep.yml --severity=ERROR \
             --severity=WARNING --json --output=semgrep-results.json . || true
-          # Always emit summary, fail on ERROR-tier hits.
+          # Phase 2: re-run with --error to fail the job on ERROR-tier hits only.
+          # Warnings still flow to the JSON artifact but don't block CI.
           semgrep --config=.semgrep.yml --error --severity=ERROR .
-      - name: Upload Semgrep SARIF
+      - name: Upload Semgrep findings
         if: always()
         uses: actions/upload-artifact@v6
         with:
@@ -63,7 +69,39 @@ jobs:
         run: npm ci
       - name: npm audit (frontend) — fail on high
         working-directory: ./concord-frontend
-        run: npm audit --production --audit-level=high
+        run: |
+          # Known FP allowlist (no upstream fix; audited as not-applicable):
+          #   - GHSA-r5fr-rjxr-66jc: lodash _.template code injection.
+          #     Codebase audit confirms _.template is never invoked
+          #     (grep -rE "lodash.*template\|_.template\(" → 0 hits).
+          # Run audit, then post-process JSON to drop allowlisted advisories
+          # before deciding pass/fail.
+          set +e
+          npm audit --omit=dev --json > audit.json
+          set -e
+          HIGH_OR_CRIT_REAL=$(python3 -c "
+          import json
+          d = json.load(open('audit.json'))
+          ALLOWLIST_ADVISORIES = {'GHSA-r5fr-rjxr-66jc'}
+          flagged = 0
+          for name, v in d.get('vulnerabilities', {}).items():
+              if v.get('severity') not in ('high', 'critical'):
+                  continue
+              vias = v.get('via', [])
+              real = [x for x in vias if isinstance(x, dict)
+                      and x.get('url', '').split('/')[-1] not in ALLOWLIST_ADVISORIES]
+              if real:
+                  flagged += 1
+                  print(f'  HIGH/CRIT: {name} (advisories: {[x.get(\"url\",\"?\") for x in real][:3]})')
+          print(f'real_high_or_critical={flagged}')
+          ")
+          echo "$HIGH_OR_CRIT_REAL"
+          REAL=$(echo "$HIGH_OR_CRIT_REAL" | grep -oE 'real_high_or_critical=[0-9]+' | cut -d= -f2)
+          if [ "${REAL:-1}" -gt 0 ]; then
+            echo "::error::Frontend has $REAL real high/critical npm audit findings"
+            exit 1
+          fi
+          echo "All high/critical findings are FP-allowlisted; audit passes."
 
   retire-js:
     name: SCA — retire.js (known vulnerable libs)
