@@ -86,12 +86,31 @@ export default function registerGlyphSpellMacros(register) {
       element = [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0];
     }
 
+    // Cross-world potency: glyph spells are magic-domain. A wizard's
+    // spell in cyber world delivers less magnitude than the same spell
+    // in fantasy. Level-floor preserves partial power for master casters.
+    let xwMul = 1.0;
+    try {
+      const { effectivenessMultiplier } = await import("../lib/cross-world-effectiveness.js");
+      const lvlRow = db.prepare(`
+        SELECT MAX(level) AS level FROM player_skill_levels
+        WHERE user_id = ? AND skill_type = 'magic'
+      `).get(userId);
+      xwMul = effectivenessMultiplier({
+        domain: "magic",
+        worldId,
+        level: lvlRow?.level || 1,
+        maxLevel: 100,
+      });
+    } catch { /* cross-world layer optional */ }
+    const effectiveMagnitude = (Number(magnitude) || 1) * xwMul;
+
     let feedbackApplied = 0;
     try {
       const sigMod = await import("../lib/embodied/signals.js");
       const skEnv = await import("../lib/embodied/skill-environment.js").catch(() => null);
       if (sigMod && skEnv?.elementalEnvFeedback) {
-        const deltas = skEnv.elementalEnvFeedback(element, Number(magnitude) || 1);
+        const deltas = skEnv.elementalEnvFeedback(element, effectiveMagnitude);
         for (const d of deltas) {
           try {
             sigMod.recordSignal(db, {
@@ -126,18 +145,20 @@ export default function registerGlyphSpellMacros(register) {
       db.prepare(`
         INSERT INTO spell_cast_log (spell_id, user_id, world_id, x, z, element, magnitude)
         VALUES (?, ?, ?, ?, ?, ?, ?)
-      `).run(spellId, userId, worldId, Number(x), Number(z), element, Number(magnitude));
+      `).run(spellId, userId, worldId, Number(x), Number(z), element, effectiveMagnitude);
     } catch { /* logging best-effort */ }
 
     return {
       ok: true,
       spellId, element, worldId,
       position: { x, z },
-      magnitude,
+      magnitude: effectiveMagnitude,
+      requestedMagnitude: Number(magnitude) || 1,
+      crossWorldMultiplier: Math.round(xwMul * 1000) / 1000,
       feedbackApplied,
       cumulativeNote: "embodied signals fold recency-weighted; repeated casts compound in cell",
     };
-  }, { note: "Cast a composed spell at world coords. Cumulative env-signal deltas." });
+  }, { note: "Cast a composed spell at world coords. Magnitude scales by per-world skill_affinity × level floor. Cumulative env-signal deltas." });
 
   register("glyph_spells", "casts_in_region", async (ctx, input = {}) => {
     const db = ctx?.db;

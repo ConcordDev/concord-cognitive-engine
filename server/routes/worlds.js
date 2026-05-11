@@ -1852,7 +1852,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       const rules = world?.rule_modulators
         ? (typeof world.rule_modulators === 'string' ? JSON.parse(world.rule_modulators) : world.rule_modulators)
         : {};
-      const eff = computeSkillEffectiveness(skillTypeForLookup, skillRow?.level || 1, rules);
+      const eff = computeSkillEffectiveness(skillTypeForLookup, skillRow?.level || 1, rules, { worldId });
 
       const attackerStats = {
         skillLevel: eff.effectiveLevel,

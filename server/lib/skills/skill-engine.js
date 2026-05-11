@@ -3,6 +3,7 @@
 
 import crypto from 'node:crypto';
 import { awardCharacterLevel } from './character-level.js';
+import { effectivenessMultiplier as crossWorldMul } from '../cross-world-effectiveness.js';
 
 // ── Skill → native world type mapping ─────────────────────────────────────────
 
@@ -30,15 +31,40 @@ export const SKILL_UNIVERSE_MAP = {
 /**
  * Compute how effective a skill is in a world given the world's rule modulators.
  *
+ * Layers two cross-world systems (applied multiplicatively):
+ *   1. `rule_modulators` from the `worlds` DB row (skill_resistance + skill_effectiveness_rules)
+ *   2. `skill_affinity` from `content/world/<id>/meta.json` (consulted via
+ *      cross-world-effectiveness.js with the level-floor formula:
+ *      `floor = 0.10 + 0.40 × min(1, level/maxLevel)`, so a master retains
+ *      partial potency anywhere while a novice does not).
+ *
+ * Pass `opts.worldId` to activate layer 2. Without it, layer 2 is skipped
+ * (backward compatible with every existing callsite).
+ *
  * @param {string} skillType
  * @param {number} nativeLevel  - Player's level in this skill
  * @param {object|string} worldRuleModulators - Parsed or raw JSON rule_modulators
- * @returns {{ effective: boolean, effectiveLevel: number, multiplier: number, reason?: string }}
+ * @param {object} [opts]
+ * @param {string} [opts.worldId]  - Current world id (activates skill_affinity layer)
+ * @param {number} [opts.maxLevel=100]
+ * @returns {{ effective: boolean, effectiveLevel: number, multiplier: number,
+ *   crossWorldMultiplier?: number, reason?: string }}
  */
-export function computeSkillEffectiveness(skillType, nativeLevel, worldRuleModulators) {
+export function computeSkillEffectiveness(skillType, nativeLevel, worldRuleModulators, opts = {}) {
   const rules = typeof worldRuleModulators === 'string'
     ? _parseJSON(worldRuleModulators, {})
     : (worldRuleModulators || {});
+
+  // Layer 2: per-meta.json skill_affinity (with level floor). Skipped if
+  // no worldId is provided — preserves existing callsite shape.
+  const xwMul = opts?.worldId
+    ? crossWorldMul({
+        domain: skillType,
+        worldId: opts.worldId,
+        level: nativeLevel,
+        maxLevel: opts.maxLevel || 100,
+      })
+    : 1.0;
 
   const resistance = rules.skill_resistance || {};
   const effectivenessRules = rules.skill_effectiveness_rules || {};
@@ -72,8 +98,14 @@ export function computeSkillEffectiveness(skillType, nativeLevel, worldRuleModul
       };
     }
 
-    const effectiveLevel = scaledLevel * multiplier;
-    return { effective: true, effectiveLevel: Math.round(effectiveLevel * 10) / 10, multiplier };
+    const combinedMul = multiplier * xwMul;
+    const effectiveLevel = scaledLevel * combinedMul;
+    return {
+      effective: true,
+      effectiveLevel: Math.round(effectiveLevel * 10) / 10,
+      multiplier: Math.round(combinedMul * 1000) / 1000,
+      crossWorldMultiplier: opts?.worldId ? Math.round(xwMul * 1000) / 1000 : undefined,
+    };
   }
 
   // No resistance config — check effectiveness rules only
@@ -89,8 +121,14 @@ export function computeSkillEffectiveness(skillType, nativeLevel, worldRuleModul
     };
   }
 
-  const effectiveLevel = nativeLevel * multiplier;
-  return { effective: true, effectiveLevel: Math.round(effectiveLevel * 10) / 10, multiplier };
+  const combinedMul = multiplier * xwMul;
+  const effectiveLevel = nativeLevel * combinedMul;
+  return {
+    effective: true,
+    effectiveLevel: Math.round(effectiveLevel * 10) / 10,
+    multiplier: Math.round(combinedMul * 1000) / 1000,
+    crossWorldMultiplier: opts?.worldId ? Math.round(xwMul * 1000) / 1000 : undefined,
+  };
 }
 
 // ── World skill creation check ─────────────────────────────────────────────────

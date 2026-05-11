@@ -102,6 +102,7 @@ const RefusalFieldHUD = dynamic(() => import('@/components/world/RefusalFieldHUD
 const PremonitionOverlay = dynamic(() => import('@/components/world/PremonitionOverlay'), { ssr: false });
 const DriftMoodboard = dynamic(() => import('@/components/world/DriftMoodboard'), { ssr: false });
 const EmbodiedHUD = dynamic(() => import('@/components/world/EmbodiedHUD'), { ssr: false });
+const CrossWorldPotencyHUD = dynamic(() => import('@/components/world/CrossWorldPotencyHUD'), { ssr: false });
 const EavesdropBubble = dynamic(() => import('@/components/world/EavesdropBubble'), { ssr: false });
 const WalkerArbitrageMap = dynamic(() => import('@/components/world/WalkerArbitrageMap'), { ssr: false });
 const GlyphCastHUD = dynamic(() => import('@/components/world/GlyphCastHUD'), { ssr: false });
@@ -4314,6 +4315,9 @@ export default function WorldLensPage() {
           <PremonitionOverlay />
           <DriftMoodboard />
           <EmbodiedHUD />
+          {/* Sprint 5 — per-world skill potency chip. Reads each world's
+              meta.json skill_affinity + applies level-floor formula. */}
+          <CrossWorldPotencyHUD />
           <EavesdropBubble worldId={activeDistrict?.id || 'concordia-hub'} playerPos={playerAvatar?.position ? { x: playerAvatar.position.x, z: playerAvatar.position.z } : undefined} />
           <WalkerArbitrageMap worldId={activeDistrict?.id || 'concordia-hub'} />
           <GlyphCastHUD worldId={activeDistrict?.id || 'concordia-hub'} playerPos={playerAvatar?.position ? { x: playerAvatar.position.x, z: playerAvatar.position.z } : undefined} />

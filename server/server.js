@@ -9556,6 +9556,11 @@ async function runMacro(domain, name, input, ctx) {
     // npc_legacy (Sprint B Phase 11.1) — read-only tomb / last-words /
     // inheritance surface for the frontend TombMarker + InheritanceLog UI.
     npc_legacy: new Set(["tombs_for_world", "get", "inheritance_for_heir"]),
+    // cross_world_effectiveness (Sprint 5) — per-world skill potency
+    // chip for the HUD. All read-only: explain a single (domain, world,
+    // level) triple, dump every domain for the current player, list
+    // canonical domain registry.
+    cross_world_effectiveness: new Set(["explain", "for_player", "list_domains"]),
     // faction_strategy (Sprint B Phase 10) — Crucible HUD reads
     // recent_moves + get_relation; witness_next_move is the cross-
     // world signature quest's objective-completion macro.
@@ -23255,6 +23260,12 @@ registerLandClaimsMacros(register);
 // DTU so it flows through Phase 1 / 1.5 (evolution + marketplace).
 import registerGlyphSpellMacros from "./domains/glyph-spells.js";
 registerGlyphSpellMacros(register);
+
+// Sprint 5 — Cross-world skill effectiveness surface. Reads per-world
+// meta.json skill_affinity + applies level-floor formula. Powers HUD chip
+// ("Your magic is dampened here (15%)") and per-domain potency snapshot.
+import registerCrossWorldEffectivenessMacros from "./domains/cross-world-effectiveness.js";
+registerCrossWorldEffectivenessMacros(register);
 
 // Phase 6a — Forge → Marketplace. Mint Forge-generated apps as DTUs +
 // list on marketplace. Plugs into royalty cascade for citation chains.
