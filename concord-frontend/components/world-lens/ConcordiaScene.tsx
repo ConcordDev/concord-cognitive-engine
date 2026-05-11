@@ -657,6 +657,10 @@ export default function ConcordiaScene({
       scene = new THREE.Scene();
       scene.fog = new THREE.Fog(activeTheme.fog.color, activeTheme.fog.near, activeTheme.fog.far);
       sceneRef.current = scene;
+      // Sprint 9 — expose scene globally so the QuestWaypointBeacon
+      // can attach its 3D objects without prop-drilling through the
+      // entire scene tree. Same pattern as __concordiaRenderer.
+      (window as unknown as { __concordiaScene?: unknown }).__concordiaScene = scene;
       // Sprint 7 — sync volumetric fog color to active theme.
       try {
         const setVolFogColor = (composerRef.current as unknown as { _volFogSetColor?: (hex: number) => void } | null)?._volFogSetColor;

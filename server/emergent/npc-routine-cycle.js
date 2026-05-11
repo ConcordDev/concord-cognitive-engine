@@ -109,7 +109,7 @@ export async function runNpcRoutineCycle({ db, state: _state, tickCount: _t } = 
               const re = globalThis._concordRealtimeEmit;
               if (typeof re === "function") {
                 re("npc:activity", {
-                  world_id: world,
+                  world_id: worldId,
                   actor_kind: "npc",
                   actor_id: npc.id,
                   activity: r.currentActivity || r.activity || null,

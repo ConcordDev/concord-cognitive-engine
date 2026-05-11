@@ -9585,6 +9585,9 @@ async function runMacro(domain, name, input, ctx) {
     // event_timeline (Sprint 8) — unified firehose of socket events
     // persisted to event_timeline_log. Powers /lenses/timeline.
     event_timeline: new Set(["recent", "stats"]),
+    // guidance_waypoint (Sprint 9) — active objective + hint text for
+    // the diegetic waypoint beacon + "?" recovery button.
+    guidance_waypoint: new Set(["active_objective", "hint_for"]),
     // faction_strategy (Sprint B Phase 10) — Crucible HUD reads
     // recent_moves + get_relation; witness_next_move is the cross-
     // world signature quest's objective-completion macro.
@@ -23299,6 +23302,12 @@ import { recordEvent as _timelineRecordFn, listRecent as _timelineList, stats as
 import registerEventTimelineMacros from "./domains/event-timeline.js";
 registerEventTimelineMacros(register, { listRecent: _timelineList, stats: _timelineStats });
 void _timelinePrune; // exposed for future heartbeat-driven TTL sweep
+
+// Sprint 9 — diegetic waypoint surface. Returns the player's active
+// objective with worldPos + hint text. Powers the 3D QuestWaypointBeacon
+// + "?" recovery button.
+import registerGuidanceWaypointMacros from "./domains/guidance-waypoint.js";
+registerGuidanceWaypointMacros(register);
 
 // Phase 6a — Forge → Marketplace. Mint Forge-generated apps as DTUs +
 // list on marketplace. Plugs into royalty cascade for citation chains.
