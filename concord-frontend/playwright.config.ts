@@ -55,10 +55,16 @@ export default defineConfig({
     },
   ],
 
+  // In CI we ship against a production build (`npm run start:ci` →
+  // `next start`). `next dev` cold-compiles all 200+ lens routes on
+  // every run and the default 120 s webServer timeout was tripping
+  // before any spec executed (visible in CI as "process completed
+  // with exit 1" + no failed-spec output). Local devs still get the
+  // dev server via `npm run dev`.
   webServer: {
-    command: 'npm run dev',
+    command: process.env.CI ? 'npm run start:ci' : 'npm run dev',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
-    timeout: 120000,
+    timeout: process.env.CI ? 180000 : 120000,
   },
 });

@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { LensShell } from '@/components/lens/LensShell';
+import LensAgentFab from '@/components/lens/LensAgentFab';
 import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -3032,7 +3033,7 @@ export default function LegalLensPage() {
   /* ---------- main render ---------- */
 
   return (
-    <LensShell lensId="legal" asMain={false}>
+    <LensShell lensId="legal" asMain={false} disableAgentFab={true}>
       <RivalShapePreview lensId="legal" />
     <div data-lens-theme="legal" className={ds.pageContainer}>
       {/* Legal Disclaimer */}
@@ -3331,6 +3332,13 @@ export default function LegalLensPage() {
         )}
       </div>
     </div>
+    <LensAgentFab
+      lensId="legal"
+      lensPrompt="You're inside Concord's Legal lens — cases, documents, contracts, compliance. Prefer expert_mode for cited legal research, run_lens_action for legal.* actions, create_dtu to save analysis."
+    />
+    
+      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
+      <a href="#legal-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to legal content</a>
     </LensShell>
   );
 }

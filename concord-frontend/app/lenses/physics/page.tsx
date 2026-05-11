@@ -1242,7 +1242,7 @@ export default function PhysicsLensPage() {
           Import
           <input type="file" accept=".json" onChange={importSimulation} className="hidden" />
         </label>
-        <button onClick={exportSimulation} className="btn-neon">
+        <button onClick={exportSimulation} className="btn-neon focus:outline-none focus:ring-2 focus:ring-amber-500">
           <Download className="w-4 h-4 mr-2 inline" />
           Export
         </button>

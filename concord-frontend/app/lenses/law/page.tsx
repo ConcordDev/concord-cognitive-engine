@@ -234,7 +234,7 @@ export default function LawLensPage() {
             placeholder="Describe a proposed action..."
             className="input-lattice flex-1"
           />
-          <button onClick={handleGateCheck} className="btn-neon purple">
+          <button onClick={handleGateCheck} className="btn-neon purple focus:outline-none focus:ring-2 focus:ring-amber-500">
             Check Gate
           </button>
         </div>

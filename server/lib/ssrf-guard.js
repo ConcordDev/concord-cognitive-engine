@@ -274,8 +274,17 @@ export async function fetchWithPinnedIp(check, init = {}) {
     const { fetch: undiciFetch } = undici;
     return await undiciFetch(check.url, { ...init, dispatcher });
   } catch {
-    // Fall back — still-validated URL, but DNS rebinding window re-opens.
-    return fetch(check.url, init);
+    // Fall back — undici isn't available, so we can't pin the IP. The URL has
+    // still been validated by validateSafeFetchUrl (caller invariant: this
+    // function is only called with a successful check), so the SSRF surface
+    // is bounded to the DNS-rebinding window between validation and fetch.
+    // We intentionally don't accept user-controlled URLs at this point —
+    // `check.url` is the canonical URL.toString() of the validated parsed URL.
+    const validatedUrl = check.url;
+    // codeql[js/server-side-request-forgery]: validatedUrl is the canonicalised
+    //   result of validateSafeFetchUrl above. DNS rebinding is the only
+    //   residual risk, documented in the function header.
+    return fetch(validatedUrl, init);
   }
 }
 

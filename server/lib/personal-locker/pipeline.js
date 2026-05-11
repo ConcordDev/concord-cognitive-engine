@@ -203,7 +203,9 @@ export function classifyMime(mimeType) {
 function extractTags(text) {
   if (!text) return [];
   const words = text.toLowerCase().match(/\b[a-z]{4,}\b/g) || [];
-  const freq = {};
+  // Object.create(null): no prototype chain, no prototype-pollution surface
+  // for keys derived from user-supplied text.
+  const freq = Object.create(null);
   for (const w of words) freq[w] = (freq[w] || 0) + 1;
   return Object.entries(freq)
     .filter(([, n]) => n >= 2)

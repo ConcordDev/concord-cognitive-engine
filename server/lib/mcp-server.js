@@ -207,11 +207,11 @@ export function createMCPServer({
       }
     } else {
       // Virtual artifact for domain-level calls
-      const data = args.data || {};
-      // Merge top-level args (excluding reserved keys) into data
-      const reserved = new Set(["artifactId", "data", "params"]);
+      const data = (args.data && typeof args.data === "object") ? { ...args.data } : {};
+      // Merge top-level args (excluding reserved + prototype keys) into data
+      const reserved = new Set(["artifactId", "data", "params", "__proto__", "constructor", "prototype"]);
       for (const [k, v] of Object.entries(args)) {
-        if (!reserved.has(k)) data[k] = v;
+        if (!reserved.has(k) && Object.prototype.hasOwnProperty.call(args, k)) data[k] = v;
       }
       artifact = {
         id: null,
@@ -224,9 +224,11 @@ export function createMCPServer({
 
     // Merge params from args.params and top-level args
     const toolParams = { ...(args.params || {}) };
-    const reserved = new Set(["artifactId", "data", "params"]);
+    const reserved = new Set(["artifactId", "data", "params", "__proto__", "constructor", "prototype"]);
     for (const [k, v] of Object.entries(args)) {
-      if (!reserved.has(k) && !(k in toolParams)) toolParams[k] = v;
+      if (!reserved.has(k) && !(k in toolParams) && Object.prototype.hasOwnProperty.call(args, k)) {
+        toolParams[k] = v;
+      }
     }
 
     try {

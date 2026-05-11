@@ -566,7 +566,7 @@ export default function ForkLensPage() {
                 <button
                   onClick={handleMerge}
                   disabled={selectedForkData.status === 'merged'}
-                  className="btn-neon flex-1 text-sm"
+                  className="btn-neon flex-1 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                 >
                   <GitMerge className="w-3 h-3 mr-1 inline" />
                   Merge

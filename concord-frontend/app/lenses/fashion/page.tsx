@@ -386,7 +386,7 @@ export default function FashionLensPage() {
                 <input value={newItem.size} onChange={e => setNewItem(p => ({ ...p, size: e.target.value }))} placeholder="Size..." className="input-lattice" />
                 <input type="number" value={newItem.price || ''} onChange={e => setNewItem(p => ({ ...p, price: Number(e.target.value) }))} placeholder="Price..." className="input-lattice" />
               </div>
-              <button onClick={handleCreate} disabled={createMut.isPending || !newItem.name.trim()} className="btn-neon green w-full">
+              <button onClick={handleCreate} disabled={createMut.isPending || !newItem.name.trim()} className="btn-neon green w-full focus:outline-none focus:ring-2 focus:ring-amber-500">
                 {createMut.isPending ? 'Adding...' : 'Add to Wardrobe'}
               </button>
             </div>

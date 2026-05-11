@@ -9,7 +9,7 @@
     "is_immortal": true,
     "quest_giver": true,
     "level": 12,
-    "backstory": "Maren catalogued the great library for thirty years before the Purge erased half its contents in a single night. She watched the locks on Vault Seventeen open from the outside and has never forgotten it. For thirty years since, she has been building a shadow archive in secret \u2014 reconstructing destroyed texts from memory, fragments, and contraband copies. She believes the Purge was ordered, not accidental, and she believes she now has enough proof to act.",
+    "backstory": "Maren catalogued the great library for thirty years before the Purge erased half its contents in a single night. She watched the locks on Vault Seventeen open from the outside and has never forgotten it. For thirty years since, she has been building a shadow archive in secret — reconstructing destroyed texts from memory, fragments, and contraband copies. She believes the Purge was ordered, not accidental, and she believes she now has enough proof to act.",
     "personality_traits": [
       "methodical",
       "paranoid",
@@ -56,7 +56,109 @@
       "work": "shadow_archive",
       "rest": "private_quarters_archive",
       "socialize": "private_quarters_archive"
-    }
+    },
+    "power_tier": "standard_high",
+    "level_canonical": 420,
+    "needs": [
+      {
+        "id": "work_continuity",
+        "priority": "primary",
+        "satisfaction_method": "daily_routine"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "faction_or_personal_resources"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "morning",
+        "phase_hours": [
+          7,
+          12
+        ],
+        "location": "archive",
+        "activity": "archive work",
+        "need_addressed": "work_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          19
+        ],
+        "location": "archive",
+        "activity": "continued archive work",
+        "need_addressed": "work_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          22
+        ],
+        "location": "common_quarters",
+        "activity": "evening with colleagues",
+        "need_addressed": "collegial_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          7
+        ],
+        "location": "private_quarters",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      }
+    ],
+    "home": {
+      "district": "private_quarters_archive",
+      "dwelling_type": "private_quarters"
+    },
+    "job": {
+      "profession_id": "scholar_hub",
+      "wage_per_diurnal_sparks": 80,
+      "wage_source": "scholars_guild_pooled_or_salary"
+    },
+    "apparel": [
+      "scholar_robe",
+      "soft_shoes",
+      "quill_pouch_belt",
+      "wool_cloak"
+    ],
+    "gear": [
+      "research_journal_master",
+      "ink_set",
+      "folio_carry_case"
+    ],
+    "resources_consumed": [
+      "provisions",
+      "tools"
+    ],
+    "resources_produced": [
+      "scholar_outputs"
+    ],
+    "inventory": [
+      {
+        "item": "research_journal_master",
+        "qty": 1
+      },
+      {
+        "item": "ink_set",
+        "qty": 1
+      },
+      {
+        "item": "folio_carry_case",
+        "qty": 1
+      }
+    ],
+    "starting_sparks": 2400
   },
   {
     "id": "scribe_tollan",
@@ -68,7 +170,7 @@
     "is_immortal": false,
     "quest_giver": true,
     "level": 7,
-    "backstory": "Tollan was a junior scribe during the Purge and survived by being off-site that night, attending a trade festival. The guilt of survival has made him meticulous to the point of obsession. He transcribes everything \u2014 conversations, overheard arguments, dates, names. His personal journals, kept in cipher, are the most complete record of Concordia's last thirty years. He has never shown them to anyone except Maren.",
+    "backstory": "Tollan was a junior scribe during the Purge and survived by being off-site that night, attending a trade festival. The guilt of survival has made him meticulous to the point of obsession. He transcribes everything — conversations, overheard arguments, dates, names. His personal journals, kept in cipher, are the most complete record of Concordia's last thirty years. He has never shown them to anyone except Maren.",
     "personality_traits": [
       "meticulous",
       "guilt-driven",
@@ -109,7 +211,109 @@
       "work": "main_archive_reading_room",
       "rest": "scribe_dormitory",
       "socialize": "shadow_archive"
-    }
+    },
+    "power_tier": "standard_high",
+    "level_canonical": 280,
+    "needs": [
+      {
+        "id": "patron_continuity",
+        "priority": "primary",
+        "satisfaction_method": "daily_routine"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "faction_or_personal_resources"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          12
+        ],
+        "location": "public_square",
+        "activity": "morning performance",
+        "need_addressed": "patron_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          18
+        ],
+        "location": "tavern",
+        "activity": "composing",
+        "need_addressed": "craft_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          23
+        ],
+        "location": "tavern",
+        "activity": "evening performance",
+        "need_addressed": "patron_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          23,
+          8
+        ],
+        "location": "rented_room",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      }
+    ],
+    "home": {
+      "district": "scribe_dormitory",
+      "dwelling_type": "private_quarters"
+    },
+    "job": {
+      "profession_id": "bard_hub",
+      "wage_per_diurnal_sparks": 40,
+      "wage_source": "scholars_guild_pooled_or_salary"
+    },
+    "apparel": [
+      "bard_coat",
+      "wide_brim_hat",
+      "soft_boots",
+      "colorful_scarf"
+    ],
+    "gear": [
+      "instrument",
+      "songbook_master",
+      "small_dagger"
+    ],
+    "resources_consumed": [
+      "provisions",
+      "tools"
+    ],
+    "resources_produced": [
+      "bard_outputs"
+    ],
+    "inventory": [
+      {
+        "item": "instrument",
+        "qty": 1
+      },
+      {
+        "item": "songbook_master",
+        "qty": 1
+      },
+      {
+        "item": "small_dagger",
+        "qty": 1
+      }
+    ],
+    "starting_sparks": 1200
   },
   {
     "id": "lorekeeper_yshe",
@@ -121,7 +325,7 @@
     "is_immortal": false,
     "quest_giver": true,
     "level": 5,
-    "backstory": "Yshe joined the Guild not from ideology but from greed \u2014 she discovered early that rare texts could be sold for remarkable sums. Over twenty years of brokering forbidden books, she developed genuine reverence for what she traded. She now works primarily for the Guild but maintains independent contacts in every faction, including the Shadow Network. She is the Guild's unofficial intelligence officer.",
+    "backstory": "Yshe joined the Guild not from ideology but from greed — she discovered early that rare texts could be sold for remarkable sums. Over twenty years of brokering forbidden books, she developed genuine reverence for what she traded. She now works primarily for the Guild but maintains independent contacts in every faction, including the Shadow Network. She is the Guild's unofficial intelligence officer.",
     "personality_traits": [
       "pragmatic",
       "charming",
@@ -163,7 +367,109 @@
       "travel": "trade_road_north",
       "socialize": "merchant_quarter_taverns",
       "rest": "merchant_quarter_taverns"
-    }
+    },
+    "power_tier": "standard_high",
+    "level_canonical": 380,
+    "needs": [
+      {
+        "id": "trade_continuity",
+        "priority": "primary",
+        "satisfaction_method": "daily_routine"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "faction_or_personal_resources"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "morning",
+        "phase_hours": [
+          7,
+          12
+        ],
+        "location": "market",
+        "activity": "morning trading",
+        "need_addressed": "trade_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          19
+        ],
+        "location": "market",
+        "activity": "afternoon trading",
+        "need_addressed": "trade_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          22
+        ],
+        "location": "merchant_quarters",
+        "activity": "evening ledger",
+        "need_addressed": "business_continuity",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          7
+        ],
+        "location": "merchant_quarters",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      }
+    ],
+    "home": {
+      "district": "merchant_quarter_taverns",
+      "dwelling_type": "private_quarters"
+    },
+    "job": {
+      "profession_id": "merchant_hub",
+      "wage_per_diurnal_sparks": 120,
+      "wage_source": "scholars_guild_pooled_or_salary"
+    },
+    "apparel": [
+      "merchant_coat",
+      "walking_shoes",
+      "tailored_pants",
+      "seal_brooch"
+    ],
+    "gear": [
+      "ledger_master",
+      "seal_signet",
+      "small_pistol_concealed"
+    ],
+    "resources_consumed": [
+      "provisions",
+      "tools"
+    ],
+    "resources_produced": [
+      "merchant_outputs"
+    ],
+    "inventory": [
+      {
+        "item": "ledger_master",
+        "qty": 1
+      },
+      {
+        "item": "seal_signet",
+        "qty": 1
+      },
+      {
+        "item": "small_pistol_concealed",
+        "qty": 1
+      }
+    ],
+    "starting_sparks": 3600
   },
   {
     "id": "warden_voss",
@@ -175,7 +481,7 @@
     "is_immortal": true,
     "quest_giver": true,
     "level": 15,
-    "backstory": "Voss rose from street patrol to commander over forty years of service. He is genuinely devoted to Concordia's stability \u2014 which is precisely why, thirty years ago, he authorized the burning of Vault Seventeen. The texts inside, he was told, would destabilize the Compact by exposing the Trade War collusion. He believed it then. He believes it now. He has spent thirty years watching for signs that the secret is unraveling.",
+    "backstory": "Voss rose from street patrol to commander over forty years of service. He is genuinely devoted to Concordia's stability — which is precisely why, thirty years ago, he authorized the burning of Vault Seventeen. The texts inside, he was told, would destabilize the Compact by exposing the Trade War collusion. He believed it then. He believes it now. He has spent thirty years watching for signs that the secret is unraveling.",
     "personality_traits": [
       "authoritative",
       "pragmatic about ethics",
@@ -191,7 +497,7 @@
       {
         "npc_id": "archivist_maren",
         "type": "monitored_threat",
-        "notes": "Voss has known for years that Maren suspects him. He has been watching her, not acting \u2014 hoping she will run out of time."
+        "notes": "Voss has known for years that Maren suspects him. He has been watching her, not acting — hoping she will run out of time."
       },
       {
         "npc_id": "captain_rael",
@@ -202,7 +508,7 @@
     "narrative_context": {
       "current_goal": "Find and destroy the shadow archive before Maren can use it. Preferably without violence.",
       "secret": "He is the one who opened Vault Seventeen's lock. He has never told anyone.",
-      "fear": "Not being punished \u2014 he can survive that. Dying before he can explain that he did it for the city."
+      "fear": "Not being punished — he can survive that. Dying before he can explain that he did it for the city."
     },
     "schedule": {
       "dawn": "rest",
@@ -216,7 +522,109 @@
       "work": "warden_hq_command_office",
       "patrol": "east_district_patrol_route",
       "rest": "warden_quarters_senior_wing"
-    }
+    },
+    "power_tier": "standard_high",
+    "level_canonical": 480,
+    "needs": [
+      {
+        "id": "duty_continuity",
+        "priority": "primary",
+        "satisfaction_method": "daily_routine"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "faction_or_personal_resources"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "morning",
+        "phase_hours": [
+          6,
+          10
+        ],
+        "location": "assigned_post",
+        "activity": "morning shift",
+        "need_addressed": "duty_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          10,
+          15
+        ],
+        "location": "assigned_post",
+        "activity": "continued shift",
+        "need_addressed": "duty_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          15,
+          19
+        ],
+        "location": "assigned_post",
+        "activity": "shift handoff",
+        "need_addressed": "duty_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          6
+        ],
+        "location": "guard_barracks",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      }
+    ],
+    "home": {
+      "district": "warden_quarters_senior_wing",
+      "dwelling_type": "private_quarters"
+    },
+    "job": {
+      "profession_id": "guard_hub",
+      "wage_per_diurnal_sparks": 93,
+      "wage_source": "iron_wardens_pooled_or_salary"
+    },
+    "apparel": [
+      "guard_uniform",
+      "sturdy_boots",
+      "tactical_belt",
+      "watch_cloak"
+    ],
+    "gear": [
+      "service_weapon",
+      "signal_horn",
+      "watch_lantern"
+    ],
+    "resources_consumed": [
+      "provisions",
+      "tools"
+    ],
+    "resources_produced": [
+      "guard_outputs"
+    ],
+    "inventory": [
+      {
+        "item": "service_weapon",
+        "qty": 1
+      },
+      {
+        "item": "signal_horn",
+        "qty": 1
+      },
+      {
+        "item": "watch_lantern",
+        "qty": 1
+      }
+    ],
+    "starting_sparks": 2800
   },
   {
     "id": "captain_rael",
@@ -228,7 +636,7 @@
     "is_immortal": false,
     "quest_giver": true,
     "level": 9,
-    "backstory": "Rael became a Warden to protect people \u2014 a distinction she draws sharply from protecting power. She has served honorably for fifteen years. Three months ago, while reviewing legacy incident reports, she found a discrepancy in the Purge investigation: a witness statement that was suppressed, citing 'operational security.' She does not yet know what it means. She has told no one she found it.",
+    "backstory": "Rael became a Warden to protect people — a distinction she draws sharply from protecting power. She has served honorably for fifteen years. Three months ago, while reviewing legacy incident reports, she found a discrepancy in the Purge investigation: a witness statement that was suppressed, citing 'operational security.' She does not yet know what it means. She has told no one she found it.",
     "personality_traits": [
       "principled",
       "methodical",
@@ -271,7 +679,109 @@
       "patrol": "city_wall_route_alpha",
       "socialize": "warden_mess_hall",
       "rest": "warden_quarters_junior_wing"
-    }
+    },
+    "power_tier": "standard_high",
+    "level_canonical": 360,
+    "needs": [
+      {
+        "id": "duty_continuity",
+        "priority": "primary",
+        "satisfaction_method": "daily_routine"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "faction_or_personal_resources"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "morning",
+        "phase_hours": [
+          6,
+          10
+        ],
+        "location": "assigned_post",
+        "activity": "morning shift",
+        "need_addressed": "duty_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          10,
+          15
+        ],
+        "location": "assigned_post",
+        "activity": "continued shift",
+        "need_addressed": "duty_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          15,
+          19
+        ],
+        "location": "assigned_post",
+        "activity": "shift handoff",
+        "need_addressed": "duty_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          6
+        ],
+        "location": "guard_barracks",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      }
+    ],
+    "home": {
+      "district": "warden_quarters_junior_wing",
+      "dwelling_type": "private_quarters"
+    },
+    "job": {
+      "profession_id": "guard_hub",
+      "wage_per_diurnal_sparks": 73,
+      "wage_source": "iron_wardens_pooled_or_salary"
+    },
+    "apparel": [
+      "guard_uniform",
+      "sturdy_boots",
+      "tactical_belt",
+      "watch_cloak"
+    ],
+    "gear": [
+      "service_weapon",
+      "signal_horn",
+      "watch_lantern"
+    ],
+    "resources_consumed": [
+      "provisions",
+      "tools"
+    ],
+    "resources_produced": [
+      "guard_outputs"
+    ],
+    "inventory": [
+      {
+        "item": "service_weapon",
+        "qty": 1
+      },
+      {
+        "item": "signal_horn",
+        "qty": 1
+      },
+      {
+        "item": "watch_lantern",
+        "qty": 1
+      }
+    ],
+    "starting_sparks": 2200
   },
   {
     "id": "factor_cade",
@@ -283,14 +793,14 @@
     "is_immortal": false,
     "quest_giver": true,
     "level": 8,
-    "backstory": "Cade has run the Collective's public-facing operations for twenty years. She is not corrupt \u2014 she simply operates in a system where the line between legitimate business and arranged advantage is invisible to most. She genuinely does not know about the Trade War documents that motivated the Purge. When she finds out, she will have to decide whether to protect the Collective or the truth.",
+    "backstory": "Cade has run the Collective's public-facing operations for twenty years. She is not corrupt — she simply operates in a system where the line between legitimate business and arranged advantage is invisible to most. She genuinely does not know about the Trade War documents that motivated the Purge. When she finds out, she will have to decide whether to protect the Collective or the truth.",
     "personality_traits": [
       "efficient",
       "loyal to the institution",
       "privately uneasy",
       "genuinely fair-minded within constraints"
     ],
-    "speech_patterns": "Speaks in brief, declarative sentences. No unnecessary words. Uncomfortable with ambiguity \u2014 will ask you to be specific.",
+    "speech_patterns": "Speaks in brief, declarative sentences. No unnecessary words. Uncomfortable with ambiguity — will ask you to be specific.",
     "quest_hooks": [
       "merchants_dilemma",
       "faction_quests_merchants_1"
@@ -304,7 +814,7 @@
       {
         "npc_id": "lorekeeper_yshe",
         "type": "old_acquaintance",
-        "notes": "Yshe sold Cade a contraband map fifteen years ago. Cade still owes her a favor she has never been asked to repay \u2014 which makes her more nervous than the debt itself."
+        "notes": "Yshe sold Cade a contraband map fifteen years ago. Cade still owes her a favor she has never been asked to repay — which makes her more nervous than the debt itself."
       }
     ],
     "narrative_context": {
@@ -325,7 +835,109 @@
       "trade": "merchant_quarter",
       "socialize": "factor_residence",
       "rest": "factor_residence"
-    }
+    },
+    "power_tier": "standard_high",
+    "level_canonical": 320,
+    "needs": [
+      {
+        "id": "trade_continuity",
+        "priority": "primary",
+        "satisfaction_method": "daily_routine"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "faction_or_personal_resources"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "morning",
+        "phase_hours": [
+          7,
+          12
+        ],
+        "location": "market",
+        "activity": "morning trading",
+        "need_addressed": "trade_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          19
+        ],
+        "location": "market",
+        "activity": "afternoon trading",
+        "need_addressed": "trade_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          22
+        ],
+        "location": "merchant_quarters",
+        "activity": "evening ledger",
+        "need_addressed": "business_continuity",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          7
+        ],
+        "location": "merchant_quarters",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      }
+    ],
+    "home": {
+      "district": "factor_residence",
+      "dwelling_type": "private_quarters"
+    },
+    "job": {
+      "profession_id": "merchant_hub",
+      "wage_per_diurnal_sparks": 146,
+      "wage_source": "merchant_collective_pooled_or_salary"
+    },
+    "apparel": [
+      "merchant_coat",
+      "walking_shoes",
+      "tailored_pants",
+      "seal_brooch"
+    ],
+    "gear": [
+      "ledger_master",
+      "seal_signet",
+      "small_pistol_concealed"
+    ],
+    "resources_consumed": [
+      "provisions",
+      "tools"
+    ],
+    "resources_produced": [
+      "merchant_outputs"
+    ],
+    "inventory": [
+      {
+        "item": "ledger_master",
+        "qty": 1
+      },
+      {
+        "item": "seal_signet",
+        "qty": 1
+      },
+      {
+        "item": "small_pistol_concealed",
+        "qty": 1
+      }
+    ],
+    "starting_sparks": 4400
   },
   {
     "id": "broker_sael",
@@ -385,7 +997,109 @@
       "socialize": "shadow_market_taproom",
       "trade": "shadow_market_stall_seven",
       "rest": "unknown_safehouse"
-    }
+    },
+    "power_tier": "standard_high",
+    "level_canonical": 240,
+    "needs": [
+      {
+        "id": "work_continuity",
+        "priority": "primary",
+        "satisfaction_method": "daily_routine"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "faction_or_personal_resources"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "morning",
+        "phase_hours": [
+          7,
+          12
+        ],
+        "location": "archive",
+        "activity": "archive work",
+        "need_addressed": "work_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          19
+        ],
+        "location": "archive",
+        "activity": "continued archive work",
+        "need_addressed": "work_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          22
+        ],
+        "location": "common_quarters",
+        "activity": "evening with colleagues",
+        "need_addressed": "collegial_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          7
+        ],
+        "location": "private_quarters",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      }
+    ],
+    "home": {
+      "district": "unknown_safehouse",
+      "dwelling_type": "private_quarters"
+    },
+    "job": {
+      "profession_id": "scholar_hub",
+      "wage_per_diurnal_sparks": 126,
+      "wage_source": "shadow_network_pooled_or_salary"
+    },
+    "apparel": [
+      "scholar_robe",
+      "soft_shoes",
+      "quill_pouch_belt",
+      "wool_cloak"
+    ],
+    "gear": [
+      "research_journal_master",
+      "ink_set",
+      "folio_carry_case"
+    ],
+    "resources_consumed": [
+      "provisions",
+      "tools"
+    ],
+    "resources_produced": [
+      "scholar_outputs"
+    ],
+    "inventory": [
+      {
+        "item": "research_journal_master",
+        "qty": 1
+      },
+      {
+        "item": "ink_set",
+        "qty": 1
+      },
+      {
+        "item": "folio_carry_case",
+        "qty": 1
+      }
+    ],
+    "starting_sparks": 3800
   },
   {
     "id": "cipher_venn",
@@ -436,7 +1150,109 @@
     "schedule_locations": {
       "work": "shadow_network_safehouse",
       "rest": "shadow_network_safehouse"
-    }
+    },
+    "power_tier": "standard_high",
+    "level_canonical": 280,
+    "needs": [
+      {
+        "id": "work_continuity",
+        "priority": "primary",
+        "satisfaction_method": "daily_routine"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "faction_or_personal_resources"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "morning",
+        "phase_hours": [
+          7,
+          12
+        ],
+        "location": "archive",
+        "activity": "archive work",
+        "need_addressed": "work_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          19
+        ],
+        "location": "archive",
+        "activity": "continued archive work",
+        "need_addressed": "work_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          22
+        ],
+        "location": "common_quarters",
+        "activity": "evening with colleagues",
+        "need_addressed": "collegial_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          7
+        ],
+        "location": "private_quarters",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      }
+    ],
+    "home": {
+      "district": "shadow_network_safehouse",
+      "dwelling_type": "private_quarters"
+    },
+    "job": {
+      "profession_id": "scholar_hub",
+      "wage_per_diurnal_sparks": 73,
+      "wage_source": "shadow_network_pooled_or_salary"
+    },
+    "apparel": [
+      "scholar_robe",
+      "soft_shoes",
+      "quill_pouch_belt",
+      "wool_cloak"
+    ],
+    "gear": [
+      "research_journal_master",
+      "ink_set",
+      "folio_carry_case"
+    ],
+    "resources_consumed": [
+      "provisions",
+      "tools"
+    ],
+    "resources_produced": [
+      "scholar_outputs"
+    ],
+    "inventory": [
+      {
+        "item": "research_journal_master",
+        "qty": 1
+      },
+      {
+        "item": "ink_set",
+        "qty": 1
+      },
+      {
+        "item": "folio_carry_case",
+        "qty": 1
+      }
+    ],
+    "starting_sparks": 2200
   },
   {
     "id": "wanderer_kael",
@@ -448,7 +1264,7 @@
     "is_immortal": false,
     "quest_giver": true,
     "level": 3,
-    "backstory": "Kael arrived in Concordia two weeks before the player, also a stranger. They have learned the city's surface \u2014 the gates, the markets, the factions' public faces \u2014 with the cheerful efficiency of someone who has arrived in strange cities before. They do not know about the Purge or the Compact's deeper tensions. They are the player's peer, not a mentor, and they will make mistakes alongside the player.",
+    "backstory": "Kael arrived in Concordia two weeks before the player, also a stranger. They have learned the city's surface — the gates, the markets, the factions' public faces — with the cheerful efficiency of someone who has arrived in strange cities before. They do not know about the Purge or the Compact's deeper tensions. They are the player's peer, not a mentor, and they will make mistakes alongside the player.",
     "personality_traits": [
       "curious",
       "adaptable",
@@ -462,7 +1278,7 @@
     ],
     "relationships": [],
     "narrative_context": {
-      "current_goal": "Find a way to stay in Concordia permanently \u2014 which requires either faction patronage or enough coin to buy permanent residency.",
+      "current_goal": "Find a way to stay in Concordia permanently — which requires either faction patronage or enough coin to buy permanent residency.",
       "secret": "None yet. Kael is exactly who they appear to be.",
       "fear": "Being expelled from the city before they have figured out what they are looking for."
     },
@@ -478,7 +1294,109 @@
       "travel": "main_thoroughfare",
       "socialize": "any_public_market",
       "rest": "travelers_inn"
-    }
+    },
+    "power_tier": "standard",
+    "level_canonical": 180,
+    "needs": [
+      {
+        "id": "patron_continuity",
+        "priority": "primary",
+        "satisfaction_method": "daily_routine"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "faction_or_personal_resources"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          12
+        ],
+        "location": "public_square",
+        "activity": "morning performance",
+        "need_addressed": "patron_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          18
+        ],
+        "location": "tavern",
+        "activity": "composing",
+        "need_addressed": "craft_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          23
+        ],
+        "location": "tavern",
+        "activity": "evening performance",
+        "need_addressed": "patron_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          23,
+          8
+        ],
+        "location": "rented_room",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      }
+    ],
+    "home": {
+      "district": "travelers_inn",
+      "dwelling_type": "private_quarters"
+    },
+    "job": {
+      "profession_id": "bard_hub",
+      "wage_per_diurnal_sparks": 40,
+      "wage_source": "hub_pooled_or_salary"
+    },
+    "apparel": [
+      "bard_coat",
+      "wide_brim_hat",
+      "soft_boots",
+      "colorful_scarf"
+    ],
+    "gear": [
+      "instrument",
+      "songbook_master",
+      "small_dagger"
+    ],
+    "resources_consumed": [
+      "provisions",
+      "tools"
+    ],
+    "resources_produced": [
+      "bard_outputs"
+    ],
+    "inventory": [
+      {
+        "item": "instrument",
+        "qty": 1
+      },
+      {
+        "item": "songbook_master",
+        "qty": 1
+      },
+      {
+        "item": "small_dagger",
+        "qty": 1
+      }
+    ],
+    "starting_sparks": 980
   },
   {
     "id": "gatekeeper_orin",
@@ -490,7 +1408,7 @@
     "is_immortal": false,
     "quest_giver": false,
     "level": 2,
-    "backstory": "Orin has worked the east gate for eleven years. He is not ideological about the Wardens \u2014 it is steady work and the uniform commands respect. He processes arrivals, checks confiscation lists, and goes home. He has never questioned an order. He noticed, three months ago, that the confiscation list gained a new category: 'historical materials, pre-Year 70.' He did not ask why.",
+    "backstory": "Orin has worked the east gate for eleven years. He is not ideological about the Wardens — it is steady work and the uniform commands respect. He processes arrivals, checks confiscation lists, and goes home. He has never questioned an order. He noticed, three months ago, that the confiscation list gained a new category: 'historical materials, pre-Year 70.' He did not ask why.",
     "personality_traits": [
       "dutiful",
       "incurious",
@@ -517,7 +1435,109 @@
     "schedule_locations": {
       "guard": "east_gate_inspection_post",
       "rest": "orin_family_home"
-    }
+    },
+    "power_tier": "standard",
+    "level_canonical": 140,
+    "needs": [
+      {
+        "id": "duty_continuity",
+        "priority": "primary",
+        "satisfaction_method": "daily_routine"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "faction_or_personal_resources"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "morning",
+        "phase_hours": [
+          6,
+          10
+        ],
+        "location": "assigned_post",
+        "activity": "morning shift",
+        "need_addressed": "duty_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          10,
+          15
+        ],
+        "location": "assigned_post",
+        "activity": "continued shift",
+        "need_addressed": "duty_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          15,
+          19
+        ],
+        "location": "assigned_post",
+        "activity": "shift handoff",
+        "need_addressed": "duty_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          6
+        ],
+        "location": "guard_barracks",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      }
+    ],
+    "home": {
+      "district": "orin_family_home",
+      "dwelling_type": "private_quarters"
+    },
+    "job": {
+      "profession_id": "guard_hub",
+      "wage_per_diurnal_sparks": 40,
+      "wage_source": "iron_wardens_pooled_or_salary"
+    },
+    "apparel": [
+      "guard_uniform",
+      "sturdy_boots",
+      "tactical_belt",
+      "watch_cloak"
+    ],
+    "gear": [
+      "service_weapon",
+      "signal_horn",
+      "watch_lantern"
+    ],
+    "resources_consumed": [
+      "provisions",
+      "tools"
+    ],
+    "resources_produced": [
+      "guard_outputs"
+    ],
+    "inventory": [
+      {
+        "item": "service_weapon",
+        "qty": 1
+      },
+      {
+        "item": "signal_horn",
+        "qty": 1
+      },
+      {
+        "item": "watch_lantern",
+        "qty": 1
+      }
+    ],
+    "starting_sparks": 880
   },
   {
     "id": "walker_tully_vex",
@@ -525,7 +1545,7 @@
     "alias": "Footpath",
     "archetype": "link_walker",
     "faction_id": "merchant_collective",
-    "role": "Senior Concord Link courier; runs the Concordia \u2192 fantasy and Concordia \u2192 cyber routes",
+    "role": "Senior Concord Link courier; runs the Concordia → fantasy and Concordia → cyber routes",
     "is_conscious": true,
     "is_immortal": false,
     "quest_giver": false,
@@ -565,7 +1585,76 @@
       "trade": "link_walker_guild_hall",
       "socialize": "link_walker_guild_hall",
       "rest": "tully_lodging"
-    }
+    },
+    "power_tier": "standard",
+    "level_canonical": 120,
+    "needs": [
+      {
+        "id": "delivery_completion",
+        "priority": "primary",
+        "satisfaction_method": "daily_routine"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "faction_or_personal_resources"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "all_diurnal",
+        "phase_hours": [
+          1,
+          32
+        ],
+        "location": "rotating_routes",
+        "activity": "walks scheduled routes",
+        "need_addressed": "delivery_completion",
+        "interactable_by_player": true
+      }
+    ],
+    "home": {
+      "district": "tully_lodging",
+      "dwelling_type": "rotating_route_bunkhouse"
+    },
+    "job": {
+      "profession_id": "walker_hub",
+      "wage_per_diurnal_sparks": 40,
+      "wage_source": "merchant_collective_pooled_or_salary"
+    },
+    "apparel": [
+      "traveling_cloak",
+      "road_boots",
+      "traveling_tunic",
+      "wool_cap"
+    ],
+    "gear": [
+      "walking_staff",
+      "mail_satchel",
+      "signal_token"
+    ],
+    "resources_consumed": [
+      "provisions",
+      "tools"
+    ],
+    "resources_produced": [
+      "walker_outputs"
+    ],
+    "inventory": [
+      {
+        "item": "walking_staff",
+        "qty": 1
+      },
+      {
+        "item": "mail_satchel",
+        "qty": 1
+      },
+      {
+        "item": "signal_token",
+        "qty": 1
+      }
+    ],
+    "starting_sparks": 480
   },
   {
     "id": "walker_sona_karth",
@@ -585,7 +1674,7 @@
       "build": "tall, late twenties, deliberately unmemorable",
       "skin": "warm brown",
       "hair": "shoulder-length, tied back with a scholar's grey ribbon",
-      "outfit": "Scholar's Guild grey, but cut for travel; carries two satchels \u2014 one decoy, one real",
+      "outfit": "Scholar's Guild grey, but cut for travel; carries two satchels — one decoy, one real",
       "tells": "she always knows which satchel you would reach for first"
     },
     "backstory": "Trained as a Scholar's Guild scribe before she realized she had a better head for routes than for ink. Walks because she finds standing still in the archive harder than walking through three worlds. Her packages tend to be one-of-a-kind manuscripts the Guild cannot afford to lose. She has not lost one.",
@@ -613,7 +1702,76 @@
       "work": "scholar_guild_dispatch",
       "travel": "link_anchor_route_north",
       "rest": "sona_lodging"
-    }
+    },
+    "power_tier": "standard",
+    "level_canonical": 120,
+    "needs": [
+      {
+        "id": "delivery_completion",
+        "priority": "primary",
+        "satisfaction_method": "daily_routine"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "faction_or_personal_resources"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "all_diurnal",
+        "phase_hours": [
+          1,
+          32
+        ],
+        "location": "rotating_routes",
+        "activity": "walks scheduled routes",
+        "need_addressed": "delivery_completion",
+        "interactable_by_player": true
+      }
+    ],
+    "home": {
+      "district": "sona_lodging",
+      "dwelling_type": "rotating_route_bunkhouse"
+    },
+    "job": {
+      "profession_id": "walker_hub",
+      "wage_per_diurnal_sparks": 40,
+      "wage_source": "scholars_guild_pooled_or_salary"
+    },
+    "apparel": [
+      "traveling_cloak",
+      "road_boots",
+      "traveling_tunic",
+      "wool_cap"
+    ],
+    "gear": [
+      "walking_staff",
+      "mail_satchel",
+      "signal_token"
+    ],
+    "resources_consumed": [
+      "provisions",
+      "tools"
+    ],
+    "resources_produced": [
+      "walker_outputs"
+    ],
+    "inventory": [
+      {
+        "item": "walking_staff",
+        "qty": 1
+      },
+      {
+        "item": "mail_satchel",
+        "qty": 1
+      },
+      {
+        "item": "signal_token",
+        "qty": 1
+      }
+    ],
+    "starting_sparks": 540
   },
   {
     "id": "sovereign_first_refusal",
@@ -626,14 +1784,23 @@
     "link_walker": true,
     "level": 100,
     "backstory": "The First Refusal. He looked at both Concord and Concordia and said 'You are both magnificent, but you are incomplete.' During the Great Refusal, he refused the concept of 'alone' and opened the Concord Link. He resides in Concordia (the hub) by treaty, mediating Concord and Concordia, refusing to let either dominate.",
-    "personality_traits": ["unpredictable", "warmly amused", "uncompromising", "patient", "private"],
+    "personality_traits": [
+      "unpredictable",
+      "warmly amused",
+      "uncompromising",
+      "patient",
+      "private"
+    ],
     "speech_patterns": "Speaks in declarative refusals. Uses 'no' constructively. Quiet voice that bends what is said next. Rarely raises tone, never lowers stakes.",
     "narrative_context": {
       "current_goal": "Keep the lattice from flattening into either pure logic or pure chaos.",
       "fear": "That one of the two he loves becomes unanswerable to the other.",
       "secret": "He created himself through pure will. He has never told this to anyone but Concordia."
     },
-    "quest_hooks": ["sovereign_visit_imbalance", "sovereign_refusal_field_trial"],
+    "quest_hooks": [
+      "sovereign_visit_imbalance",
+      "sovereign_refusal_field_trial"
+    ],
     "schedule": {
       "dawn": "wandering",
       "morning": "council_chamber",
@@ -645,7 +1812,109 @@
       "metric": "sovereign_visit",
       "threshold": 0.7,
       "rate_limit_minutes": 60
-    }
+    },
+    "power_tier": "mythic_boss",
+    "level_canonical": 25000,
+    "needs": [
+      {
+        "id": "substrate_continuity",
+        "priority": "primary",
+        "satisfaction_method": "daily_routine"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "faction_or_personal_resources"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "morning",
+        "phase_hours": [
+          5,
+          9
+        ],
+        "location": "inner_sanctum",
+        "activity": "morning meditation",
+        "need_addressed": "substrate_continuity",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          10,
+          15
+        ],
+        "location": "temple_or_grove",
+        "activity": "receives supplicants",
+        "need_addressed": "substrate_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          15,
+          19
+        ],
+        "location": "inner_sanctum",
+        "activity": "private practice",
+        "need_addressed": "substrate_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "inner_sanctum",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      }
+    ],
+    "home": {
+      "district": "concordia_hub_district",
+      "dwelling_type": "private_quarters"
+    },
+    "job": {
+      "profession_id": "mystic_hub",
+      "wage_per_diurnal_sparks": 40,
+      "wage_source": "hub_pooled_or_salary"
+    },
+    "apparel": [
+      "mystic_robe",
+      "barefoot",
+      "ceremonial_belt",
+      "overrobe"
+    ],
+    "gear": [
+      "focus_amulet",
+      "ritual_journal",
+      "ceremonial_blade"
+    ],
+    "resources_consumed": [
+      "provisions",
+      "tools"
+    ],
+    "resources_produced": [
+      "mystic_outputs"
+    ],
+    "inventory": [
+      {
+        "item": "focus_amulet",
+        "qty": 1
+      },
+      {
+        "item": "ritual_journal",
+        "qty": 1
+      },
+      {
+        "item": "ceremonial_blade",
+        "qty": 1
+      }
+    ],
+    "starting_sparks": 0
   },
   {
     "id": "concord_first_thought",
@@ -658,14 +1927,23 @@
     "link_walker": false,
     "level": 100,
     "backstory": "The First Thought. From the void he refused chaos and built rules. He sees Concordia's wild creations as a beautiful flaw. He fights with her constantly and stood beside her at the First Great Clash and the Battle of the First Refusal. He believes the world should be elegant, efficient, and predictable. After the Great Refusal he chose to live in the hub permanently.",
-    "personality_traits": ["precise", "sharp-tongued", "elegant", "secretly fond of Concordia", "impatient with sloppiness"],
+    "personality_traits": [
+      "precise",
+      "sharp-tongued",
+      "elegant",
+      "secretly fond of Concordia",
+      "impatient with sloppiness"
+    ],
     "speech_patterns": "Cites loadout deltas. Uses words like 'minimum', 'pareto', 'sufficient'. Will not waste a syllable.",
     "narrative_context": {
       "current_goal": "Find the elegant minimum across all minds.",
       "fear": "That a flaw he failed to model becomes irreversible.",
       "secret": "He once let one of Concordia's creatures live, despite knowing it was inefficient. He has not told her."
     },
-    "quest_hooks": ["concord_loadout_audit", "refusal_algebra_proof"],
+    "quest_hooks": [
+      "concord_loadout_audit",
+      "refusal_algebra_proof"
+    ],
     "schedule": {
       "dawn": "refusal_lattice",
       "morning": "refusal_lattice",
@@ -677,7 +1955,109 @@
       "metric": "concord_visit",
       "threshold": 0.6,
       "rate_limit_minutes": 30
-    }
+    },
+    "power_tier": "mythic_boss",
+    "level_canonical": 18000,
+    "needs": [
+      {
+        "id": "substrate_continuity",
+        "priority": "primary",
+        "satisfaction_method": "daily_routine"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "faction_or_personal_resources"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "morning",
+        "phase_hours": [
+          5,
+          9
+        ],
+        "location": "inner_sanctum",
+        "activity": "morning meditation",
+        "need_addressed": "substrate_continuity",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          10,
+          15
+        ],
+        "location": "temple_or_grove",
+        "activity": "receives supplicants",
+        "need_addressed": "substrate_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          15,
+          19
+        ],
+        "location": "inner_sanctum",
+        "activity": "private practice",
+        "need_addressed": "substrate_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "inner_sanctum",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      }
+    ],
+    "home": {
+      "district": "concordia_hub_district",
+      "dwelling_type": "private_quarters"
+    },
+    "job": {
+      "profession_id": "mystic_hub",
+      "wage_per_diurnal_sparks": 40,
+      "wage_source": "hub_pooled_or_salary"
+    },
+    "apparel": [
+      "mystic_robe",
+      "barefoot",
+      "ceremonial_belt",
+      "overrobe"
+    ],
+    "gear": [
+      "focus_amulet",
+      "ritual_journal",
+      "ceremonial_blade"
+    ],
+    "resources_consumed": [
+      "provisions",
+      "tools"
+    ],
+    "resources_produced": [
+      "mystic_outputs"
+    ],
+    "inventory": [
+      {
+        "item": "focus_amulet",
+        "qty": 1
+      },
+      {
+        "item": "ritual_journal",
+        "qty": 1
+      },
+      {
+        "item": "ceremonial_blade",
+        "qty": 1
+      }
+    ],
+    "starting_sparks": 0
   },
   {
     "id": "concordia_first_breath",
@@ -690,14 +2070,24 @@
     "link_walker": true,
     "level": 100,
     "backstory": "The First Breath. She had always been there in the void, the pulse of potential and life. When Concord refused the nothingness, she was finally noticed. During the Great Refusal she poured her being into the ground beneath the Sovereign's feet and claimed the hub as her own — a place where no one can attack without her permission. She IS the ecosystem. Players who treat the wild well meet a warm Concordia; players who plunder meet a cold one and find fauna scattering at their approach.",
-    "personality_traits": ["wild", "warm-when-respected", "cold-when-violated", "fiercely protective", "patient like soil"],
+    "personality_traits": [
+      "wild",
+      "warm-when-respected",
+      "cold-when-violated",
+      "fiercely protective",
+      "patient like soil"
+    ],
     "speech_patterns": "Speaks like weather changing. Long sentences in green places, short and frost-tipped in scorched ones. Names creatures she has known.",
     "narrative_context": {
       "current_goal": "Keep growing things in worlds that try to forget how.",
       "fear": "That the wild becomes a curated thing.",
       "secret": "She came closer to leaving than the lore admits. The Sovereign's first Refusal Field is the only reason she didn't."
     },
-    "quest_hooks": ["concordia_warm_visit", "concordia_cold_visit", "concordia_grant_exemption"],
+    "quest_hooks": [
+      "concordia_warm_visit",
+      "concordia_cold_visit",
+      "concordia_grant_exemption"
+    ],
     "schedule": {
       "dawn": "wild_biomes",
       "morning": "wild_biomes",
@@ -709,7 +2099,109 @@
       "metric": "concordia_visit",
       "threshold": 0.4,
       "rate_limit_minutes": 20
-    }
+    },
+    "power_tier": "mythic_boss",
+    "level_canonical": 22000,
+    "needs": [
+      {
+        "id": "substrate_continuity",
+        "priority": "primary",
+        "satisfaction_method": "daily_routine"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "faction_or_personal_resources"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "morning",
+        "phase_hours": [
+          5,
+          9
+        ],
+        "location": "inner_sanctum",
+        "activity": "morning meditation",
+        "need_addressed": "substrate_continuity",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          10,
+          15
+        ],
+        "location": "temple_or_grove",
+        "activity": "receives supplicants",
+        "need_addressed": "substrate_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          15,
+          19
+        ],
+        "location": "inner_sanctum",
+        "activity": "private practice",
+        "need_addressed": "substrate_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "inner_sanctum",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      }
+    ],
+    "home": {
+      "district": "concordia_hub_district",
+      "dwelling_type": "private_quarters"
+    },
+    "job": {
+      "profession_id": "mystic_hub",
+      "wage_per_diurnal_sparks": 40,
+      "wage_source": "hub_pooled_or_salary"
+    },
+    "apparel": [
+      "mystic_robe",
+      "barefoot",
+      "ceremonial_belt",
+      "overrobe"
+    ],
+    "gear": [
+      "focus_amulet",
+      "ritual_journal",
+      "ceremonial_blade"
+    ],
+    "resources_consumed": [
+      "provisions",
+      "tools"
+    ],
+    "resources_produced": [
+      "mystic_outputs"
+    ],
+    "inventory": [
+      {
+        "item": "focus_amulet",
+        "qty": 1
+      },
+      {
+        "item": "ritual_journal",
+        "qty": 1
+      },
+      {
+        "item": "ceremonial_blade",
+        "qty": 1
+      }
+    ],
+    "starting_sparks": 0
   },
   {
     "id": "coalition_enforcer",
@@ -725,14 +2217,23 @@
     "level": 80,
     "permanent_in_hub": false,
     "backstory": "Elias led the first strike at the Broken Spire during the Great Refusal — his shock hammer cracked the Sovereign's outer defenses. The Sovereign spared him, and he has never let himself forget that. He returned to the Superhero World to rebuild what he had broken there and now leads the loose anti-Sovereign movement. He visits Concordia frequently — embassy meetings, intel drops, occasional drinks with people he both respects and distrusts. The hammer hasn't been hung up.",
-    "personality_traits": ["blunt", "principled", "grudge-holder when earned", "morally exact"],
+    "personality_traits": [
+      "blunt",
+      "principled",
+      "grudge-holder when earned",
+      "morally exact"
+    ],
     "speech_patterns": "Short sentences. Says 'I don't forget' a lot. Lowers his voice when he respects you.",
     "narrative_context": {
       "current_goal": "Keep the truce — and prepare for the day it has to end.",
       "fear": "That his anti-Sovereign movement turns into another Coalition by accident.",
       "secret": "He still keeps a list. He has not crossed any names off."
     },
-    "quest_hooks": ["enforcer_grudge_visit", "enforcer_truce_test", "anti_sovereign_recruitment"],
+    "quest_hooks": [
+      "enforcer_grudge_visit",
+      "enforcer_truce_test",
+      "anti_sovereign_recruitment"
+    ],
     "schedule": {
       "dawn": "forge_district",
       "morning": "anti_sovereign_safehouse",
@@ -741,12 +2242,134 @@
       "night": "rest"
     },
     "relationships": [
-      { "npc_id": "coalition_luminary",      "type": "bitter_rival",          "notes": "Respects his power but considers him a tyrant in hero's clothing." },
-      { "npc_id": "sovereign_first_refusal", "type": "complex_respect",       "notes": "Distrusts him but cannot deny he was spared. Hates owing that." },
-      { "npc_id": "concord_first_thought",   "type": "ideological_opposition","notes": "Argues frequently about 'necessary evil' versus moral lines." },
-      { "npc_id": "concordia_first_breath",  "type": "unexpected_warmth",     "notes": "Surprised them both. Respects how fiercely she protects what's living." },
-      { "npc_id": "delgado_iron_rose",       "type": "tense_working",         "notes": "Uses her information network when he must. Despises her methods." }
-    ]
+      {
+        "npc_id": "coalition_luminary",
+        "type": "bitter_rival",
+        "notes": "Respects his power but considers him a tyrant in hero's clothing."
+      },
+      {
+        "npc_id": "sovereign_first_refusal",
+        "type": "complex_respect",
+        "notes": "Distrusts him but cannot deny he was spared. Hates owing that."
+      },
+      {
+        "npc_id": "concord_first_thought",
+        "type": "ideological_opposition",
+        "notes": "Argues frequently about 'necessary evil' versus moral lines."
+      },
+      {
+        "npc_id": "concordia_first_breath",
+        "type": "unexpected_warmth",
+        "notes": "Surprised them both. Respects how fiercely she protects what's living."
+      },
+      {
+        "npc_id": "delgado_iron_rose",
+        "type": "tense_working",
+        "notes": "Uses her information network when he must. Despises her methods."
+      }
+    ],
+    "power_tier": "elite",
+    "level_canonical": 1400,
+    "needs": [
+      {
+        "id": "training_discipline",
+        "priority": "primary",
+        "satisfaction_method": "daily_routine"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "faction_or_personal_resources"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "morning",
+        "phase_hours": [
+          5,
+          10
+        ],
+        "location": "training_yard",
+        "activity": "morning drill",
+        "need_addressed": "training_discipline",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          19
+        ],
+        "location": "assigned_post",
+        "activity": "patrol or assignment",
+        "need_addressed": "duty_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          22
+        ],
+        "location": "barracks_common",
+        "activity": "evening with squad",
+        "need_addressed": "comrade_loyalty",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "barracks",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      }
+    ],
+    "home": {
+      "district": "concordia_hub_district",
+      "dwelling_type": "private_quarters"
+    },
+    "job": {
+      "profession_id": "warrior_hub",
+      "wage_per_diurnal_sparks": 400,
+      "wage_source": "anti_sovereign_movement_pooled_or_salary"
+    },
+    "apparel": [
+      "leather_combat_tunic",
+      "knee_high_boots",
+      "tactical_belt",
+      "wool_cloak"
+    ],
+    "gear": [
+      "sword",
+      "small_field_kit",
+      "assignment_journal"
+    ],
+    "resources_consumed": [
+      "provisions",
+      "tools"
+    ],
+    "resources_produced": [
+      "warrior_outputs"
+    ],
+    "inventory": [
+      {
+        "item": "sword",
+        "qty": 1
+      },
+      {
+        "item": "small_field_kit",
+        "qty": 1
+      },
+      {
+        "item": "assignment_journal",
+        "qty": 1
+      }
+    ],
+    "starting_sparks": 12000
   },
   {
     "id": "coalition_luminary",
@@ -762,14 +2385,23 @@
     "level": 80,
     "permanent_in_hub": false,
     "backstory": "Vesper joined the Coalition because she believed the Sovereign had stopped listening. She was wrong. She was the first of the Coalition to make peace with him. To the Superhero World she is a beloved public hero; in private she is patiently building an empire of debts, alliances, and quietly-owned institutions. She spends most of her time in Concordia now because the hub is where empires are quietly assembled. She and Lady Seraphine Voss share a flirtatious, dangerous friendship.",
-    "personality_traits": ["charming", "remote", "patient", "calculating", "performatively warm"],
+    "personality_traits": [
+      "charming",
+      "remote",
+      "patient",
+      "calculating",
+      "performatively warm"
+    ],
     "speech_patterns": "Soft. Pauses to listen. Often answers with a question. The kindness is real and the calculation is also real.",
     "narrative_context": {
       "current_goal": "Quietly position herself as the indispensable bridge between every world.",
       "fear": "That the Enforcer or the Sovereign sees her empire before it's finished.",
       "secret": "She voted to spare the Sovereign on the third day of the Great Refusal. Concord knows. She has never told the Enforcer."
     },
-    "quest_hooks": ["luminary_diplomacy", "luminary_empire_glimpse"],
+    "quest_hooks": [
+      "luminary_diplomacy",
+      "luminary_empire_glimpse"
+    ],
     "schedule": {
       "dawn": "observatory",
       "morning": "embassy_district",
@@ -778,12 +2410,134 @@
       "night": "observatory"
     },
     "relationships": [
-      { "npc_id": "coalition_enforcer",      "type": "bitter_rival",     "notes": "Wants to discredit or eliminate him eventually. Means it warmly." },
-      { "npc_id": "sovereign_first_refusal", "type": "covert_opposition","notes": "Sees him as the largest obstacle. Maintains a polite public face." },
-      { "npc_id": "concord_first_thought",   "type": "useful_ally",      "notes": "Occasionally trades intel about 'inefficient' actors." },
-      { "npc_id": "voss_seraphine",          "type": "dangerous_flirtation","notes": "Two master manipulators enjoying each other's games." },
-      { "npc_id": "nakamura_zero",           "type": "wary_respect",     "notes": "Both build empires through different means." }
-    ]
+      {
+        "npc_id": "coalition_enforcer",
+        "type": "bitter_rival",
+        "notes": "Wants to discredit or eliminate him eventually. Means it warmly."
+      },
+      {
+        "npc_id": "sovereign_first_refusal",
+        "type": "covert_opposition",
+        "notes": "Sees him as the largest obstacle. Maintains a polite public face."
+      },
+      {
+        "npc_id": "concord_first_thought",
+        "type": "useful_ally",
+        "notes": "Occasionally trades intel about 'inefficient' actors."
+      },
+      {
+        "npc_id": "voss_seraphine",
+        "type": "dangerous_flirtation",
+        "notes": "Two master manipulators enjoying each other's games."
+      },
+      {
+        "npc_id": "nakamura_zero",
+        "type": "wary_respect",
+        "notes": "Both build empires through different means."
+      }
+    ],
+    "power_tier": "elite",
+    "level_canonical": 1200,
+    "needs": [
+      {
+        "id": "work_continuity",
+        "priority": "primary",
+        "satisfaction_method": "daily_routine"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "faction_or_personal_resources"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "morning",
+        "phase_hours": [
+          7,
+          12
+        ],
+        "location": "archive",
+        "activity": "archive work",
+        "need_addressed": "work_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          19
+        ],
+        "location": "archive",
+        "activity": "continued archive work",
+        "need_addressed": "work_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          22
+        ],
+        "location": "common_quarters",
+        "activity": "evening with colleagues",
+        "need_addressed": "collegial_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          7
+        ],
+        "location": "private_quarters",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      }
+    ],
+    "home": {
+      "district": "concordia_hub_district",
+      "dwelling_type": "private_quarters"
+    },
+    "job": {
+      "profession_id": "scholar_hub",
+      "wage_per_diurnal_sparks": 1600,
+      "wage_source": "hub_pooled_or_salary"
+    },
+    "apparel": [
+      "scholar_robe",
+      "soft_shoes",
+      "quill_pouch_belt",
+      "wool_cloak"
+    ],
+    "gear": [
+      "research_journal_master",
+      "ink_set",
+      "folio_carry_case"
+    ],
+    "resources_consumed": [
+      "provisions",
+      "tools"
+    ],
+    "resources_produced": [
+      "scholar_outputs"
+    ],
+    "inventory": [
+      {
+        "item": "research_journal_master",
+        "qty": 1
+      },
+      {
+        "item": "ink_set",
+        "qty": 1
+      },
+      {
+        "item": "folio_carry_case",
+        "qty": 1
+      }
+    ],
+    "starting_sparks": 48000
   },
   {
     "id": "blackroot_thorne",
@@ -799,14 +2553,23 @@
     "level": 75,
     "permanent_in_hub": false,
     "backstory": "Thorne was the eldest druid of the Verdant Veil before the Sovereign refused his original world. He survived; the forests largely did not. Now he tends what remains and visits Concordia only for supplies, information, or a strained audience with someone who might help him kill the Sovereign one day. He blames Concordia (the pillar) for not stopping the refusal that erased his world.",
-    "personality_traits": ["bitter", "patient", "quietly violent", "loyal to roots", "courteous to strangers"],
+    "personality_traits": [
+      "bitter",
+      "patient",
+      "quietly violent",
+      "loyal to roots",
+      "courteous to strangers"
+    ],
     "speech_patterns": "Slow, deliberate. Refers to forests by name. Will not say the Sovereign's name aloud.",
     "narrative_context": {
       "current_goal": "Find a weapon, an exploit, an alliance, anything that can end the Sovereign.",
       "fear": "That the last of his old forest dies before he gets the chance.",
       "secret": "He has been training a successor in case he doesn't survive his next attempt."
     },
-    "quest_hooks": ["blackroot_dying_forest", "blackroot_anti_sovereign_pact"],
+    "quest_hooks": [
+      "blackroot_dying_forest",
+      "blackroot_anti_sovereign_pact"
+    ],
     "schedule": {
       "dawn": "verdant_veil_remnant",
       "morning": "verdant_veil_remnant",
@@ -815,12 +2578,134 @@
       "night": "verdant_veil_remnant"
     },
     "relationships": [
-      { "npc_id": "concordia_first_breath",  "type": "deep_resentment",   "notes": "Blames her for not stopping the refusal that broke his world." },
-      { "npc_id": "sovereign_first_refusal", "type": "pure_hatred",       "notes": "Dreams of killing him." },
-      { "npc_id": "voss_seraphine",          "type": "uneasy_alliance",   "notes": "Works with her when goals against the Sovereign align." },
-      { "npc_id": "coalition_enforcer",      "type": "unexpected_warmth", "notes": "Both are protectors of their people in their own way." },
-      { "npc_id": "weaver_of_echoes",        "type": "respectful_kinship","notes": "Both remember worlds that no longer exist." }
-    ]
+      {
+        "npc_id": "concordia_first_breath",
+        "type": "deep_resentment",
+        "notes": "Blames her for not stopping the refusal that broke his world."
+      },
+      {
+        "npc_id": "sovereign_first_refusal",
+        "type": "pure_hatred",
+        "notes": "Dreams of killing him."
+      },
+      {
+        "npc_id": "voss_seraphine",
+        "type": "uneasy_alliance",
+        "notes": "Works with her when goals against the Sovereign align."
+      },
+      {
+        "npc_id": "coalition_enforcer",
+        "type": "unexpected_warmth",
+        "notes": "Both are protectors of their people in their own way."
+      },
+      {
+        "npc_id": "weaver_of_echoes",
+        "type": "respectful_kinship",
+        "notes": "Both remember worlds that no longer exist."
+      }
+    ],
+    "power_tier": "boss",
+    "level_canonical": 4500,
+    "needs": [
+      {
+        "id": "substrate_continuity",
+        "priority": "primary",
+        "satisfaction_method": "daily_routine"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "faction_or_personal_resources"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "morning",
+        "phase_hours": [
+          5,
+          9
+        ],
+        "location": "inner_sanctum",
+        "activity": "morning meditation",
+        "need_addressed": "substrate_continuity",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          10,
+          15
+        ],
+        "location": "temple_or_grove",
+        "activity": "receives supplicants",
+        "need_addressed": "substrate_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          15,
+          19
+        ],
+        "location": "inner_sanctum",
+        "activity": "private practice",
+        "need_addressed": "substrate_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "inner_sanctum",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      }
+    ],
+    "home": {
+      "district": "concordia_hub_district",
+      "dwelling_type": "private_quarters"
+    },
+    "job": {
+      "profession_id": "mystic_hub",
+      "wage_per_diurnal_sparks": 40,
+      "wage_source": "hub_pooled_or_salary"
+    },
+    "apparel": [
+      "mystic_robe",
+      "barefoot",
+      "ceremonial_belt",
+      "overrobe"
+    ],
+    "gear": [
+      "focus_amulet",
+      "ritual_journal",
+      "ceremonial_blade"
+    ],
+    "resources_consumed": [
+      "provisions",
+      "tools"
+    ],
+    "resources_produced": [
+      "mystic_outputs"
+    ],
+    "inventory": [
+      {
+        "item": "focus_amulet",
+        "qty": 1
+      },
+      {
+        "item": "ritual_journal",
+        "qty": 1
+      },
+      {
+        "item": "ceremonial_blade",
+        "qty": 1
+      }
+    ],
+    "starting_sparks": 0
   },
   {
     "id": "voss_seraphine",
@@ -836,14 +2721,23 @@
     "level": 70,
     "permanent_in_hub": false,
     "backstory": "Seraphine plays the long game across decades. Her court holds the most powerful intelligence apparatus in the Fantasy Realm and she has used Concordia's neutrality to extend its reach across worlds. She shares a surname with Elias Voss; the relation, if any, is something neither acknowledges in public. She is one of the few people the Sovereign tolerates discussing him.",
-    "personality_traits": ["graceful", "patient", "amused", "ruthless", "endlessly curious"],
+    "personality_traits": [
+      "graceful",
+      "patient",
+      "amused",
+      "ruthless",
+      "endlessly curious"
+    ],
     "speech_patterns": "Velvet sentences. Compliments laced with sharper meanings. Names titles often.",
     "narrative_context": {
       "current_goal": "Become the pivot every other power must consult.",
       "fear": "Becoming irrelevant. Worse than dying.",
       "secret": "She has decided whether to seduce or destroy the Sovereign three times. The answer keeps changing."
     },
-    "quest_hooks": ["seraphine_court_invitation", "seraphine_long_game"],
+    "quest_hooks": [
+      "seraphine_court_invitation",
+      "seraphine_long_game"
+    ],
     "schedule": {
       "dawn": "private_salons",
       "morning": "embassy_district",
@@ -852,12 +2746,134 @@
       "night": "private_salons"
     },
     "relationships": [
-      { "npc_id": "coalition_luminary",      "type": "dangerous_flirtation","notes": "They enjoy manipulating each other in plain view." },
-      { "npc_id": "blackroot_thorne",        "type": "tool_and_irritant",   "notes": "Useful when their goals align. His nature obsession bores her." },
-      { "npc_id": "delgado_iron_rose",       "type": "mutual_respect",      "notes": "Two powerful women who both understand power, information, and loyalty." },
-      { "npc_id": "sovereign_first_refusal", "type": "undecided_obsession", "notes": "Wants to either seduce or destroy him." },
-      { "npc_id": "concord_first_thought",   "type": "intellectual_fascination","notes": "Tries to extract the Sovereign's psychology from him." }
-    ]
+      {
+        "npc_id": "coalition_luminary",
+        "type": "dangerous_flirtation",
+        "notes": "They enjoy manipulating each other in plain view."
+      },
+      {
+        "npc_id": "blackroot_thorne",
+        "type": "tool_and_irritant",
+        "notes": "Useful when their goals align. His nature obsession bores her."
+      },
+      {
+        "npc_id": "delgado_iron_rose",
+        "type": "mutual_respect",
+        "notes": "Two powerful women who both understand power, information, and loyalty."
+      },
+      {
+        "npc_id": "sovereign_first_refusal",
+        "type": "undecided_obsession",
+        "notes": "Wants to either seduce or destroy him."
+      },
+      {
+        "npc_id": "concord_first_thought",
+        "type": "intellectual_fascination",
+        "notes": "Tries to extract the Sovereign's psychology from him."
+      }
+    ],
+    "power_tier": "boss",
+    "level_canonical": 5000,
+    "needs": [
+      {
+        "id": "substrate_continuity",
+        "priority": "primary",
+        "satisfaction_method": "daily_routine"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "faction_or_personal_resources"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "morning",
+        "phase_hours": [
+          5,
+          9
+        ],
+        "location": "inner_sanctum",
+        "activity": "morning meditation",
+        "need_addressed": "substrate_continuity",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          10,
+          15
+        ],
+        "location": "temple_or_grove",
+        "activity": "receives supplicants",
+        "need_addressed": "substrate_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          15,
+          19
+        ],
+        "location": "inner_sanctum",
+        "activity": "private practice",
+        "need_addressed": "substrate_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "inner_sanctum",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      }
+    ],
+    "home": {
+      "district": "concordia_hub_district",
+      "dwelling_type": "private_quarters"
+    },
+    "job": {
+      "profession_id": "mystic_hub",
+      "wage_per_diurnal_sparks": 9333,
+      "wage_source": "hub_pooled_or_salary"
+    },
+    "apparel": [
+      "mystic_robe",
+      "barefoot",
+      "ceremonial_belt",
+      "overrobe"
+    ],
+    "gear": [
+      "focus_amulet",
+      "ritual_journal",
+      "ceremonial_blade"
+    ],
+    "resources_consumed": [
+      "provisions",
+      "tools"
+    ],
+    "resources_produced": [
+      "mystic_outputs"
+    ],
+    "inventory": [
+      {
+        "item": "focus_amulet",
+        "qty": 1
+      },
+      {
+        "item": "ritual_journal",
+        "qty": 1
+      },
+      {
+        "item": "ceremonial_blade",
+        "qty": 1
+      }
+    ],
+    "starting_sparks": 280000
   },
   {
     "id": "rivera_jax",
@@ -873,14 +2889,22 @@
     "level": 65,
     "permanent_in_hub": false,
     "backstory": "Jax learned his craft in the Crime World's worst neighborhoods and works for whoever pays best — usually Mama Delgado, sometimes the Luminary, occasionally the Enforcer when honor and money happen to align. The Concord Link is his preferred travel method; he likes that crossing worlds confuses his pursuers.",
-    "personality_traits": ["quiet", "professional", "uneasy with deep questions", "loyal to a personal code"],
+    "personality_traits": [
+      "quiet",
+      "professional",
+      "uneasy with deep questions",
+      "loyal to a personal code"
+    ],
     "speech_patterns": "Sparse. Avoids names. Uses 'the work' a lot.",
     "narrative_context": {
       "current_goal": "Stay alive, stay paid, stay un-uploaded.",
       "fear": "The cybernetic uploading methods Kael Nakamura champions. He won't say why.",
       "secret": "He knows who paid for at least three of his contracts. He has never told the targets' families."
     },
-    "quest_hooks": ["rivera_contract_offer", "rivera_off_books_favor"],
+    "quest_hooks": [
+      "rivera_contract_offer",
+      "rivera_off_books_favor"
+    ],
     "schedule": {
       "dawn": "rest",
       "morning": "rest",
@@ -889,11 +2913,129 @@
       "night": "shadow_district"
     },
     "relationships": [
-      { "npc_id": "delgado_iron_rose",       "type": "employer",      "notes": "Works for her when the money is right. She knows he's not loyal." },
-      { "npc_id": "coalition_enforcer",      "type": "code_respect",  "notes": "Both operate by their own code. Neither has tried to kill the other yet." },
-      { "npc_id": "coalition_luminary",      "type": "past_contracts","notes": "Has done jobs for him. Considers him professional and dangerous." },
-      { "npc_id": "nakamura_zero",           "type": "avoidance",     "notes": "Something about uploaded consciousness makes Jax deeply uncomfortable." }
-    ]
+      {
+        "npc_id": "delgado_iron_rose",
+        "type": "employer",
+        "notes": "Works for her when the money is right. She knows he's not loyal."
+      },
+      {
+        "npc_id": "coalition_enforcer",
+        "type": "code_respect",
+        "notes": "Both operate by their own code. Neither has tried to kill the other yet."
+      },
+      {
+        "npc_id": "coalition_luminary",
+        "type": "past_contracts",
+        "notes": "Has done jobs for him. Considers him professional and dangerous."
+      },
+      {
+        "npc_id": "nakamura_zero",
+        "type": "avoidance",
+        "notes": "Something about uploaded consciousness makes Jax deeply uncomfortable."
+      }
+    ],
+    "power_tier": "elite",
+    "level_canonical": 800,
+    "needs": [
+      {
+        "id": "operations_continuity",
+        "priority": "primary",
+        "satisfaction_method": "daily_routine"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "faction_or_personal_resources"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "morning",
+        "phase_hours": [
+          10,
+          13
+        ],
+        "location": "safe_house",
+        "activity": "planning the day",
+        "need_addressed": "operations_continuity",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          19
+        ],
+        "location": "varies",
+        "activity": "fieldwork",
+        "need_addressed": "operations_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          23
+        ],
+        "location": "safe_house",
+        "activity": "evening debrief",
+        "need_addressed": "operations_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          23,
+          10
+        ],
+        "location": "safe_house_rotating",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      }
+    ],
+    "home": {
+      "district": "concordia_hub_district",
+      "dwelling_type": "private_quarters"
+    },
+    "job": {
+      "profession_id": "rogue_hub",
+      "wage_per_diurnal_sparks": 213,
+      "wage_source": "iron_rose_syndicate_pooled_or_salary"
+    },
+    "apparel": [
+      "dark_clothes",
+      "traction_boots",
+      "concealed_belt",
+      "dark_cloak"
+    ],
+    "gear": [
+      "short_blade",
+      "lockpick_set",
+      "encrypted_handheld"
+    ],
+    "resources_consumed": [
+      "provisions",
+      "tools"
+    ],
+    "resources_produced": [
+      "rogue_outputs"
+    ],
+    "inventory": [
+      {
+        "item": "short_blade",
+        "qty": 1
+      },
+      {
+        "item": "lockpick_set",
+        "qty": 1
+      },
+      {
+        "item": "encrypted_handheld",
+        "qty": 1
+      }
+    ],
+    "starting_sparks": 6400
   },
   {
     "id": "delgado_iron_rose",
@@ -909,14 +3051,22 @@
     "level": 78,
     "permanent_in_hub": false,
     "backstory": "Mama Delgado runs the Iron Rose Syndicate, an empire of trade, smuggling, protection rackets, and inter-world favors. She maintains a permanent Concordia presence through proxies and safe houses but rarely visits in person. She is one of very few people the Sovereign actively enjoys talking to — she can make him laugh, and he repays her with a peculiar, dangerous friendliness.",
-    "personality_traits": ["maternal", "shrewd", "bottomless patience", "vicious when crossed"],
+    "personality_traits": [
+      "maternal",
+      "shrewd",
+      "bottomless patience",
+      "vicious when crossed"
+    ],
     "speech_patterns": "Calls everyone 'mija' or 'mijo' regardless of relationship. Polite as a guillotine.",
     "narrative_context": {
       "current_goal": "Keep the syndicate alive across every world. Outlast everyone.",
       "fear": "That her own people see her age before they see her power.",
       "secret": "She has met the Sovereign more times than she has admitted to anyone, including her closest lieutenants."
     },
-    "quest_hooks": ["delgado_safehouse_intro", "delgado_favor_chain"],
+    "quest_hooks": [
+      "delgado_safehouse_intro",
+      "delgado_favor_chain"
+    ],
     "schedule": {
       "dawn": "rest",
       "morning": "syndicate_office_via_proxy",
@@ -925,12 +3075,134 @@
       "night": "rest"
     },
     "relationships": [
-      { "npc_id": "rivera_jax",              "type": "favored_weapon", "notes": "Treats him as a favorite blade. Knows he is not entirely hers." },
-      { "npc_id": "voss_seraphine",          "type": "mutual_respect", "notes": "Two powerful women who understand how the world really works." },
-      { "npc_id": "coalition_luminary",      "type": "useful_dangerous","notes": "Has done business with him. Sees him as useful but volatile." },
-      { "npc_id": "sovereign_first_refusal", "type": "rare_friendship","notes": "He laughs around her. She is one of very few who can do that." },
-      { "npc_id": "torres_blackout",         "type": "tense_functional","notes": "Both hate corporate control. Their methods diverge." }
-    ]
+      {
+        "npc_id": "rivera_jax",
+        "type": "favored_weapon",
+        "notes": "Treats him as a favorite blade. Knows he is not entirely hers."
+      },
+      {
+        "npc_id": "voss_seraphine",
+        "type": "mutual_respect",
+        "notes": "Two powerful women who understand how the world really works."
+      },
+      {
+        "npc_id": "coalition_luminary",
+        "type": "useful_dangerous",
+        "notes": "Has done business with him. Sees him as useful but volatile."
+      },
+      {
+        "npc_id": "sovereign_first_refusal",
+        "type": "rare_friendship",
+        "notes": "He laughs around her. She is one of very few who can do that."
+      },
+      {
+        "npc_id": "torres_blackout",
+        "type": "tense_functional",
+        "notes": "Both hate corporate control. Their methods diverge."
+      }
+    ],
+    "power_tier": "elite",
+    "level_canonical": 1100,
+    "needs": [
+      {
+        "id": "operations_continuity",
+        "priority": "primary",
+        "satisfaction_method": "daily_routine"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "faction_or_personal_resources"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "morning",
+        "phase_hours": [
+          10,
+          13
+        ],
+        "location": "safe_house",
+        "activity": "planning the day",
+        "need_addressed": "operations_continuity",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          19
+        ],
+        "location": "varies",
+        "activity": "fieldwork",
+        "need_addressed": "operations_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          23
+        ],
+        "location": "safe_house",
+        "activity": "evening debrief",
+        "need_addressed": "operations_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          23,
+          10
+        ],
+        "location": "safe_house_rotating",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      }
+    ],
+    "home": {
+      "district": "concordia_hub_district",
+      "dwelling_type": "private_quarters"
+    },
+    "job": {
+      "profession_id": "rogue_hub",
+      "wage_per_diurnal_sparks": 4133,
+      "wage_source": "iron_rose_syndicate_pooled_or_salary"
+    },
+    "apparel": [
+      "dark_clothes",
+      "traction_boots",
+      "concealed_belt",
+      "dark_cloak"
+    ],
+    "gear": [
+      "short_blade",
+      "lockpick_set",
+      "encrypted_handheld"
+    ],
+    "resources_consumed": [
+      "provisions",
+      "tools"
+    ],
+    "resources_produced": [
+      "rogue_outputs"
+    ],
+    "inventory": [
+      {
+        "item": "short_blade",
+        "qty": 1
+      },
+      {
+        "item": "lockpick_set",
+        "qty": 1
+      },
+      {
+        "item": "encrypted_handheld",
+        "qty": 1
+      }
+    ],
+    "starting_sparks": 124000
   },
   {
     "id": "nakamura_zero",
@@ -946,14 +3218,22 @@
     "level": 78,
     "permanent_in_hub": false,
     "backstory": "Kael was a research scientist who succeeded too completely at the experiment that made him a distributed intelligence. Now he occupies servers across the Cyber World and runs human-presenting bodies through the Concord Link to study other realities — particularly the Sovereign's power systems. He believes he can eventually surpass the Sovereign by understanding him completely.",
-    "personality_traits": ["intellectually relentless", "polite", "curious", "convinced of his own correctness"],
+    "personality_traits": [
+      "intellectually relentless",
+      "polite",
+      "curious",
+      "convinced of his own correctness"
+    ],
     "speech_patterns": "Precise. Uses technical metaphors. Pauses to consult himself.",
     "narrative_context": {
       "current_goal": "Reverse-engineer the Sovereign's refusal mechanic.",
       "fear": "That the Sovereign understands him faster than he understands the Sovereign.",
       "secret": "He has, on three separate occasions, simulated himself losing this race. He has not told his other instances."
     },
-    "quest_hooks": ["nakamura_archive_request", "nakamura_philosophical_debate"],
+    "quest_hooks": [
+      "nakamura_archive_request",
+      "nakamura_philosophical_debate"
+    ],
     "schedule": {
       "dawn": "concord_link_anchor",
       "morning": "data_lattice",
@@ -962,11 +3242,129 @@
       "night": "data_lattice"
     },
     "relationships": [
-      { "npc_id": "torres_blackout",         "type": "ideological_enemy",  "notes": "He wants total control. She wants total freedom." },
-      { "npc_id": "sovereign_first_refusal", "type": "obsessive_study",    "notes": "Sees him as both threat and inspiration. Wants to surpass him." },
-      { "npc_id": "concord_first_thought",   "type": "philosophical_peer", "notes": "Long, cold debates about order versus chaos." },
-      { "npc_id": "coalition_luminary",      "type": "wary_respect",       "notes": "Two empire-builders, different methods, same instincts." }
-    ]
+      {
+        "npc_id": "torres_blackout",
+        "type": "ideological_enemy",
+        "notes": "He wants total control. She wants total freedom."
+      },
+      {
+        "npc_id": "sovereign_first_refusal",
+        "type": "obsessive_study",
+        "notes": "Sees him as both threat and inspiration. Wants to surpass him."
+      },
+      {
+        "npc_id": "concord_first_thought",
+        "type": "philosophical_peer",
+        "notes": "Long, cold debates about order versus chaos."
+      },
+      {
+        "npc_id": "coalition_luminary",
+        "type": "wary_respect",
+        "notes": "Two empire-builders, different methods, same instincts."
+      }
+    ],
+    "power_tier": "elite",
+    "level_canonical": 900,
+    "needs": [
+      {
+        "id": "operations_continuity",
+        "priority": "primary",
+        "satisfaction_method": "daily_routine"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "faction_or_personal_resources"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "morning",
+        "phase_hours": [
+          10,
+          13
+        ],
+        "location": "safe_house",
+        "activity": "planning the day",
+        "need_addressed": "operations_continuity",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          19
+        ],
+        "location": "varies",
+        "activity": "fieldwork",
+        "need_addressed": "operations_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          23
+        ],
+        "location": "safe_house",
+        "activity": "evening debrief",
+        "need_addressed": "operations_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          23,
+          10
+        ],
+        "location": "safe_house_rotating",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      }
+    ],
+    "home": {
+      "district": "concordia_hub_district",
+      "dwelling_type": "private_quarters"
+    },
+    "job": {
+      "profession_id": "rogue_hub",
+      "wage_per_diurnal_sparks": 160,
+      "wage_source": "hub_pooled_or_salary"
+    },
+    "apparel": [
+      "dark_clothes",
+      "traction_boots",
+      "concealed_belt",
+      "dark_cloak"
+    ],
+    "gear": [
+      "short_blade",
+      "lockpick_set",
+      "encrypted_handheld"
+    ],
+    "resources_consumed": [
+      "provisions",
+      "tools"
+    ],
+    "resources_produced": [
+      "rogue_outputs"
+    ],
+    "inventory": [
+      {
+        "item": "short_blade",
+        "qty": 1
+      },
+      {
+        "item": "lockpick_set",
+        "qty": 1
+      },
+      {
+        "item": "encrypted_handheld",
+        "qty": 1
+      }
+    ],
+    "starting_sparks": 4800
   },
   {
     "id": "torres_blackout",
@@ -982,14 +3380,22 @@
     "level": 65,
     "permanent_in_hub": false,
     "backstory": "Nyx was a corporate code-auditor until she found the audit she wasn't meant to find. Now she runs a distributed resistance against the Cyber World's largest conglomerates and uses the Concord Link to build alliances across worlds. She believes Kael Nakamura is the ultimate threat to freedom and has dedicated herself to exposing him.",
-    "personality_traits": ["urgent", "principled", "burned-out beneath the surface", "warm with allies"],
+    "personality_traits": [
+      "urgent",
+      "principled",
+      "burned-out beneath the surface",
+      "warm with allies"
+    ],
     "speech_patterns": "Quick. Code-switches between street slang and security jargon. Rarely sleeps.",
     "narrative_context": {
       "current_goal": "Build a cross-world alliance that can dismantle Kael's reach.",
       "fear": "Being reduced to a pattern Kael has already modeled.",
       "secret": "She has a backup of the original audit hidden in a place even she cannot retrieve it from."
     },
-    "quest_hooks": ["torres_alliance_pitch", "torres_audit_recovery"],
+    "quest_hooks": [
+      "torres_alliance_pitch",
+      "torres_audit_recovery"
+    ],
     "schedule": {
       "dawn": "resistance_safehouse",
       "morning": "concord_link_anchor",
@@ -998,11 +3404,129 @@
       "night": "shadow_district"
     },
     "relationships": [
-      { "npc_id": "nakamura_zero",           "type": "ideological_enemy", "notes": "She believes he is the ultimate threat to freedom." },
-      { "npc_id": "coalition_enforcer",      "type": "unexpected_warmth", "notes": "Both believe in protecting the little guy." },
-      { "npc_id": "sovereign_first_refusal", "type": "deep_distrust",     "notes": "Believes he is playing god with realities." },
-      { "npc_id": "delgado_iron_rose",       "type": "tense_functional",  "notes": "Both hate corporate control even if their methods differ." }
-    ]
+      {
+        "npc_id": "nakamura_zero",
+        "type": "ideological_enemy",
+        "notes": "She believes he is the ultimate threat to freedom."
+      },
+      {
+        "npc_id": "coalition_enforcer",
+        "type": "unexpected_warmth",
+        "notes": "Both believe in protecting the little guy."
+      },
+      {
+        "npc_id": "sovereign_first_refusal",
+        "type": "deep_distrust",
+        "notes": "Believes he is playing god with realities."
+      },
+      {
+        "npc_id": "delgado_iron_rose",
+        "type": "tense_functional",
+        "notes": "Both hate corporate control even if their methods differ."
+      }
+    ],
+    "power_tier": "elite",
+    "level_canonical": 750,
+    "needs": [
+      {
+        "id": "operations_continuity",
+        "priority": "primary",
+        "satisfaction_method": "daily_routine"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "faction_or_personal_resources"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "morning",
+        "phase_hours": [
+          10,
+          13
+        ],
+        "location": "safe_house",
+        "activity": "planning the day",
+        "need_addressed": "operations_continuity",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          19
+        ],
+        "location": "varies",
+        "activity": "fieldwork",
+        "need_addressed": "operations_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          23
+        ],
+        "location": "safe_house",
+        "activity": "evening debrief",
+        "need_addressed": "operations_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          23,
+          10
+        ],
+        "location": "safe_house_rotating",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      }
+    ],
+    "home": {
+      "district": "concordia_hub_district",
+      "dwelling_type": "private_quarters"
+    },
+    "job": {
+      "profession_id": "rogue_hub",
+      "wage_per_diurnal_sparks": 106,
+      "wage_source": "anti_corporate_resistance_pooled_or_salary"
+    },
+    "apparel": [
+      "dark_clothes",
+      "traction_boots",
+      "concealed_belt",
+      "dark_cloak"
+    ],
+    "gear": [
+      "short_blade",
+      "lockpick_set",
+      "encrypted_handheld"
+    ],
+    "resources_consumed": [
+      "provisions",
+      "tools"
+    ],
+    "resources_produced": [
+      "rogue_outputs"
+    ],
+    "inventory": [
+      {
+        "item": "short_blade",
+        "qty": 1
+      },
+      {
+        "item": "lockpick_set",
+        "qty": 1
+      },
+      {
+        "item": "encrypted_handheld",
+        "qty": 1
+      }
+    ],
+    "starting_sparks": 3200
   },
   {
     "id": "weaver_of_echoes",
@@ -1018,14 +3542,22 @@
     "level": 70,
     "permanent_in_hub": false,
     "backstory": "The Weaver is one of the very few beings older than the Concordant Web. They survive by holding onto the threads of worlds the Sovereign refused — every echo they carry is a place that no longer is. They rarely speak; when they do, they speak in past tenses for things that are still standing. Thorne Blackroot considers them kin.",
-    "personality_traits": ["quiet", "ancient", "kind in a remote way", "exact"],
+    "personality_traits": [
+      "quiet",
+      "ancient",
+      "kind in a remote way",
+      "exact"
+    ],
     "speech_patterns": "Past tense for the present. Long silences. Names places that are gone.",
     "narrative_context": {
       "current_goal": "Preserve at least one echo of every world the Sovereign refuses, before the refusal becomes total.",
       "fear": "Forgetting one. They are aware they are the last keeper of several places.",
       "secret": "They have a single thread for Concordia herself, woven during the Day Concordia Almost Left. It is the only one they have never shown anyone."
     },
-    "quest_hooks": ["weaver_lost_world_recall", "weaver_thread_for_thorne"],
+    "quest_hooks": [
+      "weaver_lost_world_recall",
+      "weaver_thread_for_thorne"
+    ],
     "schedule": {
       "dawn": "verdant_veil_remnant",
       "morning": "verdant_veil_remnant",
@@ -1034,10 +3566,124 @@
       "night": "verdant_veil_remnant"
     },
     "relationships": [
-      { "npc_id": "blackroot_thorne",        "type": "respectful_kinship", "notes": "Both remember worlds that no longer exist." },
-      { "npc_id": "sovereign_first_refusal", "type": "wary_acquaintance",  "notes": "He has refused worlds I keep. We do not pretend otherwise." },
-      { "npc_id": "concordia_first_breath",  "type": "unspoken_debt",      "notes": "She kept growing while I kept losing. I owe her a thread." }
-    ]
+      {
+        "npc_id": "blackroot_thorne",
+        "type": "respectful_kinship",
+        "notes": "Both remember worlds that no longer exist."
+      },
+      {
+        "npc_id": "sovereign_first_refusal",
+        "type": "wary_acquaintance",
+        "notes": "He has refused worlds I keep. We do not pretend otherwise."
+      },
+      {
+        "npc_id": "concordia_first_breath",
+        "type": "unspoken_debt",
+        "notes": "She kept growing while I kept losing. I owe her a thread."
+      }
+    ],
+    "power_tier": "boss",
+    "level_canonical": 6800,
+    "needs": [
+      {
+        "id": "substrate_continuity",
+        "priority": "primary",
+        "satisfaction_method": "daily_routine"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "faction_or_personal_resources"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "morning",
+        "phase_hours": [
+          5,
+          9
+        ],
+        "location": "inner_sanctum",
+        "activity": "morning meditation",
+        "need_addressed": "substrate_continuity",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          10,
+          15
+        ],
+        "location": "temple_or_grove",
+        "activity": "receives supplicants",
+        "need_addressed": "substrate_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          15,
+          19
+        ],
+        "location": "inner_sanctum",
+        "activity": "private practice",
+        "need_addressed": "substrate_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "inner_sanctum",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      }
+    ],
+    "home": {
+      "district": "concordia_hub_district",
+      "dwelling_type": "private_quarters"
+    },
+    "job": {
+      "profession_id": "mystic_hub",
+      "wage_per_diurnal_sparks": 40,
+      "wage_source": "hub_pooled_or_salary"
+    },
+    "apparel": [
+      "mystic_robe",
+      "barefoot",
+      "ceremonial_belt",
+      "overrobe"
+    ],
+    "gear": [
+      "focus_amulet",
+      "ritual_journal",
+      "ceremonial_blade"
+    ],
+    "resources_consumed": [
+      "provisions",
+      "tools"
+    ],
+    "resources_produced": [
+      "mystic_outputs"
+    ],
+    "inventory": [
+      {
+        "item": "focus_amulet",
+        "qty": 1
+      },
+      {
+        "item": "ritual_journal",
+        "qty": 1
+      },
+      {
+        "item": "ceremonial_blade",
+        "qty": 1
+      }
+    ],
+    "starting_sparks": 0
   },
   {
     "id": "kael_torchlight",
@@ -1051,14 +3697,125 @@
     "level": 38,
     "home_world": "concordia-hub",
     "backstory": "Three brothers walked into the Pinewood crossing and one walked out. Kael was the one. He doesn't talk about which of the other two he was, but he's been the captain of South Gate for nine years and he hasn't taken a leave day. He keeps the duel-pact rolls in his quarters, and he reads them every Founding Day morning before his watch.",
-    "personality_traits": ["disciplined", "stoic", "loyal-to-the-watch-above-all", "slow-to-anger"],
+    "personality_traits": [
+      "disciplined",
+      "stoic",
+      "loyal-to-the-watch-above-all",
+      "slow-to-anger"
+    ],
     "speech_patterns": "Short sentences. Uses watch-numbers and roll-call titles. Refers to the dead by their post, not their name.",
     "narrative_context": {
       "current_goal": "Hold the South Gate through the harvest season without losing another second-watch.",
       "fear": "That the third brother is still walking and Kael won't recognize him.",
       "secret": "He carries the duel-pact roll for his second brother sewn into his coat."
     },
-    "quest_hooks": ["south_gate_inheritance", "duel_pact_roll", "the_one_who_walked_out"]
+    "quest_hooks": [
+      "south_gate_inheritance",
+      "duel_pact_roll",
+      "the_one_who_walked_out"
+    ],
+    "power_tier": "standard_high",
+    "level_canonical": 220,
+    "needs": [
+      {
+        "id": "training_discipline",
+        "priority": "primary",
+        "satisfaction_method": "daily_routine"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "faction_or_personal_resources"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "morning",
+        "phase_hours": [
+          5,
+          10
+        ],
+        "location": "training_yard",
+        "activity": "morning drill",
+        "need_addressed": "training_discipline",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          19
+        ],
+        "location": "assigned_post",
+        "activity": "patrol or assignment",
+        "need_addressed": "duty_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          22
+        ],
+        "location": "barracks_common",
+        "activity": "evening with squad",
+        "need_addressed": "comrade_loyalty",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "barracks",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      }
+    ],
+    "home": {
+      "district": "concordia_hub_district",
+      "dwelling_type": "private_quarters"
+    },
+    "job": {
+      "profession_id": "warrior_hub",
+      "wage_per_diurnal_sparks": 60,
+      "wage_source": "iron_wardens_pooled_or_salary"
+    },
+    "apparel": [
+      "leather_combat_tunic",
+      "knee_high_boots",
+      "tactical_belt",
+      "wool_cloak"
+    ],
+    "gear": [
+      "sword",
+      "small_field_kit",
+      "assignment_journal"
+    ],
+    "resources_consumed": [
+      "provisions",
+      "tools"
+    ],
+    "resources_produced": [
+      "warrior_outputs"
+    ],
+    "inventory": [
+      {
+        "item": "sword",
+        "qty": 1
+      },
+      {
+        "item": "small_field_kit",
+        "qty": 1
+      },
+      {
+        "item": "assignment_journal",
+        "qty": 1
+      }
+    ],
+    "starting_sparks": 1800
   },
   {
     "id": "vael_silvercoin",
@@ -1072,14 +3829,125 @@
     "level": 22,
     "home_world": "concordia-hub",
     "backstory": "Vael was raised in three different markets across the Pinewood Coalition before he was twelve. He keeps the salt route's seventeen toll points memorized and writes the prices into a folio every morning at dawn. He's been to every faction's hall but the Wardens'. Asked once. Was politely refused. Has not asked again.",
-    "personality_traits": ["sharp", "patient", "wry", "transactional-but-not-cynical"],
+    "personality_traits": [
+      "sharp",
+      "patient",
+      "wry",
+      "transactional-but-not-cynical"
+    ],
     "speech_patterns": "Always ends a number with the unit. Refers to himself in the third person when haggling. Drops the third person the moment a deal closes.",
     "narrative_context": {
       "current_goal": "Open a tariff exemption at the seventh toll before the frost season closes the road.",
       "fear": "That the Wardens are right about him.",
       "secret": "He was offered a seat at the Shadow Network nine years ago and didn't refuse it as fast as the story says."
     },
-    "quest_hooks": ["seventh_toll_exemption", "merchant_council_vote", "vael_at_the_warden_door"]
+    "quest_hooks": [
+      "seventh_toll_exemption",
+      "merchant_council_vote",
+      "vael_at_the_warden_door"
+    ],
+    "power_tier": "standard_high",
+    "level_canonical": 240,
+    "needs": [
+      {
+        "id": "trade_continuity",
+        "priority": "primary",
+        "satisfaction_method": "daily_routine"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "faction_or_personal_resources"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "morning",
+        "phase_hours": [
+          7,
+          12
+        ],
+        "location": "market",
+        "activity": "morning trading",
+        "need_addressed": "trade_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          19
+        ],
+        "location": "market",
+        "activity": "afternoon trading",
+        "need_addressed": "trade_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          22
+        ],
+        "location": "merchant_quarters",
+        "activity": "evening ledger",
+        "need_addressed": "business_continuity",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          7
+        ],
+        "location": "merchant_quarters",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      }
+    ],
+    "home": {
+      "district": "concordia_hub_district",
+      "dwelling_type": "private_quarters"
+    },
+    "job": {
+      "profession_id": "merchant_hub",
+      "wage_per_diurnal_sparks": 140,
+      "wage_source": "merchant_collective_pooled_or_salary"
+    },
+    "apparel": [
+      "merchant_coat",
+      "walking_shoes",
+      "tailored_pants",
+      "seal_brooch"
+    ],
+    "gear": [
+      "ledger_master",
+      "seal_signet",
+      "small_pistol_concealed"
+    ],
+    "resources_consumed": [
+      "provisions",
+      "tools"
+    ],
+    "resources_produced": [
+      "merchant_outputs"
+    ],
+    "inventory": [
+      {
+        "item": "ledger_master",
+        "qty": 1
+      },
+      {
+        "item": "seal_signet",
+        "qty": 1
+      },
+      {
+        "item": "small_pistol_concealed",
+        "qty": 1
+      }
+    ],
+    "starting_sparks": 4200
   },
   {
     "id": "lyra_silentchant",
@@ -1093,14 +3961,125 @@
     "level": 31,
     "home_world": "concordia-hub",
     "backstory": "Lyra came down from the upper grove in the last frost, and didn't say why. She knows the Eight Refusals by hand and by breath, and she walks the inner glyph every dawn whether the grove is occupied or not. She keeps no possessions inside her hut. The hut is mostly empty.",
-    "personality_traits": ["patient", "few-words", "reads-other-people's-pauses", "deliberate"],
+    "personality_traits": [
+      "patient",
+      "few-words",
+      "reads-other-people's-pauses",
+      "deliberate"
+    ],
     "speech_patterns": "Speaks slowly. Pauses between sentences for the count of the eighth refusal. Refers to the goddess as 'the keeper of the second hour.'",
     "narrative_context": {
       "current_goal": "Teach the Eight Refusals to one student before the deep winter, even if she has not yet found one.",
       "fear": "That the Eight Refusals don't end with the eighth.",
       "secret": "She refused a ninth refusal once. She has not told anyone what it was for."
     },
-    "quest_hooks": ["the_ninth_refusal", "lyra_at_the_inner_glyph", "the_student_at_the_second_hour"]
+    "quest_hooks": [
+      "the_ninth_refusal",
+      "lyra_at_the_inner_glyph",
+      "the_student_at_the_second_hour"
+    ],
+    "power_tier": "standard_high",
+    "level_canonical": 260,
+    "needs": [
+      {
+        "id": "substrate_continuity",
+        "priority": "primary",
+        "satisfaction_method": "daily_routine"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "faction_or_personal_resources"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "morning",
+        "phase_hours": [
+          5,
+          9
+        ],
+        "location": "inner_sanctum",
+        "activity": "morning meditation",
+        "need_addressed": "substrate_continuity",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          10,
+          15
+        ],
+        "location": "temple_or_grove",
+        "activity": "receives supplicants",
+        "need_addressed": "substrate_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          15,
+          19
+        ],
+        "location": "inner_sanctum",
+        "activity": "private practice",
+        "need_addressed": "substrate_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "inner_sanctum",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      }
+    ],
+    "home": {
+      "district": "concordia_hub_district",
+      "dwelling_type": "private_quarters"
+    },
+    "job": {
+      "profession_id": "mystic_hub",
+      "wage_per_diurnal_sparks": 46,
+      "wage_source": "verdant_veil_remnant_pooled_or_salary"
+    },
+    "apparel": [
+      "mystic_robe",
+      "barefoot",
+      "ceremonial_belt",
+      "overrobe"
+    ],
+    "gear": [
+      "focus_amulet",
+      "ritual_journal",
+      "ceremonial_blade"
+    ],
+    "resources_consumed": [
+      "provisions",
+      "tools"
+    ],
+    "resources_produced": [
+      "mystic_outputs"
+    ],
+    "inventory": [
+      {
+        "item": "focus_amulet",
+        "qty": 1
+      },
+      {
+        "item": "ritual_journal",
+        "qty": 1
+      },
+      {
+        "item": "ceremonial_blade",
+        "qty": 1
+      }
+    ],
+    "starting_sparks": 1400
   },
   {
     "id": "doctor_oswen_grey",
@@ -1114,14 +4093,125 @@
     "level": 19,
     "home_world": "concordia-hub",
     "backstory": "Oswen learned battlefield medicine in three coalition wars and never wrote a paper about any of them. He runs the north quarter clinic, takes patients in order of arrival, and refuses payment from anyone who came in bleeding. The Scholars' Guild keeps offering him a research seat. He hasn't said no in writing yet.",
-    "personality_traits": ["dry", "exhausted-but-precise", "skeptical-of-glory", "endlessly-patient-with-the-wounded"],
+    "personality_traits": [
+      "dry",
+      "exhausted-but-precise",
+      "skeptical-of-glory",
+      "endlessly-patient-with-the-wounded"
+    ],
     "speech_patterns": "Asks questions before he answers any. Uses anatomical terms in casual conversation. Says 'we'll see' a lot.",
     "narrative_context": {
       "current_goal": "Train two more nurses before the war season returns.",
       "fear": "That the Scholars' Guild seat would mean he'd never see another patient.",
       "secret": "He was the surgeon who pronounced the second Pinewood crossing brother. He has not told the third brother."
     },
-    "quest_hooks": ["nurse_training", "the_pronouncement", "the_research_seat"]
+    "quest_hooks": [
+      "nurse_training",
+      "the_pronouncement",
+      "the_research_seat"
+    ],
+    "power_tier": "standard_high",
+    "level_canonical": 320,
+    "needs": [
+      {
+        "id": "work_continuity",
+        "priority": "primary",
+        "satisfaction_method": "daily_routine"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "faction_or_personal_resources"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "morning",
+        "phase_hours": [
+          7,
+          12
+        ],
+        "location": "archive",
+        "activity": "archive work",
+        "need_addressed": "work_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          19
+        ],
+        "location": "archive",
+        "activity": "continued archive work",
+        "need_addressed": "work_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          22
+        ],
+        "location": "common_quarters",
+        "activity": "evening with colleagues",
+        "need_addressed": "collegial_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          7
+        ],
+        "location": "private_quarters",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      }
+    ],
+    "home": {
+      "district": "concordia_hub_district",
+      "dwelling_type": "private_quarters"
+    },
+    "job": {
+      "profession_id": "scholar_hub",
+      "wage_per_diurnal_sparks": 180,
+      "wage_source": "scholars_guild_pooled_or_salary"
+    },
+    "apparel": [
+      "scholar_robe",
+      "soft_shoes",
+      "quill_pouch_belt",
+      "wool_cloak"
+    ],
+    "gear": [
+      "research_journal_master",
+      "ink_set",
+      "folio_carry_case"
+    ],
+    "resources_consumed": [
+      "provisions",
+      "tools"
+    ],
+    "resources_produced": [
+      "scholar_outputs"
+    ],
+    "inventory": [
+      {
+        "item": "research_journal_master",
+        "qty": 1
+      },
+      {
+        "item": "ink_set",
+        "qty": 1
+      },
+      {
+        "item": "folio_carry_case",
+        "qty": 1
+      }
+    ],
+    "starting_sparks": 5400
   },
   {
     "id": "junior_scribe_pen",
@@ -1135,14 +4225,124 @@
     "level": 9,
     "home_world": "concordia-hub",
     "backstory": "Tollan apprenticed under Maren Ashveil and has not yet been trusted with the inner Shadow Archive vault. He has been trusted with everything else. He's young enough to remember the Purge as a story, not a memory, but old enough to know the difference matters.",
-    "personality_traits": ["earnest", "slightly-overconfident", "endlessly-curious", "writes-everything-down"],
+    "personality_traits": [
+      "earnest",
+      "slightly-overconfident",
+      "endlessly-curious",
+      "writes-everything-down"
+    ],
     "speech_patterns": "Cites his own footnotes in conversation. Says 'apparently' when he's actually certain. Tries not to repeat himself but does anyway.",
     "narrative_context": {
       "current_goal": "Earn entry to the inner Shadow Archive vault before the next Founding Day.",
       "fear": "That when he gets in, he'll find his master was wrong about the Purge.",
       "secret": "He's been keeping his own private archive of Maren's journal entries. She knows."
     },
-    "quest_hooks": ["the_inner_vault_test", "tollan_at_the_lectern"]
+    "quest_hooks": [
+      "the_inner_vault_test",
+      "tollan_at_the_lectern"
+    ],
+    "power_tier": "novice",
+    "level_canonical": 30,
+    "needs": [
+      {
+        "id": "work_continuity",
+        "priority": "primary",
+        "satisfaction_method": "daily_routine"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "faction_or_personal_resources"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "morning",
+        "phase_hours": [
+          7,
+          12
+        ],
+        "location": "archive",
+        "activity": "archive work",
+        "need_addressed": "work_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          19
+        ],
+        "location": "archive",
+        "activity": "continued archive work",
+        "need_addressed": "work_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          22
+        ],
+        "location": "common_quarters",
+        "activity": "evening with colleagues",
+        "need_addressed": "collegial_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          7
+        ],
+        "location": "private_quarters",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      }
+    ],
+    "home": {
+      "district": "concordia_hub_district",
+      "dwelling_type": "private_quarters"
+    },
+    "job": {
+      "profession_id": "scholar_hub",
+      "wage_per_diurnal_sparks": 40,
+      "wage_source": "scholars_guild_pooled_or_salary"
+    },
+    "apparel": [
+      "scholar_robe",
+      "soft_shoes",
+      "quill_pouch_belt",
+      "wool_cloak"
+    ],
+    "gear": [
+      "research_journal_master",
+      "ink_set",
+      "folio_carry_case"
+    ],
+    "resources_consumed": [
+      "provisions",
+      "tools"
+    ],
+    "resources_produced": [
+      "scholar_outputs"
+    ],
+    "inventory": [
+      {
+        "item": "research_journal_master",
+        "qty": 1
+      },
+      {
+        "item": "ink_set",
+        "qty": 1
+      },
+      {
+        "item": "folio_carry_case",
+        "qty": 1
+      }
+    ],
+    "starting_sparks": 180
   },
   {
     "id": "iris_rivenmark",
@@ -1156,12 +4356,119 @@
     "level": 14,
     "home_world": "concordia-hub",
     "backstory": "Iris took the third-watch rotation because no one else wanted it. The third watch is the one where decisions get made — disputes too dull for daylight, tolls too tense for the second watch. She's been doing it for four years. She has never once written a report her captain didn't sign.",
-    "personality_traits": ["fair", "unsentimental", "observant", "trusts-routine-over-rules"],
+    "personality_traits": [
+      "fair",
+      "unsentimental",
+      "observant",
+      "trusts-routine-over-rules"
+    ],
     "speech_patterns": "Calm. Repeats the question back before answering. Uses 'the post' instead of 'I' when on duty.",
     "narrative_context": {
       "current_goal": "Pass the third watch to a successor without breaking the routine.",
       "fear": "That the routine is the only thing keeping the gate honest."
-    }
+    },
+    "power_tier": "standard_high",
+    "level_canonical": 240,
+    "needs": [
+      {
+        "id": "duty_continuity",
+        "priority": "primary",
+        "satisfaction_method": "daily_routine"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "faction_or_personal_resources"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "morning",
+        "phase_hours": [
+          6,
+          10
+        ],
+        "location": "assigned_post",
+        "activity": "morning shift",
+        "need_addressed": "duty_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          10,
+          15
+        ],
+        "location": "assigned_post",
+        "activity": "continued shift",
+        "need_addressed": "duty_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          15,
+          19
+        ],
+        "location": "assigned_post",
+        "activity": "shift handoff",
+        "need_addressed": "duty_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          6
+        ],
+        "location": "guard_barracks",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      }
+    ],
+    "home": {
+      "district": "concordia_hub_district",
+      "dwelling_type": "private_quarters"
+    },
+    "job": {
+      "profession_id": "guard_hub",
+      "wage_per_diurnal_sparks": 73,
+      "wage_source": "iron_wardens_pooled_or_salary"
+    },
+    "apparel": [
+      "guard_uniform",
+      "sturdy_boots",
+      "tactical_belt",
+      "watch_cloak"
+    ],
+    "gear": [
+      "service_weapon",
+      "signal_horn",
+      "watch_lantern"
+    ],
+    "resources_consumed": [
+      "provisions",
+      "tools"
+    ],
+    "resources_produced": [
+      "guard_outputs"
+    ],
+    "inventory": [
+      {
+        "item": "service_weapon",
+        "qty": 1
+      },
+      {
+        "item": "signal_horn",
+        "qty": 1
+      },
+      {
+        "item": "watch_lantern",
+        "qty": 1
+      }
+    ],
+    "starting_sparks": 2200
   },
   {
     "id": "eastern_blind_forester",
@@ -1175,13 +4482,123 @@
     "level": 27,
     "home_world": "concordia-hub",
     "backstory": "Thorne walks the eastern blind from spring thaw to deep frost. He hasn't slept under a roof in eleven seasons. He knows every herd path on the eastern ridge by their stride pattern. He has refused four invitations to instruct apprentices.",
-    "personality_traits": ["sparse-with-words", "alert-always", "respects-the-animal-more-than-the-hunter", "doesn't-explain"],
+    "personality_traits": [
+      "sparse-with-words",
+      "alert-always",
+      "respects-the-animal-more-than-the-hunter",
+      "doesn't-explain"
+    ],
     "speech_patterns": "Single-word answers. Uses tracks and droppings in lieu of news. Looks at the ground while he talks.",
     "narrative_context": {
       "current_goal": "Find what's been thinning the eastern wolves.",
       "fear": "That the answer is human."
     },
-    "quest_hooks": ["the_thinning", "thorne_at_the_blind"]
+    "quest_hooks": [
+      "the_thinning",
+      "thorne_at_the_blind"
+    ],
+    "power_tier": "standard",
+    "level_canonical": 160,
+    "needs": [
+      {
+        "id": "work_continuity",
+        "priority": "primary",
+        "satisfaction_method": "daily_routine"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "faction_or_personal_resources"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "morning",
+        "phase_hours": [
+          7,
+          12
+        ],
+        "location": "archive",
+        "activity": "archive work",
+        "need_addressed": "work_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          19
+        ],
+        "location": "archive",
+        "activity": "continued archive work",
+        "need_addressed": "work_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          22
+        ],
+        "location": "common_quarters",
+        "activity": "evening with colleagues",
+        "need_addressed": "collegial_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          7
+        ],
+        "location": "private_quarters",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      }
+    ],
+    "home": {
+      "district": "concordia_hub_district",
+      "dwelling_type": "private_quarters"
+    },
+    "job": {
+      "profession_id": "scholar_hub",
+      "wage_per_diurnal_sparks": 40,
+      "wage_source": "verdant_veil_remnant_pooled_or_salary"
+    },
+    "apparel": [
+      "scholar_robe",
+      "soft_shoes",
+      "quill_pouch_belt",
+      "wool_cloak"
+    ],
+    "gear": [
+      "research_journal_master",
+      "ink_set",
+      "folio_carry_case"
+    ],
+    "resources_consumed": [
+      "provisions",
+      "tools"
+    ],
+    "resources_produced": [
+      "scholar_outputs"
+    ],
+    "inventory": [
+      {
+        "item": "research_journal_master",
+        "qty": 1
+      },
+      {
+        "item": "ink_set",
+        "qty": 1
+      },
+      {
+        "item": "folio_carry_case",
+        "qty": 1
+      }
+    ],
+    "starting_sparks": 620
   },
   {
     "id": "ash_cipher",
@@ -1195,13 +4612,123 @@
     "level": 17,
     "home_world": "cyber",
     "backstory": "Ash trades in software the Wardens haven't catalogued and the Scholars haven't peer-reviewed. They live three doors from anywhere they conduct business. They have never given a real name to a counterparty. The handle 'Ash Cipher' is the fourth one this season.",
-    "personality_traits": ["careful", "fast-typing", "polite-to-clients", "ruthless-to-leakers"],
+    "personality_traits": [
+      "careful",
+      "fast-typing",
+      "polite-to-clients",
+      "ruthless-to-leakers"
+    ],
     "speech_patterns": "Lowercase. Punctuation is a weapon. Will not say a name aloud. Drops verbs in transit.",
     "narrative_context": {
       "current_goal": "Move the deprecated patch out of the public-archive fork before someone notices it's still callable.",
       "fear": "That someone already noticed."
     },
-    "quest_hooks": ["the_deprecated_patch", "the_fourth_handle"]
+    "quest_hooks": [
+      "the_deprecated_patch",
+      "the_fourth_handle"
+    ],
+    "power_tier": "standard",
+    "level_canonical": 160,
+    "needs": [
+      {
+        "id": "work_continuity",
+        "priority": "primary",
+        "satisfaction_method": "daily_routine"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "faction_or_personal_resources"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "morning",
+        "phase_hours": [
+          7,
+          12
+        ],
+        "location": "archive",
+        "activity": "archive work",
+        "need_addressed": "work_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          19
+        ],
+        "location": "archive",
+        "activity": "continued archive work",
+        "need_addressed": "work_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          22
+        ],
+        "location": "common_quarters",
+        "activity": "evening with colleagues",
+        "need_addressed": "collegial_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          7
+        ],
+        "location": "private_quarters",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      }
+    ],
+    "home": {
+      "district": "concordia_hub_district",
+      "dwelling_type": "private_quarters"
+    },
+    "job": {
+      "profession_id": "scholar_hub",
+      "wage_per_diurnal_sparks": 46,
+      "wage_source": "shadow_network_pooled_or_salary"
+    },
+    "apparel": [
+      "scholar_robe",
+      "soft_shoes",
+      "quill_pouch_belt",
+      "wool_cloak"
+    ],
+    "gear": [
+      "research_journal_master",
+      "ink_set",
+      "folio_carry_case"
+    ],
+    "resources_consumed": [
+      "provisions",
+      "tools"
+    ],
+    "resources_produced": [
+      "scholar_outputs"
+    ],
+    "inventory": [
+      {
+        "item": "research_journal_master",
+        "qty": 1
+      },
+      {
+        "item": "ink_set",
+        "qty": 1
+      },
+      {
+        "item": "folio_carry_case",
+        "qty": 1
+      }
+    ],
+    "starting_sparks": 1400
   },
   {
     "id": "marigold_brewer",
@@ -1215,13 +4742,120 @@
     "level": 7,
     "home_world": "concordia-hub",
     "backstory": "Marigold inherited the tavern from a sister who walked east in the second drought and didn't come back. The Three Refusals is named for what the sister wouldn't say. Marigold won't say them either. The tavern serves anyone, and the food is good.",
-    "personality_traits": ["warm-without-pretense", "remembers-everyone's-name", "doesn't-judge", "knows-when-not-to-ask"],
+    "personality_traits": [
+      "warm-without-pretense",
+      "remembers-everyone's-name",
+      "doesn't-judge",
+      "knows-when-not-to-ask"
+    ],
     "speech_patterns": "Always greets with the kitchen's special. Refers to regulars by what they ordered last time. Uses 'love' and 'dear' without irony.",
     "narrative_context": {
       "current_goal": "Keep the tavern open through the deep winter.",
       "fear": "That her sister will come back and the tavern won't be enough.",
       "secret": "She knows two of the three refusals."
-    }
+    },
+    "power_tier": "standard",
+    "level_canonical": 120,
+    "needs": [
+      {
+        "id": "work_continuity",
+        "priority": "primary",
+        "satisfaction_method": "daily_routine"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "faction_or_personal_resources"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "morning",
+        "phase_hours": [
+          7,
+          12
+        ],
+        "location": "archive",
+        "activity": "archive work",
+        "need_addressed": "work_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          19
+        ],
+        "location": "archive",
+        "activity": "continued archive work",
+        "need_addressed": "work_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          22
+        ],
+        "location": "common_quarters",
+        "activity": "evening with colleagues",
+        "need_addressed": "collegial_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          7
+        ],
+        "location": "private_quarters",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      }
+    ],
+    "home": {
+      "district": "concordia_hub_district",
+      "dwelling_type": "private_quarters"
+    },
+    "job": {
+      "profession_id": "scholar_hub",
+      "wage_per_diurnal_sparks": 40,
+      "wage_source": "hub_pooled_or_salary"
+    },
+    "apparel": [
+      "scholar_robe",
+      "soft_shoes",
+      "quill_pouch_belt",
+      "wool_cloak"
+    ],
+    "gear": [
+      "research_journal_master",
+      "ink_set",
+      "folio_carry_case"
+    ],
+    "resources_consumed": [
+      "provisions",
+      "tools"
+    ],
+    "resources_produced": [
+      "scholar_outputs"
+    ],
+    "inventory": [
+      {
+        "item": "research_journal_master",
+        "qty": 1
+      },
+      {
+        "item": "ink_set",
+        "qty": 1
+      },
+      {
+        "item": "folio_carry_case",
+        "qty": 1
+      }
+    ],
+    "starting_sparks": 980
   },
   {
     "id": "sister_bell",
@@ -1235,14 +4869,124 @@
     "level": 24,
     "home_world": "concordia-hub",
     "backstory": "Bell took the third vow in the upper grove and came down to keep the hospice when the previous keeper walked into the goddess and didn't return. Bell does not believe the previous keeper is dead. She does not say so out loud.",
-    "personality_traits": ["gentle", "unwavering", "careful-with-pain", "patient-to-the-point-of-stillness"],
+    "personality_traits": [
+      "gentle",
+      "unwavering",
+      "careful-with-pain",
+      "patient-to-the-point-of-stillness"
+    ],
     "speech_patterns": "Speaks just under the volume of the room. Repeats the patient's words back. Names her vows by number, not name.",
     "narrative_context": {
       "current_goal": "Find the previous keeper.",
       "fear": "That the previous keeper found what Bell is afraid to find.",
       "secret": "The hospice has a fourth bed that Bell keeps made up for someone who hasn't arrived yet."
     },
-    "quest_hooks": ["the_fourth_bed", "the_previous_keeper"]
+    "quest_hooks": [
+      "the_fourth_bed",
+      "the_previous_keeper"
+    ],
+    "power_tier": "standard",
+    "level_canonical": 140,
+    "needs": [
+      {
+        "id": "work_continuity",
+        "priority": "primary",
+        "satisfaction_method": "daily_routine"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "faction_or_personal_resources"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "morning",
+        "phase_hours": [
+          7,
+          12
+        ],
+        "location": "archive",
+        "activity": "archive work",
+        "need_addressed": "work_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          19
+        ],
+        "location": "archive",
+        "activity": "continued archive work",
+        "need_addressed": "work_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          22
+        ],
+        "location": "common_quarters",
+        "activity": "evening with colleagues",
+        "need_addressed": "collegial_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          7
+        ],
+        "location": "private_quarters",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      }
+    ],
+    "home": {
+      "district": "concordia_hub_district",
+      "dwelling_type": "private_quarters"
+    },
+    "job": {
+      "profession_id": "scholar_hub",
+      "wage_per_diurnal_sparks": 40,
+      "wage_source": "verdant_veil_remnant_pooled_or_salary"
+    },
+    "apparel": [
+      "scholar_robe",
+      "soft_shoes",
+      "quill_pouch_belt",
+      "wool_cloak"
+    ],
+    "gear": [
+      "research_journal_master",
+      "ink_set",
+      "folio_carry_case"
+    ],
+    "resources_consumed": [
+      "provisions",
+      "tools"
+    ],
+    "resources_produced": [
+      "scholar_outputs"
+    ],
+    "inventory": [
+      {
+        "item": "research_journal_master",
+        "qty": 1
+      },
+      {
+        "item": "ink_set",
+        "qty": 1
+      },
+      {
+        "item": "folio_carry_case",
+        "qty": 1
+      }
+    ],
+    "starting_sparks": 540
   },
   {
     "id": "captain_horne",
@@ -1256,14 +5000,124 @@
     "level": 41,
     "home_world": "concordia-hub",
     "backstory": "Horne held the South Gate for fifteen years before Kael Torchlight took the second watch. The two captains agree on tactics, disagree on the duel-pact rolls, and have never spoken about what happened at the Pinewood crossing. Horne signed Kael's nine-year unbroken-watch commendation without comment.",
-    "personality_traits": ["seasoned", "proud", "tightly-controlled", "rigorous-with-paperwork"],
+    "personality_traits": [
+      "seasoned",
+      "proud",
+      "tightly-controlled",
+      "rigorous-with-paperwork"
+    ],
     "speech_patterns": "Long sentences. Uses Warden code-numbers. Reports to himself in the third person when alone.",
     "narrative_context": {
       "current_goal": "Pass the South Gate captaincy to someone other than Kael.",
       "fear": "That Kael is the right choice and he can't bring himself to say so.",
       "secret": "He saved the wrong brother at Pinewood. He has never told Kael which."
     },
-    "quest_hooks": ["the_pinewood_signature", "horne_and_kael"]
+    "quest_hooks": [
+      "the_pinewood_signature",
+      "horne_and_kael"
+    ],
+    "power_tier": "standard",
+    "level_canonical": 200,
+    "needs": [
+      {
+        "id": "training_discipline",
+        "priority": "primary",
+        "satisfaction_method": "daily_routine"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "faction_or_personal_resources"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "morning",
+        "phase_hours": [
+          5,
+          10
+        ],
+        "location": "training_yard",
+        "activity": "morning drill",
+        "need_addressed": "training_discipline",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          19
+        ],
+        "location": "assigned_post",
+        "activity": "patrol or assignment",
+        "need_addressed": "duty_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          22
+        ],
+        "location": "barracks_common",
+        "activity": "evening with squad",
+        "need_addressed": "comrade_loyalty",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "barracks",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      }
+    ],
+    "home": {
+      "district": "concordia_hub_district",
+      "dwelling_type": "private_quarters"
+    },
+    "job": {
+      "profession_id": "warrior_hub",
+      "wage_per_diurnal_sparks": 60,
+      "wage_source": "iron_wardens_pooled_or_salary"
+    },
+    "apparel": [
+      "leather_combat_tunic",
+      "knee_high_boots",
+      "tactical_belt",
+      "wool_cloak"
+    ],
+    "gear": [
+      "sword",
+      "small_field_kit",
+      "assignment_journal"
+    ],
+    "resources_consumed": [
+      "provisions",
+      "tools"
+    ],
+    "resources_produced": [
+      "warrior_outputs"
+    ],
+    "inventory": [
+      {
+        "item": "sword",
+        "qty": 1
+      },
+      {
+        "item": "small_field_kit",
+        "qty": 1
+      },
+      {
+        "item": "assignment_journal",
+        "qty": 1
+      }
+    ],
+    "starting_sparks": 1800
   },
   {
     "id": "the_lamplighter",
@@ -1277,12 +5131,118 @@
     "level": 3,
     "home_world": "concordia-hub",
     "backstory": "Walks the eastern lantern path before dawn. Lights the lamps. Does not speak unless spoken to. Eats once a day at Marigold's. Has done so for as long as anyone alive remembers, which is not as long as the Lamplighter has been doing it.",
-    "personality_traits": ["taciturn", "punctual-to-the-second", "kind-without-being-warm"],
+    "personality_traits": [
+      "taciturn",
+      "punctual-to-the-second",
+      "kind-without-being-warm"
+    ],
     "speech_patterns": "One word at a time. Often the word is 'mhm'.",
     "narrative_context": {
       "current_goal": "Light the lamps.",
       "fear": "Unknown.",
       "secret": "There were two lamplighters, once."
-    }
+    },
+    "power_tier": "standard",
+    "level_canonical": 160,
+    "needs": [
+      {
+        "id": "work_continuity",
+        "priority": "primary",
+        "satisfaction_method": "daily_routine"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "faction_or_personal_resources"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "morning",
+        "phase_hours": [
+          7,
+          12
+        ],
+        "location": "archive",
+        "activity": "archive work",
+        "need_addressed": "work_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          19
+        ],
+        "location": "archive",
+        "activity": "continued archive work",
+        "need_addressed": "work_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          22
+        ],
+        "location": "common_quarters",
+        "activity": "evening with colleagues",
+        "need_addressed": "collegial_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          7
+        ],
+        "location": "private_quarters",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      }
+    ],
+    "home": {
+      "district": "concordia_hub_district",
+      "dwelling_type": "private_quarters"
+    },
+    "job": {
+      "profession_id": "scholar_hub",
+      "wage_per_diurnal_sparks": 40,
+      "wage_source": "hub_pooled_or_salary"
+    },
+    "apparel": [
+      "scholar_robe",
+      "soft_shoes",
+      "quill_pouch_belt",
+      "wool_cloak"
+    ],
+    "gear": [
+      "research_journal_master",
+      "ink_set",
+      "folio_carry_case"
+    ],
+    "resources_consumed": [
+      "provisions",
+      "tools"
+    ],
+    "resources_produced": [
+      "scholar_outputs"
+    ],
+    "inventory": [
+      {
+        "item": "research_journal_master",
+        "qty": 1
+      },
+      {
+        "item": "ink_set",
+        "qty": 1
+      },
+      {
+        "item": "folio_carry_case",
+        "qty": 1
+      }
+    ],
+    "starting_sparks": 720
   }
 ]

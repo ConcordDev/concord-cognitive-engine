@@ -286,7 +286,7 @@ export default function DefenseLensPage() {
           <h3 className="text-sm font-semibold text-white">Create {currentType}</h3>
           <p className="text-xs text-gray-400">This will create a new {currentType.toLowerCase()} entry.</p>
           <div className="flex gap-2">
-            <button onClick={handleCreate} className="px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-lg text-sm">Create</button>
+            <button onClick={handleCreate} className="px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">Create</button>
             <button onClick={() => setShowEditor(false)} className="px-3 py-1.5 text-gray-400 hover:text-white text-sm">Cancel</button>
           </div>
         </div>

@@ -1,0 +1,67 @@
+{
+  "world_id": "cyber",
+  "schema_version": "1.0",
+  "purpose": "Bestiary for cyber. Each entry feeds the fauna-spawner, the loot tables, and the bestiary lens. Cyber's 'creatures' are mostly engineered — drones, ice constructs, augmented predators — with a thin layer of feral adaptations.",
+  "creatures": [
+    {
+      "id": "security_drone",
+      "kind": "patrol",
+      "habitats": ["corp_tier", "maglev_corridor", "sky_arcology"],
+      "behavior_pattern": "patrol — fixed routes with override-on-anomaly. Cluster fire when threat exceeds threshold. Disengage if a corp_certified ID-token is presented (the failsafe — and the lever every decker exploits).",
+      "power_tier": "standard",
+      "drops": ["scrap_chrome", "intact_optical_array", "neural_interface_fragment"],
+      "lore": "The default lethality unit of corp_tier. Mass-produced by Sentinel-Yamada under perpetual contract with Grid Authority. The MK-7 model has been in service for 23 years with only cosmetic updates — corps refuse to fund a replacement because the failsafe is too useful.",
+      "cross_world_corollary": "fantasy: castle_guard_construct. superhero: civic_drone."
+    },
+    {
+      "id": "ice_construct",
+      "kind": "ambush",
+      "habitats": ["digital_substrate (cyber-only — cannot manifest physically)"],
+      "behavior_pattern": "lurk in protected sub-systems; fire when intrusion detected; pursue retreating signals to source if Black-class. White-class merely freezes the intruder. Black-class fries the wetware.",
+      "power_tier": "elite",
+      "drops": ["ice_signature", "kill_construct_fragment", "trace_packet"],
+      "lore": "Three classes: White (defensive — locks you out), Gray (active — alerts corp security), Black (lethal — physically destroys the decker's brain via neural backlash). Black ICE is illegal in 8 of the 9 worlds; cyber Grid Authority taxes it 14% and pretends it doesn't exist.",
+      "cross_world_corollary": "lattice-crucible: drift_anomaly. crime: trap_set."
+    },
+    {
+      "id": "data_ghost",
+      "kind": "ambient_hazard",
+      "habitats": ["deep_tunnels (orphaned server farms)", "abandoned_subnets"],
+      "behavior_pattern": "passive — a stuck fragment of a deceased decker's neural patterns, looping in residual server memory. Will broadcast their last living minute on repeat to any compatible neural interface within 50m. Some pay credits to hunt them; some pay credits to put them to rest.",
+      "power_tier": "novice",
+      "drops": ["fragmentary_memory", "deceased_decker_signature", "decoded_password_fragment"],
+      "lore": "Born from the late-stage decker mortality problem: when a decker dies wired in, their neural patterns sometimes persist in the server fabric for years. The Static Collective runs a 'rest service' that catalogues and erases them with consent from the family.",
+      "cross_world_corollary": "sovereign-ruins: memory_eater. fantasy: ghost_in_the_glade."
+    },
+    {
+      "id": "chrome_rat",
+      "kind": "feral",
+      "habitats": ["surface_slum", "deep_tunnels"],
+      "behavior_pattern": "swarm — feed on discarded chrome (the metal, not the augs). Hunt the rats and you'll find embedded scraps — recycled augs that fell off a corp-class chrome shop's waste-pickup. Aggressive at night.",
+      "power_tier": "novice",
+      "drops": ["recovered_chrome_scrap", "rat_pelt", "embedded_neural_filament"],
+      "lore": "An emergent species. The original ratus norvegicus population developed metallic-resistance over 80 generations of feeding from chrome shop waste. They now have visible silver hairs that conduct electricity — they sometimes short-circuit each other in skirmishes.",
+      "cross_world_corollary": "fantasy: dungeon_rat. crime: gutter_rat."
+    },
+    {
+      "id": "aug_predator",
+      "kind": "alpha",
+      "habitats": ["chrome_hours streets", "deep_tunnels"],
+      "behavior_pattern": "hunter — solo or pair. Overclock-augmented humans (or post-humans) who hunt for chrome, organs, or contract bounties. Lethal at close range; vulnerable to EMP. Carry their own combat ice and back-door payloads.",
+      "power_tier": "elite",
+      "drops": ["combat_chrome (high quality)", "extracted_neural_interface", "live_contract_data"],
+      "lore": "The cyber equivalent of mythic-tier predator. A combat-augmented decker who survived past 35 typically transitions to aug_predator full-time — the chrome inside them is worth more in pieces than they earn legally. Cited mortality: 28 months from full conversion.",
+      "cross_world_corollary": "superhero: rogue_avatar. fantasy: drake. crime: contract_killer."
+    },
+    {
+      "id": "kill_switch",
+      "kind": "boss",
+      "habitats": ["protected corp_tier subnets", "Sentinel-Yamada datavaults"],
+      "behavior_pattern": "ambush-on-trespass. Designed as a final-failsafe by corp ice_engineers. Triggers if any of 7 nested authentication layers fail. Kills the trespasser via neural backlash if their interface is still connected; physically dispatches a sec-team if not.",
+      "power_tier": "boss",
+      "drops": ["kill_switch_signature (uniquely identifying)", "incident_log", "corp_culpability_evidence"],
+      "lore": "Every corp has one but officially none of them do. Killing one in combat is the surest way to earn an aug_predator contract on yourself within 18 hours. The Static Collective claims to have killed 11 over the past decade; corps have confirmed 0.",
+      "cross_world_corollary": "fantasy: lich. superhero: emergent_anomaly."
+    }
+  ]
+}

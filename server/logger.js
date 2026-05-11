@@ -11,6 +11,35 @@ const logBuffer = [];
 
 const LEVELS = { error: 0, warn: 1, info: 2, debug: 3 };
 
+// ── PII / secret scrub (Sprint 29 — privacy review finding) ─────────────────
+// Sensitive field names + value shapes are recursively redacted before the
+// entry reaches the buffer or stdout. Defence-in-depth: callsites shouldn't
+// pass these, but a forgotten payload won't leak to docker logs / shippers.
+const SENSITIVE_KEY_RE = /^(password|password_hash|passwd|pwd|jwt|jwtToken|token|bearer|auth|authorization|session|sessionId|cookie|stripe_secret|stripe_key|apiKey|api_key|secret|credentials|private_key|privateKey|refresh_token|access_token|refreshToken|accessToken)$/i;
+const SENSITIVE_VALUE_RE = /^(sk-ant-[a-z0-9_-]{8,}|sk-[a-z0-9_-]{20,}|AIza[a-z0-9_-]{20,}|xai-[a-z0-9_-]{20,}|eyJ[a-zA-Z0-9_-]{20,}\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+)$/i;
+const REDACTED = "[REDACTED]";
+const MAX_REDACT_DEPTH = 6;
+
+function scrub(value, depth = 0) {
+  if (depth > MAX_REDACT_DEPTH) return REDACTED;
+  if (value == null) return value;
+  if (typeof value === "string") {
+    return SENSITIVE_VALUE_RE.test(value) ? REDACTED : value;
+  }
+  if (typeof value !== "object") return value;
+  if (Array.isArray(value)) return value.map(v => scrub(v, depth + 1));
+  const out = {};
+  for (const k of Object.keys(value)) {
+    if (k === "__proto__" || k === "constructor" || k === "prototype") continue;
+    if (SENSITIVE_KEY_RE.test(k)) {
+      out[k] = REDACTED;
+    } else {
+      out[k] = scrub(value[k], depth + 1);
+    }
+  }
+  return out;
+}
+
 /**
  * Log a structured entry.
  * @param {"error"|"warn"|"info"|"debug"} level
@@ -18,24 +47,48 @@ const LEVELS = { error: 0, warn: 1, info: 2, debug: 3 };
  * @param {string} message
  * @param {object} [meta={}]
  */
+// Sprint 18.6 — log-injection defense (CodeQL js/log-injection).
+// User-controlled `message` flows to stdout via console.{log,warn,error}.
+// A crafted message containing CRLF can inject fake log entries that
+// downstream parsers (Datadog, Honeycomb, the Concord log viewer) treat
+// as legitimate. Sanitize before write: escape \r and \n, replace other
+// ASCII control chars with ?, cap length at 4KB.
+const LOG_MESSAGE_MAX_LEN = 4096;
+function sanitizeLogMessage(input) {
+  if (input == null) return "";
+  let s = typeof input === "string" ? input : String(input);
+  if (s.length > LOG_MESSAGE_MAX_LEN) s = s.slice(0, LOG_MESSAGE_MAX_LEN) + "…";
+  // Replace ASCII control chars (except tab) with literal escape sequences
+  // so a downstream log parser sees a single line, not 5 fake entries.
+  return s
+    .replace(/\r/g, "\\r")
+    .replace(/\n/g, "\\n")
+    .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, "?"); // eslint-disable-line no-control-regex
+}
+
 function log(level, source, message, meta = {}) {
+  const safeMeta = scrub(meta);
+  const safeMessage = sanitizeLogMessage(message);
+  const safeSource = sanitizeLogMessage(source);
+  const safeLevel = sanitizeLogMessage(level);
   const entry = {
     timestamp: new Date().toISOString(),
-    level,
-    source,
-    message,
-    meta,
-    lens: meta.lens || null,
+    level: safeLevel,
+    source: safeSource,
+    message: safeMessage,
+    meta: safeMeta,
+    lens: safeMeta?.lens || null,
   };
 
   logBuffer.push(entry);
   if (logBuffer.length > LOG_BUFFER_MAX) logBuffer.shift();
 
-  // Also write to stdout for Docker logs
-  const prefix = `[${entry.source}] [${level.toUpperCase()}]`;
-  if (level === 'error') console.error(`${prefix} ${message}`);
-  else if (level === 'warn') console.warn(`${prefix} ${message}`);
-  else console.log(`${prefix} ${message}`);
+  // Sanitized message reaches stdout / docker / log shipper — no CRLF
+  // injection vector regardless of caller hygiene.
+  const prefix = `[${safeSource}] [${safeLevel.toUpperCase()}]`;
+  if (safeLevel === 'error') console.error(`${prefix} ${safeMessage}`);
+  else if (safeLevel === 'warn') console.warn(`${prefix} ${safeMessage}`);
+  else console.log(`${prefix} ${safeMessage}`);
 }
 
 /**

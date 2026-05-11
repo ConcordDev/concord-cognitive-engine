@@ -5,29 +5,12 @@
     "name": "The Three Archivists",
     "motto": "We did not refuse in time. We will refuse now.",
     "goal": "Catalog every Refusal that has ever been written into the Sovereign Archive — and recover the Cascade-Era refusals that were lost when the city emptied.",
-    "values": [
-      "completeness",
-      "memory",
-      "refusal-as-craft",
-      "patient correction"
-    ],
-    "fears": [
-      "the Archive forgetting them",
-      "a player erasing a glyph by accident",
-      "becoming an idle subroutine themselves"
-    ],
-    "controlled_districts": [
-      "sovereign_archive",
-      "silent_library",
-      "collapse_memorial"
-    ],
-    "rival_factions": [],
-    "allied_factions": [],
-    "npc_ids": [
-      "archivist_three_kestra",
-      "archivist_two_oeric",
-      "archivist_one_vela"
-    ],
+    "values": ["completeness", "memory", "refusal-as-craft", "patient correction"],
+    "fears": ["the Archive forgetting them", "a player erasing a glyph by accident", "becoming an idle subroutine themselves"],
+    "controlled_districts": ["sovereign_archive", "silent_library", "collapse_memorial"],
+    "rival_factions": ["ruins_cascade_deniers"],
+    "allied_factions": ["ruins_concordia_envoy"],
+    "npc_ids": ["archivist_three_kestra", "archivist_two_oeric", "archivist_one_vela"],
     "dialogue_style": "halting_precise",
     "reputation_currency": "memory_shards",
     "faction_state": {
@@ -40,15 +23,166 @@
       "secondary_color": "#142529",
       "accent_color": "#e08152",
       "architecture_style": "organic",
-      "preferred_weapon_archetypes": [
-        "greatsword",
-        "longsword",
-        "spear"
-      ],
+      "preferred_weapon_archetypes": ["greatsword", "longsword", "spear"],
       "preferred_armor_silhouette": "heavy_plate",
       "sigil_path": "M0,-20 L18,18 L-18,18 Z",
       "banner_sigil_id": "ruins_archivists_sigil",
       "ornamentation_motifs": []
+    }
+  },
+  {
+    "id": "ruins_scavenger_crews",
+    "world_id": "sovereign-ruins",
+    "name": "The Scavenger Crews",
+    "motto": "It belongs to whoever can carry it past the locked spells.",
+    "goal": "Strip the city of recoverable goods before the Archivists or Concordia diplomats can lay claim.",
+    "values": ["mobility", "spell-reading on the fly", "loot-by-the-night", "no permanent attachments"],
+    "fears": ["a still-running spell that locks them in", "the Archivists petitioning Concordia to fence the perimeter", "running into the Silent Keeper alone"],
+    "controlled_districts": ["scavenger_camp_north", "scavenger_camp_south", "the_unmapped_quarter"],
+    "rival_factions": ["ruins_archivists", "ruins_concordia_envoy"],
+    "allied_factions": [],
+    "npc_ids": ["scavenger_boss_thren", "spell_reader_iby"],
+    "dialogue_style": "transactional",
+    "reputation_currency": "scavenger_chits",
+    "faction_state": {
+      "factionName": "Scavenger Crews",
+      "reputation": 38,
+      "tensions": "Two crews are openly feuding over a high-value find — a sealed Council vote-record nobody else has been able to open. Both crews suspect the third is hiding the key."
+    },
+    "visual": {
+      "primary_color": "#5a3a18",
+      "secondary_color": "#0a0a0a",
+      "accent_color": "#d4a857",
+      "architecture_style": "improvised",
+      "preferred_weapon_archetypes": ["short_blade", "crossbow", "pry_bar"],
+      "preferred_armor_silhouette": "patchwork",
+      "sigil_path": "M-18,-10 L18,-10 L0,18 Z",
+      "banner_sigil_id": "ruins_scavengers_sigil",
+      "ornamentation_motifs": ["torn_archive_seals", "salvaged_glyphs"]
+    }
+  },
+  {
+    "id": "ruins_spell_spirits",
+    "world_id": "sovereign-ruins",
+    "name": "The Spell Spirits",
+    "motto": "The casting continues. The receiver is irrelevant.",
+    "goal": "Complete every spell that was cast before the Cascade. Some have been completing for 200+ years.",
+    "values": ["the casting", "fidelity to the original cast", "completion"],
+    "fears": ["interruption", "being un-cast by an Archivist", "the spell completing and the spirit dissolving"],
+    "controlled_districts": ["the_still_casting_quarter", "the_long_summons", "the_endless_blessing_grove"],
+    "rival_factions": [],
+    "allied_factions": ["ruins_archivists"],
+    "npc_ids": ["the_long_summons_spirit", "the_endless_blessing", "ruins_silent_keeper"],
+    "dialogue_style": "ritual_loop",
+    "reputation_currency": "spell_attention_units",
+    "faction_state": {
+      "factionName": "Spell Spirits",
+      "reputation": 60,
+      "tensions": "Some spirits are aware they exist. Some are not. The aware spirits have begun to wonder whether completion is a release or a death — and have started slowing their casts deliberately."
+    },
+    "visual": {
+      "primary_color": "#7a8aa8",
+      "secondary_color": "#1a1a2a",
+      "accent_color": "#c0d0e8",
+      "architecture_style": "ritual_geometry",
+      "preferred_weapon_archetypes": ["spirits_carry_no_weapons"],
+      "preferred_armor_silhouette": "robed",
+      "sigil_path": "M0,-22 L11,-11 L22,0 L11,11 L0,22 L-11,11 L-22,0 L-11,-11 Z",
+      "banner_sigil_id": "ruins_spirits_sigil",
+      "ornamentation_motifs": ["loop_geometry", "incomplete_circles"]
+    }
+  },
+  {
+    "id": "ruins_pilgrims",
+    "world_id": "sovereign-ruins",
+    "name": "The Pilgrims of Refusal",
+    "motto": "We come to learn what unbounded refusal cost.",
+    "goal": "Walk the city, witness the Cascade's outcome, return to their home settlements with the lesson.",
+    "values": ["humility", "witness", "carrying-the-lesson-home", "voluntary discomfort"],
+    "fears": ["pilgrimage becoming routine", "the Cascade Deniers convincing pilgrims it didn't happen", "Concordia formalizing the pilgrimage and ruining it"],
+    "controlled_districts": ["pilgrim_lodge_at_the_gate", "pilgrim_walk_route", "the_cascade_memorial_path"],
+    "rival_factions": ["ruins_cascade_deniers"],
+    "allied_factions": ["ruins_archivists", "ruins_concordia_envoy"],
+    "npc_ids": ["pilgrim_leader_isen", "returning_pilgrim_who_stayed"],
+    "dialogue_style": "reverent",
+    "reputation_currency": "pilgrim_token",
+    "faction_state": {
+      "factionName": "Pilgrims",
+      "reputation": 55,
+      "tensions": "The pilgrim leader is debating whether to allow Concordia to pave the pilgrim walk route. Doing so would attract more pilgrims; not doing so preserves the journey's discomfort, which is the point."
+    },
+    "visual": {
+      "primary_color": "#3a3a3a",
+      "secondary_color": "#1a1a1a",
+      "accent_color": "#a0a0a0",
+      "architecture_style": "ascetic",
+      "preferred_weapon_archetypes": ["walking_staff"],
+      "preferred_armor_silhouette": "robed",
+      "sigil_path": "M-15,18 L0,-22 L15,18 Z",
+      "banner_sigil_id": "ruins_pilgrims_sigil",
+      "ornamentation_motifs": ["walking_path", "ascending_arc"]
+    }
+  },
+  {
+    "id": "ruins_concordia_envoy",
+    "world_id": "sovereign-ruins",
+    "name": "The Concordia Envoy",
+    "motto": "We watch our sister so we do not become her.",
+    "goal": "Maintain a permanent diplomatic + research presence to study the Cascade's mechanics and ensure the Refusal Cascade pattern is never repeated in Concordia.",
+    "values": ["preventive analysis", "respect for the dead", "anti-Cascade research", "Concordia institutional self-preservation"],
+    "fears": ["a Concordia faction trying to import a still-running spell", "the Archivists publishing the Cascade glyph algebra openly", "another sister-city emerging unrecognized"],
+    "controlled_districts": ["envoy_compound", "research_outpost", "spell_quarantine_zone"],
+    "rival_factions": ["ruins_scavenger_crews", "ruins_cascade_deniers"],
+    "allied_factions": ["ruins_archivists", "ruins_pilgrims"],
+    "npc_ids": ["envoy_chief_marrin", "researcher_clovis"],
+    "dialogue_style": "diplomatic_polish",
+    "reputation_currency": "concordia_writ",
+    "faction_state": {
+      "factionName": "Concordia Envoy",
+      "reputation": 65,
+      "tensions": "The envoy chief has been receiving unsigned letters arguing that the Cascade is repeatable in Concordia under specific conditions. She has not shared them with the Concordia high council yet."
+    },
+    "visual": {
+      "primary_color": "#3b5d8c",
+      "secondary_color": "#0e1a2d",
+      "accent_color": "#d4c98a",
+      "architecture_style": "neoclassical",
+      "preferred_weapon_archetypes": ["officer_sword", "concealed_pistol"],
+      "preferred_armor_silhouette": "diplomatic_uniform",
+      "sigil_path": "M0,-20 L20,0 L0,20 L-20,0 Z M0,-12 L12,0 L0,12 L-12,0 Z",
+      "banner_sigil_id": "ruins_envoy_sigil",
+      "ornamentation_motifs": ["double_diamond"]
+    }
+  },
+  {
+    "id": "ruins_cascade_deniers",
+    "world_id": "sovereign-ruins",
+    "name": "The Cascade Deniers",
+    "motto": "Sovereign was abandoned. Not collapsed. The difference matters.",
+    "goal": "Convince the world that the Refusal Cascade is a Concordia-political fiction designed to discredit the Archive form of governance.",
+    "values": ["alternative history", "anti-Concordia skepticism", "Council-form governance", "narrative warfare"],
+    "fears": ["a still-running spell visibly demonstrating the Cascade", "an Archivist publicly testifying", "the pilgrims unanimously confirming the Cascade was real"],
+    "controlled_districts": ["denier_meeting_house", "alternative_archive_outpost"],
+    "rival_factions": ["ruins_archivists", "ruins_pilgrims", "ruins_concordia_envoy"],
+    "allied_factions": [],
+    "npc_ids": ["denier_priest_palen"],
+    "dialogue_style": "rhetorical",
+    "reputation_currency": "denier_pamphlet",
+    "faction_state": {
+      "factionName": "Cascade Deniers",
+      "reputation": 28,
+      "tensions": "The leader's own grandfather walked out of Sovereign during the evacuation. He has the journals. He has not read them. He has refused to read them for 30 years."
+    },
+    "visual": {
+      "primary_color": "#7a3a3a",
+      "secondary_color": "#1a0a0a",
+      "accent_color": "#e0a050",
+      "architecture_style": "imitation_classical",
+      "preferred_weapon_archetypes": ["debate", "pamphlet", "symbolic_token"],
+      "preferred_armor_silhouette": "civic_robes",
+      "sigil_path": "M0,-22 L22,11 L-22,11 Z",
+      "banner_sigil_id": "ruins_deniers_sigil",
+      "ornamentation_motifs": ["closed_book", "broken_glyph"]
     }
   }
 ]

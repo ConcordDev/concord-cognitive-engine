@@ -258,7 +258,7 @@ export default function AllianceLensPage() {
           <button
             onClick={handleCreateAlliance}
             disabled={createAllianceMut.isPending || !newAllianceName.trim()}
-            className="btn-neon green w-full"
+            className="btn-neon green w-full focus:outline-none focus:ring-2 focus:ring-amber-500"
           >
             {createAllianceMut.isPending ? 'Creating...' : 'Create Alliance'}
           </button>

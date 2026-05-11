@@ -238,7 +238,7 @@ export default function ThreadLensPage() {
                 e.stopPropagation();
                 toggleNode(node.id);
               }}
-              className="p-1 rounded hover:bg-lattice-border/50 text-gray-400"
+              className="p-1 sm:p-3 rounded hover:bg-lattice-border/50 text-gray-400"
             >
               {isExpanded ? (
                 <ChevronDown className="w-4 h-4" />

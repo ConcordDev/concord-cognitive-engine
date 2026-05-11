@@ -412,7 +412,7 @@ export default function createAuthRouter({
             INSERT INTO user_location_history (id, user_id, regional, national, previous_regional, previous_national, changed_at)
             VALUES (?, ?, ?, ?, ?, ?, ?)
           `).run(
-            `ulh_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
+            `ulh_${Date.now().toString(36)}_${crypto.randomBytes(4).toString("hex")}`,
             req.user.id,
             nextRegional,
             nextNational,

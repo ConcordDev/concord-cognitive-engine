@@ -583,7 +583,7 @@ function QualiaEntityPanel({ entityId, entityName, onClose }: { entityId: string
           <Brain className="w-4 h-4 text-neon-purple" />
           Qualia State: {entityName}
         </h3>
-        <button onClick={onClose} className="text-gray-400 hover:text-white">
+        <button onClick={onClose} className="text-gray-400 hover:text-white focus:outline-none focus:ring-2 focus:ring-amber-500">
           <X className="w-4 h-4" />
         </button>
       </div>

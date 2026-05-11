@@ -1,0 +1,65 @@
+# Sprint 18 — gitleaks secrets scan configuration.
+#
+# Detects accidentally-committed credentials, API keys, tokens, and
+# private keys. Runs on every PR + pre-commit hook.
+#
+# Concord allowlist: known test fixtures + the placeholder JWT_SECRET
+# used in CI runs. Anything else is treated as a real leak.
+#
+# CLI: gitleaks detect --no-git -c .gitleaks.toml
+# pre-commit: gitleaks protect -c .gitleaks.toml --staged
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Concord-specific allowlist for test fixtures + CI placeholders"
+paths = [
+  '''node_modules/''',
+  '''\.next/''',
+  '''coverage/''',
+  '''dist/''',
+  '''audit/sbom\.json''',
+  '''package-lock\.json''',
+  '''pnpm-lock\.yaml''',
+  '''.*test.*\.(js|ts|tsx|md)$''',
+  '''.*fixture.*\.json$''',
+]
+regexes = [
+  # CI test-only JWT secret (clearly labelled).
+  '''test-secret-for-ci-only-do-not-use-in-production''',
+  # Test API keys with obvious test prefixes.
+  '''sk-ant-fake[a-z0-9_-]+''',
+  '''sk-test_[a-z0-9_]+''',
+  # Documentation examples (in markdown).
+  '''sk-…''',
+]
+
+# Custom rules layered on top of the default gitleaks ruleset.
+[[rules]]
+id = "concord-byo-anthropic-key"
+description = "Anthropic API key (BYO substrate). Should NEVER be committed — keys are per-user encrypted at rest in user_brain_overrides."
+regex = '''sk-ant-[a-zA-Z0-9_-]{50,}'''
+keywords = ["sk-ant"]
+secretGroup = 0
+
+[[rules]]
+id = "concord-byo-openai-key"
+description = "OpenAI API key (BYO substrate)."
+regex = '''sk-[a-zA-Z0-9]{40,}'''
+keywords = ["sk-"]
+secretGroup = 0
+
+[[rules]]
+id = "concord-byo-xai-key"
+description = "xAI Grok key (BYO substrate)."
+regex = '''xai-[a-zA-Z0-9_-]{40,}'''
+keywords = ["xai-"]
+secretGroup = 0
+
+[[rules]]
+id = "concord-byo-google-key"
+description = "Google API key (BYO substrate)."
+regex = '''AIza[a-zA-Z0-9_-]{35}'''
+keywords = ["AIza"]
+secretGroup = 0

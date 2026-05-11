@@ -320,7 +320,7 @@ export default function OfflineLensPage() {
             Sync Queue
           </h2>
           <button
-            className="btn-neon text-sm"
+            className="btn-neon text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
             disabled={!isOnline || isSyncing}
             onClick={handleSyncAll}
           >

@@ -114,53 +114,87 @@ function AudioPlayer({
   onEnd,
   onTimeUpdate,
 }: Omit<UniversalPlayerProps, 'className'>) {
+  const audioRef = useRef<HTMLAudioElement>(null);
   const [playing, setPlaying] = useState(autoplay ?? false);
   const [currentTime, setCurrentTime] = useState(0);
+  const [audioDuration, setAudioDuration] = useState(mediaDTU.duration || 0);
   const [volume, setVolume] = useState(80);
   const [muted, setMuted] = useState(false);
   const progressRef = useRef<HTMLDivElement>(null);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const duration = mediaDTU.duration || 180;
+  const duration = audioDuration || mediaDTU.duration || 0;
   const waveform = mediaDTU.waveform || Array.from({ length: 64 }, () => Math.random() * 80 + 20);
+  const audioSrc = useMemo(
+    () => `/api/media/${encodeURIComponent(mediaDTU.id)}/stream`,
+    [mediaDTU.id],
+  );
 
   const togglePlay = useCallback(() => {
-    setPlaying(prev => !prev);
+    // Optimistic flip — onPlay/onPause from the real element will
+    // correct the state if playback ultimately fails. Without the
+    // optimistic step the icon never updates in jsdom (where
+    // HTMLMediaElement.play is "Not implemented") and the real-DOM
+    // tap-to-play feels laggy by ~1 frame.
+    const el = audioRef.current;
+    setPlaying((prev) => !prev);
+    if (!el) return;
+    try {
+      if (el.paused) {
+        const result = el.play();
+        if (result && typeof (result as Promise<void>).catch === "function") {
+          (result as Promise<void>).catch(() => undefined);
+        }
+      } else {
+        el.pause();
+      }
+    } catch {
+      // jsdom or autoplay-blocked browsers throw synchronously;
+      // the optimistic state already covers the visual.
+    }
   }, []);
 
   useEffect(() => {
-    if (playing) {
-      intervalRef.current = setInterval(() => {
-        setCurrentTime(prev => {
-          const next = prev + 0.5;
-          if (next >= duration) {
-            setPlaying(false);
-            onEnd?.();
-            return 0;
-          }
-          onTimeUpdate?.(next);
-          return next;
-        });
-      }, 500);
-    } else if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-    }
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [playing, duration, onEnd, onTimeUpdate]);
+    const el = audioRef.current;
+    if (!el) return;
+    el.volume = Math.max(0, Math.min(1, volume / 100));
+    el.muted = muted;
+  }, [volume, muted]);
 
-  const progress = (currentTime / duration) * 100;
+  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   const handleSeek = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!progressRef.current) return;
     const rect = progressRef.current.getBoundingClientRect();
     const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    setCurrentTime(pct * duration);
+    const target = pct * duration;
+    if (audioRef.current && Number.isFinite(target)) {
+      audioRef.current.currentTime = target;
+    }
+    setCurrentTime(target);
   }, [duration]);
 
   return (
     <div className="rounded-xl bg-lattice-deep border border-lattice-border overflow-hidden">
+      <audio
+        ref={audioRef}
+        src={audioSrc}
+        autoPlay={autoplay ?? false}
+        preload="metadata"
+        className="hidden"
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+        onTimeUpdate={(e) => {
+          const t = e.currentTarget.currentTime;
+          setCurrentTime(t);
+          onTimeUpdate?.(t);
+        }}
+        onLoadedMetadata={(e) => {
+          if (Number.isFinite(e.currentTarget.duration)) {
+            setAudioDuration(e.currentTarget.duration);
+          }
+        }}
+        onEnded={() => { setPlaying(false); onEnd?.(); }}
+      />
       {/* Album art / thumbnail area */}
       <div className="relative h-48 bg-gradient-to-br from-neon-purple/20 to-neon-cyan/20 flex items-center justify-center">
         <div className="absolute inset-0 backdrop-blur-sm" />
@@ -257,8 +291,10 @@ function VideoPlayer({
   onEnd,
   onTimeUpdate,
 }: Omit<UniversalPlayerProps, 'className'>) {
+  const videoRef = useRef<HTMLVideoElement>(null);
   const [playing, setPlaying] = useState(autoplay ?? false);
   const [currentTime, setCurrentTime] = useState(0);
+  const [videoDuration, setVideoDuration] = useState(mediaDTU.duration || 0);
   const [volume, setVolume] = useState(80);
   const [muted, setMuted] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
@@ -267,10 +303,9 @@ function VideoPlayer({
   const [showQualityMenu, setShowQualityMenu] = useState(false);
   const [buffering, setBuffering] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const duration = mediaDTU.duration || 300;
+  const duration = videoDuration || mediaDTU.duration || 0;
   const availableQualities = useMemo(() => {
     const quals = mediaDTU.transcodeVariants
       ?.filter(v => v.ready)
@@ -278,33 +313,37 @@ function VideoPlayer({
     return ['auto', ...quals];
   }, [mediaDTU.transcodeVariants]);
 
+  // Build the streaming URL. Quality propagates to backend via ?quality=.
+  const videoSrc = useMemo(() => {
+    const q = selectedQuality === 'auto' ? '' : `?quality=${encodeURIComponent(selectedQuality)}`;
+    return `/api/media/${encodeURIComponent(mediaDTU.id)}/stream${q}`;
+  }, [mediaDTU.id, selectedQuality]);
+
   const togglePlay = useCallback(() => {
-    setPlaying(prev => !prev);
+    const el = videoRef.current;
+    setPlaying((prev) => !prev);
+    if (!el) return;
+    try {
+      if (el.paused) {
+        const result = el.play();
+        if (result && typeof (result as Promise<void>).catch === "function") {
+          (result as Promise<void>).catch(() => setBuffering(false));
+        }
+      } else {
+        el.pause();
+      }
+    } catch {
+      setBuffering(false);
+    }
   }, []);
 
+  // Sync volume + muted state to the element.
   useEffect(() => {
-    if (playing) {
-      setBuffering(true);
-      const bufferTimeout = setTimeout(() => setBuffering(false), 300);
-      intervalRef.current = setInterval(() => {
-        setCurrentTime(prev => {
-          const next = prev + 0.5;
-          if (next >= duration) {
-            setPlaying(false);
-            onEnd?.();
-            return 0;
-          }
-          onTimeUpdate?.(next);
-          return next;
-        });
-      }, 500);
-      return () => {
-        clearTimeout(bufferTimeout);
-        if (intervalRef.current) clearInterval(intervalRef.current);
-      };
-    }
-    if (intervalRef.current) clearInterval(intervalRef.current);
-  }, [playing, duration, onEnd, onTimeUpdate]);
+    const el = videoRef.current;
+    if (!el) return;
+    el.volume = Math.max(0, Math.min(1, volume / 100));
+    el.muted = muted;
+  }, [volume, muted]);
 
   const handleMouseMove = useCallback(() => {
     setShowControls(true);
@@ -314,12 +353,16 @@ function VideoPlayer({
     }, 3000);
   }, [playing]);
 
-  const progress = (currentTime / duration) * 100;
+  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   const handleSeek = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    setCurrentTime(pct * duration);
+    const target = pct * duration;
+    if (videoRef.current && Number.isFinite(target)) {
+      videoRef.current.currentTime = target;
+    }
+    setCurrentTime(target);
   }, [duration]);
 
   const toggleFullscreen = useCallback(() => {
@@ -341,14 +384,37 @@ function VideoPlayer({
     >
       {/* Video area */}
       <div
-        className="relative aspect-video bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center cursor-pointer"
+        className="relative aspect-video bg-black flex items-center justify-center cursor-pointer"
         onClick={togglePlay}
       >
-        {/* Simulated video display */}
-        <div className="absolute inset-0 bg-gradient-to-br from-neon-blue/5 to-neon-purple/5" />
+        <video
+          ref={videoRef}
+          src={videoSrc}
+          poster={mediaDTU.thumbnail || undefined}
+          autoPlay={autoplay ?? false}
+          playsInline
+          preload="metadata"
+          className="w-full h-full object-contain"
+          onPlay={() => setPlaying(true)}
+          onPause={() => setPlaying(false)}
+          onWaiting={() => setBuffering(true)}
+          onPlaying={() => setBuffering(false)}
+          onCanPlay={() => setBuffering(false)}
+          onTimeUpdate={(e) => {
+            const t = e.currentTarget.currentTime;
+            setCurrentTime(t);
+            onTimeUpdate?.(t);
+          }}
+          onLoadedMetadata={(e) => {
+            if (Number.isFinite(e.currentTarget.duration)) {
+              setVideoDuration(e.currentTarget.duration);
+            }
+          }}
+          onEnded={() => { setPlaying(false); onEnd?.(); }}
+        />
 
         {mediaDTU.resolution && (
-          <div className="absolute bottom-2 right-2 text-xs text-gray-500">
+          <div className="absolute bottom-2 right-2 text-xs text-gray-500 bg-black/40 px-1.5 rounded pointer-events-none">
             {mediaDTU.resolution.width}x{mediaDTU.resolution.height}
           </div>
         )}
@@ -547,8 +613,22 @@ function ImageViewer({
             transition: isDragging ? 'none' : 'transform 0.2s ease',
           }}
         >
-          {/* Placeholder image display */}
-          <div className="w-full h-full flex items-center justify-center">
+          {/* Real image — falls back to icon placeholder if the artifact
+              hasn't landed yet (transient 404 during background fetch). */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={`/api/media/${encodeURIComponent(mediaDTU.id)}/stream`}
+            alt={mediaDTU.title || 'image'}
+            className="max-w-full max-h-full object-contain select-none"
+            draggable={false}
+            onError={(e) => {
+              const el = e.currentTarget;
+              el.style.display = 'none';
+              const fallback = el.nextElementSibling as HTMLElement | null;
+              if (fallback) fallback.style.display = 'flex';
+            }}
+          />
+          <div className="hidden w-full h-full items-center justify-center">
             <div className="bg-gradient-to-br from-neon-cyan/20 to-neon-purple/20 rounded-lg p-8">
               <ImageIcon className="w-16 h-16 text-neon-cyan/60" />
             </div>

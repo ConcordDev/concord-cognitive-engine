@@ -1,0 +1,177 @@
+{
+  "world_id": "tunya",
+  "system": "bloodline_powers",
+  "schema_version": "1.0",
+  "axioms": [
+    "Powers are bloodline-inherited, not learned. A person without the bloodline cannot acquire it; a person with it cannot suppress it permanently.",
+    "Powers express on a continuum from full (pure bloodline, both parents) to trace (one ancestor four generations back). Trace expression is so weak it often goes undiagnosed for life.",
+    "Two power systems are documented on Tunya: fire (Sanguire species, Kree-arrived ~pre-arks) and healing (Medici species, crash-landed ~100y ago). Note: prior drafts of this bible incorrectly attributed ice powers to the Medici. Canon corrects to healing-only — the Resonance Choir is a healing-focus practice, not a combat ability.",
+    "Tunyan blood has no recorded bloodline power but does carry conduit-status for the planetary refusal-field. This is biologically distinct from the Sanguire/Medici pattern."
+  ],
+  "fire_bloodline": {
+    "id": "fire_sanguire",
+    "origin_faction": "sandrun_sanguire",
+    "founding_population": "kree_sanguire_settlers",
+    "expression_dimensions": [
+      { "id": "potency", "scale_0_to_1": "fraction of pure bloodline expression" },
+      { "id": "control_radius_meters", "default_max": 8 },
+      { "id": "ignition_speed_seconds", "default_min": 0.8 },
+      { "id": "thermal_throttle_ceiling_celsius", "default_max": 1200 }
+    ],
+    "dilution_curve": {
+      "formula": "potency_at_generation_n = base_potency * (1/2)^n_dilution_steps_from_pure",
+      "explanation": "A 'dilution step' is one parent without the bloodline. A child of one Sanguire parent + one non-Sanguire parent inherits half. Their child by another non-Sanguire partner inherits quarter. Four generations of dilution at 50% each step → 6.25% expression — barely a warm hand.",
+      "floor": 0.005,
+      "floor_effect": "Below the floor the expression is gone. Cannot reignite by any known means."
+    },
+    "training_modifiers": {
+      "ash_priest_initiation": { "potency_bonus": 0.05, "duration": "lifetime", "cost": "must serve Sandrun for 10 years" },
+      "forge_apprenticeship": { "control_radius_bonus_meters": 2, "duration": "lifetime", "cost": "5 years smithing" },
+      "warlord_oath": { "ignition_speed_bonus_seconds": -0.2, "duration": "lifetime", "cost": "blood-oath to current Sanguire warlord" }
+    },
+    "abilities_by_potency": {
+      "trace_under_0.1": ["warm_hands", "match-light_breath"],
+      "weak_0.1_to_0.3": ["torch_ignition", "ember_throw_short"],
+      "moderate_0.3_to_0.6": ["forge_heat", "ranged_torch", "hot_palm_strike"],
+      "strong_0.6_to_0.85": ["sustained_flame_jet", "ember_storm_radius_4m", "weapon_imbue_short"],
+      "pure_0.85_to_1.0": ["sustained_inferno_radius_8m", "ash_storm", "molten_weapon_imbue_long", "thermal_throttle_to_1200c"]
+    },
+    "contraindications": [
+      "wet conditions reduce potency by 20-40% sustained",
+      "high-altitude thin air reduces sustainable output",
+      "the planetary refusal-field at full expression (within Nil's inner grove) reduces potency to 0"
+    ]
+  },
+  "healing_bloodline": {
+    "id": "healing_medici",
+    "origin_faction": "medici",
+    "founding_population": "medici_extra_planetary_crashed",
+    "expression_dimensions": [
+      { "id": "potency", "scale_0_to_1": "fraction of pure expression. Supreme Elder is functionally 1.0 — heals faster than all other Medici combined." },
+      { "id": "touch_radius_meters", "default_max": 1.5 },
+      { "id": "wound_severity_treatable_0_to_1", "default_max": 0.95 },
+      { "id": "preservation_duration_hours", "default_max": 720 }
+    ],
+    "axioms": [
+      "Medici power is healing only. Earlier drafts of this bible attributed ice to the Medici — that was an invention; canon corrects.",
+      "The Resonance Choir is a healing-focus practice in cold-stillness, not a combat ability. Cold air is a focus medium, not a weapon.",
+      "Power expression is visibly marked: Medici male skull elongates as healing skill grows; Medici female hair grows longer with power. Healers literally wear their power on their bodies.",
+      "Mate-death power absorption: when a Medici's lifelong mate dies, the survivor absorbs the dead partner's healing capacity, becoming an elder. Outliving partners is the canonical path to power; politically incentivizing premature partner-death is taboo."
+    ],
+    "dilution_curve": {
+      "formula": "potency_at_generation_n = base_potency * (1/2)^n_dilution_steps_from_pure",
+      "explanation": "Same dilution math as Sanguire fire, but Medici intermarriage outside the species is constrained by mating customs (mate-for-life) and asymmetric reproductive lethality with Sanguire (see hybrid_mechanics). Most Medici remain at pure or near-pure expression.",
+      "floor": 0.005,
+      "floor_effect": "Below the floor the expression is gone."
+    },
+    "training_modifiers": {
+      "choir_initiation": { "potency_bonus": 0.10, "duration": "lifetime", "cost": "must learn the Choir's resonance language; takes ~7 years" },
+      "healer_apprenticeship": { "healing_modifier_bonus": 0.15, "duration": "lifetime", "cost": "5 years tending the dying without payment" },
+      "supreme_elder_succession": { "potency_bonus": "→1.0", "duration": "until death", "cost": "Mercury's chosen-soul transfer at the previous Supreme Elder's death; not earnable" },
+      "mate_absorption": { "potency_bonus": "+0.30 per absorbed mate", "duration": "lifetime", "cost": "the mate must die" }
+    },
+    "abilities_by_potency": {
+      "trace_under_0.1": ["preserve-touch_for_one_hour", "minor_pain_relief"],
+      "weak_0.1_to_0.3": ["wound_close_minor", "preservation_one_day", "fever_calm"],
+      "moderate_0.3_to_0.6": ["healing_touch_major_wounds", "preservation_one_week", "Resonance_Choir_voice"],
+      "strong_0.6_to_0.85": ["limb_regrowth_partial", "preservation_one_month", "antidote_secrete_female_only", "Choir_concert_amplification"],
+      "pure_0.85_to_1.0_or_supreme_elder": ["full_organ_regrowth", "preservation_indefinite_with_active_focus", "resurrection_within_seconds_of_death", "Choir_resonance_to_shaped_silver_or_ice", "navigation_memory_to_Medici_home_world"]
+    },
+    "contraindications": [
+      "the planetary refusal-field affects healing only mildly (~10% reduction at full grove density). Medici resonance is closer to the field's preferred frequency than Sanguire fire is.",
+      "Medici cannot heal Medici — their own bodies refuse the touch. They rely on each other. The Supreme Elder cannot heal herself; her absorbed power is for the people."
+    ]
+  },
+  "tunyan_conduit": {
+    "id": "tunyan_refusal_field_conduit",
+    "origin_faction": "nil",
+    "founding_population": "pure_ancient_tunyan",
+    "axioms": [
+      "Not a bloodline power. A biological compatibility with Tunya's planetary refusal-field.",
+      "Pure-blood Tunyans express conduit-status. Mixed-blood Tunyans (e.g. Masond population) express partial. Non-Tunyans express none.",
+      "The conduit-effect is passive. It is not consciously controlled. It cannot be 'cast.' It exists wherever pure Tunyans are."
+    ],
+    "effects": {
+      "passive_radius_meters_per_pure_tunyan": 3,
+      "stacking_rule": "additive up to 30m radius; beyond that, diminishing returns at 0.5x per 30m increment",
+      "what_it_does": [
+        "dampens hostile intent within radius (NPCs feel reluctance to attack; players experience reduced incoming hostility but not reduced outgoing)",
+        "suppresses sustained electrical current (no electricity in pure Tunyan zones; arks' batteries discharge in proximity)",
+        "amplifies plant communication (trees genuinely respond — see Listening Grove)",
+        "weakens fire bloodline by 30-100% depending on density of pure Tunyans"
+      ]
+    },
+    "implication": "Nil is the only place on Tunya where the field is dense enough to bring fire bloodline expression to zero. This is what protects Nil from Sanguire military force. Sanguire know. Sanguire do not march on Nil."
+  },
+  "hybrid_mechanics": {
+    "sanguire_medici_hybrid": {
+      "id": "sanguire_medici_hybrid",
+      "rarity": "asymmetrically_lethal_so_extremely_rare",
+      "biological_constraint": {
+        "medici_female_x_sanguire_male": "lethal_to_mother — Medici female healing metabolism refuses Sanguire fetal biology (an internal refusal-field analogue). The pregnancy kills the mother before term. Children are not born this direction.",
+        "medici_male_x_sanguire_female": "viable — Sanguire females carry Medici-male children to term. But Medici male births are themselves rare in the species, so this pairing is taboo within Medici culture (preserves the breeding population). Children of this pairing exist; the Medici hide them.",
+        "asymmetry_explanation": "Medici females carry the species' deep metabolic refusal. Medici males carry only a softer version. The Medici themselves believe Mercury imposed the asymmetry to protect the species' female breeders. Whether that's biological or metaphysical is open lore."
+      },
+      "expression_pattern": "the rare viable hybrids (Medici-male x Sanguire-female) carry attenuated healing without a Resonance Choir voice, plus residual fire potency drastically reduced (~10-15% of pure Sanguire). Mostly pass as weak-Sanguire and live unnoticed among Sanguire-descended populations.",
+      "ability_set": [
+        "weak_healing_touch",
+        "warm_hands_no_ignition",
+        "longer_lifespan_than_Sanguire_norm"
+      ],
+      "social_status": "Medici male who fathers a hybrid is shunned by his own people but rarely discovered. Sanguire mothers protect the children as their own — fire-bloodline laxity is forgiven; fathered-by-an-outsider is not, but the Medici lineage is rarely identified.",
+      "lore_hook": "The first viable hybrid known to the Sanguire warlord Iyatte is closer to home than she knows. The Medici know whose child it is. The Medici have not said."
+    },
+    "tunyan_sanguire": {
+      "id": "tunyan_sanguire_mixed",
+      "rarity": "more_common_via_intermarriage_with_masond_arrivals",
+      "expression_pattern": "fire bloodline at expected dilution; conduit-status at expected partial expression. The two interfere — fire output drops by an additional ~30% in proximity to other Tunyan-blooded individuals.",
+      "ability_set": ["weak_to_moderate_fire", "personal_passive_refusal_field_radius_1m"],
+      "social_status": "common in Masond. Rarely identified. Often diagnosed as 'weak Sanguire.'"
+    },
+    "tunyan_medici": {
+      "id": "tunyan_medici_mixed",
+      "rarity": "vanishingly_rare",
+      "expression_pattern": "healing capacity at expected dilution; conduit-status at expected partial expression. Healing does NOT interfere with the field — it amplifies. Output increases by ~15% in proximity to Tunyan-blooded individuals.",
+      "ability_set": ["moderate_healing", "personal_passive_refusal_field_radius_1m", "amplified_resonance"],
+      "social_status": "Medici-Tunyan unions are extremely rare. Nil and Medici are quiet allies. Whether anyone has crossed the line is open lore."
+    }
+  },
+  "macro_hooks": {
+    "use_power_macro": {
+      "name": "powers.use",
+      "input_schema": {
+        "userId": "string",
+        "powerId": "fire_sanguire | healing_medici | tunyan_conduit",
+        "targetEntityId": "string",
+        "intensity": "0_to_1",
+        "world_id": "tunya"
+      },
+      "output_schema": {
+        "ok": "bool",
+        "actualPotency": "0_to_1",
+        "effectAppliedRadius": "meters",
+        "modifiers": "object (training, contraindications)",
+        "refusal_field_modifier": "0_to_1 (multiplied into potency)"
+      },
+      "implementation_notes": "powers.use is a macro that reads the calling user's bloodline_inheritance from a new player_bloodlines table, applies the dilution curve, then routes through the existing combat or healing handler with the modified potency. The refusal-field modifier is computed from nearby pure-Tunyan presence via the existing embodied/signals.js radius logic."
+    },
+    "diagnose_bloodline_macro": {
+      "name": "powers.diagnose",
+      "input_schema": { "userId": "string" },
+      "output_schema": {
+        "fire_potency": "0_to_1",
+        "healing_potency": "0_to_1",
+        "tunyan_conduit_strength": "0_to_1",
+        "hybrid_kind": "none | sanguire_medici | tunyan_sanguire | tunyan_medici",
+        "ancestry_visible_to_player": "bool"
+      },
+      "implementation_notes": "Diagnostic check at character creation or via in-game ritual. The Medici Choir can perform the diagnosis with high precision. Sanguire clan elders perform it with lower precision but more publicly."
+    }
+  },
+  "narrative_implications": {
+    "if_electricity_returns": "If a player ever makes electricity work on Tunya outside Nil's grove, that means the planetary refusal-field has weakened or been neutralized. This would be a tier-1 world-changing event with cascading consequences across every kingdom.",
+    "if_a_hybrid_acts": "The two recorded hybrids, if they choose to act publicly, force Sanguire-Medici politics into the open. Kree the state may try to broker; Kree may also try to crush.",
+    "if_pure_tunyans_leave_nil": "If pure Tunyans leave Nil's borders en masse, the refusal-field's density elsewhere increases. Kingdoms with previously-functional fire bloodlines may find them weakening. Kingdoms with previously-impossible electricity may find it newly impossible.",
+    "if_medici_navigator_returns": "If the Medici route opens — Aerasi's wrong-by-one-year prediction comes true — Tunya gets visitors. The visitors are not from Earth and are not the Medici. Open lore."
+  }
+}

@@ -76,6 +76,19 @@ export async function runNpcEconomyCycle({ db, state: _state, tickCount: _t } = 
         if (r?.ok) {
           stats.actions++;
           if (npc.activity_kind in stats.byKind) stats.byKind[npc.activity_kind]++;
+          // Sprint 8 — broadcast meaningful economy actions to the timeline.
+          try {
+            const re = globalThis._concordRealtimeEmit;
+            if (typeof re === "function" && r.notable) {
+              re("npc:economy", {
+                world_id: worldId,
+                actor_kind: "npc",
+                actor_id: npc.id,
+                kind: npc.activity_kind,
+                outcome: r.outcome || null,
+              });
+            }
+          } catch { /* never block tick */ }
         } else {
           stats.byKind.skipped++;
         }

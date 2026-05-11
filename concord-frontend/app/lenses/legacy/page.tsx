@@ -520,6 +520,9 @@ export default function LegacyLensPage() {
         )}
       </div>
     </div>
+    
+      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
+      <a href="#legacy-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to legacy content</a>
     </LensShell>
   );
 }

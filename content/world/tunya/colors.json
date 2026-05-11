@@ -1,0 +1,123 @@
+{
+  "world_id": "tunya",
+  "schema_version": "1.0",
+  "purpose": "Two systems in one file: (1) skin-color genetics — the paint-mixing inheritance model unique to Tunya. (2) cultural color symbolism — the meaning each color carries across kingdoms.",
+  "skin_color_genetics": {
+    "model": "paint_mixing_inheritance",
+    "axioms": [
+      "Most children adopt a mixture of their parents' skin colors. Yellow + blue parents → green child. Red + blue → purple. Yellow + red → orange. Blends are real hue arithmetic, not melanin gradient.",
+      "Throwback rule: sometimes a child takes one parent's coloring directly instead of blending. Sex-linked tendency — girls usually take their mother's coloring, boys usually take their father's. The tendency is statistical, not absolute.",
+      "After 4 generations of intermixing across arks, Ancient Tunyans, Medici, and Sanguire, Tunya's people span every color on the spectrum. Pure single-hue individuals are rare; blended hues (teal, mauve, olive, ochre, slate, pearl-rose, ash-violet) dominate.",
+      "Skin color carries genealogical information. A skilled observer can read parentage from a child's hue."
+    ],
+    "implementation": {
+      "model_kind": "rgb_paint_mix_with_throwback",
+      "blend_function": "child_color_rgb = (parent_a_rgb + parent_b_rgb) / 2 + small_random_jitter",
+      "throwback_probability_default": 0.18,
+      "throwback_sex_linkage": {
+        "female_child_takes_mother_color": 0.65,
+        "female_child_takes_father_color": 0.35,
+        "male_child_takes_father_color": 0.65,
+        "male_child_takes_mother_color": 0.35,
+        "note": "Tendency, not rule. The 35/65 split keeps the model probabilistic and avoids deterministic outcomes."
+      },
+      "jitter_magnitude_per_channel_0_to_255": 12,
+      "purity_decay": "After 4 generations of mixing, the probability of any pure single-hue child is below 5% in most kingdoms. Pure-color individuals are visibly distinctive."
+    },
+    "species_origin_palettes": {
+      "ancient_tunyan_pure": ["#8B5A2B (warm earth)", "#A0522D (sienna)", "#5D4037 (deep brown)", "#6D7B7D (slate gray)"],
+      "medici_pure": ["#C4D8E0 (pearl white-blue)", "#E0D8C8 (pearl warm)", "#B8C8C0 (pearl sage)"],
+      "sanguire_pure": ["#A8311B (warm red)", "#C77B4A (amber)", "#9B5C2C (rich ochre)"],
+      "earth_human_african_ark_descended": ["#3E1F11 to #8B4513 (Earth-spectrum brown)"],
+      "earth_human_eurasian_ark_descended": ["#F5DEB3 to #8B6F47 (Earth-spectrum tan-to-olive)"],
+      "earth_human_north_american_ark_descended": ["#FAD0B7 to #6D4C41 (Earth-spectrum range)"],
+      "earth_human_south_american_ark_descended": ["#D2B48C to #5D4037 (Earth-spectrum warm-to-deep)"],
+      "note": "These are species-origin palettes. Most Tunyans 4G are blends across multiple species. The procgen NPC generator should sample parents' colors from kingdom-specific bias and produce blended children."
+    },
+    "kingdom_palette_priors": {
+      "comment": "Per-kingdom bias toward subsets of the full Tunyan spectrum, reflecting historical settlement patterns. Sample parent colors with these priors; child colors emerge from the genetics engine.",
+      "sandrun_sanguire": ["#A8311B", "#C77B4A", "#9B5C2C", "#7D2A1A"],
+      "kree_nationalists": ["#3B5D8C", "#56324A", "#9BB1C7"],
+      "medici_isle": ["#C4D8E0", "#E0D8C8", "#B8C8C0"],
+      "cree": ["#5B8047", "#A0522D", "#8B5A2B"],
+      "aekon": ["#D8A23B", "#A8514A", "#7A4A2A", "#5D4037"],
+      "asbir": ["#9BB1C7", "#C8A25B", "#7D6A5A"],
+      "sahm": ["#3E1F11", "#7D3A2A", "#5D4037", "#6D4A2A"],
+      "dinye": ["#A05A32", "#8B5A2B", "#5D4037"],
+      "bahiij": ["#D97A1F", "#C77B4A", "#A85C3A", "#7D4A2A"],
+      "masond": ["#7A5A3A", "#8B5A2B", "#5D4037", "#6D7B7D"],
+      "dormas": ["#56324A", "#7D5A6A", "#9B7A8A", "#E8C2A0"],
+      "fluxom": ["#4D6A5A", "#7D8A7A", "#5D6A5D"],
+      "nil": ["#3A5A3A", "#5D7A5D", "#6D7B6D", "#8B5A2B"],
+      "akeia_of_kahlay": ["#7A3866", "#A8517D", "#D88AB5", "#7D4A6A"]
+    },
+    "narrative_implications": [
+      "An NPC's skin color is a readable diplomatic credential. A teal-skinned diplomat in Akeia is visibly Sahm-Bahiij descended; the queen mother knows what bloodlines stand at her court before any introduction.",
+      "Pure single-hue individuals are visibly distinctive. A pure Sanguire-red character in Dormas is unusual enough to be commented on. A pure pearl Medici walking Sahm's market is recognizable at distance.",
+      "Throwback children — taking one parent's color directly — are biological reminders of lineage purity. Some kingdoms (Nil, Sandrun) value them; others (Dormas, Bahiij) treat them as quaintly old-fashioned.",
+      "Cross-species blends produce species-distinctive shades — pearl-rose for Medici-Sanguire, ash-violet for Medici-Tunyan, ember-brown for Sanguire-Tunyan. Skilled observers identify rare hybrids by hue alone."
+    ]
+  },
+  "color_symbolism": {
+    "policy": "Each color carries multiple meanings, sometimes contradictory. Context determines reading. Faction cultures stake their identity on specific color readings — a yellow banner on a battlefield reads as either provocation or surrender depending on who flies it.",
+    "colors": {
+      "black": {
+        "meanings": ["elegance", "sophistication", "formality", "power", "strength"],
+        "primary_factions_that_use": ["dormas (couture)", "kree (formal regalia)", "sandrun_sanguire (warlord ceremonial cloak)"]
+      },
+      "red": {
+        "meanings": ["warmth", "love", "anger", "danger", "boldness", "excitement", "speed", "strength", "energy", "determination", "desire"],
+        "primary_factions_that_use": ["sandrun_sanguire (banner, ash-priest robes)", "akeia_of_kahlay (consort garments)"]
+      },
+      "orange": {
+        "meanings": ["cheerfulness", "low cost", "affordability", "enthusiasm", "stimulation", "creativity", "aggression", "food"],
+        "primary_factions_that_use": ["bahiij (festival silks, lantern-night)", "fluxom (merchant marker)", "aekon (harvest feast)"]
+      },
+      "yellow": {
+        "meanings": ["attention-grabbing", "comfort", "liveliness", "cowardice", "hunger", "optimism", "overwhelm", "summer"],
+        "primary_factions_that_use": ["sahm (river-iron token coloring)", "bahiij (festival accents)", "aekon (sky temple ornament)"],
+        "battlefield_ambiguity": "A yellow banner on a battlefield reads either as provocation or as surrender. Bahiij has flown both meanings within living memory."
+      },
+      "blue": {
+        "meanings": ["peace", "professionalism", "loyalty", "reliability", "honor", "melancholy", "boredom", "coldness", "winter", "depth"],
+        "primary_factions_that_use": ["asbir (curator robes, civic uniform)", "kree (state regalia)", "fluxom (harbor dress)"]
+      },
+      "green": {
+        "meanings": ["durability", "reliability", "environmental", "luxurious", "optimism", "well-being", "nature", "calm", "relaxation"],
+        "primary_factions_that_use": ["nil (everything — root, leaf, bark)", "cree (longhouse banners)", "dinye (elder paint)"]
+      },
+      "purple": {
+        "meanings": ["power", "royalty", "nobility", "elegance", "sophistication", "artificial", "luxury", "mystery"],
+        "primary_factions_that_use": ["akeia_of_kahlay (queen mother's robes)", "dormas (high-quarter livery)", "medici (Choir master accents)"]
+      },
+      "brown": {
+        "meanings": ["relaxing", "confident", "casual", "reassuring", "nature", "earthy", "solid", "reliable", "genuine", "autumn"],
+        "primary_factions_that_use": ["masond (mason quarter)", "dinye (everyday wear)", "sahm (smith's apron)"]
+      },
+      "pearl_white": {
+        "meanings": ["medici sacred", "mercy", "preservation", "stillness", "the resonance"],
+        "primary_factions_that_use": ["medici (skin natural color, sacred robes)"],
+        "note": "Not in the original color table but added per the species-origin palette. Pearl-white is the Medici's signature."
+      }
+    },
+    "diplomatic_color_reading": {
+      "amity_courtship_ball_akeia": "Foreign delegates wear their kingdom's primary color. Akeia hosts read it: a Sahm delegate in red-trim is signaling alliance interest; in plain river-iron yellow is signaling polite distance.",
+      "harvest_high_feast_aekon": "All twelve districts wear their district color. The twelfth wears no color — its dish is on the table; its presence is felt; its color is a refusal.",
+      "cull_sanguire_warlord_challenge": "Challenger wears the color of their clan; warlord wears Sanguire-red. Spectators wear neutral browns. A spectator in clan-color is making a political statement and may be challenged in turn.",
+      "cares_medici_holiday_communion": "Medici procession is pure pearl-white. Foreign witnesses must wear muted neutrals. A foreigner in any saturated color on Cares-day-1 is a recorded insult."
+    }
+  },
+  "procgen_hooks": {
+    "character_skin_color_engine": {
+      "description": "Sample parent skin colors from the kingdom_palette_priors of the parents' kingdoms (cross-kingdom unions sample from both). Apply the genetics blend_function. Apply the throwback_probability + sex-linkage. Apply the jitter. Output the child's RGB.",
+      "edge_cases": {
+        "pure_species_throwback": "If both parents are flagged pure_<species>, the throwback probability rises to 0.40 (the species-internal palette is more genetically stable).",
+        "cross_species_blend": "If parents are different species, label the child's hue with the species-blend tag (e.g. 'pearl_rose' for Medici-Sanguire, 'ash_violet' for Medici-Tunyan, 'ember_brown' for Sanguire-Tunyan)."
+      }
+    },
+    "faction_banner_generator": {
+      "description": "When generating a faction's banner SVG, prioritize the faction's primary_color from factions.json AND respect the cultural meanings the faction stakes its identity on (e.g. Sahm river-iron yellow specifically reads as the kingdom's optimistic-without-naivety stance, not as cowardice).",
+      "color_meaning_filter": "filter the symbolism table for the faction's stated cultural alignment before rendering tooltip text on banners in-game"
+    }
+  }
+}

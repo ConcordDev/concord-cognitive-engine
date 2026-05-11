@@ -2,7 +2,7 @@
 
 _Source for the `Current Wiring Status` section in CLAUDE.md. Human merges; cartographer never auto-rewrites CLAUDE.md._
 
-Generated 2026-05-10T04:15:47.839Z.
+Generated 2026-05-11T04:20:06.947Z.
 
 ## Heartbeat-registered modules
 
@@ -22,6 +22,7 @@ Generated 2026-05-10T04:15:47.839Z.
 - `npc-conversation-initiator` (frequency 8)
 - `npc-knowledge-bridge` (frequency 10)
 - `corpse-cleanup` (frequency 10)
+- `agent-marathon-cycle` (frequency 12)
 - `kingdom-decree-cycle` (frequency 16)
 - `metrics-decay` (frequency 20)
 - `presence-stale-sweep` (frequency 20)
@@ -80,23 +81,25 @@ Generated 2026-05-10T04:15:47.839Z.
 - `dtu` — 10 macros
 - `mesh` — 10 macros
 - `hlm` — 9 macros
+- `chat` — 9 macros
 - `research` — 9 macros
 - `apps` — 9 macros
 - `atlas` — 9 macros
 - `persona` — 9 macros
 - `marketplace` — 9 macros
+- `lens` — 9 macros
+- `semantic` — 8 macros
 - `metalearning` — 8 macros
 - `forge` — 8 macros
 - `physical` — 8 macros
+- `dream` — 8 macros
 - `intel` — 8 macros
 - `system` — 8 macros
-- `semantic` — 7 macros
+- `federation` — 8 macros
 - `transfer` — 7 macros
 - `reasoning` — 7 macros
-- `chat` — 7 macros
 - `breakthrough` — 7 macros
 - `forgetting` — 7 macros
-- `lens` — 7 macros
 - `experience` — 6 macros
 - `attention` — 6 macros
 - `commonsense` — 6 macros
@@ -105,24 +108,30 @@ Generated 2026-05-10T04:15:47.839Z.
 - `attention_alloc` — 6 macros
 - `promotion` — 6 macros
 - `cortex` — 6 macros
+- `agent` — 6 macros
 - `reflection` — 5 macros
 - `hlr` — 5 macros
-- `dream` — 5 macros
 - `schema` — 5 macros
 - `autotag` — 5 macros
 - `collab` — 5 macros
 - `cache` — 5 macros
 - `webhook` — 5 macros
 - `automation` — 5 macros
+- `deity` — 5 macros
+- `betting` — 5 macros
+- `classroom` — 5 macros
 - `chicken3` — 4 macros
 - `explanation` — 4 macros
 - `repair_network` — 4 macros
 - `temporal` — 4 macros
-- `agent` — 4 macros
+- `lattice` — 4 macros
 - `plugin` — 4 macros
 - `admin` — 4 macros
 - `whiteboard` — 4 macros
 - `redis` — 4 macros
+- `refusal` — 4 macros
+- `walker` — 4 macros
+- `reflex` — 4 macros
 - `voice` — 3 macros
 - `explore` — 3 macros
 - `wrapper` — 3 macros
@@ -131,12 +140,26 @@ Generated 2026-05-10T04:15:47.839Z.
 - `jobs` — 3 macros
 - `market` — 3 macros
 - `paper` — 3 macros
-- `lattice` — 3 macros
 - `resonance` — 3 macros
 - `export` — 3 macros
 - `visual` — 3 macros
 - `governor` — 3 macros
 - `db` — 3 macros
+- `npc` — 3 macros
+- `forward_sim` — 3 macros
+- `embodied` — 3 macros
+- `macro_dag` — 3 macros
+- `npc_persona` — 3 macros
+- `inheritance` — 3 macros
+- `spectator` — 3 macros
+- `sponsorship` — 3 macros
+- `staking` — 3 macros
+- `insurance` — 3 macros
+- `bounty` — 3 macros
+- `psyops` — 3 macros
+- `sandbox` — 3 macros
+- `dtu_sync` — 3 macros
+- `therapy` — 3 macros
 - `entity` — 2 macros
 - `multimodal` — 2 macros
 - `tools` — 2 macros
@@ -154,6 +177,14 @@ Generated 2026-05-10T04:15:47.839Z.
 - `perf` — 2 macros
 - `obsidian` — 2 macros
 - `universe` — 2 macros
+- `scars` — 2 macros
+- `mount` — 2 macros
+- `fidelity` — 2 macros
+- `npc_autobiography` — 2 macros
+- `compression_art` — 2 macros
+- `goddess` — 2 macros
+- `forecast` — 2 macros
+- `sub_world` — 2 macros
 - `foundation` — 1 macros
 - `ask` — 1 macros
 - `swarm` — 1 macros
@@ -187,15 +218,19 @@ Generated 2026-05-10T04:15:47.839Z.
 - `vscode` — 1 macros
 - `notion` — 1 macros
 - `integration` — 1 macros
+- `kingdom` — 1 macros
+- `narrative` — 1 macros
+- `observer` — 1 macros
+- `sonic_glyph` — 1 macros
 
 ## Frontend lens count
 
-- 206 directories under `concord-frontend/app/lenses/`
+- 228 directories under `concord-frontend/app/lenses/`
 
 ## Orphan / Dormant inventory
 
 - Orphan modules: 0
 - Dormant modules: 0
 - Dead tables: 22
-- Headless backends: 0
+- Headless backends: 24
 - Orphan lenses: 2

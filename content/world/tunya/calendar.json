@@ -1,0 +1,279 @@
+{
+  "world_id": "tunya",
+  "schema_version": "2.0",
+  "hours_per_day": 32,
+  "minutes_per_hour": 60,
+  "days_per_month": 24,
+  "months_per_year": 18,
+  "days_per_year": 432,
+  "moons": 1,
+  "moon_lore": "Tunya has a single visible moon. Moon hours per month always sum with sun hours to exactly 32. The split swings symmetrically around Vernal (16:16 equinox) and Pisces (14:18 lesser-balance) — the two equinox-analogues of the Tunyan year. Mercury-worshipping Medici tie major Choir resonances to these two balance points.",
+  "temperature_units": "fahrenheit",
+  "temperature_reference_latitude": "equatorial belt — the Masond / Aekon / Bahiij band. Far-north lands (Dormas, Fluxom) run cooler by ~10-15°F; far-south lands run warmer by ~5-10°F. Highland districts (Sandrun's volcanic coast, Aekon's sky temple, Sahm's northern smiths above ~2500m elevation) can drop below freezing at night even in Halcyon. This is the only place 'frost biome' shows up on Tunya — there's no polar frost, only highland frost.",
+  "biome_note": "earlier drafts of this bible listed 'frost' as a generic biome distributable across kingdoms. Canon corrects: frost on Tunya is elevation-driven only. The biome list in meta.json has been updated to highland_frost, which appears in mountainous districts of multiple kingdoms but not as a kingdom-wide climate.",
+  "day_phases": [
+    { "id": "dominus", "start_hour": 1, "end_hour": 4, "label": "Dominus", "kind": "first_sun_watch" },
+    { "id": "stratus", "start_hour": 5, "end_hour": 8, "label": "Stratus", "kind": "morning_sun_watch" },
+    { "id": "freeus", "start_hour": 9, "end_hour": 12, "label": "Freeus", "kind": "midday_sun_watch" },
+    { "id": "quartus", "start_hour": 13, "end_hour": 16, "label": "Quartus", "kind": "afternoon_sun_watch" },
+    { "id": "penanus", "start_hour": 17, "end_hour": 20, "label": "Penanus", "kind": "first_moon_watch" },
+    { "id": "easeus", "start_hour": 21, "end_hour": 24, "label": "Easeus", "kind": "evening_moon_watch" },
+    { "id": "tendus", "start_hour": 25, "end_hour": 28, "label": "Tendus", "kind": "deep_moon_watch" },
+    { "id": "toolus", "start_hour": 29, "end_hour": 32, "label": "Toolus", "kind": "pre_dawn_moon_watch" }
+  ],
+  "diurnal_terminology": {
+    "diurnal": "the canonical name for one full 32-hour cycle — what other settings call a 'day'. The unit name 'diurnal' is locked across all Tunyan content.",
+    "watch": "a 4-hour subdivision of the diurnal. Eight named watches per diurnal: Dominus, Stratus, Freeus, Quartus, Penanus, Easeus, Tendus, Toolus."
+  },
+  "seasons": [
+    {
+      "id": "resurrection",
+      "label": "Resurrection",
+      "months": ["T'Annum", "Prail", "Amity", "Anew", "Vernal"],
+      "narrative": "The world wakes. Planting through sprouting through first-rain easing into mild weather. Years begin in Resurrection."
+    },
+    {
+      "id": "drought",
+      "label": "Drought",
+      "months": ["Ameliorate", "Halcyon", "Arbor", "Wound"],
+      "narrative": "The unnamed-in-source mid-year season. Canon-locked here as Drought because Wound's 95-110°F dry heat anchors it. Festivals turn elemental — Halcyon (calm), Arbor (trees), Wound (wind). Dry roads favor land trade; sea trade slows in the heat. Cultural strain peaks in Wound — the Sanguire say people do dumb things in Wound, and they have records to prove it."
+    },
+    {
+      "id": "harvest",
+      "label": "Harvest",
+      "months": ["Batten", "Summery", "Preserve", "Harvest", "Fallow"],
+      "narrative": "Fattening through preservation through the actual harvest, then deep-sea fishing as the rains return. Most economic activity happens in Harvest."
+    },
+    {
+      "id": "fallow",
+      "label": "Fallow",
+      "months": ["Pisces", "Brine", "Cull", "Cares"],
+      "narrative": "Salting, gleaning, slaughter, rest. The hibernation. Year closes with Cares — Love-the-Land celebration — observed by every kingdom on the same day."
+    }
+  ],
+  "months": [
+    {
+      "ordinal": 1, "name": "T'Annum", "season": "resurrection",
+      "sun_hours": 12, "moon_hours": 20,
+      "temp_low_f": 50, "temp_high_f": 70,
+      "weather": "no_humidity",
+      "cultural_notes": "New annum celebrations. The year begins. Planet-wide.",
+      "agricultural": ["soil_warming"],
+      "festivals": ["new_annum"],
+      "political_gates": ["spring_council_convenes"]
+    },
+    {
+      "ordinal": 2, "name": "Prail", "season": "resurrection",
+      "sun_hours": 13, "moon_hours": 19,
+      "temp_low_f": 51, "temp_high_f": 71,
+      "weather": "no_humidity",
+      "cultural_notes": "Planting begins.",
+      "agricultural": ["first_sowing"],
+      "festivals": [],
+      "political_gates": []
+    },
+    {
+      "ordinal": 3, "name": "Amity", "season": "resurrection",
+      "sun_hours": 14, "moon_hours": 18,
+      "temp_low_f": 60, "temp_high_f": 75,
+      "weather": "very_humid_rainy_season_begins",
+      "cultural_notes": "Friendship. Bonds, oaths, treaties. Akeia hosts its courtship ball this month — the diplomatic high-festival of the year.",
+      "agricultural": ["transplanting"],
+      "festivals": ["amity_courtship_ball_akeia", "friendship_oaths"],
+      "political_gates": ["treaty_renewals_due", "marriage_contracts_signed"]
+    },
+    {
+      "ordinal": 4, "name": "Anew", "season": "resurrection",
+      "sun_hours": 15, "moon_hours": 17,
+      "temp_low_f": 65, "temp_high_f": 79,
+      "weather": "very_humid_rainy_season",
+      "cultural_notes": "First sprouts. Agricultural milestone — the year's commitment becomes visible.",
+      "agricultural": ["weeding", "tending"],
+      "festivals": ["first_sprout_blessing"],
+      "political_gates": []
+    },
+    {
+      "ordinal": 5, "name": "Vernal", "season": "resurrection",
+      "sun_hours": 16, "moon_hours": 16,
+      "temp_low_f": 75, "temp_high_f": 84,
+      "weather": "humid_rainy_season_ends",
+      "cultural_notes": "Mild weather. The first equinox-analogue (16:16 sun:moon split). Medici Choir holds a major resonance.",
+      "agricultural": ["full_growth_phase", "first_orchard_blossom"],
+      "festivals": ["vernal_balance_resonance_medici"],
+      "political_gates": []
+    },
+    {
+      "ordinal": 6, "name": "Ameliorate", "season": "drought",
+      "sun_hours": 17, "moon_hours": 15,
+      "temp_low_f": 80, "temp_high_f": 90,
+      "weather": "little_humidity",
+      "cultural_notes": "The Bettering. Weeding work, pest management, tariff reviews.",
+      "agricultural": ["thinning", "pest_management"],
+      "festivals": [],
+      "political_gates": ["mid-spring_tariff_review_fluxom"]
+    },
+    {
+      "ordinal": 7, "name": "Halcyon", "season": "drought",
+      "sun_hours": 18, "moon_hours": 14,
+      "temp_low_f": 85, "temp_high_f": 95,
+      "weather": "no_humidity",
+      "cultural_notes": "Month of calm. Collective rest. Dormas hosts its high textile auction.",
+      "agricultural": ["fruit_set", "first_harvest_garden_crops"],
+      "festivals": ["halcyon_calm", "dormas_high_court"],
+      "political_gates": ["dormas_textile_auction"]
+    },
+    {
+      "ordinal": 8, "name": "Arbor", "season": "drought",
+      "sun_hours": 19, "moon_hours": 13,
+      "temp_low_f": 90, "temp_high_f": 100,
+      "weather": "dry",
+      "cultural_notes": "Celebration of trees. Nil opens its outer-grove silent walk for one day.",
+      "agricultural": ["orchard_tending"],
+      "festivals": ["arbor_tree_celebration", "arbor_silent_walk_nil"],
+      "political_gates": []
+    },
+    {
+      "ordinal": 9, "name": "Wound", "season": "drought",
+      "sun_hours": 20, "moon_hours": 12,
+      "temp_low_f": 95, "temp_high_f": 110,
+      "weather": "very_dry",
+      "cultural_notes": "Celebration of wind. Peak heat, peak strain. Sanguire clan duels traditionally held — heat sharpens the fights. Medici dispense water-bearing antidote pouches as a kindness; the practice is two generations old.",
+      "agricultural": ["heat_stress_management"],
+      "festivals": ["wound_wind_celebration", "medici_healing_choir_kree"],
+      "political_gates": ["sanguire_clan_duels_traditionally_held"]
+    },
+    {
+      "ordinal": 10, "name": "Batten", "season": "harvest",
+      "sun_hours": 19, "moon_hours": 13,
+      "temp_low_f": 90, "temp_high_f": 100,
+      "weather": "dry",
+      "cultural_notes": "Fattening. Only chicken, duck, fish, and chamois are butchered this month — larger livestock are fattened for Cull. Aekon audits its twelve districts.",
+      "agricultural": ["second_orchard_harvest", "stockpiling", "small_animal_butchery_only"],
+      "festivals": [],
+      "political_gates": ["aekon_twelve_districts_audit"]
+    },
+    {
+      "ordinal": 11, "name": "Summery", "season": "harvest",
+      "sun_hours": 18, "moon_hours": 14,
+      "temp_low_f": 85, "temp_high_f": 95,
+      "weather": "no_humidity",
+      "cultural_notes": "Celebration of sun. Bahiij hosts its summery lantern-night.",
+      "agricultural": ["grain_ripening"],
+      "festivals": ["summery_sun_celebration", "summery_lantern_night_bahiij"],
+      "political_gates": []
+    },
+    {
+      "ordinal": 12, "name": "Preserve", "season": "harvest",
+      "sun_hours": 17, "moon_hours": 15,
+      "temp_low_f": 80, "temp_high_f": 90,
+      "weather": "little_humidity",
+      "cultural_notes": "Preservation of food stuff. Sahm holds its smoke-fast — one day of fasting while the smokehouses run.",
+      "agricultural": ["mass_preservation", "salting", "smoking"],
+      "festivals": ["preserve_smoke_fast_sahm"],
+      "political_gates": []
+    },
+    {
+      "ordinal": 13, "name": "Harvest", "season": "harvest",
+      "sun_hours": 16, "moon_hours": 16,
+      "temp_low_f": 75, "temp_high_f": 84,
+      "weather": "humid_thunderstorms_begin",
+      "cultural_notes": "Harvest celebration. Aekon hosts its high feast — twelve districts, twelve dishes, the twelfth still secret. Cree hosts its Harvest market.",
+      "agricultural": ["main_grain_harvest", "root_harvest"],
+      "festivals": ["harvest_high_feast_aekon", "harvest_market_cree"],
+      "political_gates": ["tax_assessment_all_kingdoms"]
+    },
+    {
+      "ordinal": 14, "name": "Fallow", "season": "harvest",
+      "sun_hours": 15, "moon_hours": 17,
+      "temp_low_f": 65, "temp_high_f": 79,
+      "weather": "rainy_season_begins",
+      "cultural_notes": "Season of deep-sea fishing. Fluxom historically peaks here — the sea creatures are quiet through Brine. The two families hold their fallow hearings to settle disputes.",
+      "agricultural": ["field_clearing", "rotation_planning", "deep_sea_fishing_peak"],
+      "festivals": [],
+      "political_gates": ["tax_collection_all_kingdoms", "fallow_hearings_fluxom"]
+    },
+    {
+      "ordinal": 15, "name": "Pisces", "season": "fallow",
+      "sun_hours": 14, "moon_hours": 18,
+      "temp_low_f": 60, "temp_high_f": 75,
+      "weather": "rainy_season",
+      "cultural_notes": "Salting of fish for preserve. The lesser-balance moon point (14:18 sun:moon split). Fluxom attempts sea-trade reopens during the lull in sea-creature activity.",
+      "agricultural": ["coastal_fishing_intensifies", "salting_fish"],
+      "festivals": ["pisces_lesser_balance_resonance_medici"],
+      "political_gates": ["sea_trade_renewal_attempts"]
+    },
+    {
+      "ordinal": 16, "name": "Brine", "season": "fallow",
+      "sun_hours": 13, "moon_hours": 19,
+      "temp_low_f": 51, "temp_high_f": 73,
+      "weather": "rainy_season_ends",
+      "cultural_notes": "Glean all fields and leave fallow. Nil holds its brine silent supper — outsiders welcome but cannot speak.",
+      "agricultural": ["gleaning", "field_left_fallow"],
+      "festivals": ["brine_silent_supper_nil"],
+      "political_gates": []
+    },
+    {
+      "ordinal": 17, "name": "Cull", "season": "fallow",
+      "sun_hours": 12, "moon_hours": 20,
+      "temp_low_f": 50, "temp_high_f": 71,
+      "weather": "little_humidity",
+      "cultural_notes": "Slaughter of animals. The most politically dangerous month. Sanguire warlord challenges are formally permitted. Succession crises tend to crack here.",
+      "agricultural": ["livestock_slaughter", "stored_food_rationed"],
+      "festivals": ["cull_slaughter_observance"],
+      "political_gates": ["succession_disputes_traditionally_held", "sanguire_warlord_challenges_permitted"]
+    },
+    {
+      "ordinal": 18, "name": "Cares", "season": "fallow",
+      "sun_hours": 11, "moon_hours": 21,
+      "temp_low_f": 50, "temp_high_f": 70,
+      "weather": "no_humidity",
+      "cultural_notes": "Love the land celebration. Year closes. The only festival every kingdom observes by the same name on the same day. Medici males uncover their heads in public ONLY on Cares-day-1 — the holiday communion of Mercury. Year-end audits, forgiveness rituals.",
+      "agricultural": ["minimal", "preparing_for_T'Annum"],
+      "festivals": ["cares_love_the_land", "medici_holiday_communion"],
+      "political_gates": ["year_end_audits"]
+    }
+  ],
+  "epoch": {
+    "current_annum": 409,
+    "label": "Annum 409 — present (4G)",
+    "description": "Tunyan calendar reckoning. Pre-arrival annums were counted by Ancient Tunyan tradition; the count was preserved through arrival and intermixing. Annum 313 = Africa first landfall. Annum 320 = Asbir/Cree disembarkation. Annum 324 = Medici crash. Annum 327 = Eurasia. Annum 337 = Aekon stranded arrival. Annum 409 = present. The Bloc demanded more registrars in annum 409 — the political event is happening *this annum*.",
+    "year_zero_event": "ancient_tunyan_calendar_origin (specifics held by Nil; annum 0 is approximately 313 annums before first arrival)",
+    "key_anchors_by_annum": {
+      "0": "ancient_tunyan_calendar_origin (per Nil's reckoning)",
+      "313": "africa_first_arrival",
+      "320": "asbir_cree_disembarkation",
+      "324": "medici_crash",
+      "327": "eurasia_arrival",
+      "337": "aekon_stranded_arrival",
+      "409": "present_diurnal — bloc_registrar_demand"
+    }
+  },
+  "religious_overlays_per_kingdom": {
+    "policy": "every kingdom observes the planet-wide calendar (sun, moon, temperature, and weather are environmental facts, not religious claims). Religious overlays are layered on top.",
+    "examples": {
+      "medici": "tie Vernal (16:16 balance) and Pisces (14:18 lesser balance) to major Choir resonances; Cares-day-1 is the holiday communion of Mercury.",
+      "nil": "Arbor silent walk and Brine silent supper are the only public observances.",
+      "sanguire": "Cull is when warlord challenges are formally permitted; Wound's wind-celebration carries pre-Tunyan Kree-origin invocations.",
+      "aekon": "Harvest high feast is the year's centerpiece. The twelfth district's dish is the twelfth-secret.",
+      "bahiij": "Lantern-night in Summery; elephant-procession in Vernal.",
+      "asbir": "follows the planet-wide calendar; the curated archive includes Earth liturgical references but no kingdom observes them publicly.",
+      "sahm": "Preserve smoke-fast is the kingdom's signature observance.",
+      "dinye": "every Cares is a full year-end accounting between the elder council and the seven villages."
+    }
+  },
+  "festival_lore_hooks": {
+    "amity_courtship_ball_akeia": "Akeia's most consequential diplomatic event. Treaties drafted, marriages arranged, alliances tested. Foreign delegations attend at risk.",
+    "arbor_silent_walk_nil": "Once a year Nil opens a single path through the outer grove. Walkers may walk it. None have ever asked to enter the inner grove. None have ever been refused, either, because none have asked.",
+    "harvest_high_feast_aekon": "Twelve districts, twelve dishes. The twelfth district's dish has been the same recipe for four generations. No one outside the district will say what it is.",
+    "cull_sanguire_challenges": "Sanguire clan warriors may formally challenge the warlord during Cull. Iyatte has accepted three challenges in her tenure. She has won three.",
+    "cares_medici_holiday_communion": "The only day of the year Medici males uncover their heads in public. The Supreme Elder's cone is fully visible — a procession. Foreign witnesses may attend on the temple plaza but may not record."
+  },
+  "open_lore_resolved_by_this_lock": {
+    "days_per_month": "24 (locked here, was previously implied)",
+    "mid_year_unnamed_season": "Drought (locked here, was 'unnamed' in source)",
+    "frost_biome_origin": "elevation-driven only — highland_frost. No polar frost on Tunya.",
+    "temperature_reference": "equatorial belt; +/- 10-15°F for far-north / far-south kingdoms",
+    "moon_count": "1 (single moon)",
+    "religious_calendar_uniformity": "the planet-wide calendar is uniform; religious overlays per kingdom layer on top"
+  }
+}

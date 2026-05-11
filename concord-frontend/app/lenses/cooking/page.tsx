@@ -172,7 +172,7 @@ function CookingTimer() {
               className={cn('px-3 py-1.5 rounded-lg text-sm font-medium transition-colors', running ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-neon-green/20 text-neon-green border border-neon-green/30')}>
               {finished ? 'Reset' : running ? 'Pause' : 'Start'}
             </button>
-            {(running || finished) && <button onClick={reset} className="px-3 py-1.5 rounded-lg text-sm bg-white/5 border border-white/10 hover:bg-white/10">Reset</button>}
+            {(running || finished) && <button onClick={reset} className="px-3 py-1.5 rounded-lg text-sm bg-white/5 border border-white/10 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-amber-500">Reset</button>}
           </div>
           {finished && <p className="text-xs text-red-400 animate-bounce">Timer done!</p>}
         </div>

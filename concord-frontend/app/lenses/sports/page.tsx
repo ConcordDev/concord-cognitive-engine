@@ -412,7 +412,7 @@ export default function SportsLensPage() {
               <button
                 onClick={handleCreate}
                 disabled={createMut.isPending || !newGame.title.trim()}
-                className="btn-neon green w-full"
+                className="btn-neon green w-full focus:outline-none focus:ring-2 focus:ring-amber-500"
               >
                 {createMut.isPending ? 'Adding...' : 'Add Game'}
               </button>

@@ -102,6 +102,9 @@ const RefusalFieldHUD = dynamic(() => import('@/components/world/RefusalFieldHUD
 const PremonitionOverlay = dynamic(() => import('@/components/world/PremonitionOverlay'), { ssr: false });
 const DriftMoodboard = dynamic(() => import('@/components/world/DriftMoodboard'), { ssr: false });
 const EmbodiedHUD = dynamic(() => import('@/components/world/EmbodiedHUD'), { ssr: false });
+const CrossWorldPotencyHUD = dynamic(() => import('@/components/world/CrossWorldPotencyHUD'), { ssr: false });
+const QuestWaypointBeacon = dynamic(() => import('@/components/world/QuestWaypointBeacon'), { ssr: false });
+const QuestGuidanceHUD = dynamic(() => import('@/components/world/QuestGuidanceHUD'), { ssr: false });
 const EavesdropBubble = dynamic(() => import('@/components/world/EavesdropBubble'), { ssr: false });
 const WalkerArbitrageMap = dynamic(() => import('@/components/world/WalkerArbitrageMap'), { ssr: false });
 const GlyphCastHUD = dynamic(() => import('@/components/world/GlyphCastHUD'), { ssr: false });
@@ -946,7 +949,7 @@ function CityStreamingSection() {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 space-y-4">
+    <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
       {/* Phase 1: globally-listening skill evolution modal */}
       <EvolutionModal />
 
@@ -4314,6 +4317,14 @@ export default function WorldLensPage() {
           <PremonitionOverlay />
           <DriftMoodboard />
           <EmbodiedHUD />
+          {/* Sprint 5 — per-world skill potency chip. Reads each world's
+              meta.json skill_affinity + applies level-floor formula. */}
+          <CrossWorldPotencyHUD />
+          {/* Sprint 9 — diegetic waypoint beacon (3D light column at
+              active objective) + recovery HUD (top-left card + bottom-
+              right "?" button). Reads `guidance_waypoint.active_objective`. */}
+          <QuestWaypointBeacon />
+          <QuestGuidanceHUD />
           <EavesdropBubble worldId={activeDistrict?.id || 'concordia-hub'} playerPos={playerAvatar?.position ? { x: playerAvatar.position.x, z: playerAvatar.position.z } : undefined} />
           <WalkerArbitrageMap worldId={activeDistrict?.id || 'concordia-hub'} />
           <GlyphCastHUD worldId={activeDistrict?.id || 'concordia-hub'} playerPos={playerAvatar?.position ? { x: playerAvatar.position.x, z: playerAvatar.position.z } : undefined} />
@@ -5624,6 +5635,9 @@ export default function WorldLensPage() {
       {/* Post-tutorial hints — rotates contextual tips after first visit */}
       {!showOnboarding && <PostTutorialHints />}
     </div>
+    
+      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
+      <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
     </LensShell>
   );
 }

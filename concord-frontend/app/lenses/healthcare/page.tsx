@@ -2464,7 +2464,7 @@ export default function HealthcareLensPage() {
                       <button
                         onClick={handleGenerateCarePlan}
                         disabled={generateLoading || filtered.length === 0}
-                        className="flex items-center gap-2 px-4 py-2 bg-neon-cyan/20 text-neon-cyan rounded-lg text-sm hover:bg-neon-cyan/30 disabled:opacity-50 transition-colors"
+                        className="flex items-center gap-2 px-4 py-2 bg-neon-cyan/20 text-neon-cyan rounded-lg text-sm hover:bg-neon-cyan/30 disabled:opacity-50 transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500"
                       >
                         {generateLoading ? (
                           <span className="w-4 h-4 border-2 border-neon-cyan border-t-transparent rounded-full animate-spin" />

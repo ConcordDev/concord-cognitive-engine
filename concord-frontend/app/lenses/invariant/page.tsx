@@ -287,7 +287,7 @@ export default function InvariantLensPage() {
           />
           <button
             onClick={handleTestAction}
-            className="btn-neon purple"
+            className="btn-neon purple focus:outline-none focus:ring-2 focus:ring-amber-500"
             disabled={isTesting || !testAction.trim()}
           >
             {isTesting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Test'}

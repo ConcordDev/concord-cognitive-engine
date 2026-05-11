@@ -6937,6 +6937,27 @@ function realtimeEmit(event, payload, { sessionId = "", orgId = "", requestId = 
     _evt: event,                         // Event name for client-side reordering
   };
 
+  // Sprint 8 — expose realtimeEmit globally so emergent modules can
+  // route activity broadcasts without a circular import. Cheap stash.
+  globalThis._concordRealtimeEmit = realtimeEmit;
+
+  // Sprint 8 — unified timeline persistence. Every emit also lands in
+  // event_timeline_log so the /lenses/timeline lens has a queryable
+  // history. Best-effort; failures silently swallow so emit path stays
+  // open. Skipped for tick-fast meta-events (heartbeat ack, etc.).
+  try {
+    if (_timelineRecordFn && !event.startsWith("_") && event !== "ping" && event !== "pong") {
+      const tdb = STATE?.db || globalThis._concordDB;
+      if (tdb) {
+        _timelineRecordFn(tdb, event, payload || {}, {
+          worldId: payload?.world_id || payload?.worldId || null,
+          actorKind: payload?.actor_kind || payload?.actorKind || null,
+          actorId:   payload?.actor_id   || payload?.actorId   || null,
+        });
+      }
+    }
+  } catch { /* never block an emit on telemetry */ }
+
   // Dev/test-mode shape validation against the EVENT_SHAPES registry
   // (lib/event-shapes.js). Production skips this for zero runtime cost.
   // The registry only covers the top-20 highest-traffic events; unknown
@@ -9556,6 +9577,36 @@ async function runMacro(domain, name, input, ctx) {
     // npc_legacy (Sprint B Phase 11.1) — read-only tomb / last-words /
     // inheritance surface for the frontend TombMarker + InheritanceLog UI.
     npc_legacy: new Set(["tombs_for_world", "get", "inheritance_for_heir"]),
+    // cross_world_effectiveness (Sprint 5) — per-world skill potency
+    // chip for the HUD. All read-only: explain a single (domain, world,
+    // level) triple, dump every domain for the current player, list
+    // canonical domain registry.
+    cross_world_effectiveness: new Set(["explain", "for_player", "list_domains"]),
+    // event_timeline (Sprint 8) — unified firehose of socket events
+    // persisted to event_timeline_log. Powers /lenses/timeline.
+    event_timeline: new Set(["recent", "stats"]),
+    // guidance_waypoint (Sprint 9) — active objective + hint text for
+    // the diegetic waypoint beacon + "?" recovery button.
+    guidance_waypoint: new Set(["active_objective", "hint_for"]),
+    // expert_mode (Sprint 10B+C) — Perplexity-style cited answers
+    // backed by global-DTU pull + BYO key routing. answer is the
+    // canonical entry; sources_preview lets the UI show what would
+    // be cited before committing the brain call. extract_citations
+    // is a stateless utility for the chip renderer.
+    expert_mode: new Set(["answer", "sources_preview", "extract_citations"]),
+    // chat_agent (Sprint 11) — the Agent Mode orchestrator. Authenticated
+    // path is appropriate (it spends compute + can call any tool); but
+    // the macro-level publicReadDomains entry covers the "do" macro for
+    // the standard chat-lens callers.
+    chat_agent: new Set(["do"]),
+    // mcp (Sprint 12A) — MCP server management. Authenticated path
+    // appropriate for connect/invoke (subprocess control); read-only
+    // list operations exposed for the settings UI.
+    mcp: new Set(["list_servers", "list_tools", "exposed_tools"]),
+    // agent_marathon (Sprint 12) — long-running agent sessions.
+    agent_marathon: new Set(["start", "list", "get", "tick", "pause", "abandon"]),
+    // video_gen (Sprint 14) — async video generation.
+    video_gen: new Set(["start", "poll", "providers"]),
     // faction_strategy (Sprint B Phase 10) — Crucible HUD reads
     // recent_moves + get_relation; witness_next_move is the cross-
     // world signature quest's objective-completion macro.
@@ -10627,8 +10678,26 @@ register("multimodal","image_generate", (ctx, input={}) => {
     }
   }
 
-  // Cloud fallback: OpenAI DALL-E
-  const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
+  // Cloud fallback: OpenAI DALL-E. Sprint 10 BYO — check the user's
+  // own OpenAI key first (user_brain_overrides), then env. Per-user
+  // overrides let paying users route DALL-E through their own quota.
+  let OPENAI_API_KEY = "";
+  try {
+    const userId = ctx?.actor?.userId;
+    if (userId && ctx?.db) {
+      const row = ctx.db.prepare(`
+        SELECT encrypted_key FROM user_brain_overrides
+        WHERE user_id = ? AND provider = 'openai' AND active = 1
+        LIMIT 1
+      `).get(userId);
+      if (row?.encrypted_key) {
+        const { decryptKey } = await import("./lib/byo-crypto.js");
+        const k = await decryptKey(userId, row.encrypted_key);
+        if (k) OPENAI_API_KEY = k;
+      }
+    }
+  } catch { /* fall through to env */ }
+  if (!OPENAI_API_KEY) OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
   if (OPENAI_API_KEY) {
     const size = String(input.size || "1024x1024"); // 1024x1024, 1792x1024, 1024x1792
     const quality = String(input.quality || "standard"); // standard, hd
@@ -23256,6 +23325,114 @@ registerLandClaimsMacros(register);
 import registerGlyphSpellMacros from "./domains/glyph-spells.js";
 registerGlyphSpellMacros(register);
 
+// Sprint 5 — Cross-world skill effectiveness surface. Reads per-world
+// meta.json skill_affinity + applies level-floor formula. Powers HUD chip
+// ("Your magic is dampened here (15%)") and per-domain potency snapshot.
+import registerCrossWorldEffectivenessMacros from "./domains/cross-world-effectiveness.js";
+registerCrossWorldEffectivenessMacros(register);
+
+// Sprint 8 — Unified event timeline. Persists every realtime emit to
+// event_timeline_log so the /lenses/timeline lens has a full firehose
+// queryable by channel/world/time-range. `realtimeEmit` references
+// `_timelineRecordFn` (declared at startup); we bind it here.
+import { recordEvent as _timelineRecordFn, listRecent as _timelineList, stats as _timelineStats, pruneOld as _timelinePrune } from "./lib/event-timeline.js";
+import registerEventTimelineMacros from "./domains/event-timeline.js";
+registerEventTimelineMacros(register, { listRecent: _timelineList, stats: _timelineStats });
+void _timelinePrune; // exposed for future heartbeat-driven TTL sweep
+
+// Sprint 9 — diegetic waypoint surface. Returns the player's active
+// objective with worldPos + hint text. Powers the 3D QuestWaypointBeacon
+// + "?" recovery button.
+import registerGuidanceWaypointMacros from "./domains/guidance-waypoint.js";
+registerGuidanceWaypointMacros(register);
+
+// Sprint 10 — BYO API key substrate. Lets users plug their own
+// frontier-model API keys (OpenAI / Anthropic / xAI / Google) into
+// per-brain slots and route inference there instead of the default
+// Ollama. Keys encrypted AES-GCM with a per-user wrapping key derived
+// from JWT_SECRET. Never returned to the frontend after save.
+import registerByoKeysMacros from "./domains/byo-keys.js";
+registerByoKeysMacros(register);
+
+// Sprint 10B+C — Expert mode (Perplexity-style cited answers) wired
+// to the BYO router + the revolving-door global-DTU pull. Free-tier
+// users automatically benefit from DTUs minted by paid-tier users;
+// the original frontier-tier creator earns through the royalty
+// cascade when their DTU is cited.
+import registerExpertModeMacros from "./domains/expert-mode.js";
+registerExpertModeMacros(register);
+
+// Sprint 11 — Agent Mode chat orchestrator. Runs the agentic tool-use
+// loop where the brain calls into web_search / run_compute / browse_url
+// / run_lens_action (any of 200+ lens domain actions) / create_dtu /
+// expert_mode. Routes through the Sprint 10 BYO router so the user's
+// API key kicks in if set. Returns toolCalls + artifacts inline so the
+// UI can render them as they happen.
+import registerChatAgentMacros from "./domains/chat-agent.js";
+registerChatAgentMacros(register);
+// Sprint 18.5: defer the LENS_ACTIONS export to where it's actually
+// declared (~line 35954) instead of accessing it here. Accessing it
+// 12k lines before its const declaration was a TDZ ReferenceError
+// that uncaughtException'd the server on every startup attempt —
+// invisible until smoke/integration/E2E jobs began probing /health.
+globalThis.__concordRunMacro = runMacro;
+// __concordLensActions assigned at the LENS_ACTIONS declaration site.
+
+// Sprint 12A — MCP (Model Context Protocol) bridge. Concord can now
+// connect to external MCP servers (filesystem, GitHub, Slack, Postgres,
+// 10,000+ public servers as of early 2026) AND expose its own macros
+// as MCP tools at /mcp so any MCP client (Claude Desktop, Cursor, OpenAI
+// Apps) can drive Concord remotely.
+import registerMcpMacros from "./domains/mcp.js";
+registerMcpMacros(register);
+// Sprint 12 — long-running marathon agent sessions. Persistent task
+// the agent works on across many turns over hours/days, with a
+// heartbeat that auto-advances running sessions even when the tab
+// is closed. Same tool surface as chat_agent.do.
+import registerAgentMarathonMacros from "./domains/agent-marathon.js";
+registerAgentMarathonMacros(register);
+
+// Sprint 14 — video generation (Sora / Veo / Runway). BYO-key first,
+// env fallback. Async pattern: start returns a jobId, poll until done.
+import registerVideoGenMacros from "./domains/video-gen.js";
+registerVideoGenMacros(register);
+
+// Sprint 14 — SSE streaming for chat_agent.do. The /api/chat-agent/stream
+// endpoint runs the agent loop and streams tool calls + tokens + final
+// status as they happen, so the AgentModePanel renders progressively.
+import { mountChatAgentStream } from "./routes/chat-agent-stream.js";
+try {
+  mountChatAgentStream({
+    app,
+    auth: (req, res, next) => next(), // chained through standard auth middleware downstream
+    runMacro,
+    lensActions: LENS_ACTIONS,
+  });
+} catch (streamErr) {
+  structuredLog("warn", "chat_agent_stream_mount_failed", { error: String(streamErr?.message || streamErr) });
+}
+import { runAgentMarathonCycle } from "./emergent/agent-marathon-cycle.js";
+registerHeartbeat("agent-marathon-cycle", {
+  frequency: 12,
+  handler: () => runAgentMarathonCycle({ db: STATE?.db || globalThis._concordDB }),
+});
+
+import { mountMcpServer } from "./lib/mcp-server-host.js";
+try {
+  mountMcpServer({
+    app,
+    runMacro,
+    ctxFor: (extra) => ({
+      db: STATE?.db || globalThis._concordDB,
+      actor: extra?.authInfo?.actor || null,
+      state: STATE,
+    }),
+  });
+  structuredLog("info", "mcp_server_mounted", { endpoint: "/mcp", message: "Concord exposed as MCP server. Connect via any MCP client (Claude Desktop, Cursor, etc.)." });
+} catch (mcpErr) {
+  structuredLog("warn", "mcp_server_mount_failed", { error: String(mcpErr?.message || mcpErr) });
+}
+
 // Phase 6a — Forge → Marketplace. Mint Forge-generated apps as DTUs +
 // list on marketplace. Plugs into royalty cascade for citation chains.
 import registerForgeMarketplaceMacros from "./domains/forge-marketplace.js";
@@ -35778,6 +35955,10 @@ app.get("/api/admin/cascade-recovery", requireOwner, asyncHandler(async (req, re
 
 // Lens action registry for domain-specific engines
 const LENS_ACTIONS = new Map(); // `${domain}.${action}` → async (ctx, artifact, params) => result
+// Sprint 18.5 — paired with the deferred __concordLensActions assignment
+// that previously sat ~12k lines earlier and triggered a TDZ ReferenceError
+// at startup. Now assigned at the declaration site.
+globalThis.__concordLensActions = LENS_ACTIONS;
 function registerLensAction(domain, action, handler) {
   LENS_ACTIONS.set(`${domain}.${action}`, handler);
 }
@@ -46301,7 +46482,18 @@ app.post("/api/capture/email", (req, res) => {
 });
 
 app.post("/api/feeds", asyncHandler(async (req, res) => {
-  const result = await addRSSFeed(req.body.url, req.body.name);
+  // SSRF gate: an attacker-supplied URL would otherwise let the server
+  // fetch internal-network targets (169.254.169.254 metadata, localhost
+  // admin panels, fd00:: IPv6 IMDS, etc). _ssrfValidate is the canonical
+  // validator: scheme allowlist + private-IP block + DNS rebinding check.
+  const url = String(req.body?.url || "");
+  if (!url) return res.status(400).json({ ok: false, error: "url_required" });
+  if (url.length > 2048) return res.status(400).json({ ok: false, error: "url_too_long" });
+  const safety = await _ssrfValidate(url);
+  if (!safety.ok) {
+    return res.status(400).json({ ok: false, error: `unsafe_url:${safety.error}` });
+  }
+  const result = await addRSSFeed(safety.url, req.body.name);
   res.json(result);
 }));
 

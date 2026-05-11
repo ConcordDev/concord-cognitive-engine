@@ -308,7 +308,17 @@ export default function registerDtuRoutes(app, { STATE, makeCtx, runMacro, dtuFo
 
   // GET /api/dtu/:id/verify-container — verify integrity of a DTU container
   app.get("/api/dtu/:id/verify-container", asyncHandler(async (req, res) => {
-    const containerPath = path.join(process.cwd(), "data", "artifacts", `dtu-${req.params.id}.tar.gz`);
+    // DTU ids are slug-only; rejecting non-slug input neutralises path traversal
+    // (eg "../../../etc/passwd") before the segment reaches path.join.
+    const id = req.params.id;
+    if (typeof id !== "string" || !/^[a-zA-Z0-9_-]{1,64}$/.test(id)) {
+      return res.status(400).json({ ok: false, error: "invalid DTU id" });
+    }
+    const artifactRoot = path.resolve(process.cwd(), "data", "artifacts");
+    const containerPath = path.resolve(artifactRoot, `dtu-${id}.tar.gz`);
+    if (!containerPath.startsWith(artifactRoot + path.sep)) {
+      return res.status(400).json({ ok: false, error: "invalid container path" });
+    }
     const result = await verifyContainerIntegrity(containerPath);
     res.json({ ok: true, ...result });
   }));

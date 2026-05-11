@@ -1183,43 +1183,43 @@
   },
   {
     "file": "server/routes/media.js",
-    "line": 151,
+    "line": 152,
     "method": "POST",
     "signature": "router.post(\"/upload\", asyncHandler(async (req, res) => { const authorId = req.user?.id; if (!authorId) return r"
   },
   {
     "file": "server/routes/media.js",
-    "line": 240,
+    "line": 269,
     "method": "POST",
     "signature": "router.post(\"/upload/url\", asyncHandler(async (req, res) => { // SECURITY: authorId comes ONLY from the authenticate"
   },
   {
     "file": "server/routes/media.js",
-    "line": 447,
+    "line": 514,
     "method": "POST",
     "signature": "router.post(\"/:id/transcode\", asyncHandler(async (req, res) => { const { quality } = req.body; if (!quality) thr"
   },
   {
     "file": "server/routes/media.js",
-    "line": 495,
+    "line": 562,
     "method": "POST",
     "signature": "router.post(\"/:id/view\", asyncHandler(async (req, res) => { // SECURITY: identity from authenticated session only. A"
   },
   {
     "file": "server/routes/media.js",
-    "line": 515,
+    "line": 582,
     "method": "POST",
     "signature": "router.post(\"/:id/like\", asyncHandler(async (req, res) => { // SECURITY: userId always comes from the authenticated "
   },
   {
     "file": "server/routes/media.js",
-    "line": 537,
+    "line": 604,
     "method": "POST",
     "signature": "router.post(\"/:id/comment\", asyncHandler(async (req, res) => { // SECURITY: userId always comes from the authenticat"
   },
   {
     "file": "server/routes/media.js",
-    "line": 582,
+    "line": 649,
     "method": "DELETE",
     "signature": "router.delete(\"/:id\", asyncHandler(async (req, res) => { // SECURITY: authorId from authenticated session — never fr"
   },
@@ -1369,13 +1369,13 @@
   },
   {
     "file": "server/routes/simulation.js",
-    "line": 95,
+    "line": 146,
     "method": "POST",
     "signature": "router.post('/run', async (req, res) => { try { const { type, input = {} } = req.body || {}; if (!type "
   },
   {
     "file": "server/routes/simulation.js",
-    "line": 145,
+    "line": 196,
     "method": "POST",
     "signature": "router.post('/:id/cancel', (req, res) => { try { const result = cancelJob(req.params.id); return res.jso"
   },
@@ -1417,7 +1417,7 @@
   },
   {
     "file": "server/routes/sovereign.js",
-    "line": 774,
+    "line": 788,
     "method": "POST",
     "signature": "router.post(\"/eval\", (req, res) => { const S = STATE || getSTATE(); const code = String(req.body?.code || \"\").tr"
   },
@@ -1573,13 +1573,13 @@
   },
   {
     "file": "server/routes/world.js",
-    "line": 2167,
+    "line": 2185,
     "method": "POST",
     "signature": "router.post(\"/sim/search/semantic\", wrap((req, res) => { const { query, limit, filters } = req.body; // Simulate"
   },
   {
     "file": "server/routes/world.js",
-    "line": 2180,
+    "line": 2198,
     "method": "POST",
     "signature": "router.post(\"/sim/knowledge/query\", wrap((req, res) => { const { nodeType, edgeType, startId, depth } = req.body; "
   }

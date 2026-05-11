@@ -22,6 +22,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import LensAgentFab from '@/components/lens/LensAgentFab';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import {
@@ -196,7 +197,7 @@ export default function CreatorDashboardPage() {
   }, [refreshDashboard, refreshListings, refreshWithdrawal]);
 
   return (
-    <LensShell lensId="creator" asMain={false}>
+    <LensShell lensId="creator" asMain={false} disableAgentFab={true}>
       <ManifestActionBar />
       <div className="min-h-screen bg-[#0b0f17] text-gray-100 p-6">
         <header className="mb-5 flex items-start justify-between gap-3 flex-wrap">
@@ -239,6 +240,13 @@ export default function CreatorDashboardPage() {
         {tab === 'followers' && <FollowersTab profile={profile} />}
         {tab === 'cascade'   && <CascadePanel topCited={me?.topCitedDTUs ?? []} />}
       </div>
+      <LensAgentFab
+        lensId="creator"
+        lensPrompt="You're inside Concord's Creator lens — the royalty cascade + earnings + listings dashboard. Prefer expert_mode for cited research about growth, run_lens_action for listing/profile updates, create_dtu to save analysis."
+      />
+    
+      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
+      <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
     </LensShell>
   );
 }

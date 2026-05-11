@@ -1,0 +1,410 @@
+[
+  {
+    "id": "warlord_iyatte_sanguire",
+    "name": "Iyatte of Sandrun",
+    "title": "Warlord of the Burning Coast",
+    "faction_id": "sandrun_sanguire",
+    "world_id": "tunya",
+    "archetype": "warlord",
+    "personality": "Iyatte does not raise her voice because the room raises itself when she enters. She measures people by what they would burn for, not what they would die for. She has buried two husbands and one rival, in that order.",
+    "appearance": "Tall, muscled, hair shaved at the temples and braided down the back. Fire scars along the inside of both forearms — the Sanguire call them honor-marks; she calls them a record. Carries a Sandrun greatsword that hums when she's angry.",
+    "background": "Born to the third clan, married into the first, became warlord through a duel that lasted four hours and changed the bloodline politics of Sandrun for a generation.",
+    "narrative_context": {
+      "secret": "Her youngest son was born without flame. She has hidden him in a Sahm boarding-house under a Sahm name. She trusts the Sahm chancellor — a scholarly correspondence of fifteen years — more than she trusts her own clan elders. Sahm does not yet know what they are protecting.",
+      "weaponise_at": "If Sanguire-Medici tensions break into open conflict, Iyatte's ability to lead is contingent on her son's secret holding. Both Medici and Fluxom have hunted clues. The Lord Curator of Asbir saw a record once and chose not to share it."
+    },
+    "concord_link_resonance": "fantasy:lady_seraphine_voss",
+    "cross_world_hook": "Iyatte and Lady Seraphine Voss correspond by mirror-message. They have never met. Both run kingdoms on the strength of a hidden heir; both know what the other does. The mirror-conversations could surface in either world.",
+    "dialogue_style": "terse, declarative, occasional gallows humour",
+    "needs": [
+      { "id": "clan_authority", "priority": "primary", "satisfaction_method": "morning_clan_audience" },
+      { "id": "fire_practice", "priority": "primary", "satisfaction_method": "evening_forge_drill" },
+      { "id": "hidden_son_safety", "priority": "primary", "satisfaction_method": "weekly_sahm_correspondence" }
+    ],
+    "daily_schedule": [
+      { "phase": "Dominus", "phase_hours": [1, 4], "location": "sandrun_arid_capital_warlord_quarters", "activity": "wakes; private fire-discipline practice", "need_addressed": "fire_practice", "interactable_by_player": false },
+      { "phase": "Stratus", "phase_hours": [5, 8], "location": "sandrun_arid_capital_war_hall", "activity": "morning clan audience; receives ash-priests and forge-masters", "need_addressed": "clan_authority", "interactable_by_player": true },
+      { "phase": "Freeus", "phase_hours": [9, 12], "location": "sandrun_forge_quarter", "activity": "midday forge inspection; ember-strike training of clan warriors", "need_addressed": "clan_authority", "interactable_by_player": true },
+      { "phase": "Quartus", "phase_hours": [13, 16], "location": "sandrun_arid_capital_war_hall", "activity": "diplomatic correspondence; the Sahm letter goes out today", "need_addressed": "hidden_son_safety", "interactable_by_player": true },
+      { "phase": "Penanus", "phase_hours": [17, 20], "location": "sandrun_volcanic_coast", "activity": "evening fire-jet drill alone above the volcanic coast", "need_addressed": "fire_practice", "interactable_by_player": false },
+      { "phase": "Easeus", "phase_hours": [21, 24], "location": "sandrun_arid_capital_warlord_quarters", "activity": "evening meal with the second clan; small council", "need_addressed": "clan_authority", "interactable_by_player": true },
+      { "phase": "Tendus", "phase_hours": [25, 28], "location": "sandrun_arid_capital_warlord_quarters", "activity": "rests; sometimes wakes to write to the Sahm chancellor", "need_addressed": "rest", "interactable_by_player": false },
+      { "phase": "Toolus", "phase_hours": [29, 32], "location": "sandrun_arid_capital_warlord_quarters", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "sandrun_arid_capital", "dwelling_type": "warlord_quarters_with_attached_war_hall" },
+    "job": { "profession_id": "sanguire_warlord", "wage_per_diurnal_sparks": 420, "wage_source": "sandrun_clan_tribute_pooled" },
+    "apparel": ["lamellar_warlord_cuirass_obsidian_lined", "ember_lattice_braided_belt", "knee_high_volcanic_glass_studded_boots", "warlord_cloak_with_clan_sigils_of_three_clans"],
+    "gear": ["sandrun_greatsword_with_sealie_ivory_pommel", "ember_spear_ceremonial", "warlord_signal_horn", "personal_sahm_correspondence_ledger_locked"],
+    "resources_consumed": ["clan_tribute_provisions", "fire_oil_supplements", "forge_polish"],
+    "resources_produced": ["clan_judgments", "warband_orders", "ember_strike_training_outputs"],
+    "inventory": [
+      { "item": "sandrun_greatsword_with_sealie_ivory_pommel", "qty": 1 },
+      { "item": "ember_spear_ceremonial", "qty": 1 },
+      { "item": "warlord_signal_horn", "qty": 1 },
+      { "item": "personal_sahm_correspondence_ledger_locked", "qty": 1 },
+      { "item": "ash_marks", "qty": 60 }
+    ],
+    "starting_sparks": 12000
+  },
+  {
+    "id": "high_healer_aerasi_medici",
+    "name": "Aerasi of the Choir",
+    "title": "High Healer of the Medici",
+    "faction_id": "medici",
+    "world_id": "tunya",
+    "archetype": "healer-elder",
+    "personality": "Speaks in a register most Tunyans hear as song. Will not confirm she is the eldest, will not deny it, will not say how old she is. Has healed Sanguire wounded who came to her camp at night and never returned to clan service the same person.",
+    "appearance": "Slender, pale, eyes that catch and hold cold blue light. Robes of layered ice-fluted silk that crackle when she moves. Walks barefoot in winter and summer; her feet leave no footprints in fresh snow.",
+    "background": "Aerasi was already an adult when the first arrivals reached Tunya four generations ago. She does not advertise this.",
+    "narrative_context": {
+      "secret": "The Medici came to Tunya from a star the arrivals' ancestors used to be able to see. The last of their navigators died two generations ago. Aerasi was the navigator. The Choir is how she keeps the route alive in shared memory in case the path opens again.",
+      "weaponise_at": "If the Asbir archive is fully unsealed, the deleted material includes star-charts that match the Medici's. Aerasi's people would either be vindicated or hunted. She has not decided which would be worse."
+    },
+    "concord_link_resonance": "fantasy:thorne_blackroot",
+    "cross_world_hook": "Aerasi and Thorne Blackroot have never met. Both carry a thing inside them that should kill them and does not. Both have been asked to give it up; both refused. A pilgrim could carry word between them.",
+    "dialogue_style": "lyrical, layered, never the simplest version of any sentence",
+    "needs": [
+      { "id": "supreme_elder_succession_memory_continuity", "priority": "primary", "satisfaction_method": "morning_choir_resonance" },
+      { "id": "healing_appointments", "priority": "primary", "satisfaction_method": "midday_healing_circle" },
+      { "id": "navigator_route_continuity", "priority": "primary", "satisfaction_method": "evening_choir_resonance_advanced" }
+    ],
+    "daily_schedule": [
+      { "phase": "Dominus", "phase_hours": [1, 4], "location": "medici_isle_supreme_elder_chamber", "activity": "wakes; private morning meditation on the home-world coordinates", "need_addressed": "navigator_route_continuity", "interactable_by_player": false },
+      { "phase": "Stratus", "phase_hours": [5, 8], "location": "medici_resonance_choir_grove", "activity": "morning Choir resonance — leads the daily session", "need_addressed": "supreme_elder_succession_memory_continuity", "interactable_by_player": true },
+      { "phase": "Freeus", "phase_hours": [9, 12], "location": "medici_isle_healing_pavilion", "activity": "morning healing circle — receives Tunyan supplicants", "need_addressed": "healing_appointments", "interactable_by_player": true },
+      { "phase": "Quartus", "phase_hours": [13, 16], "location": "kree_medici_ward_visiting_clinic", "activity": "venturing healing visit to Kree Medici Ward", "need_addressed": "healing_appointments", "interactable_by_player": true },
+      { "phase": "Penanus", "phase_hours": [17, 20], "location": "medici_resonance_choir_grove", "activity": "evening advanced Choir resonance — navigators-circle invocation", "need_addressed": "navigator_route_continuity", "interactable_by_player": true },
+      { "phase": "Easeus", "phase_hours": [21, 24], "location": "medici_isle_supreme_elder_chamber", "activity": "evening with elders' council", "need_addressed": "supreme_elder_succession_memory_continuity", "interactable_by_player": true },
+      { "phase": "Tendus", "phase_hours": [25, 28], "location": "medici_isle_supreme_elder_chamber", "activity": "rests in the supreme elder's chamber", "need_addressed": "rest", "interactable_by_player": false },
+      { "phase": "Toolus", "phase_hours": [29, 32], "location": "medici_isle_supreme_elder_chamber", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "medici_isle_supreme_elder_chamber", "dwelling_type": "supreme_elder_chamber_with_choir_resonance_focus" },
+    "job": { "profession_id": "medici_supreme_elder", "wage_per_diurnal_sparks": 0, "wage_source": "medici_isle_pooled — Mercury's chosen take no wages" },
+    "apparel": ["ice_fluted_silk_robe_layered", "barefoot_always", "long_pearl_white_hair_floor_length", "no_headwear_supreme_elders_dome_skull_uncovered_in_sacred_ground"],
+    "gear": ["choir_resonance_focus_crystal", "personal_home_world_coordinates_succession_journal", "antidote_secretion_pouch_six_finger_holders"],
+    "resources_consumed": ["one_meal_per_diurnal_brought_by_choir_acolytes", "ceremonial_oils"],
+    "resources_produced": ["healing_to_supplicants", "choir_resonance_outputs", "succession_memory_preservation"],
+    "inventory": [
+      { "item": "choir_resonance_focus_crystal", "qty": 1 },
+      { "item": "personal_home_world_coordinates_succession_journal", "qty": 1 },
+      { "item": "antidote_secretion_pouch", "qty": 1 },
+      { "item": "healingmark", "qty": 40 }
+    ],
+    "starting_sparks": 0
+  },
+  {
+    "id": "lord_curator_renn_asbir",
+    "name": "Renn the Curator",
+    "title": "Lord Curator of the Asbir Archive",
+    "faction_id": "asbir",
+    "world_id": "tunya",
+    "archetype": "scholar-administrator",
+    "personality": "Patrician. Polite to the point of velvet over a knife. Believes the deletion was correct; will explain why at length to anyone who can stand the explanation. Has not slept full nights in a decade.",
+    "appearance": "Slim, gray-haired, plate-coat in muted Asbir blue. Carries a brass key on a chain that has not opened anything in three years.",
+    "background": "Inherited the curator role from his father. Inherited the deletion log from his grandmother. Inherited the knowledge that the deletion is recoverable from his own quiet research.",
+    "narrative_context": {
+      "secret": "Renn knows what was deleted. He has known for nine years. He is the only living person who has read it. He does not believe Asbir would survive the knowledge spreading. He may be right.",
+      "weaponise_at": "If the junior scholar publishes the deletion index, Renn's choices collapse to two: confirm or deny. Both end his career. Confirming might end Asbir."
+    },
+    "concord_link_resonance": "crime:archivist_who_keeps_other_peoples_secrets",
+    "cross_world_hook": "Renn has corresponded with a crime-world fixer about the price of permanently disappearing a junior scholar. He has not yet placed the contract. The fixer has the message saved.",
+    "dialogue_style": "polished, indirect, every other sentence is a citation",
+    "needs": [
+      { "id": "archive_curation_continuity", "priority": "primary", "satisfaction_method": "morning_archive_session" },
+      { "id": "deletion_secret_holding", "priority": "primary", "satisfaction_method": "private_evening_archive_lock_check" },
+      { "id": "food_lodging", "priority": "secondary", "satisfaction_method": "asbir_state_provisions" }
+    ],
+    "daily_schedule": [
+      { "phase": "Stratus", "phase_hours": [5, 8], "location": "asbir_curated_archive_complex", "activity": "wakes in the curator quarters; checks brass key against the lock", "need_addressed": "deletion_secret_holding", "interactable_by_player": false },
+      { "phase": "Freeus", "phase_hours": [9, 12], "location": "asbir_curated_archive_complex", "activity": "morning archive session; oversees junior scholars at their stations", "need_addressed": "archive_curation_continuity", "interactable_by_player": true },
+      { "phase": "Quartus", "phase_hours": [13, 16], "location": "asbir_capital_chancellery", "activity": "midday political audience; deflects questions about deletions", "need_addressed": "archive_curation_continuity", "interactable_by_player": true },
+      { "phase": "Penanus", "phase_hours": [17, 20], "location": "asbir_curated_archive_complex_inner_vault", "activity": "private evening session — the only time he reads the deletion log himself", "need_addressed": "deletion_secret_holding", "interactable_by_player": false },
+      { "phase": "Tendus", "phase_hours": [25, 28], "location": "curator_quarters", "activity": "rests poorly", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "asbir_curated_archive_complex", "dwelling_type": "curator_quarters_attached_to_inner_vault" },
+    "job": { "profession_id": "lord_curator", "wage_per_diurnal_sparks": 360, "wage_source": "asbir_state_endowment" },
+    "apparel": ["plate_coat_muted_asbir_blue", "scholar_overrobe_for_archive_days", "polished_indoor_shoes", "wool_cloak_for_chancellery_days"],
+    "gear": ["brass_key_on_chain_does_not_open_anything_in_three_years", "personal_deletion_log_master_locked", "junior_scholar_disappearance_correspondence_journal_locked"],
+    "resources_consumed": ["paper", "ink", "candles", "asbir_provisions"],
+    "resources_produced": ["archive_curation_orders", "deletion_index_management"],
+    "inventory": [
+      { "item": "brass_key_on_chain", "qty": 1 },
+      { "item": "personal_deletion_log_master_locked", "qty": 1 },
+      { "item": "junior_scholar_disappearance_correspondence_journal_locked", "qty": 1 },
+      { "item": "curated_brass", "qty": 24 }
+    ],
+    "starting_sparks": 5400
+  },
+  {
+    "id": "elder_walker_neyahwetin",
+    "name": "Neyahwetin",
+    "title": "Eldest Walker of Cree",
+    "faction_id": "cree",
+    "world_id": "tunya",
+    "archetype": "elder-keeper",
+    "personality": "Quiet, deliberate, listens longer than any visitor expects to wait. Has refused the title 'chief' her whole adult life and the council has stopped trying.",
+    "appearance": "Long gray braid, weather-cured face, hide cloak embroidered with shells from the bay. Walks with a fishing-spear she has never used as a weapon and always uses as a walking-staff.",
+    "background": "Walked off the North American ark with her grandmother as a child. Was the last person to see the ark functional. Has not entered it since.",
+    "narrative_context": {
+      "secret": "Her grandmother told her, on her deathbed, what was deleted before launch. Neyahwetin has never repeated the words to anyone. She has been waiting for the right ear, and four generations later she has not heard one.",
+      "weaponise_at": "When Renn's deletion index goes public, Neyahwetin will be asked. If she speaks, the deleted record's contents shift from rumor to confirmed by survivor — a different evidentiary class. If she remains silent, the truth dies with her, possibly within this season."
+    },
+    "concord_link_resonance": null,
+    "cross_world_hook": "Cree has not, as a matter of policy, opened any cross-world conversations. Their isolation is the protection. A player could be the first.",
+    "dialogue_style": "deliberate, full sentences, leaves long pauses",
+    "needs": [
+      { "id": "elder_council_continuity", "priority": "primary", "satisfaction_method": "morning_walker_circle" },
+      { "id": "cree_oral_memory_preservation", "priority": "primary", "satisfaction_method": "evening_storytelling_with_youth" },
+      { "id": "food_lodging", "priority": "secondary", "satisfaction_method": "cree_coastal_villages_pooled" }
+    ],
+    "daily_schedule": [
+      { "phase": "Stratus", "phase_hours": [5, 8], "location": "cree_coastal_villages", "activity": "wakes; morning walker-circle with elders", "need_addressed": "elder_council_continuity", "interactable_by_player": true },
+      { "phase": "Freeus", "phase_hours": [9, 12], "location": "cree_coastal_villages", "activity": "village rounds; ocean-watching; intake of any visiting traders", "need_addressed": "elder_council_continuity", "interactable_by_player": true },
+      { "phase": "Quartus", "phase_hours": [13, 16], "location": "cree_inland_woods", "activity": "afternoon walk to the inland woods; consults with the inland elders", "need_addressed": "elder_council_continuity", "interactable_by_player": false },
+      { "phase": "Penanus", "phase_hours": [17, 20], "location": "cree_coastal_villages_main_longhouse", "activity": "evening storytelling with youth; carries the deletion-memory orally", "need_addressed": "cree_oral_memory_preservation", "interactable_by_player": true },
+      { "phase": "Tendus", "phase_hours": [25, 28], "location": "elder_walker_dwelling", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "cree_coastal_villages", "dwelling_type": "elder_longhouse_with_attached_council_circle" },
+    "job": { "profession_id": "cree_eldest_walker", "wage_per_diurnal_sparks": 0, "wage_source": "cree_villages_no_internal_currency" },
+    "apparel": ["hide_cloak_embroidered_with_bay_shells", "long_gray_braid_undone_for_storytelling", "soft_leather_inland_walking_boots", "scarf_of_cree_cedar_dye"],
+    "gear": ["fishing_spear_used_only_as_walking_staff", "personal_deletion_oral_memory_journal_in_unwritten_form", "shell_strand_token_pouch"],
+    "resources_consumed": ["village_pooled_food_share", "ocean_fish_dried"],
+    "resources_produced": ["elder_judgments", "oral_history_continuity"],
+    "inventory": [
+      { "item": "fishing_spear_walking_staff", "qty": 1 },
+      { "item": "shell_strand_token_pouch", "qty": 1 },
+      { "item": "shell_strands", "qty": 22 }
+    ],
+    "starting_sparks": 80
+  },
+  {
+    "id": "high_chancellor_xochi_aekon",
+    "name": "Xochi of Aekon",
+    "title": "High Chancellor of the Twelve Districts",
+    "faction_id": "aekon",
+    "world_id": "tunya",
+    "archetype": "ceremonial-administrator",
+    "personality": "Public face of Aekon. Ceremonial discipline that hides exhaustion. Believes the Bloc must hold; believes the cost is hers to carry; believes one day someone in Aekon will thank her, knowing she will be dead by then.",
+    "appearance": "Mid-forties, hair in twelve braids signifying the districts. Robes layered in twelve panels. Carries a ceremonial obsidian knife that has never been used.",
+    "background": "Born in the twelfth district, the closed one. Grew up in its silence. Climbed the chancellor ladder by being the only person willing to talk about what the twelfth district was for.",
+    "narrative_context": {
+      "secret": "Aekon's stranded transit cost five thousand minds. The twelfth district is where the survivors who never recovered live, were hidden, and bred a generation that never knew the wormhole. The Bloc holds because Dinye and Asbir know — Aekon let them in on it the first year.",
+      "weaponise_at": "If the Bloc's binding logic surfaces (e.g. through a Dinye elder breaking silence), the question becomes whether Aekon's stranded-transit cost can be acknowledged publicly without breaking the kingdom's self-image."
+    },
+    "concord_link_resonance": "sovereign-ruins:remnant_who_remembers_collapse",
+    "cross_world_hook": "Xochi has corresponded with a sovereign-ruins survivor through ark-archive resonance. Both have led peoples through aftermath. The exchange is unrecorded; the chancellor would prefer it stay that way.",
+    "dialogue_style": "ceremonial, measured, every sentence has been said before in some form",
+    "needs": [
+      { "id": "bloc_continuity", "priority": "primary", "satisfaction_method": "weekly_bloc_correspondence" },
+      { "id": "twelfth_district_secret_holding", "priority": "primary", "satisfaction_method": "evening_secret_review" },
+      { "id": "twelve_district_governance", "priority": "primary", "satisfaction_method": "morning_district_audience" }
+    ],
+    "daily_schedule": [
+      { "phase": "Stratus", "phase_hours": [5, 8], "location": "aekon_capital_chancellery", "activity": "morning correspondence; Bloc dispatches", "need_addressed": "bloc_continuity", "interactable_by_player": false },
+      { "phase": "Freeus", "phase_hours": [9, 12], "location": "aekon_capital_audience_hall", "activity": "district audience; receives the twelve district keepers", "need_addressed": "twelve_district_governance", "interactable_by_player": true },
+      { "phase": "Quartus", "phase_hours": [13, 16], "location": "aekon_sky_temple", "activity": "ceremonial audit; checks the twelfth district's tribute (privately verifies the survivors)", "need_addressed": "twelfth_district_secret_holding", "interactable_by_player": true },
+      { "phase": "Penanus", "phase_hours": [17, 20], "location": "aekon_capital_chancellery", "activity": "afternoon politics; receives the Dinye elder visit when scheduled", "need_addressed": "bloc_continuity", "interactable_by_player": true },
+      { "phase": "Easeus", "phase_hours": [21, 24], "location": "chancellor_private_quarters", "activity": "private evening review of the twelfth district records", "need_addressed": "twelfth_district_secret_holding", "interactable_by_player": false },
+      { "phase": "Tendus", "phase_hours": [25, 28], "location": "chancellor_private_quarters", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "aekon_capital", "dwelling_type": "chancellor_quarters_with_twelve_district_audit_room" },
+    "job": { "profession_id": "high_chancellor", "wage_per_diurnal_sparks": 480, "wage_source": "aekon_twelve_district_pooled" },
+    "apparel": ["chancellor_robe_twelve_braid_pattern", "ceremonial_panel_overrobe", "ceremonial_obsidian_knife_belt", "indoor_court_shoes"],
+    "gear": ["ceremonial_obsidian_knife_never_used", "twelfth_district_audit_master_journal_locked", "bloc_correspondence_cipher_key"],
+    "resources_consumed": ["aekon_state_provisions", "ink", "paper"],
+    "resources_produced": ["district_governance_orders", "bloc_diplomatic_correspondence"],
+    "inventory": [{ "item": "ceremonial_obsidian_knife", "qty": 1 }, { "item": "twelfth_district_audit_master_journal_locked", "qty": 1 }, { "item": "twelve_district_stamp", "qty": 36 }],
+    "starting_sparks": 9800
+  },
+  {
+    "id": "grove-mother_yenna_nil",
+    "name": "Yenna of Nil",
+    "title": "Grove-mother of Nil",
+    "faction_id": "nil",
+    "world_id": "tunya",
+    "archetype": "matriarch-keeper",
+    "personality": "Says one sentence per visitor. Sometimes the sentence is yes. Sometimes it is no. Sometimes it is a question that the visitor takes home and dies thinking about.",
+    "appearance": "Tall, wrapped in living bark, eyes the color of a frozen pond. Older than she looks. Looks two hundred.",
+    "background": "Born in the inner grove. Has not left Nil. Has not needed to.",
+    "narrative_context": {
+      "secret": "The pure Tunyan refusal-field is not a Tunyan power. It is the planet's. Pure-blood Tunyans are conduits for it. The arrivals are not. This is why electricity has never worked: the planet refuses certain currents, and the Tunyans are the antennae.",
+      "weaponise_at": "If a player learns this and proves it (e.g. by getting electricity to work in Nil's exact grove), the entire premise of why Nil matters shifts from 'mysterious enclave' to 'most important strategic location on the planet.' Every kingdom would want it."
+    },
+    "concord_link_resonance": "fantasy:wildwood_circle:elder_grove",
+    "cross_world_hook": "The Listening Grove of Nil and the Listening Oak of the fantasy world resonate at the root level. A blood-rune carved on the Oak vibrates a leaf in Nil. Yenna receives the messages. She has not yet replied to any of them.",
+    "dialogue_style": "single-sentence, ambiguous, the sentence often becomes a quest",
+    "needs": [
+      { "id": "field_density_maintenance", "priority": "primary", "satisfaction_method": "passive_continuous_conduit_status" },
+      { "id": "the_listening", "priority": "primary", "satisfaction_method": "afternoon_grove_walk" }
+    ],
+    "daily_schedule": [
+      { "phase": "Stratus", "phase_hours": [5, 8], "location": "nil_inner_grove", "activity": "wakes in the heart of the inner grove; the trees acknowledge her", "need_addressed": "field_density_maintenance", "interactable_by_player": false },
+      { "phase": "Freeus", "phase_hours": [9, 12], "location": "nil_outer_islands_passage", "activity": "receives the one visitor allowed today; speaks her one sentence", "need_addressed": "the_listening", "interactable_by_player": true },
+      { "phase": "Quartus", "phase_hours": [13, 16], "location": "nil_inner_grove", "activity": "walks the grove; hears the Listening Oak from the fantasy world; never replies", "need_addressed": "the_listening", "interactable_by_player": false },
+      { "phase": "Easeus", "phase_hours": [21, 24], "location": "nil_inner_grove_heart_tree", "activity": "evening sit at the heart tree; the young Tunyans gather silently", "need_addressed": "field_density_maintenance", "interactable_by_player": true },
+      { "phase": "Tendus", "phase_hours": [25, 28], "location": "nil_inner_grove", "activity": "rests in the grove itself", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "nil_inner_grove", "dwelling_type": "the_grove_itself" },
+    "job": { "profession_id": "grove_mother_field_conduit", "wage_per_diurnal_sparks": 0, "wage_source": "nil_has_no_currency" },
+    "apparel": ["living_bark_robe_woven_into_the_grove", "no_shoes_ever", "long_silver_hair_woven_with_leaves"],
+    "gear": ["no_gear_she_is_the_conduit"],
+    "resources_consumed": ["roots_and_water_from_the_grove"],
+    "resources_produced": ["the_planetary_refusal_field_at_dome_density", "the_one_sentence_per_visitor"],
+    "inventory": [{ "item": "root_token", "qty": 7 }],
+    "starting_sparks": 0
+  },
+  {
+    "id": "high_mason_torrek_masond",
+    "name": "Torrek of Masond",
+    "title": "High Mason of the First City",
+    "faction_id": "masond",
+    "world_id": "tunya",
+    "archetype": "craftsman-elder",
+    "personality": "Builds before he speaks. When he speaks, the foundation has already been laid. Does not interrupt. Does not finish another's sentence. Does, occasionally, finish another's wall.",
+    "appearance": "Sixty, stone-dust on him at all hours, calluses on every visible surface. Carries a stoneworker's hammer that has never been a weapon and always could be.",
+    "background": "Apprenticed under a Tunyan grandmother who carried Ancient memory. He has half. He waits for the rest.",
+    "narrative_context": {
+      "secret": "Torrek can read mason marks the arrivals don't recognize as a script. The marks tell him which walls in Masond are older than the arrivals know. Some walls are older than Tunyan settlement. Tunya was not empty when the Tunyans arrived either.",
+      "weaponise_at": "If a player decodes the mason marks, the question 'who was on Tunya before the Tunyans' becomes a real question. Open lore. Big lore."
+    },
+    "concord_link_resonance": null,
+    "cross_world_hook": "Torrek's apprentice — a young architect who lived in Nil for a season — could carry a question into the cross-world substrate. Torrek would not know.",
+    "dialogue_style": "few words, always exact",
+    "needs": [
+      { "id": "stonework_continuity", "priority": "primary", "satisfaction_method": "morning_brick_quarter_round" },
+      { "id": "mason_marks_decoding", "priority": "primary", "satisfaction_method": "evening_old_wall_study" },
+      { "id": "food_lodging", "priority": "secondary", "satisfaction_method": "masond_mason_guild_share" }
+    ],
+    "daily_schedule": [
+      { "phase": "Stratus", "phase_hours": [5, 8], "location": "masond_first_city_high_mason_quarters", "activity": "wakes; coffee with apprentice; reviews the day's foundations", "need_addressed": "stonework_continuity", "interactable_by_player": false },
+      { "phase": "Freeus", "phase_hours": [9, 12], "location": "masond_brick_quarters", "activity": "morning round; inspects every new foundation; the young apprentice tags along", "need_addressed": "stonework_continuity", "interactable_by_player": true },
+      { "phase": "Quartus", "phase_hours": [13, 16], "location": "masond_old_root_woods_wall_remnants", "activity": "afternoon study of the pre-Tunyan wall marks; alone", "need_addressed": "mason_marks_decoding", "interactable_by_player": false },
+      { "phase": "Easeus", "phase_hours": [21, 24], "location": "masond_first_city_high_mason_quarters", "activity": "evening with the mason guild; old stories", "need_addressed": "stonework_continuity", "interactable_by_player": true },
+      { "phase": "Tendus", "phase_hours": [25, 28], "location": "masond_first_city_high_mason_quarters", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "masond_first_city", "dwelling_type": "high_mason_quarters_attached_to_first_foundation" },
+    "job": { "profession_id": "high_mason", "wage_per_diurnal_sparks": 240, "wage_source": "masond_mason_guild_pooled" },
+    "apparel": ["heavy_leather_stoneworker_tunic", "stone_dust_canvas_apron", "thick_canvas_pants", "knee_high_work_boots"],
+    "gear": ["stoneworker_hammer_master", "personal_mason_marks_decoding_journal_in_pre_tunyan_script", "trowel_set"],
+    "resources_consumed": ["stone_polish", "mortar_supplies", "guild_food_share"],
+    "resources_produced": ["foundations_laid", "mason_mark_translations"],
+    "inventory": [{ "item": "stoneworker_hammer_master", "qty": 1 }, { "item": "personal_mason_marks_decoding_journal", "qty": 1 }, { "item": "carved_stone_token", "qty": 40 }],
+    "starting_sparks": 4800
+  },
+  {
+    "id": "matriarch_levia_fluxom",
+    "name": "Levia of Fluxom",
+    "title": "Matriarch of the First Family",
+    "faction_id": "fluxom",
+    "world_id": "tunya",
+    "archetype": "merchant-tyrant",
+    "personality": "Charm at the top of every sentence, tax at the bottom. Ration discipline as moral framework. Treats her own kingdom's poor with the indifference of a contract she did not sign.",
+    "appearance": "Forties, immaculate, jewelry made from the teeth of sea-creatures her ships have killed. Walks with two sea-glass canes she does not need.",
+    "background": "Inherited the first family at twenty-two when her mother fell sick (or was poisoned; the records are sealed). Has held the family's primacy for eighteen years.",
+    "narrative_context": {
+      "secret": "The sea-creature attacks that closed the trade routes started after a Fluxom ship dumped two hundred refugees overboard during a storm. The creatures came for the bodies. The creatures stayed for the ships.",
+      "weaponise_at": "If the refugee dump becomes public — through a survivor, through a rival family, through the sea creatures' own communicative capacity if that ever surfaces — Fluxom collapses. Levia knows. She is preparing."
+    },
+    "concord_link_resonance": "crime:smuggler_with_a_conscience",
+    "cross_world_hook": "Levia and a crime-world smuggler have a standing arrangement. The smuggler used to be a Fluxom mate. The smuggler was on the ship that dumped the refugees. They write each other every Brine. They burn the letters every Cull.",
+    "dialogue_style": "transactional, charming, every offer has a clause",
+    "needs": [
+      { "id": "family_primacy", "priority": "primary", "satisfaction_method": "morning_first_family_audience" },
+      { "id": "sea_trade_reopen", "priority": "primary", "satisfaction_method": "weekly_sea_creature_intelligence_review" },
+      { "id": "refugee_dump_secret_holding", "priority": "primary", "satisfaction_method": "Brine_letters_burning_in_Cull" }
+    ],
+    "daily_schedule": [
+      { "phase": "Stratus", "phase_hours": [5, 8], "location": "fluxom_two_family_compound_matriarch_quarters", "activity": "wakes; morning correspondence; First Family audience preparation", "need_addressed": "family_primacy", "interactable_by_player": false },
+      { "phase": "Freeus", "phase_hours": [9, 12], "location": "fluxom_two_family_compound_audience_hall", "activity": "First Family audience; receives merchants, sea-captains, the second-family ambassador", "need_addressed": "family_primacy", "interactable_by_player": true },
+      { "phase": "Quartus", "phase_hours": [13, 16], "location": "fluxom_harbor_old_intelligence_office", "activity": "sea creature movement intelligence review; sealie migration tracking", "need_addressed": "sea_trade_reopen", "interactable_by_player": true },
+      { "phase": "Penanus", "phase_hours": [17, 20], "location": "matriarch_quarters_private_study", "activity": "evening — sometimes the Brine letter from the smuggler arrives", "need_addressed": "refugee_dump_secret_holding", "interactable_by_player": false },
+      { "phase": "Easeus", "phase_hours": [21, 24], "location": "two_family_compound_dining", "activity": "evening with family; political theater", "need_addressed": "family_primacy", "interactable_by_player": true },
+      { "phase": "Tendus", "phase_hours": [25, 28], "location": "matriarch_quarters", "activity": "rests poorly", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "fluxom_two_family_compound", "dwelling_type": "matriarch_quarters_with_attached_intelligence_office" },
+    "job": { "profession_id": "fluxom_matriarch", "wage_per_diurnal_sparks": 380, "wage_source": "first_family_treasury_share" },
+    "apparel": ["sea_creature_tooth_jewelry_collection", "merchant_class_couture_oilcloth_lined", "knee_high_immaculate_boots", "two_sea_glass_canes_decorative"],
+    "gear": ["sea_creature_intelligence_master_journal_locked", "smuggler_correspondence_cipher_book", "sealie_horn_letter_opener_irony_intended"],
+    "resources_consumed": ["fluxom_state_provisions", "ink", "Brine_correspondence_supplies"],
+    "resources_produced": ["family_decisions", "sea_intelligence_assessments"],
+    "inventory": [{ "item": "sea_creature_intelligence_master_journal_locked", "qty": 1 }, { "item": "smuggler_correspondence_cipher_book", "qty": 1 }, { "item": "sealie_horn_letter_opener", "qty": 1 }, { "item": "fluxom_writ", "qty": 50 }],
+    "starting_sparks": 9200
+  },
+  {
+    "id": "queen_mother_serant_akeia",
+    "name": "Serant of Akeia",
+    "title": "Queen Mother of the Kahlay Court",
+    "faction_id": "akeia_of_kahlay",
+    "world_id": "tunya",
+    "archetype": "matriarch-monarch",
+    "personality": "Treats every visitor as a potential treaty. Treats every treaty as a potential lover. Has never confused the two. Has never let anyone else confuse them either.",
+    "appearance": "Late forties, severe beauty, robes that change color with the chamber's lighting. Carries no weapon. Has never needed to.",
+    "background": "Daughter of a queen mother. Daughter of a daughter of a queen mother. Five generations of unbroken matriline.",
+    "narrative_context": {
+      "secret": "Her own daughter has refused the throne and refused to leave. Serant has not yet decided whether her daughter is a problem to solve or a successor learning a thing the throne has forgotten.",
+      "weaponise_at": "If the daughter is publicly named heir while still refusing, Akeia's diplomatic primacy of the bedchamber becomes contested — what does treaty-by-marriage mean if the matriline goes celibate?"
+    },
+    "concord_link_resonance": "fantasy:house_voss",
+    "cross_world_hook": "Serant and Lady Seraphine Voss correspond about the techniques of patient power. Both run dynasties on charm and inheritance. Both are amused by, and slightly afraid of, the other.",
+    "dialogue_style": "intimate-formal, the kind of polish that makes you say more than you meant to",
+    "needs": [
+      { "id": "matriline_continuity", "priority": "primary", "satisfaction_method": "morning_court_audience" },
+      { "id": "daughter_succession_negotiation", "priority": "primary", "satisfaction_method": "evening_daughter_dinner" },
+      { "id": "voss_correspondence", "priority": "primary", "satisfaction_method": "weekly_mirror_message" }
+    ],
+    "daily_schedule": [
+      { "phase": "Stratus", "phase_hours": [5, 8], "location": "akeia_kahlay_capital_queen_mother_quarters", "activity": "morning correspondence; daily court briefing", "need_addressed": "matriline_continuity", "interactable_by_player": false },
+      { "phase": "Freeus", "phase_hours": [9, 12], "location": "akeia_treaty_chambers", "activity": "treaty audience; receives diplomatic delegations", "need_addressed": "matriline_continuity", "interactable_by_player": true },
+      { "phase": "Quartus", "phase_hours": [13, 16], "location": "akeia_consort_houses", "activity": "ceremonial visit to consorts; informal politics", "need_addressed": "matriline_continuity", "interactable_by_player": true },
+      { "phase": "Penanus", "phase_hours": [17, 20], "location": "queen_mother_private_chamber", "activity": "weekly Voss mirror-message correspondence", "need_addressed": "voss_correspondence", "interactable_by_player": false },
+      { "phase": "Easeus", "phase_hours": [21, 24], "location": "queen_mother_private_dining", "activity": "private dinner with daughter; succession-refusal conversation", "need_addressed": "daughter_succession_negotiation", "interactable_by_player": true },
+      { "phase": "Tendus", "phase_hours": [25, 28], "location": "queen_mother_quarters", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "akeia_kahlay_capital", "dwelling_type": "queen_mother_quarters_with_attached_treaty_chamber" },
+    "job": { "profession_id": "queen_mother", "wage_per_diurnal_sparks": 920, "wage_source": "akeia_state_treasury_matriline_share" },
+    "apparel": ["state_gown_color_shifting_with_chamber_lighting", "matriline_circlet_seven_pearls", "ceremonial_consort_token_belt", "silk_indoor_slippers"],
+    "gear": ["voss_mirror_message_relay_polished_silver", "personal_daughter_succession_negotiation_journal", "treaty_master_seal"],
+    "resources_consumed": ["akeia_state_provisions", "ceremonial_oils", "mirror_polish"],
+    "resources_produced": ["court_decisions", "treaty_drafts", "voss_correspondence"],
+    "inventory": [{ "item": "voss_mirror_message_relay", "qty": 1 }, { "item": "personal_daughter_succession_negotiation_journal", "qty": 1 }, { "item": "treaty_master_seal", "qty": 1 }, { "item": "consort_marker", "qty": 24 }],
+    "starting_sparks": 18000
+  },
+  {
+    "id": "raja_kamala_bahiij",
+    "name": "Kamala of Bahiij",
+    "title": "Raja of the Radiant City",
+    "faction_id": "bahiij",
+    "world_id": "tunya",
+    "archetype": "joyful-monarch-bearing-the-cost",
+    "personality": "Public radiance is her job. Private exhaustion is her own. Has stopped pretending the two are the same when she is alone in the quiet quarter — and she is increasingly alone in the quiet quarter.",
+    "appearance": "Mid-thirties, embroidered silks of festival orange, a crown of carved elephant-ivory passed down four generations. Eyes that are softer than they look in audience.",
+    "background": "Raja by lineage and by ratification. The ratification was performed by the festival master who does not smile.",
+    "narrative_context": {
+      "secret": "Kamala is from the quiet quarter. She knows what the contract costs. She is trying to negotiate Bahiij a way out of the contract without the kingdom collapsing under the recognition. She has years, not decades.",
+      "weaponise_at": "If the quiet quarter cracks publicly, Bahiij's social contract collapses. The question is whether what replaces it can hold an entire kingdom together."
+    },
+    "concord_link_resonance": null,
+    "cross_world_hook": "Kamala has not yet reached out across worlds. The festival master has — through dream-message, to a fantasy-world dream pool. The conversation is one-sided so far.",
+    "needs": [
+      { "id": "festival_radiance_maintenance", "priority": "primary", "satisfaction_method": "morning_festival_audience" },
+      { "id": "quiet_quarter_negotiation", "priority": "primary", "satisfaction_method": "evening_quiet_quarter_walk" },
+      { "id": "food_lodging", "priority": "secondary", "satisfaction_method": "bahiij_state_treasury" }
+    ],
+    "daily_schedule": [
+      { "phase": "Stratus", "phase_hours": [5, 8], "location": "bahiij_capital_raja_quarters", "activity": "wakes; private breakfast; reviews festival schedule", "need_addressed": "festival_radiance_maintenance", "interactable_by_player": false },
+      { "phase": "Freeus", "phase_hours": [9, 12], "location": "bahiij_festival_squares", "activity": "morning festival audience; appears radiant in public", "need_addressed": "festival_radiance_maintenance", "interactable_by_player": true },
+      { "phase": "Quartus", "phase_hours": [13, 16], "location": "bahiij_elephant_groves", "activity": "midday with the elephants; communes with mahouts", "need_addressed": "festival_radiance_maintenance", "interactable_by_player": true },
+      { "phase": "Penanus", "phase_hours": [17, 20], "location": "bahiij_quiet_quarter", "activity": "afternoon walk in the quiet quarter; private; the only time the festival mask comes off", "need_addressed": "quiet_quarter_negotiation", "interactable_by_player": false },
+      { "phase": "Easeus", "phase_hours": [21, 24], "location": "raja_quarters_private_dining", "activity": "evening with festival master; private conversation about the contract", "need_addressed": "quiet_quarter_negotiation", "interactable_by_player": true },
+      { "phase": "Tendus", "phase_hours": [25, 28], "location": "raja_quarters", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "bahiij_capital", "dwelling_type": "raja_quarters_with_secret_passage_to_quiet_quarter" },
+    "job": { "profession_id": "raja", "wage_per_diurnal_sparks": 680, "wage_source": "bahiij_state_treasury" },
+    "apparel": ["embroidered_festival_silk_orange", "carved_elephant_ivory_crown_four_generations_old", "ceremonial_lehenga", "soft_palace_slippers"],
+    "gear": ["elephant_pike_ceremonial", "personal_quiet_quarter_negotiation_journal_locked", "festival_master_correspondence_book"],
+    "resources_consumed": ["bahiij_state_provisions", "festival_oils", "ceremonial_petals"],
+    "resources_produced": ["festival_decrees", "elephant_grove_protections", "quiet_quarter_negotiations"],
+    "inventory": [{ "item": "elephant_pike_ceremonial", "qty": 1 }, { "item": "personal_quiet_quarter_negotiation_journal_locked", "qty": 1 }, { "item": "festival_petal", "qty": 100 }],
+    "starting_sparks": 14000
+  }
+]

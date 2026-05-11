@@ -100,7 +100,25 @@
       "afternoon": "travel",
       "dusk": "work",
       "night": "work"
-    }
+    },
+    "needs": [
+      { "id": "job_completion", "priority": "primary", "satisfaction_method": "weekly_run" },
+      { "id": "anonymity", "priority": "primary", "satisfaction_method": "evening_safe_house_rotation" }
+    ],
+    "daily_schedule": [
+      { "phase": "morning", "phase_hours": [9, 12], "location": "safe_house_rotating", "activity": "wakes; reviews the week's contract", "need_addressed": "anonymity", "interactable_by_player": false },
+      { "phase": "afternoon", "phase_hours": [14, 19], "location": "varies_by_job", "activity": "field run; recon or strike", "need_addressed": "job_completion", "interactable_by_player": true },
+      { "phase": "evening", "phase_hours": [19, 23], "location": "safe_house_rotating", "activity": "evening rotation; debrief with cipher_marks", "need_addressed": "anonymity", "interactable_by_player": true },
+      { "phase": "night", "phase_hours": [23, 9], "location": "safe_house_rotating", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "rotating_three_safe_houses", "dwelling_type": "rotating_safe_house" },
+    "job": { "profession_id": "ghost_network_operative", "wage_per_diurnal_sparks": 220, "wage_source": "ghost_network_per_contract_share" },
+    "apparel": ["dark_civilian_clothes", "concealed_carry_belt", "soft_traction_boots", "winter_overcoat_with_concealed_pockets"],
+    "gear": ["concealed_pistol_glock_19", "personal_contract_journal_encrypted", "encrypted_burner_handheld", "lockpick_set"],
+    "resources_consumed": ["safe_house_rotation_supplies"],
+    "resources_produced": ["completed_contracts"],
+    "inventory": [{ "item": "concealed_pistol_glock_19", "qty": 1 }, { "item": "encrypted_burner_handheld", "qty": 1 }, { "item": "lockpick_set", "qty": 1 }, { "item": "ghost_network_chit", "qty": 14 }],
+    "starting_sparks": 2400
   },
   {
     "id": "cipher_marks",
@@ -173,7 +191,25 @@
       "afternoon": "travel",
       "dusk": "work",
       "night": "work"
-    }
+    },
+    "needs": [
+      { "id": "ghost_network_continuity", "priority": "primary", "satisfaction_method": "morning_contract_intake" },
+      { "id": "operative_safety", "priority": "primary", "satisfaction_method": "weekly_safe_house_audit" }
+    ],
+    "daily_schedule": [
+      { "phase": "morning", "phase_hours": [8, 12], "location": "ghost_network_dead_drop", "activity": "morning contract intake; processes encrypted requests", "need_addressed": "ghost_network_continuity", "interactable_by_player": false },
+      { "phase": "afternoon", "phase_hours": [14, 19], "location": "varies_by_handoff", "activity": "operative briefings; encrypted handoffs", "need_addressed": "ghost_network_continuity", "interactable_by_player": true },
+      { "phase": "evening", "phase_hours": [19, 23], "location": "cipher_safe_house", "activity": "evening — audits safe house rotations; reviews operative status", "need_addressed": "operative_safety", "interactable_by_player": true },
+      { "phase": "night", "phase_hours": [23, 8], "location": "cipher_safe_house", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "ghost_network_safe_house_one", "dwelling_type": "encrypted_safe_house" },
+    "job": { "profession_id": "ghost_network_lead", "wage_per_diurnal_sparks": 380, "wage_source": "ghost_network_lead_share" },
+    "apparel": ["dark_practical_clothes", "concealed_carry_under_jacket", "soft_shoes", "winter_overcoat"],
+    "gear": ["encrypted_handheld_master", "personal_contract_master_ledger_locked", "concealed_pistol_master_grade"],
+    "resources_consumed": ["safe_house_supplies", "encrypted_comms_credits"],
+    "resources_produced": ["contract_routing", "operative_safety_audits"],
+    "inventory": [{ "item": "encrypted_handheld_master", "qty": 1 }, { "item": "personal_contract_master_ledger_locked", "qty": 1 }, { "item": "concealed_pistol_master_grade", "qty": 1 }, { "item": "ghost_network_chit", "qty": 32 }],
+    "starting_sparks": 6400
   },
   {
     "id": "mama_delgado",
@@ -277,7 +313,27 @@
       "afternoon": "travel",
       "dusk": "work",
       "night": "work"
-    }
+    },
+    "needs": [
+      { "id": "iron_rose_continuity", "priority": "primary", "satisfaction_method": "morning_audience_with_lieutenants" },
+      { "id": "north_market_expansion", "priority": "primary", "satisfaction_method": "weekly_dom_pressure_review" },
+      { "id": "family_legacy", "priority": "primary", "satisfaction_method": "evening_family_dinner" }
+    ],
+    "daily_schedule": [
+      { "phase": "morning", "phase_hours": [8, 12], "location": "iron_rose_estate", "activity": "morning audience with lieutenants; reviews territory and contracts", "need_addressed": "iron_rose_continuity", "interactable_by_player": true },
+      { "phase": "midday", "phase_hours": [12, 15], "location": "iron_rose_estate_dining", "activity": "lunch with senior captains", "need_addressed": "iron_rose_continuity", "interactable_by_player": true },
+      { "phase": "afternoon", "phase_hours": [15, 19], "location": "varies", "activity": "neighborhood visits; Dom Reyes recruitment pressure; precinct meetings", "need_addressed": "north_market_expansion", "interactable_by_player": true },
+      { "phase": "evening", "phase_hours": [19, 22], "location": "iron_rose_estate", "activity": "family dinner; political theater", "need_addressed": "family_legacy", "interactable_by_player": true },
+      { "phase": "night", "phase_hours": [22, 8], "location": "iron_rose_estate_matriarch_quarters", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "iron_rose_estate", "dwelling_type": "matriarch_quarters_with_secure_council_chamber" },
+    "job": { "profession_id": "iron_rose_matriarch", "wage_per_diurnal_sparks": 2200, "wage_source": "syndicate_lead_share" },
+    "apparel": ["formal_dark_business_attire", "iron_rose_brooch_inherited", "polished_evening_shoes", "winter_fur_coat"],
+    "gear": ["personal_syndicate_master_ledger_locked", "concealed_pistol", "iron_rose_seal_master", "encrypted_handheld"],
+    "resources_consumed": ["syndicate_provisions", "ink"],
+    "resources_produced": ["syndicate_orders", "territory_expansion"],
+    "inventory": [{ "item": "personal_syndicate_master_ledger_locked", "qty": 1 }, { "item": "concealed_pistol", "qty": 1 }, { "item": "iron_rose_seal_master", "qty": 1 }, { "item": "iron_rose_token", "qty": 80 }],
+    "starting_sparks": 124000
   },
   {
     "id": "tomas_reyes",
@@ -356,7 +412,25 @@
       "afternoon": "travel",
       "dusk": "work",
       "night": "work"
-    }
+    },
+    "needs": [
+      { "id": "succession_readiness", "priority": "primary", "satisfaction_method": "weekly_mama_training" },
+      { "id": "operational_independence", "priority": "primary", "satisfaction_method": "monthly_solo_contract" }
+    ],
+    "daily_schedule": [
+      { "phase": "morning", "phase_hours": [9, 12], "location": "iron_rose_estate_heir_quarters", "activity": "morning training with Mama; protocol and politics", "need_addressed": "succession_readiness", "interactable_by_player": true },
+      { "phase": "afternoon", "phase_hours": [14, 19], "location": "varies", "activity": "field assignments; sometimes solo, sometimes shadowing a lieutenant", "need_addressed": "operational_independence", "interactable_by_player": true },
+      { "phase": "evening", "phase_hours": [19, 22], "location": "iron_rose_estate_dining", "activity": "family dinner; sometimes debriefs the day's work", "need_addressed": "succession_readiness", "interactable_by_player": true },
+      { "phase": "night", "phase_hours": [22, 9], "location": "iron_rose_estate_heir_quarters", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "iron_rose_estate", "dwelling_type": "heir_quarters_attached_to_matriarch_chamber" },
+    "job": { "profession_id": "iron_rose_heir", "wage_per_diurnal_sparks": 380, "wage_source": "syndicate_heir_stipend" },
+    "apparel": ["dark_business_attire", "iron_rose_heir_pin", "polished_dress_shoes", "winter_overcoat"],
+    "gear": ["concealed_pistol", "personal_succession_studies_journal", "iron_rose_heir_seal"],
+    "resources_consumed": ["syndicate_provisions"],
+    "resources_produced": ["assigned_field_work", "succession_progress"],
+    "inventory": [{ "item": "concealed_pistol", "qty": 1 }, { "item": "personal_succession_studies_journal", "qty": 1 }, { "item": "iron_rose_heir_seal", "qty": 1 }, { "item": "iron_rose_token", "qty": 28 }],
+    "starting_sparks": 18000
   },
   {
     "id": "walker_dock_run_renny",
@@ -396,6 +470,242 @@
       "afternoon": "travel",
       "dusk": "work",
       "night": "work"
-    }
+    },
+    "needs": [
+      { "id": "delivery_completion", "priority": "primary", "satisfaction_method": "dock_run_per_shift" },
+      { "id": "iron_rose_handler_relationship", "priority": "primary", "satisfaction_method": "evening_handler_check_in" }
+    ],
+    "daily_schedule": [
+      { "phase": "morning", "phase_hours": [7, 12], "location": "docks_loading_area", "activity": "morning dock run; carries packages between ships and the syndicate's warehouses", "need_addressed": "delivery_completion", "interactable_by_player": true },
+      { "phase": "afternoon", "phase_hours": [13, 19], "location": "varies", "activity": "afternoon runs; sometimes inter-borough deliveries", "need_addressed": "delivery_completion", "interactable_by_player": true },
+      { "phase": "evening", "phase_hours": [19, 22], "location": "iron_rose_dispatch_office", "activity": "evening check-in with handler; reports the day", "need_addressed": "iron_rose_handler_relationship", "interactable_by_player": true },
+      { "phase": "night", "phase_hours": [22, 7], "location": "rented_room_dockside", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "dockside_walkup", "dwelling_type": "rented_room_above_bar" },
+    "job": { "profession_id": "iron_rose_walker", "wage_per_diurnal_sparks": 120, "wage_source": "iron_rose_per_run_share" },
+    "apparel": ["dockworker_jacket", "thick_canvas_pants", "knee_high_dock_boots", "wool_cap"],
+    "gear": ["walking_staff_concealed_blade", "iron_rose_routing_token", "concealed_knife"],
+    "resources_consumed": ["dockside_food", "rented_room_rent"],
+    "resources_produced": ["delivered_dock_runs"],
+    "inventory": [{ "item": "walking_staff_concealed_blade", "qty": 1 }, { "item": "iron_rose_routing_token", "qty": 1 }, { "item": "concealed_knife", "qty": 1 }, { "item": "iron_rose_token", "qty": 8 }],
+    "starting_sparks": 640
+  },
+  {
+    "id": "captain_marquez_14th",
+    "world_id": "crime",
+    "name": "Captain Hector Marquez",
+    "title": "Captain of the 14th Precinct",
+    "archetype": "corrupt_administrator",
+    "faction_id": "crime_corrupt_precinct",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": true,
+    "level": 14,
+    "backstory": "Marquez has run the 14th for nine years. He came up clean and got dirty slowly — the first envelope was for his daughter's medical bills, and every envelope after has been an extension of that justification. He genuinely believes he's protecting his officers from a worse captain.",
+    "personality_traits": ["paternal toward his officers", "ruthless toward outsiders", "self-justifying", "tired"],
+    "speech_patterns": "Polite. Long pauses before consequential sentences.",
+    "narrative_context": { "secret": "The lieutenant talking to the federal agent is Marquez's own godson. Marquez knows. He has not yet decided whether the boy is brave or recruited." },
+    "needs": [
+      { "id": "precinct_control", "priority": "primary", "satisfaction_method": "morning_roll_call" },
+      { "id": "the_envelope_economy", "priority": "primary", "satisfaction_method": "weekly_iron_rose_pickup" },
+      { "id": "food_lodging", "priority": "secondary", "satisfaction_method": "captain_salary" }
+    ],
+    "daily_schedule": [
+      { "phase": "early_morning", "phase_hours": [6, 8], "location": "marquez_home", "activity": "wakes; coffee with wife; reviews precinct overnight summary", "need_addressed": "precinct_control", "interactable_by_player": false },
+      { "phase": "morning", "phase_hours": [8, 12], "location": "14th_precinct_house_captains_office", "activity": "morning roll call; closed-door conversations with the lieutenant", "need_addressed": "precinct_control", "interactable_by_player": true },
+      { "phase": "midday", "phase_hours": [12, 14], "location": "marquez_lunch_diner", "activity": "lunch at the same diner every day; meets the Iron Rose courier weekly", "need_addressed": "the_envelope_economy", "interactable_by_player": true },
+      { "phase": "afternoon", "phase_hours": [14, 18], "location": "14th_precinct_house_captains_office", "activity": "case management; Internal Affairs deflection paperwork", "need_addressed": "precinct_control", "interactable_by_player": true },
+      { "phase": "evening", "phase_hours": [18, 22], "location": "marquez_home", "activity": "dinner with family; doesn't talk about work", "need_addressed": "food_lodging", "interactable_by_player": false },
+      { "phase": "night", "phase_hours": [22, 6], "location": "marquez_home", "activity": "rests poorly", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "outer_borough_residential", "dwelling_type": "two-story_house_recently_paid_off" },
+    "job": { "profession_id": "police_captain", "wage_per_diurnal_sparks": 280, "wage_source": "city_payroll_plus_envelope_supplements" },
+    "apparel": ["captain_dress_uniform", "service_belt_with_holster", "polished_oxford_shoes", "wool_overcoat_for_winter_meets"],
+    "gear": ["service_pistol_glock_19", "captain_badge_master", "spare_envelope_courier_signal", "personal_journal_locked_at_home"],
+    "resources_consumed": ["coffee", "diner_lunches", "envelope_pickups"],
+    "resources_produced": ["precinct_orders", "envelope_distributions", "Internal_Affairs_deflections"],
+    "inventory": [
+      { "item": "service_pistol_glock_19", "qty": 1 },
+      { "item": "pistol_round_9mm", "qty": 17 },
+      { "item": "captain_badge_master", "qty": 1 },
+      { "item": "spare_envelope_courier_signal", "qty": 1 },
+      { "item": "badge_chit", "qty": 22 }
+    ],
+    "starting_sparks": 8400
+  },
+  {
+    "id": "accountant_iris_hexshore",
+    "world_id": "crime",
+    "name": "Iris Halverson",
+    "title": "Lead Accountant, Hexshore Holdings",
+    "archetype": "white_collar_operator",
+    "faction_id": "crime_white_collar_ring",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": true,
+    "level": 12,
+    "backstory": "Iris was a Big Four CPA before joining Hexshore eleven years ago. She built the shell-company architecture from scratch and has been refining it ever since. She believes her work is morally superior to violent crime — she takes from corporations who can absorb it.",
+    "personality_traits": ["polished", "methodical", "self-justifying", "private"],
+    "speech_patterns": "Corporate register; dryly funny in private.",
+    "narrative_context": { "secret": "Iris is the anonymous source feeding tips to Agent Navarro. She wants the Hexshore principal arrested without the firm collapsing — so she can take it over." },
+    "needs": [
+      { "id": "shell_company_hygiene", "priority": "primary", "satisfaction_method": "daily_ledger_review" },
+      { "id": "navarro_drip", "priority": "primary", "satisfaction_method": "weekly_anonymous_tip" },
+      { "id": "food_lodging", "priority": "secondary", "satisfaction_method": "executive_salary" }
+    ],
+    "daily_schedule": [
+      { "phase": "early_morning", "phase_hours": [5, 7], "location": "iris_residence", "activity": "wakes; private ledger review on personal laptop", "need_addressed": "navarro_drip", "interactable_by_player": false },
+      { "phase": "morning", "phase_hours": [7, 12], "location": "hexshore_holdings_office", "activity": "official Hexshore work; reconciliation across shells", "need_addressed": "shell_company_hygiene", "interactable_by_player": true },
+      { "phase": "midday", "phase_hours": [12, 14], "location": "hexshore_executive_dining", "activity": "midday meal with the principal", "need_addressed": "shell_company_hygiene", "interactable_by_player": true },
+      { "phase": "afternoon", "phase_hours": [14, 18], "location": "hexshore_holdings_office", "activity": "shell maneuvers; quietly shapes the next anonymous tip's content", "need_addressed": "navarro_drip", "interactable_by_player": true },
+      { "phase": "evening", "phase_hours": [18, 22], "location": "iris_residence", "activity": "writes the next anonymous tip; encrypted drop", "need_addressed": "navarro_drip", "interactable_by_player": false },
+      { "phase": "night", "phase_hours": [22, 5], "location": "iris_residence", "activity": "rests well", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "midtown_high_rise", "dwelling_type": "executive_condo_owned_by_a_shell" },
+    "job": { "profession_id": "lead_accountant", "wage_per_diurnal_sparks": 600, "wage_source": "hexshore_executive_salary" },
+    "apparel": ["tailored_charcoal_suit_3_pieces", "silk_blouse", "low_pump_oxfords", "winter_wool_coat"],
+    "gear": ["personal_encrypted_laptop", "shell_company_master_ledger_cipher_locked", "anonymous_drop_protocol_card", "small_concealed_pistol_in_purse"],
+    "resources_consumed": ["coffee", "executive_meals", "encrypted_communications"],
+    "resources_produced": ["clean_shell_books", "anonymous_navarro_tips"],
+    "inventory": [
+      { "item": "personal_encrypted_laptop", "qty": 1 },
+      { "item": "shell_company_master_ledger_cipher_locked", "qty": 1 },
+      { "item": "anonymous_drop_protocol_card", "qty": 4 },
+      { "item": "small_concealed_pistol", "qty": 1 },
+      { "item": "shell_token", "qty": 80 }
+    ],
+    "starting_sparks": 28000
+  },
+  {
+    "id": "agent_navarro_federal",
+    "world_id": "crime",
+    "name": "Special Agent Lucia Navarro",
+    "title": "Lead Agent, Federal Organized-Crime Task Force",
+    "archetype": "federal_agent_inquisitor",
+    "faction_id": "crime_federal_task_force",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": true,
+    "level": 16,
+    "backstory": "Navarro built the task force four years ago after RICO indictments in two other cities. She is methodical, principled, and has never been bought, though many have offered.",
+    "personality_traits": ["methodical", "polite", "incorruptible", "patient with her team"],
+    "speech_patterns": "Federal-procedural in interviews; warmly direct in private.",
+    "narrative_context": { "secret": "Navarro has identified Iris Halverson as her anonymous source. She has not arrested her. She is letting Iris build the case Iris wants to build." },
+    "needs": [
+      { "id": "RICO_case_progression", "priority": "primary", "satisfaction_method": "daily_evidence_review" },
+      { "id": "team_security", "priority": "primary", "satisfaction_method": "morning_security_briefing" },
+      { "id": "food_lodging", "priority": "secondary", "satisfaction_method": "federal_salary_modest" }
+    ],
+    "daily_schedule": [
+      { "phase": "early_morning", "phase_hours": [5, 7], "location": "navarro_residence_secure", "activity": "wakes; private review of overnight Iris tips", "need_addressed": "RICO_case_progression", "interactable_by_player": false },
+      { "phase": "morning", "phase_hours": [7, 12], "location": "federal_field_office_secure_floor", "activity": "morning briefing; case team meetings; subpoena prep", "need_addressed": "RICO_case_progression", "interactable_by_player": true },
+      { "phase": "midday", "phase_hours": [12, 14], "location": "federal_field_office_cafeteria", "activity": "lunch at desk; reads case files", "need_addressed": "RICO_case_progression", "interactable_by_player": true },
+      { "phase": "afternoon", "phase_hours": [14, 18], "location": "varies", "activity": "field interviews; surveillance reviews; informant management", "need_addressed": "RICO_case_progression", "interactable_by_player": true },
+      { "phase": "evening", "phase_hours": [18, 22], "location": "navarro_residence_secure", "activity": "evening run; dinner; case-file annotation", "need_addressed": "team_security", "interactable_by_player": false },
+      { "phase": "night", "phase_hours": [22, 5], "location": "navarro_residence_secure", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "midtown_secure_apartment_building", "dwelling_type": "secure_apartment_with_panic_room" },
+    "job": { "profession_id": "federal_agent_lead", "wage_per_diurnal_sparks": 380, "wage_source": "federal_payroll" },
+    "apparel": ["federal_field_jacket", "tactical_under-shirt", "dark_pants_function_first", "running_shoes_off_duty_dress_shoes_on_duty", "concealed_carry_holster_belt"],
+    "gear": ["service_pistol_sig_p229", "federal_badge", "case_file_unbreakable_cipher_journal", "encrypted_handheld", "subpoena_carry_kit"],
+    "resources_consumed": ["federal_meal_voucher", "ink", "encrypted_comms_minutes"],
+    "resources_produced": ["RICO_case_progression_reports", "subpoena_drafts", "informant_handler_logs"],
+    "inventory": [
+      { "item": "service_pistol_sig_p229", "qty": 1 },
+      { "item": "pistol_round_9mm", "qty": 24 },
+      { "item": "federal_badge", "qty": 1 },
+      { "item": "case_file_unbreakable_cipher_journal", "qty": 1 },
+      { "item": "encrypted_handheld", "qty": 1 },
+      { "item": "federal_writ", "qty": 18 }
+    ],
+    "starting_sparks": 6200
+  },
+  {
+    "id": "pi_lead_halloran",
+    "world_id": "crime",
+    "name": "Frank Halloran",
+    "title": "Lead PI, Halloran & Greer Investigations",
+    "archetype": "noir_pi_lead",
+    "faction_id": "crime_pi_agency",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": true,
+    "level": 13,
+    "backstory": "Halloran was a homicide detective at the 9th for fifteen years before he walked. He started the agency with a partner who was killed three years in. He has been the sole lead since. He has a daughter, twenty-three, in college.",
+    "personality_traits": ["principled", "weary", "observant", "warm with his daughter and no one else"],
+    "speech_patterns": "Noir dry. Replies in clauses.",
+    "narrative_context": { "secret": "Halloran's partner was killed by an Iron Rose hit. Halloran knows. He has been quietly building a personal file for fifteen years. He has not yet decided whether to give it to Navarro." },
+    "needs": [
+      { "id": "client_case_progression", "priority": "primary", "satisfaction_method": "daily_office_hours" },
+      { "id": "daughter_safety", "priority": "primary", "satisfaction_method": "evening_phone_check_in" },
+      { "id": "food_lodging", "priority": "secondary", "satisfaction_method": "case_billing" }
+    ],
+    "daily_schedule": [
+      { "phase": "early_morning", "phase_hours": [6, 8], "location": "halloran_residence_secure", "activity": "wakes; coffee; reviews overnight case notes", "need_addressed": "client_case_progression", "interactable_by_player": false },
+      { "phase": "morning", "phase_hours": [8, 12], "location": "halloran_greer_office", "activity": "office hours; client intake; case management", "need_addressed": "client_case_progression", "interactable_by_player": true },
+      { "phase": "midday", "phase_hours": [12, 14], "location": "halloran_lunch_diner", "activity": "lunch at the diner across from the precinct", "need_addressed": "food_lodging", "interactable_by_player": true },
+      { "phase": "afternoon", "phase_hours": [14, 19], "location": "varies", "activity": "field investigation; surveillance; interviews", "need_addressed": "client_case_progression", "interactable_by_player": true },
+      { "phase": "evening", "phase_hours": [19, 22], "location": "halloran_residence_secure", "activity": "evening phone call with daughter; case-file update", "need_addressed": "daughter_safety", "interactable_by_player": false },
+      { "phase": "night", "phase_hours": [22, 6], "location": "halloran_residence_secure", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "midtown_old_walkup", "dwelling_type": "secure_walkup_apartment_with_alarm" },
+    "job": { "profession_id": "lead_pi", "wage_per_diurnal_sparks": 200, "wage_source": "case_billing_irregular" },
+    "apparel": ["wool_trench_coat_lined", "old_charcoal_suit", "service_oxfords", "fedora_optional", "wool_scarf_winter"],
+    "gear": ["service_revolver_.38", "investigator_camera", "case_file_running_journal", "personal_iron_rose_evidence_journal_locked_at_office", "concealed_carry_holster"],
+    "resources_consumed": ["coffee", "diner_meals", "ink", "case_supplies"],
+    "resources_produced": ["client_case_findings", "iron_rose_personal_evidence"],
+    "inventory": [
+      { "item": "service_revolver_.38", "qty": 1 },
+      { "item": "revolver_round_.38", "qty": 12 },
+      { "item": "investigator_camera", "qty": 1 },
+      { "item": "case_file_running_journal", "qty": 1 },
+      { "item": "personal_iron_rose_evidence_journal_locked", "qty": 1 },
+      { "item": "case_token", "qty": 32 }
+    ],
+    "starting_sparks": 3400
+  },
+  {
+    "id": "gang_lead_dom_north_market",
+    "world_id": "crime",
+    "name": "Dom Reyes (North Market)",
+    "title": "Lead, North Market Gang",
+    "archetype": "gang_leader_principled",
+    "faction_id": "crime_north_market_gang",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": true,
+    "level": 9,
+    "backstory": "Dom has led the North Market Gang for six years. He grew up in the neighborhood. He set the no-kids-under-16 rule his second year and has enforced it personally. The Iron Rose has been pushing into the neighborhood for two years. Dom has been pushing back without escalating.",
+    "personality_traits": ["principled", "warm with his block", "watchful", "tired of escalation"],
+    "speech_patterns": "Block-polished. Calls everyone by their first name unless they've earned otherwise.",
+    "narrative_context": { "secret": "Dom's nephew Marco was the kid Iron Rose tried to recruit. Dom is preparing for the retaliation by reaching out to Halloran for a defensive surveillance contract." },
+    "needs": [
+      { "id": "block_security", "priority": "primary", "satisfaction_method": "evening_block_walk" },
+      { "id": "kids_protection", "priority": "primary", "satisfaction_method": "morning_youth_check_in" },
+      { "id": "food_lodging", "priority": "secondary", "satisfaction_method": "block_pooled_share" }
+    ],
+    "daily_schedule": [
+      { "phase": "early_morning", "phase_hours": [7, 9], "location": "north_market_dom_apartment", "activity": "wakes; calls his sister to check on Marco", "need_addressed": "kids_protection", "interactable_by_player": false },
+      { "phase": "morning", "phase_hours": [9, 13], "location": "north_market_main_block", "activity": "block presence; checks on the youth shelter; small business visits", "need_addressed": "kids_protection", "interactable_by_player": true },
+      { "phase": "midday", "phase_hours": [13, 15], "location": "north_market_pollos_diner", "activity": "lunch at the diner; informal politics", "need_addressed": "block_security", "interactable_by_player": true },
+      { "phase": "afternoon", "phase_hours": [15, 19], "location": "north_market_main_block", "activity": "block walk; mediates disputes; eyes the Iron Rose corner", "need_addressed": "block_security", "interactable_by_player": true },
+      { "phase": "evening", "phase_hours": [19, 23], "location": "north_market_dom_apartment", "activity": "evening with neighborhood family; preps for retaliation watch", "need_addressed": "block_security", "interactable_by_player": false },
+      { "phase": "night", "phase_hours": [23, 7], "location": "north_market_dom_apartment", "activity": "rests with one ear open", "need_addressed": "rest", "interactable_by_player": false }
+    ],
+    "home": { "district": "north_market_main_block", "dwelling_type": "second_floor_walkup_above_diner" },
+    "job": { "profession_id": "block_lead", "wage_per_diurnal_sparks": 90, "wage_source": "block_pooled_share" },
+    "apparel": ["dark_jeans", "henley_under_jacket", "leather_jacket", "work_boots", "wool_cap_in_winter"],
+    "gear": ["pistol_concealed_carry_glock_19", "knife_folding", "block_radio", "personal_youth_protection_journal"],
+    "resources_consumed": ["diner_meals", "youth_shelter_supplies"],
+    "resources_produced": ["block_security", "kid_diversion_programs"],
+    "inventory": [
+      { "item": "pistol_concealed_carry_glock_19", "qty": 1 },
+      { "item": "pistol_round_9mm", "qty": 17 },
+      { "item": "knife_folding", "qty": 1 },
+      { "item": "block_radio", "qty": 1 },
+      { "item": "personal_youth_protection_journal", "qty": 1 },
+      { "item": "block_chit", "qty": 22 }
+    ],
+    "starting_sparks": 1100
   }
 ]

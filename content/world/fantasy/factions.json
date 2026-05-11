@@ -2,107 +2,137 @@
   {
     "id": "wildwood_circle",
     "name": "The Wildwood Circle",
+    "world_id": "fantasy",
     "motto": "The forest remembers what the cities forget.",
     "goal": "Protect the great forests from corruption, both magical and political — and contain Thorne Blackroot before his curse becomes the realm's funeral.",
-    "values": [
-      "balance",
-      "stewardship",
-      "ancient memory",
-      "patience"
-    ],
-    "fears": [
-      "the curse spreading from Thorne to the elder groves",
-      "kings burning the forests for farmland",
-      "their own grief turning them into him"
-    ],
-    "controlled_districts": [
-      "thornwood_glade",
-      "elder_grove",
-      "bone_orchard"
-    ],
-    "rival_factions": [
-      "house_voss"
-    ],
-    "allied_factions": [],
-    "npc_ids": [
-      "thorne_blackroot",
-      "velora_mossheart"
-    ],
+    "values": ["balance", "stewardship", "ancient memory", "patience"],
+    "fears": ["the curse spreading from Thorne to the elder groves", "kings burning the forests for farmland", "their own grief turning them into him"],
+    "controlled_districts": ["thornwood_glade", "elder_grove", "bone_orchard"],
+    "rival_factions": ["house_voss", "fantasy_obsidian_crown"],
+    "allied_factions": ["fantasy_arcane_university", "fantasy_pantheon_priesthood"],
+    "npc_ids": ["thorne_blackroot", "velora_mossheart"],
     "dialogue_style": "verbose",
     "reputation_currency": "forest_marks",
-    "world_id": "fantasy",
-    "faction_state": {
-      "factionName": "Wildwood Circle",
-      "reputation": 64,
-      "tensions": "Half the Circle wants to bring Thorne home. The other half wants to put him in the ground. Both halves know the curse came from inside their own ranks."
-    },
-    "visual": {
-      "primary_color": "#a06b22",
-      "secondary_color": "#291424",
-      "accent_color": "#528fe0",
-      "architecture_style": "crystalline",
-      "preferred_weapon_archetypes": [
-        "scimitar",
-        "dagger",
-        "axe"
-      ],
-      "preferred_armor_silhouette": "leather",
-      "sigil_path": "M0,-20 L20,0 L0,20 L-20,0 Z",
-      "banner_sigil_id": "wildwood_circle_sigil",
-      "ornamentation_motifs": []
-    }
+    "faction_state": { "factionName": "Wildwood Circle", "reputation": 64, "tensions": "Half the Circle wants to bring Thorne home. The other half wants to put him in the ground. Both halves know the curse came from inside their own ranks." },
+    "visual": { "primary_color": "#a06b22", "secondary_color": "#291424", "accent_color": "#528fe0", "architecture_style": "crystalline", "preferred_weapon_archetypes": ["scimitar", "dagger", "axe"], "preferred_armor_silhouette": "leather", "sigil_path": "M0,-20 L20,0 L0,20 L-20,0 Z", "banner_sigil_id": "wildwood_circle_sigil", "ornamentation_motifs": [] }
   },
   {
     "id": "house_voss",
     "name": "House Voss",
+    "world_id": "fantasy",
     "motto": "Blood is the only currency that does not depreciate.",
     "goal": "Consolidate political power across the noble houses by being the indispensable broker of secrets. Long-term: rule the realm without ever wearing a crown.",
-    "values": [
-      "elegance",
-      "patience",
-      "leverage",
-      "loyalty repaid in kind"
-    ],
-    "fears": [
-      "the bloodline ending with Seraphine",
-      "a peasant uprising she cannot manipulate",
-      "being known for what she actually is"
-    ],
-    "controlled_districts": [
-      "crimson_quarter",
-      "voss_estate",
-      "masquerade_district"
-    ],
-    "rival_factions": [
-      "wildwood_circle"
-    ],
-    "allied_factions": [],
-    "npc_ids": [
-      "seraphine_voss",
-      "caelan_voss"
-    ],
+    "values": ["elegance", "patience", "leverage", "loyalty repaid in kind"],
+    "fears": ["the bloodline ending with Seraphine", "a peasant uprising she cannot manipulate", "being known for what she actually is"],
+    "controlled_districts": ["crimson_quarter", "voss_estate", "masquerade_district"],
+    "rival_factions": ["wildwood_circle", "fantasy_paladin_order"],
+    "allied_factions": ["fantasy_thieves_guild"],
+    "npc_ids": ["seraphine_voss", "caelan_voss"],
     "dialogue_style": "aristocratic",
     "reputation_currency": "blood_pacts",
+    "faction_state": { "factionName": "House Voss", "reputation": 88, "tensions": "Public face of charm and culture. Private face of sustenance." },
+    "visual": { "primary_color": "#2252a0", "secondary_color": "#142920", "accent_color": "#525be0", "architecture_style": "industrial", "preferred_weapon_archetypes": ["shortsword", "halberd", "axe"], "preferred_armor_silhouette": "leather", "sigil_path": "M-15,15 L0,-20 L15,15 L0,5 Z", "banner_sigil_id": "house_voss_sigil", "ornamentation_motifs": [] }
+  },
+  {
+    "id": "fantasy_obsidian_crown",
     "world_id": "fantasy",
-    "faction_state": {
-      "factionName": "House Voss",
-      "reputation": 88,
-      "tensions": "Public face of charm and culture. Private face of sustenance. The masquerade balls she hosts are the most prestigious events in the realm — and the disappearances afterward are always blamed on bandits or other vampires, never on her."
-    },
-    "visual": {
-      "primary_color": "#2252a0",
-      "secondary_color": "#142920",
-      "accent_color": "#525be0",
-      "architecture_style": "industrial",
-      "preferred_weapon_archetypes": [
-        "shortsword",
-        "halberd",
-        "axe"
-      ],
-      "preferred_armor_silhouette": "leather",
-      "sigil_path": "M-15,15 L0,-20 L15,15 L0,5 Z",
-      "banner_sigil_id": "house_voss_sigil",
-      "ornamentation_motifs": []
-    }
+    "name": "The Obsidian Crown",
+    "motto": "We were dragons before we were kings.",
+    "goal": "Maintain the dragon-blooded royal line as the realm's apex authority. Recover the lost sister-line that broke off three centuries ago. Keep the Voss in their place beneath the throne.",
+    "values": ["bloodline purity", "scaled regnancy", "draconic ceremony", "long memory"],
+    "fears": ["the bloodline thinning further", "the lost sister-line returning with claim", "House Voss outliving them"],
+    "controlled_districts": ["obsidian_palace", "drake_aerie", "royal_hunting_preserve"],
+    "rival_factions": ["house_voss", "fantasy_goblin_warband_league"],
+    "allied_factions": ["fantasy_paladin_order"],
+    "npc_ids": ["queen_morwen_obsidian"],
+    "dialogue_style": "regal_ceremonial",
+    "reputation_currency": "scale_seal",
+    "faction_state": { "factionName": "Obsidian Crown", "reputation": 79, "tensions": "Queen Morwen's heir was born without scales. The court is in cipher-coded panic." },
+    "visual": { "primary_color": "#1a1a3a", "secondary_color": "#0a0a14", "accent_color": "#c0a050", "architecture_style": "draconic_columned", "preferred_weapon_archetypes": ["greatsword", "scaled_lance", "ceremonial_claw"], "preferred_armor_silhouette": "scaled_plate", "sigil_path": "M0,-22 L11,-11 L22,0 L11,11 L0,22 L-11,11 L-22,0 L-11,-11 Z", "banner_sigil_id": "obsidian_crown_sigil", "ornamentation_motifs": ["dragon_scale", "claw_geometry"] }
+  },
+  {
+    "id": "fantasy_goblin_warband_league",
+    "world_id": "fantasy",
+    "name": "The Goblin Warband League",
+    "motto": "We were here before the Crown. We will be here after.",
+    "goal": "Maintain the seven goblin warbands as a loose military league. Raid noble caravans for tribute. Avoid losing all-out war with the Crown that the warbands cannot win.",
+    "values": ["warband solidarity", "raid honor", "anti-Crown autonomy", "the chief's judgment"],
+    "fears": ["the Crown deciding to actually finish them", "internal warband betrayal", "a goblin chieftain marrying into Voss"],
+    "controlled_districts": ["goblin_warband_camp_north", "goblin_warband_camp_south", "raid_corridor_three"],
+    "rival_factions": ["fantasy_obsidian_crown", "fantasy_paladin_order"],
+    "allied_factions": [],
+    "npc_ids": ["warchief_grokka_warband"],
+    "dialogue_style": "blunt_loyal",
+    "reputation_currency": "warband_token",
+    "faction_state": { "factionName": "Goblin Warband League", "reputation": 41, "tensions": "Two warbands are openly disputing leadership of the league. Grokka has not taken sides." },
+    "visual": { "primary_color": "#5a7a3a", "secondary_color": "#1a2a0a", "accent_color": "#c8a050", "architecture_style": "improvised_camp", "preferred_weapon_archetypes": ["short_blade", "club", "bow"], "preferred_armor_silhouette": "patchwork_hide", "sigil_path": "M-18,-10 L18,-10 L0,18 Z", "banner_sigil_id": "goblin_warband_sigil", "ornamentation_motifs": ["raid_marks", "warband_braid"] }
+  },
+  {
+    "id": "fantasy_paladin_order",
+    "world_id": "fantasy",
+    "name": "The Paladin Order of the Lit Veil",
+    "motto": "Where the dead walk, we follow with light.",
+    "goal": "Hunt the undead. Investigate House Voss formally. Maintain the Order's centuries-old mandate to protect the living from the unliving.",
+    "values": ["divine sanction", "anti-undead crusade", "investigation discipline", "honorable combat"],
+    "fears": ["House Voss formally exposing them as wrong about her", "the goblin warbands crowning a vampire", "the Pantheon Priesthood withdrawing divine sanction"],
+    "controlled_districts": ["paladin_chapter_house", "lit_veil_seminary", "vampire_crypt_perimeter"],
+    "rival_factions": ["house_voss", "fantasy_thieves_guild"],
+    "allied_factions": ["fantasy_obsidian_crown", "fantasy_pantheon_priesthood"],
+    "npc_ids": ["paladin_commander_aria_lit_veil"],
+    "dialogue_style": "formal_devout",
+    "reputation_currency": "lit_veil_seal",
+    "faction_state": { "factionName": "Paladin Order", "reputation": 73, "tensions": "Commander Aria has been quietly building a case against Lady Voss for thirty years. She has not yet decided when to execute. She has begun to suspect she will not get the chance." },
+    "visual": { "primary_color": "#e8e0c8", "secondary_color": "#1a1410", "accent_color": "#d4a050", "architecture_style": "cathedral_buttressed", "preferred_weapon_archetypes": ["greatsword", "warhammer", "halberd"], "preferred_armor_silhouette": "full_plate", "sigil_path": "M-15,18 L0,-22 L15,18 Z", "banner_sigil_id": "paladin_lit_veil_sigil", "ornamentation_motifs": ["sun_geometry", "veil_braid"] }
+  },
+  {
+    "id": "fantasy_arcane_university",
+    "world_id": "fantasy",
+    "name": "The Arcane University at Spiremount",
+    "motto": "Magic is older than its rules. The rules are still being written.",
+    "goal": "Train wizards in all schools (evocation / abjuration / divination / illusion / enchantment / conjuration / necromancy / transmutation). Catalog the metaphysical substrate. Resist the political demand to weaponize the curriculum.",
+    "values": ["scholarship", "the schools' independence", "ethics of magic", "the substrate as commons"],
+    "fears": ["the Crown commandeering the necromancy department", "the Voss enrolling a daughter as a sleeper", "Thorne Blackroot's curse being the substrate's response to overuse"],
+    "controlled_districts": ["spiremount_university", "arcane_library", "summoning_practicum_yard"],
+    "rival_factions": ["house_voss"],
+    "allied_factions": ["wildwood_circle", "fantasy_pantheon_priesthood"],
+    "npc_ids": ["archmage_chair_velith_spiremount"],
+    "dialogue_style": "scholarly_archetypal",
+    "reputation_currency": "spire_mark",
+    "faction_state": { "factionName": "Arcane University", "reputation": 76, "tensions": "The necromancy department is producing graduates twice as fast as the other schools. The faculty council suspects external recruiting pressure." },
+    "visual": { "primary_color": "#5a3866", "secondary_color": "#160a1a", "accent_color": "#e8c0d6", "architecture_style": "spire_mountain_cathedral", "preferred_weapon_archetypes": ["staff", "wand", "bound_grimoire"], "preferred_armor_silhouette": "robed", "sigil_path": "M0,-22 L7,-7 L22,0 L7,7 L0,22 L-7,7 L-22,0 L-7,-7 Z", "banner_sigil_id": "spiremount_sigil", "ornamentation_motifs": ["eight_school_glyphs", "spire_geometry"] }
+  },
+  {
+    "id": "fantasy_thieves_guild",
+    "world_id": "fantasy",
+    "name": "The Underwarrens Thieves' Guild",
+    "motto": "Take what is unguarded. Refuse what is asked.",
+    "goal": "Maintain the under-city as a sovereign criminal economy. Negotiate the standing arrangement with House Voss and the Crown. Protect the Underwarrens from being formally claimed by either.",
+    "values": ["thieves' honor", "no-snitch code", "Underwarrens sovereignty", "the long con"],
+    "fears": ["the paladins finally raiding the warrens", "House Voss escalating from arrangement to ownership", "a member turning informant"],
+    "controlled_districts": ["underwarrens_main", "thieves_court", "fence_market"],
+    "rival_factions": ["fantasy_paladin_order", "fantasy_obsidian_crown"],
+    "allied_factions": ["house_voss"],
+    "npc_ids": ["guildmaster_renn_underwarrens"],
+    "dialogue_style": "underground_polished",
+    "reputation_currency": "warren_chit",
+    "faction_state": { "factionName": "Thieves' Guild", "reputation": 56, "tensions": "Guildmaster Renn is debating whether to formally accept House Voss's offer to make the Guild her enforcement arm. Most Guild members would rather not." },
+    "visual": { "primary_color": "#3a3a3a", "secondary_color": "#0a0a0a", "accent_color": "#d4a050", "architecture_style": "underground_warren", "preferred_weapon_archetypes": ["dagger", "garrote", "throwing_knife"], "preferred_armor_silhouette": "dark_leather", "sigil_path": "M-22,0 L0,-15 L22,0 L0,15 Z", "banner_sigil_id": "thieves_guild_sigil", "ornamentation_motifs": ["fence_braid", "shadow_geometry"] }
+  },
+  {
+    "id": "fantasy_pantheon_priesthood",
+    "world_id": "fantasy",
+    "name": "The Pantheon Priesthood of the Twelve",
+    "motto": "Twelve gods, one balance.",
+    "goal": "Maintain the worship of the Twelve Gods across the realm. Mediate between the divine and the kingdoms. Officially endorse the Paladin Order's mandate. Privately worry about the Wildwood Circle's account of Thorne's curse.",
+    "values": ["the Twelve in balance", "divine sanction as covenant", "humility before the metaphysical substrate", "respect for the Wildwood account"],
+    "fears": ["one god gaining favor at the cost of others", "the substrate becoming too unstable to channel", "House Voss's bloodline turning out to be one of the Twelve in disguise"],
+    "controlled_districts": ["pantheon_temple_central", "twelve_shrine_path", "high_priestess_quarters"],
+    "rival_factions": [],
+    "allied_factions": ["fantasy_paladin_order", "wildwood_circle", "fantasy_arcane_university"],
+    "npc_ids": ["high_priestess_kaelan_pantheon"],
+    "dialogue_style": "liturgical",
+    "reputation_currency": "twelve_token",
+    "faction_state": { "factionName": "Pantheon Priesthood", "reputation": 80, "tensions": "High Priestess Kaelan has had three visions in the past year suggesting one of the Twelve is no longer answering her prayers. She has not told the order." },
+    "visual": { "primary_color": "#d4c98a", "secondary_color": "#1a1410", "accent_color": "#5a8fc4", "architecture_style": "twelve_columned_temple", "preferred_weapon_archetypes": ["divine_mace", "blessed_spear"], "preferred_armor_silhouette": "ceremonial_robe", "sigil_path": "M0,-22 Q11,-11 22,0 Q11,11 0,22 Q-11,11 -22,0 Q-11,-11 0,-22 Z", "banner_sigil_id": "pantheon_twelve_sigil", "ornamentation_motifs": ["twelve_god_glyphs", "balance_geometry"] }
   }
 ]

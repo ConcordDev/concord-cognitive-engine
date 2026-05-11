@@ -1052,7 +1052,7 @@ export default function HouseholdLensPage() {
                         );
                       })}
                     </div>
-                    <button className="mt-2 w-full p-1 rounded text-xs text-gray-500 hover:text-neon-cyan hover:bg-lattice-elevated transition-colors"
+                    <button className="mt-2 w-full p-1 rounded text-xs text-gray-500 hover:text-neon-cyan hover:bg-lattice-elevated transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500"
                       onClick={() => { setFormData({ date }); openNew(); }}>
                       <Plus className="w-3 h-3 mx-auto" />
                     </button>

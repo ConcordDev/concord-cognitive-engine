@@ -176,10 +176,10 @@ describe('getLensesMissingMacro', () => {
   it('returns domains missing run macro', () => {
     const missingRun = getLensesMissingMacro('run');
     expect(Array.isArray(missingRun)).toBe(true);
-    // resonance has no run macro
-    if (missingRun.length > 0) {
-      expect(missingRun).toContain('resonance');
-    }
+    // Stable contract: the helper returns an array (possibly empty).
+    // We no longer assert a specific lens is in the list because the
+    // canonical lens.<domain>.run namespace is populated for every
+    // manifest entry that's gone through the platinum gate.
   });
 
   it('returns domains missing export macro', () => {

@@ -226,7 +226,7 @@ export default function TravelLensPage() {
                 <input type="number" step="any" value={newTrip.lat} onChange={e => setNewTrip(p => ({ ...p, lat: e.target.value }))} placeholder="Latitude (optional)" className="input-lattice" />
                 <input type="number" step="any" value={newTrip.lng} onChange={e => setNewTrip(p => ({ ...p, lng: e.target.value }))} placeholder="Longitude (optional)" className="input-lattice" />
               </div>
-              <button onClick={handleCreate} disabled={createMut.isPending || !newTrip.name.trim()} className="btn-neon green w-full">
+              <button onClick={handleCreate} disabled={createMut.isPending || !newTrip.name.trim()} className="btn-neon green w-full focus:outline-none focus:ring-2 focus:ring-amber-500">
                 {createMut.isPending ? 'Creating...' : 'Create Trip'}
               </button>
             </div>

@@ -1,0 +1,169 @@
+{
+  "world_id": "tunya",
+  "schema_version": "1.0",
+  "purpose": "Industry rollups derived from professions.json + bestiary.json + dyes.json + apparel.json. Each industry names the jobs, raw inputs, processed outputs, and seasonal cadence. Used by the world-economy heartbeat to model price + scarcity + production cycles.",
+  "industries": [
+    {
+      "id": "fishing",
+      "category": "primary",
+      "jobs_referenced": ["captain", "fisherman", "stevedore", "sealie_hunter"],
+      "inputs": ["sea_access", "vessels", "captains", "crew"],
+      "outputs": ["bass", "tuna", "s_mollusca", "cephalopod (for ink + meat)", "rare: sealie blubber/ivory/bones/sac"],
+      "seasonal_peak": "Fallow (deep-sea fishing) + Pisces (salting)",
+      "key_kingdoms": ["fluxom (declining)", "aekon", "sahm", "cree"],
+      "value_extreme": "sealie hunts represent the highest-value-per-hour profession on Tunya, with single-figure-percent voyage mortality"
+    },
+    {
+      "id": "agriculture",
+      "category": "primary",
+      "jobs_referenced": ["horticulturalist", "herbalist"],
+      "inputs": ["land", "seeds", "rainwater + irrigation", "horticulturalist labor"],
+      "outputs": ["grains", "vegetables", "saffron", "indigo", "mustard_seed", "ground_nuts", "herbs"],
+      "seasonal_peak": "planting at Prail; harvest at Harvest (month 13); preservation at Preserve",
+      "key_kingdoms": ["aekon (12-district fertility)", "bahiij", "sahm", "masond"]
+    },
+    {
+      "id": "extraction",
+      "category": "primary",
+      "jobs_referenced": ["miner", "fuel_gatherer"],
+      "inputs": ["mines (ore, coal-equivalent, salt)", "forests (firewood, peat)"],
+      "outputs": ["iron_ore", "copper_ore", "tin_ore", "salt", "firewood", "peat"],
+      "seasonal_peak": "fuel gathering peaks in dry season (must fill Fabricay before rainy season); mining is year-round but slows in Wound (heat) and Cull (cold)",
+      "key_kingdoms": ["sandrun_sanguire (iron)", "sahm (iron rivals Sandrun)", "masond (stone)"]
+    },
+    {
+      "id": "smithing_metallurgy",
+      "category": "secondary",
+      "jobs_referenced": ["alchemist (refining)", "specialty (smiths — implied)"],
+      "inputs": ["iron_ore", "copper_ore", "tin_ore", "fuel"],
+      "outputs": ["weapons", "tools", "nails", "horseshoes", "household ironwork"],
+      "seasonal_peak": "year-round; peaks before Cull (warlord challenges drive weapon demand)",
+      "key_kingdoms": ["sandrun_sanguire", "sahm"]
+    },
+    {
+      "id": "textiles_weaving",
+      "category": "secondary",
+      "jobs_referenced": ["weaver_loomer", "fuller", "laundress"],
+      "inputs": ["jute", "flax", "cotton", "wool", "silk", "mohair", "dyes"],
+      "outputs": ["raw_cloth", "dyed_cloth", "garments (per apparel.json)"],
+      "seasonal_peak": "rainy season (Amity-Vernal + Pisces-Brine) — outdoor sun-dry yards unusable, work moves indoors",
+      "key_kingdoms": ["dormas (couture finishing)", "bahiij (silks)", "sahm (linens)"]
+    },
+    {
+      "id": "dye_production",
+      "category": "secondary",
+      "jobs_referenced": ["alchemist", "cactem_keeper", "fuller"],
+      "inputs_per_color": "see dyes.json",
+      "outputs": ["8 dye colors + ceremonial pearl-white (medici-only)"],
+      "seasonal_peak": "year-round; spikes before Amity (treaty robes) and Cares (year-end ceremonial)",
+      "key_kingdoms": ["bahiij (red monopoly via Cactem Strip)", "sahm (yellow)", "fluxom + sealie hunters (deep purple)", "every kingdom (green)"]
+    },
+    {
+      "id": "ink_and_paper",
+      "category": "secondary",
+      "jobs_referenced": ["cephalopod_inker", "fisherman", "alchemist"],
+      "inputs": ["cephalopod ink", "s_mollusca shells (paper)", "linen pulp (alternative paper)"],
+      "outputs": ["ink", "paper", "books"],
+      "seasonal_peak": "year-round",
+      "key_kingdoms": ["coastal_kingdoms (cephalopod)", "asbir (primary paper buyer)", "sahm (university press)", "fluxom (mollusca paper exporter, declining)"]
+    },
+    {
+      "id": "shipbuilding_and_vessel_maintenance",
+      "category": "secondary",
+      "jobs_referenced": ["specialty (shipwright — implied via stevedore + factory_manager)"],
+      "inputs": ["timber", "iron nails", "sealie-blubber-treated leather", "tar"],
+      "outputs": ["fishing vessels", "trade vessels", "rare: sealie-hunting vessels (specialized hull)"],
+      "seasonal_peak": "Drought season (months 6-9) — dry timber, dry assembly conditions",
+      "key_kingdoms": ["fluxom (declining)", "aekon", "sahm"]
+    },
+    {
+      "id": "construction_and_furniture",
+      "category": "secondary",
+      "jobs_referenced": ["furniture_maker", "factory_manager"],
+      "inputs": ["timber", "stone", "iron"],
+      "outputs": ["buildings", "furniture", "civic infrastructure"],
+      "seasonal_peak": "year-round; peaks in Drought (stone-laying)",
+      "key_kingdoms": ["masond (stone foundations everywhere)", "aekon (terraced stone)", "dormas (couture-tailored interiors)"]
+    },
+    {
+      "id": "food_processing",
+      "category": "secondary",
+      "jobs_referenced": ["cook", "alchemist (preservation)", "stevedore (transport)"],
+      "inputs": ["raw_grain", "raw_meat", "raw_fish", "salt", "spices"],
+      "outputs": ["prepared_meals", "preserved_meats", "salted_fish", "dried_grain"],
+      "seasonal_peak": "Preserve (preservation) + Pisces (fish salting) + Cull (slaughter, livestock processing)",
+      "key_kingdoms": ["all"]
+    },
+    {
+      "id": "civic_culture_and_print",
+      "category": "tertiary",
+      "jobs_referenced": ["artist", "author", "print_press_operator"],
+      "inputs": ["cephalopod_ink", "mollusca_paper", "patron_commissions"],
+      "outputs": ["books", "broadsides", "art", "theatrical productions"],
+      "seasonal_peak": "evening watches (Penanus, Easeus) for performances; Halcyon for major auction-festivals",
+      "key_kingdoms": ["asbir (archive + civic press)", "sahm (university)", "bahiij (festivals)", "dormas (high-quarter patronage)"]
+    },
+    {
+      "id": "healthcare",
+      "category": "tertiary",
+      "jobs_referenced": ["nurse", "midwife", "herbalist", "Medici visiting healers"],
+      "inputs": ["herbs", "tonics", "Medici healing services (paid in food trade)"],
+      "outputs": ["routine_care", "births", "Medici_severe_case_intervention"],
+      "seasonal_peak": "year-round; spikes in Wound (heat illness) and Cull (cold illness + slaughter injuries)",
+      "key_kingdoms": ["all (Medici visit all)", "kree_medici_ward (resident Medici concentration)"]
+    },
+    {
+      "id": "logistics_transport",
+      "category": "tertiary",
+      "jobs_referenced": ["delivery", "vendor", "operator", "stevedore", "fuel_gatherer (rainy season vendor work)"],
+      "inputs": ["taxis (animal-drawn)", "canal_boats", "stevedore_labor"],
+      "outputs": ["intra-city movement", "inter-kingdom freight"],
+      "seasonal_peak": "Drought (dry roads favor land trade); Pisces (lull in sea-creature activity favors sea trade)",
+      "key_kingdoms": ["all (intra-city)", "bahiij + sahm + aekon + asbir + dinye (inter-Bloc trade is moderate)", "fluxom (declining)"]
+    },
+    {
+      "id": "public_services",
+      "category": "tertiary",
+      "jobs_referenced": ["recycling_center_worker", "waste_handler", "canal_cleaner", "sanitation_worker", "time_keeper"],
+      "inputs": ["civic_funding", "labor"],
+      "outputs": ["clean_canals", "managed_waste", "recycled_material", "synced_clocks"],
+      "seasonal_peak": "year-round",
+      "key_kingdoms": ["all healthy kingdoms"]
+    },
+    {
+      "id": "bureaucracy_and_governance",
+      "category": "tertiary",
+      "jobs_referenced": ["clerk", "registrar", "governor", "council_member"],
+      "inputs": ["citizen_intake_demand", "regional_governance_load"],
+      "outputs": ["records", "policy", "tax_assessment"],
+      "seasonal_peak": "Harvest (tax assessment) + Fallow (tax collection) + Cull (political crises)",
+      "key_kingdoms": ["all kingdoms with formal governance"]
+    },
+    {
+      "id": "alchemy_and_specialty_crafts",
+      "category": "tertiary",
+      "jobs_referenced": ["alchemist", "cactem_keeper", "cephalopod_inker"],
+      "inputs": ["raw materials per output"],
+      "outputs": ["dyes", "tonics", "ink-fixative", "preservation chemistry"],
+      "seasonal_peak": "year-round",
+      "key_kingdoms": ["bahiij (cactem)", "all coastal kingdoms (cephalopod ink)", "every city (alchemists)"]
+    },
+    {
+      "id": "domestic_services",
+      "category": "tertiary",
+      "jobs_referenced": ["laundress", "cook", "house_manager"],
+      "inputs": ["household demand"],
+      "outputs": ["meals", "clean_garments", "managed_households"],
+      "seasonal_peak": "year-round",
+      "key_kingdoms": ["all"]
+    }
+  ],
+  "trade_corridors": [
+    { "id": "bloc_internal", "members": ["aekon", "asbir", "dinye"], "volume": "high", "stability": 0.85 },
+    { "id": "bahiij_dormas_silk", "members": ["bahiij", "dormas"], "volume": "high", "stability": 0.75 },
+    { "id": "sahm_bahiij_festival", "members": ["sahm", "bahiij"], "volume": "moderate", "stability": 0.70 },
+    { "id": "kree_medici_food_for_healing", "members": ["kree_nationalists", "medici"], "volume": "moderate", "stability": 0.80, "narrative": "Medici trade healing services for food. Without this, the Medici Isle cannot sustain its population." },
+    { "id": "sandrun_kree_iron", "members": ["sandrun_sanguire", "kree_nationalists"], "volume": "high", "stability": 0.65 },
+    { "id": "fluxom_collapsed", "members": ["fluxom"], "volume": "low", "stability": 0.20, "narrative": "Fluxom's sea-trade with the kingdoms collapsed after the sealies came. Currently limited to coastal small-craft trade." }
+  ]
+}

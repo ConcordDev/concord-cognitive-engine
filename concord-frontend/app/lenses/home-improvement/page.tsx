@@ -255,7 +255,7 @@ export default function HomeImprovementLensPage() {
               </select>
               <input type="number" value={newProject.budget || ''} onChange={e => setNewProject(p => ({ ...p, budget: Number(e.target.value) }))} placeholder="Budget..." className="input-lattice" />
             </div>
-            <button onClick={handleCreate} disabled={createMut.isPending || !newProject.name.trim()} className="btn-neon green w-full">
+            <button onClick={handleCreate} disabled={createMut.isPending || !newProject.name.trim()} className="btn-neon green w-full focus:outline-none focus:ring-2 focus:ring-amber-500">
               {createMut.isPending ? 'Creating...' : 'Create Project'}
             </button>
           </motion.div>

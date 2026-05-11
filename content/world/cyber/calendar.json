@@ -1,0 +1,40 @@
+{
+  "world_id": "cyber",
+  "schema_version": "1.0",
+  "hours_per_day": 28,
+  "minutes_per_hour": 60,
+  "days_per_month": 28,
+  "months_per_year": 13,
+  "days_per_year": 364,
+  "moons": 0,
+  "moon_lore": "The city's sky is overcast 11 months of the year with corp atmospheric reclaimers and ad-blimps; the moon is folklore. The shift-cycle clock that runs everything is governed by the City Grid Authority and resets at 00:00 Neon-Dawn every day.",
+  "temperature_units": "celsius",
+  "biome_note": "Cyber has one biome (megacity) but five vertical strata: surface_slum (street level + 5m), corp_tier (5-300m), sky_arcology (300m-1km), maglev_corridor (sub-surface 0--40m), and deep_tunnels (-40m and below). Temperature varies more by stratum than by season — corp_tier is climate-controlled 22°C year-round; surface_slum tracks ambient with 5-15°C corp-exhaust uplift; deep_tunnels run hot from server farms.",
+  "day_phases": [
+    { "id": "neon_dawn",   "start_hour": 1,  "end_hour": 5,  "label": "Neon Dawn",   "kind": "shift_change",  "cultural_notes": "Night-shift workers stream home; day-shift commute begins. Ramen stalls open; corp turnstiles spin up." },
+    { "id": "corp_hours",  "start_hour": 6,  "end_hour": 13, "label": "Corp Hours",  "kind": "wage_shift",    "cultural_notes": "Office towers visibly lit. Drone delivery peak. Hacking activity drops 40% (more eyes on monitors). Insurance rates highest." },
+    { "id": "gray_market", "start_hour": 14, "end_hour": 18, "label": "Gray Market", "kind": "trade_shift",   "cultural_notes": "Lunch-into-afternoon window. Unauthorized chrome shops 'soft open'. Most data brokerage deals happen here in numbered crow-bars below ad-screens." },
+    { "id": "chrome_hours","start_hour": 19, "end_hour": 23, "label": "Chrome Hours","kind": "augment_shift", "cultural_notes": "Aug clinics fully operational. Street-level violence rises. The corps clock out; ICE stays vigilant." },
+    { "id": "dark_hours",  "start_hour": 24, "end_hour": 28, "label": "Dark Hours",  "kind": "ice_active",    "cultural_notes": "Most aggressive ICE deployments hunt deckers in the deep tunnels. Surface goes quiet except corp patrols and aug-predators. Highest mortality window per capita." }
+  ],
+  "months": [
+    { "id": "neogen_01",    "label": "Neogen-Prime","season": "wet_season", "temperature_band": "8-15°C surface, 22°C corp", "cultural_notes": "First month after the annual Grid Reset. Tax-quarter rollover; corp loyalty bonuses paid." },
+    { "id": "ruststorm_02", "label": "Ruststorm",   "season": "wet_season", "temperature_band": "5-12°C surface",            "cultural_notes": "Acid rain peaks; surface_slum residents shelter for 14h shifts. Anti-corrosion masks at premium." },
+    { "id": "blackice_03",  "label": "Blackice",    "season": "wet_season", "temperature_band": "-2-8°C surface",            "cultural_notes": "ICE manufacturers run product launches. Hardest month for unaugmented deckers." },
+    { "id": "thaw_04",      "label": "Thaw",        "season": "wet_season", "temperature_band": "3-12°C surface",            "cultural_notes": "Surface_slum repair window. Markets open longer." },
+    { "id": "static_05",    "label": "Static",      "season": "dry_season", "temperature_band": "10-22°C surface",           "cultural_notes": "ESD events common in deep_tunnels; server farms ratchet up cooling." },
+    { "id": "neonbloom_06", "label": "Neonbloom",   "season": "dry_season", "temperature_band": "15-26°C surface",           "cultural_notes": "Festival month. Ad-blimps in fleet formation; corp PR events." },
+    { "id": "smog_07",      "label": "Smog",        "season": "dry_season", "temperature_band": "20-30°C surface",           "cultural_notes": "Surface air quality below 50 AQI for 12+ hours/day. Aug clinics see respiratory-implant peak." },
+    { "id": "scorch_08",    "label": "Scorch",      "season": "dry_season", "temperature_band": "25-38°C surface",           "cultural_notes": "Heat-stroke deaths peak in surface_slum. Coolant-trade gangs control distribution." },
+    { "id": "monsoon_09",   "label": "Monsoon",     "season": "wet_season", "temperature_band": "18-25°C surface",           "cultural_notes": "Two-week storms. Tunnel flooding kills hundreds of deep-tunnel residents annually." },
+    { "id": "drydust_10",   "label": "Drydust",     "season": "wet_season", "temperature_band": "12-20°C surface",           "cultural_notes": "Particulate season. Wind off the wasteland. Filter-trade peaks." },
+    { "id": "windgrip_11",  "label": "Windgrip",    "season": "dry_season", "temperature_band": "8-15°C surface",            "cultural_notes": "Wind-shear month. Ad-blimps grounded. Sky_arcology residents complain about the silence." },
+    { "id": "longshade_12", "label": "Longshade",   "season": "dry_season", "temperature_band": "3-10°C surface",            "cultural_notes": "Sun obscured most days. Solar-collector arcologies drop production 30%." },
+    { "id": "frostgrid_13", "label": "Frostgrid",   "season": "dry_season", "temperature_band": "-5-5°C surface",            "cultural_notes": "Last month of the year. Grid Authority audits. Outstanding tax-debts come due; some pay in chrome." }
+  ],
+  "notes": [
+    "Cyber has no astronomical year — only the City Grid Authority's accounting year. The 364-day cycle exists for corp tax purposes.",
+    "Hour 0 doesn't exist — the day starts at hour 1 (Neon Dawn 01:00). This is a Grid Authority artefact: no day begins at 'nothing.'",
+    "Cross-world note: cyber's 28-hour day means a tunyan visitor (32-hour day) feels jet-lagged for ~3 days; a fantasy visitor (24h) feels persistently 'short on time' until they adjust."
+  ]
+}

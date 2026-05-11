@@ -137,7 +137,7 @@ function SignalClassificationLegend({ isOpen, onToggle }: { isOpen: boolean; onT
     <div className="border border-white/5 rounded-lg overflow-hidden" style={{ background: 'rgba(10,10,20,0.8)' }}>
       <button
         onClick={onToggle}
-        className="w-full flex items-center justify-between px-4 py-2.5 text-xs font-medium text-gray-400 hover:text-gray-300 transition-colors"
+        className="w-full flex items-center justify-between px-4 py-2.5 text-xs font-medium text-gray-400 hover:text-gray-300 transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500"
       >
         <span className="flex items-center gap-2">
           <Info className="w-3.5 h-3.5" />

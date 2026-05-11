@@ -1469,7 +1469,7 @@ export default function GameLensPage() {
             </div>
             <div className="flex items-center gap-3">
               {mgState === 'idle' && (
-                <button onClick={startMiniGame} className="btn-neon py-2 px-6 flex items-center gap-2">
+                <button onClick={startMiniGame} className="btn-neon py-2 px-6 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-amber-500">
                   <Gamepad2 className="w-4 h-4" /> Start Game
                 </button>
               )}

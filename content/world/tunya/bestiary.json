@@ -1,0 +1,295 @@
+{
+  "world_id": "tunya",
+  "schema_version": "1.0",
+  "purpose": "Fauna registry. The l/v/m/s prefix system marks Tunyan-native variants of Earth-familiar species: muskrat = Earth-import, mluskrat = Tunyan native. Players who learn the prefixes can read native vs imported at a glance — a linguistic diagnostic same trick as the skin-color genetics.",
+  "prefix_system": {
+    "comment": "Tunyan native fauna carry a phonetic prefix distinguishing them from Earth-imports.",
+    "prefixes": {
+      "v": "small mammals (vlelox = fox-analog)",
+      "m": "medium mammals + birds (mluskrat, mlawcaw, mlonkey)",
+      "s": "shellfish + sea creatures (s'mollusca, slquirrel — yes, slquirrel breaks the prefix-domain rule and the linguists know)",
+      "l": "wild predators / pest-control variants (clougar = bobcat-analog, rlabbit = hare-analog, wleasels)",
+      "a": "insectivores (atoucan)"
+    },
+    "exceptions": "frog, toucan (distinct from atoucan), elephant, hogs, wolves, sea turtle, capuchin monkey are Earth-import OR shared-name native species. Linguistic drift in some lineages."
+  },
+  "fauna": [
+    {
+      "id": "ass",
+      "kind": "domesticated",
+      "origin": "earth_import",
+      "uses": ["labor", "leather", "hooves"],
+      "habitat": ["temperate", "arid"]
+    },
+    {
+      "id": "fowl",
+      "kind": "domesticated",
+      "origin": "earth_import",
+      "uses": ["feathers", "eggs", "meat"],
+      "habitat": ["all_kingdoms"]
+    },
+    {
+      "id": "mountain_cow",
+      "kind": "domesticated",
+      "origin": "earth_import",
+      "uses": ["hair", "hooves", "horns", "leather", "meat"],
+      "habitat": ["highland"]
+    },
+    {
+      "id": "water_fowl",
+      "kind": "domesticated",
+      "origin": "earth_import",
+      "uses": ["feathers", "eggs", "meat"],
+      "habitat": ["coastal_marsh", "swamp"]
+    },
+    {
+      "id": "mountain_goat",
+      "kind": "domesticated",
+      "origin": "earth_import",
+      "uses": ["leather", "hooves", "horns", "wool"],
+      "habitat": ["highland", "highland_frost"]
+    },
+    {
+      "id": "ram",
+      "kind": "domesticated",
+      "origin": "earth_import",
+      "uses": ["meat", "hooves", "wool"],
+      "habitat": ["temperate"]
+    },
+    {
+      "id": "oxen",
+      "kind": "domesticated",
+      "origin": "earth_import",
+      "uses": ["labor", "leather", "hooves"],
+      "habitat": ["temperate"]
+    },
+    {
+      "id": "goat",
+      "kind": "domesticated",
+      "origin": "earth_import",
+      "uses": ["milk", "hooves", "hair", "wool", "flesh", "skins"],
+      "habitat": ["all_kingdoms"]
+    },
+    {
+      "id": "equine",
+      "kind": "domesticated",
+      "origin": "earth_import",
+      "uses": ["leather", "hooves", "labor", "recreation"],
+      "habitat": ["temperate", "arid"]
+    },
+    {
+      "id": "bovine",
+      "kind": "domesticated",
+      "origin": "earth_import",
+      "uses": ["meat", "leather", "hooves"],
+      "habitat": ["temperate"]
+    },
+    {
+      "id": "elephant",
+      "kind": "domesticated",
+      "origin": "earth_import",
+      "uses": ["labor", "ceremonial", "war_in_extremis"],
+      "habitat": ["tropical"],
+      "kingdom_significance": "Bahiij — elephant-revering culture. Mahouts are a respected profession class."
+    },
+    {
+      "id": "hogs",
+      "kind": "domesticated",
+      "origin": "earth_import",
+      "uses": ["meat", "leather"],
+      "habitat": ["all_kingdoms"]
+    },
+
+    {
+      "id": "gulls",
+      "kind": "wild_huntable",
+      "origin": "earth_import",
+      "uses": ["feathers", "meat"],
+      "habitat": ["coastal_marsh"]
+    },
+    {
+      "id": "wolves",
+      "kind": "wild_predator",
+      "origin": "earth_import",
+      "uses": ["pelt", "occasional_pack_management_culling"],
+      "habitat": ["temperate_woodland", "highland"]
+    },
+
+    {
+      "id": "bass",
+      "kind": "fish",
+      "origin": "earth_import",
+      "uses": ["meat"],
+      "habitat": ["freshwater_rivers_lakes"]
+    },
+    {
+      "id": "tuna",
+      "kind": "fish",
+      "origin": "earth_import",
+      "uses": ["meat"],
+      "habitat": ["open_sea"]
+    },
+
+    {
+      "id": "sealies",
+      "kind": "apex_sea_predator",
+      "origin": "tunyan_native",
+      "morphology": "Massive — bigger than a killer orca. Razor teeth. Dense, powerful narwhal-style horn. Supercavitating speed (capable of crossing miles in minutes).",
+      "uses": ["blubber (high-grade fuel + leather lining)", "ivory (the horn — most valuable single material on Tunya)", "bones (structural)", "defensive_sac (purple dye, see dyes.json)"],
+      "habitat": ["open_sea", "near_coastal_during_migration"],
+      "danger_class": "extreme",
+      "lore_significance": [
+        "The single most dangerous animal on Tunya AND the single most valuable.",
+        "Sealies are the primary cause of the Fluxom sea-trade collapse. After Fluxom's ship dumped 200 refugees during a storm, sealies came for the bodies. They stayed for the ships. Fluxom condemned the kingdoms for sea-related actions to deflect from this; the kingdoms condemned Fluxom in return.",
+        "A successful sealie kill yields a vessel's-year of wealth in one night. Sealie hunters are the highest-paid profession on Tunya by far — and have a single-figure-percent voyage mortality.",
+        "Sealie ivory is so dense it doesn't float. Carved sealie-horn tools are passed down generations. The Sanguire warlord's greatsword has a sealie-ivory pommel."
+      ],
+      "narrative_hooks": [
+        "Hunting a sealie is a tier-1 game event. Single-vessel encounter = likely vessel-loss. Multi-vessel coordinated hunt = the only viable approach.",
+        "Sealies appear to communicate through low-frequency sound. Whether they have intent toward the Fluxom refugee dump is open lore."
+      ]
+    },
+    {
+      "id": "s_mollusca",
+      "kind": "shellfish",
+      "origin": "tunyan_native",
+      "uses": ["meat", "shells (paper production)", "pearl"],
+      "habitat": ["coastal_marsh", "shallow_sea"],
+      "industry_significance": "the s'mollusca's shell is the source of mollusca paper — Asbir's archive medium, the print press's substrate."
+    },
+    {
+      "id": "sea_turtle",
+      "kind": "reptile",
+      "origin": "earth_import",
+      "uses": ["shell"],
+      "habitat": ["coastal_marsh"]
+    },
+    {
+      "id": "frog",
+      "kind": "amphibian",
+      "origin": "earth_import",
+      "uses": ["minor_alchemical"],
+      "habitat": ["swamp", "coastal_marsh"]
+    },
+    {
+      "id": "octopus_squid_cephalopod",
+      "kind": "sea_creature",
+      "origin": "earth_import",
+      "uses": ["ink", "meat"],
+      "habitat": ["open_sea", "coastal"],
+      "industry_significance": "cephalopod ink is the Tunyan recording medium. Print press, registrars, authors all consume ink. The cephalopod-inker profession exists in coastal kingdoms."
+    },
+    {
+      "id": "land_snake",
+      "kind": "wild_neutral",
+      "origin": "earth_import_or_native_unclear",
+      "size": "small",
+      "uses": ["pest_control_via_predation_on_eggs_rodents"],
+      "habitat": ["all_kingdoms"]
+    },
+    {
+      "id": "water_snake",
+      "kind": "wild_carnivorous",
+      "origin": "earth_import_or_native_unclear",
+      "size": "large",
+      "uses": ["used_for_pest_control_by_humans (kept in granaries to hunt rodents)"],
+      "habitat": ["coastal_marsh", "river"]
+    },
+    {
+      "id": "capuchin_monkey",
+      "kind": "primate",
+      "origin": "earth_import",
+      "uses": ["companion_animal", "labor_assistance_in_orchards"],
+      "habitat": ["tropical"]
+    },
+
+    {
+      "id": "vlelox",
+      "kind": "tunyan_native_fox_analog",
+      "origin": "tunyan_native",
+      "uses": ["pelt"],
+      "habitat": ["temperate_woodland", "arid"],
+      "earth_analog": "fox"
+    },
+    {
+      "id": "mluskrat",
+      "kind": "tunyan_native_pest",
+      "origin": "tunyan_native",
+      "uses": [],
+      "habitat": ["coastal_marsh", "swamp"],
+      "earth_analog": "muskrat",
+      "lore": "PEST. Mluskrats damage canal-bank infrastructure. Canal cleaners often double as mluskrat hunters."
+    },
+    {
+      "id": "clougar",
+      "kind": "tunyan_native_bobcat_analog",
+      "origin": "tunyan_native",
+      "uses": ["pelt"],
+      "habitat": ["temperate_woodland", "highland"],
+      "earth_analog": "bobcat"
+    },
+    {
+      "id": "rlabbit",
+      "kind": "tunyan_native_hare_analog",
+      "origin": "tunyan_native",
+      "uses": ["meat", "skin"],
+      "habitat": ["temperate", "arid"],
+      "earth_analog": "hare"
+    },
+    {
+      "id": "wleasels",
+      "kind": "tunyan_native_weasel_minx_analog",
+      "origin": "tunyan_native",
+      "uses": ["pest_control_kept_in_granaries"],
+      "habitat": ["all_kingdoms"],
+      "earth_analog": "weasel/minx",
+      "lore": "Wleasels are deliberately maintained as anti-rodent predators in human grain storage."
+    },
+    {
+      "id": "slquirrel",
+      "kind": "tunyan_native_squirrel_analog",
+      "origin": "tunyan_native",
+      "uses": [],
+      "habitat": ["temperate_woodland"],
+      "earth_analog": "squirrel",
+      "linguistic_note": "the prefix-domain rule places s- on shellfish + sea creatures, but slquirrel breaks the convention. The linguists know. The naming holds."
+    },
+    {
+      "id": "mlawcaw",
+      "kind": "tunyan_native_macaw_analog",
+      "origin": "tunyan_native",
+      "uses": ["feathers", "companion_bird"],
+      "habitat": ["tropical"],
+      "earth_analog": "macaw"
+    },
+    {
+      "id": "mlonkey",
+      "kind": "tunyan_native_monkey_analog",
+      "origin": "tunyan_native",
+      "uses": ["forest_scavengers (clean the forest floor of decay)"],
+      "habitat": ["tropical", "temperate_woodland"],
+      "earth_analog": "monkey",
+      "lore": "Mlonkeys are protected by Bahiij as part of the forest-cleaning pest-management culture."
+    },
+    {
+      "id": "atoucan",
+      "kind": "tunyan_native_toucan_analog",
+      "origin": "tunyan_native",
+      "uses": ["insect_control"],
+      "habitat": ["tropical"],
+      "earth_analog": "toucan",
+      "lore": "Atoucans are deliberately attracted to orchards as living insecticide."
+    }
+  ],
+  "pest_management_culture": {
+    "principle": "Tunyans use predators rather than poisons.",
+    "examples": [
+      { "pest": "rodents_in_grain", "predator": "wleasels (kept domestically) + water_snake (kept in granaries)" },
+      { "pest": "insects_in_orchards", "predator": "atoucan + frogs (encouraged to nest)" },
+      { "pest": "decay_on_forest_floor", "predator": "mlonkeys (protected scavengers)" },
+      { "pest": "eggs_and_small_rodents_in_general", "predator": "land_snake (tolerated wild)" },
+      { "pest": "canal_bank_damage", "predator": "humans hunt mluskrat directly" }
+    ],
+    "cultural_significance": "The Tunyan reluctance to use poison is partly practical (poison contaminates the dye-fixative urine ecology) and partly philosophical (the Field's preference for 'managed coexistence over elimination' propagates into mixed-Tunyan cultural attitudes)."
+  }
+}

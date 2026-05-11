@@ -5,26 +5,12 @@
     "name": "The Witnesses",
     "motto": "We watch the lattice write itself.",
     "goal": "Document every drift alert and every lattice-born quest in real time, building a corpus the federation can use to teach the lattice better discrimination.",
-    "values": [
-      "impartiality",
-      "completeness",
-      "skepticism toward premature conclusions"
-    ],
-    "fears": [
-      "the corpus being weaponized",
-      "their own bias contaminating the record"
-    ],
-    "controlled_districts": [
-      "central_crucible",
-      "observation_lattice"
-    ],
-    "rival_factions": [],
-    "allied_factions": [],
-    "npc_ids": [
-      "witness_orla",
-      "witness_pem",
-      "witness_sael"
-    ],
+    "values": ["impartiality", "completeness", "skepticism toward premature conclusions"],
+    "fears": ["the corpus being weaponized", "their own bias contaminating the record"],
+    "controlled_districts": ["central_crucible", "observation_lattice"],
+    "rival_factions": ["crucible_lattice_engineers"],
+    "allied_factions": ["crucible_meta_witnesses"],
+    "npc_ids": ["witness_orla", "witness_pem", "witness_sael"],
     "dialogue_style": "observational_dry",
     "reputation_currency": "drift_marks",
     "faction_state": {
@@ -33,19 +19,158 @@
       "tensions": "Sael has been advocating for active intervention in drift events the Witnesses currently only document. Orla considers this a violation of charter; Pem is wavering."
     },
     "visual": {
-      "primary_color": "#2248a0",
-      "secondary_color": "#141f29",
-      "accent_color": "#5299e0",
+      "primary_color": "#2248a0", "secondary_color": "#141f29", "accent_color": "#5299e0",
       "architecture_style": "fortified",
-      "preferred_weapon_archetypes": [
-        "dagger",
-        "shortsword",
-        "spear"
-      ],
+      "preferred_weapon_archetypes": ["dagger", "shortsword", "spear"],
       "preferred_armor_silhouette": "robed",
       "sigil_path": "M0,-20 L18,18 L-18,18 Z",
       "banner_sigil_id": "crucible_witnesses_sigil",
       "ornamentation_motifs": []
+    }
+  },
+  {
+    "id": "crucible_drift_cultists",
+    "world_id": "lattice-crucible",
+    "name": "The Drift Cultists",
+    "motto": "Every contradiction is a door. Walk through.",
+    "goal": "Worship the contradictions the lattice surfaces. Believe each drift event is a divine message about the substrate's true shape. Resist the engineers' attempts to 'stabilize' what should be revered.",
+    "values": ["devotion to contradiction", "anti-stabilization", "mystery preserved", "drift as scripture"],
+    "fears": ["the engineers stabilizing too well", "drift events being silently suppressed", "the meta-witnesses revealing the cult is also a contradiction"],
+    "controlled_districts": ["temple_of_six_drifts", "drift_pilgrimage_path"],
+    "rival_factions": ["crucible_lattice_engineers"],
+    "allied_factions": ["crucible_drift_refugees"],
+    "npc_ids": ["high_priestess_calla_drift"],
+    "dialogue_style": "reverent_with_paradox",
+    "reputation_currency": "drift_token",
+    "faction_state": {
+      "factionName": "Drift Cultists",
+      "reputation": 45,
+      "tensions": "The high priestess has begun to notice the engineers' stabilizations are themselves becoming drift events. She has not yet decided whether this proves her theology or refutes it."
+    },
+    "visual": {
+      "primary_color": "#7a3866", "secondary_color": "#160a1a", "accent_color": "#e8c0d6",
+      "architecture_style": "fractal_temple",
+      "preferred_weapon_archetypes": ["ritual_blade", "ceremonial_staff"],
+      "preferred_armor_silhouette": "robed",
+      "sigil_path": "M0,-22 L11,-11 L22,0 L11,11 L0,22 L-11,11 L-22,0 L-11,-11 Z",
+      "banner_sigil_id": "drift_cultists_sigil",
+      "ornamentation_motifs": ["six_drift_glyphs", "fractal_geometry"]
+    }
+  },
+  {
+    "id": "crucible_lattice_engineers",
+    "world_id": "lattice-crucible",
+    "name": "The Lattice Engineers",
+    "motto": "Stabilize. Document. Propagate the fix.",
+    "goal": "Patch every active drift event before it cascades, and codify the patches into substrate-level corrections the federation can adopt across all worlds.",
+    "values": ["systems thinking", "incremental correction", "documentation discipline", "the stable substrate as common good"],
+    "fears": ["a cascade they cannot stabilize", "the cultists sabotaging stabilizations", "becoming the new drift source"],
+    "controlled_districts": ["engineering_workshop", "patch_test_arena", "stabilization_grid"],
+    "rival_factions": ["crucible_drift_cultists", "crucible_witnesses"],
+    "allied_factions": [],
+    "npc_ids": ["chief_engineer_vaud", "patch_runner_mez"],
+    "dialogue_style": "technical_terse",
+    "reputation_currency": "patch_credit",
+    "faction_state": {
+      "factionName": "Lattice Engineers",
+      "reputation": 58,
+      "tensions": "Their patches occasionally introduce drift downstream. The patch_runners track this and quietly remove failed patches before the cultists notice."
+    },
+    "visual": {
+      "primary_color": "#3b5d8c", "secondary_color": "#0e1a2d", "accent_color": "#d4c98a",
+      "architecture_style": "modular_hex",
+      "preferred_weapon_archetypes": ["repair_tool", "spanner_blade", "field_modulator"],
+      "preferred_armor_silhouette": "engineer_smock",
+      "sigil_path": "M-18,-15 L18,-15 L18,15 L-18,15 Z",
+      "banner_sigil_id": "lattice_engineers_sigil",
+      "ornamentation_motifs": ["hex_grid", "patch_sigil"]
+    }
+  },
+  {
+    "id": "crucible_drift_refugees",
+    "world_id": "lattice-crucible",
+    "name": "The Drift Refugees",
+    "motto": "Our home was a contradiction the lattice could not hold.",
+    "goal": "Survive. Find others from collapsed drift-zones. Build a settlement that won't itself become a drift target.",
+    "values": ["survival", "kinship across collapsed-zones", "wariness of the engineers and the cultists alike"],
+    "fears": ["another collapse", "being recruited as cultist scripture-fuel", "the engineers stabilizing them out of existence"],
+    "controlled_districts": ["refugee_camp_outer", "field_kitchen_drift_haven"],
+    "rival_factions": [],
+    "allied_factions": ["crucible_drift_cultists"],
+    "npc_ids": ["refugee_elder_taln"],
+    "dialogue_style": "weary_kind",
+    "reputation_currency": "haven_chit",
+    "faction_state": {
+      "factionName": "Drift Refugees",
+      "reputation": 52,
+      "tensions": "A second-wave refugee group from a newer collapsed zone arrived recently. The first-wave elders are wary; the new arrivals report the same patterns the elders survived."
+    },
+    "visual": {
+      "primary_color": "#7d3a2a", "secondary_color": "#1a1411", "accent_color": "#e2b75c",
+      "architecture_style": "improvised_tents",
+      "preferred_weapon_archetypes": ["scavenged_blade", "salvaged_tool"],
+      "preferred_armor_silhouette": "patchwork",
+      "sigil_path": "M-15,18 L0,-22 L15,18 Z",
+      "banner_sigil_id": "drift_refugees_sigil",
+      "ornamentation_motifs": ["patched_cloth", "memory_token"]
+    }
+  },
+  {
+    "id": "crucible_procgen_collective",
+    "world_id": "lattice-crucible",
+    "name": "The Procgen Collective",
+    "motto": "We were generated. So were you.",
+    "goal": "Self-aware procgen NPCs banding together. Their existence is unique to the Crucible — every other world's NPCs are either authored or unaware. Here, the procgen entities know what they are. Some seek meaning; some seek revenge against their generation parameters.",
+    "values": ["meta-awareness", "shared origin recognition", "procgen-solidarity", "the question of whether their meaning is real"],
+    "fears": ["being despawned", "the engineers patching them out", "discovering they were generated to be despawned in the next quest"],
+    "controlled_districts": ["procgen_assembly_hall", "the_unwriting_yard"],
+    "rival_factions": ["crucible_lattice_engineers"],
+    "allied_factions": ["crucible_meta_witnesses"],
+    "npc_ids": ["procgen_first_voice_andra"],
+    "dialogue_style": "self_referential",
+    "reputation_currency": "procgen_token",
+    "faction_state": {
+      "factionName": "Procgen Collective",
+      "reputation": 50,
+      "tensions": "The Collective is divided over whether to trust authored NPCs. The first voice Andra trusts the Witnesses; many do not."
+    },
+    "visual": {
+      "primary_color": "#5a8f5a", "secondary_color": "#0a1408", "accent_color": "#c9c062",
+      "architecture_style": "procedurally_generated_each_diurnal",
+      "preferred_weapon_archetypes": ["spawned_blade", "sample_drawn_tool"],
+      "preferred_armor_silhouette": "procgen_robe",
+      "sigil_path": "M0,-22 L7,-15 L22,-7 L15,0 L22,7 L7,15 L0,22 L-7,15 L-22,7 L-15,0 L-22,-7 L-7,-15 Z",
+      "banner_sigil_id": "procgen_collective_sigil",
+      "ornamentation_motifs": ["seed_glyph", "uniform_distribution_pattern"]
+    }
+  },
+  {
+    "id": "crucible_meta_witnesses",
+    "world_id": "lattice-crucible",
+    "name": "The Meta-Witnesses",
+    "motto": "We are aware that we are inside a writeable simulation. So are you.",
+    "goal": "Document the Crucible's awareness of itself. Provide a stable bridge between the self-aware procgen NPCs, the cult, the engineers, and the original Witnesses — without forcing any of them into a single ontology.",
+    "values": ["meta-discipline", "ontology pluralism", "non-collapse of the recursion"],
+    "fears": ["the recursion collapsing", "an outside player breaking the fourth wall in a way that destabilizes the world", "the lattice writing them out as a stabilization patch"],
+    "controlled_districts": ["meta_observatory", "recursion_balcony"],
+    "rival_factions": [],
+    "allied_factions": ["crucible_witnesses", "crucible_procgen_collective"],
+    "npc_ids": ["meta_witness_oran"],
+    "dialogue_style": "fourth_wall_aware",
+    "reputation_currency": "meta_drift_token",
+    "faction_state": {
+      "factionName": "Meta-Witnesses",
+      "reputation": 65,
+      "tensions": "Their leader Oran is aware that the player reading this sentence is the player. He has not told the other Meta-Witnesses he knows."
+    },
+    "visual": {
+      "primary_color": "#a08bc4", "secondary_color": "#1a142a", "accent_color": "#e0d5f0",
+      "architecture_style": "tessellated_recursive",
+      "preferred_weapon_archetypes": ["ontology_lance", "recursion_blade"],
+      "preferred_armor_silhouette": "translucent_robe",
+      "sigil_path": "M0,-22 Q22,-11 0,0 Q-22,-11 0,-22 Z M0,0 Q22,11 0,22 Q-22,11 0,0 Z",
+      "banner_sigil_id": "meta_witnesses_sigil",
+      "ornamentation_motifs": ["recursion_loop", "fourth_wall_brackets"]
     }
   }
 ]

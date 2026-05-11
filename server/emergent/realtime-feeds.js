@@ -177,7 +177,50 @@ async function tickNewsFeeds(STATE, realtimeEmit) {
           const title = item.match(/<title><!\[CDATA\[(.*?)\]\]>|<title>(.*?)<\/title>/)?.[1] || item.match(/<title>(.*?)<\/title>/)?.[1] || "";
           const link = item.match(/<link>(.*?)<\/link>/)?.[1] || "";
           const pubDate = item.match(/<pubDate>(.*?)<\/pubDate>/)?.[1] || "";
-          if (title) articles.push({ source: feed.name, title: title.replace(/<!\[CDATA\[|\]\]>/g, ""), link, pubDate });
+          // Image extraction — RSS feeds carry the article image in one of
+          // four shapes. Try them in order of specificity. Without this the
+          // news lens / social feed renders a generic icon placeholder for
+          // every card, which is the single biggest "looks like vaporware"
+          // tell on the substrate.
+          const imageUrl =
+            item.match(/<media:thumbnail[^>]*url=["']([^"']+)["']/)?.[1] ||
+            item.match(/<media:content[^>]*url=["']([^"']+)["'][^>]*medium=["']image["']/)?.[1] ||
+            item.match(/<media:content[^>]*medium=["']image["'][^>]*url=["']([^"']+)["']/)?.[1] ||
+            item.match(/<enclosure[^>]*url=["']([^"']+\.(?:jpe?g|png|webp|gif))["']/i)?.[1] ||
+            item.match(/<description>[\s\S]*?<img[^>]*src=["']([^"']+)["']/i)?.[1] ||
+            null;
+          const description =
+            item.match(/<description><!\[CDATA\[([\s\S]*?)\]\]><\/description>/)?.[1] ||
+            item.match(/<description>([\s\S]*?)<\/description>/)?.[1] ||
+            "";
+          // Strip HTML safely. Use a fixed-point loop because a single
+          // pass against /<[^>]+>/ leaves shrapnel like
+          // "<scri<script>pt>" → "<scrpt>". Iterate until no further
+          // tags are removed, then escape any stray < / > so the field
+          // is byte-safe even if a future surface ever renders it as
+          // HTML. (CodeQL js/incomplete-multi-character-sanitization.)
+          let stripped = description;
+          for (let pass = 0; pass < 5; pass += 1) {
+            const next = stripped.replace(/<[^>]*>/g, "");
+            if (next === stripped) break;
+            stripped = next;
+          }
+          const summary = stripped
+            .replace(/[<>]/g, "")
+            .replace(/&nbsp;/g, " ")
+            .replace(/\s+/g, " ")
+            .trim()
+            .slice(0, 320);
+          if (title) {
+            articles.push({
+              source: feed.name,
+              title: title.replace(/<!\[CDATA\[|\]\]>/g, ""),
+              link,
+              pubDate,
+              imageUrl,
+              summary,
+            });
+          }
         }
       }
     } catch (_e) { logger.debug('emergent:realtime-feeds', 'individual feed failure is ok', { error: _e?.message }); }
@@ -194,7 +237,14 @@ async function tickNewsFeeds(STATE, realtimeEmit) {
       for (const article of payload.articles) {
         _bridgeEvent({
           type: "news:politics", // generic news — classifier will determine actual domain
-          data: { title: article.title, source: article.source, link: article.link, pubDate: article.pubDate },
+          data: {
+            title: article.title,
+            source: article.source,
+            link: article.link,
+            pubDate: article.pubDate,
+            imageUrl: article.imageUrl,
+            summary: article.summary,
+          },
           source: article.source?.toLowerCase().replace(/\s/g, "_") || "rss",
           timestamp: article.pubDate ? new Date(article.pubDate).toISOString() : payload.fetchedAt,
         }).catch(err => logger.warn?.("[realtime-feeds] bridge event failed:", err?.message || err));

@@ -638,6 +638,9 @@ export default function SpaceLensPage() {
         {showFeatures && <div className="px-4 pb-4"><LensFeaturePanel lensId="space" /></div>}
       </div>
     </div>
+    
+      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
+      <a href="#space-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to space content</a>
     </LensShell>
   );
 }

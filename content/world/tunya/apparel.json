@@ -1,0 +1,174 @@
+{
+  "world_id": "tunya",
+  "schema_version": "1.0",
+  "purpose": "Garment registry for Tunya, including marital and life-stage signaling. Apparel is a code: how someone is dressed tells you their species, marital status, life stage, profession, and increasingly their political affiliation.",
+  "garments": [
+    {
+      "id": "shoes",
+      "category": "footwear",
+      "description": "Blubber encased in leather; soft-leather-covered jute twine securing through toes or across foot; secured at ankles.",
+      "material": ["sealie_blubber", "leather", "jute_twine"],
+      "worn_by": "all"
+    },
+    {
+      "id": "work_shoes",
+      "category": "footwear",
+      "description": "Sturdier than shoes — wood under blubber/leather, wood held by short nails.",
+      "material": ["sealie_blubber", "leather", "wood", "iron_nails"],
+      "worn_by": "laborers"
+    },
+    {
+      "id": "bosom_wrap",
+      "category": "torso_undergarment",
+      "description": "Worn by unioned women not currently breastfeeding.",
+      "marital_signal": "unioned_not_nursing",
+      "worn_by": "unioned_women"
+    },
+    {
+      "id": "halter_wrap",
+      "category": "torso_undergarment",
+      "description": "Worn by unioned women — fabric around neck and breasts, knotted at side or behind neck.",
+      "marital_signal": "unioned",
+      "worn_by": "unioned_women"
+    },
+    {
+      "id": "choli",
+      "category": "torso",
+      "description": "Tight-fit body, short sleeves, low neck, cropped to navel — easy to nurse.",
+      "marital_signal": "unioned_nursing_or_recently_nursing",
+      "worn_by": "unioned_women_with_infant"
+    },
+    {
+      "id": "camisole",
+      "category": "torso_undergarment",
+      "description": "Worn by children and post-childbearing women.",
+      "life_stage_signal": "child_or_post_childbearing",
+      "worn_by": ["children", "post_childbearing_women"]
+    },
+    {
+      "id": "shawl",
+      "category": "outerwear",
+      "description": "Two kinds — cold-weather shawl + wind-protection shawl.",
+      "variants": ["cold_weather", "wind_protection"],
+      "worn_by": "all"
+    },
+    {
+      "id": "tunic",
+      "category": "torso",
+      "description": "Shirt for males; sleeveless or short/long sleeves.",
+      "worn_by": "men"
+    },
+    {
+      "id": "straight_sundress",
+      "category": "full_body",
+      "description": "Bosom to ankle, slits at sides for walking.",
+      "worn_by": "women"
+    },
+    {
+      "id": "bosom_dress",
+      "category": "full_body",
+      "description": "Tight bosom, billowing skirt to ankle.",
+      "worn_by": "women"
+    },
+    {
+      "id": "knicks",
+      "category": "lower",
+      "description": "Calf-length cotton bottoms.",
+      "material": ["cotton"],
+      "worn_by": "all"
+    },
+    {
+      "id": "pants",
+      "category": "lower",
+      "description": "Ankle-length, thin-medium materials (muslin/cotton).",
+      "material": ["muslin", "cotton"],
+      "worn_by": "all"
+    },
+    {
+      "id": "shorts",
+      "category": "lower",
+      "description": "Knee-length, medium materials (cotton/jute).",
+      "material": ["cotton", "jute"],
+      "worn_by": "all"
+    },
+    {
+      "id": "lehenga",
+      "category": "lower",
+      "description": "Long embroidered pleated skirt; bare lower back/midriff; light materials.",
+      "cultural_origin": "bahiij_eurasian_indian",
+      "worn_by": "women"
+    },
+    {
+      "id": "gypsey",
+      "category": "lower",
+      "description": "Hip-to-ankle loose skirt, bold-stripe colored fabrics, linen/cotton.",
+      "material": ["linen", "cotton"],
+      "worn_by": "women"
+    },
+    {
+      "id": "sarong",
+      "category": "wrap",
+      "description": "Wraps around skirts/dresses, sheer muslin or silk.",
+      "material": ["muslin", "silk"],
+      "worn_by": "all"
+    },
+    {
+      "id": "coverall",
+      "category": "child_garment",
+      "description": "Worn by children under 2 annums; onesie-like; cotton/light wool.",
+      "material": ["cotton", "light_wool"],
+      "life_stage_signal": "infant",
+      "worn_by": "infants_under_2_annums"
+    },
+    {
+      "id": "sundress_child",
+      "category": "child_garment",
+      "description": "Worn by little girls 3-15 annums; similar to bosom dress.",
+      "life_stage_signal": "girlhood",
+      "worn_by": "girls_3_to_15_annums"
+    },
+    {
+      "id": "sari",
+      "category": "wrap",
+      "description": "Wrapped at waist, thrown over shoulder. The way it is worn signals marital status. Doubles as sun shield.",
+      "material": ["muslin", "mohair"],
+      "marital_signal": "EXPLICIT — the wrap pattern itself encodes union status, fidelity, widowhood, and openness to courtship",
+      "worn_by": "women",
+      "cultural_significance": "the most-readable diplomatic garment on Tunya. A foreign delegate who cannot read sari-wraps will misread an Akeia treaty chamberlain entirely."
+    }
+  ],
+  "marital_status_codes": {
+    "unmarried_eligible": ["sundress_child up to 15 annums", "straight_sundress 16+ annums", "sari worn loose-shoulder"],
+    "courting": ["sari with single shoulder-tie", "halter_wrap optional"],
+    "unioned": ["bosom_wrap", "halter_wrap", "sari with double shoulder-wrap"],
+    "unioned_nursing": ["choli with sari thrown over single shoulder"],
+    "post_childbearing": ["camisole", "sari worn high-waist with covered shoulder"],
+    "widowed": ["sari worn full-shoulder, color: brown (mourning) for 1 annum, then any color"],
+    "permanently_unbonded_by_choice": ["camisole + tunic-style overshirt; the kingdom's signal varies"]
+  },
+  "life_stage_garments": {
+    "infant_0_to_2_annums": ["coverall"],
+    "child_3_to_15_annums": ["sundress_child (girls)", "tunic + shorts (boys)"],
+    "adult_unmarried_16+": "regional preferences with marital-eligible signaling",
+    "adult_unioned": "marital-status-specific subset (above)",
+    "adult_post_childbearing": ["camisole", "covered sari"],
+    "elder": "kingdom-specific honorifics layered on the standard adult set"
+  },
+  "kingdom_silhouette_priors": {
+    "comment": "Each kingdom favors specific garment subsets based on its founding population's cultural origin. Cross-kingdom blends are normal in border regions.",
+    "sandrun_sanguire": ["tunic (men)", "straight_sundress (women)", "work_shoes — heavy leather variant", "shawl — wind protection only"],
+    "kree_nationalists": ["tunic (men)", "bosom_dress (unioned)", "sari with double shoulder-wrap (state regalia)"],
+    "medici_isle": ["robed garment (covers Medici male skull cone in public)", "long flowing sari (Medici female long hair displayed via sari over shoulder)"],
+    "cree": ["tunic (men)", "halter_wrap + sundress (women)", "shawl — both kinds", "soft-leather work shoes always"],
+    "aekon": ["embroidered tunic (men, district-coded)", "lehenga (women, district-coded with twelve-petal embroidery)", "ceremonial sari for high feasts"],
+    "asbir": ["formal tunic (men, plate-coat over)", "straight_sundress (women)", "neoclassical formal wear for civic functions"],
+    "sahm": ["tunic + work_shoes (smiths)", "straight_sundress + sarong (scholars)", "scholar's robe for university"],
+    "dinye": ["minimal — tunic + shorts (men)", "wrap garment + sarong (women)", "rarely shoes; barefoot common"],
+    "bahiij": ["tunic + lehenga the dominant pairing", "elephant-pike-bearer's vest (mahouts)", "festival silk (orange and yellow accents)"],
+    "masond": ["heavy-leather tunic (stoneworkers)", "bosom_dress (women)", "work_shoes always"],
+    "dormas": ["couture-tailored garments — every garment above, but in fitted, dyed, embroidered versions; servant-nobility wear specific livery; the actual upper class wear something else, see lore"],
+    "fluxom": ["oilcloth-and-mail outer (sailors)", "merchant tunic (Family livery)", "knicks + tunic for ration-quartered"],
+    "nil": ["woven-bark robe — the only kingdom whose primary garment is unique to it; pure Tunyans wear no other"],
+    "akeia_of_kahlay": ["ceremonial sari + lehenga (queen mother and consorts)", "treaty-chamber silks for diplomatic functions"]
+  }
+}

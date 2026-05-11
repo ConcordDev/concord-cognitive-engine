@@ -298,7 +298,7 @@ export default function NewsLensPage() {
           <DTUExportButton domain="news" data={{}} compact />
           <button
             onClick={handleRefresh}
-            className="p-2 rounded-lg text-gray-400 hover:text-neon-blue hover:bg-lattice-elevated transition-colors"
+            className="p-2 rounded-lg text-gray-400 hover:text-neon-blue hover:bg-lattice-elevated transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500"
             title="Refresh news"
           >
             <RefreshCw className="w-4 h-4" />
@@ -539,6 +539,26 @@ export default function NewsLensPage() {
                 >
                   <div className="flex gap-4">
                     {viewMode === 'feed' && article.imageUrl && (
+                      <div className="w-24 h-24 rounded-lg bg-lattice-elevated flex-shrink-0 overflow-hidden">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={article.imageUrl}
+                          alt=""
+                          loading="lazy"
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            const el = e.currentTarget as HTMLImageElement;
+                            el.style.display = 'none';
+                            const parent = el.parentElement;
+                            if (parent) {
+                              parent.classList.add('flex', 'items-center', 'justify-center');
+                              parent.innerHTML = '<svg class="w-8 h-8 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M8 8h8v8H8z"/></svg>';
+                            }
+                          }}
+                        />
+                      </div>
+                    )}
+                    {viewMode === 'feed' && !article.imageUrl && (
                       <div className="w-24 h-24 rounded-lg bg-lattice-elevated flex-shrink-0 flex items-center justify-center">
                         <Newspaper className="w-8 h-8 text-gray-600" />
                       </div>

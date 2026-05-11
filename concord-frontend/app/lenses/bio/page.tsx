@@ -156,7 +156,7 @@ export default function BioLensPage() {
 
       {/* CRUD Actions */}
       <div className="flex items-center gap-2">
-        <button onClick={handleCreate} className="flex items-center gap-1.5 px-3 py-1.5 bg-neon-green/20 text-neon-green rounded-lg text-sm hover:bg-neon-green/30">
+        <button onClick={handleCreate} className="flex items-center gap-1.5 px-3 py-1.5 bg-neon-green/20 text-neon-green rounded-lg text-sm hover:bg-neon-green/30 focus:outline-none focus:ring-2 focus:ring-amber-500">
           <Plus className="w-4 h-4" /> Add Organism
         </button>
       </div>

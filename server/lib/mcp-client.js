@@ -17,6 +17,7 @@
  */
 
 import logger from "../logger.js";
+import { validateSafeFetchUrl, fetchWithPinnedIp } from "./ssrf-guard.js";
 
 // ── Protocol Constants ──────────────────────────────────────────────────────
 
@@ -70,8 +71,25 @@ export class MCPClient {
     if (!url || typeof url !== "string") {
       throw new Error("MCPClient.connect: url is required");
     }
+    if (url.length > 2048) {
+      throw new Error("MCPClient.connect: url exceeds 2048 chars");
+    }
 
-    this._url = url.replace(/\/+$/, ""); // strip trailing slashes
+    // Strip trailing slashes without a regex (defangs polynomial-time match on
+    // adversarial input like a 2KB string of '/' characters).
+    let trimmed = url;
+    while (trimmed.length > 0 && trimmed[trimmed.length - 1] === "/") {
+      trimmed = trimmed.slice(0, -1);
+    }
+
+    // SSRF gate: validate the URL points to a public host before we make any
+    // network request. Throws on metadata endpoints, private ranges, etc.
+    const safety = await validateSafeFetchUrl(trimmed);
+    if (!safety.ok) {
+      throw new Error(`MCPClient.connect: URL rejected — ${safety.error}`);
+    }
+    this._url = safety.url;
+    this._urlSafety = safety;
     this._connected = false;
     this._cachedTools = null;
 
@@ -115,6 +133,7 @@ export class MCPClient {
     this._serverInfo = null;
     this._serverCapabilities = null;
     this._url = null;
+    this._urlSafety = null;
 
     logger.log("debug", "mcp-client", "Disconnected");
   }
@@ -319,7 +338,9 @@ export class MCPClient {
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
 
     try {
-      const response = await fetch(this._url, {
+      // Pinned-IP fetch: connect to the IP we validated at connect() time,
+      // eliminating DNS-rebinding between validation and request.
+      const init = {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -328,7 +349,10 @@ export class MCPClient {
         },
         body: JSON.stringify(body),
         signal: controller.signal,
-      });
+      };
+      const response = this._urlSafety
+        ? await fetchWithPinnedIp(this._urlSafety, init)
+        : await fetch(this._url, init);
 
       if (!response.ok) {
         const text = await response.text().catch(() => "");

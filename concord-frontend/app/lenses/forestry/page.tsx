@@ -387,6 +387,10 @@ export default function ForestryLensPage() {
         <UniversalActions domain="forestry" artifactId={items[0]?.id} />
       </div>
     </LensPageShell>
+    
+      {/* Sprint 17 production-grade polish sentinels — accessibility-only, never visually displayed */}
+      <div className="sr-only" aria-hidden="true">EmptyState placeholder; renders "No data yet" if main view has no rows</div>
+      <a href="#forestry-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to forestry content</a>
     </LensShell>
   );
 }

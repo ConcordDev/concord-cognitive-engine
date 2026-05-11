@@ -1,0 +1,116 @@
+{
+  "world_id": "tunya",
+  "schema_version": "1.0",
+  "purpose": "The 32-hour Tunyan diurnal mapped hour-by-hour. Eight named watches of 4 hours each. Per-hour civic events: meals, services opening/closing, sanitation, post, market activity. Used by NPC schedulers, lens activity feeds, and the day-phase-aware quest engine.",
+  "hours_per_diurnal": 32,
+  "watches_per_diurnal": 8,
+  "hours_per_watch": 4,
+  "watches": [
+    {
+      "ordinal": 1,
+      "name": "Dominus",
+      "hour_range": [1, 4],
+      "kind": "first_sun_watch",
+      "tone": "the new diurnal opens; sanitation finishes its overnight; the city rises"
+    },
+    {
+      "ordinal": 2,
+      "name": "Stratus",
+      "hour_range": [5, 8],
+      "kind": "morning_sun_watch",
+      "tone": "trade and post open; first meal at the start of the watch's tail"
+    },
+    {
+      "ordinal": 3,
+      "name": "Freeus",
+      "hour_range": [9, 12],
+      "kind": "midday_sun_watch",
+      "tone": "the productive heart of the diurnal; restaurants and theaters cycle; mid-diurnal meal at hour 11"
+    },
+    {
+      "ordinal": 4,
+      "name": "Quartus",
+      "hour_range": [13, 16],
+      "kind": "afternoon_sun_watch",
+      "tone": "post sorted; tea time; museums and art centers open; the adult center opens at the watch's tail"
+    },
+    {
+      "ordinal": 5,
+      "name": "Penanus",
+      "hour_range": [17, 20],
+      "kind": "first_moon_watch",
+      "tone": "evening; civic culture peaks; theaters and amphitheaters in their evening run"
+    },
+    {
+      "ordinal": 6,
+      "name": "Easeus",
+      "hour_range": [21, 24],
+      "kind": "evening_moon_watch",
+      "tone": "supper; the diurnal eases into hearth time; restaurants close to non-night-trade"
+    },
+    {
+      "ordinal": 7,
+      "name": "Tendus",
+      "hour_range": [25, 28],
+      "kind": "deep_moon_watch",
+      "tone": "rest; city quieter; only the sanitation overnight, the night-watch governance, and the Medici Resonance Choir's quiet hours work through this"
+    },
+    {
+      "ordinal": 8,
+      "name": "Toolus",
+      "hour_range": [29, 32],
+      "kind": "pre_dawn_moon_watch",
+      "tone": "the deepest moon; bakers begin first meal preparation toward the close; the watch hands off to Dominus"
+    }
+  ],
+  "per_hour_events": [
+    { "hour": 1, "watch": "Dominus", "event": "new_diurnal" },
+    { "hour": 2, "watch": "Dominus", "event": "diurnal_continues" },
+    { "hour": 3, "watch": "Dominus", "event": "general_post_delivery_begins" },
+    { "hour": 4, "watch": "Dominus", "event": "sanitation_ends; adult_center_closes" },
+    { "hour": 5, "watch": "Stratus", "event": "vendor_delivery; theaters_open; vendors_close_last_stable_trips" },
+    { "hour": 6, "watch": "Stratus", "event": "first_meal" },
+    { "hour": 7, "watch": "Stratus", "event": "post_collection_begins; evening_meal_window" },
+    { "hour": 8, "watch": "Stratus", "event": "didactic_center_opens" },
+    { "hour": 9, "watch": "Freeus", "event": "farm_hands_end; general_post_delivery_ends; restaurants_close" },
+    { "hour": 10, "watch": "Freeus", "event": "restaurants_open_tea_time; theaters_art_centers_museums_amphitheater_close" },
+    { "hour": 11, "watch": "Freeus", "event": "mid_diurnal_meal" },
+    { "hour": 12, "watch": "Freeus", "event": "museums_art_centers_open; taxis_close_maintenance_begins" },
+    { "hour": 13, "watch": "Quartus", "event": "post_sorted" },
+    { "hour": 14, "watch": "Quartus", "event": "didactic_center_closes" },
+    { "hour": 15, "watch": "Quartus", "event": "tea_time; canal_taxi_maintenance_ends" },
+    { "hour": 16, "watch": "Quartus", "event": "adult_center_opens" },
+    { "hour": 17, "watch": "Penanus", "event": "evening_civic_culture_window_begins" },
+    { "hour": 18, "watch": "Penanus", "event": "supper_window_begins" },
+    { "hour": 19, "watch": "Penanus", "event": "amphitheater_evening_show" },
+    { "hour": 20, "watch": "Penanus", "event": "post_evening_collection" },
+    { "hour": 21, "watch": "Easeus", "event": "supper_window_closes" },
+    { "hour": 22, "watch": "Easeus", "event": "restaurants_close_to_non_night_trade" },
+    { "hour": 23, "watch": "Easeus", "event": "theaters_close" },
+    { "hour": 24, "watch": "Easeus", "event": "evening_hearth" },
+    { "hour": 25, "watch": "Tendus", "event": "city_quiets" },
+    { "hour": 26, "watch": "Tendus", "event": "night_watch_governance_session" },
+    { "hour": 27, "watch": "Tendus", "event": "medici_resonance_choir_quiet_hour" },
+    { "hour": 28, "watch": "Tendus", "event": "deep_rest" },
+    { "hour": 29, "watch": "Toolus", "event": "bakers_begin" },
+    { "hour": 30, "watch": "Toolus", "event": "sanitation_overnight_resumes" },
+    { "hour": 31, "watch": "Toolus", "event": "first_light_preparation" },
+    { "hour": 32, "watch": "Toolus", "event": "handoff_to_dominus" }
+  ],
+  "civic_institutions_referenced": [
+    "didactic_center", "adult_center", "amphitheater", "theaters", "art_centers", "museums",
+    "restaurants", "vendor_stalls", "post_office", "taxis", "canals", "stables",
+    "medici_resonance_choir_quiet_room"
+  ],
+  "meal_pattern": {
+    "first_meal": { "hour": 6, "watch": "Stratus" },
+    "tea_time_morning": { "hour": 10, "watch": "Freeus" },
+    "mid_diurnal_meal": { "hour": 11, "watch": "Freeus" },
+    "tea_time_afternoon": { "hour": 15, "watch": "Quartus" },
+    "supper_window": { "hours": [18, 19, 20, 21], "watches": ["Penanus", "Easeus"] }
+  },
+  "notes": [
+    "The 8 watch names (Dominus / Stratus / Freeus / Quartus / Penanus / Easeus / Tendus / Toolus) come from the source bible image directly. Each watch is exactly 4 hours; the watches are anchored to clock-hours rather than to sun/moon (the sun/moon split varies by month per calendar.json — Wound has 20 sun hours, T'Annum has 12).",
+    "Civic culture is dense for a pre-industrial society. Theaters, art centers, museums, amphitheaters, didactic centers, and adult centers all open and close on tracked schedules. Tunyan cities take culture seriously."
+  ]
+}

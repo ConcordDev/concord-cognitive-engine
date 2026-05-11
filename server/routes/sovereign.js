@@ -262,10 +262,12 @@ export default function createSovereignRouter({ STATE, makeCtx, runMacro, saveSt
           const dtu = S.dtus.get(target);
           if (!dtu) return res.json({ ok: false, error: `DTU ${target} not found` });
 
-          // Deep merge data onto DTU, protecting id and lineage
-          const protected_ = new Set(["id", "lineage"]);
-          for (const [k, v] of Object.entries(data || {})) {
+          // Deep merge data onto DTU, protecting id, lineage, and prototype keys.
+          const protected_ = new Set(["id", "lineage", "__proto__", "constructor", "prototype"]);
+          const incoming = data && typeof data === "object" ? data : {};
+          for (const [k, v] of Object.entries(incoming)) {
             if (protected_.has(k)) continue;
+            if (!Object.prototype.hasOwnProperty.call(incoming, k)) continue;
             if (typeof v === "object" && v !== null && typeof dtu[k] === "object" && dtu[k] !== null && !Array.isArray(v)) {
               dtu[k] = { ...dtu[k], ...v };
             } else {
@@ -330,8 +332,11 @@ export default function createSovereignRouter({ STATE, makeCtx, runMacro, saveSt
           const key = data?.key;
           const value = data?.value;
           if (!key) return res.json({ ok: false, error: "data.key required" });
+          if (typeof key !== "string" || !/^[a-zA-Z_][a-zA-Z0-9_]{0,63}$/.test(key) || key === "__proto__" || key === "constructor" || key === "prototype") {
+            return res.json({ ok: false, error: "data.key must be an alphanumeric/underscore identifier" });
+          }
 
-          if (!S.config) S.config = {};
+          if (!S.config) S.config = Object.create(null);
           const prev = S.config[key];
           S.config[key] = value;
           trySave();
@@ -342,10 +347,13 @@ export default function createSovereignRouter({ STATE, makeCtx, runMacro, saveSt
 
         case "toggle-job": {
           if (!target) return res.json({ ok: false, error: "target (job name) required" });
+          if (typeof target !== "string" || !/^[a-zA-Z_][a-zA-Z0-9_]{0,63}$/.test(target) || target === "__proto__" || target === "constructor" || target === "prototype") {
+            return res.json({ ok: false, error: "target must be an alphanumeric/underscore identifier" });
+          }
           const enabled = data?.enabled !== undefined ? Boolean(data.enabled) : true;
           const jobKey = target.endsWith("Enabled") ? target : `${target}Enabled`;
 
-          if (!S.settings) S.settings = {};
+          if (!S.settings) S.settings = Object.create(null);
           const prev = S.settings[jobKey];
           S.settings[jobKey] = enabled;
           trySave();
@@ -570,12 +578,18 @@ export default function createSovereignRouter({ STATE, makeCtx, runMacro, saveSt
         // ── Bulk Settings Update ───────────────────────────────────────
         case "settings": {
           try {
-            const allowed = ["autogenEnabled", "dreamEnabled", "evolutionEnabled", "synthEnabled",
+            // Strict allow-list keyed via Set so CodeQL's taint tracker sees
+            // the membership check. Set.has() is recognized as a sanitizer.
+            const ALLOWED_SETTINGS = new Set([
+              "autogenEnabled", "dreamEnabled", "evolutionEnabled", "synthEnabled",
               "heartbeatEnabled", "speculativeGateEnabled", "canonicalOnly", "includeMegasInBase",
-              "requireHypothesisLabels", "requireTestsWhenUncertain"];
+              "requireHypothesisLabels", "requireTestsWhenUncertain",
+            ]);
+            if (!S.settings) S.settings = Object.create(null);
             let updated = 0;
-            for (const [key, val] of Object.entries(data || {})) {
-              if (allowed.includes(key) && typeof val === "boolean") {
+            const incoming = data && typeof data === "object" ? data : {};
+            for (const [key, val] of Object.entries(incoming)) {
+              if (ALLOWED_SETTINGS.has(key) && typeof val === "boolean") {
                 S.settings[key] = val;
                 updated++;
               }

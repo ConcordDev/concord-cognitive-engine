@@ -15,6 +15,36 @@ import logger from "../logger.js";
 
 const GLOBAL_SECRET = process.env.WEBHOOK_SECRET || null;
 
+// Domain names are user-controlled when an admin registers a new integration.
+// Reject anything that isn't a strict slug to neutralise prototype-pollution
+// (e.g. domain="__proto__" → STATE.webhookSecrets["__proto__"] = secret would
+// mutate Object.prototype on a plain-object map).
+const DOMAIN_SLUG_RE = /^[a-z0-9][a-z0-9_-]{0,63}$/i;
+const FORBIDDEN_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+
+function assertValidDomain(domain) {
+  if (typeof domain !== "string" || !DOMAIN_SLUG_RE.test(domain) || FORBIDDEN_KEYS.has(domain)) {
+    throw new Error(`Invalid webhook domain: ${typeof domain === "string" ? domain.slice(0, 32) : typeof domain}`);
+  }
+}
+
+function ensureSecretsMap(STATE) {
+  // Map sidesteps prototype-pollution risk entirely (keys can't reach Object.prototype).
+  // Back-compat: if a prior process stored a plain object, lift it into the Map.
+  if (!STATE.webhookSecrets || !(STATE.webhookSecrets instanceof Map)) {
+    const m = new Map();
+    if (STATE.webhookSecrets && typeof STATE.webhookSecrets === "object") {
+      for (const k of Object.keys(STATE.webhookSecrets)) {
+        if (DOMAIN_SLUG_RE.test(k) && !FORBIDDEN_KEYS.has(k)) {
+          m.set(k, STATE.webhookSecrets[k]);
+        }
+      }
+    }
+    STATE.webhookSecrets = m;
+  }
+  return STATE.webhookSecrets;
+}
+
 /**
  * Create or retrieve a webhook secret for a domain.
  *
@@ -23,14 +53,16 @@ const GLOBAL_SECRET = process.env.WEBHOOK_SECRET || null;
  * @returns {{ secret: string, isNew: boolean }}
  */
 export function getOrCreateWebhookSecret(STATE, domain) {
-  if (!STATE.webhookSecrets) STATE.webhookSecrets = {};
+  assertValidDomain(domain);
+  const secrets = ensureSecretsMap(STATE);
 
-  if (STATE.webhookSecrets[domain]) {
-    return { secret: STATE.webhookSecrets[domain], isNew: false };
+  const existing = secrets.get(domain);
+  if (existing) {
+    return { secret: existing, isNew: false };
   }
 
   const secret = crypto.randomBytes(32).toString("hex");
-  STATE.webhookSecrets[domain] = secret;
+  secrets.set(domain, secret);
   return { secret, isNew: true };
 }
 
@@ -38,8 +70,8 @@ export function getOrCreateWebhookSecret(STATE, domain) {
  * List all registered webhook domains and their URLs.
  */
 export function listWebhookDomains(STATE, { baseUrl = "" } = {}) {
-  const domains = Object.keys(STATE.webhookSecrets || {});
-  return domains.map(domain => ({
+  const secrets = ensureSecretsMap(STATE);
+  return [...secrets.keys()].map(domain => ({
     domain,
     url: `${baseUrl}/api/webhook/${domain}`,
     hasSecret: true,
@@ -50,8 +82,12 @@ export function listWebhookDomains(STATE, { baseUrl = "" } = {}) {
  * Revoke a webhook secret for a domain.
  */
 export function revokeWebhookSecret(STATE, domain) {
-  if (STATE.webhookSecrets?.[domain]) {
-    delete STATE.webhookSecrets[domain];
+  if (typeof domain !== "string" || !DOMAIN_SLUG_RE.test(domain) || FORBIDDEN_KEYS.has(domain)) {
+    return false;
+  }
+  const secrets = ensureSecretsMap(STATE);
+  if (secrets.has(domain)) {
+    secrets.delete(domain);
     return true;
   }
   return false;
@@ -74,7 +110,12 @@ export function revokeWebhookSecret(STATE, domain) {
  * @returns {{ authenticated: boolean, method: string }}
  */
 export function verifyWebhook(req, STATE, domain) {
-  const domainSecret = STATE.webhookSecrets?.[domain];
+  // Reject malformed/forbidden domain keys outright — same gate as the writers.
+  if (typeof domain !== "string" || !DOMAIN_SLUG_RE.test(domain) || FORBIDDEN_KEYS.has(domain)) {
+    return { authenticated: false, method: "invalid-domain" };
+  }
+  const secrets = ensureSecretsMap(STATE);
+  const domainSecret = secrets.get(domain);
   const signature = req.headers["x-webhook-signature"] || req.headers["x-hub-signature-256"];
   const authHeader = req.headers["authorization"];
 
