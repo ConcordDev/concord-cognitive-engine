@@ -18,6 +18,53 @@ import {
   enthalpyOfReaction, gibbsFreeEnergy,
 } from '../lib/compute/chemistry-compute.js';
 import { simulateCircuit, analyzeCircuit } from '../lib/compute/quantum-compute.js';
+import * as acorn from 'acorn';
+
+// Sprint 18.4 — AST whitelist for the monte-carlo `fn` expression.
+// Same shape as domains/invariant.js#validateExpressionAST. Rejects
+// CallExpression / NewExpression / arrow funcs / computed-member / forbidden
+// globals before the Function ctor is invoked. The math.* identifiers
+// (sin, cos, sqrt, abs, exp, log, PI, E) are explicitly allowed via the
+// caller; everything else resolves to undefined → expression evaluates to NaN.
+const MAX_FN_LEN = 500;
+const ALLOWED_AST_NODES = new Set([
+  'Program', 'ExpressionStatement',
+  'BinaryExpression', 'LogicalExpression', 'UnaryExpression', 'ConditionalExpression',
+  'MemberExpression', 'Identifier', 'Literal',
+  'ArrayExpression', 'SequenceExpression',
+]);
+const FORBIDDEN_FN_IDENTIFIERS = new Set([
+  'Function', 'eval', 'constructor', '__proto__', 'prototype',
+  'globalThis', 'global', 'process', 'require', 'module', 'exports',
+  'setTimeout', 'setInterval', 'setImmediate', 'fetch', 'import',
+  'WebAssembly', 'Reflect', 'Proxy',
+]);
+function validateMonteCarloFn(expr) {
+  if (typeof expr !== 'string' || !expr) return { ok: false, reason: 'empty' };
+  if (expr.length > MAX_FN_LEN) return { ok: false, reason: 'too_long' };
+  let ast;
+  try { ast = acorn.parseExpressionAt(expr, 0, { ecmaVersion: 2020 }); }
+  catch (e) { return { ok: false, reason: `parse_error:${e.message}` }; }
+  let violation = null;
+  (function walk(node) {
+    if (violation || !node || typeof node !== 'object') return;
+    if (Array.isArray(node)) { node.forEach(walk); return; }
+    if (node.type && !ALLOWED_AST_NODES.has(node.type)) {
+      violation = `disallowed_node:${node.type}`; return;
+    }
+    if (node.type === 'MemberExpression' && node.computed) {
+      violation = 'disallowed_computed_member'; return;
+    }
+    if (node.type === 'Identifier' && FORBIDDEN_FN_IDENTIFIERS.has(node.name)) {
+      violation = `forbidden_identifier:${node.name}`; return;
+    }
+    for (const k of Object.keys(node)) {
+      if (k === 'loc' || k === 'range' || k === 'start' || k === 'end') continue;
+      walk(node[k]);
+    }
+  })(ast);
+  return violation ? { ok: false, reason: violation } : { ok: true };
+}
 
 const EXECUTORS = {
   'fea-frame': (input) => runFEA(input),
@@ -48,9 +95,13 @@ const EXECUTORS = {
     const { samples = 1000, fn, params = {} } = input;
     if (!fn) return { ok: false, error: 'fn required (string expression)' };
 
-    // Safety: only allow simple math expressions
-    if (/[;{}()]/.test(fn) && !fn.startsWith('(')) {
-      return { ok: false, error: 'Invalid expression' };
+    // Safety: AST whitelist via acorn rejects CallExpression / NewExpression /
+    // arrow funcs / computed-member access / forbidden globals before the
+    // Function ctor runs. The regex check at the legacy site was insufficient
+    // (a leading `(` opened a bypass — `fn = "(this.constructor.constructor('return process')())"`).
+    const astCheck = validateMonteCarloFn(fn);
+    if (!astCheck.ok) {
+      return { ok: false, error: `unsafe_expression:${astCheck.reason}` };
     }
 
     const results = [];

@@ -1,0 +1,199 @@
+name: CodeQL Exclusions — 90-Day Re-Review
+
+# Sprint 18.4 — risk-close #3 for the CodeQL suppression ledger.
+#
+# Every 90 days, this workflow opens a tracking issue saying:
+#   "the N CodeQL exclusions in .github/workflows/codeql.yml have
+#    not been re-audited since YYYY-MM-DD. Re-run the audit and
+#    update docs/security/codeql-suppressions.md."
+#
+# The protocol forces a human (the maintainer) to either:
+#   (a) Re-run the Explore-agent surveys, confirm each exclusion's
+#       allowlist is still tight, update the audit date in the ledger.
+#   (b) Identify a new file matching a forbidden pattern → real bug
+#       → fix at source.
+#   (c) Identify a suppression that can no longer be defended →
+#       REMOVE it and re-enable the CodeQL query.
+#
+# The risk closed: a suppression set forever silently rots as the
+# codebase changes shape. This cron forces "use it or lose it"
+# discipline on every exclusion.
+
+on:
+  schedule:
+    # 1st of the month at 08:00 UTC. The 90-day check fires when 90
+    # days have elapsed since the last re-audit (checked against the
+    # ledger file's "Last updated" header).
+    - cron: '0 8 1 * *'
+  workflow_dispatch:
+    inputs:
+      force_open_issue:
+        description: 'Open a re-review issue regardless of ledger age'
+        required: false
+        default: 'false'
+        type: choice
+        options: [ 'false', 'true' ]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  review-codeql-exclusions:
+    name: Compute days-since-audit + open issue if stale
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Compute days since last audit
+        id: ledger
+        run: |
+          # Parse "Last updated: YYYY-MM-DD" from the ledger header.
+          if [ ! -f docs/security/codeql-suppressions.md ]; then
+            echo "Suppression ledger missing — failing audit immediately"
+            echo "stale=true" >> $GITHUB_OUTPUT
+            echo "reason=no-ledger" >> $GITHUB_OUTPUT
+            echo "days=999" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          last=$(grep -oE '\*\*Last updated:\*\*\s+[0-9]{4}-[0-9]{2}-[0-9]{2}' docs/security/codeql-suppressions.md | head -1 | grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2}')
+          if [ -z "$last" ]; then
+            echo "Could not parse Last-updated from ledger — failing audit"
+            echo "stale=true" >> $GITHUB_OUTPUT
+            echo "reason=unparseable-date" >> $GITHUB_OUTPUT
+            echo "days=999" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          last_epoch=$(date -d "$last" +%s)
+          now_epoch=$(date +%s)
+          days=$(( (now_epoch - last_epoch) / 86400 ))
+          echo "Ledger last updated $last ($days days ago)"
+          echo "days=$days" >> $GITHUB_OUTPUT
+          if [ "$days" -gt "90" ]; then
+            echo "stale=true" >> $GITHUB_OUTPUT
+            echo "reason=over-90-days" >> $GITHUB_OUTPUT
+          else
+            echo "stale=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Count active exclusions in workflow
+        id: exclusions
+        run: |
+          n=$(grep -c '^\s*- exclude:' .github/workflows/codeql.yml || echo "0")
+          echo "count=$n" >> $GITHUB_OUTPUT
+          echo "Active CodeQL exclusions: $n"
+
+      - name: Snapshot drift-test status
+        id: drift
+        run: |
+          # Confirm the drift test exists; if it's been deleted the
+          # suppression contract is broken regardless of audit age.
+          if [ -f server/tests/platinum-codeql-drift.test.js ]; then
+            echo "drift_test=present" >> $GITHUB_OUTPUT
+          else
+            echo "drift_test=MISSING" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Open re-review issue if stale
+        if: |
+          steps.ledger.outputs.stale == 'true' ||
+          github.event.inputs.force_open_issue == 'true' ||
+          steps.drift.outputs.drift_test == 'MISSING'
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const days = '${{ steps.ledger.outputs.days }}';
+            const reason = '${{ steps.ledger.outputs.reason }}';
+            const count = '${{ steps.exclusions.outputs.count }}';
+            const drift = '${{ steps.drift.outputs.drift_test }}';
+            const force = '${{ github.event.inputs.force_open_issue }}';
+
+            const title = drift === 'MISSING'
+              ? '[security] CodeQL drift test deleted — re-validate every exclusion immediately'
+              : force === 'true'
+                ? '[security] CodeQL exclusions — manual re-review requested'
+                : `[security] CodeQL exclusions ${days} days since last re-audit (limit: 90)`;
+
+            const body = `
+            ## CodeQL Suppression Re-Review
+
+            **Days since last audit:** ${days}
+            **Reason:** ${reason || 'over-90-days'}
+            **Active exclusions in .github/workflows/codeql.yml:** ${count}
+            **Drift test status:** ${drift}
+
+            ### Action required
+
+            1. Re-run the Explore-agent survey for each suppressed CodeQL category.
+               Confirm the allowlist file set in \`docs/security/codeql-suppressions.md\`
+               hasn't grown silently.
+            2. For each new file matching a forbidden-pattern grep, classify:
+               real bug → fix at source; verified FP → add to allowlist with comment.
+            3. Update the ledger's "Last updated" date and any allowlist changes.
+            4. Re-run \`server/tests/platinum-codeql-drift.test.js\` — must pass.
+            5. Close this issue with a 1-paragraph audit note linking the commit.
+
+            ### Why this matters
+
+            Every CodeQL exclusion is a documented bet that the flagged pattern
+            is a verified false positive in this codebase. As the codebase
+            evolves, that bet can rot — new files may introduce real bugs in
+            the excluded categories that CodeQL is no longer watching.
+
+            The \`platinum-codeql-drift.test.js\` test partially closes this
+            risk by catching the most obvious drift patterns at PR time. This
+            cron closes the rest by forcing a full re-audit every 90 days.
+
+            ### Suppression categories currently active
+
+            See \`docs/security/codeql-suppressions.md\` for the full ledger.
+            Each entry has a re-audit trigger; please verify none of them
+            have fired silently:
+
+            - js/insufficient-password-hash
+            - js/polynomial-redos + js/polynomial-regex
+            - js/prototype-polluting-assignment + js/remote-property-injection
+            - js/weak-cryptographic-algorithm
+            - js/insecure-randomness
+            - js/code-injection
+            - js/sql-injection
+            - js/user-controlled-bypass
+
+            ---
+
+            _Automated by .github/workflows/codeql-exclusions-review.yml_
+            `;
+
+            // De-dup: don't open a duplicate if a recent one is still open.
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'codeql-re-review',
+              per_page: 5,
+            });
+            if (existing.data.length > 0) {
+              core.info(`Existing open re-review issue #${existing.data[0].number} — skipping new issue creation`);
+              return;
+            }
+
+            const issue = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels: ['security', 'codeql-re-review', 'platinum-gate'],
+            });
+            core.info(`Opened re-review issue #${issue.data.number}`);
+
+      - name: Summary
+        run: |
+          echo "## CodeQL Exclusion Audit Status" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Days since last ledger audit: ${{ steps.ledger.outputs.days }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Stale (>90d): ${{ steps.ledger.outputs.stale }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Active exclusions: ${{ steps.exclusions.outputs.count }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Drift test: ${{ steps.drift.outputs.drift_test }}" >> $GITHUB_STEP_SUMMARY
