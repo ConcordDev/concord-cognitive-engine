@@ -11,7 +11,7 @@
 
 import { useEffect, useState } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { Loader2 } from 'lucide-react';
+import { } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 
 interface Forecast {
@@ -47,6 +47,7 @@ export default function ForecastPage() {
     if (r?.ok) setForecast(r.forecast || null);
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh is a stable inline arrow; worldId is the only legitimate change trigger
   useEffect(() => { void refresh(); }, [worldId]);
 
   const composeFresh = async () => {

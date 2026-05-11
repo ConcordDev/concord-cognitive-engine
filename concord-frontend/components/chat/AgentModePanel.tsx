@@ -234,6 +234,7 @@ export default function AgentModePanel({ open, onClose }: AgentModePanelProps) {
     } finally {
       setBusy(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `slot` is read once at call-time inside the closure
   }, [prompt, busy, conversation]);
 
   if (!open) return null;

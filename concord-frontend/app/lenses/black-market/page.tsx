@@ -13,7 +13,7 @@
 // Empty state: handled inline when data is empty (Sprint 17 invariant).
 
 import { useCallback, useEffect, useState, useMemo } from 'react';
-import { Loader2 } from 'lucide-react';
+import { } from 'lucide-react';
 
 import { LensShell } from '@/components/lens/LensShell';
 import { useLensCommand } from '@/hooks/useLensCommand';

@@ -1,7 +1,7 @@
 'use client';
 
 import { useLensNav } from '@/hooks/useLensNav';
-import { Loader2 } from 'lucide-react';
+import { } from 'lucide-react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';

@@ -64,6 +64,7 @@ export default function EavesdropBubble({ worldId = 'concordia-hub', playerPos }
       window.clearInterval(interval);
       off?.();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- playerPos.{x,z} are spread explicitly above; ESLint can't see through the optional-chain
   }, [worldId, playerPos?.x, playerPos?.z]);
 
   if (!active || active.length === 0) return null;

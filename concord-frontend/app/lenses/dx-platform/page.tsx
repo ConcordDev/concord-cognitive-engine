@@ -10,7 +10,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { Loader2 } from 'lucide-react';
+import { } from 'lucide-react';
 import Link from "next/link";
 import { LensShell } from "@/components/lens/LensShell";
 

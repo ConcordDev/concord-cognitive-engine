@@ -18,7 +18,7 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { Loader2 } from 'lucide-react';
+import { } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { LensShell } from '@/components/lens/LensShell';

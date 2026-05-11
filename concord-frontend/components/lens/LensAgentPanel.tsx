@@ -271,7 +271,6 @@ export default function LensAgentPanel({ lensId, lensPrompt, open, onClose, posi
           const liveAnswer: { text: string; toolCalls: ToolCall[]; artifacts: Artifact[]; provider?: string; model?: string } = {
             text: '', toolCalls: [], artifacts: [],
           };
-          // eslint-disable-next-line no-constant-condition
           while (true) {
             const { value, done } = await reader.read();
             if (done) break;

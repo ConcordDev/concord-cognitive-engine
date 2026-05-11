@@ -43,7 +43,6 @@ export class LensErrorBoundary extends React.Component<Props, State> {
     this.setState({ error, errorInfo });
     // Best-effort logging — never throw from here.
     try {
-      // eslint-disable-next-line no-console
       console.error(`[LensErrorBoundary:${this.props.lensId}]`, error, errorInfo);
       // Post to backend observability if available.
       fetch('/api/lens/run', {

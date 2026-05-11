@@ -2079,6 +2079,71 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['register_codebase', 'run_detectors', 'view_billing', 'top_up_wallet', 'web_editor_demo', 'record_fix_decision'],
     category: 'system',
   },
+
+  // ═══════════════════════════════════════════════════════════════
+  // Sprint 17 / Phase 8 / Phase 9 lenses missing manifest entries.
+  // Each is mounted as a frontend route but the lensId was not yet
+  // registered for the ESLint lens-manifest validator. Minimal entry
+  // = domain + label + artifacts + category, macros default to the
+  // standard lens.<domain>.* shape.
+  // ═══════════════════════════════════════════════════════════════
+
+  {
+    domain: 'cognitive-replay',
+    label: 'Cognitive Replay',
+    artifacts: ['timeline_event', 'replay_segment'],
+    macros: { list: 'chat.timeline', get: 'chat.timeline.get', run: 'chat.timeline.run' },
+    exports: ['json'],
+    actions: ['scrub', 'export'],
+    category: 'introspection',
+  },
+  {
+    domain: 'classroom',
+    label: 'Classroom',
+    artifacts: ['homework_submission', 'peer_review', 'academic_transcript'],
+    macros: { list: 'classroom.list', get: 'classroom.get', create: 'classroom.enrol', update: 'classroom.submit_homework', run: 'classroom.transcript' },
+    exports: ['json', 'pdf'],
+    actions: ['enrol', 'submit_homework', 'peer_review', 'transcript'],
+    category: 'education',
+  },
+  {
+    domain: 'byo-keys',
+    label: 'BYO API Keys',
+    artifacts: ['api_key_grant'],
+    macros: { list: 'byo_keys.list', create: 'byo_keys.add', delete: 'byo_keys.remove' },
+    exports: ['json'],
+    actions: ['add_key', 'remove_key', 'test_key'],
+    category: 'system',
+  },
+  {
+    domain: 'bounties',
+    label: 'Bounties',
+    artifacts: ['bounty_stake', 'autofix_proposal'],
+    macros: { list: 'bounty.list', get: 'bounty.get', create: 'bounty.stake', run: 'bounty.resolve' },
+    exports: ['json'],
+    actions: ['stake', 'vote', 'resolve'],
+    category: 'social',
+  },
+
+  // Phase 9 frontend showpiece lenses — manifest entries for ESLint validator.
+  { domain: 'death-insurance', label: 'Death-Lottery Insurance', artifacts: ['insurance_contract'], macros: { list: 'insurance.list', create: 'insurance.write', run: 'insurance.claim' }, exports: ['json'], actions: ['write_contract', 'claim'], category: 'social' },
+  { domain: 'deities', label: 'Deities', artifacts: ['player_deity', 'pilgrimage'], macros: { list: 'deity.list', get: 'deity.get', create: 'deity.create', run: 'deity.pilgrimage' }, exports: ['json'], actions: ['compose', 'pilgrimage'], category: 'social' },
+  { domain: 'dreams', label: 'Dreams', artifacts: ['dream'], macros: { list: 'dream.list', get: 'dream.get', create: 'dream.publish', run: 'dream.capture' }, exports: ['json'], actions: ['publish', 'browse'], category: 'introspection' },
+  { domain: 'event-timeline', label: 'Event Timeline', artifacts: ['timeline_event'], macros: { list: 'timeline.list', get: 'timeline.get', run: 'timeline.replay' }, exports: ['json'], actions: ['scrub', 'export'], category: 'social' },
+  { domain: 'expert-mode', label: 'Expert Mode', artifacts: ['expert_query', 'research_session'], macros: { list: 'expert.list', get: 'expert.get', create: 'expert.query', run: 'expert.deep_research' }, exports: ['json', 'md'], actions: ['query', 'export_session'], category: 'system' },
+  { domain: 'forecast', label: 'World Forecast', artifacts: ['world_forecast'], macros: { list: 'forecast.list', get: 'forecast.current', run: 'forecast.compose' }, exports: ['json'], actions: ['view', 'share'], category: 'social' },
+  { domain: 'gallery', label: 'Compression Art Gallery', artifacts: ['compression_art_sigil', 'mega_dtu'], macros: { list: 'gallery.list', get: 'gallery.get', run: 'compression_art.shape_for' }, exports: ['json', 'svg'], actions: ['view', 'mint'], category: 'creative' },
+  { domain: 'goddess', label: 'Goddess Broadcast', artifacts: ['goddess_dispatch'], macros: { list: 'goddess.list', get: 'goddess.get', run: 'goddess.compose' }, exports: ['json'], actions: ['listen', 'subscribe'], category: 'social' },
+  { domain: 'inheritance', label: 'NPC Inheritance Market', artifacts: ['npc_inheritance_link'], macros: { list: 'inheritance.list_purchasable', get: 'inheritance.get', create: 'inheritance.lock_heir' }, exports: ['json'], actions: ['browse', 'lock_heir'], category: 'social' },
+  { domain: 'markets', label: 'Prediction Markets', artifacts: ['prediction_market', 'market_position'], macros: { list: 'betting.list_markets', get: 'betting.market', create: 'betting.place_bet', run: 'betting.resolve_market' }, exports: ['json'], actions: ['open_market', 'place_bet'], category: 'social' },
+  { domain: 'observe', label: 'Observer Mode', artifacts: ['empirical_report'], macros: { list: 'observer.reports', get: 'observer.report', run: 'observer.compose_report' }, exports: ['json', 'md'], actions: ['compose_report'], category: 'research' },
+  { domain: 'personas', label: 'NPC Persona Marketplace', artifacts: ['npc_persona'], macros: { list: 'persona.list', get: 'persona.get', create: 'persona.serialise', run: 'persona.install' }, exports: ['json'], actions: ['package', 'import'], category: 'creative' },
+  { domain: 'psyops', label: 'NPC Psyops Detector', artifacts: ['skill_revision_anomaly'], macros: { list: 'psyops.findings', get: 'psyops.finding', run: 'psyops.quarantine' }, exports: ['json'], actions: ['investigate', 'quarantine'], category: 'system' },
+  { domain: 'sponsorship', label: 'NPC Sponsorship', artifacts: ['npc_sponsorship', 'npc_dispatch'], macros: { list: 'sponsorship.list', get: 'sponsorship.get', create: 'sponsorship.start', delete: 'sponsorship.cancel' }, exports: ['json'], actions: ['sponsor', 'cancel'], category: 'social' },
+  { domain: 'staking', label: 'CC Staking', artifacts: ['cc_stake'], macros: { list: 'staking.list', get: 'staking.get', create: 'staking.lock', delete: 'staking.redeem' }, exports: ['json'], actions: ['stake', 'redeem'], category: 'finance' },
+  { domain: 'sub-worlds', label: 'Sub-Worlds (Research Zones)', artifacts: ['sub_world'], macros: { list: 'sub_world.list', get: 'sub_world.get', create: 'world.spawn_from_forge' }, exports: ['json'], actions: ['spawn', 'travel'], category: 'research' },
+  { domain: 'sync', label: 'Cross-Device Sync', artifacts: ['sync_session'], macros: { list: 'dtu_sync.status', get: 'dtu_sync.status', run: 'dtu_sync.force_sync' }, exports: ['json'], actions: ['enable', 'sync'], category: 'system' },
+  { domain: 'wellness', label: 'Refusal Field Wellness', artifacts: ['active_refusal_field'], macros: { list: 'wellness.active_fields', get: 'wellness.field', create: 'refusal.apply_temporary' }, exports: ['json'], actions: ['view', 'disable'], category: 'introspection' },
 ];
 
 // ---- Sub-lens auto-registration ----
