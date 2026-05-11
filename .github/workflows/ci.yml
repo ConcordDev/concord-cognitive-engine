@@ -219,10 +219,17 @@ jobs:
           # exercised only by integration spawns don't roll up — but
           # the test assertions still run + still pass. Coverage gets
           # measured separately on parent-process code paths anyway.
-          # No exclusions remain in the c8 run.
+          #
+          # Sprint 34: detectors-suite is the env-sensitive flake
+          # documented in CLAUDE.md — under c8 instrumentation each
+          # detector walks the full 1.3M-LOC tree (~70s per detector),
+          # blowing past the 20-minute CI ceiling. Still runs in
+          # `npm test` standalone for behavior coverage; excluded
+          # from c8 measurement only. Re-evaluate if a detector
+          # implementation becomes fast enough to fit the c8 budget.
           npx c8 --check-coverage --statements 45 --branches 45 --functions 33 --lines 45 \
             node --test --test-force-exit \
-            tests/*.test.js \
+            $(ls tests/*.test.js | grep -v -E 'detectors-suite') \
             2>&1 | tee /tmp/server-coverage.log
 
       - name: Surface failing tests on coverage step failure
