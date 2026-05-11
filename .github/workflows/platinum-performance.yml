@@ -58,13 +58,26 @@ jobs:
   k6-smoke:
     name: Load — k6 smoke
     runs-on: ubuntu-latest
-    if: hashFiles('tests/k6/smoke.js') != ''
+    # hashFiles() isn't a valid expression in job-level `if:` context;
+    # the runtime check below skips silently when the k6 script is absent.
+    # Sprint 34 fix — same shape as the platinum-security.yml fix.
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
+      - name: Check for k6 smoke script
+        id: k6_check
+        run: |
+          if [ -f tests/k6/smoke.js ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::tests/k6/smoke.js missing — skipping k6 smoke"
+          fi
       - uses: actions/setup-node@v6
+        if: steps.k6_check.outputs.present == 'true'
         with: { node-version: '22' }
       - name: Start server
+        if: steps.k6_check.outputs.present == 'true'
         working-directory: ./server
         env:
           NODE_ENV: ci
@@ -79,8 +92,10 @@ jobs:
             sleep 2
           done
       - name: Install k6
+        if: steps.k6_check.outputs.present == 'true'
         run: |
           curl -L https://github.com/grafana/k6/releases/download/v0.50.0/k6-v0.50.0-linux-amd64.tar.gz | tar xz
           sudo mv k6-v0.50.0-linux-amd64/k6 /usr/local/bin/
       - name: Run k6 smoke
+        if: steps.k6_check.outputs.present == 'true'
         run: k6 run tests/k6/smoke.js
