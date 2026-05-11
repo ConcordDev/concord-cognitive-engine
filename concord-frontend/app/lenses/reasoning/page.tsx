@@ -14,7 +14,7 @@ import {
   Search, ListTree, Workflow, Star, ChevronDown, ChevronRight,
   Shield, AlertTriangle, AlertOctagon, BookOpen, BarChart3,
   ThumbsUp, ThumbsDown, Link2, FileText, Sparkles,
-  Target, Scale, Eye, Layers, Zap, RefreshCw,
+  Target, Scale, Layers, Zap, RefreshCw,
   Download, X, Trash2, Flag,
   CircleDot, ArrowUpRight, MessageSquare, Hash,
   Loader2, Play
