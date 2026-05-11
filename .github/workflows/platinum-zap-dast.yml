@@ -1,0 +1,70 @@
+name: Platinum DAST (OWASP ZAP)
+
+# Sprint 20 — Dynamic Application Security Testing. Runs against a
+# live Concord server instance to find vulnerabilities that only
+# surface at runtime (auth flow weaknesses, session handling, CSRF
+# token absence, etc.). The SAST gate covers static patterns; DAST
+# covers behaviors.
+#
+# Runs nightly on main (live target = the actual deployed app would
+# eat too much budget on every PR). Manual dispatch is also enabled.
+
+on:
+  schedule:
+    - cron: '0 4 * * *'  # 04:00 UTC nightly
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'URL to scan (default: spin up local instance)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+  issues: write
+  security-events: write
+
+jobs:
+  zap-baseline:
+    name: OWASP ZAP baseline scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with: { node-version: '22' }
+
+      - name: Start Concord server
+        if: ${{ inputs.target == '' }}
+        working-directory: ./server
+        env:
+          NODE_ENV: ci
+          JWT_SECRET: test-secret-for-ci-only-do-not-use-in-production
+          PORT: 5050
+        run: |
+          npm ci
+          node server.js > server.log 2>&1 &
+          sleep 5
+          for i in {1..30}; do
+            if curl -sf http://localhost:5050/health > /dev/null 2>&1; then
+              echo "Server ready"
+              break
+            fi
+            sleep 2
+          done
+
+      - name: ZAP Baseline Scan
+        uses: zaproxy/action-baseline@v0.13.0
+        with:
+          target: ${{ inputs.target || 'http://localhost:5050' }}
+          rules_file_name: '.zap/rules.tsv'
+          cmd_options: '-a -j -m 5'
+          allow_issue_writing: true
+
+      - name: Upload ZAP report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: zap-report
+          path: report_html.html
+          retention-days: 30

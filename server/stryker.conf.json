@@ -1,0 +1,51 @@
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "$comment": "Sprint 19 — mutation testing config. Stryker mutates the code, runs the test suite, and reports whether tests caught the mutation. Surfaces 'tests that pass but don't actually verify behavior' — the silent-test failure mode that coverage % misses.",
+  "_comment": "Run: cd server && npx stryker run",
+
+  "packageManager": "npm",
+  "testRunner": "tap",
+  "tapVersion": "13",
+  "reporters": ["html", "clear-text", "progress", "dashboard"],
+  "coverageAnalysis": "perTest",
+
+  "tap": {
+    "testFiles": ["tests/**/*.test.js"],
+    "nodeArgs": ["--test", "--test-force-exit", "--test-timeout=60000"]
+  },
+
+  "mutate": [
+    "lib/**/*.js",
+    "economy/**/*.js",
+    "emergent/**/*.js",
+    "!lib/**/*.test.js",
+    "!**/node_modules/**"
+  ],
+
+  "thresholds": {
+    "high": 80,
+    "low": 60,
+    "break": 50
+  },
+
+  "timeoutMS": 60000,
+  "timeoutFactor": 1.5,
+  "maxConcurrentTestRunners": 4,
+  "concurrency": 2,
+
+  "ignorePatterns": [
+    "node_modules/",
+    "coverage/",
+    "data/",
+    "logs/",
+    "audit/"
+  ],
+
+  "checkers": [],
+  "mutator": {
+    "excludedMutations": [
+      "StringLiteral",
+      "BlockStatement"
+    ]
+  }
+}
