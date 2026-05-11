@@ -755,6 +755,51 @@ jobs:
           tail -n 200 ../server/server.log 2>/dev/null || echo "(no server.log)"
           echo "::endgroup::"
 
+      - name: Write E2E failure summary to GITHUB_STEP_SUMMARY
+        # Sprint 35 — duplicate the failure JSON into the run's Job
+        # Summary (markdown). The PR Checks tab renders this; it
+        # gives PR reviewers a one-click failure breakdown without
+        # downloading the 49 MB playwright-report artifact.
+        if: failure()
+        working-directory: ./concord-frontend
+        run: |
+          if [ -f playwright-report/results.json ]; then
+            echo "## E2E Core — failing specs" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "Commit: \`${{ github.sha }}\`" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            node -e "
+              const r = require('./playwright-report/results.json');
+              const fails = [];
+              const walk = (s) => {
+                for (const x of (s.suites || [])) walk(x);
+                for (const t of (s.specs || [])) {
+                  if (!t.ok) {
+                    const errors = (t.tests || []).flatMap(tt => (tt.results || []).flatMap(r => (r.errors || []).map(e => e.message || e.value || '<no msg>')));
+                    fails.push({ title: t.title, file: t.file, line: t.line, error: errors[0] || '<no error>' });
+                  }
+                }
+              };
+              walk(r);
+              const lines = [];
+              lines.push('Total failed: ' + fails.length);
+              lines.push('');
+              for (const f of fails.slice(0, 100)) {
+                lines.push('### ' + f.file + ':' + f.line);
+                lines.push('**' + f.title + '**');
+                lines.push('');
+                lines.push('\`\`\`');
+                lines.push((f.error || '').toString().slice(0, 400));
+                lines.push('\`\`\`');
+                lines.push('');
+              }
+              if (fails.length > 100) lines.push('_…and ' + (fails.length - 100) + ' more (see playwright-report-core artifact)_');
+              console.log(lines.join('\n'));
+            " >> "$GITHUB_STEP_SUMMARY" 2>&1 || echo "(failed to generate summary)" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "## E2E Core — no results.json found" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v6
