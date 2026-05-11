@@ -716,7 +716,13 @@ jobs:
         # separate `e2e-infra` job below.
         # CI=true switches the playwright webServer from `next dev`
         # to `npm run start:ci` (production build, ~5 s startup).
-        run: npm run test:e2e:core -- --project=chromium --reporter=list,html
+        # NO --reporter override here: playwright.config.ts ships the
+        # canonical [html, json, list] trio so playwright-report/
+        # results.json exists for the "Surface failing E2E specs"
+        # step below. Prior `--reporter=list,html` clobbered the
+        # config's JSON reporter, leaving the diagnostic step
+        # silently no-op (couldn't find results.json).
+        run: npm run test:e2e:core -- --project=chromium
 
       - name: Surface failing E2E specs on failure
         if: failure()
@@ -873,8 +879,10 @@ jobs:
           BASE_URL: http://localhost:3000
           NEXT_PUBLIC_API_URL: http://localhost:5050
         # CI=true flips the playwright webServer from `next dev` to
-        # `npm run start:ci` against the prod build above.
-        run: npm run test:e2e:infra -- --reporter=list,html
+        # `npm run start:ci` against the prod build above. No reporter
+        # override — playwright-infra.config.ts ships [html, json, list]
+        # so the diagnostic surface-failures step can read results.json.
+        run: npm run test:e2e:infra
 
       - name: Upload infra-tier test results
         if: always()
