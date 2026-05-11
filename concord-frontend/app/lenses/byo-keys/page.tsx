@@ -308,12 +308,12 @@ export default function ByoKeysLens() {
 
         <footer className="mt-8 text-xs text-zinc-500 leading-relaxed">
           <p className="mb-2">
-            <strong className="text-zinc-300">The revolving door:</strong> when you mint DTUs with
-            a frontier-tier model (Claude / GPT / Grok / Gemini), and you publish them to public
-            or global scope, free-tier users can cite your DTU in their expert-mode answers. The
-            royalty cascade pays you a multi-generational royalty every time. Power users
-            effectively upgrade the global corpus quality for everyone, get paid for it, and
-            Concord captures fee on the transactions. Everyone wins.
+            <strong className="text-zinc-300">The revolving door (opt-in):</strong> when you mint
+            DTUs with a frontier-tier model (Claude / GPT / Grok / Gemini), they default to{' '}
+            <em>personal</em> scope and stay private. If you choose to publish a specific DTU to
+            public or global scope, other users can cite it in their Expert Mode answers — and
+            the royalty cascade pays you a multi-generational royalty every time. Nothing leaves
+            your personal scope unless you explicitly publish it.
           </p>
         </footer>
       </div>

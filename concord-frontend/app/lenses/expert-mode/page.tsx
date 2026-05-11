@@ -232,10 +232,11 @@ export default function ExpertModeLens() {
         {!result && !busy && (
           <div className="mt-12 text-center text-sm text-zinc-500">
             <p className="mb-2">
-              The revolving door: every DTU minted by a paid-tier user is available to every
-              free-tier user. The original creator earns through cascade royalty when their
-              DTU is cited. Free user gets frontier-quality synthesis. Substrate grows
-              monotonically.
+              The revolving door: when a paid-tier user mints a DTU with their own Claude / GPT /
+              Grok / Gemini key <strong className="text-zinc-400">and chooses to publish</strong>{' '}
+              it to public or global scope, other users can cite it from Expert Mode. Cascade
+              royalties pay the original creator. Personal-scope DTUs (the default) stay private
+              and are never surfaced to anyone else.
             </p>
             <p className="text-xs text-zinc-600">
               Try: &quot;What does Tunya use as currency?&quot; or &quot;How does the refusal field
