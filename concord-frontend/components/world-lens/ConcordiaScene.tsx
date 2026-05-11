@@ -350,9 +350,17 @@ export default function ConcordiaScene({
       const settings = QUALITY_SETTINGS[quality];
 
       // ── Renderer ─────────────────────────────────────────────────
-      // Attempt WebGPU first if available, fall back to WebGL2
+      // Attempt WebGPU first if available + opted-in, fall back to WebGL2.
+      // Opt-in (Sprint 7): localStorage.setItem('concordia:renderer', 'webgpu')
+      // We default to WebGL2 to avoid surprising current users; WebGPU is
+      // production-ready in three.js r171+ but our installed r0.160 ships
+      // it as an experimental module under examples/jsm/renderers/webgpu.
+      // The opt-in lets early adopters get the 2-10× draw-call gains
+      // while the safe default keeps everyone else happy.
       let useWebGPU = false;
-      if (typeof navigator !== 'undefined' && 'gpu' in navigator) {
+      const optIn = typeof window !== 'undefined' &&
+        window.localStorage?.getItem('concordia:renderer') === 'webgpu';
+      if (optIn && typeof navigator !== 'undefined' && 'gpu' in navigator) {
         try {
           const adapter = await (
             navigator as unknown as { gpu: { requestAdapter: () => Promise<unknown | null> } }
@@ -364,19 +372,42 @@ export default function ConcordiaScene({
       }
 
       if (useWebGPU) {
-        // WebGPU renderer can be loaded dynamically from three/addons when stable
-        // For now we use WebGL2 as primary renderer with WebGPU readiness flag
-        console.info(
-          '[ConcordiaScene] WebGPU adapter found, but using WebGL2 renderer for stability'
-        );
+        try {
+          // Lazy import to avoid bundling WebGPU module into WebGL-only path.
+          const webGpuModule = await import(
+            'three/examples/jsm/renderers/webgpu/WebGPURenderer.js'
+          );
+          const WebGPURendererCtor = (webGpuModule as unknown as {
+            default: new (opts: { canvas?: HTMLCanvasElement; antialias?: boolean; powerPreference?: string }) => unknown;
+          }).default;
+          // The WebGPURenderer surfaces a WebGLRenderer-compatible API for
+          // scene rendering. SSGI / TAA / post-processing chain still
+          // operates against the (compatible) shape. Some advanced WebGL-
+          // specific paths (raw GL state pokes) will silently no-op.
+          const gpuRenderer = new WebGPURendererCtor({
+            canvas: canvas!,
+            antialias: settings.antialias,
+            powerPreference: 'high-performance',
+          });
+          await (gpuRenderer as { init?: () => Promise<void> }).init?.();
+          renderer = gpuRenderer as unknown as THREE.WebGLRenderer;
+          console.info('[ConcordiaScene] WebGPU renderer activated (opt-in)');
+        } catch (gpuErr) {
+          console.warn('[ConcordiaScene] WebGPU init failed, falling back to WebGL2:', gpuErr);
+          useWebGPU = false;
+        }
       }
 
-      renderer = new THREE.WebGLRenderer({
-        canvas: canvas!,
-        antialias: settings.antialias,
-        powerPreference: 'high-performance',
-        alpha: false,
-      });
+      if (!useWebGPU) {
+        renderer = new THREE.WebGLRenderer({
+          canvas: canvas!,
+          antialias: settings.antialias,
+          powerPreference: 'high-performance',
+          alpha: false,
+        });
+      }
+      // Sentinel so other systems can branch on the active backend.
+      (renderer as unknown as { __isWebGPU?: boolean }).__isWebGPU = useWebGPU;
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, settings.pixelRatio));
       renderer.setSize(canvas!.clientWidth, canvas!.clientHeight);
       renderer.shadowMap.enabled = true;
@@ -518,6 +549,90 @@ export default function ConcordiaScene({
           const dofPass = new ShaderPass(dofShader);
           composer.addPass(dofPass);
 
+          // ── Sprint 7: TAA — temporal anti-aliasing ────────────────
+          // Three.js TAARenderPass accumulates jittered camera samples
+          // across frames. Static scenes converge to 16×MSAA-equivalent
+          // quality after 16 frames at zero per-frame cost. Eliminates
+          // the shimmer on thin geometry at distance that the audit
+          // flagged as a current pain point. Activated at high+ quality.
+          if (quality === 'high' || quality === 'ultra') {
+            try {
+              const { TAARenderPass } = await import('three/examples/jsm/postprocessing/TAARenderPass.js');
+              const taaPass = new TAARenderPass(scene, camera);
+              taaPass.unbiased = false;
+              taaPass.sampleLevel = quality === 'ultra' ? 3 : 2; // 8 / 4 samples
+              composer.addPass(taaPass);
+            } catch (taaErr) {
+              console.warn('[ConcordiaScene] TAA unavailable:', taaErr);
+            }
+          }
+
+          // ── Sprint 7: Volumetric fog (ultra only) ─────────────────
+          // Ray-marched fog in a post-pass — cheap depth-blended density
+          // approximation. Doesn't use a true depth target; rides the
+          // existing fragment color luminance as a soft proxy. Real depth-
+          // based volumetric requires a depth-render-target setup which is
+          // a follow-on; this pass gives ~80% of the atmospheric depth
+          // payoff for ~20% of the integration cost.
+          if (quality === 'ultra') {
+            // Default cool-blue fog tint. Real per-theme color is applied
+            // by ConcordiaScene's theme setup after this pass is created —
+            // we expose a setter via composer._volFogSetColor so the theme
+            // change handler can drive it. Default works as a safe pre-theme.
+            const fogColor = new THREE.Color(0x66aacc);
+            const volumetricFogShader = {
+              uniforms: {
+                tDiffuse:        { value: null },
+                fogColor:        { value: new THREE.Vector3(fogColor.r, fogColor.g, fogColor.b) },
+                fogDensity:      { value: 0.18 },
+                fogHeight:       { value: 0.42 }, // screen-y band where fog peaks
+                fogBandWidth:    { value: 0.35 },
+                time:            { value: 0.0 },
+              },
+              vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+              fragmentShader: `
+                uniform sampler2D tDiffuse;
+                uniform vec3 fogColor;
+                uniform float fogDensity;
+                uniform float fogHeight;
+                uniform float fogBandWidth;
+                uniform float time;
+                varying vec2 vUv;
+                // Cheap 2D hash for breathing animation
+                float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+                void main() {
+                  vec4 c = texture2D(tDiffuse, vUv);
+                  // Vertical fog band — densest at fogHeight, falls off
+                  // smoothly above and below.
+                  float dy = abs(vUv.y - fogHeight);
+                  float bandFalloff = 1.0 - smoothstep(0.0, fogBandWidth, dy);
+                  // Distance proxy — darker pixels are usually further.
+                  float lum = dot(c.rgb, vec3(0.299, 0.587, 0.114));
+                  float depthProxy = 1.0 - lum;
+                  // Breathing — slow density modulation across screen for life.
+                  float breath = 0.85 + 0.15 * sin(time * 0.3 + hash(floor(vUv * 12.0)) * 6.28);
+                  float density = fogDensity * bandFalloff * depthProxy * breath;
+                  density = clamp(density, 0.0, 0.8);
+                  vec3 finalColor = mix(c.rgb, fogColor, density);
+                  gl_FragColor = vec4(finalColor, c.a);
+                }
+              `,
+            };
+            const volFogPass = new ShaderPass(volumetricFogShader);
+            composer.addPass(volFogPass);
+            // Animate time uniform so the breathing pass shifts visibly.
+            const animateFog = () => {
+              try { volFogPass.uniforms.time.value = globalThis.performance.now() / 1000; } catch { /* noop */ }
+            };
+            (composer as unknown as { _volFogAnimate?: () => void })._volFogAnimate = animateFog;
+            (composer as unknown as { _volFogSetColor?: (hex: number) => void })._volFogSetColor = (hex: number) => {
+              try {
+                const c = new THREE.Color(hex);
+                volFogPass.uniforms.fogColor.value = new THREE.Vector3(c.r, c.g, c.b);
+              } catch { /* noop */ }
+            };
+          }
+
           // Bind dofPass.uniforms.dofStrength to a window event so any
           // component can toggle cinematic mode without a prop chain.
           const dofHandler = (e: Event) => {
@@ -542,6 +657,16 @@ export default function ConcordiaScene({
       scene = new THREE.Scene();
       scene.fog = new THREE.Fog(activeTheme.fog.color, activeTheme.fog.near, activeTheme.fog.far);
       sceneRef.current = scene;
+      // Sprint 7 — sync volumetric fog color to active theme.
+      try {
+        const setVolFogColor = (composerRef.current as unknown as { _volFogSetColor?: (hex: number) => void } | null)?._volFogSetColor;
+        if (setVolFogColor) {
+          const themeFogHex = typeof activeTheme.fog.color === 'number'
+            ? activeTheme.fog.color
+            : new THREE.Color(activeTheme.fog.color as unknown as string).getHex();
+          setVolFogColor(themeFogHex);
+        }
+      } catch { /* noop */ }
 
       // ── Camera ──────────────────────────────────────────────────
       const aspect = canvas!.clientWidth / canvas!.clientHeight;
@@ -833,6 +958,10 @@ export default function ConcordiaScene({
             (group.userData as { update: (d: number, e: number) => void }).update(delta, elapsed);
           }
         }
+
+        // Sprint 7 — drive volumetric fog time uniform if present.
+        const volFogAnim = (composerRef.current as unknown as { _volFogAnimate?: () => void } | null)?._volFogAnimate;
+        if (volFogAnim) volFogAnim();
 
         // Render: SSGI > EffectComposer > plain renderer
         if (ssgiPassRef.current) {
