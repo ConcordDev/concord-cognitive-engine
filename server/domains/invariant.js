@@ -134,9 +134,12 @@ export default function registerInvariantActions(registerLensAction) {
         // The expression has been AST-validated above by acorn — every
         // call/identifier/member-access has been whitelisted before this
         // line. See validateExpressionAST() at the top of this file.
-        // nosemgrep: concord-eval-or-function-ctor
+        // Trailing nosemgrep tag suppresses concord-eval-or-function-ctor
+        // (Semgrep only honours the directive on the same line or the line
+        // directly above; the eslint-disable-next-line below must remain
+        // adjacent, so the nosemgrep goes trailing).
         // eslint-disable-next-line no-new-func
-        const fn = new Function(`"use strict"; return (${processed});`);
+        const fn = new Function(`"use strict"; return (${processed});`); // nosemgrep: concord-eval-or-function-ctor
         return { value: fn(), error: null };
       } catch (err) {
         return { value: null, error: err.message };
