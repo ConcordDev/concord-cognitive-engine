@@ -11,6 +11,35 @@ const logBuffer = [];
 
 const LEVELS = { error: 0, warn: 1, info: 2, debug: 3 };
 
+// ── PII / secret scrub (Sprint 29 — privacy review finding) ─────────────────
+// Sensitive field names + value shapes are recursively redacted before the
+// entry reaches the buffer or stdout. Defence-in-depth: callsites shouldn't
+// pass these, but a forgotten payload won't leak to docker logs / shippers.
+const SENSITIVE_KEY_RE = /^(password|password_hash|passwd|pwd|jwt|jwtToken|token|bearer|auth|authorization|session|sessionId|cookie|stripe_secret|stripe_key|apiKey|api_key|secret|credentials|private_key|privateKey|refresh_token|access_token|refreshToken|accessToken)$/i;
+const SENSITIVE_VALUE_RE = /^(sk-ant-[a-z0-9_-]{8,}|sk-[a-z0-9_-]{20,}|AIza[a-z0-9_-]{20,}|xai-[a-z0-9_-]{20,}|eyJ[a-zA-Z0-9_-]{20,}\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+)$/i;
+const REDACTED = "[REDACTED]";
+const MAX_REDACT_DEPTH = 6;
+
+function scrub(value, depth = 0) {
+  if (depth > MAX_REDACT_DEPTH) return REDACTED;
+  if (value == null) return value;
+  if (typeof value === "string") {
+    return SENSITIVE_VALUE_RE.test(value) ? REDACTED : value;
+  }
+  if (typeof value !== "object") return value;
+  if (Array.isArray(value)) return value.map(v => scrub(v, depth + 1));
+  const out = {};
+  for (const k of Object.keys(value)) {
+    if (k === "__proto__" || k === "constructor" || k === "prototype") continue;
+    if (SENSITIVE_KEY_RE.test(k)) {
+      out[k] = REDACTED;
+    } else {
+      out[k] = scrub(value[k], depth + 1);
+    }
+  }
+  return out;
+}
+
 /**
  * Log a structured entry.
  * @param {"error"|"warn"|"info"|"debug"} level
@@ -19,13 +48,14 @@ const LEVELS = { error: 0, warn: 1, info: 2, debug: 3 };
  * @param {object} [meta={}]
  */
 function log(level, source, message, meta = {}) {
+  const safeMeta = scrub(meta);
   const entry = {
     timestamp: new Date().toISOString(),
     level,
     source,
     message,
-    meta,
-    lens: meta.lens || null,
+    meta: safeMeta,
+    lens: safeMeta?.lens || null,
   };
 
   logBuffer.push(entry);

@@ -1573,13 +1573,13 @@
   },
   {
     "file": "server/routes/world.js",
-    "line": 2167,
+    "line": 2185,
     "method": "POST",
     "signature": "router.post(\"/sim/search/semantic\", wrap((req, res) => { const { query, limit, filters } = req.body; // Simulate"
   },
   {
     "file": "server/routes/world.js",
-    "line": 2180,
+    "line": 2198,
     "method": "POST",
     "signature": "router.post(\"/sim/knowledge/query\", wrap((req, res) => { const { nodeType, edgeType, startId, depth } = req.body; "
   }

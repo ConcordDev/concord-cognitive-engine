@@ -1175,6 +1175,15 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
     res.json({ ok: true, item });
   }));
 
+  // Equipment slots are a closed set. Reject anything else outright so a
+  // crafted slot key like "__proto__" cannot reach the dynamic assignment
+  // on inv.equipped (prototype-pollution vector caught by CodeQL).
+  const VALID_EQUIP_SLOTS = new Set([
+    "head", "chest", "legs", "feet", "hands",
+    "main_hand", "off_hand", "ranged", "ammo",
+    "neck", "ring_left", "ring_right", "belt", "cloak", "trinket",
+  ]);
+
   router.post("/sim/inventory/:userId/equip", auth, wrap((req, res) => {
     const userId = req.params.userId;
     if (req.user?.id && req.user.id !== userId && req.user.role !== "admin") {
@@ -1182,6 +1191,12 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
     }
     const { slot, itemId } = req.body;
     if (!slot || !itemId) return res.status(400).json({ ok: false, error: "slot and itemId required" });
+    if (typeof slot !== "string" || !VALID_EQUIP_SLOTS.has(slot)) {
+      return res.status(400).json({ ok: false, error: "invalid slot" });
+    }
+    if (typeof itemId !== "string" || itemId.length > 64) {
+      return res.status(400).json({ ok: false, error: "invalid itemId" });
+    }
 
     if (db) {
       try {
@@ -1203,6 +1218,9 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
     // Legacy fallback
     const inv = simInventories.get(userId);
     if (!inv) return res.status(404).json({ ok: false, error: "Inventory not found" });
+    // VALID_EQUIP_SLOTS.has(slot) guard above guarantees slot is a known
+    // literal key — Object.prototype is unreachable.
+    if (!inv.equipped || typeof inv.equipped !== "object") inv.equipped = Object.create(null);
     inv.equipped[slot] = itemId;
     res.json({ ok: true, equipped: inv.equipped });
   }));
