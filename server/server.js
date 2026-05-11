@@ -9588,6 +9588,12 @@ async function runMacro(domain, name, input, ctx) {
     // guidance_waypoint (Sprint 9) — active objective + hint text for
     // the diegetic waypoint beacon + "?" recovery button.
     guidance_waypoint: new Set(["active_objective", "hint_for"]),
+    // expert_mode (Sprint 10B+C) — Perplexity-style cited answers
+    // backed by global-DTU pull + BYO key routing. answer is the
+    // canonical entry; sources_preview lets the UI show what would
+    // be cited before committing the brain call. extract_citations
+    // is a stateless utility for the chip renderer.
+    expert_mode: new Set(["answer", "sources_preview", "extract_citations"]),
     // faction_strategy (Sprint B Phase 10) — Crucible HUD reads
     // recent_moves + get_relation; witness_next_move is the cross-
     // world signature quest's objective-completion macro.
@@ -23316,6 +23322,14 @@ registerGuidanceWaypointMacros(register);
 // from JWT_SECRET. Never returned to the frontend after save.
 import registerByoKeysMacros from "./domains/byo-keys.js";
 registerByoKeysMacros(register);
+
+// Sprint 10B+C — Expert mode (Perplexity-style cited answers) wired
+// to the BYO router + the revolving-door global-DTU pull. Free-tier
+// users automatically benefit from DTUs minted by paid-tier users;
+// the original frontier-tier creator earns through the royalty
+// cascade when their DTU is cited.
+import registerExpertModeMacros from "./domains/expert-mode.js";
+registerExpertModeMacros(register);
 
 // Phase 6a — Forge → Marketplace. Mint Forge-generated apps as DTUs +
 // list on marketplace. Plugs into royalty cascade for citation chains.
