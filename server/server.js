@@ -9605,6 +9605,8 @@ async function runMacro(domain, name, input, ctx) {
     mcp: new Set(["list_servers", "list_tools", "exposed_tools"]),
     // agent_marathon (Sprint 12) — long-running agent sessions.
     agent_marathon: new Set(["start", "list", "get", "tick", "pause", "abandon"]),
+    // video_gen (Sprint 14) — async video generation.
+    video_gen: new Set(["start", "poll", "providers"]),
     // faction_strategy (Sprint B Phase 10) — Crucible HUD reads
     // recent_moves + get_relation; witness_next_move is the cross-
     // world signature quest's objective-completion macro.
@@ -23386,6 +23388,26 @@ registerMcpMacros(register);
 // is closed. Same tool surface as chat_agent.do.
 import registerAgentMarathonMacros from "./domains/agent-marathon.js";
 registerAgentMarathonMacros(register);
+
+// Sprint 14 — video generation (Sora / Veo / Runway). BYO-key first,
+// env fallback. Async pattern: start returns a jobId, poll until done.
+import registerVideoGenMacros from "./domains/video-gen.js";
+registerVideoGenMacros(register);
+
+// Sprint 14 — SSE streaming for chat_agent.do. The /api/chat-agent/stream
+// endpoint runs the agent loop and streams tool calls + tokens + final
+// status as they happen, so the AgentModePanel renders progressively.
+import { mountChatAgentStream } from "./routes/chat-agent-stream.js";
+try {
+  mountChatAgentStream({
+    app,
+    auth: (req, res, next) => next(), // chained through standard auth middleware downstream
+    runMacro,
+    lensActions: LENS_ACTIONS,
+  });
+} catch (streamErr) {
+  structuredLog("warn", "chat_agent_stream_mount_failed", { error: String(streamErr?.message || streamErr) });
+}
 import { runAgentMarathonCycle } from "./emergent/agent-marathon-cycle.js";
 registerHeartbeat("agent-marathon-cycle", {
   frequency: 12,

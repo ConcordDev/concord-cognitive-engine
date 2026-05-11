@@ -20,13 +20,26 @@
  * touching their main thread.
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import {
   Bot, Send, X, Sparkles, ExternalLink, Loader2,
   Search, Calculator, Globe, Layers, FileText,
   CheckCircle2, XCircle, Hammer, MessageSquare,
+  Mic, MicOff, Cpu,
 } from 'lucide-react';
 import MarathonPanel from './MarathonPanel';
+
+// Web Speech API types (browser-native STT). Safari + Chrome ship it.
+type SpeechRecognitionType = {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: ((ev: { results: { transcript: string }[][] }) => void) | null;
+  onerror: (() => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+};
 
 interface ToolCall {
   tool: string;
@@ -50,6 +63,11 @@ interface Artifact {
   source?: string;
   prompt?: string;
   image_b64?: string;
+  // Sprint 14 — video artifact (Sora/Veo/Runway). Async — starts as
+  // pending with a jobId, completes with a URL.
+  jobId?: string;
+  url?: string;
+  status?: string;
 }
 
 interface AgentResponse {
@@ -142,6 +160,42 @@ export default function AgentModePanel({ open, onClose }: AgentModePanelProps) {
   const [busy, setBusy] = useState(false);
   const [conversation, setConversation] = useState<ConversationTurn[]>([]);
   const [tab, setTab] = useState<'quick' | 'marathon'>('quick');
+  // Sprint 14 — per-message model slot picker. Default 'conscious'
+  // (Sprint 10 BYO routes per user). Other slots = subconscious /
+  // utility / repair / vision.
+  const [slot, setSlot] = useState<string>('conscious');
+  // Sprint 14 — voice input via Web Speech API (Safari + Chrome native).
+  const [listening, setListening] = useState(false);
+  const recogRef = useRef<SpeechRecognitionType | null>(null);
+
+  const startListening = useCallback(() => {
+    const W = window as unknown as { SpeechRecognition?: new () => SpeechRecognitionType; webkitSpeechRecognition?: new () => SpeechRecognitionType };
+    const Ctor = W.SpeechRecognition || W.webkitSpeechRecognition;
+    if (!Ctor) {
+      alert('Voice input not supported in this browser. Use Chrome or Safari.');
+      return;
+    }
+    const recog = new Ctor();
+    recog.continuous = false;
+    recog.interimResults = true;
+    recog.lang = 'en-US';
+    recog.onresult = (ev) => {
+      const text = Array.from(ev.results).map((r) => r[0]?.transcript || '').join(' ');
+      setPrompt(text);
+    };
+    recog.onerror = () => setListening(false);
+    recog.onend = () => setListening(false);
+    recog.start();
+    recogRef.current = recog;
+    setListening(true);
+  }, []);
+
+  const stopListening = useCallback(() => {
+    try { recogRef.current?.stop(); } catch { /* noop */ }
+    setListening(false);
+  }, []);
+
+  useEffect(() => () => { try { recogRef.current?.stop(); } catch { /* noop */ } }, []);
 
   const submit = useCallback(async () => {
     if (!prompt.trim() || busy) return;
@@ -160,7 +214,7 @@ export default function AgentModePanel({ open, onClose }: AgentModePanelProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           domain: 'chat_agent', name: 'do',
-          input: { message: userMsg, history },
+          input: { message: userMsg, history, slot },
         }),
       });
       const j = await r.json();
@@ -279,6 +333,25 @@ export default function AgentModePanel({ open, onClose }: AgentModePanelProps) {
                         </div>
                       );
                     }
+                    if (a.kind === 'video') {
+                      return (
+                        <div key={ai} className="rounded-lg overflow-hidden ring-1 ring-zinc-800 bg-zinc-900">
+                          {a.url ? (
+                            <video src={a.url} controls className="w-full h-auto" />
+                          ) : (
+                            <div className="px-3 py-4 text-xs text-zinc-400 flex items-center gap-2">
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                              video generating (job {a.jobId})… polls auto-update
+                            </div>
+                          )}
+                          {a.prompt && (
+                            <div className="px-3 py-1.5 text-[11px] text-zinc-500">
+                              {a.prompt}{a.source && <span className="ml-2 text-zinc-600">via {a.source}</span>}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
                     if (a.id) {
                       return (
                         <a
@@ -316,7 +389,24 @@ export default function AgentModePanel({ open, onClose }: AgentModePanelProps) {
         )}
       </div>
 
-      <footer className="border-t border-zinc-800 px-5 py-4">
+      <footer className="border-t border-zinc-800 px-5 py-4 space-y-2">
+        <div className="flex items-center gap-2 text-[10px] text-zinc-500">
+          <Cpu className="w-3 h-3" />
+          <span>brain slot:</span>
+          <select
+            value={slot}
+            onChange={e => setSlot(e.target.value)}
+            className="bg-zinc-900 text-zinc-200 ring-1 ring-zinc-800 rounded px-1.5 py-0.5 text-[11px] focus:ring-amber-500 focus:outline-none"
+            title="Which brain slot to use — your BYO key for that slot routes inference; otherwise Concord default Ollama"
+          >
+            <option value="conscious">conscious (default)</option>
+            <option value="subconscious">subconscious</option>
+            <option value="utility">utility</option>
+            <option value="repair">repair</option>
+            <option value="vision">vision (image input)</option>
+          </select>
+          <a href="/lenses/byo-keys" className="ml-auto text-amber-400 hover:text-amber-300">configure keys</a>
+        </div>
         <div className="flex items-end gap-2">
           <textarea
             value={prompt}
@@ -328,6 +418,15 @@ export default function AgentModePanel({ open, onClose }: AgentModePanelProps) {
             rows={2}
             className="flex-1 px-3 py-2 rounded-lg bg-zinc-900 text-zinc-100 text-sm ring-1 ring-zinc-800 focus:ring-amber-500 focus:outline-none resize-none"
           />
+          <button
+            onClick={listening ? stopListening : startListening}
+            className={`p-2 rounded-lg shrink-0 ${
+              listening ? 'bg-red-500 hover:bg-red-400 text-red-50 animate-pulse' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300'
+            }`}
+            title={listening ? 'Stop listening' : 'Voice input (Web Speech API)'}
+          >
+            {listening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+          </button>
           <button
             onClick={submit}
             disabled={busy || !prompt.trim()}
