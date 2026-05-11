@@ -23370,10 +23370,13 @@ registerExpertModeMacros(register);
 // UI can render them as they happen.
 import registerChatAgentMacros from "./domains/chat-agent.js";
 registerChatAgentMacros(register);
-// Expose runMacro + LENS_ACTIONS globally so chat_agent.do can wire
-// the inner tool execution without circular imports.
+// Sprint 18.5: defer the LENS_ACTIONS export to where it's actually
+// declared (~line 35954) instead of accessing it here. Accessing it
+// 12k lines before its const declaration was a TDZ ReferenceError
+// that uncaughtException'd the server on every startup attempt —
+// invisible until smoke/integration/E2E jobs began probing /health.
 globalThis.__concordRunMacro = runMacro;
-globalThis.__concordLensActions = LENS_ACTIONS;
+// __concordLensActions assigned at the LENS_ACTIONS declaration site.
 
 // Sprint 12A — MCP (Model Context Protocol) bridge. Concord can now
 // connect to external MCP servers (filesystem, GitHub, Slack, Postgres,
@@ -35952,6 +35955,10 @@ app.get("/api/admin/cascade-recovery", requireOwner, asyncHandler(async (req, re
 
 // Lens action registry for domain-specific engines
 const LENS_ACTIONS = new Map(); // `${domain}.${action}` → async (ctx, artifact, params) => result
+// Sprint 18.5 — paired with the deferred __concordLensActions assignment
+// that previously sat ~12k lines earlier and triggered a TDZ ReferenceError
+// at startup. Now assigned at the declaration site.
+globalThis.__concordLensActions = LENS_ACTIONS;
 function registerLensAction(domain, action, handler) {
   LENS_ACTIONS.set(`${domain}.${action}`, handler);
 }
