@@ -50,19 +50,21 @@ rules:
       include: ['server/**']
 
   # ─── Insecure randomness in security context ────────────────────
+  # Rule was previously written with an unbound metavariable
+  # ($CONTEXT was used in metavariable-pattern but never bound by a
+  # positive pattern), which Semgrep rejected at config-validation
+  # time. Simplified to a bare Math.random() warning — CodeQL's
+  # `js/insecure-randomness` query catches the security-context
+  # cases via taint analysis.
   - id: concord-math-random-in-security-context
     message: |
-      Math.random() used in a security context. Use crypto.randomBytes()
-      or crypto.randomUUID() for IDs, tokens, session ids, salts, etc.
-    severity: WARNING
+      Math.random() — non-cryptographic randomness. If this is used
+      for a token / session id / salt / nonce / secret / key, switch
+      to crypto.randomBytes() or crypto.randomUUID().
+    severity: INFO
     languages: [javascript, typescript]
     patterns:
-      - pattern-either:
-          - pattern: Math.random()
-      - metavariable-pattern:
-          metavariable: $CONTEXT
-          patterns:
-            - pattern-regex: '(token|session|id|salt|nonce|secret|key)'
+      - pattern: Math.random()
 
   # ─── Hardcoded credentials ─── REMOVED ──
   # Same root cause as the deleted concord-eval-or-function-ctor rule
@@ -99,6 +101,12 @@ rules:
   # sanitised. Real XSS via dangerouslySetInnerHTML is caught by
   # CodeQL's `js/xss` taint query, which traces user-controlled data
   # to the sink — a strictly stronger guarantee than this lexical match.
+  # The pattern was previously `dangerouslySetInnerHTML={{ __html: $X }}`
+  # which is unparseable by Semgrep's JS parser (the double-brace is
+  # JSX-style and the parser rejected it as PatternParseError — that's
+  # the SINGLE root cause that had every Semgrep run since Sprint 18
+  # bailing with a config error rather than scanning, regardless of
+  # rule severity). Use the JSX-element form Semgrep can parse.
   - id: concord-dangerous-innerhtml
     message: |
       dangerouslySetInnerHTML with user-controlled input. XSS risk.
@@ -106,7 +114,7 @@ rules:
     severity: WARNING
     languages: [javascript, typescript]
     patterns:
-      - pattern: dangerouslySetInnerHTML={{ __html: $X }}
+      - pattern: <$EL dangerouslySetInnerHTML={...} />
     paths:
       include: ['concord-frontend/**']
 
