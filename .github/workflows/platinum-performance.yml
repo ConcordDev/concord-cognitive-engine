@@ -107,6 +107,16 @@ jobs:
             cat server.log | tail -50
             exit 1
           }
+          # Post-ready warmup: even after /health returns 200, the
+          # server is still wiring heartbeats + lattice orchestrator +
+          # init paths in the background. Without this sleep, k6's
+          # first ~5s of requests catch the CPU-bound init tail and
+          # bust p(95). 10s is empirically sufficient on a shared
+          # ubuntu-latest VM (heartbeat fires every 15s; one full tick
+          # cycle completes inside this window).
+          echo "Warming up server for 10s before k6 launch..."
+          sleep 10
+          echo "Warmup done; launching k6"
       - name: Install k6
         if: steps.k6_check.outputs.present == 'true'
         run: |
