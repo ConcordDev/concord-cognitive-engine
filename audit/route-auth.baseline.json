@@ -1369,13 +1369,13 @@
   },
   {
     "file": "server/routes/simulation.js",
-    "line": 95,
+    "line": 146,
     "method": "POST",
     "signature": "router.post('/run', async (req, res) => { try { const { type, input = {} } = req.body || {}; if (!type "
   },
   {
     "file": "server/routes/simulation.js",
-    "line": 145,
+    "line": 196,
     "method": "POST",
     "signature": "router.post('/:id/cancel', (req, res) => { try { const result = cancelJob(req.params.id); return res.jso"
   },
