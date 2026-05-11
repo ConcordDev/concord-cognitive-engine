@@ -472,20 +472,19 @@ jobs:
 
       - name: Wait for server
         run: |
-          # Bumped from 30 → 90 attempts. Concord's startup probes each
-          # of the 5 Ollama brains (conscious / subconscious / utility /
-          # repair / vision); without Ollama running, each probe runs to
-          # its retry timeout (~5-8s each), easily consuming 30s+. The
-          # /ready endpoint resolves once core startup completes; the
-          # brain probes happen async in the background.
-          for i in {1..90}; do
+          # Bumped 30 → 90 → 180 attempts. Concord's startup probes
+          # each of 5 Ollama brains sequentially (conscious / sub /
+          # utility / repair / vision); without Ollama running, each
+          # probe runs to its ~20-30s default timeout. 5 cold probes ≈
+          # 100-150s. 90s wasn't enough; 180s leaves headroom.
+          for i in {1..180}; do
             if curl -sf http://localhost:5050/ready > /dev/null 2>&1; then
               echo "Server ready after ${i}s"
               exit 0
             fi
             sleep 1
           done
-          echo "Server did not become ready within 90s"
+          echo "Server did not become ready within 180s"
           cat server/server.log
           exit 1
 
@@ -556,17 +555,16 @@ jobs:
       - name: Wait for server
         working-directory: ./server
         run: |
-          # Bumped 30 → 90 to match the smoke-test fix — Concord's startup
-          # probes 5 Ollama brains; without Ollama running in CI, each
-          # probe times out on the ~5-8s default, easily eating 30s.
-          for i in {1..90}; do
+          # Bumped 30 → 90 → 180 to match the smoke-test fix.
+          # 5 sequential cold Ollama probes ≈ 100-150s startup in CI.
+          for i in {1..180}; do
             if curl -sf http://localhost:5050/health > /dev/null 2>&1; then
               echo "Server is ready after $i seconds"
               exit 0
             fi
             sleep 1
           done
-          echo "Server failed to start within 90s. Logs:"
+          echo "Server failed to start within 180s. Logs:"
           cat server.log
           exit 1
 
