@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import LensAgentFab from '@/components/lens/LensAgentFab';
 import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -2162,6 +2163,10 @@ export default function CodeLensPage() {
         </motion.aside>
       )}
     </AnimatePresence>
+    <LensAgentFab
+      lensId="code"
+      lensPrompt="You're inside Concord's Code lens — a polyglot dev workspace with snippets, projects, pipelines, notebooks, algorithms, libraries. Prefer run_compute for math, run_lens_action for code-quality / code-engine helpers, and create_dtu to save reusable snippets."
+    />
     </LensShell>
   );
 }

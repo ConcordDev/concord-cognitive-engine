@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo, useEffect, useRef} from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import LensAgentFab from '@/components/lens/LensAgentFab';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -2317,6 +2318,10 @@ export default function MusicLensPage() {
         )}
       </div>
     </div>
+    <LensAgentFab
+      lensId="music"
+      lensPrompt="You're inside Concord's Music lens — a marketplace + playlist + curation surface. Prefer run_lens_action for music actions, expert_mode for cited research about artists/tracks, generate_image for cover art."
+    />
     </LensShell>
   );
 }

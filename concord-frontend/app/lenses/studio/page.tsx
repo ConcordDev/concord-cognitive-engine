@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import LensAgentFab from '@/components/lens/LensAgentFab';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { UniversalActions } from '@/components/lens/UniversalActions';
@@ -2607,6 +2608,10 @@ export default function StudioLensPage() {
           />
         )}
       </AnimatePresence>
+      <LensAgentFab
+        lensId="studio"
+        lensPrompt="You're inside Concord's Studio lens — a DAW with synths, drum machines, mixer, recording. Prefer audio/music tools when relevant. The user is composing or arranging."
+      />
     </div>
     </LensShell>
   );

@@ -106,9 +106,11 @@ import AtlasPrivacyMonitor from '@/components/chat/AtlasPrivacyMonitor';
 import { InitiativeChip, type Initiative } from '@/components/chat/InitiativeChip';
 import { ToolPalette } from '@/components/chat/ToolPalette';
 // Sprint 11 — Agent Mode + initiative bell (mounted alongside, no
-// modification to existing chat state).
-import AgentModePanel from '@/components/chat/AgentModePanel';
-import InitiativeBell from '@/components/chat/InitiativeBell';
+// modification to existing chat state). Dynamic to keep main-bundle
+// LCP/FCP from regressing (Sprint 15 Lighthouse fix).
+import dynamicSprint11 from 'next/dynamic';
+const AgentModePanel = dynamicSprint11(() => import('@/components/chat/AgentModePanel'), { ssr: false });
+const InitiativeBell = dynamicSprint11(() => import('@/components/chat/InitiativeBell'), { ssr: false });
 import { useEvent } from '@/lib/realtime/event-bus';
 import {
   recommendLenses,

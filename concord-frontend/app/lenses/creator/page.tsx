@@ -22,6 +22,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
+import LensAgentFab from '@/components/lens/LensAgentFab';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import {
@@ -239,6 +240,10 @@ export default function CreatorDashboardPage() {
         {tab === 'followers' && <FollowersTab profile={profile} />}
         {tab === 'cascade'   && <CascadePanel topCited={me?.topCitedDTUs ?? []} />}
       </div>
+      <LensAgentFab
+        lensId="creator"
+        lensPrompt="You're inside Concord's Creator lens — the royalty cascade + earnings + listings dashboard. Prefer expert_mode for cited research about growth, run_lens_action for listing/profile updates, create_dtu to save analysis."
+      />
     </LensShell>
   );
 }

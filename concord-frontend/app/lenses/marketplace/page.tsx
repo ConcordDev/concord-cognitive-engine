@@ -2,6 +2,7 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
+import LensAgentFab from '@/components/lens/LensAgentFab';
 import { BandcampGrid } from '@/components/marketplace/BandcampGrid';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -2861,6 +2862,10 @@ export default function MarketplaceLensPage() {
         </div>
       );
     })()}
+    <LensAgentFab
+      lensId="marketplace"
+      lensPrompt="You're inside Concord's Marketplace lens — DTU listings, royalty cascade, beat/sample marketplace. Prefer expert_mode for cited research on trends, discovery.search for listings, run_lens_action for purchases."
+    />
     </LensShell>
   );
 }
