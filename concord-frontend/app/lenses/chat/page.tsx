@@ -105,6 +105,10 @@ import IntelligenceCard from '@/components/chat/IntelligenceCard';
 import AtlasPrivacyMonitor from '@/components/chat/AtlasPrivacyMonitor';
 import { InitiativeChip, type Initiative } from '@/components/chat/InitiativeChip';
 import { ToolPalette } from '@/components/chat/ToolPalette';
+// Sprint 11 — Agent Mode + initiative bell (mounted alongside, no
+// modification to existing chat state).
+import AgentModePanel from '@/components/chat/AgentModePanel';
+import InitiativeBell from '@/components/chat/InitiativeBell';
 import { useEvent } from '@/lib/realtime/event-bus';
 import {
   recommendLenses,
@@ -518,6 +522,8 @@ export default function ChatLensPage() {
   // is searchable + runnable from here. Open via /tool slash command
   // or Cmd/Ctrl+. keyboard shortcut.
   const [toolPaletteOpen, setToolPaletteOpen] = useState(false);
+  // Sprint 11 — Agent Mode panel (slide-over, isolated session).
+  const [agentPanelOpen, setAgentPanelOpen] = useState(false);
 
   // Tool execution traces — when Concord (or the user via the palette)
   // runs a tool, the result appears inline in the thread as a trace
@@ -3704,6 +3710,24 @@ export default function ChatLensPage() {
           />
         </div>
       )}
+      {/* Sprint 11B — Agent Mode floating action button (bottom-right) +
+          slide-over panel + initiative bell. All three are self-contained;
+          they don't touch existing chat state. */}
+      <button
+        onClick={() => setAgentPanelOpen(true)}
+        className="fixed bottom-6 right-6 z-30 flex items-center gap-2 px-4 py-2.5 rounded-full bg-amber-500 hover:bg-amber-400 text-amber-50 shadow-2xl ring-2 ring-amber-700/30 text-sm font-medium"
+        title="Agent Mode — give Concord a task. It will use any of 200+ apps + web + compute to complete it."
+      >
+        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M12 8V4H8M4 8h4v4M16 4v4h4M20 16h-4v4" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+        Agent Mode
+      </button>
+      <AgentModePanel open={agentPanelOpen} onClose={() => setAgentPanelOpen(false)} />
+      <div className="fixed top-4 right-20 z-30">
+        <InitiativeBell />
+      </div>
+
       <ToolPalette
         open={toolPaletteOpen}
         onClose={() => setToolPaletteOpen(false)}
