@@ -1,6 +1,6 @@
 # Gaps & Wire Targets
 
-_Generated 2026-05-10T19:07:06.467Z. Each gap proposes a concrete wire action._
+_Generated 2026-05-11T04:20:06.947Z. Each gap proposes a concrete wire action._
 
 ## Dead tables (22)
 

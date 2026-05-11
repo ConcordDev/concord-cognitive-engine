@@ -2,7 +2,7 @@
 
 _Source for the `Current Wiring Status` section in CLAUDE.md. Human merges; cartographer never auto-rewrites CLAUDE.md._
 
-Generated 2026-05-10T19:07:06.467Z.
+Generated 2026-05-11T04:20:06.947Z.
 
 ## Heartbeat-registered modules
 
@@ -22,6 +22,7 @@ Generated 2026-05-10T19:07:06.467Z.
 - `npc-conversation-initiator` (frequency 8)
 - `npc-knowledge-bridge` (frequency 10)
 - `corpse-cleanup` (frequency 10)
+- `agent-marathon-cycle` (frequency 12)
 - `kingdom-decree-cycle` (frequency 16)
 - `metrics-decay` (frequency 20)
 - `presence-stale-sweep` (frequency 20)
@@ -224,7 +225,7 @@ Generated 2026-05-10T19:07:06.467Z.
 
 ## Frontend lens count
 
-- 225 directories under `concord-frontend/app/lenses/`
+- 228 directories under `concord-frontend/app/lenses/`
 
 ## Orphan / Dormant inventory
 

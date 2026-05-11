@@ -29,6 +29,7 @@ digraph Concord {
   lens_board [label="lens/board", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_bounties [label="lens/bounties", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_bridge [label="lens/bridge", color=green, style=filled, fillcolor="#e0ffe0"];
+  lens_byo_keys [label="lens/byo-keys", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_calendar [label="lens/calendar", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_carpentry [label="lens/carpentry", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_chat [label="lens/chat", color=green, style=filled, fillcolor="#e0ffe0"];
@@ -60,5 +61,4 @@ digraph Concord {
   lens_defense [label="lens/defense", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_deities [label="lens/deities", color=green, style=filled, fillcolor="#e0ffe0"];
   lens_desert [label="lens/desert", color=green, style=filled, fillcolor="#e0ffe0"];
-  lens_disputes [label="lens/disputes", color=green, style=filled, fillcolor="#e0ffe0"];
 }
