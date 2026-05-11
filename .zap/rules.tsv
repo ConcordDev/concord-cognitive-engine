@@ -1,0 +1,15 @@
+# Sprint 20 — OWASP ZAP rule overrides for Concord baseline scan.
+#
+# Format: <rule-id>\tFAIL|WARN|INFO|IGNORE\t# comment
+#
+# Concord-specific tunings: some default ZAP rules are noisy or
+# don't apply to our architecture. Anything not listed uses ZAP's
+# default severity.
+
+10202	WARN	# Permission Policy Header — partially covered by helmet (warn not fail)
+10038	WARN	# CSP — covered by helmet but we still want WARN-tier visibility
+10027	IGNORE	# Information Disclosure - Suspicious Comments — too noisy on dev/debug paths
+10049	WARN	# Storable & Cacheable Content — many endpoints intentionally cache-friendly
+10063	WARN	# Permissions Policy Header Not Set — covered by helmet
+90004	WARN	# Insufficient Site Isolation Against Spectre Vulnerability — needs cross-origin policy follow-on
+10037	IGNORE	# Server Leaks Information via X-Powered-By — Express default, we strip in prod
