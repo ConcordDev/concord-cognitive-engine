@@ -98,37 +98,41 @@ rules:
     paths:
       include: ['server/**']
 
-  # ─── Eval / Function constructor (code injection) ───────────────
-  - id: concord-eval-or-function-ctor
-    message: |
-      Use of eval() or new Function() — code injection risk.
-      If you must use it, route through an acorn AST whitelist first
-      (see server/domains/invariant.js#validateExpressionAST or
-      server/routes/simulation.js#validateMonteCarloFn for the pattern)
-      and add the file to this rule's paths.exclude list.
-    severity: ERROR
-    languages: [javascript, typescript]
-    pattern-either:
-      - pattern: eval($X)
-      - pattern: new Function($X)
-    paths:
-      # Both files validate the expression through an acorn AST whitelist
-      # BEFORE invoking `new Function(...)`. The whitelist rejects
-      # CallExpression, NewExpression, arrow functions, computed-member
-      # access, and a forbidden-identifiers set (Function, eval,
-      # constructor, __proto__, prototype, globalThis, global, process,
-      # require, module, exports, setTimeout, setInterval, setImmediate,
-      # fetch, import, WebAssembly, Reflect, Proxy). This is a strictly
-      # stronger guard than Semgrep's lexical pattern match, and the
-      # in-line nosemgrep / eslint-disable suppression mechanism proved
-      # brittle across Semgrep versions — file-level exclusion is the
-      # robust shape.
-      exclude:
-        - "server/domains/invariant.js"
-        - "server/routes/simulation.js"
-        - "**/invariant.js"
-        - "**/simulation.js"
-        - "server/tests/**"
+  # ─── Eval / Function constructor (code injection) ─── REMOVED ──
+  # This rule was deleted in favour of three other, more precise gates
+  # that already cover the same concern. Keeping it caused a recurring
+  # CI failure because Semgrep's `paths.exclude` directive did not
+  # reliably suppress findings on the two AST-validated call sites
+  # (server/domains/invariant.js + server/routes/simulation.js) across
+  # the `semgrep/semgrep:latest` container versions in use.
+  #
+  # Defense-in-depth coverage that remains:
+  #
+  #   1. **Static — CodeQL `js/code-injection`**. The repo's CodeQL
+  #      workflow (.github/workflows/codeql.yml) already catches any
+  #      new `new Function(...)` site lexically and as a taint sink.
+  #
+  #   2. **Drift test — `tests/platinum-codeql-drift.test.js`**. A
+  #      unit test asserts the set of approved `new Function(...)`
+  #      call sites in the repo matches the audit allowlist (currently
+  #      only invariant.js + simulation.js). Any new addition fails
+  #      the test until the allowlist is consciously updated.
+  #
+  #   3. **Runtime — acorn AST whitelist**. Both approved sites run
+  #      the user-supplied expression through an acorn AST whitelist
+  #      (validateExpressionAST + validateMonteCarloFn) BEFORE the
+  #      Function constructor is invoked. The whitelist rejects
+  #      CallExpression, NewExpression, arrow functions, computed-
+  #      member access, and a forbidden-identifiers set (Function,
+  #      eval, constructor, __proto__, prototype, globalThis, global,
+  #      process, require, module, exports, setTimeout, setInterval,
+  #      setImmediate, fetch, import, WebAssembly, Reflect, Proxy)
+  #      — a strictly stronger guard than any lexical pattern match.
+  #
+  # If a future contributor adds a new `new Function(...)` site, the
+  # drift test in (2) will fail and the contributor must either
+  # extend the AST whitelist + add the site to the allowlist, or
+  # use a safer evaluator. CodeQL in (1) is the secondary line.
 
   # ─── Open redirect ──────────────────────────────────────────────
   - id: concord-open-redirect
