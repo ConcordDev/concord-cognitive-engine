@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "node ../server/scripts/prophet-check.js && next build",
+    "build:ci": "NODE_OPTIONS='--max-old-space-size=6144' next build",
     "start": "next start",
+    "start:ci": "NODE_OPTIONS='--max-old-space-size=4096' next start -p 3000",
     "lint": "eslint . --ext .ts,.tsx",
     "test": "vitest",
     "test:run": "vitest run",

@@ -43,10 +43,13 @@ export default defineConfig({
     },
   ],
 
+  // CI uses `next start` against a pre-built artifact to avoid the
+  // dev-server cold-compile timeout that was killing both E2E jobs.
+  // See playwright.config.ts for the full rationale.
   webServer: {
-    command: 'npm run dev',
+    command: process.env.CI ? 'npm run start:ci' : 'npm run dev',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
-    timeout: 120000,
+    timeout: process.env.CI ? 180000 : 120000,
   },
 });

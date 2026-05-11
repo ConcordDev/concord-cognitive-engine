@@ -609,6 +609,17 @@ jobs:
         working-directory: ./concord-frontend
         run: npx playwright install --with-deps chromium
 
+      # Build the frontend to a production artifact BEFORE Playwright
+      # starts. The playwright webServer then runs `next start` (fast,
+      # low-memory) against this artifact instead of `next dev` which
+      # cold-compiles 200+ lens routes per run and routinely timed
+      # out the webServer (120 s) before any spec executed.
+      - name: Build frontend (production)
+        working-directory: ./concord-frontend
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:5050
+        run: npm run build:ci
+
       - name: Start server
         working-directory: ./server
         env:
@@ -617,6 +628,7 @@ jobs:
           JWT_SECRET: test-secret-for-ci-only-do-not-use-in-production
           ADMIN_PASSWORD: testpassword123
           CONCORD_RATE_LIMIT_BYPASS: '1'
+          NODE_OPTIONS: '--max-old-space-size=6144'
         run: |
           node server.js > server.log 2>&1 &
           echo $! > server.pid
@@ -638,12 +650,15 @@ jobs:
         id: e2e_run
         working-directory: ./concord-frontend
         env:
+          CI: 'true'
           BASE_URL: http://localhost:3000
           NEXT_PUBLIC_API_URL: http://localhost:5050
         # Core suite: tests/e2e/ via the default playwright.config.ts.
         # The infra-tier specs (chat-flow, chat-modes, auth-oauth,
         # wallet-flow) live under tests/e2e-infra/ and run in the
         # separate `e2e-infra` job below.
+        # CI=true switches the playwright webServer from `next dev`
+        # to `npm run start:ci` (production build, ~5 s startup).
         run: npm run test:e2e:core -- --project=chromium --reporter=list,html
 
       - name: Surface failing E2E specs on failure
@@ -732,6 +747,15 @@ jobs:
         working-directory: ./concord-frontend
         run: npx playwright install --with-deps chromium
 
+      # Same rationale as E2E Core: build a prod artifact ahead of
+      # time so the playwright webServer can `next start` rather
+      # than cold-compile every run.
+      - name: Build frontend (production)
+        working-directory: ./concord-frontend
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:5050
+        run: npm run build:ci
+
       - name: Pull tiny Ollama model for chat specs
         timeout-minutes: 4
         continue-on-error: true
@@ -762,6 +786,7 @@ jobs:
           BRAIN_UTILITY_URL: http://localhost:11434
           BRAIN_REPAIR_URL: http://localhost:11434
           OLLAMA_HOST: http://localhost:11434
+          NODE_OPTIONS: '--max-old-space-size=6144'
         run: |
           node server.js > server.log 2>&1 &
           echo $! > server.pid
@@ -782,8 +807,11 @@ jobs:
         id: e2e_infra_run
         working-directory: ./concord-frontend
         env:
+          CI: 'true'
           BASE_URL: http://localhost:3000
           NEXT_PUBLIC_API_URL: http://localhost:5050
+        # CI=true flips the playwright webServer from `next dev` to
+        # `npm run start:ci` against the prod build above.
         run: npm run test:e2e:infra -- --reporter=list,html
 
       - name: Upload infra-tier test results
