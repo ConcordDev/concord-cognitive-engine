@@ -94,8 +94,16 @@ jobs:
               if v.get('severity') not in ('high', 'critical'):
                   continue
               vias = v.get('via', [])
-              real = [x for x in vias if isinstance(x, dict)
-                      and x.get('url', '').split('/')[-1] not in ALLOWLIST_ADVISORIES]
+              # Only count vias that are high/critical AND not allowlisted.
+              # Moderate vias on a high-severity package shouldn't count
+              # toward the gate's threshold (the high/critical via itself
+              # might be allowlisted).
+              real = [
+                  x for x in vias
+                  if isinstance(x, dict)
+                  and x.get('severity') in ('high', 'critical')
+                  and x.get('url', '').split('/')[-1] not in ALLOWLIST_ADVISORIES
+              ]
               if real:
                   flagged += 1
                   print(f'  HIGH/CRIT: {name} (advisories: {[x.get(\"url\",\"?\") for x in real][:3]})')
