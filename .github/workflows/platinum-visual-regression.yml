@@ -1,0 +1,136 @@
+name: Platinum Visual Regression
+
+# Sprint 24 — pixel-diff snapshot gate. Renders each critical-path lens
+# and compares against the committed baseline. Any unintended visual
+# regression (CSS drift, missing component, accidental layout shift,
+# font/icon swap) fails the PR.
+#
+# Baselines live under concord-frontend/tests/visual/__screenshots__/
+# and are committed alongside the spec. To regenerate after an
+# intentional UI change:
+#   cd concord-frontend && npx playwright test --update-snapshots tests/visual
+#   git add concord-frontend/tests/visual/__screenshots__
+#   git commit -m "chore(visual): refresh baselines after <intentional change>"
+#
+# Cost note: this runs Playwright + headless Chromium per PR which is
+# ~3-5 minutes per PR. Cheap relative to chasing a visual regression
+# in production after a CSS refactor.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  visual-regression:
+    name: Visual snapshot diff (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: |
+            server/package-lock.json
+            concord-frontend/package-lock.json
+
+      - name: Install server deps
+        working-directory: server
+        run: npm ci --prefer-offline --no-audit --no-fund
+
+      - name: Install frontend deps
+        working-directory: concord-frontend
+        run: npm ci --prefer-offline --no-audit --no-fund
+
+      - name: Install Playwright browsers
+        working-directory: concord-frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Run migrations
+        working-directory: server
+        env:
+          DB_PATH: ./data/concord.db
+          NODE_OPTIONS: --max-old-space-size=4096
+        run: |
+          mkdir -p data
+          npm run migrate
+
+      - name: Start server (background)
+        working-directory: server
+        env:
+          NODE_ENV: test
+          DB_PATH: ./data/concord.db
+          PORT: 5050
+          CONCORD_NO_LISTEN: "false"
+          JWT_SECRET: test-secret-only-for-ci
+          NODE_OPTIONS: --max-old-space-size=4096
+        run: |
+          npm start &> server.log &
+          for i in {1..30}; do
+            if curl -fsS http://localhost:5050/health > /dev/null 2>&1; then
+              echo "server up"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "server failed to start within 60s"
+          tail -50 server.log
+          exit 1
+
+      - name: Build frontend
+        working-directory: concord-frontend
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
+          NEXT_PUBLIC_API_URL: http://localhost:5050
+        run: npm run build
+
+      - name: Start frontend (background)
+        working-directory: concord-frontend
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+          NEXT_PUBLIC_API_URL: http://localhost:5050
+        run: |
+          npm start &> frontend.log &
+          for i in {1..30}; do
+            if curl -fsS http://localhost:3000/ > /dev/null 2>&1; then
+              echo "frontend up"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "frontend failed to start within 60s"
+          tail -50 frontend.log
+          exit 1
+
+      - name: Run visual regression suite
+        working-directory: concord-frontend
+        env:
+          CONCORD_FRONTEND_URL: http://localhost:3000
+        run: |
+          # --reporter=line keeps log volume reasonable in CI.
+          # --update-snapshots is NEVER passed here — that's intentional.
+          # If a baseline is missing it fails the run, forcing the dev
+          # to regenerate locally + commit explicitly.
+          npx playwright test tests/visual --reporter=line
+
+      - name: Upload diff artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-diff-${{ github.run_id }}
+          path: |
+            concord-frontend/test-results/**
+            concord-frontend/playwright-report/**
+          retention-days: 14
