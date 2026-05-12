@@ -21,6 +21,7 @@
     "migrate": "node migrate.js",
     "migrate:status": "node migrate.js --status",
     "smoke": "bash scripts/smoke.sh",
+    "preflight": "bash ../scripts/preflight-production.sh",
     "backup": "bash scripts/backup.sh",
     "restore": "bash scripts/restore.sh",
     "cartograph": "node scripts/cartograph.js",

@@ -41,6 +41,19 @@ else
   log "WARNING: No .env file found. Copy .env.runpod (RunPod) or .env.example to .env"
 fi
 
+# ── Production preflight gate ────────────────────────────────────────────────
+# Validates every required env var is set with a sane value BEFORE the server
+# starts. Catches the "deployed and now logins fail because JWT_SECRET wasn't
+# set" class of bugs by failing fast with a clear list of what's missing.
+# Skipped for --dev mode where soft-fails are acceptable.
+if [ "${NODE_ENV:-}" = "production" ] && [ "${1:-}" != "--dev" ]; then
+  log "Running production preflight check..."
+  if ! ./scripts/preflight-production.sh; then
+    log "Preflight failed — fix missing env vars in .env then re-run startup.sh"
+    exit 1
+  fi
+fi
+
 # ── RunPod: auto-fill ALLOWED_ORIGINS from RUNPOD_PUBLIC_URL ─────────────────
 if $IS_RUNPOD && [ -n "${RUNPOD_PUBLIC_URL:-}" ]; then
   # Strip trailing slash

@@ -68,7 +68,36 @@ Total disk hit: ~28 GB. Verify with `ollama list`.
 
 ---
 
-## 4. Boot
+## 4. Preflight (validates env BEFORE start)
+
+```bash
+./scripts/preflight-production.sh
+```
+
+Single command that verifies every required env var is set with a sane value. Exits 1 with a clear "MISSING: X" list if anything's wrong. Auto-runs as the first step of `./startup.sh --runpod` when `NODE_ENV=production`, but you can run it manually any time to verify config.
+
+What it checks:
+
+| Required | Why |
+|---|---|
+| `JWT_SECRET` (≥ 64 hex chars) | auth signing — without it sessions don't survive restart |
+| `SESSION_SECRET` (≥ 32 hex chars) | cookie signing |
+| `ADMIN_PASSWORD` (≥ 12 chars) | first-run admin login |
+| `NODE_ENV=production` | feature gates key on this |
+| `ALLOWED_ORIGINS` or `RUNPOD_PUBLIC_URL` or `DOMAIN` | CORS + WebSocket allowlist |
+| LLM provider (one of) | `OPENAI_API_KEY` / `BRAIN_CONSCIOUS_URL` / `ANTHROPIC_API_KEY` / `OLLAMA_HOST` |
+| Stripe pair | `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET` if either is set |
+| S3 backup pair | `AWS_BUCKET` + `BACKUP_ENCRYPTION_KEY` if either is set |
+
+Warns (doesn't block) on:
+- `SENTRY_DSN` not set
+- `CONCORD_FEDERATION_TOKEN` not set
+- `TRUST_PROXY` is 0 behind a proxy
+- `MAX_OLD_SPACE_SIZE` below 4096
+
+---
+
+## 5. Boot
 
 ```bash
 ./startup.sh --runpod
@@ -78,14 +107,15 @@ This runs:
 
 1. Loads `.env`
 2. Auto-fills derived URLs from `RUNPOD_PUBLIC_URL`
-3. Runs `npm install` if `node_modules/` missing
-4. Runs migrations (`npm run migrate`)
-5. Starts the backend under `pm2` with auto-restart
-6. Starts the frontend (Next.js) under `pm2`
-7. Tails the logs
+3. **Runs preflight** (production only — see §4)
+4. Runs `npm install` if `node_modules/` missing
+5. Runs migrations (`npm run migrate`)
+6. Starts the backend under `pm2` with auto-restart
+7. Starts the frontend (Next.js) under `pm2`
+8. Tails the logs
 
 Verify the boot log includes:
-- `schema_migration_complete {"currentVersion":90}` — all migrations applied
+- `schema_migration_complete {"currentVersion":171}` — all migrations applied
 - `content_seeded` — authored world content loaded
 - `server_listening` with the public URL
 
