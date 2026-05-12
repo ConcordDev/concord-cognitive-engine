@@ -829,7 +829,7 @@ jobs:
               for (const x of (s.suites || [])) walk(x);
               for (const t of (s.specs || [])) {
                 if (!t.ok) {
-                  const errs = (t.tests || []).flatMap(tt => (tt.results || []).flatMap(rr => (rr.errors || []).map(e => (e.message || e.value || '').toString().replace(/\[[0-9;]*m/g, '').slice(0, 300))));
+                  const errs = (t.tests || []).flatMap(tt => (tt.results || []).flatMap(rr => (rr.errors || []).map(e => (e.message || e.value || '').toString().replace(/\x1b\[[0-9;]*m/g, '').slice(0, 300))));
                   fails.push({ title: t.title, file: t.file, line: t.line, error: errs[0] || '(no msg)' });
                 }
               }
