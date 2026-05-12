@@ -81,6 +81,7 @@ export function useLensData<T = Record<string, unknown>>(
     if (!isDev || noSeed || seeded.current || !response || isLoading) return;
     if (response.ok && response.total === 0 && seed.length > 0) {
       seeded.current = true;
+      // @env-config-ok: 1min poll for live-data lenses
       api.post(`/api/lens/${domain}/bulk`, { type, items: seed }, { timeout: 60000 })
         .then(() => {
           qc.invalidateQueries({ queryKey: ['lens', domain, 'list'] });

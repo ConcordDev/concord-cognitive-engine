@@ -68,6 +68,7 @@ export default function MapView({
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          // @env-config-ok: OpenStreetMap tile URL pattern — by-design hardcoded per RFC 6570 template
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         {markers.map((m, i) => (

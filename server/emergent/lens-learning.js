@@ -69,10 +69,13 @@ Respond with a JSON object:
 }`;
 
   try {
+    // @agent-budget-ok: heartbeat-paced (1 call per cycle per domain ≈ 20min cadence);
+    // brain-level concurrency cap (BRAIN_SUBCONSCIOUS_CONCURRENT=12) is the actual rate ceiling.
     const result = await callBrain("subconscious", prompt, {
       system: `You are a pattern analysis engine for the ${domain} domain. Extract patterns from knowledge artifacts. Respond with valid JSON only.`,
       temperature: 0.3,
       maxTokens: 500,
+      // @env-config-ok: LLM call wrapper — matches conscious-brain timeout
       timeout: 30000,
     });
 

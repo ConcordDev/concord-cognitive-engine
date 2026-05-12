@@ -1,13 +1,13 @@
 {
   "version": 1,
-  "generatedAt": "2026-05-12T22:48:15.760Z",
+  "generatedAt": "2026-05-12T23:01:37.998Z",
   "totals": {
     "critical": 0,
     "high": 0,
-    "medium": 5,
-    "low": 4,
-    "info": 79,
-    "total": 88
+    "medium": 0,
+    "low": 0,
+    "info": 62,
+    "total": 62
   },
   "detectorCount": 18,
   "fingerprints": {
@@ -433,31 +433,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 227 lenses · 3 decorative-state issues found"
-    },
-    "509a8cacf28ab906": {
-      "detector": "lens-decorative-state",
-      "id": "lens_empty_handler",
-      "severity": "low",
-      "kind": "static",
-      "location": "concord-frontend/app/lenses/dx-platform/page.tsx:180",
-      "message": "Lens dx-platform: empty event handler — control fires no action"
-    },
-    "bab09a0de8902213": {
-      "detector": "lens-decorative-state",
-      "id": "lens_empty_handler",
-      "severity": "low",
-      "kind": "static",
-      "location": "concord-frontend/app/lenses/gallery/page.tsx:160",
-      "message": "Lens gallery: empty event handler — control fires no action"
-    },
-    "7879d203eb3729bb": {
-      "detector": "lens-decorative-state",
-      "id": "lens_empty_handler",
-      "severity": "low",
-      "kind": "static",
-      "location": "concord-frontend/app/lenses/genesis/page.tsx:345",
-      "message": "Lens genesis: empty event handler — control fires no action"
+      "message": "Scanned 227 lenses · 0 decorative-state issues found"
     },
     "f9f3f2da6d06c2a4": {
       "detector": "heartbeat-monitor",
@@ -530,190 +506,6 @@
       "kind": "static",
       "location": null,
       "message": "102 unit test(s) mock production modules — candidates for fixture-loader migration. Per-mock findings suppressed (each is a legitimate test isolation; migration is a test-PR concern)."
-    },
-    "80003128da2659ce": {
-      "detector": "env-config-drift",
-      "id": "hardcoded_prod_url",
-      "severity": "medium",
-      "kind": "static",
-      "location": "concord-frontend/components/common/MapView.tsx:71",
-      "message": "Hardcoded production URL: https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-    },
-    "5f11ed8b1e9b51fe": {
-      "detector": "env-config-drift",
-      "id": "magic_timeout",
-      "severity": "info",
-      "kind": "static",
-      "location": "concord-frontend/lib/api/client.ts:55",
-      "message": "Magic timeout 30000ms — consider env-driven"
-    },
-    "6e9820e19728a2d4": {
-      "detector": "env-config-drift",
-      "id": "magic_timeout",
-      "severity": "info",
-      "kind": "static",
-      "location": "concord-frontend/lib/hooks/use-lens-data.ts:84",
-      "message": "Magic timeout 60000ms — consider env-driven"
-    },
-    "f81daf0c63441010": {
-      "detector": "env-config-drift",
-      "id": "magic_timeout",
-      "severity": "info",
-      "kind": "static",
-      "location": "server/emergent/lens-learning.js:76",
-      "message": "Magic timeout 30000ms — consider env-driven"
-    },
-    "ab72207e5e4ab168": {
-      "detector": "env-config-drift",
-      "id": "magic_timeout",
-      "severity": "info",
-      "kind": "static",
-      "location": "server/emergent/repair-cortex.js:1789",
-      "message": "Magic timeout 120000ms — consider env-driven"
-    },
-    "d23530a2bbe8bfb0": {
-      "detector": "env-config-drift",
-      "id": "magic_timeout",
-      "severity": "info",
-      "kind": "static",
-      "location": "server/emergent/repair-cortex.js:2015",
-      "message": "Magic timeout 30000ms — consider env-driven"
-    },
-    "357ec7e4fdb9dd63": {
-      "detector": "env-config-drift",
-      "id": "magic_timeout",
-      "severity": "info",
-      "kind": "static",
-      "location": "server/emergent/repair-cortex.js:2383",
-      "message": "Magic timeout 10000ms — consider env-driven"
-    },
-    "99cf9c1d7bc38507": {
-      "detector": "env-config-drift",
-      "id": "magic_timeout",
-      "severity": "info",
-      "kind": "static",
-      "location": "server/emergent/repair-cortex.js:2389",
-      "message": "Magic timeout 120000ms — consider env-driven"
-    },
-    "7c57e9efee9eb5db": {
-      "detector": "env-config-drift",
-      "id": "magic_timeout",
-      "severity": "info",
-      "kind": "static",
-      "location": "server/emergent/repair-cortex.js:2458",
-      "message": "Magic timeout 900000ms — consider env-driven"
-    },
-    "d5fe2a89e9a11525": {
-      "detector": "env-config-drift",
-      "id": "magic_timeout",
-      "severity": "info",
-      "kind": "static",
-      "location": "server/emergent/repair-cortex.js:4187",
-      "message": "Magic timeout 10000ms — consider env-driven"
-    },
-    "0c4bc04ca01ea846": {
-      "detector": "env-config-drift",
-      "id": "magic_timeout",
-      "severity": "info",
-      "kind": "static",
-      "location": "server/emergent/repair-cortex.js:4577",
-      "message": "Magic timeout 60000ms — consider env-driven"
-    },
-    "adfde5fb6ae267c7": {
-      "detector": "env-config-drift",
-      "id": "magic_timeout",
-      "severity": "info",
-      "kind": "static",
-      "location": "server/lib/brain-config.js:14",
-      "message": "Magic timeout 45000ms — consider env-driven"
-    },
-    "c49b1f9badb2d807": {
-      "detector": "env-config-drift",
-      "id": "magic_timeout",
-      "severity": "info",
-      "kind": "static",
-      "location": "server/lib/brain-config.js:28",
-      "message": "Magic timeout 30000ms — consider env-driven"
-    },
-    "ca56a25b4f62ec38": {
-      "detector": "env-config-drift",
-      "id": "magic_timeout",
-      "severity": "info",
-      "kind": "static",
-      "location": "server/lib/brain-config.js:41",
-      "message": "Magic timeout 20000ms — consider env-driven"
-    },
-    "3f11f94beffbacdd": {
-      "detector": "env-config-drift",
-      "id": "magic_timeout",
-      "severity": "info",
-      "kind": "static",
-      "location": "server/lib/brain-config.js:54",
-      "message": "Magic timeout 10000ms — consider env-driven"
-    },
-    "83c7dd949cbdec66": {
-      "detector": "env-config-drift",
-      "id": "hardcoded_localhost",
-      "severity": "medium",
-      "kind": "static",
-      "location": "server/lib/forge-constants.js:151",
-      "message": "Hardcoded localhost URL with no env-var fallback in this file: http://localhost:3000"
-    },
-    "3e7e218f433a213e": {
-      "detector": "env-config-drift",
-      "id": "magic_port",
-      "severity": "low",
-      "kind": "static",
-      "location": "server/lib/forge-constants.js:128",
-      "message": "Hardcoded service port 3000 — should come from env"
-    },
-    "bc9eaee7490e8f97": {
-      "detector": "env-config-drift",
-      "id": "magic_timeout",
-      "severity": "info",
-      "kind": "static",
-      "location": "server/lib/personal-locker/pipeline.js:74",
-      "message": "Magic timeout 60000ms — consider env-driven"
-    },
-    "01071eb33218af2a": {
-      "detector": "env-config-drift",
-      "id": "magic_timeout",
-      "severity": "info",
-      "kind": "static",
-      "location": "server/lib/tools/computer-use-tool.js:123",
-      "message": "Magic timeout 15000ms — consider env-driven"
-    },
-    "dfa2aee08ca1b37c": {
-      "detector": "env-config-drift",
-      "id": "magic_timeout",
-      "severity": "info",
-      "kind": "static",
-      "location": "server/lib/tools/computer-use-tool.js:128",
-      "message": "Magic timeout 15000ms — consider env-driven"
-    },
-    "9d1bfffcc793c9a8": {
-      "detector": "env-config-drift",
-      "id": "hardcoded_localhost",
-      "severity": "medium",
-      "kind": "static",
-      "location": "server/routes/api-docs.js:180",
-      "message": "Hardcoded localhost URL with no env-var fallback in this file: http://localhost:5050"
-    },
-    "c642d5a00d91f3a4": {
-      "detector": "env-config-drift",
-      "id": "hardcoded_localhost",
-      "severity": "medium",
-      "kind": "static",
-      "location": "server/routes/dx-oauth.js:203",
-      "message": "Hardcoded localhost URL with no env-var fallback in this file: http://127.0.0.1:${pending.port}/callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}"
-    },
-    "9b3961fd0a8d4bbb": {
-      "detector": "agent-budget",
-      "id": "heartbeat_llm_without_throttle",
-      "severity": "medium",
-      "kind": "static",
-      "location": "server/emergent/lens-learning.js:32",
-      "message": "Heartbeat runLensLearningCycle contains an LLM call without visible rate-limit or per-pass cap."
     }
   }
 }

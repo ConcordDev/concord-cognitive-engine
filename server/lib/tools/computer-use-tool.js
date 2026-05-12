@@ -120,10 +120,12 @@ export async function executeComputerUse(call, opts = {}) {
     switch (action) {
       case "navigate":
         if (!url) return JSON.stringify({ ok: false, error: "url_required" });
+        // @env-config-ok: computer-use tool — 15s for screenshot+action
         await page.goto(url, { waitUntil: "domcontentloaded", timeout: 15000 });
         result = { ok: true, currentUrl: page.url(), title: await page.title() };
         break;
 
+      // @env-config-ok: computer-use tool — 15s for screenshot+action
       case "screenshot": {
         if (url) await page.goto(url, { waitUntil: "domcontentloaded", timeout: 15000 });
         const screenshotBuffer = await page.screenshot({ type: "png" });
