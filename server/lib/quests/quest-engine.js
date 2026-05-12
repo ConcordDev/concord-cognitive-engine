@@ -8,8 +8,11 @@ import { gainSkillXP } from '../skills/skill-engine.js';
  * Return all active quests for a player in a world, with objectives and rewards attached.
  */
 export function getActiveQuests(db, userId, worldId) {
+  // pq.user_id IS the "accepted by" field — `user_id` was the column name
+  // chosen at migration 068; the original query asked for a non-existent
+  // `accepted_by` column and 500'd every /api/worlds/:id/quests/active hit.
   const rows = db.prepare(`
-    SELECT q.*, pq.accepted_by, pq.status, pq.completed_at
+    SELECT q.*, pq.user_id AS accepted_by, pq.status, pq.completed_at
     FROM world_quests q
     JOIN player_quests pq ON pq.quest_id = q.id
     WHERE pq.user_id = ? AND pq.world_id = ? AND (pq.status IS NULL OR pq.status = 'active')
