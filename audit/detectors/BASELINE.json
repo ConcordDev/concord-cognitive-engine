@@ -1,13 +1,13 @@
 {
   "version": 1,
-  "generatedAt": "2026-05-12T16:50:12.052Z",
+  "generatedAt": "2026-05-12T17:53:14.965Z",
   "totals": {
     "critical": 0,
-    "high": 8,
+    "high": 0,
     "medium": 867,
     "low": 1131,
     "info": 399,
-    "total": 2405
+    "total": 2397
   },
   "detectorCount": 18,
   "fingerprints": {
@@ -4529,71 +4529,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 227 lenses · 8 issues found"
-    },
-    "893044afd03891f4": {
-      "detector": "lens-health",
-      "id": "lens_unknown_domain",
-      "severity": "high",
-      "kind": "static",
-      "location": "concord-frontend/app/lenses/code/page.tsx:958",
-      "message": "Lens code calls domain \"llm\" but no server/domains/llm.js exists"
-    },
-    "f92f5daf6bd50cb6": {
-      "detector": "lens-health",
-      "id": "lens_unknown_domain",
-      "severity": "high",
-      "kind": "static",
-      "location": "concord-frontend/app/lenses/code/page.tsx:1032",
-      "message": "Lens code calls domain \"llm\" but no server/domains/llm.js exists"
-    },
-    "f23a03eb25f36784": {
-      "detector": "lens-health",
-      "id": "lens_unknown_domain",
-      "severity": "high",
-      "kind": "static",
-      "location": "concord-frontend/app/lenses/deities/page.tsx:38",
-      "message": "Lens deities calls domain \"deity\" but no server/domains/deity.js exists"
-    },
-    "5fe60c62b8532637": {
-      "detector": "lens-health",
-      "id": "lens_unknown_domain",
-      "severity": "high",
-      "kind": "static",
-      "location": "concord-frontend/app/lenses/deities/page.tsx:52",
-      "message": "Lens deities calls domain \"deity\" but no server/domains/deity.js exists"
-    },
-    "d664b83cc1c8f1c9": {
-      "detector": "lens-health",
-      "id": "lens_unknown_domain",
-      "severity": "high",
-      "kind": "static",
-      "location": "concord-frontend/app/lenses/deities/page.tsx:160",
-      "message": "Lens deities calls domain \"deity\" but no server/domains/deity.js exists"
-    },
-    "4b319bda911eb211": {
-      "detector": "lens-health",
-      "id": "lens_unknown_domain",
-      "severity": "high",
-      "kind": "static",
-      "location": "concord-frontend/app/lenses/event-timeline/page.tsx:109",
-      "message": "Lens event-timeline calls domain \"event_timeline\" but no server/domains/event_timeline.js exists"
-    },
-    "53bb45b25af0cf05": {
-      "detector": "lens-health",
-      "id": "lens_unknown_domain",
-      "severity": "high",
-      "kind": "static",
-      "location": "concord-frontend/app/lenses/event-timeline/page.tsx:116",
-      "message": "Lens event-timeline calls domain \"event_timeline\" but no server/domains/event_timeline.js exists"
-    },
-    "38fedf3baf8f7ad4": {
-      "detector": "lens-health",
-      "id": "lens_unknown_domain",
-      "severity": "high",
-      "kind": "static",
-      "location": "concord-frontend/app/lenses/expert-mode/page.tsx:119",
-      "message": "Lens expert-mode calls domain \"expert_mode\" but no server/domains/expert_mode.js exists"
+      "message": "Scanned 227 lenses · 0 issues found"
     },
     "2f600c033f853e95": {
       "detector": "lens-decorative-state",
@@ -4641,7 +4577,7 @@
       "severity": "info",
       "kind": "static",
       "location": null,
-      "message": "Scanned 3314 files; flagged 0"
+      "message": "Scanned 3315 files; flagged 0"
     },
     "6954d635fa3b8074": {
       "detector": "performance-hotspot",
